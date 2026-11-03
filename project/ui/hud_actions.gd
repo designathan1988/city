@@ -12,15 +12,19 @@ func _hud() -> RoadcraftHud:
 	return get_parent() as RoadcraftHud
 
 
+func _ready() -> void:
+	CityStore.saved.connect(_on_saved)
+
+
 func menu(action: String) -> void:
 	match action:
 		"new_empty", "new_city":
 			_hud().drawer.close()
 			CityStore.new_map(TOWN_MAP, randi_range(1, SEED_LIMIT), action == "new_city")
 		"save":
-			_saved(CityStore.save_city())
+			_refused(CityStore.save_city())
 		"save_map":
-			_saved(CityStore.export_map())
+			_refused(CityStore.export_map())
 		"load_last":
 			_loaded(CityStore.load_last())
 		"open":
@@ -36,8 +40,18 @@ func _loaded(r: Dictionary) -> void:
 	_hud().show_hint(tr("save.loaded") if r.ok else tr(r.error), r.ok)
 
 
-func _saved(r: Dictionary) -> void:
-	_hud().show_hint(tr("save.done") if r.ok else tr(r.error), r.ok)
+## A save the store could not start (one is still being written, no whole city): said at once.
+func _refused(r: Dictionary) -> void:
+	if not r.get("ok", false):
+		_hud().show_hint(tr(r.get("error", "")), false)
+
+
+## A save that ended (CityStore.saved): written, written by the autosave, or why not.
+func _on_saved(_slot: String, r: Dictionary) -> void:
+	if r.get("ok", false):
+		_hud().show_hint(tr("save.auto" if r.get("auto", false) else "save.done"), true)
+	else:
+		_hud().show_hint(tr(r.get("error", "")), false)
 
 
 ## Undo / redo (top bar buttons, Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y): the core's history; the hint names the step.

@@ -39,7 +39,7 @@ func _ready() -> void:
 	var a := Vector3(b.max.x - 1.0, 0, (b.min.z + b.max.z) * 0.5)
 	var e := a + Vector3(OUT_M, 0, 0)
 	_undo_cases(a, e)
-	_save_round_trip(a, e)
+	await _save_round_trip(a, e)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -99,8 +99,8 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	saved.minutes = CityStore.snapshot.minutes
 	var heights := [_height(sculpted), _height(a), _height((a + e) * 0.5)]
 	var probes := _probes()
-	var w: Dictionary = CityStore.save_game(SLOT)
-	_check(w.ok and not CityStore.snapshot.unsaved, "salvou %s" % w)
+	var w := await _save(SLOT)
+	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	_check(_counts() != saved, "mapa novo é outro")
 	var r: Dictionary = CityStore.load_game(SLOT)
@@ -113,6 +113,16 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(_probes() == probes, "mesmos prédios (%d sondados)" % probes.size())
 	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico")
 	DirAccess.remove_absolute(CityStore.save_path(SLOT))
+
+
+## Saves on the core's thread like the game does and returns the outcome `saved` carried.
+func _save(slot: String) -> Dictionary:
+	var outcome := {}
+	CityStore.saved.connect(func(_s: String, r: Dictionary) -> void: outcome.merge(r), CONNECT_ONE_SHOT)
+	CityStore.save_game(slot)
+	while CityStore.save_busy():
+		await get_tree().process_frame
+	return outcome
 
 
 func _counts() -> Dictionary:

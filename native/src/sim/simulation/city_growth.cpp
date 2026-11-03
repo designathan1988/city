@@ -47,6 +47,12 @@ void GrowthQueue::push(int64_t key) {
 	if (members.insert(key).second) cells.push_back(key);
 }
 
+void GrowthQueue::assign(std::vector<int64_t> keys) {
+	cells.clear();
+	members.clear();
+	for (int64_t k : keys) push(k);
+}
+
 void grow_step(CityState &s, double dt) {
 	GrowthQueue &g = s.growth;
 	if (g.cells.empty()) return;

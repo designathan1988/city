@@ -22,9 +22,10 @@ struct GrowthQueue {
 
 	void clear() { *this = GrowthQueue(); }
 	void push(int64_t key);
+	void assign(std::vector<int64_t> keys); // the queue as saved: cells and their members (each key once)
 };
 
-// One simulation step of growth (caller holds world_mutex).
+// One simulation step of growth (caller holds map_mutex exclusively).
 void grow_step(CityState &s, double dt);
 
 } // namespace city

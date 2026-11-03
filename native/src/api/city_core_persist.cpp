@@ -1,5 +1,5 @@
-// Save and open (sim/persistence): the city is encoded under the state lock, then written with ZSTD on a worker
-// thread through a temporary file and renamed, so the frame never waits for the compression.
+// Save and open (sim/persistence): a worker thread encodes the city under the map lock shared (it only reads), then
+// writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save.
 #include "api/city_core.h"
 
 #include "sim/persistence/save_format.h"
@@ -57,7 +57,7 @@ Dictionary CityCore::save_status() {
 	const int state = save_state_.load();
 	d["busy"] = state == 1;
 	d["ok"] = state == 2;
-	d["error"] = String(save_error_.c_str());
+	d["error"] = state == 3 ? String(save_error_.c_str()) : String(); // written before the state turns 3
 	d["bytes"] = save_bytes_.load();
 	return d;
 }
@@ -67,26 +67,28 @@ Dictionary CityCore::save_city(const String &path) {
 	d["ok"] = false;
 	d["error"] = "save.blocked"; // no whole city on screen (every result carries its error key)
 	join_save();
-	std::vector<uint8_t> bytes;
-	uint64_t revision = 0;
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 		if (!state_->ready) return d;
-		bytes = encode_city(*state_);
-		revision = state_->revision;
 	}
 	const std::string target = utf8(path);
-	const int64_t size = int64_t(bytes.size());
-	save_bytes_.store(size);
-	save_error_.clear();
-	save_revision_ = revision;
+	save_bytes_.store(0);
+	save_error_.clear(); // no save thread runs now (joined above)
 	save_state_.store(1);
-	save_thread_ = std::thread([this, bytes = std::move(bytes), target]() {
+	save_thread_ = std::thread([this, target]() {
+		std::vector<uint8_t> bytes;
+		uint64_t revision = 0;
+		{
+			std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the encode only reads the city
+			bytes = encode_city(*state_);
+			revision = state_->revision; // the revision this file holds
+		}
+		save_bytes_.store(int64_t(bytes.size()));
 		std::string error;
 		const bool ok = write_atomic(target, bytes, error);
 		if (ok) {
 			std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-			state_->saved_revision = save_revision_;
+			state_->saved_revision = revision;
 			save_state_.store(2);
 		} else {
 			save_error_ = error;
@@ -95,7 +97,6 @@ Dictionary CityCore::save_city(const String &path) {
 	});
 	d["ok"] = true;
 	d["error"] = "";
-	d["bytes"] = size;
 	d["pending"] = true;
 	return d;
 }

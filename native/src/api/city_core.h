@@ -87,8 +87,7 @@ private:
 	std::thread save_thread_;
 	std::atomic<int> save_state_{ 0 }; // 0 idle, 1 writing, 2 ok, 3 error
 	std::atomic<int64_t> save_bytes_{ 0 };
-	std::string save_error_;
-	uint64_t save_revision_ = 0;
+	std::string save_error_; // set by the save thread before save_state_ turns 3, read only then
 	// The snapshot's expensive counts follow the player's edits, not the simulation tick.
 	uint64_t snap_edit_revision_ = ~uint64_t(0);
 	int snap_nodes_ = 0, snap_zoned_ = 0, snap_residents_ = 0, snap_jobs_ = 0;

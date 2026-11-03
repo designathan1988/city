@@ -186,6 +186,8 @@ func _save_open() -> void:
 	await ui.frames(3)
 	var save_row := _row_with(tr("ui.menu.save"))
 	await ui.press(save_row)
+	while CityStore.save_busy(): # the save is written on the core's thread
+		await ui.frames(1)
 	var slot := CityStore.city_slot() # the city's own slot (SaveSlots), given by this first save
 	_check(not slot.is_empty() and FileAccess.file_exists(CityStore.save_path(slot)) and not CityStore.snapshot.unsaved,
 		"Salvar gravou a cidade em %s" % slot)

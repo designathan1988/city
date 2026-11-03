@@ -477,6 +477,7 @@ hint.lot,"Arraste um retângulo junto a uma via: o prédio escolhido nasce ali, 
 ui.insp.upgraded,"Perfil trocado em {count} trecho(s).","Profile changed on {count} segment(s)."
 ui.build.placed,Prédio construído.,Building built.
 save.writeFailed,"Não foi possível gravar o arquivo do salvamento.","The save file could not be written."
+save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes.","A save is still being written; try again in a moment."
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
