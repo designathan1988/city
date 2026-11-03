@@ -144,6 +144,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.lots.clear();
 	s.growth.clear();
 	s.history.reset(c.tune);
+	s.edited = false; // a city just made or opened holds no edit of the player's yet
 	s.money = c.tune.economy_start_money;
 	s.unlimited_money = false;
 	s.clock.minutes.store(0);

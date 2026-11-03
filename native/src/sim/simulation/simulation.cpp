@@ -73,7 +73,6 @@ void Simulation::tick(CityState &s, int steps) {
 				grow_step(s, owed_ + dt);
 				owed_ = 0;
 			} else owed_ += dt;
-			s.touch();
 		}
 	}
 	{

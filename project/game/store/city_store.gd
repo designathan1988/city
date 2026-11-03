@@ -22,11 +22,9 @@ const QUERIES := {
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status",
 }
-## Save files (Roadcraft platform/saveFiles.ts): one file per city in user://saves; "jogo" is the game's own slot
-## (Save / Load the last game / autosave every autosave_s of real time while there is unsaved work).
-const SAVE_DIR := "user://saves"
-const SAVE_EXT := "cidade"
-const GAME_SLOT := "jogo"
+## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
+## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
+## autosave_s of real time while it has unsaved work and is the player's (it has a slot or they edited it).
 
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
@@ -37,7 +35,8 @@ var _core: Node3D
 var _since_refresh := 0.0
 var _since_autosave := 0.0
 var _save_pending := false
-var _save_slot := GAME_SLOT
+var _save_slot := ""
+var _city_slot := ""
 
 
 func _ready() -> void:
@@ -60,25 +59,48 @@ func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
 func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
 	var report: Dictionary = _core.new_map(map, seed, with_city)
 	_save_pending = false
+	_city_slot = "" # a new city: its first save gives it a slot of its own
 	refresh()
 	return report
 
 
-## Writes the city to the slot (a file name without extension under SAVE_DIR).
-func save_game(slot: String = GAME_SLOT, wait := true) -> Dictionary:
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+## The slot the city on screen is saved to ("" until its first save).
+func city_slot() -> String:
+	return _city_slot
+
+
+## Save (Menu, Ctrl+S): the city on screen to its own slot.
+func save_city(wait := true) -> Dictionary:
+	if _city_slot.is_empty():
+		_city_slot = SaveSlots.free_city_slot(int(snapshot.get("seed", 0)))
+	return save_game(_city_slot, wait)
+
+
+## Save map (Roadcraft exportMap): the city is saved, then its file is copied to mapa-<seed>.
+func export_map() -> Dictionary:
+	var r := save_city()
+	if not r.get("ok", false):
+		return r
+	var to := SaveSlots.path(SaveSlots.export_slot(int(snapshot.get("seed", 0))))
+	if DirAccess.copy_absolute(SaveSlots.path(_city_slot), to) != OK:
+		return {"ok": false, "error": "save.writeFailed"}
+	return r
+
+
+## Writes the city to the slot (a file name without extension, SaveSlots.path).
+func save_game(slot: String, wait := true) -> Dictionary:
+	DirAccess.make_dir_recursive_absolute(SaveSlots.dir())
 	_save_slot = slot
 	var r: Dictionary = _core.save_city(save_path(slot))
 	_since_autosave = 0.0
 	if not r.get("pending", false):
-		saved.emit(slot, r)
+		_finish_save(slot, r)
 		return r
 	if wait:
 		while _core.save_status().get("busy", false):
 			OS.delay_msec(1)
-		var st: Dictionary = _core.save_status()
-		var done := {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)}
-		saved.emit(slot, done)
+		var done := _save_result()
+		_finish_save(slot, done)
 		refresh()
 		return done
 	_save_pending = true
@@ -86,30 +108,36 @@ func save_game(slot: String = GAME_SLOT, wait := true) -> Dictionary:
 	return r
 
 
-## Replaces the city with the saved one (the core stops the simulation, reads it and redraws everything).
-func load_game(slot: String = GAME_SLOT) -> Dictionary:
+## Replaces the city with the saved one (the core stops the simulation, reads it and redraws everything). The city
+## keeps that slot, unless it is a map copy (then its first save gives it one of its own).
+func load_game(slot: String) -> Dictionary:
 	var r: Dictionary = _core.load_city(save_path(slot))
 	_since_autosave = 0.0
 	_save_pending = false
+	if r.get("ok", false):
+		_city_slot = slot if SaveSlots.is_city_slot(slot) else ""
+		if not _city_slot.is_empty():
+			SaveSlots.remember_last(_city_slot)
 	refresh()
 	loaded.emit(slot, r)
 	return r
 
 
+## Load the last game: the city the index names (SaveSlots.last).
+func load_last() -> Dictionary:
+	var slot := SaveSlots.last()
+	if slot.is_empty():
+		return {"ok": false, "error": "save.none"}
+	return load_game(slot)
+
+
 func save_path(slot: String) -> String:
-	return "%s/%s.%s" % [SAVE_DIR, slot, SAVE_EXT]
+	return SaveSlots.path(slot)
 
 
-## The saved cities, newest first: [{slot, modified (unix seconds), size (bytes)}].
+## The saved cities and map copies, newest first: [{slot, modified (unix seconds), size (bytes)}].
 func list_saves() -> Array:
-	var out := []
-	for f in DirAccess.get_files_at(SAVE_DIR):
-		if f.get_extension() == SAVE_EXT:
-			var path := "%s/%s" % [SAVE_DIR, f]
-			out.append({"slot": f.get_basename(), "modified": FileAccess.get_modified_time(path),
-				"size": FileAccess.get_size(path)})
-	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.modified > b.modified)
-	return out
+	return SaveSlots.list()
 
 
 func dispatch(command: StringName, args: Array = []) -> Variant:
@@ -143,12 +171,29 @@ func _process(delta: float) -> void:
 	if _since_refresh >= SNAPSHOT_INTERVAL_S:
 		_since_refresh = 0.0
 		refresh()
-	if _save_pending:
-		var st: Dictionary = _core.save_status()
-		if not st.get("busy", true):
-			_save_pending = false
-			saved.emit(_save_slot, {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)})
-			refresh()
+	if _save_pending and not _core.save_status().get("busy", true):
+		_save_pending = false
+		_finish_save(_save_slot, _save_result())
+		refresh()
 	_since_autosave += delta
-	if _since_autosave >= DataTables.game("saves").autosave_s and snapshot.get("ready", false) and snapshot.get("unsaved", false):
-		save_game(GAME_SLOT, false)
+	if _since_autosave >= DataTables.game("saves").autosave_s:
+		_since_autosave = 0.0 # checked every autosave_s, saved only when due (Roadcraft game.ts autosaveAt)
+		if _autosave_due():
+			save_city(false)
+
+
+## Unsaved work of the player's (Roadcraft game.ts autosave): a city never saved nor edited is not written.
+func _autosave_due() -> bool:
+	return snapshot.get("ready", false) and snapshot.get("unsaved", false) and not _save_pending 		and (not _city_slot.is_empty() or snapshot.get("edited", false))
+
+
+func _save_result() -> Dictionary:
+	var st: Dictionary = _core.save_status()
+	return {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)}
+
+
+## A save that ended: the city's own slot becomes the last city; listeners get the result.
+func _finish_save(slot: String, result: Dictionary) -> void:
+	if result.get("ok", false) and slot == _city_slot:
+		SaveSlots.remember_last(slot)
+	saved.emit(slot, result)

@@ -65,6 +65,7 @@ Dictionary CityCore::save_status() {
 Dictionary CityCore::save_city(const String &path) {
 	Dictionary d;
 	d["ok"] = false;
+	d["error"] = "save.blocked"; // no whole city on screen (every result carries its error key)
 	join_save();
 	std::vector<uint8_t> bytes;
 	uint64_t revision = 0;
@@ -117,7 +118,7 @@ Dictionary CityCore::load_city(const String &path) {
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		ok = got == bytes.size() && decode_city(*state_, bytes.data(), bytes.size(), error);
-		if (got != bytes.size()) error = "save.error.damaged";
+		if (got != bytes.size()) error = "save.file.damaged";
 		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 	}
 	need_full_rebuild_ = true;

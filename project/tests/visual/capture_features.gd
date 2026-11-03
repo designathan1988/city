@@ -11,7 +11,6 @@ const VIEW := [0.0, 55.0, 520.0]
 const VIEW_AHEAD_M := 120.0
 const ROAD_IN_M := 40.0
 const ROAD_OUT_M := 300.0
-const SLOT := "jogo"
 const HOLD_FRAMES := 90
 
 var out_dir := "user://captures"
@@ -187,19 +186,23 @@ func _save_open() -> void:
 	await ui.frames(3)
 	var save_row := _row_with(tr("ui.menu.save"))
 	await ui.press(save_row)
-	_check(FileAccess.file_exists(CityStore.save_path(SLOT)) and not CityStore.snapshot.unsaved, "Salvar gravou o jogo")
+	var slot := CityStore.city_slot() # the city's own slot (SaveSlots), given by this first save
+	_check(not slot.is_empty() and FileAccess.file_exists(CityStore.save_path(slot)) and not CityStore.snapshot.unsaved,
+		"Salvar gravou a cidade em %s" % slot)
 	var segs: int = CityStore.snapshot.segments
 	CityStore.new_map(TOWN_MAP, SEED + 1, false)
+	_check(CityStore.city_slot().is_empty(), "o mapa novo não herdou o slot da cidade salva")
 	await ui.drawn()
 	hud.open_popover("menu")
 	await ui.frames(3)
 	await ui.press(_row_with(tr("action.openMap")))
 	await ui.frames(4)
 	await ui.shot("feat_save_1_abrir")
-	await ui.press(_row_with(SLOT))
+	await ui.press(_row_with(slot + "  ·")) # the row of exactly that slot (hud_popover: "<slot>  ·  <date>")
 	await ui.drawn()
-	_check(CityStore.snapshot.segments == segs, "abriu o jogo salvo (%d vias)" % segs)
+	_check(CityStore.snapshot.segments == segs and CityStore.city_slot() == slot, "abriu a cidade salva (%d vias)" % segs)
 	await ui.shot("feat_save_2_aberto")
+	DirAccess.remove_absolute(CityStore.save_path(slot)) # the next run saves to the same name again
 
 
 func _row_with(text: String) -> Button:

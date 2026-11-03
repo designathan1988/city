@@ -66,6 +66,7 @@ void grow_step(CityState &s, double dt) {
 		g.has_last = true;
 		g.grown++;
 		g.acc -= 1;
+		s.touch(); // a new building is a change to the map (saved)
 	}
 }
 

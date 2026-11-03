@@ -1,13 +1,11 @@
 ## What the Menu rows, the undo / redo buttons and the Ctrl shortcuts do (Roadcraft _hud().ts §7.1, keys §10): new map,
-## save to the game's slot or to a file named after the seed, open a saved city, load the last game, undo and redo.
+## save the city (its own slot), save a copy of the map, open a saved city, load the last game, undo and redo.
 ## Everything goes through CityStore; the hint bar reports the result.
 class_name HudActions
 extends Node
 
 const TOWN_MAP := 0
 const SEED_LIMIT := 9999
-## Roadcraft exportMap names the file after the seed (cidade-<seed>).
-const SAVE_MAP_SLOT := "cidade-%d"
 
 ## The HUD this node is a child of.
 func _hud() -> RoadcraftHud:
@@ -20,18 +18,21 @@ func menu(action: String) -> void:
 			_hud().drawer.close()
 			CityStore.new_map(TOWN_MAP, randi_range(1, SEED_LIMIT), action == "new_city")
 		"save":
-			_saved(CityStore.save_game())
+			_saved(CityStore.save_city())
 		"save_map":
-			_saved(CityStore.save_game(SAVE_MAP_SLOT % CityStore.snapshot.get("seed", 0)))
+			_saved(CityStore.export_map())
 		"load_last":
-			load_slot(CityStore.GAME_SLOT)
+			_loaded(CityStore.load_last())
 		"open":
 			_hud().open_popover("files")
 
 
 func load_slot(slot: String) -> void:
+	_loaded(CityStore.load_game(slot))
+
+
+func _loaded(r: Dictionary) -> void:
 	_hud().drawer.close()
-	var r := CityStore.load_game(slot)
 	_hud().show_hint(tr("save.loaded") if r.ok else tr(r.error), r.ok)
 
 

@@ -36,7 +36,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 |---|---|
 | Dependência do núcleo (uma vez) | `git clone https://github.com/godotengine/godot-cpp native/godot-cpp` (API 4.7) |
 | Gates | `python3 tools/gates/run_gates.py` (`--file X` para um arquivo, `--summary` resumo) |
-| Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` |
+| Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` (DLL de release e de debug, a que o editor e os testes carregam) |
 | Testes e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
@@ -228,6 +228,7 @@ em thread própria (temporário + rename).
 - `project/game/settings/settings.gd` — qualidade gráfica persistida em user://settings.cfg
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
+- `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
 - `project/game/tools/demolish_tool.gd` — demolir
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
@@ -311,7 +312,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   estática, 760,5 MiB de vídeo e 164,0 MiB de buffers. Falta medir pico sob tráfego prolongado (soak).
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
   Telhado, Interior, Cores), Paisagem (Solo, Natureza, Céu, Rua, Pessoas; rio e Aplainar mapa), paradas/estações/linhas,
-  pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); a água não seca sob o relevo.
+  pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
+  gerada que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas); a água não seca sob o relevo.
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.

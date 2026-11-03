@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -78,12 +79,13 @@ Dictionary CityCore::snapshot() {
 	d["trips_lost"] = s.traffic.lost;
 	d["speed"] = int(sim_.speed());
 	d["unsaved"] = s.has_unsaved_work();
+	d["edited"] = s.edited;
 	d["can_undo"] = !s.history.undo_stack.empty();
 	d["can_redo"] = !s.history.redo_stack.empty();
 	d["undo_label"] = String(s.history.undo_label().c_str());
 	d["redo_label"] = String(s.history.redo_label().c_str());
 	d["map"] = s.map_index;
-	d["seed"] = int64_t(s.seed);
+	d["seed"] = int64_t(s.seed & ~TerrainGen::FLAT_BIT); // the city's seed (the flag bit is the terrain's, city_gen.cpp)
 	return d;
 }
 

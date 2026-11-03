@@ -16,22 +16,21 @@ const TRANSITIONS := {
 }
 const MAIN_MENU_SCENE := "res://ui/menus/main_menu.tscn"
 const GAME_SCENE := "res://game/game.tscn"
-const SAVE_DIR := "user://saves"
-const SAVE_EXT := ".roadcraft"
 const LOCALE := "pt_BR"
 
 var state: State = State.BOOT
 ## What LOADING should do once the game scene is up: {"new": true, "map": int, "seed": int} or {"path": String}.
 var pending: Dictionary = {}
+## Tests and captures drive the store directly (-- --no-flow): no menu flow, and their saves stay apart (SaveSlots).
+var tests_drive := OS.get_cmdline_user_args().has("--no-flow")
 var _speed_before_pause := 1
 
 
 func _ready() -> void:
 	DataTables.load_translations()
 	TranslationServer.set_locale(LOCALE)
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	if OS.get_cmdline_user_args().has("--no-flow"):
-		return # tests drive the store directly
+	if tests_drive:
+		return
 	_to(State.MAIN_MENU) # the play scene (project main scene) starts a generated city straight away
 
 
@@ -99,14 +98,3 @@ func quit_now() -> void:
 	state = State.QUITTING
 	get_tree().quit()
 
-
-static func save_path(name: String) -> String:
-	return "%s/%s%s" % [SAVE_DIR, name.validate_filename(), SAVE_EXT]
-
-
-static func list_saves() -> PackedStringArray:
-	var out := PackedStringArray()
-	for f in DirAccess.get_files_at(SAVE_DIR):
-		if f.ends_with(SAVE_EXT):
-			out.append(f.trim_suffix(SAVE_EXT))
-	return out

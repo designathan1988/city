@@ -149,6 +149,7 @@ void EditHistory::push(CityState &s) {
 		undo_stack.push_back(std::move(open));
 		redo_stack.clear();
 		trim();
+		s.edited = true; // a recorded edit is the player's work
 	}
 	open = EditEntry();
 }
@@ -170,6 +171,7 @@ bool EditHistory::undo(CityState &s) {
 	undo_stack.pop_back();
 	apply_entry(s, e, false);
 	redo_stack.push_back(std::move(e));
+	s.edited = true;
 	return true;
 }
 
@@ -180,6 +182,7 @@ bool EditHistory::redo(CityState &s) {
 	redo_stack.pop_back();
 	apply_entry(s, e, true);
 	undo_stack.push_back(std::move(e));
+	s.edited = true;
 	return true;
 }
 
