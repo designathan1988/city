@@ -88,7 +88,6 @@ bool spawn_one(CityState &s) {
 	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
 	w.walked = t.rng.range(0.f, w.speed);
 	sidewalk_pose(s, seg, w.side, w.s, track_u(w), w.cur);
-	w.prev = w.cur;
 	int id = alloc(t);
 	t.peds[id] = std::move(w);
 	t.ped_count++;
@@ -191,7 +190,6 @@ void walk(CityState &s, int id, float dt) {
 }
 
 void pose(const CityState &s, Pedestrian &w) {
-	w.prev = w.cur;
 	if (w.mode == PedMode::SIDEWALK) {
 		sidewalk_pose(s, w.seg, w.side, w.s, track_u(w), w.cur);
 		if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }

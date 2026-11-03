@@ -6,7 +6,8 @@
 ## the triangles and draw calls of the visible and shadow passes, and the memory (static, video, buffers). The slowest
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
-## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), to see what a feature costs.
+## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), to see what a feature costs; --moves=a,b runs
+## only those movements (the rig still goes where each one starts).
 ## Run: godot --path project --resolution 1600x900 res://tests/perf/camera_pan.tscn -- --no-flow [--map=N]
 ## [--shot-dir=DIR] (a picture halfway through each movement: proof of where the camera was)
 extends Node3D
@@ -31,12 +32,14 @@ const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 const BROKEN_DOWN := 3
 ## render_cost sections, in the order of the core's frame.
-const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"roads", &"props", &"buildings", &"trees", &"overlays"]
+const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"flush", &"roads", &"props", &"buildings", &"chunk_max",
+	&"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"trees", &"overlays"]
 
 var rig: CityCamera
 var map := 0
 var centre := Vector3.ZERO
 var shot_dir := ""
+var moves := PackedStringArray()
 var frames: Array[float] = []
 var gpu_ms: Array[float] = []
 var cpu_ms: Array[float] = []
@@ -59,6 +62,8 @@ func _ready() -> void:
 			map = int(arg.trim_prefix("--map="))
 		elif arg.begins_with("--shot-dir="):
 			shot_dir = arg.trim_prefix("--shot-dir=")
+		elif arg.begins_with("--moves="):
+			moves = arg.trim_prefix("--moves=").split(",")
 	var world := CityWorld.new()
 	add_child(world)
 	Settings.apply(world, get_viewport())
@@ -107,11 +112,14 @@ func _ready() -> void:
 
 ## One movement for `seconds`: step(dt, t) moves the rig every frame; the frame times are reported.
 func _run(name: String, seconds: float, step: Callable) -> void:
+	if not moves.is_empty() and not moves.has(name):
+		return
 	frames.clear()
 	gpu_ms.clear()
 	cpu_ms.clear()
 	process_ms.clear()
 	costs.clear()
+	CityStore.query(&"pose_stats") # counts from here
 	var vp := get_viewport().get_viewport_rid()
 	var t := 0.0
 	var last := Time.get_ticks_usec()
@@ -162,6 +170,9 @@ func _report(name: String) -> void:
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME) / 1000,
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
+	var ps: Dictionary = CityStore.query(&"pose_stats")
+	print("  poses: %d publicações (intervalo %.1f-%.1f ms; %d coladas, %d atrasadas); de %d quadros, %d além da última e %d antes da mais velha" % [
+		ps.publications, ps.gap_min_ms, ps.gap_max_ms, ps.early, ps.late, ps.frames, ps.held, ps.behind])
 	print("  memória: estática %.0f MiB, vídeo %.0f MiB, buffers %.0f MiB | chunks a desenhar: %d" % [
 		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])

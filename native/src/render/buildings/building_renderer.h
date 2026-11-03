@@ -4,7 +4,7 @@
 //                                      geometry that is not a box (lamps, AC fans, awnings) in the "building" material
 //   near   0 .. D x near_share         walls with real openings and reveals, panes, sills, bands, roofs, plant, lot
 //   mid    near end ..                 walls with shader-painted windows, the real roofs (parapets, cornices, plant)
-//   far    per 1024 m SUPERCHUNK       every building's masses in one mesh (material building_far)
+//   far    per 512 m SUPERCHUNK        every building's masses in one mesh (material building_far)
 // Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for
 // every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured
 // with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its
@@ -41,7 +41,8 @@ public:
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	void submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority);
-	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until);
+	// chunk_max / super_max: the slowest single chunk / superchunk commit, ms (render_cost probe)
+	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max, double &super_max);
 	void drop_chunk(int64_t key); // frees every level of a chunk the camera left
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
@@ -49,6 +50,7 @@ public:
 	int pending() const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
+	const CommitTimes &commit_times() const { return times_; }
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
@@ -146,14 +148,15 @@ private:
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_COUNT> band_end_{};
 	mutable std::mutex queue_mutex_;
-	std::vector<Built> done_;
+	Results<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job
 	BakingSet baking_, super_baking_;
 	int64_t waiting_ = 0, super_waiting_ = 0;
+	CommitTimes times_; // the last commit's (render_cost probe)
 	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;
 	std::unordered_map<int64_t, Chunk> chunks_;
-	std::vector<SuperBuilt> super_done_;
+	Results<SuperBuilt> super_done_;
 	std::unordered_map<int64_t, uint64_t> super_requested_;
 	uint64_t super_seq_ = 0;
 	std::unordered_map<int64_t, Super> supers_;

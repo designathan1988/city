@@ -12,7 +12,7 @@ uniform float wall_gain = 1.0;
 
 // The superchunk's chunks drawn in their own detail (building_renderer.h): their buildings fold away here, so the far
 // masses never draw over them. COLOR.a carries the surface kind (low 3 bits) and the building's chunk in the
-// superchunk (0..15, the bits above), written by BuildingRenderer::build_super_cpu.
+// superchunk (0..3, the bits above), written by BuildingRenderer::build_super_cpu.
 instance uniform int chunk_mask = 0;
 const int KIND_BITS = 3;
 const int KIND_MASK = 7;

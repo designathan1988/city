@@ -116,12 +116,15 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	}
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	UploadBudget upload(window, roads_.baking() + props_.baking() + buildings_.baking());
+	RenderingServer::get_singleton()->get_video_adapter_name(); // a wrapped call: runs the queued commands first
+	cost_.flush = laps.lap();
 	roads_.commit(*s.jobs, upload, until);
 	cost_.roads = laps.lap();
 	props_.commit(*s.jobs, upload, until);
 	cost_.props = laps.lap();
-	buildings_.commit(upload, until);
+	buildings_.commit(upload, until, cost_.chunk_max, cost_.super_max);
 	cost_.buildings = laps.lap();
+	cost_.building = buildings_.commit_times();
 	trees_.commit(until);
 	cost_.trees = laps.lap();
 	cost_.uploads = double(upload.used) / BYTES_PER_MIB;

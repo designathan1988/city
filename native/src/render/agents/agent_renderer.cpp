@@ -76,13 +76,13 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 	return o.angle;
 }
 
-void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha) {
+void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {
 	if (!material_.is_valid() || meshes_.empty()) return;
 	PackedFloat32Array bufs[VEHICLE_TYPES];
 	const float r2 = vehicle_r_ * vehicle_r_;
 	drawn_vehicles_ = 0;
 	for (const AgentRecord &rec : f.vehicles) {
-		Pose p = record_pose(rec, alpha);
+		Pose p = record_pose(rec, at);
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
 		if (type < 0 || type >= VEHICLE_TYPES) continue;
@@ -93,7 +93,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha) 
 		push_agent(bufs[type], p, 1.f, c.r, c.g, c.b, spin + (brake ? BRAKE_FLAG : 0.f));
 		drawn_vehicles_++;
 	}
-	drawn_people_ = people_.update(f, cam, alpha, people_r_);
+	drawn_people_ = people_.update(f, cam, at, people_r_);
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
 	for (int i = 0; i < VEHICLE_TYPES; i++) draws_[i].set(scenario_, meshes_[i]->get_rid(), material_, bufs[i], box, true);
 }

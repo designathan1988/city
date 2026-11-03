@@ -19,7 +19,7 @@ class AgentRenderer {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
-	void update(const PoseFrame &f, const godot::Vector3 &cam, float alpha);
+	void update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at);
 	int drawn_vehicles() const { return drawn_vehicles_; }
 	int drawn_people() const { return drawn_people_; }
 

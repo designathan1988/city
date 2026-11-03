@@ -18,7 +18,7 @@ const COMMANDS := {
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"render_pending": "render_pending",
-	&"render_cost": "render_cost",
+	&"render_cost": "render_cost", &"pose_stats": "pose_stats",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status",

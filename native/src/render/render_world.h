@@ -15,36 +15,28 @@
 #include "render/terrain_bridge.h"
 #include "render/trees/tree_renderer.h"
 
-#include <chrono>
+#include "core/laps.h"
 
 namespace city {
-
-// Milliseconds between laps of the steady clock (the render_cost probe's sections).
-struct Laps {
-	std::chrono::steady_clock::time_point at = std::chrono::steady_clock::now();
-	double lap() {
-		const auto now = std::chrono::steady_clock::now();
-		const double ms = std::chrono::duration<double, std::milli>(now - at).count();
-		at = now;
-		return ms;
-	}
-};
 
 class RenderWorld {
 public:
 	// Where the last sync spent the frame, in milliseconds (render_cost probe: a test tells a hitch's cause): waiting
 	// for the shared map lock, the change log and chunk streams, the levels and trees chosen for the view, and each
-	// renderer's commit; and the MiB of mesh arrays it admitted for upload (chunk_jobs.h UploadBudget).
+	// renderer's commit (flush: the RenderingServer running what the jobs queued, before the commits; the slowest
+	// building chunk and superchunk commit); and the MiB of mesh arrays it admitted for upload (UploadBudget).
 	struct Cost {
-		double lock = 0, stream = 0, levels = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
+		double lock = 0, stream = 0, levels = 0, flush = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
+		double chunk_max = 0, super_max = 0;
+		CommitTimes building; // inside the building commit
 	};
 
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset(); // frees every instance (new city / load)
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
-	// Vehicles and people near the camera; alpha = share of the sim tick elapsed (interpolation).
-	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, float alpha) { agents_.update(f, cam, alpha); }
+	// Vehicles and people near the camera, at the moment `at` of the published poses.
+	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }

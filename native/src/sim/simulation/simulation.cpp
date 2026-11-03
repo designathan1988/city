@@ -25,7 +25,6 @@ void Simulation::start(CityState &s) {
 	stop();
 	s_ = &s;
 	period_ns_ = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
-	last_tick_ns_ = now_ns();
 	speed_ = SimSpeed::NORMAL;
 	running_ = true;
 	thread_ = std::thread([this]() { run(); });
@@ -52,13 +51,7 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 	}
 }
 
-float Simulation::interpolation() const {
-	int64_t p = period_ns_.load();
-	if (p <= 0) return 1.f;
-	return float(std::min<int64_t>(now_ns() - last_tick_ns_.load(), p)) / float(p);
-}
-
-void Simulation::tick(CityState &s, int steps) {
+void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	const double dt = 1.0 / s.catalog.tune.sim_tick_hz;
 	for (int k = 0; k < steps; k++) {
 		{
@@ -78,12 +71,12 @@ void Simulation::tick(CityState &s, int steps) {
 	{
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		std::lock_guard<std::mutex> tr(s.traffic_mutex);
-		traffic::publish_poses(s);
+		traffic::publish_poses(s, stamp_ns);
 	}
 }
 
 void Simulation::step(CityState &s) {
-	tick(s, 1);
+	tick(s, 1, now_ns());
 }
 
 void Simulation::run() {
@@ -98,8 +91,7 @@ void Simulation::run() {
 			deadline = now_ns(); // too far behind: drop, never spiral
 		}
 		const int steps = steps_per_tick(speed_.load());
-		if (steps > 0 && s_->ready) tick(*s_, steps);
-		last_tick_ns_ = now_ns();
+		if (steps > 0 && s_->ready) tick(*s_, steps, deadline); // stamped when due, not when done: an even timeline
 	}
 }
 

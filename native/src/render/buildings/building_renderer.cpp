@@ -1,8 +1,10 @@
 // Building chunk streaming: the near (+ parts) and mid levels are built lazily, nearest first, when the camera comes
-// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its 1024 m
+// within their reach (near end / mid end, plus a pad) and freed beyond 1.25x it. Every dirty chunk marks its 512 m
 // superchunk, whose far/HLOD mesh is built within building_far_end_m (the city never vanishes when zooming out). See
 // building_renderer.h for the switch between a chunk's own detail and the far mesh.
 #include "render/buildings/building_renderer.h"
+
+#include "core/laps.h"
 
 #include "render/buildings/facade.h"
 #include "render/mesh_builder.h"
@@ -211,7 +213,7 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		b.version = version;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.push_back(std::move(b));
+		done_.push_back(std::make_shared<Built>(std::move(b)));
 	});
 }
 
@@ -243,15 +245,26 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
-		super_done_.push_back(std::move(b));
+		super_done_.push_back(std::make_shared<SuperBuilt>(std::move(b)));
 	});
 }
 
-void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until) {
+void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max,
+		double &super_max) {
+	chunk_max = super_max = 0;
+	times_ = CommitTimes();
 	if (!state_ || !state_->jobs) return;
-	commit_baked(*state_->jobs, queue_mutex_, done_, requested_, baking_, upload, until, waiting_, [this](Built &b) { commit_one(b); });
+	commit_baked(*state_->jobs, queue_mutex_, done_, requested_, baking_, upload, until, waiting_, [&](Built &b) {
+		Laps one;
+		commit_one(b);
+		chunk_max = std::max(chunk_max, one.lap());
+	}, &times_);
 	commit_baked(*state_->jobs, queue_mutex_, super_done_, super_requested_, super_baking_, upload, until, super_waiting_,
-			[this](SuperBuilt &b) { commit_super(b); });
+			[&](SuperBuilt &b) {
+				Laps one;
+				commit_super(b);
+				super_max = std::max(super_max, one.lap());
+			}, &times_);
 }
 
 int BuildingRenderer::pending() const {

@@ -3,8 +3,8 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/chunk_jobs.h"
 #include "render/mesh_builder.h"
+#include "render/mesh_queue.h"
 #include "render/props/prop_kit.h"
 #include "render/props/street_props.h"
 #include "render/render_context.h"

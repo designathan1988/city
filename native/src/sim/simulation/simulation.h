@@ -19,21 +19,18 @@ public:
 	void set_speed(SimSpeed sp);
 	SimSpeed speed() const { return speed_.load(); }
 	int steps_per_tick(SimSpeed sp) const;
-	// Share of the current tick period elapsed since the last tick (0..1), for render interpolation.
-	float interpolation() const;
 	// One step without the thread (tests). Takes its own locks: the caller must not hold map_mutex.
 	void step(CityState &s);
 	~Simulation() { stop(); }
 
 private:
 	void run();
-	void tick(CityState &s, int steps); // steps under the two locks, poses published once
+	void tick(CityState &s, int steps, int64_t stamp_ns); // steps under the two locks, poses published once (at stamp_ns)
 	CityState *s_ = nullptr;
 	double owed_ = 0; // growth time deferred while map_mutex was busy
 	std::thread thread_;
 	std::atomic<SimSpeed> speed_{ SimSpeed::STOPPED };
 	std::atomic<bool> running_{ false };
-	std::atomic<int64_t> last_tick_ns_{ 0 };
 	std::atomic<int64_t> period_ns_{ 0 };
 };
 

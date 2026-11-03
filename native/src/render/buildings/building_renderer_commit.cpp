@@ -75,7 +75,10 @@ void BuildingRenderer::Built::bake() {
 			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
 		}
 		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true);
-		near_shell[size_t(i)] = parts_shell[size_t(i)] = mid_shell[size_t(i)] = b40::Shell();
+		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
+		near_shell[size_t(i)] = b40::Shell();
+		parts_shell[size_t(i)] = b40::Shell();
+		mid_shell[size_t(i)] = b40::Shell();
 	}
 	for (int b = 0; b < BAND_COUNT; b++) {
 		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_STRIDE);

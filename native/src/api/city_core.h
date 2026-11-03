@@ -78,6 +78,7 @@ public:
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
+	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:
 	static void _bind_methods();
@@ -99,6 +100,11 @@ private:
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;
 	godot::Vector3 cam_;
 	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
+	struct PoseStats {
+		int frames = 0, held = 0, behind = 0, publications = 0, early = 0, late = 0;
+		int64_t last_tick_ns = 0, gap_min_ns = 0, gap_max_ns = 0;
+	} pose_stats_;
+	void note_pose(const PoseFrame &f, bool fresh, const PoseSample &at);
 };
 
 } // namespace city

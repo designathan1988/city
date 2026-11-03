@@ -116,8 +116,10 @@ void CityCore::_process(double delta) {
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-	const float alpha = poses.period_ns > 0 ? std::clamp(float(now - poses.tick_ns) / float(poses.period_ns), 0.f, 1.f) : 1.f;
-	render_.update_agents(poses, cam_, alpha); // no map lock: the frame is the published snapshot
+	// a moment render.pose_delay_ticks behind the clock, inside the published trail even when a tick lands late
+	const PoseSample at = poses.sample(now - int64_t(state_->catalog.tune.render_pose_delay_ticks * double(poses.period_ns)));
+	note_pose(poses, fresh, at);
+	render_.update_agents(poses, cam_, at); // no map lock: the frame is the published snapshot
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex

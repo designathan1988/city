@@ -8,6 +8,7 @@ constexpr double HOURS_PER_DAY = 24.0;
 constexpr double MINUTES_PER_DAY = MINUTES_PER_HOUR * HOURS_PER_DAY;
 constexpr double METRES_PER_KM = 1000.0;
 constexpr double NS_PER_S = 1e9;
+constexpr double NS_PER_MS = 1e6;
 constexpr double BYTES_PER_MIB = 1024.0 * 1024.0;
 constexpr float DEG_TO_RAD = 3.14159265358979323846f / 180.f;
 

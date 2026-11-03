@@ -13,7 +13,9 @@ namespace city {
 // Ownership chunks (data, terrain edits, road meshes) and smaller render sub-chunks for near detail.
 constexpr float CHUNK = 256.f;
 constexpr float SUBCHUNK = 128.f;
-constexpr float SUPERCHUNK = 1024.f;
+// The building HLOD cell (2 x 2 chunks): one far mesh each. A dense 1024 m cell reached 80 MiB of arrays in one upload;
+// at 512 m the densest is near a quarter of it, and the frames after a camera jump keep a lower p99 (camera_pan).
+constexpr float SUPERCHUNK = 512.f;
 
 inline int64_t cell_key(int cx, int cy) { return (int64_t(cx) << 32) ^ int64_t(uint32_t(cy)); }
 inline int key_x(int64_t k) { return int(k >> 32); }

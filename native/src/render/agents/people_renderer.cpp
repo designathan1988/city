@@ -58,14 +58,14 @@ void PeopleRenderer::reset() {
 	for (MultiMeshDraw &d : draws_) d.free();
 }
 
-int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha, float radius) {
+int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
 	for (PackedFloat32Array &b : bufs_) b.resize(0);
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods;
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
-		Pose p = record_pose(rec, alpha);
+		Pose p = record_pose(rec, at);
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);

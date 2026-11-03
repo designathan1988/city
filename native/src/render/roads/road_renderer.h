@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/chunk_jobs.h"
 #include "render/mesh_builder.h"
+#include "render/mesh_queue.h"
 #include "render/render_context.h"
 #include "render/roads/road_look.h"
 #include "render/rs_util.h"

@@ -25,12 +25,9 @@ inline Pose lerp_pose(const Pose &a, const Pose &b, float t) {
 	return p;
 }
 
-// A record's pose interpolated between the last two simulation ticks.
-inline Pose record_pose(const AgentRecord &rec, float alpha) {
-	Pose prev, cur;
-	prev.x = rec.px; prev.y = rec.py; prev.z = rec.pz; prev.fx = rec.pfx; prev.fz = rec.pfz;
-	cur.x = rec.x; cur.y = rec.y; cur.z = rec.z; cur.fx = rec.fx; cur.fz = rec.fz;
-	return lerp_pose(prev, cur, alpha);
+// A record's pose at the moment the render draws (pose_buffer.h PoseSample).
+inline Pose record_pose(const AgentRecord &rec, const PoseSample &at) {
+	return lerp_pose(rec.at[at.first], rec.at[at.first + 1], at.t);
 }
 
 // One agent instance: model +Z along the heading, +X to its left, uniform scale.
@@ -44,7 +41,7 @@ public:
 	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
 	void reset();
 	// Returns how many people were drawn.
-	int update(const PoseFrame &f, const godot::Vector3 &cam, float alpha, float radius);
+	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
 
 private:
 	PeopleAsset asset_;

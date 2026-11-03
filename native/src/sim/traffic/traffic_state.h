@@ -5,6 +5,7 @@
 
 #include "core/random.h"
 #include "sim/catalog/traffic_params.h"
+#include "sim/state/pose_buffer.h"
 
 #include <cstdint>
 #include <vector>
@@ -60,10 +61,6 @@ struct Junction {
 	int degree = 0; // arms with lanes
 };
 
-struct Pose {
-	float x = 0, y = 0, z = 0, fx = 0, fz = 1; // position and unit heading in the XZ plane
-};
-
 // A route is a slice of the traffic/people pool: no heap allocation per vehicle or walker.
 struct RouteRef {
 	int off = -1, len = 0, cap = 0;
@@ -90,7 +87,7 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 }
 
 struct Vehicle {
-	bool alive = false, brake = false, placed = false; // placed: has a pose (prev is valid)
+	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
 	int micro_idx = -1; // index in TrafficState::micro_list
 	int ml = -1, mnext = -1, mprev = -1; // meso queue of its lane (doubly linked, in order of entry)
@@ -108,7 +105,8 @@ struct Vehicle {
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
 	int ri = 0;
-	Pose prev, cur;
+	Pose cur; // at the last publication
+	PoseTrail trail;
 };
 
 // A point on a walker's way round a corner: `cross` is the arm segment crossed on the way to it (-1: along the kerb).
@@ -135,10 +133,12 @@ struct Pedestrian {
 	int wn = 0, wi = 0, way_node = -1; // waypoints round node `way_node`, the next one
 	float lx = 0, ly = 0, lz = 0, llen = 0, ls = 0; // current straight line: start, length, metres walked on it
 	int cross_seg = -1; // the arm it is crossing now (-1 when not on a crosswalk)
-	Pose prev, cur;
+	Pose cur;
+	PoseTrail trail;
 };
 
 struct TrafficState {
+	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last pose publications (publish_poses)
 	LaneGraph g;
 	std::vector<Vehicle> vehicles;
 	std::vector<int> free_vehicles;

@@ -73,9 +73,12 @@ void reset_traffic(CityState &s) {
 	s.log.clear_net();
 }
 
-void publish_poses(CityState &s) {
+void publish_poses(CityState &s, int64_t stamp_ns) {
 	const TrafficParams &p = s.catalog.traffic;
-	const TrafficState &t = s.traffic;
+	TrafficState &t = s.traffic;
+	const int64_t before = t.stamp_ns[POSE_TRAIL - 1];
+	for (int i = 0; i + 1 < POSE_TRAIL; i++) t.stamp_ns[i] = t.stamp_ns[i + 1];
+	t.stamp_ns[POSE_TRAIL - 1] = stamp_ns;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
@@ -89,7 +92,6 @@ void publish_poses(CityState &s) {
 		float len = p.classes[int(v.type)].length;
 		Pose front, rear;
 		ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
-		v.prev = v.cur;
 		V2 axis(front.x - rear.x, front.z - rear.z);
 		v.cur.x = (front.x + rear.x) * 0.5f;
 		v.cur.z = (front.z + rear.z) * 0.5f;
@@ -97,8 +99,7 @@ void publish_poses(CityState &s) {
 		V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
 		v.cur.fx = h.x;
 		v.cur.fz = h.y;
-		if (!v.placed) v.prev = v.cur;
-		v.placed = true;
+		v.trail.push(v.cur, stamp_ns, before);
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
 			if (seg >= 0 && seg < int(sum.size())) {
@@ -110,19 +111,18 @@ void publish_poses(CityState &s) {
 		const float dx = v.cur.x - cx, dz = v.cur.z - cz;
 		if (dx * dx + dz * dz > r2) continue;
 		AgentRecord rec;
-		rec.px = v.prev.x; rec.py = v.prev.y; rec.pz = v.prev.z; rec.pfx = v.prev.fx; rec.pfz = v.prev.fz;
-		rec.x = v.cur.x; rec.y = v.cur.y; rec.z = v.cur.z; rec.fx = v.cur.fx; rec.fz = v.cur.fz;
+		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
 		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u);
 		f.vehicles.push_back(rec);
 	}
-	for (const Pedestrian &w : s.traffic.peds) {
+	for (Pedestrian &w : s.traffic.peds) {
 		if (!w.alive) continue;
+		w.trail.push(w.cur, stamp_ns, before);
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
 		if (dx * dx + dz * dz > r2) continue;
 		AgentRecord rec;
-		rec.px = w.prev.x; rec.py = w.prev.y; rec.pz = w.prev.z; rec.pfx = w.prev.fx; rec.pfz = w.prev.fz;
-		rec.x = w.cur.x; rec.y = w.cur.y; rec.z = w.cur.z; rec.fx = w.cur.fx; rec.fz = w.cur.fz;
+		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = w.trail.at[i];
 		rec.id = uint32_t(&w - s.traffic.peds.data());
 		rec.look = w.look;
 		rec.walked = w.walked;
@@ -130,7 +130,7 @@ void publish_poses(CityState &s) {
 	}
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
-	f.tick_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
 }

@@ -1,5 +1,7 @@
-// Lock-free triple buffer of agent poses (roadcraft-novo shared/contracts/poses.ts): the simulation publishes
-// after each tick, the render takes the newest without waiting. Each record carries the previous and current pose.
+// Lock-free triple buffer of agent poses (roadcraft-novo shared/contracts/poses.ts): the simulation publishes after
+// each tick, the render takes the newest without waiting. Each record carries the agent's poses at the last three
+// publications and the frame their scheduled times, so the render draws a moment render.pose_delay_ticks behind the
+// clock between two of them (snapshot interpolation: a tick that lands late or early never stops nor jumps an agent).
 #pragma once
 
 #include <atomic>
@@ -8,18 +10,59 @@
 
 namespace city {
 
+constexpr int POSE_TRAIL = 3; // publications kept per agent: k-2, k-1, k
+
+struct Pose {
+	float x = 0, y = 0, z = 0, fx = 0, fz = 1; // position and unit heading in the XZ plane
+};
+
+// An agent's poses at the last publications (oldest first). An agent missing from a publication (far, or new) starts
+// over: all of them at its pose, so it never slides across from where it was long ago.
+struct PoseTrail {
+	Pose at[POSE_TRAIL];
+	int64_t stamp_ns = 0; // publication of at[POSE_TRAIL - 1]
+	void push(const Pose &p, int64_t stamp, int64_t previous_stamp) {
+		if (stamp_ns == 0 || stamp_ns != previous_stamp)
+			for (Pose &q : at) q = p;
+		for (int i = 0; i + 1 < POSE_TRAIL; i++) at[i] = at[i + 1];
+		at[POSE_TRAIL - 1] = p;
+		stamp_ns = stamp;
+	}
+};
+
 struct AgentRecord {
-	float px = 0, py = 0, pz = 0, pfx = 0, pfz = 1; // previous pose
-	float x = 0, y = 0, z = 0, fx = 0, fz = 1; // current pose
+	Pose at[POSE_TRAIL]; // the agent's PoseTrail
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
 };
 
+// The moment the render draws: between at[first] and at[first + 1] of every record, `t` of the way (PoseFrame::sample).
+struct PoseSample {
+	int first = POSE_TRAIL - 2;
+	float t = 1;
+	bool beyond = false, before = false; // the moment is past the newest publication / older than the oldest (held)
+};
+
 struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
-	int64_t tick_ns = 0, period_ns = 0; // publication time and tick period (render interpolation)
+	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last publications (oldest first; 0: none yet)
+	int64_t period_ns = 0; // tick period
+	// The pair that holds `when` (ns, the render's clock less its delay), clamped to the trail's ends.
+	PoseSample sample(int64_t when) const {
+		PoseSample out;
+		if (stamp_ns[0] == 0) return out; // fewer than a trail of publications: the newest pose
+		int first = POSE_TRAIL - 2;
+		while (first > 0 && when < stamp_ns[first]) first--;
+		const int64_t a = stamp_ns[first], b = stamp_ns[first + 1];
+		out.first = first;
+		out.t = b > a ? float(double(when - a) / double(b - a)) : 1.f;
+		out.beyond = out.t > 1.f;
+		out.before = out.t < 0.f;
+		out.t = out.t < 0.f ? 0.f : out.t > 1.f ? 1.f : out.t;
+		return out;
+	}
 };
 
 class PoseBuffer {

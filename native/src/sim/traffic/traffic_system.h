@@ -13,7 +13,8 @@ namespace traffic {
 
 // traffic_system.cpp
 void step(CityState &s, float dt); // applies the network changes, then advances everything near and far
-void publish_poses(CityState &s); // after each tick: poses near the camera into CityState::poses
+// After each tick: poses near the camera into CityState::poses, stamped with the tick's scheduled time.
+void publish_poses(CityState &s, int64_t stamp_ns);
 float day_factor(const TrafficParams &p, float hour);
 void despawn_vehicle(CityState &s, int id, bool arrived);
 void reset_traffic(CityState &s); // full graph build and an empty fleet: a new map or a load

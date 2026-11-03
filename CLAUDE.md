@@ -85,7 +85,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
-- `native/src/api/city_core_query.cpp` — leituras para a UI e os testes (snapshot, sondas, altura, raycast)
+- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, sondas, altura, raycast); custo do quadro e chegada das poses
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
@@ -98,7 +98,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/math.h` — vetores 2D no plano XZ
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
 - `native/src/core/seeded.h` — geradores com os números do Roadcraft bit a bit
-- `native/src/core/units.h` — unidades físicas e de calendário (único dono dos fatores)
+- `native/src/core/units.h` · `native/src/core/laps.h` — unidades físicas e de calendário (único dono dos fatores); cronômetro das sondas
 
 **Núcleo — native/src/sim**
 - `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação e consultas espaciais
@@ -207,8 +207,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/roof_terrace.cpp` — terraços usados
 - `native/src/render/buildings/roof_util.h` — predicados de telhado compartilhados
 - `native/src/render/buildings/shell.cpp` · `native/src/render/buildings/shell.h` — escrita de vértices das malhas de prédio
-- `native/src/render/chunk_jobs.h` — jobs de malha por chunk, conversão admitida pelo orçamento de envio e commit orçado
-- `native/src/render/chunk_queue.h` — chunks ao redor da câmera (vias, mobiliário, prédios)
+- `native/src/render/chunk_jobs.h` · `native/src/render/chunk_queue.h` · `native/src/render/mesh_queue.h` — jobs por chunk, conversão no orçamento de envio e commit orçado; chunks ao redor da câmera; fila de uma superfície
 - `native/src/render/mesh_builder.cpp` · `native/src/render/mesh_builder.h` — emissores de primitivas e envio de malha
 - `native/src/render/model_library.cpp` · `native/src/render/model_library.h` — massas unitárias e modelos de data/render/models.json
 - `native/src/render/overlays/overlay_build.cpp` — malhas CPU das camadas, uma por chunk de 256 m
@@ -310,8 +309,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
-  24 km, 457.714 prédios — 594 estática, 1.439 de vídeo, 797 de buffers (camera_pan parada). O HLOD de um superchunk denso
-  chega a 80 MiB de arrays: enviá-lo leva 60-75 ms (após um salto de câmera de km); dividir/simplificar sem perder a forma.
+  24 km, 457.714 prédios — 598 estática, 1.408 de vídeo, 766 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %).
 - Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lote: os pátios
   livres do massing 4.0 (`free`, furnishZones.ts) não são mobiliados (`lot_furnish.cpp` condensado).
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
