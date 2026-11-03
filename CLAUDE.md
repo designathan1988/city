@@ -4,11 +4,25 @@
 documentos nem memórias (o hook `tools/gates/hook_pre_write.py` bloqueia). Atualize este arquivo na mesma
 mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando o mapa diverge do disco.
 
-## Antes de concluir qualquer tarefa
-1. `python3 tools/gates/run_gates.py` precisa terminar com "Gates OK" (o hook Stop bloqueia se não).
-2. Mudou C++? `tools/build/build.sh core` (e `core-windows` antes de empacotar).
-3. Mudou comportamento visível? `tools/build/build.sh e2e` (testes na camada que o jogador vê).
-4. Pesquise na documentação oficial antes de implementar (Godot, Terrain3D, godot-cpp); não confie de memória.
+## Processo de trabalho (inegociável, toda tarefa, nesta ordem; trabalho direto, sem agentes)
+1. **Análise:** ler o código envolvido, reproduzir e medir (sonda `render_cost`, `tests/perf/camera_pan`, capturas, CPU,
+   GPU, memória) até achar a causa raiz. Corrigir a causa, nunca o efeito. Medir é desta etapa.
+2. **Pesquisa** na documentação oficial (Godot, godot-cpp, Terrain3D) até entender o que fazer e o método; nunca confiar
+   só na memória.
+3. **Compreensão e plano** antes de codificar: a solução completa e correta, nunca a mais barata; sem arquivo-deus nem
+   funcionalidade espalhada; regras deste arquivo (dono único, sem número mágico, dados em `data/**`, mapa em dia).
+4. **Codificação** sem tentativa e erro: se não deu certo, voltar à documentação até entender.
+5. **Teste:** "Gates OK" em `python3 tools/gates/run_gates.py` (o hook Stop bloqueia); C++ mudou → `tools/build/build.sh
+   core` / `core-windows` (DLL de release e de debug); visível mudou → `tools/build/build.sh e2e`. Medir de novo: quadros
+   sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos analisadas com atenção (contra a referência e
+   o estado anterior): nenhuma perda de qualidade visual; todo problema achado é corrigido.
+6. Nunca esperar às cegas um processo lançado (tempo-limite e acompanhamento); parar só processos próprios, pelo PID.
+7. Commit por tema e push regular em `origin/master`.
+- **Referência — intransponível:** `C:\Users\Jonathan\Documents\Projects\roadcraft-4.0-main` (Roadcraft 4.0) é a referência
+  de visual e de comportamento de tudo (gráficos, prédios, tráfego, semáforos, pedestres, carros, postes e fios): o jogo
+  deve ter todos os gráficos e funcionalidades dele. **Nunca copiar nem traduzir o código dele** (não é otimizado nem tem
+  desempenho; foi abandonado por isso): estudar como ele parece e se comporta, achar a nossa causa e implementar na
+  arquitetura atual, otimizado e do jeito certo.
 
 ## Regras de arquitetura (verificadas automaticamente)
 - **Fonte única da verdade:** `CityState` (`native/src/sim/state/city_state.h`). Só `sim/commands` muda o
@@ -244,19 +258,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` — prévias das ferramentas
-- `project/render/shaders/agents.gdshader` — veículos
-- `project/render/shaders/building.gdshader` — superfícies de prédio (interior mapping)
-- `project/render/shaders/building_common.gdshaderinc` — hash, ruído, acabamento e intemperismo compartilhados
-- `project/render/shaders/building_far.gdshader` — massas distantes/HLOD
-- `project/render/shaders/building_parts.gdshader` — peças de fachada instanciadas
-- `project/render/shaders/noise2d.gdshaderinc` — ruído de valor compartilhado por road e water
-- `project/render/shaders/overlay.gdshader` — camadas de zonas e congestionamento
-- `project/render/shaders/people.gdshader` — pedestres cozidos
-- `project/render/shaders/props.gdshader` — mobiliário e árvores
-- `project/render/shaders/road.gdshader` — vias, meios-fios e pintura
-- `project/render/shaders/sky.gdshader` — céu em gradiente
-- `project/render/shaders/terrain.gdshader` — terreno toon (override do Terrain3D)
-- `project/render/shaders/water.gdshader` — água (ondas, Fresnel e espuma)
+- `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — veículos, pedestres cozidos, mobiliário e árvores
+- `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc`
+  — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
+- `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` — vias, meios-fios e pintura; água (ondas, Fresnel,
+  espuma); ruído de valor de ambos
+- `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D)
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` — câmera por entrada real
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
@@ -285,22 +292,15 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
-- `tools/assets/cook_people.py` — pessoas cozidas (MakeHuman CC0 + caminhada Rocketbox MIT)
-- `tools/assets/ktx2_to_png.mjs` — KTX2 cozido do Roadcraft → PNG que o Godot importa
-- `tools/assets/make_road_profiles.py` — gera road_profiles.json a partir da fonte do Roadcraft
+- `tools/assets/cook_people.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_road_profiles.py` — pessoas cozidas
+  (MakeHuman CC0 + caminhada Rocketbox MIT), KTX2 do Roadcraft → PNG, road_profiles.json da fonte do Roadcraft
 - `tools/build/build.sh` · `tools/build/run_tests.sh` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar
-- `tools/gates/gate_clones.py` — código duplicado
-- `tools/gates/gate_code.py` — camadas, padrões proibidos e órfãos
-- `tools/gates/gate_data.py` — schemas das tabelas
-- `tools/gates/gate_defs.py` — números mágicos, cópias de dados, donos e estado na UI
-- `tools/gates/gate_docs.py` — mapa deste documento
-- `tools/gates/gate_files.py` — lixo, documento único, tamanhos e cabeçalhos
-- `tools/gates/gate_tuning.py` — tuning ↔ JSON e espelhos
-- `tools/gates/hook_post_edit.py` — gates do arquivo editado
-- `tools/gates/hook_pre_write.py` — bloqueia documentos novos
-- `tools/gates/owners.json` — registro de donos únicos
-- `tools/gates/rules.json` — configuração dos gates
-- `tools/gates/run_gates.py` — executa todos os gates
+- `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
+  código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
+- `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
+  documento único, tamanhos e cabeçalhos; tuning ↔ JSON e espelhos
+- `tools/gates/hook_post_edit.py` · `tools/gates/hook_pre_write.py` — gates do arquivo editado; bloqueia documentos novos
+- `tools/gates/owners.json` · `tools/gates/rules.json` · `tools/gates/run_gates.py` — donos únicos, configuração, executa todos
 <!-- MAPA:FIM -->
 
 ## Pendências
