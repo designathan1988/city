@@ -152,6 +152,8 @@ void meso_enter(CityState &s, int id, int key, bool spawned) {
 	const int ds = key / MAX_LANES;
 	if (ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok || key % MAX_LANES >= t.g.ds[size_t(ds)].lanes) return;
 	Vehicle &v = t.vehicles[size_t(id)];
+	// a drawn vehicle leaving the window also leaves its lane list (else a ghost stays there and is stepped forever)
+	if (v.micro && v.conn < 0 && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	micro_remove(t, id);
 	v.micro = false;
 	v.conn = -1;

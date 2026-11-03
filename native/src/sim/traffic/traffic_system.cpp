@@ -53,25 +53,9 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 
 void reset_traffic(CityState &s) {
 	TrafficState &t = s.traffic;
-	// the old fleet goes first: the full graph build must not see it on lanes that no longer exist
-	t.vehicles.clear();
-	t.free_vehicles.clear();
-	t.route_pool.clear();
-	t.route_waste = 0;
-	t.micro_list.clear();
-	t.lane_vehicles.clear();
-	t.lane_active.clear();
-	t.active_lanes.clear();
-	t.conn_vehicles.clear();
-	t.conn_active.clear();
-	t.active_conns.clear();
-	t.meso_head.clear();
-	t.meso_tail.clear();
-	t.meso_count.clear();
-	t.lane_last_exit.clear();
-	t.ev_t.clear();
-	t.ev_v.clear();
-	t.ev_n = 0;
+	// a new map or a load: the whole traffic state starts over (fleet, counters, clock, governor, rng), so nothing of
+	// the old city survives in a field this list forgot; the old fleet is gone before the full graph build
+	t = TrafficState();
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
@@ -81,12 +65,6 @@ void reset_traffic(CityState &s) {
 	meso_clear(t);
 	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
 	reset_admission(s);
-	t.spawn_credit = 0;
-	t.win_x = 0;
-	t.win_z = 0;
-	t.win_t = -double(BIG);
-	t.ped_metres = 0;
-	t.ped_segs.clear();
 	const size_t arms = s.roads.nodes.size() * NODE_ARMS_MAX * CROSS_CACHE_KINDS;
 	t.cross_stamp.assign(arms, STAMP_NONE);
 	t.cross_walk.assign(arms, 0);

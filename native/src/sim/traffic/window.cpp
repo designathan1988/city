@@ -105,9 +105,7 @@ void check_window(CityState &s) {
 		Pose p;
 		lane_pose(s, v.ds, v.lane, d.len * 0.5f, p);
 		if ((p.x - cx) * (p.x - cx) + (p.z - cz) * (p.z - cz) <= out2) continue;
-		const int key = v.ds * MAX_LANES + v.lane;
-		micro_remove(t, id);
-		meso_enter(s, id, key, true);
+		meso_enter(s, id, v.ds * MAX_LANES + v.lane, true); // leaves its lane list and micro_list there
 	}
 	// far vehicles on lanes now inside the window become drawn ones (whoever is inside is never invisible)
 	const float w = s.catalog.traffic.meso_window_m, w2 = w * w;
