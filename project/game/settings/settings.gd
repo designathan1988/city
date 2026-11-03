@@ -1,4 +1,6 @@
-## Player settings (graphics preset), persisted in user://settings.cfg. Presets: data/game/settings.json.
+## Player settings (graphics preset), persisted in user://settings.cfg, and the frame cap (Engine.max_fps): the game
+## never renders faster than it needs to, and slower while another application has the focus (vsync alone does not hold
+## a covered window back: it ran past twice the refresh rate). Presets and caps: data/game/settings.json.
 extends Node
 
 const PATH := "user://settings.cfg"
@@ -11,6 +13,16 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(PATH)
 	preset = cfg.get_value("graphics", "preset", DataTables.game("settings").default)
+	Engine.max_fps = DataTables.game("settings").frame_cap.max_fps
+
+
+## Tests and captures keep the full cap: what they measure is the frame, and their window seldom has the focus.
+func _notification(what: int) -> void:
+	var cap: Dictionary = DataTables.game("settings").frame_cap
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and not GameFlow.tests_drive:
+		Engine.max_fps = cap.background_fps
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		Engine.max_fps = cap.max_fps
 
 
 func set_preset(name: String) -> void:

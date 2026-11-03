@@ -1,6 +1,10 @@
 {
- "_doc": "Graphics presets applied by game/settings/settings.gd.",
+ "_doc": "Graphics presets and the frame cap applied by game/settings/settings.gd (frame_cap: Engine.max_fps while the game has the focus and while another application has it; 0 = no cap).",
  "default": "medium",
+ "frame_cap": {
+  "max_fps": 60,
+  "background_fps": 30
+ },
  "presets": {
   "low": {
    "label_key": "QUALITY_LOW",
