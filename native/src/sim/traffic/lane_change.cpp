@@ -60,25 +60,12 @@ float evaluate(const View &w, int id, const std::vector<int> &cur, const std::ve
 bool reaches_next(const CityState &s, const Vehicle &v, int lane) {
 	if (v.ri + 1 >= v.route.len) return true;
 	const int next = route_at(s.traffic.route_pool, v.route, v.ri + 1);
-	for (int ci : s.traffic.g.ds_out[v.ds]) {
-		const Conn &c = s.traffic.g.conns[ci];
-		if (c.from_lane == lane && c.to_ds == next) return true;
-	}
-	return false;
+	return lane_reaches(s, v.ds, lane, next);
 }
 
 void move_to(CityState &s, int id, int target) {
-	TrafficState &t = s.traffic;
-	Vehicle &v = t.vehicles[id];
-	auto &cur = t.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-	auto &dst = t.lane_vehicles[size_t(v.ds) * MAX_LANES + target];
-	cur.erase(std::remove(cur.begin(), cur.end(), id), cur.end());
-	auto at = std::lower_bound(dst.begin(), dst.end(), v.s, [&](int o, float x) { return t.vehicles[o].s < x; });
-	dst.insert(at, id);
-	const DirSeg &d = t.g.ds[v.ds];
-	v.lc_off += d.u[v.lane] - d.u[target];
-	v.lane = target;
-	v.lc_cool = s.catalog.traffic.lc_cooldown_s;
+	move_vehicle_lane(s, id, target);
+	s.traffic.vehicles[size_t(id)].lc_cool = s.catalog.traffic.lc_cooldown_s;
 }
 
 int choose(const CityState &s, int id) {
@@ -110,10 +97,10 @@ int choose(const CityState &s, int id) {
 void change_lanes(CityState &s) {
 	TrafficState &t = s.traffic;
 	const uint64_t every = uint64_t(std::max(1.f, s.catalog.traffic.lc_every_ticks));
-	for (int id = 0; id < int(t.vehicles.size()); id++) {
-		const Vehicle &v = t.vehicles[id];
+	for (int id : t.micro_list) { // only near vehicles change lanes; the far model picks its lane on entry
+		const Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive || v.ds < 0 || v.lc_cool > 0 || v.s < s.catalog.traffic.mouth_clear_m || (t.tick + uint64_t(id)) % every != 0) continue;
-		if (t.g.ds[v.ds].lanes < 2) continue;
+		if (t.g.ds[size_t(v.ds)].lanes < 2) continue;
 		int target = choose(s, id);
 		if (target >= 0) move_to(s, id, target);
 	}

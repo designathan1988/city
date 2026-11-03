@@ -1,9 +1,10 @@
-// The traffic step called by Simulation::step: keeps the lane graph in step with the road network (a road edit
-// rebuilds it and restarts the fleet), runs demand, lane changes, motion and pedestrians, and computes the poses
-// render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
+// The traffic step called by Simulation::step: applies the lane-graph changes the journal announced (only the segments
+// and nodes an edit touched), then runs the far model, demand, lane changes, motion and pedestrians, and computes the
+// poses render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
 #include "sim/traffic/traffic_system.h"
 
 #include "core/units.h"
+#include "sim/traffic/lane_graph_internal.h"
 
 #include <algorithm>
 #include <chrono>
@@ -14,36 +15,7 @@ namespace traffic {
 namespace {
 
 constexpr float MIN_AXIS_M = 0.5f;
-
-void rebuild(CityState &s) {
-	TrafficState &t = s.traffic;
-	build_lane_graph(s);
-	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
-	t.conn_vehicles.assign(t.g.conns.size(), {});
-	reset_admission(s);
-	// Rebuild the graph around the fleet instead of restarting it: a road edit must not delete every trip.
-	for (int id = 0; id < int(t.vehicles.size()); id++) {
-		Vehicle &v = t.vehicles[id];
-		if (!v.alive) continue;
-		const bool lane_ok = v.conn < 0 && v.ds >= 0 && v.ds < int(t.g.ds.size()) && t.g.ds[v.ds].ok && v.lane < t.g.ds[v.ds].lanes;
-		if (!lane_ok) {
-			despawn_vehicle(s, id, false);
-			continue;
-		}
-		auto &list = t.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-		auto at = std::lower_bound(list.begin(), list.end(), v.s, [&](int o, float x) { return t.vehicles[o].s < x; });
-		list.insert(at, id);
-	}
-	t.node_crossers.assign(s.roads.nodes.size(), {});
-	for (Pedestrian &w : t.peds) {
-		if (!w.alive) continue;
-		w.cross_seg = -1;
-		w.way_node = -1;
-		w.wn = w.wi = 0;
-		w.mode = PedMode::SIDEWALK;
-	}
-	t.spawn_credit = 0;
-}
+constexpr int LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16; // AgentRecord::look: type in the low byte
 
 // Front (`front` metres along) and rear points of a vehicle on its lane or connector.
 void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f, Pose &r) {
@@ -66,20 +38,61 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 
 void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
-	Vehicle &v = t.vehicles[id];
+	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
-	if (v.conn >= 0) {
-		auto &l = t.conn_vehicles[v.conn];
-		l.erase(std::remove(l.begin(), l.end(), id), l.end());
-	} else if (v.ds >= 0) {
-		auto &l = t.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-		l.erase(std::remove(l.begin(), l.end(), id), l.end());
-	}
+	if (v.conn >= 0) conn_del(s, v.conn, id);
+	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
+	meso_unlink(s, id);
+	micro_remove(t, id);
 	t.route_waste += size_t(v.route.cap);
 	v = Vehicle();
 	t.free_vehicles.push_back(id);
 	t.vehicle_count--;
 	(arrived ? t.arrived : t.lost)++;
+}
+
+void reset_traffic(CityState &s) {
+	TrafficState &t = s.traffic;
+	// the old fleet goes first: the full graph build must not see it on lanes that no longer exist
+	t.vehicles.clear();
+	t.free_vehicles.clear();
+	t.route_pool.clear();
+	t.route_waste = 0;
+	t.micro_list.clear();
+	t.lane_vehicles.clear();
+	t.lane_active.clear();
+	t.active_lanes.clear();
+	t.conn_vehicles.clear();
+	t.conn_active.clear();
+	t.active_conns.clear();
+	t.meso_head.clear();
+	t.meso_tail.clear();
+	t.meso_count.clear();
+	t.lane_last_exit.clear();
+	t.ev_t.clear();
+	t.ev_v.clear();
+	t.ev_n = 0;
+	build_lane_graph(s);
+	reset_pedestrians(s);
+	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
+	t.lane_active.assign(t.g.ds.size() * MAX_LANES, 0);
+	t.conn_vehicles.assign(t.g.conns.size(), {});
+	t.conn_active.assign(t.g.conns.size(), 0);
+	meso_clear(t);
+	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
+	reset_admission(s);
+	t.spawn_credit = 0;
+	t.win_x = 0;
+	t.win_z = 0;
+	t.win_t = -double(BIG);
+	t.ped_metres = 0;
+	t.ped_segs.clear();
+	const size_t arms = s.roads.nodes.size() * NODE_ARMS_MAX * CROSS_CACHE_KINDS;
+	t.cross_stamp.assign(arms, STAMP_NONE);
+	t.cross_walk.assign(arms, 0);
+	t.cross_cars.assign(arms, 0);
+	t.g.version = s.roads.version;
+	s.log.clear_net();
 }
 
 void publish_poses(CityState &s) {
@@ -94,7 +107,7 @@ void publish_poses(CityState &s) {
 	std::vector<float> sum(s.roads.segs.size(), 0.f), lim(s.roads.segs.size(), 0.f);
 	std::vector<int> count(s.roads.segs.size(), 0);
 	for (Vehicle &v : s.traffic.vehicles) {
-		if (!v.alive) continue;
+		if (!v.alive || !v.micro) continue; // far vehicles are queues and events, not poses
 		float len = p.classes[int(v.type)].length;
 		Pose front, rear;
 		ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
@@ -122,7 +135,7 @@ void publish_poses(CityState &s) {
 		rec.px = v.prev.x; rec.py = v.prev.y; rec.pz = v.prev.z; rec.pfx = v.prev.fx; rec.pfz = v.prev.fz;
 		rec.x = v.cur.x; rec.y = v.cur.y; rec.z = v.cur.z; rec.fx = v.cur.fx; rec.fz = v.cur.fz;
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << 8) | (v.brake ? 1u << 16 : 0u);
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u);
 		f.vehicles.push_back(rec);
 	}
 	for (const Pedestrian &w : s.traffic.peds) {
@@ -146,14 +159,16 @@ void publish_poses(CityState &s) {
 
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
-	if (t.g.version != s.roads.version) rebuild(s);
+	apply_network_changes(s);
 	route_compact(t);
 	t.time += dt;
 	t.tick++;
 	update_lights(s);
+	check_window(s);
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	spawn_vehicles(s, dt);
+	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
 	step_pedestrians(s, dt);

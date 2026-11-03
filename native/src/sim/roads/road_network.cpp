@@ -212,6 +212,11 @@ void RoadNetwork::refresh_node(int n) {
 		RoadSegment &g = segs[nd.segs[i]];
 		(g.a == n ? g.retreat_a : g.retreat_b) = out[i];
 		mark_segment(nd.segs[i]);
+		// the mouths moved: the lane graph rebuilds this arm and its node on the next traffic step
+		if (log) {
+			log->net_seg(nd.segs[i]);
+			log->net_node(n);
+		}
 	}
 }
 

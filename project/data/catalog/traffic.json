@@ -120,7 +120,16 @@
   "ped_routes_per_step": 20,
   "claim_hold_s": 0.6,
   "claim_brake": 3,
-  "publish_radius_m": 900
+  "publish_radius_m": 900,
+  "meso_alpha": 0.95,
+  "meso_crowd": 12,
+  "meso_s0_m": 2.2,
+  "meso_head_s": 0.9,
+  "meso_dwell_s": 14,
+  "meso_window_m": 1500,
+  "meso_window_out_m": 1750,
+  "micro_spawn_m": 350,
+  "ped_window_m": 600
  },
  "_classes_doc": "[a, b, b_emergency, headway T, min gap s0, share of the speed limit, length, half width] per type: sedan, hatch, suv, van, pickup, moto, bus, truck (drivers.ts ARCH, traffic/state.ts).",
  "classes": [

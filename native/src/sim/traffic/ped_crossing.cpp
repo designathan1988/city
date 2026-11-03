@@ -48,6 +48,36 @@ bool approaching(const CityState &s, int ds) {
 
 } // namespace
 
+// Index of `arm_seg` among the node's arms (the crosswalk cache key); -1 when the node does not keep it.
+int arm_slot(const CityState &s, int node, int arm_seg) {
+	if (node < 0 || node >= int(s.roads.nodes.size())) return -1;
+	const auto &segs = s.roads.nodes[size_t(node)].segs;
+	for (int i = 0; i < int(segs.size()) && i < NODE_ARMS_MAX; i++)
+		if (segs[size_t(i)] == arm_seg) return i;
+	return -1;
+}
+
+// The answers of one step are reused: walkers and vehicles ask the same (node, arm) many times per tick. Kind 0 is
+// walk_ok, kind 1 is cars_on_crossing.
+int cache_key(const CityState &s, int node, int arm_seg, int kind) {
+	const int slot = arm_slot(s, node, arm_seg);
+	if (slot < 0) return -1;
+	return (node * NODE_ARMS_MAX + slot) * CROSS_CACHE_KINDS + kind;
+}
+
+bool cached(const CityState &s, int key, int kind, bool &out) {
+	if (key < 0 || size_t(key) >= s.traffic.cross_stamp.size()) return false;
+	if (s.traffic.cross_stamp[size_t(key)] != uint32_t(s.traffic.tick)) return false;
+	out = (kind == 0 ? s.traffic.cross_walk[size_t(key)] : s.traffic.cross_cars[size_t(key)]) != 0;
+	return true;
+}
+
+void store(CityState &s, int key, int kind, bool value) {
+	if (key < 0 || size_t(key) >= s.traffic.cross_stamp.size()) return;
+	s.traffic.cross_stamp[size_t(key)] = uint32_t(s.traffic.tick);
+	(kind == 0 ? s.traffic.cross_walk[size_t(key)] : s.traffic.cross_cars[size_t(key)]) = value ? 1 : 0;
+}
+
 int green_stage(const CityState &s, int node) {
 	const Junction &j = s.traffic.g.junctions[node];
 	if (j.ctl != Control::SIGNAL || j.cycle <= 0) return -1;
@@ -60,47 +90,62 @@ int green_stage(const CityState &s, int node) {
 	return -1;
 }
 
-bool walk_ok(const CityState &s, int node, int arm_seg) {
-	const Junction &j = s.traffic.g.junctions[node];
-	if (j.ctl != Control::SIGNAL) return true;
-	int stage = green_stage(s, node);
-	if (stage < 0) return false;
-	const DirSeg &d = s.traffic.g.ds[in_ds(s, arm_seg, node)];
-	return !d.ok || d.stage != stage;
+bool walk_ok(CityState &s, int node, int arm_seg) {
+	const int key = cache_key(s, node, arm_seg, 0);
+	bool cached_ok = false;
+	if (cached(s, key, 0, cached_ok)) return cached_ok;
+	const Junction &j = s.traffic.g.junctions[size_t(node)];
+	bool ok = true;
+	if (j.ctl == Control::SIGNAL) {
+		const int stage = green_stage(s, node);
+		const DirSeg &d = s.traffic.g.ds[size_t(in_ds(s, arm_seg, node))];
+		ok = stage >= 0 && (!d.ok || d.stage != stage);
+	}
+	store(s, key, 0, ok);
+	return ok;
 }
 
-bool cars_on_crossing(const CityState &s, int node, int arm_seg) {
+bool cars_on_crossing(CityState &s, int node, int arm_seg) {
+	const int cache = cache_key(s, node, arm_seg, 1);
+	bool cached_cars = false;
+	if (cached(s, cache, 1, cached_cars)) return cached_cars;
 	const TrafficState &t = s.traffic;
 	const TrafficParams &tp = s.catalog.traffic;
+	auto done = [&](bool v) {
+		store(s, cache, 1, v);
+		return v;
+	};
 	for (int dir = 0; dir < 2; dir++) {
 		int ds = arm_seg * 2 + dir;
-		const DirSeg &d = t.g.ds[ds];
+		const DirSeg &d = t.g.ds[size_t(ds)];
 		if (!d.ok) continue;
 		if (d.to == node) {
-			if (approaching(s, ds)) return true;
+			if (approaching(s, ds)) return done(true);
 			continue;
 		}
 		for (int l = 0; l < d.lanes; l++) { // leaving the node: the last one's body still over the crosswalk
 			const auto &lane = t.lane_vehicles[size_t(ds) * MAX_LANES + l];
-			if (!lane.empty() && t.vehicles[lane.front()].s - body(s, t.vehicles[lane.front()]) < tp.crosswalk_m) return true;
+			if (!lane.empty() && t.vehicles[size_t(lane.front())].s - body(s, t.vehicles[size_t(lane.front())]) < tp.crosswalk_m)
+				return done(true);
 		}
 	}
-	const Junction &j = t.g.junctions[node];
-	for (int x = j.conn_first; x < j.conn_first + j.conn_count; x++) {
-		const Conn &c = t.g.conns[x];
-		const auto &on = t.conn_vehicles[x];
-		if (t.g.ds[c.from_ds].seg == arm_seg && !on.empty() && t.vehicles[on.back()].cs < body(s, t.vehicles[on.back()])) return true;
-		if (t.g.ds[c.to_ds].seg != arm_seg) continue;
-		if (!on.empty()) return true;
+	for (int x = t.g.node_conn[size_t(node)]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
+		const Conn &c = t.g.conns[size_t(x)];
+		if (!c.alive) continue;
+		const auto &on = t.conn_vehicles[size_t(x)];
+		if (t.g.ds[size_t(c.from_ds)].seg == arm_seg && !on.empty() &&
+				t.vehicles[size_t(on.back())].cs < body(s, t.vehicles[size_t(on.back())])) return done(true);
+		if (t.g.ds[size_t(c.to_ds)].seg != arm_seg) continue;
+		if (!on.empty()) return done(true);
 		// a head turning into this arm that has waited its share, or coming too soon to stop for someone stepping off
 		const auto &lane = t.lane_vehicles[size_t(c.from_ds) * MAX_LANES + c.from_lane];
 		if (lane.empty()) continue;
-		const Vehicle &h = t.vehicles[lane.back()];
+		const Vehicle &h = t.vehicles[size_t(lane.back())];
 		if (pick_connector(s, h) != x) continue;
 		float line = to_line(s, c.from_ds, h);
-		if ((line < COURTESY_NEAR_M && courtesy_owed(s, h)) || (h.v > MOVING_MS && line / h.v < tp.ped_critical_gap_s)) return true;
+		if ((line < COURTESY_NEAR_M && courtesy_owed(s, h)) || (h.v > MOVING_MS && line / h.v < tp.ped_critical_gap_s)) return done(true);
 	}
-	return false;
+	return done(false);
 }
 
 bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {

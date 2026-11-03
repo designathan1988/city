@@ -14,6 +14,8 @@ namespace {
 
 constexpr int PICK_TRIES = 12, DEST_TRIES = 12;
 constexpr float SCALE_MIN = 0.9f, SCALE_MAX = 1.1f, MIN_LEG_M = 0.05f;
+constexpr float CROSS_RETRY_S = 0.2f; // a walker waiting at the kerb tries the crosswalk 5 times a second
+constexpr float PED_WINDOW_OUT = 1.2f; // this many ped_window_m away it is gone (not counted lost)
 
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 float arc_lo(const RoadSegment &g) { return float(g.retreat_a); }
@@ -21,13 +23,14 @@ float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 float track_u(const Pedestrian &p) { return p.dir == 0 ? -p.track : p.track; }
 int toward(const CityState &s, const Pedestrian &w) { return w.dir == 0 ? s.roads.segs[w.seg].b : s.roads.segs[w.seg].a; }
 
+// Only the walkable segments inside ped_window_m: walkers exist near the camera, and that caps the crowd.
 int pick_seg(CityState &s) {
 	TrafficState &t = s.traffic;
-	const int n = int(s.roads.segs.size());
+	const int n = int(t.ped_segs.size());
 	for (int k = 0; k < PICK_TRIES && n > 0; k++) {
-		int seg = int(t.rng.next() % uint32_t(n));
+		const int seg = t.ped_segs[size_t(t.rng.next() % uint32_t(n))];
 		if (!walkable(s, seg)) continue;
-		const RoadSegment &g = s.roads.segs[seg];
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		const float *w = s.catalog.traffic.zone_walk;
 		float wt = std::max(w[s.catalog.zone(g.zl).base % BASE_ZONES], w[s.catalog.zone(g.zr).base % BASE_ZONES]);
 		if (t.rng.f() < wt) return seg;
@@ -159,6 +162,11 @@ void walk(CityState &s, int id, float dt) {
 	if (w.mode == PedMode::WAIT) {
 		w.wait += dt;
 		t.ped_waiting++;
+		if (w.cross_cd > 0) { // 5 Hz, not once per tick
+			w.cross_cd -= dt;
+			return;
+		}
+		w.cross_cd = CROSS_RETRY_S;
 		begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
@@ -208,19 +216,37 @@ void reset_pedestrians(CityState &s) {
 	t.node_crossers.assign(s.roads.nodes.size(), {});
 }
 
+void drop_pedestrians_on_seg(CityState &s, int seg) {
+	TrafficState &t = s.traffic;
+	for (int id = 0; id < int(t.peds.size()); id++) {
+		const Pedestrian &w = t.peds[size_t(id)];
+		if (!w.alive || (w.seg != seg && w.cross_seg != seg)) continue;
+		despawn(t, id, false);
+	}
+}
+
 void step_pedestrians(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	double target = t.g.lane_metres * p.people_per_lane_m * p.people_share;
+	// the crowd follows the sidewalk metres inside ped_window_m, so it has a natural ceiling
+	const double target = t.ped_metres * p.people_per_lane_m * p.people_share;
 	int spawns = t.ped_count < p.fill_share * target ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
 	spawns = std::min(spawns, int(p.ped_routes_per_step));
-	for (int k = 0; k < spawns; k++) spawn_one(s);
+	const float cx = s.camera_x.load(), cz = s.camera_z.load();
+	const float out = p.ped_window_m * PED_WINDOW_OUT, out2 = out * out;
 	t.ped_waiting = 0;
 	for (int id = 0; id < int(t.peds.size()); id++) {
-		if (!t.peds[id].alive) continue;
+		Pedestrian &w = t.peds[size_t(id)];
+		if (!w.alive) continue;
+		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
+		if (dx * dx + dz * dz > out2) { // out of the walking window: gone, not lost
+			despawn(t, id, false);
+			continue;
+		}
 		walk(s, id, dt);
-		if (t.peds[id].alive) pose(s, t.peds[id]);
+		if (t.peds[size_t(id)].alive) pose(s, t.peds[size_t(id)]);
 	}
+	for (int k = 0; k < spawns; k++) spawn_one(s);
 }
 
 } // namespace traffic

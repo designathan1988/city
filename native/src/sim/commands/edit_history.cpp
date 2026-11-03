@@ -15,15 +15,41 @@ namespace {
 constexpr size_t BYTES_PER_MB = size_t(1) << 20;
 constexpr double SETTLE_PAD_M = 4; // the box an undo settles reaches one height sample past what it touched
 
+// The lane graph follows an undo/redo the same way it follows a journal op: mark what the traffic must rebuild.
+void mark_seg(CityState &s, int id, bool removed) {
+	const RoadSegment &g = s.roads.segs[id];
+	s.log.net_node(g.a);
+	s.log.net_node(g.b);
+	(removed ? s.log.net_seg_removed(id) : s.log.net_seg(id));
+}
+
 void exec(CityState &s, const EditOp &op, bool fwd) {
 	RoadNetwork &net = s.roads;
 	switch (op.kind) {
-		case OpKind::ADD_NODE: if (fwd) net.put_node(op.id, op.node); else net.remove_node_if_orphan(op.id); break;
-		case OpKind::REM_NODE: if (fwd) net.remove_node_if_orphan(op.id); else net.put_node(op.id, op.node); break;
-		case OpKind::NODE_PLAIN: net.nodes[op.id].plain = (fwd ? op.to : op.from) != 0; break;
-		case OpKind::ADD_SEG: if (fwd) net.put_segment(op.id, op.seg); else net.remove_segment(op.id); break;
-		case OpKind::REM_SEG: if (fwd) net.remove_segment(op.id); else net.put_segment(op.id, op.seg); break;
-		case OpKind::PROFILE: net.set_profile(op.id, fwd ? op.to : op.from); break;
+		case OpKind::ADD_NODE:
+			if (fwd) net.put_node(op.id, op.node); else net.remove_node_if_orphan(op.id);
+			s.log.net_node(op.id);
+			break;
+		case OpKind::REM_NODE:
+			if (fwd) net.remove_node_if_orphan(op.id); else net.put_node(op.id, op.node);
+			s.log.net_node(op.id);
+			break;
+		case OpKind::NODE_PLAIN:
+			net.nodes[op.id].plain = (fwd ? op.to : op.from) != 0;
+			s.log.net_node(op.id);
+			break;
+		case OpKind::ADD_SEG:
+			if (fwd) { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
+			else { mark_seg(s, op.id, true); net.remove_segment(op.id); }
+			break;
+		case OpKind::REM_SEG:
+			if (fwd) { mark_seg(s, op.id, true); net.remove_segment(op.id); }
+			else { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
+			break;
+		case OpKind::PROFILE:
+			net.set_profile(op.id, fwd ? op.to : op.from);
+			mark_seg(s, op.id, false);
+			break;
 		case OpKind::ZONE: net.set_zone(op.id, op.side, fwd ? op.to : op.from); break;
 		case OpKind::ADD_BLD: if (fwd) s.buildings.put(op.id, op.bld, true); else s.buildings.remove(op.id); break;
 		case OpKind::REM_BLD: if (fwd) s.buildings.remove(op.id); else s.buildings.put(op.id, op.bld, true); break;

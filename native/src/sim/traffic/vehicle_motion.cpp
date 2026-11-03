@@ -122,7 +122,12 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
 		} else {
 			int ci = pick_connector(s, v);
-			if (ci < 0) { leaving.push_back(-1 - id); continue; }
+			if (ci < 0) {
+				// the route's turn is not reachable from this lane (a connector went, the lanes were rearranged):
+				// another lane of the segment, else a new route; without a way on it leaves the scene
+				if (!retry_route(s, id)) { leaving.push_back(-1 - id); continue; }
+				return; // retry may have changed the lane: the rest of this one waits for the next tick
+			}
 			float dist = L - v.s;
 			// stopped long in the queue of a full lane: reconsider the route, avoiding what is full
 			if (!head && v.held >= p.reconsider_after_s) {
@@ -161,22 +166,24 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 
 void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 	TrafficState &t = s.traffic;
-	auto &list = t.lane_vehicles[size_t(ds) * MAX_LANES + lane];
+	const int key = ds * MAX_LANES + lane;
 	for (int m : leaving) {
 		int id = m < 0 ? -1 - m : m;
-		list.erase(std::remove(list.begin(), list.end(), id), list.end());
-		Vehicle &v = t.vehicles[id];
+		Vehicle &v = t.vehicles[size_t(id)];
 		int ci = m < 0 ? -1 : pick_connector(s, v);
 		if (ci < 0) {
+			const bool home = m < 0 && v.ri + 1 >= v.route.len;
+			lane_del(s, key, id);
 			v.ds = -1;
-			despawn_vehicle(s, id, m < 0 && v.ri + 1 >= v.route.len);
+			despawn_vehicle(s, id, home);
 			continue;
 		}
-		v.cs = v.s - t.g.ds[ds].len;
+		lane_del(s, key, id);
+		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
 		v.pass = -1;
 		v.ds = -1;
-		t.conn_vehicles[ci].push_back(id);
+		conn_push(s, ci, id);
 	}
 	leaving.clear();
 }
@@ -204,18 +211,16 @@ void step_connector(CityState &s, int ci, float dt) {
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, vt * v.vf, l.gap, l.v), l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
-	while (!list.empty() && t.vehicles[list.front()].cs >= c.len) {
-		int id = list.front();
-		list.erase(list.begin());
-		Vehicle &v = t.vehicles[id];
+	while (!list.empty() && t.vehicles[size_t(list.front())].cs >= c.len) {
+		const int id = list.front();
+		conn_pop_front(s, ci);
+		Vehicle &v = t.vehicles[size_t(id)];
 		v.conn = -1;
 		v.ri++;
 		v.ds = c.to_ds;
 		v.lane = c.to_lane;
 		v.s = v.cs - c.len;
-		auto &lane = t.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-		auto at = std::lower_bound(lane.begin(), lane.end(), v.s, [&](int o, float x) { return t.vehicles[o].s < x; });
-		lane.insert(at, id);
+		lane_add(s, v.ds * MAX_LANES + v.lane, id);
 	}
 }
 
@@ -245,22 +250,24 @@ float desired_speed(const CityState &s, const Vehicle &v, int ds) {
 
 void step_vehicles(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
-	std::vector<int> leaving;
-	for (int ds = 0; ds < int(t.g.ds.size()); ds++) {
-		if (!t.g.ds[ds].ok) continue;
-		for (int lane = 0; lane < t.g.ds[ds].lanes; lane++) {
-			if (t.lane_vehicles[size_t(ds) * MAX_LANES + lane].empty()) continue;
-			step_lane(s, ds, lane, dt, leaving);
-			leave_lane(s, ds, lane, leaving);
-		}
+	t.step_lanes = t.active_lanes; // snapshot: lanes come and go as vehicles leave and enter
+	for (int key : t.step_lanes) {
+		const int ds = key / MAX_LANES, lane = key % MAX_LANES;
+		if (ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok || t.lane_vehicles[size_t(key)].empty()) continue;
+		std::vector<int> leaving;
+		step_lane(s, ds, lane, dt, leaving);
+		leave_lane(s, ds, lane, leaving);
 	}
-	for (int ci = 0; ci < int(t.conn_vehicles.size()); ci++)
-		if (!t.conn_vehicles[ci].empty()) step_connector(s, ci, dt);
-	for (int id = 0; id < int(t.vehicles.size()); id++)
-		if (t.vehicles[id].alive && t.vehicles[id].stuck > s.catalog.traffic.stuck_despawn_s) {
+	t.step_conns = t.active_conns;
+	for (int ci : t.step_conns)
+		if (ci >= 0 && ci < int(t.conn_vehicles.size()) && !t.conn_vehicles[size_t(ci)].empty()) step_connector(s, ci, dt);
+	for (int i = int(t.micro_list.size()) - 1; i >= 0; i--) {
+		const int id = t.micro_list[size_t(i)];
+		if (t.vehicles[size_t(id)].alive && t.vehicles[size_t(id)].stuck > s.catalog.traffic.stuck_despawn_s) {
 			despawn_vehicle(s, id, false);
 			t.stuck_lost++;
 		}
+	}
 }
 
 } // namespace traffic
