@@ -1,14 +1,19 @@
 // The one channel through which the simulation announces what changed. Render adapters consume and clear it on
-// the main thread; the lot cache consumes lot_cells. Nothing else keeps its own dirty flags.
+// the main thread; the traffic drains the net_* lists; the lot cache consumes lot_cells. Nothing else keeps its own
+// dirty flags. Locking: producers append while holding CityState::map_mutex exclusively (commands, growth, load);
+// a consumer that holds the map lock only shared drains under `mutex` too (swapping the lists out), so draining never
+// needs the map exclusively and never waits for the mesh jobs that read the map.
 #pragma once
 
 #include <algorithm>
 #include <cstdint>
+#include <mutex>
 #include <vector>
 
 namespace city {
 
 struct ChangeLog {
+	std::mutex mutex; // consumers under the shared map lock (see above)
 	std::vector<int64_t> road_chunks; // CHUNK keys whose road meshes and street props must be rebuilt
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt

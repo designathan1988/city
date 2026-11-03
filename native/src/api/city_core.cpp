@@ -100,8 +100,10 @@ int CityCore::get_speed() const { return int(sim_.speed()); }
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
 	if (!render_ok_ || !state_->ready) {
-		// No consumer in this run (tests without a screen): drain the change log so it cannot grow without bound.
-		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		// No consumer in this run (tests without a screen): drain the change log so it cannot grow without bound
+		// (shared map lock + the log's own mutex, as every consumer: change_log.h).
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+		std::lock_guard<std::mutex> log(state_->log.mutex);
 		state_->log.clear_render();
 		state_->log.lot_cells.clear();
 		return;
@@ -116,11 +118,11 @@ void CityCore::_process(double delta) {
 	const float alpha = poses.period_ns > 0 ? std::clamp(float(now - poses.tick_ns) / float(poses.period_ns), 0.f, 1.f) : 1.f;
 	render_.update_agents(poses, cam_, alpha); // no map lock: the frame is the published snapshot
 	if (need_full_rebuild_) {
-		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex
 		render_.full_rebuild(*state_, terrain3d());
 		need_full_rebuild_ = false;
 	}
-	render_.sync(*state_, terrain3d(), cam_); // takes its own short locks around the ChangeLog and the decisions
+	render_.sync(*state_, terrain3d(), cam_); // takes the map shared (never exclusive: render_world.h)
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 		render_.update_overlays(*state_, poses, delta);

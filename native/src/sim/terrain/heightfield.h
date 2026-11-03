@@ -6,6 +6,7 @@
 #include "core/grid.h"
 #include "sim/catalog/catalog.h"
 #include "sim/state/change_log.h"
+#include "sim/terrain/height_patch.h"
 
 #include <vector>
 
@@ -78,6 +79,8 @@ public:
 		return x > -h && x < h && z > -h && z < h;
 	}
 	float height_at(float x, float z) const; // final heights (with road corridors and pads)
+	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
+	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers
 	bool is_water(float x, float z, float clearance) const { return water_at(x, z) > base_height_at(x, z) - clearance; }
 	bool raycast(const V2 &o2, float oy, const V2 &d2, float dy, float max_dist, float &hx, float &hy, float &hz) const;
@@ -96,8 +99,6 @@ public:
 	void finish_load(); // rebuild final heights after base_q was loaded
 
 private:
-	template <typename F>
-	float sample(float x, float z, F &&value) const;
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
 };

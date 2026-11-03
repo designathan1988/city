@@ -67,22 +67,29 @@ float Heightfield::water_at(float x, float z) const {
 	return water[size_t(gz) * water_n + gx];
 }
 
-// Bilinear sample of a per-vertex grid; `value(i)` converts the stored sample i to metres.
-template <typename F>
-float Heightfield::sample(float x, float z, F &&value) const {
-	float fx = x / spacing + N * 0.5f, fz = z / spacing + N * 0.5f;
-	int ix = clampi(int(std::floor(fx)), 0, N - 2), iz = clampi(int(std::floor(fz)), 0, N - 2);
-	float tx = clampf(fx - ix, 0, 1), tz = clampf(fz - iz, 0, 1);
-	size_t i0 = size_t(iz) * N + ix, i1 = i0 + N;
-	return lerpf(lerpf(value(i0), value(i0 + 1), tx), lerpf(value(i1), value(i1 + 1), tx), tz);
-}
-
 float Heightfield::height_at(float x, float z) const {
-	return sample(x, z, [&](size_t i) { return final_h[i]; });
+	return grid_sample(x, z, N, spacing, [&](size_t i) { return final_h[i]; });
 }
 
 float Heightfield::base_height_at(float x, float z) const {
-	return sample(x, z, [&](size_t i) { return dequant(base_q[i]); });
+	return grid_sample(x, z, N, spacing, [&](size_t i) { return dequant(base_q[i]); });
+}
+
+HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) const {
+	HeightPatch p;
+	p.N = N;
+	p.spacing = spacing;
+	if (N < 2 || final_h.empty()) return p;
+	// grid_sample reads nodes floor(f) and floor(f) + 1: one node of margin below, two above
+	p.x0 = clampi(ix_of(minx) - 1, 0, N - 1);
+	p.z0 = clampi(ix_of(minz) - 1, 0, N - 1);
+	const int x1 = clampi(ix_of(maxx) + 2, 0, N - 1), z1 = clampi(ix_of(maxz) + 2, 0, N - 1);
+	p.w = x1 - p.x0 + 1;
+	p.h = z1 - p.z0 + 1;
+	p.final_h.resize(size_t(p.w) * size_t(p.h));
+	for (int z = 0; z < p.h; z++)
+		std::copy_n(final_h.begin() + long(size_t(p.z0 + z) * size_t(N) + size_t(p.x0)), p.w, p.final_h.begin() + long(size_t(z) * size_t(p.w)));
+	return p;
 }
 
 bool Heightfield::raycast(const V2 &o2, float oy, const V2 &d2, float dy, float max_dist, float &hx, float &hy, float &hz) const {

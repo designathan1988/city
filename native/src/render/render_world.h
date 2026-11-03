@@ -1,5 +1,6 @@
-// Everything drawn from CityState. Consumes the ChangeLog (the only dirty channel) on the main thread while the
-// caller holds world_mutex. Road, furniture and building chunks are streamed around the camera (render.road_end_m,
+// Everything drawn from CityState. Consumes the ChangeLog (the only dirty channel) on the main thread under the shared
+// map lock and the log's own mutex (never the map exclusively: that would wait for every mesh job reading the map).
+// Road, furniture and building chunks are streamed around the camera (render.road_end_m,
 // render.props_end_m, render.building_far_end_m): built nearest-first within a per-frame budget, freed when the camera leaves, so memory
 // follows the view and not the size of the map.
 #pragma once
@@ -20,7 +21,7 @@ class RenderWorld {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset(); // frees every instance (new city / load)
-	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load
+	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera; alpha = share of the sim tick elapsed (interpolation).
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, float alpha) { agents_.update(f, cam, alpha); }
@@ -44,6 +45,10 @@ private:
 	OverlayRenderer overlays_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
+	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
+	std::vector<int64_t> road_keys_, building_keys_;
+	std::vector<int> terrain_rects_;
+	void drain_log(CityState &s);
 };
 
 } // namespace city

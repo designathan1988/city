@@ -40,6 +40,8 @@ float horizontal(const Vector3 &cam, const Vector3 &at) {
 	return std::sqrt(dx * dx + dz * dz);
 }
 
+double now_s() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+
 // fn(key, chunk) for every streamed chunk of a superchunk.
 template <typename Map, typename F>
 void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
@@ -111,7 +113,9 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
 	ch.version++;
 	for (int l = 0; l < LEVELS; l++) ch.stale[l] = ch.built[l];
-	supers_[super_of(ch.centre)].dirty = true;
+	Super &sp = supers_[super_of(ch.centre)];
+	if (!sp.dirty) sp.due = now_s() + data_.far_rebuild_delay_s; // later changes ride on the same request
+	sp.dirty = true;
 }
 
 // Chunk instances: near and mid hand over at the near end; the mid level has no end of its own (its superchunk's far
@@ -201,8 +205,12 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0));
 	}
 	s.jobs->submit(key * 4 + 3, priority, [this, &s, key, seq, version, near, mid, priority]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		Built b = build_cpu(s, key, near, mid);
+		Inputs in;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			in = gather(s, &key, 1);
+		}
+		Built b = build_cpu(in, key, near, mid);
 		b.seq = seq;
 		b.version = version;
 		b.priority = priority;
@@ -215,15 +223,26 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 	if (!s.jobs) return;
 	uint64_t seq;
 	auto sp = supers_.find(key);
-	if (sp != supers_.end()) sp->second.dirty = false; // a chunk dirtied later sets it again and resubmits once this lands
+	if (sp != supers_.end()) {
+		sp->second.dirty = false; // a chunk dirtied later sets it again and resubmits once this lands
+		sp->second.asked = now_s();
+	}
 	{
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		seq = ++super_seq_;
 		super_requested_[key] = seq;
 	}
 	s.jobs->submit(super_job_key(key), priority, [this, &s, key, seq, priority]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		SuperBuilt b = build_super_cpu(s, key);
+		std::array<int64_t, CHUNKS_PER_SUPER * CHUNKS_PER_SUPER> chunks;
+		const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
+		for (int j = 0; j < CHUNKS_PER_SUPER; j++)
+			for (int i = 0; i < CHUNKS_PER_SUPER; i++) chunks[size_t(j * CHUNKS_PER_SUPER + i)] = cell_key(sx + i, sz + j);
+		Inputs in;
+		{
+			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			in = gather(s, chunks.data(), int(chunks.size()));
+		}
+		SuperBuilt b = build_super_cpu(in, key);
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -246,7 +265,8 @@ int BuildingRenderer::pending() const {
 void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, float eye, std::vector<Want> &want) {
 	const float d = super_distance(key, cam, eye), h = data_.far_hysteresis;
 	sp.far_state = sp.far_state ? d > mid_end_ * (1 - h) : d > mid_end_ * (1 + h);
-	const bool stands_in = sp.far_state && sp.built; // the far mesh covers its chunks: their mid level may go
+	// the far mesh covers its chunks: their mid level may go (an empty far mesh covers nothing)
+	const bool stands_in = sp.far_state && sp.built && sp.has_content;
 	if (stands_in) sp.covering = true;
 	bool all_mid = true;
 	each_chunk_of(chunks_, key, [&](int64_t ck, Chunk &ch) {
@@ -273,6 +293,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	if (!state_) return;
 	// RenderWorld::sync calls this under the shared map lock (the ground height is a map read)
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
+	const double now = now_s();
 	std::vector<Want> want, want_super;
 	for (auto it = supers_.begin(); it != supers_.end();) {
 		const float ground = super_distance(it->first, cam, 0);
@@ -282,7 +303,10 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 			continue;
 		}
 		visit_super(it->first, it->second, cam, eye, want);
-		if (it->second.dirty && ground <= far_end_) {
+		const Super &sp = it->second;
+		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
+		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + data_.far_rebuild_interval_s);
+		if (sp.dirty && due && ground <= far_end_) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
 			if (!super_requested_.count(it->first)) want_super.push_back({ ground, it->first, 0 });
 		}

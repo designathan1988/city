@@ -54,32 +54,42 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	for (const Building &b : s.buildings.items)
 		if (b.alive) building_stream_.mark(chunk_of(b.x, b.z));
 	buildings_.set_ranges(s);
+	std::lock_guard<std::mutex> log(s.log.mutex); // everything already in the map is drawn by the rebuild
 	s.log.clear_render();
 }
 
+// Takes the render lists out of the ChangeLog under its own mutex (the map is held shared: change_log.h).
+void RenderWorld::drain_log(CityState &s) {
+	std::lock_guard<std::mutex> log(s.log.mutex);
+	road_keys_.swap(s.log.road_chunks);
+	building_keys_.swap(s.log.building_chunks);
+	terrain_rects_.swap(s.log.terrain_rects);
+}
+
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
+	const Tuning &t = s.catalog.tune;
+	BuildBudget budget(std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
 	{
-		std::unique_lock<std::shared_mutex> lk(s.map_mutex);
-		if (terrain3d && !s.log.terrain_rects.empty()) terrain_.push_rects(s.terrain, terrain3d, s.log.terrain_rects);
+		// Only reads the map: shared, so a frame never waits for the mesh jobs (they read it shared too).
+		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		drain_log(s);
+		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
-		ChangeLog::dedup(s.log.road_chunks);
-		ChangeLog::dedup(s.log.building_chunks);
-		for (int64_t k : s.log.road_chunks) {
+		ChangeLog::dedup(road_keys_);
+		ChangeLog::dedup(building_keys_);
+		for (int64_t k : road_keys_) {
 			road_stream_.mark(k);
 			props_stream_.mark(k);
 			trees_.mark_dirty(k);
 			overlays_.mark_dirty(k);
 		}
-		for (int64_t k : s.log.building_chunks) {
+		for (int64_t k : building_keys_) {
 			building_stream_.mark(k);
 			trees_.mark_dirty(k);
 		}
-		s.log.clear_render();
-	}
-	const Tuning &t = s.catalog.tune;
-	BuildBudget budget(std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
-	{
-		std::shared_lock<std::shared_mutex> lk(s.map_mutex); // the decision phase only reads the map
+		road_keys_.clear();
+		building_keys_.clear();
+		terrain_rects_.clear();
 		road_stream_.update(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) { roads_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { roads_.drop_chunk(k); });
 		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,

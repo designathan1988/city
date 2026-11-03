@@ -40,14 +40,14 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	return *(cache_[k] = std::move(b));
 }
 
-void BuildingBodies::place(const b40::Data &data, const CityState &s, const Building &rec, b40::Placed &pl) {
+void BuildingBodies::place(const b40::Data &data, const HeightPatch &ground, const Building &rec, b40::Placed &pl) {
 	const b40::Body &b = body(data, rec);
 	float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
 	Vector3 o(rec.x + rec.d / 2 * sn, 0, rec.z + rec.d / 2 * cs);
 	Vector3 e0(cs, 0, -sn), e1(-sn, 0, -cs), e2(0, 1, 0);
 	auto ground_at = [&](float x, float y) {
 		Vector3 p = o + e0 * x + e1 * y;
-		return s.terrain.height_at(p.x, p.z);
+		return ground.height_at(p.x, p.z);
 	};
 	float hi = -b40::FAR_AWAY, lo = b40::FAR_AWAY;
 	auto sample = [&](float x, float y) {
@@ -69,8 +69,8 @@ void BuildingBodies::place(const b40::Data &data, const CityState &s, const Buil
 	pl.id = rec.seed;
 	pl.shade = SHADE_BASE + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * SHADE_SPAN;
 	pl.ground_lo = lo - floor;
-	const Heightfield *terrain = &s.terrain;
-	pl.ground = [terrain](const Vector3 &p) { return terrain->height_at(p.x, p.z); };
+	const HeightPatch *patch = &ground;
+	pl.ground = [patch](const Vector3 &p) { return patch->height_at(p.x, p.z); };
 }
 
 } // namespace city

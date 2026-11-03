@@ -148,20 +148,27 @@ void clear_node(CityState &s, int n) {
 }
 
 void apply_network_changes(CityState &s) {
-	ChangeLog &log = s.log;
 	TrafficState &t = s.traffic;
-	if (log.net_nodes.empty() && log.net_segs_removed.empty() && log.net_segs_changed.empty()) {
+	// the step holds the map shared: the net lists are taken out under the log's own mutex (change_log.h)
+	std::vector<int> nodes, removed, changed;
+	{
+		std::lock_guard<std::mutex> lk(s.log.mutex);
+		nodes.swap(s.log.net_nodes);
+		removed.swap(s.log.net_segs_removed);
+		changed.swap(s.log.net_segs_changed);
+	}
+	if (nodes.empty() && removed.empty() && changed.empty()) {
 		t.g.version = s.roads.version;
 		return;
 	}
 	graph_grow(s, int(s.roads.segs.size()), int(s.roads.nodes.size()));
-	ChangeLog::dedup(log.net_segs_removed);
-	ChangeLog::dedup(log.net_segs_changed);
-	ChangeLog::dedup(log.net_nodes);
-	for (int seg : log.net_segs_removed) drop_segment(s, seg);
-	for (int n : log.net_nodes) clear_node(s, n);
-	for (int seg : log.net_segs_changed) build_dir(s, seg);
-	for (int n : log.net_nodes) {
+	ChangeLog::dedup(removed);
+	ChangeLog::dedup(changed);
+	ChangeLog::dedup(nodes);
+	for (int seg : removed) drop_segment(s, seg);
+	for (int n : nodes) clear_node(s, n);
+	for (int seg : changed) build_dir(s, seg);
+	for (int n : nodes) {
 		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
 		if (s.roads.nodes[n].alive) {
 			build_node(s, n);
@@ -170,7 +177,6 @@ void apply_network_changes(CityState &s) {
 			t.g.junctions[size_t(n)] = Junction();
 		}
 	}
-	log.clear_net();
 	t.g.version = s.roads.version;
 }
 

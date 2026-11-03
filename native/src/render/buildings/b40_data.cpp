@@ -147,6 +147,8 @@ bool Data::load(const Dictionary &t, PackedStringArray &errors) {
 	near_share = float(at(lod, "near_share"));
 	far_fov_deg = float(at(lod, "fov_deg"));
 	far_hysteresis = float(at(lod, "far_hysteresis"));
+	far_rebuild_delay_s = float(at(lod, "far_rebuild_delay_s"));
+	far_rebuild_interval_s = float(at(lod, "far_rebuild_interval_s"));
 	Dictionary parts = at(t, "parts");
 	part_frame_bar_m = float(at(parts, "frame_bar_m"));
 	part_handle_h_m = float(at(parts, "handle_h_m"));

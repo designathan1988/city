@@ -57,8 +57,9 @@ struct CityState {
 	void touch() { revision++; }
 	bool has_unsaved_work() const { return revision != saved_revision; }
 
-	// map_mutex: shared by readers (simulation traffic step, queries, mesh jobs); exclusive for commands, growth,
-	// clock, load. traffic_mutex: held by the simulation thread while it steps traffic (probes take it too).
+	// map_mutex: shared by readers (simulation traffic step, queries, mesh jobs, the render's per-frame sync, which
+	// drains the ChangeLog under its own mutex: change_log.h); exclusive for commands, growth, clock, load (the
+	// ChangeLog's producers). traffic_mutex: held by the simulation thread while it steps traffic (probes take it too).
 	// mutable: const readers (the simulation step and render mesh jobs) take it shared through a const state
 	mutable std::shared_mutex map_mutex;
 	mutable std::mutex traffic_mutex;

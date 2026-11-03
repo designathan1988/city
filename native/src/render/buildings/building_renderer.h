@@ -29,6 +29,7 @@
 
 #include <array>
 #include <chrono>
+#include <limits>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -69,29 +70,48 @@ private:
 		bool far_state = false; // beyond the switch (plate rule, with hysteresis)
 		bool covering = false; // its chunks' mid levels went while it stood in: drawn until they are all back
 		bool shown = false; // the far instance is visible
+		// A built far mesh is rebuilt on its own clock (Roadcraft deferredRebuild.ts): not before `due` (a delay
+		// after the first change it waits for) nor within an interval of the previous request (`asked`).
+		double due = 0, asked = -std::numeric_limits<double>::infinity();
+	};
+	// A level surface the job made (bake: the arrays converted on the job's thread, rs_util.h OwnedMesh); no mesh when
+	// the shell held no triangle.
+	struct Surface {
+		OwnedMesh mesh;
+		godot::AABB box;
 	};
 	struct Built {
 		int64_t key = 0;
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
-		std::vector<b40::Shell> near, parts, mid; // one per sub-chunk
-		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
+		std::array<Surface, SUB_COUNT> near, parts, mid; // one per sub-chunk
+		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		bool has_near = false, has_mid = false;
 	};
 	struct SuperBuilt {
 		int64_t key = 0;
 		float priority = 0;
 		uint64_t seq = 0;
-		b40::Shell far;
+		Surface far;
+	};
+	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
+	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
+	struct Inputs {
+		std::vector<Building> records;
+		HeightPatch ground;
 	};
 	struct Want {
 		float d;
 		int64_t key;
 		uint8_t mask;
 	};
-	Built build_cpu(const CityState &s, int64_t key, bool near, bool mid) const;
-	SuperBuilt build_super_cpu(const CityState &s, int64_t super_key) const;
+	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
+	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
+	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
+	static Surface bake(const b40::Shell &shell, bool with_uv2);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows);
+	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
 	void submit_super(const CityState &s, int64_t super_key, float priority);

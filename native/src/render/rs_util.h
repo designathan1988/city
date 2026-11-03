@@ -65,9 +65,55 @@ struct MultiMeshDraw {
 	}
 };
 
+// A mesh made by a job, off the main thread: mesh_add_surface_from_arrays converts the arrays on the calling thread and
+// the RenderingServer queues the surface for its own thread (Godot rendering_server.cpp / server_wrap_mt_common.h), so
+// the heavy part never lands on the frame. Freed unless handed over (a result dropped as stale frees its mesh).
+struct OwnedMesh {
+	godot::RID rid;
+	OwnedMesh() = default;
+	OwnedMesh(const OwnedMesh &) = delete;
+	OwnedMesh &operator=(const OwnedMesh &) = delete;
+	OwnedMesh(OwnedMesh &&o) noexcept : rid(o.rid) { o.rid = godot::RID(); }
+	OwnedMesh &operator=(OwnedMesh &&o) noexcept {
+		if (this != &o) {
+			reset();
+			rid = o.rid;
+			o.rid = godot::RID();
+		}
+		return *this;
+	}
+	~OwnedMesh() { reset(); }
+	bool valid() const { return rid.is_valid(); }
+	void reset() {
+		if (rid.is_valid()) godot::RenderingServer::get_singleton()->free_rid(rid);
+		rid = godot::RID();
+	}
+	godot::RID release() {
+		godot::RID r = rid;
+		rid = godot::RID();
+		return r;
+	}
+};
+
 // A plain mesh drawn by one instance (road and overlay chunks).
 struct MeshDraw {
 	godot::RID mesh, inst;
+	// Shows `next` (a mesh a job made, now owned here): the instance is made on first use, else it switches to `next`
+	// and the old mesh is freed. An invalid `next` empties the instance but keeps it (its visibility links stay).
+	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next) {
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		if (!inst.is_valid()) {
+			if (!next.is_valid()) return;
+			inst = rs->instance_create2(next, scenario);
+			rs->instance_geometry_set_cast_shadows_setting(inst,
+					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
+			if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
+		} else {
+			rs->instance_set_base(inst, next);
+		}
+		if (mesh.is_valid()) rs->free_rid(mesh);
+		mesh = next;
+	}
 	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (!mesh.is_valid()) {

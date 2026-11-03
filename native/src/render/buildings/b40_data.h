@@ -56,6 +56,7 @@ struct Data {
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (Roadcraft plate rule 0.9 / 1.1)
+	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds (Roadcraft deferredRebuild.ts)
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 	// A named colour of "colors" (magenta when missing; load() reports missing names it was asked for at startup).
