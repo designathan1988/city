@@ -6,3 +6,5 @@ project/bin/*.dll
 dist/
 __pycache__/
 *.tmp
+.claude/worktrees/
+*.translation
