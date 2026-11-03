@@ -1,11 +1,6 @@
 {
  "_doc": "Roadcraft jobs/roadMesh.ts and render/roads.ts: strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and the street-lamp layout the night pools follow.",
- "surface_colors": [
-  "#4a4d53",
-  "#8e8b85",
-  "#6e675f",
-  "#7a746b"
- ],
+ "surface_colors": ["#4a4d53", "#8e8b85", "#6e675f", "#7a746b"],
  "strip_colors": {
   "parking": "#404246",
   "bike": "#9a4a3e",
@@ -14,18 +9,8 @@
   "barrier": "#a9a59d",
   "gutter": "#99958c"
  },
- "paving_colors": [
-  "#b3b0aa",
-  "#a89c8c",
-  "#c9c3b8",
-  "#5a7a3e"
- ],
- "median_colors": [
-  "#a9a59d",
-  "#a89c8c",
-  "#c9c3b8",
-  "#5a7a3e"
- ],
+ "paving_colors": ["#b3b0aa", "#a89c8c", "#c9c3b8", "#5a7a3e"],
+ "median_colors": ["#a9a59d", "#a89c8c", "#c9c3b8", "#5a7a3e"],
  "heights": {
   "curb": 0.16,
   "curb_by_median": 0.15,
@@ -75,16 +60,13 @@
   "median_min_m": 1.2
  },
  "props": {
-  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night; lens 0/1/2 = red/amber/green, lit on the matching signal.",
+  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head, as the Roadcraft 4.0 heads), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk); drawn dim (lens_dim) and, lit, a copy grown by lens_lit_grow over the dim one when the approach shows it.",
   "lens_dim": 0.12,
+  "lens_lit_grow": 1.08,
   "signal": [
    {
     "shape": "cylinder",
-    "base": [
-     0,
-     0,
-     0
-    ],
+    "base": [0, 0, 0],
     "radius": 0.12,
     "height": 5.8,
     "segments": 8,
@@ -92,158 +74,95 @@
    },
    {
     "shape": "box",
-    "min": [
-     -3.6,
-     5.5,
-     -0.06
-    ],
-    "max": [
-     0,
-     5.62,
-     0.06
-    ],
+    "min": [-3.6, 5.5, -0.06],
+    "max": [0, 5.62, 0.06],
     "color": "#3a3e42"
    },
    {
     "shape": "box",
-    "min": [
-     -3.38,
-     4.6,
-     -0.09
-    ],
-    "max": [
-     -3.02,
-     5.6,
-     0.19
-    ],
+    "min": [-3.38, 4.6, -0.09],
+    "max": [-3.02, 5.6, 0.19],
     "color": "#23262a"
    },
    {
     "shape": "box",
-    "min": [
-     -3.48,
-     4.52,
-     -0.11
-    ],
-    "max": [
-     -2.92,
-     5.68,
-     -0.09
-    ],
+    "min": [-3.48, 4.52, -0.11],
+    "max": [-2.92, 5.68, -0.09],
     "color": "#e8e8e4"
    },
    {
     "shape": "box",
-    "min": [
-     -3.45,
-     4.55,
-     -0.09
-    ],
-    "max": [
-     -2.95,
-     5.65,
-     -0.07
-    ],
+    "min": [-3.45, 4.55, -0.09],
+    "max": [-2.95, 5.65, -0.07],
     "color": "#15171a"
    },
    {
     "shape": "blob",
-    "center": [
-     -3.2,
-     5.38,
-     0.2
-    ],
-    "radius": [
-     0.11,
-     0.11,
-     0.04
-    ],
+    "center": [-3.2, 5.38, 0.2],
+    "radius": [0.11, 0.11, 0.04],
     "color": "#ff3a2a",
     "lens": 0
    },
    {
     "shape": "blob",
-    "center": [
-     -3.2,
-     5.1,
-     0.2
-    ],
-    "radius": [
-     0.11,
-     0.11,
-     0.04
-    ],
+    "center": [-3.2, 5.1, 0.2],
+    "radius": [0.11, 0.11, 0.04],
     "color": "#ffb020",
     "lens": 1
    },
    {
     "shape": "blob",
-    "center": [
-     -3.2,
-     4.82,
-     0.2
-    ],
-    "radius": [
-     0.11,
-     0.11,
-     0.04
-    ],
+    "center": [-3.2, 4.82, 0.2],
+    "radius": [0.11, 0.11, 0.04],
     "color": "#2fff6a",
     "lens": 2
    },
    {
-    "shape": "box",
-    "min": [
-     -0.18,
-     2.3,
-     0.04
-    ],
-    "max": [
-     0.18,
-     3.1,
-     0.26
-    ],
-    "color": "#23262a"
-   },
-   {
     "shape": "blob",
-    "center": [
-     0,
-     2.92,
-     0.27
-    ],
-    "radius": [
-     0.09,
-     0.09,
-     0.03
-    ],
+    "center": [-3.2, 5.38, -0.15],
+    "radius": [0.11, 0.11, 0.04],
     "color": "#ff3a2a",
     "lens": 0
    },
    {
     "shape": "blob",
-    "center": [
-     0,
-     2.48,
-     0.27
-    ],
-    "radius": [
-     0.09,
-     0.09,
-     0.03
-    ],
+    "center": [-3.2, 5.1, -0.15],
+    "radius": [0.11, 0.11, 0.04],
+    "color": "#ffb020",
+    "lens": 1
+   },
+   {
+    "shape": "blob",
+    "center": [-3.2, 4.82, -0.15],
+    "radius": [0.11, 0.11, 0.04],
     "color": "#2fff6a",
     "lens": 2
+   },
+   {
+    "shape": "box",
+    "min": [-0.34, 2.3, -0.18],
+    "max": [-0.12, 3.1, 0.18],
+    "color": "#23262a"
+   },
+   {
+    "shape": "blob",
+    "center": [-0.35, 2.92, 0],
+    "radius": [0.03, 0.09, 0.09],
+    "color": "#ff3a2a",
+    "lens": 3
+   },
+   {
+    "shape": "blob",
+    "center": [-0.35, 2.48, 0],
+    "radius": [0.03, 0.09, 0.09],
+    "color": "#2fff6a",
+    "lens": 4
    }
   ],
   "lamp": [
    {
     "shape": "cylinder",
-    "base": [
-     0,
-     0,
-     0
-    ],
+    "base": [0, 0, 0],
     "radius": 0.15,
     "height": 9.65,
     "segments": 8,
@@ -251,114 +170,50 @@
    },
    {
     "shape": "box",
-    "min": [
-     -0.06,
-     9.19,
-     -0.85
-    ],
-    "max": [
-     0.06,
-     9.31,
-     0.85
-    ],
+    "min": [-0.06, 9.19, -0.85],
+    "max": [0.06, 9.31, 0.85],
     "color": "#a9a59d"
    },
    {
     "shape": "box",
-    "min": [
-     -0.03,
-     9.31,
-     -0.78
-    ],
-    "max": [
-     0.03,
-     9.45,
-     -0.72
-    ],
+    "min": [-0.03, 9.31, -0.78],
+    "max": [0.03, 9.45, -0.72],
     "color": "#e8e8e4"
    },
    {
     "shape": "box",
-    "min": [
-     -0.03,
-     9.31,
-     0.22
-    ],
-    "max": [
-     0.03,
-     9.45,
-     0.28
-    ],
+    "min": [-0.03, 9.31, 0.22],
+    "max": [0.03, 9.45, 0.28],
     "color": "#e8e8e4"
    },
    {
     "shape": "box",
-    "min": [
-     -0.03,
-     9.31,
-     0.72
-    ],
-    "max": [
-     0.03,
-     9.45,
-     0.78
-    ],
+    "min": [-0.03, 9.31, 0.72],
+    "max": [0.03, 9.45, 0.78],
     "color": "#e8e8e4"
    },
    {
     "shape": "box",
-    "min": [
-     -0.25,
-     6.6,
-     -0.57
-    ],
-    "max": [
-     0.25,
-     7.1,
-     -0.07
-    ],
+    "min": [-0.25, 6.6, -0.57],
+    "max": [0.25, 7.1, -0.07],
     "color": "#5c6064"
    },
    {
     "shape": "box",
-    "min": [
-     -0.04,
-     8.0,
-     0
-    ],
-    "max": [
-     0.04,
-     8.08,
-     1.9
-    ],
+    "min": [-0.04, 8.0, 0],
+    "max": [0.04, 8.08, 1.9],
     "color": "#8a8e92"
    },
    {
     "shape": "box",
-    "min": [
-     -0.17,
-     7.95,
-     1.5
-    ],
-    "max": [
-     0.17,
-     8.11,
-     2.3
-    ],
+    "min": [-0.17, 7.95, 1.5],
+    "max": [0.17, 8.11, 2.3],
     "color": "#6d7276"
    },
    {
     "shape": "box",
-    "min": [
-     -0.14,
-     7.9,
-     1.57
-    ],
-    "max": [
-     0.14,
-     7.95,
-     2.23
-    ],
+    "min": [-0.14, 7.9, 1.57],
+    "max": [0.14, 7.95, 2.23],
     "color": "#fff2cc",
     "glow": "night"
    }
@@ -366,11 +221,7 @@
   "hydrant": [
    {
     "shape": "cylinder",
-    "base": [
-     0,
-     0,
-     0
-    ],
+    "base": [0, 0, 0],
     "radius": 0.15,
     "height": 0.62,
     "segments": 8,
@@ -378,41 +229,21 @@
    },
    {
     "shape": "blob",
-    "center": [
-     0,
-     0.64,
-     0
-    ],
-    "radius": [
-     0.15,
-     0.12,
-     0.15
-    ],
+    "center": [0, 0.64, 0],
+    "radius": [0.15, 0.12, 0.15],
     "color": "#c0261d"
    },
    {
     "shape": "box",
-    "min": [
-     0.1,
-     0.37,
-     -0.06
-    ],
-    "max": [
-     0.28,
-     0.47,
-     0.06
-    ],
+    "min": [0.1, 0.37, -0.06],
+    "max": [0.28, 0.47, 0.06],
     "color": "#a31f18"
    }
   ],
   "bin": [
    {
     "shape": "cylinder",
-    "base": [
-     0,
-     0,
-     0
-    ],
+    "base": [0, 0, 0],
     "radius": 0.26,
     "height": 0.9,
     "segments": 10,
@@ -420,11 +251,7 @@
    },
    {
     "shape": "cylinder",
-    "base": [
-     0,
-     0.9,
-     0
-    ],
+    "base": [0, 0.9, 0],
     "radius": 0.29,
     "height": 0.05,
     "segments": 10,
@@ -434,64 +261,32 @@
   "bench": [
    {
     "shape": "box",
-    "min": [
-     -0.85,
-     0.44,
-     -0.225
-    ],
-    "max": [
-     0.85,
-     0.51,
-     0.225
-    ],
+    "min": [-0.85, 0.44, -0.225],
+    "max": [0.85, 0.51, 0.225],
     "color": "#8a6440"
    },
    {
     "shape": "box",
-    "min": [
-     -0.85,
-     0.55,
-     -0.25
-    ],
-    "max": [
-     0.85,
-     0.95,
-     -0.19
-    ],
+    "min": [-0.85, 0.55, -0.25],
+    "max": [0.85, 0.95, -0.19],
     "color": "#8a6440"
    },
    {
     "shape": "box",
-    "min": [
-     -0.78,
-     0,
-     -0.21
-    ],
-    "max": [
-     -0.72,
-     0.44,
-     0.21
-    ],
+    "min": [-0.78, 0, -0.21],
+    "max": [-0.72, 0.44, 0.21],
     "color": "#34383c"
    },
    {
     "shape": "box",
-    "min": [
-     0.72,
-     0,
-     -0.21
-    ],
-    "max": [
-     0.78,
-     0.44,
-     0.21
-    ],
+    "min": [0.72, 0, -0.21],
+    "max": [0.78, 0.44, 0.21],
     "color": "#34383c"
    }
   ]
  },
  "furniture": {
-  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges).",
+  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges). Signal posts: signal_back_m past the crosswalk (markings zebra_to_m), at most signal_max_share of the segment, signal_in_m from the kerb (Roadcraft 4.0: crosswalk + 2 m, kerb + 0.9 m).",
   "min_walk_m": 1.8,
   "kerb_u_m": 0.45,
   "wall_u_m": 0.55,
@@ -505,32 +300,19 @@
   "bench_min_span_m": 70,
   "bench_min_walk_m": 2.3,
   "bin_after_bench_m": 2.2,
-  "signal_back_m": 0.6,
-  "signal_in_m": 0.7,
-  "signal_min_priority": 2,
-  "signal_min_major": 2,
-  "signal_degree": 3,
+  "signal_back_m": 2.0,
+  "signal_in_m": 0.9,
+  "signal_max_share": 0.45,
   "tree_first_m": 10,
   "tree_step_m": 12,
   "tree_min_walk_m": 2.4,
   "tree_kerb_u_m": 0.9,
-  "tree_clear_m": 4,
-  "signal_cross_degree": 4
+  "tree_clear_m": 4
  },
  "wires": {
   "_doc": "Wires between consecutive lamp poles: strand heights and offsets across the pole, sag share of the span.",
-  "y_m": [
-   9.45,
-   9.45,
-   9.45,
-   8.35
-  ],
-  "z_m": [
-   -0.75,
-   0.25,
-   0.75,
-   -0.3
-  ],
+  "y_m": [9.45, 9.45, 9.45, 8.35],
+  "z_m": [-0.75, 0.25, 0.75, -0.3],
   "pieces": 12,
   "thick_m": 0.035,
   "sag": 0.018,
@@ -551,30 +333,14 @@
     "crown_reach_m": 3.3,
     "crowns": [
      {
-      "center": [
-       0,
-       5.4,
-       0
-      ],
-      "radius": [
-       2.6,
-       2.3,
-       2.6
-      ],
+      "center": [0, 5.4, 0],
+      "radius": [2.6, 2.3, 2.6],
       "rough": 0.28,
       "seed": 11
      },
      {
-      "center": [
-       0.8,
-       6.6,
-       0.5
-      ],
-      "radius": [
-       1.7,
-       1.5,
-       1.7
-      ],
+      "center": [0.8, 6.6, 0.5],
+      "radius": [1.7, 1.5, 1.7],
       "rough": 0.25,
       "seed": 17
      }
@@ -594,16 +360,8 @@
     "crown_reach_m": 2.4,
     "crowns": [
      {
-      "center": [
-       0,
-       5.2,
-       0
-      ],
-      "radius": [
-       1.5,
-       4.2,
-       1.5
-      ],
+      "center": [0, 5.2, 0],
+      "radius": [1.5, 4.2, 1.5],
       "rough": 0.18,
       "seed": 37
      }
@@ -623,16 +381,8 @@
     "crown_reach_m": 1.1,
     "crowns": [
      {
-      "center": [
-       0,
-       0.75,
-       0
-      ],
-      "radius": [
-       1.2,
-       0.85,
-       1.2
-      ],
+      "center": [0, 0.75, 0],
+      "radius": [1.2, 0.85, 1.2],
       "rough": 0.25,
       "seed": 53
      }
@@ -669,12 +419,7 @@
    "shrub": 2,
    "shrub_share": 0.15,
    "conifer_share": 0.27,
-   "tints": [
-    "#ffffff",
-    "#d6e6b4",
-    "#f2ecc0",
-    "#e0f0d0"
-   ]
+   "tints": ["#ffffff", "#d6e6b4", "#f2ecc0", "#e0f0d0"]
   }
  }
 }

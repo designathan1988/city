@@ -3,6 +3,8 @@
 // stopped obstacle at the stop line (see vehicle_motion.cpp).
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/roads/junction.h"
+
 #include <cmath>
 
 namespace city {
@@ -146,7 +148,7 @@ void build_junction(CityState &s, int n) {
 	if (crosswalk_node(s, n))
 		for (const Arm &a : arms)
 			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_SETBACK_SHARE);
-	j.ctl = decide(s.roads.nodes[n], arms, s.catalog.traffic);
+	j.ctl = control_of(s, n);
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 	if (j.ctl != Control::PRIORITY) return;
 	std::vector<int> order;
@@ -154,6 +156,25 @@ void build_junction(CityState &s, int n) {
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
 	for (size_t k = 0; k < order.size(); k++)
 		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
+}
+
+Control control_of(const CityState &s, int n) {
+	if (n < 0 || n >= int(s.roads.nodes.size())) return Control::NONE;
+	const RoadNode &node = s.roads.nodes[size_t(n)];
+	std::vector<Arm> arms; // an arm with lanes either way (DirSeg::ok), facing out of the node
+	for (int si : node.segs) {
+		const RoadSegment &g = s.roads.segs[size_t(si)];
+		if (!g.alive || g.a == g.b) continue;
+		const Profile &p = s.roads.profile_of(si);
+		if (p.rail || (p.fwd.empty() && p.back.empty())) continue;
+		const city::Arm out = arm_of(g.q, p, g.a == n ? 0 : 1);
+		Arm a;
+		a.seg = si;
+		a.priority = p.priority;
+		a.out = V2(float(out.dx), float(out.dz));
+		arms.push_back(a);
+	}
+	return decide(node, arms, s.catalog.traffic);
 }
 
 void build_junctions(CityState &s) {

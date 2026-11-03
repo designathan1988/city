@@ -7,6 +7,7 @@
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
 #include "sim/roads/junction.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <cmath>
 
@@ -17,7 +18,6 @@ namespace city {
 namespace {
 constexpr int FURN_FULL = 0, FURN_NONE = 2, MAX_STRANDS = 4;
 constexpr int ZONE_RES = 1, ZONE_IND = 3, ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6;
-constexpr float REVERSE_WIRE_DOT = -0.8f, AXIS_TIE = 0.f;
 constexpr uint32_t TREE_SALT = 0x7ee5u, TREE_SPECIES = 2;
 constexpr float CANOPY_SCALE_MIN = 0.8f, TREE_SCALE_SPAN = 0.35f;
 
@@ -25,32 +25,23 @@ const Vector3 UP(0, 1, 0);
 
 bool is_res(int z) { return z == ZONE_RES || z == ZONE_RES_LOW || z == ZONE_RES_HIGH; }
 
-// Roadcraft roads/control.ts automatic rule: five arms, three main roads, or two main roads that are not one street.
-bool signalled(const CityState &s, const FurnitureLook &F, int n) {
-	const RoadNode &nd = s.roads.nodes[n];
-	if (int(nd.segs.size()) < F.signal_degree || !crossing_node(s, n)) return false;
-	std::vector<Arm> majors;
-	for (int sid : nd.segs) {
-		const RoadSegment &g = s.roads.segs[sid];
-		const Profile &p = s.catalog.profile(g.profile);
-		if (p.priority >= F.signal_min_priority) majors.push_back(arm_of(g.q, p, g.a == n ? 0 : 1));
-	}
-	if (int(nd.segs.size()) > F.signal_degree + 1 || int(majors.size()) > F.signal_min_major) return true;
-	if (int(nd.segs.size()) >= F.signal_cross_degree && int(majors.size()) >= F.signal_min_major) return true; // a main road's crossings
-	return int(majors.size()) == F.signal_min_major && majors[0].dx * majors[1].dx + majors[0].dz * majors[1].dz > REVERSE_WIRE_DOT;
-}
-
-void signals(const CityState &s, const StreetLook &L, const FurnitureLook &F, int n, std::vector<PropPlace> &out) {
+// A post on every approach with lanes into signalled node `n` (Roadcraft world/signalPosts.ts): on the footway at the
+// approach's right, signal_in from the kerb, signal_back past the crosswalk (at most signal_max_share of the
+// segment), its arm over the arriving lanes and its walkers' head across the crosswalk.
+void signals(const CityState &s, const StreetLook &L, const FurnitureLook &F, int n, std::vector<SignalHead> &out) {
 	for (int sid : s.roads.nodes[n].segs) {
 		const RoadSegment &g = s.roads.segs[sid];
+		if (!g.alive || g.a == g.b) continue;
 		const Profile &p = s.catalog.profile(g.profile);
-		bool at_a = g.a == n;
-		double at = at_a ? g.retreat_a + F.signal_back : g.len - g.retreat_b - F.signal_back;
-		SegFrame f = seg_frame(s, sid, at);
-		float u = at_a ? p.left - F.signal_in : -(p.right - F.signal_in);
-		Vector3 face = at_a ? f.fwd : -f.fwd;
-		bool green = std::fabs(face.x) > std::fabs(face.z) + AXIS_TIE;
-		out.push_back({ green ? PropKind::SIGNAL_GREEN : PropKind::SIGNAL_RED, f.c + f.left * u + UP * L.h_sidewalk, PropKit::facing(face) });
+		const bool at_a = g.a == n; // arriving at a: travelling b to a, the back lanes
+		if ((at_a ? p.back : p.fwd).empty() || p.edges.empty()) continue;
+		const double inner = g.len - g.retreat_a - g.retreat_b;
+		const double back = std::min(double(L.zebra_to + F.signal_back), inner * F.signal_max_share);
+		const SegFrame f = seg_frame(s, sid, at_a ? g.retreat_a + back : g.len - g.retreat_b - back);
+		// the kerb on the arriving traffic's right: the left edge's inner side at a, the right edge's at b
+		const float u = at_a ? p.edges.back().u0 + F.signal_in : p.edges.front().u1 - F.signal_in;
+		const Vector3 face = at_a ? f.fwd : -f.fwd; // +z toward the arriving traffic
+		out.push_back({ traffic::in_ds(s.roads, sid, n), f.c + f.left * u + UP * L.h_sidewalk, PropKit::facing(face) });
 	}
 }
 
@@ -159,7 +150,7 @@ void each_seg_ctx(const CityState &s, const StreetLook &L, const FurnitureLook &
 } // namespace
 
 void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out,
-		MeshBuilder &wires) {
+		MeshBuilder &wires, std::vector<SignalHead> &heads) {
 	each_seg_ctx(s, L, F, key, [&](SegCtx &c, int level) {
 		lamps(c, out, wires);
 		furniture(c, level, out);
@@ -167,7 +158,7 @@ void place_street_props(const CityState &s, const StreetLook &L, const Furniture
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = s.roads.nodes[n];
-		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key && signalled(s, F, n)) signals(s, L, F, n, out);
+		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key && traffic::control_of(s, n) == Control::SIGNAL) signals(s, L, F, n, heads);
 	});
 }
 
@@ -202,9 +193,7 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	hydrant_first = f["hydrant_first_m"]; hydrant_step = f["hydrant_step_m"]; hydrant_min_span = f["hydrant_min_span_m"];
 	bin_first = f["bin_first_m"]; bin_min_span = f["bin_min_span_m"]; bench_min_span = f["bench_min_span_m"];
 	bench_min_walk = f["bench_min_walk_m"]; bin_after_bench = f["bin_after_bench_m"];
-	signal_back = f["signal_back_m"]; signal_in = f["signal_in_m"];
-	signal_min_priority = f["signal_min_priority"]; signal_min_major = f["signal_min_major"]; signal_degree = f["signal_degree"];
-	signal_cross_degree = f["signal_cross_degree"];
+	signal_back = f["signal_back_m"]; signal_in = f["signal_in_m"]; signal_max_share = f["signal_max_share"];
 	tree_first = f["tree_first_m"]; tree_step = f["tree_step_m"]; tree_min_walk = f["tree_min_walk_m"]; tree_kerb_u = f["tree_kerb_u_m"];
 	tree_clear = f["tree_clear_m"];
 	Array ys = w["y_m"], zs = w["z_m"];

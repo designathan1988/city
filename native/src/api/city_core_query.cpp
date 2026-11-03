@@ -234,6 +234,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["governor"] = t.gov;
 	d["drawn_vehicles"] = render_.drawn_vehicles();
 	d["drawn_people"] = render_.drawn_people();
+	d["drawn_signal_lenses"] = render_.lit_lenses(); // lit on the signal posts, from the published lights
 	d["lane_km"] = t.g.lane_metres / METRES_PER_KM;
 	// the pool keeps freed entries: the probe reports the connections that exist
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));

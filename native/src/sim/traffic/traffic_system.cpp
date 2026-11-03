@@ -73,6 +73,23 @@ void reset_traffic(CityState &s) {
 	s.log.clear_net();
 }
 
+namespace {
+// What the signalled approaches within `radius` of (cx, cz) show now, sorted by ds (PoseFrame::signal).
+void publish_signals(CityState &s, float cx, float cz, float radius, std::vector<SignalRecord> &out) {
+	out.clear();
+	const LaneGraph &g = s.traffic.g;
+	s.roads.node_hash.query(cx - radius, cz - radius, cx + radius, cz + radius, [&](int n) {
+		if (n < 0 || size_t(n) >= g.junctions.size() || g.junctions[size_t(n)].ctl != Control::SIGNAL) return;
+		for (int seg : s.roads.nodes[size_t(n)].segs) {
+			const int ds = in_ds(s.roads, seg, n);
+			if (size_t(ds) >= g.ds.size() || !g.ds[size_t(ds)].ok || g.ds[size_t(ds)].stage < 0) continue;
+			out.push_back({ uint32_t(ds), uint8_t(light_for(s, ds)), walk_ok(s, n, seg) });
+		}
+	});
+	std::sort(out.begin(), out.end(), [](const SignalRecord &a, const SignalRecord &b) { return a.ds < b.ds; });
+}
+} // namespace
+
 void publish_poses(CityState &s, int64_t stamp_ns) {
 	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
@@ -130,6 +147,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	}
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
+	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();

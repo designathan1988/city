@@ -11,6 +11,10 @@ constexpr float NO_LEADER = BIG; // gap meaning a free road
 
 namespace traffic {
 
+// The directed segment of `seg` arriving at / leaving `node` (even: a to b).
+inline int in_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].b == node ? 0 : 1); }
+inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].a == node ? 0 : 1); }
+
 // traffic_system.cpp
 void step(CityState &s, float dt); // applies the network changes, then advances everything near and far
 // After each tick: poses near the camera into CityState::poses, stamped with the tick's scheduled time.
@@ -53,6 +57,9 @@ void materialize(CityState &s, int key);
 // junction_control.cpp
 void build_junctions(CityState &s);
 void build_junction(CityState &s, int n); // one node's control and stages (incremental rebuild)
+// The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
+// read by build_junction and by the render's signal posts (which hold just the map lock, not the lane graph).
+Control control_of(const CityState &s, int n);
 void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)

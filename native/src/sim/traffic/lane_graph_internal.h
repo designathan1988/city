@@ -3,12 +3,10 @@
 #pragma once
 
 #include "sim/state/city_state.h"
+#include "sim/traffic/traffic_system.h"
 
 namespace city {
 namespace traffic {
-
-inline int in_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].b == node ? 0 : 1); }
-inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].a == node ? 0 : 1); }
 
 // lane_graph.cpp
 void build_dir(CityState &s, int seg); // (re)builds the two directed segments of `seg`, keeping lane_metres right

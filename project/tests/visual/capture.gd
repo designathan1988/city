@@ -140,6 +140,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 		await _shot("15_travessia", cross + CROSSING_FROM, cross)
 		await _shot("16_travessia_perto", cross + CROSSING_NEAR_FROM, cross)
+		await CaptureSignals.shots(self, cross, [DAY, NIGHT])
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
 		print("retido em ", j, " ", probe.jam_info[i])

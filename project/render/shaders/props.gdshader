@@ -6,8 +6,8 @@ shader_type spatial;
 global uniform float night;
 uniform vec3 glow_color : source_color;
 uniform float glow_gain = 6.0;
-uniform float lit_gain = 2.2;
-uniform float lit_night_gain = 4.0;
+uniform float lit_gain = 0.9;
+uniform float lit_night_gain = 2.5;
 uniform float roughness = 0.85;
 
 varying flat float v_tag;

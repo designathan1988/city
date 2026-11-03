@@ -120,6 +120,7 @@ void CityCore::_process(double delta) {
 	const PoseSample at = poses.sample(now - int64_t(state_->catalog.tune.render_pose_delay_ticks * double(poses.period_ns)));
 	note_pose(poses, fresh, at);
 	render_.update_agents(poses, cam_, at); // no map lock: the frame is the published snapshot
+	render_.update_signals(poses);
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex

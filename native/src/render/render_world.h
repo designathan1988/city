@@ -37,6 +37,9 @@ public:
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
+	// The signal posts' lit lenses, from the lights the frame published.
+	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
+	int lit_lenses() const { return props_.lit_lenses(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }

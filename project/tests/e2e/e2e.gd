@@ -10,6 +10,7 @@ const BUILD_FRAMES := 400
 const WARMUP_TICKS := 2400
 const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
+const LENSES_PER_POST := 2
 
 var failures := 0
 
@@ -40,6 +41,9 @@ func _ready() -> void:
 	_check(int(probe.drawn_people) >= MIN_DRAWN_PEOPLE, "pessoas no buffer de instâncias")
 	_check(int(probe.vehicles) > 0 and int(probe.people) > 0, "frota e pedestres vivos")
 	_check(int(probe.moving) > 0, "veículos andando")
+	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published
+	print("semáforos: ", probe.signals, ", lentes acesas ", probe.drawn_signal_lenses)
+	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "lentes dos semáforos acesas")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
