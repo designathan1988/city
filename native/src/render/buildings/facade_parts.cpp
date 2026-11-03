@@ -48,6 +48,12 @@ struct Ctx {
 		for (float s : { -1.f, 1.f })
 			part_box(parts, at(am + s * (w / 2 + BRACKET_OFF), cz - BRACKET_H * HALF - CANOPY_RISE * HALF, -BRACKET_D / 2, BRACKET_W, BRACKET_H, BRACKET_D), c.trim, c.trim_fin);
 	}
+	// The leaves are parts, drawn only to parts_end: a door-coloured panel behind them (at the back of the 4.0 leaf
+	// box, so it never covers a leaf) closes the opening when they are culled.
+	void door_back(float y0, float y1) const {
+		const Paint &p = pl.data->color("door");
+		shell.rect(c.f, o.a0, o.a1, y0, y1, -(o.depth + FRAME_IN + FRAME_D / 2), paint_lin(p), p.finish);
+	}
 	void door();
 	void double_door();
 	void gourmet();
@@ -56,6 +62,7 @@ struct Ctx {
 
 void Ctx::door() {
 	part_door(parts, at(am, hm, o.depth + FRAME_IN, w, h, FRAME_D), paint("door"), FIN_WOOD);
+	door_back(o.h0, o.h1);
 	if (c.level == 0) { canopy(CANOPY_PAD, CANOPY_T, CANOPY_OUT, FASCIA_H, CANOPY_ROOM); lamp(); }
 }
 
@@ -66,8 +73,11 @@ void Ctx::double_door() {
 		part_box(parts, at(am + s * w / 4, o.h0 + LIGHT_AT * leaf, o.depth - LEAF_GAP, w / 2 - LIGHT_INSET, leaf * LIGHT_SHARE, LOGGIA_PANE),
 				paint("pane"), FIN_GLASS);
 	}
-	if (h > leaf + FAN_MIN) {
+	const bool fanlight = h > leaf + FAN_MIN;
+	door_back(o.h0, fanlight ? o.h0 + leaf + FAN_GAP : o.h1);
+	if (fanlight) { // glass over the leaves (Roadcraft facadeEmit.ts doubleDoor: the opening's only glass)
 		float fan = h - leaf - FAN_GAP, fy = o.h0 + leaf + FAN_GAP + fan / 2;
+		shell.pane(c.f, o.a0, o.a1, fy - fan / 2, o.h1, -o.depth, c.hash, false);
 		part_frame(parts, at(am, fy, o.depth - FRAME_IN, w, fan, FRAME_THIN), c.trim, c.trim_fin);
 		part_box(parts, at(am, o.h0 + leaf + FAN_GAP / 2, o.depth - FRAME_IN, w, FAN_GAP, TRANSOM_T), c.trim, c.trim_fin);
 	}

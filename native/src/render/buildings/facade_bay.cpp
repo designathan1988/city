@@ -43,6 +43,7 @@ void streak(Shell &s, const BayCtx &c, const Opening &o) {
 }
 
 void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
+	if (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) return; // their parts close them (facade_parts.cpp door_back)
 	if (glazed(c.comp)) {
 		bool dark = dark_pane(c, o.w);
 		s.pane(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, c.hash, dark);
@@ -54,7 +55,7 @@ void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
 		}
 		return;
 	}
-	const Paint &p = pl.data->color(c.comp == BAY_DOOR ? "door" : "shutter");
+	const Paint &p = pl.data->color("shutter");
 	s.rect(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, paint_lin(p), p.finish);
 }
 } // namespace
