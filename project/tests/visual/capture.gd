@@ -10,9 +10,7 @@ const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
 ## Simulated ticks run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s).
 const TRAFFIC_WARMUP_TICKS := 2400
-## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (stuck share, trips).
-const TICKS_PER_MINUTE := 1200
-const SOAK_JAMS := 24
+## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (CaptureSoak).
 const TRAFFIC_SAMPLE := 400
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
@@ -68,7 +66,7 @@ func _ready() -> void:
 		return
 	await _wait_render()
 	if soak > 0:
-		_soak(soak)
+		CaptureSoak.report(soak)
 	else:
 		CityStore.step_ticks(120 if measure else TRAFFIC_WARMUP_TICKS)
 	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
@@ -120,10 +118,15 @@ func _wait_render() -> void:
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
+	var hour := DAY
 	for v in VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
-		world.set_hour(v[3] if v.size() > 3 else DAY)
+		var h: float = v[3] if v.size() > 3 else DAY
+		world.set_hour(h)
+		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
+			hour = h
+			await _frames(_sky_frames())
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
 	var k := _nearest(probe.sample, ground)
@@ -160,20 +163,10 @@ func _parse_args() -> void:
 			seed = int(arg.trim_prefix("--seed="))
 
 
-## One line per simulated minute: fleet, share held over 20 s, why the heads are held, trips arrived and lost.
-func _soak(minutes: int) -> void:
-	for m in minutes:
-		CityStore.step_ticks(TICKS_PER_MINUTE)
-		var p: Dictionary = CityStore.query(&"traffic_probe", [0])
-		var share: float = 100.0 * p.waiting / maxf(1.0, p.vehicles)
-		print("soak min %d: %d veículos, %d andando, %d retidos (%.1f %%), parados por %s, chegadas %d, perdidas %d, pessoas %d" % [
-			m + 1, p.vehicles, p.moving, p.waiting, share, p.held_by, p.trips_arrived, p.trips_lost, p.people])
-		print("  desvios %d, liberados %d, governador %.2f, perdidas por travamento %d, pessoas chegadas %d, esperando na guia %d" % [
-			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("lost_stuck", 0), p.get("people_arrived", 0),
-			p.get("people_waiting", 0)])
-		print("  na fila atrás de: ", p.get("queued_behind", []))
-	for line in CityStore.query(&"traffic_probe", [SOAK_JAMS]).jam_info:
-		print("  retido: ", line)
+## Frames the sky's radiance map takes to follow a change (Sky PROCESS_MODE_INCREMENTAL, chosen for a sky shader with
+## its own uniforms: one roughness layer per frame).
+func _sky_frames() -> int:
+	return int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1
 
 
 func _shot(name: String, from: Vector3, at: Vector3) -> void:
