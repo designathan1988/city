@@ -1,0 +1,301 @@
+{
+ "type": "object",
+ "required": [
+  "categories",
+  "catalog_tabs"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "categories": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "icon",
+     "label_key",
+     "tip_key",
+     "tabs"
+    ],
+    "strict": true,
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "icon": {
+      "type": "string"
+     },
+     "label_key": {
+      "type": "string"
+     },
+     "tip_key": {
+      "type": "string"
+     },
+     "strip": {
+      "type": "string",
+      "enum": [
+       "road_catalog",
+       "zone_cards",
+       "relief_cards",
+       "build_cards"
+      ]
+     },
+     "danger": {
+      "type": "boolean"
+     },
+     "no_drawer": {
+      "type": "boolean"
+     },
+     "tabs": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "icon",
+        "label_key"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "icon": {
+         "type": "string"
+        },
+        "label_key": {
+         "type": "string"
+        },
+        "tool": {
+         "type": "string",
+         "enum": [
+          "ROAD",
+          "ZONE",
+          "DEMOLISH",
+          "INSPECT",
+          "UPGRADE",
+          "SPLIT",
+          "ROUNDABOUT",
+          "TERRAIN",
+          "LOT"
+         ]
+        },
+        "profile": {
+         "type": "string"
+        },
+        "note_key": {
+         "type": "string"
+        }
+       },
+       "strict": true
+      },
+      "unique_key": "id"
+     },
+     "cards": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "label_key"
+       ],
+       "properties": {
+        "label_key": {
+         "type": "string"
+        },
+        "zone": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 8
+        },
+        "swatch": {
+         "type": "string"
+        },
+        "icon": {
+         "type": "string"
+        },
+        "mode": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 8
+        },
+        "fn": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 34
+        }
+       },
+       "strict": true
+      }
+     },
+     "ring": {
+      "type": "object",
+      "required": [
+       "label_key",
+       "step",
+       "default"
+      ],
+      "strict": true,
+      "properties": {
+       "label_key": {
+        "type": "string"
+       },
+       "min": {
+        "type": "number"
+       },
+       "max": {
+        "type": "number"
+       },
+       "step": {
+        "type": "number"
+       },
+       "default": {
+        "type": "number"
+       }
+      }
+     },
+     "brush": {
+      "type": "object",
+      "required": [
+       "radius",
+       "strength"
+      ],
+      "strict": true,
+      "properties": {
+       "radius": {
+        "type": "object",
+        "required": [
+         "label_key",
+         "min",
+         "max",
+         "step",
+         "default"
+        ],
+        "strict": true,
+        "properties": {
+         "label_key": {
+          "type": "string"
+         },
+         "min": {
+          "type": "number"
+         },
+         "max": {
+          "type": "number"
+         },
+         "step": {
+          "type": "number"
+         },
+         "default": {
+          "type": "number"
+         }
+        }
+       },
+       "strength": {
+        "type": "object",
+        "required": [
+         "label_key",
+         "min",
+         "max",
+         "step",
+         "default"
+        ],
+        "strict": true,
+        "properties": {
+         "label_key": {
+          "type": "string"
+         },
+         "min": {
+          "type": "number"
+         },
+         "max": {
+          "type": "number"
+         },
+         "step": {
+          "type": "number"
+         },
+         "default": {
+          "type": "number"
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "unique_key": "id",
+   "minItems": 7,
+   "maxItems": 7
+  },
+  "catalog_tabs": {
+   "type": "array",
+   "items": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    },
+    "minItems": 2,
+    "maxItems": 2
+   }
+  },
+  "fn_keys": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "zone_radius": {
+   "type": "number",
+   "minimum": 10,
+   "maximum": 200
+  },
+  "actions": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "icon",
+     "tip_key"
+    ],
+    "properties": {
+     "icon": {
+      "type": "string"
+     },
+     "tip_key": {
+      "type": "string"
+     },
+     "popover": {
+      "type": "string",
+      "enum": [
+       "layers",
+       "sim",
+       "camera",
+       "help",
+       "menu",
+       "files"
+      ]
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "undo",
+       "redo"
+      ]
+     }
+    },
+    "strict": true
+   }
+  },
+  "popovers": {
+   "type": "object",
+   "required": [
+    "layers",
+    "menu",
+    "camera",
+    "sim",
+    "help",
+    "files"
+   ]
+  }
+ },
+ "strict": true
+}

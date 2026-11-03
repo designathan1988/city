@@ -1,0 +1,177 @@
+// Snapping and road validation (Roadcraft src/roads/construction/snap.ts and plan.ts). The preview and the build run
+// the same plan, so what the player sees refused is exactly what the build refuses.
+#include "sim/commands/commands.h"
+#include "sim/commands/road_edit.h"
+
+#include "sim/state/city_state.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace city {
+
+namespace {
+constexpr int CROSS_STEPS = 32; // polyline samples per curve when looking for crossings
+constexpr int ARC_STEPS = 64; // arc-length table of the planned curve (plan.ts arcTable(q, 64))
+constexpr double SEG_SNAP_SHARE = 0.8; // segments snap within this share of the node radius (snap.ts)
+constexpr double SIDE_BY_SIDE_STRIDE_M = 4; // overlap test stride along the new road (plan.ts overlapsRoad)
+constexpr int JUNCTION_DEGREE_GAIN = 2; // a crossing on an existing node adds two arms to it
+
+double dir_cos(const Quad &a, double ta, const Quad &b, double tb) {
+	double dx1, dz1, dx2, dz2;
+	a.deriv(ta, dx1, dz1);
+	b.deriv(tb, dx2, dz2);
+	double l = std::hypot(dx1, dz1) * std::hypot(dx2, dz2);
+	return l > 0 ? std::fabs(dx1 * dx2 + dz1 * dz2) / l : 1;
+}
+
+// Crossings of two quadratic curves through their polylines, refined to the curves.
+void intersect_quads(const Quad &a, const Quad &b, std::vector<std::pair<double, double>> &out) {
+	double ax[CROSS_STEPS + 1], az[CROSS_STEPS + 1], bx[CROSS_STEPS + 1], bz[CROSS_STEPS + 1];
+	for (int i = 0; i <= CROSS_STEPS; i++) {
+		a.at(double(i) / CROSS_STEPS, ax[i], az[i]);
+		b.at(double(i) / CROSS_STEPS, bx[i], bz[i]);
+	}
+	for (int i = 0; i < CROSS_STEPS; i++)
+		for (int k = 0; k < CROSS_STEPS; k++) {
+			double s, t;
+			if (!seg_seg(ax[i], az[i], ax[i + 1], az[i + 1], bx[k], bz[k], bx[k + 1], bz[k + 1], s, t)) continue;
+			double px = ax[i] + (ax[i + 1] - ax[i]) * s, pz = az[i] + (az[i + 1] - az[i]) * s, ta, tb, d;
+			closest_t(a, px, pz, ta, d);
+			closest_t(b, px, pz, tb, d);
+			out.push_back({ ta, tb });
+		}
+}
+
+bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> &table, int profile) {
+	const RoadNetwork &net = s.roads;
+	const Tuning &tn = s.catalog.tune;
+	double len = table.back(), half = s.catalog.profile(profile).right, pad = half + tn.road_overlap_pad_m;
+	double gap = half + tn.road_overlap_pad_m, run = 0;
+	std::vector<int> cands;
+	net.for_segments_near(std::min({ q.x0, q.cx, q.x1 }) - pad, std::min({ q.z0, q.cz, q.z1 }) - pad,
+			std::max({ q.x0, q.cx, q.x1 }) + pad, std::max({ q.z0, q.cz, q.z1 }) + pad, [&](int o) { cands.push_back(o); });
+	for (double at = gap; at <= len - gap; at += SIDE_BY_SIDE_STRIDE_M) {
+		double t = t_at_length(table, at), px, pz;
+		q.at(t, px, pz);
+		bool over = false;
+		for (int o : cands) {
+			double to, dist;
+			closest_t(net.segs[o].q, px, pz, to, dist);
+			if (dist >= (half + net.profile_of(o).right) * tn.road_overlap_share) continue;
+			if (dir_cos(q, t, net.segs[o].q, to) < tn.road_parallel_cos) continue;
+			if (std::fabs(s.terrain.height_at(float(px), float(pz)) - net.seg_y(o, to * net.segs[o].len)) >= tn.road_level_dy_m) continue;
+			over = true;
+			break;
+		}
+		run = over ? run + SIDE_BY_SIDE_STRIDE_M : 0;
+		if (run >= tn.road_overlap_run_m) return true;
+	}
+	return false;
+}
+
+// The crossings at grade with the roads the new curve passes over (plan.ts: junctions), sorted along the new road.
+bool find_crossings(const CityState &s, const Anchor &a, const Anchor &b, RoadPlan &p) {
+	const RoadNetwork &net = s.roads;
+	const Tuning &tn = s.catalog.tune;
+	std::vector<int> skip;
+	for (const Anchor *e : { &a, &b }) {
+		if (e->node >= 0) skip.insert(skip.end(), net.nodes[e->node].segs.begin(), net.nodes[e->node].segs.end());
+		if (e->seg >= 0) skip.push_back(e->seg);
+	}
+	const Quad &q = p.q;
+	net.for_segments_near(std::min({ q.x0, q.cx, q.x1 }), std::min({ q.z0, q.cz, q.z1 }), std::max({ q.x0, q.cx, q.x1 }),
+			std::max({ q.z0, q.cz, q.z1 }), [&](int o) {
+				if (!p.reason.empty() || std::find(skip.begin(), skip.end(), o) != skip.end()) return;
+				std::vector<std::pair<double, double>> hits;
+				intersect_quads(q, net.segs[o].q, hits);
+				for (auto &h : hits) {
+					double px, pz;
+					q.at(h.first, px, pz);
+					if (std::fabs(s.terrain.height_at(float(px), float(pz)) - net.seg_y(o, h.second * net.segs[o].len)) >= tn.road_level_dy_m) continue;
+					if (dir_cos(q, h.first, net.segs[o].q, h.second) > tn.road_sharp_cos) { p.reason = "refuse.road.sharpAngle"; return; }
+					p.crossings.push_back({ h.first, o, h.second });
+				}
+			});
+	if (!p.reason.empty()) return false;
+	auto &c = p.crossings;
+	std::sort(c.begin(), c.end(), [](const Crossing &x, const Crossing &y) { return x.t_new < y.t_new; });
+	for (int i = int(c.size()) - 1; i > 0; i--)
+		if ((c[i].t_new - c[i - 1].t_new) * p.len < tn.road_merge_m) c.erase(c.begin() + i);
+	while (!c.empty() && c.front().t_new * p.len < tn.road_merge_m) c.erase(c.begin());
+	while (!c.empty() && (1 - c.back().t_new) * p.len < tn.road_merge_m) c.pop_back();
+	return true;
+}
+
+// No node may end with more arms than road_max_degree (plan.ts fullNode).
+bool degrees_fit(const CityState &s, const Anchor &a, const Anchor &b, const RoadPlan &p) {
+	const RoadNetwork &net = s.roads;
+	std::vector<std::pair<int, int>> extra;
+	if (a.node >= 0) extra.push_back({ a.node, 1 });
+	if (b.node >= 0) extra.push_back({ b.node, 1 });
+	for (const Crossing &c : p.crossings) {
+		double sl = net.segs[c.seg].len, end = s.catalog.tune.road_snap_end_m;
+		if (c.t_old * sl < end) extra.push_back({ net.segs[c.seg].a, JUNCTION_DEGREE_GAIN });
+		else if ((1 - c.t_old) * sl < end) extra.push_back({ net.segs[c.seg].b, JUNCTION_DEGREE_GAIN });
+	}
+	for (auto &e : extra) {
+		int k = int(net.nodes[e.first].segs.size());
+		for (auto &f : extra) k += f.first == e.first ? f.second : 0;
+		if (k > int(s.catalog.tune.road_max_degree)) return false;
+	}
+	return true;
+}
+} // namespace
+
+Anchor snap_point(const CityState &s, double x, double z, double radius) {
+	const RoadNetwork &net = s.roads;
+	Anchor a;
+	a.x = x;
+	a.z = z;
+	int n = net.find_node_near(x, z, radius);
+	if (n >= 0) {
+		a.node = n;
+		a.x = net.nodes[n].x;
+		a.z = net.nodes[n].z;
+		return a;
+	}
+	double t, d;
+	int sg = net.find_segment_near(x, z, radius * SEG_SNAP_SHARE, t, d);
+	if (sg < 0) return a;
+	const RoadSegment &g = net.segs[sg];
+	double end = s.catalog.tune.road_snap_end_m;
+	if (t * g.len < end) return snap_point(s, g.q.x0, g.q.z0, 1);
+	if ((1 - t) * g.len < end) return snap_point(s, g.q.x1, g.q.z1, 1);
+	a.seg = sg;
+	a.t = t;
+	g.q.at(t, a.x, a.z);
+	return a;
+}
+
+RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+	const Tuning &tn = s.catalog.tune;
+	RoadPlan p;
+	p.q = Quad{ a.x, a.z, has_control ? cx : (a.x + b.x) / 2, has_control ? cz : (a.z + b.z) / 2, b.x, b.z };
+	std::vector<double> table = arc_table(p.q, ARC_STEPS);
+	p.len = table.back();
+	if (profile < 0 || profile >= int(s.catalog.profiles.size())) p.reason = "tool.failed";
+	else if (p.len < tn.road_min_len_m) p.reason = "refuse.road.tooShort";
+	else if (a.node >= 0 && a.node == b.node) p.reason = "refuse.road.selfLoop";
+	if (!p.reason.empty() || !find_crossings(s, a, b, p)) return p;
+	if (overlaps_road(s, p.q, table, profile)) p.reason = "road.reason.overlap";
+	else if (!degrees_fit(s, a, b, p)) p.reason = "road.reason.fullNode";
+	if (!p.reason.empty()) return p;
+	double prev = 0;
+	for (const Crossing &c : p.crossings) {
+		double at = arc_at(table, c.t_new);
+		if (at - prev < tn.road_fixed_gap_m) p.reason = "refuse.road.junctionsClose";
+		prev = at;
+	}
+	if (p.len - prev < tn.road_fixed_gap_m) p.reason = "refuse.road.junctionsClose";
+	if (!p.reason.empty()) return p;
+	p.price = std::round(road_value(s, profile, p.len));
+	p.ok = true;
+	return p;
+}
+
+} // namespace city

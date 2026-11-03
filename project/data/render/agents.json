@@ -1,0 +1,52 @@
+{
+ "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
+ "vehicle_radius_m": 900,
+ "people_radius_m": 280,
+ "paints": ["#f2f2f0", "#1c1d20", "#8c8f94", "#b5b8bc", "#e8e8e4", "#b3221f", "#2a5aa8", "#c4c7cb", "#2f7a4a", "#d8c39a", "#5f6368", "#e4b512", "#3f74c9", "#d96a1d", "#8e1b1b", "#1f6f78"],
+ "trim": {
+  "tyre": "#161616",
+  "hub": "#babdbf",
+  "under": "#0b0b0c",
+  "blackout": "#16171a",
+  "grille": "#0d0e10",
+  "plate": "#e9e9e2",
+  "glass": "#1a2430",
+  "headlamp": "#fff1c8",
+  "tail": "#8a1010",
+  "truck_box": "#d9d6cf",
+  "chrome": "#b9bec4",
+  "roof": "#9aa0a4",
+  "rider": "#24262c",
+  "rider_legs": "#30343c",
+  "shoes": "#1b1b1b"
+ },
+ "cars": [
+  {"id": "sedan", "length": 4.4, "width": 1.84, "height": 1.45, "wheel": 0.33, "clearance": 0.14,
+   "top": [[0.5, 0.43], [0.485, 0.5], [0.44, 0.555], [0.33, 0.6], [0.215, 0.645], [0.13, 0.78], [0.04, 0.995], [-0.05, 1], [-0.14, 0.995], [-0.24, 0.995], [-0.3, 0.9], [-0.36, 0.675], [-0.44, 0.665], [-0.49, 0.63], [-0.5, 0.56]],
+   "screen": [0.215, 0.045], "rear": [-0.17, -0.29], "side_glass": [-0.27, 0.19], "belt": [0.635, 0.69], "nose_r": 0.42, "tail_r": 0.32},
+  {"id": "hatch", "length": 3.9, "width": 1.72, "height": 1.48, "wheel": 0.31, "clearance": 0.14,
+   "top": [[0.5, 0.43], [0.485, 0.5], [0.44, 0.56], [0.33, 0.605], [0.19, 0.645], [0.1, 0.8], [0.02, 0.975], [-0.12, 1], [-0.32, 0.98], [-0.41, 0.93], [-0.46, 0.78], [-0.49, 0.66], [-0.5, 0.58]],
+   "screen": [0.19, 0.03], "rear": [-0.41, -0.47], "side_glass": [-0.4, 0.17], "belt": [0.64, 0.69], "nose_r": 0.4, "tail_r": 0.22},
+  {"id": "suv", "length": 4.6, "width": 1.95, "height": 1.78, "wheel": 0.37, "clearance": 0.2,
+   "top": [[0.5, 0.44], [0.488, 0.52], [0.45, 0.575], [0.33, 0.61], [0.2, 0.635], [0.13, 0.76], [0.06, 0.965], [-0.04, 1], [-0.3, 0.99], [-0.44, 0.975], [-0.475, 0.9], [-0.495, 0.68], [-0.5, 0.58]],
+   "screen": [0.2, 0.06], "rear": [-0.45, -0.49], "side_glass": [-0.44, 0.18], "belt": [0.62, 0.66], "nose_r": 0.36, "tail_r": 0.24},
+  {"id": "van", "length": 4.9, "width": 2.0, "height": 2.2, "wheel": 0.35, "clearance": 0.16,
+   "top": [[0.5, 0.3], [0.488, 0.36], [0.46, 0.43], [0.41, 0.47], [0.37, 0.5], [0.31, 0.7], [0.26, 0.95], [0.2, 0.995], [0, 1], [-0.47, 0.995], [-0.495, 0.96], [-0.5, 0.88]],
+   "screen": [0.375, 0.24], "rear": [0.6, 0.6], "side_glass": [0.06, 0.33], "belt": [0.49, 0.5], "nose_r": 0.36, "tail_r": 0.1},
+  {"id": "pickup", "length": 5.3, "width": 1.95, "height": 1.8, "wheel": 0.37, "clearance": 0.22,
+   "top": [[0.5, 0.45], [0.488, 0.54], [0.45, 0.6], [0.33, 0.63], [0.21, 0.645], [0.14, 0.77], [0.07, 0.965], [-0.02, 1], [-0.2, 0.99], [-0.235, 0.96], [-0.25, 0.64], [-0.27, 0.6], [-0.49, 0.6], [-0.5, 0.52]],
+   "screen": [0.21, 0.07], "rear": [-0.235, -0.248], "side_glass": [-0.23, 0.19], "belt": [0.62, 0.64], "nose_r": 0.34, "tail_r": 0.12}
+ ],
+ "car_body": {"stations": 18, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12},
+ "moto": {"length": 2.1, "wheel": 0.31, "wheel_w": 0.12, "axle_z": 0.72, "body": [0.3, 0.42, 0.88], "rider_seat_y": 0.9, "helmet_r": 0.15},
+ "bus": {"length": 12.0, "width": 2.55, "height": 3.2, "wheel": 0.5, "wheel_w": 0.32, "clearance": 0.28, "sill": 1.02, "cant": 0.42, "axles": [0.28, -0.17, -0.28], "pillar_m": 1.6},
+ "truck": {"length": 9.5, "width": 2.5, "height": 3.5, "wheel": 0.52, "wheel_w": 0.32, "cab_share": 0.24, "cab_bottom": 0.95, "belt": 1.9, "cab_top": 2.95, "box_bottom": 1.05, "axles": [0.37, -0.21, -0.34]},
+ "wheel_jump_m": 5,
+ "people": {
+  "asset": "res://assets/people/people.bin",
+  "lod_m": [40, 1000000000],
+  "clothes": ["#1d2433", "#2b2b2e", "#6d7177", "#e6e4df", "#3b5a8a", "#7d2a2a", "#2f5a3b", "#b79c74", "#5a3d6e", "#cf7a2c", "#8a8f5a", "#9a3c5a", "#2d6f7a", "#d8c9a3", "#4a4f8c", "#c23b32"],
+  "hair": ["#16110d", "#2a1b12", "#4a2f1c", "#6b4426", "#1a1a1a", "#8a5a2b", "#b08850", "#3b2a20"],
+  "grey": ["#b9b6b0", "#9b9893", "#d8d6d0", "#7e7b76"]
+ }
+}

@@ -1,0 +1,74 @@
+{
+ "sim": {
+  "tick_hz": 20,
+  "minutes_per_second": 1,
+  "speed_fast": 2,
+  "speed_fastest": 4,
+  "day_start_min": 390,
+  "day_light_hour": 16,
+  "night_light_hour": 22,
+  "growth_per_s": 25,
+  "growth_tries": 8
+ },
+ "economy": {
+  "start_money": 20000000,
+  "refund_share": 0.25
+ },
+ "world": {
+  "tile_m": 1024,
+  "height_spacing_m": 4,
+  "water_spacing_m": 8
+ },
+ "render": {
+  "road_end_m": 2200,
+  "props_end_m": 900,
+  "building_detail_end_m": 700,
+  "building_mid_end_m": 1100,
+  "building_far_end_m": 4500,
+  "max_chunk_rebuilds_per_frame": 6
+ },
+ "terrain": {
+  "min_height_m": -64,
+  "max_height_m": 400,
+  "embankment_ratio": 1.8,
+  "min_run_m": 7,
+  "road_sink_m": 0.06
+ },
+ "road": {
+  "min_len_m": 8,
+  "snap_m": 8,
+  "snap_end_m": 6,
+  "max_seg_m": 112,
+  "fixed_gap_m": 6,
+  "merge_m": 3,
+  "sharp_cos": 0.94,
+  "level_dy_m": 4.5,
+  "max_degree": 8,
+  "pick_m": 14,
+  "overlap_share": 0.75,
+  "overlap_run_m": 8,
+  "parallel_cos": 0.9,
+  "overlap_pad_m": 10
+ },
+ "history": {
+  "max_entries": 500,
+  "max_mb": 512
+ },
+ "roundabout": {
+  "radius_min_m": 14,
+  "radius_max_m": 60,
+  "approach_m": 40,
+  "entry_merge_m": 6,
+  "max_arc_deg": 50,
+  "disc_pad_m": 6
+ },
+ "edit": {
+  "split_min_m": 4,
+  "street_cos": 0.8192,
+  "max_floors": 60
+ },
+ "zone": {
+  "side_offset_m": 14,
+  "sample_m": 8
+ }
+}

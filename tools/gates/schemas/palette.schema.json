@@ -1,0 +1,217 @@
+{
+ "type": "object",
+ "required": [
+  "vehicle_tints",
+  "person_tints",
+  "foliage_round",
+  "foliage_pine",
+  "roof",
+  "road",
+  "water",
+  "sky",
+  "terrain",
+  "zone_empty",
+  "outline",
+  "materials"
+ ],
+ "properties": {
+  "vehicle_tints": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 8,
+   "maxItems": 8
+  },
+  "person_tints": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 8,
+   "maxItems": 8
+  },
+  "foliage_round": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 1
+  },
+  "foliage_pine": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 1
+  },
+  "roof": {
+   "type": "object",
+   "properties": {
+    "flat": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "gable": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "hip": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
+   },
+   "required": [
+    "flat",
+    "gable",
+    "hip"
+   ],
+   "strict": true
+  },
+  "road": {
+   "type": "object",
+   "properties": {
+    "asphalt": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "sidewalk": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "marking": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "curb": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "bridge": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
+   },
+   "required": [
+    "asphalt",
+    "sidewalk",
+    "marking",
+    "curb",
+    "bridge"
+   ],
+   "strict": true
+  },
+  "water": {
+   "type": "object",
+   "properties": {
+    "shallow": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "deep": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
+   },
+   "required": [
+    "shallow",
+    "deep"
+   ],
+   "strict": true
+  },
+  "sky": {
+   "type": "object",
+   "properties": {
+    "top": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "horizon": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
+   },
+   "required": [
+    "top",
+    "horizon"
+   ],
+   "strict": true
+  },
+  "terrain": {
+   "type": "object",
+   "properties": {
+    "grass": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "grass_dry": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "rock": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "sand": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
+   },
+   "required": [
+    "grass",
+    "grass_dry",
+    "rock",
+    "sand"
+   ],
+   "strict": true
+  },
+  "zone_empty": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "outline": {
+   "type": "object",
+   "required": [
+    "color",
+    "fade_start_m",
+    "fade_end_m",
+    "strength",
+    "threshold"
+   ],
+   "strict": true,
+   "properties": {
+    "color": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "fade_start_m": {
+     "type": "number"
+    },
+    "fade_end_m": {
+     "type": "number"
+    },
+    "strength": {
+     "type": "number"
+    },
+    "threshold": {
+     "type": "number"
+    }
+   }
+  },
+  "service_floor": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "materials": {
+   "type": "object",
+   "additional": {
+    "type": "object"
+   }
+  }
+ },
+ "strict": true
+}

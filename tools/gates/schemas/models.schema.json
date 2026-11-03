@@ -1,0 +1,41 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "models": {
+   "type": "object",
+   "additional": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "required": [
+      "shape",
+      "material"
+     ],
+     "properties": {
+      "shape": {
+       "type": "string",
+       "enum": [
+        "box",
+        "cylinder",
+        "cone",
+        "blob"
+       ]
+      },
+      "material": {
+       "type": "string"
+      }
+     }
+    },
+    "minItems": 1
+   }
+  }
+ },
+ "required": [
+  "_doc",
+  "models"
+ ],
+ "strict": true
+}

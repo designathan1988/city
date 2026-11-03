@@ -1,0 +1,679 @@
+{
+ "_doc": "Roadcraft jobs/roadMesh.ts and render/roads.ts: strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and the street-lamp layout the night pools follow.",
+ "surface_colors": [
+  "#4a4d53",
+  "#8e8b85",
+  "#6e675f",
+  "#7a746b"
+ ],
+ "strip_colors": {
+  "parking": "#404246",
+  "bike": "#9a4a3e",
+  "shoulder": "#4a4c4f",
+  "curb": "#d3cec4",
+  "barrier": "#a9a59d",
+  "gutter": "#99958c"
+ },
+ "paving_colors": [
+  "#b3b0aa",
+  "#a89c8c",
+  "#c9c3b8",
+  "#5a7a3e"
+ ],
+ "median_colors": [
+  "#a9a59d",
+  "#a89c8c",
+  "#c9c3b8",
+  "#5a7a3e"
+ ],
+ "heights": {
+  "curb": 0.16,
+  "curb_by_median": 0.15,
+  "sidewalk": 0.15,
+  "median": 0.17,
+  "barrier": 0.9,
+  "skirt": 0.7
+ },
+ "sample_step_m": 3,
+ "markings": {
+  "white": "#ebebe0",
+  "yellow": "#f2b826",
+  "lift_m": 0.02,
+  "line_clear_m": 4.6,
+  "dash_period_m": 9,
+  "dash_duty": 0.38,
+  "zebra_from_m": 0.7,
+  "zebra_to_m": 3.6,
+  "zebra_period_m": 1.1,
+  "zebra_bar_m": 0.55,
+  "stop_from_m": 3.95,
+  "stop_to_m": 4.35,
+  "double_gap_m": 0.12
+ },
+ "gutter_width_m": 0.45,
+ "dropped_kerb": {
+  "full_m": 0.65,
+  "flat_m": 3.65,
+  "flare_m": 1.5,
+  "low_m": 0.02,
+  "run_m": 1.8,
+  "min_walk_m": 2.0
+ },
+ "junction": {
+  "arc_step_rad": 0.19635,
+  "bevel_steps": 7,
+  "bulb_steps": 28,
+  "dead_end_depth_m": 3
+ },
+ "lamps": {
+  "first_m": 8,
+  "step_m": 32,
+  "end_clear_m": 2,
+  "inset_m": 0.5,
+  "reach_m": 1.9,
+  "median_min_m": 1.2
+ },
+ "props": {
+  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night; lens 0/1/2 = red/amber/green, lit on the matching signal.",
+  "lens_dim": 0.12,
+  "signal": [
+   {
+    "shape": "cylinder",
+    "base": [
+     0,
+     0,
+     0
+    ],
+    "radius": 0.12,
+    "height": 5.8,
+    "segments": 8,
+    "color": "#3a3e42"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -3.6,
+     5.5,
+     -0.06
+    ],
+    "max": [
+     0,
+     5.62,
+     0.06
+    ],
+    "color": "#3a3e42"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -3.38,
+     4.6,
+     -0.09
+    ],
+    "max": [
+     -3.02,
+     5.6,
+     0.19
+    ],
+    "color": "#23262a"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -3.48,
+     4.52,
+     -0.11
+    ],
+    "max": [
+     -2.92,
+     5.68,
+     -0.09
+    ],
+    "color": "#e8e8e4"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -3.45,
+     4.55,
+     -0.09
+    ],
+    "max": [
+     -2.95,
+     5.65,
+     -0.07
+    ],
+    "color": "#15171a"
+   },
+   {
+    "shape": "blob",
+    "center": [
+     -3.2,
+     5.38,
+     0.2
+    ],
+    "radius": [
+     0.11,
+     0.11,
+     0.04
+    ],
+    "color": "#ff3a2a",
+    "lens": 0
+   },
+   {
+    "shape": "blob",
+    "center": [
+     -3.2,
+     5.1,
+     0.2
+    ],
+    "radius": [
+     0.11,
+     0.11,
+     0.04
+    ],
+    "color": "#ffb020",
+    "lens": 1
+   },
+   {
+    "shape": "blob",
+    "center": [
+     -3.2,
+     4.82,
+     0.2
+    ],
+    "radius": [
+     0.11,
+     0.11,
+     0.04
+    ],
+    "color": "#2fff6a",
+    "lens": 2
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.18,
+     2.3,
+     0.04
+    ],
+    "max": [
+     0.18,
+     3.1,
+     0.26
+    ],
+    "color": "#23262a"
+   },
+   {
+    "shape": "blob",
+    "center": [
+     0,
+     2.92,
+     0.27
+    ],
+    "radius": [
+     0.09,
+     0.09,
+     0.03
+    ],
+    "color": "#ff3a2a",
+    "lens": 0
+   },
+   {
+    "shape": "blob",
+    "center": [
+     0,
+     2.48,
+     0.27
+    ],
+    "radius": [
+     0.09,
+     0.09,
+     0.03
+    ],
+    "color": "#2fff6a",
+    "lens": 2
+   }
+  ],
+  "lamp": [
+   {
+    "shape": "cylinder",
+    "base": [
+     0,
+     0,
+     0
+    ],
+    "radius": 0.15,
+    "height": 9.65,
+    "segments": 8,
+    "color": "#b4b0a8"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.06,
+     9.19,
+     -0.85
+    ],
+    "max": [
+     0.06,
+     9.31,
+     0.85
+    ],
+    "color": "#a9a59d"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.03,
+     9.31,
+     -0.78
+    ],
+    "max": [
+     0.03,
+     9.45,
+     -0.72
+    ],
+    "color": "#e8e8e4"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.03,
+     9.31,
+     0.22
+    ],
+    "max": [
+     0.03,
+     9.45,
+     0.28
+    ],
+    "color": "#e8e8e4"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.03,
+     9.31,
+     0.72
+    ],
+    "max": [
+     0.03,
+     9.45,
+     0.78
+    ],
+    "color": "#e8e8e4"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.25,
+     6.6,
+     -0.57
+    ],
+    "max": [
+     0.25,
+     7.1,
+     -0.07
+    ],
+    "color": "#5c6064"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.04,
+     8.0,
+     0
+    ],
+    "max": [
+     0.04,
+     8.08,
+     1.9
+    ],
+    "color": "#8a8e92"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.17,
+     7.95,
+     1.5
+    ],
+    "max": [
+     0.17,
+     8.11,
+     2.3
+    ],
+    "color": "#6d7276"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.14,
+     7.9,
+     1.57
+    ],
+    "max": [
+     0.14,
+     7.95,
+     2.23
+    ],
+    "color": "#fff2cc",
+    "glow": "night"
+   }
+  ],
+  "hydrant": [
+   {
+    "shape": "cylinder",
+    "base": [
+     0,
+     0,
+     0
+    ],
+    "radius": 0.15,
+    "height": 0.62,
+    "segments": 8,
+    "color": "#c0261d"
+   },
+   {
+    "shape": "blob",
+    "center": [
+     0,
+     0.64,
+     0
+    ],
+    "radius": [
+     0.15,
+     0.12,
+     0.15
+    ],
+    "color": "#c0261d"
+   },
+   {
+    "shape": "box",
+    "min": [
+     0.1,
+     0.37,
+     -0.06
+    ],
+    "max": [
+     0.28,
+     0.47,
+     0.06
+    ],
+    "color": "#a31f18"
+   }
+  ],
+  "bin": [
+   {
+    "shape": "cylinder",
+    "base": [
+     0,
+     0,
+     0
+    ],
+    "radius": 0.26,
+    "height": 0.9,
+    "segments": 10,
+    "color": "#3f5a46"
+   },
+   {
+    "shape": "cylinder",
+    "base": [
+     0,
+     0.9,
+     0
+    ],
+    "radius": 0.29,
+    "height": 0.05,
+    "segments": 10,
+    "color": "#2c3a30"
+   }
+  ],
+  "bench": [
+   {
+    "shape": "box",
+    "min": [
+     -0.85,
+     0.44,
+     -0.225
+    ],
+    "max": [
+     0.85,
+     0.51,
+     0.225
+    ],
+    "color": "#8a6440"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.85,
+     0.55,
+     -0.25
+    ],
+    "max": [
+     0.85,
+     0.95,
+     -0.19
+    ],
+    "color": "#8a6440"
+   },
+   {
+    "shape": "box",
+    "min": [
+     -0.78,
+     0,
+     -0.21
+    ],
+    "max": [
+     -0.72,
+     0.44,
+     0.21
+    ],
+    "color": "#34383c"
+   },
+   {
+    "shape": "box",
+    "min": [
+     0.72,
+     0,
+     -0.21
+    ],
+    "max": [
+     0.78,
+     0.44,
+     0.21
+    ],
+    "color": "#34383c"
+   }
+  ]
+ },
+ "furniture": {
+  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges).",
+  "min_walk_m": 1.8,
+  "kerb_u_m": 0.45,
+  "wall_u_m": 0.55,
+  "end_clear_m": 2,
+  "lamp_clear_m": 3.5,
+  "hydrant_first_m": 9,
+  "hydrant_step_m": 90,
+  "hydrant_min_span_m": 20,
+  "bin_first_m": 3.2,
+  "bin_min_span_m": 24,
+  "bench_min_span_m": 70,
+  "bench_min_walk_m": 2.3,
+  "bin_after_bench_m": 2.2,
+  "signal_back_m": 0.6,
+  "signal_in_m": 0.7,
+  "signal_min_priority": 2,
+  "signal_min_major": 2,
+  "signal_degree": 3,
+  "tree_first_m": 10,
+  "tree_step_m": 12,
+  "tree_min_walk_m": 2.4,
+  "tree_kerb_u_m": 0.9,
+  "tree_clear_m": 4,
+  "signal_cross_degree": 4
+ },
+ "wires": {
+  "_doc": "Wires between consecutive lamp poles: strand heights and offsets across the pole, sag share of the span.",
+  "y_m": [
+   9.45,
+   9.45,
+   9.45,
+   8.35
+  ],
+  "z_m": [
+   -0.75,
+   0.25,
+   0.75,
+   -0.3
+  ],
+  "pieces": 12,
+  "thick_m": 0.035,
+  "sag": 0.018,
+  "min_span_m": 4,
+  "max_span_m": 63,
+  "color": "#202224"
+ },
+ "trees": {
+  "_doc": "Low-poly trees (Roadcraft render/treeMeshes.ts tones) and where they grow (jobs/props.ts wild trees).",
+  "species": [
+   {
+    "name": "broadleaf",
+    "trunk": {
+     "radius": 0.17,
+     "height": 3.6,
+     "color": "#5a4a3a"
+    },
+    "crown_reach_m": 3.3,
+    "crowns": [
+     {
+      "center": [
+       0,
+       5.4,
+       0
+      ],
+      "radius": [
+       2.6,
+       2.3,
+       2.6
+      ],
+      "rough": 0.28,
+      "seed": 11
+     },
+     {
+      "center": [
+       0.8,
+       6.6,
+       0.5
+      ],
+      "radius": [
+       1.7,
+       1.5,
+       1.7
+      ],
+      "rough": 0.25,
+      "seed": 17
+     }
+    ],
+    "dark": "#2c4c22",
+    "lit": "#6f9e48",
+    "jitter": 0.15,
+    "shade_bottom": 0.6
+   },
+   {
+    "name": "conifer",
+    "trunk": {
+     "radius": 0.13,
+     "height": 1.6,
+     "color": "#4a3c2f"
+    },
+    "crown_reach_m": 2.4,
+    "crowns": [
+     {
+      "center": [
+       0,
+       5.2,
+       0
+      ],
+      "radius": [
+       1.5,
+       4.2,
+       1.5
+      ],
+      "rough": 0.18,
+      "seed": 37
+     }
+    ],
+    "dark": "#24452c",
+    "lit": "#5a8650",
+    "jitter": 0.15,
+    "shade_bottom": 0.55
+   },
+   {
+    "name": "shrub",
+    "trunk": {
+     "radius": 0.05,
+     "height": 0.3,
+     "color": "#4a3c2f"
+    },
+    "crown_reach_m": 1.1,
+    "crowns": [
+     {
+      "center": [
+       0,
+       0.75,
+       0
+      ],
+      "radius": [
+       1.2,
+       0.85,
+       1.2
+      ],
+      "rough": 0.25,
+      "seed": 53
+     }
+    ],
+    "dark": "#2c4a22",
+    "lit": "#5f8640",
+    "jitter": 0.15,
+    "shade_bottom": 0.6
+   }
+  ],
+  "placement": {
+   "view_m": 1200,
+   "near_m": 420,
+   "grid_m": 7,
+   "jitter_m": 2.8,
+   "keep_base": 0.18,
+   "keep_noise": 0.9,
+   "keep_scale": 0.6,
+   "noise_m": 260,
+   "noise_bias": 0.1,
+   "min_y_m": 0.6,
+   "max_grade": 0.75,
+   "road_margin_m": 1.5,
+   "lot_margin_m": 1.0,
+   "lot_reach_m": 40,
+   "scale_min": 0.75,
+   "scale_span": 0.55,
+   "park_m2_per_tree": 120,
+   "park_edge_m": 3,
+   "park_max": 14,
+   "build_per_frame": 6,
+   "broadleaf": 0,
+   "conifer": 1,
+   "shrub": 2,
+   "shrub_share": 0.15,
+   "conifer_share": 0.27,
+   "tints": [
+    "#ffffff",
+    "#d6e6b4",
+    "#f2ecc0",
+    "#e0f0d0"
+   ]
+  }
+ }
+}

@@ -1,0 +1,108 @@
+// The far level of a placed body (4.0 r40/render/buildings/massing.ts emitMassing, L1/L2 merged): each closed volume's
+// walls as one quad per side and storey band whose windows the shader paints from the opening shares of the style
+// (packed into UV2.y), the parapet as a raised wall with its coping, roof slabs, pitched roofs, machine rooms and the
+// plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and
+// machine rooms.
+#include "render/buildings/facade_bay.h"
+#include "render/buildings/b40_gen.h"
+
+using namespace godot;
+
+namespace city::b40 {
+
+namespace {
+constexpr float QUANT = 63.f, Q_STRIDE = 64.f, FLAG_STRIDE = 262144.f, PARAPET_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
+constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
+constexpr int FLAG_SHOP = 1, FLAG_CURTAIN = 2, FLAG_BLANK = 4;
+constexpr uint32_t GOLDEN = 2654435761u;
+constexpr int ID_OFF = 7;
+
+bool flat(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
+
+float window_code(const Placed &pl, const Volume &v, int k, int side, float W, float H) {
+	BayCtx c;
+	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
+	auto it = v.bays.find(bay_key(k, side, bays_of(v, side) / 2));
+	c.comp = it != v.bays.end() && it->second != BAY_DOOR && it->second != BAY_DOUBLE_DOOR ? it->second : v.fill[size_t(k)];
+	Opening o = opening_of(*pl.data, c);
+	int flags = (c.comp == BAY_SHOPFRONT ? FLAG_SHOP : 0) | (pl.b->wall_of(v).finish == FIN_GLASS ? FLAG_CURTAIN : 0) | (o.has ? 0 : FLAG_BLANK);
+	auto q = [](float x) { return std::round(std::clamp(x, 0.f, 1.f) * QUANT); };
+	return q(o.w / W) + Q_STRIDE * q(o.h0 / H) + Q_STRIDE * Q_STRIDE * q(o.h1 / H) + FLAG_STRIDE * float(flags);
+}
+
+bool on_top(const Body &b, const Volume &v) {
+	for (const Volume &o : b.volumes)
+		if (&o != &v && o.base == v.top() && o.x < v.x + v.w && o.x + o.w > v.x && o.y < v.y + v.d && o.y + o.d > v.y) return true;
+	return false;
+}
+
+void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
+	const Body &b = *pl.b;
+	float z0 = b.level_z(v.base);
+	bool parapet = roofs && flat(v.roof) && v.roof != ROOF_TERRACE && !on_top(b, v);
+	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : PARAPET_H;
+	Paint mp = moulding_of(pl);
+	for (const Side &sd : sides_of(pl, v, 0)) {
+		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * TEST_OUT };
+		int n = bays_of(v, sd.side);
+		float W = sd.length / float(n);
+		int8_t fin = b.wall_of(v).finish;
+		int k = 0;
+		while (k < v.storeys) {
+			int level = v.base + k, k1 = level == 0 && !pl.lean ? k + 1 : v.storeys;
+			float za = b.level_z(level), zb = b.level_z(v.base + k1);
+			if (!covered(b, v, level, mid)) {
+				float H = b.level_h(level);
+				Vector3 p[4] = { sd.f.at(0, za, 0), sd.f.at(sd.length, za, 0), sd.f.at(sd.length, zb, 0), sd.f.at(0, zb, 0) };
+				float kb = float(k1 - k);
+				Vector2 cell[4] = { Vector2(0, 0), Vector2(float(n), 0), Vector2(float(n), kb), Vector2(0, kb) };
+				s.grime_floor = pl.lot.o.y + z0;
+				s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, window_code(pl, v, k, sd.side, W, H));
+			}
+			k = k1;
+		}
+		float top = b.level_z(v.top());
+		if (parapet) {
+			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
+			Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
+			if (!pl.lean) s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+		}
+		if (v.base == 0 && !covered(b, v, 0, mid))
+			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
+		(void)z0;
+	}
+}
+
+void roof(Shell &s, const Placed &pl, const Volume &v) {
+	const Body &b = *pl.b;
+	float eaves = b.level_z(v.top());
+	if (!flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
+	Paint rp = v.roof == ROOF_TERRACE || on_top(b, v) ? pl.data->color("terrace")
+			: v.roof_paint >= 0 ? b.paints[size_t(v.roof_paint)]
+			: pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
+	Lin lin = paint_lin(rp);
+	std::vector<Vector3> p;
+	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, eaves), pl.lot.at(v.x + v.w, v.y, eaves), pl.lot.at(v.x + v.w, v.y + v.d, eaves), pl.lot.at(v.x, v.y + v.d, eaves) };
+	else
+		for (const Point2 &q : v.outline) p.push_back(pl.lot.at(v.x + q.x * v.w, v.y + q.y * v.d, eaves + SLAB_LIFT));
+	Vector3 c = pl.lot.at(v.x + v.w / 2, v.y + v.d / 2, eaves + SLAB_LIFT);
+	s.grime_floor = -FAR_AWAY;
+	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);
+	for (const Core &cr : b.cores) {
+		if (pl.lean) break;
+		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
+		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || on_top(b, v)) continue;
+		const Paint &wp = b.wall_of(v);
+		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
+	}
+}
+} // namespace
+
+void emit_far(Shell &shell, const Placed &pl, bool roofs) {
+	for (const Volume &v : pl.b->volumes) {
+		walls(shell, pl, v, roofs);
+		if (roofs) roof(shell, pl, v);
+	}
+}
+
+} // namespace city::b40

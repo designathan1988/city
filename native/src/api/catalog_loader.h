@@ -1,0 +1,23 @@
+// Converts the parsed data tables (project/data/catalog/*.json, read once by game/data/data_tables.gd)
+// into the C++ Catalog. Every key is required: a missing or mistyped key is reported and loading fails,
+// so no default value can silently replace the data.
+#pragma once
+
+#include "sim/catalog/catalog.h"
+
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
+
+namespace city {
+
+class CatalogLoader {
+public:
+	// tables: { "tuning": {...}, "maps": {...}, "roads": {...}, "zones": {...}, "services": {...} }
+	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
+	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
+};
+
+// data/catalog/traffic.json (api/traffic_loader.cpp).
+bool load_traffic_params(const godot::Dictionary &t, TrafficParams &p, godot::PackedStringArray &errors);
+
+} // namespace city

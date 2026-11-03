@@ -1,0 +1,144 @@
+{
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths.",
+ "road": {
+  "shader": "res://render/shaders/road.gdshader",
+  "params": {
+   "asphalt_map": "res://assets/surfaces/asphalt.map.png",
+   "asphalt_normal": "res://assets/surfaces/asphalt.normal.png",
+   "footway_map": "res://assets/surfaces/footway.map.png",
+   "footway_normal": "res://assets/surfaces/footway.normal.png",
+   "kerb_map": "res://assets/surfaces/kerb.map.png",
+   "verge_map": "res://assets/surfaces/verge.map.png",
+   "asphalt_m": 10.4,
+   "footway_m": 7.2,
+   "kerb_m": 3.2,
+   "verge_m": 8.8,
+   "normal_strength": 0.8,
+   "kerb_block_m": 1.0,
+   "gutter_joint_m": 1.0,
+   "paver_w": 0.2,
+   "paver_h": 0.1,
+   "cobble_per_m": 4.2,
+   "pool_color": "#ffd18c",
+   "pool_sigma": 6.0,
+   "pool_step": 32.0,
+   "pool_gain": 3.0,
+   "plate_glow": 0.3,
+   "pool_floor": 0.08
+  }
+ },
+ "building": {
+  "shader": "res://render/shaders/building.gdshader",
+  "params": {
+   "finish_map": "res://assets/surfaces/building-finishes.map.png",
+   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
+   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
+   "finish_m": [
+    8,
+    6,
+    2,
+    2.4,
+    3.2,
+    9.6,
+    4.8,
+    3.2,
+    6,
+    4,
+    4,
+    4.8,
+    8
+   ],
+   "finish_mean": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.081,
+    1,
+    0.226,
+    1,
+    1
+   ],
+   "day_inside": 0.3,
+   "glass_reflect": 0.2,
+   "glass_sky": "#7f95ad",
+   "glass_sky_floor": 0.25,
+   "finish_normal_k": [
+    0.2,
+    0.22,
+    0.25,
+    0.55,
+    0.3,
+    0.3,
+    0.45,
+    0.6,
+    0.3,
+    0.7,
+    0.6,
+    0.3,
+    0.35
+   ],
+   "finish_metal": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.55,
+    1.0,
+    0,
+    0,
+    0.15,
+    0
+   ],
+   "wall_gain": 1.0,
+   "lit_min": 0.15,
+   "lit_max": 0.62,
+   "room_depth_m": 4.5,
+   "lamp_glow": 4.0,
+   "window_glow": 1.5
+  }
+ },
+ "prop": {
+  "shader": "res://render/shaders/props.gdshader",
+  "params": {
+   "glow_color": "#ffdba0",
+   "glow_gain": 6.0,
+   "lit_gain": 2.2,
+   "lit_night_gain": 4.0,
+   "roughness": 0.85
+  }
+ },
+ "agent": {
+  "shader": "res://render/shaders/agents.gdshader",
+  "params": {
+   "head_glow": "#fff1c8",
+   "tail_glow": "#ff0d08",
+   "head_power": 4.0,
+   "tail_power": 1.5,
+   "brake_power": 2.5
+  }
+ },
+ "people": {
+  "shader": "res://render/shaders/people.gdshader",
+  "params": {
+   "tint_mix": 0.85,
+   "skin_base": 0.86,
+   "skin_step": 0.04,
+   "roughness_body": 0.82,
+   "eye_color": "#1c1611"
+  }
+ },
+ "overlay": {
+  "shader": "res://render/shaders/overlay.gdshader",
+  "params": {
+   "opacity": 0.6
+  }
+ }
+}

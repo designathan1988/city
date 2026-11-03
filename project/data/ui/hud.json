@@ -1,0 +1,87 @@
+{
+ "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it.",
+ "stats": [
+  {
+   "key": "money",
+   "label_key": "STAT_MONEY",
+   "format": "money"
+  },
+  {
+   "key": "population",
+   "label_key": "STAT_POPULATION",
+   "format": "int"
+  },
+  {
+   "key": "jobs_filled",
+   "label_key": "STAT_JOBS",
+   "format": "int"
+  },
+  {
+   "key": "happiness",
+   "label_key": "STAT_HAPPINESS",
+   "format": "percent"
+  },
+  {
+   "key": "vehicles",
+   "label_key": "STAT_VEHICLES",
+   "format": "int"
+  }
+ ],
+ "demand": [
+  {
+   "zone": 1,
+   "label_key": "DEMAND_RES",
+   "color": "demand_res"
+  },
+  {
+   "zone": 3,
+   "label_key": "DEMAND_COM",
+   "color": "demand_com"
+  },
+  {
+   "zone": 5,
+   "label_key": "DEMAND_IND",
+   "color": "demand_ind"
+  },
+  {
+   "zone": 6,
+   "label_key": "DEMAND_OFF",
+   "color": "demand_off"
+  }
+ ],
+ "speeds": [
+  {
+   "speed": 0,
+   "label_key": "SPEED_PAUSE"
+  },
+  {
+   "speed": 1,
+   "label_key": "SPEED_1"
+  },
+  {
+   "speed": 2,
+   "label_key": "SPEED_2"
+  },
+  {
+   "speed": 3,
+   "label_key": "SPEED_3"
+  }
+ ],
+ "tool_options": {
+  "zone_radius": [
+   8,
+   64,
+   24
+  ],
+  "terrain_radius": [
+   10,
+   120,
+   40
+  ],
+  "terrain_strength": [
+   0.1,
+   3.0,
+   1.0
+  ]
+ }
+}

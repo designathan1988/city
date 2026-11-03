@@ -1,0 +1,129 @@
+// Reading a city (save_format.h): the land is regenerated from the saved seed, then the sculpted tiles, modifiers,
+// roads, buildings and growth go back under their ids; lots and node shapes are derived again.
+#include "sim/persistence/save_format.h"
+
+#include "core/bytes.h"
+#include "sim/citygen/city_gen.h"
+#include "sim/state/city_state.h"
+
+namespace city {
+
+namespace {
+constexpr uint32_t MAX_RECORDS = 50000000; // sanity bound on any saved table
+
+Quad get_quad(ByteReader &r) {
+	Quad q;
+	q.x0 = r.get<double>(); q.z0 = r.get<double>();
+	q.cx = r.get<double>(); q.cz = r.get<double>();
+	q.x1 = r.get<double>(); q.z1 = r.get<double>();
+	return q;
+}
+
+bool read_terrain(ByteReader &r, Heightfield &t) {
+	int n = r.get<int32_t>(), regions = r.get<int32_t>(), rs = r.get<int32_t>();
+	if (!r.ok || n != t.N || regions != t.regions || rs != t.region_size) return false;
+	std::vector<uint8_t> dirty;
+	r.get_vec(dirty, t.tile_dirty.size());
+	if (!r.ok || dirty.size() != t.tile_dirty.size()) return false;
+	for (int k = 0; k < int(dirty.size()) && r.ok; k++) {
+		if (!dirty[k]) continue;
+		t.tile_dirty[k] = 1;
+		int x0 = (k % regions) * rs, z0 = (k / regions) * rs;
+		for (int z = z0; z < z0 + rs; z++) r.get_bytes(&t.base_q[size_t(z) * n + x0], size_t(rs) * sizeof(uint16_t));
+	}
+	t.recompose(0, 0, n - 1, n - 1);
+	uint32_t mods = r.get<uint32_t>();
+	if (!r.ok || mods > MAX_RECORDS) return false;
+	for (uint32_t i = 0; i < mods && r.ok; i++) {
+		if (!r.get<uint8_t>()) continue;
+		TerrainModifier m;
+		m.flat = r.get<float>(); m.max_run = r.get<float>();
+		m.minx = r.get<float>(); m.minz = r.get<float>(); m.maxx = r.get<float>(); m.maxz = r.get<float>();
+		r.get_vec(m.pts);
+		if (r.ok) t.put_modifier(int(i), m);
+	}
+	return r.ok;
+}
+
+bool read_roads(ByteReader &r, RoadNetwork &net) {
+	uint32_t nodes = r.get<uint32_t>();
+	if (!r.ok || nodes > MAX_RECORDS) return false;
+	for (uint32_t i = 0; i < nodes && r.ok; i++) {
+		if (!r.get<uint8_t>()) continue;
+		RoadNode n;
+		n.x = r.get<double>(); n.z = r.get<double>(); n.y = r.get<double>();
+		n.ctl = r.get<uint8_t>();
+		n.plain = r.get<uint8_t>() != 0;
+		if (r.ok) net.put_node(int(i), n);
+	}
+	uint32_t segs = r.get<uint32_t>();
+	if (!r.ok || segs > MAX_RECORDS) return false;
+	for (uint32_t i = 0; i < segs && r.ok; i++) {
+		if (!r.get<uint8_t>()) continue;
+		RoadSegment g;
+		g.a = r.get<int32_t>(); g.b = r.get<int32_t>();
+		g.q = get_quad(r);
+		g.profile = r.get<int32_t>();
+		g.zl = r.get<uint8_t>(); g.zr = r.get<uint8_t>();
+		g.flags = r.get<uint16_t>();
+		bool ends_ok = g.a >= 0 && g.b >= 0 && g.a < int(net.nodes.size()) && g.b < int(net.nodes.size()) &&
+				net.nodes[g.a].alive && net.nodes[g.b].alive && size_t(g.profile) < net.cat->profiles.size();
+		if (!ends_ok) return false;
+		if (r.ok) net.put_segment(int(i), g);
+	}
+	for (int n = 0; n < int(net.nodes.size()); n++) net.refresh_node(n);
+	return r.ok;
+}
+
+bool read_buildings(ByteReader &r, BuildingStore &bs) {
+	uint32_t count = r.get<uint32_t>();
+	if (!r.ok || count > MAX_RECORDS) return false;
+	for (uint32_t i = 0; i < count && r.ok; i++) {
+		if (!r.get<uint8_t>()) continue;
+		Building b;
+		b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
+		b.zone = r.get<uint8_t>();
+		b.fn = r.get<uint8_t>();
+		b.floors = r.get<uint16_t>();
+		b.seed = r.get<uint32_t>();
+		b.style = r.get<uint16_t>();
+		b.profile = r.get<uint16_t>();
+		b.landmark = r.get<int16_t>();
+		b.built = r.get<double>();
+		if (r.ok) bs.put(int(i), b, false);
+	}
+	return r.ok;
+}
+} // namespace
+
+bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
+	ByteReader r{ data, size };
+	error = "save.file.damaged";
+	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
+	if (r.get<uint32_t>() != SAVE_VERSION) {
+		error = "save.file.newer";
+		return false;
+	}
+	int map = r.get<int32_t>();
+	uint32_t seed = r.get<uint32_t>();
+	if (!r.ok || map < 0 || size_t(map) >= s.catalog.maps.size()) return false;
+	found_land(s, map, seed);
+	s.money = r.get<double>();
+	s.unlimited_money = r.get<uint8_t>() != 0;
+	s.clock.minutes.store(r.get<double>());
+	s.clock.day_shift = r.get<double>();
+	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	r.get_vec(s.growth.cells);
+	s.growth.grown = r.get<int32_t>();
+	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
+	mark_all_lot_cells(s);
+	s.lots.process_dirty(s);
+	s.log.network_changed = true;
+	s.ready = true;
+	s.touch();
+	s.saved_revision = s.revision;
+	error.clear();
+	return true;
+}
+
+} // namespace city

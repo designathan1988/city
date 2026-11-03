@@ -1,0 +1,1448 @@
+keys,pt_BR,en
+about.build,Versão,Build
+about.close,Fechar,Close
+action.about,Sobre,About
+action.newMap,Novo mapa,New map
+action.openMap,Abrir mapa,Open map
+action.redo,Refazer (Ctrl+Y),Redo (Ctrl+Y)
+action.resetView,Enquadrar a câmera (Home),Frame the camera (Home)
+action.saveMap,Salvar mapa,Save map
+action.undo,Desfazer (Ctrl+Z),Undo (Ctrl+Z)
+actions.bomb,Bomba,Bomb
+actions.pistol,Pistola,Pistol
+arch.artDeco,Art déco,Art deco
+arch.brick,Tijolinho,Brick
+arch.bungalow,Bangalô,Bungalow
+arch.civic,Cívico,Civic
+arch.colonial,Colonial,Colonial
+arch.colonialHouse,Casa colonial,Colonial house
+arch.contemporary,Contemporâneo,Contemporary
+arch.glass,Envidraçado,Glass
+arch.industrial,Industrial,Industrial
+arch.modernHouse,Casa moderna,Modern house
+arch.modernist,Modernista,Modernist
+arch.townhouse,Sobrado,Townhouse
+arch.tropical,Tropical,Tropical
+atmo.fog,Névoa (%),Mist (%)
+atmo.title,Céu e clima,Sky and weather
+barrier.kind.fence,Cerca,Fence
+barrier.kind.guardrail,Defensa (guard-rail),Guardrail
+barrier.kind.hedge,Sebe,Hedge
+barrier.kind.railing,Gradil urbano,Railing
+barrier.kind.wall,Muro,Wall
+builder.category.draw,Desenhar,Draw
+builder.category.facade,Fachada,Facade
+builder.category.interior,Interior,Inside
+builder.category.mass,Massa,Mass
+builder.category.models,Modelos,Models
+builder.category.paint,Cores,Colours
+builder.category.parts,Peças,Parts
+builder.category.roof,Telhado,Roof
+builder.field.function,Função,Function
+builder.help,Ajuda,Help
+builder.menu.app,Menu,Menu
+builder.menu.simulation,Simulação,Simulation
+building.fn.bakery,Padaria,Bakery
+building.fn.bank,Agência bancária,Bank
+building.fn.bar,Bar,Bar
+building.fn.busStation,Rodoviária,Bus station
+building.fn.cemetery,Cemitério,Cemetery
+building.fn.church,Igreja,Church
+building.fn.cinema,Cinema,Cinema
+building.fn.cityCouncil,Câmara de Vereadores,City council
+building.fn.cityHall,Prefeitura,City hall
+building.fn.clinic,Posto de saúde,Clinic
+building.fn.club,Clube,Club
+building.fn.courthouse,Fórum,Courthouse
+building.fn.fireStation,Bombeiros,Fire station
+building.fn.gasStation,Posto de gasolina,Gas station
+building.fn.gym,Academia,Gym
+building.fn.hospital,Hospital,Hospital
+building.fn.hotel,Hotel,Hotel
+building.fn.library,Biblioteca,Library
+building.fn.mall,Shopping,Mall
+building.fn.museum,Museu,Museum
+building.fn.none,Nenhuma,None
+building.fn.offices,Escritórios,Offices
+building.fn.park,Parque,Park
+building.fn.pharmacy,Farmácia,Pharmacy
+building.fn.playground,Parquinho,Playground
+building.fn.policeStation,Delegacia,Police station
+building.fn.postOffice,Correios,Post office
+building.fn.prison,Presídio,Prison
+building.fn.restaurant,Restaurante,Restaurant
+building.fn.school,Escola,School
+building.fn.snackBar,Lanchonete,Snack bar
+building.fn.sportsCourt,Quadra,Sports court
+building.fn.square,Praça,Square
+building.fn.supermarket,Supermercado,Supermarket
+building.fn.university,Faculdade,University
+camera.centre,Centro,Centre
+camera.label,Câmera,Camera
+camera.north,"Norte para cima, vista padrão (Home também enquadra o mapa)","North up, default view (Home frames the map too)"
+camera.perspective,"Câmera em perspectiva: ligar ou desligar (desligada, a vista é isométrica)","Perspective camera on or off (off, the view is isometric)"
+camera.tiltDown,"Baixar a câmera, rumo ao horizonte","Lower the camera, towards the horizon"
+camera.tiltUp,"Erguer a câmera, rumo à vista de cima","Raise the camera, towards a plan view"
+camera.zoom,Zoom,Zoom
+catalog.cat.avenues,Avenidas,Avenues
+catalog.cat.highways,Rodovias,Highways
+catalog.cat.mine,Meus modelos,My roads
+catalog.cat.rails,Trilhos,Rails
+catalog.cat.special,Especiais,Special
+catalog.cat.streets,Ruas,Streets
+catalog.customise,Personalizar…,Customise…
+catalog.empty,Nada nesta categoria.,Nothing in this category.
+catalog.meta,{width} m · {price}/m,{width} m · {price}/m
+catalog.mineEmpty,"Seus modelos aparecem aqui: escolha uma via, clique em ""Personalizar…"" e salve como modelo.","Your roads appear here: pick a road, click ""Customise…"" and save it as a template."
+catalog.oneWay,mão única,one-way
+catalog.tip,"{name}: {lanes}, {way}, {speed} km/h. Clique para desenhar com ela.","{name}: {lanes}, {way}, {speed} km/h. Click to draw with it."
+catalog.twoWay,mão dupla,two-way
+cloud.add,Criar nuvem,Add a cloud
+cloud.clear,Apagar todas as nuvens,Remove all clouds
+cloud.count,Quantidade,How many
+cloud.density,Densidade (%),Density (%)
+cloud.edit,Ajustar nuvem (aplica os valores abaixo),Adjust a cloud (applies the values below)
+cloud.height,Altura da base (m),Base height (m)
+cloud.move,Mover nuvem,Move a cloud
+cloud.remove,Apagar nuvem,Remove a cloud
+cloud.scatter,Espalhar pelo céu,Spread over the sky
+cloud.size,Tamanho (m),Size (m)
+cloud.spread,Espalhar nuvens,Spread clouds
+cloud.variation,Variação (%),Variation (%)
+cmd.build.building,construir prédio,build building
+cmd.build.changeProfile,trocar perfil,change profile
+cmd.build.changeStreetProfile,trocar perfil da rua,change the street's profile
+cmd.build.lotDrawn,lote desenhado,lot drawn
+cmd.build.road,construir via,build road
+cmd.build.roundabout,rotatória,roundabout
+cmd.build.wall,muro,wall
+cmd.demolish.area,demolir área,demolish area
+cmd.demolish.building,demolir prédio,demolish building
+cmd.demolish.crossing,remover faixa,remove crosswalk
+cmd.demolish.item,remover item,remove item
+cmd.demolish.line,apagar linha,delete line
+cmd.demolish.lot,apagar lote,delete lot
+cmd.demolish.lots,apagar lotes,delete lots
+cmd.demolish.road,demolir via,demolish road
+cmd.demolish.signRule,tirar placa com regra,remove sign with a rule
+cmd.demolish.stop,tirar parada,remove stop
+cmd.place.autoLaneLinks,conexões automáticas,automatic lane connections
+cmd.place.autoRules,regras automáticas,automatic rules
+cmd.place.bannedTurn,movimento proibido,banned movement
+cmd.place.bendRoad,curvar via,bend road
+cmd.place.blocks,quarteirões,blocks
+cmd.place.bomb,bomba,bomb
+cmd.place.buildingDesign,projeto do prédio,building design
+cmd.place.bus,ônibus,bus
+cmd.place.busPriority,prioridade ao ônibus,bus priority
+cmd.place.closeUTurn,fechar retorno,close U-turn
+cmd.place.crossing,faixa de pedestres,crosswalk
+cmd.place.duplicateRoad,duplicar via,duplicate road
+cmd.place.editBuilding,editar prédio,edit building
+cmd.place.elements,elementos,elements
+cmd.place.flattenMap,aplainar mapa,flatten map
+cmd.place.greenWave,onda verde,green wave
+cmd.place.heightPoint,ponto de altura,height point
+cmd.place.item,pôr item,place item
+cmd.place.joinRoads,unir vias,join roads
+cmd.place.junctionControl,controle do cruzamento,junction control
+cmd.place.laneLink,conexão de faixa,lane connection
+cmd.place.lineColour,cor da linha,line colour
+cmd.place.lockControl,travar controle,lock control
+cmd.place.loopLine,linha circular,loop line
+cmd.place.lotCorners,cantos do lote,lot corners
+cmd.place.lotFront,frente do lote,lot front
+cmd.place.lotSideCurve,curvar lado do lote,curve lot side
+cmd.place.mergeLots,juntar lotes,merge lots
+cmd.place.moveNode,mover nó,move node
+cmd.place.newLine,nova linha,new line
+cmd.place.nodeHeight,altura do nó,node height
+cmd.place.outAndBackLine,linha de ida e volta,out-and-back line
+cmd.place.paintGround,pintar o chão,paint the ground
+cmd.place.people,pessoas,people
+cmd.place.person,pôr pessoa,place person
+cmd.place.renovateBuilding,reformar prédio,renovate building
+cmd.place.repairMap,reparar mapa,repair map
+cmd.place.reverseRoad,inverter mão,reverse direction
+cmd.place.river,rio,river
+cmd.place.roadEnd,ponta da via,road end
+cmd.place.roadPaint,road paint,road paint
+cmd.place.roadRule,regra da via,road rule
+cmd.place.row,fileira,row
+cmd.place.rubble,entulho,rubble
+cmd.place.signRule,placa com regra,sign with a rule
+cmd.place.signText,texto da placa,sign text
+cmd.place.signalGreen,verde do semáforo,signal green
+cmd.place.signalOffset,defasagem,signal offset
+cmd.place.signalTimes,tempos do semáforo,signal timings
+cmd.place.splitLot,dividir lote,split lot
+cmd.place.splitLotByLine,dividir lote por linha,split lot by line
+cmd.place.splitLotsByLine,dividir lotes por linha,split lots by line
+cmd.place.splitRoad,dividir via,split road
+cmd.place.stop,parada,stop
+cmd.place.streetName,nome da rua,street name
+cmd.place.terminal,terminal,terminal
+cmd.place.terrain,relevo,terrain
+cmd.place.terrainBrush,pincel de terreno,terrain brush
+cmd.place.tree,plantar árvore,plant tree
+cmd.place.uTurn,retorno,U-turn
+cmd.place.wiredPoles,postes com fios,poles with wires
+cmd.place.zone,zonear,zone
+cmd.place.zoneBlock,zonear quadra,zone block
+compass.e,leste,east
+compass.label,"Bússola: clique para ficar de frente para o norte, arraste para girar e inclinar","Compass: click to face north, drag to turn and tilt"
+compass.n,norte,north
+compass.ne,nordeste,north-east
+compass.nw,noroeste,north-west
+compass.s,sul,south
+compass.se,sudeste,south-east
+compass.sw,sudoeste,south-west
+compass.w,oeste,west
+connectors.auto,automáticas,automatic
+connectors.custom,ajustadas à mão,set by hand
+connectors.lastExit,Essa é a última saída da faixa: ela não pode ficar sem caminho.,That is the lane’s last way on: it cannot be left without one.
+connectors.none,Este nó não tem faixas para conectar.,This node has no lanes to connect.
+connectors.pickIn,Clique numa faixa que chega (azul) para ver aonde ela pode ir.,Click an arriving lane (blue) to see where it may go.
+connectors.pickOut,Clique numa faixa que sai (verde) para ligar ou desligar a conexão.,Click a leaving lane (green) to add or remove that connection.
+connectors.reset,Restaurar automáticas,Restore automatic
+connectors.title,Conexões de faixa,Lane connections
+control.none,Sem controle,Uncontrolled
+creator.chooseTemplate,Escolher modelo…,Choose a template…
+creator.colour,Cor,Colour
+creator.design,Projeto,Design
+creator.facadeColour,Cor da fachada,Facade colour
+creator.finish,Acabamento,Finish
+creator.mine,Meus modelos,My templates
+creator.myBuilding,Meu prédio,My building
+creator.noDesign,Sem projeto,No design
+creator.noDesignTip,Volta ao prédio automático do gerador (pelo estilo e pela zona),Back to the automatic building (by style and zone)
+creator.none,Nenhum,None
+creator.notSaved,Não salvo: o armazenamento do navegador está cheio ou bloqueado.,Not saved: browser storage is full or blocked.
+creator.plan,Planta,Plan
+creator.preset.apartmentBlock,Prédio residencial,Apartment block
+creator.preset.churchWithTower,Igreja de torre,Church with tower
+creator.preset.courtyardBlock,Prédio com pátio (U),Courtyard block (U)
+creator.preset.factory,Fábrica,Factory
+creator.preset.house,Casa,House
+creator.preset.officeBuilding,Edifício de escritórios,Office building
+creator.preset.roundTower,Torre redonda,Round tower
+creator.preset.shop,Loja,Shop
+creator.preset.terracedTownhouse,Sobrado geminado,Terraced townhouse
+creator.preset.towerOnPodium,Torre com embasamento,Tower on a podium
+creator.preset.warehouse,Galpão,Warehouse
+creator.ready,Prontos,Ready-made
+creator.roof,Telhado,Roof
+creator.save,Salvar como modelo,Save as template
+creator.saveTip,Guarda este projeto (com os andares) na lista de modelos,Keeps this design (with the floors) in the template list
+creator.setbackFloors,Andares recuados,Setback floors
+creator.setbacks.one,{count} recuado,{count} setback floor
+creator.setbacks.other,{count} recuados,{count} setback floors
+creator.templateName,Nome do modelo,Template name
+creator.windows,Janelas,Windows
+creator.wing,Ala,Wing
+cutSides.batter,Talude,Slope
+cutSides.row,Corte,Cutting
+cutSides.walls,Muro,Walls
+design.finish.brick,Tijolo,Brick
+design.finish.ceramicTile,Cerâmica,Ceramic tile
+design.finish.concrete,Concreto,Concrete
+design.finish.glass,Vidro,Glass
+design.finish.metal,Metal,Metal
+design.finish.panel,Painel,Panel
+design.finish.plaster,Reboco,Plaster
+design.finish.scrapedRender,Massa raspada,Scraped render
+design.finish.stone,Pedra,Stone
+design.finish.wood,Madeira,Wood
+design.gear.airConditioning,Ar-condicionado,Air conditioning
+design.gear.antenna,Antena,Antenna
+design.gear.chimney,Chaminé,Chimney
+design.gear.solarPanels,Painéis solares,Solar panels
+design.gear.spire,Agulha,Spire
+design.gear.waterTank,Caixa d’água,Water tank
+design.roof.flat,Plana,Flat
+design.roof.gable,2 águas,Gable
+design.roof.hip,4 águas,Hip
+design.roof.sawtooth,Dente de serra,Sawtooth
+design.roof.shed,1 água,Shed
+design.roof.terrace,Terraço,Terrace
+design.shape.chamfered,Chanfrado,Chamfered
+design.shape.circle,Círculo,Circle
+design.shape.hexagon,Hexágono,Hexagon
+design.shape.lShaped,Em L,L-shaped
+design.shape.octagon,Octógono,Octagon
+design.shape.rectangle,Retângulo,Rectangle
+design.shape.uShaped,Em U,U-shaped
+design.windows.blankWall,Parede cega,Blank wall
+design.windows.fromTheFinish,Do acabamento,From the finish
+design.windows.glassBand,Faixa de vidro,Glass band
+design.windows.narrowWindows,Janelas estreitas,Narrow windows
+design.windows.wideWindows,Janelas largas,Wide windows
+design.wing.noWing,Sem ala,No wing
+design.wing.wingOnTheLeft,Ala à esquerda,Wing on the left
+design.wing.wingOnTheRight,Ala à direita,Wing on the right
+design.wing.wingsOnBothSides,Alas dos dois lados,Wings on both sides
+economy.money,R$ {value},$ {value}
+el.density,Densidade (por 100 m²),Density (per 100 m²)
+el.effects,Efeitos,Effects
+el.kind.clover,Trevo,Clover
+el.kind.dust,Poeira,Dust
+el.kind.fern,Samambaia,Fern
+el.kind.fire,Fogo,Fire
+el.kind.flowers,Flores,Flowers
+el.kind.grass,Grama,Grass
+el.kind.gravel,Cascalho,Gravel
+el.kind.leaves,Folhas secas,Fallen leaves
+el.kind.mushrooms,Cogumelos,Mushrooms
+el.kind.pebbles,Seixos,Pebbles
+el.kind.scrub,Mato,Scrub
+el.kind.smoke,Fumaça,Smoke
+el.kind.soot,Fuligem,Soot
+el.kind.sparks,Faíscas,Sparks
+el.kind.spray,Espuma e borrifo,Foam and spray
+el.kind.steam,Vapor,Steam
+el.kind.stones,Pedras,Stones
+el.kind.tallGrass,Capim alto,Tall grass
+el.mode.eraseAll,Apagar tudo,Erase all
+el.mode.eraseKind,Apagar este tipo,Erase this kind
+el.mode.lay,Colocar,Lay
+el.plants,Plantas,Plants
+el.size,Tamanho (m),Size (m)
+fmt.thousands,{n} mil,{n}k
+fog.erase,Apagar,Erase
+fog.height,Altura (m),Height (m)
+fog.lay,Pôr neblina,Lay fog
+game.confirm.flattenMap,Aplainar todo o terreno? Dá para desfazer com Ctrl+Z.,Flatten the whole terrain? Ctrl+Z undoes it.
+game.flow.generate,A geração da cidade,Generating the city
+game.flow.load,A abertura da cidade,Opening the city
+game.flow.newMap,O mapa novo,The new map
+game.flow.testCity,A cidade de teste,The test city
+game.hint.bomb,Clique onde a bomba cai: no chão ou num prédio. A força muda o tamanho da explosão.,Click where the bomb falls: on the ground or on a building. Force changes the size of the blast.
+game.hint.cloud.add,"Clique no mapa: uma nuvem nasce em cima do ponto, com o tamanho, a base e a densidade escolhidos.","Click the map: a cloud appears above the point with the chosen size, base and density."
+game.hint.cloud.edit,Clique numa nuvem para aplicar os valores das barras.,Click a cloud to apply the slider values.
+game.hint.cloud.move,Arraste uma nuvem (pela sombra no chão) para outro lugar.,Drag a cloud (by its spot on the ground) somewhere else.
+game.hint.cloud.remove,Clique numa nuvem para apagá-la.,Click a cloud to delete it.
+game.hint.elements,Arraste para espalhar o elemento escolhido (ou apagar); Raio e [ ] mudam o tamanho do pincel.,Drag to scatter the chosen element (or erase); Radius and [ ] change the brush size.
+game.hint.fog.erase,Arraste para apagar a neblina.,Drag to erase the fog.
+game.hint.fog.lay,Arraste para pôr neblina baixa (Raio muda o tamanho do pincel).,Drag to lay low fog (Radius changes the brush size).
+game.hint.forest,"Arraste para plantar um bosque, ou escolha Cortar para abrir clareira.","Drag to plant a wood, or choose Cut to open a clearing."
+game.hint.forest.one,Clique para plantar uma árvore da espécie escolhida.,Click to plant a tree of the chosen species.
+game.hint.inspect,"Clique num cruzamento para mudar o controle (semáforo, placas, movimentos) ou numa via para ver o perfil.","Click a junction to change its control (lights, signs, movements) or a road to see its profile."
+game.hint.landform,"Escolha o relevo e arraste (chapada, cânion, escarpa, ravina) ou clique (pão de açúcar); Força muda a altura, [ e ] o tamanho.","Pick a landform and drag (mesa, canyon, escarpment, gully) or click (sugarloaf); Strength sets the height, [ and ] the size."
+game.hint.lot.corner,Arraste um canto do lote para mudar o tamanho.,Drag a lot corner to resize it.
+game.hint.lot.curve,Clique perto de um lado do lote e depois onde esse lado deve passar: ele vira curva.,Click near a side of the lot and then where that side should pass: it becomes a curve.
+game.hint.lot.delete,Clique num prédio: vira lote vazio. Clique num lote vazio: ele some.,Click a building: it becomes an empty lot. Click an empty lot: it goes away.
+game.hint.lot.edit,"Clique num prédio para editar, ou num lote vazio para construir.","Click a building to edit it, or an empty lot to build."
+game.hint.lot.front,Clique perto de um lado do lote: a construção vira de frente para ele.,Click near a side of the lot: the building turns to face it.
+game.hint.lot.join,Clique num lote e depois no lote ao lado para juntá-los.,Click a lot and then the one next to it to join them.
+game.hint.lot.joinSecond,Agora clique no lote ao lado.,Now click the lot next to it.
+game.hint.lot.line,Clique dois pontos de uma linha que atravesse o lote: ele vira dois.,Click two points of a line across the lot: it becomes two.
+game.hint.lot.poly,"Clique os cantos do lote; Enter ou duplo clique fecha, Backspace volta um ponto.","Click the lot corners; Enter or double-click closes, Backspace steps back."
+game.hint.lot.rect,Clique no começo e no fim da frente do lote; depois no fundo.,Click the start and the end of the lot front; then the back.
+game.hint.lot.split,Clique num lote para dividi-lo (escolha lado a lado ou frente e fundos e em quantos).,"Click a lot to split it (choose side by side or front and back, and how many)."
+game.hint.paint,Arraste para pintar o chão (Grama apaga a pintura).,Drag to paint the ground (Grass erases the paint).
+game.hint.person,Escolha a roupa e a altura e clique: a pessoa fica ali parada ou sai andando pela calçada.,Choose the clothes and height and click: the person stands there or walks off along the sidewalk.
+game.hint.pistol,Clique numa pessoa: ela cai e some.,Click a person: they fall and disappear.
+game.hint.river,"Clique os pontos do rio, de cima para baixo; Enter ou duplo clique termina, Backspace volta, Esc descarta.","Click the river points from upstream down; Enter or double-click ends, Backspace steps back, Esc discards."
+game.hint.sky,Espalhe nuvens ou ponha neblina.,Scatter clouds or lay fog.
+game.hint.transit,Clique na calçada para pôr paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal.,Click a sidewalk to put stops on the line; click a stop to remove it; Shift+click makes the stop a terminal.
+game.hint.weather,"Ajuste chuva, vento e raios nas barras; clique no mapa para cair um raio ali.","Set rain, wind and lightning with the sliders; click the map to strike lightning there."
+game.hint.zone,Arraste para pintar a zona dos lados das vias.,Drag to paint the zone on the sides of the roads.
+game.hint.zone.block,Clique dentro de uma quadra: todas as vias em volta dela recebem a zona.,Click inside a block: every road around it gets the zone.
+game.loading.city,Gerando a cidade…,Generating the city…
+game.loading.lots,Lotes e prédios…,Lots and buildings…
+game.loading.options,Aplicando as opções…,Applying the options…
+game.loading.roads,Assentando as vias…,Laying the roads…
+game.loading.shaders,Preparando os shaders…,Preparing the shaders…
+game.loading.terrain,Gerando o relevo…,Generating the terrain…
+game.loading.video,Iniciando o vídeo…,Starting the video…
+game.options.unlimited,Dinheiro ilimitado (liga/desliga),Unlimited money (on/off)
+game.options.unlimitedTip,Modo livre: nada é cobrado neste mapa,Sandbox: nothing is charged on this map
+game.options.worstCase,Carregar o pior caso,Load the worst case
+game.options.worstCaseTip,Encher o mapa de ruas em grade e prédios em todos os lotes (teste de desempenho),Fill the map with a street grid and buildings on every lot (performance test)
+game.refuse.curveFirst,"clique primeiro perto de um lado, dentro do lote","first click near a side, inside the lot"
+game.toast.alreadyFront,Esse já é o lado da frente.,That is already the front.
+game.toast.alreadyNew,Esse prédio já está novo.,This building is already new.
+game.toast.bombDown,Construção desabou.,The building collapsed.
+game.toast.bombGround,Impacto no chão.,Hit the ground.
+game.toast.bombHit,Atingido: continue batendo para derrubar.,Hit: keep striking to bring it down.
+game.toast.buildWhere,Clique num prédio ou num lote vazio (zoneie as vias primeiro).,Click a building or an empty lot (zone the roads first).
+game.toast.deleted,Apagado.,Deleted.
+game.toast.demolished.one,Demolido: 1 coisa,Demolished: 1 thing
+game.toast.demolished.other,Demolido: {count} coisas,Demolished: {count} things
+game.toast.flattened,Mapa aplainado.,Map flattened.
+game.toast.flowFailed,{what} não terminou: {message}. A cidade na tela está incompleta e não será salva; o salvamento anterior não foi tocado.,{what} did not finish: {message}. The city on screen is incomplete and will not be saved; the previous save was not touched.
+game.toast.followLost,A câmera soltou o veículo.,The camera let go of the vehicle.
+game.toast.followNone,Nenhum veículo perto do centro da tela: aproxime a câmera de uma via com trânsito.,No vehicle near the centre of the screen: bring the camera closer to a road with traffic.
+game.toast.following,Seguindo o veículo. Esc ou C solta; a roda aproxima.,Following the vehicle. Esc or C lets go; the wheel zooms.
+game.toast.frontSet,Frente definida: a construção olha para esse lado.,Front set: the building faces that side.
+game.toast.generated,Cidade gerada em {secs} s: {buildings} prédios e {roads} trechos de via.,City generated in {secs} s: {buildings} buildings and {roads} road segments.
+game.toast.hit,Atingido.,Hit.
+game.toast.insideNone,Nenhum prédio escolhido nem no centro da tela: clique num prédio ou aponte a vista para um.,No building chosen or at the centre of the screen: click a building or point the view at one.
+game.toast.lotCreated,Lote novo criado.,New lot created.
+game.toast.lotNarrow,Lote estreito demais.,Lot too narrow.
+game.toast.lotSplit,Lote dividido.,Lot split.
+game.toast.lotSplitLine,Lote dividido pela linha.,Lot split along the line.
+game.toast.lotsJoined,Lotes juntados.,Lots joined.
+game.toast.mapTooBig,Sua placa de vídeo não comporta aquele tamanho de mapa: abri no maior que cabe.,Your graphics card cannot hold that map size: opened the largest that fits.
+game.toast.maxClouds,O céu já tem o máximo de nuvens ({n}).,The sky already has the most clouds ({n}).
+game.toast.missed,Ninguém aí: clique numa pessoa.,Nobody there: click a person.
+game.toast.noCloud,Nenhuma nuvem aqui: clique embaixo de uma.,No cloud here: click under one.
+game.toast.noLot,Nenhum lote aqui: desenhe um ou zoneie a rua.,No lot here: draw one or zone the street.
+game.toast.noSidewalk,Essa via não tem calçada.,This road has no sidewalk.
+game.toast.notChanged,Não mudou: {why}.,Not changed: {why}.
+game.toast.paused,Pausado. Espaço continua.,Paused. Space resumes.
+game.toast.peopleCreated,{n} pessoas criadas.,{n} people created.
+game.toast.peopleWalk,{n} pessoas saíram andando pela calçada.,{n} people walked off along the sidewalk.
+game.toast.personCreated,Pessoa criada.,Person created.
+game.toast.personWalks,A pessoa saiu andando pela calçada.,The person walked off along the sidewalk.
+game.toast.profileCopied,Via copiada: {name},Road copied: {name}
+game.toast.refunded," · devolvido {money}"," · refunded {money}"
+game.toast.renovatePick,Escolha um prédio para reformar.,Choose a building to renovate.
+game.toast.renovated,Prédio reformado: novo de novo.,Building renovated: new again.
+game.toast.resumed,Continuando.,Resuming.
+game.toast.river,Rio feito: a água desce sempre pelo caminho desenhado.,River made: the water always flows down the drawn path.
+game.toast.saveBlocked,A cidade na tela está incompleta (a abertura ou a geração não terminou) e não é salva. Abra ou crie uma cidade.,The city on screen is incomplete (opening or generating did not finish) and is not saved. Open or make a city.
+game.toast.selectFirst,Selecione um prédio primeiro.,Select a building first.
+game.toast.sideCurved,Lado curvado.,Side curved.
+game.toast.stationOnTrack,Ponha a estação sobre um trilho (Via → Trilhos).,Put the station on a track (Transit → Train track).
+game.toast.stopNearRoad,Ponha a parada perto de uma via.,Put the stop near a road.
+game.toast.streetNamed,Rua {name}.,Street {name}.
+game.toast.terminalHow,Shift+clique numa parada para torná-la terminal.,Shift+click a stop to make it a terminal.
+game.toast.terminalOff,Não é mais terminal.,No longer a terminal.
+game.toast.terminalOn,Terminal: os ônibus esperam mais e dão a volta aqui.,Terminal: buses wait longer and turn around here.
+game.toast.testCity,Gerando a cidade de teste…,Generating the test city…
+game.toast.testCityDone,Cidade de teste: {buildings} prédios e {roads} trechos de rua.,Test city: {buildings} buildings and {roads} street segments.
+game.toast.testCityRefused,{n} rua(s) da cidade de teste não puderam ser construídas (vias demais num cruzamento).,{n} street(s) of the test city could not be built (too many roads at a junction).
+game.toast.unlimitedOff,Dinheiro de volta ao caixa.,Money back in the bank.
+game.toast.unlimitedOn,Modo livre: dinheiro ilimitado.,Sandbox: unlimited money.
+game.toast.victims,Houve vítimas: {people} e {vehicles}.,There were victims: {people} and {vehicles}.
+game.toast.webgl,WebGPU indisponível: rodando no modo de compatibilidade (WebGL 2).,WebGPU unavailable: running in compatibility mode (WebGL 2).
+gfx.ao,Oclusão de ambiente,Ambient occlusion
+gfx.close,Fechar,Close
+gfx.fullscreen,Tela cheia,Full screen
+gfx.gpu,Placa de vídeo,Graphics card
+gfx.preset,Predefinição,Preset
+gfx.shadows,Sombras,Shadows
+health.button,Saúde do jogo (F9),Game health (F9)
+health.context,Fazendo,Doing
+health.copied,Copiado,Copied
+health.copy,Copiar registro,Copy log
+health.copyFailed,Não foi possível copiar: o navegador recusou a área de transferência,Could not copy: the browser refused the clipboard
+health.empty,Nada registrado,Nothing recorded
+health.msg.noMessage,Erro sem mensagem,Error with no message
+health.msg.rejected,Promessa rejeitada: {reason},Promise rejected: {reason}
+health.msg.simulation,simulação: {message},simulation: {message}
+health.status.broken,Algo quebrou nos últimos 30 s,Something broke in the last 30 s
+health.status.ok,Nada quebrou nem travou nos últimos 30 s,Nothing broke or hitched in the last 30 s
+health.status.slow,Houve quadro lento nos últimos 30 s,A frame was slow in the last 30 s
+health.tab.health,Saúde,Health
+health.tab.state,Estado,State
+health.tab.world,Mudanças,Changes
+health.title,Saúde do jogo,Game health
+help.do.barrierBack,Desfazer o último ponto,Take the last point back
+help.do.barrierCancel,Descartar o traço,Drop the run
+help.do.barrierEnd,Construir o traço,Build the run
+help.do.barrierPoint,Pôr um ponto; siga clicando para continuar o traço,Put a point down; keep clicking to carry the run on
+help.do.barrierRemove,"Remover um muro, cerca ou sebe","Remove a wall, fence or hedge"
+help.do.close,Fechar o que estiver aberto,Close what is open
+help.do.orbit,Girar e inclinar a câmera (clique direito cancela),Turn and tilt the camera (a right click cancels)
+help.do.pan,Mover o mapa,Move the map
+help.do.pick,Escolher uma via ou um cruzamento,Pick a road or a junction
+help.do.remove,Remover (no Inspecionar: Delete remove a via mostrada),Remove (with Inspect: Delete removes the road shown)
+help.do.streetscape,Pôr o item escolhido na calçada,Place the chosen item on the footway
+help.do.streetscapeRemove,Remover um item,Remove an item
+help.do.undo,Desfazer a última remoção,Undo the last removal
+help.do.zoom,Zoom,Zoom
+help.key.backspace,Backspace,Backspace
+help.key.click,Clique,Click
+help.key.doubleClickEnter,Duplo clique / Enter,Double click / Enter
+help.key.esc,Esc,Esc
+help.key.home,Home,Home
+help.key.orbitDrag,Arrastar (direito),Right-drag
+help.key.pageUpDown,Page Up / Down,Page Up / Down
+help.key.panDrag,Arrastar (meio) · W A S D,Middle-drag · W A S D
+help.key.qe,Q / E,Q / E
+help.key.shiftClick,Shift + clique,Shift + click
+help.key.undo,Ctrl + Z,Ctrl + Z
+help.key.wheel,Roda,Wheel
+help.section.camera,Câmera,Camera
+help.section.tool,Esta ferramenta,This tool
+help.strike.shoot,Clique onde quer atirar.,Click where to shoot.
+help.strike.strike,Clique onde a bomba cai: no chão ou num prédio. A força muda o tamanho da explosão.,Click where the bomb falls: on the ground or on a building. The force sets the size of the blast.
+help.tool.barrier,"Desenha muros, cercas e sebes por um caminho, como as estradas. Perto de uma via o ponto vai para as costas da calçada, rente às casas.","Draws walls, fences and hedges along a path, as roads are drawn. Near a road a point goes onto the back of the pavement, flush with the houses."
+help.tool.bulldoze,"Remove o que você clicar: uma via, um cruzamento, um poste ou um edifício. Tudo o que for removido volta com Desfazer.","Removes what you click: a road, a junction, a pole or a building. Anything removed comes back with Undo."
+help.tool.pole,Coloca postes com fios nas calçadas. Clique numa calçada e siga clicando: os postes acompanham a calçada e viram nas esquinas.,Sets wire poles on the footways. Click a footway and keep clicking: the poles follow the footway and turn at the corners.
+help.tool.poleRemove,"Clique num poste para removê-lo, com os fios. Shift+clique faz o mesmo enquanto constrói.","Click a pole to remove it, with its wires. Shift+click does the same while building."
+help.tool.streetscape,"Coloca árvores, arbustos, bancos, lixeiras, iluminação, hidrantes e caixas de correio nas calçadas. Clique numa calçada para pôr o item escolhido.","Places trees, shrubs, benches, bins, street lights, hydrants and post boxes on the footways. Click a footway to place the chosen item."
+hint.control,Clique num cruzamento para mudar o controle · Shift: voltar,Click a junction to change its control · Shift: go back
+hint.move,Arraste um nó para reposicionar,Drag a node to reposition it
+hint.profile.toStreet,Perfil copiado para a rua inteira,Profile copied to the whole street
+hint.roundabout,Clique em terreno livre para criar uma rotatória · Ligue os quatro acessos com a ferramenta de via,Click vacant ground to place a roundabout · Connect its four arms with the road tool
+hint.split,Clique numa via para dividir,Click a road to split it
+hint.streetscape.row,Fileira posta ao longo da calçada,Row laid along the footway
+hint.tool.bomb,Clique onde a bomba cai: no chão ou num prédio. A força muda o tamanho da explosão.,Click where the bomb falls: on the ground or a building. Strength changes the blast size.
+hint.tool.elements,Arraste para espalhar o elemento escolhido; [ e ] mudam o tamanho do pincel.,Drag to scatter the chosen element; [ and ] change the brush size.
+hint.tool.flatten,Nivela na altura onde você começa o traço.,Levels to the height where the stroke starts.
+hint.tool.forest,Arraste para plantar um bosque da espécie escolhida.,Drag to plant a forest of the chosen species.
+hint.tool.inspect,Clique num cruzamento para mudar o controle ou numa via para ver o perfil e as ações.,"Click a junction to change its control, or a road to see its profile and actions."
+hint.tool.landform,Arraste para erguer o relevo escolhido (o pão de açúcar também com um clique); [ e ] mudam o tamanho.,Drag to raise the chosen landform (the sugarloaf also with a click); [ and ] change the size.
+hint.tool.lower,Arraste para rebaixar o terreno; [ e ] mudam o tamanho do pincel.,Drag to lower the terrain; [ and ] change the brush size.
+hint.tool.paint,Arraste para pintar o chão (Grama apaga a pintura).,Drag to paint the ground (Grass erases paint).
+hint.tool.person,Escolha a roupa e a altura e clique: a pessoa fica ali parada ou sai andando pela calçada.,Choose clothes and height and click: the person stands there or walks off along the sidewalk.
+hint.tool.pistol,Clique numa pessoa: ela cai e some.,Click a person: they fall and disappear.
+hint.tool.raise,Arraste para elevar o terreno; [ e ] mudam o tamanho do pincel.,Drag to raise the terrain; [ and ] change the brush size.
+hint.tool.river,"Clique os pontos do rio, de cima para baixo; Enter ou duplo clique termina, Backspace volta, Esc descarta.","Click the river points from upstream down; Enter or double-click ends, Backspace steps back, Esc discards."
+hint.tool.smooth,Arraste para alisar o terreno.,Drag to smooth the terrain.
+hint.tool.transit,Clique na calçada para pôr paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal.,Click a sidewalk to add stops to the line; click a stop to remove it; Shift+click makes it a terminal.
+hint.tool.weather,"Ajuste chuva, vento e raios; clique no mapa para cair um raio ali.","Set rain, wind and lightning; click the map to strike lightning there."
+hint.tool.zone,Arraste para pintar a zona dos lados das vias; os prédios crescem sozinhos.,Drag to paint the zone along the roads; buildings grow by themselves.
+hint.uturn.placed,Retorno aberto no canteiro.,U-turn opened in the median.
+history.redoFailed,"Não foi possível refazer ""{label}"": {message}. Nada mudou; o passo continua lá para refazer.","Could not redo ""{label}"": {message}. Nothing was changed; the step is still there to redo."
+history.undoFailed,"Não foi possível desfazer ""{label}"": {message}. Nada mudou; o passo continua lá para desfazer.","Could not undo ""{label}"": {message}. Nothing was changed; the step is still there to undo."
+inside.down,Andar abaixo,Floor below
+inside.floor,{n}º andar,Floor {n}
+inside.ground,Térreo,Ground
+inside.toggle,Ver por dentro: o prédio no centro da vista (ou dê dois cliques num prédio),See inside: the building in the middle of the view (or double-click a building)
+inside.up,Andar acima,Floor above
+insp.end.auto,Automática,Automatic
+insp.end.hasBulb,Esta ponta tem balão de retorno: os carros dão a volta nela.,This end has a turning bulb: cars turn round in it.
+insp.end.noBulb,"Esta ponta não tem balão: via larga, curta ou outra via perto demais (escolha Balão para pôr mesmo assim).","This end has no bulb: the road is wide or short, or another road is too near (pick Bulb to have one anyway)."
+insp.end.plain,Reta,Plain
+insp.end.title,Ponta da via,Road end
+inspector.addHeightPoint,Adicionar ponto de altura aqui,Add height point here
+inspector.addSignalCrossing,Faixa com semáforo,Signal crossing
+inspector.addZebra,Faixa zebra,Zebra crossing
+inspector.capacity,CAPACIDADE,CAPACITY
+inspector.capacityValue.one,{count} veículo,{count} vehicle
+inspector.capacityValue.other,{count} veículos,{count} vehicles
+inspector.close,Fechar inspetor,Close inspector
+inspector.connections,CONEXÕES,CONNECTIONS
+inspector.control,CONTROLE,CONTROL
+inspector.crossingSignal,Faixa de pedestres: com semáforo.,Pedestrian crossing: traffic signal.
+inspector.crossingZebra,Faixa de pedestres: zebra (pedestre tem preferência).,Pedestrian crossing: zebra (pedestrians have priority).
+inspector.curvature,Curvatura,Curvature
+inspector.curvePosition,Posição da curva,Curve position
+inspector.cycle,CICLO,CYCLE
+inspector.demolish,Demolir,Demolish
+inspector.duplicate,Duplicar via,Duplicate road
+inspector.duplicateHint,Duplicar via (Ctrl/Cmd+D),Duplicate road (Ctrl/Cmd+D)
+inspector.end.bulb,Balão de retorno,Turning circle
+inspector.endEnd,Ponta final,End of the road
+inspector.endStart,Ponta inicial,Start of the road
+inspector.heightEnd,Altura final (m),End height (m)
+inspector.heightNode,Altura da via (m),Road height (m)
+inspector.heightPoint,PONTO DE ALTURA,HEIGHT POINT
+inspector.heightStart,Altura inicial (m),Start height (m)
+inspector.impossible,IMPOSSÍVEL DE CONSTRUIR,CANNOT BE BUILT
+inspector.impossibleBody,Abaixo de 25° a junção não fecha. Ela está sendo desenhada em forma degradada para não pintar calçada sobre a grama.,Below 25° the junction cannot close. It is drawn in a degraded form so that no pavement is painted over the grass.
+inspector.impossibleGap,{angle}° entre duas vias,{angle}° between two roads
+inspector.joinAligned,Unir vias alinhadas,Join the aligned roads
+inspector.junction,CRUZAMENTO,JUNCTION
+inspector.lanes,FAIXAS,LANES
+inspector.lanesOneWay,{count} em mão única,{count} one-way
+inspector.lanesTwoWay,{count} ({perSide} por sentido),{count} ({perSide} each way)
+inspector.length,EXTENSÃO,LENGTH
+inspector.meanSpeed,VEL. MÉDIA,MEAN SPEED
+inspector.mouths,Recuo por via,Setback per leg
+inspector.movements,MOVIMENTOS,MOVEMENTS
+inspector.node,NÓ,NODE
+inspector.numbers,Nº {from} a {to} · pares à direita no sentido da numeração,Numbers {from} to {to} · even on the right going up
+inspector.parkingLeft,Estacionamento à esquerda,Parking on the left
+inspector.parkingRight,Estacionamento à direita,Parking on the right
+inspector.phase,FASE,PHASE
+inspector.queue,FILA,QUEUE
+inspector.removeCrossing,Remover faixa,Remove crossing
+inspector.reverse,Inverter mão única,Reverse one-way
+inspector.road,VIA,ROAD
+inspector.speed,VELOCIDADE,SPEED
+inspector.splitMiddle,Dividir no meio,Split at the middle
+inspector.upgrade,Melhorar classe,Upgrade class
+inspector.vehicles,VEÍCULOS,VEHICLES
+inspector.volume,VOLUME,VOLUME
+junction.busPriority,Prioridade ao ônibus,Bus priority
+junction.control,Controle do cruzamento,Junction control
+junction.control.auto,Automático,Automatic
+junction.control.mini,Minirrotatória,Mini-roundabout
+junction.control.none,Sem sinalização,Unsigned
+junction.control.priority,Placas,Signs
+junction.control.signal,Semáforo,Signal
+junction.control.stop,Pare em todas,All-way stop
+junction.control.yield,Preferência em todas,All give way
+junction.from,{leg},{leg}
+junction.greenWave,Onda verde na via principal,Green wave along the main road
+junction.greenWaveNone,A via principal não tem outro semáforo para coordenar.,The main road has no other signal to coordinate.
+junction.legs,Regra de cada via,Each road’s rule
+junction.locked,Travado na sua escolha.,Locked on your choice.
+junction.lower,"Descer 0,5 m",Lower 0.5 m
+junction.mainRoad,via principal,main road
+junction.mode.adaptive,Adaptativo,Adaptive
+junction.mode.fixed,Tempo fixo,Fixed time
+junction.moveAllowed,Permitido: clique para proibir,Allowed: click to ban
+junction.moveBlocked,Proibido: clique para permitir,Banned: click to allow
+junction.movements,Movimentos permitidos,Movements allowed
+junction.offset,Defasagem,Offset
+junction.perHour,{n} veíc./h,{n} veh/h
+junction.raise,"Subir 0,5 m",Raise 0.5 m
+junction.rule.priority,Preferencial,Priority
+junction.rule.stop,Pare,Stop
+junction.rule.yield,Dê a preferência,Give way
+junction.rulesReset,Voltar às regras automáticas,Back to the automatic rules
+junction.signal,Semáforo,Signal
+junction.signalMode,Tempos,Timing
+junction.stage,Fase {n},Stage {n}
+junction.unlock,Destravar (automático),Unlock (automatic)
+keys.ctrlD,Ctrl + D,Ctrl + D
+keys.ctrlO,Ctrl + O,Ctrl + O
+keys.ctrlShiftZ,Ctrl + Shift + Z,Ctrl + Shift + Z
+keys.do.changes,Mudanças recentes do mundo (desenvolvedor),Recent changes to the world (developer)
+keys.do.duplicate,Duplicar ao lado a via mostrada no inspetor,Duplicate alongside the road shown in the inspector
+keys.do.home,Voltar à vista de quando a cidade abriu,Back to the view the city opened with
+keys.do.open,Abrir um mapa salvo em arquivo,Open a map saved to a file
+keys.do.quarterTurn,Girar um quarto de volta,Turn a quarter
+keys.do.save,Salvar,Save
+keys.section.game,Atalhos,Shortcuts
+keys.section.tools,Ferramentas,Tools
+keys.shiftQE,Shift + Q / E,Shift + Q / E
+map.loading,Carregando o mapa…,Loading the map…
+menu.graphicsOptions,Opções gráficas…,Graphics options…
+menu.language,Idioma,Language
+menu.paint,Pintura,Paint
+menu.quality,Gráficos,Graphics
+paint.biome,Bioma,Biome
+paint.br,Brasil,Brazil
+paint.classic,Clássica,Classic
+paint.eu,Europa,Europe
+paint.kind,Tipo de chão,Ground
+paint.kind.amazon,Amazônia,Amazon
+paint.kind.asphalt,Asfalto,Asphalt
+paint.kind.atlantic,Mata Atlântica,Atlantic forest
+paint.kind.basalt,Rocha: basalto,Rock: basalt
+paint.kind.caatinga,Caatinga,Caatinga
+paint.kind.cerrado,Cerrado,Cerrado
+paint.kind.concrete,Concreto,Concrete
+paint.kind.flowers,Flores,Flowers
+paint.kind.forest,Floresta,Forest
+paint.kind.granite,Rocha: granito,Rock: granite
+paint.kind.grass,Grama (apaga),Grass (erases)
+paint.kind.gravel,Cascalho,Gravel
+paint.kind.meadow,Mato,Meadow
+paint.kind.mud,Lama,Mud
+paint.kind.pampa,Pampa,Pampa
+paint.kind.pantanal,Pantanal,Pantanal
+paint.kind.rocks,Pedras,Rocks
+paint.kind.sand,Areia,Sand
+paint.kind.sandstone,Rocha: arenito,Rock: sandstone
+paint.kind.scrub,Mata baixa,Low scrub
+paint.kind.snow,Neve,Snow
+paint.kind.soil,Terra,Soil
+paint.us,EUA,USA
+palette.alignment.curve,Curva,Curve
+palette.alignment.free,Livre,Free
+palette.alignment.straight,Reta,Straight
+palette.blocks,Quarteirões de uma vez,Blocks at once
+palette.blocks.angle,Giro,Turn
+palette.blocks.cols,Colunas,Columns
+palette.blocks.rows,Linhas,Rows
+palette.blocks.size,Quadra,Block size
+palette.height,Altura da via,Road height
+palette.kind,Tipo de via,Road type
+palette.lanes.count.one,{count} faixa,{count} lane
+palette.lanes.count.other,{count} faixas,{count} lanes
+palette.lanes.median,Com canteiro,With median
+palette.trace,Traçado,Alignment
+palette.width,Largura total,Total width
+palette.width.auto,Padrão,Default
+parking.none,Sem vagas,No parking
+parking.parallel,Paralelo à guia,Parallel to the kerb
+parking.preset.cycle,Ciclofaixa dos dois lados,Cycle lanes on both sides
+parking.preset.cycleParking,"Ciclofaixa à direita, vagas à esquerda","Cycle lane on the right, parking on the left"
+parking.preset.none,Sem estacionamento,No parking
+parking.preset.parallel,Vagas paralelas nos dois lados,Parallel bays on both sides
+parking.preset.parallelLeft,Vagas paralelas à esquerda,Parallel bays on the left
+parking.preset.parallelRight,Vagas paralelas à direita,Parallel bays on the right
+pole.lamps,Iluminação nos postes,Lights on the poles
+pole.lamps.all,Luz em todos os postes,A light on every pole
+pole.lamps.alternate,Luz em postes alternados,A light on every other pole
+pole.lamps.none,Sem luz,No lights
+pole.mode.build,Construir rede,Build line
+pole.mode.remove,Remover postes,Remove poles
+profile.avenue,Avenida,Avenue
+profile.avenue4Lanes,Avenida 4 faixas,4-lane avenue
+profile.avenue6LanesMedian,Avenida 6 faixas com canteiro,6-lane avenue with median
+profile.avenueWithCycleTrack,Avenida com ciclovia,Avenue with cycle track
+profile.avenueWithParking,Avenida com estacionamento,Avenue with parking
+profile.boulevard,Bulevar,Boulevard
+profile.centralBusway,Corredor de ônibus central,Central busway
+profile.cobblestoneStreet,Rua de paralelepípedo,Cobblestone street
+profile.concreteRoad,Estrada de concreto,Concrete road
+profile.copied,Via copiada,Copied road
+profile.countryRoad,Estrada simples,Country road
+profile.curbsideBusLane,Faixa de ônibus lateral,Curbside bus lane
+profile.diagram,"A via de lado a lado, da borda esquerda à direita, vista de A para B","The road across, left edge to right edge, seen from A towards B"
+profile.doubleRailway,Ferrovia dupla,Double railway
+profile.drawWith,Desenhar com este perfil,Draw with this profile
+profile.drawWithTip,"Conta-gotas: a ferramenta de vias pega esta via como ela é, para desenhar outras iguais","Eyedropper: the road tool takes this road as it is, to draw new roads like it"
+profile.dualCarriageway2Lanes,"Pista dupla, 2 faixas","Dual carriageway, 2 lanes"
+profile.element.cycle,Ciclofaixa,Cycle lane
+profile.element.footway,Calçada,Footway
+profile.element.lane,Faixa,Lane
+profile.element.median,Canteiro,Median
+profile.element.parking,Estacionamento,Parking
+profile.expressway,Via expressa,Expressway
+profile.highway6Lanes,Rodovia 6 faixas,6-lane highway
+profile.localStreet,Rua local,Local street
+profile.material.carriageway,Pista,Carriageway
+profile.materialName.asphalt,Asfalto,Asphalt
+profile.materialName.cobble,Paralelepípedo,Cobblestones
+profile.materialName.concrete,Concreto,Concrete
+profile.materialName.grass,Grama,Grass
+profile.materialName.pavers,Bloquete,Pavers
+profile.materialName.stone,Pedra,Stone
+profile.metroDouble,Metrô (duplo),Metro (double)
+profile.narrowStreet,Rua estreita,Narrow street
+profile.notRemoved,Não apagado: o armazenamento do navegador está cheio ou bloqueado.,Not deleted: browser storage is full or blocked.
+profile.notSaved,Não salvo: dê um nome.,Not saved: give it a name.
+profile.notStored,Não salvo: o armazenamento do navegador está cheio ou bloqueado.,Not saved: browser storage is full or blocked.
+profile.oneWay1Lane,"Mão única, 1 faixa","One-way, 1 lane"
+profile.oneWay2Lanes,"Mão única, 2 faixas","One-way, 2 lanes"
+profile.oneWayAvenue3Lanes,"Avenida mão única, 3 faixas","One-way avenue, 3 lanes"
+profile.oneWayAvenue4Lanes,"Avenida mão única, 4 faixas","One-way avenue, 4 lanes"
+profile.oneWayHighway2Lanes,"Rodovia mão única, 2 faixas","One-way highway, 2 lanes"
+profile.oneWayHighway3Lanes,"Rodovia mão única, 3 faixas","One-way highway, 3 lanes"
+profile.oneWayWithParking,Mão única com estacionamento,One-way with parking
+profile.parkingOneSide,Estacionamento de um lado,Parking on one side
+profile.problem.busOnly,"Cada sentido precisa de pelo menos uma faixa para todos os veículos, além das de ônibus.",Each direction needs at least one lane for every vehicle besides its bus lanes.
+profile.problem.class,Esta classe de via não tem estacionamento nem ciclofaixa.,This road class has no parking or cycle lane.
+profile.problem.footways,"A via precisa de uma calçada em cada borda, e só nelas.","A road needs a footway at each edge, and only there."
+profile.problem.laneBalance,Os dois sentidos precisam ter o mesmo número de faixas.,Both directions must have the same number of lanes.
+profile.problem.laneWidths,Todas as faixas precisam ter a mesma largura.,All lanes must be the same width.
+profile.problem.median,O canteiro fica entre os dois sentidos.,A median goes between the two directions.
+profile.problem.noLanes,A via precisa de pelo menos uma faixa.,A road needs at least one lane.
+profile.problem.order,"As faixas para A ficam à esquerda; as faixas para B, à direita.","Lanes to A go on the left, lanes to B on the right."
+profile.problem.parkingSide,Estacionamento e ciclofaixa ficam junto à calçada.,Parking and cycle lanes go next to the footway.
+profile.problem.width,Este elemento está mais estreito ou mais largo do que se pode construir.,This element is narrower or wider than can be built.
+profile.ramp,Alça de acesso,Ramp
+profile.ramp2Lanes,"Alça de acesso, 2 faixas","Ramp, 2 lanes"
+profile.roundabout,Rotatória,Roundabout
+profile.ruralCobblestoneRoad,Estrada rural de paralelepípedo,Rural cobblestone road
+profile.sharedStreet,Rua compartilhada,Shared street
+profile.singleRailway,Ferrovia simples,Single railway
+profile.streetWithBikeLane,Rua com ciclofaixa,Street with bike lane
+profile.streetWithMedian,Rua com canteiro central,Street with median
+profile.streetWithParking,Rua com estacionamento,Street with parking
+profile.summary.lanes.one,1 faixa,1 lane
+profile.summary.lanes.other,{count} faixas,{count} lanes
+profile.templateName,Nome do modelo,Template name
+profile.title,Perfil da via,Road profile
+profile.toStreet,Rua inteira ({count}),Whole street ({count})
+profile.toStreetTip,"Este perfil em todos os trechos da rua, atravessando os cruzamentos","This profile on every stretch of the street it runs in, through its junctions"
+profile.urbanStreet,Rua urbana,Urban street
+profile.wideSidewalks,Calçadas largas,Wide sidewalks
+profileEditor.add,Adicionar,Add
+profileEditor.allLanes,todas as faixas juntas,all lanes together
+profileEditor.apply,Aplicar na via,Apply to the road
+profileEditor.bands,"A via de lado a lado. Clique num elemento para escolhê-lo, arraste-o para mudar a ordem, arraste a linha entre dois elementos para mudar a largura.","The road across. Click an element to pick it, drag it to change the order, drag the line between two elements to change the width."
+profileEditor.blank,Em branco,Blank
+profileEditor.cancel,Cancelar,Cancel
+profileEditor.centreLine,Linha central,Centre line
+profileEditor.centreLineName.auto,Automática,Automatic
+profileEditor.centreLineName.dashed,Tracejada,Dashed
+profileEditor.centreLineName.double,Dupla,Double
+profileEditor.centreLineName.solid,Contínua,Solid
+profileEditor.class,Classe,Class
+profileEditor.close,Fechar,Close
+profileEditor.custom,Perfil próprio,Custom profile
+profileEditor.deleteTemplate,Apagar modelo,Delete template
+profileEditor.dirBackward,Para A,To A
+profileEditor.dirForward,Para B,To B
+profileEditor.direction,Sentido,Direction
+profileEditor.drawWith,Desenhar vias novas com ele,Draw new roads with it
+profileEditor.empty,Nada na via ainda. Comece por um modelo ou adicione elementos abaixo.,Nothing on the road yet. Start from a template or add elements below.
+profileEditor.faster,Mais rápido,Faster
+profileEditor.fixedWidth,largura fixa,fixed width
+profileEditor.flush,Sem meio-fio (no nível da rua),No kerb (level with the road)
+profileEditor.fold,Recolher ou abrir,Fold or open
+profileEditor.leftEnd,Borda esquerda,Left edge
+profileEditor.lineBus,contínua por ser faixa exclusiva,solid beside a bus lane
+profileEditor.lineDashed,Tracejada,Dashed
+profileEditor.lineRight,Linha à direita,Line on the right
+profileEditor.lineSolid,Contínua,Solid
+profileEditor.medianFlush,Pintado na pista (sem meio-fio),Painted on the road (no kerb)
+profileEditor.moveLeft,Mover para a esquerda,Move left
+profileEditor.moveRight,Mover para a direita,Move right
+profileEditor.narrower,Mais estreita,Narrower
+profileEditor.newRoads,Vias novas,New roads
+profileEditor.ok,Esta via pode ser construída.,This road can be built.
+profileEditor.open,Editar perfil,Edit profile
+profileEditor.palette.cycle,Ciclofaixa,Cycle lane
+profileEditor.palette.footway,Calçada,Footway
+profileEditor.palette.laneBackward,Faixa para A,Lane to A
+profileEditor.palette.laneForward,Faixa para B,Lane to B
+profileEditor.palette.median,Canteiro,Median
+profileEditor.palette.parking,Estacionamento,Parking
+profileEditor.paving,Piso,Paving
+profileEditor.pick,Clique num elemento da via para editá-lo. Arraste a linha entre dois elementos para mudar a largura; arraste um elemento para mudar a ordem.,Click an element on the road to edit it. Drag the line between two elements to change the width; drag an element to change the order.
+profileEditor.remove,Remover,Remove
+profileEditor.rightEnd,Borda direita,Right edge
+profileEditor.road,A via inteira,The whole road
+profileEditor.save,Salvar,Save
+profileEditor.saveShort,Salvar modelo,Save template
+profileEditor.seeIssue,Mostrar,Show
+profileEditor.slower,Mais devagar,Slower
+profileEditor.speed,Velocidade,Speed
+profileEditor.speedValue,{speed} km/h,{speed} km/h
+profileEditor.sub,{target} · vista de A para B,{target} · seen from A towards B
+profileEditor.templates,Modelos,Templates
+profileEditor.thisRoad,Esta via,This road
+profileEditor.title,Perfil da via,Road profile
+profileEditor.totalWidth,Largura total {width} m,Total width {width} m
+profileEditor.use,Uso,Use
+profileEditor.useAll,Todos,All
+profileEditor.useBus,Ônibus,Bus
+profileEditor.wider,Mais larga,Wider
+profileEditor.width,Largura,Width
+quality.auto,Automática,Automatic
+quality.high,Alta,High
+quality.low,Baixa,Low
+quality.medium,Média,Medium
+quality.ultra,Ultra,Ultra
+refuse.crossing.noWalk,Esta via não tem pedestres.,This road has no pedestrians.
+refuse.crossing.room,A faixa precisa de espaço para uma fila de carros dos dois lados.,The crossing needs room for a queue of cars on both sides.
+refuse.lot.curveCrosses,a curva cruzaria outro lado do lote,the curve would cross another side of the lot
+refuse.lot.lineAcross,trace uma linha que atravesse o lote,draw a line across the lot
+refuse.lot.lineAcrossLots,trace uma linha que atravesse os lotes,draw a line across the lots
+refuse.lot.lineMisses,a linha não atravessa o lote,the line does not cross the lot
+refuse.lot.lineMissesAll,a linha não atravessa nenhum lote,the line crosses no lot
+refuse.lot.maxCorners,no máximo {n} cantos,{n} corners at most
+refuse.lot.noCommonSide,esses lotes não têm um lado em comum,these lots do not share a side
+refuse.lot.noCorner,nenhum canto de lote aqui,no lot corner here
+refuse.lot.noFit,não cabe um lote aí,a lot does not fit there
+refuse.lot.noRoom,não sobra um lote que valha a pena aí,no worthwhile lot is left there
+refuse.lot.noneOnStroke,nenhum lote no traço,no lot along the stroke
+refuse.lot.onRoad,o lote ficaria sobre uma via,the lot would lie on a road
+refuse.lot.onWater,o lote ficaria sobre a água,the lot would lie on the water
+refuse.lot.sidesCross,os lados do lote se cruzam,the sides of the lot cross
+refuse.lot.threeCorners,clique pelo menos três cantos,click at least three corners
+refuse.lot.tooBig,lote grande demais,lot too big
+refuse.lot.tooManyCorners,o lote já tem cantos demais para curvar,the lot has too many corners to curve
+refuse.lot.tooSmall,lote pequeno demais,lot too small
+refuse.lot.twoDifferent,escolha dois lotes diferentes,choose two different lots
+refuse.lot.wouldCross,os lados do lote se cruzariam,the sides of the lot would cross
+refuse.move.roundabout,nó de rotatória não se move,a roundabout node does not move
+refuse.move.tooShort,uma via ali ficaria curta demais,a road there would be too short
+refuse.road.junctionsClose,cruzamentos muito próximos,junctions too close
+refuse.road.selfLoop,liga o nó a ele mesmo,it links the node to itself
+refuse.road.sharpAngle,ângulo fechado demais com outra via,too sharp an angle with another road
+refuse.road.steep,rampa íngreme demais,ramp too steep
+refuse.road.tooShort,curta demais,too short
+refuse.sign.noRule,o cruzamento tem semáforo ou é rotatória: a placa não muda a regra,the junction has traffic lights or is a roundabout: the sign does not change the rule
+refuse.uturn.median,O retorno precisa de uma via de mão dupla com canteiro central.,The U-turn needs a two-way road with a central median.
+refuse.uturn.narrow,Canteiro estreito demais para um retorno.,Median too narrow for a U-turn.
+refuse.uturn.room,O retorno precisa de espaço para uma fila de carros dos dois lados.,The U-turn needs room for a queue of cars on both sides.
+road.avenue,Avenida,Avenue
+road.bend.ring,o anel da rotatória não se curva,the ring of a roundabout does not bend
+road.bend.sharp,a via ficaria a {angle}° da vizinha na ponta (menos de 25° não fecha o cruzamento),the road would leave its end {angle}° from its neighbour (under 25° the junction does not close)
+road.boulevard,Bulevar,Boulevard
+road.heightPoint.short,via curta demais para um ponto de altura no meio,too short a road for a height point in its middle
+road.highway,Rodovia,Highway
+road.local,Rua residencial,Residential street
+road.move.crosses,"a via passaria por cima de outra no mesmo nível, sem cruzamento","the road would run over another one at the same level, with no junction"
+road.move.outside,fora do mapa,outside the map
+road.move.tooLong,uma via ali ficaria mais longa que {max} m (divida-a antes),a road there would be longer than {max} m (split it first)
+road.preview.cost,Custa {price}. Clique para terminar o trecho (continua a partir dele); Esc encerra.,Costs {price}. Click to end the stretch (it goes on from there); Esc stops.
+road.ramp,Alça de acesso,Access ramp
+road.reason.fullNode,um nó ali ficaria com mais de {max} vias,a node there would have more than {max} roads
+road.reason.overlap,passaria por cima de outra via,it would run over another road
+road.ring.cuts,o anel cortaria uma via (Shift corta as vias e as liga à rotatória),the ring would cut a road (Shift cuts the roads and joins them to the roundabout)
+road.ring.exists,Já existe uma rotatória aqui.,There is a roundabout here already.
+road.ring.water,A rotatória não cabe aqui: o anel passaria sobre a água.,The roundabout does not fit here: the ring would sit over water.
+road.section.laneWidth,Largura da faixa,Lane width
+road.section.median,Canteiro central,Central reservation
+road.section.preview,Prévia da seção transversal da via,Road cross-section preview
+road.section.priority,Preferência (maior passa primeiro),Priority (higher goes first)
+road.section.reset,Restaurar dimensões da classe,Restore class dimensions
+road.section.sidewalk,Calçada de cada lado,Sidewalk on each side
+road.section.speedKmh,Limite de velocidade,Speed limit
+road.section.title,Seção transversal · experimental,Cross-section · experimental
+road.section.turns,Setas de conversão por faixa,Lane turn arrows
+road.section.turnsBackward,B → A · faixa {count} a partir do centro,B → A · lane {count} from centre
+road.section.turnsForward,A → B · faixa {count} a partir do centro,A → B · lane {count} from centre
+road.section.walk,Passeio,Walk
+road.sub.avenue,4 faixas / alto fluxo,4 lanes / high flow
+road.sub.boulevard,4 faixas / canteiro central,4 lanes / central median
+road.sub.custom.one,{count} faixa{way},{count} lane{way}
+road.sub.custom.other,{count} faixas{way},{count} lanes{way}
+road.sub.highway,4 faixas / alta velocidade,4 lanes / high speed
+road.sub.local,2 faixas / sem marcação,2 lanes / unmarked
+road.sub.ramp,1 faixa / mão única,1 lane / one-way
+road.sub.urban,2 faixas / padrão,2 lanes / standard
+road.turn.all,Todas as direções,All directions
+road.turn.left,← Só esquerda,← Left only
+road.turn.leftThrough,← ↑ Esquerda ou em frente,← ↑ Left or straight
+road.turn.right,→ Só direita,→ Right only
+road.turn.through,↑ Só em frente,↑ Straight only
+road.turn.throughRight,↑ → Em frente ou direita,↑ → Straight or right
+road.urban,Via urbana,Urban road
+road.way.one," / mão única"," / one-way"
+road.way.two," / mão dupla"," / two-way"
+roadFurniture.basic,Básico,Basic
+roadFurniture.complete,Completo,Complete
+roadFurniture.none,Nenhum,None
+roadFurniture.row,Mobiliário,Furniture
+roadFurniture.tip,"Com o que as vias novas são construídas: postes, lixeiras, hidrantes, bancos e árvores nas calçadas (faixa livre de 1,20 m mantida)","What new roads are built with: lamps, bins, hydrants, benches and trees on the footways (clear walk of 1.20 m kept)"
+roadKeys.alignment,Trocar o traçado,Change the plan
+roadKeys.heightDown,Descer a via 4 m,Lower the road 4 m
+roadKeys.heightUp,Subir a via 4 m,Raise the road 4 m
+roadKeys.press,Aperte uma tecla…,Press a key…
+roadKeys.reserved,{key} já é usada pelo jogo. Escolha outra.,{key} is already used by the game. Pick another.
+roadKeys.reset,Restaurar padrão,Restore defaults
+roadKeys.row,Teclas,Keys
+roadKeys.title,Teclas da ferramenta de vias,Road tool keys
+save.auto,Salvo automaticamente.,Saved automatically.
+save.blocked,A cidade na tela está incompleta (a abertura ou a geração não terminou) e não é salva. Abra ou crie uma cidade.,The city on screen is incomplete (opening or generating it did not finish) and is not saved. Open or make a city.
+save.damaged,"O salvamento não pôde ser aberto: está danificado. Ele foi guardado como estava em ""{folder}"".","The save could not be opened: it is damaged. It was kept as it was in ""{folder}""."
+save.discardConfirm,Esta cidade tem alterações que ainda não foram salvas. Descartar e continuar?,This city has changes that are not saved yet. Discard them and go on?
+save.done,Salvo.,Saved.
+save.doneTiles,"Salvo ({tiles} ladrilhos, {mb} MB).","Saved ({tiles} tiles, {mb} MB)."
+save.exportBusy,O mapa está sendo salvo ou aberto: exporte de novo daqui a pouco.,The map is being saved or opened: export it again in a moment.
+save.exportNotSaved,O mapa não foi exportado porque o salvamento não terminou.,The map was not exported because the save did not finish.
+save.exportNothing,Nada salvo para exportar ainda.,Nothing saved to export yet.
+save.exported,Mapa exportado ({mb} MB).,Map exported ({mb} MB).
+save.failed,Não foi possível salvar: {message}. Nada foi perdido; o jogo tenta de novo no próximo salvamento.,Could not save: {message}. Nothing was lost; the game tries again at the next save.
+save.fallback,"O último salvamento estava danificado; foi aberto o salvamento anterior a ele. O danificado foi guardado como estava em ""{folder}"".","The last save was damaged, so the save before it was opened. The damaged one was kept as it was in ""{folder}""."
+save.file.cut,o arquivo de mapa está cortado,the map file is cut short
+save.file.damaged,o arquivo de mapa está danificado,the map file is damaged
+save.file.newer,o mapa foi salvo por uma versão mais nova do jogo,the map was saved by a newer version of the game
+save.file.notMap,esse arquivo não é um mapa do Roadcraft,this file is not a Roadcraft map
+save.importFailed,Não abriu: {why}. O salvamento atual não foi tocado.,Not opened: {why}. The current save was not touched.
+save.keepFailed,Não foi possível salvar: a cidade salva antes não pôde ser guardada ({message}). Nada foi gravado.,Could not save: the city saved before could not be kept aside ({message}). Nothing was written.
+save.keptPrevious,"A cidade salva antes foi guardada em ""{folder}"".","The city saved before was kept in ""{folder}""."
+save.loaded,Cidade carregada.,City loaded.
+save.loading,Carregando a cidade…,Loading the city…
+save.none,Nenhum salvamento encontrado.,No save found.
+save.nowWriter,A outra aba fechou: esta aba agora salva a cidade.,The other tab closed: this tab saves the city now.
+save.otherTab,"Esta cidade está aberta em outra aba, que é quem salva. Feche a outra aba para salvar aqui.","This city is open in another tab, which is the one that saves. Close the other tab to save here."
+save.previousFailed,A cidade anterior não abriu: {why}. O salvamento atual não foi tocado.,The previous city did not open: {why}. The current save was not touched.
+save.repaired.one,Mapa reparado: 1 ponta solta dentro de outra via virou cruzamento.,Map repaired: 1 loose end inside another road became a junction.
+save.repaired.other,Mapa reparado: {count} pontas soltas dentro de outras vias viraram cruzamentos.,Map repaired: {count} loose ends inside other roads became junctions.
+save.roadsCut.one,1 trecho de via que terminava num pedaço ilegível do mapa foi tirado.,1 road segment that ended in an unreadable part of the map was removed.
+save.roadsCut.other,{count} trechos de via que terminavam num pedaço ilegível do mapa foram tirados.,{count} road segments that ended in an unreadable part of the map were removed.
+save.storageFailed,Não foi possível ler os salvamentos: o armazenamento falhou ({message}). Nada foi alterado.,Could not read the saves: the storage failed ({message}). Nothing was changed.
+save.tilesMissing.one,"1 pedaço do mapa sumiu do salvamento e voltou do relevo original, sem vias nem prédios. O salvamento foi guardado como estava em ""{folder}"".","1 part of the map was gone from the save and came back as the original terrain, without roads or buildings. The save was kept as it was in ""{folder}""."
+save.tilesMissing.other,"{count} pedaços do mapa sumiram do salvamento e voltaram do relevo original, sem vias nem prédios. O salvamento foi guardado como estava em ""{folder}"".","{count} parts of the map were gone from the save and came back as the original terrain, without roads or buildings. The save was kept as it was in ""{folder}""."
+save.tilesUnreadable.one,"1 pedaço do mapa estava ilegível e voltou do relevo original. O salvamento foi guardado como estava em ""{folder}"".","1 part of the map could not be read and came back as the original terrain. The save was kept as it was in ""{folder}""."
+save.tilesUnreadable.other,"{count} pedaços do mapa estavam ilegíveis e voltaram do relevo original. O salvamento foi guardado como estava em ""{folder}"".","{count} parts of the map could not be read and came back as the original terrain. The save was kept as it was in ""{folder}""."
+screenDir.down,Via de baixo,Road below
+screenDir.downLeft,Via de baixo à esquerda,Road below left
+screenDir.downRight,Via de baixo à direita,Road below right
+screenDir.left,Via da esquerda,Road on the left
+screenDir.right,Via da direita,Road on the right
+screenDir.up,Via de cima,Road above
+screenDir.upLeft,Via de cima à esquerda,Road above left
+screenDir.upRight,Via de cima à direita,Road above right
+sign.street.placeholder,"Nome da rua, depois clique nela","Street name, then click the street"
+sign.text,Texto da placa,Sign text
+sign.text.speed,Velocidade (ex.: 40),Speed (e.g. 40)
+sign.type,Tipo de placa,Sign type
+sign.type.direction,Direção,Direction
+sign.type.info,Informação,Information
+sign.type.noEntry,Sentido proibido,No entry
+sign.type.noParking,Proibido estacionar,No parking
+sign.type.oneWay,Mão única,One way
+sign.type.pedestrian,Pedestres,Pedestrians
+sign.type.school,Escola,School
+sign.type.speed,Velocidade máxima,Speed limit
+sign.type.stop,Pare,Stop
+sign.type.street,Placa de rua,Street plate
+sign.type.yield,Dê a preferência,Give way
+sim.congestion,Colorir as vias conforme o congestionamento,Colour the roads by congestion
+sim.congestionLabel,Mapa de congestionamento,Congestion map
+sim.demand,Demanda,Demand
+sim.demand.low,Baixa,Low
+sim.demand.normal,Normal,Normal
+sim.demand.peak,Pico,Peak
+sim.metric.lost,Chegadas recusadas,Arrivals turned away
+sim.metric.network,Rede,Network
+sim.metric.queued,Veículos parados,Vehicles queued
+sim.metric.speed,Velocidade média,Mean speed
+sim.metric.trips,Viagens concluídas,Trips completed
+sim.pause,Pausar,Pause
+sim.people,Pessoas (%),People (%)
+sim.speed,Velocidade da simulação,Simulation speed
+sim.traffic,Tráfego (%),Traffic (%)
+sky.cycle,◐ Dia e noite,◐ Day & night
+sky.day,☀ Dia,☀ Day
+sky.night,☾ Noite,☾ Night
+sky.title,"Céu: sempre dia, sempre noite ou o ciclo de dia e noite","Sky: always day, always night, or the day-night cycle"
+status.impossible.one,1 nó impossível de construir,1 node cannot be built
+status.impossible.other,{count} nós impossíveis de construir,{count} nodes cannot be built
+status.nodes.one,1 nó,1 node
+status.nodes.other,{count} nós,{count} nodes
+status.people.one,1 pessoa,1 person
+status.people.other,{count} pessoas,{count} people
+status.roads.one,1 via,1 road
+status.roads.other,{count} vias,{count} roads
+status.vehicles.one,1 veículo,1 vehicle
+status.vehicles.other,{count} veículos,{count} vehicles
+streetscape.bench,Banco,Bench
+streetscape.bin,Lixeira,Bin
+streetscape.bollard,Frade,Bollard
+streetscape.conifer,Pinheiro,Conifer
+streetscape.drain,Boca de lobo,Kerb drain
+streetscape.fountain,Chafariz,Fountain
+streetscape.hydrant,Hidrante,Hydrant
+streetscape.lamp,Iluminação,Street light
+streetscape.phone,Orelhão (telefone público),Public phone
+streetscape.planter,Floreira,Planter
+streetscape.postbox,Caixa de correio,Post box
+streetscape.shrub,Arbusto,Shrub
+streetscape.sign,Placa,Sign
+streetscape.tree,Árvore,Tree
+strike.force,Força,Force
+terrain.brush,Pincel,Brush
+terrain.canyon,Cânion (arenito),Canyon (sandstone)
+terrain.clear,Aplainar mapa inteiro,Flatten the whole map
+terrain.cloud,Nuvens,Clouds
+terrain.elements,Elementos,Elements
+terrain.escarpment,Escarpa de basalto,Basalt escarpment
+terrain.flatten,Nivelar,Level
+terrain.fog,Neblina,Fog
+terrain.gully,Ravinas,Gullies
+terrain.hardness,Dureza (paredões),Hardness (cliffs)
+terrain.label,Editor de terreno,Terrain editor
+terrain.level,Nivelar em,Level to
+terrain.lower,Rebaixar,Lower
+terrain.mapBiome,Bioma do mapa,Map biome
+terrain.mapBiome.none,Sem ecossistema,No ecosystem
+terrain.mesa,Chapada (arenito),Mesa (sandstone)
+terrain.operation,Operação do terreno,Terrain operation
+terrain.paint,Pintar,Paint
+terrain.radius,Raio,Radius
+terrain.raise,Elevar,Raise
+terrain.river,Rio,River
+terrain.smooth,Alisar,Smooth
+terrain.strength,Força,Strength
+terrain.sugarloaf,Pão de açúcar (granito),Sugarloaf (granite)
+terrain.title,GEOGRAFIA,GEOGRAPHY
+terrain.trees,Árvores,Trees
+terrain.weather,Clima,Weather
+tool.bulldoze,Demolir,Bulldoze
+tool.control,Controle,Control
+tool.draw,Desenhar,Draw
+tool.failed,A ferramenta não conseguiu terminar: {message}.,The tool could not finish: {message}.
+tool.move,Mover,Move
+tool.person,Pessoas,People
+tool.pole,Postes,Poles
+tool.roundabout,Rotatória,Roundabout
+tool.split,Dividir,Split
+tool.streetscape,Paisagismo,Landscaping
+tool.upgrade,Melhorar,Upgrade
+tools.hint.barrierNext,"Clique para continuar o traço; Enter ou Esc termina, Backspace volta um ponto.","Click to go on with the line; Enter or Esc ends it, Backspace steps back a point."
+tools.hint.barrierStart,Clique para começar o traço. Perto de uma via ele vai para as costas da calçada. Shift+clique remove.,Click to start the line. Near a road it goes to the back of the sidewalk. Shift+click removes.
+tools.hint.blocks,"Clique para construir a grade de quarteirões com o perfil escolhido (colunas, linhas, quadra e giro no painel).","Click to build the block grid with the chosen profile (columns, rows, block size and rotation in the panel)."
+tools.hint.bulldoze,"Clique numa via, prédio, item ou muro para demolir; arraste para demolir tudo num retângulo.","Click a road, building, item or wall to demolish it; drag to demolish everything in a rectangle."
+tools.hint.curveControl,Clique para o ponto de controle da curva.,Click for the control point of the curve.
+tools.hint.curveEnd,Clique para terminar a curva.,Click to end the curve.
+tools.hint.curveStart,Clique para começar a curva.,Click to start the curve.
+tools.hint.free,Arraste para desenhar a via livre: ela segue o cursor em curvas suaves; solte para construir.,Drag to draw a free road: it follows the cursor in smooth curves; release to build.
+tools.hint.move,Arraste um nó (ponta ou cruzamento) para mudá-lo de lugar.,Drag a node (an end or a junction) to move it.
+tools.hint.moveDrop,Solte onde o nó deve ficar; as vias ligadas acompanham. Esc cancela.,Drop where the node should go; connected roads follow. Esc cancels.
+tools.hint.roadEnd,Clique para terminar o trecho (continua a partir dele). Esc encerra.,Click to end the stretch (the next one starts from it). Esc stops.
+tools.hint.roadStart,Clique para começar a via.,Click to start the road.
+tools.hint.roundabout,Clique para pôr uma rotatória (raio {radius} m; [ e ] mudam o raio).,Click to place a roundabout (radius {radius} m; [ and ] change it).
+tools.hint.split,Clique numa via para dividi-la em duas naquele ponto.,Click a road to split it in two at that point.
+tools.hint.streetscape,Clique numa calçada (ou no chão) para pôr o item escolhido; arraste ao longo dela para uma fileira. Shift+clique remove.,Click a sidewalk (or the ground) to place the chosen item; drag along it for a row. Shift+click removes.
+tools.hint.upgrade,"Clique numa via para trocar para ""{profile}"" (Shift: a rua inteira; Alt: copiar o perfil da via).","Click a road to change it to ""{profile}"" (Shift: the whole street; Alt: copy the road's profile)."
+tools.item.notOnRoad,Nada fica no meio da via: ponha na calçada.,Nothing stands on the road: put it on the sidewalk.
+tools.toast.blocksBuilt,Quarteirões construídos: {cols} × {rows}.,Blocks built: {cols} × {rows}.
+tools.toast.cannotBuild,Não dá para construir aqui: {why}.,Cannot build here: {why}.
+tools.toast.lampOnWalk,Postes vão na calçada.,Lamps go on the sidewalk.
+tools.toast.lampOnWater,Não dá para pôr postes na água.,Lamps cannot go on the water.
+tools.toast.notMoved,Não movido: {why}.,Not moved: {why}.
+tools.toast.row,Fileira posta ao longo da calçada.,Row placed along the sidewalk.
+tools.toast.signStop,Placa de Pare: quem chega por esta via para no cruzamento.,Stop sign: whoever comes along this road stops at the junction.
+tools.toast.signYield,Dê a preferência: quem chega por esta via dá a vez no cruzamento.,Give way: whoever comes along this road gives way at the junction.
+tools.toast.splitNearEnd,Perto demais da ponta: clique mais para o meio.,Too close to the end: click nearer the middle.
+tools.toast.zoneNoRoad,Nenhuma via perto: desenhe as ruas da quadra primeiro.,No road nearby: draw the block streets first.
+tools.toast.zoneNotBlock,Isso não é uma quadra fechada: feche as ruas em volta.,This is not a closed block: close the streets around it.
+tools.toast.zoneSame,Essa quadra já tem essa zona.,This block already has that zone.
+transit.fewer,Menos veículos,Fewer vehicles
+transit.lines,Linhas,Lines
+transit.mode.bus,Ônibus,Bus
+transit.mode.metro,Metrô,Metro
+transit.mode.train,Trem,Train
+transit.more,Mais veículos,More vehicles
+transit.noLines,Nenhuma linha ainda: ponha paradas ou estações e crie uma linha clicando nelas em ordem.,No lines yet: place stops or stations and make a line by clicking them in order.
+transit.remove,Apagar a linha,Delete the line
+transit.tool.line,Criar linha,Make a line
+transit.tool.metroStation,Estação de metrô,Metro station
+transit.tool.metroTrack,Trilho de metrô,Metro track
+transit.tool.stop,Ponto de ônibus,Bus stop
+transit.tool.terminal,Terminal de ônibus,Bus terminal
+transit.tool.trainStation,Estação de trem,Train station
+transit.tool.trainTrack,Trilho de trem,Train track
+transit.vehicles,Veículos na linha,Vehicles on the line
+tree.kind,Árvores,Trees
+tree.kind.cypress,Cipreste,Cypress
+tree.kind.mixed,Mistas,Mixed
+tree.kind.oak,Carvalho,Oak
+tree.kind.palm,Palmeira,Palm
+tree.mode.cut,Cortar árvores,Cut trees
+tree.mode.one,Uma árvore por clique,One tree a click
+tree.mode.plant,Plantar bosque,Plant a stand
+turn.left,esquerda,left
+turn.right,direita,right
+turn.through,em frente,through
+turn.uturn,retorno,u-turn
+ui.about.assets,Pacotes de arte e suas licenças,Art packs and their licences
+ui.about.author.makehuman,"Equipe MakeHuman / Data Collection AB, Joel Palmius, Jonas Hauquier (makehumancommunity.org)","MakeHuman team / Data Collection AB, Joel Palmius, Jonas Hauquier (makehumancommunity.org)"
+ui.about.author.proxies,"MakeHuman system assets (comunidade MakeHuman, makehumancommunity.org)","MakeHuman system assets (MakeHuman community, makehumancommunity.org)"
+ui.about.author.quaternius,Quaternius (quaternius.com),Quaternius (quaternius.com)
+ui.about.author.rocketbox,Copyright (c) 2020 Microsoft,Copyright (c) 2020 Microsoft
+ui.about.credits,"Feito com three.js (MIT), Vite (MIT), Electron (MIT) e steamworks.js (MIT). Sons sintetizados no próprio jogo; árvores, prédios e veículos gerados por código.","Made with three.js (MIT), Vite (MIT), Electron (MIT) and steamworks.js (MIT). Sounds synthesised in the game; trees, buildings and vehicles generated by code."
+ui.about.files,{n} arquivos · {licence} · {author},{n} files · {licence} · {author}
+ui.about.noAssets,Esta versão não traz pacotes de arte de terceiros.,This version ships no third-party art packs.
+ui.about.pack.makehuman,"Corpos, roupas e esqueleto (MakeHuman)","Bodies, clothes and skeleton (MakeHuman)"
+ui.about.pack.proxies,"Roupas, cabelos e acessórios da comunidade","Community clothes, hair and accessories"
+ui.about.pack.quaternius,Animações (Quaternius),Animations (Quaternius)
+ui.about.pack.rocketbox,Animações capturadas (Microsoft Rocketbox),Motion-captured animations (Microsoft Rocketbox)
+ui.about.showLicence,Ver o texto da licença,Show the licence text
+ui.about.steam,Jogando pelo Steam como {name},Playing on Steam as {name}
+ui.about.title,Sobre o Roadcraft,About Roadcraft
+ui.build.actions,Ações,Actions
+ui.build.decay,Desgaste,Decay
+ui.build.floors,Andares,Floors
+ui.build.next,Próximo lote desenhado,Next lot drawn
+ui.build.renovate,Reformar,Renovate
+ui.build.renovateTip,Reformar o prédio: fica novo de novo (Shift+clique faz o mesmo),Renovate the building: it is new again (Shift+click does the same)
+ui.build.style,Estilo,Style
+ui.build.styleAuto,Automático (bairro),Automatic (neighbourhood)
+ui.camera.follow,Seguir o veículo mais perto do centro (C),Follow the vehicle nearest the centre (C)
+ui.camera.top,Vista de cima,Top view
+ui.camera.turnLeft,Girar à esquerda (Q),Turn left (Q)
+ui.camera.turnRight,Girar à direita (E),Turn right (E)
+ui.cat.build,Construir prédios,Build buildings
+ui.cat.demolish,Demolir,Demolish
+ui.cat.info,Informação: inspecionar vias e cruzamentos,Information: inspect roads and junctions
+ui.cat.landscape,"Paisagem: relevo, solo, natureza, céu e rua","Landscape: relief, ground, nature, sky and street"
+ui.cat.roads,Vias,Roads
+ui.cat.transit,Transporte público,Public transport
+ui.cat.zones,Zoneamento e lotes,Zoning and lots
+ui.catalog.saved,"Modelo ""{name}"" salvo.","Template ""{name}"" saved."
+ui.catalog.tooMany,Perfis demais neste mapa (máximo 512).,Too many profiles on this map (512 at most).
+ui.confirm.newWorld,Criar uma nova cidade no mapa inteiro de {km} km × {km} km?,Create a new city over the whole {km} km × {km} km map?
+ui.do.boxRemove,Demolir tudo num retângulo,Demolish everything in a rectangle
+ui.do.brush,Pincelar,Brush
+ui.do.cancel,Cancelar o traço,Cancel the stroke
+ui.do.closePolygon,Fechar o polígono do lote,Close the lot polygon
+ui.do.copyProfile,Copiar o perfil de uma via (conta-gotas),Copy a road profile (eyedropper)
+ui.do.deleteRoad,Demolir a via mostrada,Demolish the road shown
+ui.do.escape,"Fechar o menu, depois o painel, depois largar a ferramenta","Close the menu, then the panel, then put the tool down"
+ui.do.follow,Seguir um veículo (Esc solta),Follow a vehicle (Esc releases)
+ui.do.iso,Perspectiva ou isométrica,Perspective or isometric
+ui.do.pickBuilding,Escolher um prédio ou um lote vazio,Pick a building or an empty lot
+ui.do.riverEnd,Terminar o rio,Finish the river
+ui.do.riverPoint,Pôr um ponto do rio (de cima para baixo),Add a river point (from upstream down)
+ui.do.roadPoint,Pôr o começo e o fim da via (encadeia),Set the start and end of the road (it chains)
+ui.do.roundabout,Pôr a rotatória,Place the roundabout
+ui.do.stop,Pôr ou tirar uma parada,Add or remove a stop
+ui.do.terminal,Tornar a parada terminal,Make the stop a terminal
+ui.do.tilt,Inclinar a câmera,Tilt the camera
+ui.do.turn,Girar a câmera,Turn the camera
+ui.do.zone,Pintar a zona dos lados das vias,Paint the zone along the roads
+ui.editor.mine,{name} (minha),{name} (mine)
+ui.error.isolation,A página precisa de isolamento de origem (COOP/COEP). Abra o jogo pelo executável Roadcraft ou pelo jogar.bat (jogar.sh) da pasta do jogo.,"The page needs cross-origin isolation (COOP/COEP). Open the game with the Roadcraft executable, or with jogar.bat (jogar.sh) in the game folder."
+ui.error.start,Não foi possível iniciar: {message},Could not start: {message}
+ui.floors.one,{count} andar,{count} floor
+ui.floors.other,{count} andares,{count} floors
+ui.health.error,erro,error
+ui.health.frame,quadro de {ms} ms,{ms} ms frame
+ui.health.slow,lento,slow
+ui.height.ground,no chão,on the ground
+ui.impossible.visit,clique para ver o próximo,click to see the next one
+ui.insp.actions,Ações,Actions
+ui.insp.autoChoice,Escolhido pela importância e pelo fluxo das vias: {choice}.,Chosen by the roads' importance and flow: {choice}.
+ui.insp.closeUturn,Fechar o retorno,Close the U-turn
+ui.insp.duplicated,Via duplicada ao lado.,Road duplicated alongside.
+ui.insp.greenWave,Onda verde em {n} semáforos.,Green wave over {n} lights.
+ui.insp.joinFail,"Essas vias não se unem: perfis diferentes, sentidos opostos ou longas demais juntas.","These roads cannot be joined: different profiles, opposite directions or too long together."
+ui.insp.joined,Vias unidas.,Roads joined.
+ui.insp.lock,Travar esta escolha,Lock this choice
+ui.insp.noBend,Não curvou: {why}.,Not bent: {why}.
+ui.insp.noDuplicate,Não dá para duplicar aqui: {why}.,Cannot duplicate here: {why}.
+ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
+ui.insp.parkingOff,Vagas retiradas.,Parking removed.
+ui.insp.parkingOn,Vagas paralelas à guia.,Kerbside parking added.
+ui.insp.profileApplied,Perfil aplicado à via,Profile applied to the road
+ui.insp.refund,Devolvido {value},Refunded {value}
+ui.insp.reversed,Sentido invertido.,Direction reversed.
+ui.insp.ring,Faz parte de uma rotatória: quem está no anel tem a preferência.,Part of a roundabout: traffic on the ring has priority.
+ui.insp.roads.one,{count} via,{count} road
+ui.insp.roads.other,{count} vias,{count} roads
+ui.insp.split,Via dividida em duas.,Road split in two.
+ui.insp.street,Nome e numeração da rua,Street name and numbering
+ui.insp.uturn,Retorno no canteiro,U-turn in the median
+ui.key.altClick,Alt + clique,Alt + click
+ui.key.brackets,[ / ],[ / ]
+ui.key.delete,Delete,Delete
+ui.key.rf,R / F,R / F
+ui.key.save,Ctrl + S,Ctrl + S
+ui.key.v,V,V
+ui.menu.load,Carregar o último jogo,Load the last game
+ui.menu.newWorld,Nova cidade ({km} km × {km} km),New city ({km} km × {km} km)
+ui.menu.save,Salvar (Ctrl+S),Save (Ctrl+S)
+ui.menu.start,Tela inicial (semente e tamanho do mapa),Title screen (seed and map size)
+ui.menu.testCity,Carregar o pior caso (teste),Load the worst case (test)
+ui.metric.buildings,Prédios,Buildings
+ui.metric.jobs,Empregos,Jobs
+ui.metric.peds,Pedestres,Pedestrians
+ui.metric.residents,Moradores,Residents
+ui.metric.vehicles,Veículos,Vehicles
+ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir devolve {refund} % do preço.,Cash. Roads cost by width and length; bridges and tunnels cost more. Demolishing gives back {refund} % of the price.
+ui.money.unlimited,R$ ∞,$ ∞
+ui.options.apply,Aplicar,Apply
+ui.options.bloom,Brilho das luzes,Light bloom
+ui.options.clear,Sempre limpo,Always clear
+ui.options.compat,Modo de compatibilidade (WebGL 2): qualidade Baixa.,Compatibility mode (WebGL 2): Low quality.
+ui.options.custom,Personalizado,Custom
+ui.options.detail,Detalhe ao longe,Distant detail
+ui.options.game,Jogo,Game
+ui.options.resolution,Resolução,Resolution
+ui.options.title,Opções,Options
+ui.options.volume,Som ambiente,Ambient sound
+ui.options.weather,Tempo,Weather
+ui.people.age,Idade,Age
+ui.people.age.adult,Adulto,Adult
+ui.people.age.any,Qualquer,Any
+ui.people.age.child,Criança,Child
+ui.people.age.senior,Idoso,Senior
+ui.people.age.young,Jovem,Young
+ui.people.any,Qualquer uma,Any
+ui.people.asItComes,Como vem com a roupa,As the outfit comes
+ui.people.bottom,Embaixo,Bottom
+ui.people.hair,Cabelo,Hair
+ui.people.hold,Na mão,Holding
+ui.people.hold.bag,Sacola,Bag
+ui.people.hold.cup,Copo,Cup
+ui.people.hold.none,Nada,Nothing
+ui.people.hold.paper,Jornal,Newspaper
+ui.people.hold.phone,Celular,Phone
+ui.people.hold.umbrella,Guarda-chuva,Umbrella
+ui.people.mixed,Grupo,Group
+ui.people.mixed.on,Cada um de um jeito,Each one different
+ui.people.mode.group,Em roda,In a ring
+ui.people.mode.stand,Parada,Standing
+ui.people.mode.walk,Andando,Walking
+ui.people.outfit,Roupa,Outfit
+ui.people.outfit.casual,Casual,Casual
+ui.people.outfit.elegant,Social,Formal
+ui.people.outfit.sport,Esporte,Sport
+ui.people.outfit.work,Trabalho,Work
+ui.people.sex,Pessoa,Person
+ui.people.sex.any,Qualquer,Any
+ui.people.sex.female,Mulher,Woman
+ui.people.sex.male,Homem,Man
+ui.people.top,Em cima,Top
+ui.perMin,{n}/min,{n}/min
+ui.person.behaviour,Pessoa,Person
+ui.person.clothes,Roupa,Clothes
+ui.person.count,Quantas,How many
+ui.person.height,Altura,Height
+ui.person.stand,Parada,Standing
+ui.person.walk,Andando,Walking
+ui.problem.footways,Calçada só nas bordas.,Sidewalks only at the edges.
+ui.problem.maxLanes,No máximo 8 faixas.,At most 8 lanes.
+ui.problem.order,"As faixas de cada sentido ficam juntas, com a mão à direita.","Lanes of each direction stay together, driving on the right."
+ui.problem.wide,Larga demais (máximo 70 m).,Too wide (70 m at most).
+ui.river.width,Largura do rio (m),River width (m)
+ui.soon,em construção,being built
+ui.soon.buildings,em construção (construtor de prédios),being built (building creator)
+ui.start.empty,Começar num mapa vazio,Start on an empty map
+ui.start.generate,Gerar cidade nova,Generate a new city
+ui.start.quit,Sair,Quit
+ui.start.seed,Semente,Seed
+ui.start.size,Tamanho do mapa,Map size
+ui.start.sub,"Vias, trânsito e cidades inteiras de 10 a 24 km.","Roads, traffic and whole cities from 10 to 24 km."
+ui.stats.tip,{residents} moradores · {jobs} empregos · {buildings} prédios · {speed} km/h de média perto daqui,{residents} residents · {jobs} jobs · {buildings} buildings · {speed} km/h average nearby
+ui.strip.barrier,Mureta,Barrier
+ui.strip.curb,Meio-fio,Curb
+ui.strip.shoulder,Acostamento,Shoulder
+ui.title,Roadcraft,Roadcraft
+ui.toolName.barrier,Muros e cercas,Walls and fences
+ui.toolName.blocks,Quarteirões,Blocks
+ui.toolName.bomb,Bomba,Bomb
+ui.toolName.building,Prédios e lotes,Buildings and lots
+ui.toolName.bulldoze,Demolir,Demolish
+ui.toolName.camera,Câmera,Camera
+ui.toolName.curve,Via em curva,Curved road
+ui.toolName.elements,Elementos,Elements
+ui.toolName.flatten,Nivelar,Level
+ui.toolName.forest,Árvores,Trees
+ui.toolName.free,Via livre,Freehand road
+ui.toolName.inspect,Inspecionar,Inspect
+ui.toolName.landform,Relevos,Landforms
+ui.toolName.lower,Rebaixar,Lower
+ui.toolName.move,Mover,Move
+ui.toolName.paint,Pintar o chão,Paint ground
+ui.toolName.person,Pessoas,People
+ui.toolName.pistol,Pistola,Pistol
+ui.toolName.raise,Elevar,Raise
+ui.toolName.river,Rio,River
+ui.toolName.road,Via reta,Straight road
+ui.toolName.roundabout,Rotatória,Roundabout
+ui.toolName.sky,Céu,Sky
+ui.toolName.smooth,Alisar,Smooth
+ui.toolName.split,Dividir,Split
+ui.toolName.streetscape,Paisagismo,Streetscape
+ui.toolName.transit,Transporte,Transit
+ui.toolName.upgrade,Melhorar,Upgrade
+ui.toolName.weather,Clima,Weather
+ui.toolName.zone,Zonear,Zoning
+ui.touch.click,Clique,Click
+ui.touch.compassDo,Girar e inclinar a câmera; tocar nela põe o norte para cima,Turn and tilt the camera; tap it to face north
+ui.touch.compassKey,Arrastar a bússola,Drag the compass
+ui.touch.dragDo,Mover o mapa (com a câmera) ou pincelar (com a ferramenta),Move the map (camera) or brush (with a tool)
+ui.touch.dragKey,Arrastar um dedo,Drag one finger
+ui.touch.tap,Toque,Tap
+ui.touch.tapDo,"O mesmo que o clique: pôr, escolher, construir","Same as a click: place, pick, build"
+ui.touch.tapKey,Tocar,Tap
+ui.touch.title,Na tela de toque,On a touch screen
+ui.transit.colour,Cor da linha,Line colour
+ui.transit.help.metroStation,Clique sobre um trilho de metrô para pôr uma estação na linha escolhida.,Click a metro track to put a station on the chosen line.
+ui.transit.help.metroTrack,Desenhe o trilho do metrô como uma via; as estações vão sobre ele.,Draw the metro track like a road; stations go on it.
+ui.transit.help.stop,Clique na calçada para pôr paradas na linha escolhida; clique numa parada para tirá-la.,Click a sidewalk to add stops to the chosen line; click a stop to remove it.
+ui.transit.help.terminal,Clique numa parada para torná-la terminal: os ônibus esperam mais e dão a volta ali.,Click a stop to make it a terminal: buses wait longer and turn around there.
+ui.transit.help.trainStation,Clique sobre um trilho de trem para pôr uma estação na linha escolhida.,Click a train track to put a station on the chosen line.
+ui.transit.help.trainTrack,Desenhe o trilho como uma via; as estações vão sobre ele.,Draw the track like a road; stations go on it.
+ui.transit.line,Linha {n},Line {n}
+ui.transit.outBack,Ida e volta,Out and back
+ui.transit.perHour,{n} passageiros/h,{n} passengers/h
+ui.transit.ring,Circular,Ring
+ui.transit.route,Percurso,Route
+ui.transit.stations.one,{count} estação,{count} station
+ui.transit.stations.other,{count} estações,{count} stations
+ui.transit.stops.one,{count} parada,{count} stop
+ui.transit.stops.other,{count} paradas,{count} stops
+ui.turn.auto,Automático,Automatic
+ui.weather.auto,Muda sozinho,Changes by itself
+ui.weather.manual,Ajustado aqui,Set here
+ui.weather.mode,Tempo,Weather
+v2.blocks.count,Quadras,Blocks
+v2.blocks.measure,Medidas,Size
+v2.build.selectToEdit,Clique num prédio para editá-lo,Click a building to edit it
+v2.close,Fechar,Close
+v2.do.health,Saúde do jogo,Game health
+v2.do.pause,Pausar ou continuar,Pause or resume
+v2.do.redo,Refazer,Redo
+v2.do.undo,Desfazer,Undo
+v2.dock.build,Construir,Build
+v2.dock.demolish,Demolir,Demolish
+v2.dock.info,Informação,Info
+v2.dock.landscape,Paisagem,Landscape
+v2.dock.roads,Vias,Roads
+v2.dock.transit,Transporte,Transit
+v2.dock.zones,Zonas,Zones
+v2.grid.toggle,Grade no mapa (mostrar ou ocultar),Grid on the map (show or hide)
+v2.key.drag,Arrastar,Drag
+v2.key.redo,Ctrl + Y,Ctrl + Y
+v2.key.space,Espaço,Space
+v2.land.ground,Solo,Ground
+v2.land.nature,Natureza,Nature
+v2.land.relief,Relevo,Relief
+v2.land.sky,Céu e clima,Sky and weather
+v2.land.street,Rua,Street
+v2.land.walls,Muros e cercas,Walls and fences
+v2.layer.grid,Grade,Grid
+v2.layer.inside,Interior dos prédios,Inside the buildings
+v2.layers,Camadas do mapa,Map layers
+v2.map,Mapa inteiro,Whole map
+v2.roundabout.radius,Raio (m),Radius (m)
+v2.row.biome,Bioma,Biome
+v2.row.brush,Pincel,Brush
+v2.row.clear,Apagar,Clear
+v2.row.cut,Corte,Cut
+v2.row.height,Altura,Height
+v2.row.lanes,Faixas,Lanes
+v2.row.lights,Luzes,Lights
+v2.row.parking,Vagas,Parking
+v2.row.parts,Partes,Parts
+v2.row.sign,Placa,Sign
+v2.row.sky,Céu,Sky
+v2.row.text,Texto,Text
+v2.row.width,Largura,Width
+v2.s.base,Base,Base
+v2.s.direction,Direção,Direction
+v2.s.fogAll,Neblina,Fog
+v2.s.lightning,Raios,Lightning
+v2.s.thunder,Trovão,Thunder
+v2.s.variation,Variação,Variation
+v2.snap.angles,"Ângulos: 90°, 45°, 15°","Angles: 90°, 45°, 15°"
+v2.snap.grid,Pontos na grade de 1 m,Points on the 1 m grid
+v2.snap.on,Encaixe ligado,Snapping on
+v2.snap.title,Encaixe,Snapping
+v2.terrain.brush,Pincel de terreno,Terrain brush
+v2.terrain.landforms,Relevos,Landforms
+v2.zone.density,Densidade,Density
+v2.zone.paint,Zonear,Zone
+v2.zone.use,Uso do solo,Land use
+water.current,Correnteza (m/s),Current (m/s)
+water.foam,Espuma (%),Foam (%)
+water.title,Água dos rios e lagos,Water of rivers and lakes
+water.waves,Ondas (%),Waves (%)
+weather.lightning,Raios por minuto,Lightning a minute
+weather.rain,Chuva (%),Rain (%)
+weather.storm,Tempestade,Storm
+weather.thunder,Volume do trovão (%),Thunder volume (%)
+weather.wind,Vento (m/s),Wind (m/s)
+weather.windDirection,Direção do vento (°),Wind direction (°)
+zone.brush,Pintar zona,Paint zone
+zone.colours,Cores das zonas,Zone colours
+zone.commercial,Comercial,Commercial
+zone.density,Densidade,Density
+zone.fill,Quadra inteira,Whole block
+zone.grid,Grade,Grid
+zone.high,Alta,High
+zone.industrial,Industrial,Industrial
+zone.lot.curve,Curvar lado,Curve a side
+zone.lot.delete,Apagar lotes e construções,Delete lots and buildings
+zone.lot.delete.short,Apagar lotes,Delete lots
+zone.lot.edit,Mover cantos,Move corners
+zone.lot.front,Definir frente,Set front
+zone.lot.join,Juntar lotes,Join lots
+zone.lot.shape.polygon,Polígono (ponto a ponto),Polygon (point by point)
+zone.lot.shape.rect,Retângulo (arrastar),Rectangle (drag)
+zone.lot.size,{w} x {d} m,{w} x {d} m
+zone.lot.split,Dividir lote,Split lot
+zone.lots,Lotes,Lots
+zone.lots.help,"Crie lotes encostando nas calçadas (retângulo ou polígono) e pinte a zona sobre eles: o prédio cresce do tamanho e formato do lote, virado para a frente marcada em azul.","Create lots against the footways (rectangle or polygon) and paint the zone over them: the building grows to the size and shape of the lot, facing the front marked in blue."
+zone.low,Baixa,Low
+zone.medium,Média,Medium
+zone.mixed,Misto,Mixed
+zone.name.0,Sem zona,No zone
+zone.name.1,Residencial,Residential
+zone.name.2,Comercial,Commercial
+zone.name.3,Industrial,Industrial
+zone.name.4,Misto,Mixed
+zone.name.5,Residencial baixa,Low-density residential
+zone.name.6,Residencial alta,High-density residential
+zone.name.7,Comercial baixa,Low-density commercial
+zone.name.8,Comercial alta,High-density commercial
+zone.remove,Tirar zona,Remove zone
+zone.residential,Residencial,Residential
+zone.split.horizontal,Frente e fundos,Front and back
+zone.split.into,Em quantos,Into how many
+zone.split.line,Por linha,Along a line
+zone.split.parts,{n} lotes,{n} lots
+zone.split.vertical,Lado a lado,Side by side
+zone.title,ZONEAMENTO,ZONING
+zone.tool,Ferramenta de zoneamento,Zoning tool
+zone.use,Uso do solo,Land use
+hint.upgrade,"Escolha um perfil e clique numa via para trocá-lo (Shift: a rua inteira; Alt: copiar o perfil da via).","Pick a profile and click a road to change it (Shift: the whole street; Alt: copy the road's profile)."
+hint.terrain,"Segure o botão esquerdo para esculpir o relevo; o traço inteiro se desfaz com Ctrl+Z.","Hold the left button to sculpt the relief; Ctrl+Z undoes the whole stroke."
+hint.lot,"Arraste um retângulo junto a uma via: o prédio escolhido nasce ali, de frente para a via.","Drag a rectangle beside a road: the chosen building goes up there, facing the road."
+ui.insp.upgraded,"Perfil trocado em {count} trecho(s).","Profile changed on {count} segment(s)."
+ui.build.placed,Prédio construído.,Building built.
+save.writeFailed,"Não foi possível gravar o arquivo do salvamento.","The save file could not be written."
+refuse.lot.small,o lote é pequeno demais,the lot is too small
+refuse.lot.road,o lote cobre uma via,the lot covers a road
+tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.

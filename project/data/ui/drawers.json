@@ -1,0 +1,683 @@
+{
+ "_doc": "Roadcraft dock drawers (specs ui.md 4 and 6): tabs, cards and notes per category. tool = ToolController.Tool; a tab without tool is drawn 'being built' (ui.soon). profile = road profile id the tool draws with.",
+ "categories": [
+  {
+   "id": "roads",
+   "icon": "roads",
+   "label_key": "v2.dock.roads",
+   "tip_key": "ui.cat.roads",
+   "strip": "road_catalog",
+   "tabs": [
+    {
+     "id": "draw",
+     "icon": "draw",
+     "label_key": "tool.draw",
+     "tool": "ROAD"
+    },
+    {
+     "id": "upgrade",
+     "icon": "upgrade",
+     "label_key": "tool.upgrade",
+     "tool": "UPGRADE",
+     "note_key": "hint.upgrade"
+    },
+    {
+     "id": "move",
+     "icon": "move",
+     "label_key": "tool.move"
+    },
+    {
+     "id": "split",
+     "icon": "split",
+     "label_key": "tool.split",
+     "tool": "SPLIT",
+     "note_key": "hint.split"
+    },
+    {
+     "id": "control",
+     "icon": "control",
+     "label_key": "tool.control",
+     "tool": "INSPECT",
+     "note_key": "hint.control"
+    },
+    {
+     "id": "roundabout",
+     "icon": "roundabout",
+     "label_key": "tool.roundabout",
+     "tool": "ROUNDABOUT",
+     "note_key": "hint.roundabout"
+    }
+   ],
+   "ring": {
+    "label_key": "v2.roundabout.radius",
+    "step": 2,
+    "default": 22
+   }
+  },
+  {
+   "id": "zones",
+   "icon": "zones",
+   "label_key": "v2.dock.zones",
+   "tip_key": "ui.cat.zones",
+   "strip": "zone_cards",
+   "tabs": [
+    {
+     "id": "paint",
+     "icon": "brush",
+     "label_key": "v2.zone.paint",
+     "tool": "ZONE",
+     "note_key": "hint.tool.zone"
+    },
+    {
+     "id": "lots",
+     "icon": "lotEdit",
+     "label_key": "zone.lots"
+    }
+   ],
+   "cards": [
+    {
+     "label_key": "zone.residential",
+     "zone": 1,
+     "swatch": "zone_res"
+    },
+    {
+     "label_key": "zone.commercial",
+     "zone": 2,
+     "swatch": "zone_com"
+    },
+    {
+     "label_key": "zone.industrial",
+     "zone": 3,
+     "swatch": "zone_ind"
+    },
+    {
+     "label_key": "zone.mixed",
+     "zone": 4,
+     "swatch": "zone_mix"
+    },
+    {
+     "label_key": "zone.remove",
+     "zone": 0,
+     "icon": "eraser"
+    }
+   ]
+  },
+  {
+   "id": "build",
+   "icon": "build",
+   "label_key": "v2.dock.build",
+   "tip_key": "ui.cat.build",
+   "tabs": [
+    {
+     "id": "models",
+     "icon": "models",
+     "label_key": "builder.category.models"
+    },
+    {
+     "id": "draw",
+     "icon": "draw",
+     "label_key": "builder.category.draw",
+     "tool": "LOT",
+     "note_key": "hint.lot"
+    },
+    {
+     "id": "mass",
+     "icon": "mass",
+     "label_key": "builder.category.mass"
+    },
+    {
+     "id": "facade",
+     "icon": "face",
+     "label_key": "builder.category.facade"
+    },
+    {
+     "id": "parts",
+     "icon": "components",
+     "label_key": "builder.category.parts"
+    },
+    {
+     "id": "roof",
+     "icon": "roof",
+     "label_key": "builder.category.roof"
+    },
+    {
+     "id": "interior",
+     "icon": "interiorView",
+     "label_key": "builder.category.interior"
+    },
+    {
+     "id": "paint",
+     "icon": "paint",
+     "label_key": "builder.category.paint"
+    }
+   ],
+   "strip": "build_cards",
+   "cards": [
+    {
+     "label_key": "building.fn.square",
+     "fn": 5,
+     "icon": "fountain"
+    },
+    {
+     "label_key": "building.fn.park",
+     "fn": 6,
+     "icon": "ls_tree"
+    },
+    {
+     "label_key": "building.fn.school",
+     "fn": 1,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.clinic",
+     "fn": 4,
+     "icon": "health"
+    },
+    {
+     "label_key": "building.fn.hospital",
+     "fn": 3,
+     "icon": "health"
+    },
+    {
+     "label_key": "building.fn.policeStation",
+     "fn": 10,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.fireStation",
+     "fn": 11,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.cityHall",
+     "fn": 9,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.church",
+     "fn": 2,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.sportsCourt",
+     "fn": 13,
+     "icon": "build"
+    },
+    {
+     "label_key": "building.fn.none",
+     "fn": 0,
+     "icon": "zones"
+    }
+   ]
+  },
+  {
+   "id": "landscape",
+   "icon": "landscape",
+   "label_key": "v2.dock.landscape",
+   "tip_key": "ui.cat.landscape",
+   "tabs": [
+    {
+     "id": "relief",
+     "icon": "terrain",
+     "label_key": "v2.land.relief",
+     "tool": "TERRAIN"
+    },
+    {
+     "id": "ground",
+     "icon": "paint",
+     "label_key": "v2.land.ground"
+    },
+    {
+     "id": "nature",
+     "icon": "ls_tree",
+     "label_key": "v2.land.nature"
+    },
+    {
+     "id": "sky",
+     "icon": "cloud",
+     "label_key": "v2.land.sky"
+    },
+    {
+     "id": "street",
+     "icon": "ls_bench",
+     "label_key": "v2.land.street"
+    },
+    {
+     "id": "people",
+     "icon": "people",
+     "label_key": "tool.person"
+    }
+   ],
+   "strip": "relief_cards",
+   "cards": [
+    {
+     "label_key": "terrain.raise",
+     "mode": 0,
+     "icon": "raise"
+    },
+    {
+     "label_key": "terrain.lower",
+     "mode": 1,
+     "icon": "lower"
+    },
+    {
+     "label_key": "terrain.smooth",
+     "mode": 2,
+     "icon": "smooth"
+    },
+    {
+     "label_key": "terrain.flatten",
+     "mode": 3,
+     "icon": "flatten"
+    },
+    {
+     "label_key": "terrain.mesa",
+     "mode": 4,
+     "icon": "mesa"
+    },
+    {
+     "label_key": "terrain.canyon",
+     "mode": 5,
+     "icon": "canyon"
+    },
+    {
+     "label_key": "terrain.escarpment",
+     "mode": 6,
+     "icon": "escarpment"
+    },
+    {
+     "label_key": "terrain.sugarloaf",
+     "mode": 7,
+     "icon": "sugarloaf"
+    },
+    {
+     "label_key": "terrain.gully",
+     "mode": 8,
+     "icon": "gully"
+    }
+   ],
+   "brush": {
+    "radius": {
+     "label_key": "terrain.radius",
+     "min": 5,
+     "max": 400,
+     "step": 5,
+     "default": 60
+    },
+    "strength": {
+     "label_key": "terrain.strength",
+     "min": 1,
+     "max": 100,
+     "step": 1,
+     "default": 40
+    }
+   }
+  },
+  {
+   "id": "transit",
+   "icon": "transit",
+   "label_key": "v2.dock.transit",
+   "tip_key": "ui.cat.transit",
+   "tabs": [
+    {
+     "id": "stop",
+     "icon": "tr_stop",
+     "label_key": "transit.tool.stop"
+    },
+    {
+     "id": "terminal",
+     "icon": "tr_terminal",
+     "label_key": "transit.tool.terminal"
+    },
+    {
+     "id": "trainTrack",
+     "icon": "tr_track",
+     "label_key": "transit.tool.trainTrack",
+     "tool": "ROAD",
+     "profile": "doubleRailway",
+     "note_key": "ui.transit.help.trainTrack"
+    },
+    {
+     "id": "trainStation",
+     "icon": "tr_station",
+     "label_key": "transit.tool.trainStation"
+    },
+    {
+     "id": "metroTrack",
+     "icon": "tr_metro",
+     "label_key": "transit.tool.metroTrack",
+     "tool": "ROAD",
+     "profile": "metroDouble",
+     "note_key": "ui.transit.help.metroTrack"
+    },
+    {
+     "id": "metroStation",
+     "icon": "tr_station",
+     "label_key": "transit.tool.metroStation"
+    },
+    {
+     "id": "line",
+     "icon": "tr_line",
+     "label_key": "transit.tool.line"
+    }
+   ]
+  },
+  {
+   "id": "demolish",
+   "icon": "demolish",
+   "label_key": "v2.dock.demolish",
+   "tip_key": "ui.cat.demolish",
+   "danger": true,
+   "tabs": [
+    {
+     "id": "bulldoze",
+     "icon": "demolish",
+     "label_key": "tool.bulldoze",
+     "tool": "DEMOLISH",
+     "note_key": "help.tool.bulldoze"
+    },
+    {
+     "id": "pistol",
+     "icon": "actions",
+     "label_key": "actions.pistol"
+    },
+    {
+     "id": "bomb",
+     "icon": "bomb",
+     "label_key": "actions.bomb"
+    }
+   ]
+  },
+  {
+   "id": "info",
+   "icon": "info",
+   "label_key": "v2.dock.info",
+   "tip_key": "ui.cat.info",
+   "tabs": [
+    {
+     "id": "inspect",
+     "icon": "info",
+     "label_key": "ui.toolName.inspect",
+     "tool": "INSPECT",
+     "note_key": "hint.tool.inspect"
+    }
+   ],
+   "no_drawer": true
+  }
+ ],
+ "catalog_tabs": [
+  [
+   "ruas",
+   "catalog.cat.streets"
+  ],
+  [
+   "avenidas",
+   "catalog.cat.avenues"
+  ],
+  [
+   "rodovias",
+   "catalog.cat.highways"
+  ],
+  [
+   "especiais",
+   "catalog.cat.special"
+  ],
+  [
+   "trilhos",
+   "catalog.cat.rails"
+  ]
+ ],
+ "fn_keys": [
+  "building.fn.none",
+  "building.fn.school",
+  "building.fn.church",
+  "building.fn.hospital",
+  "building.fn.clinic",
+  "building.fn.square",
+  "building.fn.park",
+  "building.fn.gasStation",
+  "building.fn.supermarket",
+  "building.fn.cityHall",
+  "building.fn.policeStation",
+  "building.fn.fireStation",
+  "building.fn.mall",
+  "building.fn.sportsCourt"
+ ],
+ "zone_radius": 40,
+ "actions": [
+  {
+   "icon": "layers",
+   "tip_key": "v2.layers",
+   "popover": "layers"
+  },
+  {
+   "icon": "advanced",
+   "tip_key": "builder.menu.simulation",
+   "popover": "sim"
+  },
+  {
+   "icon": "camera",
+   "tip_key": "camera.label",
+   "popover": "camera"
+  },
+  {
+   "icon": "undo",
+   "tip_key": "action.undo",
+   "action": "undo"
+  },
+  {
+   "icon": "redo",
+   "tip_key": "action.redo",
+   "action": "redo"
+  },
+  {
+   "icon": "help",
+   "tip_key": "builder.help",
+   "popover": "help"
+  },
+  {
+   "icon": "menu",
+   "tip_key": "builder.menu.app",
+   "popover": "menu"
+  }
+ ],
+ "popovers": {
+  "layers": {
+   "title_key": "v2.layers",
+   "rows": [
+    {
+     "icon": "grid",
+     "label_key": "v2.layer.grid"
+    },
+    {
+     "icon": "zones",
+     "label_key": "zone.colours",
+     "action": "zones"
+    },
+    {
+     "icon": "heat",
+     "label_key": "sim.congestionLabel",
+     "action": "congestion"
+    },
+    {
+     "icon": "interiorView",
+     "label_key": "v2.layer.inside"
+    }
+   ]
+  },
+  "menu": {
+   "rows": [
+    {
+     "icon": "m_new",
+     "label_key": "action.newMap",
+     "action": "new_empty"
+    },
+    {
+     "icon": "m_new",
+     "label_key": "ui.menu.newWorld",
+     "action": "new_city"
+    },
+    {
+     "icon": "m_open",
+     "label_key": "action.openMap",
+     "action": "open"
+    },
+    {
+     "icon": "m_save",
+     "label_key": "action.saveMap",
+     "action": "save_map"
+    },
+    {
+     "icon": "m_open",
+     "label_key": "ui.menu.load",
+     "action": "load_last"
+    },
+    {
+     "icon": "m_save",
+     "label_key": "ui.menu.save",
+     "action": "save"
+    },
+    {
+     "icon": "roads",
+     "label_key": "ui.menu.start"
+    },
+    {
+     "icon": "m_about",
+     "label_key": "action.about"
+    }
+   ]
+  },
+  "camera": {
+   "title_key": "camera.label",
+   "buttons": [
+    {
+     "icon": "undo",
+     "label_key": "ui.camera.turnLeft",
+     "action": "turn_left"
+    },
+    {
+     "icon": "lower",
+     "label_key": "camera.tiltDown",
+     "action": "tilt_down"
+    },
+    {
+     "icon": "roundabout",
+     "label_key": "camera.north",
+     "action": "north"
+    },
+    {
+     "icon": "raise",
+     "label_key": "camera.tiltUp",
+     "action": "tilt_up"
+    },
+    {
+     "icon": "redo",
+     "label_key": "ui.camera.turnRight",
+     "action": "turn_right"
+    },
+    {
+     "icon": "mass",
+     "label_key": "camera.perspective"
+    },
+    {
+     "icon": "top",
+     "label_key": "ui.camera.top",
+     "action": "top"
+    },
+    {
+     "icon": "follow",
+     "label_key": "ui.camera.follow"
+    },
+    {
+     "icon": "resetView",
+     "label_key": "action.resetView",
+     "action": "reset"
+    }
+   ]
+  },
+  "sim": {
+   "title_key": "builder.menu.simulation",
+   "metrics": [
+    [
+     "sim.metric.trips",
+     "trips_arrived"
+    ],
+    [
+     "sim.metric.lost",
+     "trips_lost"
+    ],
+    [
+     "ui.metric.vehicles",
+     "vehicles"
+    ],
+    [
+     "ui.metric.peds",
+     "people"
+    ],
+    [
+     "ui.metric.residents",
+     "residents"
+    ],
+    [
+     "ui.metric.jobs",
+     "jobs"
+    ],
+    [
+     "ui.metric.buildings",
+     "buildings"
+    ],
+    [
+     "status.roads.other",
+     "segments"
+    ],
+    [
+     "status.nodes.other",
+     "nodes"
+    ]
+   ]
+  },
+  "help": {
+   "title_key": "builder.help",
+   "groups": [
+    {
+     "title_key": "help.section.tool",
+     "rows": [
+      [
+       "help.key.click",
+       "ui.do.roadPoint"
+      ],
+      [
+       "ui.key.v",
+       "roadKeys.alignment"
+      ],
+      [
+       "help.key.esc",
+       "ui.do.cancel"
+      ]
+     ]
+    },
+    {
+     "title_key": "help.section.camera",
+     "rows": [
+      [
+       "help.key.panDrag",
+       "help.do.pan"
+      ],
+      [
+       "help.key.wheel",
+       "help.do.zoom"
+      ],
+      [
+       "help.key.qe",
+       "ui.do.turn"
+      ]
+     ]
+    }
+   ]
+  },
+  "files": {
+   "title_key": "action.openMap",
+   "empty_key": "save.none"
+  }
+ }
+}

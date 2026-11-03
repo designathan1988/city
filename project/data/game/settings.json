@@ -1,0 +1,27 @@
+{
+ "_doc": "Graphics presets applied by game/settings/settings.gd.",
+ "default": "medium",
+ "presets": {
+  "low": {
+   "label_key": "QUALITY_LOW",
+   "shadows": false,
+   "msaa": 0,
+   "render_scale": 0.75,
+   "shadow_distance": 600
+  },
+  "medium": {
+   "label_key": "QUALITY_MEDIUM",
+   "shadows": true,
+   "msaa": 1,
+   "render_scale": 1.0,
+   "shadow_distance": 1200
+  },
+  "high": {
+   "label_key": "QUALITY_HIGH",
+   "shadows": true,
+   "msaa": 2,
+   "render_scale": 1.0,
+   "shadow_distance": 2500
+  }
+ }
+}

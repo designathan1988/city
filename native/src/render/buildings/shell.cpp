@@ -1,0 +1,170 @@
+// Vertex writing for the building meshes: faces with the 4.0 tone (shellParts.ts macroNoise, meshCore.ts Shell.face
+// grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
+// one surface to a RenderingServer mesh.
+#include "render/buildings/shell.h"
+
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_vector2_array.hpp>
+#include <godot_cpp/variant/packed_vector3_array.hpp>
+
+#include <cstring>
+
+using namespace godot;
+
+namespace city::b40 {
+
+namespace {
+constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
+constexpr float WALL_UP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
+constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
+constexpr int SH1 = 15, SH2 = 13;
+constexpr double U32 = 4294967296.0;
+constexpr uint32_t SEED_BYTE = 0xff;
+constexpr int BYTE_BITS = 8, CORNERS = 8, FACES = 6, QUAD_INDICES = 6, BIT_A = 1, BIT_B = 2, BIT_C = 4;
+// Box faces as corner quads (corner bit 1 = a1, 2 = b1, 4 = c1), in the order -e2, +e2, -e0, +e0, -e1, +e1.
+constexpr int BOX_QUADS[FACES][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 } };
+constexpr uint8_t BOX_SKIP[FACES] = { SKIP_E2_NEG, SKIP_E2_POS, SKIP_E0_NEG, SKIP_E0_POS, SKIP_E1_NEG, SKIP_E1_POS };
+
+float lattice(int32_t i, int32_t j, int32_t k) {
+	uint32_t h = (uint32_t(i) * H1) ^ (uint32_t(j) * H2) ^ (uint32_t(k) * H3);
+	h = (h ^ (h >> SH1)) * H4;
+	return float(double(h ^ (h >> SH2)) / U32);
+}
+float smooth(float t) { return t * t * (3 - 2 * t); }
+float gamma(float v) { return std::pow(std::clamp(v, 0.f, 1.f), GAMMA_INV); }
+} // namespace
+
+// Trilinear value noise in map axes (x, north = -z, up), metres / 12 (4.0 shellParts.ts macroNoise).
+float macro_noise(const Vector3 &p) {
+	float x = p.x / MACRO_M, y = -p.z / MACRO_M, z = p.y / MACRO_M;
+	int32_t i = int32_t(std::floor(x)), j = int32_t(std::floor(y)), k = int32_t(std::floor(z));
+	float fx = smooth(x - float(i)), fy = smooth(y - float(j)), fz = smooth(z - float(k));
+	auto l = [&](int a, int b, int c) { return lattice(i + a, j + b, k + c); };
+	auto lx = [&](int b, int c) { return l(0, b, c) + (l(1, b, c) - l(0, b, c)) * fx; };
+	float y0 = lx(0, 0) + (lx(1, 0) - lx(0, 0)) * fy, y1 = lx(0, 1) + (lx(1, 1) - lx(0, 1)) * fy;
+	return y0 + (y1 - y0) * fz;
+}
+
+int Shell::vert(const Vector3 &p, const Vector3 &n, const Color &c, const Vector2 &t, const Vector2 &t2) {
+	pos.push_back(p);
+	nrm.push_back(n);
+	col.push_back(c);
+	uv.push_back(t);
+	uv2.push_back(t2);
+	return int(pos.size()) - 1;
+}
+
+Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kind) const {
+	float k = shade;
+	if (tone) {
+		k *= TONE_BASE + TONE_SPAN * macro_noise(p);
+		if (wall) k *= GRIME_FLOOR + GRIME_SPAN * smooth(std::clamp((p.y - grime_floor) / GRIME_M, 0.f, 1.f));
+	}
+	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
+}
+
+void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
+	Vector3 n = (p[1] - p[0]).cross(p[2] - p[0]);
+	if (n.length_squared() < DEGENERATE && count == 4) n = (p[2] - p[1]).cross(p[3] - p[1]);
+	if (n.length_squared() < DEGENERATE) return;
+	n = n.normalized();
+	if (n.dot(out) < 0) n = -n;
+	bool wall = std::abs(n.y) < WALL_UP;
+	Vector2 t2(float(fin + 1), 0);
+	int base = int(pos.size());
+	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], lin, wall, kind), Vector2(), t2);
+	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0; // clockwise seen from `out`
+	for (int i = 1; i + 1 < count; i++) {
+		idx.push_back(base);
+		idx.push_back(base + (flip ? i + 1 : i));
+		idx.push_back(base + (flip ? i : i + 1));
+	}
+}
+
+void Shell::quad(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Vector3 &out, const Lin &lin, int8_t fin,
+		SurfaceKind kind) {
+	const Vector3 p[4] = { a, b, c, d };
+	face(p, 4, out, lin, fin, kind);
+}
+
+void Shell::tri(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &out, const Lin &lin, int8_t fin) {
+	const Vector3 p[3] = { a, b, c };
+	face(p, 3, out, lin, fin, SK_SHELL);
+}
+
+void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, int8_t fin, bool back) {
+	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
+	quad(f.at(a0, b0, c), f.at(a1, b0, c), f.at(a1, b1, c), f.at(a0, b1, c), back ? -f.e2 : f.e2, lin, fin);
+}
+
+void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
+	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
+	Vector3 p[CORNERS];
+	for (int k = 0; k < CORNERS; k++) p[k] = f.at(k & BIT_A ? a1 : a0, k & BIT_B ? b1 : b0, k & BIT_C ? c1 : c0);
+	const Vector3 out[FACES] = { -f.e2, f.e2, -f.e0, f.e0, -f.e1, f.e1 };
+	for (int i = 0; i < FACES; i++) {
+		const int *q = BOX_QUADS[i];
+		if (!(skip & BOX_SKIP[i])) quad(p[q[0]], p[q[1]], p[q[2]], p[q[3]], out[i], lin, fin);
+	}
+}
+
+void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c, uint32_t seed, bool dark) {
+	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
+	Vector3 n = f.e2;
+	Color code(float(seed & SEED_BYTE) / BYTE, float((seed >> BYTE_BITS) & SEED_BYTE) / BYTE, float((seed >> (2 * BYTE_BITS)) & SEED_BYTE) / BYTE,
+			float(dark ? SK_PANE_DARK : SK_PANE) / BYTE);
+	Vector2 size(a1 - a0, b1 - b0);
+	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
+	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);
+	bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
+	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
+	idx.insert(idx.end(), t, t + QUAD_INDICES);
+}
+
+void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, float code) {
+	float fin_seed = float(fin + 1) + float(seed & SEED_BYTE) / (BYTE + 1);
+	Vector3 n = (p[1] - p[0]).cross(p[3] - p[0]).normalized();
+	if (n.dot(out) < 0) n = -n;
+	int base = int(pos.size());
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], lin, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, code));
+	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
+	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
+	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };
+	idx.insert(idx.end(), t, t + QUAD_INDICES);
+}
+
+void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
+	mn = Vector3(BIG, BIG, BIG);
+	mx = -mn;
+	for (const Vector3 &p : pos) {
+		mn = Vector3(std::min(mn.x, p.x), std::min(mn.y, p.y), std::min(mn.z, p.z));
+		mx = Vector3(std::max(mx.x, p.x), std::max(mx.y, p.y), std::max(mx.z, p.z));
+	}
+}
+
+void Shell::commit_to(const RID &mesh) const {
+	if (empty()) return;
+	auto copy = [](auto &dst, const auto &src) {
+		dst.resize(int64_t(src.size()));
+		std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(src[0]));
+	};
+	PackedVector3Array pv, pn;
+	PackedColorArray pc;
+	PackedVector2Array pu, pu2;
+	PackedInt32Array pi;
+	copy(pv, pos); copy(pn, nrm); copy(pc, col); copy(pu, uv); copy(pu2, uv2); copy(pi, idx);
+	Array arr;
+	arr.resize(RenderingServer::ARRAY_MAX);
+	arr[RenderingServer::ARRAY_VERTEX] = pv;
+	arr[RenderingServer::ARRAY_NORMAL] = pn;
+	arr[RenderingServer::ARRAY_COLOR] = pc;
+	arr[RenderingServer::ARRAY_TEX_UV] = pu;
+	arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
+	arr[RenderingServer::ARRAY_INDEX] = pi;
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr);
+}
+
+} // namespace city::b40

@@ -1,0 +1,40 @@
+{
+ "type": "object",
+ "properties": {
+  "maps": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "name_key": {
+      "type": "string"
+     },
+     "size_m": {
+      "type": "number",
+      "minimum": 1024
+     },
+     "spacing_m": {
+      "type": "number",
+      "minimum": 0.5
+     }
+    },
+    "required": [
+     "id",
+     "name_key",
+     "size_m",
+     "spacing_m"
+    ],
+    "strict": true
+   },
+   "minItems": 1,
+   "unique_key": "id"
+  }
+ },
+ "required": [
+  "maps"
+ ],
+ "strict": true
+}

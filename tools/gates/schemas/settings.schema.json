@@ -1,0 +1,50 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "default": {
+   "type": "string"
+  },
+  "presets": {
+   "type": "object",
+   "additional": {
+    "type": "object",
+    "properties": {
+     "label_key": {
+      "type": "string"
+     },
+     "shadows": {
+      "type": "boolean"
+     },
+     "msaa": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2
+     },
+     "render_scale": {
+      "type": "number"
+     },
+     "shadow_distance": {
+      "type": "number"
+     }
+    },
+    "required": [
+     "label_key",
+     "shadows",
+     "msaa",
+     "render_scale",
+     "shadow_distance"
+    ],
+    "strict": true
+   }
+  }
+ },
+ "required": [
+  "_doc",
+  "default",
+  "presets"
+ ],
+ "strict": true
+}

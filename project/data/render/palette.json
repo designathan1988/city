@@ -1,0 +1,52 @@
+{
+ "vehicle_tints": [
+  "#D8DCDF",
+  "#2B2E33",
+  "#B83A32",
+  "#2F5FA8",
+  "#E3B23C",
+  "#5E8C4A",
+  "#8A8F96",
+  "#F2EFE6"
+ ],
+ "person_tints": [
+  "#C0504D",
+  "#4F81BD",
+  "#9BBB59",
+  "#8064A2",
+  "#F79646",
+  "#4BACC6",
+  "#E7E6E6",
+  "#3B3B3B"
+ ],
+ "foliage_round": [
+  "#7FAF5E",
+  "#6FA155",
+  "#8DBA66",
+  "#689A50",
+  "#94B86A"
+ ],
+ "water": {
+  "shallow": "#3d7a8e",
+  "deep": "#245a74",
+  "sea_level_m": 0.0
+ },
+ "sky": {
+  "top": "#5f8fc4",
+  "horizon": "#c9d6e0",
+  "ground": "#6f6c64"
+ },
+ "terrain": {
+  "grass_map": "res://assets/surfaces/terrain-grass.map.png",
+  "grass_tint": "#A9B892",
+  "rock": "#8F887C",
+  "sand": "#C9B98F",
+  "land_map": "res://assets/surfaces/terrain-land.map.png",
+  "grass_m": 12.8,
+  "dirt_m": 13.6,
+  "rock_m": 23.2,
+  "land_layers": 9.0,
+  "dirt_layer": 8.0,
+  "rock_layer": 2.0
+ }
+}

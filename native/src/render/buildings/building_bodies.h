@@ -1,0 +1,25 @@
+// The 4.0 bodies of the building records (jobs/building40.ts building40; civic functions and open lots by civic.h): made once per (seed, zone, floors, size)
+// and kept, so every level of a chunk draws the same building; and the placement of a record in the world (lot
+// basis, floor on the highest ground + 0.15 m, building shade, ground sampler).
+#pragma once
+
+#include "render/buildings/facade.h"
+#include "sim/state/city_state.h"
+
+#include <memory>
+#include <unordered_map>
+
+namespace city {
+
+class BuildingBodies {
+public:
+	const b40::Body &body(const b40::Data &data, const Building &rec);
+	// Fills `pl` for the record (pl.b points into the cache: valid until the next body() call that evicts).
+	void place(const b40::Data &data, const CityState &s, const Building &rec, b40::Placed &pl);
+	void clear() { cache_.clear(); }
+
+private:
+	std::unordered_map<uint64_t, std::unique_ptr<b40::Body>> cache_;
+};
+
+} // namespace city

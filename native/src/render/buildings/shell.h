@@ -1,0 +1,64 @@
+// The building mesh writer (4.0 meshCore.ts Shell): one vertex stream for every face of a chunk level, with the
+// vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 or pane size; UV = pane/window cell),
+// the 4.0 tone (macro noise x foot grime) baked into the sRGB vertex colour, and box/rectangle helpers in any
+// orthonormal basis (a facade's along/up/out, the lot's x/y/up).
+#pragma once
+
+#include "render/buildings/b40_paint.h"
+
+#include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/rid.hpp>
+#include <godot_cpp/variant/vector2.hpp>
+#include <godot_cpp/variant/vector3.hpp>
+
+#include <vector>
+
+namespace city::b40 {
+
+// Surface kinds (COLOR.a byte), read by project/render/shaders/building.gdshader.
+enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_COUNT };
+
+// An orthonormal frame: p = o + e0*a + e1*b + e2*c.
+struct Basis {
+	godot::Vector3 o, e0, e1, e2;
+	godot::Vector3 at(float a, float b, float c) const { return o + e0 * a + e1 * b + e2 * c; }
+};
+
+// Box faces to leave out (bit per face).
+constexpr uint8_t SKIP_NONE = 0, SKIP_E2_NEG = 1, SKIP_E2_POS = 2, SKIP_E0_NEG = 4, SKIP_E0_POS = 8, SKIP_E1_NEG = 16, SKIP_E1_POS = 32;
+
+struct Shell {
+	std::vector<godot::Vector3> pos, nrm;
+	std::vector<godot::Color> col;
+	std::vector<godot::Vector2> uv, uv2;
+	std::vector<int32_t> idx;
+	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
+	float shade = 1.f; // extra multiplier (rain streak tops)
+	bool tone = true;
+	bool coarse = false; // mid/far levels: fewer sides on round pieces
+
+	bool empty() const { return idx.empty(); }
+	size_t triangles() const { return idx.size() / 3; }
+	// Quad a-b-c-d facing `out` in the paint (linear colour) with its finish.
+	void quad(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
+			const Lin &lin, int8_t fin, SurfaceKind kind = SK_SHELL);
+	void tri(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &out, const Lin &lin, int8_t fin);
+	// Rectangle in the e0/e1 plane of `f` at e2 = c, facing +e2 (or -e2 when `back`).
+	void rect(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, int8_t fin, bool back = false);
+	void box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip = SKIP_NONE);
+	// A glass pane (interior-mapped room) of w x h metres; `seed` picks its room, lights and blinds.
+	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, uint32_t seed, bool dark);
+	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners, code = window row.
+	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, float code);
+	void commit_to(const godot::RID &mesh) const;
+	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
+
+private:
+	int vert(const godot::Vector3 &p, const godot::Vector3 &n, const godot::Color &c, const godot::Vector2 &t, const godot::Vector2 &t2);
+	godot::Color shaded(const godot::Vector3 &p, const Lin &lin, bool wall, SurfaceKind kind) const;
+	void face(const godot::Vector3 *p, int count, const godot::Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind);
+};
+
+float macro_noise(const godot::Vector3 &p);
+
+} // namespace city::b40

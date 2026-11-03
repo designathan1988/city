@@ -1,0 +1,103 @@
+// Builds the agent meshes once, pushes the palettes to the "agent" material and refills the instance buffers every
+// frame: transform from the interpolated pose (+Z forward, +X left), INSTANCE_CUSTOM = (paint r, g, b, wheel roll
+// angle in radians + BRAKE_FLAG when braking) for vehicles (the Compatibility renderer keeps custom data as halfs); people go to PeopleRenderer.
+#include "render/agents/agent_renderer.h"
+
+#include "render/agents/agent_meshes.h"
+
+
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/variant/array.hpp>
+
+#include <cmath>
+
+using namespace godot;
+
+namespace city {
+
+namespace {
+
+constexpr float AABB_HALF_H = 500.f;
+constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars"
+constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
+
+} // namespace
+
+bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
+	reset();
+	scenario_ = ctx.scenario;
+	material_ = ctx.material("agent", errors);
+	Dictionary t = ctx.table("agents", errors);
+	if (!errors.is_empty()) return false;
+	AgentTrim trim = read_trim(t["trim"]);
+	Array cars = t["cars"];
+	Dictionary body = t["car_body"];
+	if (cars.size() != CAR_MODELS) {
+		errors.push_back("agents.json: esperado um carro por estilo");
+		return false;
+	}
+	int sides = int(body["wheel_sides"]);
+	meshes_.clear();
+	for (int i = 0; i < VEHICLE_TYPES; i++) {
+		MeshBuilder mb;
+		Dictionary d;
+		if (i < CAR_MODELS) build_car(mb, d = cars[i], body, trim);
+		else if (i == int(VehicleType::MOTO)) build_moto(mb, d = t["moto"], sides, trim);
+		else if (i == int(VehicleType::BUS)) build_bus(mb, d = t["bus"], sides, trim);
+		else build_truck(mb, d = t["truck"], sides, trim);
+		wheel_r_[i] = float(d["wheel"]);
+		meshes_.push_back(mb.commit());
+	}
+	for (const Variant &c : Array(t["paints"])) paints_.push_back(agent_hex(c));
+	vehicle_r_ = float(t["vehicle_radius_m"]);
+	people_r_ = float(t["people_radius_m"]);
+	jump_m_ = float(t["wheel_jump_m"]);
+	if (paints_.empty()) errors.push_back("agents.json: sem pinturas");
+	if (!errors.is_empty()) return false;
+	return people_.init(ctx, t["people"], errors);
+}
+
+void AgentRenderer::reset() {
+	for (MultiMeshDraw &d : draws_) d.free();
+	people_.reset();
+	odo_.clear();
+	drawn_vehicles_ = drawn_people_ = 0;
+}
+
+float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
+	if (size_t(id) >= odo_.size()) odo_.resize(size_t(id) + 1);
+	Odometer &o = odo_[size_t(id)];
+	float dx = p.x - o.x, dz = p.z - o.z, moved = dx * p.fx + dz * p.fz;
+	if (o.seen && std::fabs(moved) < jump_m_ && wheel_r > 0) o.angle = std::fmod(o.angle + moved / wheel_r, TAU_F);
+	o.x = p.x;
+	o.z = p.z;
+	o.seen = true;
+	return o.angle;
+}
+
+void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha) {
+	if (!material_.is_valid() || meshes_.empty()) return;
+	PackedFloat32Array bufs[VEHICLE_TYPES];
+	const float r2 = vehicle_r_ * vehicle_r_;
+	drawn_vehicles_ = 0;
+	for (const AgentRecord &rec : f.vehicles) {
+		Pose prev, cur;
+		prev.x = rec.px; prev.y = rec.py; prev.z = rec.pz; prev.fx = rec.pfx; prev.fz = rec.pfz;
+		cur.x = rec.x; cur.y = rec.y; cur.z = rec.z; cur.fx = rec.fx; cur.fz = rec.fz;
+		Pose p = lerp_pose(prev, cur, alpha);
+		const int type = int(rec.look & 0xFFu), paint = int((rec.look >> 8) & 0xFFu);
+		const bool brake = (rec.look & (1u << 16)) != 0;
+		if (type < 0 || type >= VEHICLE_TYPES) continue;
+		float spin = roll(int(rec.id), p, wheel_r_[type]);
+		float dx = p.x - cam.x, dz = p.z - cam.z;
+		if (dx * dx + dz * dz > r2) continue;
+		const Color &c = paints_[size_t(paint) % paints_.size()];
+		push_agent(bufs[type], p, 1.f, c.r, c.g, c.b, spin + (brake ? BRAKE_FLAG : 0.f));
+		drawn_vehicles_++;
+	}
+	drawn_people_ = people_.update(f, cam, alpha, people_r_);
+	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
+	for (int i = 0; i < VEHICLE_TYPES; i++) draws_[i].set(scenario_, meshes_[i]->get_rid(), material_, bufs[i], box, true);
+}
+
+} // namespace city

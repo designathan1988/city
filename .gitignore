@@ -1,0 +1,8 @@
+.godot/
+native/godot-cpp/
+native/build-*/
+project/bin/*.so
+project/bin/*.dll
+dist/
+__pycache__/
+*.tmp

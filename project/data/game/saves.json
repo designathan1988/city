@@ -1,0 +1,4 @@
+{
+ "_doc": "Save files (game/store/city_store.gd, Roadcraft game.ts:756): autosave every autosave_s seconds of real time while the city has unsaved work.",
+ "autosave_s": 120
+}

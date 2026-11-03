@@ -1,0 +1,63 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "sun_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "sun_low": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "moon": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "hemi_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "hemi_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "zenith_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "zenith_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_dusk": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "sky_ground": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "low_zenith": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "low_horizon": {
+   "type": "string",
+   "pattern_prefix": "#"
+  }
+ },
+ "additional": {
+  "type": "number"
+ }
+}

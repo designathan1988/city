@@ -1,0 +1,36 @@
+{
+ "_doc": "Roadcraft world/growth.ts floorsFor and world/arch.ts civicFor. Ranges are [min, max_exclusive] drawn with Rng.int; 'avenue' = street priority >= avenue_priority.",
+ "avenue_priority": 2,
+ "floors": {
+  "low_residential": [1, 3],
+  "low_other": [1, 4],
+  "high_residential": [8, 18],
+  "high_residential_avenue": [8, 26],
+  "high_other": [10, 28],
+  "high_other_avenue": [10, 40],
+  "residential_avenue": [4, 15],
+  "residential_split": [0.68, 0.94],
+  "residential_bands": [[1, 3], [3, 6], [6, 11]],
+  "commercial": [2, 7],
+  "commercial_avenue": [5, 26],
+  "industrial": [1, 3],
+  "mixed": [3, 9],
+  "mixed_avenue": [6, 15]
+ },
+ "civic": {
+  "min_area": 500,
+  "chance": 0.4,
+  "by_zone": [
+   [],
+   [[1, 25], [2, 14], [5, 22], [4, 10], [6, 15], [13, 10], [8, 4]],
+   [[5, 18], [8, 14], [9, 4], [3, 10], [2, 10], [7, 14], [10, 8], [11, 5], [12, 10]],
+   [[7, 50], [11, 25], [10, 10]],
+   [[1, 15], [2, 12], [5, 20], [8, 14], [7, 12], [4, 10], [3, 6], [12, 5]]
+  ]
+ },
+ "square_min_area": 500,
+ "organic_reach_m": 30,
+ "organic_extra_floors": 3,
+ "decay_grace_min": 7200,
+ "decay_span_min": 43200
+}
