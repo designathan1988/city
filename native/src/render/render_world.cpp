@@ -1,5 +1,7 @@
-// ChangeLog consumption and per-frame budgets (render.max_chunk_rebuilds_per_frame).
+// ChangeLog consumption and per-frame budgets (render.max_chunk_rebuilds_per_frame, commit_budget_ms, upload_budget_mb).
 #include "render/render_world.h"
+
+#include "core/units.h"
 
 #include <chrono>
 #include <cmath>
@@ -10,6 +12,9 @@ namespace city {
 
 namespace {
 constexpr float STREAM_DROP_K = 1.25f; // a streamed chunk is freed this far beyond its reach (no rebuild churn at the edge)
+// Built results may wait for this many upload windows: past that, no new mesh is built until the bakes catch up (the
+// waiting shells are CPU memory; a camera jump would otherwise pile up gigabytes of them).
+constexpr int64_t BACKLOG_WINDOWS = 4;
 } // namespace
 
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -68,10 +73,14 @@ void RenderWorld::drain_log(CityState &s) {
 
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
-	BuildBudget budget(std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
+	const int64_t window = int64_t(t.render_upload_budget_mb * BYTES_PER_MIB);
+	const bool backlog = roads_.waiting() + props_.waiting() + buildings_.waiting() > window * BACKLOG_WINDOWS;
+	BuildBudget budget(backlog ? 0 : std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
+	Laps laps;
 	{
 		// Only reads the map: shared, so a frame never waits for the mesh jobs (they read it shared too).
 		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		cost_.lock = laps.lap();
 		drain_log(s);
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
@@ -100,14 +109,22 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, registry,
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
+		cost_.stream = laps.lap();
 		trees_.sync(s, cam, budget);
 		buildings_.update_view(cam, budget);
+		cost_.levels = laps.lap();
 	}
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
-	roads_.commit(until);
-	props_.commit(until);
-	buildings_.commit(until);
+	UploadBudget upload(window, roads_.baking() + props_.baking() + buildings_.baking());
+	roads_.commit(*s.jobs, upload, until);
+	cost_.roads = laps.lap();
+	props_.commit(*s.jobs, upload, until);
+	cost_.props = laps.lap();
+	buildings_.commit(upload, until);
+	cost_.buildings = laps.lap();
 	trees_.commit(until);
+	cost_.trees = laps.lap();
+	cost_.uploads = double(upload.used) / BYTES_PER_MIB;
 }
 
 } // namespace city

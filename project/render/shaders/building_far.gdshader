@@ -10,6 +10,13 @@ uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
 uniform float glass_floor = 0.18;
 uniform float wall_gain = 1.0;
 
+// The superchunk's chunks drawn in their own detail (building_renderer.h): their buildings fold away here, so the far
+// masses never draw over them. COLOR.a carries the surface kind (low 3 bits) and the building's chunk in the
+// superchunk (0..15, the bits above), written by BuildingRenderer::build_super_cpu.
+instance uniform int chunk_mask = 0;
+const int KIND_BITS = 3;
+const int KIND_MASK = 7;
+
 varying vec3 v_world;
 varying vec3 v_wn;
 
@@ -23,12 +30,16 @@ vec3 to_linear(vec3 c) {
 }
 
 void vertex() {
+	int chunk = int(COLOR.a * 255.0 + 0.5) >> KIND_BITS;
+	if (((chunk_mask >> chunk) & 1) != 0) {
+		VERTEX = vec3(0.0); // every vertex of its triangles at one point: degenerate, never rasterized
+	}
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {
-	int kind = int(COLOR.a * 255.0 + 0.5);
+	int kind = int(COLOR.a * 255.0 + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
 	vec3 albedo = OUTPUT_IS_SRGB ? COLOR.rgb : to_linear(COLOR.rgb);
 	vec3 glass = mix(vec3(0.05, 0.06, 0.07), glass_sky, glass_floor) * (1.0 - 0.92 * night);

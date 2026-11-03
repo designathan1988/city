@@ -23,7 +23,27 @@ inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, con
 	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
 }
 
-// One MultiMesh drawn by one instance. Created lazily, resized to fit the buffer.
+// `inst` (made on first use in `scenario`, with `material` when valid, casting shadows or not) shows `next` in place of
+// `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
+inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &next, const godot::RID &scenario,
+		const godot::RID &material, bool shadows) {
+	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+	if (!inst.is_valid()) {
+		if (!next.is_valid()) return;
+		inst = rs->instance_create2(next, scenario);
+		rs->instance_geometry_set_cast_shadows_setting(inst,
+				shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
+		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
+	} else {
+		rs->instance_set_base(inst, next);
+	}
+	if (current.is_valid()) rs->free_rid(current);
+	current = next;
+}
+
+// One MultiMesh drawn by one instance. Created lazily, resized to fit the buffer. `bounds` is both the instance's and
+// the MultiMesh's own box: without one, every multimesh_set_buffer walks all the instances on the main thread to
+// rebuild the MultiMesh AABB (Godot renderer_rd/storage_rd/mesh_storage.cpp _multimesh_set_buffer).
 struct MultiMeshDraw {
 	godot::RID mm, inst;
 	int capacity = -1;
@@ -44,9 +64,17 @@ struct MultiMeshDraw {
 			rs->multimesh_set_mesh(mm, mesh);
 			capacity = count;
 		}
+		rs->multimesh_set_custom_aabb(mm, bounds);
 		if (count > 0) rs->multimesh_set_buffer(mm, buf);
 		rs->instance_set_custom_aabb(inst, bounds);
 		rs->instance_set_visible(inst, count > 0);
+	}
+	// Shows `next` (a MultiMesh of `count` instances a job filled, bake_multimesh, now owned here): swap_base.
+	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count,
+			const godot::AABB &bounds) {
+		swap_base(inst, mm, next, scenario, material, shadows);
+		capacity = mm.is_valid() ? count : 0;
+		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(inst, bounds);
 	}
 	void visible(bool on) const {
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on && capacity > 0);
@@ -66,8 +94,10 @@ struct MultiMeshDraw {
 };
 
 // A mesh made by a job, off the main thread: mesh_add_surface_from_arrays converts the arrays on the calling thread and
-// the RenderingServer queues the surface for its own thread (Godot rendering_server.cpp / server_wrap_mt_common.h), so
-// the heavy part never lands on the frame. Freed unless handed over (a result dropped as stale frees its mesh).
+// the RenderingServer queues the surface's upload for the main thread's next call into it (Godot rendering_server.cpp /
+// server_wrap_mt_common.h), so the conversion never lands on the frame and the uploads are paced by the bakes the frame
+// admits (chunk_jobs.h). Freed unless handed over (a result dropped as stale frees its mesh); bake_multimesh fills a
+// MultiMesh the same way.
 struct OwnedMesh {
 	godot::RID rid;
 	OwnedMesh() = default;
@@ -95,24 +125,27 @@ struct OwnedMesh {
 	}
 };
 
+// A MultiMesh of `buf` (MultiMesh layout, MM_STRIDE floats per instance) filled on the calling thread, as a mesh bake
+// (chunk_jobs.h): its own box, so the RenderingServer never walks the instances to bound it. None when `buf` is empty.
+inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat32Array &buf, const godot::AABB &bounds) {
+	OwnedMesh m;
+	const int count = int(buf.size() / MM_STRIDE);
+	if (count == 0) return m;
+	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+	m.rid = rs->multimesh_create();
+	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
+	rs->multimesh_set_mesh(m.rid, mesh);
+	rs->multimesh_set_custom_aabb(m.rid, bounds);
+	rs->multimesh_set_buffer(m.rid, buf);
+	return m;
+}
+
 // A plain mesh drawn by one instance (road and overlay chunks).
 struct MeshDraw {
 	godot::RID mesh, inst;
-	// Shows `next` (a mesh a job made, now owned here): the instance is made on first use, else it switches to `next`
-	// and the old mesh is freed. An invalid `next` empties the instance but keeps it (its visibility links stay).
+	// Shows `next` (a mesh a job made, now owned here): swap_base.
 	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next) {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		if (!inst.is_valid()) {
-			if (!next.is_valid()) return;
-			inst = rs->instance_create2(next, scenario);
-			rs->instance_geometry_set_cast_shadows_setting(inst,
-					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-			if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
-		} else {
-			rs->instance_set_base(inst, next);
-		}
-		if (mesh.is_valid()) rs->free_rid(mesh);
-		mesh = next;
+		swap_base(inst, mesh, next, scenario, material, shadows);
 	}
 	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();

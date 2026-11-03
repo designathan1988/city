@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/math.h"
+#include "render/rs_util.h"
 
 #include <vector>
 
@@ -40,9 +41,13 @@ struct MeshBuilder {
 	void cone(const godot::Vector3 &base, float r, float h, int seg, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	void blob(const godot::Vector3 &center, const godot::Vector3 &radius, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	bool empty() const { return idx.is_empty(); }
+	int64_t bytes() const; // of the arrays handed to the RenderingServer (chunk_jobs.h UploadBudget)
 	godot::Ref<godot::ArrayMesh> commit() const;
 	// Adds the surface to an existing mesh RID (RenderingServer) instead of creating a resource.
 	void commit_to(const godot::RID &mesh) const;
+	// The surface converted on the calling thread into a mesh of its own (rs_util.h OwnedMesh: a job bakes, the main
+	// thread only hands it to an instance); no mesh when the builder is empty.
+	OwnedMesh bake() const;
 };
 
 godot::Color rgba8_to_color(uint32_t rgba);

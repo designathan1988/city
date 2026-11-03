@@ -3,7 +3,6 @@
 #include "render/roads/road_renderer.h"
 
 #include "render/owned_segments.h"
-#include "render/chunk_jobs.h"
 
 #include "render/roads/road_mesh.h"
 
@@ -26,19 +25,13 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 }
 
 void RoadRenderer::reset() {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.clear();
-		requested_.clear();
-	}
+	clear_queue();
 	for (auto &kv : chunks_) kv.second.surface.free();
 	chunks_.clear();
 }
 
-RoadRenderer::Built RoadRenderer::build_cpu(const CityState &s, int64_t key) const {
-	Built out;
-	out.key = key;
-	RoadEmit e{ s, look_, out.mb };
+void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+	RoadEmit e{ s, look_, mb };
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	each_owned_segment(s, key, [&](int sid) {
 		emit_segment(e, sid);
@@ -48,53 +41,23 @@ RoadRenderer::Built RoadRenderer::build_cpu(const CityState &s, int64_t key) con
 		const RoadNode &nd = s.roads.nodes[n];
 		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) emit_node(e, n);
 	});
-	return out;
 }
 
-void RoadRenderer::commit_one(Built &b) {
+void RoadRenderer::commit_one(BuiltMesh &b) {
 	float x0 = key_x(b.key) * CHUNK, z0 = key_y(b.key) * CHUNK;
 	Chunk &c = chunks_[b.key];
-	c.surface.reset(scenario_, material_, false);
-	if (!b.mb.empty()) b.mb.commit_to(c.surface.mesh);
-	RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
-	c.surface.visible(!b.mb.empty());
-}
-
-void RoadRenderer::rebuild_chunk(const CityState &s, int64_t key) {
-	Built b = build_cpu(s, key);
-	commit_one(b);
+	const bool any = b.mesh.valid();
+	c.surface.adopt(scenario_, material_, false, b.mesh.release());
+	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
+	c.surface.visible(any);
 }
 
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	uint64_t seq;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		seq = ++seq_;
-		requested_[key] = seq;
-	}
-	pool.submit(key * 4 + 0, priority, [this, &s, key, seq]() {
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
-		Built b = build_cpu(s, key);
-		b.seq = seq;
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		done_.push_back(std::move(b));
-	});
-}
-
-void RoadRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
-}
-
-int RoadRenderer::pending() const {
-	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return int(requested_.size() + done_.size());
+	submit_job(s, pool, key * 4 + 0, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 }
 
 void RoadRenderer::drop_chunk(int64_t key) {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		requested_.erase(key);
-	}
+	forget(key);
 	auto it = chunks_.find(key);
 	if (it == chunks_.end()) return;
 	it->second.surface.free();

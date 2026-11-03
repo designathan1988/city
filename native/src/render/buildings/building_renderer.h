@@ -5,21 +5,20 @@
 //   near   0 .. D x near_share         walls with real openings and reveals, panes, sills, bands, roofs, plant, lot
 //   mid    near end ..                 walls with shader-painted windows, the real roofs (parapets, cornices, plant)
 //   far    per 1024 m SUPERCHUNK       every building's masses in one mesh (material building_far)
-// The levels inside a chunk switch by RenderingServer visibility ranges; the far level stands in for its 16 chunks by
-// the Roadcraft plate rule (cellLayer.ts): it turns far when its nearest point (with the eye height) is beyond mid_end,
-// with lod.far_hysteresis, and it is drawn while far or while the chunks it covered are not remeshed yet (never a
-// hole). Every chunk instance has its superchunk's far instance as visibility parent: Godot hides them while the far
-// one is drawn (a parent without a range never counts as "too close") and lets their own ranges decide while it is
-// hidden. RenderingServer::free_rid does not undo that link on either side, so it is undone before every free.
-// Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit indices. A chunk lives while RenderWorld
-// streams it (within far_end); its near level is meshed within reach of the camera, its mid level while its
-// superchunk is not far.
+// Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for
+// every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured
+// with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its
+// mid level is built, and the far mesh folds that chunk's buildings away (building_far.gdshader chunk_mask) - one
+// switch per chunk, never a hole nor a building drawn twice. The mid level is built within mid_end (+ pad) on the
+// ground, as the chunks are streamed. Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit
+// indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
 
 #include "core/job_pool.h"
 #include "render/buildings/b40_data.h"
 #include "render/buildings/building_bodies.h"
 #include "render/buildings/shell.h"
+#include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -42,12 +41,14 @@ public:
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	void submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority);
-	void commit(const std::chrono::steady_clock::time_point &until);
+	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until);
 	void drop_chunk(int64_t key); // frees every level of a chunk the camera left
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
 	int pending() const;
+	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
+	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
@@ -60,6 +61,8 @@ private:
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
+		bool detail = false; // within the detail switch (hysteresis)
+		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
 		godot::Vector3 centre;
 	};
 	struct Super {
@@ -67,9 +70,9 @@ private:
 		bool dirty = false;
 		bool built = false; // the far mesh of the current content is committed
 		bool has_content = false; // and holds buildings
-		bool far_state = false; // beyond the switch (plate rule, with hysteresis)
-		bool covering = false; // its chunks' mid levels went while it stood in: drawn until they are all back
-		bool shown = false; // the far instance is visible
+		int mask = 0; // its chunks drawn in detail (bit = chunk in the superchunk): hidden in the far mesh
+		int mask_sent = -1; // the chunk_mask last given to the far instance (-1: none yet)
+		int chunks = 0; // its streamed chunks: the superchunk lives while one is
 		// A built far mesh is rebuilt on its own clock (Roadcraft deferredRebuild.ts): not before `due` (a delay
 		// after the first change it waits for) nor within an interval of the previous request (`asked`).
 		double due = 0, asked = -std::numeric_limits<double>::infinity();
@@ -80,20 +83,32 @@ private:
 		OwnedMesh mesh;
 		godot::AABB box;
 	};
+	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
+	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
 	struct Built {
-		int64_t key = 0;
+		int64_t key = 0, job = 0;
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
-		std::array<Surface, SUB_COUNT> near, parts, mid; // one per sub-chunk
+		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
+		std::array<Surface, SUB_COUNT> near, parts, mid;
 		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
-		bool has_near = false, has_mid = false;
+		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
+		std::array<int, BAND_COUNT> band_count{};
+		godot::RID unit_box; // the parts' box mesh
+		bool has_near = false, has_mid = false, baked = false;
+		int64_t bytes() const;
+		void bake();
 	};
 	struct SuperBuilt {
-		int64_t key = 0;
+		int64_t key = 0, job = 0;
 		float priority = 0;
 		uint64_t seq = 0;
+		b40::Shell far_shell;
 		Surface far;
+		bool baked = false;
+		int64_t bytes() const { return far_shell.bytes(false); }
+		void bake();
 	};
 	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
 	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
@@ -110,24 +125,19 @@ private:
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
 	void submit_super(const CityState &s, int64_t super_key, float priority);
 	void visit_super(int64_t super_key, Super &sp, const godot::Vector3 &cam, float eye, std::vector<Want> &want);
-	void drop_super(int64_t super_key);
+	void show(Chunk &ch, bool on); // the chunk drawn in detail or left to the far mesh
+	void drop_far(int64_t super_key, Super &sp);
 	void drop(Chunk &ch, Level level);
 	void drop_bands(Chunk &ch);
 	void ranges(Chunk &ch) const;
 	float near_reach() const;
-	float super_distance(int64_t super_key, const godot::Vector3 &cam, float eye) const;
-	godot::RID far_parent(const Chunk &ch) const; // the chunk's superchunk far instance (invalid when none)
-	void link(Chunk &ch, const godot::RID &parent) const; // visibility parent of every instance of the chunk
-	void link_super(int64_t super_key, const godot::RID &parent); // ... of every chunk of the superchunk
-	void show_far(Super &sp);
-	static void release(MeshDraw &d); // undoes the visibility link, then frees
-	static void release(MultiMeshDraw &d);
+	void send_mask(Super &sp);
 	b40::Data data_;
 	BuildingBodies bodies_;
 	godot::RID scenario_, material_, material_far_, material_parts_;
@@ -138,6 +148,8 @@ private:
 	mutable std::mutex queue_mutex_;
 	std::vector<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job
+	BakingSet baking_, super_baking_;
+	int64_t waiting_ = 0, super_waiting_ = 0;
 	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;
 	std::unordered_map<int64_t, Chunk> chunks_;

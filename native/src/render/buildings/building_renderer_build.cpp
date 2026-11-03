@@ -1,8 +1,8 @@
 // CPU assembly of the building levels on a job's thread: gather copies what the build reads from the map (the
 // records of its chunks and the ground under their lots) while the job holds the map lock shared for a moment; the
 // near/mid shells per 128 m sub-chunk (with the facade parts as instanced unit boxes grouped in five thickness bands)
-// and the per-superchunk far/HLOD shell are then built from that copy without the lock and baked into meshes
-// (bake, building_renderer_commit.cpp), so the main thread only hands them to their instances.
+// and the per-superchunk far/HLOD shell are then built from that copy without the lock. A later job bakes them into
+// meshes when the frame's upload budget admits it (Built::bake, building_renderer_commit.cpp; chunk_jobs.h).
 #include "render/buildings/building_renderer.h"
 
 #include "render/buildings/civic.h"
@@ -19,6 +19,13 @@ namespace city {
 namespace {
 constexpr int CHUNK_SUBDIVISIONS = 2; // CHUNK / SUBCHUNK
 constexpr float LOT_GROUND_PAD_M = 4.f; // ground copied past a lot's corners (plinths, kerbs and fences reach out)
+constexpr int CHUNKS_PER_SUPER_AXIS = int(SUPERCHUNK / CHUNK);
+// The far mesh's COLOR.a: surface kind in the low bits (SurfaceKind < 8), the chunk in the superchunk above them;
+// the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
+constexpr int FAR_KIND_BITS = 3, FAR_KIND_MASK = (1 << FAR_KIND_BITS) - 1;
+constexpr float BYTE_MAX = 255.f;
+static_assert(b40::SK_COUNT <= (1 << FAR_KIND_BITS), "surface kinds must fit the far mesh's kind bits");
+static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << FAR_KIND_BITS <= int(BYTE_MAX) + 1, "chunk index must fit COLOR.a");
 
 int sub_index(const Building &b, int64_t key) {
 	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * CHUNK_SUBDIVISIONS;
@@ -54,8 +61,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	Built out;
 	out.key = key;
 	if (!near && !mid) return out;
-	std::vector<b40::Shell> near_shells(static_cast<size_t>(SUB_COUNT)), parts_shells(static_cast<size_t>(SUB_COUNT));
-	std::vector<b40::Shell> mid_shells(static_cast<size_t>(SUB_COUNT)), mid_parts(static_cast<size_t>(SUB_COUNT));
+	std::array<b40::Shell, SUB_COUNT> &near_shells = out.near_shell, &parts_shells = out.parts_shell, &mid_shells = out.mid_shell;
+	std::array<b40::Shell, SUB_COUNT> mid_parts;
 	for (b40::Shell &p : parts_shells) p.instanced = true;
 	for (b40::Shell &p : mid_parts) p.instanced = true;
 	for (const Building &rec : in.records) {
@@ -81,19 +88,15 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			return std::min(band, BAND_COUNT - 1);
 		};
 		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
-		for (const b40::Shell &p : parts_shells)
+		for (b40::Shell &p : parts_shells) {
 			for (const b40::BoxInstance &inst : p.boxes) boxes[size_t(band_of(inst.thick))].push_back(inst);
-		for (int b = 0; b < BAND_COUNT; b++) out.bands[size_t(b)] = bake_band(boxes[size_t(b)]);
-		for (int i = 0; i < SUB_COUNT; i++) {
-			out.near[size_t(i)] = bake(near_shells[size_t(i)], true);
-			out.parts[size_t(i)] = bake(parts_shells[size_t(i)], true);
+			p.boxes = {}; // in the bands now
 		}
+		for (int b = 0; b < BAND_COUNT; b++) out.bands[size_t(b)] = bake_band(boxes[size_t(b)]);
+		out.unit_box = unit_box_->get_rid();
 		out.has_near = true;
 	}
-	if (mid) {
-		for (int i = 0; i < SUB_COUNT; i++) out.mid[size_t(i)] = bake(mid_shells[size_t(i)], true);
-		out.has_mid = true;
-	}
+	out.has_mid = mid;
 	return out;
 }
 
@@ -101,14 +104,22 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	thread_local BuildingBodies bodies;
 	SuperBuilt out;
 	out.key = super_key;
-	b40::Shell far;
+	b40::Shell &far = out.far_shell;
+	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
 		bodies.place(data_, in.ground, rec, pl);
 		pl.lean = true;
+		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);
+		// the building's chunk in the superchunk above the kind bits of COLOR.a (building_far.gdshader chunk_mask)
+		const int64_t ck = chunk_of(rec.x, rec.z, CHUNK);
+		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);
+		for (size_t v = first; v < far.col.size(); v++) {
+			const int kind = int(std::lround(far.col[v].a * BYTE_MAX)) & FAR_KIND_MASK;
+			far.col[v].a = float(kind | (chunk << FAR_KIND_BITS)) / BYTE_MAX;
+		}
 	}
-	out.far = bake(far, false);
 	return out;
 }
 

@@ -54,6 +54,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
+	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 }
 
 } // namespace city

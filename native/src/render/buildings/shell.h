@@ -65,6 +65,7 @@ struct Shell {
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners, code = window row.
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, float code);
 	void commit_to(const godot::RID &mesh, bool with_uv2 = true) const;
+	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 
 private:

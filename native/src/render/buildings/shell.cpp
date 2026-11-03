@@ -166,6 +166,11 @@ void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
 	}
 }
 
+int64_t Shell::bytes(bool with_uv2) const {
+	return int64_t((pos.size() + nrm.size()) * sizeof(Vector3) + col.size() * sizeof(Color) +
+			(uv.size() + (with_uv2 ? uv2.size() : 0)) * sizeof(Vector2) + idx.size() * sizeof(int32_t));
+}
+
 void Shell::commit_to(const RID &mesh, bool with_uv2) const {
 	if (idx.empty()) return;
 	auto copy = [](auto &dst, const auto &src) {

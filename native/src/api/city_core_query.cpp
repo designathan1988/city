@@ -289,6 +289,23 @@ Dictionary CityCore::traffic_probe(int sample) {
 	return d;
 }
 
+Dictionary CityCore::render_cost() const {
+	const RenderWorld::Cost &c = render_.cost();
+	Dictionary d;
+	d["process"] = process_ms_;
+	d["agents"] = agents_ms_;
+	d["lock"] = c.lock;
+	d["stream"] = c.stream;
+	d["levels"] = c.levels;
+	d["roads"] = c.roads;
+	d["props"] = c.props;
+	d["buildings"] = c.buildings;
+	d["trees"] = c.trees;
+	d["overlays"] = overlays_ms_;
+	d["uploads"] = c.uploads; // MiB
+	return d;
+}
+
 Dictionary CityCore::city_bounds() const {
 	Dictionary d;
 	float minx = NO_BOUND, minz = NO_BOUND, maxx = -NO_BOUND, maxz = -NO_BOUND;

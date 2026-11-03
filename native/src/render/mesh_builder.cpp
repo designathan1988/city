@@ -140,6 +140,19 @@ Ref<ArrayMesh> MeshBuilder::commit() const {
 	return m;
 }
 
+int64_t MeshBuilder::bytes() const {
+	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
+			idx.size() * sizeof(int32_t));
+}
+
+OwnedMesh MeshBuilder::bake() const {
+	OwnedMesh m;
+	if (empty()) return m;
+	m.rid = RenderingServer::get_singleton()->mesh_create();
+	commit_to(m.rid);
+	return m;
+}
+
 void MeshBuilder::commit_to(const RID &mesh) const {
 	if (empty()) return;
 	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(),

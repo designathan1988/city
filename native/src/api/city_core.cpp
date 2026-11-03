@@ -108,6 +108,7 @@ void CityCore::_process(double delta) {
 		state_->log.lot_cells.clear();
 		return;
 	}
+	Laps total, laps;
 	Camera3D *cam = get_viewport() ? get_viewport()->get_camera_3d() : nullptr;
 	if (cam) cam_ = cam->get_global_position();
 	state_->camera_x.store(cam_.x);
@@ -117,16 +118,20 @@ void CityCore::_process(double delta) {
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 	const float alpha = poses.period_ns > 0 ? std::clamp(float(now - poses.tick_ns) / float(poses.period_ns), 0.f, 1.f) : 1.f;
 	render_.update_agents(poses, cam_, alpha); // no map lock: the frame is the published snapshot
+	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex
 		render_.full_rebuild(*state_, terrain3d());
 		need_full_rebuild_ = false;
 	}
 	render_.sync(*state_, terrain3d(), cam_); // takes the map shared (never exclusive: render_world.h)
+	laps.lap();
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 		render_.update_overlays(*state_, poses, delta);
 	}
+	overlays_ms_ = laps.lap();
+	process_ms_ = total.lap();
 }
 
 void CityCore::set_overlay(const String &name, bool on) {

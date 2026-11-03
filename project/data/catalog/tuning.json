@@ -26,7 +26,8 @@
   "building_mid_end_m": 1100,
   "building_far_end_m": 4500,
   "max_chunk_rebuilds_per_frame": 6,
-  "commit_budget_ms": 4
+  "commit_budget_ms": 4,
+  "upload_budget_mb": 64
  },
  "terrain": {
   "min_height_m": -64,

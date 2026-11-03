@@ -77,6 +77,7 @@ public:
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
+	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
 
 protected:
 	static void _bind_methods();
@@ -97,6 +98,7 @@ private:
 	godot::NodePath terrain_path_;
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;
 	godot::Vector3 cam_;
+	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
 };
 
 } // namespace city

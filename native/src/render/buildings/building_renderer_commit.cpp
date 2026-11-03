@@ -1,7 +1,8 @@
-// RenderingServer side of the building renderer. On the job's thread: bake turns a shell into a mesh (the arrays are
-// converted there; the RenderingServer queues the surface for its own thread, rs_util.h OwnedMesh) and bake_band packs
-// the instanced parts. On the main thread: the meshes are handed to the chunk's and superchunk's instances, with the
-// visibility links between them and their frees. No CPU mesh assembly here (building_renderer_build.cpp).
+// RenderingServer side of the building renderer. On a worker: bake turns a shell into a mesh (the arrays are converted
+// there, rs_util.h OwnedMesh) in the bake job the frame's upload budget admits (Built::bake, chunk_jobs.h), and
+// bake_band packs the instanced parts. On the main thread: the meshes are handed to the chunk's and superchunk's
+// instances, the chunk is shown or left to the far mesh, and the far mesh gets its mask. No CPU mesh assembly here
+// (building_renderer_build.cpp).
 #include "render/buildings/building_renderer.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -15,18 +16,25 @@ namespace city {
 namespace {
 constexpr float AABB_PAD = 1.f, AABB_MIN_Y = -100.f, AABB_H = 700.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
+const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
+
+// A chunk's culling box (every level and band of it).
+AABB chunk_box(int64_t key) {
+	return AABB(Vector3(float(key_x(key)) * CHUNK, AABB_MIN_Y, float(key_y(key)) * CHUNK), Vector3(CHUNK, AABB_H, CHUNK));
+}
 
 Color unpack(uint32_t c) {
 	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE, float(c & 0xff) / BYTE);
 }
 } // namespace
 
-// The job's surface to the draw: the instance shows the new mesh (or is emptied when the shell was empty).
-void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows) {
+// The job's surface to the draw: the instance shows the new mesh (or is emptied when the shell was empty), drawn when
+// `shown`.
+void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown) {
 	const bool any = sf.mesh.valid();
 	d.adopt(scenario, material, shadows, sf.mesh.release());
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, sf.box);
-	d.visible(any);
+	d.visible(any && shown);
 }
 
 BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2) {
@@ -52,71 +60,84 @@ PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstanc
 	return buf;
 }
 
+int64_t BuildingRenderer::Built::bytes() const {
+	int64_t n = 0;
+	for (int i = 0; i < SUB_COUNT; i++)
+		n += near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true);
+	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
+	return n;
+}
+
+void BuildingRenderer::Built::bake() {
+	for (int i = 0; i < SUB_COUNT; i++) {
+		if (has_near) {
+			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true);
+			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
+		}
+		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true);
+		near_shell[size_t(i)] = parts_shell[size_t(i)] = mid_shell[size_t(i)] = b40::Shell();
+	}
+	for (int b = 0; b < BAND_COUNT; b++) {
+		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_STRIDE);
+		band_mm[size_t(b)] = bake_multimesh(unit_box, bands[size_t(b)], chunk_box(key));
+		bands[size_t(b)] = PackedFloat32Array();
+	}
+	baked = true;
+}
+
+void BuildingRenderer::SuperBuilt::bake() {
+	far = BuildingRenderer::bake(far_shell, false);
+	far_shell = b40::Shell();
+	baked = true;
+}
+
 void BuildingRenderer::commit_one(Built &b) {
 	auto found = chunks_.find(b.key);
 	if (found == chunks_.end()) return; // dropped by the stream meanwhile (drop_chunk also forgets the request)
 	Chunk &ch = found->second;
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
-	float x0 = float(key_x(b.key)) * CHUNK, z0 = float(key_y(b.key)) * CHUNK;
-	AABB fallback(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK));
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, material_, true);
-			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false);
+			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, material_, true, ch.shown);
+			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown);
 		}
 		for (int band = 0; band < BAND_COUNT; band++)
-			ch.bands[size_t(band)].set(scenario_, unit_box_->get_rid(), material_parts_, b.bands[size_t(band)], fallback, false);
+			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
+					chunk_box(b.key));
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
 	}
 	if (b.has_mid) {
-		for (int i = 0; i < SUB_COUNT; i++) put(ch.mid[size_t(i)], b.mid[size_t(i)], scenario_, material_, true);
+		for (int i = 0; i < SUB_COUNT; i++) put(ch.mid[size_t(i)], b.mid[size_t(i)], scenario_, material_, true, ch.shown);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
 	}
 	ranges(ch);
-	link(ch, far_parent(ch)); // instances made by this commit join the superchunk's far instance
+	show(ch, ch.shown); // the bands' MultiMeshes come up visible: the chunk's state decides
 }
 
 void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
-	put(sp.far, b.far, scenario_, material_far_, false); // an emptied far instance is kept: its chunks stay linked
+	put(sp.far, b.far, scenario_, material_far_, false, true);
 	sp.built = true;
-	sp.shown = sp.has_content; // what put left
-	link_super(b.key, sp.far.inst);
-	show_far(sp); // the state update_view decided this frame, not the upload's
+	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
+	send_mask(sp);
 }
 
-void BuildingRenderer::link(Chunk &ch, const RID &parent) const {
-	RenderingServer *rs = RenderingServer::get_singleton();
-	auto set = [&](const RID &inst) {
-		if (inst.is_valid()) rs->instance_set_visibility_parent(inst, parent);
-	};
+// Every instance of the chunk on or off (one with no geometry stays off).
+void BuildingRenderer::show(Chunk &ch, bool on) {
+	ch.shown = on;
 	for (int i = 0; i < SUB_COUNT; i++) {
-		set(ch.near[size_t(i)].inst);
-		set(ch.parts[size_t(i)].inst);
-		set(ch.mid[size_t(i)].inst);
+		for (MeshDraw *d : { &ch.near[size_t(i)], &ch.parts[size_t(i)], &ch.mid[size_t(i)] }) d->visible(on && d->mesh.is_valid());
 	}
-	for (const MultiMeshDraw &d : ch.bands) set(d.inst);
+	for (const MultiMeshDraw &d : ch.bands) d.visible(on);
 }
 
-// Drawn while far, or while the chunks it covered are not all remeshed (never a hole); never while it holds nothing.
-void BuildingRenderer::show_far(Super &sp) {
-	const bool on = sp.has_content && (sp.far_state || sp.covering);
-	if (on == sp.shown) return;
-	sp.far.visible(on);
-	sp.shown = on;
-}
-
-void BuildingRenderer::release(MeshDraw &d) {
-	if (d.inst.is_valid()) RenderingServer::get_singleton()->instance_set_visibility_parent(d.inst, RID());
-	d.free();
-}
-
-void BuildingRenderer::release(MultiMeshDraw &d) {
-	if (d.inst.is_valid()) RenderingServer::get_singleton()->instance_set_visibility_parent(d.inst, RID());
-	d.free();
+void BuildingRenderer::send_mask(Super &sp) {
+	if (!sp.far.inst.is_valid() || sp.mask == sp.mask_sent) return;
+	RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(sp.far.inst, FAR_MASK_PARAM, sp.mask);
+	sp.mask_sent = sp.mask;
 }
 
 } // namespace city
