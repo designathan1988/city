@@ -323,7 +323,6 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos > 20 s por minuto, chegadas/perdidas).
 - Pedestres: sem multidão (desvio lateral, filas na guia), ciclistas, portas dos prédios e passageiros de ônibus.
-- Pedestres: esqueleto rígido (só o osso dominante): a mistura dos 4 pesos (CUSTOM1) saiu esticada no Compatibility;
-  só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
+- Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
   (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

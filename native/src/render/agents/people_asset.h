@@ -1,7 +1,7 @@
 // The cooked pedestrians (project/assets/people/people.bin, made by tools/assets/cook_people.py from Roadcraft's
 // MakeHuman CC0 people with the Rocketbox MIT walk): per variation and level an ArrayMesh in the bind pose (T pose,
-// metres, +Z forward, feet at y = 0) whose CUSTOM0 carries four bone indices and CUSTOM1 their weights (RGBA8 unorm),
-// UV2 = (region, tint detail), COLOR = linear texture colour; and the walk as a float palette texture (3 RGBA texels per
+// metres, +Z forward, feet at y = 0) whose CUSTOM0 carries four bone indices (RGBA8 unorm) and UV, COLOR.a the first
+// three of their weights, UV2 = (region, tint detail), COLOR.rgb = linear texture colour; and the walk as a float palette texture (3 RGBA texels per
 // bone and frame = the rows of the 3x4 bind -> pose matrix) that render/shaders/people.gdshader skins with.
 #pragma once
 

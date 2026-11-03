@@ -58,12 +58,13 @@ float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_
 Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
-	PackedVector2Array uv2;
+	PackedVector2Array uv, uv2;
 	PackedByteArray bones, weights;
 	PackedInt32Array idx;
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
+	uv.resize(sz.vertices);
 	uv2.resize(sz.vertices);
 	bones.resize(int64_t(sz.vertices) * CHANNELS);
 	weights.resize(int64_t(sz.vertices) * CHANNELS);
@@ -77,7 +78,11 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 		float detail = r.get<float>();
 		pos.set(i, Vector3(p[0], p[1], p[2]));
 		nor.set(i, Vector3(n[0], n[1], n[2]));
-		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), 1));
+		// the first three weights in UV and COLOR.a (the fourth is what they leave of 1): standard attributes every
+		// renderer carries (the Compatibility renderer dropped CUSTOM1's g, b and a)
+		const uint8_t *w = weights.ptr() + i * CHANNELS;
+		uv.set(i, Vector2(float(w[0]) / BYTE_MAX, float(w[1]) / BYTE_MAX));
+		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), float(w[2]) / BYTE_MAX));
 		uv2.set(i, Vector2(float(c >> (3 * BYTE_BITS)), detail));
 	}
 	idx.resize(sz.indices);
@@ -88,12 +93,11 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	arr[Mesh::ARRAY_VERTEX] = pos;
 	arr[Mesh::ARRAY_NORMAL] = nor;
 	arr[Mesh::ARRAY_COLOR] = col;
+	arr[Mesh::ARRAY_TEX_UV] = uv;
 	arr[Mesh::ARRAY_TEX_UV2] = uv2;
 	arr[Mesh::ARRAY_CUSTOM0] = bones;
-	arr[Mesh::ARRAY_CUSTOM1] = weights;
 	arr[Mesh::ARRAY_INDEX] = idx;
-	uint64_t flags = (uint64_t(Mesh::ARRAY_CUSTOM_RGBA8_UNORM) << Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT) |
-			(uint64_t(Mesh::ARRAY_CUSTOM_RGBA8_UNORM) << Mesh::ARRAY_FORMAT_CUSTOM1_SHIFT);
+	uint64_t flags = uint64_t(Mesh::ARRAY_CUSTOM_RGBA8_UNORM) << Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT;
 	Ref<ArrayMesh> m;
 	m.instantiate();
 	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(), BitField<Mesh::ArrayFormat>(flags));
