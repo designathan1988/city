@@ -12,8 +12,8 @@ namespace city::b40 {
 
 namespace {
 constexpr float EDGE_IN = 0.01f, OUT_TEST = 0.03f, HALF = 0.5f, PILASTER_K = 1.08f, PIER_MAX_SHARE = 0.3f;
-constexpr float PIER_FROM = 0.35f, PIER_TO = 1.35f, GROUND_LIFT = 0.012f, BAND_OUT = 0.07f, BAND_H = 0.22f, BAND_LOW = 0.45f;
-constexpr float BAND_MID = 0.1f, LOW_TIER = 0.94f, BASE_OUT = 0.12f, BASE_H = 0.32f, SLAB_OUT = 0.03f, SLAB_H = 0.24f;
+constexpr float PIER_FROM = 0.35f, PIER_TO = 1.35f, GROUND_LIFT = 0.012f, BAND_OUT = 0.07f, BAND_H = 0.22f;
+constexpr float BASE_OUT = 0.12f, BASE_H = 0.32f, SLAB_OUT = 0.03f, SLAB_H = 0.24f;
 constexpr float SLAB_SHADE = 0.86f, PLINTH_OUT = 0.12f, PLINTH_BURY = 0.8f, STEP_RISE = 0.17f, STEP_MIN = 0.255f;
 constexpr float FACADE_RUN_MIN = 0.3f, STEP_FRONT = 1.5f, STEP_PAD = 0.5f, STEP_FOOT = 0.4f, DOOR_W = 1.3f;
 constexpr int MAX_STEPS = 40;

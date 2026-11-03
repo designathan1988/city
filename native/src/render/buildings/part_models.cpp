@@ -11,7 +11,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float MULLION = 0.036f, TRANSOM_Y = 0.18f;
-constexpr float RAIL_TOP_Y = 0.97f, RAIL_TOP_H = 0.06f, RAIL_TOP_T = 0.05f, RAIL_BOT_Y = 0.12f, RAIL_BOT_H = 0.04f, RAIL_BOT_T = 0.03f;
+constexpr float RAIL_TOP_Y = 0.97f, RAIL_TOP_H = 0.06f, RAIL_TOP_T = 0.05f, RAIL_BOT_Y = 0.12f, RAIL_BOT_H = 0.04f;
 constexpr float BALUSTER = 0.015f, BALUSTER_H = 0.94f;
 constexpr int BALUSTERS_FRONT = 11, BALUSTERS_SIDE = 3;
 constexpr float LEAF_Z = -0.2f, LEAF_D = 0.6f, PANEL_W = 0.36f, PANEL_TALL = 0.5f, PANEL_SHORT = 0.3f, PANEL_Y_HI = 0.2f;
@@ -52,7 +52,8 @@ void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	s.box(m, -hx + bx, hx - bx, -hy + by, hy - by, -hz, hz, lin, fin, SKIP_E2_NEG | SKIP_E2_POS);
 }
 
-// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; balusters are single faces.
+// Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
+// are single front faces (4.0 kit.ts draws them as thin boxes).
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	float hx = p.sx / 2, z1 = p.sz, top0 = (RAIL_TOP_Y - RAIL_TOP_H / 2) * p.sy, top1 = (RAIL_TOP_Y + RAIL_TOP_H / 2) * p.sy;
@@ -75,11 +76,12 @@ void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 
 void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	float hz = p.sz / 2;
-	s.rect(m, -p.sx / 2, p.sx / 2, -p.sy / 2, p.sy / 2, LEAF_Z * p.sz, lin, fin);
+	// the front faces of the 4.0 leaf and panel boxes (kit.ts doorGeometry): the handle starts on the leaf's face
+	const float leaf_z = (LEAF_Z + LEAF_D / 2) * p.sz, panel_z = (PANEL_Z + PANEL_D / 2) * p.sz;
+	s.rect(m, -p.sx / 2, p.sx / 2, -p.sy / 2, p.sy / 2, leaf_z, lin, fin);
 	for (float x : { -PANEL_X, PANEL_X }) {
-		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, hz, lin * PANEL_SHADE, fin);
-		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, hz, lin * PANEL_SHADE, fin);
+		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
+		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 	}
 	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.data->part_handle_h_m / 2, HANDLE_Y + p.data->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
 }

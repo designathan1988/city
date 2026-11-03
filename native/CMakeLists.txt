@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.25) # add_subdirectory(... SYSTEM)
 project(citycore LANGUAGES C CXX)
 
 # Godot 4.7 API, single precision (see architecture doc: 30 km fits in float32 with the origin at the map center).
@@ -7,7 +7,7 @@ set(GODOTCPP_TARGET "template_release" CACHE STRING "template_release for the ex
 set(GODOTCPP_PRECISION "single" CACHE STRING "" FORCE)
 set(GODOTCPP_DISABLE_EXCEPTIONS ON CACHE BOOL "" FORCE)
 
-add_subdirectory(godot-cpp)
+add_subdirectory(godot-cpp SYSTEM) # its headers are third-party: their warnings are not ours
 
 file(GLOB_RECURSE CITYCORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
@@ -20,6 +20,12 @@ if(MINGW)
     target_link_libraries(citycore PRIVATE "-Wl,--no-gc-sections")
 endif()
 target_include_directories(citycore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+# Every warning on (the build must stay free of them: CLAUDE.md "Antes de concluir"); godot-cpp keeps its own flags.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(citycore PRIVATE -Wall -Wextra)
+elseif(MSVC)
+    target_compile_options(citycore PRIVATE /W4)
+endif()
 
 get_target_property(GODOTCPP_SUFFIX godot-cpp GODOTCPP_SUFFIX)
 set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../project/bin/")

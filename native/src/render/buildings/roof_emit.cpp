@@ -13,7 +13,7 @@ namespace {
 constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
 constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
-constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, LOW_TIER = 0.94f, BAND_LOW = 0.45f, BAND_MID = 0.1f, RAIL_H = 1.f, RAIL_IN = 0.12f;
+constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_H = 1.f, RAIL_IN = 0.12f;
 constexpr float RAIL_POST = 0.05f, RAIL_TOP = 0.05f, RAIL_MID = 0.45f, RAIL_EVERY = 1.5f, MACHINE_H = 3.f, MACHINE_IN = 0.3f;
 constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t GOLDEN = 2654435761u;

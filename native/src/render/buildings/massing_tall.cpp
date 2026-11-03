@@ -11,7 +11,7 @@ constexpr int PALETTES = 7, SHOP_FUNCTIONS = 8, ROUND_SIDES = 16;
 constexpr float HALF = 0.5f, PI_F = 3.14159265f;
 constexpr float FLATS_GROUND_LO = 3.8f, FLATS_GROUND_HI = 4.5f, FLATS_STOREY_LO = 2.9f, FLATS_STOREY_HI = 3.1f;
 constexpr float TALL_SHARE = 0.125f, SHOP_GROUND = 0.25f, HIP_SHARE = 0.4f, TERRACE_SHARE = 0.3f, BAR_LO = 12.f, BAR_HI = 15.f;
-constexpr float FACADE_SETBACK_LO = 0.5f, INSET_HI = 1.2f, TOWER_MIN = 8.f, TOWER_MAX_D = 22.f, OFFICE_MAX_D = 24.f, FREE_MIN = 2.f;
+constexpr float FACADE_SETBACK_LO = 0.5f, INSET_HI = 1.2f, TOWER_MIN = 8.f, TOWER_MAX_D = 22.f, OFFICE_MAX_D = 24.f;
 constexpr float ELL_TOWER_W = 14.f, TWIN_TOWER_W = 26.f, ELL_LO = 0.38f, ELL_HI = 0.5f, LEG_MIN = 4.f, GAP_LO = 3.f, GAP_HI = 5.f;
 constexpr int TWIN_MIN = 6, LIFT_EXTRA = 2;
 constexpr float CORNICE_IN_LO = 1.5f, CROWN_IN_HI = 3.f, CROWN_MIN = 6.f, SHAPE_RECT = 0.5f, SHAPE_OCT = 0.85f;

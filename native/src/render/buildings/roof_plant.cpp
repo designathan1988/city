@@ -34,7 +34,7 @@ constexpr float COND_UP = 0.15f, FAN_PLATE = 0.56f, PANEL_W = 1.05f, PANEL_STEP 
 constexpr float PANEL_Z0 = 0.25f, PANEL_Z1 = 0.32f, POLE = 0.08f, BAR = 1.2f, BAR2 = 0.9f, BAR_DROP = 0.4f, BAR2_DROP = 0.9f;
 constexpr float DISH_POST = 0.7f, DISH_PLATE_Z = 0.5f, DISH_PLATE_T = 0.1f, VENT_R = 0.4f, VENT_CAP_R = 0.5f, VENT_CAP = 0.15f;
 constexpr float CHIM_R = 0.45f, CHIM_TOP = 0.3f, DOOR_W = 0.9f, DOOR_H = 2.05f, DOOR_T = 0.04f, LID = 0.8f, LID_T = 0.12f;
-constexpr float LADDER = 0.1f, LADDER_UP = 0.9f, HALF = 0.5f;
+constexpr float LADDER = 0.1f, LADDER_UP = 0.9f;
 constexpr int CYL_SIDES = 12, CYL_SIDES_COARSE = 6;
 
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin) {
