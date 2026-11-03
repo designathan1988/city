@@ -81,6 +81,12 @@ void commit(CityState &s, int vid, int ci) {
 	t.conn_pass_t[ci] = t.time;
 }
 
+void release(CityState &s, int vid, int ci) {
+	TrafficState &t = s.traffic;
+	if (t.conn_pass[ci] == vid) t.conn_pass[ci] = -1;
+	t.vehicles[vid].pass = -1;
+}
+
 void claim_exit(CityState &s, const Conn &c, int vid) {
 	TrafficState &t = s.traffic;
 	size_t to = key(c.to_ds, c.to_lane);

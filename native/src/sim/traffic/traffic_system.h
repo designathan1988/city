@@ -74,6 +74,7 @@ bool has_exit(const CityState &s, const Conn &c, int vehicle); // room on the ex
 int pass_holder(const CityState &s, int conn); // vehicle committed to `conn` and not yet on it, or -1
 bool box_clear(const CityState &s, int conn); // nobody inside (or committed earlier) on a crossing connector
 void commit(CityState &s, int vehicle, int conn);
+void release(CityState &s, int vehicle, int conn); // takes a commitment back before the vehicle used it
 void claim_exit(CityState &s, const Conn &c, int vehicle);
 bool jam_release(CityState &s, int conn, int vehicle);
 void admit(CityState &s, int node, bool released);
@@ -123,7 +124,12 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it o
 // Walkers on the crosswalks connector `conn` drives over (the arm it comes from and the one it leaves by) who are
 // not clear of its lane when its front gets there (`front_in`/`front_out` seconds from now).
 bool peds_in_way(const CityState &s, int conn, float front_in = 0, float front_out = 0);
-float front_time(const Vehicle &v, float metres); // seconds for the front to cover `metres` (at least walking speed)
+constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the vehicle has already passed
+
+// Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top` (Roadcraft
+// 4.0 admission: a vehicle starting at its line reaches a crosswalk sooner than its speed now says).
+float front_time(const CityState &s, const Vehicle &v, float metres, float top);
+float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
 
 } // namespace traffic
 } // namespace city

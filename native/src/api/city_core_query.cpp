@@ -20,6 +20,9 @@ constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long count as waiting
+constexpr float BOX_STOP_MS = 0.5f; // traffic_probe: a vehicle on a connector slower than this stands in the junction
+constexpr float BOX_LEADER_M = 6.f; // ... behind the one ahead when it is this close
+enum BoxStop { BOX_LEADER = 0, BOX_CROSSING, BOX_OTHER, BOX_KINDS };
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 } // namespace
 
@@ -180,6 +183,29 @@ Vector3 busy_crossing(const CityState &s) {
 	return Vector3(float(node.x), float(node.y), float(node.z));
 }
 
+// Why vehicle `id`, on a connector, stands in the junction box: the one ahead close (on its connector or the exit
+// lane's tail), walkers on the exit crosswalk, or nothing in its way.
+int box_stop(const CityState &s, int id) {
+	const TrafficState &t = s.traffic;
+	const Vehicle &v = t.vehicles[id];
+	const Conn &c = t.g.conns[v.conn];
+	const auto &on = t.conn_vehicles[v.conn];
+	const auto me = std::find(on.begin(), on.end(), id);
+	float gap = BIG;
+	if (me != on.begin() && me != on.end()) {
+		const Vehicle &o = t.vehicles[*(me - 1)];
+		gap = o.cs - s.catalog.traffic.classes[int(o.type)].length - v.cs;
+	} else {
+		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
+		if (!lane.empty()) {
+			const Vehicle &o = t.vehicles[lane.front()];
+			gap = c.len - v.cs + o.s - s.catalog.traffic.classes[int(o.type)].length;
+		}
+	}
+	if (gap < BOX_LEADER_M) return BOX_LEADER;
+	return traffic::peds_in_way(s, v.conn, traffic::FRONT_PAST, 0.f) ? BOX_CROSSING : BOX_OTHER;
+}
+
 // Everything the HUD/captures show about one held vehicle (why it waits and what blocks it).
 String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 	const TrafficState &t = s.traffic;
@@ -240,7 +266,9 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
-	Array poses, dirs, held, jams, jam_info, behind;
+	Array poses, dirs, held, jams, jam_info, behind, box;
+	box.resize(BOX_KINDS);
+	box.fill(0);
 	held.resize(int(Hold::COUNT));
 	held.fill(0);
 	behind.resize(int(Hold::COUNT));
@@ -263,6 +291,10 @@ Dictionary CityCore::traffic_probe(int sample) {
 		moving += v.v > 1.f ? 1 : 0;
 		waiting += v.wait > WAITING_S ? 1 : 0;
 		on_connectors += v.conn >= 0 ? 1 : 0;
+		if (v.conn >= 0 && v.v < BOX_STOP_MS) {
+			const int k = box_stop(*state_, id);
+			box[k] = int(box[k]) + 1;
+		}
 		if (poses.size() < sample) {
 			poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
 			dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
@@ -274,6 +306,9 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["waiting"] = waiting; // held more than WAITING_S
 	d["on_connectors"] = on_connectors;
 	d["queued_behind"] = behind; // queued vehicles by what their lane head waits for
+	d["box_stops"] = box; // standing on connectors now: behind the one ahead, for walkers, for nothing
+	d["red_entries"] = t.red_entries; // vehicles that went onto a connector with their light red
+	d["red_from_stop"] = t.red_from_stop; // ... of which from a standstill (not an amber they could not stop for)
 	d["held_by"] = held; // waiting vehicles by Hold: queued, wrong lane, red, exit room, conflict busy, yield, connector, free, crosswalk
 	d["sample"] = poses;
 	d["sample_dir"] = dirs;

@@ -13,7 +13,7 @@ namespace traffic {
 
 namespace {
 
-constexpr float MOVING_MS = 0.5f, NEAR_LINE_M = 3.f, COURTESY_NEAR_M = 4.f, MIN_BRAKE = 0.5f, MIN_FRONT_MS = 2.f;
+constexpr float MOVING_MS = 0.5f, NEAR_LINE_M = 3.f, COURTESY_NEAR_M = 4.f, MIN_BRAKE = 0.5f, MIN_FRONT_MS = 2.f; // MIN_FRONT_MS: the slowest top front_time assumes
 
 float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
 int in_ds(const CityState &s, int seg, int node) { return seg * 2 + (s.roads.segs[seg].b == node ? 0 : 1); }
@@ -169,7 +169,13 @@ bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {
 	return false;
 }
 
-float front_time(const Vehicle &v, float metres) { return std::max(0.f, metres) / std::max(MIN_FRONT_MS, v.v); }
+float front_time(const CityState &s, const Vehicle &v, float metres, float top) {
+	const float d = std::max(0.f, metres), a = std::max(MIN_BRAKE, s.catalog.traffic.classes[int(v.type)].a);
+	const float v0 = std::max(0.f, v.v), vt = std::max({ top, v0, MIN_FRONT_MS });
+	const float t_up = (vt - v0) / a, d_up = (v0 + vt) * 0.5f * t_up;
+	if (d <= d_up) return (std::sqrt(v0 * v0 + 2 * a * d) - v0) / a;
+	return t_up + (d - d_up) / vt;
+}
 
 } // namespace traffic
 } // namespace city

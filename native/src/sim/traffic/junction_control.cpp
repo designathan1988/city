@@ -242,7 +242,8 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	if (l == Light::RED) return false;
 	if (l == Light::AMBER && dist > me.v * me.v / (2 * tp.amber_decel)) return false;
 	if (!has_exit(s, c, vid)) return false;
-	if (peds_in_way(s, ci, front_time(me, dist - t.g.ds[c.from_ds].stop_back), front_time(me, dist + c.len))) return false;
+	const float top = conn_speed(s, c) * me.vf;
+	if (peds_in_way(s, ci, front_time(s, me, dist - t.g.ds[c.from_ds].stop_back, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through
 	const float line = dist - t.g.ds[c.from_ds].stop_back;

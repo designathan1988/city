@@ -89,7 +89,19 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool &released) 
 		if (ci >= 0 && v.wait > p.jam_seconds) released = jam_release(s, ci, id);
 	}
 	if (ci < 0 || t.g.conns[ci].from_lane != v.lane || dist >= p.look_ahead_m) return false;
-	if (v.pass == ci) return box_clear(s, ci);
+	if (v.pass == ci) {
+		// a commitment is taken back while the nose is still behind the line (Roadcraft 4.0 revokes a stale grant): the
+		// light went against it and it can still stop comfortably, or it stands and its exit filled meanwhile; else it
+		// goes once the box is clear, never into a junction it cannot leave nor against the light (a jammed junction's
+		// release lets its one vehicle in whatever its exit)
+		const float b = p.classes[int(v.type)].b;
+		const bool can_stop = line > 0 && v.v * v.v <= 2 * b * line;
+		const bool stale = (can_stop && light_for(s, v.ds) != Light::GREEN) ||
+				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
+		if (!stale) return box_clear(s, ci);
+		release(s, id, ci);
+		return false;
+	}
 	if (released) {
 		commit(s, id, ci); // the box is its own until it is through
 		return true;
@@ -179,6 +191,10 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 			continue;
 		}
 		lane_del(s, key, id);
+		if (light_for(s, ds) == Light::RED) {
+			t.red_entries++;
+			t.red_from_stop += v.v < WAIT_SPEED ? 1 : 0;
+		}
 		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
 		v.pass = -1;
@@ -193,7 +209,7 @@ void step_connector(CityState &s, int ci, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	auto &list = t.conn_vehicles[ci];
 	const Conn &c = t.g.conns[ci];
-	float vt = c.turn == Turn::STRAIGHT ? t.g.ds[c.to_ds].speed : p.turn_speed_kmh / KMH_PER_MS;
+	const float vt = conn_speed(s, c);
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
 		Lead l;
@@ -207,7 +223,8 @@ void step_connector(CityState &s, int ci, float dt) {
 				l.take(c.len - v.cs + o.s - body(s, o), o.v);
 			}
 		}
-		if (v.cs < c.len && peds_in_way(s, ci, 0.f, front_time(v, c.len - v.cs))) l.take(c.len - v.cs, 0.f); // walkers on the exit crosswalk
+		// walkers on the exit crosswalk; the entry one is behind it already
+		if (v.cs < c.len && peds_in_way(s, ci, FRONT_PAST, front_time(s, v, c.len - v.cs, vt * v.vf))) l.take(c.len - v.cs, 0.f);
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, vt * v.vf, l.gap, l.v), l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
@@ -225,6 +242,10 @@ void step_connector(CityState &s, int ci, float dt) {
 }
 
 } // namespace
+
+float conn_speed(const CityState &s, const Conn &c) {
+	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;
+}
 
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {
 	v0 = std::max(v0, MIN_V0);
