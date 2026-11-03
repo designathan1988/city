@@ -37,7 +37,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 | Dependência do núcleo (uma vez) | `git clone https://github.com/godotengine/godot-cpp native/godot-cpp` (API 4.7) |
 | Gates | `python3 tools/gates/run_gates.py` (`--file X` para um arquivo, `--summary` resumo) |
 | Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` (DLL de release e de debug, a que o editor e os testes carregam) |
-| Testes e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
+| Testes core + e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
@@ -46,13 +46,13 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 `DataTables` lê `data/**` (tabelas grandes divididas em partes com o mesmo schema) → `CityStore.boot` envia o
 catálogo ao `CityCore` (rejeita chave ausente) → `Simulation` roda em thread própria com tick fixo
 (`sim_tick_hz`), sob `map_mutex` compartilhado e `traffic_mutex`; comandos, crescimento e relógio tomam
-`map_mutex` exclusivo → mudanças vão para o `ChangeLog` (único canal de "sujo") → `RenderWorld.sync` consome o
-log no thread principal e manda as malhas para o `JobPool`; o commit respeita `render.commit_budget_ms`. As
-poses dos agentes saem por `PoseBuffer` (buffer triplo sem trava) e o salvamento codifica sob trava curta e grava
-em thread própria (temporário + rename).
+`map_mutex` exclusivo → `ChangeLog` (único canal de "sujo"; drenado sob trava compartilhada + mutex do log) →
+`RenderWorld.sync` (nunca toma o mapa exclusivo) manda as malhas ao `JobPool`: o job copia o que lê sob trava curta
+(`HeightPatch`) e converte a malha no próprio thread (`OwnedMesh`); o commit só troca malhas, dentro de
+`render.commit_budget_ms`. Poses por `PoseBuffer` (buffer triplo); o save codifica e grava em thread própria.
 
 ## Máquinas de estado
-- `GameFlow.State`: BOOT → MAIN_MENU → LOADING → PLAYING ⇄ PAUSED → MAIN_MENU/QUITTING (tabela `TRANSITIONS`).
+- `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
 - `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
@@ -126,6 +126,7 @@ em thread própria (temporário + rename).
 - `native/src/sim/state/change_log.h` — canal único de mudanças (campos líquidos e sujos)
 - `native/src/sim/state/city_state.h` — fonte única da verdade, travas, poses, jobs e revisões
 - `native/src/sim/state/pose_buffer.h` — buffer triplo sem trava das poses (PoseFrame)
+- `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
 - `native/src/sim/terrain/terrain_gen.cpp` · `native/src/sim/terrain/terrain_gen.h` — terreno gerado (mesmo seed do Roadcraft)
@@ -258,6 +259,7 @@ em thread própria (temporário + rename).
 - `project/render/shaders/water.gdshader` — água (ondas, Fresnel e espuma)
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` — câmera por entrada real
+- `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_memory.gd` — relatório de memória das capturas
@@ -286,7 +288,7 @@ em thread própria (temporário + rename).
 - `tools/assets/cook_people.py` — pessoas cozidas (MakeHuman CC0 + caminhada Rocketbox MIT)
 - `tools/assets/ktx2_to_png.mjs` — KTX2 cozido do Roadcraft → PNG que o Godot importa
 - `tools/assets/make_road_profiles.py` — gera road_profiles.json a partir da fonte do Roadcraft
-- `tools/build/build.sh` — compilar, testar, capturar, exportar e empacotar
+- `tools/build/build.sh` · `tools/build/run_tests.sh` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar
 - `tools/gates/gate_clones.py` — código duplicado
 - `tools/gates/gate_code.py` — camadas, padrões proibidos e órfãos
 - `tools/gates/gate_data.py` — schemas das tabelas
@@ -310,6 +312,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Memória medida (Forward+ 1600x900): mapa 10 km com 3.169 prédios — 182,4 MiB estática, 486,4 MiB de vídeo e
   287,8 MiB de buffers (pico na cidade desenhada); mapa 24 km com 457.714 prédios — geração 34,0 s, 557,8 MiB
   estática, 760,5 MiB de vídeo e 164,0 MiB de buffers. Falta medir pico sob tráfego prolongado (soak).
+- Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lote: os pátios
+  livres do massing 4.0 (`free`, furnishZones.ts) não são mobiliados (`lot_furnish.cpp` condensado).
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
   Telhado, Interior, Cores), Paisagem (Solo, Natureza, Céu, Rua, Pessoas; rio e Aplainar mapa), paradas/estações/linhas,
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade

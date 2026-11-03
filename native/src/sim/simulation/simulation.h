@@ -21,7 +21,7 @@ public:
 	int steps_per_tick(SimSpeed sp) const;
 	// Share of the current tick period elapsed since the last tick (0..1), for render interpolation.
 	float interpolation() const;
-	// One step without the thread (tests). Caller holds world_mutex.
+	// One step without the thread (tests). Takes its own locks: the caller must not hold map_mutex.
 	void step(CityState &s);
 	~Simulation() { stop(); }
 

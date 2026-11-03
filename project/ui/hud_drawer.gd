@@ -38,6 +38,13 @@ func _ready() -> void:
 	hide()
 
 
+## The catalogue leaves the tree while another strip shows (_build_strip); a node out of the tree is not freed with
+## it, so the drawer frees it then (else it outlived the game: an orphan node at exit).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(catalog) and catalog.get_parent() == null:
+		catalog.free()
+
+
 func open(cat: Dictionary) -> void:
 	category = cat
 	if cat.get("no_drawer", false):

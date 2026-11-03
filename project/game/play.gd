@@ -25,6 +25,7 @@ func _ready() -> void:
 	add_child(tools)
 	var hud := RoadcraftHud.new()
 	add_child(hud)
+	GameFlow.playing()
 	_maybe_screenshot()
 
 

@@ -1,6 +1,6 @@
 // Traffic behaviour on top of CityState (Roadcraft src/sim/**): lane graph, demand and spawning, A* routing, IDM car
 // following, MOBIL lane changes, junction control with timed signals, pedestrians on the sidewalks. Each part lives
-// in its own .cpp; Simulation::step calls step() once per tick under world_mutex.
+// in its own .cpp; Simulation::tick calls step() once per tick holding map_mutex shared and traffic_mutex.
 #pragma once
 
 #include "sim/state/city_state.h"

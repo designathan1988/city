@@ -32,10 +32,10 @@ run_with_display() {
 	fi
 }
 
-e2e() {
+e2e() { # every test scene, each with a time limit (tools/build/run_tests.sh)
 	"$GODOT" --headless --path "$ROOT/project" --import >/dev/null 2>&1 || true
-	run_with_display "$GODOT" --path "$ROOT/project" --rendering-method gl_compatibility \
-		res://tests/e2e/e2e.tscn -- --no-flow
+	local wrap=(); command -v xvfb-run >/dev/null 2>&1 && wrap=(xvfb-run -a -s "-screen 0 1280x720x24")
+	bash "$ROOT/tools/build/run_tests.sh" "$GODOT" "$ROOT/project" "$OUT/tests" "${wrap[@]}"
 }
 
 capture() {
@@ -55,8 +55,8 @@ Roadcraft - city builder (Godot 4.7 + nucleo C++)
 Windows 10/11 64 bits: abra jogo/Roadcraft.exe
 Camera (como no Roadcraft): botao direito arrastado gira/inclina; botao do meio (ou Shift+direito) arrasta o mapa;
 roda = zoom no cursor; WASD/setas andam; Q/E giram; PgUp/PgDn inclinam; Shift acelera; Home volta.
-Clique direito sem arrastar ou Esc cancela a ferramenta; Esc abre o menu de pausa. Ctrl+S salva, Ctrl+O abre, Ctrl+Z desfaz.
-Vias: clique no inicio e no fim (C alterna curva). Zonas/terreno: segure o botao esquerdo.
+Clique direito sem arrastar ou Esc cancela a ferramenta. Ctrl+S salva, Ctrl+O abre, Ctrl+Z desfaz.
+Vias: clique no inicio e no fim (V alterna curva). Zonas/terreno: segure o botao esquerdo.
 Fonte: pasta fonte/ (leia fonte/CLAUDE.md: regras, comandos e mapa do codigo).
 TXT
 }

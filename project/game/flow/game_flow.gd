@@ -1,37 +1,35 @@
-## GameFlow: the explicit state machine of the application. The only place that changes scenes, pauses
-## the simulation for menus or quits (gate FLUXO_CENTRAL). Every transition is validated.
+## GameFlow: the explicit state machine of the application. The only place that changes scenes or quits
+## (gate FLUXO_CENTRAL). Every transition is validated. It holds the states the game
+## has: the play scene (project main scene) generates a city and plays it; a main menu (Roadcraft's title screen) is not
+## built yet (CLAUDE.md Pendências), so there is no menu nor loading state to go to.
 extends Node
 
 signal state_changed(from: State, to: State)
 
-enum State { BOOT, MAIN_MENU, LOADING, PLAYING, PAUSED, QUITTING }
+enum State { BOOT, PLAYING, QUITTING }
 
 const TRANSITIONS := {
-	State.BOOT: [State.MAIN_MENU],
-	State.MAIN_MENU: [State.LOADING, State.QUITTING],
-	State.LOADING: [State.PLAYING, State.MAIN_MENU],
-	State.PLAYING: [State.PAUSED, State.MAIN_MENU, State.QUITTING],
-	State.PAUSED: [State.PLAYING, State.MAIN_MENU, State.QUITTING],
+	State.BOOT: [State.PLAYING, State.QUITTING],
+	State.PLAYING: [State.QUITTING],
 	State.QUITTING: [],
 }
-const MAIN_MENU_SCENE := "res://ui/menus/main_menu.tscn"
-const GAME_SCENE := "res://game/game.tscn"
 const LOCALE := "pt_BR"
 
 var state: State = State.BOOT
-## What LOADING should do once the game scene is up: {"new": true, "map": int, "seed": int} or {"path": String}.
-var pending: Dictionary = {}
 ## Tests and captures drive the store directly (-- --no-flow): no menu flow, and their saves stay apart (SaveSlots).
 var tests_drive := OS.get_cmdline_user_args().has("--no-flow")
-var _speed_before_pause := 1
 
 
 func _ready() -> void:
 	DataTables.load_translations()
 	TranslationServer.set_locale(LOCALE)
-	if tests_drive:
-		return
-	_to(State.MAIN_MENU) # the play scene (project main scene) starts a generated city straight away
+	# closing the window is a request this machine answers (Godot "Handling quit requests"), so quitting has one path
+	get_tree().set_auto_accept_quit(false)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		quit()
 
 
 func _to(next: State) -> bool:
@@ -44,52 +42,13 @@ func _to(next: State) -> bool:
 	return true
 
 
-func new_city(map: int, seed: int) -> void:
-	pending = {"new": true, "map": map, "seed": seed}
-	if _to(State.LOADING):
-		get_tree().change_scene_to_file(GAME_SCENE)
-
-
-func load_city(path: String) -> void:
-	pending = {"path": path}
-	if _to(State.LOADING):
-		get_tree().change_scene_to_file(GAME_SCENE)
-
-
-## Called by game/game.gd when the world is ready. Returns an error key or "".
-func finish_loading() -> String:
-	var error := ""
-	if pending.get("new", false):
-		if not CityStore.new_city(pending.map, pending.seed):
-			error = "ERR_INVALID"
-	else:
-		error = CityStore.load_from(pending.get("path", ""))
-	pending = {}
-	if error.is_empty():
-		_to(State.PLAYING)
-	else:
-		back_to_menu()
-	return error
-
-
-func pause() -> void:
-	if state == State.PLAYING and _to(State.PAUSED):
-		_speed_before_pause = int(CityStore.snapshot.get("speed", 1))
-		CityStore.dispatch(&"set_speed", [0])
-
-
-func resume() -> void:
-	if state == State.PAUSED and _to(State.PLAYING):
-		CityStore.dispatch(&"set_speed", [_speed_before_pause])
-
-
-func back_to_menu() -> void:
-	if _to(State.MAIN_MENU):
-		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+## The play scene has its city: the game is on.
+func playing() -> void:
+	_to(State.PLAYING)
 
 
 func quit() -> void:
-	if _to(State.QUITTING):
+	if state == State.QUITTING or _to(State.QUITTING):
 		get_tree().quit()
 
 
@@ -97,4 +56,3 @@ func quit() -> void:
 func quit_now() -> void:
 	state = State.QUITTING
 	get_tree().quit()
-

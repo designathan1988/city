@@ -18,9 +18,8 @@ func _ready() -> void:
 	var world := CityWorld.new()
 	add_child(world)
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 300, 300)
-	cam.look_at(Vector3.ZERO)
-	add_child(cam)
+	add_child(cam) # look_at needs the node in the tree (its global transform)
+	cam.look_at_from_position(Vector3(0, 300, 300), Vector3.ZERO)
 	cam.current = true
 	var errors := CityStore.boot(world.terrain, world.materials())
 	_check(errors.is_empty(), "boot %s" % [errors])

@@ -15,7 +15,7 @@ constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
 constexpr uint32_t SAVE_VERSION = 1;
 
-// The bytes of the whole city (caller holds world_mutex).
+// The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).
 std::vector<uint8_t> encode_city(const CityState &s);
 // Replaces the city with the saved one. On failure `error` is a strings.csv key and the state is left as a fresh map
 // of the saved seed (the caller starts a new map when it was not even that).

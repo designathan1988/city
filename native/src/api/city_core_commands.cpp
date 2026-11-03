@@ -1,4 +1,5 @@
-// Player commands and their previews (sim/commands), as the script API. Every call holds world_mutex; the results
+// Player commands and their previews (sim/commands), as the script API. Commands hold map_mutex exclusively
+// (run_edit), the read-only previews shared; the results
 // are Dictionaries with `ok`, `error` (strings.csv key) and what changed, so the UI shows the core's own numbers.
 #include "api/city_core.h"
 

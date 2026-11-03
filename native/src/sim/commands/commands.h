@@ -1,7 +1,7 @@
 // Player commands (Roadcraft src/roads/construction/*, features/zones/zoneTool.ts, roads/construction/streetEdits.ts):
 // the only code that changes CityState at the player's request. Every command validates first (the same plan the
 // preview shows), charges or refunds money, marks the ChangeLog (roads, lots, buildings, terrain) and leaves the
-// lane graph to rebuild itself from RoadNetwork::version. Callers hold world_mutex and graph_mutex.
+// lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
 #include "sim/roads/geometry.h"
