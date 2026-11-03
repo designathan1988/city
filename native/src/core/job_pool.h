@@ -1,9 +1,12 @@
 // Priority job pool (roadcraft-novo jobs/pool.ts): a fixed set of worker threads, jobs ordered by priority, a job
-// of the same key replacing a queued older one, and a blocking parallel_for for the lot cache.
+// of the same key replacing a queued older one, and a blocking parallel_for for the lot cache. parallel_for helpers
+// live outside the keyed queue (no key to collide with or be superseded by) and the caller works too, so it finishes
+// even when every worker is parked on a lock the caller holds (mesh jobs wait for map_mutex during a command).
 #pragma once
 
 #include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <mutex>
 #include <queue>
@@ -35,10 +38,12 @@ private:
 		}
 	};
 	void loop();
+	bool idle() const { return q_.empty() && helpers_.empty() && busy_ == 0; }
 	std::vector<std::thread> threads_;
 	std::mutex m_;
 	std::condition_variable cv_, idle_cv_;
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
+	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;
 	std::unordered_map<int64_t, uint64_t> latest_;
 	uint64_t seq_ = 0;

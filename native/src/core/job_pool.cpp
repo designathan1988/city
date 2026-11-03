@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 
 namespace city {
 
@@ -42,45 +43,74 @@ void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 		for (size_t i = 0; i < n; i++) fn(i);
 		return;
 	}
-	std::atomic<size_t> next{ 0 };
-	std::mutex done_m;
-	std::condition_variable done_cv;
-	size_t done = 0;
-	const size_t workers = std::min(n, threads_.size());
-	for (size_t k = 0; k < workers; k++)
-		submit(-1 - int64_t(k), 0.f, [&]() {
-			for (size_t i = next++; i < n; i = next++) fn(i);
-			std::lock_guard<std::mutex> lk(done_m);
-			if (++done == workers) done_cv.notify_one();
-		});
-	std::unique_lock<std::mutex> lk(done_m);
-	done_cv.wait(lk, [&]() { return done == workers; });
+	// A helper that starts after the caller closed the batch returns without touching `fn` (the caller's frame).
+	struct Batch {
+		std::atomic<size_t> next{ 0 };
+		std::mutex m;
+		std::condition_variable cv;
+		size_t running = 0;
+		bool closed = false;
+		const std::function<void(size_t)> *fn = nullptr;
+		size_t n = 0;
+	};
+	auto batch = std::make_shared<Batch>();
+	batch->fn = &fn;
+	batch->n = n;
+	const size_t helpers = std::min(n, threads_.size() + 1) - 1;
+	{
+		std::lock_guard<std::mutex> lk(m_);
+		for (size_t k = 0; k < helpers; k++)
+			helpers_.push_back([batch]() {
+				{
+					std::lock_guard<std::mutex> lk(batch->m);
+					if (batch->closed) return;
+					batch->running++;
+				}
+				for (size_t i = batch->next++; i < batch->n; i = batch->next++) (*batch->fn)(i);
+				std::lock_guard<std::mutex> lk(batch->m);
+				if (--batch->running == 0) batch->cv.notify_all();
+			});
+	}
+	cv_.notify_all();
+	for (size_t i = batch->next++; i < n; i = batch->next++) fn(i);
+	std::unique_lock<std::mutex> lk(batch->m);
+	batch->closed = true;
+	batch->cv.wait(lk, [&]() { return batch->running == 0; });
 }
 
 void JobPool::wait_idle() {
 	std::unique_lock<std::mutex> lk(m_);
-	idle_cv_.wait(lk, [&]() { return q_.empty() && busy_ == 0; });
+	idle_cv_.wait(lk, [&]() { return idle(); });
 }
 
 void JobPool::loop() {
 	in_pool = true;
 	for (;;) {
-		Item item;
+		std::function<void()> work;
 		{
 			std::unique_lock<std::mutex> lk(m_);
-			cv_.wait(lk, [&]() { return stop_ || !q_.empty(); });
-			if (stop_ && q_.empty()) return;
-			item = q_.top();
-			q_.pop();
-			auto it = latest_.find(item.key);
-			if (it == latest_.end() || it->second != item.seq) continue; // superseded while queued
+			cv_.wait(lk, [&]() { return stop_ || !q_.empty() || !helpers_.empty(); });
+			if (stop_ && q_.empty() && helpers_.empty()) return;
+			if (!helpers_.empty()) {
+				work = std::move(helpers_.front());
+				helpers_.pop_front();
+			} else {
+				Item item = q_.top();
+				q_.pop();
+				auto it = latest_.find(item.key);
+				if (it == latest_.end() || it->second != item.seq) { // superseded while queued
+					if (idle()) idle_cv_.notify_all();
+					continue;
+				}
+				work = std::move(item.work);
+			}
 			++busy_;
 		}
-		item.work();
+		work();
 		{
 			std::lock_guard<std::mutex> lk(m_);
 			--busy_;
-			if (q_.empty() && busy_ == 0) idle_cv_.notify_all();
+			if (idle()) idle_cv_.notify_all();
 		}
 	}
 }
