@@ -27,17 +27,29 @@ struct Basis {
 // Box faces to leave out (bit per face).
 constexpr uint8_t SKIP_NONE = 0, SKIP_E2_NEG = 1, SKIP_E2_POS = 2, SKIP_E0_NEG = 4, SKIP_E0_POS = 8, SKIP_E1_NEG = 16, SKIP_E1_POS = 32;
 
+// One box of an instanced shell drawn as a unit-cube MultiMesh instance: the three basis columns already scaled by the
+// box sides (axis x size), the centre, the shaded sRGB colour, its finish and the bar width (second largest side).
+struct BoxInstance {
+	float basis[9] = {};
+	float origin[3] = {};
+	uint32_t color = 0xffffffff;
+	int8_t fin = -1;
+	float thick = 0;
+};
+
 struct Shell {
 	std::vector<godot::Vector3> pos, nrm;
 	std::vector<godot::Color> col;
 	std::vector<godot::Vector2> uv, uv2;
 	std::vector<int32_t> idx;
+	std::vector<BoxInstance> boxes; // box() collects instances instead of triangles when `instanced`
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
 	bool tone = true;
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
+	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 
-	bool empty() const { return idx.empty(); }
+	bool empty() const { return idx.empty() && boxes.empty(); }
 	size_t triangles() const { return idx.size() / 3; }
 	// Quad a-b-c-d facing `out` in the paint (linear colour) with its finish.
 	void quad(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
@@ -50,7 +62,7 @@ struct Shell {
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, uint32_t seed, bool dark);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners, code = window row.
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, float code);
-	void commit_to(const godot::RID &mesh) const;
+	void commit_to(const godot::RID &mesh, bool with_uv2 = true) const;
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 
 private:

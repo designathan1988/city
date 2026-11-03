@@ -4,11 +4,11 @@
 #pragma once
 
 #include "sim/catalog/catalog.h"
-#include "sim/citygen/lot_gen.h"
 
 namespace city {
 
 struct CityState;
+struct Lot;
 
 // Map-relative cell coordinates (Roadcraft cellId: x from the map's west edge) of a world position.
 struct MapCell {

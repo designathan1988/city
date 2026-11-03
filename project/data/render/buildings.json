@@ -120,6 +120,12 @@
   "loggia": [0.5, 99, 0.02, 0.3, 99, 1.4], "brise": [0.5, 99, 0.75, 0.4, 99, 0.15], "shuttered": [1.6, 1.2, 0.85, 0.45, 99, 0.2],
   "gourmet": [0.4, 99, 0.02, 0.35, 99, 0.15]
  },
- "lod": { "_doc": "Shares of render.building_detail_end_m: parts (frames, railings, AC units) and the full near shell; the mid level (painted windows, real roofs) runs to building_mid_end_m, the far masses beyond.", "parts_share": 0.22, "near_share": 0.32 },
+ "lod": { "_doc": "Shares of render.building_detail_end_m: parts (frames, railings, AC units) and the full near shell; the mid level (painted windows, real roofs) runs to building_mid_end_m, the far masses beyond. part_bands: instanced facade parts by bar width (second largest side), each drawn until it covers px_min pixels; fov_deg mirrors data/game/camera.json far_fov_deg (native render data cannot read game tables).", "parts_share": 0.22, "near_share": 0.32, "fov_deg": 35, "part_bands": [
+  { "thick_max": 0.08, "px_min": 0.5 },
+  { "thick_max": 0.2, "px_min": 1.0 },
+  { "thick_max": 0.5, "px_min": 1.0 },
+  { "thick_max": 1.5, "px_min": 1.0 },
+  { "thick_max": 100.0, "px_min": 1.0 }
+ ] },
  "props": { "ac_chance": [0.07, 0.04, 0.02], "dish_chance": 0.05, "lit_share": [0.15, 0.62] }
 }

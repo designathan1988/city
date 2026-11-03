@@ -9,7 +9,7 @@
 namespace city {
 
 namespace {
-constexpr double STRAIGHT_JOINT_DOT = -0.9986; // two arms this close to opposite are one street going on
+constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
 constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30;
 constexpr float LOT_REACH = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
 } // namespace
@@ -206,7 +206,7 @@ void RoadNetwork::refresh_node(int n) {
 		arms.push_back(arm_of(segs[s].q, profile_of(s), segs[s].a == n ? 0 : 1));
 		lens.push_back(segs[s].len);
 	}
-	if (k == 2) nd.joint = arms[0].dx * arms[1].dx + arms[0].dz * arms[1].dz < STRAIGHT_JOINT_DOT;
+	if (k == 2) nd.joint = arms[0].dx * arms[1].dx + arms[0].dz * arms[1].dz < STRAIGHT_ANGLE_COS;
 	junction_retreats(arms, lens, out, order, nd.bulb);
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];

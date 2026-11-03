@@ -1,6 +1,7 @@
 // ChangeLog consumption and per-frame budgets (render.max_chunk_rebuilds_per_frame).
 #include "render/render_world.h"
 
+#include <chrono>
 #include <cmath>
 
 using namespace godot;
@@ -38,9 +39,17 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	budget_ = std::max(1, int(s.catalog.tune.render_max_chunk_rebuilds_per_frame));
 	if (terrain3d) terrain_.push_all(s.terrain, terrain3d);
 	for (const RoadSegment &g : s.roads.segs)
-		if (g.alive) road_stream_.mark(chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2)));
+		if (g.alive) {
+			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
+			road_stream_.mark(k);
+			overlays_.mark_dirty(k);
+		}
 	for (const RoadNode &n : s.roads.nodes)
-		if (n.alive) road_stream_.mark(chunk_of(float(n.x), float(n.z)));
+		if (n.alive) {
+			int64_t k = chunk_of(float(n.x), float(n.z));
+			road_stream_.mark(k);
+			overlays_.mark_dirty(k);
+		}
 	props_stream_.known = road_stream_.known;
 	for (const Building &b : s.buildings.items)
 		if (b.alive) building_stream_.mark(chunk_of(b.x, b.z));
@@ -49,30 +58,43 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 }
 
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
-	if (terrain3d && !s.log.terrain_rects.empty()) terrain_.push_rects(s.terrain, terrain3d, s.log.terrain_rects);
-	// Producers append one key per segment/building; dedup once before three consumers walk the same list.
-	ChangeLog::dedup(s.log.road_chunks);
-	ChangeLog::dedup(s.log.building_chunks);
-	if (!s.log.road_chunks.empty()) overlays_.roads_changed();
-	for (int64_t k : s.log.road_chunks) {
-		road_stream_.mark(k);
-		props_stream_.mark(k);
+	{
+		std::unique_lock<std::shared_mutex> lk(s.map_mutex);
+		if (terrain3d && !s.log.terrain_rects.empty()) terrain_.push_rects(s.terrain, terrain3d, s.log.terrain_rects);
+		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
+		ChangeLog::dedup(s.log.road_chunks);
+		ChangeLog::dedup(s.log.building_chunks);
+		for (int64_t k : s.log.road_chunks) {
+			road_stream_.mark(k);
+			props_stream_.mark(k);
+			trees_.mark_dirty(k);
+			overlays_.mark_dirty(k);
+		}
+		for (int64_t k : s.log.building_chunks) {
+			building_stream_.mark(k);
+			trees_.mark_dirty(k);
+		}
+		s.log.clear_render();
 	}
-	for (int64_t k : s.log.building_chunks) building_stream_.mark(k);
-	for (int64_t k : s.log.road_chunks) trees_.mark_dirty(k);
-	for (int64_t k : s.log.building_chunks) trees_.mark_dirty(k);
-	s.log.clear_render();
 	const Tuning &t = s.catalog.tune;
 	BuildBudget budget(std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
-	road_stream_.update(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, budget,
-			[&](int64_t k) { roads_.rebuild_chunk(s, k); }, [&](int64_t k) { roads_.drop_chunk(k); });
-	props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
-			[&](int64_t k) { props_.rebuild_chunk(s, k); }, [&](int64_t k) { props_.drop_chunk(k); });
-	building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, budget,
-			[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
-	roads_.update_view(cam);
-	trees_.sync(s, cam, budget);
-	buildings_.update_view(cam, budget);
+	{
+		std::shared_lock<std::shared_mutex> lk(s.map_mutex); // the decision phase only reads the map
+		road_stream_.update(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, budget,
+				[&](int64_t k) { roads_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { roads_.drop_chunk(k); });
+		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
+				[&](int64_t k) { props_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { props_.drop_chunk(k); });
+		building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, budget,
+				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
+		roads_.update_view(cam);
+		trees_.sync(s, cam, budget);
+		buildings_.update_view(cam, budget);
+	}
+	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
+	roads_.commit(until);
+	props_.commit(until);
+	buildings_.commit(until);
+	trees_.commit(until);
 }
 
 } // namespace city

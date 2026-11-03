@@ -94,6 +94,12 @@ func quit() -> void:
 		get_tree().quit()
 
 
+## Ends the process from a scene that runs without the menu flow (captures, tests).
+func quit_now() -> void:
+	state = State.QUITTING
+	get_tree().quit()
+
+
 static func save_path(name: String) -> String:
 	return "%s/%s%s" % [SAVE_DIR, name.validate_filename(), SAVE_EXT]
 

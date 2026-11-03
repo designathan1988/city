@@ -34,6 +34,6 @@ func _maybe_screenshot() -> void:
 		if arg.begins_with("--shot="):
 			await get_tree().create_timer(SHOT_DELAY_S).timeout
 			get_viewport().get_texture().get_image().save_png(arg.trim_prefix("--shot="))
-			get_tree().quit()
+			GameFlow.quit_now()
 
 

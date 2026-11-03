@@ -15,13 +15,15 @@ namespace {
 constexpr double BUCKET = 96, MERGE = 7, COLLAPSE = 16, PARALLEL_COS = 0.93, HUG_DIST = 26, GEN_SEG_LEN = 100;
 constexpr int64_t KEY_OFF = 2000, KEY_ROW = 4096, PAIR = 1000000;
 constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30, RANK_EXPRESSWAY = 3, RANK_AVENUE_BIKE = 2;
+constexpr double NO_ROOM = 1e300;
+constexpr int GROUND_PROBES = 5;
 constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
 constexpr double D_COM_HIGH = 0.08, D_COM = 0.16, D_COM_AV = 0.35, D_MIX = 0.32, D_MIX_AV = 0.7;
 constexpr double D_CITY = 1.05, D_LOW = 0.75, IND_NEAR = 800, IND_NOISE = 0.05, OUTSKIRT_RES = 0.5;
 constexpr uint32_t ZONE_RNG_MUL = 31, ZONE_RNG_ADD = 7, NOISE_N = 313, NOISE_M = 919, NOISE_IND = 77;
 constexpr double NOISE_N_SCALE = 650, NOISE_M_SCALE = 1400, NOISE_IND_SCALE = 900;
 constexpr double WIDE_N = 0.45, URBAN_N = 0.1, BIKE_N = 0.25, COBBLE_D = 0.9, COBBLE_M = 0.2, URBAN_LOCAL_N = 0.3;
-constexpr double BUS_D = 0.5, BUS_M = 0.15, BOULEVARD_M = -0.3, AV4_N = 0.35;
+constexpr double BUS_OFFSET = 0.5, BUS_M = 0.15, BOULEVARD_M = -0.3, AV4_N = 0.35;
 
 int64_t key(int64_t i, int64_t j) { return (i + KEY_OFF) * KEY_ROW + (j + KEY_OFF); }
 
@@ -238,19 +240,19 @@ private:
 	}
 
 	void node_heights() {
-		static constexpr double PROBES[5][2] = { { 0, 0 }, { NODE_PROBE, 0 }, { -NODE_PROBE, 0 }, { 0, NODE_PROBE }, { 0, -NODE_PROBE } };
+		static constexpr double PROBES[GROUND_PROBES][2] = { { 0, 0 }, { NODE_PROBE, 0 }, { -NODE_PROBE, 0 }, { 0, NODE_PROBE }, { 0, -NODE_PROBE } };
 		ny_.resize(nx_.size());
 		for (size_t i = 0; i < nx_.size(); i++) {
 			double h = 0;
 			for (const auto &d : PROBES) h += terrain_.base_height(nx_[i] + d[0], nz_[i] + d[1]);
-			ny_[i] = std::max(TerrainGen::SEA_LEVEL + NODE_MIN_Y, h / 5);
+			ny_[i] = std::max(TerrainGen::OCEAN_Y + NODE_MIN_Y, h / GROUND_PROBES);
 		}
 	}
 
 	std::vector<int> exp_nodes_;
 
 	double near_expressway(double x, double z) const {
-		double best = 1e300;
+		double best = NO_ROOM;
 		for (int id : exp_nodes_) best = std::min(best, std::fabs(nx_[id] - x) + std::fabs(nz_[id] - z));
 		return best;
 	}
@@ -278,7 +280,7 @@ private:
 			return n > URBAN_LOCAL_N ? prof_.urban : p;
 		}
 		if (p == prof_.avenue) {
-			if (d < BUS_D && m > BUS_M) return prof_.bus_side;
+			if (d < BUS_OFFSET && m > BUS_M) return prof_.bus_side;
 			if (m < BOULEVARD_M) return prof_.boulevard;
 			if (n > AV4_N) return prof_.av4;
 		}

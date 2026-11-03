@@ -1,14 +1,20 @@
-// Map layers of the Layers popover (Roadcraft hud.ts:508-522, specs ui.md §7.2): zone colours on the zoned road
-// sides and the congestion map (each carriageway coloured by its vehicles' mean speed against the limit). Each is one
-// mesh rebuilt from CityState when the roads change (zones) or every refresh_s (congestion). Only reads the state.
+// Map layers of the Layers popover (Roadcraft hud.ts:508-522, specs ui.md §7.2), one mesh per 256 m chunk: zone colours
+// on the zoned road sides (built in a JobPool job when the chunk is dirty and the layer is on) and the congestion map
+// (each carriageway coloured by its vehicles' mean speed against the limit, rebuilt every refresh_s from the
+// PoseFrame's per-segment speed share, only for chunks within the road reach). Only reads the state.
 #pragma once
 
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
+#include <chrono>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace city {
 
@@ -20,7 +26,7 @@ public:
 	void reset();
 	void set(Overlay o, bool on);
 	bool is_on(Overlay o) const { return on_[int(o)]; }
-	void roads_changed() { zones_dirty_ = true; }
+	void mark_dirty(int64_t key); // a road chunk changed: its zone mesh is stale
 	void update(const CityState &s, const PoseFrame &f, double dt);
 
 private:
@@ -28,15 +34,29 @@ private:
 		godot::PackedVector3Array v;
 		godot::PackedColorArray c;
 	};
+	struct Built {
+		int64_t key = 0;
+		uint64_t seq = 0;
+		float priority = 0;
+		Ribbon r;
+	};
 	void strip(Ribbon &out, const CityState &s, int seg, float u0, float u1, const godot::Color &col, bool on_road) const;
-	void build_zones(const CityState &s);
-	void build_congestion(const CityState &s, const PoseFrame &f);
-	void upload(MeshDraw &d, Ribbon &r);
+	Ribbon build_zone_cpu(const CityState &s, int64_t key) const;
+	Ribbon build_congestion_cpu(const CityState &s, const PoseFrame &f, int64_t key) const;
+	void submit_zone(const CityState &s, int64_t key);
+	void commit(const std::chrono::steady_clock::time_point &until);
+	void upload(MeshDraw &d, Ribbon &r, bool on);
+	void update_congestion(const CityState &s, const PoseFrame &f);
 
 	godot::RID scenario_, material_;
-	MeshDraw draws_[int(Overlay::COUNT)];
+	std::unordered_map<int64_t, MeshDraw> zones_, congestion_;
+	std::unordered_set<int64_t> zones_dirty_, roads_known_;
+	bool zones_all_ = false;
 	bool on_[int(Overlay::COUNT)] = {};
-	bool zones_dirty_ = true;
+	std::mutex queue_mutex_;
+	std::vector<Built> done_;
+	std::unordered_map<int64_t, uint64_t> requested_;
+	uint64_t seq_ = 0;
 	double since_ = 0;
 	float zone_depth_ = 0, lift_ = 0, sample_ = 1, refresh_ = 1, free_share_ = 1, jam_share_ = 0;
 	godot::Color jam_colors_[3];

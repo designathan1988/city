@@ -3,7 +3,7 @@
 #include "sim/citygen/lot_gen.h"
 
 #include "sim/citygen/lot_strips.h"
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
 
 #include <algorithm>
@@ -14,25 +14,15 @@ namespace city {
 namespace {
 constexpr double RES = 2, ROAD_PAD = 0.4, PLATE_PAD = 4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
 constexpr double BUSY_SHARE = 0.03, FACING_PROBE = 4, FACING_PAD = 8;
-constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32, MIN_PLATE_ARMS = 3, CURVE_SAMPLES = 12;
-constexpr double CURVE_LAST_STEP = 1e-4;
+constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32, MIN_PLATE_ARMS = 3;
+constexpr double NO_ROOM = 1e300, EPS = 1e-6;
+constexpr int CORNERS = 8;
 } // namespace
 
 double lot_gen::curve_distance(const Quad &q, double x, double z) {
-	double best = 0, bd = 1e300;
-	auto probe = [&](double t) {
-		double px, pz;
-		q.at(t, px, pz);
-		double d = (px - x) * (px - x) + (pz - z) * (pz - z);
-		if (d < bd) { bd = d; best = t; }
-	};
-	for (int i = 0; i <= CURVE_SAMPLES; i++) probe(double(i) / CURVE_SAMPLES);
-	for (double step = 1.0 / (CURVE_SAMPLES * 2); step > CURVE_LAST_STEP; step /= 2) {
-		double c = best;
-		for (double t : { c - step, c + step })
-			if (t >= 0 && t <= 1) probe(t);
-	}
-	return std::sqrt(bd);
+	double t = 0, dist = 0;
+	closest_t(q, x, z, t, dist);
+	return dist;
 }
 
 std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double cell_x0, double cell_z0) {
@@ -109,7 +99,7 @@ void LotStrips::mark_corners() {
 }
 
 void LotStrips::facing(double fx, double fz, double ox, double oz, int &zone, int &profile) const {
-	double qx = fx + ox * FACING_PROBE, qz = fz + oz * FACING_PROBE, bd = 1e300;
+	double qx = fx + ox * FACING_PROBE, qz = fz + oz * FACING_PROBE, bd = NO_ROOM;
 	int best = -1;
 	for (int s = 0; s < g_.segs(); s++) {
 		const Quad &q = g_.quad[s];
@@ -122,7 +112,7 @@ void LotStrips::facing(double fx, double fz, double ox, double oz, int &zone, in
 	zone = profile = 0;
 	if (best < 0 || bd > half_[best] + FACING_PROBE) return;
 	const Quad &q = g_.quad[best];
-	double t = 0, td = 1e300;
+	double t = 0, td = NO_ROOM;
 	for (int k = 0; k <= FACING_SAMPLES; k++) {
 		double x, z;
 		q.at(double(k) / FACING_SAMPLES, x, z);
@@ -139,10 +129,10 @@ void LotStrips::facing(double fx, double fz, double ox, double oz, int &zone, in
 // Dry, not on water anywhere on a 4 m lattice, relief under MAX_RELIEF.
 bool LotStrips::unfit(const Frame &f) const {
 	double hc = ground_.height(f.cx, f.cz);
-	if (hc < TerrainGen::SEA_LEVEL + DRY_MIN) return true;
+	if (hc < TerrainGen::OCEAN_Y + DRY_MIN) return true;
 	double lo = hc, hi = hc;
-	for (double a = -f.w / 2; a <= f.w / 2 + 1e-6; a += WET_STEP)
-		for (double b = -f.d / 2; b <= f.d / 2 + 1e-6; b += WET_STEP) {
+	for (double a = -f.w / 2; a <= f.w / 2 + EPS; a += WET_STEP)
+		for (double b = -f.d / 2; b <= f.d / 2 + EPS; b += WET_STEP) {
 			double px = f.cx + f.tx * a + f.lx * b, pz = f.cz + f.tz * a + f.lz * b, y = ground_.height(px, pz);
 			lo = std::min(lo, y);
 			hi = std::max(hi, y);
@@ -153,9 +143,9 @@ bool LotStrips::unfit(const Frame &f) const {
 
 void LotStrips::corners(const Frame &f, double inset, double *c) {
 	double hw = f.w / 2 - inset, hd = f.d / 2 - inset;
-	const double v[8] = { f.cx - f.tx * hw - f.lx * hd, f.cz - f.tz * hw - f.lz * hd, f.cx + f.tx * hw - f.lx * hd, f.cz + f.tz * hw - f.lz * hd,
+	const double v[CORNERS] = { f.cx - f.tx * hw - f.lx * hd, f.cz - f.tz * hw - f.lz * hd, f.cx + f.tx * hw - f.lx * hd, f.cz + f.tz * hw - f.lz * hd,
 		f.cx + f.tx * hw + f.lx * hd, f.cz + f.tz * hw + f.lz * hd, f.cx - f.tx * hw + f.lx * hd, f.cz - f.tz * hw + f.lz * hd };
-	std::copy(v, v + 8, c);
+	std::copy(v, v + CORNERS, c);
 }
 
 void LotStrips::mark_lot(const Frame &f) {
@@ -183,7 +173,7 @@ bool rects_overlap(const double *a, const double *b) {
 		const double *p = pass ? b : a;
 		for (int e = 0; e < 4; e++) {
 			double ex = p[((e + 1) % 4) * 2] - p[e * 2], ez = p[((e + 1) % 4) * 2 + 1] - p[e * 2 + 1];
-			double amin = 1e300, amax = -1e300, bmin = 1e300, bmax = -1e300;
+			double amin = NO_ROOM, amax = -NO_ROOM, bmin = NO_ROOM, bmax = -NO_ROOM;
 			for (int v = 0; v < 4; v++) {
 				double pa = a[v * 2] * ez - a[v * 2 + 1] * ex, pb = b[v * 2] * ez - b[v * 2 + 1] * ex;
 				amin = std::min(amin, pa); amax = std::max(amax, pa); bmin = std::min(bmin, pb); bmax = std::max(bmax, pb);

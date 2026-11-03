@@ -165,6 +165,16 @@
       "core/",
       "sim/"
     ],
+    "native/src/sim/citygen": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/lots": [
+      "core/",
+      "sim/citygen/",
+      "sim/state/",
+      "sim/lots/"
+    ],
     "native/src/render": [
       "core/",
       "sim/",
@@ -275,9 +285,12 @@
   "schemas": {
     "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
-    "project/data/catalog/roads.json": "tools/gates/schemas/roads.schema.json",
     "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
-    "project/data/catalog/services.json": "tools/gates/schemas/services.schema.json",
+    "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
+    "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",
+    "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
+    "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
+    "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
     "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",

@@ -4,6 +4,8 @@
 
 #include "render/roads/road_mesh.h"
 
+#include <algorithm>
+
 using namespace godot;
 
 namespace city {

@@ -12,8 +12,8 @@
 namespace city {
 
 // Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
-enum class RoadMat : int { ASPHALT = 0, PLATE = 1, FOOTWAY = 2, KERB = 3, GRASS = 4, CONCRETE = 5, GUTTER = 6, PAINT = 7,
-	PAVERS = 8, STONE = 9, COBBLE = 10, BALLAST = 11, SKIRT = 12 };
+enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, GUTTER, PAINT, PAVERS, STONE, COBBLE,
+	BALLAST, SKIRT };
 constexpr float MAT_SCALE = 16.f;
 constexpr float MAT_HALF = 0.5f;
 // UV2.x of a vertex that is not lit by a lamp pool, and of a junction plate (lit evenly).

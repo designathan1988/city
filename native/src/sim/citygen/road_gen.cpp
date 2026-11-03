@@ -82,7 +82,7 @@ void march(const Line &line, int profile, double half, TerrainGen &t, std::vecto
 
 bool road_gen::land(TerrainGen &t, double x, double z) {
 	double h = t.base_height(x, z);
-	return h > TerrainGen::SEA_LEVEL + LAND_CLEAR && t.water_level_at(x, z) < h - LAND_CLEAR;
+	return h > TerrainGen::OCEAN_Y + LAND_CLEAR && t.water_level_at(x, z) < h - LAND_CLEAR;
 }
 
 GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof) {

@@ -8,9 +8,11 @@ const WATER_SHADER := "res://render/shaders/water.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
 const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
+const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader",
+	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
 ]
@@ -41,8 +43,37 @@ func materials() -> Dictionary:
 			m.shader = load(table[key].shader)
 			for name in table[key].params:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
+			if key == "road":
+				_set_means(m, table[key].params)
 			_materials[key] = m
 	return _materials
+
+
+## The mean colour of each surface map, computed once here and sent as a uniform (road.gdshader divides by it): the
+## shader no longer samples the smallest mip every pixel.
+func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
+	for name in params:
+		if not name.ends_with("_map"):
+			continue
+		var col := _mean_color(_param(params[name]))
+		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
+
+
+func _mean_color(tex: Texture2D) -> Color:
+	if tex == null:
+		return Color(1, 1, 1)
+	var img := tex.get_image()
+	if img == null:
+		return Color(1, 1, 1)
+	img = img.duplicate()
+	img.resize(MEAN_PX, MEAN_PX, Image.INTERPOLATE_BILINEAR)
+	var sum := Vector3.ZERO
+	for y in MEAN_PX:
+		for x in MEAN_PX:
+			var c := img.get_pixel(x, y)
+			sum += Vector3(c.r, c.g, c.b)
+	var n := float(MEAN_PX * MEAN_PX)
+	return Color(sum.x / n, sum.y / n, sum.z / n)
 
 
 func _param(v: Variant) -> Variant:

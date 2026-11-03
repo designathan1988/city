@@ -2,8 +2,8 @@
 // structs once at startup and rejects missing keys. No values are written here.
 #pragma once
 
+#include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
-#include "sim/roads/profiles.h"
 #include "sim/catalog/traffic_params.h"
 
 #include <cstdint>
@@ -31,6 +31,7 @@ struct ZoneDef {
 	uint32_t color = 0; // RGBA8
 };
 constexpr int ZONE_CODES = 9;
+constexpr int BASE_ZONE_SLOTS = 5; // none, residential, commercial, industrial, mixed
 
 // Residents and jobs of a building: floor area = w * d * floor_share * floors (Roadcraft world/world.ts).
 struct OccupancyDef {
@@ -54,7 +55,7 @@ struct GrowthDef {
 	float res_split[2] = {};
 	IntRange res_bands[3], commercial, commercial_avenue, industrial, mixed, mixed_avenue;
 	float civic_min_area = 0, civic_chance = 0, square_min_area = 0;
-	std::vector<std::pair<int, int>> civic_by_zone[5]; // (fn, weight) per base zone
+	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
 	float decay_grace_min = 0, decay_span_min = 0;

@@ -6,35 +6,18 @@
    "items": {
     "type": "object",
     "properties": {
-     "id": {
-      "type": "string"
-     },
-     "name_key": {
-      "type": "string"
-     },
-     "size_m": {
-      "type": "number",
-      "minimum": 1024
-     },
-     "spacing_m": {
-      "type": "number",
-      "minimum": 0.5
-     }
+     "id": { "type": "string" },
+     "name_key": { "type": "string" },
+     "tiles": { "type": "integer", "minimum": 4 },
+     "medium": { "type": "boolean" }
     },
-    "required": [
-     "id",
-     "name_key",
-     "size_m",
-     "spacing_m"
-    ],
+    "required": ["id", "name_key", "tiles", "medium"],
     "strict": true
    },
    "minItems": 1,
    "unique_key": "id"
   }
  },
- "required": [
-  "maps"
- ],
+ "required": ["maps"],
  "strict": true
 }

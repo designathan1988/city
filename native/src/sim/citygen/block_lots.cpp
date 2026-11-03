@@ -13,6 +13,7 @@ namespace {
 constexpr double LOT_FRONTAGE = 22, TWO_ROWS = 44, MIN_LOT = 10, RES = 1, MAX_BLOCK = 320, PLATE_SHARE = 1.15;
 constexpr double LATTICE_START = 0.1, LATTICE_STEP = 0.2, LAND_SHARE = 0.5, STREET_PROBE = 12;
 constexpr int MIN_DEGREE_PLATE = 3;
+constexpr double NO_ROOM = 1e300, EPS_LEN = 1e-9, EPS_AREA = 1e-6;
 
 using P2 = std::pair<double, double>;
 
@@ -41,20 +42,20 @@ struct Box {
 
 bool min_area_box(const std::vector<P2> &h, Box &best) {
 	if (h.size() < 3) return false;
-	double best_a = 1e300;
+	double best_a = NO_ROOM;
 	bool found = false;
 	for (size_t e = 0; e < h.size(); e++) {
 		const P2 &a = h[e], &b = h[(e + 1) % h.size()];
 		double l = std::hypot(b.first - a.first, b.second - a.second);
-		if (l < 1e-9) continue;
+		if (l < EPS_LEN) continue;
 		double ux = (b.first - a.first) / l, uz = (b.second - a.second) / l, vx = -uz, vz = ux;
-		double s0 = 1e300, s1 = -1e300, t0 = 1e300, t1 = -1e300;
+		double s0 = NO_ROOM, s1 = -NO_ROOM, t0 = NO_ROOM, t1 = -NO_ROOM;
 		for (const P2 &q : h) {
 			double s = q.first * ux + q.second * uz, t = q.first * vx + q.second * vz;
 			s0 = std::min(s0, s); s1 = std::max(s1, s); t0 = std::min(t0, t); t1 = std::max(t1, t);
 		}
 		double area = (s1 - s0) * (t1 - t0);
-		if (area >= best_a - 1e-6) continue;
+		if (area >= best_a - EPS_AREA) continue;
 		best_a = area;
 		double sm = (s0 + s1) / 2, tm = (t0 + t1) / 2, ls = s1 - s0, dt = t1 - t0;
 		double cx = ux * sm + vx * tm, cz = uz * sm + vz * tm;

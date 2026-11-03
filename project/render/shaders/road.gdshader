@@ -12,6 +12,12 @@ uniform sampler2D footway_map : source_color, filter_linear_mipmap_anisotropic, 
 uniform sampler2D footway_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D kerb_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D verge_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+// Mean colour of each map, computed once in project/render/city_world.gd (one read instead of a smallest-mip fetch per
+// pixel; the strip colour stays the mean albedo).
+uniform vec3 mean_asphalt : source_color = vec3(1.0);
+uniform vec3 mean_footway : source_color = vec3(1.0);
+uniform vec3 mean_kerb : source_color = vec3(1.0);
+uniform vec3 mean_verge : source_color = vec3(1.0);
 uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
 uniform float kerb_m = 3.2;
@@ -47,15 +53,7 @@ varying flat int v_mat;
 varying vec3 v_world;
 varying vec2 v_pool;
 
-// A surface map's own mean colour: its smallest mip, read in the same colour space as the texels it divides, so the
-// strip colour stays the mean albedo on every renderer (a hand-typed sRGB mean was decoded differently by
-// Compatibility and Forward+ and turned the asphalt black).
-const float MEAN_LOD = 16.0;
 const float MEAN_FLOOR = 0.001;
-
-vec3 mean_of_asphalt() {
-	return max(textureLod(asphalt_map, vec2(0.5), MEAN_LOD).rgb, vec3(MEAN_FLOOR));
-}
 
 vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -118,12 +116,12 @@ void fragment() {
 	bool up = nw.y > 0.7;
 	if (v_mat == M_ASPHALT || v_mat == M_PLATE || v_mat == M_PAINT) {
 		vec3 t = texture(asphalt_map, uv / asphalt_m).rgb;
-		vec3 asphalt_avg = mean_of_asphalt();
+		vec3 asphalt_avg = max(mean_asphalt, vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / asphalt_avg * blotch;
 		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTWAY || v_mat == M_STONE) {
-		albedo = texture(footway_map, uv.yx / footway_m).rgb * base / max(textureLod(footway_map, vec2(0.5), MEAN_LOD).rgb, vec3(MEAN_FLOOR));
+		albedo = texture(footway_map, uv.yx / footway_m).rgb * base / max(mean_footway, vec3(MEAN_FLOOR));
 		bend = (texture(footway_normal, uv.yx / footway_m).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
@@ -131,7 +129,7 @@ void fragment() {
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 	} else if (v_mat == M_KERB || v_mat == M_SKIRT || v_mat == M_GUTTER) {
 		vec2 kq = (v_mat == M_KERB) ? uv.yx : uv;
-		albedo = texture(kerb_map, kq / kerb_m).rgb * base / max(textureLod(kerb_map, vec2(0.5), MEAN_LOD).rgb, vec3(MEAN_FLOOR));
+		albedo = texture(kerb_map, kq / kerb_m).rgb * base / max(mean_kerb, vec3(MEAN_FLOOR));
 		float cell = v_mat == M_GUTTER ? gutter_joint_m : kerb_block_m;
 		float along = v_mat == M_GUTTER ? uv.y : kq.x;
 		float tone = 1.0 + (hash(vec2(floor(along / cell), 7.0)) - 0.5) * 0.1;
@@ -139,7 +137,7 @@ void fragment() {
 		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
 	} else if (v_mat == M_GRASS) {
-		albedo = texture(verge_map, v_world.xz / verge_m).rgb * base / max(textureLod(verge_map, vec2(0.5), MEAN_LOD).rgb, vec3(MEAN_FLOOR));
+		albedo = texture(verge_map, v_world.xz / verge_m).rgb * base / max(mean_verge, vec3(MEAN_FLOOR));
 		rough = 0.95;
 	} else if (v_mat == M_COBBLE) {
 		vec2 c = uv * cobble_per_m;
@@ -156,5 +154,6 @@ void fragment() {
 		vec3 n = normalize(nw + vec3(-bend.x * fade, 0.0, -bend.y * fade));
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
-	EMISSION = (albedo + vec3(pool_floor)) * pool_color * lamp_pools() * night * pool_gain;
+	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
+	EMISSION = (albedo + vec3(pool_floor)) * pool_color * pools * night * pool_gain;
 }

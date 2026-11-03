@@ -14,6 +14,7 @@ constexpr double MIN_LEG_ANGLE = 25; // degrees (roads/impossible.ts)
 constexpr double END_GAP = 4, MIN_PIECE = 9, CELL = 64, PAD = 12, ON_ROAD_MIN = 1.5, ON_ROAD_DEFAULT = 3, ON_ROAD_DY = 2;
 constexpr int64_t CELL_OFF = 4000, CELL_ROW = 8192;
 constexpr int MAX_PASSES = 20, MAX_LEGS = 6, KEEPS_LEGS = 3;
+constexpr double NO_ROOM = 1e300, EPS = 1e-6;
 constexpr double FULL_TURN = 360, HALF_TURN = 180;
 
 class Tidy {
@@ -107,14 +108,14 @@ private:
 
 	// The road a dead end lies inside: segment and position along it, or -1.
 	int inside(int n, int own, double &t_out) const {
-		double x = nx_[n], z = nz_[n], bd = 1e300;
+		double x = nx_[n], z = nz_[n], bd = NO_ROOM;
 		int best = -1;
 		auto it = cells_.find(ck(int(std::floor(x / CELL)), int(std::floor(z / CELL))));
 		if (it == cells_.end()) return -1;
 		for (int s : it->second) {
 			if (!alive_[s] || s == own || a_[s] == n || b_[s] == n) continue;
 			double dx = nx_[b_[s]] - nx_[a_[s]], dz = nz_[b_[s]] - nz_[a_[s]], L = std::hypot(dx, dz);
-			if (L < 1e-6) continue;
+			if (L < EPS) continue;
 			double t = std::max(0.0, std::min(1.0, ((x - nx_[a_[s]]) * dx + (z - nz_[a_[s]]) * dz) / (L * L)));
 			double d = std::hypot(x - nx_[a_[s]] - dx * t, z - nz_[a_[s]] - dz * t);
 			size_t p = size_t(prof_s_[s]);

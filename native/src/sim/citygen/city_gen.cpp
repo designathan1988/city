@@ -3,7 +3,7 @@
 
 #include "sim/buildings/growth.h"
 #include "sim/citygen/road_gen.h"
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
 
@@ -56,13 +56,13 @@ constexpr int GRADE_DEPTH = 3;
 // samples (so no terrain triangle straddles a kerb), embankment / cut slopes up to CONFORM_MAX_RUN_M long.
 constexpr double CONFORM_STEP_M = 8;
 constexpr float FLAT_PAD_SAMPLES = 1.f, CONFORM_MAX_RUN_M = 40.f;
-constexpr int JUNCTION_DEGREE = 3;
+constexpr int JUNCTION_DEGREE = 3, GROUND_PROBES = 5;
 
 double smooth_ground(const Heightfield &t, double x, double z) {
-	static constexpr double PROBES[5][2] = { { 0, 0 }, { GROUND_PROBE_M, 0 }, { -GROUND_PROBE_M, 0 }, { 0, GROUND_PROBE_M }, { 0, -GROUND_PROBE_M } };
+	static constexpr double PROBES[GROUND_PROBES][2] = { { 0, 0 }, { GROUND_PROBE_M, 0 }, { -GROUND_PROBE_M, 0 }, { 0, GROUND_PROBE_M }, { 0, -GROUND_PROBE_M } };
 	double h = 0;
 	for (const auto &d : PROBES) h += t.base_height_at(float(x + d[0]), float(z + d[1]));
-	return h / 5;
+	return h / GROUND_PROBES;
 }
 
 void split_by_grade(CityState &s, int sid, int depth, std::vector<int> &touched) {
@@ -81,7 +81,7 @@ void split_by_grade(CityState &s, int sid, int depth, std::vector<int> &touched)
 	int a = g.a, b = g.b, prof = g.profile, zl = g.zl, zr = g.zr;
 	uint16_t flags = g.flags;
 	s.roads.remove_segment(sid);
-	int m = s.roads.add_node(mx, mz, std::max(TerrainGen::SEA_LEVEL, smooth_ground(s.terrain, mx, mz)));
+	int m = s.roads.add_node(mx, mz, std::max(TerrainGen::OCEAN_Y, smooth_ground(s.terrain, mx, mz)));
 	int s1 = s.roads.add_segment(a, m, half[0], prof, zl, zr, flags), s2 = s.roads.add_segment(m, b, half[1], prof, zl, zr, flags);
 	touched.insert(touched.end(), { a, b, m });
 	split_by_grade(s, s1, depth + 1, touched);
@@ -149,7 +149,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.clock.minutes.store(0);
 	s.clock.day_shift = c.tune.sim_day_start_min;
 	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune);
-	TerrainGen gen(s.seed, s.map_half);
+	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }
 
@@ -159,7 +159,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	bool medium = map.medium && with_city;
 	found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
-	TerrainGen gen(s.seed, s.map_half);
+	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	CityGenReport rep;
 	if (with_city) {
 		GeneratedRoads r = generate_roads(s.seed, s.map_half, medium, gen, gen_profiles(c));

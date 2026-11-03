@@ -18,7 +18,7 @@ constexpr float ITE_REACTION_S = 1.f, ITE_SPEED_PAD = 3.13f, ITE_DECEL = 3.05f; 
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000;
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
-constexpr float STOP_BACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
+constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
 constexpr int CROSSWALK_DEGREE = 3; // crosswalks are painted at nodes of this many arms or more (render crossing_node)
 
 bool crosswalk_node(const CityState &s, int n) {
@@ -146,7 +146,7 @@ void build_junctions(CityState &s) {
 		j.degree = int(arms.size());
 		if (crosswalk_node(s, n))
 			for (const Arm &a : arms)
-				if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_BACK_SHARE);
+				if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_SETBACK_SHARE);
 		j.ctl = decide(s.roads.nodes[n], arms, s.catalog.traffic);
 		if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 		if (j.ctl != Control::PRIORITY) continue;

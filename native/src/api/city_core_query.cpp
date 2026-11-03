@@ -17,6 +17,8 @@ namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long count as waiting
+constexpr float MIN_RAY_DIRECTION = 1e-6f; // below this the ray is vertical or degenerate
+constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 } // namespace
 
 Dictionary CityCore::constants() const {
@@ -96,7 +98,7 @@ Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	if (!state_->ready) return d;
 	V2 d2(dir.x, dir.z);
 	float l2 = d2.len();
-	if (l2 < 1e-6f && dir.y >= 0) return d;
+	if (l2 < MIN_RAY_DIRECTION && dir.y >= 0) return d;
 	float hx, hy, hz;
 	if (!state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz)) return d;
 	d["hit"] = true;
@@ -175,6 +177,41 @@ Vector3 busy_crossing(const CityState &s) {
 	return Vector3(float(node.x), float(node.y), float(node.z));
 }
 
+// Everything the HUD/captures show about one held vehicle (why it waits and what blocks it).
+String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
+	const TrafficState &t = s.traffic;
+	String info = String("hold={0} type={1} conn={2} v={3} ds={4} s={5} L={6} id={7}").format(
+			Array::make(r, int(v.type), v.conn, v.v, v.ds, v.s, v.ds >= 0 ? t.g.ds[v.ds].len : 0.f, id));
+	int ci = v.ds >= 0 ? traffic::pick_connector(s, v) : v.conn;
+	if (v.conn >= 0) {
+		const Conn &c = t.g.conns[v.conn];
+		const auto &on = t.conn_vehicles[v.conn];
+		int at = int(std::find(on.begin(), on.end(), id) - on.begin());
+		info += String(" node={0} deg={8} ctl={1} cs={2}/{3} order={4}/{5} turn={6} peds={7}").format(Array::make(c.node,
+				int(t.g.junctions[c.node].ctl), v.cs, c.len, at, int(on.size()), int(c.turn), traffic::peds_in_way(s, v.conn), t.g.junctions[c.node].degree));
+	}
+	if (ci >= 0 && r == int(Hold::CONFLICT_BUSY)) {
+		for (int oc : t.g.conns[ci].conflicts) {
+			if (t.conn_vehicles[oc].empty()) continue;
+			const Vehicle &o = t.vehicles[t.conn_vehicles[oc].front()];
+			info += String(" busy conn={0} n={1} first v={2} cs={3}/{4} wait={5} peds={6}").format(Array::make(oc, int(t.conn_vehicles[oc].size()),
+					o.v, o.cs, t.g.conns[oc].len, o.wait, traffic::peds_in_way(s, oc)));
+			break;
+		}
+	}
+	if (ci >= 0) {
+		const Conn &c = t.g.conns[ci];
+		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
+		info += String(" -> ds={0} lane={1} L={2} n={3}").format(Array::make(c.to_ds, c.to_lane, t.g.ds[c.to_ds].len, int(lane.size())));
+		if (!lane.empty()) {
+			const Vehicle &o = t.vehicles[lane.front()];
+			info += String(" tail id={0} s={1} v={2} wait={3} hold={4} ri={5}/{6}").format(Array::make(lane.front(), o.s, o.v, o.wait,
+					int(traffic::hold_reason(s, lane.front())), o.ri, o.route.len));
+		}
+	}
+	return info;
+}
+
 } // namespace
 
 Dictionary CityCore::traffic_probe(int sample) {
@@ -215,36 +252,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 			}
 			if (r != int(Hold::QUEUED) && r != int(Hold::FREE) && jams.size() < sample) {
 				jams.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
-				String info = String("hold={0} type={1} conn={2} v={3} ds={4} s={5} L={6} id={7}").format(
-						Array::make(r, int(v.type), v.conn, v.v, v.ds, v.s, v.ds >= 0 ? t.g.ds[v.ds].len : 0.f, id));
-				int ci = v.ds >= 0 ? traffic::pick_connector(*state_, v) : v.conn;
-				if (v.conn >= 0) {
-					const Conn &c = t.g.conns[v.conn];
-					const auto &on = t.conn_vehicles[v.conn];
-					int at = int(std::find(on.begin(), on.end(), id) - on.begin());
-					info += String(" node={0} deg={8} ctl={1} cs={2}/{3} order={4}/{5} turn={6} peds={7}").format(Array::make(c.node,
-							int(t.g.junctions[c.node].ctl), v.cs, c.len, at, int(on.size()), int(c.turn), traffic::peds_in_way(*state_, v.conn), t.g.junctions[c.node].degree));
-				}
-				if (ci >= 0 && r == int(Hold::CONFLICT_BUSY)) {
-					for (int oc : t.g.conns[ci].conflicts) {
-						if (t.conn_vehicles[oc].empty()) continue;
-						const Vehicle &o = t.vehicles[t.conn_vehicles[oc].front()];
-						info += String(" busy conn={0} n={1} first v={2} cs={3}/{4} wait={5} peds={6}").format(Array::make(oc, int(t.conn_vehicles[oc].size()),
-								o.v, o.cs, t.g.conns[oc].len, o.wait, traffic::peds_in_way(*state_, oc)));
-						break;
-					}
-				}
-				if (ci >= 0) {
-					const Conn &c = t.g.conns[ci];
-					const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
-					info += String(" -> ds={0} lane={1} L={2} n={3}").format(Array::make(c.to_ds, c.to_lane, t.g.ds[c.to_ds].len, int(lane.size())));
-					if (!lane.empty()) {
-						const Vehicle &o = t.vehicles[lane.front()];
-						info += String(" tail id={0} s={1} v={2} wait={3} hold={4} ri={5}/{6}").format(Array::make(lane.front(), o.s, o.v, o.wait,
-								int(traffic::hold_reason(*state_, lane.front())), o.ri, o.route.len));
-					}
-				}
-				jam_info.push_back(info);
+				jam_info.push_back(jam_detail(*state_, id, v, r));
 			}
 		}
 		moving += v.v > 1.f ? 1 : 0;
@@ -279,7 +287,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 
 Dictionary CityCore::city_bounds() const {
 	Dictionary d;
-	float minx = 1e9f, minz = 1e9f, maxx = -1e9f, maxz = -1e9f;
+	float minx = NO_BOUND, minz = NO_BOUND, maxx = -NO_BOUND, maxz = -NO_BOUND;
 	for (const RoadNode &n : state_->roads.nodes) {
 		if (!n.alive) continue;
 		minx = std::min(minx, float(n.x)); maxx = std::max(maxx, float(n.x));

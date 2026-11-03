@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 
 using namespace godot;
 
@@ -141,7 +142,8 @@ Ref<ArrayMesh> MeshBuilder::commit() const {
 
 void MeshBuilder::commit_to(const RID &mesh) const {
 	if (empty()) return;
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this));
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(),
+			Dictionary(), RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES);
 }
 
 } // namespace city

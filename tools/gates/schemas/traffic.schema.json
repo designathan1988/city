@@ -1,0 +1,17 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": { "type": "string" },
+  "_classes_doc": { "type": "string" },
+  "_zones_doc": { "type": "string" },
+  "params": { "type": "object", "additional": { "type": "number" } },
+  "classes": { "type": "array", "minItems": 1, "items": { "type": "array", "items": { "type": "number" } } },
+  "style_share": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_home": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_work": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_mid": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_truck": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_walk": { "type": "array", "minItems": 1, "items": { "type": "number" } }
+ },
+ "required": ["_doc", "params", "classes", "style_share", "zone_home", "zone_work", "zone_mid", "zone_truck", "zone_walk"]
+}

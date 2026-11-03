@@ -23,7 +23,8 @@ float noise(vec2 p) {
 }
 
 // Slope of two noise layers scrolling in different directions (finite differences).
-vec2 ripple(vec2 p, float t) {
+vec2 ripple(vec2 p, float t, float fine) {
+	if (fine <= 0.0) return vec2(0.0); // far water: the noise is below a pixel, skip the four reads
 	vec2 a = p * wave_scale + vec2(0.035, 0.021) * t * wave_speed * 30.0;
 	vec2 b = p * wave_scale * 3.1 + vec2(-0.026, 0.047) * t * wave_speed * 30.0;
 	float e = 0.1;
@@ -35,7 +36,7 @@ vec2 ripple(vec2 p, float t) {
 void fragment() {
 	vec3 world = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float fine = 1.0 - smoothstep(0.4, 1.6, max(fwidth(world.x), fwidth(world.z)));
-	vec2 s = ripple(world.xz, TIME) * ripple_strength * fine;
+	vec2 s = ripple(world.xz, TIME, fine) * ripple_strength * fine;
 	vec3 n = normalize(vec3(-s.x, 1.0, -s.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);

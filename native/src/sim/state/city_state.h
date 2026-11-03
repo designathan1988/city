@@ -56,8 +56,8 @@ struct CityState {
 
 	// map_mutex: shared by readers (simulation traffic step, queries, mesh jobs); exclusive for commands, growth,
 	// clock, load. traffic_mutex: held by the simulation thread while it steps traffic (probes take it too).
-	std::shared_mutex map_mutex;
-	std::mutex traffic_mutex;
+	mutable std::shared_mutex map_mutex;
+	mutable std::mutex traffic_mutex;
 };
 
 } // namespace city

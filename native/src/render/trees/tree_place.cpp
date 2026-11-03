@@ -18,31 +18,42 @@ namespace {
 constexpr uint32_t WILD_SALT = 0x51ed27u, PARK_SALT = 0x9a2cu, NOISE_SEED = 4242u;
 constexpr int PARK_TRIES = 4; // draws per wanted tree: spots on paths, courts and fountains are skipped
 constexpr int NOISE_OCTAVES = 2;
-constexpr float GRADE_PROBE = 2.f, ROAD_REACH = 24.f;
+constexpr float GRADE_PROBE = 2.f, LIST_MARGIN = 80.f;
+constexpr uint32_t YAW_HASH_SALT = 5;
 
 uint32_t cell_hash(int ix, int iz, uint32_t salt) { return hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), salt); }
 
-bool near_road(const CityState &s, float x, float z, float r) {
-	bool hit = false;
-	float q = r + ROAD_REACH;
-	s.roads.for_segments_near(x - q, z - q, x + q, z + q, [&](int sid) {
-		if (hit) return;
-		double t, d;
-		closest_t(s.roads.segs[sid].q, x, z, t, d);
-		hit = d < s.catalog.profile(s.roads.segs[sid].profile).half() + r;
-	});
-	return hit;
+// The segments and lots that can affect this chunk (its bounds + LIST_MARGIN), queried once per chunk instead of once
+// per candidate tree.
+void chunk_segments(const CityState &s, int64_t key, std::vector<int> &out) {
+	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
+	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN,
+			[&](int sid) { out.push_back(sid); });
 }
 
-bool in_lot(const CityState &s, const TreeLook &T, float x, float z) {
-	bool hit = false;
-	s.buildings.query(x - T.lot_reach, z - T.lot_reach, x + T.lot_reach, z + T.lot_reach, [&](int id) {
+void chunk_lots(const CityState &s, int64_t key, std::vector<int> &out) {
+	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
+	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN,
+			[&](int id) { out.push_back(id); });
+}
+
+bool near_road(const CityState &s, const std::vector<int> &segs, float x, float z, float r) {
+	for (int sid : segs) {
+		double t, d;
+		closest_t(s.roads.segs[sid].q, x, z, t, d);
+		if (d < s.catalog.profile(s.roads.segs[sid].profile).half() + r) return true;
+	}
+	return false;
+}
+
+bool in_lot(const CityState &s, const std::vector<int> &lots, const TreeLook &T, float x, float z) {
+	for (int id : lots) {
 		const Building &b = s.buildings.items[id];
 		float dx = x - b.x, dz = z - b.z;
 		float lx = dx * std::cos(b.rot) - dz * std::sin(b.rot), lz = dx * std::sin(b.rot) + dz * std::cos(b.rot);
-		hit = hit || (std::fabs(lx) < b.w * 0.5f + T.lot_margin && std::fabs(lz) < b.d * 0.5f + T.lot_margin);
-	});
-	return hit;
+		if (std::fabs(lx) < b.w * 0.5f + T.lot_margin && std::fabs(lz) < b.d * 0.5f + T.lot_margin) return true;
+	}
+	return false;
 }
 
 int pick_species(const TreeLook &T, float r) {
@@ -50,7 +61,8 @@ int pick_species(const TreeLook &T, float r) {
 	return r < T.shrub_share + T.conifer_share ? T.conifer : T.broadleaf;
 }
 
-void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeSpot> &out) {
+void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const std::vector<int> &segs, const std::vector<int> &lots,
+		int64_t key, std::vector<TreeSpot> &out) {
 	const Heightfield &hf = s.terrain;
 	int n = int(CHUNK / T.grid_m), cx = key_x(key), cz = key_y(key);
 	for (int j = 0; j < n; j++)
@@ -69,16 +81,15 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, int64_t key
 			if (grade > T.max_grade) continue;
 			int sp = pick_species(T, hash_float(h + 3));
 			float scale = T.scale_min + T.scale_span * hash_float(h + 4);
-			if (near_road(s, x, z, kit.species(sp).crown_r * scale + T.road_margin) || in_lot(s, T, x, z)) continue;
-			out.push_back({ Vector3(x, y, z), scale, TAU_F * hash_float(h + 5), sp });
+			if (near_road(s, segs, x, z, kit.species(sp).crown_r * scale + T.road_margin) || in_lot(s, lots, T, x, z)) continue;
+			out.push_back({ Vector3(x, y, z), scale, TAU_F * hash_float(h + YAW_HASH_SALT), sp });
 		}
 }
 
-void parks(const CityState &s, const TreeLook &T, int64_t key, std::vector<TreeSpot> &out) {
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.buildings.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
-		const Building &b = s.buildings.items[id];
-		if (!b40::is_open_lot(b.fn) || chunk_of(b.x, b.z) != key) return;
+void parks(const CityState &s, const TreeLook &T, const std::vector<int> &lots, int64_t key, std::vector<TreeSpot> &out) {
+	for (int id : lots) {
+		const Building &b = s.buildings.items[size_t(id)];
+		if (!b40::is_open_lot(b.fn) || chunk_of(b.x, b.z) != key) continue;
 		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
 		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
 		for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
@@ -90,7 +101,7 @@ void parks(const CityState &s, const TreeLook &T, int64_t key, std::vector<TreeS
 			out.push_back({ p, T.scale_min + T.scale_span * hash_float(h + 2), TAU_F * hash_float(h + 3), T.broadleaf });
 			placed++;
 		}
-	});
+	}
 }
 } // namespace
 
@@ -114,10 +125,13 @@ bool TreeLook::load(const Dictionary &t, PackedStringArray &errors) {
 
 void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeSpot> &out) {
+	std::vector<int> segs, lots;
+	chunk_segments(s, key, segs);
+	chunk_lots(s, key, lots);
 	place_street_trees(s, L, F, key, out);
 	for (TreeSpot &t : out) t.species = T.broadleaf;
-	parks(s, T, key, out);
-	wild(s, T, kit, key, out);
+	parks(s, T, lots, key, out);
+	wild(s, T, kit, segs, lots, key, out);
 }
 
 } // namespace city

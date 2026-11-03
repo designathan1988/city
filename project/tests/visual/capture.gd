@@ -60,6 +60,27 @@ var soak := 0
 
 func _ready() -> void:
 	_parse_args()
+	if not _boot_world():
+		get_tree().quit(1)
+		return
+	await _wait_render()
+	if soak > 0:
+		_soak(soak)
+	else:
+		CityStore.step_ticks(TRAFFIC_WARMUP_TICKS)
+	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
+	_memory("tráfego aquecido")
+	var ground := _ground(0, 0)
+	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
+	print("sonda: ", probe.vehicles, " veículos, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " em conectores, ", probe.signals, " semáforos, parados por ", probe.held_by)
+	await _capture_all(probe, ground)
+	print("desenhados: ", CityStore.query(&"traffic_probe", [0]))
+	print("snapshot: ", CityStore.snapshot)
+	_memory("fim")
+	get_tree().quit(0)
+
+
+func _boot_world() -> bool:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
 	add_child(world)
@@ -70,8 +91,7 @@ func _ready() -> void:
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
-		get_tree().quit(1)
-		return
+		return false
 	add_child(RoadcraftHud.new())
 	var report: Dictionary = CityStore.new_map(map, seed, true)
 	print("cidade: ", report)
@@ -79,6 +99,10 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	camera.global_position = Vector3(0, 300, 300)
 	camera.look_at(Vector3.ZERO)
+	return true
+
+
+func _wait_render() -> void:
 	var waited := 0
 	await _frames(2)
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
@@ -86,15 +110,9 @@ func _ready() -> void:
 		waited += 1
 	print("quadros até desenhar tudo: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 	_memory("cidade desenhada")
-	if soak > 0:
-		_soak(soak)
-	else:
-		CityStore.step_ticks(TRAFFIC_WARMUP_TICKS)
-	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
-	_memory("tráfego aquecido")
-	var ground := _ground(0, 0)
-	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
-	print("sonda: ", probe.vehicles, " veículos, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " em conectores, ", probe.signals, " semáforos, parados por ", probe.held_by)
+
+
+func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	for v in VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
@@ -117,10 +135,6 @@ func _ready() -> void:
 		print("retido em ", j, " ", probe.jam_info[i])
 		await _shot("09_retido_%d" % i, j + Vector3(0, 40, 25), j)
 	await _civic_tour()
-	print("desenhados: ", CityStore.query(&"traffic_probe", [0]))
-	print("snapshot: ", CityStore.snapshot)
-	_memory("fim")
-	get_tree().quit(0)
 
 
 func _parse_args() -> void:

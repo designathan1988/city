@@ -179,8 +179,17 @@ void vertex() {
 // Fragment: Roadcraft grass map in world space, sand at the shore, rock on steep slopes
 ////////////////////////
 
+// Integer hash (pcg, as building.gdshader): exact on every GPU, unlike fract(sin(...)).
+uint pcg(uint v) {
+	uint s = v * 747796405u + 2891336453u;
+	uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+	return (w >> 22u) ^ w;
+}
+
 float hash2(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+	ivec2 i = ivec2(floor(p));
+	uint h = uint(i.x + 32768) * 73856093u ^ uint(i.y + 32768) * 19349663u;
+	return float(pcg(h)) / 4294967295.0;
 }
 
 float vnoise(vec2 p) {
@@ -196,11 +205,17 @@ vec3 land(float layer, vec2 p) {
 	return textureGrad(land_map, q, dFdx(p) * vec2(1.0, 1.0 / land_layers), dFdy(p) * vec2(1.0, 1.0 / land_layers)).rgb;
 }
 
+// Grass detail fades out beyond ~300 m (the second rotated read and the micro noise stop paying for themselves).
+const float DETAIL_NEAR_M = 240.0;
+const float DETAIL_FAR_M = 300.0;
+
 // Grass without visible tiling: two reads, the second rotated 30 degrees, blended by large blotches.
-vec3 grass(vec2 p) {
+vec3 grass(vec2 p, float detail) {
+	vec3 g = texture(grass_map, p).rgb;
+	if (detail <= 0.0) return g;
 	vec2 r = vec2(0.866 * p.x - 0.5 * p.y, 0.5 * p.x + 0.866 * p.y) + 0.37;
 	float k = smoothstep(0.35, 0.65, vnoise(p * 0.25));
-	return mix(texture(grass_map, p).rgb, texture(grass_map, r).rgb, k);
+	return mix(g, texture(grass_map, r).rgb, k * detail);
 }
 
 void fragment() {
@@ -215,10 +230,12 @@ void fragment() {
 	vec3 w_normal = normalize(vec3(h3 - h2, _vertex_spacing, h3 - h0));
 	NORMAL = mat3(VIEW_MATRIX) * w_normal;
 	float slope = 1.0 - w_normal.y;
+	float detail = 1.0 - smoothstep(DETAIL_NEAR_M, DETAIL_FAR_M, length(v_vertex.xz - v_camera_pos.xz));
 	float n = vnoise(v_vertex.xz * patch_scale) * 0.7 + vnoise(v_vertex.xz * patch_scale * 6.0) * 0.3;
+	n = mix(0.5, n, detail);
 	vec2 gp = v_vertex.xz / grass_m;
-	vec3 g = grass(gp);
-	float macro = clamp(dot(grass(gp * 0.137 + 0.21), vec3(0.3, 0.6, 0.1)) / max(dot(g, vec3(0.3, 0.6, 0.1)), 0.02), 0.7, 1.3);
+	vec3 g = grass(gp, detail);
+	float macro = clamp(dot(grass(gp * 0.137 + 0.21, detail), vec3(0.3, 0.6, 0.1)) / max(dot(g, vec3(0.3, 0.6, 0.1)), 0.02), 0.7, 1.3);
 	vec3 c = g * mix(1.0, macro, 0.35) * grass_tint * mix(0.9, 1.08, n);
 	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
 	float wander = (n - 0.5) * 0.08;

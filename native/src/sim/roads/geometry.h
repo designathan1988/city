@@ -23,7 +23,8 @@ struct Quad {
 	bool is_straight(double tol) const;
 };
 
-double quad_length(const Quad &q, int steps = 24);
+constexpr int ARC_STEPS_DEFAULT = 24;
+double quad_length(const Quad &q, int steps = ARC_STEPS_DEFAULT);
 // Cumulative chord lengths at t = i / steps (size steps + 1).
 std::vector<double> arc_table(const Quad &q, int steps);
 double t_at_length(const std::vector<double> &table, double s);

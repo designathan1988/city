@@ -9,14 +9,15 @@
 namespace city {
 
 namespace {
-constexpr double CURB_R_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / 180, ACUTE = 12 * PI_D / 180, CORNER_MITER = 2.5;
+constexpr double KERB_RADIUS_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / 180, ACUTE = 12 * PI_D / 180, CORNER_MITER = 2.5;
 constexpr double BULB_HALF_MAX = 6.5, BULB_LEN_MIN = 40, MOUTH_SHARE = 0.45, MAX_RETREAT = 60, BENT_RADIUS = 0.3;
 constexpr double BEVEL_PAD = 1.02, STRAIGHT_EPS = 1e-3, TAPER_MIN_STEP = 0.05, FILLET_SHARE = 0.5;
+constexpr double DEGENERATE_ARM_EPS = 1e-6;
 } // namespace
 
 Arm arm_of(const Quad &q, const Profile &p, int end) {
 	double dx = end == 0 ? q.cx - q.x0 : q.cx - q.x1, dz = end == 0 ? q.cz - q.z0 : q.cz - q.z1;
-	if (std::hypot(dx, dz) < 1e-6) {
+	if (std::hypot(dx, dz) < DEGENERATE_ARM_EPS) {
 		dx = end == 0 ? q.x1 - q.x0 : q.x0 - q.x1;
 		dz = end == 0 ? q.z1 - q.z0 : q.z0 - q.z1;
 	}
@@ -83,7 +84,7 @@ Corner corner_fillet(const Arm &a, const Arm &b) {
 		double tr = BEVEL_PAD * (aw + bw) / (2 * std::sin(std::max(psi, STRAIGHT_EPS) / 2));
 		return { CornerMode::BEVEL, tr, tr, 0, 0, 0 };
 	}
-	double r = std::max(CURB_R_MIN, std::min(CURB_R_MAX, FILLET_SHARE * std::min(a.left, b.right)));
+	double r = std::max(KERB_RADIUS_MIN, std::min(KERB_RADIUS_MAX, FILLET_SHARE * std::min(a.left, b.right)));
 	double run = r / std::tan(psi / 2);
 	double xx = a.dz * aw + a.dx * s, xz = -a.dx * aw + a.dz * s;
 	double bx = a.dx + b.dx, bz = a.dz + b.dz, bl = std::hypot(bx, bz);

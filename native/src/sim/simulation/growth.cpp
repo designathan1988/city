@@ -2,6 +2,7 @@
 #include "sim/buildings/growth.h"
 
 #include "core/seeded.h"
+#include "sim/citygen/lot_gen.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -16,6 +17,8 @@ constexpr uint32_t SQUARE_SALT = 4242, CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
 constexpr double DECAY_TENTHS = 10;
+constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
+constexpr uint32_t HASH_SHIFT_15 = 15, HASH_SHIFT_13 = 13, HASH_SHIFT_16 = 16;
 
 int draw(Mulberry32 &r, const IntRange &x) { return r.irange_excl(x.lo, x.hi); }
 
@@ -27,8 +30,8 @@ int biggest(const std::vector<Lot> &l) {
 }
 } // namespace
 
-int base_zone(int z) { return z == 5 || z == 6 ? 1 : z == 7 || z == 8 ? 2 : z; }
-int zone_density(int z) { return z == 5 || z == 7 ? 0 : z == 6 || z == 8 ? 2 : 1; }
+int base_zone(int z) { return z == ZONE_RES_LOW || z == ZONE_RES_HIGH ? 1 : z == ZONE_IND_LOW || z == ZONE_IND_HIGH ? 2 : z; }
+int zone_density(int z) { return z == ZONE_RES_LOW || z == ZONE_IND_LOW ? 0 : z == ZONE_RES_HIGH || z == ZONE_IND_HIGH ? 2 : 1; }
 
 MapCell map_cell_of(const CityState &s, double x, double z) {
 	MapCell c;
@@ -61,9 +64,9 @@ int floors_for(const GrowthDef &g, int zone_id, const Profile &street, uint32_t 
 int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float area) {
 	if (!is_biggest || area < g.civic_min_area) return FN_NONE;
 	uint32_t h = uint32_t(cell_id) * CIVIC_MUL;
-	h ^= h >> 15;
+	h ^= h >> HASH_SHIFT_15;
 	h *= CIVIC_MIX;
-	h ^= h >> 13;
+	h ^= h >> HASH_SHIFT_13;
 	if (double(h & CIVIC_CHANCE_BITS) / (CIVIC_CHANCE_BITS + 1) > g.civic_chance) return FN_NONE;
 	if (zone < 0 || zone > 4 || g.civic_by_zone[zone].empty()) return FN_NONE;
 	const auto &list = g.civic_by_zone[zone];
@@ -77,8 +80,8 @@ int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float 
 
 double generated_age(const GrowthDef &g, uint32_t seed) {
 	uint32_t h = (seed ^ AGE_MIX) * AGE_MUL1;
-	h = (h ^ (h >> 13)) * AGE_MUL2;
-	return double((h ^ (h >> 16)) % uint32_t(g.decay_span_min / DECAY_TENTHS));
+	h = (h ^ (h >> HASH_SHIFT_13)) * AGE_MUL2;
+	return double((h ^ (h >> HASH_SHIFT_16)) % uint32_t(g.decay_span_min / DECAY_TENTHS));
 }
 
 bool lot_occupied(const CityState &s, const Lot &l) {

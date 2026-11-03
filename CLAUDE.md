@@ -43,10 +43,13 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
 
 ## Fluxo de dados e threads
-`DataTables` lê `data/**` → `CityStore.boot` envia catálogo ao `CityCore` (rejeita chave ausente) →
-`Simulation` roda em thread própria (tick fixo `sim_tick_hz`, sob `world_mutex`), pathfinding em threads
-dedicadas (`PathService`, `graph_mutex` compartilhado) → mudanças vão para o `ChangeLog` (único canal de
-"sujo") → `RenderWorld.sync` no thread principal consome o log e reconstrói chunks com orçamento por quadro.
+`DataTables` lê `data/**` (tabelas grandes divididas em partes com o mesmo schema) → `CityStore.boot` envia o
+catálogo ao `CityCore` (rejeita chave ausente) → `Simulation` roda em thread própria com tick fixo
+(`sim_tick_hz`), sob `map_mutex` compartilhado e `traffic_mutex`; comandos, crescimento e relógio tomam
+`map_mutex` exclusivo → mudanças vão para o `ChangeLog` (único canal de "sujo") → `RenderWorld.sync` consome o
+log no thread principal e manda as malhas para o `JobPool`; o commit respeita `render.commit_budget_ms`. As
+poses dos agentes saem por `PoseBuffer` (buffer triplo sem trava) e o salvamento codifica sob trava curta e grava
+em thread própria (temporário + rename).
 
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → MAIN_MENU → LOADING → PLAYING ⇄ PAUSED → MAIN_MENU/QUITTING (tabela `TRANSITIONS`).

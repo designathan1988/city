@@ -33,6 +33,13 @@ struct OpeningDef {
 	float w_in = 0, w_max = 0, sill = 0, head_in = 0, head_max = 0, depth = 0;
 };
 
+// One visibility band of instanced facade parts (data/render/buildings.json lod.part_bands): boxes whose bar width
+// (second largest side) is at most `thick_max` stay drawn until they cover `px_min` pixels on a 1080p screen.
+struct PartBand {
+	float thick_max = 0;
+	float px_min = 0;
+};
+
 struct Data {
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
@@ -43,6 +50,8 @@ struct Data {
 	OpeningDef openings[BAY_COUNT];
 	float ac_chance[3] = {}, dish_chance = 0, lit_share[2] = {};
 	float parts_share = 0, near_share = 0; // of render.building_detail_end_m
+	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
+	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 	// A named colour of "colors" (magenta when missing; load() reports missing names it was asked for at startup).

@@ -1,7 +1,7 @@
 // Terrain generation, height queries, raycast, sculpt brush and modifier composition.
 #include "sim/terrain/heightfield.h"
 
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
 #include <cmath>

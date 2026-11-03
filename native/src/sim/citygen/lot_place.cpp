@@ -4,7 +4,7 @@
 
 #include "core/seeded.h"
 #include "sim/citygen/road_gen.h"
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
 
 #include <algorithm>
@@ -16,8 +16,15 @@ namespace {
 constexpr double FRONT_PAD = 0.3, CORNER_GAP = 2, STRAIGHT_TOL = 0.5, WIDTH_TRIM = 0.6, LOT_INSET = 0.15, CLEAR_INSET = 0.3;
 constexpr double MAX_SHIFT = 3, SHIFT_PAD = 0.05, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
 constexpr double DEPTH_STEP = 3, MIN_DEPTH = 12, NARROW_STEP = 2, NARROW_SHARE = 4, KEY_SCALE = 4, SEED_SCALE = 2;
-constexpr double NO_ROOM = 1e300;
+constexpr double NO_ROOM = 1e300, EPS = 1e-6;
 constexpr uint32_t SIDE_KEY = 77, SIDE_SALT = 31;
+constexpr int CORNER_FLOATS = 8;
+// Frontage/depth bands by base zone (Roadcraft lots.ts LOT_SIZE and DEEP).
+constexpr double RES_W0 = 12, RES_W1 = 19, RES_D0 = 26, RES_D1 = 34, RES_DEEP0 = 38, RES_DEEP1 = 48;
+constexpr double COM_W0 = 16, COM_W1 = 28, COM_D0 = 30, COM_D1 = 40, COM_DEEP0 = 55, COM_DEEP1 = 70;
+constexpr double IND_W0 = 30, IND_W1 = 55, IND_D0 = 40, IND_D1 = 60;
+constexpr double MIX_W0 = 14, MIX_W1 = 22, MIX_D0 = 28, MIX_D1 = 36, MIX_DEEP0 = 45, MIX_DEEP1 = 58;
+constexpr double RES_HIGH_DEEP0 = 45, RES_HIGH_DEEP1 = 58, COM_HIGH_DEEP0 = 58, COM_HIGH_DEEP1 = 72;
 
 // JavaScript Math.round (halves go up).
 int32_t js_round(double v) { return int32_t(std::floor(v + 0.5)); }
@@ -30,27 +37,27 @@ struct Sizes {
 bool sizes_for(int zone, Sizes &s) {
 	int base = zone == ZONE_RES_LOW || zone == ZONE_RES_HIGH ? ZONE_RES : zone == ZONE_COM_LOW || zone == ZONE_COM_HIGH ? ZONE_COM : zone;
 	switch (base) {
-		case ZONE_RES: s = { 12, 19, 26, 34, 38, 48, true }; break;
-		case ZONE_COM: s = { 16, 28, 30, 40, 55, 70, true }; break;
-		case ZONE_IND: s = { 30, 55, 40, 60, 0, 0, false }; break;
-		case ZONE_MIXED: s = { 14, 22, 28, 36, 45, 58, true }; break;
+		case ZONE_RES: s = { RES_W0, RES_W1, RES_D0, RES_D1, RES_DEEP0, RES_DEEP1, true }; break;
+		case ZONE_COM: s = { COM_W0, COM_W1, COM_D0, COM_D1, COM_DEEP0, COM_DEEP1, true }; break;
+		case ZONE_IND: s = { IND_W0, IND_W1, IND_D0, IND_D1, 0, 0, false }; break;
+		case ZONE_MIXED: s = { MIX_W0, MIX_W1, MIX_D0, MIX_D1, MIX_DEEP0, MIX_DEEP1, true }; break;
 		default: return false;
 	}
-	if (zone == ZONE_RES_HIGH) { s.deep0 = 45; s.deep1 = 58; }
-	if (zone == ZONE_COM_HIGH) { s.deep0 = 58; s.deep1 = 72; }
+	if (zone == ZONE_RES_HIGH) { s.deep0 = RES_HIGH_DEEP0; s.deep1 = RES_HIGH_DEEP1; }
+	if (zone == ZONE_COM_HIGH) { s.deep0 = COM_HIGH_DEEP0; s.deep1 = COM_HIGH_DEEP1; }
 	return true;
 }
 } // namespace
 
 double LotStrips::exact_shift(const Frame &f) const {
-	double c[8];
+	double c[CORNER_FLOATS];
 	corners(f, CLEAR_INSET, c);
-	std::vector<double> pts(c, c + 8);
+	std::vector<double> pts(c, c + CORNER_FLOATS);
 	for (int k = 0; k < 4; k++) {
 		pts.push_back((c[k * 2] + c[((k + 1) % 4) * 2]) / 2);
 		pts.push_back((c[k * 2 + 1] + c[((k + 1) % 4) * 2 + 1]) / 2);
 	}
-	double x0 = 1e300, x1 = -1e300, z0 = 1e300, z1 = -1e300;
+	double x0 = NO_ROOM, x1 = -NO_ROOM, z0 = NO_ROOM, z1 = -NO_ROOM;
 	for (size_t k = 0; k < pts.size(); k += 2) {
 		x0 = std::min(x0, pts[k]); x1 = std::max(x1, pts[k]); z0 = std::min(z0, pts[k + 1]); z1 = std::max(z1, pts[k + 1]);
 	}
@@ -73,18 +80,18 @@ double LotStrips::exact_shift(const Frame &f) const {
 		for (size_t m = 0; m < pts.size(); m += 2)
 			if (std::hypot(pts[m] - g_.nx[n], pts[m + 1] - g_.nz[n]) < BULB_R + BULB_WALK) return NO_ROOM;
 	}
-	for (size_t k = 0; k < taken_.size(); k += 8)
+	for (size_t k = 0; k < taken_.size(); k += CORNER_FLOATS)
 		if (rects_overlap(c, &taken_[k])) return NO_ROOM;
 	return shift;
 }
 
 void LotStrips::keep(const Frame &f, int zone, int profile) {
 	mark_lot(f);
-	double c[8];
+	double c[CORNER_FLOATS];
 	Frame inner = f;
 	inner.w = f.w - WIDTH_TRIM;
 	corners(inner, LOT_INSET, c);
-	taken_.insert(taken_.end(), c, c + 8);
+	taken_.insert(taken_.end(), c, c + CORNER_FLOATS);
 	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
 	Lot l;
 	l.x = f.cx; l.z = f.cz; l.w = f.w - WIDTH_TRIM; l.d = f.d;
@@ -137,7 +144,7 @@ void LotStrips::place_side(int s, int side, int zone) {
 	double equal = span / std::max(1, int(js_round(span / aim)));
 	double at = start;
 	bool narrow_tried = false;
-	while (end - at >= (straight ? std::min(size.w0, equal) - 1e-6 : size.w0)) {
+	while (end - at >= (straight ? std::min(size.w0, equal) - EPS : size.w0)) {
 		double w = straight ? equal : narrow_tried ? size.w0 : rng.range(size.w0, size.w1);
 		if (end - at - w < (straight ? equal : size.w0) * 0.5) w = end - at;
 		double t = t_at_length(tables_[s], at + w / 2), px, pz, dx, dz;
@@ -157,7 +164,7 @@ void LotStrips::place_side(int s, int side, int zone) {
 			if (back > 0 && back < MAX_SHIFT) { f.cx += lx * (back + SHIFT_PAD); f.cz += lz * (back + SHIFT_PAD); }
 			if (back >= MAX_SHIFT || (back > 0 && (exact_shift(f) > 0 || !lot_free(f)))) continue;
 			double hc = ground_.height(f.cx, f.cz);
-			if (hc < TerrainGen::SEA_LEVEL + DRY_MIN) continue;
+			if (hc < TerrainGen::OCEAN_Y + DRY_MIN) continue;
 			double lo = hc, hi = hc;
 			bool wet = ground_.water(f.cx, f.cz) > hc - WET_CLEAR;
 			static constexpr double CORNERS[4][2] = { { -0.5, -0.5 }, { 0.5, -0.5 }, { 0.5, 0.5 }, { -0.5, 0.5 } };

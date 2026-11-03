@@ -6,157 +6,32 @@
    "items": {
     "type": "object",
     "properties": {
-     "code": {
-      "type": "integer",
-      "minimum": 1,
-      "maximum": 7
-     },
-     "id": {
-      "type": "string"
-     },
-     "name_key": {
-      "type": "string"
-     },
-     "group": {
-      "type": "string",
-      "enum": [
-       "residential",
-       "commercial",
-       "industrial",
-       "office"
-      ]
-     },
-     "dense": {
-      "type": "boolean"
-     },
-     "overlay": {
-      "type": "string",
-      "pattern_prefix": "#"
-     },
-     "lot_w": {
-      "type": "array",
-      "items": {
-       "type": "integer"
-      },
-      "minItems": 2,
-      "maxItems": 2
-     },
-     "lot_d": {
-      "type": "array",
-      "items": {
-       "type": "integer"
-      },
-      "minItems": 2,
-      "maxItems": 2
-     },
-     "floor_h": {
-      "type": "number"
-     },
-     "floors": {
-      "type": "array",
-      "items": {
-       "type": "array",
-       "items": {
-        "type": "integer"
-       },
-       "minItems": 2,
-       "maxItems": 2
-      },
-      "minItems": 3,
-      "maxItems": 3
-     },
-     "area_per_unit": {
-      "type": "number"
-     },
-     "roofs": {
-      "type": "array",
-      "items": {
-       "type": "string",
-       "enum": [
-        "flat",
-        "gable",
-        "hip"
-       ]
-      },
-      "minItems": 1
-     },
-     "styles": {
-      "type": "array",
-      "items": {
-       "type": "object",
-       "properties": {
-        "bay": {
-         "type": "number"
-        },
-        "window_w": {
-         "type": "number",
-         "minimum": 0,
-         "maximum": 1
-        },
-        "window_h": {
-         "type": "number",
-         "minimum": 0,
-         "maximum": 1
-        },
-        "sill": {
-         "type": "number",
-         "minimum": 0,
-         "maximum": 1
-        },
-        "palette": {
-         "type": "array",
-         "items": {
-          "type": "string",
-          "pattern_prefix": "#"
-         },
-         "minItems": 1
-        }
-       },
-       "required": [
-        "bay",
-        "window_w",
-        "window_h",
-        "sill",
-        "palette"
-       ],
-       "strict": true
-      },
-      "minItems": 4,
-      "maxItems": 4
-     },
-     "podium_floors": {
-      "type": "integer"
-     },
-     "tower_inset": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 0.4
-     }
+     "id": { "type": "string" },
+     "code": { "type": "integer", "minimum": 0, "maximum": 8 },
+     "name_key": { "type": "string" },
+     "base": { "type": "integer", "minimum": 0, "maximum": 4 },
+     "density": { "type": "integer", "minimum": 0, "maximum": 2 },
+     "color": { "type": "string", "pattern_prefix": "#" }
     },
-    "required": [
-     "code",
-     "id",
-     "name_key",
-     "group",
-     "dense",
-     "overlay",
-     "lot_w",
-     "lot_d",
-     "floor_h",
-     "floors",
-     "area_per_unit",
-     "roofs",
-     "styles",
-     "podium_floors",
-     "tower_inset"
-    ],
+    "required": ["id", "code", "name_key", "base", "density", "color"],
     "strict": true
    },
+   "minItems": 1,
    "unique_key": "code"
+  },
+  "residents": {
+   "type": "object",
+   "properties": {
+    "floor_share": { "type": "number" },
+    "m2_per_resident": { "type": "number" },
+    "m2_per_job_commercial": { "type": "number" },
+    "m2_per_job_industrial": { "type": "number" },
+    "m2_per_person_mixed": { "type": "number" }
+   },
+   "required": ["floor_share", "m2_per_resident", "m2_per_job_commercial", "m2_per_job_industrial", "m2_per_person_mixed"],
+   "strict": true
   }
  },
- "required": [
-  "zones"
- ],
+ "required": ["zones", "residents"],
  "strict": true
 }

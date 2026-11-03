@@ -145,6 +145,13 @@ bool Data::load(const Dictionary &t, PackedStringArray &errors) {
 	Dictionary lod = at(t, "lod");
 	parts_share = float(at(lod, "parts_share"));
 	near_share = float(at(lod, "near_share"));
+	far_fov_deg = float(at(lod, "fov_deg"));
+	Array bands = at(lod, "part_bands");
+	for (int i = 0; i < bands.size(); i++) {
+		Dictionary b = bands[i];
+		part_bands.push_back(PartBand{ float(at(b, "thick_max")), float(at(b, "px_min")) });
+	}
+	if (part_bands.empty()) errors.push_back("buildings.json: falta lod.part_bands");
 	return errors.is_empty();
 }
 

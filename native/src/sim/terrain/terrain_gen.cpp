@@ -1,6 +1,6 @@
 // Port of Roadcraft src/jobs/terrainGen.ts (same constants, same order of operations, double precision).
 #include "core/math.h"
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 
 #include "core/seeded.h"
 
@@ -23,14 +23,19 @@ constexpr double HILLS_BASE = 18, HILLS_AMP = 30, HILLS_SCALE = 2600, BUMPS_AMP 
 constexpr double EDGE_START = 0.82, EDGE_RAMP = 0.18, RANGE_BASE = 90, RANGE_AMP = 70, RANGE_SCALE = 700;
 constexpr int BANK_PROBES = 8, SMOOTH_PASSES = 4, DESCEND_STEPS = 200, LAKE_KEY = 512, LAKE_ROW = 1024;
 constexpr int64_t SAMPLE_ROW = 65536;
+constexpr int HASH_SHIFT_A = 13, HASH_SHIFT_B = 16;
+constexpr int BASIN_LATTICE = 7, BASIN_ROW = 11;
+constexpr uint32_t BASIN_SALT = 13U, BUMPS_SALT = 7U, RANGE_SALT = 99U;
+constexpr double OPEN_SHARE = 0.75, BASIN_NOISE_STEP = 0.01, RIVER_END_EPS = 1.001;
+constexpr double HASH_UNIT = 2147483648.0;
 constexpr int N4[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
 constexpr int N8[8][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
 
 // 4.0's value-noise hash (different from core/seeded.h hash2): result in [-1, 1).
 double vhash(int32_t x, int32_t y) {
 	uint32_t h = uint32_t(x) * 374761393U ^ uint32_t(y) * 668265263U;
-	h = (h ^ (h >> 13)) * 1274126177U;
-	return (h ^ (h >> 16)) / 2147483648.0 - 1;
+	h = (h ^ (h >> HASH_SHIFT_A)) * 1274126177U;
+	return (h ^ (h >> HASH_SHIFT_B)) / HASH_UNIT - 1;
 }
 double value_noise(double x, double y) {
 	double x0 = std::floor(x), y0 = std::floor(y), fx = x - x0, fy = y - y0;
@@ -43,14 +48,14 @@ double influence(double u) { return u * u * (3 - 2 * u); }
 double bed_profile(double d, double reach) { return influence(std::min(1.0, (1 - d / reach) / RIVER_BED_FLOOR)); }
 } // namespace
 
-TerrainGen::TerrainGen(uint32_t seed, double map_half) : seed_(seed), half_(map_half) {
+TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing) : seed_(seed), half_(map_half), water_spacing_(water_spacing) {
 	if (!flat()) plan_river();
 }
 
 double TerrainGen::course_z() const { return half_ - CANAL_FROM_EDGE; }
 
 bool TerrainGen::basin_of(int i, int j, double &x, double &z) const {
-	auto r = [&](int k) { return 0.5 + 0.5 * vhash(int32_t(uint32_t(i * 7 + k) + seed_ * 13U), j * 11 - k); };
+	auto r = [&](int k) { return 0.5 + 0.5 * vhash(int32_t(uint32_t(i * BASIN_LATTICE + k) + seed_ * BASIN_SALT), j * BASIN_ROW - k); };
 	if (r(3) > LAKE_CHANCE) return false;
 	x = (i + 0.25 + 0.5 * r(1)) * LAKE_GRID;
 	z = (j + 0.25 + 0.5 * r(2)) * LAKE_GRID;
@@ -59,10 +64,10 @@ bool TerrainGen::basin_of(int i, int j, double &x, double &z) const {
 
 double TerrainGen::land(double x, double z) const {
 	double h = HILLS_BASE + HILLS_AMP * fbm2(x / HILLS_SCALE, z / HILLS_SCALE, seed_, 4);
-	h += BUMPS_AMP * fbm2(x / BUMPS_SCALE, z / BUMPS_SCALE, seed_ + 7, 3);
+	h += BUMPS_AMP * fbm2(x / BUMPS_SCALE, z / BUMPS_SCALE, seed_ + BUMPS_SALT, 3);
 	double valley = std::min(1.0, std::fabs(z - course_z()) / VALLEY_WIDTH);
 	double open = valley * valley;
-	h = h * (0.25 + 0.75 * open);
+	h = h * ((1 - OPEN_SHARE) + OPEN_SHARE * open);
 	if (h < VALLEY_FLOOR) h += (VALLEY_FLOOR - h) * (1 - open);
 	int i0 = int(std::floor(x / LAKE_GRID)), j0 = int(std::floor(z / LAKE_GRID));
 	for (int j = j0 - 1; j <= j0 + 1; j++)
@@ -71,25 +76,25 @@ double TerrainGen::land(double x, double z) const {
 			if (!basin_of(i, j, bx, bz)) continue;
 			double d = std::hypot(x - bx, z - bz);
 			if (d >= BASIN_RADIUS * BASIN_REACH) continue;
-			double r = BASIN_RADIUS * (1 + BASIN_WOBBLE * value_noise(x / BASIN_NOISE + bx * 0.01, z / BASIN_NOISE - bz * 0.01));
+			double r = BASIN_RADIUS * (1 + BASIN_WOBBLE * value_noise(x / BASIN_NOISE + bx * BASIN_NOISE_STEP, z / BASIN_NOISE - bz * BASIN_NOISE_STEP));
 			double t = std::min(1.0, d / r);
 			h -= BASIN_DEPTH * (1 - t * t) * (1 - t * t);
 		}
 	double edge = std::max(std::fabs(x), std::fabs(z)) / half_;
 	if (edge > EDGE_START) {
 		double t = (edge - EDGE_START) / EDGE_RAMP;
-		h += t * t * (RANGE_BASE + RANGE_AMP * fbm2(x / RANGE_SCALE, z / RANGE_SCALE, seed_ + 99, 4)) * open;
+		h += t * t * (RANGE_BASE + RANGE_AMP * fbm2(x / RANGE_SCALE, z / RANGE_SCALE, seed_ + RANGE_SALT, 4)) * open;
 	}
 	return h;
 }
 
 void TerrainGen::plan_river() {
-	int n = int(std::ceil(half_ * 2 / WATER_SPACING)) + 1;
+	int n = int(std::ceil(half_ * 2 / water_spacing_)) + 1;
 	course_z_.assign(n, 0);
 	level_.assign(n, 0);
 	depth_.assign(n, 0);
 	for (int i = 0; i < n; i++) {
-		double x = i * WATER_SPACING - half_, zc = course_z();
+		double x = i * water_spacing_ - half_, zc = course_z();
 		double bank = land(x, zc);
 		for (int k = 0; k < BANK_PROBES; k++) {
 			double a = double(k) / BANK_PROBES * PI_D * 2;
@@ -105,8 +110,8 @@ void TerrainGen::plan_river() {
 	int third = std::max(1, n / 3);
 	double head = 0, tail = 0;
 	for (int i = 0; i < third; i++) { head += level_[i]; tail += level_[n - 1 - i]; }
-	double step = MIN_FALL * WATER_SPACING;
-	auto fall = [&](int i, double prev) { level_[i] = std::max(SEA_LEVEL + 1, std::min(level_[i], prev - step)); };
+	double step = MIN_FALL * water_spacing_;
+	auto fall = [&](int i, double prev) { level_[i] = std::max(OCEAN_Y + 1, std::min(level_[i], prev - step)); };
 	if (head >= tail)
 		for (int i = 1; i < n; i++) fall(i, level_[i - 1]);
 	else
@@ -115,14 +120,14 @@ void TerrainGen::plan_river() {
 
 TerrainGen::River TerrainGen::river_at(double x, double z) const {
 	int n = int(level_.size());
-	double f = std::min(n - 1.001, std::max(0.0, (x + half_) / WATER_SPACING));
+	double f = std::min(n - RIVER_END_EPS, std::max(0.0, (x + half_) / water_spacing_));
 	int i = int(std::floor(f));
 	double t = f - i;
 	double zc = course_z_[i] + (course_z_[i + 1] - course_z_[i]) * t;
 	River r;
 	r.level = level_[i] + (level_[i + 1] - level_[i]) * t;
 	double depth = depth_[i] + (depth_[i + 1] - depth_[i]) * t;
-	double slope = (course_z_[i + 1] - course_z_[i]) / WATER_SPACING;
+	double slope = (course_z_[i + 1] - course_z_[i]) / water_spacing_;
 	r.d = std::fabs(z - zc) / std::sqrt(1 + slope * slope);
 	r.reach = CANAL_REACH;
 	r.floor = r.level - depth;
@@ -145,8 +150,8 @@ const TerrainGen::Lake *TerrainGen::lake_of(int i, int j) {
 	std::unique_ptr<Lake> lake;
 	double bx, bz;
 	if (basin_of(i, j, bx, bz)) {
-		auto h_of = [&](int gx, int gz) { return base_height(gx * WATER_SPACING - half_, gz * WATER_SPACING - half_); };
-		int gx = int(std::round((bx + half_) / WATER_SPACING)), gz = int(std::round((bz + half_) / WATER_SPACING));
+		auto h_of = [&](int gx, int gz) { return base_height(gx * water_spacing_ - half_, gz * water_spacing_ - half_); };
+		int gx = int(std::round((bx + half_) / water_spacing_)), gz = int(std::round((bz + half_) / water_spacing_));
 		bool moved = true;
 		for (int k = 0; moved && k < DESCEND_STEPS; k++) {
 			moved = false;
@@ -171,7 +176,7 @@ const TerrainGen::Lake *TerrainGen::lake_of(int i, int j) {
 // (a binary heap with the same sift order as the TypeScript), until it would spill over the rim; it stands at the rim
 // less WATER_FILL of the depth and covers the ground under that level joined to the bottom, plus one ring of shore.
 void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) {
-	auto h_of = [&](int x, int z) { return base_height(x * WATER_SPACING - half_, z * WATER_SPACING - half_); };
+	auto h_of = [&](int x, int z) { return base_height(x * water_spacing_ - half_, z * water_spacing_ - half_); };
 	auto key_of = [](int x, int z) { return int64_t(z) * SAMPLE_ROW + x; };
 	std::vector<int64_t> heap;
 	std::vector<double> hh;
@@ -224,7 +229,7 @@ void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) {
 		for (const auto &d : N4) push(x + d[0], z + d[1]);
 	}
 	double level = rim - std::max(WATER_MARGIN, WATER_FILL * (rim - bottom));
-	if (!(level - bottom > 1 && level > SEA_LEVEL + 1)) return;
+	if (!(level - bottom > 1 && level > OCEAN_Y + 1)) return;
 	auto &W = lake.flooded;
 	W[key_of(gx, gz)] = float(level);
 	std::vector<int> queue{ gx, gz };
@@ -248,9 +253,9 @@ void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) {
 
 float TerrainGen::water_at_sample(int gx, int gz) {
 	if (flat()) return NO_WATER;
-	double x = gx * WATER_SPACING - half_, z = gz * WATER_SPACING - half_;
+	double x = gx * water_spacing_ - half_, z = gz * water_spacing_ - half_;
 	River r = river_at(x, z);
-	if (r.d < r.reach + WATER_SPACING) return float(r.level);
+	if (r.d < r.reach + water_spacing_) return float(r.level);
 	float best = NO_WATER;
 	int i0 = int(std::floor(x / LAKE_GRID)), j0 = int(std::floor(z / LAKE_GRID));
 	for (int j = j0 - 1; j <= j0 + 1; j++)
@@ -264,7 +269,7 @@ float TerrainGen::water_at_sample(int gx, int gz) {
 }
 
 float TerrainGen::water_level_at(double x, double z) {
-	return water_at_sample(int(std::round((x + half_) / WATER_SPACING)), int(std::round((z + half_) / WATER_SPACING)));
+	return water_at_sample(int(std::round((x + half_) / water_spacing_)), int(std::round((z + half_) / water_spacing_)));
 }
 
 } // namespace city

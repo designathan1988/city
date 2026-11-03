@@ -10,6 +10,13 @@ const CATALOG := {
 	"growth": "res://data/catalog/growth.json",
 	"traffic": "res://data/catalog/traffic.json",
 }
+## Tables split only to keep each file small; merged under the same key they extend.
+const CATALOG_FRAGMENTS := {
+	"road_profiles": [
+		"res://data/catalog/road_profiles_a.json",
+		"res://data/catalog/road_profiles_b.json",
+	],
+}
 const RENDER_TABLES := {
 	"models": "res://data/render/models.json",
 	"palette": "res://data/render/palette.json",
@@ -31,7 +38,11 @@ const GAME := {
 	"daylight": "res://data/game/daylight.json",
 	"saves": "res://data/game/saves.json",
 }
-const STRINGS := "res://data/i18n/strings.csv"
+const STRINGS := [
+	"res://data/i18n/strings.csv",
+	"res://data/i18n/strings_b.csv",
+	"res://data/i18n/strings_c.csv",
+]
 
 static var _cache: Dictionary = {}
 
@@ -56,7 +67,13 @@ static func _group(paths: Dictionary) -> Dictionary:
 
 
 static func catalog() -> Dictionary:
-	return _group(CATALOG)
+	var out := _group(CATALOG)
+	for key in CATALOG_FRAGMENTS:
+		var list: Array = out[key].get("profiles", [])
+		for path in CATALOG_FRAGMENTS[key]:
+			list.append_array(_read(path).get("profiles", []))
+		out[key]["profiles"] = list
+	return out
 
 
 static func render() -> Dictionary:
@@ -76,23 +93,32 @@ static func tuning(key: String) -> float:
 	return float(_read(CATALOG.tuning)[parts[0]][parts[1]])
 
 
-## Registers data/i18n/strings.csv (key, pt_BR, en) as translations.
+## Registers data/i18n/strings*.csv (key, pt_BR, en) as translations. The catalog is split only to keep
+## each file small; every part repeats the header.
 static func load_translations() -> void:
-	var file := FileAccess.open(STRINGS, FileAccess.READ)
-	if file == null:
+	var first := FileAccess.open(STRINGS[0], FileAccess.READ)
+	if first == null:
 		push_error("strings.csv ausente")
 		return
-	var header := file.get_csv_line()
+	var header := first.get_csv_line()
+	first.close()
 	var translations := []
 	for i in range(1, header.size()):
 		var t := Translation.new()
 		t.locale = header[i]
 		translations.append(t)
-	while not file.eof_reached():
-		var row := file.get_csv_line()
-		if row.size() < header.size() or row[0].is_empty():
+	for path in STRINGS:
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			push_error("strings ausente: %s" % path)
 			continue
-		for i in range(1, header.size()):
-			translations[i - 1].add_message(row[0], row[i])
+		file.get_csv_line()
+		while not file.eof_reached():
+			var row := file.get_csv_line()
+			if row.size() < header.size() or row[0].is_empty():
+				continue
+			for i in range(1, header.size()):
+				translations[i - 1].add_message(row[0], row[i])
+		file.close()
 	for t in translations:
 		TranslationServer.add_translation(t)

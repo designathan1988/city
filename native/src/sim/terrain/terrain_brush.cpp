@@ -35,7 +35,7 @@ float Heightfield::dab_value(const BrushDab &d, size_t i, float dist, int x, int
 	float f = HALF + HALF * std::cos(dist * PI_F);
 	float k = std::min(1.f, d.strength * d.dt);
 	float H = LANDFORM_BASE_M + d.strength * LANDFORM_PER_STRENGTH_M, base = d.h0;
-	const float sea = water_level; // the sea (terrain_gen.h SEA_LEVEL)
+	const float sea = water_level; // the sea (terrain_gen.h OCEAN_Y)
 	auto at = [&](int ax, int az) { return dequant(base_q[size_t(clampi(az, 0, N - 1)) * N + clampi(ax, 0, N - 1)]); };
 	switch (d.mode) {
 		case BrushMode::RAISE: return v + d.strength * d.dt * f;

@@ -82,6 +82,10 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	(arrived ? t.arrived : t.lost)++;
 }
 
+namespace {
+constexpr uint32_t LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16; // packed look: type | paint << 8 | brake << 16
+} // namespace
+
 void publish_poses(CityState &s) {
 	const TrafficParams &p = s.catalog.traffic;
 	const TrafficState &t = s.traffic;
@@ -122,7 +126,7 @@ void publish_poses(CityState &s) {
 		rec.px = v.prev.x; rec.py = v.prev.y; rec.pz = v.prev.z; rec.pfx = v.prev.fx; rec.pfz = v.prev.fz;
 		rec.x = v.cur.x; rec.y = v.cur.y; rec.z = v.cur.z; rec.fx = v.cur.fx; rec.fz = v.cur.fz;
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << 8) | (v.brake ? 1u << 16 : 0u);
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u);
 		f.vehicles.push_back(rec);
 	}
 	for (const Pedestrian &w : s.traffic.peds) {

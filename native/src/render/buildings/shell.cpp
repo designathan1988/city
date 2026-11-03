@@ -5,11 +5,13 @@
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
+#include <algorithm>
 #include <cstring>
 
 using namespace godot;
@@ -102,6 +104,24 @@ void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c
 
 void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
 	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
+	if (instanced) {
+		float m0 = a1 - a0, m1 = b1 - b0, m2 = c1 - c0;
+		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
+		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
+		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
+		Color c = shaded(centre, lin, false, SK_SHELL);
+		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
+		BoxInstance inst;
+		const float cols[3][3] = { { e0.x, e0.y, e0.z }, { e1.x, e1.y, e1.z }, { e2.x, e2.y, e2.z } };
+		for (int i = 0; i < 3; i++)
+			for (int k = 0; k < 3; k++) inst.basis[i * 3 + k] = cols[i][k];
+		inst.origin[0] = centre.x; inst.origin[1] = centre.y; inst.origin[2] = centre.z;
+		inst.color = byte(c.r) << 24 | byte(c.g) << 16 | byte(c.b) << 8 | byte(c.a);
+		inst.fin = fin;
+		inst.thick = m0 + m1 + m2 - lo - hi; // the second largest side: the bar's width
+		boxes.push_back(inst);
+		return;
+	}
 	Vector3 p[CORNERS];
 	for (int k = 0; k < CORNERS; k++) p[k] = f.at(k & BIT_A ? a1 : a0, k & BIT_B ? b1 : b0, k & BIT_C ? c1 : c0);
 	const Vector3 out[FACES] = { -f.e2, f.e2, -f.e0, f.e0, -f.e1, f.e1 };
@@ -145,8 +165,8 @@ void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
 	}
 }
 
-void Shell::commit_to(const RID &mesh) const {
-	if (empty()) return;
+void Shell::commit_to(const RID &mesh, bool with_uv2) const {
+	if (idx.empty()) return;
 	auto copy = [](auto &dst, const auto &src) {
 		dst.resize(int64_t(src.size()));
 		std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(src[0]));
@@ -155,16 +175,20 @@ void Shell::commit_to(const RID &mesh) const {
 	PackedColorArray pc;
 	PackedVector2Array pu, pu2;
 	PackedInt32Array pi;
-	copy(pv, pos); copy(pn, nrm); copy(pc, col); copy(pu, uv); copy(pu2, uv2); copy(pi, idx);
+	copy(pv, pos); copy(pn, nrm); copy(pc, col); copy(pu, uv); copy(pi, idx);
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;
 	arr[RenderingServer::ARRAY_NORMAL] = pn;
 	arr[RenderingServer::ARRAY_COLOR] = pc;
 	arr[RenderingServer::ARRAY_TEX_UV] = pu;
-	arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
 	arr[RenderingServer::ARRAY_INDEX] = pi;
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr);
+	if (with_uv2) {
+		copy(pu2, uv2);
+		arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
+	}
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(),
+			RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES);
 }
 
 } // namespace city::b40

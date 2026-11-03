@@ -27,6 +27,7 @@ CityCore::CityCore() : state_(std::make_unique<CityState>()) {}
 CityCore::~CityCore() {
 	join_save();
 	sim_.stop();
+	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
 }
 
@@ -112,13 +113,14 @@ void CityCore::_process(double delta) {
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 	const float alpha = poses.period_ns > 0 ? std::clamp(float(now - poses.tick_ns) / float(poses.period_ns), 0.f, 1.f) : 1.f;
 	render_.update_agents(poses, cam_, alpha); // no map lock: the frame is the published snapshot
-	{
+	if (need_full_rebuild_) {
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-		if (need_full_rebuild_) {
-			render_.full_rebuild(*state_, terrain3d());
-			need_full_rebuild_ = false;
-		}
-		render_.sync(*state_, terrain3d(), cam_);
+		render_.full_rebuild(*state_, terrain3d());
+		need_full_rebuild_ = false;
+	}
+	render_.sync(*state_, terrain3d(), cam_); // takes its own short locks around the ChangeLog and the decisions
+	{
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 		render_.update_overlays(*state_, poses, delta);
 	}
 }

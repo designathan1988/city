@@ -13,6 +13,7 @@ constexpr int CLOSEST_SAMPLES = 32, CLOSEST_REFINE = 12;
 constexpr double LINE_PARALLEL = 1e-9, SEG_PARALLEL = 1e-12, MAX_RETREAT = 60, FAR_HIT = -50, OPPOSITE_DOT = -0.97;
 constexpr double TAPER_TURN = PI_D / 6, TAPER_STEP = 0.3, TAPER_MIN = 9.6, TAPER_SLOPE = 8, WIDTH_JUMP = 0.5, WIDTH_JUMP_RUN = 3;
 constexpr double MAX_BEND = 2.6;
+constexpr double ARC_SPAN_EPS = 1e-9;
 } // namespace
 
 bool Quad::is_straight(double tol) const { return std::hypot(cx - (x0 + x1) / 2, cz - (z0 + z1) / 2) < tol; }
@@ -40,7 +41,7 @@ double t_at_length(const std::vector<double> &table, double s) {
 		int m = (lo + hi) >> 1;
 		if (table[m] < s) lo = m; else hi = m;
 	}
-	double f = (s - table[lo]) / std::max(1e-9, table[hi] - table[lo]);
+	double f = (s - table[lo]) / std::max(ARC_SPAN_EPS, table[hi] - table[lo]);
 	return (lo + f) / n;
 }
 

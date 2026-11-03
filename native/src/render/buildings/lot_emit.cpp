@@ -11,13 +11,12 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float GRID = 3.f, LIFT = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
+constexpr float LIFT = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
 constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.05f, RAIL_LOW = 0.45f, POST = 0.12f, POST_EVERY = 2.f;
 constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR = 0.035f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
 constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f;
 constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
-constexpr int MAX_CELLS = 64;
 constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xffefcf;
 
 struct LotEmit {
@@ -41,16 +40,10 @@ struct LotEmit {
 void LotEmit::surface(const LotElement &e) {
 	bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
 	Lin lin = paint(e, "paving");
-	float x0 = e.x - e.w / 2, y0 = e.y - e.d / 2;
-	int nx = std::clamp(int(std::ceil(e.w / GRID)), 1, MAX_CELLS), ny = std::clamp(int(std::ceil(e.d / GRID)), 1, MAX_CELLS);
-	float lift = LIFT + e.h - HALF * e.h;
-	for (int i = 0; i < nx; i++)
-		for (int j = 0; j < ny; j++) {
-			float a0 = x0 + e.w * float(i) / float(nx), a1 = x0 + e.w * float(i + 1) / float(nx);
-			float b0 = y0 + e.d * float(j) / float(ny), b1 = y0 + e.d * float(j + 1) / float(ny);
-			shell.quad(pl.lot.at(a0, b0, ground(a0, b0) + lift), pl.lot.at(a1, b0, ground(a1, b0) + lift), pl.lot.at(a1, b1, ground(a1, b1) + lift),
-					pl.lot.at(a0, b1, ground(a0, b1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
-		}
+	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
+	float lift = LIFT + e.h - HALF * e.h; // one quad per element: the ground layers do the tiling
+	shell.quad(pl.lot.at(x0, y0, ground(x0, y0) + lift), pl.lot.at(x1, y0, ground(x1, y0) + lift), pl.lot.at(x1, y1, ground(x1, y1) + lift),
+			pl.lot.at(x0, y1, ground(x0, y1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
 }
 
 void LotEmit::wall(const LotElement &e, float x0, float x1, float y0, float y1) {
@@ -92,8 +85,12 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	bar(s0, s0 + len, base + (top - base) * RAIL_LOW, base + (top - base) * RAIL_LOW + RAIL_T, RAIL_T);
 	float every = light ? LIGHT_EVERY : POST_EVERY, pw = light ? LIGHT_POST : POST;
 	for (float a = s0; a <= s0 + len + EPS; a += every) bar(std::min(a, s0 + len - pw), std::min(a, s0 + len - pw) + pw, base, top, pw);
-	if (!light)
-		for (float a = s0 + BAR_EVERY; a < s0 + len; a += BAR_EVERY) bar(a, a + BAR, base, top, BAR);
+	if (!light) {
+		// One panel instead of a box every BAR_EVERY metres: a single instance the finish map tiles along the length.
+		float lo = base + (top - base) * RAIL_LOW, hi = top - COPING_H;
+		if (along_x) parts.box(pl.lot, x0, x1, cy - BAR / 2, cy + BAR / 2, lo, hi, m, FIN_METAL);
+		else parts.box(pl.lot, cx - BAR / 2, cx + BAR / 2, y0, y1, lo, hi, m, FIN_METAL);
+	}
 }
 
 void LotEmit::gate(const LotElement &e) {

@@ -14,12 +14,12 @@ class TerrainGen {
 public:
 	static constexpr uint32_t FLAT_BIT = 0x80000000U;
 	static constexpr double FLAT_Y = 20;
-	static constexpr double SEA_LEVEL = 0;
+	static constexpr double OCEAN_Y = 0; // the sea plane; the visual palette reads the same level
 	static constexpr double MIN_Y = -64, MAX_Y = 400;
-	static constexpr double WATER_SPACING = 8; // water samples (m)
+	
 	static constexpr float NO_WATER = -1000.f;
 
-	TerrainGen(uint32_t seed, double map_half);
+	TerrainGen(uint32_t seed, double map_half, double water_spacing);
 	bool flat() const { return (seed_ & FLAT_BIT) != 0; }
 	// Ground height at (x, z): the land cut by the canal's bed.
 	double base_height(double x, double z);
@@ -37,7 +37,7 @@ private:
 		double level = 0, floor = 0, section = 0, d = 0, reach = 0;
 	};
 	uint32_t seed_;
-	double half_;
+	double half_, water_spacing_;
 	std::vector<double> course_z_, level_, depth_;
 	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake
 

@@ -5,7 +5,7 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
 
-#include "sim/citygen/terrain_gen.h"
+#include "sim/terrain/terrain_gen.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -156,7 +156,7 @@ std::string roundabout_refusal(const CityState &s, double cx, double cz, double 
 			double a = 2 * PI_D * k / WATER_SAMPLES;
 			float x = float(cx + std::cos(a) * r), z = float(cz + std::sin(a) * r);
 			float ground = s.terrain.base_height_at(x, z);
-			if (ground < TerrainGen::SEA_LEVEL + WATER_CLEAR_M || s.terrain.water_at(x, z) > ground) return "road.ring.water";
+			if (ground < TerrainGen::OCEAN_Y + WATER_CLEAR_M || s.terrain.water_at(x, z) > ground) return "road.ring.water";
 		}
 	return "";
 }

@@ -11,9 +11,9 @@
 namespace city {
 
 // Civic functions (Roadcraft world/arch.ts Fn ids).
-enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL = 1, FN_CHURCH = 2, FN_HOSPITAL = 3, FN_CLINIC = 4, FN_SQUARE = 5, FN_PARK = 6,
-	FN_GAS_STATION = 7, FN_SUPERMARKET = 8, FN_CITY_HALL = 9, FN_POLICE = 10, FN_FIRE_STATION = 11, FN_MALL = 12, FN_SPORTS_COURT = 13,
-	FN_COUNT = 35 };
+constexpr uint8_t FN_COUNT_VALUE = 35; // the catalogue keeps unused function ids reserved for future civic kinds
+enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
+	FN_SUPERMARKET, FN_CITY_HALL, FN_POLICE, FN_FIRE_STATION, FN_MALL, FN_SPORTS_COURT, FN_COUNT = FN_COUNT_VALUE };
 
 struct Building {
 	bool alive = false;

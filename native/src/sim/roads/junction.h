@@ -10,7 +10,7 @@
 namespace city {
 
 constexpr double BULB_R = 10, BULB_WALK = 2.5; // turning bulb: asphalt radius and footway width
-constexpr double CURB_R_MAX = 7.2; // largest kerb return radius
+constexpr double KERB_RADIUS_MAX = 7.2; // largest kerb return radius
 
 Arm arm_of(const Quad &q, const Profile &p, int end);
 // Setback of a dead end with a bulb (0 = no bulb: wide road or short segment).

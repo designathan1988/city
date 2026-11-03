@@ -29,7 +29,10 @@ public:
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
-	int pending() const { return road_stream_.pending + props_stream_.pending + building_stream_.pending + buildings_.pending() + trees_.pending(); }
+	int pending() const {
+		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
+				buildings_.pending() + trees_.pending();
+	}
 
 private:
 	TerrainBridge terrain_;

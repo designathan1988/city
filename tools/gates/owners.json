@@ -3,23 +3,23 @@
   "concepts": [
     {
       "id": "building_height",
-      "owner": "native/src/sim/buildings/building_rules.cpp",
-      "symbol": "BuildingRules::height",
+      "owner": "native/src/sim/simulation/growth.cpp",
+      "symbol": "floors_for",
       "forbidden_elsewhere": ["floors\\s*\\*", "\\*\\s*\\w*floors\\b", "floor_h\\s*\\*", "\\*\\s*floor_h\\b"],
       "scope": ["native/src/", "project/game/", "project/ui/", "project/render/"]
     },
     {
       "id": "floor_height",
-      "owner": "native/src/sim/buildings/building_rules.cpp",
-      "symbol": "BuildingRules::floor_height",
+      "owner": "native/src/render/buildings/b40_types.h",
+      "symbol": "level_h",
       "forbidden_elsewhere": ["\\.floor_h\\b"],
       "allow": ["native/src/sim/catalog/", "native/src/api/catalog_loader.cpp"],
       "scope": ["native/src/"]
     },
     {
       "id": "lot_rule",
-      "owner": "native/src/sim/buildings/building_store.cpp",
-      "symbol": "BuildingStore::lot_fits",
+      "owner": "native/src/sim/citygen/lot_gen.cpp",
+      "symbol": "LotStrips::lot_free",
       "forbidden_elsewhere": ["\\.building\\s*<\\s*0", "building\\s*==\\s*-1"],
       "allow": ["native/src/sim/zones/zone_grid.cpp", "native/src/sim/zones/zone_grid.h"],
       "scope": ["native/src/"]
@@ -33,8 +33,8 @@
     },
     {
       "id": "facade_rules",
-      "owner": "native/src/render/building_gen.cpp",
-      "symbol": "facade_layout",
+      "owner": "native/src/render/buildings/facade_compose.cpp",
+      "symbol": "compose_facades",
       "forbidden_elsewhere": ["\\bbay_count\\b|round\\(\\s*\\w*len\\w*\\s*/\\s*\\w*bay"],
       "allow": ["project/render/shaders/building.gdshader"],
       "scope": ["native/src/", "project/render/"]

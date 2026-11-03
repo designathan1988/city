@@ -3,6 +3,7 @@
 #include "api/catalog_loader.h"
 
 #include "core/color.h"
+#include "sim/roads/profiles.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>

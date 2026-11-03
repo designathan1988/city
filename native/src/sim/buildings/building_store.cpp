@@ -6,6 +6,10 @@
 
 namespace city {
 
+namespace {
+constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
+} // namespace
+
 void BuildingStore::init(ChangeLog *l) {
 	log = l;
 	clear();
@@ -86,7 +90,7 @@ void BuildingStore::mark(int id) const {
 void BuildingStore::occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs) {
 	float area = b.w * b.d * floor_share * b.floors;
 	residents = jobs = 0;
-	int base = b.zone == 5 || b.zone == 6 ? 1 : b.zone == 7 || b.zone == 8 ? 2 : b.zone;
+	int base = b.zone == ZONE_RES_LOW || b.zone == ZONE_RES_HIGH ? 1 : b.zone == ZONE_IND_LOW || b.zone == ZONE_IND_HIGH ? 2 : b.zone;
 	switch (base) {
 		case 1: residents = int(std::lround(area / per_m2[0])); break;
 		case 2: jobs = int(std::lround(area / per_m2[1])); break;
