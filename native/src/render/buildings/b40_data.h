@@ -55,6 +55,7 @@ struct Data {
 	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
+	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (Roadcraft plate rule 0.9 / 1.1)
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 	// A named colour of "colors" (magenta when missing; load() reports missing names it was asked for at startup).

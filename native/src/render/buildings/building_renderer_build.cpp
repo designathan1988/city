@@ -50,7 +50,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const CityState &s, int64_t 
 			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			return;
+			if (!mid) return; // both asked (first build close to the camera): the coarse mid level follows
 		}
 		pl.coarse = true;
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);

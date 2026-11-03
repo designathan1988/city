@@ -1,6 +1,7 @@
-// Building chunk streaming: the near (+ parts) and mid levels are built lazily, nearest first, when the camera comes
-// within their reach and freed beyond 1.5x it; every dirty chunk marks its 1024 m superchunk, whose far/HLOD mesh is
-// built within building_far_end_m and has no visibility end (the city never vanishes when zooming out).
+// Building chunk streaming: the near (+ parts) level is built lazily, nearest first, when the camera comes within its
+// reach and freed beyond 1.25x it; the mid level is built for every chunk of a superchunk that is not far and freed
+// once the far mesh stands in for them. Every dirty chunk marks its 1024 m superchunk, whose far/HLOD mesh is built
+// within building_far_end_m (the city never vanishes when zooming out). See building_renderer.h for the switch.
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_jobs.h"
 
@@ -15,18 +16,14 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, FULL_TURN_DEG = 360.f, MIN_SCREEN_PX = 1e-3f;
 constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
+constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
-
-Vector3 super_centre(int64_t key) {
-	return Vector3((float(key_x(key)) + HALF) * SUPERCHUNK, 0, (float(key_y(key)) + HALF) * SUPERCHUNK);
-}
 
 int64_t super_job_key(int64_t key) {
 	return cell_key(key_x(key) + int(SUPER_JOB_OFFSET), key_y(key) + int(SUPER_JOB_OFFSET)) * 4 + 3;
@@ -36,6 +33,22 @@ void range(const MeshDraw &d, float begin, float end) {
 	if (d.inst.is_valid())
 		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, 0, 0,
 				RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+}
+
+float horizontal(const Vector3 &cam, const Vector3 &at) {
+	float dx = cam.x - at.x, dz = cam.z - at.z;
+	return std::sqrt(dx * dx + dz * dz);
+}
+
+// fn(key, chunk) for every streamed chunk of a superchunk.
+template <typename Map, typename F>
+void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
+	const int sx = key_x(super_key) * CHUNKS_PER_SUPER, sz = key_y(super_key) * CHUNKS_PER_SUPER;
+	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
+		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
+			auto it = chunks.find(cell_key(sx + i, sz + j));
+			if (it != chunks.end()) fn(it->first, it->second);
+		}
 }
 } // namespace
 
@@ -49,8 +62,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	if (!data_.load(t, errors)) return false;
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
-	unit_box_ = RenderingServer::get_singleton()->mesh_create();
-	unit.commit_to(unit_box_);
+	unit_box_ = unit.commit();
 	return true;
 }
 
@@ -64,14 +76,12 @@ void BuildingRenderer::reset() {
 		super_requested_.clear();
 	}
 	for (auto &kv : chunks_) {
-		Chunk &ch = kv.second;
-		for (int i = 0; i < SUB_COUNT; i++) {
-			ch.near[i].free(); ch.parts[i].free(); ch.mid[i].free();
-		}
-		for (MultiMeshDraw &d : ch.bands) d.free();
+		drop(kv.second, LEVEL_NEAR);
+		drop(kv.second, LEVEL_MID);
+		drop_bands(kv.second);
 	}
 	chunks_.clear();
-	for (auto &kv : supers_) kv.second.far.free();
+	for (auto &kv : supers_) kv.second.far.free(); // no chunk instance is linked to it any more
 	supers_.clear();
 	bodies_.clear();
 }
@@ -92,26 +102,48 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 	}
 }
 
+// A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
+// on, so update_view remeshes it and a job already in flight (it may have read the map before the change) still lands
+// but leaves the chunk stale (commit_one).
 void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 	(void)s;
 	Chunk &ch = chunks_[key];
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
+	ch.version++;
+	for (int l = 0; l < LEVELS; l++) ch.stale[l] = ch.built[l];
 	supers_[super_of(ch.centre)].dirty = true;
 }
 
+// Chunk instances: near and mid hand over at the near end; the mid level has no end of its own (its superchunk's far
+// instance hides it as a whole, building_renderer.h). The far instance keeps no range: drawn or hidden by show_far.
 void BuildingRenderer::ranges(Chunk &ch) const {
-	range(ch.near[0], 0, near_end_);
-	for (int i = 1; i < SUB_COUNT; i++) range(ch.near[size_t(i)], 0, near_end_);
 	for (int i = 0; i < SUB_COUNT; i++) {
+		range(ch.near[size_t(i)], 0, near_end_);
 		range(ch.parts[size_t(i)], 0, parts_end_);
-		range(ch.mid[size_t(i)], near_end_, mid_end_);
+		range(ch.mid[size_t(i)], near_end_, 0);
 	}
 	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
 }
 
-void BuildingRenderer::ranges_super(Super &sp) const { range(sp.far, mid_end_, 0); }
+float BuildingRenderer::near_reach() const { return near_end_ + CHUNK * REACH_PAD; }
 
-float BuildingRenderer::reach(Level level) const { return (level == LEVEL_NEAR ? near_end_ : mid_end_) + CHUNK * REACH_PAD; }
+// Distance from the camera to the nearest point of the superchunk, with `eye` (the eye's height above the ground) as
+// the third axis: the plate rule's measure (cellLayer.ts distTo). Streaming passes eye 0 (ground distance).
+float BuildingRenderer::super_distance(int64_t key, const Vector3 &cam, float eye) const {
+	float x0 = float(key_x(key)) * SUPERCHUNK, z0 = float(key_y(key)) * SUPERCHUNK;
+	float dx = std::max({ x0 - cam.x, 0.f, cam.x - (x0 + SUPERCHUNK) });
+	float dz = std::max({ z0 - cam.z, 0.f, cam.z - (z0 + SUPERCHUNK) });
+	return std::sqrt(dx * dx + dz * dz + eye * eye);
+}
+
+RID BuildingRenderer::far_parent(const Chunk &ch) const {
+	auto it = supers_.find(super_of(ch.centre));
+	return it != supers_.end() ? it->second.far.inst : RID();
+}
+
+void BuildingRenderer::link_super(int64_t key, const RID &parent) {
+	each_chunk_of(chunks_, key, [&](int64_t, Chunk &ch) { link(ch, parent); });
+}
 
 void BuildingRenderer::drop_super(int64_t key) {
 	{
@@ -119,7 +151,10 @@ void BuildingRenderer::drop_super(int64_t key) {
 		super_requested_.erase(key);
 	}
 	auto it = supers_.find(key);
-	if (it != supers_.end()) it->second.far.free();
+	if (it == supers_.end()) return;
+	link_super(key, RID()); // its chunks may stay (they are streamed further out): unlink them before the free
+	it->second.far.free();
+	it->second.built = it->second.has_content = it->second.shown = it->second.covering = false;
 }
 
 void BuildingRenderer::drop_chunk(int64_t key) {
@@ -130,26 +165,34 @@ void BuildingRenderer::drop_chunk(int64_t key) {
 	}
 	auto it = chunks_.find(key);
 	if (it == chunks_.end()) return;
-	Chunk &ch = it->second;
-	for (int i = 0; i < SUB_COUNT; i++) {
-		ch.near[i].free(); ch.parts[i].free(); ch.mid[i].free();
-	}
-	for (MultiMeshDraw &d : ch.bands) d.free();
+	drop(it->second, LEVEL_NEAR);
+	drop(it->second, LEVEL_MID);
+	drop_bands(it->second);
 	chunks_.erase(it);
 }
 
 void BuildingRenderer::drop(Chunk &ch, Level level) {
-	if (level == LEVEL_NEAR) {
-		for (int i = 0; i < SUB_COUNT; i++) { ch.near[i].free(); ch.parts[i].free(); }
+	for (int i = 0; i < SUB_COUNT; i++) {
+		if (level == LEVEL_NEAR) {
+			release(ch.near[size_t(i)]);
+			release(ch.parts[size_t(i)]);
+		} else {
+			release(ch.mid[size_t(i)]);
+		}
 	}
-	else
-		for (int i = 0; i < SUB_COUNT; i++) ch.mid[i].free();
 	ch.built[level] = false;
+	ch.stale[level] = false;
+}
+
+void BuildingRenderer::drop_bands(Chunk &ch) {
+	for (MultiMeshDraw &d : ch.bands) release(d);
 }
 
 void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority) {
 	(void)far;
-	if (!s.jobs) return;
+	auto ch = chunks_.find(key);
+	if (!s.jobs || ch == chunks_.end()) return;
+	const uint32_t version = ch->second.version;
 	uint64_t seq;
 	{
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -157,10 +200,11 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		requested_[key] = seq;
 		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0));
 	}
-	s.jobs->submit(key * 4 + 3, priority, [this, &s, key, seq, near, mid, priority]() {
+	s.jobs->submit(key * 4 + 3, priority, [this, &s, key, seq, version, near, mid, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b = build_cpu(s, key, near, mid);
 		b.seq = seq;
+		b.version = version;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		done_.push_back(std::move(b));
@@ -189,6 +233,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 
 void BuildingRenderer::commit(const std::chrono::steady_clock::time_point &until) {
 	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
+	commit_done(queue_mutex_, super_done_, super_requested_, until, [this](SuperBuilt &b) { commit_super(b); });
 }
 
 int BuildingRenderer::pending() const {
@@ -196,64 +241,57 @@ int BuildingRenderer::pending() const {
 	return int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size());
 }
 
+// One superchunk per frame: its far state (plate rule), the levels its chunks need or no longer need, and whether its
+// far instance is drawn.
+void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, float eye, std::vector<Want> &want) {
+	const float d = super_distance(key, cam, eye), h = data_.far_hysteresis;
+	sp.far_state = sp.far_state ? d > mid_end_ * (1 - h) : d > mid_end_ * (1 + h);
+	const bool stands_in = sp.far_state && sp.built; // the far mesh covers its chunks: their mid level may go
+	if (stands_in) sp.covering = true;
+	bool all_mid = true;
+	each_chunk_of(chunks_, key, [&](int64_t ck, Chunk &ch) {
+		const float dc = horizontal(cam, ch.centre); // the eye's height is not a distance to the chunk
+		uint8_t mask = 0;
+		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && dc < near_reach()) mask = uint8_t(mask | BAND_BIT_NEAR);
+		else if (ch.built[LEVEL_NEAR] && dc > near_reach() * DROP_K) drop(ch, LEVEL_NEAR);
+		if (stands_in) {
+			if (ch.built[LEVEL_MID]) drop(ch, LEVEL_MID);
+			drop_bands(ch);
+		} else if (!sp.far_state && (!ch.built[LEVEL_MID] || ch.stale[LEVEL_MID])) {
+			mask = uint8_t(mask | BAND_BIT_MID);
+		}
+		all_mid = all_mid && ch.built[LEVEL_MID];
+		if (mask == 0) return;
+		std::lock_guard<std::mutex> lk(queue_mutex_);
+		if (!requested_.count(ck)) want.push_back({ dc, ck, mask });
+	});
+	if (!sp.far_state && all_mid) sp.covering = false; // the chunks are back: the far instance may hide
+	show_far(sp);
+}
+
 void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	if (!state_) return;
-	for (auto it = chunks_.begin(); it != chunks_.end();) {
-		float dx = cam.x - it->second.centre.x, dz = cam.z - it->second.centre.z;
-		float d = std::sqrt(dx * dx + dz * dz);
-		if (d > reach(LEVEL_MID) * DROP_K) {
-			Chunk &ch = it->second;
-			for (int i = 0; i < SUB_COUNT; i++) { ch.near[i].free(); ch.parts[i].free(); ch.mid[i].free(); }
-			for (MultiMeshDraw &mm : ch.bands) mm.free();
-			it = chunks_.erase(it);
-			continue;
-		}
-		++it;
-	}
-	struct Want {
-		float d;
-		int64_t key;
-		uint8_t mask;
-	};
-	std::vector<Want> want;
-	int r = int(std::ceil(reach(LEVEL_MID) / CHUNK)), cx = int(std::floor(cam.x / CHUNK)), cz = int(std::floor(cam.z / CHUNK));
-	for (int j = cz - r; j <= cz + r; j++)
-		for (int i = cx - r; i <= cx + r; i++) {
-			int64_t key = cell_key(i, j);
-			auto it = chunks_.find(key);
-			if (it == chunks_.end()) continue;
-			Chunk &ch = it->second;
-			float dx = cam.x - ch.centre.x, dz = cam.z - ch.centre.z;
-			float d = std::sqrt(dx * dx + dz * dz); // horizontal: the eye's height is not a distance to the chunk
-			uint8_t mask = 0;
-			for (int l = 0; l < LEVELS; l++) {
-				Level level = Level(l);
-				if (!ch.built[l] && d < reach(level)) mask = uint8_t(mask | (l == LEVEL_NEAR ? BAND_BIT_NEAR : BAND_BIT_MID));
-				else if (ch.built[l] && d > reach(level) * DROP_K) drop(ch, level);
-			}
-			if (mask == 0) continue;
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			if (!requested_.count(key)) want.push_back({ d, key, mask });
-		}
-	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
-	for (const Want &w : want) {
-		if (!budget.take()) break;
-		submit(*state_, w.key, false, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, w.d);
-	}
-	std::vector<Want> want_super;
+	// RenderWorld::sync calls this under the shared map lock (the ground height is a map read)
+	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
+	std::vector<Want> want, want_super;
 	for (auto it = supers_.begin(); it != supers_.end();) {
-		Vector3 c = super_centre(it->first);
-		float dx = cam.x - c.x, dz = cam.z - c.z, d = std::sqrt(dx * dx + dz * dz);
-		if (d > far_end_ * DROP_K) {
+		const float ground = super_distance(it->first, cam, 0);
+		if (ground > far_end_ * DROP_K) {
 			drop_super(it->first);
 			it = supers_.erase(it);
 			continue;
 		}
-		if (it->second.dirty && d <= far_end_) {
+		visit_super(it->first, it->second, cam, eye, want);
+		if (it->second.dirty && ground <= far_end_) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
-			if (!super_requested_.count(it->first)) want_super.push_back({ d, it->first, 0 });
+			if (!super_requested_.count(it->first)) want_super.push_back({ ground, it->first, 0 });
 		}
 		++it;
+	}
+	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
+	for (const Want &w : want) {
+		if (!budget.take()) break;
+		submit(*state_, w.key, false, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, w.d);
 	}
 	std::sort(want_super.begin(), want_super.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want_super) {

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <unordered_set>
 #include <vector>
 
@@ -15,6 +16,8 @@ namespace city {
 struct BuildBudget {
 	int left = 0;
 	explicit BuildBudget(int n) : left(n) {}
+	// For a stream whose build only registers the chunk (no mesh work): every chunk in reach is handed over at once.
+	static BuildBudget unlimited() { return BuildBudget(std::numeric_limits<int>::max()); }
 	bool take() {
 		if (left <= 0) return false;
 		--left;

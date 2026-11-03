@@ -84,7 +84,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { roads_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { roads_.drop_chunk(k); });
 		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) { props_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { props_.drop_chunk(k); });
-		building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, budget,
+		// a building chunk's "build" only registers it (its levels are meshed and budgeted by update_view), so the
+		// shared mesh budget is not spent on it and a superchunk knows all its chunks at once
+		BuildBudget registry = BuildBudget::unlimited();
+		building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, registry,
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		trees_.sync(s, cam, budget);
