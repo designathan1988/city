@@ -14,6 +14,11 @@ file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
 target_link_libraries(citycore PRIVATE godot-cpp)
+# godot-cpp adds --gc-sections after our options; passed last as a library item it wins, keeping the static
+# engine-class registration callbacks (Image, Camera3D, Terrain3D...) that the release DLL needs at runtime.
+if(MINGW)
+    target_link_libraries(citycore PRIVATE "-Wl,--no-gc-sections")
+endif()
 target_include_directories(citycore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 get_target_property(GODOTCPP_SUFFIX godot-cpp GODOTCPP_SUFFIX)

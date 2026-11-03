@@ -58,7 +58,7 @@ package() {
 		project tools -type f ! -path "*/.godot/*" ! -path "*/__pycache__/*") | while read -r f; do
 		mkdir -p "$stage/fonte/$(dirname "$f")" && cp "$ROOT/$f" "$stage/fonte/$f"
 	done
-	(cd "$stage" && zip -qr "$OUT/Roadcraft.zip" .)
+	(cd "$stage" && if command -v zip >/dev/null 2>&1; then zip -qr "$OUT/Roadcraft.zip" .; else tar.exe -a -cf "$OUT/Roadcraft.zip" .; fi)
 	rm -rf "$stage"
 	echo "$OUT/Roadcraft.zip"
 }

@@ -3,7 +3,7 @@ import os
 import re
 
 
-GENERATED = (".uid", ".import") # Godot sidecar files: they belong to the file they annotate
+GENERATED = (".uid", ".import", ".translation") # Godot sidecars and import outputs: they belong to their source file
 
 
 def mapped(f, rules):
