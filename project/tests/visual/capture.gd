@@ -56,6 +56,7 @@ var map := 0
 var seed := 1
 var only := PackedStringArray()
 var soak := 0
+var measure := false
 
 
 func _ready() -> void:
@@ -67,12 +68,16 @@ func _ready() -> void:
 	if soak > 0:
 		_soak(soak)
 	else:
-		CityStore.step_ticks(TRAFFIC_WARMUP_TICKS)
+		CityStore.step_ticks(120 if measure else TRAFFIC_WARMUP_TICKS)
 	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
 	_memory("tráfego aquecido")
 	var ground := _ground(0, 0)
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
 	print("sonda: ", probe.vehicles, " veículos, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " em conectores, ", probe.signals, " semáforos, parados por ", probe.held_by)
+	if measure:
+		_memory("medido")
+		get_tree().quit(0)
+		return
 	await _capture_all(probe, ground)
 	print("desenhados: ", CityStore.query(&"traffic_probe", [0]))
 	print("snapshot: ", CityStore.snapshot)
@@ -147,6 +152,8 @@ func _parse_args() -> void:
 			only = arg.trim_prefix("--only=").split(",")
 		elif arg.begins_with("--soak="):
 			soak = int(arg.trim_prefix("--soak="))
+		elif arg == "--measure":
+			measure = true
 		elif arg.begins_with("--seed="):
 			seed = int(arg.trim_prefix("--seed="))
 
@@ -228,12 +235,7 @@ func _nearest(points: Array, to: Vector3) -> int:
 ## Resident memory of the process (whole process, GPU buffers included under a software renderer) and the
 ## renderer's own counts, so a big map's budget is visible in the capture log.
 func _memory(stage: String) -> void:
-	var out := []
-	OS.execute("grep", ["-E", "VmRSS|VmHWM", "/proc/%d/status" % OS.get_process_id()], out)
-	var mib := 1024.0 * 1024.0
-	print("memória [", stage, "]: ", (out[0] as String).replace("\n", " "), " estática ", snappedf(OS.get_static_memory_usage() / mib, 0.1),
-		" MiB, vídeo ", snappedf(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / mib, 0.1), " MiB, buffers ",
-		snappedf(Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / mib, 0.1), " MiB")
+	CaptureMemory.report(stage)
 
 
 func _ground(x: float, z: float) -> Vector3:

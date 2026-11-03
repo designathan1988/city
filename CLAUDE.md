@@ -255,10 +255,11 @@ em thread própria (temporário + rename).
 - `project/render/shaders/sky.gdshader` — céu em gradiente
 - `project/render/shaders/terrain.gdshader` — terreno toon (override do Terrain3D)
 - `project/render/shaders/water.gdshader` — água (ondas, Fresnel e espuma)
+- `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` — câmera por entrada real
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
-- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real
+- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_memory.gd` — relatório de memória das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
@@ -302,10 +303,11 @@ em thread própria (temporário + rename).
 ## Pendências
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos).
-- Contorno, iluminação e os shaders novos só foram validados em headless/Compatibility; falta revisar o visual em
-  Forward+ numa GPU real (asfalto cinza, fachadas, HLOD e peças).
-- Memória do mapa de 10 km com relevo: números antigos (~1,9 GB com tudo desenhado); o HLOD por superchunk reduz
-  o nível distante, mas mapas de 16–24 km ainda não foram medidos.
+- Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
+  distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
+- Memória medida (Forward+ 1600x900): mapa 10 km com 3.169 prédios — 182,4 MiB estática, 486,4 MiB de vídeo e
+  287,8 MiB de buffers (pico na cidade desenhada); mapa 24 km com 457.714 prédios — geração 34,0 s, 557,8 MiB
+  estática, 760,5 MiB de vídeo e 164,0 MiB de buffers. Falta medir pico sob tráfego prolongado (soak).
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
   Telhado, Interior, Cores), Paisagem (Solo, Natureza, Céu, Rua, Pessoas; rio e Aplainar mapa), paradas/estações/linhas,
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); a água não seca sob o relevo.

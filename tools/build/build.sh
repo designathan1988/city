@@ -19,17 +19,24 @@ core_windows() {
 
 gates() { python3 "$ROOT/tools/gates/run_gates.py"; }
 
+run_with_display() {
+	if command -v xvfb-run >/dev/null 2>&1; then
+		xvfb-run -a -s "-screen 0 1280x720x24" "$@"
+	else
+		"$@"
+	fi
+}
+
 e2e() {
 	"$GODOT" --headless --path "$ROOT/project" --import >/dev/null 2>&1 || true
-	xvfb-run -a -s "-screen 0 1280x720x24" "$GODOT" --path "$ROOT/project" --rendering-driver opengl3 \
-		--rendering-method gl_compatibility res://tests/e2e/e2e.tscn -- --no-flow
+	run_with_display "$GODOT" --path "$ROOT/project" --rendering-method gl_compatibility \
+		res://tests/e2e/e2e.tscn -- --no-flow
 }
 
 capture() {
 	local dir="${1:-$OUT/captures}"
 	mkdir -p "$dir"
-	xvfb-run -a -s "-screen 0 1600x900x24" "$GODOT" --path "$ROOT/project" --rendering-driver opengl3 \
-		--rendering-method gl_compatibility --resolution 1600x900 res://tests/visual/capture_game.tscn -- --capture-dir="$dir"
+	run_with_display "$GODOT" --path "$ROOT/project" --resolution 1600x900 res://tests/visual/capture.tscn -- --capture-dir="$dir"
 }
 
 export_all() {
