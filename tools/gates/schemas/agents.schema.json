@@ -79,6 +79,14 @@
     "shoes": {
      "type": "string",
      "pattern_prefix": "#"
+    },
+    "interior": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "seat": {
+     "type": "string",
+     "pattern_prefix": "#"
     }
    },
    "required": [
@@ -96,7 +104,9 @@
     "roof",
     "rider",
     "rider_legs",
-    "shoes"
+    "shoes",
+    "interior",
+    "seat"
    ],
    "strict": true
   },
@@ -433,6 +443,135 @@
     "grey"
    ],
    "strict": true
+  },
+  "cabin": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "seat_spread": {
+     "type": "number"
+    },
+    "front_hip_m": {
+     "type": "number"
+    },
+    "row_pitch_m": {
+     "type": "number"
+    },
+    "back_clear_m": {
+     "type": "number"
+    },
+    "hip_m": {
+     "type": "number"
+    },
+    "lining_inset_m": {
+     "type": "number"
+    },
+    "liner_drop_m": {
+     "type": "number"
+    },
+    "cushion_m": {
+     "type": "number"
+    },
+    "cushion_width_m": {
+     "type": "number"
+    },
+    "cushion_depth_m": {
+     "type": "number"
+    },
+    "back_h_m": {
+     "type": "number"
+    },
+    "back_d_m": {
+     "type": "number"
+    },
+    "dash_d_m": {
+     "type": "number"
+    },
+    "dash_h_m": {
+     "type": "number"
+    },
+    "head_r_m": {
+     "type": "number"
+    },
+    "neck_m": {
+     "type": "number"
+    },
+    "hair_drop": {
+     "type": "number"
+    },
+    "hair_back_m": {
+     "type": "number"
+    },
+    "torso_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "arm_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "rows": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "_doc",
+    "seat_spread",
+    "front_hip_m",
+    "row_pitch_m",
+    "back_clear_m",
+    "hip_m",
+    "lining_inset_m",
+    "liner_drop_m",
+    "cushion_m",
+    "cushion_width_m",
+    "cushion_depth_m",
+    "back_h_m",
+    "back_d_m",
+    "dash_d_m",
+    "dash_h_m",
+    "head_r_m",
+    "neck_m",
+    "hair_drop",
+    "hair_back_m",
+    "torso_m",
+    "arm_m",
+    "rows"
+   ],
+   "strict": true
+  },
+  "occupants": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "skin": {
+     "type": "array",
+     "items": {
+      "type": "string",
+      "pattern_prefix": "#"
+     }
+    },
+    "seat_fill": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    }
+   },
+   "required": [
+    "_doc",
+    "skin",
+    "seat_fill"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -447,7 +586,9 @@
   "bus",
   "truck",
   "wheel_jump_m",
-  "people"
+  "people",
+  "cabin",
+  "occupants"
  ],
  "strict": true
 }

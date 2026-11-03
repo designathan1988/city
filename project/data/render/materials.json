@@ -146,6 +146,17 @@
    "brake_power": 2.5
   }
  },
+ "agent_glass": {
+  "shader": "res://render/shaders/agent_glass.gdshader",
+  "params": {
+   "tint": "#1a2430",
+   "opacity": 0.35,
+   "edge_opacity": 0.9,
+   "edge_power": 3.0,
+   "roughness": 0.05,
+   "specular": 0.8
+  }
+ },
  "people": {
   "shader": "res://render/shaders/people.gdshader",
   "params": {

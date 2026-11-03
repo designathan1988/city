@@ -1,6 +1,7 @@
 // Lofted passenger-car body (Roadcraft render/carBody.ts, reduced): stations along the length, each a half ring from
 // the floor to the roof crown shaped by the style's roof line, belt line, plan radii and wheel arches; bands are
-// painted, glazed (windscreen, side and rear windows) or dark underneath. Lamps, grille, plates and four wheels.
+// painted, glazed (windscreen, side and rear windows) or dark underneath. Lamps, grille, plates, four wheels and the
+// cabin behind the glass (agent_cabin.cpp), between the windscreen and rear screen bases, under the belt and roof lines.
 #include "render/agents/agent_meshes.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -164,10 +165,24 @@ void details(MeshBuilder &mb, const Style &s, float lamp_y, float tail_y, const 
 				trim.plate, AgentTag::FIXED);
 }
 
+// The inside of the body: from the floor over the sill to the lowest belt line and under the roof between the screens.
+Cabin cabin_of(const Style &s) {
+	Cabin c;
+	c.floor = s.clear + s.sill;
+	c.belt = std::min(s.belt[0], s.belt[1]) * s.H;
+	c.z_front = std::max(s.screen[0], s.screen[1]) * s.L;
+	c.z_back = std::min(s.rear[0], s.rear[1]) * s.L;
+	// under the roof between the screens' top edges (at their bases the line is the bonnet's and the boot's)
+	c.roof = std::min(top_at(s, std::min(s.screen[0], s.screen[1])), top_at(s, std::max(s.rear[0], s.rear[1]))) - s.glass_top;
+	c.half_w = std::min(half_w(s, c.z_front / s.L), half_w(s, c.z_back / s.L));
+	return c;
+}
+
 } // namespace
 
-void build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const AgentTrim &trim) {
+void build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const CabinLook &cabin, const AgentTrim &trim) {
 	Style s = read_style(car, body);
+	agent_cabin(mb, cabin_of(s), cabin, trim);
 	std::vector<float> xs = stations(s, int(body["stations"]), float(body["station_eps_m"]));
 	loft(mb, s, xs, trim);
 	cap(mb, s, xs.back(), 1.f, trim);

@@ -33,6 +33,8 @@ AgentTrim read_trim(const Dictionary &t) {
 	r.rider = agent_hex(t["rider"]);
 	r.rider_legs = agent_hex(t["rider_legs"]);
 	r.shoes = agent_hex(t["shoes"]);
+	r.interior = agent_hex(t["interior"]);
+	r.seat = agent_hex(t["seat"]);
 	return r;
 }
 

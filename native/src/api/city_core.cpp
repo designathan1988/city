@@ -52,6 +52,7 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 	}
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
+	materials_ = materials;
 	ctx.tables = tables;
 	Array names = materials.keys();
 	for (int i = 0; i < names.size(); i++) {

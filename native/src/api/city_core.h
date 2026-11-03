@@ -95,6 +95,9 @@ private:
 	int snap_nodes_ = 0, snap_zoned_ = 0, snap_residents_ = 0, snap_jobs_ = 0;
 	std::unique_ptr<CityState> state_;
 	Simulation sim_;
+	// The materials the render draws with (render/city_world.gd makes them): held while its meshes reference them, so
+	// they are freed after render_ (declared first), never under a mesh still drawing.
+	godot::Dictionary materials_;
 	RenderWorld render_;
 	godot::NodePath terrain_path_;
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;

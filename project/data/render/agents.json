@@ -18,7 +18,9 @@
   "roof": "#9aa0a4",
   "rider": "#24262c",
   "rider_legs": "#30343c",
-  "shoes": "#1b1b1b"
+  "shoes": "#1b1b1b",
+  "interior": "#1b1c1f",
+  "seat": "#2b2c31"
  },
  "cars": [
   {"id": "sedan", "length": 4.4, "width": 1.84, "height": 1.45, "wheel": 0.33, "clearance": 0.14,
@@ -38,6 +40,13 @@
    "screen": [0.21, 0.07], "rear": [-0.235, -0.248], "side_glass": [-0.23, 0.19], "belt": [0.62, 0.64], "nose_r": 0.34, "tail_r": 0.12}
  ],
  "car_body": {"stations": 18, "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12},
+ "cabin": {"_doc": "A car's cabin behind its see-through glass (Roadcraft 4.0 carBody.ts seats at hip points): rows of two seats from the windscreen base back, as many as fit; metres, the person's torso and arm as [w, h, d], seat_spread: a seat's middle from the car's, as a share of the cabin width.",
+  "seat_spread": 0.22, "front_hip_m": 1.0, "row_pitch_m": 0.82, "back_clear_m": 0.08, "hip_m": 0.22, "lining_inset_m": 0.06,
+  "liner_drop_m": 0.04, "cushion_m": 0.1, "cushion_width_m": 0.46, "cushion_depth_m": 0.45, "back_h_m": 0.62, "back_d_m": 0.1, "dash_d_m": 0.35,
+  "dash_h_m": 0.16, "torso_m": [0.36, 0.5, 0.22], "arm_m": [0.08, 0.38, 0.09], "head_r_m": 0.1, "neck_m": 0.06, "hair_drop": 0.3,
+  "hair_back_m": 0.02, "rows": 2},
+ "occupants": {"_doc": "Who sits in a car: skin tones (clothes and hair are the people's palettes) and, per seat (driver, front passenger, then the rear row from the driver's side), the share of cars with someone there.",
+  "skin": ["#f1c9a5", "#e0ac83", "#c68a5e", "#a86b45", "#7d4a2c", "#5a3420"], "seat_fill": [1.0, 0.4, 0.2, 0.12]},
  "moto": {"length": 2.1, "wheel": 0.31, "wheel_w": 0.12, "axle_z": 0.72, "body": [0.3, 0.42, 0.88], "rider_seat_y": 0.9, "helmet_r": 0.15},
  "bus": {"length": 12.0, "width": 2.55, "height": 3.2, "wheel": 0.5, "wheel_w": 0.32, "clearance": 0.28, "sill": 1.02, "cant": 0.42, "axles": [0.28, -0.17, -0.28], "pillar_m": 1.6},
  "truck": {"length": 9.5, "width": 2.5, "height": 3.5, "wheel": 0.52, "wheel_w": 0.32, "cab_share": 0.24, "cab_bottom": 0.95, "belt": 1.9, "cab_top": 2.95, "box_bottom": 1.05, "axles": [0.37, -0.21, -0.34]},

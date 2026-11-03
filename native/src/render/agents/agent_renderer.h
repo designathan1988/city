@@ -1,15 +1,13 @@
 // Vehicles and pedestrians near the camera: one MultiMesh per vehicle type, refilled every frame from
 // CityState::traffic and interpolated between the last two simulation ticks (wheels roll by a render-side odometer);
-// pedestrians through PeopleRenderer. Material "agent" (data/render/materials.json); meshes and paints from
-// data/render/agents.json.
+// pedestrians through PeopleRenderer. Materials "agent" and, on a car's glass surface, "agent_glass"
+// (data/render/materials.json); meshes, paints and the occupants' palettes from data/render/agents.json.
 #pragma once
 
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
-
-#include <godot_cpp/classes/array_mesh.hpp>
 
 #include <vector>
 
@@ -26,8 +24,9 @@ public:
 private:
 	// Wheel roll angle of a vehicle slot: metres moved since the last frame over the wheel radius (render-side odometer).
 	float roll(int id, const Pose &p, float wheel_r);
-	godot::RID scenario_, material_;
-	std::vector<godot::Ref<godot::ArrayMesh>> meshes_;
+	bool push_palettes(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	godot::RID scenario_, material_, glass_;
+	OwnedMesh meshes_[VEHICLE_TYPES]; // the body surface, and a car's glass surface
 	MultiMeshDraw draws_[VEHICLE_TYPES];
 	std::vector<godot::Color> paints_;
 	float wheel_r_[VEHICLE_TYPES] = {};

@@ -15,6 +15,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
+	"res://render/shaders/agent_glass.gdshader",
 ]
 
 var terrain: Node3D

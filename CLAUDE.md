@@ -167,7 +167,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 **Render (só lê) — native/src/render**
 - `native/src/render/agents/agent_meshes.h` — malhas dos agentes montadas uma vez a partir de agents.json
-- `native/src/render/agents/agent_parts.cpp` — peças comuns: cores, caixas marcadas, rodas e corpos arqueados
+- `native/src/render/agents/agent_cabin.cpp` · `native/src/render/agents/agent_parts.cpp` — cabine do carro (forro, bancos, ocupantes) e vidro à parte; peças comuns: cores, caixas marcadas, rodas e corpos arqueados
 - `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — meshes, paletas e MultiMesh por quadro
 - `native/src/render/agents/car_body.cpp` — carroceria loftada do carro de passeio
 - `native/src/render/agents/heavy_meshes.cpp` — ônibus, caminhão e moto
@@ -258,7 +258,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` — prévias das ferramentas
-- `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — veículos, pedestres cozidos, mobiliário e árvores
+- `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos carros, veículos e ocupantes, pedestres cozidos, mobiliário e árvores
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc`
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
 - `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` — vias, meios-fios e pintura; água (ondas, Fresnel,

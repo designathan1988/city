@@ -466,6 +466,52 @@
     "params"
    ],
    "strict": true
+  },
+  "agent_glass": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "tint": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "opacity": {
+       "type": "number"
+      },
+      "edge_opacity": {
+       "type": "number"
+      },
+      "edge_power": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      },
+      "specular": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "tint",
+      "opacity",
+      "edge_opacity",
+      "edge_power",
+      "roughness",
+      "specular"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -477,7 +523,8 @@
   "prop",
   "agent",
   "people",
-  "overlay"
+  "overlay",
+  "agent_glass"
  ],
  "strict": true
 }
