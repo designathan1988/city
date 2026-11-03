@@ -65,10 +65,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha, 
 	const int nv = int(asset_.variations.size()), lods = asset_.lods;
 	int drawn = 0;
 	for (const AgentRecord &rec : f.people) {
-		Pose prev, cur;
-		prev.x = rec.px; prev.y = rec.py; prev.z = rec.pz; prev.fx = rec.pfx; prev.fz = rec.pfz;
-		cur.x = rec.x; cur.y = rec.y; cur.z = rec.z; cur.fx = rec.fx; cur.fz = rec.fz;
-		Pose p = lerp_pose(prev, cur, alpha);
+		Pose p = record_pose(rec, alpha);
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);

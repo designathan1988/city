@@ -19,6 +19,7 @@ namespace {
 
 constexpr float AABB_HALF_H = 500.f;
 constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars"
+constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16;
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 
 } // namespace
@@ -81,12 +82,9 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, float alpha) 
 	const float r2 = vehicle_r_ * vehicle_r_;
 	drawn_vehicles_ = 0;
 	for (const AgentRecord &rec : f.vehicles) {
-		Pose prev, cur;
-		prev.x = rec.px; prev.y = rec.py; prev.z = rec.pz; prev.fx = rec.pfx; prev.fz = rec.pfz;
-		cur.x = rec.x; cur.y = rec.y; cur.z = rec.z; cur.fx = rec.fx; cur.fz = rec.fz;
-		Pose p = lerp_pose(prev, cur, alpha);
-		const int type = int(rec.look & 0xFFu), paint = int((rec.look >> 8) & 0xFFu);
-		const bool brake = (rec.look & (1u << 16)) != 0;
+		Pose p = record_pose(rec, alpha);
+		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
 		if (type < 0 || type >= VEHICLE_TYPES) continue;
 		float spin = roll(int(rec.id), p, wheel_r_[type]);
 		float dx = p.x - cam.x, dz = p.z - cam.z;

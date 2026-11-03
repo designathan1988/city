@@ -30,7 +30,7 @@ struct LampLook {
 struct StreetLook {
 	godot::Color surface[4], paving[4], median[4], parking, bike, shoulder, curb, barrier, gutter, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
-	float gutter_w = 0;
+	float gutter_w = 0, face_eps = 0; // coplanar faces closer than this are one
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	float arc_step = 0, dead_end_depth = 0;

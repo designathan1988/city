@@ -66,6 +66,9 @@ func _mean_color(tex: Texture2D) -> Color:
 	if img == null:
 		return Color(1, 1, 1)
 	img = img.duplicate()
+	if img.is_compressed():
+		if img.decompress() != OK:
+			return Color(1, 1, 1)
 	img.resize(MEAN_PX, MEAN_PX, Image.INTERPOLATE_BILINEAR)
 	var sum := Vector3.ZERO
 	for y in MEAN_PX:
@@ -171,8 +174,9 @@ func _build_water(palette: Dictionary) -> void:
 	plane.size = Vector2(WATER_EXTENT_M, WATER_EXTENT_M)
 	var mat := ShaderMaterial.new()
 	mat.shader = load(WATER_SHADER)
-	mat.set_shader_parameter("shallow", Color.html(palette.water.shallow))
-	mat.set_shader_parameter("deep", Color.html(palette.water.deep))
+	for key in palette.water:
+		if key != "sea_level_m":
+			mat.set_shader_parameter(key, _param(palette.water[key]))
 	var water := MeshInstance3D.new()
 	water.mesh = plane
 	water.material_override = mat

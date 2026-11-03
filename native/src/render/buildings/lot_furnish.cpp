@@ -10,16 +10,16 @@
 namespace city::b40 {
 
 namespace {
-constexpr float SURFACE_H = 0.06f, PATH_W = 1.4f, POOL_W_MAX = 8.f, POOL_D = 3.5f, POOL_MIN_D = 6.f, POOL_MIN_W = 11.f;
-constexpr float POOL_SHARE = 0.45f, TERRACE_D = 3.f, STALL_W = 2.5f, STALL_D = 5.f, AISLE = 6.f, LAMP_H = 5.f;
-constexpr float WALL_T = 0.2f, FENCE_T = 0.12f, HEDGE_T = 0.7f, GATE_PERSON_HOUSE = 1.2f, GATE_PERSON_FLATS = 1.6f;
+constexpr float PAVING_Y = 0.06f, PATH_W = 1.4f, POOL_W_MAX = 8.f, POOL_D = 3.5f, POOL_MIN_D = 6.f, POOL_MIN_W = 11.f;
+constexpr float WATER_SHARE = 0.45f, TERRACE_D = 3.f, STALL_W = 2.5f, STALL_D = 5.f, AISLE = 6.f, LAMP_H = 5.f;
+constexpr float BOUNDARY_T = 0.2f, FENCE_T = 0.12f, HEDGE_T = 0.7f, GATE_PERSON_HOUSE = 1.2f, GATE_PERSON_FLATS = 1.6f;
 constexpr float GATE_PERSON_SHOP = 2.f, GATE_H = 1.4f, GATE_TALL_H = 1.8f, GATE_WIDE = 2.f, DRIVE_GATE_TRIM = 0.4f;
 constexpr float SIDE_LOW_H = 1.3f, AC_W = 0.8f, AC_D = 0.35f, AC_H = 0.6f, AC_Z = 2.6f, AC_EVERY = 2.4f;
 constexpr float PLANTER = 1.f, PLANTER_H = 0.6f, BENCH_W = 1.6f, BENCH_D = 0.5f, BENCH_H = 0.45f, BOLLARD = 0.2f;
 constexpr float BOLLARD_H = 0.9f, BOLLARD_EVERY = 2.f, PLAZA_EVERY = 6.f, PLAZA_PLANTER = 2.f, BIN_W = 1.1f, BIN_D = 0.6f;
 constexpr float BIN_H = 1.1f, SKIP_W = 2.2f, SKIP_D = 1.4f, SKIP_H = 1.3f, HALF = 0.5f, EDGE = 0.3f, LAMP_INSET = 1.f;
 constexpr int HOUSE_FRONTS = 2;
-constexpr float LINE_W = 0.1f, LINE_SHARE = 0.72f, FOOTPATH = 1.2f, POOL_ROOM = 5.f, POOL_LIFT = 0.015f, COURT_D = 5.f, COURT_W = 6.f, HOUSE_WALL_H = 2.f, WALL_H = 2.2f;
+constexpr float STRIPE_W = 0.1f, LINE_SHARE = 0.72f, FOOTPATH = 1.2f, POOL_ROOM = 5.f, POOL_LIFT = 0.015f, COURT_D = 5.f, COURT_W = 6.f, HOUSE_WALL_H = 2.f, WALL_H = 2.2f;
 constexpr float HEDGE_H = 1.1f, FRONT_WALL_H = 1.4f, RAILING_H = 1.f, FLATS_FENCE_H = 1.6f, HOUSE_FENCE_BASE = 0.6f, FENCE_BASE = 0.45f;
 
 struct Furnisher {
@@ -35,7 +35,7 @@ struct Furnisher {
 		e.kind = k; e.x = (x0 + x1) / 2; e.y = (y0 + y1) / 2; e.w = x1 - x0; e.d = y1 - y0; e.h = h; e.z = z; e.paint = p; e.base = base;
 		b.elements.push_back(e);
 	}
-	void surface(float x0, float y0, float x1, float y1, const char *name) { add(EL_SURFACE, x0, y0, x1, y1, SURFACE_H, paint(name)); }
+	void surface(float x0, float y0, float x1, float y1, const char *name) { add(EL_SURFACE, x0, y0, x1, y1, PAVING_Y, paint(name)); }
 	void box(Element k, float x, float y, float w, float d, float h, int p, float z = 0) { add(k, x - w / 2, y - d / 2, x + w / 2, y + d / 2, h, p, z); }
 
 	void front();
@@ -93,17 +93,17 @@ void Furnisher::back() {
 		surface(L, y0, R, std::min(D, y0 + TERRACE_D), "tiles");
 		surface(L, std::min(D, y0 + TERRACE_D), R, D, "lawn");
 		float yd = D - y0 - TERRACE_D;
-		if (yd >= POOL_MIN_D && R - L >= POOL_MIN_W && r.f() < POOL_SHARE) {
+		if (yd >= POOL_MIN_D && R - L >= POOL_MIN_W && r.f() < WATER_SHARE) {
 			float pw = std::min(POOL_W_MAX, R - L - POOL_ROOM), cx = (L + R) / 2, cy = y0 + TERRACE_D + yd / 2;
-			add(EL_SURFACE, cx - pw / 2 - EDGE, cy - POOL_D / 2 - EDGE, cx + pw / 2 + EDGE, cy + POOL_D / 2 + EDGE, SURFACE_H + POOL_LIFT, paint("pool_coping"));
-			add(EL_SURFACE, cx - pw / 2, cy - POOL_D / 2, cx + pw / 2, cy + POOL_D / 2, SURFACE_H + 2 * POOL_LIFT, paint("pool"));
+			add(EL_SURFACE, cx - pw / 2 - EDGE, cy - POOL_D / 2 - EDGE, cx + pw / 2 + EDGE, cy + POOL_D / 2 + EDGE, PAVING_Y + POOL_LIFT, paint("pool_coping"));
+			add(EL_SURFACE, cx - pw / 2, cy - POOL_D / 2, cx + pw / 2, cy + POOL_D / 2, PAVING_Y + 2 * POOL_LIFT, paint("pool"));
 		}
 	} else if (p.back == BACK_PARKING) {
 		surface(L, y0, R, D, "asphalt");
 		int st = paint("stall_line");
 		for (int row = 0; row < p.rows; row++) {
 			float ys = row == 0 ? D - STALL_D : y0;
-			for (float x = L + EDGE; x <= R - EDGE + EPS; x += STALL_W) add(EL_PARKING, x - LINE_W / 2, ys, x + LINE_W / 2, ys + STALL_D * LINE_SHARE, SURFACE_H + POOL_LIFT, st);
+			for (float x = L + EDGE; x <= R - EDGE + EPS; x += STALL_W) add(EL_PARKING, x - STRIPE_W / 2, ys, x + STRIPE_W / 2, ys + STALL_D * LINE_SHARE, PAVING_Y + POOL_LIFT, st);
 		}
 		int lp = paint("lamp_post");
 		box(EL_LAMP, L + LAMP_INSET, y0 + AISLE / 2, BOLLARD, BOLLARD, LAMP_H, lp);
@@ -130,14 +130,14 @@ void Furnisher::boundary() {
 	float side_h = b.kind == KIND_HOUSE ? HOUSE_WALL_H : WALL_H;
 	float F = p.front_depth;
 	// side and back walls
-	add(EL_WALL, L, F, L + WALL_T, D, side_h, wall_paint);
-	add(EL_WALL, R - WALL_T, F, R, D, side_h, wall_paint);
-	add(EL_WALL, L, D - WALL_T, R, D, side_h, wall_paint);
+	add(EL_WALL, L, F, L + BOUNDARY_T, D, side_h, wall_paint);
+	add(EL_WALL, R - BOUNDARY_T, F, R, D, side_h, wall_paint);
+	add(EL_WALL, L, D - BOUNDARY_T, R, D, side_h, wall_paint);
 	if (F <= 0) return;
 	float low = std::min(side_h, SIDE_LOW_H);
 	if (b.kind == KIND_HOUSE || b.kind == KIND_FLATS || b.kind == KIND_TOWER) {
-		add(EL_WALL, L, 0, L + WALL_T, F, low, wall_paint);
-		add(EL_WALL, R - WALL_T, 0, R, F, low, wall_paint);
+		add(EL_WALL, L, 0, L + BOUNDARY_T, F, low, wall_paint);
+		add(EL_WALL, R - BOUNDARY_T, 0, R, F, low, wall_paint);
 	}
 	int kind = b.kind == KIND_HOUSE ? r.irange(0, HOUSE_FRONTS) : -1;
 	float door = b.entrance_x;
@@ -155,7 +155,7 @@ void Furnisher::boundary() {
 	auto run = [&](float x0, float x1) {
 		if (x1 - x0 < EDGE) return;
 		if (kind == 1) add(EL_HEDGE, x0, 0, x1, HEDGE_T, HEDGE_H, hedge);
-		else if (kind == 2) add(EL_WALL, x0, 0, x1, WALL_T, FRONT_WALL_H, wall_paint);
+		else if (kind == 2) add(EL_WALL, x0, 0, x1, BOUNDARY_T, FRONT_WALL_H, wall_paint);
 		else if (b.kind == KIND_SHOP) add(EL_RAILING, x0, 0, x1, FENCE_T, RAILING_H, fence);
 		else add(EL_FENCE, x0, 0, x1, FENCE_T, b.kind == KIND_HOUSE ? HEDGE_H : b.kind == KIND_OFFICE ? FRONT_WALL_H : FLATS_FENCE_H, fence, 0,
 				b.kind == KIND_HOUSE ? HOUSE_FENCE_BASE : FENCE_BASE);

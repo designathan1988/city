@@ -68,7 +68,7 @@ bool min_area_box(const std::vector<P2> &h, Box &best) {
 class Blocks {
 public:
 	Blocks(double x0, double z0, const lot_gen::Facing &f) :
-			ax_(x0 - LOT_MARGIN), az_(z0 - LOT_MARGIN), W_(int(std::ceil((LOT_CELL + LOT_MARGIN * 2) / RES))), facing_(f) {
+			ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN), W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))), facing_(f) {
 		paved_.assign(size_t(W_) * W_, 0);
 		label_.assign(size_t(W_) * W_, -1);
 	}

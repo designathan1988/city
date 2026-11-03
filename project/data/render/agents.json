@@ -37,7 +37,7 @@
    "top": [[0.5, 0.45], [0.488, 0.54], [0.45, 0.6], [0.33, 0.63], [0.21, 0.645], [0.14, 0.77], [0.07, 0.965], [-0.02, 1], [-0.2, 0.99], [-0.235, 0.96], [-0.25, 0.64], [-0.27, 0.6], [-0.49, 0.6], [-0.5, 0.52]],
    "screen": [0.21, 0.07], "rear": [-0.235, -0.248], "side_glass": [-0.23, 0.19], "belt": [0.62, 0.64], "nose_r": 0.34, "tail_r": 0.12}
  ],
- "car_body": {"stations": 18, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12},
+ "car_body": {"stations": 18, "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12},
  "moto": {"length": 2.1, "wheel": 0.31, "wheel_w": 0.12, "axle_z": 0.72, "body": [0.3, 0.42, 0.88], "rider_seat_y": 0.9, "helmet_r": 0.15},
  "bus": {"length": 12.0, "width": 2.55, "height": 3.2, "wheel": 0.5, "wheel_w": 0.32, "clearance": 0.28, "sill": 1.02, "cant": 0.42, "axles": [0.28, -0.17, -0.28], "pillar_m": 1.6},
  "truck": {"length": 9.5, "width": 2.5, "height": 3.5, "wheel": 0.52, "wheel_w": 0.32, "cab_share": 0.24, "cab_bottom": 0.95, "belt": 1.9, "cab_top": 2.95, "box_bottom": 1.05, "axles": [0.37, -0.21, -0.34]},

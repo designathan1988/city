@@ -9,9 +9,17 @@
    "properties": {
     "shallow": { "type": "string", "pattern_prefix": "#" },
     "deep": { "type": "string", "pattern_prefix": "#" },
-    "sea_level_m": { "type": "number" }
+    "sea_level_m": { "type": "number" },
+    "wave_scale": { "type": "number" },
+    "wave_speed": { "type": "number" },
+    "ripple_strength": { "type": "number" },
+    "scroll_ax": { "type": "number" },
+    "scroll_ay": { "type": "number" },
+    "scroll_bx": { "type": "number" },
+    "scroll_by": { "type": "number" },
+    "scroll_speed": { "type": "number" }
    },
-   "required": ["shallow", "deep", "sea_level_m"],
+   "required": ["shallow", "deep", "sea_level_m", "wave_scale", "wave_speed", "ripple_strength", "scroll_ax", "scroll_ay", "scroll_bx", "scroll_by", "scroll_speed"],
    "strict": true
   },
   "sky": {
@@ -32,6 +40,7 @@
     "rock": { "type": "string", "pattern_prefix": "#" },
     "sand": { "type": "string", "pattern_prefix": "#" },
     "land_map": { "type": "string" },
+    "patch_scale": { "type": "number" },
     "grass_m": { "type": "number" },
     "dirt_m": { "type": "number" },
     "rock_m": { "type": "number" },

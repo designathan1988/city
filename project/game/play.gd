@@ -4,7 +4,7 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SHOT_DELAY_S := 25.0
-const MAX_SEED := 9999
+const SEED_LIMIT := 9999
 
 
 func _ready() -> void:
@@ -18,7 +18,7 @@ func _ready() -> void:
 	if not errors.is_empty():
 		push_error("Falha ao iniciar: %s" % "\n".join(errors))
 		return
-	var report: Dictionary = CityStore.new_map(TOWN_MAP, randi_range(1, MAX_SEED), true)
+	var report: Dictionary = CityStore.new_map(TOWN_MAP, randi_range(1, SEED_LIMIT), true)
 	print("cidade: ", report)
 	cam.look_at_ground(Vector3.ZERO)
 	var tools := ToolController.new(cam)

@@ -2,6 +2,7 @@
 // within their reach and freed beyond 1.5x it; every dirty chunk marks its 1024 m superchunk, whose far/HLOD mesh is
 // built within building_far_end_m and has no visibility end (the city never vanishes when zooming out).
 #include "render/buildings/building_renderer.h"
+#include "render/chunk_jobs.h"
 
 #include "render/buildings/facade.h"
 #include "render/mesh_builder.h"
@@ -16,7 +17,8 @@ namespace city {
 namespace {
 constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
-constexpr float SCREEN_H = 1080.f;
+constexpr float PROJECTION_HEIGHT = 1080.f;
+constexpr float VIEW_ANGLE_FALLBACK = 90.f, FULL_TURN_DEG = 360.f, MIN_SCREEN_PX = 1e-3f;
 constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
 
@@ -81,12 +83,12 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 	near_end_ = detail * data_.near_share;
 	mid_end_ = s.catalog.tune.render_building_mid_end_m;
 	far_end_ = s.catalog.tune.render_building_far_end_m;
-	float fov = data_.far_fov_deg > 0 ? data_.far_fov_deg : 90.f;
-	float half_tan = std::tan(fov * PI_F / 360.f);
+	float fov = data_.far_fov_deg > 0 ? data_.far_fov_deg : VIEW_ANGLE_FALLBACK;
+	float half_tan = std::tan(fov * PI_F / FULL_TURN_DEG);
 	for (int i = 0; i < BAND_COUNT; i++) {
 		const b40::PartBand &pb = data_.part_bands[size_t(std::min(i, int(data_.part_bands.size()) - 1))];
-		float px = std::max(pb.px_min, 1e-3f);
-		band_end_[size_t(i)] = std::min(pb.thick_max * SCREEN_H / (2 * half_tan * px), far_end_);
+		float px = std::max(pb.px_min, MIN_SCREEN_PX);
+		band_end_[size_t(i)] = std::min(pb.thick_max * PROJECTION_HEIGHT / (2 * half_tan * px), far_end_);
 	}
 }
 
@@ -186,48 +188,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 }
 
 void BuildingRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	std::vector<Built> local;
-	std::vector<SuperBuilt> super_local;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		local.swap(done_);
-		super_local.swap(super_done_);
-	}
-	std::sort(local.begin(), local.end(), [](const Built &a, const Built &b) { return a.priority < b.priority; });
-	std::sort(super_local.begin(), super_local.end(), [](const SuperBuilt &a, const SuperBuilt &b) { return a.priority < b.priority; });
-	for (Built &b : local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			done_.push_back(std::move(b));
-			continue;
-		}
-		bool fresh = false;
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			auto it = requested_.find(b.key);
-			fresh = it != requested_.end() && it->second == b.seq;
-			if (fresh) {
-				requested_.erase(it);
-				requested_mask_.erase(b.key);
-			}
-		}
-		if (fresh) commit_one(b);
-	}
-	for (SuperBuilt &b : super_local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			super_done_.push_back(std::move(b));
-			continue;
-		}
-		bool fresh = false;
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			auto it = super_requested_.find(b.key);
-			fresh = it != super_requested_.end() && it->second == b.seq;
-			if (fresh) super_requested_.erase(it);
-		}
-		if (fresh) commit_super(b);
-	}
+	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
 }
 
 int BuildingRenderer::pending() const {

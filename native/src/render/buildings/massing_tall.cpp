@@ -11,10 +11,10 @@ constexpr int PALETTES = 7, SHOP_FUNCTIONS = 8, ROUND_SIDES = 16;
 constexpr float HALF = 0.5f, PI_F = 3.14159265f;
 constexpr float FLATS_GROUND_LO = 3.8f, FLATS_GROUND_HI = 4.5f, FLATS_STOREY_LO = 2.9f, FLATS_STOREY_HI = 3.1f;
 constexpr float TALL_SHARE = 0.125f, SHOP_GROUND = 0.25f, HIP_SHARE = 0.4f, TERRACE_SHARE = 0.3f, BAR_LO = 12.f, BAR_HI = 15.f;
-constexpr float INSET_LO = 0.5f, INSET_HI = 1.2f, TOWER_MIN = 8.f, TOWER_MAX_D = 22.f, OFFICE_MAX_D = 24.f, FREE_MIN = 2.f;
+constexpr float FACADE_SETBACK_LO = 0.5f, INSET_HI = 1.2f, TOWER_MIN = 8.f, TOWER_MAX_D = 22.f, OFFICE_MAX_D = 24.f, FREE_MIN = 2.f;
 constexpr float ELL_TOWER_W = 14.f, TWIN_TOWER_W = 26.f, ELL_LO = 0.38f, ELL_HI = 0.5f, LEG_MIN = 4.f, GAP_LO = 3.f, GAP_HI = 5.f;
 constexpr int TWIN_MIN = 6, LIFT_EXTRA = 2;
-constexpr float CROWN_IN_LO = 1.5f, CROWN_IN_HI = 3.f, CROWN_MIN = 6.f, SHAPE_RECT = 0.5f, SHAPE_OCT = 0.85f;
+constexpr float CORNICE_IN_LO = 1.5f, CROWN_IN_HI = 3.f, CROWN_MIN = 6.f, SHAPE_RECT = 0.5f, SHAPE_OCT = 0.85f;
 constexpr float CUT_LO = 0.14f, CUT_HI = 0.26f, SETBACK_LO = 0.75f, SETBACK_HI = 0.9f;
 constexpr int SETBACK_SPLIT = 6, SETBACK_STEPS = 3, SETBACK_PART = 3;
 constexpr float U_ROOM = 6.f, U_W = 20.f, U_WING_LO = 6.f, U_WING_MAX = 9.f, L_W = 14.f, L_SHARE = 0.7f, L_WING_LO = 7.f;
@@ -28,10 +28,10 @@ constexpr float SHOP_DOUBLE = 0.5f, SHOP_SIDE_DOOR_W = 7.f, AWNING_SHARE = 0.3f,
 constexpr float AWNING_D_LO = 1.f, AWNING_D_HI = 1.6f, AWNING_Z = 3.f, AWNING_H = 0.12f;
 constexpr float OFFICE_GROUND_LO = 4.5f, OFFICE_GROUND_HI = 5.5f, OFFICE_STOREY_LO = 3.4f, OFFICE_STOREY_HI = 3.9f;
 constexpr float PODIUM_SHARE = 0.6f, PODIUM_MIN = 14.f, OFFICE_CROWN_LO = 1.f, OFFICE_CROWN_HI = 2.5f;
-constexpr int MIN_FLATS = 3, MAX_FLATS = 7, MIN_TOWER = 8, MAX_TOWER = 24, MIN_TALL = 30, MAX_TALL = 44, SHOP_MAX = 6;
+constexpr int APARTMENT_MIN = 3, MAX_FLATS = 7, MIN_TOWER = 8, MAX_TOWER = 24, MIN_TALL = 30, MAX_TALL = 44, SHOP_MAX = 6;
 constexpr float SETBACK_SHARES[] = { 0.4f, 0.6f };
 constexpr int TWIN_STEPS[] = { -5, -3, 3, 5 }, OFFICE_TWIN_STEPS[] = { -6, -3, 4 };
-constexpr int OFFICE_MIN_F = 8, OFFICE_MAX_F = 24, OFFICE_TWIN_MIN = 4;
+constexpr int WORKPLACE_MIN_F = 8, OFFICE_MAX_F = 24, OFFICE_TWIN_MIN = 4;
 
 std::vector<Point2> tower_shape(Xoshiro128 &r) {
 	float t = float(r.f());
@@ -64,7 +64,7 @@ void setbacks(Body &b, Xoshiro128 &r, float x, float y, float w, float d, int ba
 
 void tower(Body &b, Xoshiro128 &r, float w, float d, int floors) {
 	int podium = r.irange(1, 2);
-	float inset = snap(mixr(r, INSET_LO, INSET_HI));
+	float inset = snap(mixr(r, FACADE_SETBACK_LO, INSET_HI));
 	float tw = std::max(TOWER_MIN, w - 2 * inset), td = std::max(TOWER_MIN, std::min(d - 2 * inset, TOWER_MAX_D));
 	add_block(b, { 0, 0, w, std::min(d, td + 2 * inset), 0, podium, ROOF_TERRACE });
 	std::vector<int> forms{ 0, 1, 2, 2 }; // box, setback, crown, crown, ell, twin, twin
@@ -93,7 +93,7 @@ void tower(Body &b, Xoshiro128 &r, float w, float d, int floors) {
 	} else if (kind == 2) {
 		int top = r.irange(1, 3);
 		block(inset, inset, tw, td, podium, floors - top, ROOF_TERRACE, true);
-		float cin = snap(mixr(r, CROWN_IN_LO, CROWN_IN_HI));
+		float cin = snap(mixr(r, CORNICE_IN_LO, CROWN_IN_HI));
 		block(inset + cin, inset + cin, std::max(CROWN_MIN, tw - 2 * cin), std::max(CROWN_MIN, td - 2 * cin), podium + floors - top, top, ROOF_FLAT, true);
 	} else block(inset, inset, tw, td, podium, floors, ROOF_FLAT, true);
 }
@@ -133,7 +133,7 @@ void flats(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, bool h
 	b.ground_h = mixr(r, FLATS_GROUND_LO, FLATS_GROUND_HI);
 	b.storey_h = mixr(r, FLATS_STOREY_LO, FLATS_STOREY_HI);
 	look(b, wall, roof_of(r, clay_of(data)), trim);
-	int floors = high ? (r.f() < TALL_SHARE ? r.irange(MIN_TALL, MAX_TALL) : r.irange(MIN_TOWER, MAX_TOWER)) : r.irange(MIN_FLATS, MAX_FLATS);
+	int floors = high ? (r.f() < TALL_SHARE ? r.irange(MIN_TALL, MAX_TALL) : r.irange(MIN_TOWER, MAX_TOWER)) : r.irange(APARTMENT_MIN, MAX_FLATS);
 	b.ground = r.f() < SHOP_GROUND ? GROUND_SHOP : GROUND_LOBBY;
 	bool hip = !high && (b.style == STYLE_COLONIAL || b.style == STYLE_BRICK) && r.f() < HIP_SHARE;
 	Roof roof = hip ? ROOF_HIP : r.f() < TERRACE_SHARE ? ROOF_TERRACE : ROOF_FLAT;
@@ -201,11 +201,11 @@ void office(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	b.storey_h = mixr(r, OFFICE_STOREY_LO, OFFICE_STOREY_HI);
 	look(b, wall, data.color("office_roof"), trim);
 	b.ground = GROUND_LOBBY;
-	int floors = r.irange(OFFICE_MIN_F, OFFICE_MAX_F);
+	int floors = r.irange(WORKPLACE_MIN_F, OFFICE_MAX_F);
 	float w = snap(env.W), d = snap(env.D);
 	if (r.f() < PODIUM_SHARE && w >= PODIUM_MIN && d >= PODIUM_MIN) {
 		int podium = r.irange(1, 3);
-		float inset = snap(mixr(r, INSET_LO, INSET_HI));
+		float inset = snap(mixr(r, FACADE_SETBACK_LO, INSET_HI));
 		float tw = w - 2 * inset, td = std::max(TOWER_MIN, std::min(d - 2 * inset, OFFICE_MAX_D));
 		add_block(b, { 0, 0, w, std::min(d, td + 2 * inset), 0, podium, ROOF_TERRACE });
 		int shaft = floors - podium;

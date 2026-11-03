@@ -3,6 +3,7 @@
 
 #include "api/catalog_loader.h"
 #include "sim/citygen/city_gen.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/classes/camera3d.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -72,6 +73,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city) {
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->growth.clear();
 		r = generate_map(*state_, map, uint32_t(seed), with_city);
+		traffic::reset_traffic(*state_); // a new map: full lane graph and an empty fleet
 	}
 	need_full_rebuild_ = true;
 	sim_.start(*state_);

@@ -11,7 +11,7 @@ namespace city {
 namespace {
 constexpr double STRAIGHT_ANGLE_COS = -0.9986; // two arms this close to opposite are one street going on
 constexpr double BULB_REACH_PAD = 3, BULB_SEARCH_PAD = 30;
-constexpr float LOT_REACH = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
+constexpr float LOT_LOOK_M = 160.f; // lots look this far for their streets (sim/citygen/lot_gen.h LOT_MARGIN + setbacks)
 } // namespace
 
 void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
@@ -212,6 +212,11 @@ void RoadNetwork::refresh_node(int n) {
 		RoadSegment &g = segs[nd.segs[i]];
 		(g.a == n ? g.retreat_a : g.retreat_b) = out[i];
 		mark_segment(nd.segs[i]);
+		// the mouths moved: the lane graph rebuilds this arm and its node on the next traffic step
+		if (log) {
+			log->net_seg(nd.segs[i]);
+			log->net_node(n);
+		}
 	}
 }
 
@@ -223,7 +228,7 @@ void RoadNetwork::mark_segment(int s) {
 			for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) v.push_back(cell_key(i, j));
 	};
 	mark(log->road_chunks, g.minx, g.minz, g.maxx, g.maxz);
-	mark(log->lot_cells, g.minx - LOT_REACH, g.minz - LOT_REACH, g.maxx + LOT_REACH, g.maxz + LOT_REACH);
+	mark(log->lot_cells, g.minx - LOT_LOOK_M, g.minz - LOT_LOOK_M, g.maxx + LOT_LOOK_M, g.maxz + LOT_LOOK_M);
 }
 
 int RoadNetwork::alive_segments() const {

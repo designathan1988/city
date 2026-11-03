@@ -29,7 +29,15 @@
  "water": {
   "shallow": "#3d7a8e",
   "deep": "#245a74",
-  "sea_level_m": 0.0
+  "sea_level_m": 0.0,
+  "wave_scale": 0.073,
+  "wave_speed": 0.035,
+  "ripple_strength": 0.35,
+  "scroll_ax": 0.035,
+  "scroll_ay": 0.021,
+  "scroll_bx": -0.026,
+  "scroll_by": 0.047,
+  "scroll_speed": 30.0
  },
  "sky": {
   "top": "#5f8fc4",
@@ -42,7 +50,8 @@
   "rock": "#8F887C",
   "sand": "#C9B98F",
   "land_map": "res://assets/surfaces/terrain-land.map.png",
-  "grass_m": 12.8,
+  "patch_scale": 0.004,
+    "grass_m": 12.8,
   "dirt_m": 13.6,
   "rock_m": 23.2,
   "land_layers": 9.0,

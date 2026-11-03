@@ -1,6 +1,8 @@
 // Street furniture placement (Roadcraft jobs/props.ts placeSegment / placeJunction), see street_props.h.
 #include "render/props/street_props.h"
 
+#include "render/owned_segments.h"
+
 #include "core/color.h"
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
@@ -15,9 +17,9 @@ namespace city {
 namespace {
 constexpr int FURN_FULL = 0, FURN_NONE = 2, MAX_STRANDS = 4;
 constexpr int ZONE_RES = 1, ZONE_IND = 3, ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6;
-constexpr float OPPOSITE_DOT = -0.8f, AXIS_TIE = 0.f;
+constexpr float REVERSE_WIRE_DOT = -0.8f, AXIS_TIE = 0.f;
 constexpr uint32_t TREE_SALT = 0x7ee5u, TREE_SPECIES = 2;
-constexpr float TREE_SCALE_MIN = 0.8f, TREE_SCALE_SPAN = 0.35f;
+constexpr float CANOPY_SCALE_MIN = 0.8f, TREE_SCALE_SPAN = 0.35f;
 
 const Vector3 UP(0, 1, 0);
 
@@ -35,7 +37,7 @@ bool signalled(const CityState &s, const FurnitureLook &F, int n) {
 	}
 	if (int(nd.segs.size()) > F.signal_degree + 1 || int(majors.size()) > F.signal_min_major) return true;
 	if (int(nd.segs.size()) >= F.signal_cross_degree && int(majors.size()) >= F.signal_min_major) return true; // a main road's crossings
-	return int(majors.size()) == F.signal_min_major && majors[0].dx * majors[1].dx + majors[0].dz * majors[1].dz > OPPOSITE_DOT;
+	return int(majors.size()) == F.signal_min_major && majors[0].dx * majors[1].dx + majors[0].dz * majors[1].dz > REVERSE_WIRE_DOT;
 }
 
 void signals(const CityState &s, const StreetLook &L, const FurnitureLook &F, int n, std::vector<PropPlace> &out) {
@@ -127,25 +129,38 @@ void furniture(const SegCtx &c, int level, std::vector<PropPlace> &out) {
 	}
 }
 
-template <typename F>
-void owned_segments(const CityState &s, int64_t key, F &&fn) {
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.roads.for_segments_near(x0 - CHUNK, z0 - CHUNK, x0 + 2 * CHUNK, z0 + 2 * CHUNK, [&](int sid) {
-		double mx, mz;
-		s.roads.segs[sid].q.at(0.5, mx, mz);
-		if (chunk_of(float(mx), float(mz)) == key) fn(sid);
+struct SegStart {
+	const RoadSegment *g;
+	const Profile *p;
+	int level;
+};
+
+// The segment's furniture level and profile, or false when it has nothing placed on it.
+bool seg_start(const CityState &s, int sid, SegStart &out) {
+	const RoadSegment &g = s.roads.segs[sid];
+	const Profile &p = s.catalog.profile(g.profile);
+	int level = (g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT;
+	if (level == FURN_NONE || p.edges.empty()) return false;
+	out = { &g, &p, level };
+	return true;
+}
+
+// Runs fn(ctx, furniture level) for every zoned segment the chunk owns.
+template <typename Fn>
+void each_seg_ctx(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, Fn &&fn) {
+	each_owned_segment(s, key, [&](int sid) {
+		SegStart st;
+		if (!seg_start(s, sid, st)) return;
+		SegCtx c{ s, L, F, sid, *st.p, st.g->retreat_a, st.g->len - st.g->retreat_b, lamp_row(*st.p, L.lamp), {} };
+		fn(c, st.level);
 	});
 }
+
 } // namespace
 
 void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out,
 		MeshBuilder &wires) {
-	owned_segments(s, key, [&](int sid) {
-		const RoadSegment &g = s.roads.segs[sid];
-		const Profile &p = s.catalog.profile(g.profile);
-		int level = (g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT;
-		if (level == FURN_NONE || p.edges.empty()) return;
-		SegCtx c{ s, L, F, sid, p, g.retreat_a, g.len - g.retreat_b, lamp_row(p, L.lamp), {} };
+	each_seg_ctx(s, L, F, key, [&](SegCtx &c, int level) {
 		lamps(c, out, wires);
 		furniture(c, level, out);
 	});
@@ -157,15 +172,11 @@ void place_street_props(const CityState &s, const StreetLook &L, const Furniture
 }
 
 void place_street_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<TreeSpot> &out) {
-	owned_segments(s, key, [&](int sid) {
-		const RoadSegment &g = s.roads.segs[sid];
-		const Profile &p = s.catalog.profile(g.profile);
-		int level = (g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT;
-		if (level == FURN_NONE || p.edges.empty()) return;
-		SegCtx c{ s, L, F, sid, p, g.retreat_a, g.len - g.retreat_b, lamp_row(p, L.lamp), {} };
+	each_seg_ctx(s, L, F, key, [&](SegCtx &c, int) {
+		int sid = c.sid;
 		for (double v = c.v0 + L.lamp.first; v < c.v1 - L.lamp.end_clear; v += L.lamp.step) c.stations.push_back(v);
 		for (int side = 0; side < 2; side++) {
-			const StripEdge &e = side == 0 ? p.edges.front() : p.edges.back();
+			const StripEdge &e = side == 0 ? c.p.edges.front() : c.p.edges.back();
 			if (e.strip.kind != StripKind::SIDEWALK || e.u1 - e.u0 < F.tree_min_walk) continue;
 			float u = side == 0 ? e.u1 - F.tree_kerb_u : e.u0 + F.tree_kerb_u;
 			for (double v = c.v0 + F.tree_first; v < c.v1 - F.tree_first; v += F.tree_step) {
@@ -174,7 +185,7 @@ void place_street_trees(const CityState &s, const StreetLook &L, const Furniture
 				if (near_lamp) continue;
 				SegFrame f = seg_frame(s, sid, v);
 				uint32_t h = hash_combine(uint32_t(sid) * TREE_SALT, uint32_t(v * side + v));
-				out.push_back({ f.c + f.left * u + UP * L.h_sidewalk, TREE_SCALE_MIN + TREE_SCALE_SPAN * hash_float(h),
+				out.push_back({ f.c + f.left * u + UP * L.h_sidewalk, CANOPY_SCALE_MIN + TREE_SCALE_SPAN * hash_float(h),
 						TAU_F * hash_float(h + 1), int(hash_u32(h) % TREE_SPECIES) });
 			}
 		}

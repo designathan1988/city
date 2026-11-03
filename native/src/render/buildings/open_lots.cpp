@@ -15,12 +15,12 @@ namespace city::b40 {
 
 namespace {
 constexpr float EDGE = 0.5f, SURFACE_H = 0.06f, PATH_W = 3.f, RING_SHARE = 0.2f, RING_W = 2.2f, TREE_CLEAR = 1.6f, RING_MIN = 34.f;
-constexpr float POOL = 5.f, POOL_PLAZA = 11.f, RIM_H = 0.5f, RIM_T = 0.35f, SPOUT = 0.7f, SPOUT_H = 1.8f, BOWL = 1.6f, BOWL_H = 0.25f;
+constexpr float BASIN = 5.f, POOL_PLAZA = 11.f, RIM_H = 0.5f, RIM_T = 0.35f, SPOUT = 0.7f, SPOUT_H = 1.8f, BOWL = 1.6f, BOWL_H = 0.25f;
 constexpr float FOUNTAIN_MIN = 22.f, PLAY = 10.f, PLAY_MIN = 46.f, HEDGE_H = 1.1f, HEDGE_T = 0.8f;
 constexpr float BENCH_W = 1.8f, BENCH_D = 0.55f, BENCH_H = 0.45f, BENCH_EVERY = 9.f, LAMP = 0.2f, LAMP_H = 4.2f, LAMP_EVERY = 14.f;
 constexpr float BIN = 0.5f, BIN_H = 0.9f, POST = 0.12f, SWING_H = 2.4f, SWING_W = 3.6f, FRAME = 2.f, FRAME_H = 1.6f, SEAT = 0.5f;
 constexpr float SEAT_Z = 0.5f, SEESAW_L = 3.6f, SEESAW_W = 0.3f, SEESAW_Z = 0.45f, CHAIN = 0.03f;
-constexpr float BORDER = 5.f, BAND_MIN = 40.f, BAND = 7.f, BAND_COL = 0.3f, BAND_H = 3.f, BAND_ROOF = 0.4f, BAND_DECK = 0.6f;
+constexpr float LOT_EDGE = 5.f, BAND_MIN = 40.f, BAND = 7.f, BAND_COL = 0.3f, BAND_H = 3.f, BAND_ROOF = 0.4f, BAND_DECK = 0.6f;
 constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_RUN = 2.f, LINE = 0.12f, FENCE_H = 3.f, GOAL_W = 3.f, GOAL_H = 2.f;
 constexpr float GOAL_D = 0.8f, CIRCLE = 3.f, HALF = 0.5f, LIFT_LINE = 4.f, LIFT_INNER = 5.f; // layer lifts (x SURFACE_H) of painted lines
 
@@ -40,10 +40,10 @@ struct Lay {
 void Lay::fountain(float cx, float cy, bool plaza) {
 	int stone = paint("pool_coping");
 	if (plaza) surface(cx - POOL_PLAZA / 2, cy - POOL_PLAZA / 2, cx + POOL_PLAZA / 2, cy + POOL_PLAZA / 2, paint("square_paving"), 2);
-	surface(cx - POOL / 2, cy - POOL / 2, cx + POOL / 2, cy + POOL / 2, paint("fountain_water"), RIM_H / SURFACE_H * HALF);
+	surface(cx - BASIN / 2, cy - BASIN / 2, cx + BASIN / 2, cy + BASIN / 2, paint("fountain_water"), RIM_H / SURFACE_H * HALF);
 	for (float s : { -1.f, 1.f }) {
-		put(b, EL_WALL, cx - POOL / 2, cy + s * POOL / 2 - RIM_T / 2, cx + POOL / 2, cy + s * POOL / 2 + RIM_T / 2, RIM_H, stone);
-		put(b, EL_WALL, cx + s * POOL / 2 - RIM_T / 2, cy - POOL / 2, cx + s * POOL / 2 + RIM_T / 2, cy + POOL / 2, RIM_H, stone);
+		put(b, EL_WALL, cx - BASIN / 2, cy + s * BASIN / 2 - RIM_T / 2, cx + BASIN / 2, cy + s * BASIN / 2 + RIM_T / 2, RIM_H, stone);
+		put(b, EL_WALL, cx + s * BASIN / 2 - RIM_T / 2, cy - BASIN / 2, cx + s * BASIN / 2 + RIM_T / 2, cy + BASIN / 2, RIM_H, stone);
 	}
 	put_at(b, EL_PILLAR, cx, cy, SPOUT, SPOUT, SPOUT_H, stone);
 	put_at(b, EL_CANOPY, cx, cy, BOWL, BOWL, BOWL_H, stone, SPOUT_H);
@@ -130,17 +130,17 @@ void square(Lay &L) {
 	const float W = L.W, D = L.D;
 	L.surface(-W / 2 + EDGE, EDGE, W / 2 - EDGE, D - EDGE, L.paint("square_paving"));
 	int lawn = L.paint("square_lawn");
-	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - EDGE - BORDER : -W / 2 + EDGE, EDGE, s > 0 ? W / 2 - EDGE : -W / 2 + EDGE + BORDER, D - EDGE, lawn, 2);
+	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - EDGE - LOT_EDGE : -W / 2 + EDGE, EDGE, s > 0 ? W / 2 - EDGE : -W / 2 + EDGE + LOT_EDGE, D - EDGE, lawn, 2);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, false);
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post");
-	float rb = POOL / 2 + PATH_W;
+	float rb = BASIN / 2 + PATH_W;
 	for (float s : { -1.f, 1.f }) {
 		put_at(L.b, EL_BENCH, s * rb, D / 2, BENCH_D, BENCH_W, BENCH_H, bench);
 		put_at(L.b, EL_BENCH, 0, D / 2 + s * rb, BENCH_W, BENCH_D, BENCH_H, bench);
 		for (float t : { -1.f, 1.f }) put_at(L.b, EL_LAMP, s * rb, D / 2 + t * rb, LAMP, LAMP, LAMP_H, lamp);
 	}
 	if (std::min(W, D) < BAND_MIN) return;
-	float bx = 0, by = D - EDGE - BORDER - BAND; // bandstand (coreto) at the back
+	float bx = 0, by = D - EDGE - LOT_EDGE - BAND; // bandstand (coreto) at the back
 	int col = L.paint("column"), roof = L.paint("edicula_roof");
 	put_at(L.b, EL_SLAB, bx, by, BAND, BAND, BAND_DECK, L.paint("pool_coping"));
 	for (float a : { -1.f, 1.f })
@@ -188,7 +188,7 @@ void open_lot_body(const Data &data, Body &b, int fn, float W, float D) {
 }
 
 bool open_lot_tree_ok(int fn, float W, float D, float x, float y) {
-	if (fn == FN_SQUARE) return std::fabs(x) > W / 2 - EDGE - BORDER && std::fabs(x) < W / 2 - EDGE;
+	if (fn == FN_SQUARE) return std::fabs(x) > W / 2 - EDGE - LOT_EDGE && std::fabs(x) < W / 2 - EDGE;
 	if (fn == FN_SPORTS_COURT)
 		return std::fabs(x) > std::min(COURT_W, W) / 2 + COURT_RUN + TREE_CLEAR || std::fabs(y - D / 2) > std::min(COURT_D, D) / 2 + COURT_RUN + TREE_CLEAR;
 	float rg = ring_of(W, D), c = TREE_CLEAR;

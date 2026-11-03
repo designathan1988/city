@@ -1,5 +1,6 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
+#include "render/chunk_jobs.h"
 
 #include "core/color.h"
 
@@ -116,27 +117,7 @@ void OverlayRenderer::upload(MeshDraw &d, Ribbon &r, bool on) {
 }
 
 void OverlayRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	std::vector<Built> local;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		local.swap(done_);
-	}
-	std::sort(local.begin(), local.end(), [](const Built &a, const Built &b) { return a.priority < b.priority; });
-	for (Built &b : local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			done_.push_back(std::move(b));
-			continue;
-		}
-		bool fresh = false;
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			auto it = requested_.find(b.key);
-			fresh = it != requested_.end() && it->second == b.seq;
-			if (fresh) requested_.erase(it);
-		}
-		if (fresh) upload(zones_[b.key], b.r, on_[int(Overlay::ZONES)]);
-	}
+	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { upload(zones_[b.key], b.r, on_[int(Overlay::ZONES)]); });
 }
 
 void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f) {

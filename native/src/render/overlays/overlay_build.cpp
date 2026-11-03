@@ -2,6 +2,8 @@
 // ribbons along each carriageway (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
 
+#include "render/owned_segments.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -11,8 +13,10 @@ namespace city {
 
 namespace {
 constexpr int SIDES = 2;
+constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
+constexpr float BYTE_MAX = 255.f; // packed zone colours are RGBA8
 constexpr double MIN_DERIV = 1e-6; // a degenerate curve keeps a finite normal
-constexpr float MIN_SPAN = 1e-3f; // free_share == jam_share still divides
+constexpr float COLOUR_RANGE_MIN = 1e-3f; // free_share == jam_share still divides
 constexpr float HALF_JAM = 0.5f;
 } // namespace
 
@@ -45,19 +49,16 @@ void OverlayRenderer::strip(Ribbon &out, const CityState &s, int seg, float u0, 
 
 OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int64_t key) const {
 	Ribbon r;
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.roads.for_segments_near(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int sg) {
+	each_owned_segment(s, key, [&](int sg) {
 		const RoadSegment &g = s.roads.segs[size_t(sg)];
 		if (!g.alive) return;
-		double mx, mz;
-		g.q.at(0.5, mx, mz);
-		if (chunk_of(float(mx), float(mz)) != key) return;
 		const Profile &p = s.roads.profile_of(sg);
 		for (int side = 0; side < SIDES; side++) {
 			int code = side == 0 ? g.zl : g.zr;
 			if (code == 0) continue;
 			uint32_t c = s.catalog.zone(code).color;
-			Color col(float((c >> 24) & 0xff) / 255.f, float((c >> 16) & 0xff) / 255.f, float((c >> 8) & 0xff) / 255.f, float(c & 0xff) / 255.f);
+			Color col(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE_MAX,
+					float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, float(c & 0xff) / BYTE_MAX);
 			if (side == 0) strip(r, s, sg, p.left, p.left + zone_depth_, col, false);
 			else strip(r, s, sg, -p.right - zone_depth_, -p.right, col, false);
 		}
@@ -67,17 +68,13 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 
 OverlayRenderer::Ribbon OverlayRenderer::build_congestion_cpu(const CityState &s, const PoseFrame &f, int64_t key) const {
 	Ribbon r;
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.roads.for_segments_near(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int sg) {
+	each_owned_segment(s, key, [&](int sg) {
 		const RoadSegment &g = s.roads.segs[size_t(sg)];
 		if (!g.alive) return;
-		double mx, mz;
-		g.q.at(0.5, mx, mz);
-		if (chunk_of(float(mx), float(mz)) != key) return;
 		const Profile &p = s.roads.profile_of(sg);
 		if (p.rail) return;
 		float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
-		float k = std::clamp((share - jam_share_) / std::max(MIN_SPAN, free_share_ - jam_share_), 0.f, 1.f);
+		float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
 		Color col = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
 		strip(r, s, sg, -p.asph_right, p.asph_left, col, true);
 	});

@@ -11,12 +11,12 @@ namespace city::b40 {
 namespace {
 constexpr float HALF = 0.5f, SURFACE_H = 0.06f;
 // gas station
-constexpr float SHOP_W = 10.f, SHOP_D = 8.f, SHOP_H = 4.f, CANOPY_Z = 5.5f, CANOPY_T = 0.7f, CANOPY_W_MAX = 18.f, CANOPY_D = 10.f;
+constexpr float STORE_FRONT_W = 10.f, SHOP_D = 8.f, SHOP_H = 4.f, CANOPY_Z = 5.5f, CANOPY_T = 0.7f, CANOPY_W_MAX = 18.f, CANOPY_D = 10.f;
 constexpr float CANOPY_EDGE = 1.f, COLUMN = 0.45f, PUMP_W = 0.7f, PUMP_D = 1.2f, PUMP_H = 1.8f, ISLAND_W = 1.2f, ISLAND_D = 4.f;
 constexpr float ISLAND_H = 0.18f, PUMP_EVERY = 6.f, STRIPE_T = 0.25f;
 // market
 constexpr float MARKET_H = 7.f, MALL_H = 7.f, SIGN_H = 1.4f, SIGN_OUT = 0.25f, SIGN_SHARE = 0.5f, STALL_W = 2.5f, STALL_D = 5.f;
-constexpr float LINE_W = 0.12f, AISLE = 6.f, PARK_SHARE = 0.42f, PARK_MAX = 22.f, CART_W = 2.5f, CART_D = 1.2f, CART_H = 1.1f;
+constexpr float STRIPE_W = 0.12f, AISLE = 6.f, PARK_SHARE = 0.42f, PARK_MAX = 22.f, CART_W = 2.5f, CART_D = 1.2f, CART_H = 1.1f;
 // city hall
 constexpr float HALL_GROUND = 5.f, HALL_STOREY = 4.f, PORTICO_D = 4.5f, PORTICO_W_SHARE = 0.55f, PORTICO_W_MAX = 20.f, COL = 0.9f;
 constexpr float COL_H = 9.f, ENTAB_H = 1.2f, STEP_H = 0.7f, STEP_IN = 1.6f, FLAG_POLE = 0.12f, FLAG_H = 7.f, FLAG_W = 1.8f;
@@ -40,7 +40,7 @@ void flat_block(Body &b, int i, Lines lines, Crown crown) {
 void gas_station(const Data &data, Body &b, Xoshiro128 &r) {
 	float w = env_w(b), d = env_d(b);
 	b.ground_h = SHOP_H;
-	float sw = std::min(SHOP_W, w), sd = std::min(SHOP_D, d * HALF);
+	float sw = std::min(STORE_FRONT_W, w), sd = std::min(SHOP_D, d * HALF);
 	bool left = r.f() < HALF;
 	flat_block(b, add_block(b, { left ? 0 : w - sw, d - sd, sw, sd, 0, 1, ROOF_FLAT, BAY_WINDOW, BAY_SHOPFRONT }), LINES_NONE, CROWN_SLAB);
 	put(b, EL_SURFACE, 0, 0, w, d - sd, SURFACE_H, b.add_paint(data.color("asphalt")));
@@ -68,7 +68,7 @@ void market(const Data &data, Body &b, Xoshiro128 &r, bool mall) {
 	put(b, EL_SURFACE, 0, 0, w, park, SURFACE_H, asphalt);
 	for (float y0 : { 0.f, STALL_D + AISLE })
 		if (y0 + STALL_D <= park)
-			for (float x = STALL_W; x < w; x += STALL_W) put(b, EL_SURFACE, x - LINE_W / 2, y0, x + LINE_W / 2, y0 + STALL_D, SURFACE_H * 2, line);
+			for (float x = STALL_W; x < w; x += STALL_W) put(b, EL_SURFACE, x - STRIPE_W / 2, y0, x + STRIPE_W / 2, y0 + STALL_D, SURFACE_H * 2, line);
 	float top = b.level_z(mall ? 2 : 1);
 	put_at(b, EL_CANOPY, w / 2, park - SIGN_OUT, w * SIGN_SHARE, SIGN_OUT, SIGN_H, b.add_paint(data.color(mall ? "mall_sign" : "market_sign")), top - SIGN_H * 2);
 	put_at(b, EL_CANOPY, r.f() < HALF ? CART_W : w - CART_W, park - CART_D, CART_W, CART_D, CART_H, b.add_paint(data.color("plant_metal")), 0);

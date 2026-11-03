@@ -35,11 +35,11 @@ uniform float pool_gain = 1.6;
 uniform float plate_glow = 0.55;
 uniform float pool_floor = 0.08; // pools light dark asphalt as if it were this much brighter
 
-const int M_ASPHALT = 0;
+const int M_ROAD = 0;
 const int M_PLATE = 1;
-const int M_FOOTWAY = 2;
-const int M_KERB = 3;
-const int M_GRASS = 4;
+const int M_FOOTPATH = 2;
+const int M_KERB_FACE = 3;
+const int M_LAWN = 4;
 const int M_CONCRETE = 5;
 const int M_GUTTER = 6;
 const int M_PAINT = 7;
@@ -47,7 +47,7 @@ const int M_PAVERS = 8;
 const int M_STONE = 9;
 const int M_COBBLE = 10;
 const int M_BALLAST = 11;
-const int M_SKIRT = 12;
+const int M_SHOULDER_EDGE = 12;
 
 varying flat int v_mat;
 varying vec3 v_world;
@@ -65,16 +65,7 @@ vec3 vertex_albedo(vec3 c) {
 	return OUTPUT_IS_SRGB ? c : to_linear(c);
 }
 
-float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
-}
+#include "res://render/shaders/noise2d.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -114,21 +105,21 @@ void fragment() {
 	float blotch = 1.0 + (noise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
-	if (v_mat == M_ASPHALT || v_mat == M_PLATE || v_mat == M_PAINT) {
+	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT) {
 		vec3 t = texture(asphalt_map, uv / asphalt_m).rgb;
 		vec3 asphalt_avg = max(mean_asphalt, vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / asphalt_avg * blotch;
 		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
-	} else if (v_mat == M_FOOTWAY || v_mat == M_STONE) {
+	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
 		albedo = texture(footway_map, uv.yx / footway_m).rgb * base / max(mean_footway, vec3(MEAN_FLOOR));
 		bend = (texture(footway_normal, uv.yx / footway_m).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
-	} else if (v_mat == M_KERB || v_mat == M_SKIRT || v_mat == M_GUTTER) {
-		vec2 kq = (v_mat == M_KERB) ? uv.yx : uv;
+	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE || v_mat == M_GUTTER) {
+		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
 		albedo = texture(kerb_map, kq / kerb_m).rgb * base / max(mean_kerb, vec3(MEAN_FLOOR));
 		float cell = v_mat == M_GUTTER ? gutter_joint_m : kerb_block_m;
 		float along = v_mat == M_GUTTER ? uv.y : kq.x;
@@ -136,7 +127,7 @@ void fragment() {
 		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(along / cell + 0.5) - 0.5) * cell);
 		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
-	} else if (v_mat == M_GRASS) {
+	} else if (v_mat == M_LAWN) {
 		albedo = texture(verge_map, v_world.xz / verge_m).rgb * base / max(mean_verge, vec3(MEAN_FLOOR));
 		rough = 0.95;
 	} else if (v_mat == M_COBBLE) {

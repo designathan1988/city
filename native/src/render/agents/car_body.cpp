@@ -15,9 +15,9 @@ namespace city {
 namespace {
 
 constexpr int RING = 7; // points per half ring, floor centre to roof centre
-constexpr float BOTTOM_TAPER = 0.9f, ROOF_TAPER = 0.88f, MIN_GLASS_M = 0.12f, STATION_EPS = 0.004f;
+constexpr float BOTTOM_TAPER = 0.9f, ROOF_TAPER = 0.88f, MIN_GLASS_M = 0.12f;
 constexpr float ARCH_PAD_M = 0.07f, ARCH_CENTRE = 0.96f, ARCH_STEPS = 3;
-constexpr float LAMP_W = 0.28f, LAMP_H = 0.08f, LAMP_X = 0.65f, TAIL_W = 0.26f, TAIL_H = 0.1f, TAIL_X = 0.7f;
+constexpr float CAR_LAMP_W = 0.28f, LAMP_H = 0.08f, LAMP_X = 0.65f, TAIL_W = 0.26f, TAIL_H = 0.1f, TAIL_X = 0.7f;
 constexpr float PART_DEPTH_M = 0.03f, PART_PROUD_M = 0.01f, GRILLE_X = 0.6f, GRILLE_LOW_M = 0.1f, GRILLE_H = 0.15f;
 constexpr float PLATE_W = 0.52f, PLATE_H = 0.11f, PLATE_Y_M = 0.22f;
 
@@ -92,7 +92,7 @@ AgentTag band(const Style &s, int k, float xm, float glass_h) {
 	return AgentTag::PAINT;
 }
 
-std::vector<float> stations(const Style &s, int uniform) {
+std::vector<float> stations(const Style &s, int uniform, float eps) {
 	std::vector<float> xs;
 	for (int i = 0; i <= uniform; i++) xs.push_back(-0.5f + float(i) / uniform);
 	for (float f : { s.screen[0], s.screen[1], s.rear[0], s.rear[1], s.side[0], s.side[1] })
@@ -103,7 +103,7 @@ std::vector<float> stations(const Style &s, int uniform) {
 	std::sort(xs.begin(), xs.end());
 	std::vector<float> out;
 	for (float x : xs)
-		if (out.empty() || x - out.back() > STATION_EPS) out.push_back(x);
+		if (out.empty() || x - out.back() > eps) out.push_back(x);
 	return out;
 }
 
@@ -152,7 +152,7 @@ void details(MeshBuilder &mb, const Style &s, float lamp_y, float tail_y, const 
 	float yl = bot + (top_at(s, 0.5f) - bot) * lamp_y, yt = bot + (top_at(s, -0.5f) - bot) * tail_y;
 	for (int side : { -1, 1 }) {
 		float xl = side * hf * LAMP_X, xt = side * hb * TAIL_X;
-		agent_box(mb, Vector3(xl - LAMP_W * 0.5f, yl - LAMP_H * 0.5f, zf - PART_DEPTH_M), Vector3(xl + LAMP_W * 0.5f, yl + LAMP_H * 0.5f, zf + PART_PROUD_M),
+		agent_box(mb, Vector3(xl - CAR_LAMP_W * 0.5f, yl - LAMP_H * 0.5f, zf - PART_DEPTH_M), Vector3(xl + CAR_LAMP_W * 0.5f, yl + LAMP_H * 0.5f, zf + PART_PROUD_M),
 				trim.headlamp, AgentTag::HEAD);
 		agent_box(mb, Vector3(xt - TAIL_W * 0.5f, yt - TAIL_H * 0.5f, zb - PART_PROUD_M), Vector3(xt + TAIL_W * 0.5f, yt + TAIL_H * 0.5f, zb + PART_DEPTH_M),
 				trim.tail, AgentTag::TAIL);
@@ -168,7 +168,7 @@ void details(MeshBuilder &mb, const Style &s, float lamp_y, float tail_y, const 
 
 void build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const AgentTrim &trim) {
 	Style s = read_style(car, body);
-	std::vector<float> xs = stations(s, int(body["stations"]));
+	std::vector<float> xs = stations(s, int(body["stations"]), float(body["station_eps_m"]));
 	loft(mb, s, xs, trim);
 	cap(mb, s, xs.back(), 1.f, trim);
 	cap(mb, s, xs.front(), -1.f, trim);

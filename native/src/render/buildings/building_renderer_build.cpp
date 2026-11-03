@@ -13,7 +13,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SUBS_PER_CHUNK = 2; // CHUNK / SUBCHUNK
+constexpr int CHUNK_SUBDIVISIONS = 2; // CHUNK / SUBCHUNK
 
 template <typename F>
 void each_record(const CityState &s, int64_t key, F &&fn) {
@@ -25,11 +25,11 @@ void each_record(const CityState &s, int64_t key, F &&fn) {
 }
 
 int sub_index(const Building &b, int64_t key) {
-	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * SUBS_PER_CHUNK;
-	int bz = int(std::floor(b.z / SUBCHUNK)) - key_y(key) * SUBS_PER_CHUNK;
-	bx = std::clamp(bx, 0, SUBS_PER_CHUNK - 1);
-	bz = std::clamp(bz, 0, SUBS_PER_CHUNK - 1);
-	return bz * SUBS_PER_CHUNK + bx;
+	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * CHUNK_SUBDIVISIONS;
+	int bz = int(std::floor(b.z / SUBCHUNK)) - key_y(key) * CHUNK_SUBDIVISIONS;
+	bx = std::clamp(bx, 0, CHUNK_SUBDIVISIONS - 1);
+	bz = std::clamp(bz, 0, CHUNK_SUBDIVISIONS - 1);
+	return bz * CHUNK_SUBDIVISIONS + bx;
 }
 } // namespace
 

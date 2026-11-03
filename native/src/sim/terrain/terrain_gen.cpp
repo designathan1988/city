@@ -136,7 +136,7 @@ TerrainGen::River TerrainGen::river_at(double x, double z) const {
 }
 
 double TerrainGen::base_height(double x, double z) {
-	if (flat()) return FLAT_Y;
+	if (flat()) return PLAIN_Y;
 	double h = land(x, z);
 	River r = river_at(x, z);
 	if (r.section > 0 && h > r.floor) h -= (h - r.floor) * r.section;

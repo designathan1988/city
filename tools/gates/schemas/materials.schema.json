@@ -1,0 +1,483 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "road": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "asphalt_map": {
+       "type": "string"
+      },
+      "asphalt_normal": {
+       "type": "string"
+      },
+      "footway_map": {
+       "type": "string"
+      },
+      "footway_normal": {
+       "type": "string"
+      },
+      "kerb_map": {
+       "type": "string"
+      },
+      "verge_map": {
+       "type": "string"
+      },
+      "asphalt_m": {
+       "type": "number"
+      },
+      "footway_m": {
+       "type": "number"
+      },
+      "kerb_m": {
+       "type": "number"
+      },
+      "verge_m": {
+       "type": "number"
+      },
+      "normal_strength": {
+       "type": "number"
+      },
+      "kerb_block_m": {
+       "type": "number"
+      },
+      "gutter_joint_m": {
+       "type": "number"
+      },
+      "paver_w": {
+       "type": "number"
+      },
+      "paver_h": {
+       "type": "number"
+      },
+      "cobble_per_m": {
+       "type": "number"
+      },
+      "pool_color": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "pool_sigma": {
+       "type": "number"
+      },
+      "pool_step": {
+       "type": "number"
+      },
+      "pool_gain": {
+       "type": "number"
+      },
+      "plate_glow": {
+       "type": "number"
+      },
+      "pool_floor": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "asphalt_map",
+      "asphalt_normal",
+      "footway_map",
+      "footway_normal",
+      "kerb_map",
+      "verge_map",
+      "asphalt_m",
+      "footway_m",
+      "kerb_m",
+      "verge_m",
+      "normal_strength",
+      "kerb_block_m",
+      "gutter_joint_m",
+      "paver_w",
+      "paver_h",
+      "cobble_per_m",
+      "pool_color",
+      "pool_sigma",
+      "pool_step",
+      "pool_gain",
+      "plate_glow",
+      "pool_floor"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "building": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "finish_map": {
+       "type": "string"
+      },
+      "finish_normal": {
+       "type": "string"
+      },
+      "finish_rough": {
+       "type": "string"
+      },
+      "finish_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "finish_mean": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "day_inside": {
+       "type": "number"
+      },
+      "glass_reflect": {
+       "type": "number"
+      },
+      "glass_sky": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "glass_sky_floor": {
+       "type": "number"
+      },
+      "finish_normal_k": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "finish_metal": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "wall_gain": {
+       "type": "number"
+      },
+      "lit_min": {
+       "type": "number"
+      },
+      "lit_max": {
+       "type": "number"
+      },
+      "room_depth_m": {
+       "type": "number"
+      },
+      "lamp_glow": {
+       "type": "number"
+      },
+      "window_glow": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "finish_map",
+      "finish_normal",
+      "finish_rough",
+      "finish_m",
+      "finish_mean",
+      "day_inside",
+      "glass_reflect",
+      "glass_sky",
+      "glass_sky_floor",
+      "finish_normal_k",
+      "finish_metal",
+      "wall_gain",
+      "lit_min",
+      "lit_max",
+      "room_depth_m",
+      "lamp_glow",
+      "window_glow"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "building_far": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "glass_sky": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "glass_floor": {
+       "type": "number"
+      },
+      "wall_gain": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "glass_sky",
+      "glass_floor",
+      "wall_gain"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "building_parts": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "finish_map": {
+       "type": "string"
+      },
+      "finish_normal": {
+       "type": "string"
+      },
+      "finish_rough": {
+       "type": "string"
+      },
+      "finish_m": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "finish_mean": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "finish_normal_k": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "finish_metal": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
+      },
+      "wall_gain": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "finish_map",
+      "finish_normal",
+      "finish_rough",
+      "finish_m",
+      "finish_mean",
+      "finish_normal_k",
+      "finish_metal",
+      "wall_gain"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "prop": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "glow_color": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "glow_gain": {
+       "type": "number"
+      },
+      "lit_gain": {
+       "type": "number"
+      },
+      "lit_night_gain": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "glow_color",
+      "glow_gain",
+      "lit_gain",
+      "lit_night_gain",
+      "roughness"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "agent": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "head_glow": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "tail_glow": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "head_power": {
+       "type": "number"
+      },
+      "tail_power": {
+       "type": "number"
+      },
+      "brake_power": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "head_glow",
+      "tail_glow",
+      "head_power",
+      "tail_power",
+      "brake_power"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "people": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "tint_mix": {
+       "type": "number"
+      },
+      "skin_base": {
+       "type": "number"
+      },
+      "skin_step": {
+       "type": "number"
+      },
+      "roughness_body": {
+       "type": "number"
+      },
+      "eye_color": {
+       "type": "string",
+       "pattern_prefix": "#"
+      }
+     },
+     "required": [
+      "tint_mix",
+      "skin_base",
+      "skin_step",
+      "roughness_body",
+      "eye_color"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "overlay": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "opacity": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "opacity"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  }
+ },
+ "required": [
+  "_doc",
+  "road",
+  "building",
+  "building_far",
+  "building_parts",
+  "prop",
+  "agent",
+  "people",
+  "overlay"
+ ],
+ "strict": true
+}

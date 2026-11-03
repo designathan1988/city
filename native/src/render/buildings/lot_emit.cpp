@@ -11,9 +11,9 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float LIFT = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
+constexpr float LOT_RAISE = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
 constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.05f, RAIL_LOW = 0.45f, POST = 0.12f, POST_EVERY = 2.f;
-constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR = 0.035f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
+constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
 constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f;
 constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
@@ -41,7 +41,7 @@ void LotEmit::surface(const LotElement &e) {
 	bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
 	Lin lin = paint(e, "paving");
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
-	float lift = LIFT + e.h - HALF * e.h; // one quad per element: the ground layers do the tiling
+	float lift = LOT_RAISE + e.h - HALF * e.h; // one quad per element: the ground layers do the tiling
 	shell.quad(pl.lot.at(x0, y0, ground(x0, y0) + lift), pl.lot.at(x1, y0, ground(x1, y0) + lift), pl.lot.at(x1, y1, ground(x1, y1) + lift),
 			pl.lot.at(x0, y1, ground(x0, y1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
 }
@@ -88,8 +88,8 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	if (!light) {
 		// One panel instead of a box every BAR_EVERY metres: a single instance the finish map tiles along the length.
 		float lo = base + (top - base) * RAIL_LOW, hi = top - COPING_H;
-		if (along_x) parts.box(pl.lot, x0, x1, cy - BAR / 2, cy + BAR / 2, lo, hi, m, FIN_METAL);
-		else parts.box(pl.lot, cx - BAR / 2, cx + BAR / 2, y0, y1, lo, hi, m, FIN_METAL);
+		if (along_x) parts.box(pl.lot, x0, x1, cy - pl.data->fence_bar_m / 2, cy + pl.data->fence_bar_m / 2, lo, hi, m, FIN_METAL);
+		else parts.box(pl.lot, cx - pl.data->fence_bar_m / 2, cx + pl.data->fence_bar_m / 2, y0, y1, lo, hi, m, FIN_METAL);
 	}
 }
 
@@ -97,9 +97,9 @@ void LotEmit::gate(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, g = ground(e.x, e.y);
 	Lin m = paint(e, "gate");
 	for (float x : { x0 - GATE_POST, x1 }) parts.box(pl.lot, x, x + GATE_POST, e.y - GATE_POST / 2, e.y + GATE_POST / 2, g - FOOT, g + e.h + GATE_RAIL, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - BAR / 2, e.y + BAR / 2, g + e.h - GATE_RAIL, g + e.h, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - BAR / 2, e.y + BAR / 2, g + GATE_RAIL, g + 2 * GATE_RAIL, m, FIN_METAL);
-	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) parts.box(pl.lot, x, x + BAR, e.y - BAR / 2, e.y + BAR / 2, g + GATE_RAIL, g + e.h, m, FIN_METAL);
+	parts.box(pl.lot, x0, x1, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + e.h - GATE_RAIL, g + e.h, m, FIN_METAL);
+	parts.box(pl.lot, x0, x1, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + GATE_RAIL, g + 2 * GATE_RAIL, m, FIN_METAL);
+	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) parts.box(pl.lot, x, x + pl.data->fence_bar_m, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + GATE_RAIL, g + e.h, m, FIN_METAL);
 }
 
 void LotEmit::prop(const LotElement &e) {
@@ -131,7 +131,7 @@ void LotEmit::prop(const LotElement &e) {
 			(void)down;
 			break;
 		}
-		case EL_PARKING: shell.rect(pl.lot, x0, x1, y0, y1, g + LIFT + e.h - HALF * e.h, lin, f); break;
+		case EL_PARKING: shell.rect(pl.lot, x0, x1, y0, y1, g + LOT_RAISE + e.h - HALF * e.h, lin, f); break;
 		case EL_AC:
 			shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, FIN_METAL, SKIP_E1_NEG);
 			break;

@@ -5,7 +5,7 @@ class_name HudActions
 extends Node
 
 const TOWN_MAP := 0
-const MAX_SEED := 9999
+const SEED_LIMIT := 9999
 ## Roadcraft exportMap names the file after the seed (cidade-<seed>).
 const SAVE_MAP_SLOT := "cidade-%d"
 
@@ -18,7 +18,7 @@ func menu(action: String) -> void:
 	match action:
 		"new_empty", "new_city":
 			_hud().drawer.close()
-			CityStore.new_map(TOWN_MAP, randi_range(1, MAX_SEED), action == "new_city")
+			CityStore.new_map(TOWN_MAP, randi_range(1, SEED_LIMIT), action == "new_city")
 		"save":
 			_saved(CityStore.save_game())
 		"save_map":

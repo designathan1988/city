@@ -16,7 +16,7 @@ namespace city {
 namespace {
 constexpr size_t CACHE_MAX = 8192;
 constexpr float PLINTH_MIN = 0.15f, GRID_STEP = 1.5f, SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
-constexpr int GRID_MAX = 24;
+constexpr int LOT_GRID_MAX = 24;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr uint64_t SEED_BITS = 32, ZONE_BITS = 8, FLOOR_BITS = 16, SIZE_Q = 10;
 uint64_t key_of(const Building &r) {
@@ -57,7 +57,7 @@ void BuildingBodies::place(const b40::Data &data, const CityState &s, const Buil
 	};
 	for (const b40::Volume &v : b.volumes) {
 		if (v.base != 0) continue;
-		int nx = std::min(GRID_MAX, int(std::ceil(v.w / GRID_STEP))), ny = std::min(GRID_MAX, int(std::ceil(v.d / GRID_STEP)));
+		int nx = std::min(LOT_GRID_MAX, int(std::ceil(v.w / GRID_STEP))), ny = std::min(LOT_GRID_MAX, int(std::ceil(v.d / GRID_STEP)));
 		for (int i = 0; i <= nx; i++)
 			for (int j = 0; j <= ny; j++) sample(v.x + v.w * float(i) / float(nx), v.y + v.d * float(j) / float(ny));
 	}

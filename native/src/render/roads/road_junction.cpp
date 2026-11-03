@@ -194,11 +194,24 @@ void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 	fan(e, node, ring, e.L.surface[int(best->surface)]);
 }
 
+struct EndFrame {
+	Vector3 node, d, left;
+	float l, r, kw;
+};
+
+// The shared frame of an end cap: node, outward arm direction, its left, widths and the widest kerb.
+EndFrame end_frame(const RoadEmit &e, int n, const End &en) {
+	const RoadNode &nd = e.s.roads.nodes[n];
+	Vector3 node(float(nd.x), float(nd.y), float(nd.z)), d(float(en.arm.dx), 0, float(en.arm.dz));
+	Vector3 left(d.z, 0, -d.x);
+	return { node, d, left, float(en.arm.left), float(en.arm.right), std::max(kerb_w(en, 1), kerb_w(en, -1)) };
+}
+
 void dead_end(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
-	const RoadNode &nd = e.s.roads.nodes[n];
-	Vector3 node(float(nd.x), float(nd.y), float(nd.z)), d(float(en.arm.dx), 0, float(en.arm.dz)), left(d.z, 0, -d.x);
-	float l = float(en.arm.left), r = float(en.arm.right), kw = std::max(kerb_w(en, 1), kerb_w(en, -1));
+	EndFrame f = end_frame(e, n, en);
+	const Vector3 &node = f.node, &d = f.d, &left = f.left;
+	float l = f.l, r = f.r, kw = f.kw;
 	float al = float(en.arm.asph_left), ar = float(en.arm.asph_right);
 	// sections across the end, from the right side to the left, the kerb face toward the street (+d)
 	auto pt = [&](float u, float back) { return node + left * u - d * back; };
@@ -212,10 +225,10 @@ void dead_end(const RoadEmit &e, int n, const End &en) {
 
 void bulb(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
-	const RoadNode &nd = e.s.roads.nodes[n];
-	Vector3 node(float(nd.x), float(nd.y), float(nd.z)), d(float(en.arm.dx), 0, float(en.arm.dz)), left(d.z, 0, -d.x);
+	EndFrame f = end_frame(e, n, en);
+	const Vector3 &node = f.node, &d = f.d, &left = f.left;
 	double setback = std::max(en.at, FILLET_SLACK);
-	float kw = std::max(kerb_w(en, 1), kerb_w(en, -1));
+	float kw = f.kw;
 	auto ring = [&](double r) {
 		std::vector<Vector3> pts;
 		double a_in = std::acos(std::min(1.0, setback / r));

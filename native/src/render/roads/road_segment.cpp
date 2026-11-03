@@ -11,8 +11,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float FACE_EPS = 0.004f, BIG_D = 1e9f, WALK_KEEP = 0.2f, STRAIGHT_TOL = 0.5f;
-constexpr float MIN_SPAN = 0.05f;
+constexpr float BIG_D = 1e9f, WALK_KEEP = 0.2f, STRAIGHT_TOL = 0.5f;
+constexpr float ROAD_MIN_SPAN = 0.05f;
 
 enum class Ramp : uint8_t { NONE, KERB, LOW_U0, LOW_U1 };
 
@@ -163,7 +163,7 @@ std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bo
 		if (cb && v1 - m > v0) at.push_back(v1 - m);
 	}
 	std::sort(at.begin(), at.end());
-	at.erase(std::unique(at.begin(), at.end(), [](double a, double b) { return std::fabs(a - b) < MIN_SPAN; }), at.end());
+	at.erase(std::unique(at.begin(), at.end(), [](double a, double b) { return std::fabs(a - b) < ROAD_MIN_SPAN; }), at.end());
 	std::vector<Sample> out;
 	for (double a : at) {
 		Sample sm;
@@ -211,13 +211,14 @@ void wall(const Ctx &c, size_t k, float u, float lo0, float hi0, float lo1, floa
 }
 
 void steps(const Ctx &c, const Piece &a, const Piece &b) {
+	const float eps = c.e.L.face_eps;
 	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
 		float x0, ha0, hb0, x1, ha1, hb1;
 		heights(c.e.L, a, c.sm[k].d, x0, ha0);
 		heights(c.e.L, b, c.sm[k].d, hb0, x0);
 		heights(c.e.L, a, c.sm[k + 1].d, x1, ha1);
 		heights(c.e.L, b, c.sm[k + 1].d, hb1, x1);
-		if (std::fabs(ha0 - hb0) < FACE_EPS && std::fabs(ha1 - hb1) < FACE_EPS) continue;
+		if (std::fabs(ha0 - hb0) < eps && std::fabs(ha1 - hb1) < eps) continue;
 		bool a_high = ha0 + ha1 > hb0 + hb1;
 		const Piece &hi = a_high ? a : b;
 		wall(c, k, a.u1, std::min(ha0, hb0), std::max(ha0, hb0), std::min(ha1, hb1), std::max(ha1, hb1), a_high ? 1.f : -1.f, hi.col);
@@ -241,7 +242,7 @@ void skirts_and_ends(const Ctx &c, const std::vector<Piece> &ps) {
 		for (const Piece &pc : ps) {
 			float h0, h1;
 			heights(L, pc, s.d, h0, h1);
-			if (h0 < FACE_EPS && h1 < FACE_EPS) continue;
+			if (h0 < L.face_eps && h1 < L.face_eps) continue;
 			const Vector3 p[4] = { c.at_u(end, pc.u0, 0), c.at_u(end, pc.u1, 0), c.at_u(end, pc.u1, h1), c.at_u(end, pc.u0, h0) };
 			const Vector2 uv[4] = { Vector2(pc.u0, 0), Vector2(pc.u1, 0), Vector2(pc.u1, h1), Vector2(pc.u0, h0) };
 			const Vector2 uv2[4] = { c.pool(pc.u0, s.at), c.pool(pc.u1, s.at), c.pool(pc.u1, s.at), c.pool(pc.u0, s.at) };
@@ -255,7 +256,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 	const RoadSegment &g = e.s.roads.segs[sid];
 	const Profile &p = e.s.catalog.profile(g.profile);
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
-	if (v1 - v0 < MIN_SPAN || p.edges.empty()) return;
+	if (v1 - v0 < ROAD_MIN_SPAN || p.edges.empty()) return;
 	bool ring_or_rail = p.ring || p.rail;
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
 	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb);

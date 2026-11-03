@@ -10,17 +10,17 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float FRAME_BAR = 0.045f, MULLION = 0.036f, TRANSOM_Y = 0.18f;
+constexpr float MULLION = 0.036f, TRANSOM_Y = 0.18f;
 constexpr float RAIL_TOP_Y = 0.97f, RAIL_TOP_H = 0.06f, RAIL_TOP_T = 0.05f, RAIL_BOT_Y = 0.12f, RAIL_BOT_H = 0.04f, RAIL_BOT_T = 0.03f;
 constexpr float BALUSTER = 0.015f, BALUSTER_H = 0.94f;
 constexpr int BALUSTERS_FRONT = 11, BALUSTERS_SIDE = 3;
 constexpr float LEAF_Z = -0.2f, LEAF_D = 0.6f, PANEL_W = 0.36f, PANEL_TALL = 0.5f, PANEL_SHORT = 0.3f, PANEL_Y_HI = 0.2f;
 constexpr float PANEL_Y_LO = -0.3f, PANEL_X = 0.24f, PANEL_Z = 0.25f, PANEL_D = 0.35f, HANDLE_X = 0.4f, HANDLE_Y = -0.04f;
-constexpr float HANDLE_W = 0.1f, HANDLE_H = 0.035f, HANDLE_D = 1.6f, HANDLE_Z = 0.9f, PANEL_SHADE = 0.92f;
+constexpr float DOOR_HANDLE_W = 0.1f, HANDLE_D = 1.6f, HANDLE_Z = 0.9f, PANEL_SHADE = 0.92f;
 constexpr float LOUVRE_T = 0.09f, SLAT_FILL = 0.67f, SLAT_SHADE = 0.85f;
 constexpr int SLATS = 9;
 constexpr int BRISE_FINS = 6;
-constexpr float BRISE_FIN = 0.035f, CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
+constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
 constexpr float AC_LID = 0.06f, AC_FAN_R = 0.19f, AC_FAN_X = -0.09f, AC_GRILLE = 0.6f, BRACKET = 0.04f;
 constexpr int AC_SIDES = 6;
 constexpr float HALF = 0.5f, FACE_OUT = 0.005f, TAU = 6.2831853f;
@@ -40,7 +40,7 @@ void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s,
 // Frame ring: front faces of the four bars, mullion and transom, and the ring's inner faces (no hidden backs).
 void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	float bx = FRAME_BAR * p.sx, by = FRAME_BAR * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
+	float bx = p.data->part_frame_bar_m * p.sx, by = p.data->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
 	if (2 * by > p.sy) by = p.sy / 4;
 	s.rect(m, -hx, -hx + bx, -hy, hy, hz, lin, fin);
 	s.rect(m, hx - bx, hx, -hy, hy, hz, lin, fin);
@@ -81,7 +81,7 @@ void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, hz, lin * PANEL_SHADE, fin);
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, hz, lin * PANEL_SHADE, fin);
 	}
-	unit_box(s, p, HANDLE_X - HANDLE_W / 2, HANDLE_X + HANDLE_W / 2, HANDLE_Y - HANDLE_H / 2, HANDLE_Y + HANDLE_H / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
+	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.data->part_handle_h_m / 2, HANDLE_Y + p.data->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
 }
 
 // Louvred leaf: stiles, rails and nine slats as front faces, slats tilted out at the bottom.
@@ -104,7 +104,7 @@ void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	for (int i = 0; i < BRISE_FINS; i++) {
 		float x = -HALF + (float(i) + HALF) / float(BRISE_FINS);
-		unit_box(s, p, x - BRISE_FIN / 2, x + BRISE_FIN / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
+		unit_box(s, p, x - p.data->part_brise_fin_m / 2, x + p.data->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
 	}
 }
 

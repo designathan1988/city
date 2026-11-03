@@ -3,6 +3,7 @@
 #include "api/city_core.h"
 
 #include "sim/persistence/save_format.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -117,6 +118,7 @@ Dictionary CityCore::load_city(const String &path) {
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		ok = got == bytes.size() && decode_city(*state_, bytes.data(), bytes.size(), error);
 		if (got != bytes.size()) error = "save.error.damaged";
+		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 	}
 	need_full_rebuild_ = true;
 	sim_.start(*state_);

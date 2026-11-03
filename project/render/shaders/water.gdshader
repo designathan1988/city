@@ -7,26 +7,22 @@ render_mode cull_disabled;
 uniform vec3 shallow : source_color;
 uniform vec3 deep : source_color;
 uniform vec3 sky_tint : source_color = vec3(0.435, 0.584, 0.722);
-uniform float wave_scale = 0.073;
-uniform float wave_speed = 0.035;
-uniform float ripple_strength = 0.35;
+uniform float wave_scale;
+uniform float wave_speed;
+uniform float ripple_strength;
+uniform float scroll_ax;
+uniform float scroll_ay;
+uniform float scroll_bx;
+uniform float scroll_by;
+uniform float scroll_speed;
 
-float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-}
-
-float noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
-}
+#include "res://render/shaders/noise2d.gdshaderinc"
 
 // Slope of two noise layers scrolling in different directions (finite differences).
 vec2 ripple(vec2 p, float t, float fine) {
 	if (fine <= 0.0) return vec2(0.0); // far water: the noise is below a pixel, skip the four reads
-	vec2 a = p * wave_scale + vec2(0.035, 0.021) * t * wave_speed * 30.0;
-	vec2 b = p * wave_scale * 3.1 + vec2(-0.026, 0.047) * t * wave_speed * 30.0;
+	vec2 a = p * wave_scale + vec2(scroll_ax, scroll_ay) * t * wave_speed * scroll_speed;
+	vec2 b = p * wave_scale * 3.1 + vec2(scroll_bx, scroll_by) * t * wave_speed * scroll_speed;
 	float e = 0.1;
 	float ha = noise(a), hb = noise(b);
 	vec2 d = vec2(noise(a + vec2(e, 0)) - ha, noise(a + vec2(0, e)) - ha) * 0.62 + vec2(noise(b + vec2(e, 0)) - hb, noise(b + vec2(0, e)) - hb) * 0.48;

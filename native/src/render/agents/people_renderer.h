@@ -25,6 +25,14 @@ inline Pose lerp_pose(const Pose &a, const Pose &b, float t) {
 	return p;
 }
 
+// A record's pose interpolated between the last two simulation ticks.
+inline Pose record_pose(const AgentRecord &rec, float alpha) {
+	Pose prev, cur;
+	prev.x = rec.px; prev.y = rec.py; prev.z = rec.pz; prev.fx = rec.pfx; prev.fz = rec.pfz;
+	cur.x = rec.x; cur.y = rec.y; cur.z = rec.z; cur.fx = rec.fx; cur.fz = rec.fz;
+	return lerp_pose(prev, cur, alpha);
+}
+
 // One agent instance: model +Z along the heading, +X to its left, uniform scale.
 inline void push_agent(godot::PackedFloat32Array &buf, const Pose &p, float scale, float c0, float c1, float c2, float c3) {
 	godot::Vector3 x(p.fz * scale, 0, -p.fx * scale), y(0, scale, 0), z(p.fx * scale, 0, p.fz * scale);

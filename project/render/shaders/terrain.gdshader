@@ -41,7 +41,7 @@ uniform vec3 sand : source_color;
 uniform float water_level = 0.0;
 uniform float sand_band = 2.0;
 uniform float rock_slope = 0.45;
-uniform float patch_scale = 0.004;
+uniform float patch_scale;
 uniform sampler2D land_map : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float land_layers = 9.0; // terrain-land.map: square layers stacked vertically
 uniform float dirt_layer = 8.0;

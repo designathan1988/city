@@ -1,5 +1,6 @@
 // Streams the tree chunks (see tree_renderer.h).
 #include "render/trees/tree_renderer.h"
+#include "render/chunk_jobs.h"
 
 #include <algorithm>
 #include <cmath>
@@ -98,27 +99,7 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority) {
 }
 
 void TreeRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	std::vector<Built> local;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		local.swap(done_);
-	}
-	std::sort(local.begin(), local.end(), [](const Built &a, const Built &b) { return a.priority < b.priority; });
-	for (Built &b : local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			done_.push_back(std::move(b));
-			continue;
-		}
-		bool fresh = false;
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			auto it = requested_.find(b.key);
-			fresh = it != requested_.end() && it->second == b.seq;
-			if (fresh) requested_.erase(it);
-		}
-		if (fresh) commit_one(b);
-	}
+	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
 }
 
 int TreeRenderer::pending() const {

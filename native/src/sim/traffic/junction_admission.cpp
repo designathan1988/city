@@ -38,11 +38,10 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 	// the last one on the lane, moving, frees room in the time it takes to cross
 	float room = tail ? tail->s - body(s, lane.front()) + std::min(tail->v, tp.tail_credit_cap_ms) * tp.tail_credit_s : L;
 	int inbound = 0;
-	const Junction &j = t.g.junctions[c.node];
-	for (int x = j.conn_first; x < j.conn_first + j.conn_count; x++) {
-		const Conn &o = t.g.conns[x];
-		if (o.to_ds != c.to_ds || o.to_lane != c.to_lane) continue;
-		for (int id : t.conn_vehicles[x]) {
+	for (int x = t.g.node_conn[c.node]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
+		const Conn &o = t.g.conns[size_t(x)];
+		if (!o.alive || o.to_ds != c.to_ds || o.to_lane != c.to_lane) continue;
+		for (int id : t.conn_vehicles[size_t(x)]) {
 			room -= body(s, id) + tp.exit_room_pad_m;
 			inbound++;
 		}

@@ -8,7 +8,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float AC_W = 0.72f, AC_H = 0.48f, AC_D = 0.23f, AC_DROP = 0.36f, AC_OUT = -0.195f, AC_ROOM = 0.12f, AC_MIN = 0.2f;
-constexpr float AC_SIDE = 0.36f, AC_EDGE = 0.51f, HALF = 0.5f, QUARTER = 0.75f;
+constexpr float AC_HALF_M = 0.36f, AC_EDGE = 0.51f, HALF = 0.5f, QUARTER = 0.75f;
 constexpr float DISH_OFF = 0.45f, DISH_ROOM = 0.75f, DISH_DROP = 0.25f, DISH = 0.5f, DISH_T = 0.06f;
 constexpr float POT = 0.32f, POT_H = 0.32f, POT_IN = 0.25f, POT_OUT = 0.3f, PLANT = 0.45f, PLANT_H = 0.5f;
 constexpr float CHAIR = 0.45f, CHAIR_SEAT = 0.44f, CHAIR_BACK = 0.85f, BALCONY_OUT = 1.3f, GOURMET_OUT = 1.6f;
@@ -35,7 +35,7 @@ void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Openi
 		float chance = d.ac_chance[c.use == USE_RESIDENTIAL ? 0 : c.use == USE_COMMERCIAL ? 1 : 2];
 		if (ac_bay(c.comp) && r.next() < chance && o.h0 - AC_ROOM - AC_H > AC_MIN) {
 			float t = float(r.next());
-			float a = t < HALF ? c.W / 2 : t < QUARTER ? o.a0 + AC_SIDE : o.a1 - AC_SIDE;
+			float a = t < HALF ? c.W / 2 : t < QUARTER ? o.a0 + AC_HALF_M : o.a1 - AC_HALF_M;
 			a = std::clamp(a, AC_EDGE, c.W - AC_EDGE);
 			uint32_t col = d.ac_cases[size_t(r.irange_excl(0, int(d.ac_cases.size())))];
 			part_ac(parts, Part{ &c.f, a, o.h0 - AC_DROP, AC_OUT, AC_W, AC_H, AC_D }, lin_of(col), lin_of(AC_DARK));

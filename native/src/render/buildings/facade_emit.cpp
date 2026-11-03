@@ -15,7 +15,7 @@ constexpr float EDGE_IN = 0.01f, OUT_TEST = 0.03f, HALF = 0.5f, PILASTER_K = 1.0
 constexpr float PIER_FROM = 0.35f, PIER_TO = 1.35f, GROUND_LIFT = 0.012f, BAND_OUT = 0.07f, BAND_H = 0.22f, BAND_LOW = 0.45f;
 constexpr float BAND_MID = 0.1f, LOW_TIER = 0.94f, BASE_OUT = 0.12f, BASE_H = 0.32f, SLAB_OUT = 0.03f, SLAB_H = 0.24f;
 constexpr float SLAB_SHADE = 0.86f, PLINTH_OUT = 0.12f, PLINTH_BURY = 0.8f, STEP_RISE = 0.17f, STEP_MIN = 0.255f;
-constexpr float STEP_RUN = 0.3f, STEP_FRONT = 1.5f, STEP_PAD = 0.5f, STEP_FOOT = 0.4f, DOOR_W = 1.3f;
+constexpr float FACADE_RUN_MIN = 0.3f, STEP_FRONT = 1.5f, STEP_PAD = 0.5f, STEP_FOOT = 0.4f, DOOR_W = 1.3f;
 constexpr int MAX_STEPS = 40;
 constexpr uint32_t HV = 0x27d4eb2d, HL = 0x165667b1, HS = 0x3c6ef372, HI = 0x85ebca6b, HX = 0x2c1b3c6d, HY = 0x297a2d39;
 constexpr int HASH_SH1 = 15, HASH_SH2 = 13, LEVEL_OFF = 7, SIDE_OFF = 3, INDEX_OFF = 11, BAY_Q = 7;
@@ -72,7 +72,7 @@ void steps(Shell &s, const Placed &pl, const BayCtx &c) {
 	Lin stone = paint_lin(pl.data->color("plinth"));
 	for (int j = 1; j <= n; j++) {
 		float top = -rise * float(j - 1) / float(n) + GROUND_LIFT;
-		s.box(c.f, am - w / 2, am + w / 2, -rise - STEP_FOOT, top, 0, float(j + 1) * STEP_RUN, stone, FIN_STONE, SKIP_E2_NEG | SKIP_E1_NEG);
+		s.box(c.f, am - w / 2, am + w / 2, -rise - STEP_FOOT, top, 0, float(j + 1) * FACADE_RUN_MIN, stone, FIN_STONE, SKIP_E2_NEG | SKIP_E1_NEG);
 	}
 }
 

@@ -13,6 +13,9 @@ namespace city {
 
 constexpr int MAX_LANES = 4; // lanes per direction (the widest one-way profile has 4)
 constexpr int CONN_STEPS = 8; // arc-length table of a connector curve
+constexpr int NODE_ARMS_MAX = 8; // arms a node may have in the crosswalk answer cache
+constexpr int CROSS_CACHE_KINDS = 2; // walk_ok and cars_on_crossing are cached apart
+constexpr uint32_t STAMP_NONE = 0xFFFFFFFFu; // crosswalk cache: no step answered yet
 constexpr uint64_t TRAFFIC_SEED = 12345; // Roadcraft traffic.ts: Rng(12345)
 
 enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
@@ -36,12 +39,16 @@ struct DirSeg {
 };
 
 // A lane connector through a node: quadratic Bézier from the end of an in-lane to the start of an out-lane.
+// Connections live in one pool with a free list; each node and each lane of origin keeps a linked list of them
+// (Roadcraft lanes.ts nodeConn/laneConn), so a node rebuild touches only its own connections.
 struct Conn {
 	int node = -1, from_ds = -1, from_lane = 0, to_ds = -1, to_lane = 0;
 	Turn turn = Turn::STRAIGHT;
 	float x0 = 0, z0 = 0, cx = 0, cz = 0, x1 = 0, z1 = 0, y0 = 0, y1 = 0;
 	float table[CONN_STEPS + 1] = {};
 	float len = 0;
+	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
+	bool alive = false;
 	std::vector<int> conflicts;
 	std::vector<float> conflict_at; // per conflict: metres along THAT connector after which its vehicles are clear
 };
@@ -50,7 +57,6 @@ struct Junction {
 	Control ctl = Control::NONE;
 	std::vector<float> green, amber; // per stage, seconds
 	float cycle = 0, offset = 0;
-	int conn_first = 0, conn_count = 0; // its connectors are conns[conn_first .. conn_first + conn_count)
 	int degree = 0; // arms with lanes
 };
 
@@ -66,14 +72,30 @@ struct RouteRef {
 struct LaneGraph {
 	int version = -1; // RoadNetwork::version it was built from
 	std::vector<DirSeg> ds;
-	std::vector<Conn> conns;
-	std::vector<std::vector<int>> ds_out; // connectors leaving each ds
+	std::vector<Conn> conns; // pool: dead entries are on free_conns
+	std::vector<int> free_conns;
+	std::vector<int> node_conn; // per node: first connection of its list (-1)
+	std::vector<int> lane_conn; // per ds * MAX_LANES + lane: first connection leaving it (-1)
 	std::vector<Junction> junctions; // per node
 	double lane_metres = 0;
 };
 
+// Walks the connections leaving `ds` (all its lanes), skipping dead pool entries.
+template <typename F>
+void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
+	for (int lane = 0; lane < MAX_LANES; lane++) {
+		for (int c = g.lane_conn[size_t(ds) * MAX_LANES + lane]; c >= 0; c = g.conns[c].next_from)
+			if (g.conns[c].alive) fn(c);
+	}
+}
+
 struct Vehicle {
 	bool alive = false, brake = false, placed = false; // placed: has a pose (prev is valid)
+	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
+	int micro_idx = -1; // index in TrafficState::micro_list
+	int ml = -1, mnext = -1, mprev = -1; // meso queue of its lane (doubly linked, in order of entry)
+	double t_in = 0, t_exit = 0; // when it joined its lane in meso and when its event is due
+	float s0 = 0; // lane position when it joined meso (materialize interpolates from it)
 	VehicleType type = VehicleType::SEDAN;
 	uint8_t paint = 0;
 	int ds = -1, lane = 0, conn = -1;
@@ -106,6 +128,7 @@ struct Pedestrian {
 	uint32_t look = 0; // render hash: clothes, skin, hair
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
+	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	RouteRef route; // nodes; route[ri] is the node it walks toward, in TrafficState::ped_pool
 	int ri = 0;
 	Waypoint ways[MAX_WAYS];
@@ -129,6 +152,28 @@ struct TrafficState {
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
+	// Far (meso) model, Roadcraft traffic/meso.ts: one queue per lane in order of entry and one event per vehicle at
+	// the end of its lane; lane_last_exit spaces the queues; micro_list holds the near vehicles only.
+	std::vector<int> meso_head, meso_tail;
+	std::vector<uint16_t> meso_count;
+	std::vector<double> lane_last_exit;
+	std::vector<double> ev_t; // heap of events (time, vehicle)
+	std::vector<int> ev_v;
+	size_t ev_n = 0;
+	std::vector<int> micro_list;
+	// Lanes and connectors that hold a near vehicle (step_vehicles walks these, never the whole map).
+	std::vector<int> active_lanes, active_conns;
+	std::vector<uint8_t> lane_active, conn_active;
+	std::vector<int> step_lanes, step_conns; // per-step snapshot of the active lists
+	// Micro window (Roadcraft traffic.ts checkWindow/materialize): last camera position and time, sidewalk metres and
+	// the walkable segments inside ped_window_m.
+	float win_x = 0, win_z = 0;
+	double win_t = -double(BIG);
+	double ped_metres = 0;
+	std::vector<int> ped_segs;
+	// Crosswalk answers per (node, arm) for the current step (ped_crossing.cpp).
+	std::vector<uint32_t> cross_stamp;
+	std::vector<uint8_t> cross_walk, cross_cars;
 	// Anti-gridlock bookkeeping (Roadcraft traffic/junctions.ts, micro.ts): who committed to each connector and when,
 	// who holds the next free spot of a full lane (and when it last asked), when each node last let someone in and
 	// when it may release the next vehicle of a jam.

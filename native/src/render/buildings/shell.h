@@ -29,8 +29,10 @@ constexpr uint8_t SKIP_NONE = 0, SKIP_E2_NEG = 1, SKIP_E2_POS = 2, SKIP_E0_NEG =
 
 // One box of an instanced shell drawn as a unit-cube MultiMesh instance: the three basis columns already scaled by the
 // box sides (axis x size), the centre, the shaded sRGB colour, its finish and the bar width (second largest side).
+constexpr int BOX_BASIS_FLOATS = 9; // three basis columns of three floats
+
 struct BoxInstance {
-	float basis[9] = {};
+	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
 	uint32_t color = 0xffffffff;
 	int8_t fin = -1;

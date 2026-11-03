@@ -2,6 +2,9 @@
 // "road" material; the pieces are in road_segment.cpp, road_junction.cpp and road_markings.cpp.
 #include "render/roads/road_renderer.h"
 
+#include "render/owned_segments.h"
+#include "render/chunk_jobs.h"
+
 #include "render/roads/road_mesh.h"
 
 #include <algorithm>
@@ -37,10 +40,7 @@ RoadRenderer::Built RoadRenderer::build_cpu(const CityState &s, int64_t key) con
 	out.key = key;
 	RoadEmit e{ s, look_, out.mb };
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.roads.for_segments_near(x0 - CHUNK, z0 - CHUNK, x0 + 2 * CHUNK, z0 + 2 * CHUNK, [&](int sid) {
-		double mx, mz;
-		s.roads.segs[sid].q.at(0.5, mx, mz);
-		if (chunk_of(float(mx), float(mz)) != key) return;
+	each_owned_segment(s, key, [&](int sid) {
 		emit_segment(e, sid);
 		emit_markings(e, sid);
 	});
@@ -82,27 +82,7 @@ void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float 
 }
 
 void RoadRenderer::commit(const std::chrono::steady_clock::time_point &until) {
-	std::vector<Built> local;
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		local.swap(done_);
-	}
-	std::sort(local.begin(), local.end(), [](const Built &a, const Built &b) { return a.priority < b.priority; });
-	for (Built &b : local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			done_.push_back(std::move(b));
-			continue;
-		}
-		bool fresh = false;
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			auto it = requested_.find(b.key);
-			fresh = it != requested_.end() && it->second == b.seq;
-			if (fresh) requested_.erase(it);
-		}
-		if (fresh) commit_one(b);
-	}
+	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { commit_one(b); });
 }
 
 int RoadRenderer::pending() const {

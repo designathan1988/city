@@ -1,6 +1,7 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
 
+#include "core/math.h"
 #include "core/units.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -15,9 +16,9 @@ namespace city {
 
 namespace {
 constexpr float RAY_MAX_M = 30000.f;
+constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long count as waiting
-constexpr float MIN_RAY_DIRECTION = 1e-6f; // below this the ray is vertical or degenerate
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 } // namespace
 
@@ -98,7 +99,7 @@ Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	if (!state_->ready) return d;
 	V2 d2(dir.x, dir.z);
 	float l2 = d2.len();
-	if (l2 < MIN_RAY_DIRECTION && dir.y >= 0) return d;
+if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	float hx, hy, hz;
 	if (!state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz)) return d;
 	d["hit"] = true;
@@ -232,7 +233,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["drawn_vehicles"] = render_.drawn_vehicles();
 	d["drawn_people"] = render_.drawn_people();
 	d["lane_km"] = t.g.lane_metres / METRES_PER_KM;
-	d["connectors"] = int(t.g.conns.size());
+	// the pool keeps freed entries: the probe reports the connections that exist
+	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
 	Array poses, dirs, held, jams, jam_info, behind;
@@ -242,7 +244,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	behind.fill(0);
 	for (int id = 0; id < int(t.vehicles.size()); id++) {
 		const Vehicle &v = t.vehicles[id];
-		if (!v.alive) continue;
+		if (!v.alive || !v.micro) continue; // the probe reads the near model; far vehicles are queues and events
 		if (v.wait > WAITING_S) {
 			int r = int(traffic::hold_reason(*state_, id));
 			held[r] = int(held[r]) + 1;

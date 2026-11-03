@@ -5,7 +5,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float GROUND_LO = 2.8f, GROUND_HI = 3.3f, STOREY_LO = 2.8f, STOREY_HI = 3.1f, HALF = 0.5f;
+constexpr float STOREY_MIN_H = 2.8f, GROUND_HI = 3.3f, STOREY_LO = 2.8f, STOREY_HI = 3.1f, HALF = 0.5f;
 constexpr int PALETTES = 7;
 constexpr float WIDE_LOT = 10.f, BUNGALOW_W = 12.f, BUNGALOW_D = 14.f;
 constexpr float ELL_WING_SHARE = 0.45f, ELL_WING_LO = 3.5f, ELL_WING_HI = 5.f, ELL_STEP_SHARE = 0.35f, ELL_STEP_LO = 2.f;
@@ -97,7 +97,7 @@ void house(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	paints_of(data, b.style, r, wall, trim);
 	Paint roof_paint = roof_of(r, b.style == STYLE_MODERN_HOUSE ? data.roof_tiles : clay_of(data));
 	b.palette = r.irange(0, PALETTES);
-	b.ground_h = mixr(r, GROUND_LO, GROUND_HI);
+	b.ground_h = mixr(r, STOREY_MIN_H, GROUND_HI);
 	b.storey_h = mixr(r, STOREY_LO, STOREY_HI);
 	look(b, wall, roof_paint, trim);
 	b.ground = GROUND_HOUSE;

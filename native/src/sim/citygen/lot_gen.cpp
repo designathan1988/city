@@ -30,8 +30,8 @@ std::vector<Lot> build_lots(const LotGraph &g, const std::vector<Profile> &profi
 }
 
 LotStrips::LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, const LotGround &ground, double x0, double z0) :
-		g_(g), prof_(profiles), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - LOT_MARGIN), az_(z0 - LOT_MARGIN),
-		W_(int(std::ceil((LOT_CELL + LOT_MARGIN * 2) / RES))) {
+		g_(g), prof_(profiles), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN),
+		W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))) {
 	grid_.assign(size_t(W_) * W_, 0);
 	for (int s = 0; s < g.segs(); s++) {
 		tables_.push_back(arc_table(g.quad[s], ARC_STEPS));

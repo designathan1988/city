@@ -50,6 +50,9 @@ struct Data {
 	OpeningDef openings[BAY_COUNT];
 	float ac_chance[3] = {}, dish_chance = 0, lit_share[2] = {};
 	float parts_share = 0, near_share = 0; // of render.building_detail_end_m
+	float part_frame_bar_m = 0, part_handle_h_m = 0, part_brise_fin_m = 0; // part_models.cpp
+	float fence_bar_m = 0; // lot_emit.cpp
+	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 

@@ -20,7 +20,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
-constexpr float WALL_UP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
+constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
 constexpr int SH1 = 15, SH2 = 13;
 constexpr double U32 = 4294967296.0;
@@ -74,7 +74,7 @@ void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin
 	if (n.length_squared() < DEGENERATE) return;
 	n = n.normalized();
 	if (n.dot(out) < 0) n = -n;
-	bool wall = std::abs(n.y) < WALL_UP;
+	bool wall = std::abs(n.y) < SHELL_WALL_TOP;
 	Vector2 t2(float(fin + 1), 0);
 	int base = int(pos.size());
 	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], lin, wall, kind), Vector2(), t2);
@@ -111,12 +111,13 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		Vector3 e0 = f.e0 * m0, e1 = f.e1 * m1, e2 = f.e2 * m2;
 		Color c = shaded(centre, lin, false, SK_SHELL);
 		auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + 0.5f); };
+		constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8;
 		BoxInstance inst;
 		const float cols[3][3] = { { e0.x, e0.y, e0.z }, { e1.x, e1.y, e1.z }, { e2.x, e2.y, e2.z } };
 		for (int i = 0; i < 3; i++)
 			for (int k = 0; k < 3; k++) inst.basis[i * 3 + k] = cols[i][k];
 		inst.origin[0] = centre.x; inst.origin[1] = centre.y; inst.origin[2] = centre.z;
-		inst.color = byte(c.r) << 24 | byte(c.g) << 16 | byte(c.b) << 8 | byte(c.a);
+		inst.color = byte(c.r) << RGBA_R_SHIFT | byte(c.g) << RGBA_G_SHIFT | byte(c.b) << RGBA_B_SHIFT | byte(c.a);
 		inst.fin = fin;
 		inst.thick = m0 + m1 + m2 - lo - hi; // the second largest side: the bar's width
 		boxes.push_back(inst);

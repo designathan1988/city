@@ -146,6 +146,12 @@ bool Data::load(const Dictionary &t, PackedStringArray &errors) {
 	parts_share = float(at(lod, "parts_share"));
 	near_share = float(at(lod, "near_share"));
 	far_fov_deg = float(at(lod, "fov_deg"));
+	Dictionary parts = at(t, "parts");
+	part_frame_bar_m = float(at(parts, "frame_bar_m"));
+	part_handle_h_m = float(at(parts, "handle_h_m"));
+	part_brise_fin_m = float(at(parts, "brise_fin_m"));
+	fence_bar_m = float(at(at(t, "lot"), "fence_bar_m"));
+	air_handler_per_area = float(at(at(t, "roof"), "air_handler_per_area"));
 	Array bands = at(lod, "part_bands");
 	for (int i = 0; i < bands.size(); i++) {
 		Dictionary b = bands[i];

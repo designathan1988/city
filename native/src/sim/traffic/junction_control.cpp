@@ -131,31 +131,35 @@ bool conflict_busy(const CityState &s, const Conn &c, size_t k) {
 
 } // namespace
 
-void build_junctions(CityState &s) {
+void build_junction(CityState &s, int n) {
 	LaneGraph &g = s.traffic.g;
-	g.junctions.assign(s.roads.nodes.size(), Junction());
-	for (int c = 0; c < int(g.conns.size()); c++) {
-		Junction &j = g.junctions[g.conns[c].node];
-		if (j.conn_count == 0) j.conn_first = c;
-		j.conn_count++;
-	}
-	for (int n = 0; n < int(s.roads.nodes.size()); n++) {
-		if (!s.roads.nodes[n].alive) continue;
-		std::vector<Arm> arms = arms_of(s, n);
-		Junction &j = g.junctions[n];
-		j.degree = int(arms.size());
-		if (crosswalk_node(s, n))
-			for (const Arm &a : arms)
-				if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_SETBACK_SHARE);
-		j.ctl = decide(s.roads.nodes[n], arms, s.catalog.traffic);
-		if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
-		if (j.ctl != Control::PRIORITY) continue;
-		std::vector<int> order;
-		for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
-		std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
-		for (size_t k = 0; k < order.size(); k++)
-			if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
-	}
+	if (n < 0 || n >= int(s.roads.nodes.size())) return;
+	if (n >= int(g.junctions.size())) g.junctions.resize(size_t(n) + 1);
+	Junction &j = g.junctions[size_t(n)];
+	j = Junction();
+	if (n >= int(g.node_conn.size())) g.node_conn.resize(size_t(n) + 1, -1);
+	std::vector<Arm> arms = arms_of(s, n);
+	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
+	for (const Arm &a : arms)
+		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; }
+	j.degree = int(arms.size());
+	if (crosswalk_node(s, n))
+		for (const Arm &a : arms)
+			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_SETBACK_SHARE);
+	j.ctl = decide(s.roads.nodes[n], arms, s.catalog.traffic);
+	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
+	if (j.ctl != Control::PRIORITY) return;
+	std::vector<int> order;
+	for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
+	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
+	for (size_t k = 0; k < order.size(); k++)
+		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
+}
+
+void build_junctions(CityState &s) {
+	s.traffic.g.junctions.assign(s.roads.nodes.size(), Junction());
+	for (int n = 0; n < int(s.roads.nodes.size()); n++)
+		if (s.roads.nodes[n].alive) build_junction(s, n);
 }
 
 namespace {
@@ -188,6 +192,22 @@ Light light_for(const CityState &s, int ds) {
 	const TrafficState &t = s.traffic;
 	if (ds >= 0 && size_t(ds) < t.light_now.size()) return Light(t.light_now[size_t(ds)]);
 	return compute_light(s, ds);
+}
+
+double next_green(const CityState &s, int ds, double now) {
+	const TrafficState &t = s.traffic;
+	if (ds < 0 || ds >= int(t.g.ds.size())) return now;
+	const DirSeg &d = t.g.ds[size_t(ds)];
+	if (d.to < 0 || d.to >= int(t.g.junctions.size())) return now;
+	const Junction &j = t.g.junctions[size_t(d.to)];
+	if (j.ctl != Control::SIGNAL || d.stage < 0 || d.stage >= int(j.green.size()) || j.cycle <= 0) return now;
+	double x = std::fmod(now + j.offset, double(j.cycle));
+	if (x < 0) x += double(j.cycle);
+	double start = 0;
+	for (int k = 0; k < d.stage && k < int(j.green.size()); k++) start += j.green[k] + j.amber[k] + s.catalog.traffic.signal_all_red_s;
+	if (x >= start && x < start + j.green[d.stage]) return now;
+	if (x < start) return now + (start - x);
+	return now + double(j.cycle) - (x - start);
 }
 
 bool may_enter(const CityState &s, int vid, int ci, float dist) {
@@ -255,10 +275,12 @@ int lane_head(const CityState &s, int vid) {
 int pick_connector(const CityState &s, const Vehicle &v) {
 	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
 	const LaneGraph &g = s.traffic.g;
+	const size_t key = size_t(v.ds) * MAX_LANES + v.lane;
+	if (key >= g.lane_conn.size()) return -1;
 	int next = route_at(s.traffic.route_pool, v.route, v.ri + 1), best = -1, bd = MAX_LANES * 2;
-	for (int ci : g.ds_out[v.ds]) {
-		const Conn &c = g.conns[ci];
-		if (c.to_ds != next) continue;
+	for (int ci = g.lane_conn[key]; ci >= 0; ci = g.conns[size_t(ci)].next_from) {
+		const Conn &c = g.conns[size_t(ci)];
+		if (!c.alive || c.to_ds != next) continue;
 		int d = std::abs(c.from_lane - v.lane);
 		if (d < bd) { bd = d; best = ci; }
 	}

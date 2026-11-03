@@ -50,7 +50,7 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 // Grade line (Roadcraft roads/construction/execute.ts): a straight generated street whose linear height strays from
 // the smoothed ground by more than GRADE_TOL_M is halved at a node on the ground, up to GRADE_DEPTH times, so the
 // polyline of node heights follows the land; what is left is evened out by the terrain modifiers below.
-constexpr double GRADE_STEP_M = 6, GRADE_TOL_M = 0.8, GRADE_MIN_PIECE_M = 24, GROUND_PROBE_M = 5;
+constexpr double GRADE_SAMPLE_M = 6, GRADE_TOL_M = 0.8, GRADE_MIN_PIECE_M = 24, GROUND_PROBE_M = 5;
 constexpr int GRADE_DEPTH = 3;
 // Terrain corridors: sampled every CONFORM_STEP_M along the curve, flat over the road plus FLAT_PAD_SAMPLES height
 // samples (so no terrain triangle straddles a kerb), embankment / cut slopes up to CONFORM_MAX_RUN_M long.
@@ -69,7 +69,7 @@ void split_by_grade(CityState &s, int sid, int depth, std::vector<int> &touched)
 	const RoadSegment &g = s.roads.segs[sid];
 	if (depth >= GRADE_DEPTH || g.len < 2 * GRADE_MIN_PIECE_M) return;
 	double worst = 0;
-	for (double at = GRADE_STEP_M; at < g.len; at += GRADE_STEP_M) {
+	for (double at = GRADE_SAMPLE_M; at < g.len; at += GRADE_SAMPLE_M) {
 		double x, z;
 		g.q.at(t_at_length(g.table, at), x, z);
 		worst = std::max(worst, std::fabs(smooth_ground(s.terrain, x, z) - s.roads.seg_y(sid, at)));

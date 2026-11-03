@@ -19,7 +19,7 @@ struct PlantDef {
 	int max;
 	float per_area; // 0 = drawn by chance
 };
-constexpr PlantDef PLANT[PLANT_KINDS] = { { 2.6f, 2.6f, 2.5f, 1, 0 }, { 3.2f, 2.4f, 2.2f, 1, 0 }, { 1.9f, 1.9f, 1.5f, 2, 0 }, { 0.9f, 0.9f, 0.45f, 1, 0 }, { 3.4f, 1.8f, 1.6f, 2, 260 }, { 0.9f, 0.8f, 0.85f, 6, 30 }, { 4.6f, 3.4f, 0.4f, 3, 0 }, { 0.6f, 0.6f, 3.5f, 3, 0 }, { 0.9f, 0.7f, 1.2f, 2, 180 }, { 1.2f, 1.2f, 0.25f, 6, 0 }, { 0.7f, 0.7f, 0.9f, 5, 70 }, { 0.9f, 0.9f, 4.5f, 1, 0 } };
+constexpr PlantDef PLANT[PLANT_KINDS] = { { 2.6f, 2.6f, 2.5f, 1, 0 }, { 3.2f, 2.4f, 2.2f, 1, 0 }, { 1.9f, 1.9f, 1.5f, 2, 0 }, { 0.9f, 0.9f, 0.45f, 1, 0 }, { 3.4f, 1.8f, 1.6f, 2, 0 }, { 0.9f, 0.8f, 0.85f, 6, 30 }, { 4.6f, 3.4f, 0.4f, 3, 0 }, { 0.6f, 0.6f, 3.5f, 3, 0 }, { 0.9f, 0.7f, 1.2f, 2, 180 }, { 1.2f, 1.2f, 0.25f, 6, 0 }, { 0.7f, 0.7f, 0.9f, 5, 70 }, { 0.9f, 0.9f, 4.5f, 1, 0 } };
 // Chance by use (residential, commercial, industrial) for the kinds that use one.
 constexpr float USE_CHANCE[PLANT_KINDS][3] = { {}, { 0.7f, 0.5f, 0.2f }, { 0.75f, 0.55f, 0.35f }, {}, { 0.1f, 0.8f, 0.5f }, { 0.5f, 0.8f, 0.35f }, { 0.3f, 0.2f, 0.45f }, { 0.45f, 0.25f, 0.1f }, { 0.6f, 0.3f, 0.05f }, { 0.15f, 0.25f, 0.7f }, { 0.1f, 0.6f, 0.75f }, { 0, 0, 0.3f } };
 constexpr float FAN_AT[] = { 0.25f, 0.75f }, PANEL_GAP = 0.1f;
@@ -174,10 +174,11 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;
 	for (int k = 0; k < PLANT_KINDS; k++) {
 		const PlantDef &d = PLANT[k];
+		float per_area = k == AIR_HANDLER ? pl.data->air_handler_per_area : d.per_area;
 		float p = std::min(1.f, chance(PlantKind(k), use, v.top(), area, age, !b.cores.empty()));
-		int count = d.per_area > 0 ? std::min(PER_AREA_CAP * d.max, int(std::round(area / d.per_area * p + ROUND_JITTER * float(r.next())))) : 0;
-		for (int n = 0; d.per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {
-			if (d.per_area <= 0) p *= DECAY;
+		int count = per_area > 0 ? std::min(PER_AREA_CAP * d.max, int(std::round(area / per_area * p + ROUND_JITTER * float(r.next())))) : 0;
+		for (int n = 0; per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {
+			if (per_area <= 0) p *= DECAY;
 			int variant = int(VARIANTS * r.next());
 			bool small = pe.shell.coarse && d.h < COARSE_MIN_H;
 			bool turn = k != SOLAR && r.next() < TURN;

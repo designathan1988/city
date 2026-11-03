@@ -35,6 +35,7 @@ void EditEntry::grow(double x0, double z0, double x1, double z1) {
 
 int j_add_node(CityState &s, double x, double z, double y) {
 	int id = s.roads.add_node(x, z, y);
+	s.log.net_node(id);
 	if (s.history.recording) {
 		record(s, OpKind::ADD_NODE, id).node = s.roads.nodes[id];
 		grow_point(s, x, z, 0);
@@ -50,6 +51,7 @@ void j_remove_node_if_orphan(CityState &s, int n) {
 		grow_point(s, nd.x, nd.z, 0);
 	}
 	s.roads.remove_node_if_orphan(n);
+	s.log.net_node(n);
 }
 
 void j_set_plain(CityState &s, int n, bool plain) {
@@ -61,10 +63,14 @@ void j_set_plain(CityState &s, int n, bool plain) {
 		op.to = plain ? 1 : 0;
 	}
 	nd.plain = plain;
+	s.log.net_node(n);
 }
 
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
 	int id = s.roads.add_segment(a, b, q, profile, zl, zr, flags);
+	s.log.net_seg(id);
+	s.log.net_node(a);
+	s.log.net_node(b);
 	if (s.history.recording) {
 		record(s, OpKind::ADD_SEG, id).seg = s.roads.segs[id];
 		grow_seg(s, s.roads.segs[id]);
@@ -79,6 +85,9 @@ void j_remove_segment(CityState &s, int seg) {
 		record(s, OpKind::REM_SEG, seg).seg = g;
 		grow_seg(s, g);
 	}
+	s.log.net_seg_removed(seg);
+	s.log.net_node(g.a);
+	s.log.net_node(g.b);
 	s.roads.remove_segment(seg);
 }
 
@@ -92,6 +101,9 @@ void j_set_profile(CityState &s, int seg, int profile) {
 		grow_seg(s, g);
 	}
 	s.roads.set_profile(seg, profile);
+	s.log.net_seg(seg);
+	s.log.net_node(g.a);
+	s.log.net_node(g.b);
 	if (s.history.recording) grow_seg(s, s.roads.segs[seg]);
 }
 

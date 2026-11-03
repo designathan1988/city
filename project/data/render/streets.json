@@ -35,6 +35,7 @@
   "skirt": 0.7
  },
  "sample_step_m": 3,
+ "face_eps_m": 0.004,
  "markings": {
   "white": "#ebebe0",
   "yellow": "#f2b826",

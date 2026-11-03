@@ -5,6 +5,7 @@
 // machine rooms.
 #include "render/buildings/facade_bay.h"
 #include "render/buildings/b40_gen.h"
+#include "render/buildings/roof_util.h"
 
 using namespace godot;
 
@@ -17,8 +18,6 @@ constexpr int FLAG_SHOP = 1, FLAG_CURTAIN = 2, FLAG_BLANK = 4;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
 
-bool flat(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
-
 float window_code(const Placed &pl, const Volume &v, int k, int side, float W, float H) {
 	BayCtx c;
 	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
@@ -30,16 +29,10 @@ float window_code(const Placed &pl, const Volume &v, int k, int side, float W, f
 	return q(o.w / W) + Q_STRIDE * q(o.h0 / H) + Q_STRIDE * Q_STRIDE * q(o.h1 / H) + FLAG_STRIDE * float(flags);
 }
 
-bool on_top(const Body &b, const Volume &v) {
-	for (const Volume &o : b.volumes)
-		if (&o != &v && o.base == v.top() && o.x < v.x + v.w && o.x + o.w > v.x && o.y < v.y + v.d && o.y + o.d > v.y) return true;
-	return false;
-}
-
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
-	bool parapet = roofs && flat(v.roof) && v.roof != ROOF_TERRACE && !on_top(b, v);
+	bool parapet = roofs && roof_flat(v.roof) && v.roof != ROOF_TERRACE && !covered_by_above(b, v);
 	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : PARAPET_H;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
@@ -76,8 +69,8 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 void roof(Shell &s, const Placed &pl, const Volume &v) {
 	const Body &b = *pl.b;
 	float eaves = b.level_z(v.top());
-	if (!flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
-	Paint rp = v.roof == ROOF_TERRACE || on_top(b, v) ? pl.data->color("terrace")
+	if (!roof_flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
+	Paint rp = v.roof == ROOF_TERRACE || covered_by_above(b, v) ? pl.data->color("terrace")
 			: v.roof_paint >= 0 ? b.paints[size_t(v.roof_paint)]
 			: pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
 	Lin lin = paint_lin(rp);
@@ -91,7 +84,7 @@ void roof(Shell &s, const Placed &pl, const Volume &v) {
 	for (const Core &cr : b.cores) {
 		if (pl.lean) break;
 		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
-		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || on_top(b, v)) continue;
+		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
 		const Paint &wp = b.wall_of(v);
 		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}

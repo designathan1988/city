@@ -11,7 +11,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float MIN_SIDE = 4.f, DECK_IN = 0.8f, DECK_SHARE = 0.55f, DECK_SPAN = 0.2f, DECK_T = 0.06f, POT_IN = 0.7f, POT_R = 0.28f;
+constexpr float TERRACE_MIN_WIDTH = 4.f, DECK_IN = 0.8f, DECK_SHARE = 0.55f, DECK_SPAN = 0.2f, DECK_T = 0.06f, POT_IN = 0.7f, POT_R = 0.28f;
 constexpr float POT_H = 0.5f, POT_EVERY = 1.8f, POT_SPAN = 1.6f, SOIL = 0.04f, TABLE = 0.8f, TABLE_LO = 0.7f, TABLE_T = 0.05f;
 constexpr float TABLE_EVERY = 3.5f, POLE = 0.08f, POLE_TOP = 2.3f, PARASOL = 2.2f, PARASOL_T = 0.1f, STOOL = 0.4f, STOOL_H = 0.45f;
 constexpr float STOOL_OFF = 0.7f, TABLE_SHARE = 0.3f, TABLE_SPAN = 0.7f, LOUNGE_L = 1.8f, LOUNGE_W = 0.65f, LOUNGE_H = 0.35f;
@@ -28,7 +28,7 @@ float seed_k(uint32_t id, int vol, int k) {
 } // namespace
 
 void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float z) {
-	if (!v.outline.empty() || v.w < MIN_SIDE || v.d < MIN_SIDE) return;
+	if (!v.outline.empty() || v.w < TERRACE_MIN_WIDTH || v.d < TERRACE_MIN_WIDTH) return;
 	const Data &data = *pl.data;
 	const Basis &L = pl.lot;
 	auto sd = [&](int k) { return seed_k(pl.id, vol, k); };

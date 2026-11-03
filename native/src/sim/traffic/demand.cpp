@@ -37,7 +37,10 @@ int pick_ds(CityState &s, const float *w) {
 	for (int k = 0; k < PICK_TRIES && n > 0; k++) {
 		int ds = int(t.rng.next() % uint32_t(n));
 		if (!t.g.ds[ds].ok) ds ^= 1;
-		if (!t.g.ds[ds].ok || t.g.ds_out[ds].empty()) continue;
+		if (!t.g.ds[ds].ok) continue;
+		bool leaves = false;
+		each_conn_from(t.g, ds, [&](int) { leaves = true; });
+		if (!leaves) continue;
 		last = ds;
 		if (t.rng.f() < seg_weight(s, ds >> 1, w)) return ds;
 	}
@@ -106,14 +109,14 @@ bool spawn_one(CityState &s, int &routes) {
 	const DirSeg &d = t.g.ds[from];
 	int lane = int(t.rng.next() % uint32_t(d.lanes));
 	float at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
-	int key = from * MAX_LANES + lane;
+	const int key = from * MAX_LANES + lane;
 	if (at < vc.length + p.mouth_clear_m || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
-	if (float(t.lane_vehicles[key].size() + 1) > d.len / p.slot_m) return false; // the lane is full
+	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	routes++;
 	std::vector<int> route;
 	if (!find_route(s, from, to, route) || route.size() < 2) return false;
-	int id = alloc_vehicle(t);
-	Vehicle &v = t.vehicles[id];
+	const int id = alloc_vehicle(t);
+	Vehicle &v = t.vehicles[size_t(id)];
 	v = Vehicle();
 	v.alive = true;
 	v.type = type;
@@ -126,10 +129,19 @@ bool spawn_one(CityState &s, int &routes) {
 	v.v = d.speed * v.vf * START_SPEED_SHARE;
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
-	auto &list = t.lane_vehicles[key];
-	auto pos = std::lower_bound(list.begin(), list.end(), at, [&](int o, float x) { return t.vehicles[o].s < x; });
-	list.insert(pos, id);
 	t.vehicle_count++;
+	// micro only close to the camera; farther out the trip starts in the far model (and is drawn if its lane is in
+	// the window, which cannot happen for a segment beyond micro_spawn_m < meso_window_m, but the rule stays explicit)
+	const V2 mid = mid_of(s, from);
+	const float dx = mid.x - s.camera_x.load(), dz = mid.y - s.camera_z.load();
+	if (dx * dx + dz * dz < p.micro_spawn_m * p.micro_spawn_m) {
+		v.micro = false; // micro_add registers it in micro_list
+		micro_add(t, id);
+		lane_add(s, key, id);
+		return true;
+	}
+	meso_enter(s, id, key, true);
+	if (in_window(s, from)) materialize(s, key);
 	return true;
 }
 

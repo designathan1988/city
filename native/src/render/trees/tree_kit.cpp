@@ -18,10 +18,11 @@ namespace city {
 namespace {
 constexpr float GOLDEN = 1.61803398875f;
 constexpr int ICO_VERTS = 12, ICO_FACES = 20;
-constexpr int ICO[ICO_FACES][3] = { { 0, 11, 5 }, { 0, 5, 1 }, { 0, 1, 7 }, { 0, 7, 10 }, { 0, 10, 11 }, { 1, 5, 9 }, { 5, 11, 4 },
-	{ 11, 10, 2 }, { 10, 7, 6 }, { 7, 1, 8 }, { 3, 9, 4 }, { 3, 4, 2 }, { 3, 2, 6 }, { 3, 6, 8 }, { 3, 8, 9 }, { 4, 9, 5 },
-	{ 2, 4, 11 }, { 6, 2, 10 }, { 8, 6, 7 }, { 9, 8, 1 } };
-constexpr float LIT_BASE = 0.42f, LIT_UP = 0.45f, NOISE_FREQ = 1.1f;
+enum IcoVertex : int { V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11 };
+constexpr int ICO[ICO_FACES][3] = { { V0, V11, V5 }, { V0, V5, V1 }, { V0, V1, V7 }, { V0, V7, V10 }, { V0, V10, V11 }, { V1, V5, V9 }, { V5, V11, V4 },
+	{ V11, V10, V2 }, { V10, V7, V6 }, { V7, V1, V8 }, { V3, V9, V4 }, { V3, V4, V2 }, { V3, V2, V6 }, { V3, V6, V8 }, { V3, V8, V9 }, { V4, V9, V5 },
+	{ V2, V4, V11 }, { V6, V2, V10 }, { V8, V6, V7 }, { V9, V8, V1 } };
+constexpr float UNLIT_TONE = 0.42f, LIT_UP = 0.45f, NOISE_FREQ = 1.1f;
 constexpr int LOD_SUBDIV[TREE_LODS] = { 1, 0 };
 constexpr int LOD_TRUNK_SIDES[TREE_LODS] = { 6, 4 };
 
@@ -75,7 +76,7 @@ void crown(MeshBuilder &mb, const Dictionary &c, const Tones &tn, int subdiv) {
 		Vector3 nn = (p[1] - p[0]).cross(p[2] - p[0]).normalized();
 		Vector3 mid = (p[0] + p[1] + p[2]) / 3.f;
 		if (nn.dot(mid - centre) < 0) nn = -nn;
-		float k = clampf(LIT_BASE + LIT_UP * nn.y + (hash_float(hash_combine(seed, n++)) - 0.5f) * tn.jitter, 0.f, 1.f);
+		float k = clampf(UNLIT_TONE + LIT_UP * nn.y + (hash_float(hash_combine(seed, n++)) - 0.5f) * tn.jitter, 0.f, 1.f);
 		float h = clampf((mid.y - (centre.y - rad.y)) / (2.f * rad.y), 0.f, 1.f);
 		Color col = tn.dark.lerp(tn.lit, k) * (tn.shade_bottom + (1.f - tn.shade_bottom) * h);
 		col.a = 1;

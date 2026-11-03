@@ -19,8 +19,8 @@ constexpr float BRISE_OUT = 0.6f, SURROUND = 0.14f, SURROUND_T = 0.06f, SURROUND
 constexpr float LOUVRE_SPREAD = 0.75f, SHUT_SILL_PAST = 0.38f, SHUT_SILL_T = 0.08f, SHUT_SILL_OUT = 0.1f;
 constexpr float G_SLAB_T = 0.24f, G_OUT = 1.6f, G_BEAM_H = 0.18f, G_BEAM_T = 0.16f, G_BEAM_DROP = 0.2f, G_BEAM_OUT = 1.54f;
 constexpr float G_SHADE = 0.92f, G_END = 0.103f, G_RAIL_OUT = 1.56f, G_WALL_T = 0.2f, G_WALL_D = 1.661f, G_WALL_DROP = 0.307f;
-constexpr float G_WALL_AT = 0.8195f, G_POST_H = 1.1f, G_POST_D = 1.4f, G_POST_OUT = 0.9f, TRANSOM_MIN = 2.2f, TRANSOM_AT = 0.72f;
-constexpr float SILL_MIN = 0.3f, LAMP_W = 0.16f, LAMP_H = 0.26f, LAMP_D = 0.12f, LAMP_OFF = 0.4f, LAMP_DROP = 0.25f;
+constexpr float GARDEN_WALL_U = 0.8195f, G_POST_H = 1.1f, G_POST_D = 1.4f, G_POST_OUT = 0.9f, TRANSOM_MIN = 2.2f, TRANSOM_AT = 0.72f;
+constexpr float WINDOW_SILL_MIN = 0.3f, LAMP_W = 0.16f, LAMP_H = 0.26f, LAMP_D = 0.12f, LAMP_OFF = 0.4f, LAMP_DROP = 0.25f;
 constexpr float LAMP_OUT = -0.06f, LAMP_ROOM = 0.13f, HALF = 0.5f, SHUTTER_CHROMA = 0.06f, SHUTTER_MAX = 0.75f;
 constexpr uint32_t SHUTTER_BROWN = 0x7a5538, SHUTTER_BLUE = 0x557392;
 
@@ -31,7 +31,7 @@ struct Ctx {
 	const Opening &o;
 	float am, hm, w, h;
 	Lin paint(const char *n) const { return paint_lin(pl.data->color(n)); }
-	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz }; }
+	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz, pl.data }; }
 	void frame(float d) const { part_frame(parts, at(am, hm, o.depth - FRAME_IN, w, h, d), c.trim, c.trim_fin); }
 	void sill(float past, float t, float out) const {
 		part_box(shell, at(am, o.h0 - t / 2, (o.depth - out) / 2, w + past, t, o.depth + out), paint("sill"), FIN_CONCRETE);
@@ -81,8 +81,8 @@ void Ctx::gourmet() {
 	float r0 = c.open_left ? 0 : G_END, r1 = c.open_right ? c.W : c.W - G_END;
 	part_box(shell, at((r0 + r1) / 2, RAIL_H / 2, G_RAIL_OUT, r1 - r0, RAIL_H, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
 	part_box(parts, at((r0 + r1) / 2, CAP_AT, G_RAIL_OUT, r1 - r0, CAP_H, CAP_T), c.trim, c.trim_fin);
-	if (!c.open_left) part_box(shell, at(G_END, c.H / 2 - G_WALL_DROP, -G_WALL_AT, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
-	if (!c.open_right) part_box(shell, at(c.W - G_END, c.H / 2 - G_WALL_DROP, -G_WALL_AT, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
+	if (!c.open_left) part_box(shell, at(G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
+	if (!c.open_right) part_box(shell, at(c.W - G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
 	else part_box(parts, at(c.W, G_POST_H / 2, -G_POST_OUT, FRAME_D, G_POST_H, G_POST_D), c.trim, c.trim_fin);
 }
 
@@ -139,7 +139,7 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON:
 			x.frame(FRAME_D);
 			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, c.trim_fin);
-			if (o.h0 > SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);
+			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);
 			break;
 		default: break;
 	}

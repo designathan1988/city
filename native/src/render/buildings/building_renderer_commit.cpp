@@ -28,8 +28,10 @@ void upload(MeshDraw &d, const b40::Shell &s, const RID &scenario, const RID &ma
 	d.visible(true);
 }
 
+constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
+
 Color unpack(uint32_t c) {
-	return Color(float((c >> 24) & 0xff) / BYTE, float((c >> 16) & 0xff) / BYTE, float((c >> 8) & 0xff) / BYTE, float(c & 0xff) / BYTE);
+	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE, float(c & 0xff) / BYTE);
 }
 } // namespace
 
@@ -53,8 +55,9 @@ void BuildingRenderer::commit_one(Built &b) {
 			PackedFloat32Array buf;
 			for (const b40::BoxInstance &inst : b.boxes[size_t(band)]) {
 				Color c = unpack(inst.color);
-				Vector3 x(inst.basis[0], inst.basis[1], inst.basis[2]), y(inst.basis[3], inst.basis[4], inst.basis[5]);
-				Vector3 z(inst.basis[6], inst.basis[7], inst.basis[8]), o(inst.origin[0], inst.origin[1], inst.origin[2]);
+				const float *bs = inst.basis;
+				Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]);
+				Vector3 z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]), o(inst.origin[0], inst.origin[1], inst.origin[2]);
 				mm_push(buf, x, y, z, o, Color(1, 1, 1, 1), c.r, c.g, c.b, float(inst.fin));
 			}
 			ch.bands[size_t(band)].set(scenario_, unit_box_, material_parts_, buf, fallback, false);

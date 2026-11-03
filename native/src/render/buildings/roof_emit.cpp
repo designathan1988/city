@@ -3,6 +3,7 @@
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"
 #include "render/buildings/b40_gen.h"
+#include "render/buildings/roof_util.h"
 
 using namespace godot;
 
@@ -14,11 +15,9 @@ constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, LOW_TIER = 0.94f, BAND_LOW = 0.45f, BAND_MID = 0.1f, RAIL_H = 1.f, RAIL_IN = 0.12f;
 constexpr float RAIL_POST = 0.05f, RAIL_TOP = 0.05f, RAIL_MID = 0.45f, RAIL_EVERY = 1.5f, MACHINE_H = 3.f, MACHINE_IN = 0.3f;
-constexpr float MODULE = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
+constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
-
-bool flat(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
@@ -26,12 +25,6 @@ bool roof_covered(const Body &b, const Volume &v, Point2 p) {
 		if (&o == &v || o.base > v.top() - 1 || o.top() < v.top()) continue;
 		if (p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
 	}
-	return false;
-}
-
-bool carries(const Body &b, const Volume &v) {
-	for (const Volume &o : b.volumes)
-		if (&o != &v && o.base == v.top() && o.x < v.x + v.w && o.x + o.w > v.x && o.y < v.y + v.d && o.y + o.d > v.y) return true;
 	return false;
 }
 
@@ -100,13 +93,13 @@ void RoofEmit::crown_bands(const Side &sd, Crown crown) {
 void RoofEmit::machine_rooms() {
 	const Body &b = *pl.b;
 	for (const Core &c : b.cores) {
-		float cx = c.x + MODULE / 2, cy = c.y + MODULE / 2;
+		float cx = c.x + ROOF_MODULE_LEN / 2, cy = c.y + ROOF_MODULE_LEN / 2;
 		const Volume *best = nullptr;
 		for (const Volume &o : b.volumes)
-			if (flat(o.roof) && cx > o.x && cx < o.x + o.w && cy > o.y && cy < o.y + o.d && (!best || o.top() > best->top())) best = &o;
+			if (roof_flat(o.roof) && cx > o.x && cx < o.x + o.w && cy > o.y && cy < o.y + o.d && (!best || o.top() > best->top())) best = &o;
 		if (best != &v) continue;
-		float x0 = std::max(c.x, v.x + MACHINE_IN), x1 = std::min(c.x + MODULE, v.x + v.w - MACHINE_IN);
-		float y0 = std::max(c.y, v.y + MACHINE_IN), y1 = std::min(c.y + MODULE, v.y + v.d - MACHINE_IN);
+		float x0 = std::max(c.x, v.x + MACHINE_IN), x1 = std::min(c.x + ROOF_MODULE_LEN, v.x + v.w - MACHINE_IN);
+		float y0 = std::max(c.y, v.y + MACHINE_IN), y1 = std::min(c.y + ROOF_MODULE_LEN, v.y + v.d - MACHINE_IN);
 		if (x1 - x0 < MACHINE_MIN || y1 - y0 < MACHINE_MIN) continue;
 		bool glass = b.wall_of(v).finish == FIN_GLASS;
 		const Paint &wp = glass ? pl.data->color("machine_glass") : b.wall_of(v);
@@ -122,15 +115,15 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 	for (size_t i = 0; i < b.volumes.size(); i++) {
 		const Volume &v = b.volumes[i];
 		float eaves = b.level_z(v.top());
-		bool on_top = carries(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
+		bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
 		if (pl.coarse) {
-			if (!flat(v.roof)) continue;
+			if (!roof_flat(v.roof)) continue;
 			RoofEmit re{ shell, parts, pl, v, eaves };
 			for (const Side &sd : sides_of(pl, v, 0)) re.crown_bands(sd, on_top ? CROWN_NONE : v.crown);
 			if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
 			continue;
 		}
-		if (!flat(v.roof)) { emit_pitched(shell, pl, v, eaves); continue; }
+		if (!roof_flat(v.roof)) { emit_pitched(shell, pl, v, eaves); continue; }
 		Paint rp = terrace ? pl.data->color("terrace")
 				: v.roof_paint >= 0 ? b.paints[size_t(v.roof_paint)]
 				: pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];

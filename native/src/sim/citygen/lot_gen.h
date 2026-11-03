@@ -14,7 +14,7 @@
 namespace city {
 
 constexpr double LOT_CELL = 256; // lots are computed per cell of this size
-constexpr double LOT_MARGIN = 120; // the streets a cell looks at reach this far past it
+constexpr double CELL_MARGIN = 120; // the streets a cell looks at reach this far past it
 
 // The streets around a cell (indices local to this view).
 struct LotGraph {

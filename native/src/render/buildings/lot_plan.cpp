@@ -11,13 +11,13 @@ constexpr float STALL = 5.f, AISLE = 6.f;
 constexpr float NARROW_W = 10.5f, DEEP_HOUSE = 22.f, CARPAD = 5.5f, MID_HOUSE = 14.f, SMALL_GARDEN = 3.f;
 constexpr float GARDEN_LO = 3.5f, GARDEN_HI = 5.5f, SIDE_GARDEN_W = 16.f, SIDE_GARDEN_LO = 3.f, SIDE_GARDEN_HI = 4.f;
 constexpr float SIDE_PATH_W = 13.f, HOUSE_MIN = 8.f, HOUSE_MAX = 15.f, YARD_LO = 8.f, YARD_HI = 12.f, YARD_MIN = 4.f;
-constexpr float FLATS_W = 14.f, FLATS_D = 20.f, FLATS_GARDEN = 0.75f, FLATS_GARDEN_LO = 3.f, FLATS_GARDEN_HI = 5.f;
+constexpr float APARTMENT_W = 14.f, FLATS_D = 20.f, FLATS_GARDEN = 0.75f, FLATS_GARDEN_LO = 3.f, FLATS_GARDEN_HI = 5.f;
 constexpr float PARKING_W = 18.f, MIN_BLOCK = 12.f, ATTACHED_SHARE = 0.55f, COURT_SPARE = 5.f, COURT_MAX = 12.f;
 constexpr float TOWER_PLAZA_D = 24.f, TOWER_PLAZA = 5.f;
 constexpr float SHOP_COURT_D = 16.f, SHOP_COURT = 0.45f, SHOP_COURT_LO = 3.f, SHOP_COURT_HI = 4.5f, SHOP_PARK_W = 15.f;
 constexpr float SHOP_PARK = 0.6f, SHOP_SERVICE = 14.f, SERVICE_LO = 4.5f, SERVICE_HI = 6.f;
 constexpr float OFFICE_PLAZA_D = 22.f, PLAZA_LO = 5.f, PLAZA_HI = 7.f, OFFICE_COURT = 3.f, OFFICE_PARK_W = 16.f;
-constexpr float OFFICE_MIN = 14.f, OFFICE_SERVICE = 16.f, OFFICE_SERVICE_D = 5.f;
+constexpr float WORKPLACE_MIN = 14.f, OFFICE_SERVICE = 16.f, OFFICE_SERVICE_D = 5.f;
 constexpr float NARROW_LOT = 6.f, HOUSE_PATHS_W = 8.5f, HOUSE_PATH = 1.f, SERVICE_MAX = 6.f, HALF = 0.5f;
 constexpr float APRON_D = 22.f, APRON_DEEP = 40.f, APRON = 6.f, WORKS_W = 20.f, WORKS_D = 30.f, WORKS_PATH_W = 26.f;
 constexpr float LOADING_FULL = 22.f, LOADING_EXTRA = 14.f, LOADING_MAX = 16.f, LOADING_MIN = 12.f, LOADING_SHARE = 0.35f;
@@ -62,7 +62,7 @@ void plan_flats(LotPlan &p, Xoshiro128 &r, bool flip) {
 		bool plaza = p.D >= TOWER_PLAZA_D;
 		p.front = plaza ? FRONT_PLAZA : FRONT_STREET;
 		p.front_depth = plaza ? TOWER_PLAZA : 0;
-	} else if (p.W >= FLATS_W && p.D >= FLATS_D && r.f() < FLATS_GARDEN) {
+	} else if (p.W >= APARTMENT_W && p.D >= FLATS_D && r.f() < FLATS_GARDEN) {
 		p.front = FRONT_GARDEN;
 		p.front_depth = half_down(gap(r, FLATS_GARDEN_LO, FLATS_GARDEN_HI));
 	}
@@ -73,7 +73,7 @@ void plan_flats(LotPlan &p, Xoshiro128 &r, bool flip) {
 		p.back = BACK_PARKING; p.back_depth = parking_depth(stalls); p.rows = stalls;
 		return;
 	}
-	sides(p, flip, p.W >= FLATS_W ? SidePlan{ SIDE_PATH, WIDE_PATH } : SidePlan{}, SidePlan{});
+	sides(p, flip, p.W >= APARTMENT_W ? SidePlan{ SIDE_PATH, WIDE_PATH } : SidePlan{}, SidePlan{});
 	float spare = p.D - p.front_depth - MIN_BLOCK;
 	if (spare >= COURT_SPARE) { p.back = BACK_COURTYARD; p.back_depth = half_down(std::min(spare, COURT_MAX)); }
 }
@@ -91,9 +91,9 @@ void plan_shop(LotPlan &p, Xoshiro128 &r, bool flip) {
 
 void plan_office(LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (p.D >= OFFICE_PLAZA_D) { p.front = FRONT_PLAZA; p.front_depth = half_down(gap(r, PLAZA_LO, PLAZA_HI)); }
-	else { p.front = FRONT_FORECOURT; p.front_depth = p.D >= OFFICE_MIN ? OFFICE_COURT : 0; }
+	else { p.front = FRONT_FORECOURT; p.front_depth = p.D >= WORKPLACE_MIN ? OFFICE_COURT : 0; }
 	if (p.front_depth == 0) p.front = FRONT_STREET;
-	int stalls = p.W >= OFFICE_PARK_W ? rows_within(p.D, p.front_depth, OFFICE_MIN) : 0;
+	int stalls = p.W >= OFFICE_PARK_W ? rows_within(p.D, p.front_depth, WORKPLACE_MIN) : 0;
 	if (stalls > 0) {
 		sides(p, flip, { SIDE_DRIVE_PATH, DRIVE + FOOTPATH }, SidePlan{});
 		p.back = BACK_PARKING; p.back_depth = parking_depth(stalls); p.rows = stalls;

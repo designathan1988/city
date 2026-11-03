@@ -16,7 +16,7 @@ namespace {
 constexpr float ARCH_PAD_M = 0.07f, WHEEL_INSET_M = 0.2f, GLASS_INSET_M = 0.02f, PILLAR_W = 0.12f, PROUD_M = 0.01f;
 constexpr float SCREEN_LOW_M = 0.95f, SCREEN_TOP_PAD_M = 0.32f, SCREEN_SIDE_M = 0.12f, BLIND_M = 0.22f, BLIND_W = 0.8f;
 constexpr float ROOF_INSET_M = 0.1f, ROOF_T = 0.06f, POD_L = 2.4f, POD_W = 0.7f, POD_H = 0.25f;
-constexpr float LAMP_Y_M = 0.62f, LAMP_W = 0.32f, LAMP_H = 0.14f, LAMP_X_PAD = 0.35f, TAIL_Y_M = 1.0f, SKIRT_M = 0.16f;
+constexpr float BUS_LAMP_Y = 0.62f, LAMP_W = 0.32f, LAMP_H = 0.14f, LAMP_X_PAD = 0.35f, TAIL_Y_M = 1.0f, SKIRT_M = 0.16f;
 constexpr float RIDER_TORSO_M = 0.6f, RIDER_ARMS_LOW_M = 0.43f, RIDER_ARMS_HIGH_M = 0.55f;
 // motorbike proportions (shares of the axle distance or of the body half width)
 constexpr float MOTO_TAIL = 0.8f, MOTO_NOSE = 0.7f, MOTO_SEAT_W = 0.8f, MOTO_BAR_W = 2.f, MOTO_BAR_Z = 0.6f, MOTO_BAR_H = 1.5f;
@@ -30,8 +30,8 @@ constexpr float ROOF_END_M = 0.35f, ROOF_END_DROP = 0.12f, MIRROR_ARM = 0.35f, M
 constexpr float MIRROR_Y_SHARE = 0.62f, MIRROR_Z_BACK = 0.25f;
 // lorry: steps, mudguards, side guards, fuel tank, rear door seam and handles
 constexpr float STEP_H = 0.06f, STEP_D = 0.35f, STEP_OUT = 0.06f, GUARD_PAD = 0.06f, GUARD_T = 0.05f, SIDE_GUARD_H = 0.25f;
-constexpr float SIDE_GUARD_Y = 0.45f, TANK_L = 1.1f, TANK_H = 0.5f, TANK_D = 0.45f, TANK_Y = 0.5f, HANDLE_W = 0.05f, HANDLE_H = 0.9f;
-constexpr float HANDLE_Y = 1.6f, HANDLE_X = 0.15f, CAB_DOOR_SEAM = 0.03f;
+constexpr float SIDE_GUARD_Y = 0.45f, TANK_L = 1.1f, TANK_H = 0.5f, TANK_D = 0.45f, TANK_Y = 0.5f, BUS_GRAB_W = 0.05f, HANDLE_H = 0.9f;
+constexpr float BUS_GRAB_Y = 1.6f, HANDLE_X = 0.15f, CAB_DOOR_SEAM = 0.03f;
 
 std::vector<float> axles_of(const Dictionary &d, float L) {
 	std::vector<float> zs;
@@ -48,7 +48,7 @@ void wheels(MeshBuilder &mb, const std::vector<float> &zs, float W, float r, flo
 void lamps(MeshBuilder &mb, float W, float L, float tail_y, const AgentTrim &trim) {
 	for (int side : { -1, 1 }) {
 		float x = side * (W * 0.5f - LAMP_X_PAD);
-		agent_box(mb, Vector3(x - LAMP_W * 0.5f, LAMP_Y_M, L * 0.5f - PROUD_M), Vector3(x + LAMP_W * 0.5f, LAMP_Y_M + LAMP_H, L * 0.5f + PROUD_M),
+		agent_box(mb, Vector3(x - LAMP_W * 0.5f, BUS_LAMP_Y, L * 0.5f - PROUD_M), Vector3(x + LAMP_W * 0.5f, BUS_LAMP_Y + LAMP_H, L * 0.5f + PROUD_M),
 				trim.headlamp, AgentTag::HEAD);
 		agent_box(mb, Vector3(x - LAMP_W * 0.5f, tail_y, -L * 0.5f - PROUD_M), Vector3(x + LAMP_W * 0.5f, tail_y + LAMP_H, -L * 0.5f + PROUD_M),
 				trim.tail, AgentTag::TAIL);
@@ -133,7 +133,7 @@ void build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTri
 					AgentTag::FIXED);
 		}
 		agent_box(mb, Vector3(x - side * POST_W, SIDE_GUARD_Y, zs[1] + r + GUARD_PAD), Vector3(x, SIDE_GUARD_Y + SIDE_GUARD_H, box_front - r), trim.chrome, AgentTag::FIXED);
-		agent_box(mb, Vector3(-HANDLE_X * side - HANDLE_W * 0.5f, HANDLE_Y, -hl - PROUD_M * 2), Vector3(-HANDLE_X * side + HANDLE_W * 0.5f, HANDLE_Y + HANDLE_H, -hl),
+		agent_box(mb, Vector3(-HANDLE_X * side - BUS_GRAB_W * 0.5f, BUS_GRAB_Y, -hl - PROUD_M * 2), Vector3(-HANDLE_X * side + BUS_GRAB_W * 0.5f, BUS_GRAB_Y + HANDLE_H, -hl),
 				trim.chrome, AgentTag::FIXED);
 	}
 	agent_box(mb, Vector3(hw - TANK_D, TANK_Y, zs[0] - r - GUARD_PAD - TANK_L - TANK_L), Vector3(hw, TANK_Y + TANK_H, zs[0] - r - GUARD_PAD - TANK_L), trim.chrome,

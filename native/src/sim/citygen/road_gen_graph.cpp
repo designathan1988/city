@@ -21,8 +21,8 @@ constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DE
 constexpr double D_COM_HIGH = 0.08, D_COM = 0.16, D_COM_AV = 0.35, D_MIX = 0.32, D_MIX_AV = 0.7;
 constexpr double D_CITY = 1.05, D_LOW = 0.75, IND_NEAR = 800, IND_NOISE = 0.05, OUTSKIRT_RES = 0.5;
 constexpr uint32_t ZONE_RNG_MUL = 31, ZONE_RNG_ADD = 7, NOISE_N = 313, NOISE_M = 919, NOISE_IND = 77;
-constexpr double NOISE_N_SCALE = 650, NOISE_M_SCALE = 1400, NOISE_IND_SCALE = 900;
-constexpr double WIDE_N = 0.45, URBAN_N = 0.1, BIKE_N = 0.25, COBBLE_D = 0.9, COBBLE_M = 0.2, URBAN_LOCAL_N = 0.3;
+constexpr double DISTRICT_SCALE_N = 650, NOISE_M_SCALE = 1400, NOISE_IND_SCALE = 900;
+constexpr double AVENUE_SHARE_N = 0.45, URBAN_N = 0.1, BIKE_N = 0.25, COBBLE_D = 0.9, COBBLE_M = 0.2, URBAN_LOCAL_N = 0.3;
 constexpr double BUS_OFFSET = 0.5, BUS_M = 0.15, BOULEVARD_M = -0.3, AV4_N = 0.35;
 
 int64_t key(int64_t i, int64_t j) { return (i + KEY_OFF) * KEY_ROW + (j + KEY_OFF); }
@@ -271,9 +271,9 @@ private:
 	}
 
 	int variant(int p, int zone, double d, double x, double z) const {
-		double n = fbm2(x / NOISE_N_SCALE, z / NOISE_N_SCALE, seed_ + NOISE_N, 2), m = fbm2(x / NOISE_M_SCALE, z / NOISE_M_SCALE, seed_ + NOISE_M, 2);
+		double n = fbm2(x / DISTRICT_SCALE_N, z / DISTRICT_SCALE_N, seed_ + NOISE_N, 2), m = fbm2(x / NOISE_M_SCALE, z / NOISE_M_SCALE, seed_ + NOISE_M, 2);
 		if (p == prof_.local) {
-			if (zone == ZONE_COM) return n > WIDE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
+			if (zone == ZONE_COM) return n > AVENUE_SHARE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
 			if (zone == ZONE_IND) return prof_.concrete;
 			if (zone == ZONE_MIXED) return n > BIKE_N ? prof_.bike : n < -BIKE_N ? prof_.green : prof_.local;
 			if (d > COBBLE_D && m > COBBLE_M) return prof_.cobble;
