@@ -12,9 +12,14 @@ core_linux() {
 	cmake --build "$ROOT/native/build-linux" --target citycore -j "$JOBS"
 }
 
-core_windows() {
-	cmake -S "$ROOT/native" -B "$ROOT/native/build-win" -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake"
-	cmake --build "$ROOT/native/build-win" --target citycore -j "$JOBS"
+core_windows() { # template_release ships in the export; template_debug is what the editor, tests and captures load
+	local dir target
+	for target in template_release template_debug; do
+		dir="$ROOT/native/build-win"; [ "$target" = template_debug ] && dir="$dir-debug"
+		cmake -S "$ROOT/native" -B "$dir" -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
+			-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake"
+		cmake --build "$dir" --target citycore -j "$JOBS"
+	done
 }
 
 gates() { python3 "$ROOT/tools/gates/run_gates.py"; }

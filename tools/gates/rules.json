@@ -5,6 +5,7 @@
     "native/godot-cpp",
     "native/build-linux",
     "native/build-win",
+    "native/build-win-debug",
     "project/addons",
     "project/bin",
     "dist",
