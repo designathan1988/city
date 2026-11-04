@@ -9,6 +9,7 @@ const SEED := 1
 const SITES := 2
 const WARM_TICKS := 2400
 const SAMPLE := 400
+const PX := 0.25 # metres a screen pixel covers: how near a click snaps to a road or a node
 const ZONE_INDUSTRIAL := 3 # catalog/zones.json order
 const ZONE_RADIUS_M := 160.0
 const STREET_M := 300.0
@@ -57,7 +58,7 @@ func _far_in(sample: Array, angle: float, width: float) -> Vector3:
 func _site(camera: Camera3D, far: Vector3) -> void:
 	var before: int = CityStore.query(&"dock_count", [])
 	var end := far + Vector3(far.x, 0, far.z).normalized() * STREET_M
-	var built: Dictionary = CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE])
+	var built: Dictionary = CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX])
 	var at := (far + end) * 0.5
 	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL])
 	print("lugar ", at, " via ", built.ok, " ", built.error, " zona ", zoned.zoned_sides)

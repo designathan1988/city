@@ -7,6 +7,7 @@ const ZONE_INDUSTRIAL := 3 # catalog/zones.json order
 const ZONE_RADIUS_M := 160.0
 const STREET_M := 300.0
 const SAMPLE := 400
+const PX := 0.25 # metres a screen pixel covers: how near a click snaps to a road or a node
 const PROFILE := 0
 const STEP_TICKS := 200
 const GROW_STEPS := 60
@@ -24,7 +25,7 @@ static func _new_street() -> Vector3:
 			far = p
 	var out := Vector3(far.x, 0, far.z).normalized()
 	var end := far + out * STREET_M
-	print("via nova: ", CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE]))
+	print("via nova: ", CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX]))
 	return (far + end) * 0.5
 
 
