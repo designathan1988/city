@@ -81,7 +81,7 @@ function check(expect: Expectation | undefined, code: number | null, output: str
   return null;
 }
 
-function runPhase(phase: string, steps: readonly Step[], config: SandboxConfig, vars: Variables, results: StepResult[]): boolean {
+export function runPhase(phase: string, steps: readonly Step[], config: SandboxConfig, vars: Variables, results: StepResult[]): boolean {
   fs.mkdirSync(vars.evidence, { recursive: true });
   for (const step of steps) {
     const started = Date.now();
@@ -102,7 +102,7 @@ export interface SandboxInput {
 }
 
 /** An isolated clone of the game at `base`, with what the build needs copied in (read-only from the game). */
-function prepare(game: string, base: string, sandbox: string, config: SandboxConfig): void {
+export function prepare(game: string, base: string, sandbox: string, config: SandboxConfig): void {
   if (normalizePath(sandbox).startsWith(normalizePath(game) + '/')) throw new Error(`the sandbox must be outside the game (${sandbox})`);
   if (fs.existsSync(sandbox)) throw new Error(`${sandbox} already exists`);
   cloneIsolated(game, sandbox, base);

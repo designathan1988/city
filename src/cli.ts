@@ -5,7 +5,10 @@ import { ArgsError, usage } from './common/args.ts';
 import { CPPGRAPH_FLAGS, runCppGraph } from './cppgraph/command.ts';
 import { FEATURE_FLAGS, runFeatureCommand } from './feature/command.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
-import { BASELINE_FLAGS, SANDBOX_FLAGS, runBaselineCommand, runSandboxCommand } from './sandbox/command.ts';
+import { PACK_FLAGS, runPackCommand } from './package/command.ts';
+import {
+  BASELINE_FLAGS, SANDBOX_FLAGS, VERIFY_FLAGS, WORKSPACE_FLAGS, runBaselineCommand, runSandboxCommand, runVerifyCommand, runWorkspaceCommand,
+} from './sandbox/command.ts';
 import { TRANSLATE_FLAGS, runTranslateCommand } from './translate/command.ts';
 import { DIFFERENTIAL_FLAGS, runDifferentialCommand } from './translate/differential-command.ts';
 import { PACKAGE_FLAGS, runPackageCommand } from './translate/package-command.ts';
@@ -19,6 +22,9 @@ const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promis
   differential: { run: runDifferentialCommand, help: usage('differential', DIFFERENTIAL_FLAGS) },
   package: { run: runPackageCommand, help: usage('package', PACKAGE_FLAGS) },
   audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
+  workspace: { run: runWorkspaceCommand, help: usage('workspace', WORKSPACE_FLAGS) },
+  verify: { run: runVerifyCommand, help: usage('verify', VERIFY_FLAGS) },
+  pack: { run: runPackCommand, help: usage('pack', PACK_FLAGS) },
   sandbox: { run: runSandboxCommand, help: usage('sandbox', SANDBOX_FLAGS) },
   baseline: { run: runBaselineCommand, help: usage('baseline', BASELINE_FLAGS) },
 };
