@@ -12,7 +12,7 @@ func enter() -> void:
 	for p in CityStore.query(&"road_profiles"):
 		if p.index == profile:
 			_half = p.width * 0.5
-	ctl.hint.emit(tr("hint.upgrade"), true)
+	ctl.hint.emit("", true)
 
 
 func exit() -> void:
@@ -20,11 +20,9 @@ func exit() -> void:
 
 
 func hover(p: Vector3) -> void:
-	var seg: Dictionary = CityStore.query(&"segment_at", [p])
-	if seg.get("seg", -1) < 0:
-		ctl.preview.clear()
-		return
-	ctl.preview.show_ribbon(seg.points, _half, not seg.ring)
+	var seg := road_under(p)
+	if not seg.is_empty():
+		ctl.preview.show_ribbon(seg.points, _half, not seg.ring)
 
 
 func click(p: Vector3) -> void:

@@ -8,6 +8,11 @@ const GROUP := 3
 const PERCENT := 100.0
 
 
+## "<n> <noun>": the singular or the plural key by the count (<base>.one, <base>.other).
+static func count_label(base: String, count: int) -> String:
+	return TranslationServer.translate(base + (".one" if count == 1 else ".other")).format({"count": format_int(count)})
+
+
 static func format_int(v: float) -> String:
 	var n := int(round(absf(v)))
 	var digits := str(n)
@@ -16,6 +21,12 @@ static func format_int(v: float) -> String:
 		out = THOUSANDS + digits.substr(digits.length() - GROUP) + out
 		digits = digits.substr(0, digits.length() - GROUP)
 	return ("-" if v < 0.0 and n != 0 else "") + digits + out
+
+
+## One decimal, with the comma of the Portuguese text.
+static func format_tenths(v: float) -> String:
+	var text := "%.1f" % v
+	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
 
 
 static func format_money(v: float) -> String:

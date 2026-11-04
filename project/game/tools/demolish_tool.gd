@@ -4,7 +4,7 @@ extends ToolBase
 
 
 func enter() -> void:
-	ctl.hint.emit(tr("help.tool.bulldoze"), true)
+	ctl.hint.emit("", true)
 
 
 func click(p: Vector3) -> void:

@@ -1,31 +1,207 @@
 {
- "_doc": "Graphics presets and the frame cap applied by game/settings/settings.gd (frame_cap: Engine.max_fps while the game has the focus and while another application has it; 0 = no cap).",
- "default": "medium",
+ "_doc": "Graphics options (game/settings/*.gd). default: the preset of a new install; auto starts at the tier the GPU's name gives (gpu_rules, first match; regular expressions on RenderingServer.get_video_adapter_name, unknown = gpu_default) and the governor moves it, never above that tier. levels: the tiers, weakest first. Each tier: pixel_ratio the most device pixels per CSS pixel drawn (the 3D scale is min(1, pixel_ratio / screen ratio)); shadows and shadow_px the side of a cascade (4 splits share an atlas of twice that side, Godot docs: Lights and shadows); shadow_distance_m the sun's reach; msaa 0, 1, 2 = off, 2x, 4x (Viewport.msaa_3d); smaa the post filter (Viewport.screen_space_aa); ssao and ssao_half the ambient occlusion and its half resolution (RenderingServer.environment_set_ssao_quality); anisotropy 0..4 = off..16x (Viewport.anisotropic_filtering_level); detail_props the street furniture layer; triangle_share the buildings' near level as a share of its triangles: its reach scales by the square root (triangles grow with the area in reach). frame_cap: Engine.max_fps while the game has the focus (the player's choice, fps_choices, 0 = none) and while another application has it; a covered window is not held back by vsync. governor: a window of window frames (a p90 over 1,5 s at 60 Hz, ARQUITETURA.md item 8), settle frames left out after a change, down after down_windows missed, up after up_windows under up_share of the budget, a raise undone within undone_s holds hold_s (doubled each time), a frame over stall_s is a stall. ssao: RenderingServer.environment_set_ssao_quality's arguments at the Godot project setting defaults (rendering/environment/ssao/*). dynamic_resolution: scales of the 3D drawing, whole first, aim share of the budget, window frames a decision, deadband and rise_margin keep the picture from breathing, settle frames left out after a change. post: bloom, ambient occlusion and SMAA at all (the post chain). vegetation: share of the woods and lone trees (street and park trees stay). detail_cutoff_zoom: pixels per metre below which furniture, vehicles, people and road paint stop being drawn. pedestrian_detail: 0 the far level only. occupant_zoom: pixels per metre at which the cabin level ends; vehicle_error_px divides that reach (a fixed shape's error on the screen falls with the distance), vehicle_whole_cap: the most cabins drawn, the nearest. sky_clouds and cloud_shadows: for the sky's owner to read from Settings.current() on `changed`. layers: what shows over the map when nothing was chosen.",
+ "default": "auto",
+ "levels": [
+  "low",
+  "medium",
+  "high",
+  "ultra"
+ ],
+ "gpu_default": "medium",
+ "gpu_rules": [
+  [
+   "(?i)swiftshader|llvmpipe|softpipe|basic render|software",
+   "low"
+  ],
+  [
+   "(?i)rtx\\s*a?\\d{2}50|rtx\\s*a?20\\d{2}",
+   "high"
+  ],
+  [
+   "(?i)rtx",
+   "ultra"
+  ],
+  [
+   "(?i)\\bmx\\s*\\d{3}",
+   "low"
+  ],
+  [
+   "(?i)gtx\\s*(16\\d0|10[78]0|titan)",
+   "high"
+  ],
+  [
+   "(?i)gtx|quadro|geforce|nvidia",
+   "medium"
+  ],
+  [
+   "(?i)rx\\s*[67]\\d[789]0|rx\\s*90[789]0",
+   "ultra"
+  ],
+  [
+   "(?i)rx\\s*[6-9]\\d{3}|rx\\s*57\\d0",
+   "high"
+  ],
+  [
+   "(?i)radeon|amd|ati\\b",
+   "medium"
+  ],
+  [
+   "(?i)intel.*\\barc\\b|\\barc\\s*a\\d{3}",
+   "high"
+  ],
+  [
+   "(?i)iris",
+   "medium"
+  ],
+  [
+   "(?i)intel",
+   "low"
+  ]
+ ],
+ "tiers": {
+  "low": {
+   "pixel_ratio": 1,
+   "shadows": false,
+   "shadow_px": 1024,
+   "shadow_distance_m": 600,
+   "msaa": 0,
+   "smaa": false,
+   "ssao": false,
+   "ssao_half": true,
+   "anisotropy": 1,
+   "detail_props": false,
+   "triangle_share": 0.35,
+   "post": false,
+   "vegetation": 0,
+   "detail_cutoff_zoom": 1.25,
+   "pedestrian_detail": 0,
+   "occupant_zoom": 7.5,
+   "vehicle_error_px": 1,
+   "vehicle_whole_cap": 60,
+   "sky_clouds": false,
+   "cloud_shadows": false
+  },
+  "medium": {
+   "pixel_ratio": 1.25,
+   "shadows": true,
+   "shadow_px": 1024,
+   "shadow_distance_m": 1200,
+   "msaa": 1,
+   "smaa": false,
+   "ssao": false,
+   "ssao_half": true,
+   "anisotropy": 2,
+   "detail_props": true,
+   "triangle_share": 0.6,
+   "post": false,
+   "vegetation": 0.23,
+   "detail_cutoff_zoom": 0.85,
+   "pedestrian_detail": 1,
+   "occupant_zoom": 5.5,
+   "vehicle_error_px": 0.5,
+   "vehicle_whole_cap": 200,
+   "sky_clouds": true,
+   "cloud_shadows": false
+  },
+  "high": {
+   "pixel_ratio": 1.5,
+   "shadows": true,
+   "shadow_px": 2048,
+   "shadow_distance_m": 2500,
+   "msaa": 0,
+   "smaa": true,
+   "ssao": true,
+   "ssao_half": true,
+   "anisotropy": 3,
+   "detail_props": true,
+   "triangle_share": 1,
+   "post": true,
+   "vegetation": 0.54,
+   "detail_cutoff_zoom": 0.65,
+   "pedestrian_detail": 2,
+   "occupant_zoom": 4,
+   "vehicle_error_px": 0.5,
+   "vehicle_whole_cap": 200,
+   "sky_clouds": true,
+   "cloud_shadows": true
+  },
+  "ultra": {
+   "pixel_ratio": 2,
+   "shadows": true,
+   "shadow_px": 2048,
+   "shadow_distance_m": 2500,
+   "msaa": 0,
+   "smaa": true,
+   "ssao": true,
+   "ssao_half": false,
+   "anisotropy": 4,
+   "detail_props": true,
+   "triangle_share": 1,
+   "post": true,
+   "vegetation": 1,
+   "detail_cutoff_zoom": 0.5,
+   "pedestrian_detail": 2,
+   "occupant_zoom": 3.25,
+   "vehicle_error_px": 0.5,
+   "vehicle_whole_cap": 200,
+   "sky_clouds": true,
+   "cloud_shadows": true
+  }
+ },
+ "ssao": {
+  "adaptive_target": 0.5,
+  "blur_passes": 2,
+  "fadeout_from_m": 50,
+  "fadeout_to_m": 300
+ },
+ "shadow_choices": [
+  0,
+  1024,
+  2048,
+  4096
+ ],
+ "fps_choices": [
+  0,
+  30,
+  60,
+  120,
+  144
+ ],
  "frame_cap": {
   "max_fps": 60,
   "background_fps": 30
  },
- "presets": {
-  "low": {
-   "label_key": "QUALITY_LOW",
-   "shadows": false,
-   "msaa": 0,
-   "render_scale": 0.75,
-   "shadow_distance": 600
-  },
-  "medium": {
-   "label_key": "QUALITY_MEDIUM",
-   "shadows": true,
-   "msaa": 1,
-   "render_scale": 1.0,
-   "shadow_distance": 1200
-  },
-  "high": {
-   "label_key": "QUALITY_HIGH",
-   "shadows": true,
-   "msaa": 2,
-   "render_scale": 1.0,
-   "shadow_distance": 2500
-  }
+ "governor": {
+  "window": 90,
+  "settle": 60,
+  "down_windows": 2,
+  "up_windows": 4,
+  "up_share": 0.6,
+  "undone_s": 30,
+  "hold_s": 90,
+  "stall_s": 0.4,
+  "percentile": 0.9,
+  "cpu_budget_slack": 1.1
+ },
+ "dynamic_resolution": {
+  "scales": [
+   1,
+   0.9,
+   0.8,
+   0.7,
+   0.6,
+   0.5
+  ],
+  "percentile": 0.9,
+  "aim": 0.85,
+  "window": 30,
+  "deadband": 0.05,
+  "rise_margin": 0.05,
+  "settle": 5
+ },
+ "layers": {
+  "zones": true,
+  "congestion": false,
+  "grid": false
  }
 }

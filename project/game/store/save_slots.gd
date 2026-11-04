@@ -16,6 +16,7 @@ const EXPORT_PREFIX := "mapa-"
 const INDEX_FILE := "cidades.cfg"
 const INDEX_SECTION := "index"
 const INDEX_LAST := "last"
+const QUARANTINE_DIR := "quarentena"
 
 
 static func dir() -> String:
@@ -80,6 +81,19 @@ static func remember_last(slot: String) -> Error:
 	index.load(_index_path()) # a missing index is a new one
 	index.set_value(INDEX_SECTION, INDEX_LAST, slot)
 	return index.save(_index_path())
+
+
+## Sets an unreadable city aside in the quarantine folder, under the date and time (kept, never deleted nor written over). Returns the error.
+static func quarantine(slot: String) -> Error:
+	var to := "%s/%s" % [dir(), QUARANTINE_DIR]
+	DirAccess.make_dir_recursive_absolute(to)
+	var stamp := Time.get_datetime_string_from_system(true).replace(":", "-")
+	var name := "%s/%s-%s" % [to, slot, stamp]
+	var again := FIRST_AGAIN
+	while FileAccess.file_exists("%s.%s" % [name, EXT]): # the same second: never over an earlier one
+		name = "%s/%s-%s-%d" % [to, slot, stamp, again]
+		again += 1
+	return DirAccess.rename_absolute(path(slot), "%s.%s" % [name, EXT])
 
 
 static func _index_path() -> String:

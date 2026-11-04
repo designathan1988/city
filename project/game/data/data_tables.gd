@@ -31,17 +31,25 @@ const UI := {
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
+	"keys": "res://data/ui/keys.json",
+	"help": "res://data/ui/help.json",
 }
 const GAME := {
 	"camera": "res://data/game/camera.json",
 	"settings": "res://data/game/settings.json",
 	"daylight": "res://data/game/daylight.json",
 	"saves": "res://data/game/saves.json",
+	"render_switches": "res://data/game/render_switches.json",
+	"optimizations": "res://data/game/optimizations.json",
+	"health": "res://data/game/health.json",
+	"start": "res://data/game/start.json",
+	"thunder": "res://data/game/thunder.json",
 }
 const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
 	"res://data/i18n/strings_c.csv",
+	"res://data/i18n/strings_ui.csv",
 ]
 
 static var _cache: Dictionary = {}

@@ -19,7 +19,7 @@ func enter() -> void:
 	mode = params.get("mode", 0)
 	radius = params.get("radius", spec.radius.default)
 	strength = params.get("strength", spec.strength.default) / PERCENT
-	ctl.hint.emit(tr("hint.terrain"), true)
+	ctl.hint.emit("", true)
 
 
 func _spec() -> Dictionary:

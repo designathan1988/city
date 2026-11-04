@@ -1,0 +1,85 @@
+## The graphics tiers on the running game: a tier's table (data/game/settings.json "tiers") with the player's kept choices and
+## the optimisations over it, and each of its fields on the renderer that owns it: the Viewport (MSAA, SMAA, 3D scale,
+## anisotropy), the sun (shadows), the Environment (SSAO), the RenderingServer (shadow atlas, SSAO quality) and the core.
+class_name QualityTier
+extends RefCounted
+
+const MSAA_MODES := [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X]
+const FILTER_LEVELS := [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Viewport.ANISOTROPY_4X, Viewport.ANISOTROPY_8X,
+	Viewport.ANISOTROPY_16X]
+## Screen pixels per inch of a 1:1 display (Windows' 96 DPI): what a device pixel ratio is measured against.
+const BASE_DPI := 96.0
+## Four cascades tile an atlas of twice their side (PSSM 4 splits).
+const ATLAS_PER_CASCADE := 2
+const SSAO_QUALITY := RenderingServer.ENV_SSAO_QUALITY_MEDIUM
+const COMPATIBILITY := "gl_compatibility"
+const FALLBACK_AA := 1 # where SMAA does not exist the same tier asks for this entry of MSAA_MODES
+## pedestrian_detail 0: the people's nearest level is this one (their far level).
+const PEOPLE_FAR := 1
+
+
+## The tier the GPU's name gives: the first rule that matches, else gpu_default.
+static func tier_for_gpu(cfg: Dictionary, name: String) -> String:
+	for rule: Array in cfg.gpu_rules:
+		var re := RegEx.create_from_string(rule[0])
+		if re != null and re.search(name) != null:
+			return rule[1]
+	return cfg.gpu_default
+
+
+## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass.
+static func merged(tier: Dictionary, kept: Dictionary) -> Dictionary:
+	var out := tier.duplicate()
+	if kept.has("shadows"):
+		out.shadows = int(kept.shadows) > 0
+		if out.shadows:
+			out.shadow_px = int(kept.shadows)
+	if kept.has("ssao"):
+		out.ssao = kept.ssao
+	if kept.has("smaa"):
+		out.smaa = kept.smaa
+	return out
+
+
+## The 3D scale the tier's pixel ratio cap allows on this screen (1 on a display of one pixel per CSS pixel).
+static func cap_scale(pixel_ratio: float) -> float:
+	var dpi := float(DisplayServer.screen_get_dpi())
+	var ratio := maxf(1.0, dpi / BASE_DPI)
+	return minf(1.0, pixel_ratio / ratio)
+
+
+## SMAA: Forward+ and Mobile only (Godot docs, 3D antialiasing).
+static func has_smaa() -> bool:
+	return RenderingServer.get_current_rendering_method() != COMPATIBILITY
+
+
+## The cabin level's reach: where a vehicle stands at occupant_zoom, drawn out by the error the tier accepts (a fixed shape's error on
+## the screen falls with the distance).
+static func cabin_reach(q: Dictionary, height_px: float) -> float:
+	var cfg: Dictionary = DataTables.game("camera")
+	return CameraProfile.metres_at(cfg, q.occupant_zoom, height_px) * 0.5 / q.vehicle_error_px
+
+
+## Everything a tier sets, live.
+static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
+	world.sun.shadow_enabled = q.shadows
+	world.sun.directional_shadow_max_distance = q.shadow_distance_m
+	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
+	var smaa: bool = q.smaa and has_smaa()
+	viewport.msaa_3d = MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
+	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
+	world.environment.ssao_enabled = q.ssao
+	var ao: Dictionary = DataTables.game("settings").ssao
+	RenderingServer.environment_set_ssao_quality(SSAO_QUALITY, q.ssao_half, ao.adaptive_target, int(ao.blur_passes),
+			ao.fadeout_from_m, ao.fadeout_to_m)
+	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
+	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
+	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),
+			0 if q.pedestrian_detail > 0 else PEOPLE_FAR])
+	CityStore.dispatch(&"set_population", [float(q.population)])
+	CityStore.dispatch(&"set_upload_every", [int(q.upload_every)])
+	CityStore.set_sim_switch("crowd", q.crowd)
+	world.set_water_plain(q.water_plain)
+	world.set_terrain_lod(int(q.terrain_lod))

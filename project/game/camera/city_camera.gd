@@ -1,8 +1,5 @@
-## City camera rig, a perspective rig: orbit about a ground point with a yaw, a
-## player tilt and `half`, the half height of the ground in view there. The lens, the tilt and the eye height follow
-## `half` (CameraProfile), the point looked at follows the terrain, the eye never goes under the ground. Every move
-## that holds a ground point under the pointer goes through `keeping`. Mouse gestures: CameraGestures; keys and
-## wheel: CameraMotion. Values come from data/game/camera.json.
+## The camera rig: orbit about a ground point with a yaw, a tilt and `half`, the half height of the ground in view there (CameraProfile).
+## Moves that hold a ground point under the pointer go through `keeping`. CameraGestures, CameraMotion, CameraPull; data/game/camera.json.
 class_name CityCamera
 extends Node3D
 
@@ -26,6 +23,7 @@ var half := 0.0
 var distance := 0.0
 var gestures: CameraGestures
 var motion: CameraMotion
+var pull: CameraPull
 var _ground_y := 0.0
 
 
@@ -38,6 +36,7 @@ func _ready() -> void:
 	camera.current = true
 	gestures = CameraGestures.new(self)
 	motion = CameraMotion.new(self)
+	pull = CameraPull.new(cfg)
 	yaw = deg_to_rad(cfg.start_yaw)
 	far_tilt = deg_to_rad(cfg.start_pitch)
 	half = cfg.start_view_half
@@ -58,13 +57,8 @@ func tilt(steps: int) -> void:
 	orbit(0.0, deg_to_rad(cfg.tilt_step_deg) * steps)
 
 
-## Compass: turns smoothly to face north.
 func north() -> void:
 	motion.aim_north()
-
-
-func top_view() -> void:
-	orbit(0.0, deg_to_rad(cfg.max_tilt_deg) - pitch)
 
 
 ## Jumps straight to a view: tests and framing actions. `dist` is the eye's distance from the point.
@@ -95,6 +89,8 @@ func stop() -> void:
 func _process(dt: float) -> void:
 	motion.step(dt)
 	gestures.advance(dt)
+	if pull.settle(dt):
+		_apply()
 
 
 ## A drag in progress owns the pointer, over the interface too.
@@ -104,7 +100,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if gestures.press(event) or motion.input(event):
+	if gestures.touch(event) or gestures.press(event) or motion.input(event):
 		get_viewport().set_input_as_handled()
 
 
@@ -235,7 +231,7 @@ func _apply() -> void:
 	var profile: float = CameraProfile.profile_tilt(cfg, half)
 	pitch = clampf(profile + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, half),
 			deg_to_rad(cfg.max_tilt_deg))
-	camera.fov = CameraProfile.fov_deg(cfg, half)
+	CameraProfile.lens(camera, cfg, half)
 	distance = CameraProfile.view_distance(cfg, half)
 	_ground_y = _ground_height(focus.x, focus.z)
 	focus.y = _ground_y + CameraProfile.eye_lift(cfg, half)
@@ -245,5 +241,6 @@ func _apply() -> void:
 	if pos.y < floor_y:
 		pos.y = floor_y
 		basis = Basis.looking_at(focus - pos, basis.y)
+	pos = pull.eye(focus, pos, half)
 	camera.global_transform = Transform3D(basis, pos)
 	camera.near = clampf(pos.distance_to(focus) * cfg.near_per_m, cfg.near_min, cfg.near_max)

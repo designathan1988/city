@@ -1,0 +1,215 @@
+{
+ "_doc": "The Effects panel's Optimisations tab (game/settings/optimizations.gd): each option chosen alone, live, to measure what it gains and what it costs the picture. Its first value is the game as it draws (tier: the tier's own). field: the tier's field it sets (data/game/settings.json tiers); divide: the building reach is divided by the value. Three.js's own options have no counterpart here: the opaque sort and shader precision are the engine's, frustum culling is always on, shadow and relief passes every N frames do not exist in Godot's renderer. scale: the value multiplies the tier's. defaults: the fields no tier sets.",
+ "options": [
+  {
+   "id": "shadowMapSize",
+   "field": "shadow_px",
+   "choices": [
+    "tier",
+    4096,
+    2048,
+    1024,
+    512
+   ]
+  },
+  {
+   "id": "msaa",
+   "field": "msaa",
+   "choices": [
+    "tier",
+    3,
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "aoResolution",
+   "field": "ssao_half",
+   "choices": [
+    "tier",
+    false,
+    true
+   ]
+  },
+  {
+   "id": "anisotropy",
+   "field": "anisotropy",
+   "choices": [
+    "tier",
+    4,
+    3,
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "smaa",
+   "field": "smaa",
+   "choices": [
+    "tier",
+    false
+   ]
+  },
+  {
+   "id": "detailProps",
+   "field": "detail_props",
+   "choices": [
+    "tier",
+    false
+   ]
+  },
+  {
+   "id": "buildingLod",
+   "field": "triangle_share",
+   "choices": [
+    "tier",
+    0.5,
+    0.25,
+    0.1
+   ]
+  },
+  {
+   "id": "postChain",
+   "field": "post",
+   "choices": [
+    "tier",
+    false
+   ]
+  },
+  {
+   "id": "agentShadows",
+   "field": "agent_shadows",
+   "choices": [
+    "tier",
+    false
+   ]
+  },
+  {
+   "id": "vegetation",
+   "field": "vegetation",
+   "scale": true,
+   "choices": [
+    "tier",
+    0.5,
+    0.25,
+    0
+   ]
+  },
+  {
+   "id": "detailCutoff",
+   "field": "detail_cutoff_zoom",
+   "scale": true,
+   "choices": [
+    "tier",
+    1.5,
+    2,
+    3
+   ]
+  },
+  {
+   "id": "pedestrianDetail",
+   "field": "pedestrian_detail",
+   "choices": [
+    "tier",
+    2,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "vehicleError",
+   "field": "vehicle_error_px",
+   "choices": [
+    "tier",
+    1,
+    2,
+    4
+   ]
+  },
+  {
+   "id": "vehicleWhole",
+   "field": "vehicle_whole_cap",
+   "choices": [
+    "tier",
+    100,
+    50,
+    20,
+    1
+   ]
+  },
+  {
+   "id": "occupants",
+   "field": "occupant_zoom",
+   "scale": true,
+   "choices": [
+    "tier",
+    2,
+    1000
+   ]
+  },
+  {
+   "id": "population",
+   "field": "population",
+   "choices": [
+    "tier",
+    0.75,
+    0.5,
+    0.25
+   ]
+  },
+  {
+   "id": "focusDetail",
+   "field": "crowd",
+   "choices": [
+    "tier",
+    false
+   ]
+  },
+  {
+   "id": "uploadEvery",
+   "field": "upload_every",
+   "choices": [
+    "tier",
+    2,
+    4
+   ]
+  },
+  {
+   "id": "waterMaterial",
+   "field": "water_plain",
+   "choices": [
+    "tier",
+    true
+   ]
+  },
+  {
+   "id": "terrainLod",
+   "field": "terrain_lod",
+   "choices": [
+    "tier",
+    2,
+    4,
+    8
+   ]
+  },
+  {
+   "id": "occlusion",
+   "field": "occlusion",
+   "choices": [
+    "tier",
+    false
+   ]
+  }
+ ],
+ "defaults": {
+  "agent_shadows": true,
+  "population": 1,
+  "crowd": true,
+  "upload_every": 1,
+  "water_plain": false,
+  "terrain_lod": 1,
+  "occlusion": true
+ }
+}

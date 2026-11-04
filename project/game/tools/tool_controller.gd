@@ -12,6 +12,7 @@ signal tool_changed(tool: Tool, params: Dictionary)
 signal hint(text: String, ok: bool)
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
+signal hovered(info: Dictionary)
 
 enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT }
 
