@@ -3,6 +3,7 @@
 #include "sim/persistence/save_format.h"
 
 #include "core/bytes.h"
+#include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/state/city_state.h"
 
@@ -81,20 +82,24 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Building b;
-		b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
-		b.zone = r.get<uint8_t>();
-		b.fn = r.get<uint8_t>();
-		b.floors = r.get<uint16_t>();
-		b.seed = r.get<uint32_t>();
-		b.style = r.get<uint16_t>();
-		b.profile = r.get<uint16_t>();
-		b.landmark = r.get<int16_t>();
-		b.built = r.get<double>();
-		if (r.ok) bs.put(int(i), b, false);
+		if (get_building(r, b)) bs.put(int(i), b, false);
 	}
 	return r.ok;
 }
 } // namespace
+
+bool get_building(ByteReader &r, Building &b) {
+	b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
+	b.zone = r.get<uint8_t>();
+	b.fn = r.get<uint8_t>();
+	b.floors = r.get<uint16_t>();
+	b.seed = r.get<uint32_t>();
+	b.style = r.get<uint16_t>();
+	b.profile = r.get<uint16_t>();
+	b.landmark = r.get<int16_t>();
+	b.built = r.get<double>();
+	return r.ok;
+}
 
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
@@ -117,7 +122,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)
 	s.growth.grown = r.get<int32_t>();
-	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
+	if (!r.ok || !read_extra_blocks(r, s)) return false;
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

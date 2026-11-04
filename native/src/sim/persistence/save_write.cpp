@@ -3,6 +3,7 @@
 #include "sim/persistence/save_format.h"
 
 #include "core/bytes.h"
+#include "sim/persistence/save_demolition.h"
 #include "sim/state/city_state.h"
 
 namespace city {
@@ -58,19 +59,22 @@ void write_buildings(ByteWriter &w, const BuildingStore &bs) {
 	w.put<uint32_t>(uint32_t(bs.items.size()));
 	for (const Building &b : bs.items) {
 		w.put<uint8_t>(b.alive ? 1 : 0);
-		if (!b.alive) continue;
-		for (float v : { b.x, b.z, b.w, b.d, b.rot }) w.put<float>(v);
-		w.put<uint8_t>(b.zone);
-		w.put<uint8_t>(b.fn);
-		w.put<uint16_t>(b.floors);
-		w.put<uint32_t>(b.seed);
-		w.put<uint16_t>(b.style);
-		w.put<uint16_t>(b.profile);
-		w.put<int16_t>(b.landmark);
-		w.put<double>(b.built);
+		if (b.alive) put_building(w, b);
 	}
 }
 } // namespace
+
+void put_building(ByteWriter &w, const Building &b) {
+	for (float v : { b.x, b.z, b.w, b.d, b.rot }) w.put<float>(v);
+	w.put<uint8_t>(b.zone);
+	w.put<uint8_t>(b.fn);
+	w.put<uint16_t>(b.floors);
+	w.put<uint32_t>(b.seed);
+	w.put<uint16_t>(b.style);
+	w.put<uint16_t>(b.profile);
+	w.put<int16_t>(b.landmark);
+	w.put<double>(b.built);
+}
 
 std::vector<uint8_t> encode_city(const CityState &s) {
 	ByteWriter w;
@@ -87,6 +91,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	write_buildings(w, s.buildings);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
+	write_extra_blocks(w, s);
 	w.put<uint32_t>(SAVE_END);
 	return std::move(w.buf);
 }
