@@ -331,22 +331,22 @@
       "glow_gain": {
        "type": "number"
       },
-      "lit_gain": {
-       "type": "number"
-      },
-      "lit_night_gain": {
-       "type": "number"
-      },
       "roughness": {
+       "type": "number"
+      },
+      "lens_roughness": {
+       "type": "number"
+      },
+      "lens_ior": {
        "type": "number"
       }
      },
      "required": [
       "glow_color",
       "glow_gain",
-      "lit_gain",
-      "lit_night_gain",
-      "roughness"
+      "roughness",
+      "lens_roughness",
+      "lens_ior"
      ],
      "strict": true
     }

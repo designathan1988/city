@@ -1,5 +1,5 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths.",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info).",
  "road": {
   "shader": "res://render/shaders/road.gdshader",
   "params": {
@@ -131,9 +131,9 @@
   "params": {
    "glow_color": "#ffdba0",
    "glow_gain": 6.0,
-   "lit_gain": 0.9,
-   "lit_night_gain": 2.5,
-   "roughness": 0.85
+   "roughness": 0.85,
+   "lens_roughness": 0.0,
+   "lens_ior": 1.5848
   }
  },
  "agent": {
