@@ -673,6 +673,7 @@
     "shader": {
      "type": "string"
     },
+    "display_colors": { "type": "object" },
     "params": {
      "type": "object",
      "properties": {}

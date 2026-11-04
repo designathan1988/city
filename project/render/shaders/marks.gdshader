@@ -6,10 +6,9 @@ shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 
 global uniform float night;
-uniform vec3 hole_hard : source_color = vec3(0.11, 0.087, 0.067);
-uniform vec3 lip_hard : source_color = vec3(0.36, 0.34, 0.32);
-uniform vec3 hole_earth : source_color = vec3(0.13, 0.1, 0.067);
-uniform vec3 lip_earth : source_color = vec3(0.38, 0.29, 0.2);
+// The crater's four stops, as scene radiance (what the Environment's tone mapping shows as the reference game's crater colours,
+// by CityWorld from data/render/materials.json display_colors): index = 4 * (0 paving, 1 earth) + (0 centre, 1 mid, 2 rim, 3 lip).
+uniform vec3 crater_rad[8];
 uniform vec3 soot_color : source_color = vec3(0.078, 0.067, 0.055);
 uniform vec3 blood_deep : source_color = vec3(0.376, 0.024, 0.035);
 uniform vec3 blood_thin : source_color = vec3(0.52, 0.047, 0.063);
@@ -58,11 +57,13 @@ void fragment() {
 	float rn = r / wob;
 	if (k < 1.5) { // crater: scorch spreading out, the hole, its lip, grit and (in paving) cracks
 		bool hard = k < 0.5;
-		vec3 hole_c = hard ? hole_hard : hole_earth, lip_c = hard ? lip_hard : lip_earth;
+		int base = hard ? 0 : 4;
+		vec3 lip_c = crater_rad[base + 3];
 		float scorch = (1.0 - smoothstep(0.35, 1.0, rn)) * 0.55 * (0.6 + 0.4 * vnoise(q * 6.0 + v_seed));
 		float hole = 1.0 - smoothstep(0.5, 0.56, rn);
 		float lip = smoothstep(0.42, 0.52, rn) * (1.0 - smoothstep(0.56, 0.62, rn));
-		vec3 inner = mix(hole_c, hole_c * 2.2, smoothstep(0.0, 0.5, rn));
+		float tt = clamp(rn / 0.58, 0.0, 1.0); // the hole's gradient: centre, then mid at 0.7 of the way, then the rim
+		vec3 inner = tt < 0.7 ? mix(crater_rad[base], crater_rad[base + 1], tt / 0.7) : mix(crater_rad[base + 1], crater_rad[base + 2], (tt - 0.7) / 0.3);
 		float grit = step(0.72, vnoise(q * 22.0 + v_seed * 5.0)) * smoothstep(1.0, 0.3, rn) * 0.7;
 		c = soot_color;
 		a = scorch;

@@ -52,6 +52,8 @@ func materials() -> Dictionary:
 				_set_means(m, table[key].params)
 			elif key == "prop":
 				_set_lens_radiance(m)
+			elif key == "marks":
+				_set_crater_radiance(m, table[key].display_colors.crater)
 			_materials[key] = m
 	return _materials
 
@@ -80,6 +82,15 @@ func _set_lens_radiance(m: ShaderMaterial) -> void:
 			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
 					environment.tonemap_white)
 	m.set_shader_parameter("lit_radiance", lit)
+
+
+## The crater's colours (the reference game's, as the screen shows them), as the scene radiance that shows as each under the
+## Environment's tone mapping (render/tone_map.gd): the unlit crater decal is not darkened by the ACES toe.
+func _set_crater_radiance(m: ShaderMaterial, shown: Array) -> void:
+	var rad := PackedVector3Array()
+	for html: String in shown:
+		rad.append(ToneMap.radiance(Color.html(html), environment.tonemap_exposure, environment.tonemap_white))
+	m.set_shader_parameter("crater_rad", rad)
 
 
 func _mean_color(tex: Texture2D) -> Color:

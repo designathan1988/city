@@ -217,6 +217,7 @@
  },
  "marks": {
   "shader": "res://render/shaders/marks.gdshader",
+  "display_colors": { "crater": ["#231C15", "#493A2D", "#736C64", "#96918A", "#2A1F15", "#58412B", "#785C3E", "#8A6C4B"] },
   "params": {}
  }
 }
