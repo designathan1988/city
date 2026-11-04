@@ -87,6 +87,12 @@ Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kin
 	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
 }
 
+Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
+	if (!far_tones || fin < 0) return lin;
+	const Lin &k = (*far_tones)[size_t(fin)];
+	return { lin.r * k.r, lin.g * k.g, lin.b * k.b };
+}
+
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
 	Vector3 n = (p[1] - p[0]).cross(p[2] - p[0]);
 	if (n.length_squared() < DEGENERATE && count == 4) n = (p[2] - p[1]).cross(p[3] - p[1]);
@@ -96,7 +102,8 @@ void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin
 	bool wall = std::abs(n.y) < SHELL_WALL_TOP;
 	Vector2 t2(float(fin + 1), 0);
 	int base = int(pos.size());
-	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], lin, wall, kind), Vector2(), t2);
+	const Lin tint = far_tint(lin, fin);
+	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], tint, wall, kind), Vector2(), t2);
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0; // clockwise seen from `out`
 	for (int i = 1; i + 1 < count; i++) {
 		idx.push_back(base);
@@ -194,7 +201,8 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 	Vector3 n = (p[1] - p[0]).cross(p[3] - p[0]).normalized();
 	if (n.dot(out) < 0) n = -n;
 	int base = int(pos.size());
-	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], lin, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
+	const Lin tint = far_tint(lin, fin);
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
 	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
 	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };
