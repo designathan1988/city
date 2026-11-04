@@ -29,6 +29,7 @@ const NORMAL_SPEED := 2 # SimSpeed::NORMAL
 const MOTO := 5
 const FIRST_HEAVY := 6
 const FLOORS_LOW := 2
+const STILL_WALKERS := 3
 
 var out_dir := "user://captures"
 var phases := ["pareada"]
@@ -71,6 +72,8 @@ func _run() -> void:
 		await blast.earth()
 	if "topo" in phases:
 		await blast.topdown()
+	if "still" in phases:
+		await _still()
 	if "people" in phases:
 		await _people()
 	if "car" in phases:
@@ -87,6 +90,16 @@ func _paired() -> void:
 		return
 	await blast.blow("bomba_f%d" % CaptureBlast.SMALL, lows[lows.size() / 2], CaptureBlast.SMALL, LOW_DIST, PAIRED_MOMENTS)
 	await blast.blow("bomba_f%d_grande" % CaptureBlast.BIG, lows[lows.size() / 3], CaptureBlast.BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
+
+
+## The first walkers as the warm-up left them, the simulation stopped and no shot fired: the same frame on every run, so a
+## change that must not alter a pedestrian's look (the shader split) can be proved by comparing the pixels around the walker.
+func _still() -> void:
+	var walkers: Array = CityStore.query(&"shot_targets", [TARGETS]).walkers
+	for k in mini(STILL_WALKERS, walkers.size()):
+		rig.jump(walkers[k].position, CaptureBlast.VIEW_YAW, WALKER_PITCH, WALKER_DIST)
+		await ui.drawn()
+		await ui.shot("ped_parado_%d" % k)
 
 
 func _people() -> void:
