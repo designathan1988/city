@@ -5,6 +5,7 @@ class_name Daylight
 extends RefCounted
 
 const RIGHT_ANGLE := 90.0
+const LEAST_LIGHT := 0.001 # a share of no light at all stays a number
 
 var _d: Dictionary
 var _sun: DirectionalLight3D
@@ -13,6 +14,7 @@ var _top: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
+var direct_share := 0.0 # the sun's or moon's share of the light on level ground
 var mode := "day"
 var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _clock_shown := -1.0
@@ -60,6 +62,7 @@ static func make_sun(day: Dictionary) -> DirectionalLight3D:
 	sun.directional_shadow_fade_start = day.shadow_fade_start
 	sun.shadow_normal_bias = day.shadow_normal_bias
 	sun.shadow_bias = day.shadow_bias
+	sun.shadow_blur = day.shadow_blur
 	return sun
 
 
@@ -121,6 +124,9 @@ func set_hour(hour: float) -> void:
 	_top.light_color = _c("sky_top")
 	_top.light_energy = _d.sky_top_energy * light * sky
 	_top.visible = _top.light_energy > 0.0
+	var direct: float = _sun.light_energy * maxf(_sun.basis.z.y, 0.0)
+	var fill: float = _fill.light_energy * maxf(_fill.basis.z.y, 0.0) if _fill.visible else 0.0
+	direct_share = direct / maxf(direct + fill + _env.ambient_light_energy + _top.light_energy, LEAST_LIGHT)
 	_set_sky(elev)
 	_env.glow_enabled = night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night

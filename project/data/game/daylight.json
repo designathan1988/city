@@ -101,5 +101,6 @@
  "shadow_fade_start": 0.7,
  "shadow_normal_bias": 1.0,
  "shadow_bias": 0.1,
+ "shadow_blur": 0.6,
  "shadow_split_3": 0.5
 }

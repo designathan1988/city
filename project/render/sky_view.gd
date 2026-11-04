@@ -34,6 +34,7 @@ var _puffs := PackedVector4Array()
 var _looks := PackedVector4Array()
 var _weather_view: WeatherView
 var _fog_field: Dictionary = {}
+var _canyon_field: Dictionary = {}
 
 
 func _init(world: CityWorld) -> void:
@@ -104,7 +105,9 @@ func _process(dt: float) -> void:
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
 	_fog_field = CityStore.query(&"fog_field", [get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() else Vector3.ZERO])
+	_canyon_field = CityStore.query(&"canyon_field", [get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() else Vector3.ZERO])
 	_apply_fog()
+	_apply_canyon()
 
 
 func _read() -> void:
@@ -165,7 +168,7 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud", _bounds)
 	_mat.set_shader_parameter("puff", _puffs)
 	_mat.set_shader_parameter("cloud_look", _looks)
-	_quad.visible = n > 0 or float(weather.get("mist", 0.0)) > 0.0 or bool(_fog_field.get("any", false))
+	_quad.visible = n > 0 or float(weather.get("mist", 0.0)) > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
 
 
 func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
@@ -183,6 +186,15 @@ func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
 		var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
 		var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
 		_puffs[i * LOBES + k] = Vector4(x + (ja * cs - jb * sn) * size, c.height + p[1] * size, z + (ja * sn + jb * cs) * size, jr * size)
+
+
+## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).
+func _apply_canyon() -> void:
+	var on: bool = _canyon_field.get("any", false)
+	_mat.set_shader_parameter("canyon_sky", _d.canyon_sky_most - _d.canyon_sun_cut * _world.daylight.direct_share if on else 0.0)
+	if on:
+		_mat.set_shader_parameter("canyon_map", _canyon_field.texture)
+		_mat.set_shader_parameter("canyon_window", _canyon_field.window)
 
 
 func _apply_fog() -> void:

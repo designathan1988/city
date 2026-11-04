@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/atmosphere/canyon_field.h"
 #include "render/atmosphere/fog_field.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
@@ -52,6 +53,7 @@ public:
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	FogField &fog() { return fog_; }
+	CanyonField &canyon() { return canyon_; }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
@@ -65,6 +67,7 @@ private:
 	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;
+	CanyonField canyon_;
 	BuildingRenderer buildings_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;

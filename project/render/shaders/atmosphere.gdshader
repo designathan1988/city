@@ -36,6 +36,7 @@ uniform vec2 wind_dir = vec2(0.93, 0.35);
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/cloud_field.gdshaderinc"
+#include "res://render/shaders/canyon_light.gdshaderinc"
 
 const int FOG_STEPS = 24;
 const int CLOUD_STEPS = 16;
@@ -203,6 +204,7 @@ void fragment() {
 	vec3 add = vec3(0.0);
 	float jitter = ign(FRAGCOORD.xy);
 	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
+	if (!sky && canyon_sky > 0.0) keep *= canyon_keep(hit, ro, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX);
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);
 		add = add * (1.0 - a) + mix(mist_color, mist_color * 0.18, dark) * a;
