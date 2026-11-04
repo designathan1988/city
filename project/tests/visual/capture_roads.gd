@@ -1,3 +1,4 @@
+## The game's day sun is fixed at 16:00, as the 4.0's day mode (renderer.ts): both photos stand under the same sun.
 ## Captures of the roads up close, on open ground where nothing stands in front of them: the same crossings, T junction,
 ## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events. Works on a build
 ## without the road paths too (no px argument, no freehand), so one script takes the "before" and the "after".
@@ -15,8 +16,6 @@ const NEAR_M := 42.0
 const WIDE_M := 520.0
 const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
-## The hour of the 4.0 photos: colours only compare under the same sun.
-const NOON := 12.0
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -44,7 +43,6 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
-	world.set_hour(NOON)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
