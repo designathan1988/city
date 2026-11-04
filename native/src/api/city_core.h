@@ -73,6 +73,9 @@ public:
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
+	godot::Dictionary park_sample(); // where the capture looks at bays, lots, bicycles and docks
+	bool camera_clear(const godot::Vector3 &at, float radius); // no building or vehicle where a capture would stand
+	void set_clock_hour(double hour); // tests only, like step_ticks
 	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;

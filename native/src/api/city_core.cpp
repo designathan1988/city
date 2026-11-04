@@ -162,4 +162,8 @@ void CityCore::step_ticks(int ticks) {
 	for (int i = 0; i < ticks; i++) sim_.step(*state_);
 }
 
+void CityCore::set_clock_hour(double hour) {
+	state_->clock.skip_to(hour);
+}
+
 } // namespace city

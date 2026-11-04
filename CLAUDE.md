@@ -88,6 +88,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
+- `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
@@ -165,7 +166,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
 - `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
-- `native/src/sim/traffic/cycling.cpp` · `native/src/sim/traffic/vehicle_speed.cpp` — bicicletas: ciclofaixa junto à faixa da guia e quem fica fora do caminho; velocidade de cada veículo (limite, conector, curva, deriva)
+- `native/src/sim/traffic/cycling.cpp` · `native/src/sim/traffic/vehicle_speed.cpp` — bicicletas: no bordo da pista, ciclofaixa junto à faixa da guia e quem fica fora do caminho; velocidade de cada veículo (limite, conector, curva, deriva)
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
@@ -274,7 +275,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
-- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
+- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` · `project/tests/visual/capture_traffic.gd` — rebaixo da guia, memória, semáforos, tráfego (soak) e lado parado do tráfego das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques

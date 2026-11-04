@@ -25,6 +25,7 @@ struct CityClock {
 	std::atomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
 	double day_shift = 0; // added to minutes for the time of day (starts at the day start)
 	double hour() const;
+	void skip_to(double hour); // forward to the next time it is `hour` (the captures: the clock the HUD shows and the sky together)
 };
 
 struct CityState {

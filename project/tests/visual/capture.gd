@@ -15,9 +15,6 @@ const TRAFFIC_SAMPLE := 400
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
 ## Offsets in the vehicle frame: x to its left, y up, z ahead.
-const CAR_VIEW_FROM := Vector3(3, 2.5, 14)
-const CAR_HIGH_FROM := Vector3(0, 45, 50)
-const CAR_VIEW_AT := Vector3(0, 0.5, 0)
 ## Busiest lit junction for pedestrians (traffic_probe busy_crossing): oblique view and a closer one.
 const CROSSING_FROM := Vector3(-8, 42, 16)
 const CROSSING_NEAR_FROM := Vector3(-6, 22, 10)
@@ -119,23 +116,22 @@ func _wait_render() -> void:
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	var hour := DAY
+	await CaptureSignals.at_hour(self, hour)
+	if only.has("trafego"):
+		await CaptureVehicles.car_shots(self, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
+		await CaptureTraffic.shots(self)
+		return
 	for v in VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
 		var h: float = v[3] if v.size() > 3 else DAY
-		world.set_hour(h)
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
-			await _frames(_sky_frames())
+			await CaptureSignals.at_hour(self, h)
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
 		print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
-	var k := _nearest(probe.sample, ground)
-	var car: Vector3 = probe.sample[k]
-	var ahead: Vector3 = probe.sample_dir[k]
-	var left := Vector3(ahead.z, 0, -ahead.x)
-	await _shot("07_carro", car + ahead * CAR_VIEW_FROM.z + left * CAR_VIEW_FROM.x + Vector3.UP * CAR_VIEW_FROM.y, car + CAR_VIEW_AT)
-	await _shot("08_carro_alto", car + ahead * CAR_HIGH_FROM.z + Vector3.UP * CAR_HIGH_FROM.y, car)
+	await CaptureVehicles.car_shots(self, probe, ground)
 	await CaptureVehicles.shots(self, probe, ground)
 	await _person_shot(probe, ground)
 	if not only.has("none") or soak > 0:
