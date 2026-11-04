@@ -182,11 +182,13 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 }
 
 int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
-	const float r = float(d["wheel"]), ww = float(d["wheel_w"]), az = float(d["axle_z"]), helmet = float(d["helmet_r"]);
-	Array b = d["body"];
-	const float bw = float(b[0]) * 0.5f, by0 = float(b[1]), by1 = float(b[2]);
+	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
+	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
+	const Vector2 b = agent_v2(d["body"]); // width, bottom; its top under the saddle
+	const float bw = b.x * 0.5f, by0 = b.y, by1 = float(d["saddle_m"]) - MOTO_SEAT_H;
 	const float tail = -az * MOTO_TAIL, nose = az * MOTO_NOSE, lamp_w = bw * MOTO_LAMP_W;
-	for (float z : { -az, az }) agent_wheel(mb, Vector3(0, r, z), r, ww, sides, 1, trim);
+	agent_wheel(mb, Vector3(0, rear.x, -az), rear.x, rear.y, sides, 1, trim);
+	agent_wheel(mb, Vector3(0, front.x, az), front.x, front.y, sides, 1, trim);
 	agent_box(mb, Vector3(-bw, by0, tail), Vector3(bw, by1, nose), AGENT_WHITE, AgentTag::PAINT);
 	agent_box(mb, Vector3(-bw * MOTO_SEAT_W, by1, -az * MOTO_NOSE), Vector3(bw * MOTO_SEAT_W, by1 + MOTO_SEAT_H, 0), trim.blackout, AgentTag::FIXED);
 	agent_box(mb, Vector3(-bw * MOTO_BAR_W, by1 + MOTO_SEAT_H, az * MOTO_BAR_Z), Vector3(bw * MOTO_BAR_W, by1 + MOTO_SEAT_H * MOTO_BAR_H, nose), trim.blackout,

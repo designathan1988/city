@@ -74,8 +74,8 @@ std::vector<float> stations(const Loft &lf, const Dictionary &body) {
 		xs.insert(xs.end(), { lf.doors[1] - lf.pillar * 0.5f, lf.doors[1] + lf.pillar * 0.5f });
 	}
 	const float ar = (s.r + CAR_ARCH_PAD_M) / s.L;
-	for (int side : { -1, 1 })
-		for (int j = -arch; j <= arch; j++) xs.push_back(side * s.axle + ar * j / arch);
+	for (float a : s.axles)
+		for (int j = -arch; j <= arch; j++) xs.push_back(a + ar * j / arch);
 	for (int j = 1; j <= ends; j++) { // the plan's rounding at each end
 		xs.push_back(0.5f - s.nose_r / s.L * j / (ends + 1));
 		xs.push_back(-0.5f + s.tail_r / s.L * j / (ends + 1));
@@ -145,11 +145,9 @@ int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, co
 	car_cap(mb, s, xs.back(), 1.f, bumper, trim);
 	car_cap(mb, s, xs.front(), -1.f, bumper, trim);
 	car_details(mb, s, body, lf.fine, trim);
-	const float inset = float(body["wheel_inset_m"]), ww = float(body["wheel_w"]);
 	const int sides = int(body["wheel_sides"]);
-	for (int k : { -1, 1 })
-		for (int side : { -1, 1 })
-			agent_wheel(mb, Vector3(side * (s.W * 0.5f - inset), s.r, k * s.axle * s.L), s.r, ww, sides, side, trim);
+	for (int k = 0; k < 2; k++)
+		for (int side : { -1, 1 }) agent_wheel(mb, Vector3(side * s.track[k] * 0.5f, s.r, s.axles[k] * s.L), s.r, s.tw, sides, side, trim);
 	return passengers;
 }
 

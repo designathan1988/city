@@ -51,8 +51,8 @@ std::vector<float> monotone_slopes(const std::vector<float> &x, const std::vecto
 
 float bottom_at(const CarStyle &s, float xf) {
 	float z = xf * s.L, ar = s.r + CAR_ARCH_PAD_M, y = s.clear;
-	for (int k : { -1, 1 }) {
-		float dz = z - k * s.axle * s.L;
+	for (float a : s.axles) {
+		float dz = z - a * s.L;
 		if (std::fabs(dz) < ar) y = std::max(y, s.r * ARCH_CENTRE + std::sqrt(ar * ar - dz * dz));
 	}
 	return y;
@@ -62,7 +62,16 @@ float bottom_at(const CarStyle &s, float xf) {
 
 CarStyle read_car_style(const Dictionary &d, const Dictionary &body) {
 	CarStyle s;
-	s.L = float(d["length"]); s.W = float(d["width"]); s.H = float(d["height"]); s.r = float(d["wheel"]); s.clear = float(d["clearance"]);
+	s.L = float(d["length"]); s.W = float(d["width"]); s.H = float(d["height"]); s.clear = float(d["clearance"]);
+	const Vector2 tyre = agent_tyre(d["tyre"]), track = agent_v2(d["track_m"]);
+	s.r = tyre.x;
+	s.tw = tyre.y;
+	// the wheelbase centred when the sheet gives no overhang; the tyres flush with the sides when it gives no track
+	const float wb = d["wheelbase_m"], front = float(d["front_overhang_m"]) > 0 ? float(d["front_overhang_m"]) : (s.L - wb) * 0.5f;
+	s.axles[0] = (s.L * 0.5f - front) / s.L;
+	s.axles[1] = s.axles[0] - wb / s.L;
+	s.track[0] = track.x > 0 ? track.x : s.W - s.tw;
+	s.track[1] = track.y > 0 ? track.y : s.W - s.tw;
 	const Array top = d["top"]; // front to back
 	for (int64_t i = top.size() - 1; i >= 0; i--) {
 		const Array p = top[i];
@@ -75,7 +84,7 @@ CarStyle read_car_style(const Dictionary &d, const Dictionary &body) {
 	if (s.rear_glass) pair(d, "rear", s.rear);
 	s.nose_r = float(d["nose_r"]); s.tail_r = float(d["tail_r"]);
 	s.sill = float(body["sill_m"]); s.tumble = float(body["tumble"]); s.glass_top = float(body["glass_top_m"]);
-	s.crown = float(body["crown_m"]); s.axle = float(body["axle"]); s.bottom_round = float(body["bottom_round_m"]); s.bulge = float(body["bulge"]);
+	s.crown = float(body["crown_m"]); s.bottom_round = float(body["bottom_round_m"]); s.bulge = float(body["bulge"]);
 	return s;
 }
 
@@ -115,7 +124,10 @@ void car_ring(const CarStyle &s, float xf, Vector2 out[RING]) {
 
 bool car_within(float x, const float r[2]) { return x <= std::max(r[0], r[1]) && x >= std::min(r[0], r[1]); }
 
-bool car_overhang(const CarStyle &s, float xf) { return std::fabs(xf) * s.L > s.axle * s.L + s.r + CAR_ARCH_PAD_M; }
+bool car_overhang(const CarStyle &s, float xf) {
+	const float z = xf * s.L, room = s.r + CAR_ARCH_PAD_M;
+	return z > s.axles[0] * s.L + room || z < s.axles[1] * s.L - room;
+}
 
 void car_door_edges(const CarStyle &s, float out[3]) {
 	out[0] = std::max(s.screen[0], s.screen[1]); // the A pillar's foot

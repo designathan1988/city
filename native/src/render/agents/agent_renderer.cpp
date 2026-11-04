@@ -98,7 +98,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, look.person, trim);
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
-			wheel_r_[i] = d.has("tyre") ? agent_tyre(d["tyre"]).x : float(d["wheel"]); // the cars and the motorbike: still a radius
+			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
 			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
 			if (level == CABIN_LEVEL) load_[i].seats = seats;
 			// near, the glass is see-through over the cabin; far, it stays in the body, opaque

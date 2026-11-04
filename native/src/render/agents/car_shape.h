@@ -16,10 +16,11 @@ constexpr int RING_SILL = 3, RING_BELT = 6, RING_PANE_TOP = 7;
 constexpr float CAR_ARCH_PAD_M = 0.07f; // a wheel arch's room round its tyre
 
 struct CarStyle {
-	float L = 0, W = 0, H = 0, r = 0, clear = 0;
+	float L = 0, W = 0, H = 0, r = 0, tw = 0, clear = 0; // tw: the tyre's width
+	float axles[2] = {}, track[2] = {}; // front and rear: the axle (share of L from the middle), the track (metres)
 	std::vector<float> top_x, top_y, top_m; // the roof line, x ascending (share of L), y (share of H), slopes
 	float screen[2] = {}, rear[2] = {}, side[2] = {}, belt[2] = {}, nose_r = 0, tail_r = 0;
-	float sill = 0, tumble = 0, glass_top = 0, crown = 0, axle = 0, bottom_round = 0, bulge = 0;
+	float sill = 0, tumble = 0, glass_top = 0, crown = 0, bottom_round = 0, bulge = 0;
 	bool rear_glass = true; // "rear": [] is a blind back (the van)
 };
 
