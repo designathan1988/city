@@ -17,6 +17,7 @@ namespace {
 constexpr float HUB_SHARE = 0.62f, HUB_PROUD_M = 0.01f, RIM_SHARE = 0.5f, SPOKE_SHADE = 0.45f;
 constexpr float PAN_GAP_M = 0.02f; // the floor pan's top under the cabin floor
 constexpr float ALONG_X = 0.01f;   // a bar this close to X (its square off X) takes Y for its width
+constexpr float MM_PER_M = 1000.f, PERCENT = 100.f, M_PER_INCH = 0.0254f; // the inch: 25.4 mm exactly (1959)
 } // namespace
 
 Color agent_hex(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).utf8().get_data())); }
@@ -29,6 +30,12 @@ Vector3 agent_v3(const Variant &v) {
 Vector2 agent_v2(const Variant &v) {
 	Array a = v;
 	return a.size() == 2 ? Vector2(float(a[0]), float(a[1])) : Vector2();
+}
+
+Vector2 agent_tyre(const Variant &designation) {
+	const Vector3 t = agent_v3(designation); // section width mm, aspect ratio %, rim diameter in
+	const float w = t.x / MM_PER_M;
+	return Vector2(t.z * M_PER_INCH * 0.5f + w * t.y / PERCENT, w);
 }
 
 AgentTrim read_trim(const Dictionary &t) {

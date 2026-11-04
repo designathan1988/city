@@ -115,6 +115,12 @@ std::vector<godot::Vector2> spans_between(float z0, float z1, const std::vector<
 // agent_cabin.cpp: the lining, dashboard, seats and people of `c`; the seats fill in their order, the drivers' always.
 // Returns the passenger seats.
 int agent_cabin(MeshBuilder &mb, const Cabin &c, const std::vector<Seat> &seats, const CabinLook &l);
+// The driver's hip point z in `c`: their toes on the pedals at the front lining (seated() below: the thigh level to the
+// knee, the shin straight down, the foot ahead of the heel).
+float pedal_hip_z(const Cabin &c, const CabinLook &l);
+// The dashboard of `c` in front of `driver`: from the front wall back to the steering wheel's hub and down to the top of
+// the knees, `width` in from the driver's side wall.
+void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width);
 // A person (Limb::SEAT parts: shirt, trousers, shoes, skin, hair or helmet) posed by `f`.
 void agent_person(MeshBuilder &mb, const Person &p, const Figure &f);
 // The parts of the person from vertex `from` on fill the seat that is `order`-th to fill (DRIVER_ORDER: always there).
@@ -136,12 +142,23 @@ int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Cabi
 // heavy_meshes.cpp
 int build_truck(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Person &rider, const AgentTrim &trim);
+// A tyre from its designation [section width mm, aspect ratio %, rim diameter inches] (ISO 4000-1, ETRTO): its radius
+// (half the rim's diameter plus the sidewall, width times aspect) and width, metres.
+godot::Vector2 agent_tyre(const godot::Variant &designation);
 // Parts the heavy vehicles share (heavy_meshes.cpp).
-std::vector<float> heavy_axles(const godot::Dictionary &d, float length);
-// Each axle's pair of wheels (agents.json wheel, wheel_w, wheel_inset_m: the outer face in from the side).
-void heavy_wheels(MeshBuilder &mb, const godot::Dictionary &d, const std::vector<float> &zs, float width, int sides, const AgentTrim &trim);
-void heavy_lamps(MeshBuilder &mb, float width, float length, float tail_y, const AgentTrim &trim);
-void heavy_mirrors(MeshBuilder &mb, float half_w, float z, float y, const AgentTrim &trim);
+// Where the wheels go: the axles (z) from the front overhang and the wheelbases, the tracks (centre to centre of the
+// tyres, front axle and the others) and, behind the front axle, twin tyres dual_m apart (agents.json bus / truck).
+struct Running {
+	std::vector<float> axles;
+	float r = 0, w = 0, front_track = 0, rear_track = 0, dual = 0;
+};
+Running heavy_running(const godot::Dictionary &d, float length);
+void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim &trim);
+// Headlamps and tail lamps on the ends (agents.json lamps_m: their centres' height over the road, their outer edges in
+// from the sides, their faces [w, h]).
+void heavy_lamps(MeshBuilder &mb, const godot::Dictionary &lamps, float width, float length, const AgentTrim &trim);
+// A mirror each side on an arm out from the body at z: the glass's bottom at y, its outer edge `out` beyond the side.
+void heavy_mirrors(MeshBuilder &mb, float half_w, float z, float y, float out, const AgentTrim &trim);
 constexpr float HEAVY_PROUD_M = 0.01f, HEAVY_GLASS_INSET_M = 0.02f, HEAVY_ARCH_PAD_M = 0.07f, HEAVY_PILLAR_M = 0.12f;
 
 } // namespace city

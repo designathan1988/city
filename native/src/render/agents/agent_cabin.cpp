@@ -1,8 +1,7 @@
-// The cabin of any vehicle behind its see-through glass (Roadcraft 4.0 carBody.ts / vehicleModels.ts: seats and people at
-// their hip points, the driver's hands on the wheel): a lining facing in (the shell's own faces are seen from behind there
-// and culled) with its doorways, floor, liner and dashboard; the seats in their styles (car, truck cab, bus chair); in
-// each a sitting person whose parts carry, for the shader, the seat's place in the order the seats fill and the
-// vehicle's passenger seats (UV).
+// The cabin of any vehicle behind its see-through glass: a lining facing in (the shell's own faces are seen from behind
+// there and culled) with its doorways, floor, liner and dashboard; the seats in their styles (car, truck cab, bus chair);
+// in each a sitting person at its hip point (a driver's hands on the wheel) whose parts carry, for the shader, the
+// seat's place in the order the seats fill and the vehicle's passenger seats (UV).
 #include "render/agents/agent_meshes.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -109,6 +108,18 @@ Figure seated(const Person &p, const Seat &s) {
 }
 
 } // namespace
+
+float pedal_hip_z(const Cabin &c, const CabinLook &l) {
+	const Person &p = l.person;
+	return c.z_front - l.lining_inset_m - (p.thigh.z - p.shin_w * 0.5f + p.foot.z);
+}
+
+void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width) {
+	const SeatStyle &st = *driver.style;
+	c.dash_d = c.z_front - (driver.z + st.wheel_fwd_m);
+	c.dash_h = c.front_top - (driver.floor + st.hip_m + l.person.thigh.y);
+	c.dash_w = width;
+}
 
 void agent_person(MeshBuilder &mb, const Person &p, const Figure &f) {
 	const Vector3 &t = p.torso, &g = p.thigh;

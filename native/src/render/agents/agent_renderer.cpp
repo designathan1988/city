@@ -12,6 +12,7 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 
@@ -28,7 +29,7 @@ constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the b
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 // agents.gdshader palette array sizes
 constexpr int HAIR_MAX = 8, SKIN_MAX = 8, HELMET_MAX = 8, PAINT_MAX = 16, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
-constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order is below seats * seats
+constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
 // A draw's room in instances grows past what it holds, in these steps, and shrinks only two steps below: vehicles
 // coming and going do not reallocate its buffers every frame (the rest of the room is not drawn).
@@ -97,7 +98,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, look.person, trim);
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
-			wheel_r_[i] = float(d["wheel"]);
+			wheel_r_[i] = d.has("tyre") ? agent_tyre(d["tyre"]).x : float(d["wheel"]); // the cars and the motorbike: still a radius
 			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
 			if (level == CABIN_LEVEL) load_[i].seats = seats;
 			// near, the glass is see-through over the cabin; far, it stays in the body, opaque
@@ -189,8 +190,9 @@ bool AgentRenderer::read_loads(const Dictionary &loads, PackedStringArray &error
 		for (const Variant &w : Array(d["bands"])) l.bands.push_back(sum += float(w));
 		for (float &b : l.bands) b /= sum;
 		if (l.bands.empty() || sum <= 0) errors.push_back(String("agents.json: occupants.load.") + key + " sem faixas");
-		if (l.seats * l.seats > HALF_EXACT) errors.push_back(String("agents.json: ") + key + " tem lugares demais para a ordem em meia precisão");
-		for (int s = MIN_STRIDE; l.shuffle && s <= l.seats - MIN_STRIDE; s++)
+		const int widest = (HALF_EXACT - l.seats) / l.seats; // the largest stride whose order a half float still holds
+		if (l.shuffle && widest < MIN_STRIDE) errors.push_back(String("agents.json: ") + key + " tem lugares demais para a ordem em meia precisão");
+		for (int s = MIN_STRIDE; l.shuffle && s <= std::min(l.seats - MIN_STRIDE, widest); s++)
 			if (std::gcd(s, l.seats) == 1) l.strides.push_back(s);
 		if (l.strides.empty()) l.strides.push_back(1);
 	}
