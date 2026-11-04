@@ -246,7 +246,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
 - `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
-- `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
+- `native/src/render/roads/road_section.cpp` · `native/src/render/roads/road_section.h` — a seção da via em peças: superfícies, rampa do rebaixo e ilha entre as pistas
+- `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores) e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — superfície dos lagos e rios acima do mar, por chunk

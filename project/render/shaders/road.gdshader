@@ -13,12 +13,12 @@ uniform sampler2D footway_map : source_color, filter_linear_mipmap_anisotropic, 
 uniform sampler2D footway_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D kerb_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D verge_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D verge_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 // Mean colour of each map, computed once in project/render/city_world.gd (one read instead of a smallest-mip fetch per
 // pixel; the strip colour stays the mean albedo).
 uniform vec3 mean_asphalt : source_color = vec3(1.0);
 uniform vec3 mean_footway : source_color = vec3(1.0);
 uniform vec3 mean_kerb : source_color = vec3(1.0);
-uniform vec3 mean_verge : source_color = vec3(1.0);
 uniform vec3 asphalt_reference : source_color = vec3(1.0); // the colour the asphalt map is authored against
 uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
@@ -29,9 +29,11 @@ uniform vec3 footway_tone;
 uniform float normal_asphalt = 1.0;
 uniform float normal_footway = 1.0;
 uniform float normal_kerb = 0.85;
+uniform float normal_verge = 0.9;
 uniform vec3 detail_asphalt = vec3(0.6, 0.65, 1.6); // how hard the detail colours, how hard it bends, the macro map's blur
 uniform vec3 detail_footway = vec3(0.7, 0.8, 0.6);
 uniform vec3 detail_kerb = vec3(0.55, 0.7, 0.8);
+uniform vec3 detail_verge = vec3(1.0, 1.2, 2.0);
 uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
@@ -140,7 +142,9 @@ void fragment() {
 		bend_scale = normal_footway;
 		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
 		float grain = source_linear(texture(asphalt_map, uv.yx / asphalt_m * 2.7).rgb).r;
-		albedo *= footway_wear(COLOR.r * WEAR_SPAN_M, (COLOR.r + COLOR.g) * WEAR_SPAN_M, grain);
+		if (COLOR.r + COLOR.g > 0.0) { // a paved median has neither kerb nor lot to wear by
+			albedo *= footway_wear(COLOR.r * WEAR_SPAN_M, (COLOR.r + COLOR.g) * WEAR_SPAN_M, grain);
+		}
 		bend = (texture(footway_normal, uv.yx / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
@@ -158,8 +162,16 @@ void fragment() {
 		bend_scale = normal_kerb;
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {
-		albedo = source_linear(texture(verge_map, v_world.xz / verge_m).rgb) * base
-				/ max(source_linear(mean_verge), vec3(MEAN_FLOOR));
+		vec2 gq = v_world.xz / verge_m;
+		vec3 t = source_linear(texture(verge_map, gq, near * detail_verge.z).rgb);
+		vec2 duv = v_world.xz / grass_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
+		if (near > 0.0) {
+			t *= mix(vec3(1.0), detail_albedo(grass_detail, duv, ddx, ddy), near * detail_verge.x);
+			fine = detail_bend(grass_detail_normal, duv, ddx, ddy) * near * detail_verge.y;
+		}
+		albedo = t * base; // the map is the grass: the strip's colour only tints it
+		bend = (texture(verge_normal, gq, near * detail_verge.z).xy - 0.5) * 2.0;
+		bend_scale = normal_verge;
 		rough = 0.95;
 	} else if (v_mat == M_COBBLE) {
 		vec2 c = uv * cobble_per_m;

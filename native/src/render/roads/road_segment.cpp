@@ -1,6 +1,7 @@
 // Segment surface: the profile's strips split into pieces (the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
 // neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
 #include "render/roads/road_mesh.h"
+#include "render/roads/road_section.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,123 +11,8 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float BIG_D = 1e9f, WALK_KEEP = 0.2f, STRAIGHT_TOL = 0.5f;
-constexpr float ROAD_MIN_SPAN = 0.05f;
-
-enum class Ramp : uint8_t { NONE, KERB, LOW_U0, LOW_U1 };
-
-struct Piece {
-	float u0 = 0, u1 = 0, h = 0;
-	RoadMat mat = RoadMat::ASPHALT;
-	Color col;
-	float edge0 = 0, edge1 = 0, lane = 0; // where wear is read: the surface's two edges, and the lanes' width
-	int tone = 0;
-	Ramp ramp = Ramp::NONE;
-};
-
-RoadMat paving_mat(Paving p) {
-	switch (p) {
-		case Paving::PAVERS: return RoadMat::PAVERS;
-		case Paving::STONE: return RoadMat::STONE;
-		case Paving::GRASS: return RoadMat::GRASS;
-		default: return RoadMat::FOOTWAY;
-	}
-}
-
-RoadMat surface_mat(Surface s) {
-	switch (s) {
-		case Surface::CONCRETE: return RoadMat::CONCRETE;
-		case Surface::COBBLE: return RoadMat::COBBLE;
-		case Surface::BALLAST: return RoadMat::BALLAST;
-		default: return RoadMat::ASPHALT;
-	}
-}
-
-bool kind_at(const Profile &p, int i, StripKind k) { return i >= 0 && i < int(p.edges.size()) && p.edges[i].strip.kind == k; }
-bool raised_walk(const Profile &p, int i) { return kind_at(p, i, StripKind::SIDEWALK) && !p.edges[i].strip.flush; }
-// A kerb between a raised footway and the carriageway (the ones that get gutters and dropped kerbs).
-bool outer_kerb(const Profile &p, int i) { return kind_at(p, i, StripKind::CURB) && (raised_walk(p, i - 1) || raised_walk(p, i + 1)); }
-
-// Where the carriageway around strip `i` begins and ends: its lanes, bays and shoulders, up to a kerb or a raised strip.
-void carriage_span(const Profile &p, int i, float &edge0, float &edge1) {
-	auto flat = [&](int k) {
-		if (k < 0 || k >= int(p.edges.size())) return false;
-		const StripKind kind = p.edges[k].strip.kind;
-		return kind == StripKind::LANE || kind == StripKind::PARKING || kind == StripKind::BIKE || kind == StripKind::SHOULDER;
-	};
-	int a = i, b = i;
-	while (flat(a - 1)) a--;
-	while (flat(b + 1)) b++;
-	edge0 = p.edges[a].u0;
-	edge1 = p.edges[b].u1;
-}
-
-void walk(const StreetLook &L, const Profile &p, int i, const Piece &base, std::vector<Piece> &out) {
-	Piece pc = base;
-	const bool kerb_u1 = outer_kerb(p, i + 1);
-	pc.edge0 = kerb_u1 ? pc.u1 : pc.u0; // from the kerb: the footway's far side is the lot's
-	pc.edge1 = kerb_u1 ? pc.u0 : pc.u1;
-	float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - WALK_KEEP);
-	if (pc.h <= 0 || w < L.ramp_min_walk) {
-		out.push_back(pc);
-		return;
-	}
-	Piece r = pc;
-	if (outer_kerb(p, i + 1)) { // kerb on the +u side
-		r.u0 = pc.u1 = pc.u1 - band;
-		r.ramp = Ramp::LOW_U1;
-		out.push_back(pc);
-		out.push_back(r);
-	} else if (outer_kerb(p, i - 1)) {
-		r.u1 = pc.u0 = pc.u0 + band;
-		r.ramp = Ramp::LOW_U0;
-		out.push_back(r);
-		out.push_back(pc);
-	} else out.push_back(pc);
-}
-
-std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
-	std::vector<Piece> out;
-	for (int i = 0; i < int(p.edges.size()); i++) {
-		const Strip &s = p.edges[i].strip;
-		Piece pc;
-		pc.u0 = p.edges[i].u0;
-		pc.u1 = p.edges[i].u1;
-		pc.mat = surface_mat(p.surface);
-		pc.col = L.carriage(p);
-		switch (s.kind) {
-			case StripKind::BIKE: pc.col = L.bike; pc.mat = RoadMat::ASPHALT; break;
-			case StripKind::SHOULDER: if (p.surface != Surface::BALLAST) pc.col = L.shoulder; break;
-			case StripKind::CURB:
-				pc.mat = RoadMat::KERB;
-				pc.col = L.curb;
-				pc.h = outer_kerb(p, i) ? L.h_curb : L.h_curb_median;
-				pc.ramp = outer_kerb(p, i) ? Ramp::KERB : Ramp::NONE;
-				break;
-			case StripKind::SIDEWALK:
-				pc.mat = paving_mat(s.pave);
-				pc.col = L.paving[int(s.pave) & 3];
-				pc.h = s.flush ? 0 : L.h_sidewalk;
-				walk(L, p, i, pc, out);
-				continue;
-			case StripKind::MEDIAN:
-				pc.mat = s.pave == Paving::CONCRETE ? RoadMat::CONCRETE : paving_mat(s.pave); // no kerb and lot to wear by
-				pc.col = L.median[int(s.pave) & 3];
-				pc.h = s.flush ? 0 : L.h_median;
-				break;
-			case StripKind::BARRIER: pc.mat = RoadMat::CONCRETE; pc.col = L.barrier; pc.h = L.h_barrier; break;
-			default: break;
-		}
-		if (s.kind == StripKind::LANE && pc.mat == RoadMat::ASPHALT && !p.rail) {
-			pc.mat = RoadMat::LANE;
-			pc.lane = s.width;
-			pc.tone = int(p.road_class);
-			carriage_span(p, i, pc.edge0, pc.edge1);
-		}
-		out.push_back(pc);
-	}
-	return out;
-}
+constexpr float BIG_D = 1e9f, STRAIGHT_TOL = 0.5f;
+constexpr float ROAD_MIN_SPAN = 0.05f, ISLAND_MIN_M = 1.f; // shorter than this no island is drawn
 
 // Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.
 float ramp_share(const StreetLook &L, float d) {
@@ -149,7 +35,7 @@ struct Sample {
 	float at = 0, d = BIG_D;
 };
 
-std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb) {
+std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
 	const RoadSegment &g = e.s.roads.segs[sid];
 	// a straight segment is linear in position, height, texture and pool coordinates: its two mouths are enough
 	bool straight = g.q.is_straight(STRAIGHT_TOL);
@@ -161,6 +47,8 @@ std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bo
 		if (ca && v0 + m < v1) at.push_back(v0 + m);
 		if (cb && v1 - m > v0) at.push_back(v1 - m);
 	}
+	if (lo > v0) at.push_back(lo);
+	if (hi < v1) at.push_back(hi);
 	std::sort(at.begin(), at.end());
 	at.erase(std::unique(at.begin(), at.end(), [](double a, double b) { return std::fabs(a - b) < ROAD_MIN_SPAN; }), at.end());
 	std::vector<Sample> out;
@@ -190,6 +78,7 @@ struct Ctx {
 
 // The wear coordinates of a piece at `u`. On a footway edge0 is the kerb's side and edge1 the lot's.
 Color wear_at(const Piece &pc, float u) {
+	if (pc.edge0 == pc.edge1) return wear_color(0, 0, 0, pc.mat, pc.tone); // paving nobody walks: a median's
 	return wear_color(std::fabs(u - pc.edge0), std::fabs(u - pc.edge1), pc.lane, pc.mat, pc.tone);
 }
 
@@ -230,34 +119,76 @@ void steps(const Ctx &c, const Piece &a, const Piece &b) {
 		if (std::fabs(ha0 - hb0) < eps && std::fabs(ha1 - hb1) < eps) continue;
 		bool a_high = ha0 + ha1 > hb0 + hb1;
 		const Piece &hi = a_high ? a : b;
-		wall(c, k, a.u1, std::min(ha0, hb0), std::max(ha0, hb0), std::min(ha1, hb1), std::max(ha1, hb1), a_high ? 1.f : -1.f, hi.col);
+		wall(c, k, a.u1, std::min(ha0, hb0), std::max(ha0, hb0), std::min(ha1, hb1), std::max(ha1, hb1), a_high ? 1.f : -1.f, hi.face);
 	}
 }
 
-void skirts_and_ends(const Ctx &c, const std::vector<Piece> &ps) {
+void skirts(const Ctx &c, const std::vector<Piece> &ps) {
 	const StreetLook &L = c.e.L;
 	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
 		float h0, h1, g0, g1;
 		heights(L, ps.front(), c.sm[k].d, h0, h1);
 		heights(L, ps.front(), c.sm[k + 1].d, g0, g1);
-		wall(c, k, ps.front().u0, -L.skirt, h0, -L.skirt, g0, -1.f, ps.front().col);
+		wall(c, k, ps.front().u0, -L.skirt, h0, -L.skirt, g0, -1.f, ps.front().face);
 		heights(L, ps.back(), c.sm[k].d, h0, h1);
 		heights(L, ps.back(), c.sm[k + 1].d, g0, g1);
-		wall(c, k, ps.back().u1, -L.skirt, h1, -L.skirt, g1, 1.f, ps.back().col);
+		wall(c, k, ps.back().u1, -L.skirt, h1, -L.skirt, g1, 1.f, ps.back().face);
 	}
-	for (size_t end : { size_t(0), c.sm.size() - 1 }) {
-		const Sample &s = c.sm[end];
-		Vector3 out = s.f.fwd * (end == 0 ? -1.f : 1.f);
-		for (const Piece &pc : ps) {
-			float h0, h1;
-			heights(L, pc, s.d, h0, h1);
-			if (h0 < L.face_eps && h1 < L.face_eps) continue;
-			const Vector3 p[4] = { c.at_u(end, pc.u0, 0), c.at_u(end, pc.u1, 0), c.at_u(end, pc.u1, h1), c.at_u(end, pc.u0, h0) };
-			const Vector2 uv[4] = { Vector2(pc.u0, 0), Vector2(pc.u1, 0), Vector2(pc.u1, h1), Vector2(pc.u0, h0) };
-			const Vector2 uv2[4] = { c.pool(pc.u0, s.at), c.pool(pc.u1, s.at), c.pool(pc.u1, s.at), c.pool(pc.u0, s.at) };
-			emit_quad(c.e.mb, p, uv, uv2, road_color(pc.col, RoadMat::SKIRT), out);
-		}
+}
+
+// The raised strips' end faces at sample `end`, looking `along` the road (-1 back, +1 ahead). `island_only` for a nose.
+void end_faces(const Ctx &c, const std::vector<Piece> &ps, size_t end, float along, bool island_only) {
+	const StreetLook &L = c.e.L;
+	const Sample &s = c.sm[end];
+	for (const Piece &pc : ps) {
+		float h0, h1;
+		heights(L, pc, s.d, h0, h1);
+		if ((h0 < L.face_eps && h1 < L.face_eps) || (island_only && !pc.island)) continue;
+		const Vector3 p[4] = { c.at_u(end, pc.u0, 0), c.at_u(end, pc.u1, 0), c.at_u(end, pc.u1, h1), c.at_u(end, pc.u0, h0) };
+		const Vector2 uv[4] = { Vector2(pc.u0, 0), Vector2(pc.u1, 0), Vector2(pc.u1, h1), Vector2(pc.u0, h0) };
+		const Vector2 uv2[4] = { c.pool(pc.u0, s.at), c.pool(pc.u1, s.at), c.pool(pc.u1, s.at), c.pool(pc.u0, s.at) };
+		emit_quad(c.e.mb, p, uv, uv2, road_color(pc.face, RoadMat::SKIRT), s.f.fwd * along);
 	}
+}
+
+void span(const Ctx &c, const std::vector<Piece> &ps) {
+	for (size_t i = 0; i < ps.size(); i++) {
+		tops(c, ps[i]);
+		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);
+	}
+	skirts(c, ps);
+}
+
+// From sample `from` to sample `to`, both included.
+std::vector<Sample> stretch(const std::vector<Sample> &sm, size_t from, size_t to) {
+	return std::vector<Sample>(sm.begin() + from, sm.begin() + to + 1);
+}
+
+// The first sample at `v` or past it.
+size_t sample_at(const std::vector<Sample> &sm, double v) {
+	size_t k = 0;
+	while (k + 1 < sm.size() && sm[k].at < v - ROAD_MIN_SPAN) k++;
+	return k;
+}
+
+// A section whose island stands back of the crossings: the carriageway bare up to its noses at `lo` and `hi`.
+void with_noses(const RoadEmit &e, const std::vector<Sample> &sm, const LampRow &lamp, const std::vector<Piece> &ps, double lo, double hi) {
+	const std::vector<Piece> bare = without_island(ps);
+	const size_t a = sample_at(sm, lo), b = sample_at(sm, hi);
+	const bool nose_a = a > 0, nose_b = b + 1 < sm.size();
+	const std::vector<Sample> before = stretch(sm, 0, a), island = stretch(sm, a, b), after = stretch(sm, b, sm.size() - 1);
+	Ctx head{ e, before, lamp }, body{ e, island, lamp }, tail{ e, after, lamp };
+	span(body, ps);
+	if (nose_a) {
+		span(head, bare);
+		end_faces(body, ps, 0, -1.f, true);
+	}
+	if (nose_b) {
+		span(tail, bare);
+		end_faces(body, ps, island.size() - 1, 1.f, true);
+	}
+	end_faces(head, nose_a ? bare : ps, 0, -1.f, false);
+	end_faces(tail, nose_b ? bare : ps, after.size() - 1, 1.f, false);
 }
 } // namespace
 
@@ -268,14 +199,24 @@ void emit_segment(const RoadEmit &e, int sid) {
 	if (v1 - v0 < ROAD_MIN_SPAN || p.edges.empty()) return;
 	bool ring_or_rail = p.ring || p.rail;
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
-	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb);
+	float island0, island1;
+	const bool island = island_span(p, island0, island1);
+	const double nose = e.s.catalog.furniture.crossing.zebra_to_m + e.L.median_nose;
+	const double lo = island && ca ? v0 + nose : v0, hi = island && cb ? v1 - nose : v1;
+	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb, lo, hi);
 	std::vector<Piece> ps = pieces_of(e.L, p);
-	Ctx c{ e, sm, lamp_row(e.s.roads, sid) };
-	for (size_t i = 0; i < ps.size(); i++) {
-		tops(c, ps[i]);
-		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);
+	const LampRow lamp = lamp_row(e.s.roads, sid);
+	if (lo > v0 || hi < v1) {
+		if (hi - lo >= ISLAND_MIN_M) {
+			with_noses(e, sm, lamp, ps, lo, hi);
+			return;
+		}
+		ps = without_island(ps);
 	}
-	skirts_and_ends(c, ps);
+	Ctx c{ e, sm, lamp };
+	span(c, ps);
+	end_faces(c, ps, 0, -1.f, false);
+	end_faces(c, ps, sm.size() - 1, 1.f, false);
 }
 
 } // namespace city
