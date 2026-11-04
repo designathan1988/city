@@ -52,6 +52,7 @@ func _ready() -> void:
 	_mat.shader = load("res://render/shaders/atmosphere.gdshader")
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
+	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
 	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
 	for key in ["mist_beta", "mist_reach", "shadow_strength"]:

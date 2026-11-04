@@ -1,6 +1,9 @@
 {
  "type": "object",
  "properties": {
+  "start_noise": {
+   "type": "string"
+  },
   "rain_mist": {
    "type": "number"
   },
