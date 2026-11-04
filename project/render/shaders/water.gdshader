@@ -1,45 +1,54 @@
-// Water plane at the sim water level (Roadcraft render/terrain.ts water material, without the depth term): two
-// scrolling ripple normals from value noise, a Fresnel blend from the water colour to the sky colour, sparse
-// white caps far out. Colours from data/render/palette.json "water".
+// Water plane at the sim water level: two layers of ripples moving downwind, reflected by Godot's own dielectric model.
+// Every number comes from data/render/palette.json "water" (its _doc gives the sources):
+// - the ripples are the peak of the fetch-limited wind-sea spectrum (JONSWAP, Hasselmann et al. 1973) and its
+//   double frequency, each moving at its own deep-water phase speed (c = g / (2 pi f), so a layer drifts f cells a
+//   second when a cell is one wavelength), the way the wind blows (the vegetation material's wind, its single owner);
+//   equal in slope, since the f^-5 equilibrium range (Phillips 1958) holds the same mean square slope in every octave;
+// - their slope is the mean square slope of a wind-roughened surface (Cox & Munk 1954); what the pixel cannot resolve
+//   (a wave needs two pixels: the ripples fade out between each layer's Nyquist limit) goes into the roughness instead,
+//   mean square slopes adding up (GGX alpha ~ rms slope, Walter et al. 2007);
+// - the reflectance at normal incidence is water's (n = 1.333), given as Godot's SPECULAR (F0 = 0.16 SPECULAR^2), so
+//   the sky's reflection follows Fresnel by the renderer's own model.
 shader_type spatial;
 render_mode cull_disabled;
 
 uniform vec3 shallow : source_color;
 uniform vec3 deep : source_color;
-uniform vec3 sky_tint : source_color = vec3(0.435, 0.584, 0.722);
-uniform float wave_scale;
-uniform float wave_speed;
+uniform float wave_scale; // cells a metre: one over the peak wavelength
+uniform float peak_hz; // the peak's frequency: cells a second the main layer drifts
+uniform float detail_ratio; // the detail layer's wavelength ratio (frequency ratio squared)
 uniform float ripple_strength;
-uniform float scroll_ax;
-uniform float scroll_ay;
-uniform float scroll_bx;
-uniform float scroll_by;
-uniform float scroll_speed;
+uniform float slope_sigma; // rms slope the ripples stand for, as a roughness when unresolved
+uniform float specular_f0;
+uniform float fetch_m; // the width of a water body: shallow and deep colours mix in patches this wide
+uniform float wind_x = 1.0;
+uniform float wind_z = 0.0;
 
-#include "res://render/shaders/noise2d.gdshaderinc"
+#include "res://render/shaders/lattice_noise.gdshaderinc"
+#include "res://render/shaders/color_space.gdshaderinc"
 
-// Slope of two noise layers scrolling in different directions (finite differences).
+const float FD_STEP = 0.1; // finite difference, in cells: a tenth of the span the value noise is smooth over
+
+// Slope of the two layers (finite differences of the value noise).
 vec2 ripple(vec2 p, float t, float fine) {
 	if (fine <= 0.0) return vec2(0.0); // far water: the noise is below a pixel, skip the four reads
-	vec2 a = p * wave_scale + vec2(scroll_ax, scroll_ay) * t * wave_speed * scroll_speed;
-	vec2 b = p * wave_scale * 3.1 + vec2(scroll_bx, scroll_by) * t * wave_speed * scroll_speed;
-	float e = 0.1;
-	float ha = noise(a), hb = noise(b);
-	vec2 d = vec2(noise(a + vec2(e, 0)) - ha, noise(a + vec2(0, e)) - ha) * 0.62 + vec2(noise(b + vec2(e, 0)) - hb, noise(b + vec2(0, e)) - hb) * 0.48;
-	return d / e;
+	vec2 dir = normalize(vec2(wind_x, wind_z));
+	vec2 a = p * wave_scale - dir * peak_hz * t;
+	vec2 b = p * wave_scale * detail_ratio - dir * peak_hz * sqrt(detail_ratio) * t;
+	float ha = vnoise(a), hb = vnoise(b);
+	vec2 d = vec2(vnoise(a + vec2(FD_STEP, 0)) - ha, vnoise(a + vec2(0, FD_STEP)) - ha) + vec2(vnoise(b + vec2(FD_STEP, 0)) - hb, vnoise(b + vec2(0, FD_STEP)) - hb);
+	return d / FD_STEP;
 }
 
 void fragment() {
 	vec3 world = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float fine = 1.0 - smoothstep(0.4, 1.6, max(fwidth(world.x), fwidth(world.z)));
+	float pixel = max(fwidth(world.x), fwidth(world.z));
+	float fine = 1.0 - smoothstep(0.5 / (wave_scale * detail_ratio), 0.5 / wave_scale, pixel);
 	vec2 s = ripple(world.xz, TIME, fine) * ripple_strength * fine;
 	vec3 n = normalize(vec3(-s.x, 1.0, -s.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
-	vec3 v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
-	float f = 0.06 + 0.94 * pow(1.0 - clamp(dot(v, n), 0.0, 1.0), 3.0);
-	vec3 c = mix(shallow, deep, 0.5 + 0.5 * noise(world.xz * 0.0031 + TIME * 0.0011));
-	c = mix(c * (1.0 - 0.6 * f), sky_tint, 0.35 * f);
-	ALBEDO = c;
-	ROUGHNESS = 0.15;
-	SPECULAR = 0.6;
+	vec3 c = mix(source_linear(shallow), source_linear(deep), vnoise(world.xz / fetch_m));
+	ALBEDO = linear_out(c);
+	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine));
+	SPECULAR = specular_f0;
 }

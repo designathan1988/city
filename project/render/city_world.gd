@@ -197,8 +197,12 @@ func _build_water(palette: Dictionary) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load(WATER_SHADER)
 	for key in palette.water:
-		if key != "sea_level_m":
+		if key != "sea_level_m" and not key.begins_with("_"):
 			mat.set_shader_parameter(key, _param(palette.water[key]))
+	# The ripples move the way the wind blows: the vegetation material holds the wind (its single owner).
+	var wind: Dictionary = DataTables.render().materials.vegetation.params
+	mat.set_shader_parameter("wind_x", wind.wind_dir_x)
+	mat.set_shader_parameter("wind_z", wind.wind_dir_z)
 	var water := MeshInstance3D.new()
 	water.mesh = plane
 	water.material_override = mat

@@ -7,19 +7,19 @@
   "water": {
    "type": "object",
    "properties": {
+    "_doc": { "type": "string" },
     "shallow": { "type": "string", "pattern_prefix": "#" },
     "deep": { "type": "string", "pattern_prefix": "#" },
     "sea_level_m": { "type": "number" },
     "wave_scale": { "type": "number" },
-    "wave_speed": { "type": "number" },
+    "peak_hz": { "type": "number" },
+    "detail_ratio": { "type": "number" },
     "ripple_strength": { "type": "number" },
-    "scroll_ax": { "type": "number" },
-    "scroll_ay": { "type": "number" },
-    "scroll_bx": { "type": "number" },
-    "scroll_by": { "type": "number" },
-    "scroll_speed": { "type": "number" }
+    "slope_sigma": { "type": "number" },
+    "specular_f0": { "type": "number" },
+    "fetch_m": { "type": "number" }
    },
-   "required": ["shallow", "deep", "sea_level_m", "wave_scale", "wave_speed", "ripple_strength", "scroll_ax", "scroll_ay", "scroll_bx", "scroll_by", "scroll_speed"],
+   "required": ["shallow", "deep", "sea_level_m", "wave_scale", "peak_hz", "detail_ratio", "ripple_strength", "slope_sigma", "specular_f0", "fetch_m"],
    "strict": true
   },
   "sky": {
