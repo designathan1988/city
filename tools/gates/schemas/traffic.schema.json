@@ -12,7 +12,12 @@
   "zone_work": { "type": "array", "minItems": 1, "items": { "type": "number" } },
   "zone_mid": { "type": "array", "minItems": 1, "items": { "type": "number" } },
   "zone_truck": { "type": "array", "minItems": 1, "items": { "type": "number" } },
-  "zone_walk": { "type": "array", "minItems": 1, "items": { "type": "number" } }
+  "_people_doc": { "type": "string" },
+  "people_kind_m": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "people_busy": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "people_working": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "people_purchasing": { "type": "array", "minItems": 1, "items": { "type": "number" } },
+  "zone_kinds": { "type": "array", "minItems": 1, "items": { "type": "number" } }
  },
- "required": ["_doc", "params", "classes", "signal_extension_s", "style_share", "zone_home", "zone_work", "zone_mid", "zone_truck", "zone_walk"]
+ "required": ["_doc", "params", "classes", "signal_extension_s", "style_share", "zone_home", "zone_work", "zone_mid", "zone_truck", "zone_kinds", "people_kind_m", "people_busy", "people_working", "people_purchasing"]
 }

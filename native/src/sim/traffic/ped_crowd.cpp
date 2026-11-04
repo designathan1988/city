@@ -102,17 +102,19 @@ struct Seen {
 void see_sidewalk(const std::vector<CrowdEntry> &list, size_t k, Seen &sn) {
 	const CrowdEntry &w = list[k];
 	if (w.dir == 0) {
-		for (size_t j = k + 1; j < list.size() && list[j].s - w.s <= sn.look; j++) sn.walker(list[j].s - w.s, list[j].u, list[j].dir != w.dir && list[j].moving);
+		for (size_t j = k + 1; j < list.size() && list[j].s - w.s <= sn.look; j++)
+			if (list[j].party != w.party) sn.walker(list[j].s - w.s, list[j].u, list[j].dir != w.dir && list[j].moving);
 	} else {
-		for (size_t j = k; j-- > 0 && w.s - list[j].s <= sn.look;) sn.walker(w.s - list[j].s, list[j].u, list[j].dir != w.dir && list[j].moving);
+		for (size_t j = k; j-- > 0 && w.s - list[j].s <= sn.look;)
+			if (list[j].party != w.party) sn.walker(w.s - list[j].s, list[j].u, list[j].dir != w.dir && list[j].moving);
 	}
 }
 
 // The walkers filed with junction `node`, remapped into its frame (SUMO's walking areas); a sidewalk walker leaves out
 // its own sidewalk's, already seen by arc.
-void see_junction(const TrafficState &t, int node, int id, int own_sidewalk, Seen &sn) {
+void see_junction(const TrafficState &t, int node, int party, int own_sidewalk, Seen &sn) {
 	for (const CrowdEntry &o : t.node_walkers[size_t(node)]) {
-		if (o.id == id || (own_sidewalk >= 0 && o.sidewalk == own_sidewalk)) continue;
+		if (o.party == party || (own_sidewalk >= 0 && o.sidewalk == own_sidewalk)) continue;
 		const V2 rel(o.x - sn.f.at.x, o.z - sn.f.at.y);
 		const bool facing = o.fx * sn.f.fwd.x + o.fz * sn.f.fwd.y < 0; // heading against its way (SUMO's direction)
 		sn.walker(rel.dot(sn.f.fwd), sn.f.u + rel.dot(sn.f.left), facing && o.moving);
@@ -182,7 +184,9 @@ void file(std::vector<std::vector<CrowdEntry>> &lists, std::vector<int> &keys, i
 CrowdEntry entry_of(const Pedestrian &w, int id, float moving) {
 	CrowdEntry e;
 	e.id = id;
-	e.sidewalk = w.mode == PedMode::SIDEWALK ? w.seg * 2 + w.side : -1;
+	e.sidewalk = w.mode == PedMode::SIDEWALK || w.on_way ? w.seg * 2 + w.side : -1;
+	e.party = w.with >= 0 ? w.with : id;
+	e.follows = w.with >= 0;
 	e.s = w.s;
 	e.u = w.u;
 	e.x = w.cur.x;
@@ -267,12 +271,13 @@ void crowd_step(CityState &s, float dt) {
 		size_t from = 0; // the first piece within look behind the walker (the walkers come in order of arc)
 		for (size_t k = 0; k < list.size(); k++) {
 			const CrowdEntry &w = list[k];
+			if (w.follows) continue;
 			const int nn = ends.ahead(w.s, w.dir, zone, near);
 			WayFrame f;
 			sidewalk_frame(w, half, nn > 0, f);
 			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
 			see_sidewalk(list, k, sn);
-			for (int j = 0; j < nn; j++) see_junction(t, near[j], w.id, key, sn);
+			for (int j = 0; j < nn; j++) see_junction(t, near[j], w.party, key, sn);
 			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
 			see_sidewalk_furniture(pieces, from, w, sn);
 			next.emplace_back(w.id, choose_stripe(rules, w, f, bodies, sn.n));
@@ -288,7 +293,7 @@ void crowd_step(CityState &s, float dt) {
 			WayFrame f;
 			line_frame(s, w, f);
 			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
-			for (int j = junctions_round(s, node, near); j-- > 0;) see_junction(t, near[j], e.id, -1, sn);
+			for (int j = junctions_round(s, node, near); j-- > 0;) see_junction(t, near[j], e.party, -1, sn);
 			for (const StreetObstacle *o : around) see_footprint(*o, sn);
 			next.emplace_back(e.id, choose_stripe(rules, e, f, bodies, sn.n));
 		}

@@ -160,7 +160,10 @@ void apply_network_changes(CityState &s) {
 		changed.swap(s.log.net_segs_changed);
 		furniture.swap(s.log.furniture_segs);
 	}
-	for (int seg : furniture) forget_furniture(s, seg);
+	for (int seg : furniture) {
+		forget_furniture(s, seg);
+		forget_doors(s, seg);
+	}
 	if (nodes.empty() && removed.empty() && changed.empty()) {
 		t.g.version = s.roads.version;
 		return;
@@ -170,8 +173,14 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
-	for (int seg : removed) forget_furniture(s, seg);
-	for (int seg : changed) forget_furniture(s, seg);
+	for (int seg : removed) {
+		forget_furniture(s, seg);
+		forget_doors(s, seg);
+	}
+	for (int seg : changed) {
+		forget_furniture(s, seg);
+		forget_doors(s, seg);
+	}
 	for (int n : nodes) {
 		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
 		for (int seg : s.roads.nodes[size_t(n)].segs) forget_furniture(s, seg);

@@ -158,8 +158,15 @@ struct TrafficState {
 	// the walkable segments inside ped_window_m.
 	float win_x = 0, win_z = 0;
 	double win_t = -double(BIG);
-	double ped_metres = 0;
+	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
+	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the lots read (seed + 1 by building id) and
+	// those to read, a few a step.
+	std::vector<std::vector<PedDoor>> doors;
+	std::vector<int> door_sides; // the sidewalks with doors (a sidewalk that lost them is dropped when drawn)
+	std::vector<uint32_t> door_seen;
+	std::vector<int> door_todo;
+	int doors_out = 0, doors_in = 0; // walkers who came out of a door and went in at one
 	// Crosswalk answers per (node, arm) for the current step (ped_crossing.cpp).
 	std::vector<uint32_t> cross_stamp;
 	std::vector<uint8_t> cross_walk, cross_cars;

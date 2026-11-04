@@ -141,6 +141,34 @@ void change_lanes(CityState &s);
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
 
+// ped_demand.cpp: how many people the land use puts on its street now, by kind of place
+struct PeopleNow {
+	float per_m[PLACE_KINDS] = {}; // people per metre of street
+	float out[PLACE_KINDS] = {}; // of those at a place's door, the share coming out
+	float peak = 0;
+};
+PeopleNow people_now(const TrafficParams &p, float hour);
+double people_wanted(const CityState &s, const PeopleNow &now); // how many the walking window has on foot now
+float zone_people(const TrafficParams &p, const PeopleNow &now, int zone); // people per metre beside a base zone
+
+// ped_doors.cpp: the front doors of the walking window
+void list_doors(CityState &s, float cx, float cz, float reach); // the lots not read yet round the camera
+void read_doors(CityState &s); // a few of them a step
+void forget_doors(CityState &s, int seg); // an edit touched the segment: its lots are read again
+int door_sidewalk(CityState &s); // a sidewalk with doors, any of them (seg * 2 + side), or -1
+// A door on the sidewalk between arcs `from` and `to`, drawn by those coming out of (`out`) or going in at each now.
+bool pick_door(CityState &s, const PeopleNow &now, int seg, int side, bool out, float from, float to, PedDoor &door);
+
+// ped_spawn.cpp
+PedAge roll_age(TrafficState &t, const TrafficParams &p);
+void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age); // a body of that age and its own pace
+int alloc_walker(TrafficState &t);
+bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
+
+// ped_party.cpp
+void add_company(CityState &s, int leader); // somebody at the leader's side
+void follow_leaders(CityState &s, float dt); // after the leaders moved
+
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
 float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle
@@ -170,8 +198,9 @@ bool walkable(const CityState &s, int seg);
 int seg_between(const CityState &s, int a, int b); // a walkable segment joining two nodes, or -1
 bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &out); // nodes from..goal
 // Waypoints round node `n` from the end of `seg_in` (sidewalk `side_in`) to the start of `seg_out`: kerb points of
-// each crosswalk crossed (the far one carries the arm). Returns how many (-1: no way); `side_out` = exit sidewalk.
-int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, Waypoint *ways, int &side_out);
+// each crosswalk crossed (the far one carries the arm). Returns how many (-1: no way); `side_out` = exit sidewalk, the one
+// with fewest crossings or `want_side` when it has that side (-1: either).
+int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, int want_side, Waypoint *ways, int &side_out);
 
 // ped_crossing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s
