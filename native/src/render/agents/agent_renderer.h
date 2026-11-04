@@ -39,8 +39,8 @@ private:
 	float roll(int id, const Pose &p, float wheel_r);
 	bool build_meshes(const godot::Dictionary &t, godot::PackedStringArray &errors);
 	bool push_palettes(const godot::Dictionary &t, godot::PackedStringArray &errors);
-	// How the people aboard are drawn (agents.json occupants): skin, hair colour and cut, outfits.
-	void push_looks(const godot::Dictionary &occupants, int hair_n, godot::PackedStringArray &errors);
+	// How the people aboard are drawn (agents.json occupants): skin, hair colour and cut, clothes (the pedestrians').
+	void push_looks(const godot::Dictionary &occupants, const godot::Array &clothes, int hair_n, godot::PackedStringArray &errors);
 	bool read_loads(const godot::Dictionary &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;

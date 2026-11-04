@@ -77,19 +77,14 @@
    "type": "object",
    "properties": {
     "_doc": {"type": "string"},
-    "seat_spread": {"type": "number"},
-    "front_hip_m": {"type": "number"},
-    "row_pitch_m": {"type": "number"},
-    "back_clear_m": {"type": "number"},
+    "leg_room_m": {"type": "array", "items": {"type": "number"}},
     "rows": {"type": "integer"},
-    "dash_d_m": {"type": "number"},
-    "dash_h_m": {"type": "number"},
     "lining": {"type": "string", "pattern_prefix": "#"},
     "floor": {"type": "string", "pattern_prefix": "#"},
     "seat": {"type": "string", "pattern_prefix": "#"},
     "dash": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": ["_doc", "seat_spread", "front_hip_m", "row_pitch_m", "back_clear_m", "rows", "dash_d_m", "dash_h_m", "lining", "floor", "seat", "dash"],
+   "required": ["_doc", "leg_room_m", "rows", "lining", "floor", "seat", "dash"],
    "strict": true
   },
   "cabin": {
@@ -189,6 +184,7 @@
     "skin": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
     "skin_weights": {"type": "array", "items": {"type": "number"}},
     "light_skins": {"type": "number"},
+    "cuts": {"type": "array", "items": {"type": "number"}},
     "hair_weights": {
      "type": "object",
      "properties": {
@@ -198,18 +194,6 @@
      "required": ["light_skinned", "dark_skinned"],
      "strict": true
     },
-    "cuts": {"type": "array", "items": {"type": "number"}},
-    "outfits": {"type": "array", "items": {
-     "type": "object",
-     "properties": {
-      "weight": {"type": "number"},
-      "shirts": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
-      "trousers": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}}
-     },
-     "required": ["weight", "shirts", "trousers"],
-     "strict": true
-    }},
-    "helmet": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
     "load": {
      "type": "object",
      "properties": {
@@ -245,7 +229,7 @@
      "strict": true
     }
    },
-   "required": ["_doc", "skin", "skin_weights", "light_skins", "hair_weights", "cuts", "outfits", "helmet", "load"],
+   "required": ["_doc", "skin", "skin_weights", "light_skins", "cuts", "hair_weights", "load"],
    "strict": true
   },
   "moto": {
@@ -317,7 +301,6 @@
       "seat": {"type": "string", "pattern_prefix": "#"},
       "dash": {"type": "string", "pattern_prefix": "#"},
       "pole": {"type": "string", "pattern_prefix": "#"},
-      "sit_place_m": {"type": "number"},
       "single_m": {"type": "number"},
       "knee_m": {"type": "number"},
       "wheelchair_m": {"type": "number"},
@@ -325,7 +308,7 @@
       "rail_m": {"type": "number"},
       "partition_m": {"type": "array", "items": {"type": "number"}}
      },
-     "required": ["_doc", "lining", "floor", "seat", "dash", "pole", "sit_place_m", "single_m", "knee_m", "wheelchair_m", "pole_m", "rail_m", "partition_m"],
+     "required": ["_doc", "lining", "floor", "seat", "dash", "pole", "single_m", "knee_m", "wheelchair_m", "pole_m", "rail_m", "partition_m"],
      "strict": true
     }
    },

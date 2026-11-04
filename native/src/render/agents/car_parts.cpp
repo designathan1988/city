@@ -18,6 +18,8 @@ constexpr float CAR_LAMP_W = 0.28f, LAMP_H = 0.08f, LAMP_X = 0.65f, TAIL_W = 0.2
 constexpr float PART_DEPTH_M = 0.03f, PART_PROUD_M = 0.01f, GRILLE_X = 0.6f, GRILLE_LOW_M = 0.1f, GRILLE_H = 0.15f;
 constexpr float PLATE_W = 0.52f, PLATE_H = 0.11f, PLATE_Y_M = 0.22f;
 constexpr float HANDLE_BACK_M = 0.08f; // a door handle ahead of its door's back edge
+// SAE J1100 counts 254 mm (10 in) more in its leg room dimensions (L33, L51) than the leg's own reach.
+constexpr float SAE_EXTRA_M = 0.254f;
 
 float belt_y(const CarStyle &s, float xf) {
 	Vector2 r[RING];
@@ -45,23 +47,36 @@ void mirrors_and_handles(MeshBuilder &mb, const CarStyle &s, const Dictionary &b
 	}
 }
 
+// Where the seats go: the driver's hip point behind the cabin's front (the ankles there) by the front leg room's reach,
+// the next row's behind the front backrest by the rear one's; each seat midway between the car's middle and its side.
+struct CarRows {
+	float first = 0, pitch = 0, x = 0;
+};
+
+CarRows rows_of(const Cabin &c, const Dictionary &inside, const CabinLook &l) {
+	const Vector2 leg = agent_v2(inside["leg_room_m"]); // L33, L51
+	const float back = l.person.torso.z * 0.5f + l.car.back_d_m; // the hip point to the backrest's back
+	CarRows r;
+	r.first = c.z_front - (leg.x - SAE_EXTRA_M);
+	r.pitch = back + leg.y - SAE_EXTRA_M;
+	r.x = (c.half_w - l.lining_inset_m) * 0.5f;
+	return r;
+}
+
 // The inside of the body: from the floor over the sill to the lowest belt line and under the roof, from the windscreen
-// base back to the rear screen's base or, on a blind back, to a bulkhead behind the front seats up to the roof.
+// base back to the rear screen's base or, on a blind back, to a bulkhead behind the front seats' backrests up to the roof.
 Cabin cabin_of(const CarStyle &s, const Dictionary &inside, const CabinLook &l) {
 	Cabin c;
 	c.floor = s.clear + s.sill;
 	c.side_top = c.front_top = c.back_top = std::min(s.belt[0], s.belt[1]) * s.H;
 	c.z_front = std::max(s.screen[0], s.screen[1]) * s.L;
-	const float bulkhead = c.z_front - float(inside["front_hip_m"]) - l.person.torso.z * 0.5f - l.car.back_d_m - float(inside["back_clear_m"]);
+	const float bulkhead = rows_of(c, inside, l).first - l.person.torso.z * 0.5f - l.car.back_d_m - l.lining_inset_m;
 	c.z_back = s.rear_glass ? std::min(s.rear[0], s.rear[1]) * s.L : bulkhead;
 	// under the roof between the screens' top edges (at their bases the line is the bonnet's and the boot's)
 	const float back = s.rear_glass ? std::max(s.rear[0], s.rear[1]) : c.z_back / s.L;
 	c.roof = std::min(car_top_at(s, std::min(s.screen[0], s.screen[1])), car_top_at(s, back)) - s.glass_top;
 	if (!s.rear_glass) c.back_top = c.roof;
 	c.half_w = std::min(car_half_w(s, c.z_front / s.L), car_half_w(s, c.z_back / s.L));
-	c.dash_d = float(inside["dash_d_m"]);
-	c.dash_h = float(inside["dash_h_m"]);
-	c.dash_w = 2 * c.half_w;
 	c.paint = read_cabin_paint(inside);
 	return c;
 }
@@ -108,14 +123,15 @@ void car_details(MeshBuilder &mb, const CarStyle &s, const Dictionary &body, boo
 }
 
 int car_cabin(MeshBuilder &mb, const CarStyle &s, const Dictionary &inside, const CabinLook &l) {
-	const Cabin c = cabin_of(s, inside, l);
+	Cabin c = cabin_of(s, inside, l);
 	if (c.z_back >= c.z_front) return -1;
-	const float x = c.half_w * 2 * float(inside["seat_spread"]), pitch = float(inside["row_pitch_m"]);
-	const float z_first = c.z_front - float(inside["front_hip_m"]);
-	const float room = c.z_back + float(inside["back_clear_m"]) + l.person.torso.z * 0.5f + l.car.back_d_m; // a backrest still fits
+	const CarRows r = rows_of(c, inside, l);
+	const float room = c.z_back + l.lining_inset_m + l.person.torso.z * 0.5f + l.car.back_d_m; // a backrest still fits
 	std::vector<Seat> seats;
-	seat_rows(seats, z_first, std::max(z_first - (int(inside["rows"]) - 1) * pitch, room), pitch, { x, -x }, c.floor, l.car);
-	if (!seats.empty()) seats[0].driver = true;
+	seat_rows(seats, r.first, std::max(r.first - (int(inside["rows"]) - 1) * r.pitch, room), r.pitch, { r.x, -r.x }, c.floor, l.car);
+	if (seats.empty()) return -1;
+	seats[0].driver = true;
+	dash_for(c, seats[0], l, 2 * c.half_w);
 	return agent_cabin(mb, c, seats, l);
 }
 

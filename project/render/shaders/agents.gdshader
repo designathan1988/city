@@ -29,10 +29,9 @@ uniform float cloth_roughness;
 
 const float BRAKE_FLAG = 8.0;
 const float SEAT_LIMB = 2.0;
-// sizes: agent_renderer.cpp HAIR_MAX, SKIN_MAX, HELMET_MAX, PAINT_MAX, CUTS, OUTFITS_MAX, OUTFITS_MAX * OUTFIT_COLOURS
+// sizes: agent_renderer.cpp HAIR_MAX, SKIN_MAX, PAINT_MAX, CUTS, OUTFITS_MAX, OUTFITS_MAX * OUTFIT_COLOURS
 uniform vec4 hair[8] : source_color;
 uniform vec4 skin[8] : source_color;
-uniform vec4 helmet[8] : source_color;
 uniform vec4 shirts[64] : source_color;
 uniform vec4 trousers[64] : source_color;
 // cumulative shares: skin tones; hair colours for the light-skinned (0..7) and the others (8..15); cuts; outfits
@@ -45,9 +44,9 @@ uniform int shirt_from[8];
 uniform int shirt_n[8];
 uniform int trousers_from[8];
 uniform int trousers_n[8];
-// the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours
+// the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
 uniform vec3 paints[16];
-uniform int helmet_n = 1;
+uniform int paint_n = 1;
 const int CUT_LONG = 1;
 const int CUT_SHAVED = 2;
 
@@ -107,7 +106,7 @@ bool look(int tag, float seed, float seat, out vec3 c) {
 	if (tag == 5) c = skin[tone].rgb;
 	else if (tag == 6) c = shirts[shirt_from[outfit] + int(pick(seed, seat, 2.0) * float(shirt_n[outfit]))].rgb;
 	else if (tag == 7 || tag == 10) c = hair[hair_draw(pick(seed, seat, 3.0), tone < light_skins ? 0 : 8)].rgb;
-	else if (tag == 8) c = helmet[int(pick(seed, seat, 4.0) * float(helmet_n))].rgb;
+	else if (tag == 8) c = paints[int(pick(seed, seat, 4.0) * float(paint_n))];
 	else if (tag == 9) c = trousers[trousers_from[outfit] + int(pick(seed, seat, 5.0) * float(trousers_n[outfit]))].rgb;
 	return !(tag == 7 && cut == CUT_SHAVED) && !(tag == 10 && cut != CUT_LONG);
 }

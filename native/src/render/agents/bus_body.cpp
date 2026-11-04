@@ -107,7 +107,7 @@ void platforms(const Bus &b, Plan &p) {
 
 Plan plan_of(const Bus &b, const Dictionary &in, const Cabin &c, const CabinLook &l) {
 	Plan p;
-	p.place = in["sit_place_m"];
+	p.place = l.chair.width_m;
 	p.behind = l.person.torso.z * 0.5f + l.chair.back_d_m;
 	p.ahead = l.chair.depth_m * 0.5f + float(in["knee_m"]);
 	p.inner = c.half_w - l.lining_inset_m;

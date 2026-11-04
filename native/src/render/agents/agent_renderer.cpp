@@ -28,7 +28,7 @@ constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIF
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 // agents.gdshader palette array sizes
-constexpr int HAIR_MAX = 8, SKIN_MAX = 8, HELMET_MAX = 8, PAINT_MAX = 16, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
+constexpr int HAIR_MAX = 8, SKIN_MAX = 8, PAINT_MAX = 16, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
 constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
 // A draw's room in instances grows past what it holds, in these steps, and shrinks only two steps below: vehicles
@@ -122,22 +122,21 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 bool AgentRenderer::push_palettes(const Dictionary &t, PackedStringArray &errors) {
 	const Dictionary people = t["people"], occupants = t["occupants"];
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const Array hair = people["hair"], skin = occupants["skin"], helmet = occupants["helmet"], paints = t["paints"];
+	const Array hair = people["hair"], skin = occupants["skin"], paints = t["paints"];
 	rs->material_set_param(material_, "hair", palette(hair, HAIR_MAX, "hair", errors));
 	rs->material_set_param(material_, "skin", palette(skin, SKIN_MAX, "skin", errors));
-	rs->material_set_param(material_, "helmet", palette(helmet, HELMET_MAX, "helmet", errors));
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)
 	PackedVector3Array raw;
 	for (const Color &c : palette(paints, PAINT_MAX, "paints", errors)) raw.push_back(Vector3(c.r, c.g, c.b));
 	rs->material_set_param(material_, "paints", raw);
-	rs->material_set_param(material_, "helmet_n", int(helmet.size()));
+	rs->material_set_param(material_, "paint_n", int(paints.size())); // the riders' helmets come in the paints too
 	rs->material_set_param(material_, "skin_cdf", cumulative(occupants["skin_weights"], int(skin.size()), SKIN_MAX, "skin_weights", errors));
-	push_looks(occupants, int(hair.size()), errors);
+	push_looks(occupants, people["clothes"], int(hair.size()), errors);
 	paints_ = int(paints.size());
 	return errors.is_empty();
 }
 
-void AgentRenderer::push_looks(const Dictionary &o, int hair_n, PackedStringArray &errors) {
+void AgentRenderer::push_looks(const Dictionary &o, const Array &clothes, int hair_n, PackedStringArray &errors) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const Dictionary hw = o["hair_weights"];
 	PackedFloat32Array hair = cumulative(hw["light_skinned"], hair_n, HAIR_MAX, "hair_weights.light_skinned", errors);
@@ -145,38 +144,26 @@ void AgentRenderer::push_looks(const Dictionary &o, int hair_n, PackedStringArra
 	rs->material_set_param(material_, "hair_cdf", hair);
 	rs->material_set_param(material_, "light_skins", int(o["light_skins"]));
 	rs->material_set_param(material_, "cut_cdf", cumulative(o["cuts"], CUTS, CUTS, "cuts", errors));
-	// each outfit's shirts and trousers one after the other: where its run starts and how long it is
-	const Array outfits = o["outfits"];
-	Array weights;
-	PackedColorArray shirts, trousers;
-	PackedInt32Array shirt_from, shirt_n, trousers_from, trousers_n;
-	for (const Variant &v : outfits) {
-		const Dictionary of = v;
-		const Array s = of["shirts"], tr = of["trousers"];
-		weights.push_back(of["weight"]);
-		if (s.is_empty() || tr.is_empty() || s.size() > OUTFIT_COLOURS || tr.size() > OUTFIT_COLOURS) errors.push_back("agents.json: occupants.outfits com cores demais ou nenhuma");
-		shirt_from.push_back(int(shirts.size()));
-		shirt_n.push_back(int(s.size()));
-		trousers_from.push_back(int(trousers.size()));
-		trousers_n.push_back(int(tr.size()));
-		for (const Variant &c : s) shirts.push_back(agent_hex(c));
-		for (const Variant &c : tr) trousers.push_back(agent_hex(c));
-	}
-	rs->material_set_param(material_, "outfit_cdf", cumulative(weights, int(outfits.size()), OUTFITS_MAX, "outfits", errors));
+	// one outfit: the shirt and the trousers each drawn from the pedestrians' clothes (agents.json people.clothes)
+	if (clothes.is_empty() || clothes.size() > OUTFITS_MAX * OUTFIT_COLOURS) errors.push_back("agents.json: people.clothes com cores demais ou nenhuma");
+	PackedColorArray shirts;
+	for (const Variant &c : clothes) shirts.push_back(agent_hex(c));
 	while (shirts.size() < OUTFITS_MAX * OUTFIT_COLOURS) shirts.push_back(Color());
-	while (trousers.size() < OUTFITS_MAX * OUTFIT_COLOURS) trousers.push_back(Color());
-	for (int64_t i = outfits.size(); i < OUTFITS_MAX; i++) { // never drawn (their cumulative share is 1): a valid run all the same
-		shirt_from.push_back(0);
-		shirt_n.push_back(1);
-		trousers_from.push_back(0);
-		trousers_n.push_back(1);
+	const PackedColorArray &trousers = shirts;
+	PackedInt32Array from, count;
+	for (int i = 0; i < OUTFITS_MAX; i++) {
+		from.push_back(0);
+		count.push_back(std::max(int(clothes.size()), 1));
 	}
+	Array one;
+	one.push_back(1);
+	rs->material_set_param(material_, "outfit_cdf", cumulative(one, 1, OUTFITS_MAX, "outfits", errors));
 	rs->material_set_param(material_, "shirts", shirts);
 	rs->material_set_param(material_, "trousers", trousers);
-	rs->material_set_param(material_, "shirt_from", shirt_from);
-	rs->material_set_param(material_, "shirt_n", shirt_n);
-	rs->material_set_param(material_, "trousers_from", trousers_from);
-	rs->material_set_param(material_, "trousers_n", trousers_n);
+	rs->material_set_param(material_, "shirt_from", from);
+	rs->material_set_param(material_, "shirt_n", count);
+	rs->material_set_param(material_, "trousers_from", from);
+	rs->material_set_param(material_, "trousers_n", count);
 }
 
 bool AgentRenderer::read_loads(const Dictionary &loads, PackedStringArray &errors) {

@@ -79,10 +79,13 @@ struct Wheel {
 	Vector3 rim(float a) const { return hub + Vector3(std::sin(a) * r, 0, 0) + top * (std::cos(a) * r); }
 };
 
-Wheel wheel_of(const Seat &s) {
+// The steering wheel's hub: wheel_fwd_m ahead of the backrest (where the person's back is), wheel_up_m over the hip point.
+float hub_z(const Seat &s, const CabinLook &l) { return s.z - l.person.torso.z * 0.5f + s.style->wheel_fwd_m; }
+
+Wheel wheel_of(const Seat &s, const CabinLook &l) {
 	const SeatStyle &st = *s.style;
 	Wheel w;
-	w.hub = Vector3(s.x, s.floor + st.hip_m + st.wheel_up_m, s.z + st.wheel_fwd_m);
+	w.hub = Vector3(s.x, s.floor + st.hip_m + st.wheel_up_m, hub_z(s, l));
 	// leant back by the tilt, its top away from the driver; the column runs on down and forward into the dash
 	w.top = Vector3(0, std::cos(st.wheel_tilt), std::sin(st.wheel_tilt));
 	w.column = w.hub + Vector3(0, -std::sin(st.wheel_tilt), std::cos(st.wheel_tilt)) * st.column_m;
@@ -116,7 +119,7 @@ float pedal_hip_z(const Cabin &c, const CabinLook &l) {
 
 void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width) {
 	const SeatStyle &st = *driver.style;
-	c.dash_d = c.z_front - (driver.z + st.wheel_fwd_m);
+	c.dash_d = c.z_front - hub_z(driver, l);
 	c.dash_h = c.front_top - (driver.floor + st.hip_m + l.person.thigh.y);
 	c.dash_w = width;
 }
@@ -176,7 +179,7 @@ int agent_cabin(MeshBuilder &mb, const Cabin &c, const std::vector<Seat> &seats,
 		seat_shell(mb, s, l, c.paint);
 		Wheel w;
 		if (s.driver && s.style->wheel_r_m > 0) {
-			w = wheel_of(s);
+			w = wheel_of(s, l);
 			steering(mb, w, l, c.paint);
 		}
 		Figure f = seated(l.person, s);
