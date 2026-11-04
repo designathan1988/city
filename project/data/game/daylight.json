@@ -41,6 +41,8 @@
  "low_zenith": "#2a66c8",
  "low_horizon": "#86bdf0",
  "low_sky": 1.0,
+ "low_from_m": 100.0,
+ "low_to_m": 260.0,
  "sky_gain": 0.661,
  "overcast_sun": 1.0,
  "overcast_ambient": -0.35,
@@ -56,9 +58,9 @@
  "fog_density": 1.6e-05,
  "glow_from_night": 0.04,
  "glow_intensity": 0.6,
- "glow_threshold": 0.9,
+ "glow_threshold": 1.05,
  "exposure": 1.4,
- "tonemap_white": 6.0,
+ "tonemap_white": 14.26,
  "grade": {
   "_doc": "Film grade of the picture on screen (render/film_grade.cpp), read in the display image. The four numbers are a modelling choice, the 4.0's own look; the photos of painted discs of known albedo prove it is there: x = 2.4 albedo - 0.25 through the plain ACES (ports/landscape/evidence/luz).",
   "contrast": 0.25,
@@ -76,6 +78,15 @@
   "span": 2.4
  },
  "shadow_max_distance_m": 1600.0,
+ "shadow_reach_m": 800.0,
+ "shadow_depth_max_m": 8000.0,
+ "shadow_view_least_dip": 0.3,
+ "shadow_reach_step": 0.1,
+ "occlusion": {
+  "_doc": "Screen-space occlusion of the high presets: the 4.0's reach and its blend over the whole picture (GTAO, its intensity 0.85), the value a modelling choice.",
+  "radius_m": 1.0,
+  "light_affect": 0.85
+ },
  "shadow_split_1": 0.1,
  "shadow_split_2": 0.25,
  "shadow_fade_start": 0.7,

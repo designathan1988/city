@@ -4,6 +4,7 @@
 class_name SkyView
 extends Node3D
 
+const METRES_A_KM := 1000.0
 const SLOTS := 24
 const LOBES := 7
 ## A view this close to level looks at no ground under it.
@@ -49,7 +50,9 @@ func _ready() -> void:
 	_mat.shader = load("res://render/shaders/atmosphere.gdshader")
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
-	for key in ["mist_beta", "mist_reach", "fog_extinction", "shadow_strength"]:
+	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
+	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
+	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
 		_mat.set_shader_parameter(key, _d[key])
 	var quad := QuadMesh.new()
 	quad.size = Vector2(2, 2)

@@ -11,6 +11,7 @@ var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
 var mode := "day"
+var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
@@ -100,6 +101,16 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"night", night)
 
 
+## The cascades reach past the point looked at, so a far view keeps its shadows: only when that changes by a step.
+func follow_view(camera: Camera3D) -> void:
+	if camera == null:
+		return
+	var down: float = maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
+	var depth: float = clampf(camera.global_position.y / down + _d.shadow_reach_m, shadow_least_m, _d.shadow_depth_max_m)
+	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
+		_sun.directional_shadow_max_distance = depth
+
+
 ## The fill: a light round from the sun and lower, that keeps the side away from it readable, never more than a share of
 ## the sun on level ground (three-point lighting).
 func _set_fill(sun_elev: float, sun_az: float, light: float) -> void:
@@ -135,7 +146,10 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
 	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))
 	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))
-	_sky.set_shader_parameter("low", _d.low_sky * light)
+	_sky.set_shader_parameter("low", _d.low_sky)
+	_sky.set_shader_parameter("dark", 1.0 - light)
+	_sky.set_shader_parameter("low_from_m", _d.low_from_m)
+	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
 	_sky.set_shader_parameter("sun_color", sun_col)
 	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
 	var fog := horizon.lerp(_c("low_horizon"), _d.low_sky * light * _d.fog_low_share)

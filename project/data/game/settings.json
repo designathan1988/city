@@ -11,21 +11,27 @@
    "shadows": false,
    "msaa": 0,
    "render_scale": 0.75,
-   "shadow_distance": 600
+   "shadow_distance": 600,
+   "occlusion": false,
+   "smaa": false
   },
   "medium": {
    "label_key": "QUALITY_MEDIUM",
    "shadows": true,
    "msaa": 1,
    "render_scale": 1.0,
-   "shadow_distance": 1200
+   "shadow_distance": 1200,
+   "occlusion": false,
+   "smaa": false
   },
   "high": {
    "label_key": "QUALITY_HIGH",
    "shadows": true,
    "msaa": 2,
    "render_scale": 1.0,
-   "shadow_distance": 2500
+   "shadow_distance": 2500,
+   "occlusion": true,
+   "smaa": true
   }
  }
 }
