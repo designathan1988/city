@@ -7,7 +7,8 @@
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
 ## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), to see what a feature costs; --moves=a,b runs
-## only those movements (the rig still goes where each one starts).
+## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
+## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
 ## Run: godot --path project --resolution 1600x900 res://tests/perf/camera_pan.tscn -- --no-flow [--map=N]
 ## [--shot-dir=DIR] (a picture halfway through each movement: proof of where the camera was)
 extends Node3D
@@ -57,6 +58,9 @@ func _knobs(world: CityWorld) -> void:
 			world.sun.shadow_enabled = false
 		elif arg == "--msaa=0":
 			get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		elif arg == "--uncapped":
+			Engine.max_fps = 0
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 
 
 func _ready() -> void:
