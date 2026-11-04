@@ -43,6 +43,8 @@ class _Paper:
 	var cells: Array = []
 	var painted := false
 	var font := FontVariation.new()
+	var _origin := Vector2.ZERO # the cell being painted, and how a plate's proportions stretch over it
+	var _stretch := 1.0
 	var _face: FontFile # its own, for a batch only: the big glyphs of the shared font's cache would stay for good
 
 	func begin(batch: Array) -> void:
@@ -69,7 +71,9 @@ class _Paper:
 		var p: Dictionary = look.drawings[type]
 		var shape: Dictionary = look.plates[p.plate]
 		var wide: float = cell.size.y * shape.w_m / shape.h_m
-		draw_set_transform(cell.position, 0.0, Vector2(cell.size.x / wide, 1.0))
+		_stretch = cell.size.x / wide
+		_origin = cell.position
+		draw_set_transform(_origin, 0.0, Vector2(_stretch, 1.0))
 		var r := Rect2(0.0, 0.0, wide, cell.size.y)
 		var radius := minf(r.size.x, r.size.y) * 0.5
 		var mid := r.get_center()
@@ -131,11 +135,11 @@ class _Paper:
 				if k + 1 < stroke.size():
 					draw_line(a, mid + Vector2(stroke[k + 1][0], stroke[k + 1][1]) * radius, ink, width)
 
+	## At the one size of its plate, drawn smaller when it must fit: a size per name would be a sheet of glyphs per size.
 	func _words(words: String, p: Dictionary, r: Rect2, mid: Vector2) -> void:
 		var px := int(r.size.y * p.word_height)
-		var room: float = r.size.x * p.word_width
-		while px > look.word_least_px and font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > room:
-			px -= 1
 		var wide := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
-		var at := mid + Vector2(-wide.x * 0.5, font.get_ascent(px) - wide.y * 0.5)
-		draw_string(font, at, words, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(p.ink))
+		var fit: float = minf(1.0, r.size.x * p.word_width / wide.x)
+		draw_set_transform(_origin + mid * Vector2(_stretch, 1.0), 0.0, Vector2(_stretch, 1.0) * fit)
+		draw_string(font, Vector2(-wide.x * 0.5, font.get_ascent(px) - wide.y * 0.5), words, HORIZONTAL_ALIGNMENT_LEFT, -1, px, Color(p.ink))
+		draw_set_transform(_origin, 0.0, Vector2(_stretch, 1.0))

@@ -2,6 +2,7 @@
 #include "sim/citygen/city_gen.h"
 
 #include "sim/buildings/growth.h"
+#include "sim/street/street_names.h"
 #include "sim/citygen/road_gen.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
@@ -155,6 +156,20 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }
 
+// Every street of the generated city takes its name, as the Roadcraft's does.
+void name_streets(CityState &s) {
+	std::vector<int> segs;
+	for (size_t i = 0; i < s.roads.segs.size(); i++) segs.push_back(int(i));
+	for (const StreetName &n : names_for(s.roads, s.street, std::move(segs))) {
+		StreetItem it;
+		it.kind = ItemKind::STREETNAME;
+		it.x = n.x;
+		it.z = n.z;
+		it.text = n.text;
+		s.street.add_item(it);
+	}
+}
+
 CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with_city) {
 	auto t0 = std::chrono::steady_clock::now();
 	const Catalog &c = s.catalog;
@@ -172,6 +187,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		s.lots.process_dirty(s);
 		rep.lots = int(s.lots.total());
 		rep.buildings = fill_all(s);
+		name_streets(s);
 		rep.nodes = r.node_count();
 		rep.segments = r.seg_count();
 	}

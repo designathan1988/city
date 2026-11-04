@@ -51,6 +51,12 @@
     "twin_stagger": {
      "type": "number"
     },
+    "column_every_m": {
+     "type": "number"
+    },
+    "column_first_m": {
+     "type": "number"
+    },
     "pole_lit_every": {
      "type": "number"
     }
@@ -64,6 +70,8 @@
     "pool_least_m",
     "pool_back_m",
     "twin_stagger",
+    "column_every_m",
+    "column_first_m",
     "pole_lit_every"
    ],
    "strict": true
@@ -533,6 +541,18 @@
    ],
    "strict": true
   },
+  "street_names": {
+   "type": "object",
+   "properties": {
+    "_doc": {"type": "string"},
+    "reach_m": {"type": "number"},
+    "prefix": {"type": "string"},
+    "prefixes": {"type": "object"},
+    "names": {"type": "array"}
+   },
+   "required": ["_doc", "reach_m", "prefix", "prefixes", "names"],
+   "strict": true
+  },
   "signs": {
    "type": "object",
    "properties": {
@@ -624,6 +644,7 @@
   "poles",
   "barriers",
   "signs",
+  "street_names",
   "items"
  ],
  "strict": true

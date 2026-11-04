@@ -612,13 +612,14 @@
     "plates": {"type": "object"},
     "drawings": {"type": "array", "items": {"type": "object"}},
     "word_bold": {"type": "number"},
-    "word_least_px": {"type": "number"},
     "sheet_w_px": {"type": "number"},
     "sheet_h_px": {"type": "number"},
     "plate_cell_px": {"type": "number"},
-    "square_rows": {"type": "number"}
+    "square_rows": {"type": "number"},
+    "blade_cell_w_px": {"type": "number"},
+    "blade_cell_h_px": {"type": "number"}
    },
-   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "sheet_w_px", "sheet_h_px", "plate_cell_px", "square_rows"],
+   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "sheet_w_px", "sheet_h_px", "plate_cell_px", "square_rows", "blade_cell_w_px", "blade_cell_h_px"],
    "strict": true
   }
  },

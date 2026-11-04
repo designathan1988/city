@@ -79,6 +79,14 @@ bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStr
 #define CITY_ITEM_LOAD(name) number(items, "items", #name, d.items.name, errors);
 	CITY_ITEM_FIELDS(CITY_ITEM_LOAD)
 #undef CITY_ITEM_LOAD
+	const Dictionary names = block(t, "street_names", errors);
+	number(names, "street_names", "reach_m", d.street_names.reach_m, errors);
+	d.street_names.prefix = String(names.get("prefix", "")).utf8().get_data();
+	const Dictionary prefixes = names.get("prefixes", Dictionary());
+	const Array keys = prefixes.keys();
+	for (int k = 0; k < keys.size(); k++) d.street_names.prefixes[String(keys[k]).utf8().get_data()] = String(prefixes[keys[k]]).utf8().get_data();
+	const Array list = names.get("names", Array());
+	for (int k = 0; k < list.size(); k++) d.street_names.names.push_back(String(list[k]).utf8().get_data());
 	const Dictionary kinds = barriers.get("kinds", Dictionary());
 	for (int k = 0; k < BARRIER_KINDS; k++) {
 		const Dictionary b = kinds.get(BARRIER_KEYS[k], Dictionary());

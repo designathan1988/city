@@ -2,6 +2,8 @@
 // tool) and the money they move (roads/economy.ts chargeFor, journal.ts settle).
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/street_journal.h"
+#include "sim/street/street_names.h"
 
 #include "core/math.h"
 #include "sim/state/city_state.h"
@@ -88,6 +90,14 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 		s.roads.mark_segment(sg);
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
 		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
+	}
+	for (const StreetName &n : names_for(s.roads, s.street, made)) {
+		StreetItem it;
+		it.kind = ItemKind::STREETNAME;
+		it.x = n.x;
+		it.z = n.z;
+		it.text = n.text;
+		j_add_item(s, it);
 	}
 	j_money(s, -plan.price);
 	finish_edit(s, minx, minz, maxx, maxz);

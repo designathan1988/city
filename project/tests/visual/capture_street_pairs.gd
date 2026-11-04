@@ -5,7 +5,6 @@
 class_name CaptureStreetPairs
 extends RefCounted
 
-const NOON := 12.0
 const NIGHT := 22.0
 const NEAR_M := 0.05
 const CLEAR_STEP_M := 1.0
@@ -34,7 +33,7 @@ static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
 	var lens := camera.fov
 	var plate_at := _clear_spot(cap, dir)
 	for night: bool in [false, true]:
-		cap.world.set_hour(NIGHT if night else NOON)
+		cap.world.set_hour(NIGHT if night else cap.DAY)
 		await cap.ui.frames(int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1)
 		for name: String in poses:
 			if name.ends_with("noite") != night:

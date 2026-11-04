@@ -34,7 +34,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 		return false;
 	}
 	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], errors)) return false;
-	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.square_rows);
+	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.square_rows, signs_.blade_w, signs_.blade_h);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(glow_material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
 	rs->material_set_param(glow_material_, "pool_handover_m", ctx.catalog->tune.render_pool_handover_m);

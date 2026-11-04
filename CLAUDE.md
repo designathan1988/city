@@ -157,7 +157,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/street/street_works.cpp` · `native/src/sim/street/street_works.h` — o que o jogador constrói na rua: itens, postes, vãos, barreiras e cortes de peças do kit, com índice por lugar
 - `native/src/sim/street/footway.cpp` · `native/src/sim/street/footway.h` — o que há sob um ponto: calçada, canteiro, leito e área de travessia, lido do perfil
 - `native/src/sim/street/pole_arms.cpp` · `native/src/sim/street/pole_arms.h` · `native/src/sim/street/pole_routes.cpp` · `native/src/sim/street/pole_routes.h` — cruzetas pela deflexão da linha; linhas de guia atrás do meio-fio e o caminho mais barato por elas
-- `native/src/sim/street/street_spots.cpp` · `native/src/sim/street/street_spots.h` — o que o jogador pôs como peças do segmento, placas colocadas e nomes de rua
+- `native/src/sim/street/street_spots.cpp` · `native/src/sim/street/street_spots.h` · `native/src/sim/street/street_names.cpp` · `native/src/sim/street/street_names.h` — o que o jogador pôs como peças do segmento, placas colocadas e nomes de rua; o nome que uma rua sem nome recebe, da lista do estilo
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
 - `native/src/sim/simulation/simulation.cpp` · `native/src/sim/simulation/simulation.h` — thread do tick, velocidades e relógio

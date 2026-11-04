@@ -6,6 +6,7 @@
 #include "sim/commands/road_edit.h"
 
 #include "sim/state/city_state.h"
+#include "sim/street/street_names.h"
 #include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -49,9 +50,9 @@ void set_rule(CityState &s, int seg, int n, uint16_t rule) {
 
 // A street's name stands at the corners of its whole street: their chunks change with it.
 void mark_name(CityState &s, const StreetItem &item) {
-	const FootwayHit h = footway_at(s.roads, item.x, item.z, s.catalog.furniture.poles.footway_catch_m);
-	if (!h.ok) return;
-	for (int seg : street_chain(s.roads, h.seg)) mark_furniture(s, seg);
+	const int named = name_segment(s.roads, item);
+	if (named < 0) return;
+	for (int seg : street_chain(s.roads, named)) mark_furniture(s, seg);
 }
 
 template <typename F>

@@ -16,7 +16,7 @@ struct PlateLook {
 };
 
 struct SignLook {
-	int sheet_w = 0, sheet_h = 0, cell = 0, square_rows = 0; // the sheet of pictures, pixels
+	int sheet_w = 0, sheet_h = 0, cell = 0, square_rows = 0, blade_w = 0, blade_h = 0; // the sheet of pictures, pixels
 	PlateLook plate[SIGN_TYPES];
 	float post_radius = 0, face_out = 0, blade_half = 0;
 	int post_sides = 0;

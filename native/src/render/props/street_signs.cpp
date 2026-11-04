@@ -4,6 +4,7 @@
 #include "core/color.h"
 #include "core/units.h"
 #include "render/props/prop_kit.h"
+#include "sim/street/street_names.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <cmath>
@@ -72,7 +73,7 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 		return false;
 	}
 	const Dictionary d = t["signs"], plates = d["plates"];
-	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; square_rows = d["square_rows"];
+	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; square_rows = d["square_rows"]; blade_w = d["blade_cell_w_px"]; blade_h = d["blade_cell_h_px"];
 	post_radius = d["post_radius_m"]; post_sides = d["post_sides"]; face_out = d["face_out_m"]; blade_half = d["blade_half_m"];
 	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
 	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));
@@ -100,10 +101,10 @@ void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, Sig
 	});
 	for (const StreetItem &it : s.street.items.items) { // a street's name stands along its whole street: few, and each plate by its own chunk
 		if (!it.alive || it.kind != ItemKind::STREETNAME) continue;
-		const FootwayHit h = footway_at(s.roads, it.x, it.z, s.catalog.furniture.poles.footway_catch_m);
-		if (!h.ok) continue;
+		const int named = name_segment(s.roads, it);
+		if (named < 0) continue;
 		std::vector<SignStand> names;
-		name_plates(s.roads, it, street_chain(s.roads, h.seg), names);
+		name_plates(s.roads, it, street_chain(s.roads, named), names);
 		for (const SignStand &n : names)
 			if (chunk_of(n.x, n.z) == key) stands.push_back(n);
 	}
