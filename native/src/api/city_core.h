@@ -71,6 +71,9 @@ public:
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
 	godot::Dictionary inspect(const godot::Vector3 &p);
 	godot::Dictionary probe_building(int id);
+	void probe_set_money(double money); // tests: a balance to reach the refusal without spending it
+	// Tests: how a road would be built and what it would cost (structure: RoadStructure).
+	godot::Dictionary probe_road_build(int profile, int structure, double height_a, double height_b, double len);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
 	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.

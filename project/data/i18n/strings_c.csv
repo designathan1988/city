@@ -204,7 +204,6 @@ ui.insp.joined,Vias unidas.,Roads joined.
 ui.insp.lock,Travar esta escolha,Lock this choice
 ui.insp.noBend,Não curvou: {why}.,Not bent: {why}.
 ui.insp.noDuplicate,Não dá para duplicar aqui: {why}.,Cannot duplicate here: {why}.
-ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
 ui.insp.parkingOff,Vagas retiradas.,Parking removed.
 ui.insp.parkingOn,Vagas paralelas à guia.,Kerbside parking added.
 ui.insp.profileApplied,Perfil aplicado à via,Profile applied to the road
@@ -232,7 +231,7 @@ ui.metric.jobs,Empregos,Jobs
 ui.metric.peds,Pedestres,Pedestrians
 ui.metric.residents,Moradores,Residents
 ui.metric.vehicles,Veículos,Vehicles
-ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir devolve {refund} % do preço.,Cash. Roads cost by width and length; bridges and tunnels cost more. Demolishing gives back {refund} % of the price.
+ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir uma via devolve {refund}% do preço dela.,Money in hand. Roads cost by width and length; bridges and tunnels more. Demolishing a road gives back {refund}% of its price.
 ui.money.unlimited,R$ ∞,$ ∞
 ui.options.apply,Aplicar,Apply
 ui.options.bloom,Brilho das luzes,Light bloom
@@ -481,3 +480,10 @@ save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes."
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
+ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
+hint.rule.funds,Recusado: não há dinheiro para construir isto. Demolir vias devolve parte do preço delas.,Refused: not enough money to build this. Demolishing roads gives back part of their price.
+rule.short.funds,dinheiro insuficiente,not enough money
+economy.refund,devolve {value},refund {value}
+economy.group,.,","
+economy.money.brl,R$ {value},R$ {value}
+road.tag.length,{length} m,{length} m

@@ -16,7 +16,7 @@ const COMMANDS := {
 	&"set_building": "set_building", &"set_overlay": "set_overlay",
 }
 const QUERIES := {
-	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
+	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building", &"probe_set_money": "probe_set_money", &"probe_road_build": "probe_road_build",
 	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",

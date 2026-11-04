@@ -10,7 +10,7 @@
 	X(road, sharp_cos) X(road, level_dy_m) X(road, max_degree) X(road, pick_m) X(road, overlap_share) \
 	X(road, overlap_run_m) X(road, parallel_cos) X(road, overlap_pad_m) \
 	X(zone, side_offset_m) X(zone, sample_m) \
-	X(economy, start_money) X(economy, refund_share) \
+	X(economy, start_money) X(economy, refund_share) X(economy, fill_from_m) X(economy, on_piers_from_m) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \

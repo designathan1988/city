@@ -4,6 +4,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "sim/economy/road_economy.h"
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
@@ -58,7 +59,7 @@ Dictionary CityCore::preview_road(const Vector3 &a, const Vector3 &b, bool has_c
 	d["length"] = p.len;
 	d["crossings"] = int(p.crossings.size());
 	d["half_width"] = s.catalog.profile(profile).half();
-	d["affordable"] = s.unlimited_money || p.price <= s.money;
+	d["affordable"] = charge_of(s, p.price).affordable;
 	d["points"] = pts;
 	d["start"] = anchor_dict(s, sa);
 	d["end"] = anchor_dict(s, sb);

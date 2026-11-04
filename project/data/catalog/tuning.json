@@ -12,7 +12,9 @@
  },
  "economy": {
   "start_money": 20000000,
-  "refund_share": 0.25
+  "refund_share": 0.25,
+  "fill_from_m": 1,
+  "on_piers_from_m": 2.8
  },
  "world": {
   "tile_m": 1024,

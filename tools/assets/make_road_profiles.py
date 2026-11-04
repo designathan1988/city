@@ -139,7 +139,6 @@ if __name__ == "__main__":
     for p in BUILTIN:
         print(p["id"], round(sum(s["width"] for s in p["strips"]), 2), cost_per_metre(p), file=sys.stderr)
     with open(sys.argv[1], "w", encoding="utf-8") as f:
-        prices = {"carriageway": 150, "median": 40, "footway": 80}
-        structure = {"ground": 1, "embankment": 1.4, "trench": 1.8, "bridge": 2.5, "tunnel": 6}
-        json.dump({"prices": prices, "structure": structure, "profiles": BUILTIN}, f, indent=1)
+        # The styles block of road_profiles.json is written by hand: this script only makes the profile list.
+        json.dump({"profiles": BUILTIN}, f, indent=1)
         f.write("\n")

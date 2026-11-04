@@ -64,6 +64,8 @@ public:
 	void end_group(CityState &s);
 	bool undo(CityState &s);
 	bool redo(CityState &s);
+	// Where the command in progress starts in the open entry (a stroke holds several commands).
+	size_t command_start() const { return begin_ops; }
 	const std::string &undo_label() const;
 	const std::string &redo_label() const;
 

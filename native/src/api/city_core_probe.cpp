@@ -4,6 +4,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/economy/road_economy.h"
 #include "sim/roads/geometry.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -17,6 +18,25 @@ using namespace godot;
 namespace city {
 
 Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }
+
+void CityCore::probe_set_money(double money) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->money = money;
+}
+
+Dictionary CityCore::probe_road_build(int profile, int structure, double height_a, double height_b, double len) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const RoadBuild b{ RoadStructure(structure), height_a, height_b };
+	const BuildLengths l = build_lengths(state_->catalog.tune, b, len);
+	Dictionary d;
+	d["ground"] = l.ground;
+	d["embankment"] = l.embankment;
+	d["trench"] = l.trench;
+	d["bridge"] = l.bridge;
+	d["tunnel"] = l.tunnel;
+	d["value"] = build_value(*state_, profile, len, b);
+	return d;
+}
 
 Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();

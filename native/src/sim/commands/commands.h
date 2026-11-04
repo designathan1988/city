@@ -82,7 +82,4 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 // The function and floors of a building (Build drawer, Mass tab).
 EditResult edit_building(CityState &s, int id, int fn, int floors);
 
-// Value of one segment (R$): length x price per metre x structure factor (ground).
-double segment_value(const CityState &s, int seg);
-
 } // namespace city

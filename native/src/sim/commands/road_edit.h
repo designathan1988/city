@@ -11,8 +11,6 @@ namespace city {
 
 // Arc length at curve parameter t from an arc_table (plan.ts arcAtT).
 double arc_at(const std::vector<double> &table, double t);
-// Value of `len` metres of a profile built on the ground (Roadcraft roads/economy.ts segmentPrice, kind ground).
-double road_value(const CityState &s, int profile, double len);
 // Splits segment `seg` at t; returns the new node (height linear along the segment).
 int split_segment(CityState &s, int seg, double t);
 // The node an anchor stands for: its node, a split of its segment (searched again when an earlier split took it) or a

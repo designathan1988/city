@@ -5,6 +5,7 @@
 #include "core/units.h"
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 
 #include "sim/terrain/terrain_gen.h"
 #include "sim/state/city_state.h"
@@ -185,15 +186,7 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	for (const Hit &h : hits) b.cut(h);
 	if (b.entries.empty()) b.vacant();
 	std::vector<int> ring_segs = b.ring_segments();
-	double price = 0;
-	for (int sg : ring_segs) price += segment_value(s, sg);
-	for (int sg : b.approaches)
-		if (s.roads.segs[sg].alive && !(s.roads.segs[sg].flags & SEG_FREE)) price += segment_value(s, sg);
-	if (!s.unlimited_money && price > s.money) {
-		r.error = "ui.insp.noMoney";
-		r.money = price;
-		return r; // the caller rolls the journal back
-	}
+	if (!settle_road_edit(s, r)) return r; // the caller rolls the journal back
 	const Tuning &tn = s.catalog.tune;
 	float disc = float(radius + s.catalog.profile(ring).right);
 	j_add_modifier(s, { float(cx), float(b.y), float(cz) }, disc, float(tn.roundabout_disc_pad_m));
@@ -203,12 +196,10 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 			r.buildings_removed += clear_under(s, sg);
 			conform_under(s, sg);
 		}
-	j_money(s, -std::round(price));
 	double reach = disc + tn.roundabout_approach_m;
 	finish_edit(s, cx - reach, cz - reach, cx + reach, cz + reach);
 	r.ok = true;
 	r.segments = int(ring_segs.size() + b.approaches.size());
-	r.money = s.unlimited_money ? 0 : std::round(price);
 	return r;
 }
 

@@ -35,15 +35,6 @@ double arc_at(const std::vector<double> &table, double t) {
 	return table[i] + (table[i + 1] - table[i]) * (f - i);
 }
 
-double road_value(const CityState &s, int profile, double len) {
-	return len * s.catalog.profile(profile).cost_per_m * s.catalog.structure.ground;
-}
-
-double segment_value(const CityState &s, int seg) {
-	const RoadSegment &g = s.roads.segs[seg];
-	return road_value(s, g.profile, g.len);
-}
-
 int split_segment(CityState &s, int seg, double t) {
 	RoadNetwork &net = s.roads;
 	RoadSegment rec = net.segs[seg];

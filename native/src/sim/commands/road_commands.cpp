@@ -4,6 +4,7 @@
 #include "sim/commands/road_edit.h"
 
 #include "core/math.h"
+#include "sim/economy/road_economy.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -13,7 +14,6 @@ namespace city {
 
 namespace {
 constexpr int ARC_STEPS = 64;
-constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 
 struct Stop {
 	double t = 0;
@@ -55,7 +55,6 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 	}
 }
 
-bool affords(const CityState &s, double price) { return s.unlimited_money || price <= s.money; }
 } // namespace
 
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
@@ -65,8 +64,9 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 		r.error = plan.reason;
 		return r;
 	}
-	if (!affords(s, plan.price)) {
-		r.error = "ui.insp.noMoney";
+	RoadCharge charge = charge_of(s, plan.price); // the price the player saw
+	if (!charge.affordable) {
+		r.error = REFUSED_FUNDS;
 		return r;
 	}
 	std::vector<Stop> stops;
@@ -89,10 +89,10 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
 		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
 	}
-	j_money(s, -plan.price);
+	j_money(s, -charge.amount);
 	finish_edit(s, minx, minz, maxx, maxz);
 	r.ok = true;
-	r.money = s.unlimited_money ? 0 : plan.price;
+	r.money = s.unlimited_money ? 0 : charge.amount;
 	r.segments = int(made.size());
 	return r;
 }
@@ -123,14 +123,10 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		return r;
 	}
 	RoadSegment g = net.segs[seg];
-	double refund = (g.flags & SEG_FREE) ? 0 : segment_value(s, seg) * s.catalog.tune.economy_refund_share;
 	j_remove_segment(s, seg);
 	j_remove_node_if_orphan(s, g.a);
 	j_remove_node_if_orphan(s, g.b);
-	if (refund >= MIN_CHARGE && !s.unlimited_money) {
-		r.money = -std::round(refund);
-		j_money(s, -r.money);
-	}
+	settle_road_edit(s, r); // what comes back is always affordable
 	finish_edit(s, g.minx, g.minz, g.maxx, g.maxz);
 	r.ok = true;
 	r.segments = 1;

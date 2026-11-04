@@ -2,6 +2,7 @@
 // the same plan, so what the player sees refused is exactly what the build refuses.
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 
 #include "sim/state/city_state.h"
 

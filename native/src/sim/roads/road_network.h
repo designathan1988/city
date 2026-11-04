@@ -15,7 +15,6 @@ namespace city {
 // Segment flags (Roadcraft roads/flags.ts and network.ts).
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
-	SEG_FREE = 0x80, // built by the generator: worth nothing when demolished
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
 

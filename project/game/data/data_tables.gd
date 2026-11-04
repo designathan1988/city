@@ -2,6 +2,7 @@
 class_name DataTables
 extends RefCounted
 
+const CITY_STYLE := "roadcraft"
 const CATALOG := {
 	"tuning": "res://data/catalog/tuning.json",
 	"maps": "res://data/catalog/maps.json",
@@ -45,6 +46,14 @@ const STRINGS := [
 ]
 
 static var _cache: Dictionary = {}
+static var _money_key := ""
+
+
+## The strings key that writes an amount, by the regional style of the city (fixed until the style is in the CityState).
+static func money_key() -> String:
+	if _money_key.is_empty():
+		_money_key = _read(CATALOG.road_profiles).styles[CITY_STYLE].money_key
+	return _money_key
 
 
 static func _read(path: String) -> Variant:

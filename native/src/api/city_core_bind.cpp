@@ -48,6 +48,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
+	ClassDB::bind_method(D_METHOD("probe_set_money", "money"), &CityCore::probe_set_money);
+	ClassDB::bind_method(D_METHOD("probe_road_build", "profile", "structure", "height_a", "height_b", "len"), &CityCore::probe_road_build);
 	ClassDB::bind_method(D_METHOD("list_buildings"), &CityCore::list_buildings);
 	ClassDB::bind_method(D_METHOD("city_bounds"), &CityCore::city_bounds);
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);

@@ -33,7 +33,7 @@ A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda
 - **Um dono por definição:** valores ajustáveis vivem só em `project/data/**` (tabelas JSON com schema).
   Nomes do tuning: X-macro `CITY_TUNING_FIELDS`; valores: `data/catalog/tuning.json` (`gate_tuning.py` exige
   as mesmas chaves e que todas sejam lidas). Regras com dono único estão em `tools/gates/owners.json`
-  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, estado do jogo);
+  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, cobrança das vias, estado do jogo);
   reimplementar o padrão em outro arquivo gera `DONO_UNICO`.
 - **Sem números mágicos** em `native/src`, `project/game`, `project/ui` (`NUMERO_MAGICO`): dê nome
   (constante no dono) ou mova para dados. Valor distintivo de um dado redigitado no código → `VALOR_DUPLICADO`;
@@ -141,6 +141,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
+- `native/src/sim/economy/road_economy.cpp` · `native/src/sim/economy/road_economy.h` — dono do dinheiro das vias: modos de construir, preço, a regra da cobrança e o acerto da edição aberta pelo diário
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/persistence/save_format.h` — formato do save da cidade
 - `native/src/sim/persistence/save_read.cpp` — abrir: terreno do seed, ladrilhos esculpidos, modificadores e grafo
@@ -321,6 +322,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   Telhado, Interior, Cores), Paisagem (Solo, Natureza, Céu, Rua, Pessoas; rio e Aplainar mapa), paradas/estações/linhas,
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
   gerada que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas); a água não seca sob o relevo.
+- Dinheiro: toda via vale como ao nível do chão até haver greide (`built` em `road_economy.cpp` é o único ponto a ligar; `build_lengths` e os multiplicadores já valem e têm teste). O 4.0 não tem imposto nem manutenção: a única entrada é a devolução ao demolir. Estilos em `road_profiles.json`; `eua` e `europa` faltam.
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.

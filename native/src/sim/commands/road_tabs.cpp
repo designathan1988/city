@@ -3,6 +3,7 @@
 // whole street to the profile in hand (Shift), charging the difference in value or refunding a share of it.
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
@@ -14,7 +15,6 @@
 namespace city {
 
 namespace {
-constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 constexpr float SAME_WIDTH_M = 0.01f;
 constexpr int CHAIN_GUARD = 4000;
 
@@ -46,18 +46,6 @@ std::map<int, bool> along_street(const CityState &s, const std::vector<int> &seg
 			if (std::count(segs.begin(), segs.end(), t) && !out.count(t)) { out[t] = net.segs[t].b == behind; queue.push_back(t); }
 	}
 	return out;
-}
-
-// Value change of putting `profile` on the segments (paid roads count fully, free roads only when they grow).
-double profile_delta(const CityState &s, const std::vector<int> &segs, int profile) {
-	double paid = 0, free = 0;
-	for (int sg : segs) {
-		const RoadSegment &g = s.roads.segs[sg];
-		double d = road_value(s, profile, g.len) - road_value(s, g.profile, g.len);
-		(g.flags & SEG_FREE ? free : paid) += d;
-	}
-	auto charge = [&](double v) { return std::fabs(v) < MIN_CHARGE ? 0.0 : v > 0 ? std::round(v) : -std::round(-v * s.catalog.tune.economy_refund_share); };
-	return charge(paid) + (free > 0 ? charge(free) : 0.0);
 }
 
 // After a profile change, like a new road: what the wider road covers goes and the ground settles under it.
@@ -129,15 +117,9 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		return r;
 	}
 	std::vector<int> segs = whole_street ? street_chain(s, seg) : std::vector<int>{ seg };
-	double price = profile_delta(s, segs, profile);
-	if (price > 0 && !s.unlimited_money && price > s.money) {
-		r.error = "ui.insp.noMoney";
-		r.money = price;
-		return r;
-	}
 	std::map<int, bool> along;
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
-	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
+	std::vector<int> changed;
 	for (int sg : segs) {
 		if (!s.roads.segs[sg].alive) continue;
 		if (along.count(sg) && !along[sg]) {
@@ -147,16 +129,19 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags);
 		}
 		j_set_profile(s, sg, profile);
+		changed.push_back(sg);
+	}
+	if (!settle_road_edit(s, r)) return r; // before the ground moves: the caller rolls the journal back
+	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
+	for (int sg : changed) {
 		r.buildings_removed += settle_under(s, sg);
 		const RoadSegment &g = s.roads.segs[sg];
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
 		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
 		r.segments++;
 	}
-	j_money(s, -price);
 	finish_edit(s, minx, minz, maxx, maxz);
 	r.ok = true;
-	r.money = s.unlimited_money ? 0 : price;
 	return r;
 }
 

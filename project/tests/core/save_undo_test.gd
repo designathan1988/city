@@ -40,6 +40,7 @@ func _ready() -> void:
 	var e := a + Vector3(OUT_M, 0, 0)
 	_undo_cases(a, e)
 	await _save_round_trip(a, e)
+	await _refuses_bad_balance()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -88,6 +89,15 @@ func _round(what: String, edit: Callable) -> void:
 	_check(r.get("ok", false) and after != before, "%s: %s" % [what, r])
 	_check(CityStore.dispatch(&"undo") and _counts() == before, "%s desfeito %s" % [what, _counts()])
 	_check(CityStore.dispatch(&"redo") and _counts() == after, "%s refeito %s" % [what, _counts()])
+
+
+## A save whose balance is not a number is not a city (the 4.0's readEconomy).
+func _refuses_bad_balance() -> void:
+	CityStore.query(&"probe_set_money", [INF])
+	var w := await _save(SLOT)
+	_check(w.get("ok", false), "salvou saldo infinito para o teste")
+	var r: Dictionary = CityStore.load_game(SLOT)
+	_check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "recusou saldo infinito: %s" % r)
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
