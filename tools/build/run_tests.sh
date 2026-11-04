@@ -6,7 +6,7 @@
 set -uo pipefail
 GODOT="$1"; PROJECT="$2"; LOGS="$3"; shift 3
 TEST_TIMEOUT_S="${TEST_TIMEOUT_S:-600}"
-TESTS=(tests/core/strike_test tests/core/shoot_test tests/core/road_commands_test tests/core/save_undo_test tests/core/building_edit_test tests/core/model_test tests/core/city_mass_test tests/core/building_tool_test tests/core/camera_input_test tests/e2e/e2e tests/core/light_color_test tests/core/building_light_test)
+TESTS=(tests/core/strike_test tests/core/shoot_test tests/core/road_commands_test tests/core/save_undo_test tests/core/building_edit_test tests/core/model_test tests/core/city_mass_test tests/core/job_pool_test tests/core/building_tool_test tests/core/camera_input_test tests/e2e/e2e tests/core/light_color_test tests/core/building_light_test)
 BOTH_RENDERERS=(tests/core/light_color_test tests/core/building_light_test) # what the screen shows: also on Forward+, the game's renderer
 mkdir -p "$LOGS"
 failed=0

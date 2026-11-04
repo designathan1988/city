@@ -13,8 +13,11 @@ namespace city {
 
 class BodyStage {
 public:
-	void init(const godot::RID &solid, const godot::RID &ghost) {
+	void init(const godot::RID &solid, const godot::RID &glass, const godot::RID &sheer, const godot::RID &card, const godot::RID &ghost) {
+		card_ = card;
 		solid_ = solid;
+		glass_ = glass;
+		sheer_ = sheer;
 		ghost_ = ghost;
 	}
 	int show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const godot::RID &scenario, bool ghost);
@@ -24,7 +27,7 @@ public:
 	void clear();
 
 private:
-	godot::RID solid_, ghost_;
+	godot::RID solid_, glass_, sheer_, card_, ghost_;
 	std::unordered_map<int, MeshDraw> shown_;
 	std::unordered_map<int, int> drawn_;
 	int next_ = 1;
