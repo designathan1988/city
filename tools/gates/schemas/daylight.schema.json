@@ -31,6 +31,7 @@
   "sun_rise_k": { "type": "number" },
   "sun_rise_from": { "type": "number" },
   "fill": { "type": "string", "pattern_prefix": "#" },
+  "sky_top": { "type": "string", "pattern_prefix": "#" },
   "fill_energy": { "type": "number" },
   "fill_key_share": { "type": "number" },
   "fill_elev_deg": { "type": "number" },
@@ -39,6 +40,10 @@
   "shadow_reach_m": { "type": "number" },
   "shadow_depth_max_m": { "type": "number" },
   "shadow_view_least_dip": { "type": "number" },
+  "shadow_past_look": { "type": "number" },
+  "shadow_first_past_look": { "type": "number" },
+  "shadow_first_least_m": { "type": "number" },
+  "shadow_first_share": { "type": "number" },
   "shadow_reach_step": { "type": "number" },
   "occlusion": {
    "type": "object",

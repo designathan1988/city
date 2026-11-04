@@ -4,9 +4,12 @@
 class_name Daylight
 extends RefCounted
 
+const RIGHT_ANGLE := 90.0
+
 var _d: Dictionary
 var _sun: DirectionalLight3D
 var _fill: DirectionalLight3D
+var _top: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
@@ -19,12 +22,29 @@ var _dark := 0.0
 var _flash := 0.0
 
 
-func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
+func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, top: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
 	_d = day
 	_sun = sun
 	_fill = fill
+	_top = top
 	_env = env
 	_sky = sky
+
+
+## A light without shadows.
+static func make_plain() -> DirectionalLight3D:
+	var light := DirectionalLight3D.new()
+	light.shadow_enabled = false
+	return light
+
+
+## What the sky adds to what faces it, and to nothing else: walls take the flat ambient, the ground and the roofs this
+## as well, so a shaded wall and a shaded street do not get the same light (the 4.0's hemisphere light and sky map).
+static func make_top() -> DirectionalLight3D:
+	var top := make_plain()
+	top.light_specular = 0.0
+	top.rotation_degrees = Vector3(-RIGHT_ANGLE, 0.0, 0.0)
+	return top
 
 
 ## The sun with its shadows: four cascades, blended where they meet.
@@ -96,7 +116,11 @@ func set_hour(hour: float) -> void:
 		_fill.visible = false
 	var hemi: float = _d.hemi_day_k * light + _d.hemi_night_k * night
 	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), light)
-	_env.ambient_light_energy = hemi * _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
+	var sky: float = _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
+	_env.ambient_light_energy = hemi * sky
+	_top.light_color = _c("sky_top")
+	_top.light_energy = _d.sky_top_energy * light * sky
+	_top.visible = _top.light_energy > 0.0
 	_set_sky(elev)
 	_env.glow_enabled = night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
@@ -111,10 +135,24 @@ func follow_view(camera: Camera3D) -> void:
 	_env.fog_light_color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
 	var y: float = maxf(camera.global_position.y, 1.0)
 	_env.fog_density = _d.fog_density * _d.air_height_m / y * (1.0 - exp(-y / _d.air_height_m)) # the air thins with height
-	var down: float = maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
-	var depth: float = clampf(camera.global_position.y / down + _d.shadow_reach_m, shadow_least_m, _d.shadow_depth_max_m)
+	_fit_cascades(camera)
+
+
+## The sun's cascades fitted to the view (Engel, ShaderX5, as the 4.0's sunCascades.ts): the first ends just past the
+## point looked at, the others in ratio to the far end. A fixed share leaves a texel wider than a sign post up close.
+func _fit_cascades(camera: Camera3D) -> void:
+	var eye := camera.global_position
+	var above: float = maxf(eye.y - CityStore.query(&"height_at", [eye.x, eye.z]), 0.0)
+	var look: float = above / maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
+	var depth: float = clampf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), shadow_least_m, _d.shadow_depth_max_m)
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
 		_sun.directional_shadow_max_distance = depth
+	var end: float = _sun.directional_shadow_max_distance
+	var first: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), end * _d.shadow_first_share)
+	var second: float = sqrt(first * end)
+	_sun.directional_shadow_split_1 = first / end
+	_sun.directional_shadow_split_2 = second / end
+	_sun.directional_shadow_split_3 = sqrt(second * end) / end
 
 
 ## The fill: a light round from the sun and lower, that keeps the side away from it readable, never more than a share of

@@ -10,6 +10,10 @@ const SETTLE_FRAMES := 240
 const SHOT_FRAMES := 30
 const CITY_FREE_X := 2600.0
 const VIEW_LINES := 1080.0
+const SHOT_SIZE := Vector2i(1920, 1080) # a window with a title bar loses 19 lines on a 1080-line screen
+const CITY_ZOOM := 0.8695652 # the view the 4.0 opens on
+const CITY_BEARING := 45.0
+const CITY_TILT := 48.0
 const RIGHT_ANGLE := 90.0
 const MINUTES_AN_HOUR := 60.0
 const RAMP_STEPS := 17
@@ -17,6 +21,8 @@ const RAMP_LEVELS := 16.0
 const BYTE_TOP := 255.0
 const RAMP_CARD_M := 6.0
 const RAMP_HEIGHT_M := 80.0
+const CUBE_SIZE := Vector3(40.0, 120.0, 40.0)
+const CUBE_ALBEDO := 0.216
 const CLOCK_SHOTS := 4
 const CLOCK_STEP_H := 5
 const CLEAR_DABS := 11
@@ -29,6 +35,7 @@ const RIVER_STEP_M := 20.0 # the dabs of a stroke (brush_tool.gd): a share of th
 var out_dir := "user://captures"
 var only: PackedStringArray = [] # --only=a,b: just these views
 var hour: float = DataTables.game("daylight").day_hour # --hour=h: the sun of that hour, the 4.0's "always day" by default
+var preset := "" # --preset=high: the graphics of that preset, as the game applies them
 var rig: CityCamera
 var world: CityWorld
 
@@ -39,9 +46,13 @@ func _ready() -> void:
 			out_dir = arg.trim_prefix("--capture-dir=")
 		if arg.begins_with("--hour="):
 			hour = arg.trim_prefix("--hour=").to_float()
+		if arg.begins_with("--preset="):
+			preset = arg.trim_prefix("--preset=")
 		if arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=").split(",")
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	get_window().borderless = true
+	get_window().size = SHOT_SIZE
 	world = CityWorld.new()
 	add_child(world)
 	rig = CityCamera.new()
@@ -54,9 +65,20 @@ func _ready() -> void:
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	world.set_hour(hour)
+	if not preset.is_empty():
+		Settings.preset = preset
+		Settings.apply(world, get_viewport())
+	print("janela ", get_window().size, " preset ", preset)
+	await _whole_city()
 	await _run()
 	print("capture_landscape: pronto")
 	get_tree().quit(0)
+
+
+## The whole town from the view the 4.0 opens on.
+func _whole_city() -> void:
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	await _shot("cidade", _ground((b.min.x + b.max.x) * 0.5, (b.min.z + b.max.z) * 0.5), CITY_BEARING, CITY_TILT, CITY_ZOOM)
 
 
 func _ground(x: float, z: float) -> Vector3:
@@ -116,6 +138,22 @@ func _ramp(at: Vector3) -> void:
 	await _shot("rampa", Vector3(at.x, 0.0, at.z), 90.0, 50.0, 6.0)
 
 
+## A grey box in both games, the same albedo on every face: how much light each side gets, in the sun and out of it.
+func _cube(at: Vector3) -> void:
+	var box := BoxMesh.new()
+	box.size = CUBE_SIZE
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(CUBE_ALBEDO, CUBE_ALBEDO, CUBE_ALBEDO).linear_to_srgb()
+	m.roughness = 1.0
+	box.material = m
+	var cube := MeshInstance3D.new()
+	cube.mesh = box
+	cube.position = Vector3(at.x, 0.0, at.z)
+	add_child(cube)
+	await _shot("cubo_a", Vector3(at.x, 0.0, at.z), 45.0, 35.0, 3.0)
+	await _shot("cubo_b", Vector3(at.x, 0.0, at.z), 225.0, 35.0, 3.0)
+
+
 ## The light through the game's own path: the sky modes, and in "cycle" the city's clock run by the simulation's ticks.
 func _clock(at: Vector3) -> void:
 	world.set_sky_mode("cycle")
@@ -135,11 +173,21 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
+## The cards measured alone: nothing else is drawn with them.
+func _measure_card(c: Vector3) -> bool:
+	if only.has("rampa"):
+		await _ramp(c)
+	elif only.has("cubo_a"):
+		await _cube(c)
+	else:
+		return false
+	return true
+
+
 func _run() -> void:
 	var c := _ground(CITY_FREE_X, 0.0)
 	await _frames(SETTLE_FRAMES)
-	if only.has("rampa"):
-		await _ramp(c)
+	if await _measure_card(c):
 		return
 	await _shot("campo_perto", c, 45.0, 4.0, 30.0)
 	await _shot("campo_meio", c, 45.0, 12.0, 8.0)

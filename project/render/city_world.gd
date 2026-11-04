@@ -144,9 +144,10 @@ func _build_environment(_palette: Dictionary) -> void:
 	var day: Dictionary = DataTables.game("daylight")
 	sun = Daylight.make_sun(day)
 	add_child(sun)
-	var fill := DirectionalLight3D.new()
-	fill.shadow_enabled = false
+	var fill := Daylight.make_plain()
 	add_child(fill)
+	var sky_top := Daylight.make_top()
+	add_child(sky_top)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
 	var sky := Sky.new()
@@ -155,10 +156,9 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment = Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
-	# The same fill on every renderer: a flat ambient colour (daylight.gd sets colour and energy; no sky share, so
-	# Forward+ and Compatibility light the shade alike) and only the specular reflections from the sky. Forward+
-	# renders in RGBA16F and Compatibility in RGBA8 with the tonemap applied in the material pass; both support
-	# these modes, ACES and fog (docs: Environment and post-processing, Overview of renderers).
+	# The same shade on every renderer: a flat ambient colour and the sky's top light (daylight.gd), no sky share;
+	# only the specular reflections come from the sky. Forward+ renders in RGBA16F and Compatibility in RGBA8 with the
+	# tonemap in the material pass; both support these modes (docs: Environment and post-processing).
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_sky_contribution = 0.0
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
@@ -177,7 +177,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	we.environment = environment
 	add_child(we)
 	FilmLook.vignette(self, day.vignette)
-	daylight = Daylight.new(day, sun, fill, environment, sky_mat)
+	daylight = Daylight.new(day, sun, fill, sky_top, environment, sky_mat)
 	add_child(ElementEffects.new())
 	daylight.set_hour(day.day_hour)
 
