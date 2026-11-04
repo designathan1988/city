@@ -122,6 +122,13 @@ Dictionary CityCore::transit_run() {
 		d["bus_heading"] = Vector3(v.cur.fx, 0, v.cur.fz);
 		break;
 	}
+	PackedVector3Array cars; // every car of every train on the surface, each line's trains running apart
+	for (const RailLine &r : run.rails) {
+		if (r.metro) continue;
+		for (const Train &t : r.trains)
+			for (const PoseTrail &car : t.cars) cars.push_back(Vector3(car.at[POSE_TRAIL - 1].x, car.at[POSE_TRAIL - 1].y, car.at[POSE_TRAIL - 1].z));
+	}
+	d["train_cars"] = cars;
 	for (const RailLine &r : run.rails) {
 		if (r.metro || r.trains.empty() || r.trains[0].cars.empty()) continue;
 		const Train &t = r.trains[0];

@@ -16,12 +16,34 @@ namespace city {
 namespace {
 constexpr float CLEAR_M = 25.f; // no tall building this near a target
 constexpr int TALL_FLOORS = 4;
+constexpr float ROOF_M = 3.f; // a pitched roof over a volume's last storey
+constexpr float FURNITURE_TOP_M = 10.f; // nothing on a footway reaches a camera higher: a tree of 6 to 9 m, a lamp
 constexpr float TREE_SPREAD_M = 3.f; // a street tree seen from a capture's eye: the crown of the medium trees the town plants (6 to 9 m tall)
 
 bool clear_of_towers(const CityState &s, float x, float z) {
 	bool clear = true;
 	s.buildings.query(x - CLEAR_M, z - CLEAR_M, x + CLEAR_M, z + CLEAR_M, [&](int id) { clear = clear && s.buildings.items[size_t(id)].floors <= TALL_FLOORS; });
 	return clear;
+}
+
+// Nothing of the lot reaches `up` metres over the ground within `radius` of the point: a volume with its roof, an element, a tree. A
+// lawn under the camera is no wall.
+bool clear_of_lot(const CityState &s, const Building &rec, const V2 &p, float radius, float up) {
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	const b40::LotFrame f = b40::lot_frame(rec);
+	const V2 d = p - f.o;
+	const float x = d.dot(f.e0), y = d.dot(f.e1);
+	const auto inside = [&](float x0, float y0, float x1, float y1) { return x >= x0 - radius && x <= x1 + radius && y >= y0 - radius && y <= y1 + radius; };
+	for (const b40::Volume &v : body.volumes)
+		if (body.level_z(v.top()) + ROOF_M >= up && inside(v.x, v.y, v.x + v.w, v.y + v.d)) return false;
+	for (const b40::LotElement &e : body.elements)
+		if (e.z + e.h >= up && inside(e.x - e.w * 0.5f, e.y - e.d * 0.5f, e.x + e.w * 0.5f, e.y + e.d * 0.5f)) return false;
+	std::vector<b40::LotTree> trees;
+	b40::lot_trees(body, f, trees);
+	for (const b40::LotTree &t : trees)
+		if (t.height >= up && (t.at - p).len() <= radius + t.crown) return false;
+	return true;
 }
 
 // No lamp, signal post, bin, bench or street tree within `radius` of the point.
@@ -179,8 +201,9 @@ bool CityCore::camera_clear(const Vector3 &at, float radius, bool vehicles) {
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
 	bool clear = true;
-	s.buildings.query(at.x - radius, at.z - radius, at.x + radius, at.z + radius, [&](int) { clear = false; });
-	clear = clear && clear_of_furniture(s, at, radius);
+	const float up = at.y - s.terrain.height_at(at.x, at.z);
+	s.buildings.query(at.x - radius, at.z - radius, at.x + radius, at.z + radius, [&](int id) { clear = clear && clear_of_lot(s, s.buildings.items[size_t(id)], V2(at.x, at.z), radius, up); });
+	clear = clear && (up > FURNITURE_TOP_M || clear_of_furniture(s, at, radius));
 	for (const Vehicle &v : s.traffic.vehicles) {
 		if (!clear || !vehicles) break;
 		if (!v.alive || !v.micro) continue;
