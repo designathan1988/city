@@ -28,7 +28,6 @@ struct TreeSpecies {
 	godot::String name;
 	godot::Ref<godot::ArrayMesh> body, cards; // cards empty when the species has none
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
-	float sway = 0, flutter = 0; // wind: top displacement and leaf flutter as shares of the height
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
 	float far_width = 1; // the far card's width over the tree's height

@@ -321,7 +321,7 @@
   "color": "#202224"
  },
  "trees": {
-  "_doc": "Trees (native/src/render/trees). Models one unit tall, scaled to their height: faceted body, leaf cards on the crown, palm fronds; tones measured on the reference photos of the target look (green tones scaled until our crowns on screen match the reference crowns' median (33, 72, 43) sRGB;  ipe bloom, palm and bark medians) and held as sRGB. Placement: near models within near_m (48 px for a 12 m tree at 900 px and fov 50 deg), far cards to far_m; woods field of patches mass_m across (100-250 m patches measured on the reference photos) with thresholds set from inner_share/edge_share (crown cover of the open land measured 0.10-0.12 on the reference far view); inner wood: cerradao, cover 50-90 % and 8-15 m (Ribeiro & Walter 2008, Embrapa); open land: lone trees measured 0.5/ha on the reference photos; slopes over 45 deg and 30 m along rivers are permanent protection areas that keep their woods (Lei 12.651/2012 art. 4). Atlas sizes are the texture's own design. Wind response and gust shape are design values awaiting a measurement in motion.",
+  "_doc": "Trees (native/src/render/trees). Models one unit tall, scaled to their height: faceted body, leaf cards on the crown, palm fronds; tones measured on the reference photos of the target look (green tones scaled until our crowns on screen match the reference crowns' median (33, 72, 43) sRGB;  ipe bloom, palm and bark medians) and held as sRGB. Placement: near models within near_m (48 px for a 12 m tree at 900 px and fov 50 deg), far cards to far_m; woods field of patches mass_m across (100-250 m patches measured on the reference photos) with thresholds set from inner_share/edge_share (crown cover of the open land measured 0.10-0.12 on the reference far view); inner wood: cerradao, cover 50-90 % and 8-15 m (Ribeiro & Walter 2008, Embrapa); open land: lone trees measured 0.5/ha on the reference photos; slopes over 45 deg and 30 m along rivers are permanent protection areas that keep their woods (Lei 12.651/2012 art. 4). Atlas sizes are the texture's own design. The wind lives in materials.json (vegetation), with its sources.",
   "atlas": {
    "px": 256,
    "leaves": 540,
@@ -363,15 +363,13 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.3,
     "far_width": 0.6,
-    "sway": 0.04,
-    "flutter": 0.008,
     "cards_cast": false
    },
    {
     "name": "broadleaf_tall",
     "seed": 102,
     "trunk": {"top": 0.45, "r0": 0.03, "r1": 0.02, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
-    "limbs": {"count": 2, "reach": 0.09, "rise": 0.15, "r": 0.012},
+    "limbs": {"count": 2, "reach": 0.09, "rise": 0.15, "r": 0.011},
     "crowns": [
      {"center": [0,  0.68,  0], "radius": [0.16,  0.3,  0.16], "rough": 0.2, "seed": 23, "subdiv": 1, "cards": 30, "card": 0.17, "taper": 0.0}
     ],
@@ -383,8 +381,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.18,
     "far_width": 0.38,
-    "sway": 0.04,
-    "flutter": 0.008,
     "cards_cast": false
    },
    {
@@ -403,8 +399,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.15,
     "far_width": 0.3,
-    "sway": 0.03,
-    "flutter": 0.006,
     "cards_cast": false
    },
    {
@@ -423,8 +417,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.35,
     "far_width": 0.7,
-    "sway": 0.05,
-    "flutter": 0.012,
     "cards_cast": true,
     "fronds": {"count": 10, "young": 2, "segments": 6, "length": [0.38,  0.46], "rise": [0.12,  0.22], "droop": [-0.25,  -0.12], "young_length": 0.3, "young_rise": 0.4, "young_droop": 0.25, "width": 0.06, "fold": 0.6}
    },
@@ -444,8 +436,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.32,
     "far_width": 0.66,
-    "sway": 0.04,
-    "flutter": 0.008,
     "cards_cast": false,
     "bloom": {"dark": "#9a7a24", "lit": "#d8b53c", "above": 0.6}
    },
@@ -465,8 +455,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.32,
     "far_width": 0.66,
-    "sway": 0.04,
-    "flutter": 0.008,
     "cards_cast": false,
     "bloom": {"dark": "#8e4e6c", "lit": "#d48aac", "above": 0.6}
    },
@@ -486,8 +474,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.6,
     "far_width": 1.2,
-    "sway": 0.05,
-    "flutter": 0.014,
     "cards_cast": false
    },
    {
@@ -506,8 +492,6 @@
     "heart_shrink": 0.65,
     "crown_reach": 0.6,
     "far_width": 1.2,
-    "sway": 0.05,
-    "flutter": 0.014,
     "cards_cast": false,
     "bloom": {"dark": "#a85a7a", "lit": "#e8b0c8", "above": 0.62}
    }

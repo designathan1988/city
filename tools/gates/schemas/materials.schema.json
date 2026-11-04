@@ -531,22 +531,16 @@
       "wind_speed_ms": {
        "type": "number"
       },
-      "wind_ref_ms": {
+      "sway_per_ms2": {
        "type": "number"
       },
       "gust_m": {
        "type": "number"
       },
-      "gust_period_s": {
+      "turbulence": {
        "type": "number"
       },
-      "gust_floor": {
-       "type": "number"
-      },
-      "sway_period_s": {
-       "type": "number"
-      },
-      "flutter_period_s": {
+      "sway_hz": {
        "type": "number"
       },
       "roughness": {
@@ -557,12 +551,10 @@
       "wind_dir_x",
       "wind_dir_z",
       "wind_speed_ms",
-      "wind_ref_ms",
+      "sway_per_ms2",
       "gust_m",
-      "gust_period_s",
-      "gust_floor",
-      "sway_period_s",
-      "flutter_period_s",
+      "turbulence",
+      "sway_hz",
       "roughness"
      ],
      "strict": true
@@ -592,22 +584,16 @@
       "wind_speed_ms": {
        "type": "number"
       },
-      "wind_ref_ms": {
+      "sway_per_ms2": {
        "type": "number"
       },
       "gust_m": {
        "type": "number"
       },
-      "gust_period_s": {
+      "turbulence": {
        "type": "number"
       },
-      "gust_floor": {
-       "type": "number"
-      },
-      "sway_period_s": {
-       "type": "number"
-      },
-      "flutter_period_s": {
+      "sway_hz": {
        "type": "number"
       },
       "roughness": {
@@ -621,12 +607,10 @@
       "wind_dir_x",
       "wind_dir_z",
       "wind_speed_ms",
-      "wind_ref_ms",
+      "sway_per_ms2",
       "gust_m",
-      "gust_period_s",
-      "gust_floor",
-      "sway_period_s",
-      "flutter_period_s",
+      "turbulence",
+      "sway_hz",
       "roughness",
       "cover_per_mip"
      ],

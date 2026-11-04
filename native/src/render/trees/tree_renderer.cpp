@@ -19,7 +19,6 @@ constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
-constexpr int MAX_SPECIES = 16; // the shader's uniform arrays (vegetation.gdshaderinc SPECIES_MAX)
 const float DIAGONAL = std::sqrt(2.f);
 // Job keys: lane 2 of the shared key * 4 + lane scheme; far superchunk keys are moved clear of every chunk key (and of
 // the buildings' and the zones' offsets, 1 << 20 and 1 << 19) before they take the lane.
@@ -49,33 +48,18 @@ bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, const 
 		return false;
 	}
 	if (!kit_.build(t["trees"], errors) || !trees_.load(t["trees"], kit_, errors)) return false;
-	if (kit_.count() > MAX_SPECIES) {
-		errors.push_back("streets.json trees: espécies demais para o shader");
-		return false;
-	}
 	set_params(body_material_);
 	set_params(card_material_);
 	return true;
 }
 
-// The shader's share of the data: where near meets far, the leaf atlas and each species' wind response.
+// The shader's share of the data: where near meets far and the leaf atlas.
 void TreeRenderer::set_params(const RID &material) const {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	PackedFloat32Array sway, flutter;
-	sway.resize(MAX_SPECIES);
-	flutter.resize(MAX_SPECIES);
-	sway.fill(0);
-	flutter.fill(0);
-	for (int i = 0; i < kit_.count(); i++) {
-		sway.set(i, kit_.species(i).sway);
-		flutter.set(i, kit_.species(i).flutter);
-	}
 	rs->material_set_param(material, "near_m", trees_.near_m);
 	rs->material_set_param(material, "fade_m", trees_.fade_m);
 	rs->material_set_param(material, "pop_m", trees_.pop_m);
 	rs->material_set_param(material, "leaf_atlas", kit_.atlas().texture());
-	rs->material_set_param(material, "sway", sway);
-	rs->material_set_param(material, "flutter", flutter);
 }
 
 void TreeRenderer::reset() {

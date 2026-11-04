@@ -72,7 +72,7 @@ void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Colo
 TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
-		"heart_shrink", "crown_reach", "far_width", "sway", "flutter", "cards_cast" };
+		"heart_shrink", "crown_reach", "far_width", "cards_cast" };
 	if (!need(d, KEYS, int(sizeof(KEYS) / sizeof(KEYS[0])), String(d.get("name", "?")), errors)) return sp;
 	sp.name = d["name"];
 	Rng r{ uint32_t(int(d["seed"])) };
@@ -100,7 +100,7 @@ TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
 	sp.body = body.commit();
 	if (!cards.empty()) sp.cards = cards.commit();
 	sp.crown_reach = d["crown_reach"]; sp.far_width = d["far_width"];
-	sp.sway = d["sway"]; sp.flutter = d["flutter"]; sp.cards_cast = d["cards_cast"];
+	sp.cards_cast = d["cards_cast"];
 	return sp;
 }
 } // namespace

@@ -1,5 +1,5 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths.",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths. Vegetation wind (vegetation.gdshaderinc): wind_speed_ms 3 = Beaufort 2, light breeze 1.6-3.3 m/s (WMO); sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019).",
  "road": {
   "shader": "res://render/shaders/road.gdshader",
   "params": {
@@ -179,12 +179,10 @@
    "wind_dir_x": 0.8,
    "wind_dir_z": -0.6,
    "wind_speed_ms": 3.0,
-   "wind_ref_ms": 3.0,
-   "gust_m": 40.0,
-   "gust_period_s": 9.0,
-   "gust_floor": 0.45,
-   "sway_period_s": 4.6,
-   "flutter_period_s": 0.9,
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
    "roughness": 0.85
   }
  },
@@ -194,12 +192,10 @@
    "wind_dir_x": 0.8,
    "wind_dir_z": -0.6,
    "wind_speed_ms": 3.0,
-   "wind_ref_ms": 3.0,
-   "gust_m": 40.0,
-   "gust_period_s": 9.0,
-   "gust_floor": 0.45,
-   "sway_period_s": 4.6,
-   "flutter_period_s": 0.9,
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
    "roughness": 0.85,
    "cover_per_mip": 0.25
   }

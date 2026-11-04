@@ -5,28 +5,30 @@
 // (the light's, in the shadow pass) and each tree fades between its near model and its far card by its own distance to
 // the main camera.
 //
-// Wind (Sousa, "Vegetation Procedural Animation and Shading in Crysis", GPU Gems 3 ch. 16): a main bending along the
-// wind growing with the square of the height, its amount carried by gust fronts travelling downwind across the map,
-// the bent point put back at its distance from the foot so the tree leans instead of stretching; a detail flutter of
-// the leaves and fronds with a phase of their own.
+// Wind: a tree bends quasi-statically under the drag of the wind it stands in, and sways at its own natural frequency
+// under the turbulent part of that drag (Sousa, "Vegetation Procedural Animation and Shading in Crysis", GPU Gems 3
+// ch. 16: the bend grows with the square of the height and the bent point keeps its distance from the foot).
+//   static bend at the top, as a share of the height, per (m/s) squared of wind: sway_per_ms2 (drag goes with the
+//   square of the speed; measured bending of 9.5 and 13.5 m pines under 4-8 m/s, Peltola et al. 1993);
+//   gusts: the turbulence frozen in the mean wind and carried along by it (Taylor 1938), one gust a gust_m (the peak
+//   of Kaimal et al. 1972's longitudinal spectrum, n z / U = 1/22 at z = 10 m), the speed varying by twice the
+//   turbulence intensity either way (EN 1991-1-4 eq. 4.7, I = 1 / ln(z / z0), terrain category II);
+//   sway: the turbulent share of the drag (2 I of it) at the natural frequency sway_hz (Jackson et al. 2019; 0.2-0.3 Hz
+//   for trees of this size with leaves).
+// Leaf flutter is not drawn: no measured amplitude for it has been found.
 
-const int SPECIES_MAX = 16; // native/src/render/trees/tree_renderer.cpp MAX_SPECIES
 const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0; // tree_kit.h TreePart
 
 uniform float near_m = 240.0;
 uniform float fade_m = 30.0;
 uniform float pop_m = 3.0;
-uniform float sway[16];
-uniform float flutter[16];
 uniform float wind_dir_x = 0.8; // the way the wind blows, x and z of a unit vector
 uniform float wind_dir_z = -0.6;
 uniform float wind_speed_ms = 3.0;
-uniform float wind_ref_ms = 3.0;
-uniform float gust_m = 40.0;
-uniform float gust_period_s = 9.0;
-uniform float gust_floor = 0.45;
-uniform float sway_period_s = 4.6;
-uniform float flutter_period_s = 0.9;
+uniform float sway_per_ms2 = 0.00016;
+uniform float gust_m = 220.0;
+uniform float turbulence = 0.19;
+uniform float sway_hz = 0.25;
 uniform float roughness = 0.85;
 
 varying flat vec3 v_tint;
@@ -52,24 +54,16 @@ float tree_fade(vec3 root, float d, bool far) {
 }
 
 // The wind's push on a point `local` (model units, the tree one unit tall) of a tree standing at `root`, `height`
-// metres tall, of species `sp`; `leafy` adds the leaves' flutter.
-vec3 wind_offset(vec3 local, vec3 root, float height, int sp, bool leafy, float t) {
-	float strength = wind_speed_ms / max(wind_ref_ms, 0.01);
+// metres tall.
+vec3 wind_offset(vec3 local, vec3 root, float height, float t) {
 	vec2 wind_dir = normalize(vec2(wind_dir_x, wind_dir_z));
-	vec3 dir = vec3(wind_dir.x, 0.0, wind_dir.y);
 	float h = clamp(local.y, 0.0, 1.4);
-	float front = dot(root.xz, wind_dir) / gust_m - t / gust_period_s;
-	// A gust is one crest of the front, roughened by a second one at an incommensurate wavelength.
-	float gust = mix(gust_floor, 1.0, (0.5 + 0.5 * sin(TAU * front)) * (0.85 + 0.15 * sin(TAU * front * 2.71)));
+	float bend = sway_per_ms2 * wind_speed_ms * wind_speed_ms * h * h * height;
+	// The gust the tree stands in: a wave of the frozen turbulence moving downwind at the mean speed.
+	float gust = sin(TAU * (dot(root.xz, wind_dir) - wind_speed_ms * t) / gust_m);
 	float phase = TAU * fract(dot(floor(root.xz), vec2(0.1031, 0.0973)) * 43.17); // each tree its own swing
-	float swing = 0.5 + 0.5 * sin(TAU * t / sway_period_s + phase);
-	vec3 off = dir * (sway[sp] * strength * gust * swing * h * h * height);
-	if (leafy) {
-		float lp = TAU * fract(dot(floor(local * 64.0), vec3(0.1031, 0.1030, 0.0973)) * 43.17) + phase; // each leaf its own
-		vec3 shake = vec3(sin(TAU * t / flutter_period_s + lp), 0.4 * cos(TAU * t / (flutter_period_s * 1.37) + lp), cos(TAU * t / flutter_period_s + lp));
-		off += shake * (flutter[sp] * min(strength, 2.0) * gust * h * height);
-	}
-	return off;
+	float sway = sin(TAU * sway_hz * t + phase);
+	return vec3(wind_dir.x, 0.0, wind_dir.y) * bend * (1.0 + 2.0 * turbulence * gust + 2.0 * turbulence * sway);
 }
 
 // The point bent by `off` and put back at its distance from the foot (the length kept, GPU Gems 3 ch. 16).
@@ -106,10 +100,9 @@ void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, 
 	}
 	bool card = part > PART_CARD - 0.5 && part < PART_CARD + 0.5;
 	float sx = far ? custom0.x : length(model[0].xyz), sy = far ? custom0.y : length(model[1].xyz);
-	int sp = int((far ? custom0.z : inst.a) + 0.5);
 	vec3 local = far ? vec3(0.0, color.a, 0.0) : vertex;
 	vec3 wp = far ? root + vec3(0.0, color.a * sy, 0.0) : (model * vec4(vertex, 1.0)).xyz;
-	wp = keep_length(wp, root, wind_offset(local, root, sy, sp, part > 0.5, t));
+	wp = keep_length(wp, root, wind_offset(local, root, sy, t));
 	vec3 vp = (view * vec4(wp, 1.0)).xyz;
 	if (far) {
 		int k = vertex_id % 4;
