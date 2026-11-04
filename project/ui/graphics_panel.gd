@@ -6,8 +6,9 @@ const PRESETS := ["auto", "low", "medium", "high", "ultra"]
 
 
 func _row(name_key: String, items: Array, value: Variant, pick: Callable, note_key := "") -> void:
+	column.add_child(HSeparator.new())
 	var box := HudWidgets.vbox(column)
-	HudWidgets.label(box, &"MutedLabel", tr(name_key))
+	HudWidgets.label(box, &"FieldLabel", tr(name_key))
 	HudWidgets.choices(box, items, value, func(v: Variant) -> void:
 		if v != value:
 			pick.call(v)

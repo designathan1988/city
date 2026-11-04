@@ -21,6 +21,7 @@ void RoadNetwork::init(const Catalog *c, ChangeLog *l) {
 }
 
 void RoadNetwork::clear() {
+	player_sides = 0;
 	nodes.clear();
 	segs.clear();
 	free_nodes.clear();
@@ -62,6 +63,7 @@ int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, i
 	g.alive = true;
 	g.a = a; g.b = b; g.q = q; g.profile = profile;
 	g.zl = uint8_t(zl); g.zr = uint8_t(zr); g.flags = flags;
+	player_sides += int((flags & SEG_ZONED_LEFT) != 0) + int((flags & SEG_ZONED_RIGHT) != 0);
 	g.table = arc_table(q, ROAD_ARC_STEPS);
 	g.len = g.table.back();
 	update_bounds(id);
@@ -77,6 +79,7 @@ void RoadNetwork::remove_segment(int s) {
 	RoadSegment &g = segs[s];
 	if (!g.alive) return;
 	mark_segment(s);
+	player_sides -= int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
 	seg_hash.remove_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
 	for (int n : { g.a, g.b }) {
 		auto &l = nodes[n].segs;
@@ -121,6 +124,7 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	RoadSegment &g = segs[id];
 	g = rec;
 	g.alive = true;
+	player_sides += int((g.flags & SEG_ZONED_LEFT) != 0) + int((g.flags & SEG_ZONED_RIGHT) != 0);
 	g.table = arc_table(g.q, ROAD_ARC_STEPS);
 	g.len = g.table.back();
 	update_bounds(id);
@@ -147,6 +151,18 @@ void RoadNetwork::set_profile(int s, int profile) {
 void RoadNetwork::set_zone(int s, int side, int zone) {
 	(side == 0 ? segs[s].zl : segs[s].zr) = uint8_t(zone);
 	mark_segment(s);
+}
+
+static int player_sides_of(uint16_t flags) {
+	return int((flags & SEG_ZONED_LEFT) != 0) + int((flags & SEG_ZONED_RIGHT) != 0);
+}
+
+void RoadNetwork::set_player_zone(int s, int side, bool on) {
+	uint16_t &flags = segs[s].flags;
+	player_sides -= player_sides_of(flags);
+	const uint16_t bit = side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT;
+	flags = on ? uint16_t(flags | bit) : uint16_t(flags & ~bit);
+	player_sides += player_sides_of(flags);
 }
 
 int RoadNetwork::find_node_near(double x, double z, double radius) const {

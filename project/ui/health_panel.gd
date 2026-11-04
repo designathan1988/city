@@ -21,7 +21,7 @@ func _ready() -> void:
 	var col := HudWidgets.vbox(self, &"Pad")
 	var head := HudWidgets.hbox(col, &"Pad")
 	for id: String in TABS:
-		var b := HudWidgets.button(&"Chip", "", tr("health.tab." + id), "", "", "opt_row_h")
+		var b := HudWidgets.button(&"DrawerTab", "", tr("health.tab." + id), "", "", "opt_row_h")
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_CLICK
 		b.pressed.connect(_select.bind(id))

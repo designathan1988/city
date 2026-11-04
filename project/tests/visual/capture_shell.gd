@@ -11,10 +11,14 @@ const VIEW := [45.0, 52.0, 2300.0] # yaw, pitch (degrees), distance: the whole t
 const LONG_FRAME_MS := 80.0
 const TIP_WAIT_S := 1.2
 const STREET_M := 120.0
+const INSPECT_PITCH := 75.0
+const SEARCH_M := 600.0
+const SEARCH_STEP_M := 3.0
 
 var out_dir := "user://captures"
 var rig: CityCamera
 var hud: RoadcraftHud
+var driver: UiDriver
 var shots := 0
 
 
@@ -37,6 +41,7 @@ func _ready() -> void:
 	hud = RoadcraftHud.new()
 	add_child(hud)
 	Settings.attach(world, get_viewport())
+	driver = UiDriver.new(rig, get_tree(), out_dir)
 	await _run()
 
 
@@ -76,6 +81,7 @@ func _run() -> void:
 	await _shot("toast")
 	await _tip()
 	await _inspector()
+	await _switch_shadow()
 	await _map_layers()
 	hud.actions.menu("new_city")
 	await _shot("dialog_confirm")
@@ -116,21 +122,40 @@ func _tip() -> void:
 
 ## A click on a road and on a junction, the panel the player gets, close enough to see them.
 func _inspector() -> void:
-	var seg: int = 0
-	var info := {}
-	while info.get("kind", "") != "road" and seg < CityStore.snapshot.segments:
-		var t: Dictionary = CityStore.query(&"segment_traffic", [seg])
-		seg += 1
-		if not t.is_empty() and int(t.vehicles) > 0:
-			info = {"kind": "road"}
-	var spot: Vector3 = rig.focus
-	rig.jump(spot, VIEW[0], VIEW[1], STREET_M)
+	hud.open_category("info")
+	for kind: String in ["road", "node"]:
+		var spot := _nearest(kind)
+		rig.jump(spot, VIEW[0], INSPECT_PITCH, STREET_M) # from above: a click on the middle of the screen falls on the road, not on a tower
+		await _frames(FRAMES / 2)
+		await driver.click(spot)
+		await _shot("inspect_" + kind)
+		hud.inspector.close()
+	hud.open_category("info")
+	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
+
+
+## The point of that kind nearest the middle of the town, ring by ring.
+func _nearest(kind: String) -> Vector3:
+	for ring in range(0, int(SEARCH_M / SEARCH_STEP_M)):
+		for i in ring * 8 + 1:
+			var a := TAU * i / (ring * 8 + 1)
+			var p := Vector3(cos(a), 0.0, sin(a)) * ring * SEARCH_STEP_M
+			if CityStore.query(&"inspect", [p]).get("kind", "") == kind:
+				return p
+	return Vector3.ZERO
+
+
+## A layer's switch before and after: what it takes away goes with its shadow (the caster mask follows the camera's).
+func _switch_shadow() -> void:
+	rig.jump(_nearest("node"), VIEW[0], VIEW[1], STREET_M)
+	await _frames(FRAMES / 2)
+	await _shot("switch_on")
+	Settings.switches.set_on("buildings", false)
+	Settings.switches_changed()
 	await _frames(SETTLE)
-	var road: Dictionary = CityStore.query(&"inspect", [spot])
-	road["at"] = spot
-	hud.tools.inspected.emit(road)
-	await _shot("inspect_road")
-	hud.inspector.close()
+	await _shot("switch_off")
+	Settings.switches.set_on("buildings", true)
+	Settings.switches_changed()
 	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
 
 

@@ -7,6 +7,8 @@ extends PanelContainer
 
 signal closed
 
+const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
+
 @onready var _at := Vector3.ZERO
 @onready var _info := {}
 @onready var _stats: Control
@@ -24,41 +26,67 @@ func _ready() -> void:
 	hide()
 
 
+## The numbers as cards, two to a row (.inspect-grid).
 func _rows(col: Control, rows: Array) -> void:
-	var g := PopBodies.grid(col)
+	var g := GridContainer.new()
+	g.columns = 2
+	g.theme_type_variation = &"StatGrid"
+	col.add_child(g)
 	for r: Array in rows:
-		PopBodies.metric(g, tr(r[0])).text = r[1]
+		var card := HudWidgets.panel(g, &"StatCard")
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := HudWidgets.vbox(card)
+		HudWidgets.label(v, &"StatName", tr(r[0]))
+		HudWidgets.label(v, &"StatValue", r[1])
+
+
+## The panel's name with the close button at its end.
+func _head(col: Control, text: String) -> void:
+	var row := HudWidgets.hbox(col)
+	var name := HudWidgets.label(row, &"SideTitle", text)
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "icon_btn", "icon_btn")
+	x.pressed.connect(close)
+	row.add_child(x)
+
+
+func _actions(col: Control) -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = 2
+	g.theme_type_variation = &"StatGrid"
+	col.add_child(g)
+	return g
 
 
 func _building(col: Control, info: Dictionary) -> void:
 	var fn_keys: Array = DataTables.ui("drawers").fn_keys
 	var fn: int = info.fn
 	var name := tr(fn_keys[fn]) if fn > 0 and fn < fn_keys.size() else tr("zone.name.%d" % info.zone)
-	HudWidgets.label(col, &"TitleLabel", name.to_upper())
+	_head(col, name)
 	HudWidgets.label(col, &"BodyLabel", tr("ui.floors.other").format({"count": info.floors}))
 	_rows(col, [["ui.metric.residents", Formatters.format_int(info.residents)], ["ui.metric.jobs", Formatters.format_int(info.jobs)]])
-	_demolish_row(col)
+	_demolish_button(_actions(col))
 
 
 func _road(col: Control, info: Dictionary) -> void:
-	HudWidgets.label(col, &"TitleLabel", ("%s · %s" % [tr("inspector.road"), tr(info.profile)]).to_upper())
+	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
 	_stats = HudWidgets.vbox(col)
 	_rows(_stats, InspectorRows.segment_rows(info))
 	var picks := []
 	for p: Dictionary in CityStore.query(&"road_profiles"):
 		picks.append([p.index, tr(p.name_key)])
 	HudWidgets.dropdown(col, tr("inspector.roadClass"), picks, info.profile_id, _set_class)
-	var row := HFlowContainer.new()
-	col.add_child(row)
+	var row := _actions(col)
 	if info.one_way:
 		_action(row, "inspector.reverse", &"reverse_road")
-	_action(row, "inspector.splitMiddle", &"split_road")
 	_action(row, "inspector.duplicate", &"duplicate_road")
-	_demolish_row(col)
+	_action(row, "inspector.splitMiddle", &"split_road")
+	_demolish_button(row)
 
 
 func _action(row: Control, key: String, command: StringName) -> void:
 	var b := HudWidgets.button(&"Ghost", "", tr(key), "", "", "opt_row_h")
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(_edit.bind(command))
 	row.add_child(b)
 
@@ -83,26 +111,30 @@ func _set_class(profile: int) -> void:
 
 
 func _node(col: Control) -> void:
-	HudWidgets.label(col, &"TitleLabel", tr("inspector.junction").to_upper())
+	_head(col, tr("inspector.junction"))
 	_stats = HudWidgets.vbox(col)
 	_fill_node(_stats)
 
 
 func _fill_node(col: Control) -> void:
 	_rows(col, InspectorRows.node_rows(_info.id))
+	var chips := HFlowContainer.new()
+	col.add_child(chips)
 	for lamp: Array in InspectorRows.lamps(_info.id):
-		var row := HudWidgets.hbox(col)
-		HudWidgets.label(row, &"BodyLabel", lamp[0])
+		var row := HudWidgets.hbox(HudWidgets.panel(chips, &"LampChip"))
+		var dot := Panel.new()
+		dot.theme_type_variation = LAMP_DOTS[lamp[1]]
+		dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(dot)
+		HudWidgets.label(row, &"MetaLabel", lamp[0])
 
 
-func _demolish_row(col: Control) -> void:
-	var row := HudWidgets.hbox(col)
-	var demolish := HudWidgets.button(&"IconButton", "demolish", "", "inspector.demolish", "icon_btn", "icon_btn")
+func _demolish_button(row: Control) -> void:
+	var demolish := HudWidgets.button(&"GhostDanger", "", tr("inspector.demolish"), "", "", "opt_row_h")
+	demolish.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	demolish.pressed.connect(_demolish.bind(_at))
 	row.add_child(demolish)
-	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "icon_btn", "icon_btn")
-	x.pressed.connect(close)
-	row.add_child(x)
 
 
 ## The Delete key: what the panel shows goes; false when it shows nothing.
@@ -124,17 +156,9 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 	var col := HudWidgets.vbox(self, &"Pad")
 	match info.kind:
 		"building": _building(col, info)
-		"node":
-			_node(col)
-			_close_row(col)
+		"node": _node(col)
 		_: _road(col, info)
 	show()
-
-
-func _close_row(col: Control) -> void:
-	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "icon_btn", "icon_btn")
-	x.pressed.connect(close)
-	col.add_child(x)
 
 
 ## The numbers again, or everything when what was shown changed under the panel.

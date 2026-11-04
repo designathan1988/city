@@ -13,6 +13,10 @@ func click(p: Vector3) -> void:
 	ctl.inspected.emit(info)
 
 
+func hover(p: Vector3) -> void:
+	ctl.hovered.emit(CityStore.query(&"inspect", [p]))
+
+
 func cancel() -> void:
 	ctl.inspected.emit({})
 

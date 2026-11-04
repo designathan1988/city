@@ -93,6 +93,7 @@ public:
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
 	godot::Dictionary inspect(const godot::Vector3 &p);
+	godot::PackedVector3Array segment_path(int seg); // the road's line in the world, for what the Information tool draws
 	godot::Dictionary segment_traffic(int seg); // the Inspect tool's live numbers (city_core_inspect.cpp)
 	godot::Dictionary node_traffic(int node);
 	godot::Array impossible_nodes(); // the top bar's warning: nodes whose legs meet too sharply
@@ -105,6 +106,7 @@ public:
 	float amber_wanted(float kmh) const;
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
+	void show_every_zone(bool on);
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)

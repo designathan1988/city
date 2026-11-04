@@ -56,6 +56,7 @@ public:
 	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
 	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
+	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }

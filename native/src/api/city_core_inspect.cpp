@@ -134,6 +134,22 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 	return d;
 }
 
+PackedVector3Array CityCore::segment_path(int seg) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const RoadNetwork &net = state_->roads;
+	PackedVector3Array out;
+	if (seg < 0 || seg >= int(net.segs.size()) || !net.segs[size_t(seg)].alive) return out;
+	const RoadSegment &g = net.segs[size_t(seg)];
+	const float ya = net.nodes[size_t(g.a)].y, yb = net.nodes[size_t(g.b)].y;
+	for (int i = 0; i <= ROAD_ARC_STEPS; i++) {
+		const double t = double(i) / ROAD_ARC_STEPS;
+		double x, z;
+		g.q.at(t, x, z);
+		out.push_back(Vector3(float(x), ya + (yb - ya) * float(t), float(z)));
+	}
+	return out;
+}
+
 Dictionary CityCore::segment_traffic(int seg) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);

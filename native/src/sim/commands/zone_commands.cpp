@@ -65,7 +65,6 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 		r.error = "tool.failed";
 		return r;
 	}
-	s.zones_painted = true;
 	RoadNetwork &net = s.roads;
 	double reach = radius + s.catalog.tune.zone_side_offset_m + s.catalog.widest_half();
 	std::vector<std::pair<int, int>> hits;

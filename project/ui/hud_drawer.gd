@@ -8,7 +8,7 @@ extends PanelContainer
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
-const DENSITY_MEDIUM := 1
+const DENSITY_FIRST := 0
 const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "zone.high", "high"]]
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
@@ -22,7 +22,7 @@ const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "z
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var _profile_ids: Dictionary = {}
 @onready var _tab: Dictionary = {}
-@onready var _density := DENSITY_MEDIUM
+@onready var _density := DENSITY_FIRST
 
 
 func _ready() -> void:

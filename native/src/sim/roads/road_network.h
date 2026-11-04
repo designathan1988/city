@@ -16,6 +16,8 @@ namespace city {
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
 	SEG_FREE = 0x80, // built by the generator: worth nothing when demolished
+	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
+	SEG_ZONED_RIGHT = 0x200,
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
 
@@ -52,6 +54,7 @@ public:
 	std::vector<int> free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
+	int player_sides = 0; // road sides the player zoned
 	const Catalog *cat = nullptr;
 	ChangeLog *log = nullptr;
 
@@ -67,6 +70,7 @@ public:
 	void put_segment(int id, const RoadSegment &rec);
 	void set_profile(int s, int profile);
 	void set_zone(int s, int side, int zone);
+	void set_player_zone(int seg, int side, bool on);
 	int find_node_near(double x, double z, double radius) const;
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// Height of segment s at arc length `at` from node a.

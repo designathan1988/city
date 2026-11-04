@@ -30,6 +30,9 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	Dictionary t = ctx.table("overlays", errors);
 	if (!errors.is_empty()) return false;
 	zone_depth_ = float(t.get("zone_depth_m", 0));
+	zone_alpha_ = float(t.get("zone_alpha", 0));
+	zone_alpha_tool_ = float(t.get("zone_alpha_tool", 0));
+	congestion_alpha_ = float(t.get("congestion_alpha", 0));
 	lift_ = float(t.get("lift_m", 0));
 	sample_ = std::max(1.f, float(t.get("sample_m", 1)));
 	refresh_ = float(t.get("refresh_s", 1));
@@ -62,6 +65,10 @@ void OverlayRenderer::reset() {
 		done_.clear();
 		requested_.clear();
 	}
+}
+
+void OverlayRenderer::show_every_zone(bool on) {
+	if (every_zone_.exchange(on) != on) zones_all_ = on_[int(Overlay::ZONES)];
 }
 
 void OverlayRenderer::set(Overlay o, bool on) {

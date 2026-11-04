@@ -76,7 +76,7 @@ static func choices(parent: Control, items: Array, value: Variant, pick: Callabl
 	var row := hbox(parent)
 	for item: Array in items:
 		var drawn: bool = item.size() > 2 # [value, text] or, with an icon for a name, [value, "", icon, tip]
-		var b := button(&"Choice", item[2] if drawn else "", item[1], item[3] if drawn else "", "icon_btn" if drawn else "", "opt_row_h")
+		var b := button(&"IconChoice" if drawn else &"Choice", item[2] if drawn else "", item[1], item[3] if drawn else "", "icon_btn" if drawn else "", "opt_row_h")
 		b.toggle_mode = true
 		b.set_pressed_no_signal(item[0] == value)
 		b.pressed.connect(func() -> void:
@@ -90,8 +90,9 @@ static func choices(parent: Control, items: Array, value: Variant, pick: Callabl
 ## A row of a menu or a tool's options: a short name at the left, its controls at the right.
 static func option_row(parent: Control, name_text: String) -> HBoxContainer:
 	var row := hbox(parent, &"Gap")
-	var name := label(row, &"MutedLabel", name_text)
+	var name := label(row, &"FieldLabel", name_text)
 	name.custom_minimum_size.x = px("opt_name_w")
+	row.custom_minimum_size.y = px("opt_row_h")
 	return row
 
 

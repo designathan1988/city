@@ -64,6 +64,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
 	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
 	ClassDB::bind_method(D_METHOD("set_marking_style", "style", "undoable"), &CityCore::set_marking_style);
+	ClassDB::bind_method(D_METHOD("segment_path", "segment"), &CityCore::segment_path);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
 	ClassDB::bind_method(D_METHOD("list_buildings"), &CityCore::list_buildings);
 	ClassDB::bind_method(D_METHOD("city_bounds"), &CityCore::city_bounds);
@@ -71,6 +72,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
+	ClassDB::bind_method(D_METHOD("show_every_zone", "on"), &CityCore::show_every_zone);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);

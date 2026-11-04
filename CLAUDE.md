@@ -299,10 +299,11 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
 - `project/ui/inspector_rows.gd` — os números ao vivo do inspetor, como linhas
+- `project/ui/selection_overlay.gd` — a faixa da via e o anel do cruzamento que a ferramenta Informação marca sobre o mapa
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — a casca: dock, dica, aviso e quem abre cada painel
-- `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
+- `project/ui/theme/theme_builder.gd` · `project/ui/theme/theme_text.gd` · `project/ui/theme/theme_art.gd` — único dono dos estilos (tokens → Theme): caixas e botões; textos e pesos; desenhos (botão do controle deslizante, amostra de zona, vinheta)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/render_switches.json` · `project/data/game/optimizations.json` · `project/data/game/health.json` · `project/data/game/start.json` · `project/data/game/thunder.json` — câmera, dia/noite, saves, qualidade, chaves de efeito, otimizações, saúde e tela inicial

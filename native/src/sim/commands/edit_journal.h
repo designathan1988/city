@@ -24,6 +24,7 @@ struct EditOp {
 	OpKind kind = OpKind::MONEY;
 	int id = -1;
 	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN
+	bool player = false; // ZONE: the side was the player's before
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
 	RoadNode node;
 	RoadSegment seg;

@@ -24,7 +24,7 @@ func _ready() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var card := HudWidgets.panel(center, &"Card2")
+	var card := HudWidgets.panel(center, &"StartCard")
 	card.custom_minimum_size.x = HudWidgets.px("start_w")
 	_card_box = HudWidgets.vbox(card, &"Gap")
 	_fill()
@@ -34,13 +34,13 @@ func _fill() -> void:
 	HudWidgets.clear(_card_box)
 	var title := HudWidgets.label(_card_box, &"TitleBig", "Roadcraft")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var tag := HudWidgets.label(_card_box, &"BodyLabel", tr("start.tagline"))
+	var tag := HudWidgets.label(_card_box, &"TagLabel", tr("start.tagline"))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_action(&"Primary", "start.continue" if saved else "start.play", "play", "start_btn_h")
 	if saved:
-		_action(&"Ghost", "action.newMap", "new", "start_btn2_h")
-	_action(&"Ghost", "action.openMap", "open", "start_btn2_h")
-	_action(&"Ghost", "menu.graphicsOptions", "graphics", "start_btn2_h")
+		_action(&"StartBtn", "action.newMap", "new", "start_btn2_h")
+	_action(&"StartBtn", "action.openMap", "open", "start_btn2_h")
+	_action(&"StartBtn", "menu.graphicsOptions", "graphics", "start_btn2_h")
 	var langs := HudWidgets.hbox(_card_box, &"Pad")
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
 	for l: Array in LANGUAGES:

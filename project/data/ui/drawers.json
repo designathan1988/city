@@ -573,37 +573,37 @@
    "title_key": "camera.label",
    "buttons": [
     {
-     "icon": "undo",
+     "icon": "cam_turn_left",
      "label_key": "ui.camera.turnLeft",
      "action": "turn_left"
     },
     {
-     "icon": "lower",
+     "icon": "cam_tilt_down",
      "label_key": "camera.tiltDown",
      "action": "tilt_down"
     },
     {
-     "icon": "roundabout",
+     "icon": "cam_north",
      "label_key": "camera.north",
      "action": "north"
     },
     {
-     "icon": "raise",
+     "icon": "cam_tilt_up",
      "label_key": "camera.tiltUp",
      "action": "tilt_up"
     },
     {
-     "icon": "redo",
+     "icon": "cam_turn_right",
      "label_key": "ui.camera.turnRight",
      "action": "turn_right"
     },
     {
-     "icon": "mass",
+     "icon": "cam_perspective",
      "label_key": "camera.perspective",
      "action": "perspective"
     },
     {
-     "icon": "resetView",
+     "icon": "cam_reset",
      "label_key": "action.resetView",
      "action": "reset"
     }

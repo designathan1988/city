@@ -169,7 +169,9 @@ func _build(a: Vector3, e: Vector3) -> void:
 
 
 func _layers(a: Vector3, e: Vector3) -> void:
-	CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, 2])
+	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, 2])
+	_check(zoned.ok, "zoneou a via: %s" % zoned)
+	Settings.set_layer("zones", true) # what user://settings.cfg holds from an earlier run is no part of this
 	CityStore.dispatch(&"set_speed", [1])
 	for i in 120:
 		await get_tree().process_frame
@@ -177,12 +179,14 @@ func _layers(a: Vector3, e: Vector3) -> void:
 	await ui.drawn()
 	hud.open_popover("layers")
 	await ui.frames(3)
-	var rows := hud.popover.get_child(0).get_children().filter(func(c: Node) -> bool: return c is Button and not c.disabled)
+	var buttons := hud.popover.get_child(0).get_children().filter(func(c: Node) -> bool: return c is Button)
+	var specs: Array = DataTables.ui("drawers").popovers.layers.rows
+	var rows := [buttons[specs.find_custom(func(r: Dictionary) -> bool: return r.get("action", "") == "congestion")]]
 	for r in rows:
 		await ui.press(r)
 	await ui.frames(70)
 	var on: Dictionary = CityStore.query(&"overlays")
-	_check(on.zones and on.congestion, "camadas ligadas %s" % on)
+	_check(on.zones and on.congestion, "camadas ligadas %s, lados do jogador %d" % [on, CityStore.snapshot.player_zones])
 	await ui.shot("feat_layers")
 	for r in rows:
 		await ui.press(r)

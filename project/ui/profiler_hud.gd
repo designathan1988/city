@@ -12,12 +12,8 @@ const MIB := 1048576.0
 func _ready() -> void:
 	theme_type_variation = &"Popover"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	grow_vertical = Control.GROW_DIRECTION_BEGIN
-	offset_right = -HudWidgets.px("margin")
-	offset_bottom = -HudWidgets.px("margin")
-	_text = HudWidgets.label(self, &"MetaLabel")
+	minimum_size_changed.connect(_place)
+	_text = HudWidgets.label(self, &"MonoLabel")
 	hide()
 
 
@@ -27,11 +23,10 @@ func toggle() -> void:
 		_refresh()
 
 
-## Stands by the bottom right corner at the size of its text: the anchors alone leave it no width, past the screen's edge.
+## By the bottom right corner at the size of its text, again whenever the text changes it.
 func _place() -> void:
-	var need := get_combined_minimum_size()
-	offset_left = offset_right - need.x
-	offset_top = offset_bottom - need.y
+	reset_size()
+	position = get_viewport_rect().size - size - Vector2.ONE * HudWidgets.px("margin")
 
 
 func _process(delta: float) -> void:
@@ -55,7 +50,6 @@ func _refresh() -> void:
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / MIB])
 	lines.append(tr("profiler.hide"))
 	_text.text = "\n".join(lines)
-	_place.call_deferred()
 	reset_size()
 
 

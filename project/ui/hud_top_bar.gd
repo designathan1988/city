@@ -23,7 +23,7 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 
 
 func _ready() -> void:
-	theme_type_variation = &"Surface"
+	theme_type_variation = &"Bar"
 	anchor_right = 1.0
 	offset_left = HudWidgets.px("margin")
 	offset_top = HudWidgets.px("margin")

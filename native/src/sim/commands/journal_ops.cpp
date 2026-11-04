@@ -126,9 +126,11 @@ void j_set_zone(CityState &s, int seg, int side, int zone) {
 		op.side = side;
 		op.from = cur;
 		op.to = zone;
+		op.player = (g.flags & (side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT)) != 0;
 		grow_seg(s, g);
 	}
 	s.roads.set_zone(seg, side, zone);
+	s.roads.set_player_zone(seg, side, zone != 0);
 	mark_furniture(s, seg);
 }
 

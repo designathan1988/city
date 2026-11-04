@@ -1,15 +1,70 @@
 {
  "type": "object",
- "required": ["zone_depth_m", "lift_m", "sample_m", "refresh_s", "congestion", "free_share", "jam_share"],
+ "required": [
+  "zone_depth_m",
+  "lift_m",
+  "sample_m",
+  "refresh_s",
+  "congestion",
+  "free_share",
+  "jam_share",
+  "zone_alpha",
+  "zone_alpha_tool",
+  "congestion_alpha"
+ ],
  "properties": {
-  "_doc": {"type": "string"},
-  "zone_depth_m": {"type": "number", "minimum": 1},
-  "lift_m": {"type": "number", "minimum": 0},
-  "sample_m": {"type": "number", "minimum": 1},
-  "refresh_s": {"type": "number", "minimum": 0.1},
-  "congestion": {"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 3},
-  "free_share": {"type": "number", "minimum": 0, "maximum": 1},
-  "jam_share": {"type": "number", "minimum": 0, "maximum": 1}
+  "_doc": {
+   "type": "string"
+  },
+  "zone_depth_m": {
+   "type": "number",
+   "minimum": 1
+  },
+  "lift_m": {
+   "type": "number",
+   "minimum": 0
+  },
+  "sample_m": {
+   "type": "number",
+   "minimum": 1
+  },
+  "refresh_s": {
+   "type": "number",
+   "minimum": 0.1
+  },
+  "congestion": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "minItems": 3,
+   "maxItems": 3
+  },
+  "free_share": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  },
+  "jam_share": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  },
+  "zone_alpha": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  },
+  "zone_alpha_tool": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  },
+  "congestion_alpha": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 1
+  }
  },
  "strict": true
 }

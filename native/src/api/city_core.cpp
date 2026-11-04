@@ -184,6 +184,10 @@ void CityCore::set_overlay(const String &name, bool on) {
 		if (name == OVERLAY_NAMES[i]) render_.set_overlay(Overlay(i), on);
 }
 
+void CityCore::show_every_zone(bool on) {
+	render_.show_every_zone(on);
+}
+
 Dictionary CityCore::overlays() const {
 	Dictionary d;
 	for (int i = 0; i < int(Overlay::COUNT); i++) d[OVERLAY_NAMES[i]] = render_.overlay_on(Overlay(i));

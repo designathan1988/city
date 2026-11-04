@@ -24,6 +24,7 @@ var switches: RenderSwitches
 var optimizations: Dictionary = {} # the Effects panel: option id -> value over the tier
 var layers: Dictionary = {} # what shows over the map: layer -> on
 var zone_tool := false # the zone brush is in hand
+var _zoned := false # the player has zoned sides on this city, as last shown
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -106,8 +107,8 @@ func _show_layer(name: String) -> void:
 	if name == "grid":
 		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
 	elif name == "zones":
-		var painted: bool = CityStore.snapshot.get("zones_painted", false)
-		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and painted)])
+		CityStore.dispatch(&"show_every_zone", [zone_tool])
+		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and _zoned)])
 	else:
 		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
 
@@ -215,7 +216,15 @@ func _follow_zoom() -> void:
 		switches.apply(_world, _viewport, current())
 
 
+func _follow_zones() -> void:
+	var zoned: bool = CityStore.snapshot.get("player_zones", 0) > 0
+	if zoned != _zoned:
+		_zoned = zoned
+		_show_layer("zones")
+
+
 func _process(delta: float) -> void:
+	_follow_zones()
 	if _world == null:
 		return
 	_follow_zoom()

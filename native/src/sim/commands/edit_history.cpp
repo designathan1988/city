@@ -57,6 +57,7 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ZONE:
 			net.set_zone(op.id, op.side, fwd ? op.to : op.from);
+			net.set_player_zone(op.id, op.side, fwd ? op.to != 0 : op.player);
 			mark_furniture(s, op.id);
 			break;
 		case OpKind::ADD_BLD: if (fwd) s.buildings.put(op.id, op.bld, true); else s.buildings.remove(op.id); break;

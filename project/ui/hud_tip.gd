@@ -11,7 +11,7 @@ extends PanelContainer
 func _ready() -> void:
 	theme_type_variation = &"Tip"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label = HudWidgets.label(self, &"BodyLabel")
+	_label = HudWidgets.label(self, &"TipLabel")
 	hide()
 
 

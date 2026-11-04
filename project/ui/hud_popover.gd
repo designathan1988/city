@@ -84,6 +84,7 @@ func _row(parent: Control, r: Dictionary) -> Button:
 func _build_layers(col: Control, spec: Dictionary) -> void:
 	for r in spec.rows:
 		var b := _row(col, r)
+		b.theme_type_variation = &"LayerRow"
 		var sw := HudSwitch.new()
 		sw.on = Settings.layer_on(r.action) if r.has("action") else false
 		b.add_child(sw)
