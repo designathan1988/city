@@ -204,6 +204,7 @@ export class Translator extends Emitter {
   }
 
   #planConstant(d: TS.VariableDeclaration, name: string, line: number): void {
+    this.module = this.c.relative(d.getSourceFile());
     const symbol = this.symbolOf(d.name)!;
     const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
     const value = d.initializer ? this.expr(d.initializer, type) : '{}';
@@ -282,6 +283,7 @@ export class Translator extends Emitter {
 
   #emitFunction(plan: FunctionPlan): void {
     this.fn = plan;
+    this.module = plan.module;
     this.scopes.push(new Map());
     plan.decl.parameters.forEach((p, i) => {
       const symbol = this.symbolOf(p.name);
@@ -310,6 +312,7 @@ export class Translator extends Emitter {
 
   #emitMemo(plan: MemoPlan): void {
     this.memo = plan;
+    this.module = this.c.relative(this.c.file);
     this.scopes.push(new Map());
     const param = plan.fn.parameters[0];
     if (param) this.bind(this.symbolOf(param.name)!, { cpp: snake(param.name.getText()), type: { k: 'struct', name: this.c.spec.state.target } });

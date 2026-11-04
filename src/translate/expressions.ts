@@ -31,6 +31,8 @@ export abstract class ExpressionEmitter {
   protected memo: MemoPlan | null = null;
   /** The modules the code being written uses (a function, a constant, an index of another module). */
   protected uses: Set<string> | null = null;
+  /** The module whose code is being written (where a literal's constant goes). */
+  protected module = '';
   #temp = 0;
 
   constructor(c: TranslateContext) {
@@ -185,14 +187,19 @@ export abstract class ExpressionEmitter {
 
   #number(e: TS.NumericLiteral): Value {
     const value = Number(e.text);
-    const named = this.c.namedLiterals.get(value);
     const int = /^\d+$/.test(e.getText());
-    if (!this.#inConstant(e)) {
-      if (named) return { code: named.cpp, type: named.type };
-      if (!this.c.allowedNumbers.includes(value)) return this.fail(e, `the literal ${e.getText()} is not allowed bare in the target: name it in spec.literals`);
+    const type = int ? INT : this.c.types.number(Num.Float, 'local');
+    const text = int ? e.getText() : realLiteral(e.getText(), this.c.spec.number);
+    if (this.#inConstant(e) || this.c.allowedNumbers.includes(value)) return { code: text, type };
+    // A number the target's gates do not allow bare: a constant of this module, named from what receives it.
+    const name = this.c.literals.name(e, value, this.module);
+    const key = `${this.module}|${name}`;
+    if (!this.c.literalConstants.has(key)) {
+      const line = e.getSourceFile().getLineAndCharacterOfPosition(e.getStart()).line + 1;
+      this.c.literalConstants.set(key, { source: e.getText(), cpp: name, type, value: text, module: this.module, line,
+        doc: `The ${e.getText()} the source writes here`, constexpr: true });
     }
-    if (int) return { code: e.getText(), type: INT };
-    return { code: realLiteral(e.getText(), this.c.spec.number), type: this.c.types.number(Num.Float, 'local') };
+    return { code: name, type };
   }
 
   /** A literal in the initializer of a named constant is that constant's value. */
@@ -364,9 +371,10 @@ export abstract class ExpressionEmitter {
       this.c.includes.add('algorithm');
       const type = args.map((a) => a.type).reduce((a, b) => widerNumber(a, b));
       // std::max takes one type: every argument becomes the widest.
-      const code = args.map((a, i) => {
+      const code = args.map((a) => {
         if (same(a.type, type)) return a.code;
-        if (this.c.ts.isNumericLiteral(e.arguments[i]!) && type.k === 'real') return realLiteral(a.code, type.name);
+        // A number written in place takes the real form; a name (a literal's constant) is converted.
+        if (/^\d+$/.test(a.code) && type.k === 'real') return realLiteral(a.code, type.name);
         return `${render(type)}(${a.code})`;
       });
       return { code: code.reduce((acc, x) => `std::${method}(${acc}, ${x})`), type };
@@ -586,6 +594,11 @@ export abstract class ExpressionEmitter {
     const k = e.operatorToken.kind;
     if (k === ts.SyntaxKind.QuestionQuestionToken) {
       const left = this.value(e.left);
+      // A pointer is absent as nullptr: `p ?? null` is p, `p ?? q` takes q where p is absent.
+      if (left.type.k === 'ptr') {
+        if (e.right.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(e.right) && e.right.text === 'undefined')) return left;
+        return { code: `(${left.code} ? ${left.code} : ${this.expr(e.right, left.type)})`, type: left.type };
+      }
       if (left.type.k !== 'optional') return this.fail(e, '?? on a value that is never absent in C++');
       return { code: `(${left.code} ? *${left.code} : ${this.expr(e.right, left.type.of)})`, type: left.type.of };
     }

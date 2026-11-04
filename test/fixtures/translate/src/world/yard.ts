@@ -82,3 +82,14 @@ export function chain(points: readonly Vec2[]): number {
   for (let i = 1; i < points.length; i++) link(i - 1, i);
   return at.size;
 }
+
+/** A literal the target does not allow bare: its constant is named from what receives it. */
+export function limited(n: number): number {
+  const speed = Math.min(30, n);
+  return speed;
+}
+
+/** A post by its id: the id's callers in the program are methods of a class (an id is an integer through them). */
+export function postById(t: YardData, id: number): Post | null {
+  return t.posts.find((p) => p.id === id) ?? null;
+}

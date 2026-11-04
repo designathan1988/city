@@ -282,6 +282,9 @@ export class FlowGraph {
     }
     if (ts.isPropertyAccessExpression(e)) {
       const prop = this.#property(e);
+      // Reading a getter runs it: the value is what it returns.
+      const decl = prop?.valueDeclaration;
+      if (decl && ts.isGetAccessorDeclaration(decl) && this.inProgram(decl)) return this.returnSlot(decl);
       return prop && this.#isFeatureProperty(prop) ? this.symbolSlot(prop) : null;
     }
     if (ts.isElementAccessExpression(e)) {
@@ -294,6 +297,9 @@ export class FlowGraph {
     }
     if (ts.isCallExpression(e)) {
       const callee = e.expression;
+      // A method of the program is a function like any other: its result is what it returns.
+      const fn = this.calleeOf(e);
+      if (fn) return this.returnSlot(fn);
       if (ts.isPropertyAccessExpression(callee)) {
         const method = callee.name.text;
         const receiver = this.slotOfExpr(callee.expression);
@@ -301,10 +307,8 @@ export class FlowGraph {
         if (SAME_ELEMENTS.has(method) && receiver) return receiver;
         if (method === 'map') return this.nodeSlot(e, 'literal', this.#checker.getTypeAtLocation(e));
         if (method === 'find' && receiver) return this.elemOf(receiver);
-        return null;
       }
-      const fn = this.calleeOf(e);
-      return fn ? this.returnSlot(fn) : null;
+      return null;
     }
     return null;
   }
@@ -575,6 +579,8 @@ export class FlowGraph {
       if (!symbol) return;
       const slot = this.symbolSlot(symbol);
       if (this.isObject(this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(symbol)))) this.#raiseOwn(slot, Own.Ref);
+      // A default value is a value the parameter takes (when the caller leaves it out).
+      if (p.initializer) this.#flow(() => this.symbolSlot(symbol), p.initializer);
       const call = fn.parent;
       if ((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && ts.isCallExpression(call) && ts.isPropertyAccessExpression(call.expression)) {
         const method = call.expression.name.text;
@@ -639,6 +645,16 @@ export class FlowGraph {
   #call(e: TS.CallExpression): void {
     const ts = this.#ts;
     const callee = e.expression;
+    // A call of a function of the program, by name or as a method: each argument flows into its parameter.
+    const fn = this.calleeOf(e);
+    if (fn) {
+      e.arguments.forEach((a, i) => {
+        const p = fn.parameters[i];
+        const symbol = p ? this.symbolOf(p.name) : undefined;
+        if (symbol) this.#flow(() => this.symbolSlot(symbol), a);
+      });
+      return;
+    }
     if (ts.isPropertyAccessExpression(callee)) {
       const method = callee.name.text;
       const receiver = callee.expression;
@@ -663,15 +679,7 @@ export class FlowGraph {
           });
         }
       }
-      return;
     }
-    const fn = this.calleeOf(e);
-    if (!fn) return;
-    e.arguments.forEach((a, i) => {
-      const p = fn.parameters[i];
-      const symbol = p ? this.symbolOf(p.name) : undefined;
-      if (symbol) this.#flow(() => this.symbolSlot(symbol), a);
-    });
   }
 
   /** An object literal: each property flows into the field of the type it is made as (and of its own type). */
@@ -740,6 +748,21 @@ export class FlowGraph {
       this.#queued.add(i);
     }
     const runs = new Map<number, number>();
+    for (;;) {
+      this.#drain(runs);
+      // A number no flow of the program reaches comes from outside it (a parameter nobody in the program calls, a
+      // field only an outside object fills): JavaScript's number, a real. It is a fact of the fixpoint, so whatever
+      // was derived from the missing evidence is derived again from it.
+      let raised = false;
+      for (const s of this.#slots) {
+        if (s.parent === s && s.num === Num.None && this.#isNumberSlot(s)) raised = this.#raiseNum(s, Num.Float) || raised;
+      }
+      if (!raised) return;
+    }
+  }
+
+  /** The worklist run until it is empty. */
+  #drain(runs: Map<number, number>): void {
     const bound = 64;
     for (let head = 0; head < this.#queue.length; head++) {
       const f = this.#queue[head]!;
@@ -763,6 +786,8 @@ export class FlowGraph {
         head = -1;
       }
     }
+    // Every queued flow ran: the next drain starts from an empty queue.
+    this.#queue.length = 0;
   }
 
   // ---- reading the solution

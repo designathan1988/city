@@ -18,7 +18,8 @@ import { typescriptDir } from './support.ts';
 const root = path.join(import.meta.dirname, 'fixtures', 'translate');
 const target = path.join(root, 'target');
 const spec = readTranslationSpec(path.join(root, 'yard.translate.json'));
-const input = { sourceRoot: root, tsconfig: path.join(root, 'tsconfig.json'), typescriptDir: typescriptDir(), targetRoot: target };
+const input = { sourceRoot: root, tsconfig: path.join(root, 'tsconfig.json'), typescriptDir: typescriptDir(), targetRoot: target,
+  targetGraph: path.join(target, 'cppgraph.json') };
 
 describe('translate', () => {
   const result = translate({ ...input, spec });
@@ -31,6 +32,16 @@ describe('translate', () => {
       ...['geo.h', 'geo_query.cpp', 'geo_types.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
+  });
+
+  it('names a literal the target forbids bare from what receives it, in its module', () => {
+    assert.match(file('yard_types.h'), /constexpr int MAX_SPEED = 30;/);
+    assert.match(file('yard_query.cpp'), /const float speed = std::min\(float\(MAX_SPEED\), n\);/);
+  });
+
+  it('finds the target types by shape, within what the layers may include', () => {
+    assert.deepEqual(result.valueTypes, { V2: { x: 'x', y: 'y' } }, 'Vec2 is the core V2; the same-shaped render Point2 is not includable');
+    assert.match(file('yard_types.h'), /#include "core\/math\.h"/);
   });
 
   it('translates shared code once, into its own owner, and the feature includes it', () => {
@@ -46,6 +57,10 @@ describe('translate', () => {
     assert.match(file('yard_query.cpp'), /std::unordered_map<int64_t, std::vector<int>> at;/);
     assert.match(file('yard_query.cpp'), /auto link = \[&\]\(int32_t a, int32_t b\) -> void/);
     assert.match(file('yard_types.h'), /int32_t next_id = 1;/, 'the empty state starts ids at 1');
+  });
+
+  it('follows values through a class: what a method returns, a getter, a default parameter value', () => {
+    assert.match(file('yard.h'), /const Post \* post_by_id\(const YardState &t, int32_t id\);/, 'the id a method returns is an integer');
   });
 
   it('gives a 64-bit key its width, from the target owner of keys', () => {

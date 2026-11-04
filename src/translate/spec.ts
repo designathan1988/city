@@ -63,7 +63,8 @@ export interface TranslationSpec {
   /** The C++ type of a TypeScript number (the target's convention for world values). */
   readonly number: string;
   /** Source types the target has (Vec2 → V2), with the header that declares them. */
-  readonly types: Readonly<Record<string, { readonly type: string; readonly include: string; readonly fields?: Readonly<Record<string, string>> }>>;
+  /** The source types the target already has, found by shape when a translation runs (target-types.ts). */
+  readonly types: Record<string, { readonly type: string; readonly include: string; readonly fields?: Readonly<Record<string, string>> }>;
   /** Source functions that are unit conversions or identities in the target (m(x) → x: one world unit is a metre). */
   readonly functions: Readonly<Record<string, { readonly template: string; readonly reason: string }>>;
   readonly classes: Readonly<Record<string, ClassMapping>>;
@@ -72,14 +73,12 @@ export interface TranslationSpec {
   readonly patterns: readonly PatternMapping[];
   /** Names of anonymous object types, by their shape as TypeScript prints it: { e: number; u: number; ... } -> OnEdge. */
   readonly typeNames: Readonly<Record<string, string>>;
-  /** Literals the target does not allow bare, by value: the named constant each becomes, and why it has that value. */
-  readonly literals: Readonly<Record<string, { readonly name: string; readonly comment: string }>>;
   /** The gate rules file of the target, relative to its root, and the layer the new subsystem may include. */
   readonly layer: { readonly rules: string; readonly includes: readonly string[] };
 }
 
 const REQUIRED: readonly (keyof TranslationSpec)[] = ['feature', 'subsystem', 'namespace', 'source', 'summary', 'state', 'units',
-  'pending', 'number', 'types', 'functions', 'classes', 'memoizers', 'patterns', 'typeNames', 'literals', 'layer'];
+  'pending', 'number', 'functions', 'classes', 'memoizers', 'patterns', 'typeNames', 'layer'];
 
 /**
  * The spec as one translation uses it: `$real` in a class mapping (a heap's priority) is the translation's number
@@ -90,8 +89,9 @@ export function resolveSpec(spec: TranslationSpec): TranslationSpec {
   const classes = dictionary(Object.entries(spec.classes).map(([name, k]) => [name, {
     ...k, type: real(k.type), members: dictionary(Object.entries(k.members)), returns: dictionary(Object.entries(k.returns).map(([m, t]) => [m, real(t)])),
   }]));
-  return { ...spec, classes, types: dictionary(Object.entries(spec.types)), functions: dictionary(Object.entries(spec.functions)),
-    typeNames: dictionary(Object.entries(spec.typeNames)), literals: dictionary(Object.entries(spec.literals)) };
+  // The target's types are found by shape after the flow is solved (target-types.ts); this dictionary receives them.
+  return { ...spec, classes, types: dictionary([]), functions: dictionary(Object.entries(spec.functions)),
+    typeNames: dictionary(Object.entries(spec.typeNames)) };
 }
 
 /**

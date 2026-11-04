@@ -5,6 +5,7 @@ import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { CppType } from './cpptype.ts';
 import type { FlowGraph } from './flow.ts';
+import type { LiteralNames } from './literal-names.ts';
 import type { ModulePlacement } from './modules.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
@@ -92,8 +93,10 @@ export interface TranslateContext {
   readonly functions: Map<TS.Symbol, FunctionPlan>;
   readonly memos: Map<TS.Symbol, MemoPlan>;
   readonly constants: Map<TS.Symbol, ConstantPlan>;
-  /** Literals the spec names, by value: their constants are written in the feature header. */
-  readonly namedLiterals: Map<number, ConstantPlan>;
+  /** Names the literals the target does not allow bare. */
+  readonly literals: LiteralNames;
+  /** The constants those literals became, by module and name (written in their module's types header). */
+  readonly literalConstants: Map<string, ConstantPlan>;
   /** Numbers the target allows bare (its gate rules); any other literal needs a name. */
   readonly allowedNumbers: readonly number[];
 }

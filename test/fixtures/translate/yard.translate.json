@@ -5,15 +5,13 @@
   "source": "src/world/yard.ts",
   "summary": "A fixture yard of posts",
   "state": { "source": "YardData", "target": "YardState", "member": "yard", "root": "native/src/sim/state/city_state.h", "empty": "emptyYard" },
-  "units": ["addPost", "removePost", "countNear", "nearest", "firstX", "chain"],
+  "units": ["addPost", "removePost", "countNear", "nearest", "firstX", "chain", "limited", "postById"],
   "pending": [],
   "number": "float",
-  "types": { "Vec2": { "type": "V2", "include": "core/math.h", "fields": { "x": "x", "y": "y" } } },
   "functions": {},
   "classes": {},
   "memoizers": ["identityMemo"],
   "patterns": [{ "source": "($x + 32768) * 65536 + ($y + 32768)", "target": "cell_key($x, $y)", "include": "core/grid.h", "reason": "the target's cell keys" }],
   "typeNames": { "{ i: number; d: number; at: Vec2; }": "Nearest" },
-  "literals": { "16": { "name": "CELL_SIZE", "comment": "fixture" } },
   "layer": { "rules": "tools/gates/rules.json", "includes": ["core/", "sim/yard/"] }
 }

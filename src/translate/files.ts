@@ -113,6 +113,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
   const modules = new Set<string>([stateModule]);
   for (const f of functions) modules.add(f.plan.module);
   for (const k of c.constants.values()) modules.add(k.module ?? stateModule);
+  for (const k of c.literalConstants.values()) if (k.module) modules.add(k.module);
   for (const m of nameModule.values()) modules.add(m);
   const placed = new Map<string, ModuleId>();
   for (const m of modules) {
@@ -136,7 +137,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const top = (what: string): string[] => [`// ${summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${m} by the converter; the owner is ${id.owner}.`];
     const isState = m === stateModule;
     const enums = [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
-    const constants = [...(isState ? c.namedLiterals.values() : []), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const constants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
     const structs = ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
     const memoStructs = isState ? builders : [];
     const own = functions.filter((f) => f.plan.module === m);

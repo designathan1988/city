@@ -9,14 +9,15 @@ import { removeTree } from '../common/files.ts';
 import { normalizePath } from '../common/paths.ts';
 import { loadTypeScript } from '../graph/typescript.ts';
 import { runDifferential, type DifferentialResult } from './differential.ts';
-import { translate } from './run.ts';
-import { readTranslationSpec, type TranslationSpec } from './spec.ts';
+import { LOGIC_HEADER, translate } from './run.ts';
+import { readTranslationSpec } from './spec.ts';
 
 export const DIFFERENTIAL_FLAGS: readonly FlagSpec[] = [
   { name: 'source-root', required: true, help: 'root of the TypeScript source project' },
   { name: 'tsconfig', help: 'the source\'s tsconfig.json (default: <source-root>/tsconfig.json)' },
   { name: 'typescript', help: 'TypeScript package directory (default: the source project\'s own)' },
   { name: 'spec', required: true, help: 'translation spec JSON' },
+  { name: 'target-graph', required: true, help: 'the target\'s C++ graph JSON (converter cppgraph): the types it already has' },
   { name: 'target-root', required: true, help: 'root of the target game (read only: its headers and gate rules)' },
   { name: 'cxx', required: true, help: 'the C++ compiler driver' },
   { name: 'out', required: true, help: 'work folder (outside the target)' },
@@ -24,34 +25,16 @@ export const DIFFERENTIAL_FLAGS: readonly FlagSpec[] = [
   { name: 'seeds', help: 'how many scenarios, seeds 1..n (default 3)' },
 ];
 
-/** The logic build's spec: every number a double, and each value type of the target a type of its own with double
- * fields (the target's headers stay as they are: a header standing in for one of them would lose what it includes). */
-const LOGIC_HEADER = 'converter_logic_values.h';
-
-function logicSpec(spec: TranslationSpec, dir: string): TranslationSpec {
-  const types: Record<string, TranslationSpec['types'][string]> = {};
-  const structs: string[] = [];
-  for (const [source, t] of Object.entries(spec.types)) {
-    if (!t.fields) {
-      types[source] = t;
-      continue;
-    }
-    const name = `Logic${t.type}`;
-    const names = Object.keys(t.fields);
-    structs.push([
-      `struct ${name} {`,
-      `\tdouble ${names.map((n) => `${n} = 0`).join(', ')};`,
-      `\t${name}() = default;`,
-      `\t${name}(${names.map((n) => `double ${n}_`).join(', ')}) : ${names.map((n) => `${n}(${n}_)`).join(', ')} {}`,
-      '};',
-    ].join('\n'));
-    types[source] = { type: name, include: LOGIC_HEADER, fields: t.fields };
-  }
+/** The logic build's value types: each target value type found, with double fields, under its Logic name. */
+function writeLogicHeader(namespace: string, valueTypes: Readonly<Record<string, Readonly<Record<string, string>>>>, dir: string): void {
+  const structs = Object.entries(valueTypes).map(([name, fields]) => {
+    const names = Object.values(fields);
+    return [`struct ${name} {`, `\tdouble ${names.map((n) => `${n} = 0`).join(', ')};`, `\t${name}() = default;`,
+      `\t${name}(${names.map((n) => `double ${n}_`).join(', ')}) : ${names.map((n) => `${n}(${n}_)`).join(', ')} {}`, '};'].join('\n');
+  });
   fs.mkdirSync(dir, { recursive: true });
-  const header = ['// The logic build\'s value types: double fields.', '#pragma once', '', `namespace ${spec.namespace} {`, '',
-    structs.join('\n\n'), '', `} // namespace ${spec.namespace}`, ''];
-  fs.writeFileSync(path.join(dir, LOGIC_HEADER), header.join('\n'));
-  return { ...spec, number: 'double', types };
+  fs.writeFileSync(path.join(dir, LOGIC_HEADER), ['// The logic build\'s value types: double fields.', '#pragma once', '', `namespace ${namespace} {`, '',
+    structs.join('\n\n'), '', `} // namespace ${namespace}`, ''].join('\n'));
 }
 
 function report(name: string, results: DifferentialResult[]): string[] {
@@ -78,16 +61,18 @@ export function runDifferentialCommand(argv: readonly string[]): void {
   const steps = Number(flags.one('steps') ?? 3000);
   const seeds = Number(flags.one('seeds') ?? 3);
   const typescriptDir = flags.one('typescript');
+  const targetGraph = path.resolve(flags.require('target-graph'));
   const ts = loadTypeScript(sourceRoot, typescriptDir);
   const builds = [
-    { name: 'logic (doubles)', spec: logicSpec(spec, path.join(out, 'logic-headers')), tolerance: 1e-9, includes: [path.join(out, 'logic-headers')] },
-    { name: 'target (floats)', spec, tolerance: 1e-4, includes: [] as string[] },
+    { name: 'logic (doubles)', spec: { ...spec, number: 'double' }, logic: true, tolerance: 1e-9, includes: [path.join(out, 'logic-headers')] },
+    { name: 'target (floats)', spec, logic: false, tolerance: 1e-4, includes: [] as string[] },
   ];
   const lines: string[] = [];
   let failed = false;
   for (const build of builds) {
-    const valueTypes = Object.fromEntries(Object.values(build.spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!]));
-    const translation = translate({ sourceRoot, tsconfig, typescriptDir, spec: build.spec, targetRoot });
+    const translation = translate({ sourceRoot, tsconfig, typescriptDir, spec: build.spec, targetRoot, targetGraph, logic: build.logic });
+    const valueTypes = translation.valueTypes;
+    if (build.logic) writeLogicHeader(spec.namespace, valueTypes, path.join(out, 'logic-headers'));
     if (translation.errors.length > 0) throw new Error(`the translation has errors:\n${translation.errors.join('\n')}`);
     const results: DifferentialResult[] = [];
     for (let seed = 1; seed <= seeds; seed++) {

@@ -5,12 +5,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
+import type { GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
-import type { ConstantPlan, TranslateContext } from './context.ts';
-import { INT, realLiteral, type CppType } from './cpptype.ts';
+import { matchTargetTypes } from './target-types.ts';
+import { LiteralNames } from './literal-names.ts';
+import type { TranslateContext } from './context.ts';
+import type { CppType } from './cpptype.ts';
 import { translationFiles } from './files.ts';
 import { ModulePlacement } from './modules.ts';
-import { FlowGraph, Num } from './flow.ts';
+import { FlowGraph } from './flow.ts';
 import { Patterns } from './patterns.ts';
 import { resolveSpec, type Pending, type TranslationSpec } from './spec.ts';
 import { Translator } from './translator.ts';
@@ -28,6 +31,8 @@ export interface TranslationResult {
   readonly structs: readonly CppStruct[];
   readonly enums: readonly CppEnum[];
   readonly state: string;
+  /** The value types the target has, as found: C++ type → its fields (source name → target name). */
+  readonly valueTypes: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** The source file that declares the state (its module holds the state, its indexes and its empty value). */
   readonly stateModule: string;
   /** The header the state manager includes to hold the state (the state module's types header). */
@@ -53,14 +58,27 @@ export interface TranslateInput {
   readonly typescriptDir: string | undefined;
   readonly spec: TranslationSpec;
   readonly targetRoot: string;
+  /** The target's C++ graph (`converter cppgraph`): the types the target already has. */
+  readonly targetGraph: string;
+  /** The differential's logic build: each target value type found is written as its own double-field type. */
+  readonly logic?: boolean;
 }
 
-/** The numbers the target's gates allow bare (magic_numbers.allowed_values of its rules). */
-function allowedNumbers(targetRoot: string, rulesFile: string): number[] {
-  const rules = JSON.parse(fs.readFileSync(path.join(targetRoot, rulesFile), 'utf8')) as { magic_numbers?: { allowed_values?: number[] } };
+/** The logic build's header of value types: what `translate({ logic: true })` maps the source's value types to. */
+export const LOGIC_HEADER = 'converter_logic_values.h';
+
+interface TargetRules {
+  readonly allowed: number[];
+  readonly layers: Record<string, string[]>;
+}
+
+/** What the target's gate rules say: the numbers allowed bare, and what each folder may include. */
+function targetRules(targetRoot: string, rulesFile: string): TargetRules {
+  const rules = JSON.parse(fs.readFileSync(path.join(targetRoot, rulesFile), 'utf8')) as { magic_numbers?: { allowed_values?: number[] }; cpp_layers?: Record<string, string[]> };
   const allowed = rules.magic_numbers?.allowed_values;
   if (!Array.isArray(allowed)) throw new Error(`${rulesFile} has no magic_numbers.allowed_values`);
-  return allowed;
+  if (!rules.cpp_layers) throw new Error(`${rulesFile} has no cpp_layers`);
+  return { allowed, layers: rules.cpp_layers };
 }
 
 export function translate(input: TranslateInput): TranslationResult {
@@ -80,18 +98,19 @@ export function translate(input: TranslateInput): TranslationResult {
   for (const f of sources) visit(f);
   const patterns = new Patterns(ts, spec.patterns);
   const flow = new FlowGraph(ts, sp.checker, sources, spec, patterns, memoBodies);
+  const rules = targetRules(input.targetRoot, spec.layer.rules);
+  const target = JSON.parse(fs.readFileSync(input.targetGraph, 'utf8')) as GraphIR;
+  if (target.language !== 'cpp') throw new Error(`${input.targetGraph} is not a C++ graph of the target`);
+  for (const [source, found] of Object.entries(matchTargetTypes({ ts, checker: sp.checker, sources, flow, target, layers: rules.layers }))) {
+    spec.types[source] = input.logic ? { ...found, type: `Logic${found.type}`, include: LOGIC_HEADER } : found;
+  }
   const relative = (f: TS.SourceFile): string => path.relative(input.sourceRoot, f.fileName).split(path.sep).join('/');
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
-  const real = types.number(Num.Float, 'local');
-  const namedLiterals = new Map<number, ConstantPlan>(Object.entries(spec.literals).map(([value, named]) => [Number(value), {
-    source: value, cpp: named.name, type: Number.isInteger(Number(value)) ? INT : real,
-    value: Number.isInteger(Number(value)) ? value : realLiteral(value, spec.number), module: null, line: 0, doc: named.comment, constexpr: true,
-  }]));
   // Every file of the program placed at once: a source file keeps its owner and name whatever is translated with it.
   const placement = new ModulePlacement(sources.map(relative));
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
-    functions: new Map(), memos: new Map(), constants: new Map(), namedLiterals,
-    allowedNumbers: allowedNumbers(input.targetRoot, spec.layer.rules) };
+    functions: new Map(), memos: new Map(), constants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
+    allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
   const stateDecl = file.statements.find((st) => (ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st)) && st.name.text === spec.state.source);
   if (!stateDecl) throw new Error(`${spec.source} declares no type ${spec.state.source}`);
@@ -113,6 +132,7 @@ export function translate(input: TranslateInput): TranslationResult {
   return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
+    valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),
     stateHeader: stateHeader(placement, relative(file)), sourcesRead: sourcesRead(c) };
 }
 
