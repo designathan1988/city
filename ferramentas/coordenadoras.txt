@@ -1,0 +1,3 @@
+# Sessões que recebem a ordem do usuário (ordem_do_usuario.txt) em toda mensagem e antes de toda ferramenta. Um session id por linha.
+# O hook imprime o session_id de cada sessão que ainda não está aqui; a coordenadora nova acrescenta o seu.
+a4462acc-805d-4f6d-bc7b-ffb10de7a577
