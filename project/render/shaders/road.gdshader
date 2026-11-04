@@ -24,6 +24,8 @@ uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
 uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
+uniform vec3 lane_tone[8]; // linear, by road class (road_look.h wear_color)
+uniform vec3 footway_tone;
 uniform float normal_asphalt = 1.0;
 uniform float normal_footway = 1.0;
 uniform float normal_kerb = 0.85;
@@ -46,7 +48,7 @@ const int M_FOOTPATH = 2;
 const int M_KERB_FACE = 3;
 const int M_LAWN = 4;
 const int M_CONCRETE = 5;
-const int M_GUTTER = 6;
+const int M_LANE = 6;
 const int M_PAINT = 7;
 const int M_PAVERS = 8;
 const int M_STONE = 9;
@@ -55,6 +57,7 @@ const int M_BALLAST = 11;
 const int M_SHOULDER_EDGE = 12;
 
 varying flat int v_mat;
+varying float v_id;
 varying vec3 v_world;
 varying vec2 v_pool;
 
@@ -63,6 +66,7 @@ const float MEAN_FLOOR = 0.001;
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 #include "res://render/shaders/road_detail.gdshaderinc"
+#include "res://render/shaders/road_wear.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -73,7 +77,8 @@ float joints(vec2 p, vec2 cell, vec2 width, float pix) {
 }
 
 void vertex() {
-	v_mat = int(floor(COLOR.a * 16.0));
+	v_id = COLOR.a * 16.0;
+	v_mat = int(floor(v_id));
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_pool = UV2;
 }
@@ -94,6 +99,11 @@ float lamp_pools() {
 
 void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
+	if (v_mat == M_LANE) {
+		base = lane_tone[int(fract(v_id) * TONE_SLOTS)];
+	} else if (v_mat == M_FOOTPATH) {
+		base = footway_tone;
+	}
 	float pix = max(max(fwidth(v_world.x), fwidth(v_world.z)), 0.001);
 	vec2 uv = UV;
 	vec3 albedo = base;
@@ -105,7 +115,7 @@ void fragment() {
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
-	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_GUTTER) {
+	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_LANE) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
@@ -114,6 +124,10 @@ void fragment() {
 		}
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / max(source_linear(asphalt_reference), vec3(MEAN_FLOOR)) * blotch;
+		if (v_mat == M_LANE) {
+			float grain = source_linear(texture(asphalt_map, uv / asphalt_m * 2.7).rgb).r;
+			albedo *= lane_wear(min(COLOR.r, COLOR.g) * WEAR_SPAN_M, COLOR.b * WEAR_LANE_M, grain);
+		}
 		bend = (texture(asphalt_normal, uv / asphalt_m, near * detail_asphalt.z).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
@@ -125,6 +139,8 @@ void fragment() {
 		}
 		bend_scale = normal_footway;
 		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
+		float grain = source_linear(texture(asphalt_map, uv.yx / asphalt_m * 2.7).rgb).r;
+		albedo *= footway_wear(COLOR.r * WEAR_SPAN_M, (COLOR.r + COLOR.g) * WEAR_SPAN_M, grain);
 		bend = (texture(footway_normal, uv.yx / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);

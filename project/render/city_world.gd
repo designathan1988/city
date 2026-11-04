@@ -10,6 +10,7 @@ const SKY_SHADER := "res://render/shaders/sky.gdshader"
 const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
+const LANE_TONES := 8 # slots of road_look.h TONE_SLOTS
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader",
@@ -74,7 +75,16 @@ func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
 			continue
 		var col := _mean_color(_param(params[name]))
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
-	m.set_shader_parameter("asphalt_reference", Color.html(DataTables.render().streets.surface_colors[0]))
+	var streets: Dictionary = DataTables.render().streets
+	m.set_shader_parameter("asphalt_reference", Color.html(streets.surface_colors[0]))
+	var tones := PackedVector3Array()
+	for road_class in streets.asphalt_by_class:
+		var c := Color.html(streets.asphalt_by_class[road_class]).srgb_to_linear()
+		tones.push_back(Vector3(c.r, c.g, c.b))
+	tones.resize(LANE_TONES)
+	m.set_shader_parameter("lane_tone", tones)
+	var walk := Color.html(streets.paving_colors[0]).srgb_to_linear()
+	m.set_shader_parameter("footway_tone", Vector3(walk.r, walk.g, walk.b))
 
 
 ## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its
