@@ -38,6 +38,13 @@ namespace city {
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
 	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
+	X(kerb_bay_pitch_m) X(kerb_corner_clear_m) X(kerb_crossing_clear_m) X(kerb_dead_end_m) X(kerb_gate_margin_m) X(kerb_gate_reach_m) \
+	X(kerb_parked_share) X(park_window_m) X(park_window_out_m) X(park_window_step_m) X(park_reads_per_step) X(park_kerb_reads) X(parker_look_s) \
+	X(parker_coming_min) X(parker_coming_s) X(parker_trip_s) X(parker_depart_per_look) X(parker_stay_min_s) X(parker_stay_max_s) X(parker_call_reach_m) \
+	X(parker_call_timeout_s) X(parker_lane_edge_m) X(parker_gap_behind_m) X(parker_gap_ahead_m) X(parker_join_ms) X(parker_ask_way_s) X(parker_stop_ms) \
+	X(parker_stop_slack_m) X(parker_past_gate_m) X(parker_give_up_s) X(gate_lane_reach_m) X(gate_lane_min_m) X(gate_lane_end_m) X(gate_stop_before_m) X(gate_join_past_m) \
+	X(gate_span_min_m) X(man_forward_ms) X(man_backward_ms) X(man_ramp_m) X(man_creep_ms) X(man_tangent) X(man_across_m) \
+	X(man_least_m) X(man_lead_m) X(man_disc_pad_m) X(man_disc_step_m) X(stay_work_h) X(stay_errand_h) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
 
@@ -49,6 +56,7 @@ constexpr int VEHICLE_TYPES = int(VehicleType::COUNT);
 constexpr int CAR_STYLES = 6;
 constexpr int BASE_ZONES = 5; // none, residential, commercial, industrial, mixed
 constexpr int EXTENSION_LANES = 5; // traffic.json signal_extension_s: approaches of 1 to 5 lanes
+constexpr int DAY_HOURS = 24; // entries of traffic.json hours_working, hours_purchasing
 constexpr int PAINTS = 16; // Roadcraft shared/vehiclePaints.ts
 
 // Driver archetype of a class (drivers.ts ARCH) plus the body length and half width the simulation uses.
@@ -63,6 +71,7 @@ struct TrafficParams {
 	float style_share[CAR_STYLES] = {};
 	float zone_home[BASE_ZONES] = {}, zone_work[BASE_ZONES] = {}, zone_mid[BASE_ZONES] = {}, zone_truck[BASE_ZONES] = {};
 	float zone_walk[BASE_ZONES] = {};
+	float hours_working[DAY_HOURS] = {}, hours_purchasing[DAY_HOURS] = {};
 };
 
 } // namespace city

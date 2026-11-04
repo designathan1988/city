@@ -41,6 +41,9 @@ static func report(minutes: int) -> void:
 			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("lost_stuck", 0), p.get("people_arrived", 0),
 			p.get("people_waiting", 0)])
 		print("  retidos em média no minuto: %.1f" % (float(held_seconds) / SECONDS_PER_MINUTE))
+		print("  lotes: %d carros (%d a caminho, %d manobrando), chamados %d, estacionaram %d, saíram %d; parados de cenário %d, vagas %d" % [
+			p.get("lot_cars", 0), p.get("lot_coming", 0), p.get("lot_moving", 0), p.get("lot_called", 0), p.get("lot_parked_in", 0),
+			p.get("lot_left_by", 0), p.get("parked_rows", 0), p.get("bays", 0)])
 		var ticks := TICKS_PER_SECOND * SECONDS_PER_MINUTE
 		print("  na fila atrás de: ", p.get("queued_behind", []), ", núcleo %.0f ms no minuto (%.3f ms/passo)" % [spent, spent / ticks])
 		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []), ", em média no minuto: %.1f, %.1f" % [

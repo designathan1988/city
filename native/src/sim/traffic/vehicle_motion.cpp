@@ -1,5 +1,4 @@
-// Vehicle motion (Roadcraft drivers.ts driveAccel + sim/traffic/micro.ts): improved IDM with an emergency cap, a
-// jerk limit and a speed drift; the head of each lane follows whoever is on its connector or at the tail of the
+// Vehicle motion: improved IDM with an emergency cap, a jerk limit and a speed drift; the head of each lane follows whoever is on its connector or at the tail of the
 // next lane, and stops at the line while the junction does not let it in; every vehicle stops for the lights it sees
 // down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
 #include "sim/traffic/traffic_system.h"
@@ -143,6 +142,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
 		if (!through) {
 			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
+			if (v.stop_at >= 0) l.take(std::max(0.f, v.stop_at - v.s + p.classes[int(v.type)].min_gap), 0.f); // the IDM stops s0 short
 		} else {
 			int ci = pick_connector(s, v);
 			if (ci < 0) {

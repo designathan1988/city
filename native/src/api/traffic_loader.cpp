@@ -55,6 +55,8 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	numbers(t, "zone_mid", p.zone_mid, BASE_ZONES, errors);
 	numbers(t, "zone_truck", p.zone_truck, BASE_ZONES, errors);
 	numbers(t, "zone_walk", p.zone_walk, BASE_ZONES, errors);
+	numbers(t, "hours_working", p.hours_working, DAY_HOURS, errors);
+	numbers(t, "hours_purchasing", p.hours_purchasing, DAY_HOURS, errors);
 	return errors.is_empty();
 }
 

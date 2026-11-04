@@ -1,6 +1,8 @@
 // A lot's gates, bays and docks with the way out of each (lot_access.h).
 #include "sim/buildings/lot_access.h"
 
+#include "sim/buildings/b40/record.h"
+
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -212,12 +214,34 @@ int LotAccess::reached() const {
 	return n;
 }
 
-void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_half, float lorry_half, LotAccess &out) {
+void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]) {
+	const RoadSegment &g = net.segs[size_t(sid)];
+	const TrafficParams &tp = net.cat->traffic;
+	const Profile &p = net.profile_of(sid);
+	const float reach = std::max(p.left, p.right) + tp.kerb_gate_reach_m;
+	Body body;
+	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
+		const Building &rec = lots.items[size_t(id)];
+		record_body(lots.designs, rec, body);
+		const LotFrame f = lot_frame(rec);
+		for (const LotElement &e : body.elements) {
+			if (e.kind != EL_CAR_GATE) continue;
+			const V2 w = f.at(e.x, e.y);
+			double t, dist, x, z, dx, dz;
+			closest_t(g.q, w.x, w.y, t, dist);
+			if (dist > reach) continue;
+			g.q.at(t, x, z);
+			g.q.deriv(t, dx, dz);
+			const int side = dz * (w.x - x) - dx * (w.y - z) > 0 ? 1 : 0;
+			const double at = arc_of_t(g, t), half = e.w * 0.5 + tp.kerb_gate_margin_m;
+			gates[side].emplace_back(at - half, at + half);
+		}
+	});
+}
+
+void lot_bays(const Body &b, const LotFrame &f, LotAccess &out) {
 	out = LotAccess{};
-	bool docks = false;
-	std::vector<int> of;
-	for (int i = 0; i < int(b.elements.size()); i++) {
-		const LotElement &e = b.elements[size_t(i)];
+	for (const LotElement &e : b.elements) {
 		if (e.kind == EL_GATE || e.kind == EL_CAR_GATE) out.gates.push_back({ f.at(e.x, e.y), f.dir(0, 1), e.w, e.kind == EL_CAR_GATE });
 		if (e.kind != EL_STALL && e.kind != EL_DOCK) continue;
 		LotBay bay;
@@ -227,11 +251,18 @@ void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_ha
 		bay.w = e.facing == FACE_STREET || e.facing == FACE_BACK ? e.w : e.d;
 		bay.d = e.facing == FACE_STREET || e.facing == FACE_BACK ? e.d : e.w;
 		bay.dock = e.kind == EL_DOCK;
-		docks = docks || bay.dock;
 		out.bays.push_back(bay);
-		of.push_back(i);
 	}
+}
+
+void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_half, float lorry_half, LotAccess &out) {
+	lot_bays(b, f, out);
 	if (out.bays.empty()) return;
+	std::vector<int> of;
+	bool docks = false;
+	for (int i = 0; i < int(b.elements.size()); i++)
+		if (b.elements[size_t(i)].kind == EL_STALL || b.elements[size_t(i)].kind == EL_DOCK) of.push_back(i);
+	for (const LotBay &bay : out.bays) docks = docks || bay.dock;
 	find_ways(data, b, f, car_half, false, of, out);
 	if (docks) find_ways(data, b, f, lorry_half, true, of, out);
 }

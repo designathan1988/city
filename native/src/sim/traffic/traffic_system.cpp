@@ -15,7 +15,6 @@ namespace traffic {
 namespace {
 
 constexpr float MIN_AXIS_M = 0.5f;
-constexpr int LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16; // AgentRecord::look: type in the low byte
 
 // Front (`front` metres along) and rear points of a vehicle on its lane or connector.
 void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f, Pose &r) {
@@ -40,6 +39,7 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
+	lot_car_forget(s, id);
 	if (v.conn >= 0) conn_del(s, v.conn, id);
 	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	meso_unlink(s, id);
@@ -105,17 +105,19 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	std::vector<float> sum(s.roads.segs.size(), 0.f), lim(s.roads.segs.size(), 0.f);
 	std::vector<int> count(s.roads.segs.size(), 0);
 	for (Vehicle &v : s.traffic.vehicles) {
-		if (!v.alive || !v.micro) continue; // far vehicles are queues and events, not poses
-		float len = p.classes[int(v.type)].length;
-		Pose front, rear;
-		ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
-		V2 axis(front.x - rear.x, front.z - rear.z);
-		v.cur.x = (front.x + rear.x) * 0.5f;
-		v.cur.z = (front.z + rear.z) * 0.5f;
-		v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
-		V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
-		v.cur.fx = h.x;
-		v.cur.fz = h.y;
+		if (!v.alive || (!v.micro && !v.off)) continue; // far vehicles are queues and events, not poses
+		if (!v.off) {
+			float len = p.classes[int(v.type)].length;
+			Pose front, rear;
+			ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
+			V2 axis(front.x - rear.x, front.z - rear.z);
+			v.cur.x = (front.x + rear.x) * 0.5f;
+			v.cur.z = (front.z + rear.z) * 0.5f;
+			v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
+			V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
+			v.cur.fx = h.x;
+			v.cur.fz = h.y;
+		}
 		v.trail.push(v.cur, stamp_ns, before);
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
@@ -130,7 +132,8 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		AgentRecord rec;
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u);
+		const bool empty = v.off && t.park.cars[size_t(v.car)].phase == CarPhase::PARKED; // nobody in a car standing in its bay
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u);
 		f.vehicles.push_back(rec);
 	}
 	for (Pedestrian &w : s.traffic.peds) {
@@ -148,6 +151,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
+	publish_parked(s, cx, cz, r2, f.parked);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
@@ -161,12 +165,14 @@ void step(CityState &s, float dt) {
 	t.tick++;
 	update_lights(s);
 	check_window(s);
+	step_parking_sources(s);
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	spawn_vehicles(s, dt);
 	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
+	step_lots(s, dt);
 	step_pedestrians(s, dt);
 }
 

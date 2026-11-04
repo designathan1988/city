@@ -21,7 +21,7 @@
  },
  "sample_step_m": 3,
  "face_eps_m": 0.004,
- "markings": {"white": "#f1f1f1", "yellow": "#f9ac00", "lift_m": 0.02, "line_clear_m": 4.6, "line_m": 0.1, "line_fast_m": 0.15, "line_fast_kmh": 80, "exclusive_line_m": 0.25, "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "double_gap_m": 0.1},
+ "markings": {"white": "#f1f1f1", "yellow": "#f9ac00", "lift_m": 0.02, "line_clear_m": 4.6, "line_m": 0.1, "line_fast_m": 0.15, "line_fast_kmh": 80, "exclusive_line_m": 0.25, "mer_line_m": 0.1, "mer_dash_m": 1, "mer_gap_m": 1, "lpp_line_m": 0.1, "lpp_run_min_m": 0.5, "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "double_gap_m": 0.1},
  "gutter_width_m": 0.45,
  "dropped_kerb": {
   "full_m": 0.65,

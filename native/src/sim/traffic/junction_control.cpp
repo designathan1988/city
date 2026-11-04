@@ -20,17 +20,6 @@ constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in i
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
 constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
-constexpr int CROSSWALK_DEGREE = 3; // crosswalks are painted at nodes of this many arms or more (render crossing_node)
-
-bool crosswalk_node(const CityState &s, int n) {
-	const RoadNode &node = s.roads.nodes[n];
-	if (int(node.segs.size()) < CROSSWALK_DEGREE) return false;
-	for (int seg : node.segs) {
-		const Profile &p = s.roads.profile_of(seg);
-		if (p.ring || p.rail) return false;
-	}
-	return true;
-}
 
 struct Arm {
 	int seg = -1, in = -1, priority = 0;
@@ -91,7 +80,7 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 	j.amber.assign(count, 0.f);
 	j.all_red.assign(count, 0.f);
 	j.approaches.assign(count, {});
-	const bool walkers = crosswalk_node(s, n);
+	const bool walkers = s.roads.has_crosswalks(n);
 	for (size_t i = 0; i < arms.size(); i++) {
 		if (arms[i].in < 0) continue;
 		DirSeg &d = s.traffic.g.ds[arms[i].in];
@@ -167,7 +156,7 @@ void build_junction(CityState &s, int n) {
 	for (const Arm &a : arms)
 		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
-	if (crosswalk_node(s, n))
+	if (s.roads.has_crosswalks(n))
 		for (const Arm &a : arms)
 			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
 	j.ctl = control_of(s, n);

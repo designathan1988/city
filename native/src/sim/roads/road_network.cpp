@@ -170,6 +170,16 @@ int RoadNetwork::find_segment_near(double x, double z, double radius, double &t_
 	return best;
 }
 
+bool RoadNetwork::has_crosswalks(int node) const {
+	const RoadNode &n = nodes[size_t(node)];
+	if (int(n.segs.size()) < CROSSWALK_ARMS) return false;
+	for (int seg : n.segs) {
+		const Profile &p = profile_of(seg);
+		if (p.ring || p.rail) return false;
+	}
+	return true;
+}
+
 double RoadNetwork::seg_y(int s, double at) const {
 	const RoadSegment &g = segs[s];
 	double ya = nodes[g.a].y, yb = nodes[g.b].y;

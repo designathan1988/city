@@ -4,6 +4,8 @@
 // the road.
 #include "render/roads/road_mesh.h"
 
+#include "sim/buildings/lot_access.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -91,6 +93,33 @@ void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool c
 		pt.rect(su0, su1, std::min(sa, sb), std::max(sa, sb), L.white);
 	}
 }
+// A line across the parking band at arc `v`.
+void bay_line(const Painter &pt, const KerbStretch &k, double v) {
+	const double hw = pt.e.L.parking_line_w / 2;
+	pt.rect(std::min(k.u_kerb, k.u_inner), std::max(k.u_kerb, k.u_inner), v - hw, v + hw, pt.e.L.white);
+}
+
+// The street's parking (CONTRAN MBST vol. IV): each bay's division and the run closed at both ends, the band's edge dashed
+// along the run (MER, white), the yellow no-parking line by the gutter along the rest of that kerb (LPP).
+void parking_paint(const Painter &pt) {
+	const StreetLook &L = pt.e.L;
+	if (!parks_along(pt.e.s.roads, pt.sid)) return;
+	std::vector<ArcSpan> gates[2];
+	street_gates(pt.e.s.roads, pt.e.s.buildings, pt.sid, gates);
+	KerbLayout k;
+	kerb_layout(pt.e.s.roads, pt.sid, gates, k);
+	for (const KerbStretch &b : k.bays) bay_line(pt, b, b.v0);
+	const float hw = L.parking_line_w / 2;
+	for (const KerbStretch &r : k.runs) {
+		bay_line(pt, r, r.v1);
+		for (double v = r.v0; v < r.v1; v += L.parking_dash + L.parking_gap) pt.rect(r.u_inner - hw, r.u_inner + hw, v, std::min(v + L.parking_dash, r.v1), L.white);
+	}
+	for (const KerbStretch &n : k.bans) {
+		if (n.v1 - n.v0 < L.no_parking_min) continue;
+		const float inward = n.u_inner > n.u_kerb ? 1.f : -1.f, u = n.u_kerb + inward * (L.gutter_w + L.no_parking_w / 2);
+		pt.rect(u - L.no_parking_w / 2, u + L.no_parking_w / 2, n.v0, n.v1, L.yellow);
+	}
+}
 } // namespace
 
 void emit_markings(const RoadEmit &e, int sid) {
@@ -102,6 +131,7 @@ void emit_markings(const RoadEmit &e, int sid) {
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	lines(pt, p, v0 + (ca ? e.L.line_clear : 0), v1 - (cb ? e.L.line_clear : 0));
 	crossings(pt, p, v0, v1, ca, cb);
+	parking_paint(pt);
 }
 
 } // namespace city

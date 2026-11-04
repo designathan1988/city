@@ -225,12 +225,29 @@ float CityCore::amber_wanted(float kmh) const {
 	return traffic::amber_wanted(state_->catalog.traffic, kmh / KMH_PER_MS);
 }
 
+namespace {
+// The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
+void park_probe(const ParkingState &p, Dictionary &d) {
+	d["parked_rows"] = int(p.rows.size()); // scenery cars standing in bays near the camera
+	d["lot_cars"] = int(p.cars.size());
+	d["lot_coming"] = p.coming;
+	d["lot_moving"] = p.moving;
+	d["lot_called"] = p.called;
+	d["lot_parked_in"] = p.parked_in;
+	d["lot_left_by"] = p.left_by;
+	d["bays"] = int(p.bays.size() - p.free_bays.size());
+	d["lots_read"] = int(p.lots.size());
+	d["kerbs_read"] = int(p.kerbs.size());
+}
+} // namespace
+
 Dictionary CityCore::traffic_probe(int sample) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TrafficState &t = state_->traffic;
 	Dictionary d;
 	d["vehicles"] = t.vehicle_count;
+	park_probe(t.park, d);
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;

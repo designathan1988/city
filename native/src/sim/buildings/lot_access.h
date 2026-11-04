@@ -10,6 +10,7 @@
 #include "core/math.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/catalog/traffic_params.h"
+#include "sim/roads/parking_layout.h"
 
 #include <vector>
 
@@ -43,6 +44,11 @@ struct LotAccess {
 float car_half_width(const TrafficParams &p);
 float lorry_half_width(const TrafficParams &p);
 
+// What keeps bays off each side of street `sid`: the car gates of the lots facing it, grown by kerb_gate_margin_m.
+void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, std::vector<ArcSpan> gates[2]);
+
+// The lot's gates and bays alone, without their ways (a few elements read, no grid): what standing cars need.
+void lot_bays(const b40::Body &b, const b40::LotFrame &f, LotAccess &out);
 void lot_access(const b40::Data &data, const b40::Body &b, const b40::LotFrame &f, float car_half, float lorry_half, LotAccess &out);
 
 } // namespace city

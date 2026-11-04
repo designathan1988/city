@@ -24,7 +24,7 @@ namespace {
 
 constexpr float AABB_HALF_H = 500.f;
 constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars"
-constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16;
+constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 // agents.gdshader palette array sizes
@@ -255,8 +255,17 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		if (flat2 > r2) continue;
 		float passengers, order;
 		riders(type, rec.id, passengers, order);
+		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
 		push_agent(bufs[type][level], p, 1.f, float(paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
+		drawn_vehicles_++;
+	}
+	for (const ParkedRecord &rec : f.parked) {
+		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
+		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
+		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		push_agent(bufs[type][level], rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);

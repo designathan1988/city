@@ -121,7 +121,7 @@ void vertex() {
 	v_look = vec3(1.0);
 	if (UV2.y > SEAT_LIMB - 0.5) {
 		v_seat = UV.x + 1.0; // the driver 0, passengers from 1
-		bool there = UV.x < -0.5 || aboard(int(UV.x + 0.5), int(UV.y + 0.5), INSTANCE_CUSTOM);
+		bool there = INSTANCE_CUSTOM.b > -0.5 && (UV.x < -0.5 || aboard(int(UV.x + 0.5), int(UV.y + 0.5), INSTANCE_CUSTOM));
 		if (!look(int(UV2.x + 0.5), v_seed, v_seat, v_look) || !there) VERTEX = vec3(0.0); // an empty seat, or a part their cut leaves out
 	} else if (UV2.y > 0.5) {
 		float a = INSTANCE_CUSTOM.g - (INSTANCE_CUSTOM.g >= BRAKE_FLAG ? BRAKE_FLAG : 0.0);

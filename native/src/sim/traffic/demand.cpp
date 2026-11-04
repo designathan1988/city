@@ -76,16 +76,6 @@ bool lane_free(const CityState &s, int key, float at, float len) {
 	return true;
 }
 
-int alloc_vehicle(TrafficState &t) {
-	if (!t.free_vehicles.empty()) {
-		int id = t.free_vehicles.back();
-		t.free_vehicles.pop_back();
-		return id;
-	}
-	t.vehicles.emplace_back();
-	return int(t.vehicles.size()) - 1;
-}
-
 // One trip attempt; returns false on failure (no destination, no route or no room).
 bool spawn_one(CityState &s, int &routes) {
 	TrafficState &t = s.traffic;
@@ -115,21 +105,14 @@ bool spawn_one(CityState &s, int &routes) {
 	routes++;
 	std::vector<int> route;
 	if (!find_route(s, from, to, route) || route.size() < 2) return false;
-	const int id = alloc_vehicle(t);
+	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
 	Vehicle &v = t.vehicles[size_t(id)];
-	v = Vehicle();
-	v.alive = true;
-	v.type = type;
-	v.paint = uint8_t(t.rng.next() % PAINTS);
 	v.ds = from;
 	v.lane = lane;
 	v.s = at;
-	v.vf = vc.speed_share * (VF_BASE + VF_SPAN * t.rng.f());
-	v.drift = t.rng.range(0.f, TAU_F);
 	v.v = d.speed * v.vf * START_SPEED_SHARE;
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
-	t.vehicle_count++;
 	// micro only close to the camera; farther out the trip starts in the far model (and is drawn if its lane is in
 	// the window, which cannot happen for a segment beyond micro_spawn_m < meso_window_m, but the rule stays explicit)
 	const V2 mid = mid_of(s, from);
@@ -147,6 +130,62 @@ bool spawn_one(CityState &s, int &routes) {
 
 } // namespace
 
+int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
+	TrafficState &t = s.traffic;
+	int id;
+	if (!t.free_vehicles.empty()) {
+		id = t.free_vehicles.back();
+		t.free_vehicles.pop_back();
+	} else {
+		t.vehicles.emplace_back();
+		id = int(t.vehicles.size()) - 1;
+	}
+	Vehicle &v = t.vehicles[size_t(id)];
+	v = Vehicle();
+	v.alive = true;
+	v.micro = false; // micro_add registers it in micro_list
+	v.type = type;
+	v.paint = paint;
+	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + VF_SPAN * t.rng.f());
+	v.drift = t.rng.range(0.f, TAU_F);
+	t.vehicle_count++;
+	return id;
+}
+
+void free_vehicle(TrafficState &t, int id) {
+	Vehicle &v = t.vehicles[size_t(id)];
+	t.route_waste += size_t(v.route.cap);
+	v = Vehicle();
+	t.free_vehicles.push_back(id);
+}
+
+bool new_trip(CityState &s, int id, int from_ds) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	Vehicle &v = t.vehicles[size_t(id)];
+	const float *w = v.type == VehicleType::TRUCK ? p.zone_truck : weights_now(p, float(s.clock.hour()), false);
+	const V2 a = mid_of(s, from_ds);
+	for (int k = 0; k < DEST_TRIES; k++) {
+		const int c = pick_ds(s, w);
+		if (c < 0 || c == from_ds) continue;
+		const float d = (mid_of(s, c) - a).len();
+		if (d <= p.trip_min_m || d >= p.trip_max_m || t.rng.f() >= std::exp(-d / p.trip_decay_m)) continue;
+		std::vector<int> route;
+		if (!find_route(s, from_ds, c, route) || route.size() < 2) return false;
+		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
+		v.ri = 0;
+		v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(c)].len;
+		return true;
+	}
+	return false;
+}
+
+double fleet_target(const CityState &s) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	return std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * t.gov);
+}
+
 float day_factor(const TrafficParams &p, float h) {
 	auto g = [h](float c, float w) { float d = h - c; return std::exp(-d * d / (2 * w * w)); };
 	float f = p.day_base + p.day_morning_amp * g(p.day_morning_h, p.day_morning_w) + p.day_evening_amp * g(p.day_evening_h, p.day_evening_w) +
@@ -158,7 +197,7 @@ float day_factor(const TrafficParams &p, float h) {
 void spawn_vehicles(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	double target = std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * t.gov);
+	const double target = fleet_target(s);
 	int attempts = 0;
 	if (t.vehicle_count < p.fill_share * target) {
 		attempts = int(p.spawn_fill_attempts);

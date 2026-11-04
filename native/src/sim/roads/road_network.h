@@ -43,6 +43,7 @@ struct RoadSegment {
 };
 
 constexpr int ROAD_ARC_STEPS = 48;
+constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
 constexpr float ROAD_HASH_CELL = 64.f;
 
 class RoadNetwork {
@@ -71,6 +72,8 @@ public:
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// Height of segment s at arc length `at` from node a.
 	double seg_y(int s, double at) const;
+	// A node whose mouths get crosswalks, stop lines and dropped kerbs: three or more arms, no roundabout, no rails.
+	bool has_crosswalks(int node) const;
 	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).
 	void refresh_node(int n);
 	void mark_segment(int s); // its road chunks and lot cells

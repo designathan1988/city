@@ -30,6 +30,31 @@ void lane_pose(const CityState &s, int ds, int lane, float at, Pose &out);
 void conn_pose(const Conn &c, float at, Pose &out);
 void sidewalk_pose(const CityState &s, int seg, int side, float arc, float track_u, Pose &out);
 
+// parking_sources.cpp: the bays near the camera and the scenery cars in them (parking_state.h)
+void step_parking_sources(CityState &s);
+void forget_parking_seg(CityState &s, int seg); // an edit touched the street: its kerb is laid out again
+void forget_parking_lot(CityState &s, int id); // a building came or went: its bays, and the kerbs its gates keep bays off
+void refile_bay(CityState &s, int b, bool away); // the bay on the free or scenery list its state says; `away`: on none
+void remove_row(ParkingState &p, int b); // the scenery car of bay `b` is gone
+bool read_bay_way(CityState &s, int b); // the bay's way out through its gate and the lane it joins; false: it has none
+void publish_parked(const CityState &s, float cx, float cz, float r2, std::vector<ParkedRecord> &out);
+
+// parking_lanes.cpp
+void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
+bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out); // the lane a lot's gate opens onto, on the lot's kerb
+bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point
+
+// lot_traffic.cpp
+void step_lots(CityState &s, float dt);
+bool lot_car_at_rest(const CityState &s, int id); // standing in its bay and not sent out
+void lot_car_gone(CityState &s, int id); // its bay went: off the road it goes too, on the road it drives on
+void lot_car_forget(CityState &s, int id); // the vehicle left the scene: its bay is free
+void set_off_pose(CityState &s, Vehicle &v, const OffPose &q); // where a vehicle off the lanes stands
+
+// lot_demand.cpp
+void lot_depart(CityState &s, double target); // cars sent out of the bays while fewer drive than the demand asks
+bool lot_call(CityState &s); // a trip ending in a lot: a free bay drawn, the nearest passing car sent to it
+
 // lane_list.cpp: the per-lane/connector lists with a near vehicle, and the lane queries.
 void lane_add(CityState &s, int key, int id);
 void lane_del(CityState &s, int key, int id);
@@ -124,6 +149,10 @@ bool reconsider(CityState &s, int vehicle);
 
 // demand.cpp
 void spawn_vehicles(CityState &s, float dt);
+double fleet_target(const CityState &s); // how many vehicles the demand asks for now
+int new_vehicle(CityState &s, VehicleType type, uint8_t paint); // a vehicle of that type, on no lane yet, in the fleet's slots
+void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
+bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
