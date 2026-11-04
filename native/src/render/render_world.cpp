@@ -87,6 +87,7 @@ void RenderWorld::drain_log(CityState &s) {
 	std::lock_guard<std::mutex> log(s.log.mutex);
 	road_keys_.swap(s.log.road_chunks);
 	building_keys_.swap(s.log.building_chunks);
+	view_keys_.swap(s.log.view_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
 	paint_rects_.swap(s.log.paint_rects);
 	nature_keys_.swap(s.log.nature_chunks);
@@ -121,6 +122,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
 		ChangeLog::dedup(road_keys_);
 		ChangeLog::dedup(building_keys_);
+		ChangeLog::dedup(view_keys_);
 		for (int64_t k : road_keys_) {
 			road_stream_.mark(k);
 			props_stream_.mark(k);
@@ -135,8 +137,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		}
 		transit_.touch(road_keys_);
 		transit_.touch_terrain(s, terrain_rects_);
+		for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
 		road_keys_.clear();
 		building_keys_.clear();
+		view_keys_.clear();
 		terrain_rects_.clear();
 		road_stream_.update(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) {

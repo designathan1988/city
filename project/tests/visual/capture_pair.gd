@@ -1,5 +1,7 @@
 ## Photos in the frame of the Roadcraft 4.0's: one list of views feeds this and the 4.0's look plan, so each pair shares position, zoom,
 ## bearing and tilt, at the 4.0's fixed day sun (16:00). The list: [{"name", "x", "y", "zoom", "azimuth", "elevation"}], the 4.0's setView.
+## A view may carry "inside": {"id": the 4.0's building, "level": a floor}: that building (laid from --buildings) is cut open there, as
+## the layer's switch does it, for the camera of the view. "hour" sets the clock and the sky together (the 4.0's night mode is 22:00).
 ## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_pair.tscn -- --no-flow --views=FILE --capture-dir=DIR
 extends Node3D
 
@@ -12,6 +14,7 @@ const ZONE_OF := {"residential": 1, "commercial": 2, "industrial": 3}
 
 var out_dir := "user://captures"
 var views_file := ""
+var laid := {} # the 4.0's building id -> the id it has here
 var buildings_file := ""
 var world: CityWorld
 var rig: CityCamera
@@ -48,6 +51,11 @@ func _ready() -> void:
 		else:
 			var at := ui.ground(v.x, v.y)
 			rig.jump(at, RIGHT_ANGLE - v.azimuth, v.elevation, CameraProfile.view_distance(rig.cfg, PAIR_LINES / (2.0 * v.zoom)))
+		if v.has("hour"):
+			world.set_hour(v.hour)
+			CityStore.dispatch(&"set_day_hour", [v.hour])
+		if v.has("inside"):
+			_open_inside(v.inside)
 		await ui.drawn()
 		await ui.shot(v.name)
 	get_tree().quit(0)
@@ -67,6 +75,7 @@ func _lay_buildings() -> void:
 		var done: Dictionary = CityStore.dispatch(&"place_model", [made.bytes, front.x, -front.y, turn, made.function, ZONE_OF[doc.use]])
 		if done.get("ok", false):
 			placed += 1
+			laid[int(doc.id)] = int(done.placed)
 		else:
 			print("prédio %d recusado: %s" % [doc.id, done.get("error", "")])
 	print("prédios postos: %d de %d" % [placed, rows.size()])
@@ -82,3 +91,10 @@ func _stand(v: Dictionary) -> void:
 	rig.camera.fov = v.fov
 	rig.camera.global_transform = Transform3D(Basis.looking_at(look, up), pos)
 	print("%s: câmera %s para %s, lente %.2f" % [v.name, pos, look, v.fov])
+
+
+## Cuts open the building the view names, at its floor, for the way the camera looks.
+func _open_inside(inside: Dictionary) -> void:
+	var id: int = laid.get(int(inside.id), -1)
+	var open: Dictionary = CityStore.dispatch(&"set_interior", [id >= 0, id, int(inside.level), InteriorController.direction_of(rig.camera)])
+	print("por dentro: prédio %d do 4.0 = %d aqui, andar %d: %s" % [int(inside.id), id, int(inside.level), open.get("ok", false)])

@@ -59,8 +59,20 @@ func _build_layers(col: Control, spec: Dictionary) -> void:
 		var b := _row(col, r)
 		if r.has("action"):
 			b.toggle_mode = true
+			if r.action == "interior":
+				_interior_row(b)
+				continue
 			b.button_pressed = on.get(r.action, false)
 			b.toggled.connect(func(v: bool) -> void: CityStore.dispatch(&"set_overlay", [r.action, v]))
+
+
+## The Interior layer's row: on while a building is open; the switch goes to the interior controller, which says whether it opened one.
+func _interior_row(b: Button) -> void:
+	var layer: InteriorController = get_tree().get_first_node_in_group(&"interior_controller")
+	b.set_pressed_no_signal(layer != null and layer.is_on())
+	b.toggled.connect(func(v: bool) -> void:
+		if layer:
+			b.set_pressed_no_signal(layer.set_enabled(v)))
 
 
 ## The saved cities, newest first (CityStore.list_saves); a click opens one.

@@ -17,6 +17,7 @@ struct ChangeLog {
 	std::vector<int64_t> road_chunks; // CHUNK keys whose road meshes and street props must be rebuilt
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
+	std::vector<int64_t> view_chunks; // CHUNK keys whose near building meshes must be drawn again though no building changed (Interior layer)
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
 	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
 	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
@@ -55,6 +56,7 @@ struct ChangeLog {
 	void clear_render() {
 		road_chunks.clear();
 		building_chunks.clear();
+		view_chunks.clear();
 		terrain_rects.clear();
 		paint_rects.clear();
 		nature_chunks.clear();

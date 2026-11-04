@@ -178,6 +178,7 @@ void BuildingRenderer::commit_one(Built &b) {
 		for (int band = 0; band < BAND_DRAWS; band++) (band < BAND_COUNT ? ch.instances : ch.props) += b.band_count[size_t(band)];
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
+		ch.cut = b.cut;
 	}
 	if (b.has_mid) {
 		for (int i = 0; i < SUB_COUNT; i++) put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown);
@@ -197,6 +198,15 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);
+}
+
+// A chunk whose near level is drawn again with the same buildings (see building_renderer.h).
+void BuildingRenderer::restyle_chunk(int64_t key) {
+	auto found = chunks_.find(key);
+	if (found == chunks_.end()) return; // not streamed: nothing drawn to change
+	Chunk &ch = found->second;
+	ch.version++;
+	ch.stale[LEVEL_NEAR] = ch.built[LEVEL_NEAR];
 }
 
 // Every instance of the chunk on or off (one with no geometry stays off).

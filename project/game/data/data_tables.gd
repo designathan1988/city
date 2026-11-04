@@ -27,6 +27,7 @@ const RENDER_TABLES := {
 	"buildings": "res://data/render/buildings.json",
 	"bay_props": "res://data/render/bay_props.json",
 	"interiors": "res://data/render/interiors.json",
+	"furniture": "res://data/render/furniture.json",
 	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
@@ -48,6 +49,7 @@ const GAME := {
 	"daylight": "res://data/game/daylight.json",
 	"sky": "res://data/game/sky.json",
 	"saves": "res://data/game/saves.json",
+	"interior": "res://data/game/interior.json",
 }
 const STRINGS := [
 	"res://data/i18n/strings.csv",

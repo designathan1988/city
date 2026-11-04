@@ -1,0 +1,1 @@
+{"type": "object", "properties": {"_doc": {"type": "string"}, "palette": {"type": "object", "additional": {"type": "array", "items": {"type": "string"}, "minItems": 2}}, "models": {"type": "object", "additional": {"type": "array", "items": {"type": "array", "items": {}}}}}, "required": ["_doc", "palette", "models"], "strict": true}

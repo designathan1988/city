@@ -30,6 +30,10 @@ struct Opening {
 };
 
 Opening opening_of(const Data &data, const BayCtx &c);
+// The four faces of an opening's reveal between wall depths `from` and `to` (<= 0, from < to): the jambs, the sill at `sill_h` and the head.
+// The one owner of that shape: the bay's own (depth to the wall face) and the inside of a wall cut open (plaster to the pane's recess).
+void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, float to, const Lin &jamb, const Lin &sill, const Lin &head, int8_t fin,
+		float sill_h);
 // What the pane of an opening draws (pane_rooms.cpp): `frame` the thickness of its frame, 0 none.
 PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float h0, float h1, bool dark, float frame);
 // How many of a component's panes take the darker glass: the far level's grid fades to the same share (far_window).

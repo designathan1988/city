@@ -118,6 +118,7 @@ Dictionary CityCore::load_city(const String &path) {
 	bool ok;
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		state_->interior = InteriorView(); // the layer closes with the city it showed
 		ok = got == bytes.size() && decode_city(*state_, bytes.data(), bytes.size(), error);
 		if (got != bytes.size()) error = "save.file.damaged";
 		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet

@@ -251,3 +251,14 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);
 	metal = mix(mix(0.0, 0.05, frame), 0.0, solid);
 }
+
+// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass reflects.
+void pane_clear(vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
+	float cosv = clamp(dot(-V, n), 0.0, 1.0);
+	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
+	albedo = vec3(0.0075, 0.0096, 0.0115);
+	emit = glass_reflection(V, n, F, GLASS_ENV);
+	nn = n;
+	rough = 0.12;
+	metal = 0.0;
+}

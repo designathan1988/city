@@ -186,7 +186,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float((look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
+			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
 	const int i0 = sheet(f, a0, a1, b0, b1, c, code, Vector2(a1 - a0, b1 - b0)), i1 = i0 + 1, i2 = i0 + 2, i3 = i0 + 3;
 	if (!rooms) return;
 	const PaneRoom &r = look.room;

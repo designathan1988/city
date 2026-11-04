@@ -92,6 +92,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
+- `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio num andar, ler o estado (andares e lâmpadas: leitura pesada, só depois de um comando), a revisão barata que avisa quando reler, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa; a regra do âmbar para os testes
 - `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
@@ -134,6 +135,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/buildings/interior/interior.cpp` · `native/src/sim/buildings/interior/interior.h` · `native/src/sim/buildings/interior/tables.h` — o que há dentro de um prédio, andar por andar: tipo de andar (iguais mobiliados uma vez), uso do prédio, receitas de `project/data/render/interiors.json`, luz por cômodo, casas e lojas do andar
 - `native/src/sim/buildings/interior/plan.cpp` · `native/src/sim/buildings/interior/plan.h` · `native/src/sim/buildings/interior/interior_homes.cpp` · `native/src/sim/buildings/interior/interior_rooms.cpp` — o andar sendo mobiliado (o que cabe onde) e a planta em apartamentos; apartamentos, casas e saguão; salas, aulas, enfermarias, hotel, lojas, restaurantes, celas e shopping
+- `native/src/sim/buildings/interior/cut.cpp` · `native/src/sim/buildings/interior/cut.h` — o prédio cortado num andar (dono único do corte): volumes acima saem, os demais perdem os andares de cima; a direção da câmera em 8 passos
+- `native/src/sim/buildings/interior/view.h` — o que a camada Interior mostra: quais prédios estão cortados, em que andar e para que direção da câmera (vista, não é salva)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
 - `native/src/sim/catalog/nature_types.h` — tipos do clima, nuvens, neblina, pintura, pincel de árvores e comunidades de plantas (X-macro do clima)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
@@ -159,6 +162,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/element_commands.cpp` — pincel de elementos com desfazer
 - `native/src/sim/commands/nature_commands.cpp` — clima, nuvens, neblina, pintura, árvores plantadas, bioma e relevo de volta ao original
 - `native/src/sim/commands/model_ops.h` · `native/src/sim/commands/model_body.cpp` · `native/src/sim/commands/model_place.cpp` · `native/src/sim/commands/place_snap.cpp` · `native/src/sim/commands/body_weld.cpp` — modelo feito corpo; colocar (recusas e fusão, um passo de desfazer); encaixe na rua, no vizinho e na grade; dois prédios feitos um
+- `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar); `interior_focus`, dono único de onde o corpo fica (centro dos volumes, lado maior, andares: as fotos miram aí)
 - `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
@@ -253,10 +257,15 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
 - `native/src/render/buildings/lot_emit.cpp` · `native/src/render/buildings/lot_parts.cpp` · `native/src/render/buildings/lot_props.cpp` — chão, muros, cercas e portões do lote; peças postas pelo jogador (escada, rampa, pedras, vaga, relógio); peças (vagas, docas, ralos, arbustos, flores, piscina, móveis, galpões, varal)
 - `native/src/render/buildings/pane_rooms.cpp` · `native/src/render/buildings/pane_rooms.h` — o que cada vidro desenha: semente do cômodo, cômodo atrás dele pela planta do andar, maior móvel visto e caixilho
+- `native/src/render/buildings/interior_emit.cpp` · `native/src/render/buildings/interior_emit.h` — o interior de um prédio cortado (dono único do desenho): piso do andar visto, poço do elevador com a cabine, paredes da planta que descem a 0,9 m do lado da câmera, móveis
+- `native/src/render/buildings/interior_cut.cpp` — as paredes externas do andar visto: descem a um rodapé do lado da câmera, as outras ganham a face interna de reboco
+- `native/src/render/buildings/furniture_emit.cpp` · `native/src/render/buildings/furniture_look.cpp` · `native/src/render/buildings/furniture_look.h` — um móvel do prédio cortado: as partes do modelo (caixas instanciadas, cilindros e esferas em geometria fina) postas no quadro da peça; furniture.json → paleta e modelos
+- `native/src/render/buildings/interior_lamps.cpp` · `native/src/render/buildings/interior_lamps.h` — onde ficam, no mundo, as lâmpadas do andar visto (para as luzes de cômodo)
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
 - `native/src/render/buildings/roof_gear.cpp` — o que o jogador põe no telhado: painéis, claraboias, chaminés, caixas, pináculo e lanterna
+- `native/src/render/buildings/roof_clip.cpp` · `native/src/render/buildings/roof_clip.h` — o telhado inclinado de um volume baixo recortado onde um volume mais alto do corpo aberto o encerra (só no corte; pedaços convexos exatos no plano das paredes)
 - `native/src/render/buildings/roof_pitched.cpp` — telhados inclinados e dente de serra
 - `native/src/render/buildings/roof_plant.cpp` — equipamentos de cobertura
 - `native/src/render/buildings/roof_terrace.cpp` — terraços usados
@@ -299,6 +308,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
+- `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos e as luzes; como no 4.0 a câmera fica onde o jogador pôs; relê o núcleo só quando a revisão muda
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
@@ -337,6 +347,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/selection_box.gd` — contorno do bloco escolhido no Construir
 - `project/render/surface_means.gd` — média de cada mapa de superfície e tons da via, enviados uma vez ao material
 - `project/render/lamp_radiance.gd` — o que uma lente ou farol aceso precisa irradiar para aparecer na sua cor pelo tone mapping
+- `project/render/interior_lights.gd` — as luzes de cômodo do andar visto: seis luzes de ponto sem sombra sobre as primeiras lâmpadas do andar, com os valores do 4.0 (0,25 de dia a 1 à noite; `project/data/game/interior.json`)
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
@@ -364,10 +375,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_clock.gd` · `project/tests/visual/capture_clock.tscn` — a luz no jogo de verdade: botões sol, lua e relógio de play.tscn
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` · `project/tests/visual/landscape_cards.gd` — capturas da paisagem nos ângulos do 4.0; rampa de cinzas, cubo cinza e árvores plantadas, medidos sozinhos
+- `project/tests/core/interior_test.gd` · `project/tests/core/interior_test.tscn` — a camada Interior pelo store: o andar limitado ao topo, prédio que não existe recusado, lâmpadas, custo do interior estável e a vista em volta de um ponto
+- `project/tests/visual/capture_interior.gd` · `project/tests/visual/capture_interior.tscn` — capturas da camada Interior dos prédios, dirigidas pelo controlador como o jogador (prédio, andar, volta, escala e hora por tabela)
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — vias de perto em chão livre (cruzamentos, T, ponta, curva) e a ferramenta em uso, nos ângulos das fotos do 4.0
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — parada, estação e trilho nas capturas; a rua com o outro lado livre, onde valem as poses do 4.0
-- `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele
+- `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele, e uma vista com `inside` corta um deles por dentro
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
@@ -380,6 +393,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
 - `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
 - `project/ui/transit_strip.gd` — linhas e seus veículos, na gaveta do transporte
+- `project/ui/interior_bar.gd` — a barra do andar da camada Interior (canto de cima à direita): o botão que a fecha, andar abaixo, nome do andar, andar acima; só aparece com um prédio aberto
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
 - `project/ui/junction_marks.gd` — marcas do controle de cada cruzamento na aba Controle
@@ -389,15 +403,16 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
-- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
+- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/transit.json` · `project/data/render/agents.json` · - `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
 - `tools/assets/bleed_alpha.py` · `tools/assets/cook_people.py` · `tools/assets/export_builder_ui.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — a cor sob os furos de uma textura recortada; pessoas cozidas
   (MakeHuman CC0 + caminhada Rocketbox MIT), ícones e textos do Construir, KTX2 do Roadcraft → PNG, ruído azul do início dos raios da atmosfera, road_profiles.json da fonte do Roadcraft
+- `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
@@ -408,6 +423,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
+- Interior (vista de dentro): o corte, o piso, o poço do elevador, as paredes da planta, as janelas por dentro e os móveis existem, com a câmera, o alvo (um prédio, nunca um raio) e as luzes de cômodo como no 4.0; faltam o meio-nível (`Volume.lift`, lances entre blocos: o modelo da Porte 2 não tem `lift`), a escada de núcleo (`Core` não tem tipo), as arestas arredondadas dos móveis e a largura variada dos livros, o interior de prédios assinatura e a barra do andar dentro da barra de cima (no 4.0 ela é parte dela; aqui é um painel no canto). A cabine do elevador não tem fonte primária (NBR NM 313 não é aberta). A conversão das luzes (energia 55·0,4²/π, atenuação 2) é derivada das fórmulas do three.js e do Godot, não medida. O piso (madeira ou porcelana) e os móveis dependem do id do prédio, e o id do prédio posto a partir de um documento do 4.0 não é o do 4.0. A aba Interior do Construir (Porte 2) ainda não liga a camada (contrato em `ports/interior/relatorio.md`).
 - Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e as abas Modelos, Massa, Fachada, Peças, Telhado e Cores existem, com seleção por raio; faltam Desenhar e Interior. Os 38 lotes vêm com o porte `marcos`. Bandeiras no pináculo e na lanterna ainda não. Árvores de corpo colocado já são desenhadas; as dos lotes crescidos ainda não. a peça não tem fantasma sob o ponteiro.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: forma, tons e atlas seguem o 4.0 no mesmo quadro (`capture_landscape --only=arv_perto,...`), escolha de modelagem dita no _doc de `trees`; as matas seguem a mesma regra e a mesma malha do 4.0 (mesma árvore na mesma célula: `tree_place.cpp`), e passar a instância sem cor quando o `rs_util.h` da rua integrar. Paisagem: a luz é a do 4.0 no mesmo sol (16h, 29°), medida em discos pintados de albedo igual, e os mapas de chão entram sem ganho; a imagem passa pela gradação de filme (`film_grade.cpp`) e pela vinheta. Falta a sombra de contato do `canyonLight` do 4.0 e a luz do céu fora do terreno; pedras da costa, estratos da rocha, grama seca da ecologia e lembrar a escolha dos pincéis não foram portados.

@@ -32,6 +32,7 @@ signal sky_chosen(mode: String)
 
 
 func _ready() -> void:
+	add_to_group(&"hud")
 	root = Control.new()
 	root.theme = ThemeBuilder.theme()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE

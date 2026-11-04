@@ -29,7 +29,7 @@ constexpr float U_ROOM = 6.f, U_W = 20.f, U_WING_LO = 6.f, U_WING_MAX = 9.f, L_W
 constexpr float L_WING_MAX = 11.f, L_LOW = 0.25f, L_LOW_SHARE = 0.7f, PAIR_W = 16.f, PAIR_SHARE = 0.4f, PAIR_LO = 0.4f;
 constexpr float PAIR_HI = 0.6f, PAIR_BACK_LO = 1.f, PAIR_BACK_HI = 2.5f, PAIR_SKIN = 0.6f, BAR_STEP = 2.f, BAR_STEP_D = 9.f;
 constexpr int BAR_STEP_FLOORS = 5;
-constexpr float CORE_HALF = 1.5f, FLATS_CORE_D = 10.f, OFFICE_CORE_D = 12.f;
+constexpr float CORE_HALF = CORE_SIDE_M / 2, FLATS_CORE_D = 10.f, OFFICE_CORE_D = 12.f;
 constexpr float SHOP_GROUND_LO = 4.f, SHOP_GROUND_HI = 4.6f, SHOP_STOREY = 3.1f, SHOP_PITCH = 0.4f, SHOP_TERRACE = 0.2f;
 constexpr float SHOP_DEEP = 16.f, SHOP_MAIN_LO = 12.f, SHOP_BACK = 3.f, SHOP_PAIR_W = 14.f, SHOP_PAIR = 0.35f, STORE_MIN = 2.f;
 constexpr float SHOP_DOUBLE = 0.5f, SHOP_SIDE_DOOR_W = 7.f, AWNING_SHARE = 0.3f, AWNING_Y = -0.6f, AWNING_MIN = 2.f;

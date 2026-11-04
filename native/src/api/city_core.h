@@ -186,6 +186,11 @@ public:
 	godot::TypedArray<godot::Image> film_grade(const godot::Dictionary &grade) const; // slices of the screen's lookup table
 	godot::Color film_graded(const godot::Dictionary &grade, const godot::Color &colour) const; // a display colour through it
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
+	// The Interior layer (city_core_interior.cpp): buildings cut open at a floor, for a camera looking along step `dir`.
+	godot::Dictionary set_interior(bool on, int target, int level, int dir);
+	godot::Dictionary interior() const; // on, target, level, dir, revision, floors, lamps of the floor seen (not for every frame)
+	int interior_revision() const; // cheap: changes with every command and resets with the city (the script reads `interior` when it does)
+	godot::Dictionary interior_cost(int id, int level, int dir) const; // triangles, boxes and bytes of a building's inside (tests, render_cost)
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags

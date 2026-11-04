@@ -4,6 +4,7 @@
 
 #include "core/job_pool.h"
 #include "sim/buildings/building_store.h"
+#include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/lots/lot_cache.h"
@@ -39,6 +40,7 @@ struct CityState {
 	RoadNetwork roads;
 	LotCache lots;
 	BuildingStore buildings;
+	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it

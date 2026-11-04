@@ -1,5 +1,5 @@
 // The panes of the near level, a surface of their own on the building's mesh: COLOR.r, g its room's seed, b its own, a its kind
-// (low 3 bits: 1 clear, 2 dark) and the opening behind it in cm (the bits above, shell.cpp). The walls keep building.gdshader.
+// (low 3 bits: 1 clear, 2 dark, 6 clear with no room behind it) and the opening behind it in cm (the bits above, shell.cpp). The walls keep building.gdshader.
 // light() because an opening's sun is not its sky: the sky comes by AO (ambient times the share the opening lets through), and
 // a point the wall hides from a light must take none of it with a sky above zero, which AO_LIGHT_AFFECT cannot say.
 shader_type spatial;
@@ -17,6 +17,7 @@ uniform float furniture_tone[120]; // linear tone of each furniture kind, three 
 const int KIND_BITS = 3;
 const int KIND_MASK = 7;
 const int KIND_DARK = 2;
+const int KIND_CLEAR = 6; // shell.h SK_PANE_CLEAR: the glass of a building cut open, with no room behind it
 const float PANE_DEPTH_STEP_M = 0.01; // shell.cpp PANE_RECESS_STEP_M
 const vec3 PANE_MEAN_SEEN = vec3(0.42, 0.45, 0.47); // a room under a pixel: its mean by day
 
@@ -57,7 +58,13 @@ void fragment() {
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo, emit, nn, at;
 	float rough, metal, open;
-	pane(UV, size, code, uint(COLOR.b * 255.0 + 0.5), (coded & KIND_MASK) == KIND_DARK, deep, n, V, albedo, emit, nn, rough, metal, at, open);
+	if ((coded & KIND_MASK) == KIND_CLEAR) {
+		pane_clear(n, V, albedo, emit, nn, rough, metal);
+		at = vec3(0.0);
+		open = 1.0;
+	} else {
+		pane(UV, size, code, uint(COLOR.b * 255.0 + 0.5), (coded & KIND_MASK) == KIND_DARK, deep, n, V, albedo, emit, nn, rough, metal, at, open);
+	}
 	v_at = at;
 	v_hole = deep > 0.0 ? 0.5 * size : vec2(0.0);
 	v_axis_x = (VIEW_MATRIX * vec4(normalize(vec3(n.z, 0.0, -n.x)), 0.0)).xyz;

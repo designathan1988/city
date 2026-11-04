@@ -26,6 +26,7 @@ func _ready() -> void:
 	var hud := RoadcraftHud.new()
 	hud.sky_chosen.connect(world.set_sky_mode)
 	add_child(hud)
+	add_child(InteriorController.new())
 	GameFlow.playing()
 	_maybe_screenshot()
 

@@ -2,6 +2,7 @@
 // body (fascia trim x 0.92, soffit trim x 0.7), ridge cap (roof x 0.85), gable triangles in the wall paint; shed roofs
 // with their tall back wall and triangular end walls; sawtooth (north-light) roofs of glazed teeth. Built in a ridge frame: u along the ridge, s across, z up.
 #include "render/buildings/facade.h"
+#include "render/buildings/roof_clip.h"
 
 #include "sim/buildings/b40/roof_shape.h"
 
@@ -22,22 +23,40 @@ struct Pitch {
 	float L, S, slope;
 	Lin roof, fascia, soffit, wall;
 	int8_t roof_fin, trim_fin, wall_fin;
+	const RoofHide *hide = nullptr; // what a taller volume of a body cut open encloses is left out
 	Vector3 p(float u, float sv, float z) const { return R.at(u, sv, z); }
+	void tri(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &out, const Lin &lin, int8_t fin) {
+		if (hide) hide->tri(s, a, b, c, out, lin, fin);
+		else s.tri(a, b, c, out, lin, fin);
+	}
+	void quad(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Vector3 &out, const Lin &lin, int8_t fin) {
+		if (hide) hide->quad(s, a, b, c, d, out, lin, fin);
+		else s.quad(a, b, c, d, out, lin, fin);
+	}
+	// A box along the ridge frame's u axis (ridge cap, glazing mullion), minus the stretches that are enclosed.
+	void along(float u0, float u1, float s0, float s1, float z0, float z1, const Lin &lin, int8_t fin) {
+		Basis f{ R.o, R.e0, R.e1, R.e2 };
+		if (!hide) {
+			s.box(f, u0, u1, s0, s1, z0, z1, lin, fin, SKIP_E2_NEG);
+			return;
+		}
+		for (const auto &span : hide->spans(p(0, (s0 + s1) / 2, 0), R.e0, u0, u1)) s.box(f, span.first, span.second, s0, s1, z0, z1, lin, fin, SKIP_E2_NEG);
+	}
 	// A roof plane polygon (3 or 4 corners) with its underside THICK below.
 	void plane(const Vector3 *q, int n, const Vector3 &out) {
 		Vector3 down = -R.e2 * THICK;
 		if (n == 4) {
-			s.quad(q[0], q[1], q[2], q[3], out, roof, roof_fin);
-			s.quad(q[0] + down, q[1] + down, q[2] + down, q[3] + down, -out, soffit, trim_fin);
+			quad(q[0], q[1], q[2], q[3], out, roof, roof_fin);
+			quad(q[0] + down, q[1] + down, q[2] + down, q[3] + down, -out, soffit, trim_fin);
 		} else {
-			s.tri(q[0], q[1], q[2], out, roof, roof_fin);
-			s.tri(q[0] + down, q[1] + down, q[2] + down, -out, soffit, trim_fin);
+			tri(q[0], q[1], q[2], out, roof, roof_fin);
+			tri(q[0] + down, q[1] + down, q[2] + down, -out, soffit, trim_fin);
 		}
 	}
 	// The vertical face of the roof body under the edge a-b (eaves fascia, barge board).
 	void edge(const Vector3 &a, const Vector3 &b, const Vector3 &out) {
 		Vector3 down = -R.e2 * THICK;
-		s.quad(a, b, b + down, a + down, out, fascia, trim_fin);
+		quad(a, b, b + down, a + down, out, fascia, trim_fin);
 	}
 	void gable_hip(bool hip);
 	void shed();
@@ -64,11 +83,11 @@ void Pitch::gable_hip(bool hip) {
 		edge(a, d, -R.e0);
 		edge(b, c, R.e0);
 	} else {
-		s.tri(p(0, 0, 0), p(0, S, 0), p(0, H, rise), -R.e0, wall, wall_fin);
-		s.tri(p(L, 0, 0), p(L, S, 0), p(L, H, rise), R.e0, wall, wall_fin);
+		tri(p(0, 0, 0), p(0, S, 0), p(0, H, rise), -R.e0, wall, wall_fin);
+		tri(p(L, 0, 0), p(L, S, 0), p(L, H, rise), R.e0, wall, wall_fin);
 		edge(a, k0, -R.e0); edge(d, k0, -R.e0); edge(b, k1, R.e0); edge(c, k1, R.e0);
 	}
-	if (r1 > r0) s.box(Basis{ R.o, R.e0, R.e1, R.e2 }, r0, r1, H - CAP_W, H + CAP_W, rise, rise + CAP_LIFT, roof * CAP_SHADE, roof_fin, SKIP_E2_NEG);
+	if (r1 > r0) along(r0, r1, H - CAP_W, H + CAP_W, rise, rise + CAP_LIFT, roof * CAP_SHADE, roof_fin);
 }
 
 void Pitch::shed() {
@@ -78,9 +97,9 @@ void Pitch::shed() {
 	Vector3 q[4] = { a, b, c, d };
 	plane(q, 4, (R.e2 + R.e1 * slope).normalized());
 	edge(a, b, -R.e1); edge(d, c, R.e1); edge(a, d, -R.e0); edge(b, c, R.e0);
-	s.quad(p(0, 0, 0), p(L, 0, 0), p(L, 0, rise), p(0, 0, rise), -R.e1, wall, wall_fin);
-	s.tri(p(0, 0, 0), p(0, S, 0), p(0, 0, rise), -R.e0, wall, wall_fin);
-	s.tri(p(L, 0, 0), p(L, S, 0), p(L, 0, rise), R.e0, wall, wall_fin);
+	quad(p(0, 0, 0), p(L, 0, 0), p(L, 0, rise), p(0, 0, rise), -R.e1, wall, wall_fin);
+	tri(p(0, 0, 0), p(0, S, 0), p(0, 0, rise), -R.e0, wall, wall_fin);
+	tri(p(L, 0, 0), p(L, S, 0), p(L, 0, rise), R.e0, wall, wall_fin);
 }
 // Teeth across the roof every min(6 m, depth): a slope rising toward the back, then a vertical north-light glazing
 // down to the eaves, with end triangles in the wall paint.
@@ -92,10 +111,10 @@ void Pitch::sawtooth(float n_step, const Lin &glass, int8_t glass_fin) {
 		float s0 = step * float(i), s1 = s0 + step;
 		Vector3 q[4] = { p(0, s0, 0), p(L, s0, 0), p(L, s1, rise), p(0, s1, rise) };
 		plane(q, 4, up);
-		s.quad(p(0, s1, 0), p(L, s1, 0), p(L, s1, rise), p(0, s1, rise), R.e1, glass, glass_fin);
-		s.box(Basis{ R.o, R.e0, R.e1, R.e2 }, 0, L, s1 - MULLION, s1, rise, rise + CAP_LIFT, fascia, trim_fin, SKIP_E2_NEG);
-		s.tri(p(0, s0, 0), p(0, s1, 0), p(0, s1, rise), -R.e0, wall, wall_fin);
-		s.tri(p(L, s0, 0), p(L, s1, 0), p(L, s1, rise), R.e0, wall, wall_fin);
+		quad(p(0, s1, 0), p(L, s1, 0), p(L, s1, rise), p(0, s1, rise), R.e1, glass, glass_fin);
+		along(0, L, s1 - MULLION, s1, rise, rise + CAP_LIFT, fascia, trim_fin);
+		tri(p(0, s0, 0), p(0, s1, 0), p(0, s1, rise), -R.e0, wall, wall_fin);
+		tri(p(L, s0, 0), p(L, s1, 0), p(L, s1, rise), R.e0, wall, wall_fin);
 	}
 }
 } // namespace
@@ -107,6 +126,8 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
 	shell.grime_floor = -FAR_AWAY;
+	RoofHide hidden(pl, v);
+	if (hidden.any()) P.hide = &hidden;
 	const Basis &lot = pl.lot;
 	if (v.roof == ROOF_SHED) {
 		int fall = std::max(0, v.fall);

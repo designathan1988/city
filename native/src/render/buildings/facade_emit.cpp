@@ -2,6 +2,7 @@
 // bay; covered stretches cut out; reliefs pushed with their cheeks and caps; pilasters; storey bands; the plinth and
 // the entrance steps. Openings and parts per bay are facade_bay.cpp's.
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/interior_emit.h"
 #include "sim/buildings/b40/gen.h"
 
 #include <cmath>
@@ -115,6 +116,7 @@ void SideEmit::storey(const Side &sd, int k, float z) {
 		c.plan_out = sd.n;
 		c.open_left = i > 0 && component(v, k, sd.side, i - 1) == BAY_GOURMET;
 		c.open_right = i + 1 < n && component(v, k, sd.side, i + 1) == BAY_GOURMET;
+		if (b.cut_level >= 0 && level == b.cut_level && cut_bay(shell, pl, c, sd.n)) continue; // the floor seen: this wall came down
 		emit_bay(shell, parts, pl, c);
 		float lp = i > 0 ? relief_push(v, sd.side, i - 1, k) : 0, rp = i + 1 < n ? relief_push(v, sd.side, i + 1, k) : 0;
 		relief_faces(shell, c, push, lp, rp, i == 0, i == n - 1);

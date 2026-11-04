@@ -478,7 +478,8 @@
     },
     {
      "icon": "interiorView",
-     "label_key": "v2.layer.inside"
+     "label_key": "v2.layer.inside",
+        "action": "interior"
     }
    ]
   },

@@ -140,6 +140,9 @@ struct LotElement {
 	float base = 0; // walls/fences: the base wall under a fence
 };
 
+// A core (stair and lift shaft) is a square of this side in the lot frame, from its (x, y) corner: the generator places it, the cut view draws it.
+constexpr float CORE_SIDE_M = 3.f;
+
 struct Core {
 	float x = 0, y = 0;
 	int to = 0;
@@ -161,6 +164,9 @@ struct Body {
 	std::vector<Core> cores;
 	float entrance_x = 0;
 	int entrance_volume = 0;
+	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
+	int cut_level = -1;
+	Point2 cut_view;
 	int add_paint(const Paint &p) {
 		paints.push_back(p);
 		return int(paints.size()) - 1;

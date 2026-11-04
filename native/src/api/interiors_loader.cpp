@@ -17,10 +17,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-const char *const KINDS[FK_COUNT] = { "bed", "singleBed", "sofa", "armchair", "table", "chair", "desk", "officeChair", "shelf", "bookshelf",
-	"counter", "fridge", "stove", "sink", "toilet", "bath", "wardrobe", "tv", "plant", "pew", "seat", "wardBed", "bars", "screen", "altar",
-	"machine", "rack", "locker", "atm", "stage", "barCounter", "blackboard", "checkout", "treadmill", "pallet", "ceilingLamp", "floorLamp",
-	"tableLamp", "stairs", "stairwell" };
+const auto &KINDS = FURNITURE_NAMES;
 const char *const PURPOSES[PU_COUNT] = { "house", "flats", "hotel", "office", "cityHall", "police", "courthouse", "postOffice", "council",
 	"hospital", "school", "library", "museum", "prison", "church", "busStation", "shop", "supermarket", "mall", "bank", "restaurant", "bar",
 	"nightclub", "cinema", "gym", "club", "fireStation", "factory", "warehouse" };

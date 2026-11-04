@@ -77,6 +77,7 @@ public:
 	const BodyStage &stage() const { return stage_; }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
+	BuildingRenderer::InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	FogField &fog() { return fog_; }
@@ -114,7 +115,7 @@ private:
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
-	std::vector<int64_t> road_keys_, building_keys_;
+	std::vector<int64_t> road_keys_, building_keys_, view_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;
 	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;

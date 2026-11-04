@@ -81,6 +81,8 @@ Ring ring_of(const Volume &v) {
 	return out;
 }
 
+std::vector<Ring> plan_triangles(const Ring &ring) { return triangles_of(ring); }
+
 float ring_area(const Ring &ring) {
 	float twice = 0;
 	for (size_t i = 0; i < ring.size(); i++) {

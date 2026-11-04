@@ -45,6 +45,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 			const Building &b = s.buildings.items[size_t(id)];
 			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
+			in.ids.push_back(id);
 			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
 			minx = std::min(minx, b.x - r);
 			minz = std::min(minz, b.z - r);
@@ -53,6 +54,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 		});
 	}
 	if (!in.records.empty()) in.ground = s.terrain.patch(minx, minz, maxx, maxz);
+	in.view = s.interior;
 	return in;
 }
 
@@ -73,15 +75,21 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
 	for (b40::Shell &p : mid_parts) p.instanced = true;
-	for (const Building &rec : in.records) {
+	for (size_t r = 0; r < in.records.size(); r++) {
+		const Building &rec = in.records[r];
+		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
+		const bool cut = near && in.view.cuts(in.ids[r]);
 		b40::Placed pl;
-		bodies.place(designs(), look_, in.ground, rec, pl);
+		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
 		if (near) {
 			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
+			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
 		}
 		pl.coarse = true;
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);
@@ -119,6 +127,30 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.has_near = true;
 	}
 	out.has_mid = mid;
+	return out;
+}
+
+BuildingRenderer::InteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
+	InteriorCost out;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
+	const Building &rec = s.buildings.items[size_t(id)];
+	const float reach = 0.5f * std::hypot(rec.w, rec.d) + LOT_GROUND_PAD_M;
+	const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
+	BuildingBodies bodies;
+	b40::Placed pl;
+	const b40::CutView cut{ level, dir };
+	bodies.place(s.buildings.designs, look_, ground, rec, pl, &cut); // not designs(): state_ is set once the renderer has run a frame
+	b40::Shell shell, parts;
+	parts.instanced = true;
+	b40::emit_facades(shell, parts, pl);
+	b40::emit_roofs(shell, parts, pl);
+	out.shell_triangles = int(shell.triangles());
+	out.shell_boxes = int(parts.boxes.size());
+	const int64_t before = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance));
+	b40::emit_interior(shell, parts, pl);
+	out.inside_triangles = int(shell.triangles()) - out.shell_triangles;
+	out.inside_boxes = int(parts.boxes.size()) - out.shell_boxes;
+	out.inside_bytes = shell.bytes(true) + parts.bytes(true) + int64_t(parts.boxes.size() * sizeof(b40::BoxInstance)) - before;
 	return out;
 }
 
