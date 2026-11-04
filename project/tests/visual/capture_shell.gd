@@ -17,6 +17,7 @@ const SPEED_PAUSED := 0
 const SPEED_NORMAL := 1
 const SPEED_FASTEST := 3
 const INSPECT_PITCH := 75.0
+const PAIRED_TABS := ["build_draw", "landscape_ground", "landscape_nature", "landscape_sky"]
 const SEARCH_M := 600.0
 const SEARCH_STEP_M := 3.0
 
@@ -75,6 +76,7 @@ func _run() -> void:
 	for cat: String in ["roads", "zones", "build", "landscape", "transit", "demolish"]:
 		hud.open_category(cat)
 		await _shot("drawer_" + cat)
+		await _tabs(cat)
 		hud.open_category(cat)
 	hud.open_category("roads")
 	hud.drawer.select_tab(hud.drawer.category.tabs[5])
@@ -199,6 +201,14 @@ func _frames(n: int) -> void:
 
 
 ## The clock stands still between the photos; it runs for each, so the bar shows the game at 1x.
+## The drawer's other tabs that have a photo of the 4.0.
+func _tabs(cat: String) -> void:
+	for t: Dictionary in hud.drawer.category.tabs:
+		if PAIRED_TABS.has("%s_%s" % [cat, t.id]):
+			hud.drawer.select_tab(t)
+			await _shot("drawer_%s_%s" % [cat, t.id])
+
+
 func _shot(name: String) -> void:
 	CityStore.dispatch(&"set_speed", [SPEED_NORMAL])
 	await _frames(SETTLE)

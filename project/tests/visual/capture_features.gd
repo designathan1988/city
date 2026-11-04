@@ -12,6 +12,8 @@ const VIEW_AHEAD_M := 120.0
 const ROAD_IN_M := 40.0
 const ROAD_OUT_M := 300.0
 const HOLD_FRAMES := 90
+const MODE_RAISE := 0
+const MODE_MESA := 4
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -117,17 +119,24 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	await ui.shot("feat_roundabout_2_construida")
 
 
+## The card of this value in the Landscape panel, as it stands now (a pick draws the panel again).
+func _land_card(value: int) -> Button:
+	for b: Node in hud.drawer.strip.find_children("*", "Button", true, false):
+		if b.get_meta(&"pick", -2) == value:
+			return b
+	return null
+
+
 func _relief(e: Vector3) -> void:
 	var hill := e + Vector3(260, 0, 140)
 	rig.jump(hill + Vector3(-70, 0, 160), 20.0, 40.0, 520.0)
 	await ui.drawn()
 	hud.open_category("landscape")
 	await ui.frames(4)
-	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
-	await ui.press(cards[4]) # mesa (chapada)
+	await ui.press(_land_card(MODE_MESA))
 	var h0 := ui.ground(hill.x, hill.z).y
 	await ui.hold(hill, HOLD_FRAMES)
-	await ui.press(cards[0]) # elevar
+	await ui.press(_land_card(MODE_RAISE))
 	await ui.hold(hill + Vector3(-140, 0, 0), HOLD_FRAMES)
 	await ui.drawn()
 	var h1 := ui.ground(hill.x, hill.z).y

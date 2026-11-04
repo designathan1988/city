@@ -361,7 +361,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/inspector_rows.gd` — os números ao vivo do inspetor, como linhas
 - `project/ui/selection_overlay.gd` — a faixa da via e o anel do cruzamento que a ferramenta Informação marca sobre o mapa
 - `project/ui/land_hands.gd` — as mãos da gaveta Paisagem: cartões que redesenham o painel, ações do mapa inteiro e o Relevo pelas teclas
-- `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
+- `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json: cartões na gaveta; pincel, sliders e o que age no mapa inteiro no painel de opções
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — a casca: dock, dica, aviso e quem abre cada painel

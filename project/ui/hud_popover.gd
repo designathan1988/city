@@ -87,6 +87,7 @@ func _build_layers(col: Control, spec: Dictionary) -> void:
 	for r in spec.rows:
 		var b := _row(col, r)
 		b.theme_type_variation = &"LayerRow"
+		b.custom_minimum_size.x = HudWidgets.px("layer_row_w")
 		var sw := HudSwitch.new()
 		sw.on = Settings.layer_on(r.action) if r.has("action") else false
 		b.add_child(sw)

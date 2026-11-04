@@ -5,6 +5,8 @@
 class_name HudDrawer
 extends PanelContainer
 
+const FITS := &"fits_drawer" # what scrolls inside the room the drawer has: fit(width)
+
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
@@ -13,7 +15,7 @@ const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "z
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
-@onready var _options: VBoxContainer
+@onready var options: VBoxContainer
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
 @onready var _head: HBoxContainer
@@ -40,7 +42,7 @@ func _ready() -> void:
 	options_panel.offset_left = HudWidgets.px("margin")
 	options_panel.offset_right = HudWidgets.px("margin") + HudWidgets.px("opts_w")
 	options_panel.offset_bottom = -HudWidgets.px("margin")
-	_options = HudWidgets.vbox(options_panel, &"Pad")
+	options = HudWidgets.vbox(options_panel, &"Pad")
 	options_panel.hide()
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
@@ -121,7 +123,7 @@ func _density_row() -> void:
 	var items := []
 	for d: Array in DENSITIES:
 		items.append([d[0], "", d[2], "%s: %s" % [tr("v2.zone.density"), tr(d[1])]])
-	var row := HudWidgets.option_row(_options, tr("v2.zone.density"))
+	var row := HudWidgets.option_row(options, tr("v2.zone.density"))
 	HudWidgets.choices(row, items, _density, func(v: int) -> void:
 		_density = v
 		pick_zone(DrawerStrips.use_of(_zone())))
@@ -166,7 +168,7 @@ func _build_strip(tab: Dictionary) -> void:
 	if catalog.get_parent():
 		catalog.get_parent().remove_child(catalog)
 	HudWidgets.clear(strip)
-	HudWidgets.clear(_options)
+	HudWidgets.clear(options)
 	var kind: String = category.get("strip", "")
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
 		strip.add_child(catalog)
@@ -176,7 +178,7 @@ func _build_strip(tab: Dictionary) -> void:
 		_density_row()
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
-		HudWidgets.range_row(_options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
+		HudWidgets.range_row(options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
 			retool.bind("ROUNDABOUT", "radius"))
 	elif kind == "land_panels":
@@ -186,11 +188,20 @@ func _build_strip(tab: Dictionary) -> void:
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
 			strip.add_child(DrawerStrips.card(c, "fn", param("LOT", "fn", 0), retool.bind("LOT", "fn")))
+	_note(tab)
+	settle()
+
+
+func _note(tab: Dictionary) -> void:
 	var note := HudWidgets.label(strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = HudWidgets.px("note_w")
 	note.visible = note.text != "" and strip.get_child_count() == 1 # a mode with nothing to pick says what it does
-	options_panel.visible = _options.get_child_count() > 0
+
+
+## The panels again after their content changed.
+func settle() -> void:
+	options_panel.visible = options.get_child_count() > 0
 	options_panel.reset_size()
 	options_panel.offset_top = -options_panel.size.y - HudWidgets.px("margin")
 	_fit.call_deferred()
@@ -205,6 +216,7 @@ func _fit() -> void:
 	var left := margin + (HudWidgets.px("opts_w") + margin if options_panel.visible else 0.0)
 	var room := vw - margin - left
 	catalog.fit(room - HudWidgets.px("gap"))
+	get_tree().call_group(FITS, &"fit", room - HudWidgets.px("gap"))
 	var need := get_combined_minimum_size()
 	var width := minf(need.x, room)
 	offset_left = left + (room - width) * 0.5 - vw * 0.5

@@ -70,6 +70,9 @@ func _fill() -> void:
 	about.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	about.pressed.connect(_pick.bind("about"))
 	_card_box.add_child(about)
+	for name: Control in _card_box.find_children("*", "Label", true, false):
+		if name.theme_type_variation == &"FieldLabel":
+			name.custom_minimum_size.x = HudWidgets.px("start_name_w")
 
 
 ## Size and seed of a new city. The map and seed on screen are the form's start: left alone, it opens nothing new.

@@ -13,6 +13,7 @@ static func card(c: Dictionary, key: String, picked: Variant, on_pick: Callable)
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = false
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b.pressed.connect(func() -> void: on_pick.call(c[key]))
 	return b
 
@@ -38,26 +39,3 @@ static func use_of(zone: int) -> int:
 		if int(z.code) == zone:
 			return int(z.base)
 	return zone
-
-
-## "<label>  [——o——]  <value><unit>": on_change(value) on every move.
-static func slider(parent: Control, label_key: String, lo: float, hi: float, step: float, value: float, unit: String,
-		on_change: Callable) -> HSlider:
-	var col := HudWidgets.vbox(parent)
-	var head := HudWidgets.hbox(col)
-	var name := HudWidgets.label(head, &"MutedLabel", TranslationServer.translate(label_key))
-	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var form := "%d%s" if step >= 1.0 else "%.1f%s"
-	var shown := HudWidgets.label(head, &"BodyLabel", form % [value if step < 1.0 else int(value), unit])
-	var s := HSlider.new()
-	s.min_value = lo
-	s.max_value = hi
-	s.step = step
-	s.value = value
-	s.custom_minimum_size.x = HudWidgets.px("side_w")
-	s.focus_mode = Control.FOCUS_NONE
-	s.value_changed.connect(func(v: float) -> void:
-		shown.text = form % [v if step < 1.0 else int(v), unit]
-		on_change.call(v))
-	col.add_child(s)
-	return s

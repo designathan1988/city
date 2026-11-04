@@ -2,6 +2,8 @@
 ## options over a tier, the render switches on the cull mask, the Simulation panel's levels reaching the core, keys and Escape.
 extends Node3D
 
+const DRAWER_FRAMES := 6
+const RELIEF_SLIDERS := 3
 const TOWN_MAP := 0
 const SEED := 1
 const CHOSEN_SEED := 4321
@@ -37,6 +39,7 @@ func _ready() -> void:
 	_levels()
 	_panels(hud)
 	await _session(rig)
+	await _drawers(hud)
 	_new_city(hud)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -162,6 +165,29 @@ func _new_city(hud: RoadcraftHud) -> void:
 	_check(asked == [[0, CHOSEN_SEED]], "a semente do formulário vai para a cidade nova: %s" % [asked])
 	hud.actions.new_city_at(0, CHOSEN_SEED)
 	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "o núcleo abre a cidade dessa semente")
+
+
+## The Landscape drawer: the brush's sliders on the left, inside its width; the Models shelf scrolls inside the window.
+func _drawers(hud: RoadcraftHud) -> void:
+	hud.open_category("landscape")
+	await _wait(DRAWER_FRAMES)
+	var options: Control = hud.drawer.options
+	_check(options.find_children("*", "HSlider", true, false).size() == RELIEF_SLIDERS, "sliders do Relevo no painel de opções")
+	_check(hud.drawer.strip.find_children("*", "HSlider", true, false).is_empty(), "nenhum slider na gaveta")
+	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "painel na largura do 4.0 (%.0f)" % hud.drawer.options_panel.size.x)
+	hud.drawer.select_tab(hud.drawer.category.tabs[1])
+	await _wait(DRAWER_FRAMES)
+	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "biomas cabem no painel (%.0f)" % hud.drawer.options_panel.size.x)
+	hud.open_category("build")
+	await _wait(DRAWER_FRAMES)
+	var right := hud.drawer.get_global_rect().end.x
+	_check(right <= hud.drawer.get_viewport_rect().size.x, "a prateleira de modelos fica dentro da janela (%.0f)" % right)
+	hud.drawer.close()
+
+
+func _wait(frames: int) -> void:
+	for i in frames:
+		await get_tree().process_frame
 
 
 func _panels(hud: RoadcraftHud) -> void:

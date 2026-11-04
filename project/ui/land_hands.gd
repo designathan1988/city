@@ -80,4 +80,6 @@ static func _run(name: String, drawer: HudDrawer) -> void:
 
 static func _rebuild(drawer: HudDrawer) -> void:
 	HudWidgets.clear(drawer.strip)
+	HudWidgets.clear(drawer.options)
 	LandStrips.build(drawer, drawer.strip, ToolController.Tool.find_key(drawer.tools.tool))
+	drawer.settle()

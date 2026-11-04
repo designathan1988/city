@@ -12,7 +12,9 @@ const KEY_META := &"model_key"
 @export var tools: ToolController
 
 @onready var _head: HBoxContainer = HudWidgets.hbox(self)
-@onready var _row: HBoxContainer = HudWidgets.hbox(self)
+@onready var _scroll: ScrollContainer = _scroller()
+@onready var _row: GridContainer = _grid()
+@onready var _room := 0.0 # what the drawer leaves, last it said
 @onready var _search: LineEdit = _line("builder.search")
 @onready var _groups: OptionButton = _group_list()
 @onready var _name_box: LineEdit = _line("building.blueprintName")
@@ -26,6 +28,7 @@ static func fill(col: Container, controller: ToolController) -> void:
 
 
 func _ready() -> void:
+	add_to_group(HudDrawer.FITS)
 	_studio.pictured.connect(_show_picture)
 	_search.text_changed.connect(func(_text: String) -> void: _show_cards())
 	_groups.item_selected.connect(func(_i: int) -> void: _show_cards())
@@ -33,6 +36,25 @@ func _ready() -> void:
 	keep.pressed.connect(_keep)
 	_head.add_child(keep)
 	_show_cards()
+
+
+func _scroller() -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	return scroll
+
+
+func _grid() -> GridContainer:
+	var grid := GridContainer.new()
+	_scroll.add_child(grid)
+	return grid
+
+
+## The width the drawer leaves for the cards (HudDrawer.FITS).
+func fit(width: float) -> void:
+	_room = width
+	_scroll.custom_minimum_size.x = minf(width, _row.get_combined_minimum_size().x)
 
 
 func _line(hint_key: String) -> LineEdit:
@@ -82,6 +104,8 @@ func _show_cards() -> void:
 			_row.add_child(_card(e))
 	if _row.get_child_count() == 0:
 		HudWidgets.label(_row, &"MutedLabel", tr("builder.search.none"))
+	_row.columns = maxi(1, ceili(_row.get_child_count() / float(LandStrips.CARD_ROWS)))
+	fit.call_deferred(_room)
 
 
 func _card(entry: Dictionary) -> Control:
@@ -89,6 +113,7 @@ func _card(entry: Dictionary) -> Control:
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = true
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	b.set_meta(KEY_META, entry.key)
 	b.pressed.connect(_choose.bind(entry))
 	_studio.ask.call_deferred(entry.key, _bytes(entry))
