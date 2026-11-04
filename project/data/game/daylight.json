@@ -58,6 +58,7 @@
   "fog_density": 7.15e-05,
  "air_high": "#3d5a82",
  "air_night_cut": 0.85,
+ "air_height_m": 1200.0,
  "glow_from_night": 0.04,
  "glow_intensity": 0.6,
  "glow_threshold": 1.05,

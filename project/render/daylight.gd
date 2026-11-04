@@ -109,6 +109,8 @@ func follow_view(camera: Camera3D) -> void:
 		return
 	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
 	_env.fog_light_color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
+	var y: float = maxf(camera.global_position.y, 1.0)
+	_env.fog_density = _d.fog_density * _d.air_height_m / y * (1.0 - exp(-y / _d.air_height_m)) # the air thins with height
 	var down: float = maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
 	var depth: float = clampf(camera.global_position.y / down + _d.shadow_reach_m, shadow_least_m, _d.shadow_depth_max_m)
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
@@ -156,4 +158,3 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
 	_sky.set_shader_parameter("sun_color", sun_col)
 	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
-	_env.fog_density = _d.fog_density

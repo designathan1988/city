@@ -54,6 +54,7 @@
   "overcast_fill": { "type": "number" },
   "air_high": { "type": "string", "pattern_prefix": "#" },
   "air_night_cut": { "type": "number" },
+  "air_height_m": { "type": "number" },
   "overcast_ambient": { "type": "number" },
   "overcast_sky": { "type": "number" },
   "overcast_grey": { "type": "string", "pattern_prefix": "#" },
