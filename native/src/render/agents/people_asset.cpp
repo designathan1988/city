@@ -58,31 +58,36 @@ float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_
 Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
-	PackedVector2Array uv, uv2;
-	PackedByteArray bones, weights;
+	PackedVector2Array uv2;
+	PackedInt32Array bones;
+	PackedFloat32Array weights;
 	PackedInt32Array idx;
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
-	uv.resize(sz.vertices);
 	uv2.resize(sz.vertices);
 	bones.resize(int64_t(sz.vertices) * CHANNELS);
 	weights.resize(int64_t(sz.vertices) * CHANNELS);
+	uint8_t b8[CHANNELS], w8[CHANNELS];
 	for (uint32_t i = 0; i < sz.vertices; i++) {
 		float p[3], n[3];
 		for (float &v : p) v = r.get<float>();
 		for (float &v : n) v = r.get<float>();
 		uint32_t c = r.get<uint32_t>();
-		r.get_bytes(bones.ptrw() + i * CHANNELS, CHANNELS);
-		r.get_bytes(weights.ptrw() + i * CHANNELS, CHANNELS);
+		r.get_bytes(b8, CHANNELS);
+		r.get_bytes(w8, CHANNELS);
 		float detail = r.get<float>();
 		pos.set(i, Vector3(p[0], p[1], p[2]));
 		nor.set(i, Vector3(n[0], n[1], n[2]));
-		// the first three weights in UV and COLOR.a (the fourth is what they leave of 1): standard attributes every
-		// renderer carries (the Compatibility renderer dropped CUSTOM1's g, b and a)
-		const uint8_t *w = weights.ptr() + i * CHANNELS;
-		uv.set(i, Vector2(float(w[0]) / BYTE_MAX, float(w[1]) / BYTE_MAX));
-		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), float(w[2]) / BYTE_MAX));
+		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), 1));
+		// the skin in the engine's own skin attributes (BONE_INDICES / BONE_WEIGHTS in the shader), the weights made to
+		// sum to 1 exactly (the cooked bytes may miss it by a unit)
+		int sum = 0;
+		for (int k = 0; k < CHANNELS; k++) sum += w8[k];
+		for (int k = 0; k < CHANNELS; k++) {
+			bones.set(int64_t(i) * CHANNELS + k, int32_t(b8[k]));
+			weights.set(int64_t(i) * CHANNELS + k, sum > 0 ? float(w8[k]) / float(sum) : (k == 0 ? 1.f : 0.f));
+		}
 		uv2.set(i, Vector2(float(c >> (3 * BYTE_BITS)), detail));
 	}
 	idx.resize(sz.indices);
@@ -93,14 +98,16 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	arr[Mesh::ARRAY_VERTEX] = pos;
 	arr[Mesh::ARRAY_NORMAL] = nor;
 	arr[Mesh::ARRAY_COLOR] = col;
-	arr[Mesh::ARRAY_TEX_UV] = uv;
 	arr[Mesh::ARRAY_TEX_UV2] = uv2;
-	arr[Mesh::ARRAY_CUSTOM0] = bones;
+	arr[Mesh::ARRAY_BONES] = bones;
+	arr[Mesh::ARRAY_WEIGHTS] = weights;
 	arr[Mesh::ARRAY_INDEX] = idx;
-	uint64_t flags = uint64_t(Mesh::ARRAY_CUSTOM_RGBA8_UNORM) << Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	// no skeleton is bound (the MultiMesh is skinned by people.gdshader from the palette), so the bone attributes stay as
+	// data. Not CUSTOM0/1: Godot 4.7.2's Compatibility renderer gives an RGBA8 custom attribute one component
+	// (drivers/gles3/storage/mesh_storage.cpp: size = fmtsize / sizeof(float)), so g, b, a read 0, 0, 1
 	Ref<ArrayMesh> m;
 	m.instantiate();
-	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(), BitField<Mesh::ArrayFormat>(flags));
+	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
 	return m;
 }
 } // namespace

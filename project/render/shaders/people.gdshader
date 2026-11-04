@@ -1,7 +1,7 @@
 // Pedestrians (native/src/render/agents/people_renderer.cpp, Roadcraft render/people crowd.ts + looks.ts): the cooked
 // MakeHuman bodies skinned with the walk palette (3 RGBA float texels per bone and frame = rows of the 3x4 bind -> pose
-// matrix, as 16-bit fixed point in RGBA8 texel pairs). CUSTOM0 = 4 bone indices; UV.x, UV.y, COLOR.a = the first three
-// weights, the fourth what they leave of 1 (CUSTOM1 lost three of them in the Compatibility renderer). UV2 = (region, tint detail).
+// matrix, as 16-bit fixed point in RGBA8 texel pairs). BONE_INDICES / BONE_WEIGHTS = 4 bones and their weights (sum 1; no
+// skeleton is bound, they are plain data here). UV2 = (region, tint detail).
 // INSTANCE_CUSTOM (half floats in Compatibility, small exact integers) = (first palette row, frames + 64 * top,
 // bottom + 17 * hair + 256 * skin, walk phase 0..1); top / bottom 0 = texture colour, k + 1 = clothes k; hair 0..7
 // hairs, 8..11 greys; skin 0..7 steps.
@@ -49,11 +49,11 @@ void vertex() {
 	int row1 = int(INSTANCE_CUSTOM.r + 0.5) + (f0 + 1 < int(frames) ? f0 + 1 : 0);
 	float t = fract(f);
 	// unused slots may name any byte: keep every fetch inside the palette (out-of-range reads can be NaN)
-	ivec4 bones = min(ivec4(CUSTOM0 * BYTE + 0.5), ivec4(LAST_BONE));
+	ivec4 bones = min(ivec4(BONE_INDICES), ivec4(LAST_BONE));
 	vec4 p = vec4(VERTEX, 1.0);
 	vec4 n = vec4(NORMAL, 0.0);
-	// linear blend of the four bones (MultiMesh instance colour is white with alpha 1 for people: COLOR.a is the weight)
-	vec4 w = vec4(UV.x, UV.y, COLOR.a, max(0.0, 1.0 - UV.x - UV.y - COLOR.a));
+	// linear blend of the four bones
+	vec4 w = BONE_WEIGHTS;
 	vec3 pos = vec3(0.0), nor = vec3(0.0);
 	for (int i = 0; i < 4; i++) {
 		pos += w[i] * mix(bone_point(bones[i], row0, p), bone_point(bones[i], row1, p), t);
