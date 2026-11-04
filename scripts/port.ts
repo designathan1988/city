@@ -29,6 +29,12 @@ const SERVER_DIR = path.join(CACHE, 'source-server');
 const SERVER_STATE = path.join(SERVER_DIR, 'server.json');
 const LOCK_STALE_MS = 30_000;
 const LOCK_WAIT_MS = 10_000;
+/** One photo run of the 4.0 at a time, machine-wide: measured on this machine one run takes 40-54 % of the 3D engine of its GPU, about 245 % of a core and 3 GB of video memory, so two at once freeze the desktop. */
+const PHOTO_SLOT = path.join(SERVER_DIR, 'photo-slot.json');
+const SLOT_POLL_MS = 2000;
+const SLOT_TELL_MS = 30_000;
+const SLOT_MAX_WAIT_MS = 45 * 60_000;
+const SLOT_STALE_GRACE_S = 600;
 const MIN_NODE = [23, 6];
 
 const MACHINE_KEYS = ['source', 'game', 'ports', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
@@ -310,6 +316,72 @@ function releaseServer(): void {
   });
 }
 
+interface SlotHolder {
+  pid: number;
+  who: string;
+  since: number;
+}
+
+function readSlot(): SlotHolder | null {
+  try {
+    return JSON.parse(fs.readFileSync(PHOTO_SLOT, 'utf8')) as SlotHolder;
+  } catch {
+    return null;
+  }
+}
+
+/** A holder is dead when its process is gone, or when it has held the slot longer than any run may (its own --timeout plus a grace): a reused PID cannot hold it forever. */
+function slotIsStale(holder: SlotHolder | null, timeoutS: number): boolean {
+  if (!holder) {
+    // A file that cannot be read is a writer that died between creating it and writing it, once it is old.
+    try {
+      return Date.now() - fs.statSync(PHOTO_SLOT).mtimeMs > LOCK_STALE_MS;
+    } catch {
+      return false;
+    }
+  }
+  return !alive(holder.pid) || Date.now() - holder.since > (timeoutS + SLOT_STALE_GRACE_S) * 1000;
+}
+
+let slotHeld = false;
+function releasePhotoSlot(): void {
+  if (!slotHeld) return;
+  slotHeld = false;
+  if (readSlot()?.pid === process.pid) fs.rmSync(PHOTO_SLOT, { force: true });
+}
+
+/** Waits for the machine-wide photo slot and takes it; released at exit, and taken over from a dead or overlong holder. */
+async function takePhotoSlot(who: string, timeoutS: number): Promise<void> {
+  fs.mkdirSync(SERVER_DIR, { recursive: true });
+  process.on('exit', releasePhotoSlot);
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(signal, () => process.exit(130));
+  const started = Date.now();
+  let told = 0;
+  for (;;) {
+    try {
+      const fd = fs.openSync(PHOTO_SLOT, 'wx');
+      fs.writeSync(fd, JSON.stringify({ pid: process.pid, who, since: Date.now() } satisfies SlotHolder));
+      fs.closeSync(fd);
+      slotHeld = true;
+      if (told) console.log(`port: photo slot taken after ${Math.round((Date.now() - started) / 1000)} s`);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+    const holder = readSlot();
+    if (slotIsStale(holder, timeoutS)) {
+      fs.rmSync(PHOTO_SLOT, { force: true });
+      continue;
+    }
+    if (Date.now() - started > SLOT_MAX_WAIT_MS) fail(`no photo slot in ${SLOT_MAX_WAIT_MS / 60_000} min; held by ${holder?.who ?? '?'} (pid ${holder?.pid ?? '?'})`);
+    if (Date.now() - told > SLOT_TELL_MS) {
+      console.log(`port: waiting for the photo slot, held by ${holder?.who ?? '?'} (pid ${holder?.pid ?? '?'}) for ${Math.round((Date.now() - (holder?.since ?? Date.now())) / 60_000)} min; waiting ${Math.round((Date.now() - started) / 1000)} s`);
+      told = Date.now();
+    }
+    await new Promise((r) => setTimeout(r, SLOT_POLL_MS));
+  }
+}
+
 /** A lease on the 4.0's dev server, started when nobody has it: two runs share one server, and the last to leave stops it. */
 async function leaseServer(m: Machine): Promise<void> {
   process.on('exit', releaseServer);
@@ -354,16 +426,27 @@ async function reference(m: Machine, feature: string, args: readonly string[]): 
   const plan = (at >= 0 ? args.filter((_, i) => i !== at && i !== at + 1) : args)[0];
   if (!plan || !fs.existsSync(plan)) fail('give a look plan JSON (the 4.0\'s scripts/look format; city {"size": "small", "seed": 7})');
   const out = path.join(portDir(m, feature), 'reference');
+  await takePhotoSlot(feature, timeoutS);
   await leaseServer(m);
   console.log(`\n> look ${plan} -> ${out}`);
   return runLook(m, plan, out, timeoutS);
 }
 
 /** What holds the shared server now, and stopping it when nobody does. */
-function serverCommand(action: string | undefined): number {
+async function serverCommand(action: string | undefined, rest: readonly string[]): Promise<number> {
+  if (action === 'hold') {
+    const seconds = Number(rest[0]);
+    if (!Number.isFinite(seconds) || seconds <= 0) fail('server hold <seconds>');
+    await takePhotoSlot('hold', LOOK_TIMEOUT_S);
+    console.log(`port: holding the photo slot for ${seconds} s`);
+    await new Promise((r) => setTimeout(r, seconds * 1000));
+    return 0;
+  }
   if (action === 'status') {
     const leases = underLock(() => liveLeases());
     console.log(`4.0 server ${SOURCE_SERVER}: ${answersNow(SOURCE_SERVER) ? 'answering' : 'not answering'}; started by a run: ${recordedServer() ?? 'no'}; runs holding it: ${leases.join(', ') || 'none'}`);
+    const holder = readSlot();
+    console.log(`photo slot: ${holder && !slotIsStale(holder, LOOK_TIMEOUT_S) ? `held by ${holder.who} (pid ${holder.pid}) for ${Math.round((Date.now() - holder.since) / 1000)} s` : 'free'}`);
     return 0;
   }
   if (action === 'stop') {
@@ -384,7 +467,9 @@ const HELP = `node scripts/port.ts <command> [--machine <file>] ...
   reference <feature> <plan> [--timeout <s>]
                                   photos of the 4.0 by its scripts/look.mjs -> <ports>/<feature>/reference; runs share one dev server
                                   (the last to finish stops it) and look.mjs is stopped, tree and all, after --timeout (default 3600)
-  server status|stop              who holds the shared 4.0 dev server; stop it when no run does
+  server status|stop              who holds the shared 4.0 dev server and the photo slot; stop the server when no run does
+  server hold <seconds>           takes the machine-wide photo slot for that long (test and operation)
+  (reference waits for the photo slot: one 4.0 photo run at a time on the whole machine)
   pack <feature>                  the branch's commits as a package -> <ports>/<feature>/package
   sandbox <feature>               the package verified from a fresh clone, before and after; prints the manual integration`;
 
@@ -405,7 +490,7 @@ async function main(argv: readonly string[]): Promise<number> {
     case 'verify': return verify(m, featureName(name), rest);
     case 'audit': return audit(m, featureName(name));
     case 'reference': return reference(m, featureName(name), rest);
-    case 'server': return serverCommand(name);
+    case 'server': return serverCommand(name, rest);
     case 'pack': return pack(m, featureName(name));
     case 'sandbox': return sandbox(m, featureName(name));
     default:
