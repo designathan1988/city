@@ -1,11 +1,11 @@
-## The camera's motion over time (Roadcraft view/cameraMotion.ts): held keys and wheel notches turned into a glide.
+## The camera's motion over time: held keys and wheel notches turned into a glide.
 ## W A S D / arrows pan, Q/E turn (Shift: a quarter turn), Page Up/Down tilt, + / - zoom about the centre, Shift held
 ## goes `key_shift` times faster, Home resets. A held key eases to its speed and back (time constant `key_ease_s`);
 ## each wheel notch is spent over `wheel_ease_s` about the ground point it was turned over.
 class_name CameraMotion
 extends RefCounted
 
-## Key (physical) -> [axis, sign]. Q is a turn of -1 in Roadcraft's azimuth, which is +yaw here (`step`).
+## Key (physical) -> [axis, sign]. Q turns the view to the left: a turn of -1, which is +yaw here (`step`).
 const KEYS := {
 	KEY_W: [&"forward", 1], KEY_UP: [&"forward", 1], KEY_S: [&"forward", -1], KEY_DOWN: [&"forward", -1],
 	KEY_A: [&"right", -1], KEY_LEFT: [&"right", -1], KEY_D: [&"right", 1], KEY_RIGHT: [&"right", 1],

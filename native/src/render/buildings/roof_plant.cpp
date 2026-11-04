@@ -1,4 +1,4 @@
-// Roof plant on flat roofs (4.0 r40/world/buildings/roofPlant.ts, roofMesh.ts :23-112): the 12 kinds in catalogue
+// Roof plant on flat roofs: the 12 kinds in catalogue
 // order with their sizes, caps and chances by use, packed on a 0.5 m occupancy grid inside a 0.8 m margin, with a
 // two-cell clear ring round every piece and the machine rooms. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
 // 0x5f3759df). Drains, masts and dish posts are fine parts.
@@ -174,7 +174,7 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;
 	for (int k = 0; k < PLANT_KINDS; k++) {
 		const PlantDef &d = PLANT[k];
-		float per_area = k == AIR_HANDLER ? pl.data->air_handler_per_area : d.per_area;
+		float per_area = k == AIR_HANDLER ? pl.look->air_handler_per_area : d.per_area;
 		float p = std::min(1.f, chance(PlantKind(k), use, v.top(), area, age, !b.cores.empty()));
 		int count = per_area > 0 ? std::min(PER_AREA_CAP * d.max, int(std::round(area / per_area * p + ROUND_JITTER * float(r.next())))) : 0;
 		for (int n = 0; per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {

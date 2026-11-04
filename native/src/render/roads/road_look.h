@@ -1,6 +1,7 @@
 // What the road meshes look like, read once from project/data/render/streets.json: strip colours and heights, the
-// junction corner and dead-end shapes, painted markings, gutters, dropped kerbs and the street-lamp layout the night
-// light pools follow. Also the vertex conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
+// junction corner and dead-end shapes, painted markings, gutters and dropped kerbs. Where the lamps the night light
+// pools follow stand and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). Also the vertex
+// conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
 #pragma once
 
 #include "sim/roads/profiles.h"
@@ -8,6 +9,8 @@
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+
+#include <vector>
 
 namespace city {
 
@@ -23,10 +26,6 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / MAT_SCALE);
 }
 
-struct LampLook {
-	float first = 0, step = 1, end_clear = 0, inset = 0, reach = 0, median_min = 0;
-};
-
 struct StreetLook {
 	godot::Color surface[4], paving[4], median[4], parking, bike, shoulder, curb, barrier, gutter, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
@@ -36,21 +35,13 @@ struct StreetLook {
 	float arc_step = 0, dead_end_depth = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
-	float paint_lift = 0, line_clear = 0, dash_period = 1, dash_duty = 0, zebra_from = 0, zebra_to = 0, zebra_period = 1, zebra_bar = 0;
-	float stop_from = 0, stop_to = 0, double_gap = 0;
-	LampLook lamp;
+	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
+	// Longitudinal lines by the road's speed: `line_w` below line_fast_kmh, `line_fast_w` from it; an exclusive lane's
+	// line `exclusive_w`; dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond.
+	float line_w = 0, line_fast_w = 0, line_fast_kmh = 0, exclusive_w = 0;
+	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
-
-// Where a profile's lamps stand (Roadcraft jobs/props.ts lamps, render/roads.ts pools): pole u on the right
-// sidewalk (else the left), the head `reach` metres toward the carriageway; a second row on the left sidewalk when
-// the profile has a median. Pools: du = |u - centre| - half_span.
-struct LampRow {
-	bool any = false, twin = false;
-	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
-	float centre = 0, half_span = 0;
-};
-LampRow lamp_row(const Profile &p, const LampLook &l);
 
 } // namespace city

@@ -1,6 +1,6 @@
 ## GameFlow: the explicit state machine of the application. The only place that changes scenes or quits
 ## (gate FLUXO_CENTRAL). Every transition is validated. It holds the states the game
-## has: the play scene (project main scene) generates a city and plays it; a main menu (Roadcraft's title screen) is not
+## has: the play scene (project main scene) generates a city and plays it; a main menu (title screen) is not
 ## built yet (CLAUDE.md Pendências), so there is no menu nor loading state to go to.
 extends Node
 

@@ -31,7 +31,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 - **Um dono por definição:** valores ajustáveis vivem só em `project/data/**` (tabelas JSON com schema).
   Nomes do tuning: X-macro `CITY_TUNING_FIELDS`; valores: `data/catalog/tuning.json` (`gate_tuning.py` exige
   as mesmas chaves e que todas sejam lidas). Regras com dono único estão em `tools/gates/owners.json`
-  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, dinheiro, estado do jogo);
+  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, estado do jogo);
   reimplementar o padrão em outro arquivo gera `DONO_UNICO`.
 - **Sem números mágicos** em `native/src`, `project/game`, `project/ui` (`NUMERO_MAGICO`): dê nome
   (constante no dono) ou mova para dados. Valor distintivo de um dado redigitado no código → `VALOR_DUPLICADO`;
@@ -79,7 +79,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
 
 **API GDExtension — native/src/api**
-- `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` — Dictionary → Catalog estrito; a X-macro do tuning dita as chaves
+- `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` — buildings.json → tabelas do gerador de prédios da simulação
+- `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
@@ -101,9 +102,21 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/units.h` · `native/src/core/laps.h` — unidades físicas e de calendário (único dono dos fatores); cronômetro das sondas
 
 **Núcleo — native/src/sim**
-- `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação e consultas espaciais
+- `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação, consultas espaciais e tabelas do gerador
+- `native/src/sim/buildings/lot_access.cpp` · `native/src/sim/buildings/lot_access.h` · `native/src/sim/buildings/b40/record.cpp` · `native/src/sim/buildings/b40/record.h` — portões, vagas e docas do lote com o caminho até o portão (grade, Dijkstra) para o tráfego; corpo de um registro, referencial do lote e árvores do lote (dono único)
+- `native/src/sim/buildings/b40/data.h` · `native/src/sim/buildings/b40/types.h` — tabelas do gerador (estilos, paletas, aberturas) e vocabulário do corpo (bays, telhados, acabamentos, lote)
+- `native/src/sim/buildings/b40/gen.h` · `native/src/sim/buildings/b40/massing.h` · `native/src/sim/buildings/b40/paint.cpp` · `native/src/sim/buildings/b40/paint.h` — gerador do corpo de um registro num Xoshiro128, passos comuns do massing; ajuste HSL de telhado e segunda pele
+- `native/src/sim/buildings/b40/massing_core.cpp` · `native/src/sim/buildings/b40/massing_house.cpp` · `native/src/sim/buildings/b40/massing_tall.cpp` ·
+  `native/src/sim/buildings/b40/massing_works.cpp` — corpo de um registro (blocos, telhados, segunda pele); casas; apartamentos, torres, lojas e escritórios; galpões
+- `native/src/sim/buildings/b40/facade_compose.cpp` — gramática de fachada (dono da fachada)
+- `native/src/sim/buildings/b40/lot_plan.cpp` — plano do lote crescido (frente, lados e fundo)
+- `native/src/sim/buildings/b40/lot_layout.h` · `native/src/sim/buildings/b40/lot_space.cpp` · `native/src/sim/buildings/b40/lot_ground.cpp` · `native/src/sim/buildings/b40/lot_boundary.cpp` — o lote: zonas, portas, caminhos reservados e regra de encaixe; chão e caminhos do carro e da porta; divisa fechada por construção e portões
+- `native/src/sim/buildings/b40/lot_cars.cpp` · `native/src/sim/buildings/b40/lot_front.cpp` · `native/src/sim/buildings/b40/lot_back.cpp` · `native/src/sim/buildings/b40/lot_yard.cpp` — vaga de toda casa (garagem,
+  cobertura, vaga de frente), acessos e becos; frente; estacionamento, serviço, pátio e docas; quintal e pátios livres
+- `native/src/sim/buildings/b40/civic.cpp` · `native/src/sim/buildings/b40/civic.h` · `native/src/sim/buildings/b40/civic_services.cpp` · `native/src/sim/buildings/b40/open_lots.cpp`
+  — corpos cívicos (escola, igreja, hospital; posto, mercado, prefeitura, polícia, bombeiros) e lotes abertos (praça, parque, quadra, vazio)
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
-- `native/src/sim/catalog/catalog.h` — tipos do catálogo (sem valores)
+- `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
@@ -134,6 +147,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
+- `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` · `native/src/sim/roads/street_furniture_posts.cpp` · `native/src/sim/roads/street_furniture_internal.h` — dono único de onde fica o mobiliário da rua (hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render; postes e semáforos; zonas da calçada
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
 - `native/src/sim/simulation/simulation.cpp` · `native/src/sim/simulation/simulation.h` — thread do tick, velocidades e relógio
@@ -155,9 +169,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/lane_graph_internal.h` — superfície interna do grafo de faixas
 - `native/src/sim/traffic/lane_list.cpp` — listas por faixa/conector e lista micro de veículos
 - `native/src/sim/traffic/meso.cpp` — modelo meso distante (uma fila por faixa)
-- `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: faixas da calçada (desvio, distância) e lugares de espera na guia
-- `native/src/sim/traffic/ped_routes.cpp` — rotas a pé e caminho de esquina
-- `native/src/sim/traffic/pedestrians.cpp` — pedestres com destino
+- `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: quem vê quem (listas por calçada e por cruzamento, as "walking areas" do SUMO) e os corpos remapeados no trecho de cada um
+- `native/src/sim/traffic/ped_furniture.cpp` · `native/src/sim/traffic/ped_kerb.cpp` · `native/src/sim/traffic/ped_stripes.cpp` · `native/src/sim/traffic/ped_stripes.h` — mobiliário como corpos nas calçadas; espera na guia; faixas do SUMO em calçada, esquina e faixa
+- `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
 - `native/src/sim/traffic/traffic_state.h` — grafo de faixas, veículos, pedestres, meso e pools
@@ -173,32 +187,19 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/agents/heavy_meshes.cpp` — ônibus, caminhão e moto
 - `native/src/render/agents/people_asset.cpp` · `native/src/render/agents/people_asset.h` — pessoas cozidas (people.bin)
 - `native/src/render/agents/people_renderer.cpp` · `native/src/render/agents/people_renderer.h` — pedestres com esqueleto no shader e 2 níveis
-- `native/src/render/buildings/b40_data.cpp` · `native/src/render/buildings/b40_data.h` — buildings.json → tabelas do gerador 4.0
-- `native/src/render/buildings/b40_gen.h` — gerador 4.0 passo a passo num Xoshiro128
-- `native/src/render/buildings/b40_paint.cpp` · `native/src/render/buildings/b40_paint.h` — ajuste HSL de telhado e segunda pele
-- `native/src/render/buildings/b40_types.h` — vocabulário 4.0 (bays, telhados, acabamentos) e corpos
-- `native/src/render/buildings/building_bodies.cpp` · `native/src/render/buildings/building_bodies.h` — cache de corpos e colocação no mundo
+- `native/src/render/buildings/building_bodies.cpp` · `native/src/render/buildings/building_bodies.h` · `native/src/render/buildings/building_look.cpp` · `native/src/render/buildings/building_look.h`
+  — cache de corpos e colocação no mundo; buildings.json → frações dos níveis, bandas de peças e medidas das peças finas
 - `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` — streaming dos níveis near/mid/far por chunk e superchunk
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
-- `native/src/render/buildings/civic.cpp` · `native/src/render/buildings/civic.h` — corpos cívicos (praça, escola, igreja, hospital)
-- `native/src/render/buildings/civic_services.cpp` — posto, mercado, prefeitura, polícia e bombeiros
+- `native/src/render/buildings/civic.h` — repasse para `native/src/sim/buildings/b40/civic.h` enquanto `native/src/render/trees/tree_place.cpp` (outra área) não troca o include
 - `native/src/render/buildings/facade.h` — corpo colocado no mundo e emissores que o desenham
 - `native/src/render/buildings/facade_bay.cpp` · `native/src/render/buildings/facade_bay.h` — abertura de uma bay, parede e peças
-- `native/src/render/buildings/facade_compose.cpp` — gramática de fachada 4.0 (dono da fachada)
 - `native/src/render/buildings/facade_emit.cpp` — paredes de cada volume, lado, andar e bay
 - `native/src/render/buildings/facade_parts.cpp` — peças de cada componente de bay
 - `native/src/render/buildings/facade_props.cpp` — AC, antenas e vasos dos andares altos
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
-- `native/src/render/buildings/lot_emit.cpp` — elementos de lote (calçadas, muros, portões)
-- `native/src/render/buildings/lot_furnish.cpp` — mobiliário do lote (jardim, piscina, cerca)
-- `native/src/render/buildings/lot_plan.cpp` — plano do lote crescido (frente, lados e fundo)
-- `native/src/render/buildings/massing.h` — passos comuns do massing 4.0
-- `native/src/render/buildings/massing_core.cpp` — blocos, telhados, segunda pele e corpo de um registro
-- `native/src/render/buildings/massing_house.cpp` — casas (asa, varanda, bangalô etc.)
-- `native/src/render/buildings/massing_tall.cpp` — apartamentos, torres, lojas e escritórios
-- `native/src/render/buildings/massing_works.cpp` — galpões industriais
-- `native/src/render/buildings/open_lots.cpp` — praça, parque, quadra e lote vazio
+- `native/src/render/buildings/lot_emit.cpp` · `native/src/render/buildings/lot_props.cpp` — chão, muros, cercas e portões do lote; peças (vagas, docas, ralos, arbustos, flores, piscina, móveis, galpões, varal)
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
@@ -209,19 +210,18 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/shell.cpp` · `native/src/render/buildings/shell.h` — escrita de vértices das malhas de prédio
 - `native/src/render/chunk_jobs.h` · `native/src/render/chunk_queue.h` · `native/src/render/mesh_queue.h` — jobs por chunk, conversão no orçamento de envio e commit orçado; chunks ao redor da câmera; fila de uma superfície
 - `native/src/render/mesh_builder.cpp` · `native/src/render/mesh_builder.h` — emissores de primitivas e envio de malha
-- `native/src/render/model_library.cpp` · `native/src/render/model_library.h` — massas unitárias e modelos de data/render/models.json
 - `native/src/render/overlays/overlay_build.cpp` — malhas CPU das camadas, uma por chunk de 256 m
 - `native/src/render/overlays/overlay_renderer.cpp` · `native/src/render/overlays/overlay_renderer.h` — jobs das zonas e ciclo do congestionamento
 - `native/src/render/owned_segments.h` — segmentos que um chunk possui (pelo ponto médio)
 - `native/src/render/props/prop_kit.cpp` · `native/src/render/props/prop_kit.h` — malhas do mobiliário a partir dos dados
 - `native/src/render/props/prop_renderer.cpp` · `native/src/render/props/prop_renderer.h` · `native/src/render/props/signal_lamps.cpp` · `native/src/render/props/signal_lamps.h`
   — chunks do mobiliário; lentes dos semáforos, cada uma desenhada uma vez (um MultiMesh por chunk, acesa ou apagada pelo estado publicado)
-- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — colocação de postes, semáforos (um por acesso), árvores e mobiliário
+- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes, fios, semáforos (um por acesso), árvores
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` — placas de nó, beco sem saída e balão
-- `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook e fileiras de postes
+- `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
 - `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
@@ -258,13 +258,13 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos carros, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
-- `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc`
-  — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
+- `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc`
+  — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa)
 - `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
   modelo do renderizador); ruído de valor das vias; ruído de valor por hash inteiro do terreno e da água
 - `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
-- `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias), nos dois renderizadores
+- `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
@@ -283,10 +283,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
@@ -311,8 +311,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
   24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
   maior HLOD de superchunk 8,1 MiB).
-- Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lote: os pátios
-  livres do massing 4.0 (`free`, furnishZones.ts) não são mobiliados (`lot_furnish.cpp` condensado).
+- Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lotes: árvores do lote (`b40::lot_trees`) esperam `render/trees/tree_place.cpp` (e o include do repasse `render/buildings/civic.h`);
+  estacionar espera `sim/traffic` ler `sim/buildings/lot_access`; sem lote de esquina, garagem em encosta e caminhão nas docas; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
   Telhado, Interior, Cores), Paisagem (Solo, Natureza, Céu, Rua, Pessoas; rio e Aplainar mapa), paradas/estações/linhas,
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
@@ -322,8 +322,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
-- Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; não desviam de árvores, postes e mobiliário da calçada
-  (a colocação deles é do render: precisa passar para a simulação, dono único, para os dois lerem).
-- Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
-  (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
+- Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
+- Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
+  o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

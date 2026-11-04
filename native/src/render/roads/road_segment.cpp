@@ -1,4 +1,4 @@
-// Segment surface (Roadcraft jobs/roadMesh.ts buildSegment): the profile's strips split into pieces (gutters inside
+// Segment surface: the profile's strips split into pieces (gutters inside
 // the outer kerbs, the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
 // neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
 #include "render/roads/road_mesh.h"
@@ -129,7 +129,7 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
 	return out;
 }
 
-// Share of the full kerb height at d metres from a crossing mouth (Roadcraft rampShare).
+// Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.
 float ramp_share(const StreetLook &L, float d) {
 	if (d < L.ramp_full) return (L.ramp_full - d) / L.ramp_full;
 	if (d <= L.ramp_flat) return 0.f;
@@ -180,10 +180,11 @@ struct Ctx {
 	const RoadEmit &e;
 	const std::vector<Sample> &sm;
 	LampRow lamp;
-	float lamp0 = 0;
 	Vector2 pool(float u, float at) const {
 		if (!lamp.any) return Vector2(POOL_NONE, 0);
-		return Vector2(std::fabs(u - lamp.centre) - lamp.half_span, at - lamp0);
+		float du, dv;
+		lamp.pool(u, at, du, dv);
+		return Vector2(du, dv);
 	}
 	Vector3 at_u(size_t k, float u, float h) const { return sm[k].f.c + sm[k].f.left * u + Vector3(0, h, 0); }
 };
@@ -261,7 +262,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
 	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb);
 	std::vector<Piece> ps = pieces_of(e.L, p);
-	Ctx c{ e, sm, lamp_row(p, e.L.lamp), float(v0 + e.L.lamp.first) };
+	Ctx c{ e, sm, lamp_row(e.s.roads, sid) };
 	for (size_t i = 0; i < ps.size(); i++) {
 		tops(c, ps[i]);
 		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);

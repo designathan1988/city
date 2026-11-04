@@ -100,7 +100,7 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 			L.keep = open_per_ha * grid_m * grid_m / HA_M2;
 			continue;
 		}
-		L.cover = d["cover"];
+		L.cover = d["crown_cover"];
 		float crown = mean_reach(L.mix, kit) * 0.5f * (L.h0 + L.h1);
 		L.keep = std::min(1.f, L.cover * grid_m * grid_m / std::max(PI_F * crown * crown, grid_m));
 	}

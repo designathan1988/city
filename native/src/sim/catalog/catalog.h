@@ -2,6 +2,7 @@
 // structs once at startup and rejects missing keys. No values are written here.
 #pragma once
 
+#include "sim/catalog/furniture_types.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
@@ -71,6 +72,7 @@ struct Catalog {
 	OccupancyDef occupancy;
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
+	StreetFurnitureDef furniture; // data/catalog/street_furniture.json
 
 	bool ready() const { return !profiles.empty(); }
 	const Profile &profile(int id) const { return profiles[size_t(id) < profiles.size() ? size_t(id) : 0]; }

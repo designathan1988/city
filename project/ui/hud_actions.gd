@@ -1,4 +1,4 @@
-## What the Menu rows, the undo / redo buttons and the Ctrl shortcuts do (Roadcraft _hud().ts §7.1, keys §10): new map,
+## What the Menu rows, the undo / redo buttons and the Ctrl shortcuts do: new map,
 ## save the city (its own slot), save a copy of the map, open a saved city, load the last game, undo and redo.
 ## Everything goes through CityStore; the hint bar reports the result.
 class_name HudActions

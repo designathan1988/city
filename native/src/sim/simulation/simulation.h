@@ -1,5 +1,5 @@
-// The simulation clock (Roadcraft app/clock.ts + sim/worker.ts): a fixed 50 ms step on its own thread; at speed N
-// each tick runs N steps. One city minute passes per real second at 1x.
+// The simulation clock: a fixed step (sim_tick_hz, data/catalog/tuning.json) on its own thread, decoupled from the frame
+// rate (G. Fiedler, "Fix Your Timestep!", Gaffer On Games, 2004); at speed N each tick runs N steps.
 #pragma once
 
 #include "sim/state/city_state.h"

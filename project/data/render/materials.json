@@ -21,7 +21,6 @@
    "cobble_per_m": 4.2,
    "pool_color": "#ffd18c",
    "pool_sigma": 6.0,
-   "pool_step": 32.0,
    "pool_gain": 3.0,
    "plate_glow": 0.3,
    "pool_floor": 0.08

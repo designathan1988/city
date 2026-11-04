@@ -1,4 +1,4 @@
-// Node shapes (Roadcraft jobs/roadMesh.ts buildJunction / buildDeadEnd / buildBulb): an asphalt plate fanned from the
+// Node shapes: an asphalt plate fanned from the
 // node to every arm's mouth, the corners between neighbouring arms as kerb returns (sim/roads/junction.h
 // corner_fillet) or smooth curves, each corner carrying its kerb face, kerb stone and footway; dead ends get a footway
 // pad behind a kerb or a turning bulb.

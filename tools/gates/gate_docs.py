@@ -36,5 +36,6 @@ def check_claude_md(root, rules, files, err):
         if not os.path.exists(os.path.join(root, p)):
             err("MAPA_DESATUALIZADO", "CLAUDE.md", f"o mapa cita `{p}`, que não existe mais")
     lines = text.count("\n")
-    if lines > 330:
-        err("CLAUDE_MD", "CLAUDE.md", f"{lines} linhas: mantenha conciso (até 330); remova o que não é regra nem mapa")
+    limit = rules["claude_md_max_lines"]
+    if lines > limit:
+        err("CLAUDE_MD", "CLAUDE.md", f"{lines} linhas: mantenha conciso (até {limit}); remova o que não é regra nem mapa")

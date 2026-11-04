@@ -1,4 +1,4 @@
-## The drawer over the dock (Roadcraft hud.ts drawer, specs ui.md §5.1 and §6): the open category's tabs and a close
+## The drawer over the dock: the open category's tabs and a close
 ## button in the head, its strip below (road catalogue, zone cards or the tool's note). A tab or card asks for a tool
 ## with `tool_requested`; tabs whose tool the core does not have yet are drawn "being built" (ui.soon). Cards and
 ## sliders of the Relief, Draw and Roundabout strips change the tool's parameters (ToolController remembers them).

@@ -1,4 +1,4 @@
-## City camera rig, Roadcraft's perspective rig (render/isoViewport.ts): orbit about a ground point with a yaw, a
+## City camera rig, a perspective rig: orbit about a ground point with a yaw, a
 ## player tilt and `half`, the half height of the ground in view there. The lens, the tilt and the eye height follow
 ## `half` (CameraProfile), the point looked at follows the terrain, the eye never goes under the ground. Every move
 ## that holds a ground point under the pointer goes through `keeping`. Mouse gestures: CameraGestures; keys and
@@ -6,7 +6,7 @@
 class_name CityCamera
 extends Node3D
 
-## The right button clicked without a drag (Roadcraft: a right click cancels the gesture in progress).
+## The right button clicked without a drag: a right click cancels the gesture in progress.
 signal right_clicked
 
 ## Below this the ray runs along the plane and meets it nowhere.
@@ -49,7 +49,7 @@ func look_at_ground(p: Vector3) -> void:
 	_apply()
 
 
-## Camera popover (Roadcraft hud camera panel): a step of turn (eased, the way Q/E turn) or tilt.
+## Camera popover: a step of turn (eased, the way Q/E turn) or tilt.
 func turn(steps: int) -> void:
 	motion.turn(-deg_to_rad(cfg.turn_step_deg) * steps)
 
@@ -77,7 +77,7 @@ func jump(p: Vector3, yaw_deg: float, pitch_deg: float, dist: float) -> void:
 	_apply()
 
 
-## Home (Roadcraft camera.home): the start bearing, tilt and zoom over the same point.
+## Home: the start bearing, tilt and zoom over the same point.
 func reset_view() -> void:
 	stop()
 	yaw = deg_to_rad(cfg.start_yaw)
@@ -97,7 +97,7 @@ func _process(dt: float) -> void:
 	gestures.advance(dt)
 
 
-## A drag in progress owns the pointer, over the interface too (Roadcraft captures the pointer).
+## A drag in progress owns the pointer, over the interface too.
 func _input(event: InputEvent) -> void:
 	if gestures.captured(event):
 		get_viewport().set_input_as_handled()

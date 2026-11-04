@@ -153,9 +153,9 @@ void parks(const CityState &s, const TreeLook &T, const Lists &l, int64_t key, s
 	}
 }
 
-void street(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, int64_t key, std::vector<TreeInstance> &out) {
+void street(const CityState &s, const StreetLook &L, const TreeLook &T, int64_t key, std::vector<TreeInstance> &out) {
 	std::vector<TreeSpot> spots;
-	place_street_trees(s, L, F, key, spots);
+	place_street_trees(s, L, key, spots);
 	for (const TreeSpot &t : spots) {
 		uint32_t h = hash_combine(hash_combine(uint32_t(int(t.p.x)), uint32_t(int(t.p.z))), STREET_SALT);
 		float height = t.scale * T.street_height_m;
@@ -169,19 +169,19 @@ FarCard far_of(const TreeInstance &t, const TreeKit &kit) {
 }
 } // namespace
 
-void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeInstance> &out) {
 	Lists l = lists(s, key);
-	street(s, L, F, T, key, out);
+	street(s, L, T, key, out);
 	parks(s, T, l, key, out);
 	wild(s, T, kit, l, key, false, out);
 }
 
-void place_far(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<FarCard> &out) {
 	Lists l = lists(s, key);
 	std::vector<TreeInstance> lone;
-	street(s, L, F, T, key, lone);
+	street(s, L, T, key, lone);
 	parks(s, T, l, key, lone);
 	wild(s, T, kit, l, key, true, lone);
 	for (const TreeInstance &t : lone) out.push_back(far_of(t, kit));

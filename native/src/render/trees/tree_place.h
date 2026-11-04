@@ -1,4 +1,4 @@
-// Where trees grow (data/render/streets.json "trees.placement"): street trees from the footways (render/props/
+// Where trees grow (data/render/streets.json "trees.placement"): street trees where the simulation stands them (read through render/props/
 // street_props.h), groves in the park and square lots, and the woods of the open land. The woods follow a field of
 // patches (fractal value noise) whose thresholds are set from the land share the data asks to be inner wood and wood
 // edge (measured cover), raised on steep slopes and along water (the Forest Code's permanent protection areas); inside
@@ -65,10 +65,10 @@ struct FarCard {
 };
 
 // The trees of 256 m chunk `key`, near models.
-void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeInstance> &out);
 // The far cards of chunk `key`: its woods by cell, its lone, park and street trees one by one.
-void place_far(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<FarCard> &out);
 
 } // namespace city

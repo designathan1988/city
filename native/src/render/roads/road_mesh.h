@@ -1,10 +1,11 @@
-// The road mesher's pieces (Roadcraft jobs/roadMesh.ts): segment cross-sections (road_segment.cpp), junction plates,
+// The road mesher's pieces: segment cross-sections (road_segment.cpp), junction plates,
 // kerb returns and dead ends (road_junction.cpp), painted markings (road_markings.cpp). All of them append to one
 // MeshBuilder per chunk with the vertex conventions of road_look.h.
 #pragma once
 
 #include "render/mesh_builder.h"
 #include "render/roads/road_look.h"
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 namespace city {

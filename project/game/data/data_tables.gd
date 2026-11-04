@@ -9,6 +9,7 @@ const CATALOG := {
 	"zones": "res://data/catalog/zones.json",
 	"growth": "res://data/catalog/growth.json",
 	"traffic": "res://data/catalog/traffic.json",
+	"street_furniture": "res://data/catalog/street_furniture.json",
 }
 ## Tables split only to keep each file small; merged under the same key they extend.
 const CATALOG_FRAGMENTS := {
@@ -18,7 +19,6 @@ const CATALOG_FRAGMENTS := {
 	],
 }
 const RENDER_TABLES := {
-	"models": "res://data/render/models.json",
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
 	"buildings": "res://data/render/buildings.json",

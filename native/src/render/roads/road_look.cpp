@@ -1,4 +1,4 @@
-// Reads data/render/streets.json into StreetLook and lays out a profile's street lamps.
+// Reads data/render/streets.json into StreetLook.
 #include "render/roads/road_look.h"
 
 #include "core/color.h"
@@ -73,22 +73,23 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.yellow = hexc(m["yellow"]);
 	L.paint_lift = float(m["lift_m"]);
 	L.line_clear = float(m["line_clear_m"]);
-	L.dash_period = float(m["dash_period_m"]);
-	L.dash_duty = float(m["dash_duty"]);
-	L.zebra_from = float(m["zebra_from_m"]);
-	L.zebra_to = float(m["zebra_to_m"]);
+	L.line_w = float(m["line_m"]);
+	L.line_fast_w = float(m["line_fast_m"]);
+	L.line_fast_kmh = float(m["line_fast_kmh"]);
+	L.exclusive_w = float(m["exclusive_line_m"]);
+	auto floats = [&](const char *key, std::vector<float> &out) {
+		out.clear();
+		Array a = m[key];
+		for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
+	};
+	floats("dash_kmh", L.dash_kmh);
+	floats("dash_m", L.dash);
+	floats("gap_m", L.gap);
+	if (L.dash.empty() || L.dash.size() != L.gap.size() || L.dash.size() != L.dash_kmh.size() + 1)
+		errors.push_back("streets.json markings: dash_m e gap_m com uma faixa a mais que dash_kmh");
 	L.zebra_period = float(m["zebra_period_m"]);
 	L.zebra_bar = float(m["zebra_bar_m"]);
-	L.stop_from = float(m["stop_from_m"]);
-	L.stop_to = float(m["stop_to_m"]);
 	L.double_gap = float(m["double_gap_m"]);
-	Dictionary l = sub(t, "lamps", errors);
-	L.lamp.first = float(l["first_m"]);
-	L.lamp.step = float(l["step_m"]);
-	L.lamp.end_clear = float(l["end_clear_m"]);
-	L.lamp.inset = float(l["inset_m"]);
-	L.lamp.reach = float(l["reach_m"]);
-	L.lamp.median_min = float(l["median_min_m"]);
 }
 } // namespace
 
@@ -97,34 +98,6 @@ bool StreetLook::load(const Dictionary &t, PackedStringArray &errors) {
 	load_shape(*this, t, errors);
 	load_marks(*this, t, errors);
 	return errors.is_empty();
-}
-
-LampRow lamp_row(const Profile &p, const LampLook &l) {
-	LampRow r;
-	if (p.edges.empty() || p.rail || p.ring) return r;
-	const StripEdge &first = p.edges.front(), &last = p.edges.back();
-	bool right = first.strip.kind == StripKind::SIDEWALK, left = last.strip.kind == StripKind::SIDEWALK;
-	if (!right && !left) return r;
-	r.any = true;
-	if (right) {
-		r.pole_u = first.u0 + l.inset;
-		r.head_u = r.pole_u + l.reach;
-	} else {
-		r.pole_u = last.u1 - l.inset;
-		r.head_u = r.pole_u - l.reach;
-	}
-	float median = 0;
-	for (const StripEdge &e : p.edges)
-		if (e.strip.kind == StripKind::MEDIAN || e.strip.kind == StripKind::BARRIER) median += e.u1 - e.u0;
-	r.twin = right && left && median >= l.median_min;
-	r.centre = r.head_u;
-	if (r.twin) {
-		r.pole_u2 = last.u1 - l.inset;
-		r.head_u2 = r.pole_u2 - l.reach;
-		r.centre = (r.head_u + r.head_u2) * 0.5f;
-		r.half_span = (r.head_u2 - r.head_u) * 0.5f;
-	}
-	return r;
 }
 
 } // namespace city

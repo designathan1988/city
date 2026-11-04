@@ -1,4 +1,4 @@
-## Strip parts of the drawers that are not the road catalogue (specs ui.md §6.1 Roundabout, §6.3 Draw, §6.4 Relief):
+## Strip parts of the drawers that are not the road catalogue (Roundabout, Draw, Relief):
 ## icon cards that pick a tool parameter and labelled sliders ("<name>  <value>"). Texts are translated keys, sizes are
 ## tokens; the values go back to the tool through the callbacks.
 class_name DrawerStrips

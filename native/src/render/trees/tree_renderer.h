@@ -23,7 +23,7 @@ namespace city {
 
 class TreeRenderer {
 public:
-	bool init(const RenderContext &ctx, const StreetLook &look, const FurnitureLook &furniture, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
 	void mark_dirty(int64_t key);
 	void sync(const CityState &s, const godot::Vector3 &cam, BuildBudget &budget);
@@ -59,7 +59,6 @@ private:
 	void set_params(const godot::RID &material) const;
 	godot::RID scenario_, body_material_, card_material_;
 	const StreetLook *look_ = nullptr;
-	const FurnitureLook *furniture_ = nullptr;
 	TreeLook trees_;
 	TreeKit kit_;
 	std::unordered_map<int64_t, Near> near_;

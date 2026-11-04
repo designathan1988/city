@@ -1,4 +1,4 @@
-// Map layers of the Layers popover (Roadcraft hud.ts:508-522, specs ui.md §7.2), one mesh per 256 m chunk: zone colours
+// Map layers of the Layers popover, one mesh per 256 m chunk: zone colours
 // on the zoned road sides (built in a JobPool job when the chunk is dirty and the layer is on) and the congestion map
 // (each carriageway coloured by its vehicles' mean speed against the limit, rebuilt every refresh_s from the
 // PoseFrame's per-segment speed share, only for chunks within the road reach). Only reads the state.

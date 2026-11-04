@@ -1,4 +1,4 @@
-## Draw a building (Roadcraft lot mode "rect", Build › Desenhar): press at one corner, drag to the other, release to
+## Draw a building (Build › Desenhar): press at one corner, drag to the other, release to
 ## build. The lot lines up with the nearest road and faces it; the card picked in the strip says what it is (school,
 ## park, square, … or a building of the land use). The ribbon previews the rectangle green or red.
 extends ToolBase

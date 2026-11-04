@@ -35,12 +35,11 @@ float distance_to(int64_t key, float size, const Vector3 &cam) {
 }
 } // namespace
 
-bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, const FurnitureLook &furniture, PackedStringArray &errors) {
+bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	body_material_ = ctx.material("vegetation", errors);
 	card_material_ = ctx.material("vegetation_cards", errors);
 	look_ = &look;
-	furniture_ = &furniture;
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!t.has("trees")) {
@@ -90,7 +89,7 @@ TreeRenderer::Built TreeRenderer::build_near(const CityState &s, int64_t key) co
 	Built out;
 	out.key = key;
 	std::vector<TreeInstance> trees;
-	place_trees(s, *look_, *furniture_, trees_, kit_, key, trees);
+	place_trees(s, *look_, trees_, kit_, key, trees);
 	out.bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
 		float c = std::cos(t.yaw) * t.width, sn = std::sin(t.yaw) * t.width;
@@ -106,7 +105,7 @@ TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) con
 	std::vector<FarCard> cards;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
-			place_far(s, *look_, *furniture_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
+			place_far(s, *look_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
 	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, FAR_CARD_HALF_TALL);
 	return out;
 }

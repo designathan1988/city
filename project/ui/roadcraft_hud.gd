@@ -1,4 +1,4 @@
-## Roadcraft's shell (specs ui.md §2–§9): top bar (sky, clock, money, counts | speed pill | layers, simulation,
+## The game's shell: top bar (sky, clock, money, counts | speed pill | layers, simulation,
 ## camera, undo, redo, help, menu), the dock with the seven categories and their drawers, the hint bar, the inspector
 ## and the compass. Styles come from ui/theme/theme_builder.gd, texts from data/i18n/strings.csv, buttons from
 ## data/ui/drawers.json. The HUD only reads CityStore.snapshot and asks the ToolController for tools.
@@ -125,7 +125,7 @@ func _build_dock() -> void:
 		_cat_buttons[c.id] = b
 
 
-## Compass (specs ui.md §9): a round button bottom-right whose needle turns with the camera; a click puts north up.
+## Compass: a round button bottom-right whose needle turns with the camera; a click puts north up.
 func _build_compass() -> void:
 	var c := HudWidgets.button(&"CompassButton", "", "", "camera.north", "compass", "compass")
 	c.anchor_left = 1.0
@@ -149,7 +149,7 @@ func _build_compass() -> void:
 	_needle = needle
 
 
-## Hint bar above the drawer (Roadcraft hint/toast): the tool's instruction, the price while aiming, refusals.
+## Hint bar above the drawer: the tool's instruction, the price while aiming, refusals.
 func _build_hint() -> void:
 	var p := HudWidgets.panel(root, &"Toast")
 	p.anchor_left = 0.5
