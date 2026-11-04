@@ -1,6 +1,7 @@
 // Parses data/render/buildings.json into the building generator's tables (sim/buildings/b40/data.h). Every name is
 // checked; an unknown bay, finish or style name is an error at startup, never a silent default.
 #include "api/buildings_loader.h"
+#include "render/region_table.h"
 
 #include "core/color.h"
 
@@ -143,8 +144,9 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 }
 } // namespace
 
-bool load_buildings(const Dictionary &t, Data &d, PackedStringArray &errors) {
-	Array st = at(t, "styles");
+bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors) {
+	const Dictionary t = region_table(table);
+	Array st = at(t, "architectures");
 	for (int i = 0; i < st.size(); i++) d.styles.push_back(style_of(st[i], errors));
 	if (int(d.styles.size()) != STYLE_COUNT) errors.push_back("buildings.json: são 12 estilos");
 	Dictionary kw = at(t, "kind_weights");
