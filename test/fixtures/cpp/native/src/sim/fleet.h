@@ -34,4 +34,11 @@ struct Fleet {
 
 float clampf(float v, float lo, float hi);
 
+// What the engine calls every frame.
+struct Driver {
+	Fleet fleet;
+	Cruise cruise;
+	void _process(double delta);
+};
+
 } // namespace city

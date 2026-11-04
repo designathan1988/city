@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { runAudit } from '../src/audit/run.ts';
 import { removeTree } from '../src/common/files.ts';
 import { buildCppGraph } from '../src/cppgraph/build.ts';
 import type { EdgeKind, GraphIR } from '../src/graph/ir.ts';
@@ -64,6 +65,19 @@ describe('C++ graph', async () => {
     assert.equal(unit('native/src/sim/fleet.h#SPEED_LIMIT').facts.mutableModuleState, false);
     assert.ok(unit('native/src/sim/fleet.h#SPEED_LIMIT').facts.numericLiterals.every((l) => l.context === 'constant'));
     assert.ok(unit('native/src/sim/fleet.cpp#Fleet::drain').facts.external.some((e) => e.key.startsWith('std:') && e.key.endsWith('erase')));
+  });
+
+  it('is audited by the same catalog, the engine\'s _process rooting the frame path', () => {
+    const result = runAudit(ir, {
+      hot: [], uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [],
+      maxScattering: 0.5, minWriterFiles: 3, minConstantFiles: 3, allowedNumbers: null,
+    });
+    assert.deepEqual(result.hot.roots, ['native/src/sim/fleet.cpp#Driver::_process']);
+    const of = (rule: string) => result.findings.filter((f) => f.rule === rule).map((f) => `${f.severity} ${f.unit}`);
+    assert.deepEqual(of('hot-allocation'), [`medium ${tick}`]);
+    assert.deepEqual(of('quadratic-proximity'), [`medium ${tick}`]);
+    assert.deepEqual(of('queue-shift'), ['low native/src/sim/fleet.cpp#Fleet::drain']);
+    assert.ok(of('module-state').some((f) => f.endsWith('fleet.h#g_counter')));
   });
 
   it('writes nothing into the analysed project', () => {

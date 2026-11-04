@@ -32,6 +32,9 @@ export interface Finding {
 /** A rule either returns its findings or says why it could not run. */
 export type RuleOutcome = Finding[] | { readonly skipped: string };
 
+/** Godot's per-frame and per-physics-tick callbacks (Node._process, Node._physics_process), as C++ or script members. */
+const ENGINE_FRAME_CALLBACK = /(^|::|\.)_(physics_)?process$/;
+
 /** How execution flows on from running code: what it calls, constructs, dispatches to, or schedules. */
 const HOT_EDGES = new Set<EdgeKind>(['call', 'construct', 'implementation', 'callbackAssign', 'indirectCall', 'schedule']);
 
@@ -98,6 +101,8 @@ export class AuditContext {
       const reached = this.reach([callback], (edge) => HOT_EDGES.has(edge.kind));
       if ([...schedulers].some((s) => reached.has(s))) roots.add(callback);
     }
+    // The engine's own loop: Godot calls _process every rendered frame and _physics_process every physics tick.
+    for (const unit of this.ir.units) if (unit.facts.callable && ENGINE_FRAME_CALLBACK.test(unit.name)) roots.add(unit.id);
     for (const spec of this.options.hot) {
       const matched = this.byId.has(spec) ? [spec] : this.ir.units.filter((u) => u.file === spec || u.id.startsWith(spec)).map((u) => u.id);
       if (matched.length === 0) throw new Error(`--hot ${spec} matches no unit (give a unit id, an id prefix or a file)`);

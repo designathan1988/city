@@ -25,6 +25,10 @@ void Fleet::tick(Mover &m, float dt) {
 	g_counter++;
 }
 
+void Driver::_process(double delta) {
+	fleet.tick(cruise, float(delta));
+}
+
 float Fleet::drain() {
 	float sum = 0;
 	while (!queue.empty()) {

@@ -27,6 +27,8 @@ const S = {
   fiedler: { title: 'Fiedler, Fix Your Timestep!', url: 'https://gafferongames.com/post/fix_your_timestep/' },
   gameLoop: { title: 'Nystrom, Game Programming Patterns: Game Loop (fixed update time step, variable rendering)', url: 'https://gameprogrammingpatterns.com/game-loop.html' },
   shift: { title: 'ECMAScript, Array.prototype.shift (every remaining element is moved one index down)', url: 'https://tc39.es/ecma262/multipage/indexed-collections.html#sec-array.prototype.shift' },
+  vectorErase: { title: 'cppreference, std::vector::erase (linear in the elements after the erased ones)', url: 'https://en.cppreference.com/w/cpp/container/vector/erase' },
+  deque: { title: 'cppreference, std::deque (insertion or removal at either end is constant O(1))', url: 'https://en.cppreference.com/w/cpp/container/deque' },
   fastProps: { title: 'V8, Fast properties in V8 (delete and dynamic keys send objects to dictionary mode)', url: 'https://v8.dev/blog/fast-properties' },
   elements: { title: 'V8, Elements kinds in V8 (new Array(n) is holey forever; typed arrays for numbers)', url: 'https://v8.dev/blog/elements-kinds' },
   spatial: { title: 'Nystrom, Game Programming Patterns: Spatial Partition', url: 'https://gameprogrammingpatterns.com/spatial-partition.html' },
@@ -40,6 +42,7 @@ const S = {
   threeLots: { title: 'three.js manual, Optimize Lots of Objects (each Mesh is a draw request; merge or instance)', url: 'https://github.com/mrdoob/three.js/blob/dev/manual/pages/optimize-lots-of-objects.html' },
   threeDispose: { title: 'three.js manual, How to dispose of Objects (GPU resources are not freed automatically)', url: 'https://github.com/mrdoob/three.js/blob/dev/manual/pages/how-to-dispose-of-objects.html' },
   multimesh: { title: 'Godot, Optimization using MultiMeshes', url: 'https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html' },
+  node: { title: 'Godot, Node._process (every rendered frame) and _physics_process (every physics tick)', url: 'https://docs.godotengine.org/en/stable/classes/class_node.html' },
 } as const;
 
 export const RULES: readonly Rule[] = [
@@ -107,11 +110,11 @@ export const RULES: readonly Rule[] = [
     sources: [S.fiedler, S.gameLoop],
   },
   {
-    id: 'queue-shift', group: 'performance', title: 'Queue drained with Array.shift() in a loop',
-    problem: 'shift() moves every remaining element down one index, so draining n items costs O(n²).',
-    methodology: 'A ring buffer or a head index into the array (amortised O(1) dequeue).',
-    target: 'A ring buffer or std::deque / index-based queue in C++.',
-    sources: [S.shift],
+    id: 'queue-shift', group: 'performance', title: 'Queue drained from its front in a loop (Array.shift, vector::erase(begin()))',
+    problem: 'Removing the first element moves every remaining one down a place, so draining n items costs O(n²).',
+    methodology: 'A ring buffer, a head index into the array, or a container with O(1) removal at the front.',
+    target: 'A ring buffer, a head index, or std::deque in C++.',
+    sources: [S.shift, S.vectorErase, S.deque],
   },
   {
     id: 'object-delete', group: 'performance', title: 'Properties removed with delete',
@@ -153,13 +156,13 @@ export const RULES: readonly Rule[] = [
     problem: 'Objects allocated every frame that survive cost collector time; in C++ each is a heap allocation per tick.',
     methodology: 'Preallocate and reuse buffers, pool objects that are created and destroyed often, keep data contiguous.',
     target: 'Zero heap allocation in the tick: arenas (RouteArena), reused std::vector, contiguous structs.',
-    sources: [S.pool, S.locality, S.gc],
+    sources: [S.pool, S.locality, S.gc, S.node],
   },
   {
-    id: 'per-object-draw', group: 'performance', title: 'One mesh object created per item in a loop',
-    problem: 'Each Mesh is at least one draw request; thousands of them make the CPU the bottleneck.',
+    id: 'per-object-draw', group: 'performance', title: 'One mesh object or render instance created per item in a loop',
+    problem: 'Each mesh object or render instance is at least one draw request; thousands of them make the CPU the bottleneck.',
     methodology: 'Merge static geometry or draw identical items with instancing.',
-    target: 'MultiMesh (one draw for many instances), RenderingServer instances, merged chunk meshes.',
+    target: 'MultiMesh (one draw for many instances) or merged chunk meshes; never one RenderingServer instance per item.',
     sources: [S.threeLots, S.webgl, S.multimesh],
   },
   {

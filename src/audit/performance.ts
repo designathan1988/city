@@ -38,7 +38,8 @@ export function hotAllocation(ctx: AuditContext): RuleOutcome {
   return findings;
 }
 
-const PER_OBJECT_MESH = /^new (THREE\.)?(Mesh|SkinnedMesh|Line|LineSegments|LineLoop|Points|Sprite)\b/;
+/** One drawable per item: a three.js mesh object, or a RenderingServer instance. */
+const PER_OBJECT_MESH = /^(new (THREE\.)?(Mesh|SkinnedMesh|Line|LineSegments|LineLoop|Points|Sprite)\b|RenderingServer::instance_create$)/;
 
 export function perObjectDraw(ctx: AuditContext): RuleOutcome {
   const findings: Finding[] = [];
