@@ -14,9 +14,10 @@ const CLEAR_BEFORE_M := 6 # of footway free in front of the plate, where the eye
 const KEYS := {
 	"banco": "streetscape.bench", "lixeira": "streetscape.bin", "hidrante": "streetscape.hydrant", "luminaria": "streetscape.lamp",
 	"cerca": "barrier.kind.fence", "muro": "barrier.kind.wall", "sebe": "barrier.kind.hedge", "defensa": "barrier.kind.guardrail",
-	"gradil": "barrier.kind.railing",
+	"gradil": "barrier.kind.railing", "sol-bench": "streetscape.bench", "sol-bin": "streetscape.bin", "sol-hydrant": "streetscape.hydrant",
+	"sol-lamp": "streetscape.lamp",
 }
-const ON_THE_RUN := ["banco", "lixeira", "hidrante", "luminaria", "poste"] # on the run's footway, the road at +side; the rest across it
+const ON_THE_RUN := ["banco", "lixeira", "hidrante", "luminaria", "poste", "sol-bench", "sol-bin", "sol-hydrant", "sol-lamp", "sol-pole", "sol-rua"] # on the run's footway, the road at +side; the rest across it
 
 
 static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
@@ -46,7 +47,7 @@ static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
 			if thing.begins_with("placa"):
 				await _plate(cap, name, poses[name], int(thing.get_slice("-", 1)), plate_at, -dir, side)
 				continue
-			var at: Vector3 = a if thing == "poste" else cap.spots.get(KEYS.get(thing, ""), Vector3.INF)
+			var at: Vector3 = a if thing in ["poste", "sol-pole", "sol-rua"] else cap.spots.get(KEYS.get(thing, ""), Vector3.INF)
 			if at == Vector3.INF:
 				print("par sem objeto: ", name)
 				continue

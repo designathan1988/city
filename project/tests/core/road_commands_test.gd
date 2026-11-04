@@ -56,11 +56,11 @@ func _ready() -> void:
 ## The styles filled so far hold what the loaders ask of the one the game boots with: a shape for every drawing, a crossing in order.
 func _styles() -> void:
 	for id: String in FILLED_STYLES:
-		var signs: Dictionary = DataTables.styled(DataTables.render().streets, id).signs
+		var signs: Dictionary = DataTables.style_of(DataTables.RENDER_TABLES.streets, id).signs
 		_check(signs.plates.size() == signs.drawings.size(), "estilo %s: uma figura por placa" % id)
 		for d: Dictionary in signs.drawings:
 			_check(signs.plates.has(d.plate), "estilo %s: placa %s" % [id, d.plate])
-		var c: Dictionary = DataTables.styled(DataTables.catalog().street_furniture, id).crossing
+		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
 		_check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "estilo %s: faixa antes da retenção" % id)
 
 

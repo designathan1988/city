@@ -3,6 +3,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
@@ -122,6 +123,34 @@ int CityCore::road_furniture() {
 }
 
 Array CityCore::sign_cells() { return render_.take_sign_cells(); }
+
+// What stands along the streets, kit and player's alike, for a comparison per kilometre: the pieces of each FurnitureKind (`kinds`,
+// in its order), the street length and the poles that carry a light.
+Dictionary CityCore::furniture_census() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	PackedInt32Array kinds;
+	kinds.resize(FURNITURE_KINDS);
+	kinds.fill(0);
+	double metres = 0;
+	int lit = 0;
+	std::vector<FurnitureSpot> spots;
+	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
+		if (!s.roads.segs[size_t(sid)].alive) continue;
+		metres += s.roads.segs[size_t(sid)].len;
+		spots.clear();
+		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
+		for (const FurnitureSpot &p : spots) {
+			kinds[int(p.kind)] += 1;
+			lit += p.kind == FurnitureKind::LAMP && p.lit ? 1 : 0;
+		}
+	}
+	Dictionary d;
+	d["kinds"] = kinds;
+	d["street_m"] = metres;
+	d["lit"] = lit;
+	return d;
+}
 
 Dictionary CityCore::street_counts() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);

@@ -36,6 +36,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("road_furniture"), &CityCore::road_furniture);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityCore::sign_cells);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityCore::street_counts);
+	ClassDB::bind_method(D_METHOD("furniture_census"), &CityCore::furniture_census);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);

@@ -157,6 +157,14 @@ void hydrants(Placer &c) {
 	}
 }
 
+// A piece of kind `k` down both sides, from `first` past the mouth and `every` metres on, wherever one fits.
+void row_of(Placer &c, FurnitureKind k, float every, float first, float depth) {
+	for (int side = 0; side < 2; side++) {
+		if (!c.fits(side, depth)) continue;
+		for (double v = c.v0 + first; v <= c.v1 - defs(c.net).furniture.row_end_m; v += every) c.place(kerbside(c.net, k, c.sid, c.p, side, v), 1);
+	}
+}
+
 // A bin at each corner (the sidewalk at the right of each arm's way out of the node) of a full-furniture street outside
 // industrial zones, on blocks long enough to keep bins bin_spacing_m apart; a bench in the middle of residential blocks.
 void bins_and_benches(Placer &c) {
@@ -164,12 +172,17 @@ void bins_and_benches(Placer &c) {
 	const Catalog &cat = *c.net.cat;
 	const float clear = std::max(d.furniture.corner_clear_m, d.crossing.zebra_to_m);
 	const float bin_depth = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::BIN)].z_m;
+	const float bench_depth = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::BENCH)].z_m;
+	if (d.furniture.bin_every_m > 0.f) { // a style that lays them in rows
+		row_of(c, FurnitureKind::BIN, d.furniture.bin_every_m, d.furniture.bin_first_m, bin_depth);
+		row_of(c, FurnitureKind::BENCH, d.furniture.bench_every_m, d.furniture.bench_first_m, bench_depth);
+		return;
+	}
 	for (int end = 0; end < 2 && c.v1 - c.v0 >= d.furniture.bin_spacing_m; end++) {
 		const int side = corner_side(c.g, end == 0 ? c.g.a : c.g.b);
 		if (cat.zone(side == 0 ? c.g.zr : c.g.zl).base != BASE_INDUSTRIAL && c.fits(side, bin_depth))
 			c.place(kerbside(c.net, FurnitureKind::BIN, c.sid, c.p, side, end == 0 ? c.v0 + clear : c.v1 - clear), end == 0 ? 1 : -1);
 	}
-	const float bench_depth = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::BENCH)].z_m;
 	for (int side = 0; side < 2; side++)
 		if (cat.zone(side == 0 ? c.g.zr : c.g.zl).base == BASE_RESIDENTIAL && c.fits(side, bench_depth))
 			c.place(kerbside(c.net, FurnitureKind::BENCH, c.sid, c.p, side, (c.v0 + c.v1) / 2), 1);
@@ -190,6 +203,7 @@ float tree_clear(const TreeDef &t, FurnitureKind k) {
 void trees(Placer &c) {
 	const StreetFurnitureDef &d = defs(c.net);
 	const TreeDef &t = d.trees;
+	if ((c.g.flags & SEG_FREE) && t.in_generated_city == 0.f) return; // a style whose generated streets have none
 	const LampRow row = lamp_row(c.net, c.sid);
 	const double clear = std::max(t.corner_clear_m, d.crossing.zebra_to_m + t.crossing_clear_m);
 	for (int side = 0; side < 2; side++) {

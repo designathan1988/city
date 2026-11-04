@@ -12,10 +12,10 @@ namespace city {
 #define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m) X(pool_share) X(pool_margin_m) X(pool_least_m) X(pool_back_m) X(twin_stagger) X(pole_lit_every)
 #define CITY_SIGNAL_FIELDS(X) X(kerb_m)
 #define CITY_HYDRANT_FIELDS(X) X(reach_m)
-#define CITY_FURNITURE_FIELDS(X) X(corner_clear_m) X(bin_spacing_m)
+#define CITY_FURNITURE_FIELDS(X) X(corner_clear_m) X(bin_spacing_m) X(bin_every_m) X(bin_first_m) X(bench_every_m) X(bench_first_m) X(row_end_m)
 #define CITY_TREE_FIELDS(X) \
 	X(corner_clear_m) X(crossing_clear_m) X(spacing_m) X(pole_clear_m) X(hydrant_clear_m) X(furniture_clear_m) \
-	X(kerb_clear_m) X(pit_m)
+	X(kerb_clear_m) X(pit_m) X(in_generated_city)
 #define CITY_CROSSING_FIELDS(X) X(zebra_from_m) X(zebra_to_m) X(stop_from_m) X(stop_to_m)
 #define CITY_POLE_FIELDS(X) \
 	X(height_m) X(kerb_inset_m) X(min_spacing_m) X(max_spacing_m) X(min_gap_m) X(reuse_m) X(corner_tolerance_m) \

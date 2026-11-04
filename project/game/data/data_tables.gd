@@ -54,20 +54,30 @@ static var _cache: Dictionary = {}
 static func _read(path: String) -> Variant:
 	if _cache.has(path):
 		return _cache[path]
-	var text := FileAccess.get_file_as_string(path)
-	var parsed: Variant = JSON.parse_string(text)
-	if parsed == null:
-		push_error("JSON inválido: %s" % path)
-		parsed = {}
-	_cache[path] = styled(parsed, REGIONAL_STYLE) if path in STYLED else parsed
+	var parsed: Variant = _parse(path)
+	_cache[path] = _styled(parsed, REGIONAL_STYLE) if path in STYLED else parsed
 	return _cache[path]
 
 
-## `table` as style `id` draws it: what the style holds laid over the table, block by block.
-static func styled(table: Dictionary, id: String) -> Dictionary:
-	var out: Dictionary = table.duplicate(true)
-	_lay(out, table.styles[id])
-	return out
+static func _parse(path: String) -> Variant:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if parsed == null:
+		push_error("JSON inválido: %s" % path)
+		return {}
+	return parsed
+
+
+## The table at `path` as style `id` draws it, read anew: the game keeps only the one it plays.
+static func style_of(path: String, id: String) -> Dictionary:
+	return _styled(_parse(path), id)
+
+
+## What style `id` holds laid over `table`, block by block; the other styles dropped.
+static func _styled(table: Dictionary, id: String) -> Dictionary:
+	var over: Dictionary = table.styles[id]
+	table.erase("styles")
+	_lay(table, over)
+	return table
 
 
 static func _lay(under: Dictionary, over: Dictionary) -> void:

@@ -58,6 +58,7 @@ public:
 	int road_furniture();
 	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
 	godot::Dictionary street_counts();
+	godot::Dictionary furniture_census();
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
