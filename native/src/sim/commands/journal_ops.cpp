@@ -2,6 +2,7 @@
 // each changes the state and, while a command records, appends the op with the record its inverse needs.
 #include "sim/commands/edit_journal.h"
 
+#include "sim/commands/road_edit.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -119,6 +120,7 @@ void j_set_zone(CityState &s, int seg, int side, int zone) {
 		grow_seg(s, g);
 	}
 	s.roads.set_zone(seg, side, zone);
+	mark_furniture(s, seg);
 }
 
 int j_add_building(CityState &s, const Building &b) {

@@ -37,14 +37,28 @@ bool number(const Dictionary &d, const char *where, const char *key, float &out,
 } // namespace
 
 bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStringArray &errors) {
-	const Dictionary lamps = block(t, "lamps", errors), furniture = block(t, "furniture", errors);
-	const Dictionary crossing = block(t, "crossing", errors), footprints = block(t, "footprints", errors);
+	const Dictionary footprints = block(t, "footprints", errors);
+	const Dictionary sidewalk = block(t, "sidewalk", errors), lamps = block(t, "lamps", errors), signals = block(t, "signals", errors);
+	const Dictionary hydrants = block(t, "hydrants", errors), furniture = block(t, "furniture", errors), trees = block(t, "trees", errors);
+	const Dictionary crossing = block(t, "crossing", errors);
+#define CITY_SIDEWALK_LOAD(name) number(sidewalk, "sidewalk", #name, d.sidewalk.name, errors);
+	CITY_SIDEWALK_FIELDS(CITY_SIDEWALK_LOAD)
+#undef CITY_SIDEWALK_LOAD
 #define CITY_LAMP_LOAD(name) number(lamps, "lamps", #name, d.lamps.name, errors);
 	CITY_LAMP_FIELDS(CITY_LAMP_LOAD)
 #undef CITY_LAMP_LOAD
+#define CITY_SIGNAL_LOAD(name) number(signals, "signals", #name, d.signals.name, errors);
+	CITY_SIGNAL_FIELDS(CITY_SIGNAL_LOAD)
+#undef CITY_SIGNAL_LOAD
+#define CITY_HYDRANT_LOAD(name) number(hydrants, "hydrants", #name, d.hydrants.name, errors);
+	CITY_HYDRANT_FIELDS(CITY_HYDRANT_LOAD)
+#undef CITY_HYDRANT_LOAD
 #define CITY_FURNITURE_LOAD(name) number(furniture, "furniture", #name, d.furniture.name, errors);
 	CITY_FURNITURE_FIELDS(CITY_FURNITURE_LOAD)
 #undef CITY_FURNITURE_LOAD
+#define CITY_TREE_LOAD(name) number(trees, "trees", #name, d.trees.name, errors);
+	CITY_TREE_FIELDS(CITY_TREE_LOAD)
+#undef CITY_TREE_LOAD
 #define CITY_CROSSING_LOAD(name) number(crossing, "crossing", #name, d.crossing.name, errors);
 	CITY_CROSSING_FIELDS(CITY_CROSSING_LOAD)
 #undef CITY_CROSSING_LOAD

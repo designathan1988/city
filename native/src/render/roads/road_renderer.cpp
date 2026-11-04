@@ -28,7 +28,7 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 		errors.push_back("render sem catálogo");
 		return false;
 	}
-	RenderingServer::get_singleton()->material_set_param(material_, "pool_step", ctx.catalog->furniture.lamps.step_m);
+	RenderingServer::get_singleton()->material_set_param(material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
 	return look_.load(t, errors);
 }
 

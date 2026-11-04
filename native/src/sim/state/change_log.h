@@ -22,6 +22,9 @@ struct ChangeLog {
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
 	std::vector<int> net_nodes, net_segs_removed, net_segs_changed;
+	// Segments whose street furniture must be placed again though their lanes did not change (a hydrant moving to
+	// another corner of its square, a zone change moving a bin): drained by the traffic with the net_* lists.
+	std::vector<int> furniture_segs;
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -38,6 +41,7 @@ struct ChangeLog {
 		net_nodes.clear();
 		net_segs_removed.clear();
 		net_segs_changed.clear();
+		furniture_segs.clear();
 	}
 	void clear_render() {
 		road_chunks.clear();

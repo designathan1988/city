@@ -180,10 +180,11 @@ struct Ctx {
 	const RoadEmit &e;
 	const std::vector<Sample> &sm;
 	LampRow lamp;
-	float lamp0 = 0;
 	Vector2 pool(float u, float at) const {
 		if (!lamp.any) return Vector2(POOL_NONE, 0);
-		return Vector2(std::fabs(u - lamp.centre) - lamp.half_span, at - lamp0);
+		float du, dv;
+		lamp.pool(u, at, du, dv);
+		return Vector2(du, dv);
 	}
 	Vector3 at_u(size_t k, float u, float h) const { return sm[k].f.c + sm[k].f.left * u + Vector3(0, h, 0); }
 };
@@ -261,8 +262,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
 	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb);
 	std::vector<Piece> ps = pieces_of(e.L, p);
-	const LampDef &lamps = e.s.catalog.furniture.lamps;
-	Ctx c{ e, sm, lamp_row(p, lamps), float(lamp_origin(g, lamps)) };
+	Ctx c{ e, sm, lamp_row(e.s.roads, sid) };
 	for (size_t i = 0; i < ps.size(); i++) {
 		tops(c, ps[i]);
 		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);

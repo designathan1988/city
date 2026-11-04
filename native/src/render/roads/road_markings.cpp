@@ -17,11 +17,12 @@ struct Painter {
 	const RoadEmit &e;
 	int sid;
 	LampRow lamp;
-	float lamp0;
 
 	Vector2 pool(float u, float at) const {
 		if (!lamp.any) return Vector2(POOL_NONE, 0);
-		return Vector2(std::fabs(u - lamp.centre) - lamp.half_span, at - lamp0);
+		float du, dv;
+		lamp.pool(u, at, du, dv);
+		return Vector2(du, dv);
 	}
 	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
@@ -87,8 +88,7 @@ void emit_markings(const RoadEmit &e, int sid) {
 	if (p.rail) return;
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
-	const LampDef &lamps = e.s.catalog.furniture.lamps;
-	Painter pt{ e, sid, lamp_row(p, lamps), float(lamp_origin(g, lamps)) };
+	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	lines(pt, p, v0 + (ca ? e.L.line_clear : 0), v1 - (cb ? e.L.line_clear : 0));
 	crossings(pt, p, v0, v1, ca, cb);
 }

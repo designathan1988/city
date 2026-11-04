@@ -1,48 +1,50 @@
 {
- "_doc": "Street furniture and crosswalks: the one owner of where every lamp, signal post, hydrant, bin, bench and street tree stands and where the crosswalk and stop line lie (native/src/sim/roads/street_furniture.cpp). The walkers keep off each piece's footprint; the render draws, lights and wires them from these places (how they look is data/render/streets.json). Lamps: first_m past the mouth, then every step_m, none within end_clear_m of the far mouth; the pole inset_m from the outer edge of the right sidewalk (else the left), the head reach_m toward the carriageway; a second row on the left sidewalk when the median is at least median_min_m wide. The night light pools follow the same stations.",
+ "_doc": "Street furniture and crosswalks: the one owner of where every lamp, signal post, hydrant, bin, bench and street tree stands and where the crosswalk and stop line lie (native/src/sim/roads/street_furniture.cpp). The walkers keep off each piece's footprint; the render draws, lights and wires them from these places (how they look is data/render/streets.json). Every distance below cites its primary source; arcs are metres from the arm's mouth (its setback, which lies past the crossing street's kerb line), offsets metres from the kerb's face.",
+ "sidewalk": {
+  "_doc": "ABNT NBR 9050:2020 and São Paulo Decree 52.903/12 art. 14 §1: a free width of at least 1.20 m kept for walking; Decree 45.904/05 art. 7: furniture, poles and trees only in the service strip next to the kerb. Calçadas Cariocas (Rio de Janeiro, 2026), Faixa Utilitária: the face of every pole and urban element at least 0.50 m from the kerb. A piece other than a lamp or signal post stands only where its far edge leaves the free width.",
+  "free_width_m": 1.2,
+  "kerb_clear_m": 0.5
+ },
  "lamps": {
-  "first_m": 8,
-  "step_m": 32,
-  "end_clear_m": 2,
-  "inset_m": 0.5,
-  "reach_m": 1.9,
-  "median_min_m": 1.2
+  "_doc": "The lamps hang on the concrete distribution poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). Rioluz NPIP-1 5.1.1: mounting height over street width 1.00 on one side; a street wider than mount_height_m / unilateral_ratio gets poles on both sides, and on one side they stand on the east or south face (5.2), leaving the north and west faces to the trees. mount_height_m and reach_m are measured on the lamp_post mesh (data/render/streets.json props: head between 7.9 and 8.1 m high, centred 1.9 m out along its arm).",
+  "span_m": 35,
+  "mount_height_m": 8.0,
+  "unilateral_ratio": 1.0,
+  "reach_m": 1.9
+ },
+ "signals": {
+  "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
+  "kerb_m": 0.8
+ },
+ "hydrants": {
+  "_doc": "Corpo de Bombeiros do Paraná NPT 034 (urban hydrants), 5.1.2.2 a) and 5.2.4: each covers a radius of at most reach_m, preferably at street corners. The town is cut into squares reach_m / √2 wide (any point of one is within reach_m of any other), each holding one hydrant at the corner of its node nearest the square's centre.",
+  "reach_m": 300
  },
  "furniture": {
-  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges). Signal posts: signal_back_m past the crosswalk (crossing zebra_to_m), at most signal_max_share of the segment, signal_in_m from the kerb (Roadcraft 4.0: crosswalk + 2 m, kerb + 0.9 m). A hydrant, bin, bench or tree that would leave a walker no way past the pieces beside it is not placed (lamps and signal posts always are).",
-  "min_walk_m": 1.8,
-  "kerb_u_m": 0.45,
-  "wall_u_m": 0.55,
-  "end_clear_m": 2,
-  "lamp_clear_m": 3.5,
-  "hydrant_first_m": 9,
-  "hydrant_step_m": 90,
-  "hydrant_min_span_m": 20,
-  "bin_first_m": 3.2,
-  "bin_min_span_m": 24,
-  "bench_min_span_m": 70,
-  "bench_min_walk_m": 2.3,
-  "bin_after_bench_m": 2.2,
-  "signal_back_m": 2.0,
-  "signal_in_m": 0.9,
-  "signal_max_share": 0.45,
-  "tree_first_m": 10,
-  "tree_step_m": 12,
-  "tree_min_walk_m": 2.4,
-  "tree_kerb_u_m": 0.9,
-  "tree_clear_m": 4
+  "_doc": "Bins and benches. Prefeitura de São Paulo, Programa Passeio Livre: small and medium furniture 5 m from the corner's axis. Anchieta (ES) Lei 1.215/2017 on litter bins: at least 50 m apart, preferably at the corners, so one bin at each corner of a full-furniture street outside industrial zones whose block is at least bin_spacing_m long. A bench stands in the middle of residential blocks.",
+  "corner_clear_m": 5,
+  "bin_spacing_m": 50
+ },
+ "trees": {
+  "_doc": "Prefeitura de São Paulo, Manual Técnico de Arborização Urbana (SVMA, 2015), for the medium trees the town plants (6 to 9 m tall): table 01, a sidewalk of at least 1.90 m (1.20 m free + 0.70 m service strip) and a pit of at least 0.60 m; item 4.1, the pit at least 0.10 m from the kerb; table 03, 5 m from the corner, 1 m from a crosswalk's edge, 2 m from hydrants and urban furniture, 8 m from the next tree. Rioluz NPIP-1 5.2: poles at least 5 m from a tree pit (stricter than the manual's 3 m).",
+  "corner_clear_m": 5,
+  "crossing_clear_m": 1,
+  "spacing_m": 8,
+  "pole_clear_m": 5,
+  "hydrant_clear_m": 2,
+  "furniture_clear_m": 2,
+  "kerb_clear_m": 0.1,
+  "pit_m": 0.6
  },
  "crossing": {
-  "_doc": "Where a crosswalk lies at a junction mouth, metres from the mouth (the arm's setback): the painted zebra (walkers cross its middle line and keep to its right half), the stop line, how far behind that line vehicles stop (stop_clear_m) and how far past the zebra a leaving vehicle's rear has cleared it (zebra_clear_m).",
-  "zebra_from_m": 0.7,
-  "zebra_to_m": 3.6,
-  "stop_from_m": 3.95,
-  "stop_to_m": 4.35,
-  "stop_clear_m": 0.1,
-  "zebra_clear_m": 0.6
+  "_doc": "CONTRAN MBST vol. IV (Res. 973/2022): 5.4, a zebra crossing (FTP-1) at least 1.00 m from the crossing street's kerb line and 3.00 m wide, 4.00 m recommended; 5.1, the stop line (LRE) 0.30 to 0.60 m wide, at least 1.60 m before the crosswalk. Vehicles stop with their front at the line; walkers cross along the zebra's middle and keep to its right half.",
+  "zebra_from_m": 1.0,
+  "zebra_to_m": 5.0,
+  "stop_from_m": 6.6,
+  "stop_to_m": 7.0
  },
  "footprints": {
-  "_doc": "Ground each kind covers at walking height, [x_m, z_m] in its own frame (x along the sidewalk and z toward the road for the kerbside pieces; a signal post's z faces the arriving traffic): the pole, trunk or body; arms, heads and crowns are overhead.",
+  "_doc": "Ground each kind covers at walking height, [x_m, z_m] in its own frame (x along the sidewalk and z toward the road for the kerbside pieces; a signal post's z faces the arriving traffic), measured on its mesh in data/render/streets.json props: the pole, trunk (at the largest street tree) or body; arms, heads and crowns are overhead.",
   "signal_post": [0.24, 0.24],
   "lamp_post": [0.3, 0.3],
   "fire_hydrant": [0.56, 0.3],

@@ -1,7 +1,8 @@
 // Incremental lane graph (Roadcraft lanes.ts dirtyNodes/rebuildNode/clearNode): a road edit marks the segments and
 // nodes it touched in the ChangeLog; traffic::step drains them here, rebuilding only those, and keeps the fleet and the
-// walkers on the streets that are still there. The walkers' street furniture of those segments and of every segment of
-// those nodes (their mouths, lamp stations and signal posts move) is built again when next met.
+// walkers on the streets that are still there. The walkers' street furniture of those segments, of every segment of
+// those nodes (their mouths, lamp stations and signal posts move) and of the segments the log names for it (a hydrant
+// or a bin moved) is built again when next met.
 #include "sim/traffic/lane_graph_internal.h"
 
 #include "sim/traffic/traffic_system.h"
@@ -151,13 +152,15 @@ void clear_node(CityState &s, int n) {
 void apply_network_changes(CityState &s) {
 	TrafficState &t = s.traffic;
 	// the step holds the map shared: the net lists are taken out under the log's own mutex (change_log.h)
-	std::vector<int> nodes, removed, changed;
+	std::vector<int> nodes, removed, changed, furniture;
 	{
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		nodes.swap(s.log.net_nodes);
 		removed.swap(s.log.net_segs_removed);
 		changed.swap(s.log.net_segs_changed);
+		furniture.swap(s.log.furniture_segs);
 	}
+	for (int seg : furniture) forget_furniture(s, seg);
 	if (nodes.empty() && removed.empty() && changed.empty()) {
 		t.g.version = s.roads.version;
 		return;

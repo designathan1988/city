@@ -4,35 +4,83 @@
   "_doc": {
    "type": "string"
   },
-  "lamps": {
+  "sidewalk": {
    "type": "object",
    "properties": {
-    "first_m": {
+    "_doc": {
+     "type": "string"
+    },
+    "free_width_m": {
      "type": "number"
     },
-    "step_m": {
-     "type": "number"
-    },
-    "end_clear_m": {
-     "type": "number"
-    },
-    "inset_m": {
-     "type": "number"
-    },
-    "reach_m": {
-     "type": "number"
-    },
-    "median_min_m": {
+    "kerb_clear_m": {
      "type": "number"
     }
    },
    "required": [
-    "first_m",
-    "step_m",
-    "end_clear_m",
-    "inset_m",
-    "reach_m",
-    "median_min_m"
+    "_doc",
+    "free_width_m",
+    "kerb_clear_m"
+   ],
+   "strict": true
+  },
+  "lamps": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "span_m": {
+     "type": "number"
+    },
+    "mount_height_m": {
+     "type": "number"
+    },
+    "unilateral_ratio": {
+     "type": "number"
+    },
+    "reach_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "span_m",
+    "mount_height_m",
+    "unilateral_ratio",
+    "reach_m"
+   ],
+   "strict": true
+  },
+  "signals": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "kerb_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "kerb_m"
+   ],
+   "strict": true
+  },
+  "hydrants": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "reach_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "reach_m"
    ],
    "strict": true
   },
@@ -42,93 +90,61 @@
     "_doc": {
      "type": "string"
     },
-    "min_walk_m": {
+    "corner_clear_m": {
      "type": "number"
     },
-    "kerb_u_m": {
-     "type": "number"
-    },
-    "wall_u_m": {
-     "type": "number"
-    },
-    "end_clear_m": {
-     "type": "number"
-    },
-    "lamp_clear_m": {
-     "type": "number"
-    },
-    "hydrant_first_m": {
-     "type": "number"
-    },
-    "hydrant_step_m": {
-     "type": "number"
-    },
-    "hydrant_min_span_m": {
-     "type": "number"
-    },
-    "bin_first_m": {
-     "type": "number"
-    },
-    "bin_min_span_m": {
-     "type": "number"
-    },
-    "bench_min_span_m": {
-     "type": "number"
-    },
-    "bench_min_walk_m": {
-     "type": "number"
-    },
-    "bin_after_bench_m": {
-     "type": "number"
-    },
-    "signal_back_m": {
-     "type": "number"
-    },
-    "signal_in_m": {
-     "type": "number"
-    },
-    "signal_max_share": {
-     "type": "number"
-    },
-    "tree_first_m": {
-     "type": "number"
-    },
-    "tree_step_m": {
-     "type": "number"
-    },
-    "tree_min_walk_m": {
-     "type": "number"
-    },
-    "tree_kerb_u_m": {
-     "type": "number"
-    },
-    "tree_clear_m": {
+    "bin_spacing_m": {
      "type": "number"
     }
    },
    "required": [
     "_doc",
-    "min_walk_m",
-    "kerb_u_m",
-    "wall_u_m",
-    "end_clear_m",
-    "lamp_clear_m",
-    "hydrant_first_m",
-    "hydrant_step_m",
-    "hydrant_min_span_m",
-    "bin_first_m",
-    "bin_min_span_m",
-    "bench_min_span_m",
-    "bench_min_walk_m",
-    "bin_after_bench_m",
-    "signal_back_m",
-    "signal_in_m",
-    "signal_max_share",
-    "tree_first_m",
-    "tree_step_m",
-    "tree_min_walk_m",
-    "tree_kerb_u_m",
-    "tree_clear_m"
+    "corner_clear_m",
+    "bin_spacing_m"
+   ],
+   "strict": true
+  },
+  "trees": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "corner_clear_m": {
+     "type": "number"
+    },
+    "crossing_clear_m": {
+     "type": "number"
+    },
+    "spacing_m": {
+     "type": "number"
+    },
+    "pole_clear_m": {
+     "type": "number"
+    },
+    "hydrant_clear_m": {
+     "type": "number"
+    },
+    "furniture_clear_m": {
+     "type": "number"
+    },
+    "kerb_clear_m": {
+     "type": "number"
+    },
+    "pit_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "corner_clear_m",
+    "crossing_clear_m",
+    "spacing_m",
+    "pole_clear_m",
+    "hydrant_clear_m",
+    "furniture_clear_m",
+    "kerb_clear_m",
+    "pit_m"
    ],
    "strict": true
   },
@@ -149,12 +165,6 @@
     },
     "stop_to_m": {
      "type": "number"
-    },
-    "stop_clear_m": {
-     "type": "number"
-    },
-    "zebra_clear_m": {
-     "type": "number"
     }
    },
    "required": [
@@ -162,9 +172,7 @@
     "zebra_from_m",
     "zebra_to_m",
     "stop_from_m",
-    "stop_to_m",
-    "stop_clear_m",
-    "zebra_clear_m"
+    "stop_to_m"
    ],
    "strict": true
   },
@@ -237,8 +245,12 @@
  },
  "required": [
   "_doc",
+  "sidewalk",
   "lamps",
+  "signals",
+  "hydrants",
   "furniture",
+  "trees",
   "crossing",
   "footprints"
  ],

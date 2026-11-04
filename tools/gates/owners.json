@@ -43,8 +43,8 @@
       "id": "street_furniture",
       "owner": "native/src/sim/roads/street_furniture.cpp",
       "symbol": "segment_furniture",
-      "forbidden_elsewhere": ["\b(hydrant_first|hydrant_step|bin_first|bench_min_span|tree_first|tree_step|tree_clear|lamp_clear|signal_back|signal_in)_m\b", "\bzebra_(from|to)_m\b"],
-      "allow": ["native/src/sim/catalog/furniture_types.h", "native/src/api/furniture_loader.cpp", "native/src/render/roads/road_markings.cpp"],
+      "forbidden_elsewhere": ["\b(free_width|kerb_clear|corner_clear|crossing_clear|pole_clear|hydrant_clear|furniture_clear|pit|mount_height|bin_spacing)_m\b", "\bunilateral_ratio\b"],
+      "allow": ["native/src/sim/catalog/furniture_types.h", "native/src/api/furniture_loader.cpp", "native/src/sim/roads/street_furniture_posts.cpp"],
       "scope": ["native/src/"]
     },
     {
