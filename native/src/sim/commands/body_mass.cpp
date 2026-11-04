@@ -69,14 +69,14 @@ void set_count(Volume &v, int count) {
 	move_storeys(v.storey_paint, KEY_SIDE_SHIFT, 0, count);
 }
 
-// Single-bay overrides of `sides` move by `shift`: a side that grew at its start recounts from there.
-void shift_bays(Volume &v, int side_a, int side_b, int shift) {
+// Single-bay overrides of one side move by `shift`: a side that grew at its start recounts from there.
+void shift_bays(Volume &v, int moved, int shift) {
 	if (shift == 0) return;
 	std::unordered_map<uint32_t, uint8_t> next;
 	for (const auto &e : v.bays) {
 		int storey = int(e.first >> KEY_STOREY_SHIFT), side = int((e.first >> KEY_SIDE_SHIFT) & ((1u << KEY_SIDE_SHIFT) - 1));
 		int bay = int(e.first & ((1u << KEY_SIDE_SHIFT) - 1));
-		if (side == side_a || side == side_b) bay += shift;
+		if (side == moved) bay += shift;
 		if (bay >= 0) next[bay_key(storey, side, bay)] = e.second;
 	}
 	v.bays = std::move(next);
@@ -153,11 +153,12 @@ std::string op_resize(Body &b, const Tuning &t, int vol, int side, float delta, 
 	float wanted = snap ? snapped(t, along + delta) : std::round((along + delta) * CENTIMETRES) / CENTIMETRES;
 	float size = std::clamp(wanted, float(t.build_min_side_m), float(t.build_max_side_m)), change = size - along;
 	if (std::fabs(change) < AREA_EPS) return "";
-	int run_a = across ? 0 : 1, run_b = across ? 2 : 3, before = bays_of(v, run_a);
+	// Sides run round the block (placed.cpp sides_of): the one after the side pulled starts at the edge that moved.
+	int next = (side + 1) % 4, before = bays_of(v, next);
 	along = size;
 	if (side == 3) v.x -= change;
 	if (side == 0) v.y -= change;
-	if (side == 3 || side == 0) shift_bays(v, run_a, run_b, bays_of(v, run_a) - before);
+	shift_bays(v, next, bays_of(v, next) - before);
 	return "";
 }
 
@@ -173,6 +174,7 @@ std::string op_add_wing(Body &b, const Tuning &t, int vol, int side, float depth
 	float out = std::clamp(snapped(t, depth > 0 ? depth : float(t.build_wing_modules) * module), lo, hi);
 	float offset = snapped(t, (run - len) / 2);
 	Volume wing = block_like(v, v.storeys);
+	for (FaceGeometry &f : wing.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
 	switch (side) {
 		case 0: wing.x = v.x + offset; wing.y = v.y - out; wing.w = len; wing.d = out; break;
 		case 2: wing.x = v.x + offset; wing.y = v.y + v.d; wing.w = len; wing.d = out; break;

@@ -1,7 +1,9 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
 #include "api/city_core.h"
 #include "api/edit_result.h"
+#include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/commands/body_pick.h"
 #include "sim/commands/body_ops.h"
 #include "sim/persistence/body_codec.h"
 
@@ -13,6 +15,7 @@ namespace city {
 
 namespace {
 constexpr const char *EDIT_LABEL = "cmd.place.editBuilding";
+constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
 
 template <typename F>
 Dictionary edit(CityState &state, int id, F &&op) {
@@ -45,9 +48,28 @@ Dictionary CityCore::body_info(int id) const {
 		e["base"] = v.base;
 		e["storeys"] = v.storeys;
 		e["roof"] = int(v.roof);
+		Array bays;
+		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
+		e["bays"] = bays;
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
+	return d;
+}
+
+Dictionary CityCore::body_pick(const Vector3 &origin, const Vector3 &dir) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Dictionary d;
+	Vector3 n = dir.normalized();
+	BodyHit hit = pick_body(*state_, Ray3{ origin.x, origin.y, origin.z, n.x, n.y, n.z }, PICK_REACH_M);
+	if (hit.id < 0) return d;
+	d["id"] = hit.id;
+	d["volume"] = hit.volume;
+	d["side"] = hit.side;
+	d["storey"] = hit.storey;
+	d["level"] = hit.level;
+	d["bay"] = hit.bay;
+	d["point"] = origin + n * hit.t;
 	return d;
 }
 

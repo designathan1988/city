@@ -136,6 +136,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/citygen/road_gen_graph.cpp` — grafo planar das ruas geradas (cruzamentos, nós fundidos)
 - `native/src/sim/citygen/road_gen_tidy.cpp` — limpeza do grafo gerado (nós e braços degenerados)
 - `native/src/sim/commands/body_edit.cpp` · `native/src/sim/commands/body_facade.cpp` · `native/src/sim/commands/body_finish.cpp` · `native/src/sim/commands/body_mass.cpp` · `native/src/sim/commands/body_ops.h` — o único caminho de uma edição até o corpo (cópia, validação, diário) e o que um corpo precisa ser; abas Fachada, Telhado, Cores e Massa
+- `native/src/sim/commands/body_pick.cpp` · `native/src/sim/commands/body_pick.h` — o que um raio da câmera acerta: registro, bloco, face, andar e vão
 - `native/src/sim/commands/commands.h` — API de comandos do jogador
 - `native/src/sim/commands/edit_history.cpp` — pilhas de desfazer/refazer e limites
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
@@ -277,7 +278,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
-- `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` — edições do Construir pelo store: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save
+- `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_pick_cases.gd` — edições do Construir pelo store: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
@@ -316,7 +317,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
-- Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e a aba Massa existem por comando; falta a interface do Construir e as outras abas.
+- Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e as abas Massa, Fachada, Telhado e Cores existem por comando, com seleção por raio; falta a interface do Construir e as outras abas. O raio ainda toma o telhado inclinado pelo beiral: um clique na cumeeira passa por cima.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.
 - Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).

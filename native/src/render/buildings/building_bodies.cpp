@@ -13,8 +13,7 @@ namespace city {
 
 namespace {
 constexpr size_t CACHE_MAX = 8192;
-constexpr float PLINTH_MIN = 0.15f, GRID_STEP = 1.5f, SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
-constexpr int LOT_GRID_MAX = 24;
+constexpr float SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr uint64_t EDITED_MIX = 0x9e3779b97f4a7c15ull;
 constexpr uint64_t SEED_BITS = 32, ZONE_BITS = 8, FLOOR_BITS = 16, SIZE_Q = 10;
@@ -41,24 +40,9 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	const b40::Body &b = body(data, rec);
 	const b40::LotFrame f = b40::lot_frame(rec);
 	Vector3 o(f.o.x, 0, f.o.y), e0(f.e0.x, 0, f.e0.y), e1(f.e1.x, 0, f.e1.y), e2(0, 1, 0);
-	auto ground_at = [&](float x, float y) {
-		Vector3 p = o + e0 * x + e1 * y;
-		return ground.height_at(p.x, p.z);
-	};
-	float hi = -b40::FAR_AWAY, lo = b40::FAR_AWAY;
-	auto sample = [&](float x, float y) {
-		float g = ground_at(x, y);
-		hi = std::max(hi, g);
-		lo = std::min(lo, g);
-	};
-	for (const b40::Volume &v : b.volumes) {
-		if (v.base != 0) continue;
-		int nx = std::min(LOT_GRID_MAX, int(std::ceil(v.w / GRID_STEP))), ny = std::min(LOT_GRID_MAX, int(std::ceil(v.d / GRID_STEP)));
-		for (int i = 0; i <= nx; i++)
-			for (int j = 0; j <= ny; j++) sample(v.x + v.w * float(i) / float(nx), v.y + v.d * float(j) / float(ny));
-	}
-	if (hi < lo) { sample(0, rec.d / 2); }
-	float floor = hi + PLINTH_MIN;
+	float hi = 0, lo = 0;
+	b40::lot_ground(b, rec, f, [&](float x, float z) { return ground.height_at(x, z); }, hi, lo);
+	float floor = hi + b40::LOT_PLINTH_M;
 	pl.data = &data;
 	pl.look = &look;
 	pl.b = &b;

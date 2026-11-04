@@ -32,6 +32,7 @@ public:
 	void set_speed(int speed);
 	void set_day_hour(double hour);
 	godot::Dictionary body_info(int id) const;
+	godot::Dictionary body_pick(const godot::Vector3 &origin, const godot::Vector3 &dir) const;
 	godot::Dictionary body_storeys(int id, int vol, int count);
 	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
 	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);

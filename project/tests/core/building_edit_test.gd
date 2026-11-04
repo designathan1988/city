@@ -4,6 +4,7 @@
 ## Run: godot --headless --path project res://tests/core/building_edit_test.tscn -- --no-flow
 extends Node3D
 
+const PickCases := preload("res://tests/core/building_pick_cases.gd")
 const TOWN_MAP := 0
 const SEED := 1
 const OTHER_SEED := 7
@@ -30,6 +31,7 @@ const SCOPE_COLUMN := 2
 const PATTERN_OFFICE := 2
 const RELIEF_M := 0.5
 const FACE_BAYS := 7
+const BAY_WIDTH_M := 3.0
 const ROOF_GABLE := 2
 const ROOF_HIP := 3
 const ROOF_PITCH := 30.0
@@ -56,6 +58,8 @@ func _ready() -> void:
 	_mass_edits(id, made)
 	_facade_edits(id, made)
 	_finish_edits(id, made)
+	_bays_stay_put(id, made)
+	PickCases.run(id, _check)
 	_refusals(_one_block_on_the_ground())
 	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
 	await _save_round_trip(id)
@@ -143,6 +147,28 @@ func _finish_edits(id: int, made: int) -> void:
 	for scope: int in PAINT_SCOPES:
 		_round(id, made, "tinta %d" % scope, &"body_paint", [id, scope, 0, FACE, 1, FINISH_BRICK, PAINT_RGB], func(i: Dictionary) -> bool:
 			return i.edited)
+
+
+## A wing counts its own bays, and a bay set on it keeps its place on the wall when the side before it is pulled: the wall grows at
+## that side's start. A wing because its bay count follows its length; a composed face keeps its count and widens its bays.
+func _bays_stay_put(id: int, made: int) -> void:
+	var back := 2
+	var pulled := 1
+	var wing_side := 1
+	var parent: Dictionary = _info(id).volumes[0]
+	CityStore.dispatch(&"body_add_wing", [id, 0, wing_side, WING_DEPTH, WING_LENGTH])
+	var wing: int = _info(id).volumes.size() - 1
+	var count: int = _info(id).volumes[wing].bays[back]
+	_check(count == int(round(WING_DEPTH / BAY_WIDTH_M)), "a ala conta os próprios vãos: %d em %.0f m, a parede de origem tem %s" % [count, WING_DEPTH, parent.bays])
+	CityStore.dispatch(&"body_set_bay", [id, wing, 1, back, 0, BAY_BALCONY, SCOPE_BAY])
+	CityStore.dispatch(&"body_resize", [id, wing, pulled, BAY_WIDTH_M * 2.0, true])
+	var grown: int = _info(id).volumes[wing].bays[back] - count
+	_check(grown == 2, "a ala ganhou dois vãos: %d" % grown)
+	_check(CityStore.query(&"body_bay", [id, wing, 1, back, grown]) == BAY_BALCONY, "a varanda seguiu a parede")
+	_check(CityStore.query(&"body_bay", [id, wing, 1, back, 0]) != BAY_BALCONY, "o vão novo não é varanda")
+	for i in 3:
+		CityStore.dispatch(&"undo")
+	_check(_info(id).digest == made, "três desfazer voltam ao corpo gerado")
 
 
 ## One edit: it does what it says, undo gives back the body from the seed, redo gives back the same bytes, and undo again

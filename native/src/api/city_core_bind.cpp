@@ -15,6 +15,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);
 	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityCore::body_info);
+	ClassDB::bind_method(D_METHOD("body_pick", "origin", "dir"), &CityCore::body_pick);
 	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityCore::body_storeys);
 	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityCore::body_insert_storey);
 	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityCore::body_resize);

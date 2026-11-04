@@ -89,7 +89,8 @@
   "max_bays": 64,
   "max_pier_every": 16,
   "min_pitch_deg": 5,
-  "max_pitch_deg": 60
+  "max_pitch_deg": 60,
+  "pick_step_m": 32
  },
  "zone": {
   "side_offset_m": 14,
