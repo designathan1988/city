@@ -21,6 +21,38 @@ constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
+constexpr float HALF = 0.5f;
+
+// The size of a body for the city statistics: storeys of its highest volume, the top of its walls (m), its footprint
+// and its floor area (m2, every volume's outline x its storeys), its ground and upper storey heights and its style.
+Dictionary body_probe(const b40::Body &body) {
+	int top = 0;
+	float footprint = 0, floor_area = 0;
+	for (const b40::Volume &v : body.volumes) {
+		top = std::max(top, v.top());
+		float share = 1; // the outline's area as a share of its rectangle (shoelace)
+		if (!v.outline.empty()) {
+			float twice = 0;
+			for (size_t i = 0; i < v.outline.size(); i++) {
+				const b40::Point2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
+				twice += a.x * b.y - b.x * a.y;
+			}
+			share = std::fabs(twice) * HALF;
+		}
+		const float area = v.w * v.d * share;
+		footprint += v.base == 0 ? area : 0;
+		floor_area += area * float(v.storeys);
+	}
+	Dictionary d;
+	d["storeys"] = top;
+	d["wall_top"] = body.level_z(top);
+	d["footprint"] = footprint;
+	d["floor_area"] = floor_area;
+	d["ground_h"] = body.ground_h;
+	d["storey_h"] = body.storey_h;
+	d["style"] = int(body.style);
+	return d;
+}
 
 // What the lot of a record holds and how its traffic reaches it (tests: every house parks, every bay is reachable).
 Dictionary lot_probe(const CityState &s, const Building &rec) {
@@ -48,6 +80,7 @@ Dictionary lot_probe(const CityState &s, const Building &rec) {
 	d["garages"] = garages;
 	const b40::LotPlan &p = body.plan;
 	d["plan"] = Array::make(int(p.front), p.front_depth, int(p.left.use), p.left.width, int(p.right.use), p.right.width, int(p.back), p.back_depth, p.rows);
+	d["body"] = body_probe(body);
 	return d;
 }
 } // namespace
