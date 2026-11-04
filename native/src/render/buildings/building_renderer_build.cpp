@@ -43,7 +43,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 		const float x0 = float(key_x(chunk_keys[k])) * CHUNK, z0 = float(key_y(chunk_keys[k])) * CHUNK;
 		s.buildings.query(x0, z0, x0 + CHUNK - b40::EPS, z0 + CHUNK - b40::EPS, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
-			if (b.floors == 0 && !b40::is_open_lot(b.fn)) return;
+			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
 			in.ids.push_back(id);
 			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
@@ -68,6 +68,9 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
 		near_shells[i].glass = &out.near_glass[i];
+		near_shells[i].sheer = &out.near_sheer[i];
+		near_shells[i].cards = &out.near_cards[i];
+		mid_shells[i].cards = &out.mid_cards[i];
 		mid_shells[i].glass = &out.mid_glass[i];
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
@@ -75,7 +78,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t r = 0; r < in.records.size(); r++) {
 		const Building &rec = in.records[r];
 		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
-		const bool cut = near && in.view.cuts(in.ids[r], rec);
+		const bool cut = near && in.view.cuts(in.ids[r]);
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
@@ -93,7 +96,11 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
-	for (size_t i = 0; i < SUB_COUNT; i++) near_shells[i].glass = mid_shells[i].glass = nullptr; // `out` is about to move
+	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
+		near_shells[i].glass = mid_shells[i].glass = nullptr;
+		near_shells[i].sheer = nullptr;
+		near_shells[i].cards = mid_shells[i].cards = nullptr;
+	}
 	if (near) {
 		auto band_of = [this](float thick) {
 			int band = 0;
@@ -143,6 +150,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
+	far.far_tones = &look_.finish_far;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;

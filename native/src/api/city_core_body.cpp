@@ -1,7 +1,11 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
 #include "api/city_core.h"
 #include "api/edit_result.h"
+#include "core/color.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/plan_area.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/commands/body_pick.h"
 #include "sim/commands/body_ops.h"
 #include "sim/persistence/body_codec.h"
 
@@ -13,6 +17,33 @@ namespace city {
 
 namespace {
 constexpr const char *EDIT_LABEL = "cmd.place.editBuilding";
+constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
+constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
+constexpr int SIZE_AXES = 3;
+
+PartSpec part_spec(const Dictionary &d) {
+	PartSpec s;
+	Array size = d.get("size", Array());
+	s.kind = int(d.get("value", 0));
+	s.fit = int(d.get("fit_kind", 0));
+	if (size.size() == SIZE_AXES) {
+		s.w = float(size[0]);
+		s.d = float(size[1]);
+		s.h = float(size[2]);
+	}
+	s.out = float(d.get("standoff_m", 0.0));
+	s.rise = float(d.get("rise_m", 0.0));
+	s.drop = float(d.get("drop_m", 0.0));
+	return s;
+}
+
+// A point of the map in the frame of a building's lot.
+V2 lot_point(const CityState &s, int id, const Vector3 &at) {
+	if (id < 0 || id >= int(s.buildings.items.size())) return V2(0, 0);
+	b40::LotFrame f = b40::lot_frame(s.buildings.items[id]);
+	V2 rel = V2(at.x, at.z) - f.o;
+	return V2(rel.x * f.e0.x + rel.y * f.e0.y, rel.x * f.e1.x + rel.y * f.e1.y);
+}
 
 template <typename F>
 Dictionary edit(CityState &state, int id, F &&op) {
@@ -35,6 +66,8 @@ Dictionary CityCore::body_info(int id) const {
 	d["problem"] = String(body_problem(s.catalog.tune, body).c_str());
 	d["ground_h"] = body.ground_h;
 	d["storey_h"] = body.storey_h;
+	d["parts"] = int(body.elements.size());
+	d["last_part_y"] = body.elements.empty() ? 0.f : body.elements.back().y;
 	Array volumes;
 	for (const b40::Volume &v : body.volumes) {
 		Dictionary e;
@@ -45,10 +78,50 @@ Dictionary CityCore::body_info(int id) const {
 		e["base"] = v.base;
 		e["storeys"] = v.storeys;
 		e["roof"] = int(v.roof);
+		Array bays;
+		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
+		e["bays"] = bays;
+		e["gear"] = int(v.gear.size());
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
 	return d;
+}
+
+Dictionary CityCore::body_pick(const Vector3 &origin, const Vector3 &dir) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Dictionary d;
+	Vector3 n = dir.normalized();
+	BodyHit hit = pick_body(*state_, Ray3{ origin.x, origin.y, origin.z, n.x, n.y, n.z }, PICK_REACH_M);
+	if (hit.id < 0) return d;
+	d["id"] = hit.id;
+	d["volume"] = hit.volume;
+	d["side"] = hit.side;
+	d["storey"] = hit.storey;
+	d["level"] = hit.level;
+	d["bay"] = hit.bay;
+	d["point"] = origin + n * hit.t;
+	return d;
+}
+
+PackedVector3Array CityCore::body_outline(int id, int vol) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	PackedVector3Array out;
+	const CityState &s = *state_;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return out;
+	const Building &rec = s.buildings.items[id];
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	if (vol < 0 || vol >= int(body.volumes.size())) return out;
+	const b40::Volume &v = body.volumes[size_t(vol)];
+	b40::LotFrame f = b40::lot_frame(rec);
+	float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });
+	for (int level : { v.base, v.top() })
+		for (const b40::Point2 &p : b40::ring_of(v)) {
+			V2 at = f.at(p.x, p.y);
+			out.push_back(Vector3(at.x, floor + body.level_z(level), at.y));
+		}
+	return out;
 }
 
 Dictionary CityCore::body_storeys(int id, int vol, int count) {
@@ -137,8 +210,46 @@ Dictionary CityCore::body_roof_shape(int id, int vol, double pitch, int ridge, i
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_roof_shape(b, t, vol, float(pitch), ridge, fall); });
 }
 
-Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, int rgb) {
-	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, uint32_t(rgb)); });
+Dictionary CityCore::body_add_gear(int id, int vol, const Vector3 &at, const Dictionary &spec) {
+	PartSpec s = part_spec(spec);
+	V2 local = lot_point(*state_, id, at);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_gear(b, t, vol, s.kind, local.x, local.y, s.w, s.d, s.h); });
+}
+
+Dictionary CityCore::body_remove_gear(int id, int vol, int gear) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_gear(b, vol, gear); });
+}
+
+Dictionary CityCore::body_turn_gear(int id, int vol, int gear) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_turn_gear(b, t, vol, gear); });
+}
+
+Dictionary CityCore::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {
+	PartSpec s = part_spec(spec);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part(b, t, vol, storey, side, bay, s); });
+}
+
+Dictionary CityCore::body_add_part_at(int id, const Vector3 &at, const Dictionary &spec) {
+	PartSpec s = part_spec(spec);
+	V2 local = lot_point(*state_, id, at);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s); });
+}
+
+Dictionary CityCore::body_remove_part(int id, int part) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_part(b, part); });
+}
+
+Dictionary CityCore::body_turn_part(int id, int part) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_turn_part(b, part); });
+}
+
+Dictionary CityCore::body_repeat_part(int id, int part, double spacing) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_repeat_part(b, t, part, float(spacing)); });
+}
+
+Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, const String &colour) {
+	uint32_t rgb = parse_hex_color(colour.utf8().get_data()) >> ALPHA_BITS;
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, rgb); });
 }
 
 } // namespace city

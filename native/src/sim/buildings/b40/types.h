@@ -12,6 +12,7 @@ namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
 constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
+constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
 
 // The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
 enum Bay : uint8_t { BAY_WALL, BAY_WINDOW, BAY_SASH, BAY_FRENCH, BAY_BAY_WINDOW, BAY_RIBBON, BAY_WIDE, BAY_BALCONY, BAY_DOOR,
@@ -81,6 +82,13 @@ struct Point2 {
 	float x = 0, y = 0;
 };
 
+// What the player sets on a roof, at a point of the plan; `turn` in radians, `h` what stands up from the roof.
+enum RoofGear : uint8_t { GEAR_SOLAR, GEAR_SKYLIGHT, GEAR_VENT, GEAR_CHIMNEY, GEAR_TANK, GEAR_SPIRE, GEAR_LANTERN, GEAR_COUNT };
+struct RoofPart {
+	uint8_t kind = GEAR_VENT;
+	float x = 0, y = 0, w = 1, d = 1, h = 1, turn = 0;
+};
+
 struct Volume {
 	float x = 0, y = 0, w = 0, d = 0;
 	int base = 0, storeys = 1;
@@ -95,6 +103,7 @@ struct Volume {
 	std::unordered_map<uint32_t, int> storey_paint; // (storey, side) -> paint index (ArtDeco stone base)
 	FaceGeometry faces[MAX_FACES];
 	std::vector<Relief> reliefs;
+	std::vector<RoofPart> gear;
 	Lines lines = LINES_NONE;
 	Crown crown = CROWN_NONE;
 	bool keep = false; // not composed (shop back store, works hall)
@@ -120,7 +129,8 @@ inline uint8_t bay_at(const Volume &v, int storey, int side, int bay) {
 // 2 away from the street (+y), 3 -x. A car gate is wide enough for a car; a person's gate is not.
 enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE,
 	EL_GATE, EL_CAR_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_AC, EL_SURFACE, EL_STALL, EL_DOCK, EL_DRAIN,
-	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE };
+	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE, EL_STAIR, EL_RAMP,
+	EL_ROCKS, EL_PARKING, EL_CLOCK };
 enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
 struct LotElement {
 	Element kind = EL_PAVEMENT;
@@ -129,6 +139,9 @@ struct LotElement {
 	int paint = -1;
 	float base = 0; // walls/fences: the base wall under a fence
 };
+
+// A core (stair and lift shaft) is a square of this side in the lot frame, from its (x, y) corner: the generator places it, the cut view draws it.
+constexpr float CORE_SIDE_M = 3.f;
 
 struct Core {
 	float x = 0, y = 0;

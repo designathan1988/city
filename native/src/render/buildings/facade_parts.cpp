@@ -56,7 +56,7 @@ struct Ctx {
 	// A glass guard standing on the floor at `floor`: the pane up to its cap, the cap's top at the guard height.
 	void glass_guard(float a, float floor, float depth, float width) const {
 		const float pane = pl.look->guard_h_m - CAP_H;
-		part_box(shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
+		part_box(shell.sheer ? *shell.sheer : shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
 		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, c.trim_fin);
 	}
 	void door();
@@ -123,7 +123,7 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 		case BAY_WINDOW: case BAY_SASH: x.sill(SILL_PAST, SILL_T, SILL_OUT); break;
 		case BAY_BALCONY:
 			part_box(shell, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
-			part_railing(parts, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
+			part_railing(shell, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
 			break;
 		case BAY_DOOR: x.door(); break;
 		case BAY_DOUBLE_DOOR: x.double_door(); break;

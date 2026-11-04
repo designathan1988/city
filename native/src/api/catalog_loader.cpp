@@ -130,30 +130,43 @@ void load_zones(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 
 void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	Reader r{ errors, "growth" };
-	g.avenue_priority = r.integer(t, "avenue_priority");
-	Dictionary f = r.dict(t, "floors");
-	g.low_res = r.range(f, "low_residential");
-	g.low_other = r.range(f, "low_other");
-	g.high_res = r.range(f, "high_residential");
-	g.high_res_avenue = r.range(f, "high_residential_avenue");
-	g.high_other = r.range(f, "high_other");
-	g.high_other_avenue = r.range(f, "high_other_avenue");
-	g.res_avenue = r.range(f, "residential_avenue");
-	Array split = r.arr(f, "residential_split"), bands = r.arr(f, "residential_bands");
-	for (int i = 0; i < 2 && i < split.size(); i++) g.res_split[i] = float(double(split[i]));
-	for (int i = 0; i < 3 && i < bands.size(); i++) { Array b = bands[i]; g.res_bands[i] = { int(b[0]), int(b[1]) }; }
-	g.commercial = r.range(f, "commercial");
-	g.commercial_avenue = r.range(f, "commercial_avenue");
-	g.industrial = r.range(f, "industrial");
-	g.mixed = r.range(f, "mixed");
-	g.mixed_avenue = r.range(f, "mixed_avenue");
+	Dictionary p = r.dict(t, "plan");
+	CityPlanDef &d = g.plan;
+	d.centres = r.integer(p, "centres");
+	d.main_offset = r.num(p, "main_offset");
+	d.centre_turn = r.num(p, "centre_turn");
+	d.second_from = r.num(p, "second_from");
+	d.second_to = r.num(p, "second_to");
+	d.second_pull = r.num(p, "second_pull");
+	d.density = r.num(p, "density");
+	d.density_pull = r.num(p, "density_pull");
+	d.noise_cell_m = r.num(p, "noise_cell_m");
+	d.noise_heat = r.num(p, "noise_heat");
+	d.high_heat = r.num(p, "high_heat");
+	d.medium_heat = r.num(p, "medium_heat");
+	d.commerce_heat = r.num(p, "commerce_heat");
+	d.main_commerce_heat = r.num(p, "main_commerce_heat");
+	d.industry_from = r.num(p, "industry_from");
+	d.industry_half_angle = r.num(p, "industry_half_angle");
+	Dictionary sq = r.dict(p, "squares");
+	d.square_cell_m = r.num(sq, "green_cell_m");
+	d.square_touch_m = r.num(sq, "green_touch_m");
+	d.square_front_m = r.num(sq, "green_front_m");
+	d.square_area_low = r.num(sq, "green_area_low_m2");
+	d.square_area_high = r.num(sq, "green_area_high_m2");
+	d.square_walk_half_m = r.num(sq, "green_walk_half_m");
+	d.square_plaza_m = r.num(sq, "green_plaza_m");
+	d.square_tree_grid_m = r.num(sq, "green_tree_grid_m");
+	d.square_tree_edge_m = r.num(sq, "green_tree_edge_m");
+	d.square_tree_low_m = r.num(sq, "green_tree_low_m");
+	d.square_tree_high_m = r.num(sq, "green_tree_high_m");
+	for (const Variant &name : r.arr(sq, "green_main_roads")) d.square_main_roads.push_back(String(name).utf8().get_data());
 	Dictionary cv = r.dict(t, "civic");
 	g.civic_min_area = r.num(cv, "min_area");
 	g.civic_chance = r.num(cv, "chance");
 	Array by_zone = r.arr(cv, "by_zone");
 	for (int z = 0; z < 5 && z < by_zone.size(); z++)
 		for (const Variant &e : Array(by_zone[z])) { Array p = e; g.civic_by_zone[z].push_back({ int(p[0]), int(p[1]) }); }
-	g.square_min_area = r.num(t, "square_min_area");
 	g.organic_reach_m = r.num(t, "organic_reach_m");
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_grace_min = r.num(t, "decay_grace_min");
@@ -171,6 +184,7 @@ void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		m.name_key = s8(r.str(d, "name_key"));
 		m.tiles = r.integer(d, "tiles");
 		m.medium = r.flag(d, "medium");
+		m.city_radius_m = double(d.get("city_radius_m", 0.0));
 		c.maps.push_back(m);
 	}
 }
@@ -189,6 +203,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_growth(r.dict(tables, "growth"), c.growth, errors);
 	load_traffic_params(r.dict(tables, "traffic"), c.traffic, errors);
 	load_street_furniture(r.dict(tables, "street_furniture"), c.furniture, errors);
+	load_nature(r.dict(tables, "nature"), c.nature, errors);
 	if (c.maps.empty()) errors.push_back("maps: nenhum mapa");
 	if (!errors.is_empty()) return false;
 	out = std::move(c);

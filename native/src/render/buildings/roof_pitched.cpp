@@ -4,7 +4,7 @@
 #include "render/buildings/facade.h"
 #include "render/buildings/roof_clip.h"
 
-#include "core/units.h"
+#include "sim/buildings/b40/roof_shape.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +15,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float EAVES = 0.45f, THICK = 0.18f, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
-constexpr float DEFAULT_GABLE = 30.f, DEFAULT_SHED = 12.f, SAW_STEP = 6.f, HALF = 0.5f, MULLION = 0.08f;
+constexpr float HALF = 0.5f, MULLION = 0.08f;
 
 struct Pitch {
 	Shell &s;
@@ -60,7 +60,7 @@ struct Pitch {
 	}
 	void gable_hip(bool hip);
 	void shed();
-	void sawtooth(const Lin &glass, int8_t glass_fin);
+	void sawtooth(float n_step, const Lin &glass, int8_t glass_fin);
 };
 
 void Pitch::gable_hip(bool hip) {
@@ -103,11 +103,9 @@ void Pitch::shed() {
 }
 // Teeth across the roof every min(6 m, depth): a slope rising toward the back, then a vertical north-light glazing
 // down to the eaves, with end triangles in the wall paint.
-void Pitch::sawtooth(const Lin &glass, int8_t glass_fin) {
-	float step = std::min(SAW_STEP, S);
+void Pitch::sawtooth(float n_step, const Lin &glass, int8_t glass_fin) {
+	float step = n_step, rise = step * HALF * slope;
 	int n = std::max(1, int(std::round(S / step)));
-	step = S / float(n);
-	float rise = step * HALF * slope;
 	Vector3 up = (R.e2 - R.e1 * slope * HALF).normalized();
 	for (int i = 0; i < n; i++) {
 		float s0 = step * float(i), s1 = s0 + step;
@@ -124,9 +122,8 @@ void Pitch::sawtooth(const Lin &glass, int8_t glass_fin) {
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) {
 	const Body &b = *pl.b;
 	const Paint &rp = b.roof_of(v), &tp = b.paints[size_t(b.trim)], &wp = b.wall_of(v);
-	float pitch = v.pitch > 0 ? v.pitch : v.roof == ROOF_SHED ? DEFAULT_SHED : DEFAULT_GABLE;
 	Lin trim = paint_lin(tp);
-	Pitch P{ shell, Basis{}, 0, 0, std::tan(pitch * DEG_TO_RAD), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
+	Pitch P{ shell, Basis{}, 0, 0, roof_slope(v), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
 	shell.grime_floor = -FAR_AWAY;
 	RoofHide hidden(pl, v);
@@ -152,10 +149,10 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 		P.L = v.w;
 		P.S = v.d;
 		const Paint &g = pl.data->color("sawtooth_glass");
-		P.sawtooth(paint_lin(g), g.finish);
+		P.sawtooth(saw_step(v), paint_lin(g), g.finish);
 		return;
 	}
-	bool along_x = v.ridge >= 0 ? v.ridge == 0 : v.w >= v.d;
+	bool along_x = ridge_along_x(v);
 	P.R = along_x ? Basis{ lot.at(v.x, v.y, eaves), lot.e0, lot.e1, lot.e2 } : Basis{ lot.at(v.x, v.y, eaves), lot.e1, lot.e0, lot.e2 };
 	P.L = along_x ? v.w : v.d;
 	P.S = along_x ? v.d : v.w;

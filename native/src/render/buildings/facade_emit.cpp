@@ -15,7 +15,7 @@ namespace {
 constexpr float EDGE_IN = 0.01f, OUT_TEST = 0.03f, HALF = 0.5f, PILASTER_K = 1.08f, PIER_MAX_SHARE = 0.3f;
 constexpr float PIER_FROM = 0.35f, PIER_TO = 1.35f, GROUND_LIFT = 0.012f, BAND_OUT = 0.07f, BAND_H = 0.22f;
 constexpr float BASE_OUT = 0.12f, BASE_H = 0.32f, SLAB_OUT = 0.03f, SLAB_H = 0.24f;
-constexpr float SLAB_SHADE = 0.86f, PLINTH_OUT = 0.12f, PLINTH_BURY = 0.8f, STEP_RISE = 0.17f, STEP_MIN = 0.255f;
+constexpr float SLAB_SHADE = 0.86f, PLINTH_OUT = 0.12f, PLINTH_BURY = 0.8f, STEP_MIN = 0.255f;
 constexpr float FACADE_RUN_MIN = 0.3f, STEP_FRONT = 1.5f, STEP_PAD = 0.5f, STEP_FOOT = 0.4f, DOOR_W = 1.3f;
 constexpr int MAX_STEPS = 40;
 constexpr uint32_t HV = 0x27d4eb2d, HL = 0x165667b1, HS = 0x3c6ef372, HI = 0x85ebca6b, HX = 0x2c1b3c6d, HY = 0x297a2d39;
@@ -45,8 +45,8 @@ void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float 
 void relief_caps(Shell &s, const BayCtx &c, float push, bool bottom, bool top) {
 	if (push > 0) {
 		Basis up{ c.f.o, c.f.e0, -c.f.e2, c.f.e1 };
-		if (top) s.rect(up, 0, c.W, 0, push, c.H, c.mould, c.trim_fin);
-		if (bottom) s.rect(up, 0, c.W, 0, push, 0, c.mould, c.trim_fin, true);
+		if (top) s.rect(up, 0, c.W, 0, push, c.H, c.mould, c.mould_fin);
+		if (bottom) s.rect(up, 0, c.W, 0, push, 0, c.mould, c.mould_fin, true);
 	} else if (push < 0) {
 		Basis up{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
 		if (top) s.rect(up, 0, c.W, 0, -push, c.H, c.wall * HALF, c.wall_fin, true);
@@ -65,7 +65,7 @@ void steps(Shell &s, const Placed &pl, const BayCtx &c) {
 	Vector3 front = c.f.at(am, 0, STEP_FRONT);
 	float rise = front.y - pl.ground(front);
 	if (rise <= STEP_MIN) return;
-	int n = std::min(MAX_STEPS, int(std::ceil(rise / STEP_RISE)));
+	int n = std::min(MAX_STEPS, int(std::ceil(rise / RISER_M)));
 	float w = std::min(c.W - 1, DOOR_W) + STEP_PAD;
 	Lin stone = paint_lin(pl.data->color("plinth"));
 	for (int j = 1; j <= n; j++) {
@@ -92,7 +92,7 @@ void SideEmit::storey(const Side &sd, int k, float z) {
 	c.W = W; c.H = H; c.level = level; c.use = b.use; c.geo = &v.faces[sd.side];
 	c.trim = trim_lin(pl); c.trim_fin = b.paints[size_t(b.trim)].finish;
 	Paint mould = moulding_of(pl);
-	c.mould = paint_lin(mould);
+	c.mould = paint_lin(mould); c.mould_fin = mould.finish;
 	const Paint &wp = [&]() -> const Paint & {
 		auto it = v.storey_paint.find(side_key(k, sd.side));
 		return it != v.storey_paint.end() ? b.paints[size_t(it->second)] : b.wall_of(v);

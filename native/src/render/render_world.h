@@ -6,6 +6,8 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/atmosphere/fog_field.h"
+#include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
 #include "render/overlays/overlay_renderer.h"
@@ -14,7 +16,9 @@
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
 #include "render/terrain_bridge.h"
+#include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
+#include "render/water/water_renderer.h"
 
 #include "core/laps.h"
 
@@ -29,6 +33,8 @@ public:
 	struct Cost {
 		double lock = 0, stream = 0, levels = 0, flush = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
 		double chunk_max = 0, super_max = 0;
+		bool backlog = false; // no chunk was asked for this frame: the baked results wait for the upload budget
+		int budget_left = 0;
 		CommitTimes building; // inside the building commit
 	};
 
@@ -54,14 +60,22 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Dictionary agent_cost() const { return agents_.cost(); }
+	godot::Dictionary building_cost() const { return buildings_.building_cost(); }
+	// A body drawn apart from the city (body_stage.h).
+	int stage_show(const b40::Data &data, const b40::Body &body, const godot::RID &scenario, bool ghost) { return stage_.show(data, buildings_.look(), body, scenario, ghost); }
+	BodyStage &stage() { return stage_; }
+	const BodyStage &stage() const { return stage_; }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	BuildingRenderer::InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
+	FogField &fog() { return fog_; }
+	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
+	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
-				buildings_.pending() + trees_.pending();
+				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
 private:
@@ -69,7 +83,11 @@ private:
 	RoadRenderer roads_;
 	PropRenderer props_;
 	TreeRenderer trees_;
+	CoverRenderer cover_;
+	WaterRenderer water_;
+	FogField fog_;
 	BuildingRenderer buildings_;
+	BodyStage stage_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;
 	WearField wear_;
@@ -77,7 +95,8 @@ private:
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
 	std::vector<int64_t> road_keys_, building_keys_, view_keys_;
-	std::vector<int> terrain_rects_;
+	std::vector<int> terrain_rects_, paint_rects_;
+	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;
 	void drain_log(CityState &s);
 };

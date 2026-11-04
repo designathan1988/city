@@ -15,10 +15,6 @@
 
 namespace city {
 
-// The floor of a lot: the highest ground under its ground volumes (corners and a 1.5 m grid) + the plinth; `ground_lo` the
-// lowest of it. The one place the render and the room lights get it from.
-float lot_floor(const b40::Body &b, const b40::LotFrame &f, const HeightPatch &ground, float &ground_lo);
-
 class BuildingBodies {
 public:
 	const b40::Body &body(const b40::Data &data, const Building &rec);

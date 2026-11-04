@@ -16,6 +16,15 @@ struct CityState;
 
 using BodyOp = std::function<std::string(b40::Body &)>;
 
+// How a part fits the wall it is set against: on the ground in front of the bay, spanning it, over its opening, as tall as the storey,
+// a deck at its floor, a dial on the wall, a unit on the wall, a flight down to the ground.
+enum PartFit : uint8_t { FIT_GROUND, FIT_SPAN, FIT_OVER, FIT_STOREY, FIT_DECK, FIT_DIAL, FIT_UNIT, FIT_FLIGHT };
+// A part as data/ui/builder.json gives it. `out`: how far from the wall; `rise`, `drop`: over the floor, under the next.
+struct PartSpec {
+	int kind = 0, fit = FIT_GROUND;
+	float w = 1, d = 1, h = 1, out = 0, rise = 0, drop = 0;
+};
+
 // Runs `op` on a copy of the building's body, checks it and stores it as the record's new body. An op that changes nothing
 // stores nothing.
 EditResult edit_body(CityState &s, int id, const BodyOp &op);
@@ -45,5 +54,16 @@ std::string op_set_relief(b40::Body &b, const Tuning &t, int vol, const b40::Rel
 std::string op_set_roof(b40::Body &b, int vol, int roof);
 std::string op_roof_shape(b40::Body &b, const Tuning &t, int vol, float pitch, int ridge, int fall);
 std::string op_paint(b40::Body &b, int scope, int vol, int side, int storey, int finish, uint32_t rgb);
+// What stands on a roof, at (x, y) of the plan; `gear` an index into the block's. It must fit the roof, corners and all.
+std::string op_add_gear(b40::Body &b, const Tuning &t, int vol, int kind, float x, float y, float w, float d, float h);
+std::string op_remove_gear(b40::Body &b, int vol, int gear);
+std::string op_turn_gear(b40::Body &b, const Tuning &t, int vol, int gear);
+
+// The parts. `part` an index into the elements; a free part stands at (x, y) of the lot frame, facing a b40::Facing.
+std::string op_add_part(b40::Body &b, const Tuning &t, int vol, int storey, int side, int bay, const PartSpec &s);
+std::string op_add_part_at(b40::Body &b, const Tuning &t, float x, float y, int facing, const PartSpec &s);
+std::string op_remove_part(b40::Body &b, int part);
+std::string op_turn_part(b40::Body &b, int part);
+std::string op_repeat_part(b40::Body &b, const Tuning &t, int part, float spacing);
 
 } // namespace city

@@ -1,6 +1,7 @@
 // Parses data/render/interiors.json into the interior tables (sim/buildings/interior/tables.h). Every name is checked: an
 // unknown piece, edge, purpose or step is an error at startup, never a silent default.
 #include "api/interiors_loader.h"
+#include "render/region_table.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -67,7 +68,8 @@ Step step_of(const Dictionary &d, PackedStringArray &errors) {
 }
 } // namespace
 
-bool load_interiors(const Dictionary &t, InteriorTables &out, PackedStringArray &errors) {
+bool load_interiors(const Dictionary &table, InteriorTables &out, PackedStringArray &errors) {
+	const Dictionary t = region_table(table);
 	const int64_t before = errors.size();
 	Array sizes = t.get("sizes", Array());
 	bool sized[FK_COUNT] = {};

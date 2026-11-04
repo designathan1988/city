@@ -17,8 +17,7 @@ namespace {
 constexpr float FLOOR_LIFT = 0.04f; // the floor over the storey's slab: it never fights the slab's face
 constexpr float WALL_HALF = 0.06f; // an inner wall is 12 cm thick
 constexpr float WALL_CLEAR = 0.4f, WALL_MAX = 2.7f; // an inner wall stands the storey's height less this, at most this high
-constexpr float FACING = 0.6f; // a wall whose normal is this close to the camera's line comes down
-constexpr float CORE_M = 3.f; // a core is a square of this side (the generator's, massing_tall.cpp: twice CORE_HALF)
+constexpr float LOWER_DOT = 0.6f; // a wall whose normal is this close to the camera's line comes down
 constexpr float SHAFT_WALL = 0.2f, SHAFT_CLEAR = 0.3f; // the shaft's walls, and how far under the next floor it stops
 constexpr float LIFT_DOOR_W = 1.2f, DOOR_SHARE = 0.5f, DOOR_H = 2.2f; // the shaft's door at the floor
 constexpr float CAB_GAP = 0.1f, CAB_LIFT = 0.05f, CAB_H = 2.3f; // the car in the shaft
@@ -45,11 +44,11 @@ void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 	const float z = b.level_z(cut), top = b.level_z(cut + 1) - SHAFT_CLEAR;
 	for (const Core &c : b.cores) {
 		if (cut > c.to) continue;
-		const float x0 = c.x, y0 = c.y, x1 = c.x + CORE_M, y1 = c.y + CORE_M;
+		const float x0 = c.x, y0 = c.y, x1 = c.x + b40::CORE_SIDE_M, y1 = c.y + b40::CORE_SIDE_M;
 		shell.box(pl.lot, x0, x1, y1 - SHAFT_WALL, y1, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x0, x0 + SHAFT_WALL, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x1 - SHAFT_WALL, x1, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
-		const float door = std::min(CORE_M * DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
+		const float door = std::min(b40::CORE_SIDE_M * DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
 		shell.box(pl.lot, x0 + SHAFT_WALL, mid - door / 2, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid + door / 2, x1 - SHAFT_WALL, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid - door / 2, mid + door / 2, y0, y0 + SHAFT_WALL, z + DOOR_H, top, sl, shaft.finish, SKIP_E2_NEG);
@@ -68,7 +67,7 @@ void partitions(Shell &shell, const Placed &pl, const InteriorLook &look, int cu
 		const float len = std::max(std::hypot(w.x1 - w.x0, w.y1 - w.y0), EPS);
 		// The wall's normal against the camera's line: near 1 means it faces the camera.
 		const float facing = std::abs(-(w.y1 - w.y0) / len * b.cut_view.x + (w.x1 - w.x0) / len * b.cut_view.y);
-		const float top = z + (facing > FACING ? CUT_WALL_LOW_M : rise);
+		const float top = z + (facing > LOWER_DOT ? CUT_WALL_LOW_M : rise);
 		shell.box(pl.lot, std::min(w.x0, w.x1) - WALL_HALF, std::max(w.x0, w.x1) + WALL_HALF, std::min(w.y0, w.y1) - WALL_HALF,
 				std::max(w.y0, w.y1) + WALL_HALF, z, top, lin, p.finish, SKIP_E2_NEG);
 	}

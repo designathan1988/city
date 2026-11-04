@@ -21,7 +21,10 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
+	ok = ok && cover_.init(ctx, errors);
+	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
+	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_sheer", errors), ctx.material("building_card", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
@@ -33,7 +36,10 @@ void RenderWorld::reset() {
 	roads_.reset();
 	props_.reset();
 	trees_.reset();
+	cover_.reset();
+	water_.reset();
 	buildings_.reset();
+	stage_.clear();
 	agents_.reset();
 	overlays_.reset();
 	road_stream_.clear();
@@ -44,7 +50,12 @@ void RenderWorld::reset() {
 void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	reset();
 	budget_ = std::max(1, int(s.catalog.tune.render_max_chunk_rebuilds_per_frame));
-	if (terrain3d) terrain_.push_all(s.terrain, terrain3d);
+	if (terrain3d) {
+		terrain_.push_all(s.terrain, terrain3d);
+		terrain_.push_all_paint(s.terrain, s.nature.ground, terrain3d);
+	}
+	fog_.reset();
+	water_.mark_all(s.terrain);
 	for (const RoadSegment &g : s.roads.segs)
 		if (g.alive) {
 			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
@@ -72,6 +83,9 @@ void RenderWorld::drain_log(CityState &s) {
 	building_keys_.swap(s.log.building_chunks);
 	view_keys_.swap(s.log.view_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
+	paint_rects_.swap(s.log.paint_rects);
+	nature_keys_.swap(s.log.nature_chunks);
+	water_keys_.swap(s.log.water_chunks);
 }
 
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
@@ -86,6 +100,17 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.lock = laps.lap();
 		drain_log(s);
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
+		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
+		paint_rects_.clear();
+		ChangeLog::dedup(nature_keys_);
+		for (int64_t k : nature_keys_) {
+			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
+		}
+		nature_keys_.clear();
+		for (int64_t k : water_keys_) water_.mark(k);
+		water_keys_.clear();
+		water_.sync(s.terrain);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
 		ChangeLog::dedup(road_keys_);
 		ChangeLog::dedup(building_keys_);
@@ -94,11 +119,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			road_stream_.mark(k);
 			props_stream_.mark(k);
 			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
 			overlays_.mark_dirty(k);
 		}
 		for (int64_t k : building_keys_) {
 			building_stream_.mark(k);
 			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
 		}
 		for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
 		road_keys_.clear();
@@ -116,9 +143,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
-		trees_.sync(s, cam, budget);
+		// The buildings first: a chunk they leave for the next frame is a hole in the city, a tree a little later is not.
 		buildings_.update_view(cam, budget);
+		trees_.sync(s, cam, budget);
+		cover_.sync(s, cam, budget);
 		cost_.levels = laps.lap();
+		cost_.backlog = backlog;
+		cost_.budget_left = budget.left;
 	}
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	UploadBudget upload(window, roads_.baking() + props_.baking() + buildings_.baking());
@@ -132,6 +163,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	trees_.commit(until);
+	cover_.commit(until);
 	cost_.trees = laps.lap();
 	cost_.uploads = double(upload.used) / BYTES_PER_MIB;
 }

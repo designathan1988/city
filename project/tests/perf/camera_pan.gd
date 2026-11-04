@@ -1,13 +1,14 @@
 ## The cost of each frame while the camera moves the way the player moves it, always over the city (city_bounds): the
 ## real world, camera rig, HUD and running simulation (as game/play.tscn), at the game's own pace (vsync and the
 ## Settings frame cap: the GPU is never pushed past what the game asks of it). The rig stands still over the centre,
-## crosses the city, circles its middle, turns round and zooms out and back. Per movement: frame times (hitches past
+## crosses the city, circles its middle, turns round, zooms out and back and goes round close to the walls. Per movement: frame times (hitches past
 ## 33 / 50 ms), the GPU and CPU render time of each frame (RenderingServer measured render times, exact under vsync),
 ## the triangles and draw calls of the visible and shadow passes, and the memory (static, video, buffers). The slowest
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
 ## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), to see what a feature costs; --moves=a,b runs
-## only those movements (the rig still goes where each one starts).
+## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
+## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
 ## Run: godot --path project --resolution 1600x900 res://tests/perf/camera_pan.tscn -- --no-flow [--map=N]
 ## [--shot-dir=DIR] (a picture halfway through each movement: proof of where the camera was)
 extends Node3D
@@ -24,6 +25,9 @@ const ZOOM_S := 8.0
 const ZOOM_FAR_M := 4000.0
 const ZOOM_NEAR_M := 300.0
 const VIEW_PITCH_DEG := 40.0
+const CLOSE_S := 12.0 # the walls fill the frame: what a fragment of them costs, the panes above all
+const CLOSE_M := 120.0
+const CLOSE_PITCH_DEG := 15.0
 const STILL_S := 10.0
 const SLOW_MS := [33.0, 50.0]
 const MIB := 1024.0 * 1024.0
@@ -54,6 +58,9 @@ func _knobs(world: CityWorld) -> void:
 			world.sun.shadow_enabled = false
 		elif arg == "--msaa=0":
 			get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		elif arg == "--uncapped":
+			Engine.max_fps = 0
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 
 
 func _ready() -> void:
@@ -107,6 +114,8 @@ func _ready() -> void:
 	await _run("zoom", ZOOM_S, func(_dt: float, t: float) -> void:
 		var k := 1.0 - absf(2.0 * t / ZOOM_S - 1.0) # out and back
 		rig.jump(rig.focus, rad_to_deg(rig.yaw), VIEW_PITCH_DEG, lerpf(ZOOM_NEAR_M, ZOOM_FAR_M, k)))
+	await _run("perto", CLOSE_S, func(_dt: float, t: float) -> void:
+		rig.jump(centre, rad_to_deg(TAU * t / CLOSE_S), CLOSE_PITCH_DEG, CLOSE_M))
 	GameFlow.quit_now()
 
 
@@ -177,6 +186,7 @@ func _report(name: String) -> void:
 		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
 	print("  maior HLOD de superchunk construído: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
+	print("  prédios: ", JSON.stringify(CityStore.query(&"building_cost")))
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.

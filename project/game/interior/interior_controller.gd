@@ -1,7 +1,9 @@
 ## The Interior layer on the script side (the core holds what is open: its set_interior command and interior query). Here: the switch (the layers
-## popover), the building in the middle of the view or double-clicked, the floor, the camera's direction in eight steps, the
-## framing of the building and its floor, and the room lights. It keeps no number of the game: the floor and the building live in the core;
-## `_state` is only the last reading of them, read again when the core's revision changes (the query is heavy: never every frame).
+## popover), the building in the middle of the view or double-clicked, the floor, the camera's direction in eight steps and the room
+## lights. As in the 4.0 (buildingsWiring.ts seeInside, insideClick, openInside) the camera stays where the player put it: opening,
+## changing floor and clicking only name the building and the floor. It keeps no number of the game: the floor and the building live
+## in the core; `_state` is only the last reading of them, read again when the core's revision changes (the query is heavy: never
+## every frame).
 class_name InteriorController
 extends Node
 
@@ -9,8 +11,6 @@ const STEPS := 8
 const STEP_RAD := TAU / float(STEPS)
 ## Looking straight down the horizontal "forward" of the lens is nothing: the screen's up on the ground stands in for it.
 const FLAT_LOOK := 0.2
-## The tilt below which a floor's height shifts the view without end (a lens looking along the ground).
-const MIN_FRAME_TILT := 0.05
 
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var hud: RoadcraftHud = get_tree().get_first_node_in_group(&"hud")
@@ -58,15 +58,6 @@ func is_on() -> bool:
 	return _state.get("on", false)
 
 
-## Puts the floor seen in the middle of the screen: the rig turns about a point on the ground, so a floor high above it
-## stands further back along the line of sight, by its height over the tangent of the tilt.
-func frame_floor() -> void:
-	if not is_on():
-		return
-	var ahead := Vector3(-sin(rig.yaw), 0.0, -cos(rig.yaw))
-	rig.look_at_ground(_state.focus + ahead * (float(_state.floor_height) / tan(maxf(rig.pitch, MIN_FRAME_TILT))))
-
-
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -93,27 +84,22 @@ func _process(_delta: float) -> void:
 	var step := _direction_step()
 	if step != _step:
 		_send(true, _state.target, _state.level, step)
-	_lights.follow(rig.focus, _world.daylight.night if _world else 0.0)
+	_lights.set_night(_world.daylight.night if _world else 0.0)
 
 
-## Opens building `id` at `level` and frames it: its body, and the floor.
+## Opens building `id` at `level`; the camera stays.
 func _open(id: int, level: int) -> void:
 	_send(true, id, level)
-	if not is_on():
-		return
-	rig.jump(_state.focus, rad_to_deg(rig.yaw), _cfg.camera.pitch_deg, maxf(float(_state.extent) * _cfg.camera.distance_per_m, _cfg.camera.min_distance_m))
-	frame_floor()
 
 
 func _move_floor(delta: int) -> void:
 	if is_on():
 		_send(true, _state.target, clampi(_state.level + delta, 0, maxi(_state.floors - 1, 0)))
-		frame_floor()
 
 
 func _send(on: bool, target: int, level: int, step := -1) -> void:
 	_step = _direction_step() if step < 0 else step
-	CityStore.dispatch(&"set_interior", [on, target, level, _step, Vector3.ZERO, 0.0])
+	CityStore.dispatch(&"set_interior", [on, target, level, _step])
 	_refresh()
 	if not on:
 		_step = -1
@@ -128,12 +114,16 @@ func _refresh() -> void:
 
 
 ## The way the camera looks on the ground, as one of the eight steps the core cuts for (from +x towards +z).
-func _direction_step() -> int:
-	var basis := rig.camera.global_transform.basis
+static func direction_of(camera: Camera3D) -> int:
+	var basis := camera.global_transform.basis
 	var look := Vector2(-basis.z.x, -basis.z.z)
 	if look.length() < FLAT_LOOK:
 		look = Vector2(basis.y.x, basis.y.z)
 	return posmod(roundi(look.angle() / STEP_RAD), STEPS)
+
+
+func _direction_step() -> int:
+	return direction_of(rig.camera)
 
 
 func _building_at(screen: Vector2) -> int:

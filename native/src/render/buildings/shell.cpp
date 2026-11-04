@@ -21,6 +21,8 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr float PANE_RECESS_STEP_M = 0.01f; // COLOR.a above the kind: building_glass.gdshader reads the same
+constexpr int PANE_KIND_BITS = 3, PANE_RECESS_MAX = 31;
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
@@ -85,6 +87,12 @@ Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kin
 	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
 }
 
+Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
+	if (!far_tones || fin < 0) return lin;
+	const Lin &k = (*far_tones)[size_t(fin)];
+	return { lin.r * k.r, lin.g * k.g, lin.b * k.b };
+}
+
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
 	Vector3 n = (p[1] - p[0]).cross(p[2] - p[0]);
 	if (n.length_squared() < DEGENERATE && count == 4) n = (p[2] - p[1]).cross(p[3] - p[1]);
@@ -94,7 +102,8 @@ void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin
 	bool wall = std::abs(n.y) < SHELL_WALL_TOP;
 	Vector2 t2(float(fin + 1), 0);
 	int base = int(pos.size());
-	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], lin, wall, kind), Vector2(), t2);
+	const Lin tint = far_tint(lin, fin);
+	for (int i = 0; i < count; i++) vert(p[i], n, shaded(p[i], tint, wall, kind), Vector2(), t2);
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0; // clockwise seen from `out`
 	for (int i = 1; i + 1 < count; i++) {
 		idx.push_back(base);
@@ -149,21 +158,36 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	}
 }
 
+void Shell::card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind) {
+	if (cards) {
+		cards->card(f, a0, a1, b0, b1, c, lin, kind);
+		return;
+	}
+	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
+	sheet(f, a0, a1, b0, b1, c, shaded(f.at(a0, b0, c), lin, false, SK_SHELL), Vector2(float(kind), 0));
+}
+
+// A quad with UV 0..1 over it, the same colour and UV2 at its corners. Back: its first vertex.
+int Shell::sheet(const Basis &f, float a0, float a1, float b0, float b1, float c, const Color &code, const Vector2 &t2) {
+	const Vector3 n = f.e2;
+	const int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), t2), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), t2);
+	const int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), t2), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), t2);
+	const bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
+	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
+	idx.insert(idx.end(), t, t + QUAD_INDICES);
+	return i0;
+}
+
 void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look) {
 	if (glass) {
 		glass->pane(f, a0, a1, b0, b1, c, look);
 		return;
 	}
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
-	Vector3 n = f.e2;
+	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float(look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) / BYTE);
-	Vector2 size(a1 - a0, b1 - b0);
-	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
-	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);
-	bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
-	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
-	idx.insert(idx.end(), t, t + QUAD_INDICES);
+			float((look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
+	const int i0 = sheet(f, a0, a1, b0, b1, c, code, Vector2(a1 - a0, b1 - b0)), i1 = i0 + 1, i2 = i0 + 2, i3 = i0 + 3;
 	if (!rooms) return;
 	const PaneRoom &r = look.room;
 	const float k = 1 / ROOM_SPAN_M;
@@ -191,7 +215,8 @@ void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[
 	Vector3 n = (p[1] - p[0]).cross(p[3] - p[0]).normalized();
 	if (n.dot(out) < 0) n = -n;
 	int base = int(pos.size());
-	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], lin, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
+	const Lin tint = far_tint(lin, fin);
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], tint, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
 	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
 	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };

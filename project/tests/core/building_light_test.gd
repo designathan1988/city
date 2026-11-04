@@ -67,7 +67,7 @@ func _wall_by_day() -> void:
 	var img := get_viewport().get_texture().get_image()
 	for sp in spots:
 		var want := _pixel(img, sp[1])
-		_compare(img, sp[0], want, "%s de dia (referência %s)" % [sp[2], want.to_html(false)])
+		_compare(img, sp[0], want, "%s de dia (referência %s)" % [sp[2], want.to_html(false)], true)
 	for n in made:
 		n.queue_free()
 
@@ -153,7 +153,8 @@ func _pixel(img: Image, at: Vector3) -> Color:
 	return img.get_pixelv(Vector2i(cam.unproject_position(at).round()))
 
 
-func _compare(img: Image, at: Vector3, want: Color, what: String) -> void:
+func _compare(img: Image, at: Vector3, wanted: Color, what: String, on_screen := false) -> void:
+	var want: Color = wanted if on_screen else CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := _pixel(img, at)
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
 	_check(off <= TOLERANCE, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false), want.to_html(false), off])

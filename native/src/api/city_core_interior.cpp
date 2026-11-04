@@ -11,7 +11,7 @@ using namespace godot;
 
 namespace city {
 
-Dictionary CityCore::set_interior(bool on, int target, int level, int dir, const Vector3 &around, float radius) {
+Dictionary CityCore::set_interior(bool on, int target, int level, int dir) {
 	Dictionary d;
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	if (!state_->ready) return d;
@@ -20,9 +20,6 @@ Dictionary CityCore::set_interior(bool on, int target, int level, int dir, const
 	r.target = target;
 	r.level = level;
 	r.dir = dir;
-	r.cx = around.x;
-	r.cz = around.z;
-	r.radius = radius;
 	const char *problem = set_interior_view(*state_, r);
 	d["ok"] = problem[0] == 0;
 	d["error"] = String(problem);
@@ -40,15 +37,7 @@ Dictionary CityCore::interior() const {
 	d["level"] = s.interior.cut.level;
 	d["dir"] = s.interior.cut.dir;
 	d["revision"] = int(s.interior.revision);
-	if (s.interior.on && s.interior.target >= 0) {
-		const InteriorFocus f = interior_focus(s, s.interior.target, s.interior.cut.level);
-		d["floors"] = f.floors;
-		d["focus"] = Vector3(f.at.x, s.terrain.height_at(f.at.x, f.at.y), f.at.y);
-		d["extent"] = f.extent;
-		d["floor_height"] = f.floor_height;
-	} else {
-		d["floors"] = 0;
-	}
+	d["floors"] = s.interior.on ? interior_floors(s, s.interior.target) : 0;
 	PackedVector3Array lamps;
 	if (s.interior.on && s.interior.target >= 0)
 		for (const Vector3 &p : interior_lamps(s, s.interior.target, s.interior.cut.level)) lamps.push_back(p);

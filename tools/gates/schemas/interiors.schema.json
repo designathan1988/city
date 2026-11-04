@@ -1,29 +1,40 @@
 {
-  "type": "object",
-  "properties": {
-    "_doc": {
-      "type": "string"
-    },
-    "sizes": {
-      "type": "array",
-      "items": {
-        "type": "array"
-      }
-    },
-    "seen": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "recipes": {
-      "type": "object"
-    }
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
   },
-  "required": [
-    "_doc",
-    "sizes",
-    "seen",
-    "recipes"
-  ]
+  "styles": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "sizes": {
+      "type": "array",
+      "items": {
+       "type": "array"
+      }
+     },
+     "seen": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "recipes": {
+      "type": "object"
+     }
+    },
+    "required": [
+     "sizes",
+     "seen",
+     "recipes"
+    ]
+   }
+  }
+ },
+ "required": [
+  "_doc",
+  "styles"
+ ]
 }

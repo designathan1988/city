@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/commands/interior_commands.h"
 #include "sim/terrain/terrain_gen.h"
@@ -94,6 +95,14 @@ Dictionary CityCore::constants() const {
 	d["minutes_per_hour"] = MINUTES_PER_HOUR;
 	d["zone_codes"] = ZONE_CODES;
 	return d;
+}
+
+TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
+	return film_grade_slices(grade);
+}
+
+Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const {
+	return city::film_graded(grade, colour);
 }
 
 Dictionary CityCore::snapshot() {

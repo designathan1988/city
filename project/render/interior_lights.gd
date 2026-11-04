@@ -1,10 +1,10 @@
-## The room lights of the floor a building is cut open at: a few point lights on its lamps, without shadows, and stronger at night.
-## The core says where the lamps are (the lamps of its interior query); the nearest to the camera's focus carry the lights.
+## The room lights of the floor a building is cut open at: a few point lights on its lamps, without shadows, stronger at night.
+## The 4.0's way (renderer.ts:1620-1713, roomLamps.ts): a fixed set, the first lamps of the floor in the order its furniture
+## lists them, and one intensity for all, 0.25 by day to 1 at night. The numbers are interior.json's.
 class_name InteriorLights
 extends Node3D
 
 var _cfg: Dictionary
-var _lamps := PackedVector3Array()
 var _lights: Array[OmniLight3D] = []
 
 
@@ -13,6 +13,7 @@ func _init(cfg: Dictionary) -> void:
 	for i in int(cfg.count):
 		var light := OmniLight3D.new()
 		light.omni_range = cfg.range_m
+		light.omni_attenuation = cfg.attenuation
 		light.light_color = Color(cfg.color)
 		light.shadow_enabled = false
 		light.visible = false
@@ -20,22 +21,16 @@ func _init(cfg: Dictionary) -> void:
 		_lights.append(light)
 
 
+## The lights stand on the first lamps; the ones without a lamp stay off.
 func set_lamps(lamps: PackedVector3Array) -> void:
-	_lamps = lamps
-	_place(Vector3.ZERO)
-
-
-## The lights go to the lamps nearest the focus, as bright as the hour asks (`night`: 0 day, 1 night, the daylight's own).
-func follow(focus: Vector3, night: float) -> void:
-	_place(focus)
-	for light in _lights:
-		light.light_energy = lerpf(_cfg.energy_day, _cfg.energy_night, night)
-
-
-func _place(focus: Vector3) -> void:
-	var order := range(_lamps.size())
-	order.sort_custom(func(a: int, b: int) -> bool: return _lamps[a].distance_squared_to(focus) < _lamps[b].distance_squared_to(focus))
 	for i in _lights.size():
-		_lights[i].visible = i < order.size()
+		_lights[i].visible = i < lamps.size()
 		if _lights[i].visible:
-			_lights[i].global_position = _lamps[order[i]]
+			_lights[i].global_position = lamps[i]
+
+
+## `night`: 0 day, 1 night, the daylight's own.
+func set_night(night: float) -> void:
+	var energy: float = _cfg.energy * lerpf(_cfg.day_share, 1.0, night)
+	for light in _lights:
+		light.light_energy = energy

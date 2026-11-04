@@ -71,7 +71,6 @@ func _shot(layer: InteriorController, s: Array) -> void:
 		rig.jump(info.focus, yaw, s[4], _distance_for(info.focus, yaw, s[4], s[3])) # the switch frames the building: this shot is the city
 	else:
 		layer.call("_send", true, s[0], s[1])
-		layer.frame_floor()
 	await _settled()
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out_dir, s[6]])
 	print("shot ", s[6], " ", CityStore.query(&"interior").level, "/", CityStore.query(&"interior").floors)

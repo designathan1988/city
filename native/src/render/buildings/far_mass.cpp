@@ -26,7 +26,7 @@ FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float 
 	Opening o = opening_of(*pl.data, c);
 	FarWindows w;
 	w.width = o.w / W; w.sill = o.h0 / H; w.head = o.h1 / H;
-	w.flags = (pl.b->wall_of(v).finish == FIN_GLASS ? WINDOW_FLAG_CURTAIN : 0) | (o.has ? 0 : WINDOW_FLAG_BLANK) | (pl.b->use == USE_COMMERCIAL ? WINDOW_FLAG_OFFICE : 0);
+	w.flags = (o.has ? 0 : WINDOW_FLAG_BLANK) | (pl.b->use == USE_COMMERCIAL ? WINDOW_FLAG_OFFICE : 0) | (pane_dark(c.comp) << WINDOW_DARK_SHIFT);
 	w.trim = trim_lin(pl);
 	return w;
 }

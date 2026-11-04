@@ -47,21 +47,6 @@
     4.8,
     8
    ],
-   "finish_mean": [
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    1,
-    0.081,
-    1,
-    0.226,
-    1,
-    1
-   ],
    "glass_reflect": 0.04,
    "glass_sky": "#7f95ad",
    "glass_sky_floor": 0.0,
@@ -97,8 +82,42 @@
    ],
    "wall_gain": 1.0,
    "lamp_glow": 4.0,
+   "window_glow": 0.62
+  }
+ },
+ "building_glass": {
+  "shader": "res://render/shaders/building_glass.gdshader",
+  "params": {
+   "glass_reflect": 0.04,
+   "glass_sky": "#7f95ad",
+   "glass_sky_floor": 0.0,
    "window_glow": 0.62,
    "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561]
+  }
+ },
+ "building_sheer": {
+  "shader": "res://render/shaders/building_sheer.gdshader",
+  "params": {
+   "opacity": 0.42,
+   "roughness": 0.05,
+   "metalness": 0.2
+  }
+ },
+ "building_card": {
+  "shader": "res://render/shaders/building_card.gdshader",
+  "params": {
+   "thin_bar_m": 0.02,
+   "thin_behind": 0.16,
+   "roughness": 0.45,
+   "metalness": 0.55
+  }
+ },
+ "building_ghost": {
+  "shader": "res://render/shaders/building_ghost.gdshader",
+  "params": {
+   "tint": "#65e5c3",
+   "glow": "#1d5a4a",
+   "opacity": 0.5
   }
  },
  "building_far": {
@@ -117,7 +136,6 @@
    "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
    "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
    "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
-   "finish_mean": [1, 1, 1, 1, 1, 1, 1, 1, 0.081, 1, 0.226, 1, 1],
    "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
    "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
    "wall_gain": 1.0
@@ -180,28 +198,32 @@
  "vegetation": {
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
    "sway_hz": 0.25,
-   "roughness": 0.85
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "bark_ridges": 9.0,
+   "bark_run_m": 1.1,
+   "bark_deep": 0.55,
+   "bark_far_m": 60.0
   }
  },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
  "vegetation_cards": {
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
    "sway_hz": 0.25,
-   "roughness": 0.85,
-   "cover_per_mip": 0.25
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "cover_per_mip": 0.25,
+   "leaf_near_m": 22.0,
+   "leaf_far_m": 70.0
   }
  }
 }

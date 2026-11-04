@@ -29,14 +29,14 @@ constexpr float U_ROOM = 6.f, U_W = 20.f, U_WING_LO = 6.f, U_WING_MAX = 9.f, L_W
 constexpr float L_WING_MAX = 11.f, L_LOW = 0.25f, L_LOW_SHARE = 0.7f, PAIR_W = 16.f, PAIR_SHARE = 0.4f, PAIR_LO = 0.4f;
 constexpr float PAIR_HI = 0.6f, PAIR_BACK_LO = 1.f, PAIR_BACK_HI = 2.5f, PAIR_SKIN = 0.6f, BAR_STEP = 2.f, BAR_STEP_D = 9.f;
 constexpr int BAR_STEP_FLOORS = 5;
-constexpr float CORE_HALF = 1.5f, FLATS_CORE_D = 10.f, OFFICE_CORE_D = 12.f;
+constexpr float CORE_HALF = CORE_SIDE_M / 2, FLATS_CORE_D = 10.f, OFFICE_CORE_D = 12.f;
 constexpr float SHOP_GROUND_LO = 4.f, SHOP_GROUND_HI = 4.6f, SHOP_STOREY = 3.1f, SHOP_PITCH = 0.4f, SHOP_TERRACE = 0.2f;
 constexpr float SHOP_DEEP = 16.f, SHOP_MAIN_LO = 12.f, SHOP_BACK = 3.f, SHOP_PAIR_W = 14.f, SHOP_PAIR = 0.35f, STORE_MIN = 2.f;
 constexpr float SHOP_DOUBLE = 0.5f, SHOP_SIDE_DOOR_W = 7.f, AWNING_SHARE = 0.3f, AWNING_Y = -0.6f, AWNING_MIN = 2.f;
 constexpr float AWNING_D_LO = 1.f, AWNING_D_HI = 1.6f, AWNING_Z = 3.f, AWNING_H = 0.12f;
 constexpr float OFFICE_GROUND_LO = 4.5f, OFFICE_GROUND_HI = 5.5f, OFFICE_STOREY_LO = 3.4f, OFFICE_STOREY_HI = 3.9f;
 constexpr float PODIUM_SHARE = 0.6f, PODIUM_MIN = 14.f, OFFICE_CROWN_LO = 1.f, OFFICE_CROWN_HI = 2.5f;
-constexpr int APARTMENT_MIN = 3, MAX_FLATS = 7, MIN_TOWER = 8, MAX_TOWER = 24, MIN_TALL = 30, MAX_TALL = 44, SHOP_MAX = 6;
+constexpr int APARTMENT_MIN = 3, MAX_FLATS = 7, MIN_TOWER = 8, MAX_TOWER = 24, MIN_TALL = 30, MAX_TALL = 44, SHOP_MAX = 6, SHOP_LOW_MAX = 3;
 constexpr float SETBACK_SHARES[] = { 0.4f, 0.6f };
 constexpr int TWIN_STEPS[] = { -5, -3, 3, 5 }, OFFICE_TWIN_STEPS[] = { -6, -3, 4 };
 constexpr int WORKPLACE_MIN_F = 8, OFFICE_MAX_F = 24, OFFICE_TWIN_MIN = 4;
@@ -106,7 +106,7 @@ void tower(Body &b, Xoshiro128 &r, float w, float d, int floors) {
 	} else block(inset, inset, tw, td, podium, floors, ROOF_FLAT, true);
 }
 
-bool medium_flats(Body &b, Xoshiro128 &r, float w, float d, int floors, Roof roof, float bar_d) {
+bool medium_flats(Body &b, Xoshiro128 &r, float w, float d, int floors, int cap, Roof roof, float bar_d) {
 	if (d - bar_d >= U_ROOM && w >= U_W && r.f() < HALF) {
 		float ww = snap(mixr(r, U_WING_LO, std::min(U_WING_MAX, w / 3)));
 		int wf = std::max(2, floors - r.irange(0, 2));
@@ -122,7 +122,8 @@ bool medium_flats(Body &b, Xoshiro128 &r, float w, float d, int floors, Roof roo
 	} else if (w >= PAIR_W && r.f() < PAIR_SHARE) {
 		float split = snap(w * mixr(r, PAIR_LO, PAIR_HI)), back = snap(mixr(r, PAIR_BACK_LO, PAIR_BACK_HI));
 		add_block(b, { 0, 0, split, d, 0, floors, roof });
-		add_block(b, { split, back, w - split, d - back, 0, std::max(2, floors + choose(r, { -2, -1, 1, 2 })), roof });
+		int other = std::max(2, floors + choose(r, { -2, -1, 1, 2 }));
+		add_block(b, { split, back, w - split, d - back, 0, cap > 0 ? std::min(other, cap) : other, roof });
 		return true;
 	} else {
 		int lower = floors >= BAR_STEP_FLOORS && r.f() < HALF ? floors - r.irange(1, 2) : floors;
@@ -142,6 +143,7 @@ void flats(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, bool h
 	b.storey_h = mixr(r, FLATS_STOREY_LO, FLATS_STOREY_HI);
 	look(b, wall, roof_of(r, clay_of(data)), trim);
 	int floors = high ? (r.f() < TALL_SHARE ? r.irange(MIN_TALL, MAX_TALL) : r.irange(MIN_TOWER, MAX_TOWER)) : r.irange(APARTMENT_MIN, MAX_FLATS);
+	if (!high && env.cap > 0) floors = std::min(std::max(APARTMENT_MIN, env.cap), floors);
 	b.ground = r.f() < SHOP_GROUND ? GROUND_SHOP : GROUND_LOBBY;
 	bool hip = !high && (b.style == STYLE_COLONIAL || b.style == STYLE_BRICK) && r.f() < HIP_SHARE;
 	Roof roof = hip ? ROOF_HIP : r.f() < TERRACE_SHARE ? ROOF_TERRACE : ROOF_FLAT;
@@ -149,7 +151,7 @@ void flats(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, bool h
 	float bar_d = snap(std::min(d, mixr(r, BAR_LO, BAR_HI)));
 	bool pair = false;
 	if (high) tower(b, r, w, d, floors);
-	else pair = medium_flats(b, r, w, d, floors, roof, bar_d);
+	else pair = medium_flats(b, r, w, d, floors, env.cap, roof, bar_d);
 	b.cores.push_back(Core{ snap(w / 2 - CORE_HALF), snap(std::min(d, FLATS_CORE_D) / 2 - CORE_HALF), floors + (high ? LIFT_EXTRA : 0) });
 	if (pair && r.f() < PAIR_SKIN) b.volumes[1].wall = b.add_paint(other_skin(data, b.style, r, wall));
 	for (Volume &v : b.volumes) roof_shape(v, r);
@@ -166,7 +168,8 @@ void shop(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	b.storey_h = SHOP_STOREY;
 	look(b, wall, roof_of(r, clay_of(data)), trim);
 	b.ground = GROUND_SHOP;
-	int storeys = std::min(SHOP_MAX, r.irange(2, SHOP_MAX));
+	int storeys = env.low ? r.irange(1, SHOP_LOW_MAX) : r.irange(2, SHOP_MAX);
+	if (!env.low && env.cap > 0) storeys = std::min(std::max(2, env.cap), storeys);
 	Roof roof = storeys == 1 && b.style == STYLE_COLONIAL && r.f() < SHOP_PITCH ? choose(r, { ROOF_GABLE, ROOF_HIP })
 			: r.f() < SHOP_TERRACE ? ROOF_TERRACE : ROOF_FLAT;
 	float w = snap(env.W), d = snap(env.D);
@@ -175,7 +178,8 @@ void shop(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	if (pair) {
 		float split = snap(w * mixr(r, PAIR_LO, PAIR_HI));
 		add_block(b, { 0, 0, split, main_d, 0, storeys, roof });
-		add_block(b, { split, 0, w - split, main_d, 0, std::max(1, storeys + choose(r, { -1, 1 })), roof });
+		int other = std::max(1, storeys + choose(r, { -1, 1 }));
+		add_block(b, { split, 0, w - split, main_d, 0, env.cap > 0 ? std::min(other, env.cap) : other, roof });
 	} else add_block(b, { 0, 0, w, main_d, 0, storeys, roof });
 	if (d - main_d >= STORE_MIN) {
 		int store = add_block(b, { 0, main_d, w, d - main_d, 0, 1, ROOF_FLAT, BAY_WALL, BAY_WALL });

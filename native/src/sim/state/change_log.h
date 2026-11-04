@@ -19,6 +19,9 @@ struct ChangeLog {
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
 	std::vector<int64_t> view_chunks; // CHUNK keys whose near building meshes must be drawn again though no building changed (Interior layer)
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
+	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
+	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
+	std::vector<int64_t> water_chunks; // CHUNK keys whose water surface must be built again
 	bool network_changed = false; // lanes and routes must be refreshed
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
@@ -49,6 +52,9 @@ struct ChangeLog {
 		building_chunks.clear();
 		view_chunks.clear();
 		terrain_rects.clear();
+		paint_rects.clear();
+		nature_chunks.clear();
+		water_chunks.clear();
 	}
 };
 

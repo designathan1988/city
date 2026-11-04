@@ -35,44 +35,56 @@ bool need(const Dictionary &d, const char *const *keys, int n, const String &whe
 	return errors.is_empty();
 }
 
-FrondSpec fronds_of(const Dictionary &f) {
-	FrondSpec s;
-	s.count = f["count"]; s.young = f["young"]; s.steps = f["segments"];
-	s.len0 = at(f["length"], 0); s.len1 = at(f["length"], 1); s.rise0 = at(f["rise"], 0); s.rise1 = at(f["rise"], 1);
-	s.droop0 = at(f["droop"], 0); s.droop1 = at(f["droop"], 1);
-	s.young_len = f["young_length"]; s.young_rise = f["young_rise"]; s.young_droop = f["young_droop"]; s.width = f["width"]; s.fold = f["fold"];
+ConeSpec cone_of(const Dictionary &c) {
+	ConeSpec s;
+	s.base = c["base"]; s.height = c["height"]; s.core = c["core"]; s.crown = c["crown"];
+	s.card = c["card"]; s.taper = c["taper"]; s.cards = c["cards"];
 	return s;
 }
 
-// The trunk from the ground to `top`, in `rings` tubes along a curve that bends out by `lean` (quadratic in height).
+FrondSpec fronds_of(const Dictionary &f) {
+	FrondSpec s;
+	s.count = f["count"]; s.young = f["young"]; s.steps = f["segments"];
+	s.len0 = at(f["length"], 0); s.len1 = at(f["length"], 1); s.lift0 = at(f["lift"], 0); s.lift1 = at(f["lift"], 1);
+	s.bend0 = at(f["droop_rad"], 0); s.bend1 = at(f["droop_rad"], 1); s.spin = f["spin"];
+	s.young_len0 = at(f["young_length"], 0); s.young_len1 = at(f["young_length"], 1); s.young_lift0 = at(f["young_lift"], 0); s.young_lift1 = at(f["young_lift"], 1);
+	s.young_bend = f["young_droop_rad"]; s.young_turn = f["young_turn"]; s.width = f["width"]; s.fold = f["fold"]; s.young_fold = f["young_fold"];
+	return s;
+}
+
+Tones bark_of(const Dictionary &t) { return Tones{ hexc(t["dark"]), hexc(t["lit"]) }; }
+
+// The trunk from the ground to `top`, in `rings` tubes along a curve that bends out by `lean` (quadratic in height),
+// its foot spreading into the roots by `flare` of its radius, gone within `flare_h` of the trunk.
 Vector3 trunk(MeshBuilder &mb, const Dictionary &t, Rng &r) {
-	float top = t["top"], r0 = t["r0"], r1 = t["r1"], lean = t["lean"];
+	float top = t["top"], r0 = t["r0"], r1 = t["r1"], lean = t["lean"], flare = t["flare"], flare_h = t["flare_h"];
 	int sides = t["facets"], rings = t["rings"];
 	float turn = r.f() * TAU_F;
 	Vector3 dir(std::cos(turn), 0, std::sin(turn));
 	auto at_h = [&](float k) { return Vector3(0, top * k, 0) + dir * (lean * k * k); };
-	Color bark = hexc(t["color"]);
+	auto radius = [&](float k) { return r0 + (r1 - r0) * k + r0 * flare * std::exp(-k / flare_h); };
+	Tones bark = bark_of(t);
 	for (int i = 0; i < rings; i++) {
 		float k0 = float(i) / rings, k1 = float(i + 1) / rings;
-		tree_tube(mb, at_h(k0), at_h(k1), r0 + (r1 - r0) * k0, r0 + (r1 - r0) * k1, sides, bark);
+		tree_tube(mb, at_h(k0), at_h(k1), radius(k0), radius(k1), sides, bark, TreePart::BARK);
 	}
 	return at_h(1.f);
 }
 
-void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Color &bark, int sides, Rng &r) {
+void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Tones &bark, int sides, Rng &r) {
 	int count = l["count"];
 	float reach = l["reach"], rise = l["rise"], rr = l["r"];
 	for (int i = 0; i < count; i++) {
 		float a = TAU_F * (i + r.f() * HALF_F) / count;
 		Vector3 to = from + Vector3(std::cos(a) * reach, rise, std::sin(a) * reach);
-		tree_tube(mb, from, to, rr, rr * HALF_F, sides, bark);
+		tree_tube(mb, from, to, rr, rr * HALF_F, sides, bark, TreePart::BARK);
 	}
 }
 
-TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
+TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
-		"heart_shrink", "crown_reach", "far_width", "cards_cast" };
+		"heart_shrink", "crown_reach", "cards_cast" };
 	if (!need(d, KEYS, int(sizeof(KEYS) / sizeof(KEYS[0])), String(d.get("name", "?")), errors)) return sp;
 	sp.name = d["name"];
 	Rng r{ uint32_t(int(d["seed"])) };
@@ -85,21 +97,25 @@ TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
 	MeshBuilder body, cards;
 	Dictionary t = d["trunk"];
 	Vector3 top = trunk(body, t, r);
-	limbs(body, d["limbs"], top, hexc(t["color"]), int(t["facets"]), r);
+	limbs(body, d["limbs"], top, bark_of(t), int(t["facets"]), r);
 	Array crowns = d["crowns"];
 	Color sum;
 	for (int i = 0; i < crowns.size(); i++) {
 		Dictionary c = crowns[i];
 		CrownSpec cs{ vec3(c["center"]) + Vector3(top.x, 0, top.z), vec3(c["radius"]), float(c["rough"]), uint32_t(int(c["seed"])), int(c["subdiv"]),
 			int(c["cards"]), float(c["card"]), float(c["taper"]) };
-		sum += tree_crown(body, cards, cs, sh, r);
+		Shade own = sh; // a palm's crownshaft and nuts are not leaves: their own tones
+		if (c.has("dark")) own.leaf = Tones{ hexc(c["dark"]), hexc(c["lit"]) };
+		sum += tree_crown(body, cards, cs, own, r);
 	}
 	if (d.has("fronds")) tree_fronds(cards, top, fronds_of(d["fronds"]), sh.leaf, r);
-	sp.far_tone = crowns.is_empty() ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
+	sp.far_tone = crowns.is_empty() || d.has("fronds") ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
+	if (d.has("cone")) sp.far_tone = tree_cone(body, cards, cone_of(d["cone"]), sh, r);
 	sp.far_tone.a = 1;
+	pictures.draw(row, body, cards, sp.far_tone);
 	sp.body = body.commit();
 	if (!cards.empty()) sp.cards = cards.commit();
-	sp.crown_reach = d["crown_reach"]; sp.far_width = d["far_width"];
+	sp.crown_reach = d["crown_reach"];
 	sp.cards_cast = d["cards_cast"];
 	return sp;
 }
@@ -113,7 +129,9 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	}
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
-	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], errors));
+	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.image(), errors)) return false;
+	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, pictures_, errors));
+	pictures_.finish();
 	return errors.is_empty();
 }
 

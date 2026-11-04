@@ -8,17 +8,9 @@
 namespace city {
 
 namespace {
-// Marks the chunks of every building a view opens, to be drawn again (the buildings are the same: only their look changes).
+// Marks the chunk of the building a view opens, to be drawn again (the buildings are the same: only their look changes).
 void mark_view(CityState &s, const InteriorView &v) {
-	if (!v.on) return;
-	if (v.target >= 0) {
-		if (v.target < int(s.buildings.items.size()) && s.buildings.items[size_t(v.target)].alive) s.buildings.mark_look(v.target);
-		return;
-	}
-	if (v.radius <= 0) return;
-	s.buildings.query(v.cx - v.radius, v.cz - v.radius, v.cx + v.radius, v.cz + v.radius, [&](int id) {
-		if (v.cuts(id, s.buildings.items[size_t(id)])) s.buildings.mark_look(id);
-	});
+	if (v.on && v.target < int(s.buildings.items.size()) && s.buildings.items[size_t(v.target)].alive) s.buildings.mark_look(v.target);
 }
 } // namespace
 
@@ -31,14 +23,13 @@ int interior_floors(const CityState &s, int id) {
 	return b40::top_level(body) + 1;
 }
 
-InteriorFocus interior_focus(const CityState &s, int id, int level) {
+InteriorFocus interior_focus(const CityState &s, int id) {
 	InteriorFocus f;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return f;
 	const Building &rec = s.buildings.items[size_t(id)];
 	b40::Body body;
 	b40::record_body(s.buildings.designs, rec, body);
 	f.floors = rec.floors == 0 ? 0 : b40::top_level(body) + 1;
-	f.floor_height = body.level_z(std::clamp(level, 0, std::max(f.floors - 1, 0)));
 	if (body.volumes.empty()) {
 		f.at = V2(rec.x, rec.z);
 		return f;
@@ -62,21 +53,13 @@ const char *set_interior_view(CityState &s, const InteriorRequest &r) {
 	if (r.on) {
 		next.on = true;
 		next.cut.dir = r.dir & (b40::CUT_DIRECTIONS - 1);
-		if (r.target >= 0) {
-			const int floors = interior_floors(s, r.target);
-			if (floors == 0) {
-				next.on = false;
-				problem = "game.toast.insideNone";
-			} else {
-				next.target = r.target;
-				next.cut.level = std::clamp(r.level, 0, floors - 1);
-			}
+		const int floors = r.target >= 0 ? interior_floors(s, r.target) : 0;
+		if (floors == 0) {
+			next.on = false;
+			problem = "game.toast.insideNone";
 		} else {
-			next.cx = r.cx;
-			next.cz = r.cz;
-			next.radius = std::clamp(r.radius, 0.f, s.catalog.tune.interior_max_radius_m);
-			next.cut.level = std::max(r.level, 0);
-			if (next.radius <= 0) next.on = false;
+			next.target = r.target;
+			next.cut.level = std::clamp(r.level, 0, floors - 1);
 		}
 	}
 	mark_view(s, s.interior); // the buildings it showed whole before

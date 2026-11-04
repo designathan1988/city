@@ -24,6 +24,7 @@ func _ready() -> void:
 	var tools := ToolController.new(cam)
 	add_child(tools)
 	var hud := RoadcraftHud.new()
+	hud.sky_chosen.connect(world.set_sky_mode)
 	add_child(hud)
 	add_child(InteriorController.new())
 	GameFlow.playing()

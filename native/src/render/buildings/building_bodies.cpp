@@ -14,8 +14,7 @@ namespace city {
 
 namespace {
 constexpr size_t CACHE_MAX = 8192;
-constexpr float PLINTH_MIN = 0.15f, GRID_STEP = 1.5f, SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
-constexpr int LOT_GRID_MAX = 24;
+constexpr float SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
 constexpr size_t CUT_CACHE_MAX = 1024;
 constexpr int CUT_LEVEL_SHIFT = 40, CUT_DIR_SHIFT = 52;
 constexpr uint32_t GOLDEN = 2654435761u;
@@ -40,26 +39,6 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	return *(cache_[k] = std::move(b));
 }
 
-float lot_floor(const b40::Body &b, const b40::LotFrame &f, const HeightPatch &ground, float &ground_lo) {
-	Vector3 o(f.o.x, 0, f.o.y), e0(f.e0.x, 0, f.e0.y), e1(f.e1.x, 0, f.e1.y);
-	float hi = -b40::FAR_AWAY, lo = b40::FAR_AWAY;
-	auto sample = [&](float x, float y) {
-		Vector3 p = o + e0 * x + e1 * y;
-		float g = ground.height_at(p.x, p.z);
-		hi = std::max(hi, g);
-		lo = std::min(lo, g);
-	};
-	for (const b40::Volume &v : b.volumes) {
-		if (v.base != 0) continue;
-		int nx = std::min(LOT_GRID_MAX, int(std::ceil(v.w / GRID_STEP))), ny = std::min(LOT_GRID_MAX, int(std::ceil(v.d / GRID_STEP)));
-		for (int i = 0; i <= nx; i++)
-			for (int j = 0; j <= ny; j++) sample(v.x + v.w * float(i) / float(nx), v.y + v.d * float(j) / float(ny));
-	}
-	if (hi < lo) sample(0, b.plan.D / 2);
-	ground_lo = lo;
-	return hi + PLINTH_MIN;
-}
-
 const b40::Body &BuildingBodies::cut_body(const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut) {
 	uint64_t k = key_of(rec);
 	uint32_t turn;
@@ -79,8 +58,9 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	const b40::Body &whole = body(data, rec);
 	const b40::Body &b = cut ? cut_body(whole, rec, f, *cut) : whole;
 	Vector3 o(f.o.x, 0, f.o.y), e0(f.e0.x, 0, f.e0.y), e1(f.e1.x, 0, f.e1.y), e2(0, 1, 0);
-	float lo = 0;
-	const float floor = lot_floor(b, f, ground, lo);
+	float hi = 0, lo = 0;
+	b40::lot_ground(whole, rec, f, [&](float x, float z) { return ground.height_at(x, z); }, hi, lo); // the whole's: a cut keeps the ground floor
+	float floor = hi + b40::LOT_PLINTH_M;
 	pl.data = &data;
 	pl.look = &look;
 	pl.b = &b;

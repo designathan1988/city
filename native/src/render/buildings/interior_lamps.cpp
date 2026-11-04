@@ -15,7 +15,6 @@ namespace city {
 namespace {
 constexpr float LAMP_DROP_M = 0.6f; // under the ceiling: the lit shade of a hanging lamp
 constexpr float LAMP_RISE = 0.9f; // of a lamp's height: the lit shade of a floor or table lamp
-constexpr float GROUND_PAD_M = 4.f;
 } // namespace
 
 std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
@@ -27,10 +26,7 @@ std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
 	b40::record_body(s.buildings.designs, rec, body);
 	level = std::clamp(level, 0, b40::top_level(body));
 	const b40::LotFrame f = b40::lot_frame(rec);
-	const float r = 0.5f * std::hypot(rec.w, rec.d) + GROUND_PAD_M;
-	const HeightPatch ground = s.terrain.patch(rec.x - r, rec.z - r, rec.x + r, rec.z + r);
-	float lo = 0;
-	const float floor = lot_floor(body, f, ground, lo);
+	const float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });
 	b40::Interior inside(s.buildings.designs, body, b40::purpose_of(body, rec.fn, rec.seed));
 	const float z0 = floor + body.level_z(level);
 	for (const b40::Furniture &p : inside.at(level).furniture) {
@@ -39,9 +35,6 @@ std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
 		const float up = p.kind == b40::FK_CEILING_LAMP ? body.level_h(level) - LAMP_DROP_M : p.h * LAMP_RISE;
 		out.push_back(Vector3(w.x, z0 + up, w.y));
 	}
-	std::sort(out.begin(), out.end(), [&](const Vector3 &a, const Vector3 &b) {
-		return std::hypot(a.x - rec.x, a.z - rec.z) < std::hypot(b.x - rec.x, b.z - rec.z);
-	});
 	return out;
 }
 

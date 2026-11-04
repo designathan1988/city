@@ -14,7 +14,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr uint32_t MAX_ITEMS = 1u << 20; // what a damaged file may claim; far past any body
+constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; far past any body
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -81,7 +81,7 @@ void put_map(ByteWriter &w, const std::unordered_map<uint32_t, V> &m) {
 template <typename V>
 bool get_map(ByteReader &r, std::unordered_map<uint32_t, V> &m) {
 	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	m.reserve(n);
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		uint32_t key = r.get<uint32_t>();
@@ -112,6 +112,11 @@ void put_volume(ByteWriter &w, const Volume &v) {
 		for (int x : { r.side, r.bay0, r.bay1, r.storey0, r.storey1 }) w.put<int32_t>(x);
 		w.put<float>(r.depth);
 	}
+	w.put<uint32_t>(uint32_t(v.gear.size()));
+	for (const RoofPart &p : v.gear) {
+		w.put<uint8_t>(p.kind);
+		for (float x : { p.x, p.y, p.w, p.d, p.h, p.turn }) w.put<float>(x);
+	}
 }
 
 bool get_volume(ByteReader &r, Volume &v) {
@@ -122,7 +127,7 @@ bool get_volume(ByteReader &r, Volume &v) {
 	v.crown = Crown(r.get<uint8_t>());
 	v.keep = r.get<uint8_t>() != 0;
 	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	v.outline.resize(n);
 	for (Point2 &p : v.outline) {
 		p.x = r.get<float>();
@@ -132,11 +137,18 @@ bool get_volume(ByteReader &r, Volume &v) {
 	if (!get_map(r, v.bays) || !get_map(r, v.side_fill) || !get_map(r, v.storey_paint)) return false;
 	for (FaceGeometry &f : v.faces) f = get_face(r);
 	n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	v.reliefs.resize(n);
 	for (Relief &e : v.reliefs) {
 		for (int *x : { &e.side, &e.bay0, &e.bay1, &e.storey0, &e.storey1 }) *x = r.get<int32_t>();
 		e.depth = r.get<float>();
+	}
+	n = r.get<uint32_t>();
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	v.gear.resize(n);
+	for (RoofPart &p : v.gear) {
+		p.kind = r.get<uint8_t>();
+		for (float *x : { &p.x, &p.y, &p.w, &p.d, &p.h, &p.turn }) *x = r.get<float>();
 	}
 	return r.ok;
 }
@@ -189,23 +201,23 @@ bool read_body(ByteReader &r, Body &b) {
 	for (int *x : { &b.palette, &b.wall, &b.roof, &b.trim, &b.entrance_volume }) *x = r.get<int32_t>();
 	for (float *x : { &b.ground_h, &b.storey_h, &b.entrance_x }) *x = r.get<float>();
 	uint32_t n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.paints.resize(n);
 	for (Paint &p : b.paints) {
 		p.finish = r.get<int8_t>();
 		p.rgb = r.get<uint32_t>();
 	}
 	n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.volumes.resize(n);
 	for (Volume &v : b.volumes)
 		if (!get_volume(r, v)) return false;
 	n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.elements.resize(n);
 	for (LotElement &e : b.elements) e = get_element(r);
 	n = r.get<uint32_t>();
-	if (!r.ok || n > MAX_ITEMS) return false;
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.cores.resize(n);
 	for (Core &c : b.cores) {
 		c.x = r.get<float>();

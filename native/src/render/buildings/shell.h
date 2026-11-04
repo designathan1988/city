@@ -43,10 +43,14 @@ struct PaneLook {
 	PaneRoom room;
 	Lin trim;
 	float frame = 0;
+	float recess = 0; // metres of opening the pane draws behind the wall's face, the glass at its back (0: none)
 };
 
+// What a card draws (building_card.gdshader cardOn).
+enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE };
+
 // A far wall's window row: shares of the bay and the storey, flags (building_pane.gdshaderinc far_window).
-constexpr int WINDOW_FLAG_CURTAIN = 2, WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8;
+constexpr int WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark
 struct FarWindows {
 	float width = 0, sill = 0, head = 0;
 	int flags = 0;
@@ -89,6 +93,9 @@ struct Shell {
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
+	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
+	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
+	Shell *cards = nullptr; // where this shell's railings go: a surface whose bars the fragment draws
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
 
 	bool empty() const { return idx.empty() && boxes.empty(); }
@@ -100,6 +107,8 @@ struct Shell {
 	// Rectangle in the e0/e1 plane of `f` at e2 = c, facing +e2 (or -e2 when `back`).
 	void rect(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, int8_t fin, bool back = false);
 	void box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip = SKIP_NONE);
+	// A railing's face at e2 = c: one quad, its bars drawn by building_card.gdshader, so they hold at any distance.
+	void card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind);
 	// A glass pane of w x h metres at e2 = c.
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
@@ -110,6 +119,8 @@ struct Shell {
 
 private:
 	int vert(const godot::Vector3 &p, const godot::Vector3 &n, const godot::Color &c, const godot::Vector2 &t, const godot::Vector2 &t2);
+	Lin far_tint(const Lin &lin, int8_t fin) const;
+	int sheet(const Basis &f, float a0, float a1, float b0, float b1, float c, const godot::Color &code, const godot::Vector2 &t2);
 	godot::Color shaded(const godot::Vector3 &p, const Lin &lin, bool wall, SurfaceKind kind) const;
 	void face(const godot::Vector3 *p, int count, const godot::Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind);
 };

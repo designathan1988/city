@@ -89,6 +89,22 @@ inline double noise2(double x, double y, uint32_t seed) {
 	return 1.4 * (ab + ((c + (d - c) * u) - ab) * v);
 }
 
+// The hash of a lattice point, in [-1, 1) (not hash2: Roadcraft's value noise has its own).
+inline double value_hash(int32_t x, int32_t y) {
+	uint32_t h = uint32_t(x) * 374761393U ^ uint32_t(y) * 668265263U;
+	h = (h ^ (h >> 13)) * 1274126177U;
+	return (h ^ (h >> 16)) / 2147483648.0 - 1;
+}
+
+// Smooth value noise, -1..1, on a fixed lattice (Roadcraft `valueNoise`).
+inline double value_noise(double x, double y) {
+	const double x0 = std::floor(x), y0 = std::floor(y), fx = x - x0, fy = y - y0;
+	const double sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+	const int32_t ix = js_int(x0), iy = js_int(y0);
+	const double a = value_hash(ix, iy), b = value_hash(ix + 1, iy), c = value_hash(ix, iy + 1), d = value_hash(ix + 1, iy + 1);
+	return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
+}
+
 inline double fbm2(double x, double y, uint32_t seed, int octaves, double lacunarity = 2, double gain = 0.5) {
 	double sum = 0, amp = 1, freq = 1, norm = 0;
 	for (int i = 0; i < octaves; i++) {
@@ -98,6 +114,23 @@ inline double fbm2(double x, double y, uint32_t seed, int octaves, double lacuna
 		freq *= lacunarity;
 	}
 	return sum / norm;
+}
+
+// The woods' lattice value in [0, 1) (Roadcraft `natureNoise.ts`): `a` and `b` as int32, one stream by `salt`.
+inline double woods_hash(int32_t a, int32_t b, uint32_t salt) {
+	uint32_t v = uint32_t(a) * 374761393U ^ uint32_t(b) * 668265263U ^ salt * 2246822519U;
+	v = (v ^ (v >> 13)) * 1274126177U;
+	return double(v ^ (v >> 16)) / 4294967296.0;
+}
+
+// One octave of the woods' smooth value noise, `scale` metres a cell.
+inline double woods_noise(double x, double y, double scale, uint32_t salt) {
+	double gx = x / scale, gy = y / scale, fx0 = std::floor(gx), fy0 = std::floor(gy);
+	int32_t x0 = js_int(fx0), y0 = js_int(fy0);
+	double fx = gx - fx0, fy = gy - fy0, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+	double h00 = woods_hash(x0, y0, salt), h10 = woods_hash(x0 + 1, y0, salt), h01 = woods_hash(x0, y0 + 1, salt), h11 = woods_hash(x0 + 1, y0 + 1, salt);
+	double top = h00 + (h10 - h00) * sx, bottom = h01 + (h11 - h01) * sx;
+	return top + (bottom - top) * sy;
 }
 
 } // namespace city

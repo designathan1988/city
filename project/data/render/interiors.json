@@ -1,5 +1,7 @@
 {
  "_doc": "What buildings hold (sim/buildings/interior). sizes: rows of a piece of furniture and its across, deep, high, metres, as bought (a double bed 1.6 x 2 m, a desk 0.75 m high, a bookshelf 2.2 m). seen: the pieces that read as a box from across a room, drawn behind a window. recipes: the plain floors, by purpose, as steps: put (at x, y), grid (x0, y0 to x1, y1 every gx, gy), back, left, right (along that wall from x0 to x1, or y0 to y1, every gx), wallAcross (at y, door at x), lobby. A place is [edge, offset] over the floor: x0, x1, y0, y1 its sides, cx, cy its middle, ys past the ground floor's front. level: any (default), ground or upper. angle: front, back, left, right. wide: the grid's gx is at least half the floor. The clearances follow what a person needs to pass between pieces.",
+ "styles": {
+  "roadcraft": {
  "sizes": [
   ["bed", 1.6, 2, 0.55],
   ["singleBed", 0.9, 2, 0.5],
@@ -114,5 +116,7 @@
    { "op": "grid", "kind": "rack", "x0": ["x0", 1], "y0": ["ys", 1], "x1": ["x1", -1], "y1": ["y1", -1], "gx": 5, "gy": 3.5 },
    { "op": "grid", "kind": "pallet", "x0": ["x0", 1], "y0": ["ys", 0], "x1": ["x1", -1], "y1": ["ys", 1.5], "gx": 2, "gy": 1.5 }
   ]
+ }
+  }
  }
 }
