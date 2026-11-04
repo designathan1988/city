@@ -74,41 +74,79 @@ export class FlowGraph {
   readonly #checker: TS.TypeChecker;
   readonly #spec: TranslationSpec;
   readonly #patterns: Patterns;
-  readonly #file: TS.SourceFile;
+  /** Every file of the source program (tests left out): facts come from every caller and every use. */
+  readonly #files: ReadonlySet<TS.SourceFile>;
   readonly #memoBodies: readonly TS.Node[];
-  readonly #fieldNames: RegExp;
-  readonly #paramNames: RegExp;
   readonly #slots: Slot[] = [];
   readonly #bySymbol = new Map<TS.Node | TS.Symbol, Slot>();
   readonly #byNode = new Map<TS.Node, Slot>();
-  /** Every flow: re-applied until no fact changes. */
+  /** Every flow; the worklist re-applies one only when a slot it read has changed. */
   readonly #flows: { readonly apply: () => boolean; readonly at: TS.Node }[] = [];
+  /** The flow being applied (its reads are recorded), and the flows that read each slot. */
+  #current = -1;
+  readonly #readers = new Map<Slot, Set<number>>();
+  readonly #queue: number[] = [];
+  readonly #queued = new Set<number>();
   /** The node being gathered: each flow remembers where it comes from (named when the flows do not settle). */
   #at: TS.Node;
   readonly errors: string[] = [];
 
-  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, file: TS.SourceFile, spec: TranslationSpec, patterns: Patterns, memoBodies: readonly TS.Node[]) {
+  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, files: readonly TS.SourceFile[], spec: TranslationSpec, patterns: Patterns, memoBodies: readonly TS.Node[]) {
     this.#ts = ts;
     this.#checker = checker;
     this.#spec = spec;
     this.#patterns = patterns;
-    this.#file = file;
+    this.#files = new Set(files);
     this.#memoBodies = memoBodies;
-    this.#at = file;
-    this.#fieldNames = new RegExp(`^(${spec.integers.match})$`);
-    this.#paramNames = new RegExp(`^(${spec.integers.params})$`);
-    this.#gather(file);
+    this.#at = files[0]!;
+    for (const file of files) this.#gather(file);
     this.#solve();
+  }
+
+  /** The node is in the source program (a declaration of the feature, of a feature it shares code with, of any). */
+  inProgram(node: TS.Node): boolean {
+    return this.#files.has(node.getSourceFile());
   }
 
   // ---- slots
 
+  /** A slot's representative; during a flow, the read is recorded so the flow re-runs when the slot changes. */
   find(s: Slot): Slot {
     while (s.parent !== s) {
       s.parent = s.parent.parent;
       s = s.parent;
     }
+    if (this.#current >= 0) {
+      const readers = this.#readers.get(s);
+      if (readers) readers.add(this.#current);
+      else this.#readers.set(s, new Set([this.#current]));
+    }
     return s;
+  }
+
+  /** A slot's facts rose: every flow that read it runs again. */
+  #changed(s: Slot): void {
+    for (const f of this.#readers.get(s) ?? []) {
+      if (this.#queued.has(f)) continue;
+      this.#queued.add(f);
+      this.#queue.push(f);
+    }
+  }
+
+  #raiseOwn(s: Slot, own: Own): boolean {
+    const r = this.find(s);
+    if (own <= r.own) return false;
+    r.own = own;
+    this.#changed(r);
+    return true;
+  }
+
+  #markNullable(s: Slot): boolean {
+    const r = this.find(s);
+    if (r.nullable) return false;
+    r.nullable = true;
+    this.#changed(r);
+    return true;
   }
 
   #new(role: SlotRole, name: string, type: TS.Type | null): Slot {
@@ -161,10 +199,6 @@ export class FlowGraph {
       : decl && (ts.isPropertySignature(decl) || ts.isPropertyAssignment(decl) || ts.isShorthandPropertyAssignment(decl) || ts.isPropertyDeclaration(decl)) ? 'field' : 'local';
     const s = this.#new(role, symbol.name, this.#checker.getTypeOfSymbol(symbol));
     this.#bySymbol.set(identity, s);
-    if (role === 'field' && this.#fieldNames.test(symbol.name)) {
-      const numeric = this.#numericPart(s);
-      if (numeric) this.#raiseNum(numeric, Num.Int);
-    }
     if (decl && (symbol.flags & ts.SymbolFlags.Optional)) s.nullable = true;
     return s;
   }
@@ -209,6 +243,15 @@ export class FlowGraph {
     keep.own = join(keep.own, drop.own);
     keep.nullable ||= drop.nullable;
     for (const [k, t] of drop.shapes) keep.shapes.set(k, t);
+    // Whoever read either slot reads the merged one now, and must see what the other brought.
+    const readers = this.#readers.get(drop);
+    if (readers) {
+      const kept = this.#readers.get(keep);
+      if (kept) for (const f of readers) kept.add(f);
+      else this.#readers.set(keep, readers);
+      this.#readers.delete(drop);
+    }
+    this.#changed(keep);
     if (drop.elem) keep.elem ? this.unify(keep.elem, drop.elem) : (keep.elem = drop.elem);
     if (drop.key) keep.key ? this.unify(keep.key, drop.key) : (keep.key = drop.key);
     return true;
@@ -288,7 +331,7 @@ export class FlowGraph {
       }
     }
     const decl = this.#checker.getResolvedSignature(e)?.getDeclaration();
-    return decl && ts.isFunctionLike(decl) && decl.getSourceFile() === this.#file ? decl : null;
+    return decl && ts.isFunctionLike(decl) && this.inProgram(decl) ? decl : null;
   }
 
   numOf(e: TS.Expression): Num {
@@ -379,19 +422,9 @@ export class FlowGraph {
       if (!t) return false;
       let changed = false;
       const r = this.find(t);
-      if (value.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(value) && value.text === 'undefined')) {
-        if (!r.nullable) {
-          r.nullable = true;
-          changed = true;
-        }
-        return changed;
-      }
+      if (value.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(value) && value.text === 'undefined')) return this.#markNullable(r);
       changed = this.#raiseNum(r, this.numOf(value)) || changed;
-      const own = this.ownOf(value);
-      if (own > r.own) {
-        r.own = own;
-        changed = true;
-      }
+      changed = this.#raiseOwn(r, this.ownOf(value)) || changed;
       for (const shape of this.shapesOf(value)) changed = this.#meetShape(r, shape) || changed;
       const source = this.slotOfExpr(value);
       if (source && this.#isContainerSlot(r) && this.#isContainerSlot(this.find(source))) changed = this.#alias(r, source) || changed;
@@ -407,7 +440,25 @@ export class FlowGraph {
     const r = this.find(s);
     if (n <= r.num) return false;
     r.num = n;
+    this.#changed(r);
     return true;
+  }
+
+  /**
+   * `a === b`: the two sides denote one quantity, so an integer on one side is evidence the other is an integer. Only
+   * integer kinds are passed (a real may equal an integer value without being one), so the flow stays monotone.
+   */
+  #equality(target: TS.Expression, other: TS.Expression): void {
+    this.#add(() => {
+      const t = this.slotOfExpr(target);
+      if (!t || !this.#isNumberSlot(this.find(t))) return false;
+      const n = this.numOf(other);
+      return n === Num.Int || n === Num.Int64 ? this.#raiseNum(t, n) : false;
+    });
+  }
+
+  #isNumberSlot(s: Slot): boolean {
+    return s.type !== null && (this.#checker.getNonNullableType(this.underlying(s.type)).flags & this.#ts.TypeFlags.NumberLike) !== 0;
   }
 
   /** A shape reaches a slot: kept, and its fields joined with the same-named fields of the shapes already there. */
@@ -417,6 +468,7 @@ export class FlowGraph {
     let changed = false;
     if (!s.shapes.has(key)) {
       s.shapes.set(key, shape);
+      this.#changed(s);
       changed = true;
     }
     for (const other of s.shapes.values()) {
@@ -435,6 +487,11 @@ export class FlowGraph {
       this.#at = n;
       if (ts.isVariableDeclaration(n)) this.#declaration(n);
       if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment) this.#assignment(n);
+      if (ts.isBinaryExpression(n) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken,
+        ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken].includes(n.operatorToken.kind)) {
+        this.#equality(n.left, n.right);
+        this.#equality(n.right, n.left);
+      }
       if (ts.isReturnStatement(n) && n.expression) {
         const fn = this.#enclosingFunction(n);
         const value = n.expression;
@@ -492,10 +549,7 @@ export class FlowGraph {
       const target = this.symbolSlot(symbol);
       let changed = this.#raiseNum(target, this.find(this.symbolSlot(prop)).num);
       const propType = this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(prop));
-      if ((this.isObject(propType) || this.#isContainer(propType)) && target.own < Own.Ref) {
-        target.own = Own.Ref;
-        changed = true;
-      }
+      if (this.isObject(propType) || this.#isContainer(propType)) changed = this.#raiseOwn(target, Own.Ref) || changed;
       for (const shape of this.find(this.symbolSlot(prop)).shapes.values()) changed = this.#meetShape(this.find(target), shape) || changed;
       if (this.#isContainerSlot(target)) changed = this.#alias(target, this.symbolSlot(prop)) || changed;
       return changed;
@@ -513,19 +567,14 @@ export class FlowGraph {
     }, value);
   }
 
-  /** Parameters: an exported function's come from outside (the spec's names say integers); a callback's from its receiver. */
+  /** Parameters: an object parameter refers to its caller's object; a callback's parameters come from its receiver. */
   #parameters(fn: TS.SignatureDeclaration): void {
     const ts = this.#ts;
     fn.parameters.forEach((p, i) => {
       const symbol = this.symbolOf(p.name);
       if (!symbol) return;
       const slot = this.symbolSlot(symbol);
-      if (this.isObject(this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(symbol)))) slot.own = join<Own>(slot.own, Own.Ref);
-      if (this.#exported(fn)) {
-        // Its callers are outside: the spec's names say which numbers (or numbers in a list) are integers.
-        const numeric = this.#numericPart(slot);
-        if (numeric) this.#raiseNum(numeric, this.#paramNames.test(symbol.name) ? Num.Int : Num.Float);
-      }
+      if (this.isObject(this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(symbol)))) this.#raiseOwn(slot, Own.Ref);
       const call = fn.parent;
       if ((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && ts.isCallExpression(call) && ts.isPropertyAccessExpression(call.expression)) {
         const method = call.expression.name.text;
@@ -545,16 +594,10 @@ export class FlowGraph {
     const elem = this.find(this.elemOf(c));
     const r = this.find(target);
     let changed = this.#raiseNum(r, elem.num);
-    if (elem.nullable && !r.nullable) {
-      r.nullable = true;
-      changed = true;
-    }
+    if (elem.nullable) changed = this.#markNullable(r) || changed;
     for (const shape of elem.shapes.values()) changed = this.#meetShape(r, shape) || changed;
     if (this.#isContainerSlot(r) && this.#isContainerSlot(elem)) changed = this.#alias(r, elem) || changed;
-    if (r.own < Own.Ref && (elem.shapes.size > 0 || elem.own > Own.None)) {
-      r.own = Own.Ref;
-      changed = true;
-    }
+    if (elem.shapes.size > 0 || elem.own > Own.None) changed = this.#raiseOwn(r, Own.Ref) || changed;
     return changed;
   }
 
@@ -584,10 +627,7 @@ export class FlowGraph {
             const from = this.find(this.symbolSlot(prop));
             const to = this.symbolSlot(symbol);
             changed = this.#raiseNum(to, from.num) || changed;
-            if (from.own > to.own) {
-              to.own = from.own;
-              changed = true;
-            }
+            changed = this.#raiseOwn(to, from.own) || changed;
             for (const sh of from.shapes.values()) changed = this.#meetShape(this.find(to), sh) || changed;
           }
           return changed;
@@ -617,10 +657,7 @@ export class FlowGraph {
             const out = this.elemOf(this.nodeSlot(e, 'literal', this.#checker.getTypeAtLocation(e)));
             const ret = this.find(this.returnSlot(fn));
             let changed = this.#raiseNum(out, ret.num);
-            if (ret.own > out.own) {
-              out.own = ret.own;
-              changed = true;
-            }
+            changed = this.#raiseOwn(out, ret.own) || changed;
             for (const shape of ret.shapes.values()) changed = this.#meetShape(this.find(out), shape) || changed;
             return changed;
           });
@@ -688,27 +725,42 @@ export class FlowGraph {
     const a = this.find(this.elemOf(target));
     const b = this.find(this.elemOf(s));
     let changed = this.#raiseNum(a, b.num);
-    if (b.own > a.own) {
-      a.own = b.own;
-      changed = true;
-    }
+    changed = this.#raiseOwn(a, b.own) || changed;
     for (const shape of b.shapes.values()) changed = this.#meetShape(a, shape) || changed;
     return changed;
   }
 
   /**
-   * Every flow applied until none changes a fact. Facts only rise in finite lattices, so this ends; if it does not,
-   * a flow is not monotone, and the error names the flows still changing.
+   * The worklist (Kildall): every flow once, then a flow again only when a slot it read has risen. Facts only rise in
+   * finite lattices, so it ends; a flow that keeps running past the bound is not monotone, and the error names it.
    */
   #solve(): void {
-    const limit = 50 + this.#flows.length;
-    for (let round = 0; ; round++) {
-      const changing: TS.Node[] = [];
-      for (const f of this.#flows) if (f.apply()) changing.push(f.at);
-      if (changing.length === 0) return;
-      if (round > limit) {
-        const where = [...new Set(changing.map((n) => `${n.getSourceFile().getLineAndCharacterOfPosition(n.getStart()).line + 1}: ${n.getText().slice(0, 60)}`))];
-        throw new Error(`the flow of values did not settle after ${round} rounds; still changing:\n  ${where.slice(0, 12).join('\n  ')}`);
+    for (let i = 0; i < this.#flows.length; i++) {
+      this.#queue.push(i);
+      this.#queued.add(i);
+    }
+    const runs = new Map<number, number>();
+    const bound = 64;
+    for (let head = 0; head < this.#queue.length; head++) {
+      const f = this.#queue[head]!;
+      this.#queued.delete(f);
+      const n = (runs.get(f) ?? 0) + 1;
+      runs.set(f, n);
+      if (n > bound) {
+        const where = [...runs].filter(([, k]) => k > bound / 2).map(([i]) => this.#flows[i]!.at)
+          .map((at) => `${at.getSourceFile().fileName}:${at.getSourceFile().getLineAndCharacterOfPosition(at.getStart()).line + 1}: ${at.getText().slice(0, 60)}`);
+        throw new Error(`the flow of values did not settle; still changing:\n  ${[...new Set(where)].slice(0, 12).join('\n  ')}`);
+      }
+      this.#current = f;
+      try {
+        this.#flows[f]!.apply();
+      } finally {
+        this.#current = -1;
+      }
+      // The queue only grows at its end: compact what was processed, so a long solve does not hold it all.
+      if (head > 65536) {
+        this.#queue.splice(0, head + 1);
+        head = -1;
       }
     }
   }
@@ -733,28 +785,10 @@ export class FlowGraph {
     return widest;
   }
 
-  /** A number slot's final kind: what reached it; with no evidence, the spec's rule for its name, else a float. */
-  /**
-   * Where a name rule lands: the slot when it holds a number, its elements when it holds a list of numbers (`stops:
-   * number[]` are ids, not the list), else nowhere.
-   */
-  #numericPart(s: Slot): Slot | null {
-    const ts = this.#ts;
-    const r = this.find(s);
-    if (!r.type) return null;
-    const t = this.#checker.getNonNullableType(this.underlying(r.type));
-    if (t.flags & ts.TypeFlags.NumberLike) return r;
-    const element = this.#elementType(t);
-    if (element && this.#checker.getNonNullableType(this.underlying(element)).flags & ts.TypeFlags.NumberLike) return this.elemOf(r);
-    return null;
-  }
-
+  /** A number slot's final kind: what reached it in the whole program; with no evidence, a real (JavaScript's number). */
   numberOf(s: Slot): Num {
     const r = this.find(s);
-    if (r.num !== Num.None) return r.num;
-    if (r.role === 'field' && this.#fieldNames.test(r.name)) return Num.Int;
-    if (r.role === 'param' && this.#paramNames.test(r.name)) return Num.Int;
-    return Num.Float;
+    return r.num === Num.None ? Num.Float : r.num;
   }
 
   // ---- helpers
@@ -795,7 +829,7 @@ export class FlowGraph {
   /** A property of a type the feature declares or builds (not of a container, a string, or a target value type). */
   #isFeatureProperty(p: TS.Symbol): boolean {
     const decl = p.valueDeclaration ?? p.declarations?.[0];
-    if (!decl || decl.getSourceFile() !== this.#file) return false;
+    if (!decl || !this.inProgram(decl)) return false;
     const holder = decl.parent;
     const holderName = holder && (this.#ts.isInterfaceDeclaration(holder) || this.#ts.isTypeAliasDeclaration(holder)) ? holder.name.text : '';
     return !this.#spec.types[holderName];
@@ -803,7 +837,7 @@ export class FlowGraph {
 
   #inFeature(s: TS.Symbol): boolean {
     const decl = s.valueDeclaration ?? s.declarations?.[0];
-    return decl !== undefined && decl.getSourceFile() === this.#file;
+    return decl !== undefined && this.inProgram(decl);
   }
 
   #isValueType(t: TS.Type): boolean {
@@ -837,21 +871,5 @@ export class FlowGraph {
   #enclosingFunction(n: TS.Node): TS.SignatureDeclaration | null {
     for (let p = n.parent; p; p = p.parent) if (this.#ts.isFunctionLike(p)) return p;
     return null;
-  }
-
-  /**
-   * The function is itself an exported declaration (`export function f`, `export const f = () => ...`): its callers
-   * are outside. A function written inside one (a callback, a helper) is not, whatever contains it.
-   */
-  #exported(fn: TS.Node): boolean {
-    const ts = this.#ts;
-    const exported = (n: TS.Node): boolean => (ts.canHaveModifiers(n) ? ts.getModifiers(n) ?? [] : []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
-    if (ts.isFunctionDeclaration(fn)) return ts.isSourceFile(fn.parent) && exported(fn);
-    const holder = fn.parent;
-    if (holder && ts.isVariableDeclaration(holder) && holder.initializer === fn && ts.isVariableDeclarationList(holder.parent)) {
-      const statement = holder.parent.parent;
-      return ts.isVariableStatement(statement) && ts.isSourceFile(statement.parent) && exported(statement);
-    }
-    return false;
   }
 }

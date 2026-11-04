@@ -8,7 +8,6 @@
   "units": ["addPost", "removePost", "countNear", "nearest", "firstX", "chain"],
   "pending": [],
   "number": "float",
-  "integers": { "match": "id|nextId", "params": "id", "type": "int32_t" },
   "types": { "Vec2": { "type": "V2", "include": "core/math.h", "fields": { "x": "x", "y": "y" } } },
   "functions": {},
   "classes": {},

@@ -24,11 +24,6 @@
     { "unit": "transit in the interface (src/ui/v2/transitLine.ts)", "owner": "native/src/api", "reason": "the API exposes the queries to the interface; the UI never writes the state" }
   ],
   "number": "float",
-  "integers": {
-    "match": "id|ids|nextId|track|segment|vehicles|order|stops",
-    "params": "id|track|segment|stops",
-    "type": "int32_t"
-  },
   "types": {
     "Vec2": { "type": "V2", "include": "core/math.h", "fields": { "x": "x", "y": "y" } }
   },

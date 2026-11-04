@@ -63,14 +63,16 @@ export function translate(input: TranslateInput): TranslationResult {
   const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
   if (!file) throw new Error(`${spec.source} is not part of the program of ${input.tsconfig}`);
   const errors: string[] = [];
+  // The whole program, tests left out: every caller and every use is a fact; a test's values are not the program's.
+  const sources = programFiles(sp.program, input.sourceRoot);
   const memoBodies: TS.Node[] = [];
   const visit = (n: TS.Node): void => {
     if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && spec.memoizers.includes(n.expression.text) && n.arguments[0]) memoBodies.push(n.arguments[0]);
     ts.forEachChild(n, visit);
   };
-  visit(file);
+  for (const f of sources) visit(f);
   const patterns = new Patterns(ts, spec.patterns);
-  const flow = new FlowGraph(ts, sp.checker, file, spec, patterns, memoBodies);
+  const flow = new FlowGraph(ts, sp.checker, sources, spec, patterns, memoBodies);
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors);
   const real = types.number(Num.Float, 'local');
   const namedLiterals = new Map<number, ConstantPlan>(Object.entries(spec.literals).map(([value, named]) => [Number(value), {
@@ -101,6 +103,17 @@ export function translate(input: TranslateInput): TranslationResult {
   return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, sourcesRead: sourcesRead(ts, sp.checker, file, input.sourceRoot) };
+}
+
+/** The program's own source files: under the source root, not declarations, not dependencies, not tests. */
+function programFiles(program: TS.Program, sourceRoot: string): TS.SourceFile[] {
+  const root = path.resolve(sourceRoot).split(path.sep).join('/').toLowerCase();
+  const test = /(^|\/)(tests?|__tests__|spec)\/|\.(test|spec)\.tsx?$/;
+  return program.getSourceFiles().filter((f) => {
+    const name = f.fileName.split(path.sep).join('/');
+    const relative = name.toLowerCase().startsWith(root + '/') ? name.slice(root.length + 1) : null;
+    return relative !== null && !f.isDeclarationFile && !relative.startsWith('node_modules/') && !test.test(relative);
+  });
 }
 
 /** The feature's file and every module it imports (what the translation read), relative to the source root. */

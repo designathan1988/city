@@ -66,7 +66,8 @@ export class TypeMapper {
   }
 
   number(n: Num, use: Use): CppType {
-    if (n === Num.Int) return { k: 'int', name: use === 'field' || use === 'param' ? this.#spec.integers.type as IntName : 'int' };
+    // What is stored or crosses the API has an explicit width; a local is the plain int, as the target writes it.
+    if (n === Num.Int) return { k: 'int', name: use === 'field' || use === 'param' ? 'int32_t' : 'int' };
     if (n === Num.Int64) return { k: 'int', name: 'int64_t' };
     return { k: 'real', name: this.#spec.number };
   }

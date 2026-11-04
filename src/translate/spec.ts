@@ -62,8 +62,6 @@ export interface TranslationSpec {
   readonly pending: readonly Pending[];
   /** The C++ type of a TypeScript number (the target's convention for world values). */
   readonly number: string;
-  /** Names whose numbers are integers (ids, counts, positions): regex on a field, parameter or variable name. */
-  readonly integers: { readonly match: string; readonly params: string; readonly type: string };
   /** Source types the target has (Vec2 → V2), with the header that declares them. */
   readonly types: Readonly<Record<string, { readonly type: string; readonly include: string; readonly fields?: Readonly<Record<string, string>> }>>;
   /** Source functions that are unit conversions or identities in the target (m(x) → x: one world unit is a metre). */
@@ -81,7 +79,7 @@ export interface TranslationSpec {
 }
 
 const REQUIRED: readonly (keyof TranslationSpec)[] = ['feature', 'subsystem', 'namespace', 'source', 'summary', 'state', 'units',
-  'pending', 'number', 'integers', 'types', 'functions', 'classes', 'memoizers', 'patterns', 'typeNames', 'literals', 'layer'];
+  'pending', 'number', 'types', 'functions', 'classes', 'memoizers', 'patterns', 'typeNames', 'literals', 'layer'];
 
 /**
  * The spec as one translation uses it: `$real` in a class mapping (a heap's priority) is the translation's number
@@ -89,10 +87,21 @@ const REQUIRED: readonly (keyof TranslationSpec)[] = ['feature', 'subsystem', 'n
  */
 export function resolveSpec(spec: TranslationSpec): TranslationSpec {
   const real = (text: string): string => text.replace(/\$real/g, spec.number);
-  const classes = Object.fromEntries(Object.entries(spec.classes).map(([name, k]) => [name, {
-    ...k, type: real(k.type), returns: Object.fromEntries(Object.entries(k.returns).map(([m, t]) => [m, real(t)])),
+  const classes = dictionary(Object.entries(spec.classes).map(([name, k]) => [name, {
+    ...k, type: real(k.type), members: dictionary(Object.entries(k.members)), returns: dictionary(Object.entries(k.returns).map(([m, t]) => [m, real(t)])),
   }]));
-  return { ...spec, classes };
+  return { ...spec, classes, types: dictionary(Object.entries(spec.types)), functions: dictionary(Object.entries(spec.functions)),
+    typeNames: dictionary(Object.entries(spec.typeNames)), literals: dictionary(Object.entries(spec.literals)) };
+}
+
+/**
+ * A dictionary looked up by names of the source program: without a prototype, so `constructor`, `toString` or `call`
+ * are absent keys, not Object's inherited members.
+ */
+function dictionary<V>(entries: readonly (readonly [string, V])[]): Record<string, V> {
+  const out = Object.create(null) as Record<string, V>;
+  for (const [k, v] of entries) out[k] = v;
+  return out;
 }
 
 export function readTranslationSpec(file: string): TranslationSpec {
