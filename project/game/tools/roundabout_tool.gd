@@ -1,9 +1,9 @@
-## Roundabout (Roadcraft roadTool mode "roundabout", tab Rotatória): a click on vacant ground lays a ring with four
+## Roundabout (tab Rotatória): a click on vacant ground lays a ring with four
 ## approaches; on a junction (or with Shift) the roads inside the circle are cut and join the ring. [ and ] scale the
 ## radius; the disc previews it green or red with the core's refusal.
 extends ToolBase
 
-## [ and ] scale by this (roadTool.ts ×÷1.2).
+## [ and ] scale by this.
 const SCALE_STEP := 1.2
 
 var radius := 0.0

@@ -1,4 +1,4 @@
-## Top-bar popovers (Roadcraft hud.ts §7, specs ui.md §7): Layers, Simulation (the core's live metrics), Camera
+## Top-bar popovers: Layers, Simulation (the core's live metrics), Camera
 ## (turn, tilt, north, top, frame), Help (keys) and Menu (new map, new city). Content comes from data/ui/drawers.json
 ## "popovers"; rows without an action the core supports are drawn "being built". One open at a time, under its button.
 class_name HudPopover
@@ -52,7 +52,7 @@ func _row(parent: Control, r: Dictionary) -> Button:
 	return b
 
 
-## Switch rows (Roadcraft hud.ts:508-522): the overlay the core draws for each; the popover stays open.
+## Switch rows: the overlay the core draws for each; the popover stays open.
 func _build_layers(col: Control, spec: Dictionary) -> void:
 	var on: Dictionary = CityStore.query(&"overlays")
 	for r in spec.rows:

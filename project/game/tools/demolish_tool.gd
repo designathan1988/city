@@ -1,4 +1,4 @@
-## Bulldoze (Roadcraft tool `bulldoze`): a click removes the building under it, else the nearest road; the core
+## Bulldoze: a click removes the building under it, else the nearest road; the core
 ## refunds the road's share and the result tells how much.
 extends ToolBase
 
