@@ -1,17 +1,27 @@
-## The sheet of plate pictures: the core asks for a cell the moment a chunk needs a plate (render/props/sign_atlas.h); here
-## the cells waiting are painted, the words with the canvas's font, into a viewport the "prop" material reads (sign_atlas).
-## Only new cells are drawn: the viewport keeps what it had and updates once per batch.
+## The sheets of plate pictures: the core asks for a cell the moment a chunk needs a plate (render/props/sign_atlas.h); here the
+## cells waiting are painted, the words with the canvas's font, into a viewport, and the viewport's picture goes into its layer
+## of the array the "prop" material reads (sign_atlas). The array grows by a layer when the core opens one, so a city has as many
+## names as it has streets. A picture read back stalls the frame a moment: at most one a round (sheet_round_s).
 class_name SignSheet
 extends SubViewport
 
-var drawn: Array = [] ## Every cell painted so far: [type, words, rectangle in the sheet].
+const LAYER_FORMAT := Image.FORMAT_RGBA8
+
+var drawn: Array = [] ## Every cell painted so far: [type, words, rectangle in its layer, layer].
+var layers := Texture2DArray.new()
 
 var _paper := _Paper.new()
 var _look: Dictionary
+var _material: ShaderMaterial
+var _waiting: Array = []
+var _held := -1 ## The layer the viewport holds the picture of.
+var _busy := false
+var _since := 0.0
 
 
-func _init(look: Dictionary) -> void:
+func _init(look: Dictionary, material: ShaderMaterial) -> void:
 	_look = look
+	_material = material
 	size = Vector2i(int(look.sheet_w_px), int(look.sheet_h_px))
 	transparent_bg = false
 	disable_3d = true
@@ -19,19 +29,51 @@ func _init(look: Dictionary) -> void:
 	render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_paper.look = look
 	add_child(_paper)
+	_grow(1)
 
 
-func _process(_delta: float) -> void:
-	var cells: Array = CityStore.query(&"sign_cells")
-	if cells.is_empty():
+func _process(delta: float) -> void:
+	_since += delta
+	_waiting.append_array(CityStore.query(&"sign_cells"))
+	if _waiting.is_empty() or _busy or _since < _look.sheet_round_s:
 		return
-	drawn.append_array(cells)
-	_paper.begin(cells)
-	render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER if _paper.painted else SubViewport.CLEAR_MODE_ONCE
-	_paper.painted = true
+	var layer: int = _waiting[0][3]
+	var cut := 0
+	while cut < _waiting.size() and _waiting[cut][3] == layer:
+		cut += 1
+	var batch := _waiting.slice(0, cut)
+	_waiting = _waiting.slice(cut)
+	drawn.append_array(batch)
+	_paper.begin(batch)
+	render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER if layer == _held else SubViewport.CLEAR_MODE_ONCE
+	_held = layer
+	_busy = true
 	render_target_update_mode = SubViewport.UPDATE_ONCE
-	if not RenderingServer.frame_post_draw.is_connected(_paper.end):
-		RenderingServer.frame_post_draw.connect(_paper.end, CONNECT_ONE_SHOT)
+	RenderingServer.frame_post_draw.connect(_upload.bind(layer), CONNECT_ONE_SHOT)
+
+
+## The viewport has drawn: its picture goes to its layer, and the fonts and the drawing go.
+func _upload(layer: int) -> void:
+	var image := get_texture().get_image()
+	image.convert(LAYER_FORMAT)
+	if layer >= layers.get_layers():
+		_grow(layer + 1)
+	layers.update_layer(image, layer)
+	_paper.end()
+	_busy = false
+	_since = 0.0
+
+
+## The array with `count` layers: a texture's layers are fixed when made, so the ones painted are carried over.
+func _grow(count: int) -> void:
+	var images: Array[Image] = []
+	for i in layers.get_layers():
+		images.append(layers.get_layer_data(i))
+	for i in count - images.size():
+		images.append(Image.create_empty(size.x, size.y, false, LAYER_FORMAT))
+	layers = Texture2DArray.new()
+	layers.create_from_images(images)
+	_material.set_shader_parameter("sign_atlas", layers)
 
 
 ## Draws each plate as a real one reads, in the proportions of the plate (a cell is stretched over it by the mesh's uv): the
@@ -41,7 +83,6 @@ class _Paper:
 
 	var look: Dictionary
 	var cells: Array = []
-	var painted := false
 	var font := FontVariation.new()
 	var _origin := Vector2.ZERO # the cell being painted, and how a plate's proportions stretch over it
 	var _stretch := 1.0

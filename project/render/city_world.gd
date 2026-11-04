@@ -52,9 +52,8 @@ func materials() -> Dictionary:
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
-		_sign_sheet = SignSheet.new(DataTables.render().streets.signs)
+		_sign_sheet = SignSheet.new(DataTables.render().streets.signs, _materials.prop)
 		add_child(_sign_sheet)
-		_materials.prop.set_shader_parameter("sign_atlas", _sign_sheet.get_texture())
 	return _materials
 
 

@@ -11,6 +11,9 @@ const FACE_ROAD_M := 1.6
 const SHEET_FRAMES := 4 # a cell asked for is painted on the next frames
 const INK_NEAR := 0.3 # how near the ink a pixel of the sheet reads as ink
 const INK_LEAST := 0.01 # of a cell, however short its word
+const ITEM_NAME := 11
+const NAMES_TRIED := 312 # three times what one sheet of 104 held
+const NAMES_FRAMES := 1200 # a chunk job, then a layer each sheet_round_s
 
 
 ## At a person's height along the street, from both ends and from above, by day and by night; the HUD off.
@@ -31,6 +34,7 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 
 ## Each sign of the dropdown on the footway across the street, with its words where it carries them.
 	await CaptureStreetPairs.run(cap, a, dir)
+	await many_names(cap, (a + cap._across) * 0.5)
 
 
 static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
@@ -97,8 +101,10 @@ static func _field(cap: Node, under: Node = null) -> LineEdit:
 ## The sheet as the plates read it: every cell painted holds the ink of its words and its figure, once for each type.
 static func _check_ink(cap: Node) -> void:
 	var sheet: SignSheet = cap.world._sign_sheet
-	var image := sheet.get_texture().get_image()
-	image.save_png("%s/rua_23_folha.png" % cap.out_dir)
+	var images: Array[Image] = []
+	for i in sheet.layers.get_layers():
+		images.append(sheet.layers.get_layer_data(i))
+		images[i].save_png("%s/rua_23_folha_%d.png" % [cap.out_dir, i])
 	var look: Dictionary = DataTables.render().streets.signs
 	for c: Array in sheet.drawn:
 		var p: Dictionary = look.drawings[c[0]]
@@ -106,6 +112,7 @@ static func _check_ink(cap: Node) -> void:
 			continue
 		var ink := Color(p.ink)
 		var r: Rect2 = c[2]
+		var image := images[c[3]]
 		var found := 0
 		for y in range(int(r.position.y), int(r.end.y)):
 			for x in range(int(r.position.x), int(r.end.x)):
@@ -113,6 +120,20 @@ static func _check_ink(cap: Node) -> void:
 				if absf(seen.r - ink.r) + absf(seen.g - ink.g) + absf(seen.b - ink.b) < INK_NEAR:
 					found += 1
 		cap._check(found > r.get_area() * INK_LEAST, "tinta na placa %d \"%s\": %d" % [c[0], c[1], found])
+
+
+## More names than any sheet holds: each one painted, none left blank (the sheet grows a layer when it fills).
+static func many_names(cap: Node, road: Vector3) -> void:
+	var sheet: SignSheet = cap.world._sign_sheet
+	var had: int = CityStore.query(&"street_counts").sign_cells
+	for i in NAMES_TRIED:
+		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
+	for f in NAMES_FRAMES:
+		if sheet.drawn.size() >= had + NAMES_TRIED:
+			break
+		await cap.ui.frames(1)
+	cap._check(sheet.drawn.size() >= had + NAMES_TRIED, "%d nomes pintados em %d camadas" % [sheet.drawn.size(), sheet.layers.get_layers()])
+	_check_ink(cap)
 
 
 ## Close to each piece and barrier, from the road's side at a person's height, looking at it.

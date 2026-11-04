@@ -37,13 +37,13 @@ void outline(const PlateLook &p, std::vector<Vector2> &out) {
 }
 
 // A plate fanned round its centre at `at`: `side` its width direction, its face looking along `face`.
-void plate(MeshBuilder &mb, const PlateLook &p, const SignLook &K, const Vector3 &at, const Vector3 &side, const Vector3 &face, const Rect2 &cell, bool painted) {
+void plate(MeshBuilder &mb, const PlateLook &p, const SignLook &K, const Vector3 &at, const Vector3 &side, const Vector3 &face, const SignCell &cell, bool painted) {
 	std::vector<Vector2> ring;
 	outline(p, ring);
 	const auto corner = [&](const Vector2 &q) { return at + side * (q.x * p.w) + UP * (q.y * p.h); };
-	const auto uv = [&](const Vector2 &q) { return cell.position + Vector2(q.x + 0.5f, 0.5f - q.y) * cell.size; };
+	const auto uv = [&](const Vector2 &q) { return cell.uv.position + Vector2(q.x + 0.5f, 0.5f - q.y) * cell.uv.size; };
 	const Color col = painted ? Color(1, 1, 1) : K.back;
-	const Vector2 tag = painted ? TAG_PLATE : TAG_FIXED;
+	const Vector2 tag = painted ? Vector2(TAG_PLATE.x, float(cell.layer)) : TAG_FIXED; // UV2.y: its layer
 	const int centre = mb.add(at, face, col, uv(Vector2()), tag);
 	std::vector<int> rim;
 	for (const Vector2 &q : ring) rim.push_back(mb.add(corner(q), face, col, uv(q), tag));
@@ -55,7 +55,7 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 	const Vector3 foot(s.x, s.y + L.h_sidewalk, s.z), face(s.face_x, 0, s.face_z), side(s.face_z, 0, -s.face_x);
 	const bool blades = s.type == SignType::STREET; // a street's name stands on top of its post, read from both sides
 	mb.cylinder(foot, K.post_radius, blades ? p.z - p.h * 0.5f : p.z + p.h * 0.5f, K.post_sides, K.post, true, TAG_POST);
-	const Rect2 cell = atlas.cell(s.type, s.text);
+	const SignCell cell = atlas.cell(s.type, s.text);
 	const Vector3 centre = foot + UP * p.z;
 	if (blades) {
 		plate(mb, p, K, centre + face * K.blade_half, side, face, cell, true);
@@ -73,7 +73,7 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 		return false;
 	}
 	const Dictionary d = t["signs"], plates = d["plates"];
-	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; square_rows = d["square_rows"]; blade_w = d["blade_cell_w_px"]; blade_h = d["blade_cell_h_px"];
+	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; blade_w = d["blade_cell_w_px"]; blade_h = d["blade_cell_h_px"];
 	post_radius = d["post_radius_m"]; post_sides = d["post_sides"]; face_out = d["face_out_m"]; blade_half = d["blade_half_m"];
 	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
 	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));

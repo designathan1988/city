@@ -20,12 +20,13 @@ uniform float wire_sway_m = 0.35; // how far a wire swings at mid-span in a full
 uniform float wood_grain = 0.5;
 uniform float post_metal = 0.6; // a sign post, galvanised
 uniform float post_roughness = 0.45;
-uniform sampler2D sign_atlas : source_color, filter_linear;
+uniform sampler2DArray sign_atlas : source_color, filter_linear;
 
 varying flat float v_tag;
 varying flat vec3 v_tint;
 varying flat float v_lit;
 varying flat vec3 v_light;
+varying flat float v_layer; // a plate's layer of the sign sheets, UV2.y (sign_atlas.h)
 varying flat vec2 v_finish; // a barrier's metalness and roughness, INSTANCE_CUSTOM.b and .a (barrier_boxes.cpp)
 varying vec3 v_local;
 
@@ -57,6 +58,7 @@ void vertex() {
 	v_lit = 0.0;
 	v_light = vec3(0.0);
 	v_finish = INSTANCE_CUSTOM.ba;
+	v_layer = UV2.y;
 	v_local = VERTEX;
 	if (abs(v_tag - 4.0) < 0.5) {
 		VERTEX = wire_vertex(VERTEX, UV, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME);
@@ -82,7 +84,7 @@ void fragment() {
 		c *= 1.0 - wood_grain + 2.0 * wood_grain * vnoise(vec2(around, v_local.y * 0.7));
 	}
 	if (abs(v_tag - 6.0) < 0.5) {
-		c = source_linear(texture(sign_atlas, UV).rgb);
+		c = source_linear(texture(sign_atlas, vec3(UV, v_layer)).rgb);
 	}
 	ALBEDO = linear_out(c);
 	ROUGHNESS = roughness;

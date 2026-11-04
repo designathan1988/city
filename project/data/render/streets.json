@@ -431,11 +431,11 @@
   "guard_beam_m": 0.3
  },
  "signs": {
-  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px, square_rows: the sheet of pictures, 16 plates and 104 name plates, sized by what a city uses (the generated map 5, every type once 14; the Roadcraft 4. blade_cell_*: a wide plate's cell, in the proportions of a name plate, so its words draw unstretched; 21 rows of 5 hold the 101 names of the generated city of map 0.0 small city 26 street names); a 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
+  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px: a layer of the pictures; the layers grow with what a city uses, 45 name plates or 32 plates each. sheet_round_s: the least time between two pictures read back from the viewport. A 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
   "sheet_w_px": 1024,
-  "sheet_h_px": 1408,
+  "sheet_h_px": 512,
+  "sheet_round_s": 0.25,
   "plate_cell_px": 128,
-  "square_rows": 2,
   "blade_cell_w_px": 192,
   "blade_cell_h_px": 54,
   "post_radius_m": 0.04,
