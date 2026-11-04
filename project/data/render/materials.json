@@ -143,7 +143,9 @@
    "tail_glow": "#ff0d08",
    "head_power": 4.0,
    "tail_power": 1.5,
-   "brake_power": 2.5
+   "brake_power": 2.5,
+   "sign_glow": "#ff7b00",
+   "sign_power": 2.0
   }
  },
  "agent_glass": {

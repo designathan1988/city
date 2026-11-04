@@ -1,10 +1,12 @@
-## Close looks at the bus, the truck and the motorbike nearest to the centre for the visual capture (traffic_probe
-## sample, sample_dir and sample_type): their glass, the cabin and the people inside, from ahead, from the kerb side
-## low at the windows and from above.
+## Close looks at the bus, the truck, the motorbike, the van and a sedan nearest to the centre for the visual capture
+## (traffic_probe sample, sample_dir and sample_type): their glass, the cabin and the people inside, from ahead, from the
+## kerb side low at the windows and from above; the van from ahead and behind, the sedan from behind (their ends).
 class_name CaptureVehicles
 extends RefCounted
 
 ## sim VehicleType (native/src/sim/catalog/traffic_params.h)
+const SEDAN := 0
+const VAN := 3
 const MOTO := 5
 const BUS := 6
 const TRUCK := 7
@@ -13,6 +15,8 @@ const VIEWS := {
 	BUS: [["22_onibus", Vector3(4, 3, 16), 1.6], ["22_onibus_lado", Vector3(-7, 2.6, 1), 1.6], ["22_onibus_alto", Vector3(7, 9, 4), 1.0]],
 	TRUCK: [["23_caminhao", Vector3(3, 3, 11), 1.8], ["23_caminhao_lado", Vector3(-5, 2.8, 4), 2.0], ["23_caminhao_alto", Vector3(5, 8, 3), 1.5]],
 	MOTO: [["24_moto", Vector3(2, 1.6, 5), 1.0]],
+	VAN: [["25_van", Vector3(3, 2.4, 8), 1.1], ["25_van_tras", Vector3(3, 2.4, -8), 1.1]],
+	SEDAN: [["26_sedan_tras", Vector3(0.8, 2.4, -7.5), 0.7]],
 }
 
 

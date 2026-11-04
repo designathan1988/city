@@ -1,6 +1,7 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader), 5 skin,
-// 6 shirt, 7 hair, 8 helmet, 9 trousers, 10 long hair of the people aboard. UV2.y = 1 marks wheel vertices: they turn about X round
+// 6 shirt, 7 hair, 8 helmet, 9 trousers, 10 long hair of the people aboard, 11 a lit sign (the bus's destination, day
+// and night). UV2.y = 1 marks wheel vertices: they turn about X round
 // their hub (UV = hub y, z); UV2.y = 2 a person's: UV = (their seat's place in the order the seats fill, -1 the driver,
 // always there; the vehicle's passenger seats m). INSTANCE_CUSTOM = (paint index, wheel roll angle + 8 when braking,
 // passengers p, order = stride * m + first): seat j is taken when (stride * j + first) mod m < p, so exactly p seats,
@@ -16,6 +17,8 @@ uniform vec3 tail_glow : source_color;
 uniform float head_power;
 uniform float tail_power;
 uniform float brake_power;
+uniform vec3 sign_glow : source_color;
+uniform float sign_power;
 
 const float BRAKE_FLAG = 8.0;
 const float SEAT_LIMB = 2.0;
@@ -141,6 +144,9 @@ void fragment() {
 	} else if (tag == 4) {
 		rough = 0.05;
 		metal = 0.5;
+	} else if (tag == 11) {
+		emit = sign_glow * sign_power;
+		rough = 0.3;
 	} else if (tag >= 5) { // a person's part, its colour drawn in vertex()
 		c = v_look;
 		rough = tag == 8 ? 0.25 : (tag == 5 ? 0.7 : 0.85);

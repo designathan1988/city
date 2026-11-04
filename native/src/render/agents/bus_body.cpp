@@ -244,7 +244,7 @@ void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 	}
 }
 
-// Windscreen between its corner pillars under a black header, the destination blind over it, the rear window.
+// Windscreen between its corner pillars under a black header, the lit destination sign over it, the rear window.
 void ends(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 	const float zf = b.hl + HEAVY_PROUD_M, sx = b.hw - b.screen_side;
 	agent_pane(mb, Vector3(-sx, b.screen_low, zf), Vector3(sx, b.screen_low, zf), Vector3(sx, b.screen_top, zf), Vector3(-sx, b.screen_top, zf),
@@ -252,8 +252,8 @@ void ends(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 	for (int side : { -1, 1 })
 		agent_box(mb, Vector3(side * sx, b.screen_low, b.hl - HEAVY_PILLAR_M), Vector3(side * b.hw, b.cant, zf), trim.blackout, AgentTag::FIXED);
 	agent_box(mb, Vector3(-sx, b.screen_top, b.hl - b.wall), Vector3(sx, b.cant, zf), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-BLIND_W, b.H - SCREEN_TOP_PAD_M, b.hl - HEAVY_PROUD_M), Vector3(BLIND_W, b.H - SCREEN_TOP_PAD_M + BLIND_M, zf), trim.headlamp,
-			AgentTag::HEAD);
+	agent_box(mb, Vector3(-BLIND_W, b.H - SCREEN_TOP_PAD_M, b.hl - HEAVY_PROUD_M), Vector3(BLIND_W, b.H - SCREEN_TOP_PAD_M + BLIND_M, zf), trim.blackout,
+			AgentTag::SIGN);
 	const float zb = -b.hl - HEAVY_PROUD_M, rx = b.hw - b.rear_side;
 	agent_pane(mb, Vector3(-rx, b.rear_low, zb), Vector3(rx, b.rear_low, zb), Vector3(rx, b.rear_top, zb), Vector3(-rx, b.rear_top, zb), Vector3(0, 0, -1),
 			trim);

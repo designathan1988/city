@@ -1,5 +1,5 @@
 {
- "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
+ "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. car_body.bumper_top_m: the ends' dark bumper face up to the top of the bumper zone, 20 in over the road (US 49 CFR Part 581, bumper standard). Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
  "vehicle_radius_m": 900,
  "cabin_radius_m": 140,
  "people_radius_m": 280,
@@ -30,12 +30,13 @@
    "screen": [0.2, 0.06], "rear": [-0.45, -0.49], "side_glass": [-0.44, 0.18], "belt": [0.62, 0.66], "nose_r": 0.36, "tail_r": 0.24},
   {"id": "van", "length": 4.9, "width": 2.0, "height": 2.2, "wheel": 0.35, "clearance": 0.16,
    "top": [[0.5, 0.3], [0.488, 0.36], [0.46, 0.43], [0.41, 0.47], [0.37, 0.5], [0.31, 0.7], [0.26, 0.95], [0.2, 0.995], [0, 1], [-0.47, 0.995], [-0.495, 0.96], [-0.5, 0.88]],
-   "screen": [0.375, 0.24], "rear": [0.6, 0.6], "side_glass": [0.06, 0.33], "belt": [0.49, 0.5], "nose_r": 0.36, "tail_r": 0.1},
+   "screen": [0.375, 0.24], "rear": [], "side_glass": [0.06, 0.33], "belt": [0.49, 0.5], "nose_r": 0.36, "tail_r": 0.1},
   {"id": "pickup", "length": 5.3, "width": 1.95, "height": 1.8, "wheel": 0.37, "clearance": 0.22,
    "top": [[0.5, 0.45], [0.488, 0.54], [0.45, 0.6], [0.33, 0.63], [0.21, 0.645], [0.14, 0.77], [0.07, 0.965], [-0.02, 1], [-0.2, 0.99], [-0.235, 0.96], [-0.25, 0.64], [-0.27, 0.6], [-0.49, 0.6], [-0.5, 0.52]],
    "screen": [0.21, 0.07], "rear": [-0.235, -0.248], "side_glass": [-0.23, 0.19], "belt": [0.62, 0.64], "nose_r": 0.34, "tail_r": 0.12}
  ],
- "car_body": {"stations": 18, "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12},
+ "car_body": {"stations": 18, "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12,
+  "bumper_top_m": 0.51},
  "cars_cabin": {"_doc": "A car's cabin (agent_cabin over car_body.cpp): rows of two seats from the windscreen base back, as many as fit before the rear screen; seat_spread: a seat's middle from the car's, as a share of the cabin width; metres.",
   "seat_spread": 0.22, "front_hip_m": 1.0, "row_pitch_m": 0.82, "back_clear_m": 0.08, "rows": 2, "dash_d_m": 0.35, "dash_h_m": 0.16,
   "lining": "#1b1c1f", "floor": "#1b1c1f", "seat": "#2b2c31", "dash": "#1b1c1f"},

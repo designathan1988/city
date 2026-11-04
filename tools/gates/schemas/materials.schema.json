@@ -382,6 +382,13 @@
       },
       "brake_power": {
        "type": "number"
+      },
+      "sign_glow": {
+       "type": "string",
+       "pattern_prefix": "#"
+      },
+      "sign_power": {
+       "type": "number"
       }
      },
      "required": [
@@ -389,7 +396,9 @@
       "tail_glow",
       "head_power",
       "tail_power",
-      "brake_power"
+      "brake_power",
+      "sign_glow",
+      "sign_power"
      ],
      "strict": true
     }

@@ -98,6 +98,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
 			wheel_r_[i] = float(d["wheel"]);
+			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
 			if (level == CABIN_LEVEL) load_[i].seats = seats;
 			// near, the glass is see-through over the cabin; far, it stays in the body, opaque
 			MeshBuilder shell, glass;
@@ -114,7 +115,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 				rs->mesh_surface_set_material(m.rid, 1, glass_);
 			}
 		}
-	return true;
+	return errors.is_empty();
 }
 
 bool AgentRenderer::push_palettes(const Dictionary &t, PackedStringArray &errors) {

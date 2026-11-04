@@ -17,7 +17,7 @@
 
 namespace city {
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG };
+enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.
 enum class Limb : int { NONE = 0, WHEEL = 1, SEAT = 2 };
 constexpr float DRIVER_ORDER = -1.f; // UV.x of the driver's parts: always there
@@ -126,7 +126,8 @@ void seat_rows(std::vector<Seat> &out, float z_first, float z_last, float pitch,
 // The triangles of `src` tagged `tag` into `only`, the rest into `rest`.
 void split_tag(const MeshBuilder &src, AgentTag tag, MeshBuilder &rest, MeshBuilder &only);
 
-// Each builder draws the cabin when given one (the near level) and returns its passenger seats.
+// Each builder draws the cabin when given one (the near level) and returns its passenger seats (-1: the data's cabin is
+// inside out).
 // car_body.cpp: one passenger car style (agents.json "cars"[i]) with the shared "car_body" and "cars_cabin" settings.
 int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictionary &body, const godot::Dictionary &inside, const CabinLook *cabin,
 		const AgentTrim &trim);
