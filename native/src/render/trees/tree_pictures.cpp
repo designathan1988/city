@@ -21,6 +21,9 @@ namespace city {
 
 namespace {
 constexpr int RGBA = 4;
+constexpr int FROND_MIP = 4, FROND_TEXEL = 4; // the atlas level a frond is read at, and a texel's bytes
+constexpr float DISPLAY_GAMMA = 2.2f;
+constexpr float FROND_COVER = 0.2f; // the leaflets' cover that still reads as frond
 constexpr float BYTE = 255.f, CENTRE_Y = 0.5f, NORMAL_HALF = 0.5f, ALPHA_CUT = 0.5f;
 constexpr int CARD_CORNERS = 4, TRI = 3;
 constexpr float CARD_BULGE = 0.6f; // a card leans outwards from its centre, so a tuft reads as a lump and not a disc
@@ -86,6 +89,7 @@ bool TreePictures::begin(const Dictionary &spec, int species, const Ref<Image> &
 	for (int i = 0; i < e.size(); i++) elevations_.push_back(float(e[i]));
 	leaves_ = leaves;
 	if (leaves_->is_compressed()) leaves_->decompress();
+	frond_texels_ = leaves_->get_data();
 	int64_t bytes = int64_t(px_) * px_ * RGBA * frames() * rows_;
 	colour_.resize(bytes);
 	normals_.resize(bytes);
@@ -99,6 +103,18 @@ void TreePictures::frame_body(Frame &f, const MeshBuilder &m) const {
 		Vector3 n = f.view(m.n[a]);
 		each_pixel(p, f.px, [&](int x, int y, float w0, float w1, float w2) { f.put(x, y, p[0].z * w0 + p[1].z * w1 + p[2].z * w2, m.c[a], n); });
 	}
+}
+
+// A frond seen from afar: a picture has a few pixels for what the atlas draws as hundreds of thin leaflets, so a point of the
+// full size lands on a leaflet or on a gap and most of the frond falls under the cut. It reads a level where a texel is the
+// leaflets' cover; the tone is what the cover left of it.
+Color TreePictures::frond_at(float u, float v) const {
+	int w = leaves_->get_width() >> FROND_MIP, h = leaves_->get_height() >> FROND_MIP;
+	int x = clampi(int((FROND_REGION_U + u * ATLAS_REGION_W) * float(w)), 0, w - 1), y = clampi(int(v * float(h)), 0, h - 1);
+	const uint8_t *p = frond_texels_.ptr() + leaves_->get_mipmap_offset(FROND_MIP) + (int64_t(y) * w + x) * FROND_TEXEL;
+	float cover = float(p[FROND_TEXEL - 1]) / BYTE;
+	float tone = cover > 0.f ? std::min(1.f, std::pow(std::pow(float(p[0]) / BYTE, DISPLAY_GAMMA) / cover, 1.f / DISPLAY_GAMMA)) : 0.f; // the levels average light
+	return Color(tone, tone, tone, cover);
 }
 
 // Leaf cards as the tufts of the atlas; fronds as textured triangles of its other region.
@@ -131,8 +147,8 @@ void TreePictures::frame_cards(Frame &f, const MeshBuilder &m) const {
 		Vector3 p[TRI] = { f.project(m.v[a]), f.project(m.v[b]), f.project(m.v[c]) };
 		each_pixel(p, f.px, [&](int x, int y, float w0, float w1, float w2) {
 			Vector2 t2 = m.uv[a] * w0 + m.uv[b] * w1 + m.uv[c] * w2;
-			Color leaf = leaves_->get_pixel(clampi(int((FROND_REGION_U + clampf(t2.x, 0.f, 1.f) * ATLAS_REGION_W) * float(aw)), 0, aw - 1), clampi(int(t2.y * float(ah)), 0, ah - 1));
-			if (leaf.a < ALPHA_CUT) return;
+			Color leaf = frond_at(clampf(t2.x, 0.f, 1.f), t2.y);
+			if (leaf.a < FROND_COVER) return;
 			Color col = leaf_tone(m.c[a], leaf);
 			f.put(x, y, p[0].z * w0 + p[1].z * w1 + p[2].z * w2, col, f.view(m.n[a]));
 		});
@@ -183,6 +199,7 @@ void TreePictures::finish() {
 	colour_ = PackedByteArray();
 	normals_ = PackedByteArray();
 	leaves_ = Ref<Image>();
+	frond_texels_ = PackedByteArray();
 }
 
 } // namespace city

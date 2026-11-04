@@ -5,6 +5,7 @@
 
 #include "core/math.h"
 #include "core/random.h"
+#include "core/seeded.h"
 #include "core/units.h"
 
 #include <algorithm>
@@ -16,7 +17,6 @@ namespace city {
 namespace {
 constexpr uint32_t SEED_MOD = 997u; // a seed moves the patches by up to this many cells
 constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f;
-constexpr uint32_t PATCH_SALT = 0x70617463u, FRAY_SALT = 0x66726179u;
 constexpr int STRATA_MIX = 6; // the most communities one biome mixes
 constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f;
 constexpr float UNREACHED_M = 1e9f;
@@ -207,8 +207,8 @@ EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, co
 			s.flat = 1.f - smooth(d.flat_from_deg, d.flat_to_deg, slope);
 			s.steep = smooth(d.steep_from_deg, d.steep_to_deg, slope);
 			s.altitude = h[k] - hf.water_level;
-			s.patch = 0.5f + 0.5f * vnoise(wx / d.patch_m + sx, wz / d.patch_m + sz, PATCH_SALT);
-			s.fray = 0.5f + 0.5f * vnoise(wx / d.fray_m + sz, wz / d.fray_m - sx, FRAY_SALT);
+			s.patch = float(woods_noise(wx / d.patch_m + sx, sz - wz / d.patch_m, 1.0, 0)); // the map's north is -z
+			s.fray = float(woods_noise(wx / d.fray_m + sz, -wz / d.fray_m - sx, 1.0, 0));
 			int ix = hf.ix_of(wx), iz = hf.ix_of(wz);
 			const PaintCell &pc = paint.cell(ix, iz);
 			float painted = pc.biome ? pc.biome_amount / BYTE_MAX : 0.f, own = 1.f - painted;
