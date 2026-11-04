@@ -18,7 +18,6 @@ namespace city {
 namespace {
 constexpr float COVER_MIN_Y = -100.f, COVER_SPAN_Y = 700.f, HALF = 0.5f, DROP_CHUNKS = 2.f;
 constexpr uint32_t COVER_SALT = 0xc07e12u;
-constexpr int64_t JOB_LANES = 4, COVER_LANE = 3; // the job keys' lanes (render/trees/tree_renderer.cpp)
 const float DIAGONAL = std::sqrt(2.f);
 // Hash streams of one lattice cell.
 enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, SIZE, YAW, TINT, VARIANT };
@@ -156,7 +155,7 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 		seq = ++seq_;
 		requested_[key] = seq;
 	}
-	s.jobs->submit(key * JOB_LANES + COVER_LANE, priority, [this, &s, key, seq, priority]() {
+	s.jobs->submit(JobKey{ JobLane::COVER, key }, priority, [this, &s, key, seq, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b = build(s, key);
 		b.seq = seq;
@@ -172,7 +171,7 @@ void CoverRenderer::commit(const std::chrono::steady_clock::time_point &until) {
 
 int CoverRenderer::pending() const {
 	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return pending_ + int(requested_.size() + done_.size());
+	return pending_ + int(dirty_.size() + requested_.size() + done_.size());
 }
 
 // Rebuild the dirty chunks, ask the missing ones round the camera, nearest first, and let go of the far.

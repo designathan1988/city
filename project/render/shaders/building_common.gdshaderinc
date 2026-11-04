@@ -21,7 +21,7 @@ void finish_layer(int fin, vec3 n, out vec3 tone, out vec3 nn, out float rough, 
 	vec4 a = texture(finish_map, layer);
 	vec3 nm = texture(finish_normal, layer).rgb * 2.0 - 1.0;
 	vec4 r = texture(finish_rough, layer);
-	tone = min(a.rgb / finish_mean[fin], vec3(2.0));
+	tone = a.rgb;
 	float k = finish_normal_k[fin];
 	nn = normalize(t * nm.x * k + b * nm.y * k + n * max(nm.z, 0.2));
 	rough = r.g;

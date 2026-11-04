@@ -4,6 +4,7 @@
 extends Node3D
 
 const SETTLE_FRAMES := 4
+const CHUNK_NEAR_BUILT := 1 # building_renderer.h chunk_flags
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
@@ -210,6 +211,10 @@ func _civic_tour() -> void:
 		var at: Vector3 = b.position
 		var from := at + out * size * CIVIC_VIEW.z + along * size * CIVIC_VIEW.x + Vector3.UP * size * CIVIC_VIEW.y
 		await _shot("12_%s" % CIVIC_SHOTS[fn], from, at + Vector3.UP * CIVIC_LOOK_UP_M)
+		var chunk: int = CityStore.query(&"building_chunk", [at.x, at.z])
+		print("chunk de 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
+		if chunk & CHUNK_NEAR_BUILT == 0:
+			push_warning("FOTO INCOMPLETA: 12_%s saiu sem o nível perto do prédio" % CIVIC_SHOTS[fn])
 
 
 ## Index of the point nearest to `to` (0 when the list is empty).

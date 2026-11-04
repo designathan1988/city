@@ -25,7 +25,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
-	stage_.init(ctx.material("building", errors), ctx.material("building_ghost", errors));
+	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_sheer", errors), ctx.material("building_card", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
@@ -148,10 +148,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
+		// The buildings first: a chunk they leave for the next frame is a hole in the city, a tree a little later is not.
+		buildings_.update_view(cam, budget);
 		trees_.sync(s, cam, budget);
 		cover_.sync(s, cam, budget);
-		buildings_.update_view(cam, budget);
 		cost_.levels = laps.lap();
+		cost_.backlog = backlog;
+		cost_.budget_left = budget.left;
 	}
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	UploadBudget upload(window, roads_.baking() + verges_.baking() + props_.baking() + buildings_.baking());

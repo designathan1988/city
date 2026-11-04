@@ -66,6 +66,9 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
 		near_shells[i].glass = &out.near_glass[i];
+		near_shells[i].sheer = &out.near_sheer[i];
+		near_shells[i].cards = &out.near_cards[i];
+		mid_shells[i].cards = &out.mid_cards[i];
 		mid_shells[i].glass = &out.mid_glass[i];
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
@@ -85,7 +88,11 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
-	for (size_t i = 0; i < SUB_COUNT; i++) near_shells[i].glass = mid_shells[i].glass = nullptr; // `out` is about to move
+	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
+		near_shells[i].glass = mid_shells[i].glass = nullptr;
+		near_shells[i].sheer = nullptr;
+		near_shells[i].cards = mid_shells[i].cards = nullptr;
+	}
 	if (near) {
 		auto band_of = [this](float thick) {
 			int band = 0;
@@ -111,6 +118,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
+	far.far_tones = &look_.finish_far;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;

@@ -9,10 +9,6 @@ using namespace godot;
 
 namespace city {
 
-namespace {
-constexpr int64_t VERGE_JOB_OFFSET = 1 << 18; // keeps verge job keys apart from the chunks' own and the overlays'
-} // namespace
-
 bool VergeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("verge", errors);
@@ -31,8 +27,7 @@ void VergeRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) 
 }
 
 void VergeRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	const int64_t job = cell_key(key_x(key) + int(VERGE_JOB_OFFSET), key_y(key));
-	submit_job(s, pool, job, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	submit_job(s, pool, JobKey{ JobLane::VERGES, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 }
 
 } // namespace city

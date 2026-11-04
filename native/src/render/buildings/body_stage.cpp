@@ -21,30 +21,44 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	pl.lot = b40::Basis{ Vector3(), Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) };
 	pl.id = body_digest(body);
 	pl.ground = [](const Vector3 &) { return 0.f; };
-	b40::Shell shell, glass;
+	b40::Shell shell, glass, sheer, cards;
 	glass.rooms = true;
 	shell.glass = &glass;
+	shell.sheer = &sheer;
+	shell.cards = &cards;
 	b40::emit_facades(shell, shell, pl);
 	b40::emit_roofs(shell, shell, pl);
 	b40::emit_lot(shell, shell, pl);
 	shell.glass = nullptr;
+	shell.sheer = nullptr;
+	shell.cards = nullptr;
 	const int handle = next_++;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const RID mesh = rs->mesh_create();
 	shell.commit_to(mesh, true);
 	glass.commit_to(mesh, true);
+	sheer.commit_to(mesh, true);
+	cards.commit_to(mesh, true);
 	Vector3 lo, hi, glass_lo, glass_hi;
 	shell.bounds(lo, hi);
-	if (glass.triangles() > 0) {
-		glass.bounds(glass_lo, glass_hi);
+	for (const b40::Shell *more : { &glass, &sheer, &cards }) {
+		if (more->triangles() == 0) continue;
+		more->bounds(glass_lo, glass_hi);
 		lo = lo.min(glass_lo);
 		hi = hi.max(glass_hi);
 	}
 	MeshDraw &draw = shown_[handle];
-	draw.adopt(scenario, ghost ? ghost_ : solid_, !ghost, mesh); // as the city's chunks are drawn
+	if (!ghost) { // as the city's chunks are drawn: the walls and the panes each with their material
+		int surface = 0;
+		if (shell.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, solid_);
+		if (glass.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, glass_);
+		if (sheer.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, sheer_);
+		if (cards.triangles() > 0) rs->mesh_surface_set_material(mesh, surface, card_);
+	}
+	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh);
 	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
-	drawn_[handle] = int(shell.triangles() + glass.triangles());
+	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());
 	return handle;
 }
 
