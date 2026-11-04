@@ -32,6 +32,9 @@ struct Opening {
 Opening opening_of(const Data &data, const BayCtx &c);
 // What the pane of an opening draws (pane_rooms.cpp): `frame` the thickness of its frame, 0 none.
 PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float h0, float h1, bool dark, float frame);
+// How many of a component's panes take the darker glass: the far level's grid fades to the same share (far_window).
+enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIFTH };
+PaneDark pane_dark(uint8_t comp);
 void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c);
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
 void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);

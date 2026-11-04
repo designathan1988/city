@@ -21,7 +21,6 @@ namespace {
 constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
-constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
@@ -29,10 +28,6 @@ int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SU
 
 Vector3 super_centre(int64_t key) {
 	return Vector3((float(key_x(key)) + HALF) * SUPERCHUNK, 0, (float(key_y(key)) + HALF) * SUPERCHUNK);
-}
-
-int64_t super_job_key(int64_t key) {
-	return cell_key(key_x(key) + int(SUPER_JOB_OFFSET), key_y(key) + int(SUPER_JOB_OFFSET)) * 4 + 3;
 }
 
 void range(const MeshDraw &d, float begin, float end) {
@@ -63,6 +58,9 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("building", errors);
+	material_glass_ = ctx.material("building_glass", errors);
+	material_sheer_ = ctx.material("building_sheer", errors);
+	material_card_ = ctx.material("building_card", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	Dictionary t = ctx.table("buildings", errors);
@@ -129,13 +127,14 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 	sp.dirty = true;
 }
 
-// Chunk instances: near and mid hand over at the near end; the mid level has no end of its own (the chunk is shown or
-// left to the far mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
+// Chunk instances: near and mid hand over at the near end, once the near level stands: until then the mid level draws from
+// the eye, or a camera that jumps in sees a hole. The mid level has no end of its own (the chunk is shown or left to the far
+// mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		range(ch.near[size_t(i)], 0, near_end_);
 		range(ch.parts[size_t(i)], 0, parts_end_);
-		range(ch.mid[size_t(i)], near_end_, 0);
+		range(ch.mid[size_t(i)], ch.built[LEVEL_NEAR] ? near_end_ : 0, 0);
 	}
 	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
 }
@@ -184,6 +183,7 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 	}
 	ch.built[level] = false;
 	ch.stale[level] = false;
+	ranges(ch);
 }
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
@@ -202,14 +202,15 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		requested_[key] = seq;
 		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0));
 	}
-	s.jobs->submit(key * 4 + 3, priority, [this, &s, key, seq, version, near, mid, priority]() { // job: Built::job
+	const JobKey job{ JobLane::BUILDING, key };
+	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, priority]() {
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, &key, 1);
 		}
 		Built b = build_cpu(in, key, near, mid);
-		b.job = key * 4 + 3;
+		b.job = job;
 		b.seq = seq;
 		b.version = version;
 		b.priority = priority;
@@ -231,7 +232,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		seq = ++super_seq_;
 		super_requested_[key] = seq;
 	}
-	s.jobs->submit(super_job_key(key), priority, [this, &s, key, seq, priority]() {
+	s.jobs->submit(JobKey{ JobLane::BUILDING_SUPER, key }, priority, [this, &s, key, seq, priority]() {
 		std::array<int64_t, CHUNKS_PER_SUPER * CHUNKS_PER_SUPER> chunks;
 		const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
 		for (int j = 0; j < CHUNKS_PER_SUPER; j++)
@@ -244,7 +245,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		SuperBuilt b = build_super_cpu(in, key);
 		for (int64_t seen = super_bytes_max_.load(); b.bytes() > seen && !super_bytes_max_.compare_exchange_weak(seen, b.bytes());) {
 		}
-		b.job = super_job_key(key);
+		b.job = JobKey{ JobLane::BUILDING_SUPER, key };
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -268,11 +269,6 @@ void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_cl
 				commit_super(b);
 				super_max = std::max(super_max, one.lap());
 			}, &times_);
-}
-
-int BuildingRenderer::pending() const {
-	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size());
 }
 
 // A superchunk, every frame: each chunk's switch between its own detail and the far mesh, the levels it needs or no
@@ -314,6 +310,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
 	const double now = now_s();
 	std::vector<Want> want, want_super;
+	int waiting = 0; // far meshes to redo, each on its clock
 	for (auto &[key, sp] : supers_) {
 		// the far reach from the superchunk's centre, as the chunks are streamed (a nearest-point reach would hold a
 		// ring of extra far meshes, a quarter more memory, for buildings past building_far_end_m)
@@ -322,20 +319,27 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 		visit_super(key, sp, cam, eye, want);
 		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
 		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);
-		if (sp.dirty && due && ground <= far_end_) {
+		if (sp.dirty && ground <= far_end_) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
-			if (!super_requested_.count(key)) want_super.push_back({ ground, key, 0 });
+			if (!super_requested_.count(key)) {
+				if (due) want_super.push_back({ ground, key, 0 });
+				else waiting++;
+			}
 		}
 	}
+	need_.want = int(want.size() + want_super.size()) + waiting;
+	need_.unmet = need_.want;
 	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want) {
 		if (!budget.take()) break;
 		submit(*state_, w.key, false, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, w.d);
+		need_.unmet--;
 	}
 	std::sort(want_super.begin(), want_super.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want_super) {
 		if (!budget.take()) break;
 		submit_super(*state_, w.key, w.d);
+		need_.unmet--;
 	}
 }
 

@@ -49,10 +49,6 @@ struct UploadBudget {
 	}
 };
 
-// Build keys stay within +-2^56 (their high bits all repeat the sign), so flipping bit 62 gives a bake a key of its
-// own, never a build's; a chunk has one bake at a time, so no bake is ever replaced in the pool.
-constexpr int64_t BAKE_KEY_BIT = int64_t(1) << 62;
-
 // The result is still the newest one asked for its chunk.
 inline bool fresh(std::mutex &mutex, const std::unordered_map<int64_t, uint64_t> &requested, int64_t key, uint64_t seq) {
 	std::lock_guard<std::mutex> lk(mutex);
@@ -140,7 +136,7 @@ void commit_baked(JobPool &pool, std::mutex &mutex, Results<Built> &done, std::u
 				continue;
 			}
 			baking[b->key] = Baking{ b->seq, bytes };
-			pool.submit(b->job ^ BAKE_KEY_BIT, b->priority, [job = std::move(b), &mutex, &done]() {
+			pool.submit(b->job.bake(), b->priority, [job = std::move(b), &mutex, &done]() {
 				job->bake();
 				std::lock_guard<std::mutex> lk(mutex);
 				done.push_back(job);
