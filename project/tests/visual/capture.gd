@@ -118,6 +118,9 @@ func _wait_render() -> void:
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
+	if only.has("transporte"):
+		await CaptureTransit.shots(self)
+		return
 	var hour := DAY
 	for v in VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
