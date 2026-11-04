@@ -41,27 +41,33 @@ void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const 
 void BuildingRenderer::put_near(MeshDraw &d, Surface &sf, bool shown) const {
 	if (sf.mesh.valid()) {
 		RenderingServer *rs = RenderingServer::get_singleton();
-		if (sf.glass_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
+		if (sf.glass_at != 0 && sf.sheer_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
 		if (sf.glass_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.glass_at, material_glass_);
+		if (sf.sheer_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.sheer_at, material_sheer_);
 	}
 	put(d, sf, scenario_, RID(), true, shown);
 }
 
-BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass) {
+BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer) {
 	Surface sf;
-	const bool any_glass = glass && glass->triangles() > 0;
-	if (shell.triangles() == 0 && !any_glass) return sf;
+	const bool any_glass = glass && glass->triangles() > 0, any_sheer = sheer && sheer->triangles() > 0;
+	if (shell.triangles() == 0 && !any_glass && !any_sheer) return sf;
 	sf.mesh.rid = RenderingServer::get_singleton()->mesh_create();
 	shell.commit_to(sf.mesh.rid, with_uv2);
 	if (any_glass) {
 		sf.glass_at = shell.triangles() > 0 ? 1 : 0;
 		glass->commit_to(sf.mesh.rid, with_uv2);
 	}
+	if (any_sheer) {
+		sf.sheer_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0);
+		sheer->commit_to(sf.mesh.rid, with_uv2);
+	}
 	Vector3 mn, mx, pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	shell.bounds(mn, mx);
-	if (any_glass) {
+	for (const b40::Shell *more : { any_glass ? glass : nullptr, any_sheer ? sheer : nullptr }) {
+		if (!more) continue;
 		Vector3 gn, gx;
-		glass->bounds(gn, gx);
+		more->bounds(gn, gx);
 		mn = mn.min(gn);
 		mx = mx.max(gx);
 	}
@@ -85,7 +91,7 @@ int64_t BuildingRenderer::Built::bytes() const {
 	int64_t n = 0;
 	for (int i = 0; i < SUB_COUNT; i++)
 		n += near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
-				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true);
+				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true) + near_sheer[size_t(i)].bytes(true);
 	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
 	return n;
 }
@@ -93,7 +99,7 @@ int64_t BuildingRenderer::Built::bytes() const {
 void BuildingRenderer::Built::bake() {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		if (has_near) {
-			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)]);
+			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)]);
 			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
 		}
 		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)]);
@@ -102,6 +108,7 @@ void BuildingRenderer::Built::bake() {
 		parts_shell[size_t(i)] = b40::Shell();
 		mid_shell[size_t(i)] = b40::Shell();
 		near_glass[size_t(i)] = b40::Shell();
+		near_sheer[size_t(i)] = b40::Shell();
 		mid_glass[size_t(i)] = b40::Shell();
 	}
 	for (int b = 0; b < BAND_COUNT; b++) {

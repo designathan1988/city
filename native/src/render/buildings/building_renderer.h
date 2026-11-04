@@ -88,7 +88,7 @@ private:
 	struct Surface {
 		OwnedMesh mesh;
 		godot::AABB box;
-		int glass_at = -1; // the mesh surface the panes are, -1: none
+		int glass_at = -1, sheer_at = -1; // the mesh surfaces of the panes and the glass guards, -1: none
 	};
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
@@ -99,6 +99,7 @@ private:
 		uint32_t version = 0; // the chunk's version when the job was submitted
 		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
+		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
 		std::array<Surface, SUB_COUNT> near, parts, mid;
 		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
@@ -132,7 +133,7 @@ private:
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
 	void put_near(MeshDraw &d, Surface &sf, bool shown) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
@@ -151,7 +152,7 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
-	godot::RID scenario_, material_, material_glass_, material_far_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_sheer_, material_far_, material_parts_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
