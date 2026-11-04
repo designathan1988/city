@@ -11,13 +11,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace city {
 namespace traffic {
 
 namespace {
 constexpr int64_t YARD_JOB_KEY_BASE = int64_t(1) << 40; // the pool's keys: apart from the chunks'
-constexpr float JOB_PRIORITY = 100.f; // behind everything the player sees
+constexpr float JOB_PRIORITY = std::numeric_limits<float>::max(); // behind everything the player sees: a chunk's priority is its distance in metres
 constexpr float LOOK_S = 2.f; // a look for a dock with no lorry
 
 // The world's body of a lorry whose rear axle stands at `p`.
@@ -200,6 +201,8 @@ std::shared_ptr<YardJob> yard_of(CityState &s, int building) {
 		const bool ready = s.traffic.tick >= hit->second.ready_tick && hit->second.job->done.load();
 		return ready ? hit->second.job : nullptr;
 	}
+	for (const auto &y : pk.yards)
+		if (!y.second.job->done.load()) return nullptr; // one at a time: a tight yard takes seconds, and a worker it holds draws nothing
 	auto in = std::make_shared<YardInput>();
 	auto job = std::make_shared<YardJob>();
 	const uint64_t wait = uint64_t(s.catalog.traffic.lorry_plan_wait_ticks);
