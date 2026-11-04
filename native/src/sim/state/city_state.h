@@ -48,9 +48,9 @@ struct CityState {
 	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // set by the api each frame (micro window)
 	bool ready = false;
 	// Owner of "unsaved changes" (tools/gates/owners.json): every change to the map calls touch() (commands, undo/redo,
-	// a building that grew); the clock running is not one (Roadcraft lifecycle.ts). Saving stores the revision. Nothing
+	// a building that grew); the clock running is not one. Saving stores the revision. Nothing
 	// else keeps a dirty flag for the save prompt. `edited`: the player changed this city since it was made or opened
-	// (an edit recorded, undone or redone: Roadcraft playerWork.ts), so its work is theirs (autosave keeps it).
+	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
 	uint64_t edit_revision = 0; // commands and undo/redo only: the snapshot's expensive counts follow this
 	bool edited = false;

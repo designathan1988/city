@@ -1,4 +1,4 @@
-// Segment surface (Roadcraft jobs/roadMesh.ts buildSegment): the profile's strips split into pieces (gutters inside
+// Segment surface: the profile's strips split into pieces (gutters inside
 // the outer kerbs, the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
 // neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
 #include "render/roads/road_mesh.h"
@@ -129,7 +129,7 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
 	return out;
 }
 
-// Share of the full kerb height at d metres from a crossing mouth (Roadcraft rampShare).
+// Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.
 float ramp_share(const StreetLook &L, float d) {
 	if (d < L.ramp_full) return (L.ramp_full - d) / L.ramp_full;
 	if (d <= L.ramp_flat) return 0.f;

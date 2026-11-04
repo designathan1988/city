@@ -1,7 +1,8 @@
-// Lock-free triple buffer of agent poses (roadcraft-novo shared/contracts/poses.ts): the simulation publishes after
-// each tick, the render takes the newest without waiting. Each record carries the agent's poses at the last three
-// publications and the frame their scheduled times, so the render draws a moment render.pose_delay_ticks behind the
-// clock between two of them (snapshot interpolation: a tick that lands late or early never stops nor jumps an agent).
+// Lock-free triple buffer of agent poses: the simulation publishes after each tick, the render takes the newest without
+// waiting. Each record carries the agent's poses at the last three publications and the frame their scheduled times,
+// so the render draws a moment render.pose_delay_ticks behind the clock between two of them (snapshot interpolation,
+// G. Fiedler, "Snapshot Interpolation", Gaffer On Games, 2014: a tick that lands late or early never stops nor jumps
+// an agent).
 // The frame also carries what the signalled approaches near the camera show (their heads' lit lenses).
 #pragma once
 

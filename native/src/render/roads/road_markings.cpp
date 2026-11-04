@@ -1,6 +1,6 @@
-// Painted markings as thin lifted geometry (Roadcraft render/roads.ts markings): centre and lane lines with their
-// dashes, zebra crossings and stop lines at crossing mouths (where they lie: the simulation's crosswalk, catalog
-// street_furniture.json "crossing"). Material PAINT, lit by the same lamp pools as the road.
+// Painted markings as thin lifted geometry: centre and lane lines with their dashes, zebra crossings and stop lines at
+// crossing mouths (where they lie: the simulation's crosswalk, catalog street_furniture.json "crossing"). Material
+// PAINT, lit by the same lamp pools as the road.
 #include "render/roads/road_mesh.h"
 
 #include <algorithm>
