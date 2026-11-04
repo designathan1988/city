@@ -4,8 +4,9 @@
 class_name SignSheet
 extends SubViewport
 
-const SHEET_PX := 2048
 const TEXT_FILL := 0.72
+const BORDER_INSET := 0.047 # of the cell's height
+const BORDER_WIDTH := 0.06
 
 var _paper := _Paper.new()
 var _look: Dictionary
@@ -13,7 +14,7 @@ var _look: Dictionary
 
 func _init(look: Dictionary) -> void:
 	_look = look
-	size = Vector2i(SHEET_PX, SHEET_PX)
+	size = Vector2i(int(look.sheet_w_px), int(look.sheet_h_px))
 	transparent_bg = false
 	disable_3d = true
 	render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
@@ -31,6 +32,8 @@ func _process(_delta: float) -> void:
 	render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER if _paper.painted else SubViewport.CLEAR_MODE_ONCE
 	_paper.painted = true
 	render_target_update_mode = SubViewport.UPDATE_ONCE
+	if not RenderingServer.frame_post_draw.is_connected(_paper.forget_glyphs):
+		RenderingServer.frame_post_draw.connect(_paper.forget_glyphs, CONNECT_ONE_SHOT)
 
 
 ## Draws each plate as a real one reads: the shape's colours on its cell, cut by the plate's own outline in the mesh.
@@ -40,6 +43,11 @@ class _Paper:
 	var look: Dictionary
 	var cells: Array = []
 	var painted := false
+	var font: FontFile = ThemeDB.fallback_font.duplicate() # its own: the glyphs are big and the sheet keeps what they painted
+
+	## The sheet holds the picture now: the big glyphs need not stay in video memory.
+	func forget_glyphs() -> void:
+		font.clear_cache()
 
 	func _draw() -> void:
 		for c: Array in cells:
@@ -59,13 +67,12 @@ class _Paper:
 		if p.has("slash"):
 			draw_line(mid - Vector2.ONE * radius * 0.6, mid + Vector2.ONE * radius * 0.6, Color(p.slash), radius * 0.16)
 		if p.has("border"):
-			draw_rect(r.grow(-6.0), Color(p.border), false, 8.0)
+			draw_rect(r.grow(-r.size.y * SignSheet.BORDER_INSET), Color(p.border), false, r.size.y * SignSheet.BORDER_WIDTH)
 		var words: String = text if not text.is_empty() else p.get("words", "")
 		if not words.is_empty():
 			_words(words, r, Color(p.ink))
 
 	func _words(words: String, r: Rect2, ink: Color) -> void:
-		var font: Font = ThemeDB.fallback_font
 		var px := int(r.size.y * SignSheet.TEXT_FILL)
 		while px > 10 and font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > r.size.x * 0.84:
 			px -= 2

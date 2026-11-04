@@ -18,6 +18,7 @@ namespace city {
 
 class SignAtlas {
 public:
+	void configure(int width, int height, int cell, int square_rows); // the sheet, in pixels
 	void reset();
 	// The plate's rectangle on the sheet, uv 0..1. Any thread.
 	godot::Rect2 cell(SignType type, const std::string &text);
@@ -36,6 +37,7 @@ private:
 	std::unordered_map<std::string, godot::Rect2> cells_;
 	std::vector<Pending> pending_;
 	int square_used_ = 0, wide_used_ = 0;
+	int width_ = 1, height_ = 1, cell_ = 1, square_rows_ = 0;
 };
 
 } // namespace city

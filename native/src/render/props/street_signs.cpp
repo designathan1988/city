@@ -66,6 +66,7 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 		return false;
 	}
 	const Dictionary d = t["signs"], plates = d["plates"];
+	sheet_w = d["sheet_w_px"]; sheet_h = d["sheet_h_px"]; cell = d["plate_cell_px"]; square_rows = d["square_rows"];
 	post_radius = d["post_radius_m"]; post_sides = d["post_sides"]; face_out = d["face_out_m"]; blade_half = d["blade_half_m"];
 	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
 	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));

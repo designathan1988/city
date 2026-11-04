@@ -532,8 +532,8 @@
   },
   "lamp_light": {
    "type": "object",
-   "properties": {"_doc": {"type": "string"}, "pool_radius_m": {"type": "number"}, "pool_along": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}},
-   "required": ["_doc", "pool_radius_m", "pool_along", "beam_radius_m", "lamp_height_m", "lamp_reach_m", "column_height_m", "column_reach_m"],
+   "properties": {"_doc": {"type": "string"}, "pool_radius_m": {"type": "number"}, "pool_along": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}, "beams": {"type": "boolean"}},
+   "required": ["_doc", "pool_radius_m", "pool_along", "beam_radius_m", "lamp_height_m", "lamp_reach_m", "column_height_m", "column_reach_m", "beams"],
    "strict": true
   },
   "barriers": {
@@ -612,8 +612,22 @@
   },
   "signs": {
    "type": "object",
-   "properties": {"_doc": {"type": "string"}, "post_radius_m": {"type": "number"}, "post_sides": {"type": "number"}, "post_color": {"type": "string"}, "back_color": {"type": "string"}, "face_out_m": {"type": "number"}, "blade_half_m": {"type": "number"}, "plates": {"type": "object"}, "drawings": {"type": "array", "items": {"type": "object"}}},
-   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "plates", "drawings"],
+   "properties": {
+    "_doc": {"type": "string"},
+    "post_radius_m": {"type": "number"},
+    "post_sides": {"type": "number"},
+    "post_color": {"type": "string"},
+    "back_color": {"type": "string"},
+    "face_out_m": {"type": "number"},
+    "blade_half_m": {"type": "number"},
+    "plates": {"type": "object"},
+    "drawings": {"type": "array", "items": {"type": "object"}},
+    "sheet_w_px": {"type": "number"},
+    "sheet_h_px": {"type": "number"},
+    "plate_cell_px": {"type": "number"},
+    "square_rows": {"type": "number"}
+   },
+   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "plates", "drawings", "sheet_w_px", "sheet_h_px", "plate_cell_px", "square_rows"],
    "strict": true
   }
  },

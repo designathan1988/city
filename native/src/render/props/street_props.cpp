@@ -61,7 +61,7 @@ void push_light(StreetInstances &inst, const FurnitureLook &F, const Vector3 &fo
 	const Vector3 head = foot + toward * reach, along = toward.cross(UP);
 	if (parts & LIGHT_POOL) // a road luminaire's long patch, not a spotlight's disc
 		mm_push(inst.light, along * F.pool_radius * F.pool_along, UP * height, toward * F.pool_radius, head, WHITE, 0, 0, 0, float(LIGHT_POOL));
-	if (parts & LIGHT_BEAM)
+	if ((parts & LIGHT_BEAM) && F.beams) // lit air: rain and storm, and there is no weather yet
 		mm_push(inst.light, Vector3(F.beam_radius, 0, 0), UP * height, Vector3(0, 0, F.beam_radius), head, WHITE, 0, 0, 0, float(LIGHT_BEAM));
 }
 
@@ -264,7 +264,7 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	wire.radius = w["radius_m"]; wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
 	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
 	wire.color = rgba8_to_color(parse_hex_color(String(w["color"]).utf8().get_data()));
-	pool_radius = l["pool_radius_m"]; pool_along = l["pool_along"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
+	pool_radius = l["pool_radius_m"]; pool_along = l["pool_along"]; beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
 	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
 	return true;
 }

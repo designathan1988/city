@@ -6,8 +6,8 @@ extends RefCounted
 const RULE_PLATES := 2
 const RULE_GAP := 2.0
 const FIRST_STREET_FACED := 7 # direction, street and information look at the street; the others at the traffic
-const FACE_M := 5.0
-const FACE_ROAD_M := 0.8
+const FACE_M := 3.2
+const FACE_ROAD_M := 1.6
 
 
 ## At a person's height along the street, from both ends and from above, by day and by night; the HUD off.
@@ -64,6 +64,7 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 			if i >= RULE_PLATES:
 				walked += cap.SIGN_GAP_M
 	await cap.ui.shot("rua_07_placa_opcoes")
+	cap.world._sign_sheet.get_texture().get_image().save_png("%s/rua_23_folha.png" % cap.out_dir)
 
 
 static func _option(cap: Node, under: Node = null) -> OptionButton:

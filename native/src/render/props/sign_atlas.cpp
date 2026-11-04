@@ -1,4 +1,4 @@
-// The sheet of plate pictures, see sign_atlas.h. Sizes in pixels; project/render/sign_sheet.gd makes the sheet this size.
+// The sheet of plate pictures, see sign_atlas.h. Sizes in pixels, from data/render/streets.json; so is project/render/sign_sheet.gd.
 #include "render/props/sign_atlas.h"
 
 #include <godot_cpp/variant/string.hpp>
@@ -9,14 +9,16 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int SHEET_PX = 2048, CELL_PX = 256, COLUMNS = SHEET_PX / CELL_PX;
-constexpr int BLADE_PX = CELL_PX / 2; // a name or direction plate: half a cell tall
-constexpr int SQUARE_ROWS = 4, WIDE_ROWS = (SHEET_PX - SQUARE_ROWS * CELL_PX) / BLADE_PX;
-constexpr int SQUARE_CELLS = SQUARE_ROWS * COLUMNS, WIDE_CELLS = WIDE_ROWS * COLUMNS;
-
 bool wide(SignType t) { return t == SignType::STREET || t == SignType::DIRECTION; }
 std::string key_of(SignType t, const std::string &text) { return std::to_string(int(t)) + "|" + text; }
 } // namespace
+
+void SignAtlas::configure(int width, int height, int cell, int square_rows) {
+	width_ = width;
+	height_ = height;
+	cell_ = cell;
+	square_rows_ = square_rows;
+}
 
 void SignAtlas::reset() {
 	std::lock_guard<std::mutex> lk(mutex_);
@@ -31,17 +33,20 @@ Rect2 SignAtlas::cell(SignType type, const std::string &text) {
 	auto it = cells_.find(key);
 	if (it != cells_.end()) return it->second;
 	const bool is_wide = wide(type);
+	const int columns = width_ / cell_, blade = cell_ / 2;
+	const int capacity = columns * (is_wide ? (height_ - square_rows_ * cell_) / blade : square_rows_);
 	int &used = is_wide ? wide_used_ : square_used_;
-	if (used >= (is_wide ? WIDE_CELLS : SQUARE_CELLS) - 1) { // the last cell stays for the blank plate of a full sheet
+	if (used >= capacity - 1) { // the last cell stays for the blank plate of a full sheet
 		const std::string blank = key_of(type, "");
 		auto b = cells_.find(blank);
 		if (b != cells_.end()) return b->second;
 	}
-	const int x = (used % COLUMNS) * CELL_PX, y = is_wide ? SQUARE_ROWS * CELL_PX + (used / COLUMNS) * BLADE_PX : (used / COLUMNS) * CELL_PX;
+	const int x = (used % columns) * cell_, y = is_wide ? square_rows_ * cell_ + (used / columns) * blade : (used / columns) * cell_;
 	used++;
-	const Rect2 px(float(x), float(y), float(CELL_PX), float(is_wide ? BLADE_PX : CELL_PX));
+	const Rect2 px(float(x), float(y), float(cell_), float(is_wide ? blade : cell_));
 	pending_.push_back({ type, text, px });
-	const Rect2 uv(px.position / float(SHEET_PX), px.size / float(SHEET_PX));
+	const float w = float(width_), h = float(height_);
+	const Rect2 uv(px.position.x / w, px.position.y / h, px.size.x / w, px.size.y / h);
 	cells_[key] = uv;
 	return uv;
 }
