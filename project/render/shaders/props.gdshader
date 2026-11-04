@@ -24,7 +24,8 @@ vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 
-// COLOR as linear albedo: Compatibility (OUTPUT_IS_SRGB) hands it over already decoded (see road.gdshader).
+// COLOR as albedo: Forward+ hands it over in sRGB and takes ALBEDO linear; Compatibility (OUTPUT_IS_SRGB) hands it over
+// in sRGB and decodes ALBEDO itself (drivers/gles3/shaders/scene.glsl), so there it goes as it came.
 vec3 vertex_albedo(vec3 c) {
 	return OUTPUT_IS_SRGB ? c : to_linear(c);
 }
@@ -62,6 +63,10 @@ void fragment() {
 		SPECULAR = sqrt(pow((lens_ior - 1.0) / (lens_ior + 1.0), 2.0) / 0.16) * (1.0 - v_lit);
 		EMISSION = emission_out(v_light);
 	} else if (v_tag > 1.5) {
-		EMISSION = glow_color * c * night * glow_gain;
+		// The glow in linear on both renderers: Compatibility hands the colour uniform over as set, in sRGB (its material
+		// storage converts none; Forward+'s converts a Color to linear) and COLOR undecoded (vertex_albedo).
+		vec3 glow = OUTPUT_IS_SRGB ? to_linear(glow_color) : glow_color;
+		vec3 lin = OUTPUT_IS_SRGB ? to_linear(c) : c;
+		EMISSION = emission_out(glow * lin * night * glow_gain);
 	}
 }
