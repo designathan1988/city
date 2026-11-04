@@ -18,7 +18,6 @@ namespace {
 constexpr float ROW_CELL_M = 0.4f; // a bay's seed: where it is in steps of this (the same car whatever the float rounding)
 constexpr uint32_t ROW_SALT = 0x9e3779b9u;
 constexpr uint8_t FILED_NONE = 0, FILED_FREE = 1, FILED_ROW = 2;
-constexpr int RIGHT_SIDE = 0;
 constexpr int ZONE_OF_SHOPS = 2, ZONE_OF_WORKS = 3; // ZoneDef::base
 
 int take_bay(ParkingState &p) {
@@ -97,7 +96,7 @@ void read_kerb(CityState &s, int seg) {
 	const LaneGraph &g = s.traffic.g;
 	for (const KerbStretch &st : k.bays) {
 		// a parked car faces the way the traffic beside it goes (CTB art. 48)
-		const int dir = st.side == RIGHT_SIDE ? 0 : 1, ds = seg * 2 + (g.ds[size_t(seg) * 2 + dir].ok ? dir : 1 - dir);
+		const int dir = st.side == s.catalog.traffic.drive_side ? 0 : 1, ds = seg * 2 + (g.ds[size_t(seg) * 2 + dir].ok ? dir : 1 - dir);
 		Pose at;
 		seg_point(s, seg, float((st.v0 + st.v1) * 0.5), (st.u_kerb + st.u_inner) * 0.5f, at);
 		const float way = ds == seg * 2 ? 1.f : -1.f;

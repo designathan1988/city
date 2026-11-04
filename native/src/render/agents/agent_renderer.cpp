@@ -123,8 +123,8 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 bool AgentRenderer::push_palettes(const Dictionary &t, PackedStringArray &errors) {
 	const Dictionary people = t["people"], occupants = t["occupants"];
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const Dictionary sources = t["paints_by_source"];
-	const Array hair = people["hair"], skin = occupants["skin"], paints = sources[t["paint_source"]];
+	const Dictionary styles = t["styles"], style = styles[REGIONAL_STYLE];
+	const Array hair = people["hair"], skin = occupants["skin"], paints = style["paints"];
 	rs->material_set_param(material_, "hair", palette(hair, HAIR_MAX, "hair", errors));
 	rs->material_set_param(material_, "skin", palette(skin, SKIN_MAX, "skin", errors));
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)

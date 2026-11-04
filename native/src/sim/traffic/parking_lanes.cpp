@@ -12,7 +12,7 @@ namespace traffic {
 
 namespace {
 constexpr float WALKER_CELL_M = 8.f;
-constexpr int RIGHT_HAND = 0, CELL_ROW_BITS = 32;
+constexpr int CELL_ROW_BITS = 32;
 constexpr double FLAT_TANGENT = 1e-9; // below this the curve has no direction
 
 int64_t cell_of(float x, float z) {
@@ -58,8 +58,8 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out) {
 		if (dist >= best) return;
 		r.q.at(t, x, z);
 		r.q.deriv(t, dx, dz);
-		// right-hand traffic: the lot on the right of the way it drives; on a one-way street, whichever kerb the lot is on
-		const int side = dz * (gate.x - x) - dx * (gate.y - z) > 0 ? 1 : RIGHT_HAND;
+		// the lot on the kerb side of the way it drives; on a one-way street, whichever kerb the lot is on
+		const int side = (dz * (gate.x - x) - dx * (gate.y - z) > 0 ? 1 : 0) ^ p.drive_side;
 		int ds = seg * 2 + side;
 		int lane = 0;
 		if (!g.ds[size_t(ds)].ok) {

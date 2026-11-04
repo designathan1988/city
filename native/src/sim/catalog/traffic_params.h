@@ -67,6 +67,9 @@ struct VehicleClass {
 	float a = 0, b = 0, b_emergency = 0, headway = 0, min_gap = 0, speed_share = 0, length = 0, half_width = 0;
 };
 
+// The regional style read until a city carries its own (regras-sessoes.md, section 10): the one name of it.
+constexpr const char *REGIONAL_STYLE = "roadcraft";
+
 struct TrafficParams {
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_DECLARE)
 	VehicleClass classes[VEHICLE_TYPES];
@@ -75,6 +78,7 @@ struct TrafficParams {
 	float zone_home[BASE_ZONES] = {}, zone_work[BASE_ZONES] = {}, zone_mid[BASE_ZONES] = {}, zone_truck[BASE_ZONES] = {};
 	float zone_walk[BASE_ZONES] = {};
 	float hours_working[DAY_HOURS] = {}, hours_purchasing[DAY_HOURS] = {};
+	int drive_side = 0; // the side of the road traffic keeps to, in the road's side numbers (0 right): the style's
 };
 
 } // namespace city

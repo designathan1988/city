@@ -39,6 +39,11 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	else p.name = float(double(params[#name]));
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_LOAD)
 #undef CITY_TRAFFIC_LOAD
+	const Dictionary styles = t.has("styles") ? Dictionary(t["styles"]) : Dictionary();
+	const Dictionary style = styles.has(REGIONAL_STYLE) ? Dictionary(styles[REGIONAL_STYLE]) : Dictionary();
+	// the lanes are laid out for right-hand traffic (sim/roads/profiles.h): a left-hand style would come out half mirrored
+	if (String(style.get("drive_side", "")) != "right") errors.push_back("traffic.styles: drive_side deve ser 'right' por enquanto");
+	p.drive_side = 0;
 	Array classes = t.has("classes") ? Array(t["classes"]) : Array();
 	if (classes.size() != VEHICLE_TYPES) errors.push_back("traffic.classes: esperado uma linha por tipo de veiculo");
 	for (int i = 0; i < classes.size() && i < VEHICLE_TYPES; i++) {
