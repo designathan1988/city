@@ -199,28 +199,6 @@ void pose(const CityState &s, Pedestrian &w) {
 
 } // namespace
 
-int ped_on_footway(CityState &s, int seg, int side, float arc) {
-	TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
-	const RoadSegment &g = s.roads.segs[size_t(seg)];
-	Pedestrian w;
-	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp); // a body of its own, as any walker the street puts out
-	w.seg = seg;
-	w.side = side;
-	w.dir = int(t.rng.next() & 1);
-	w.s = clampf(arc, arc_lo(g), arc_hi(g));
-	on_sidewalk(w);
-	sidewalk_pose(s, seg, side, w.s, w.u, w.cur);
-	std::vector<int> route;
-	if (crowded(t, p, w.cur) || !plan_trip(s, toward(s, w), route)) return -1;
-	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
-	w.mode = PedMode::KERB;
-	const int id = alloc(t);
-	t.peds[size_t(id)] = std::move(w);
-	t.ped_count++;
-	return id;
-}
-
 void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
 
 void remove_pedestrian(CityState &s, int id) {
