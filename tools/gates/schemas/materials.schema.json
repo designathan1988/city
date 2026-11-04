@@ -26,10 +26,10 @@
       "paver_h": {"type": "number"},
       "cobble_per_m": {"type": "number"},
       "pool_color": {"type": "string", "pattern_prefix": "#"},
-      "pool_sigma": {"type": "number"},
+      "pool_along_m": {"type": "number"},
+      "pool_across_m": {"type": "number"},
       "pool_gain": {"type": "number"},
-      "plate_glow": {"type": "number"},
-      "pool_floor": {"type": "number"}
+      "plate_glow": {"type": "number"}
      },
      "required": [
       "asphalt_map",
@@ -49,10 +49,10 @@
       "paver_h",
       "cobble_per_m",
       "pool_color",
-      "pool_sigma",
+      "pool_along_m",
+      "pool_across_m",
       "pool_gain",
-      "plate_glow",
-      "pool_floor"
+      "plate_glow"
      ],
      "strict": true
     }

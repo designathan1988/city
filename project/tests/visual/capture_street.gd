@@ -45,6 +45,11 @@ const SIGNS_SIDE_M := 6.0
 const SIGNS_ALONG_M := 12.0
 const ALONG_BACK_M := 50.0
 const ALONG_UP_M := 42.0
+const LOW_BACK_M := 22.0
+const LOW_SIDE_M := 8.0
+const LOW_UP_M := 13.0
+const LOW_LOOK_SHARE := 0.35
+const LOW_LOOK_M := 5.0
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -159,13 +164,24 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	await ui.button(rig.camera.unproject_position(ui.ground(a.x, a.z)), true)
 	await ui.hover(a.lerp(b, 0.5))
 	await ui.hover(b)
-	await ui.shot("rua_03_postes_previa")
+	await _shot_low("rua_03_postes_previa", a, b)
 	await ui.button(rig.camera.unproject_position(ui.ground(b.x, b.z)), false)
 	await ui.drawn()
 	var after: Dictionary = CityStore.query(&"street_counts")
 	_check(after.poles > before.poles and after.spans > before.spans, "linha pelo mouse %s" % after)
-	await ui.shot("rua_04_postes_prontos")
+	await _shot_low("rua_04_postes_prontos", a, b)
 	await ui.key(KEY_ESCAPE, false)
+
+
+## A shot from low over the street, where a pole and its wires read; the camera goes back to where the mouse needs it.
+func _shot_low(name: String, a: Vector3, b: Vector3) -> void:
+	var held := rig.camera.global_transform
+	var dir := (b - a).normalized()
+	rig.camera.global_position = a - dir * LOW_BACK_M + dir.cross(Vector3.UP) * LOW_SIDE_M + Vector3.UP * LOW_UP_M
+	rig.camera.look_at(a.lerp(b, LOW_LOOK_SHARE) + Vector3.UP * LOW_LOOK_M)
+	await ui.shot(name)
+	rig.camera.global_transform = held
+	await ui.frames(2)
 
 
 func _items(a: Vector3, dir: Vector3) -> void:

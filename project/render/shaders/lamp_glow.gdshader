@@ -24,6 +24,7 @@ varying vec3 v_normal_w;
 varying vec3 v_to_eye;
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/lamp_pool.gdshaderinc"
 
 void vertex() {
 	v_part = UV2.y;
@@ -37,17 +38,6 @@ void vertex() {
 	if ((shown & int(v_part + 0.5)) == 0 || (v_part > BEAM_PART && haze <= HAZE_SHOWN)) {
 		VERTEX = vec3(0.0);
 	}
-}
-
-// The pool's fall from its centre (Roadcraft lightLevels.ts): a bright core and a long soft edge.
-float pool_fall(float r) {
-	if (r < 0.35) {
-		return mix(1.0, 0.55, r / 0.35);
-	}
-	if (r < 0.7) {
-		return mix(0.55, 0.15, (r - 0.35) / 0.35);
-	}
-	return mix(0.15, 0.0, clamp((r - 0.7) / 0.3, 0.0, 1.0));
 }
 
 void fragment() {

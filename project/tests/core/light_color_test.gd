@@ -7,8 +7,8 @@
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
 ##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
 ##   saturate and hide an error);
-## - by night likewise, a black road surface under the even light of a junction plate must show pool_floor x pool_color x
-##   plate_glow x pool_gain x night (road.gdshader: the albedo is nil, only the light's floor is left), with plate_glow
+## - by night likewise, a black road surface under the even light of a junction plate must show pool_color x plate_glow x
+##   pool_gain x night (road.gdshader: the pool adds its light whatever the surface's albedo), with plate_glow
 ##   raised on a copy of the material so the light stays mid range: at the game's own it is nearly black, where
 ##   Compatibility itself is measured two steps off the blue (and its glow two more), on any material.
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
@@ -114,7 +114,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	var img := get_viewport().get_texture().get_image()
 	_compare(img, GLOW_AT, want, "brilho noturno (night %.2f)" % night)
 	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
-	var lit: float = float(road.get_shader_parameter("pool_floor")) * float(road.get_shader_parameter("plate_glow")) 			* float(road.get_shader_parameter("pool_gain")) * night
+	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
 	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit, world.environment.tonemap_exposure, world.environment.tonemap_white)
 	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "luz da via (placa de cruzamento)")
 

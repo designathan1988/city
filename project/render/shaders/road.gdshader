@@ -30,11 +30,11 @@ uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
 uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
-uniform float pool_sigma = 7.5;
+uniform float pool_along_m = 11.5; // a lamp's pool along the road and across it: where it ends
+uniform float pool_across_m = 8.0;
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
-uniform float pool_gain = 1.6;
+uniform float pool_gain = 0.32;
 uniform float plate_glow = 0.55;
-uniform float pool_floor = 0.08; // pools light dark asphalt as if it were this much brighter
 
 const int M_ROAD = 0;
 const int M_PLATE = 1;
@@ -73,6 +73,8 @@ void vertex() {
 	v_pool = UV2;
 }
 
+#include "res://render/shaders/lamp_pool.gdshaderinc"
+
 float lamp_pools() {
 	if (v_pool.x < -500.0) {
 		return plate_glow;
@@ -81,10 +83,9 @@ float lamp_pools() {
 		return 0.0;
 	}
 	float dv = v_pool.y - pool_step * round(v_pool.y / pool_step);
-	float k = 1.0 / (2.0 * pool_sigma * pool_sigma);
-	float du2 = max(v_pool.x, 0.0) * max(v_pool.x, 0.0);
+	float du = max(v_pool.x, 0.0) / pool_across_m;
 	float far = pool_step - abs(dv);
-	return exp(-(du2 + dv * dv) * k) + exp(-(du2 + far * far) * k);
+	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
 }
 
 void fragment() {
@@ -141,5 +142,5 @@ void fragment() {
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
 	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
-	EMISSION = linear_out((albedo + vec3(pool_floor)) * source_linear(pool_color) * pools * night * pool_gain);
+	EMISSION = linear_out(source_linear(pool_color) * pools * night * pool_gain); // light added, as an additive pool adds it: pale paving does not burn
 }
