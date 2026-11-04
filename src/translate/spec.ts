@@ -78,6 +78,18 @@ export interface TranslationSpec {
 const REQUIRED: readonly (keyof TranslationSpec)[] = ['feature', 'subsystem', 'namespace', 'source', 'summary', 'state', 'units',
   'pending', 'number', 'integers', 'types', 'functions', 'classes', 'memoizers', 'patterns', 'typeNames', 'literals', 'layer'];
 
+/**
+ * The spec as one translation uses it: `$real` in a class mapping (a heap's priority) is the translation's number
+ * type, so a mapping never fixes a precision the translation does not have.
+ */
+export function resolveSpec(spec: TranslationSpec): TranslationSpec {
+  const real = (text: string): string => text.replace(/\$real/g, spec.number);
+  const classes = Object.fromEntries(Object.entries(spec.classes).map(([name, k]) => [name, {
+    ...k, type: real(k.type), returns: Object.fromEntries(Object.entries(k.returns).map(([m, t]) => [m, real(t)])),
+  }]));
+  return { ...spec, classes };
+}
+
 export function readTranslationSpec(file: string): TranslationSpec {
   const spec = JSON.parse(fs.readFileSync(file, 'utf8')) as TranslationSpec;
   for (const key of REQUIRED) if (spec[key] === undefined) throw new Error(`${file}: "${key}" is required`);

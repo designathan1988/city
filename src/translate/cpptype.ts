@@ -109,6 +109,13 @@ export function same(a: CppType, b: CppType): boolean {
   return render(a) === render(b) && a.k === b.k;
 }
 
+/** A real literal in the target's number type: `3.f`, `0.5f` for float; `3.0`, `0.5` for double. */
+export function realLiteral(text: string, real: string): string {
+  const t = text.replace(/^\./, '0.');
+  const point = /[.eE]/.test(t) ? t : `${t}.${real === 'float' ? '' : '0'}`;
+  return real === 'float' ? `${point}f` : point;
+}
+
 /** The wider of two numbers (int < int64 < real), for arithmetic and std::max. */
 export function widerNumber(a: CppType, b: CppType): CppType {
   if (a.k === 'real') return a;

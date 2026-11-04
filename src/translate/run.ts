@@ -7,13 +7,13 @@ import path from 'node:path';
 import type * as TS from 'typescript';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import type { ConstantPlan, TranslateContext } from './context.ts';
-import { INT } from './cpptype.ts';
+import { INT, realLiteral, type CppType } from './cpptype.ts';
 import { featureFiles } from './files.ts';
 import { FlowGraph, Num } from './flow.ts';
 import { Patterns } from './patterns.ts';
-import type { Pending, TranslationSpec } from './spec.ts';
+import { resolveSpec, type Pending, type TranslationSpec } from './spec.ts';
 import { Translator } from './translator.ts';
-import { TypeMapper } from './types.ts';
+import { TypeMapper, type CppEnum, type CppStruct } from './types.ts';
 
 export interface TranslationResult {
   readonly feature: string;
@@ -22,6 +22,20 @@ export interface TranslationResult {
   readonly units: { readonly source: string; readonly cpp: string; readonly kind: 'edit' | 'query' | 'index' | 'constant'; readonly line: number }[];
   readonly pending: readonly Pending[];
   readonly errors: readonly string[];
+  /** What other owners call, and the types they see: what a harness needs to drive the translation. */
+  readonly api: readonly ApiFunction[];
+  readonly structs: readonly CppStruct[];
+  readonly enums: readonly CppEnum[];
+  readonly state: string;
+}
+
+export interface ApiFunction {
+  readonly source: string;
+  readonly cpp: string;
+  readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean }[];
+  readonly ret: CppType;
+  /** An edit changes the state (its first parameter); `ret` is what it returns besides. */
+  readonly edit: boolean;
 }
 
 export interface TranslateInput {
@@ -41,7 +55,7 @@ function allowedNumbers(targetRoot: string, rulesFile: string): number[] {
 }
 
 export function translate(input: TranslateInput): TranslationResult {
-  const { spec } = input;
+  const spec = resolveSpec(input.spec);
   const ts = loadTypeScript(input.sourceRoot, input.typescriptDir);
   const sp = openProgram(ts, input.sourceRoot, input.tsconfig);
   const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
@@ -59,7 +73,7 @@ export function translate(input: TranslateInput): TranslationResult {
   const real = types.number(Num.Float, 'local');
   const namedLiterals = new Map<number, ConstantPlan>(Object.entries(spec.literals).map(([value, named]) => [Number(value), {
     source: value, cpp: named.name, type: Number.isInteger(Number(value)) ? INT : real,
-    value: Number.isInteger(Number(value)) ? value : `${value}f`, line: 0, doc: named.comment, constexpr: true,
+    value: Number.isInteger(Number(value)) ? value : realLiteral(value, spec.number), line: 0, doc: named.comment, constexpr: true,
   }]));
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), namedLiterals,
@@ -80,7 +94,11 @@ export function translate(input: TranslateInput): TranslationResult {
     ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending, errors: [...new Set([...flow.errors, ...errors])] };
+  const api = [...c.functions.values()].filter((f) => f.exported)
+    .map((f) => ({ source: f.source, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
+    errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
+    enums: [...types.enums.values()], state: spec.state.target };
 }
 
 /** The state's defaults are the empty state's values (`emptyTransit()` starts nextId at 1). */

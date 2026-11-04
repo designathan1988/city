@@ -9,7 +9,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { removeTree } from '../src/common/files.ts';
+import { runDifferential } from '../src/translate/differential.ts';
 import { translate } from '../src/translate/run.ts';
+import { loadTypeScript } from '../src/graph/typescript.ts';
 import { readTranslationSpec } from '../src/translate/spec.ts';
 import { typescriptDir } from './support.ts';
 
@@ -78,5 +80,25 @@ describe('translate', () => {
       execFileSync(cxx, ['-std=c++17', '-fsyntax-only', '-Wall', '-Wextra', '-Werror', `-I${path.join(work, 'native/src')}`,
         `-I${path.join(target, 'native/src')}`, path.join(work, name)], { stdio: 'pipe' });
     }
+  });
+
+  it('agrees with its source on a random scenario, and the comparison catches a wrong translation', (t) => {
+    const cxx = process.env['CONVERTER_CXX'];
+    if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-differential-'));
+    after(() => removeTree(work));
+    const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceFile: path.join(root, 'src/yard.ts'),
+      empty: 'emptyYard', includes: [path.join(target, 'native/src')], cxx, steps: 400, seed: 7, tolerance: 1e-4,
+      valueTypes: { V2: { x: 'x', y: 'y' } } };
+    const same = runDifferential({ ...base, translation: result, work: path.join(work, 'same') });
+    assert.deepEqual(same.mismatches, []);
+    assert.ok(Object.keys(same.calls).length >= 6, `every public function called: ${JSON.stringify(same.calls)}`);
+    // One comparison turned around: the edit removes every post but the one asked for.
+    const edits = 'native/src/sim/yard/yard_edit.cpp';
+    const mutated = new Map(result.files);
+    mutated.set(edits, mutated.get(edits)!.replace('return p.id == id;', 'return p.id != id;'));
+    assert.notEqual(mutated.get(edits), result.files.get(edits));
+    const wrong = runDifferential({ ...base, translation: { ...result, files: mutated }, work: path.join(work, 'wrong') });
+    assert.ok(wrong.mismatches.length > 0, 'the mutation must be found');
   });
 });

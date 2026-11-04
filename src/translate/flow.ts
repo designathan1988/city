@@ -161,7 +161,10 @@ export class FlowGraph {
       : decl && (ts.isPropertySignature(decl) || ts.isPropertyAssignment(decl) || ts.isShorthandPropertyAssignment(decl) || ts.isPropertyDeclaration(decl)) ? 'field' : 'local';
     const s = this.#new(role, symbol.name, this.#checker.getTypeOfSymbol(symbol));
     this.#bySymbol.set(identity, s);
-    if (role === 'field' && this.#fieldNames.test(symbol.name)) this.#raiseNum(s, Num.Int);
+    if (role === 'field' && this.#fieldNames.test(symbol.name)) {
+      const numeric = this.#numericPart(s);
+      if (numeric) this.#raiseNum(numeric, Num.Int);
+    }
     if (decl && (symbol.flags & ts.SymbolFlags.Optional)) s.nullable = true;
     return s;
   }
@@ -519,8 +522,9 @@ export class FlowGraph {
       const slot = this.symbolSlot(symbol);
       if (this.isObject(this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(symbol)))) slot.own = join<Own>(slot.own, Own.Ref);
       if (this.#exported(fn)) {
-        const t = this.#checker.getNonNullableType(this.#checker.getTypeOfSymbol(symbol));
-        if (t.flags & ts.TypeFlags.NumberLike) this.#raiseNum(slot, this.#paramNames.test(symbol.name) ? Num.Int : Num.Float);
+        // Its callers are outside: the spec's names say which numbers (or numbers in a list) are integers.
+        const numeric = this.#numericPart(slot);
+        if (numeric) this.#raiseNum(numeric, this.#paramNames.test(symbol.name) ? Num.Int : Num.Float);
       }
       const call = fn.parent;
       if ((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && ts.isCallExpression(call) && ts.isPropertyAccessExpression(call.expression)) {
@@ -730,6 +734,21 @@ export class FlowGraph {
   }
 
   /** A number slot's final kind: what reached it; with no evidence, the spec's rule for its name, else a float. */
+  /**
+   * Where a name rule lands: the slot when it holds a number, its elements when it holds a list of numbers (`stops:
+   * number[]` are ids, not the list), else nowhere.
+   */
+  #numericPart(s: Slot): Slot | null {
+    const ts = this.#ts;
+    const r = this.find(s);
+    if (!r.type) return null;
+    const t = this.#checker.getNonNullableType(this.underlying(r.type));
+    if (t.flags & ts.TypeFlags.NumberLike) return r;
+    const element = this.#elementType(t);
+    if (element && this.#checker.getNonNullableType(this.underlying(element)).flags & ts.TypeFlags.NumberLike) return this.elemOf(r);
+    return null;
+  }
+
   numberOf(s: Slot): Num {
     const r = this.find(s);
     if (r.num !== Num.None) return r.num;

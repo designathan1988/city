@@ -7,7 +7,7 @@
 import type * as TS from 'typescript';
 import type { Local, MemoPlan, TranslateContext } from './context.ts';
 import {
-  BOOL, INT, INT64, LITERAL, NULL, STRING, declare, elementOf, isInt, isNumber, paramDecl, render, same, target,
+  BOOL, INT, INT64, LITERAL, NULL, STRING, declare, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
   widerNumber, type CppType,
 } from './cpptype.ts';
 import { Num } from './flow.ts';
@@ -157,8 +157,7 @@ export abstract class ExpressionEmitter {
       if (!this.c.allowedNumbers.includes(value)) return this.fail(e, `the literal ${e.getText()} is not allowed bare in the target: name it in spec.literals`);
     }
     if (int) return { code: e.getText(), type: INT };
-    const text = e.getText().replace(/^\./, '0.');
-    return { code: `${/[.eE]/.test(text) ? text : `${text}.`}f`, type: this.c.types.number(Num.Float, 'local') };
+    return { code: realLiteral(e.getText(), this.c.spec.number), type: this.c.types.number(Num.Float, 'local') };
   }
 
   /** A literal in the initializer of a named constant is that constant's value. */
@@ -317,7 +316,7 @@ export abstract class ExpressionEmitter {
       // floor(x + 0.5) is wrong just below a half (the sum rounds). x − floor(x) is exact, so this is JavaScript's.
       const x = this.temp('x');
       const number = this.c.spec.number;
-      return { code: `[&] { const ${number} ${x} = ${args[0]!.code}; const ${number} down = std::floor(${x}); return int(${x} - down >= 0.5f ? down + 1 : down); }()`, type: INT };
+      return { code: `[&] { const ${number} ${x} = ${args[0]!.code}; const ${number} down = std::floor(${x}); return int(${x} - down >= ${realLiteral('0.5', number)} ? down + 1 : down); }()`, type: INT };
     }
     if (method === 'abs') return isInt(args[0]!.type) ? { code: `std::abs(${args[0]!.code})`, type: INT } : { code: `std::fabs(${args[0]!.code})`, type: real };
     if (REAL_MATH.has(method)) return { code: `std::${method}(${args.map((a) => a.code).join(', ')})`, type: real };
@@ -327,7 +326,7 @@ export abstract class ExpressionEmitter {
       // std::max takes one type: every argument becomes the widest.
       const code = args.map((a, i) => {
         if (same(a.type, type)) return a.code;
-        if (this.c.ts.isNumericLiteral(e.arguments[i]!) && type.k === 'real') return `${a.code}.f`;
+        if (this.c.ts.isNumericLiteral(e.arguments[i]!) && type.k === 'real') return realLiteral(a.code, type.name);
         return `${render(type)}(${a.code})`;
       });
       return { code: code.reduce((acc, x) => `std::${method}(${acc}, ${x})`), type };
@@ -522,7 +521,7 @@ export abstract class ExpressionEmitter {
       [ts.SyntaxKind.TildeToken]: '~', [ts.SyntaxKind.PlusPlusToken]: '++', [ts.SyntaxKind.MinusMinusToken]: '--' }[e.operator];
     if (op === '-' && ts.isNumericLiteral(e.operand) && this.c.allowedNumbers.includes(-Number(e.operand.text))) {
       const text = e.operand.getText();
-      return /^\d+$/.test(text) ? { code: `-${text}`, type: INT } : { code: `-${text.replace(/^\./, '0.')}f`, type: this.c.types.number(Num.Float, 'local') };
+      return /^\d+$/.test(text) ? { code: `-${text}`, type: INT } : { code: `-${realLiteral(text, this.c.spec.number)}`, type: this.c.types.number(Num.Float, 'local') };
     }
     const v = this.value(e.operand);
     return { code: `${op}${v.code}`, type: op === '!' ? BOOL : v.type };

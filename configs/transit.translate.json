@@ -24,7 +24,7 @@
   "number": "float",
   "integers": {
     "match": "id|ids|nextId|track|segment|vehicles|order|stops",
-    "params": "id|track|segment",
+    "params": "id|track|segment|stops",
     "type": "int32_t"
   },
   "types": {
@@ -35,7 +35,7 @@
   },
   "classes": {
     "Heap": {
-      "type": "std::priority_queue<std::tuple<float, uint32_t, int>, std::vector<std::tuple<float, uint32_t, int>>, std::greater<>>",
+      "type": "std::priority_queue<std::tuple<$real, uint32_t, int>, std::vector<std::tuple<$real, uint32_t, int>>, std::greater<>>",
       "include": "queue",
       "companion": { "suffix": "_seq", "type": "uint32_t", "init": "0" },
       "members": {
@@ -44,8 +44,8 @@
         "peekKey": "std::get<0>($self.top())",
         "pop": "[&] { const int top = std::get<2>($self.top()); $self.pop(); return top; }()"
       },
-      "returns": { "push": "void", "size": "int", "peekKey": "float", "pop": "int" },
-      "reason": "core/heap.ts orders by key, then by arrival: a min priority_queue of (key, arrival, item) is the same order; the game has no heap of its own (core/job_pool.h uses std::priority_queue too)"
+      "returns": { "push": "void", "size": "int", "peekKey": "$real", "pop": "int" },
+      "reason": "core/heap.ts orders by key, then by arrival (the key is the translation's number type, $real): a min priority_queue of (key, arrival, item) is the same order; the game has no heap of its own (core/job_pool.h uses std::priority_queue too)"
     }
   },
   "memoizers": ["identityMemo"],
