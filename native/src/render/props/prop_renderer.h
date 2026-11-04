@@ -1,6 +1,6 @@
 // Street furniture chunk meshes: every prop and wire of a 256 m chunk (render/props/street_props.h) merged into one
 // mesh drawn with the "prop" material (data/render/materials.json). Rebuilt with the road chunks. The chunk's signal
-// posts go with its mesh to SignalLamps, which lights their lenses.
+// posts go with its mesh to SignalLamps, which draws their lenses ("signal_lens" material).
 #pragma once
 
 #include "core/job_pool.h"

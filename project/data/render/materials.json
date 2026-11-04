@@ -131,9 +131,13 @@
   "params": {
    "glow_color": "#ffdba0",
    "glow_gain": 6.0,
-   "lit_gain": 0.9,
-   "lit_night_gain": 2.5,
    "roughness": 0.85
+  }
+ },
+ "signal_lens": {
+  "shader": "res://render/shaders/signal_lens.gdshader",
+  "params": {
+   "roughness": 0.35
   }
  },
  "agent": {

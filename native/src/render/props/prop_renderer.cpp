@@ -22,7 +22,9 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 		return false;
 	}
 	if (!furniture_.load(t, errors) || !kit_.build(t["props"], errors)) return false;
-	lamps_.init(scenario_, material_, kit_);
+	const RID lens_material = ctx.material("signal_lens", errors);
+	if (!errors.is_empty()) return false;
+	lamps_.init(scenario_, lens_material, kit_);
 	return true;
 }
 

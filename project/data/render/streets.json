@@ -60,9 +60,8 @@
   "median_min_m": 1.2
  },
  "props": {
-  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head, as the Roadcraft 4.0 heads), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk); drawn dim (lens_dim) and, lit, a copy grown by lens_lit_grow over the dim one when the approach shows it.",
+  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head, as the Roadcraft 4.0 heads), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk); color is the lens lit, shown as it is (render/tone_map.gd), and an unlit lens is that colour times lens_dim (sRGB). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h.",
   "lens_dim": 0.12,
-  "lens_lit_grow": 1.08,
   "signal": [
    {
     "shape": "cylinder",

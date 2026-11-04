@@ -331,12 +331,6 @@
       "glow_gain": {
        "type": "number"
       },
-      "lit_gain": {
-       "type": "number"
-      },
-      "lit_night_gain": {
-       "type": "number"
-      },
       "roughness": {
        "type": "number"
       }
@@ -344,8 +338,31 @@
      "required": [
       "glow_color",
       "glow_gain",
-      "lit_gain",
-      "lit_night_gain",
+      "roughness"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "signal_lens": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "roughness": {
+       "type": "number"
+      }
+     },
+     "required": [
       "roughness"
      ],
      "strict": true
@@ -521,6 +538,7 @@
   "building_far",
   "building_parts",
   "prop",
+  "signal_lens",
   "agent",
   "people",
   "overlay",
