@@ -60,6 +60,7 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Dictionary agent_cost() const { return agents_.cost(); }
+	godot::Dictionary building_cost() const { return buildings_.building_cost(); }
 	// A body drawn apart from the city (body_stage.h).
 	int stage_show(const b40::Data &data, const b40::Body &body, const godot::RID &scenario, bool ghost) { return stage_.show(data, buildings_.look(), body, scenario, ghost); }
 	BodyStage &stage() { return stage_; }

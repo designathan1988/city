@@ -9,6 +9,8 @@
 #include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 
+#include <algorithm>
+
 using namespace godot;
 
 namespace city {
@@ -106,10 +108,20 @@ int64_t BuildingRenderer::Built::bytes() const {
 void BuildingRenderer::Built::bake() {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		if (has_near) {
+			held[HELD_NEAR_WALLS].add(near_shell[size_t(i)], true);
+			held[HELD_NEAR_PANES].add(near_glass[size_t(i)], true);
+			held[HELD_NEAR_GUARDS].add(near_sheer[size_t(i)], true);
+			held[HELD_NEAR_CARDS].add(near_cards[size_t(i)], true);
+			held[HELD_NEAR_PIECES].add(parts_shell[size_t(i)], true);
 			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)]);
 			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
 		}
-		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)]);
+		if (has_mid) {
+			held[HELD_MID_WALLS].add(mid_shell[size_t(i)], true);
+			held[HELD_MID_PANES].add(mid_glass[size_t(i)], true);
+			held[HELD_MID_CARDS].add(mid_cards[size_t(i)], true);
+			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)]);
+		}
 		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
 		near_shell[size_t(i)] = b40::Shell();
 		parts_shell[size_t(i)] = b40::Shell();
@@ -129,6 +141,7 @@ void BuildingRenderer::Built::bake() {
 }
 
 void BuildingRenderer::SuperBuilt::bake() {
+	held.add(far_shell, false);
 	far = BuildingRenderer::bake(far_shell, false);
 	far_shell = b40::Shell();
 	baked = true;
@@ -147,11 +160,15 @@ void BuildingRenderer::commit_one(Built &b) {
 		for (int band = 0; band < BAND_COUNT; band++)
 			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
 					chunk_box(b.key));
+		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
+		ch.instances = 0;
+		for (int count : b.band_count) ch.instances += count;
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
 	}
 	if (b.has_mid) {
 		for (int i = 0; i < SUB_COUNT; i++) put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown);
+		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
 	}
@@ -162,6 +179,7 @@ void BuildingRenderer::commit_one(Built &b) {
 void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
+	sp.held = b.held;
 	put(sp.far, b.far, scenario_, material_far_, true, true); // casts: past the mid level it is the only thing that can
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
