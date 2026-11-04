@@ -47,7 +47,7 @@ struct SidewalkFurniture {
 	float longest = 0; // the longest footprint along the arc (a search by s0 starts this far back)
 };
 
-// A walker with a destination (Roadcraft peds.ts): a route of nodes over streets with sidewalks; along a sidewalk on
+// A walker with a destination: a route of nodes over streets with sidewalks; along a sidewalk on
 // its own track, round each corner and over the crosswalks (waiting at the kerb for the walk phase or a gap).
 // What every step reads comes first (two cache lines, copied out by ped_crowd.cpp), the way and the trail after.
 struct Pedestrian {
