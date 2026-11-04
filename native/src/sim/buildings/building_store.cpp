@@ -21,6 +21,7 @@ void BuildingStore::clear() {
 	hash.clear();
 	hash.cell = BUILDING_HASH_CELL;
 	count = 0;
+	reach = 0;
 }
 
 int BuildingStore::add(const Building &b) {
@@ -75,6 +76,7 @@ void BuildingStore::place(int id, const Building &b) {
 	items[id] = b;
 	items[id].alive = true;
 	hash.insert_aabb(id, b.x, b.z, b.x, b.z);
+	reach = std::max(reach, std::hypot(b.w, b.d) * 0.5f);
 	count++;
 	mark(id);
 }

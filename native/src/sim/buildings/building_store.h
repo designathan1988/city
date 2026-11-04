@@ -35,6 +35,7 @@ public:
 	SpatialHash hash; // by lot centre
 	ChangeLog *log = nullptr;
 	int count = 0;
+	float reach = 0; // the widest lot's half diagonal: a lot covering a point has its centre this near it
 
 	void init(ChangeLog *l);
 	void clear();
@@ -45,6 +46,14 @@ public:
 	void put(int id, const Building &b, bool evict);
 	// Does the point stand on the building's lot (its rectangle grown by pad)?
 	static bool covers(const Building &b, float x, float z, float pad);
+	// Does the point stand on any building's lot grown by pad (Roadcraft 4.0 transitTools.ts built)? Reads only the
+	// lots whose centre lies within the widest lot of the store.
+	bool built_at(float x, float z, float pad) const {
+		bool hit = false;
+		const float r = reach + pad;
+		query(x - r, z - r, x + r, z + r, [&](int id) { hit = hit || covers(items[size_t(id)], x, z, pad); });
+		return hit;
+	}
 	void mark(int id) const;
 	template <typename F>
 	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
