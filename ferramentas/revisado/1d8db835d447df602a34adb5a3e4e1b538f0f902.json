@@ -1,0 +1,28 @@
+{
+ "branch": "lentes-semaforos",
+ "sha": "1d8db835d447df602a34adb5a3e4e1b538f0f902",
+ "base": "3d9aaa8e627646b5449801163711a7dd6f9f12cc",
+ "area": "vias-geracao-interface",
+ "data": "2026-11-04T08:05:22",
+ "commits": [
+  "1d8db83 Vias: alturas do meio-fio e rebaixo de guia por norma",
+  "45e9792 Vias: sinalização horizontal pelo manual do CONTRAN",
+  "019c7e4 Auditoria de origem: comentários do jogo e da interface sem citar o Roadcraft",
+  "f9e8f6e Auditoria de origem: comentários de núcleo, estado e render das vias sem citar o Roadcraft",
+  "574e218 Semáforos: cabeça refeita pela EN 12368, pelo MUTCD e por fichas de fabricante"
+ ],
+ "bloqueios_aceitos": [],
+ "motivo": "",
+ "atencao": [
+  "compartilhado: CLAUDE.md (confira que só os trechos desta área mudaram)",
+  "sem dono definido em areas.json: native/src/sim/catalog/profile_types.h (o coordenador decide a área)",
+  "compartilhado: tools/gates/schemas/streets.schema.json (confira que só os trechos desta área mudaram)",
+  "sobreposição com ambientacao-graficos: CLAUDE.md",
+  "sobreposição com mobiliario-multidao: CLAUDE.md",
+  "sobreposição com onibus-caminhoes: CLAUDE.md, project/game/store/city_store.gd",
+  "sobreposição com pessoas-recozinhar: CLAUDE.md",
+  "sobreposição com vegetacao-terreno: CLAUDE.md, project/data/render/streets.json, tools/gates/schemas/streets.schema.json",
+  "wt-lentes-semaforos tem 2 alterados e 1 novos sem commit: não entram nesta revisão",
+  "compilação de cada commit (5) não é conferida por este script: confira-a antes de aprovar"
+ ]
+}

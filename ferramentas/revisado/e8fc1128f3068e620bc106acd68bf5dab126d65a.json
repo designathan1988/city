@@ -1,0 +1,28 @@
+{
+ "branch": "mobiliario-multidao",
+ "sha": "e8fc1128f3068e620bc106acd68bf5dab126d65a",
+ "base": "75a4c92475cefc9d2feb10e60270aefe4dfa8ee1",
+ "area": "transito-pedestres",
+ "data": "2026-11-04T08:08:56",
+ "commits": [
+  "e8fc112 Semáforos: verde atuado pelos veículos (MBST vol. V cap. 7)",
+  "f07eb1e Estado dos pedestres em ped_state.h",
+  "6882f47 Semáforos: entreverdes, janela de pedestres e regra do amarelo pelo MBST vol. V"
+ ],
+ "bloqueios_aceitos": [
+  "B3 native/src/sim/traffic/ped_state.h: // A walker with a destination (Roadcraft peds.ts): a route of nodes over streets with sidewalks; along a sidewalk on",
+  "B3 project/data/catalog/traffic.json: \"_doc\": \"Traffic and pedestrians (spec sim.md §5-§6, Roadcraft src/sim/**). Anti-gridlock (traffic/junctions.ts, micro.ts, regions.ts): jam_"
+ ],
+ "motivo": "B3 herdado: a citação de ped_state.h é o comentário movido de traffic_state.h e a de traffic.json já está no _doc do master; o branch não trouxe rastro novo. Fontes do branch: CONTRAN MBST vol. V, Res. 483/2014, nos commits e no _doc.",
+ "atencao": [
+  "compartilhado: CLAUDE.md (confira que só os trechos desta área mudaram)",
+  "compartilhado: native/src/api/traffic_loader.cpp (confira que só os trechos desta área mudaram)",
+  "sem dono definido em areas.json: native/src/sim/catalog/traffic_params.h (o coordenador decide a área)",
+  "sobreposição com ambientacao-graficos: CLAUDE.md",
+  "sobreposição com onibus-caminhoes: CLAUDE.md",
+  "sobreposição com pessoas-recozinhar: CLAUDE.md",
+  "sobreposição com vegetacao-terreno: CLAUDE.md",
+  "wt-mobiliario-multidao tem 5 alterados e 1 novos sem commit: não entram nesta revisão",
+  "compilação de cada commit (3) não é conferida por este script: confira-a antes de aprovar"
+ ]
+}
