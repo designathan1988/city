@@ -41,6 +41,7 @@ func _ready() -> void:
 	await _switches(world, rig)
 	_options(world)
 	_entry()
+	_presets()
 	print("quality_test: %d falhas" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -177,6 +178,19 @@ func _options(world: CityWorld) -> void:
 	Settings.optimizations.clear()
 	Settings.switches_changed()
 	_check(half_size * 2 <= int(world.terrain.get("mesh_size")), "malha do terreno pela opção (%d)" % half_size)
+
+
+## A settings file from another version, or with no sense in it, never reaches the tier table: it opens at the default.
+func _presets() -> void:
+	var t: Dictionary = DataTables.game("settings")
+	for wrong: Variant in ["nivel_antigo", "", 7, null]:
+		_check(Settings.known_preset(wrong) == t.default, "preset desconhecido cai no padrão: %s" % [wrong])
+	for p: String in t.presets:
+		_check(Settings.known_preset(p) == p and (p == "auto" or t.tiers.has(p)), "preset da tabela existe: %s" % p)
+	var before: String = Settings.preset
+	Settings.set_preset("nivel_antigo")
+	_check(Settings.preset == t.default and not Settings.current().is_empty(), "o diálogo não grava preset desconhecido")
+	Settings.set_preset(before)
 
 
 ## The city as its own occluder: from the street, on and off, what the engine says it drew.

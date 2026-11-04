@@ -11,7 +11,8 @@
   "gpu_default",
   "ssao",
   "shadow_choices",
-  "fps_choices"
+  "fps_choices",
+  "presets"
  ],
  "properties": {
   "_doc": {
@@ -22,6 +23,13 @@
   },
   "gpu_default": {
    "type": "string"
+  },
+  "presets": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "minItems": 1
   }
  }
 }

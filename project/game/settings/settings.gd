@@ -36,9 +36,7 @@ func _ready() -> void:
 	var t: Dictionary = DataTables.game("settings")
 	var cfg := ConfigFile.new()
 	cfg.load(PATH)
-	preset = cfg.get_value(SECTION, "preset", t.default)
-	if preset != "auto" and not t.tiers.has(preset):
-		preset = t.default
+	preset = known_preset(cfg.get_value(SECTION, "preset", t.default))
 	kept = cfg.get_value(SECTION, "kept", {})
 	dynamic_resolution = cfg.get_value(SECTION, "dynamic_resolution", false)
 	fps_limit = cfg.get_value(SECTION, "fps_limit", int(t.frame_cap.max_fps))
@@ -79,6 +77,12 @@ func _save() -> void:
 	cfg.set_value(SECTION, "layers", layers)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
+
+
+## What a settings file or a caller names, as a preset of the table: another version's name, or no name, is the default.
+func known_preset(name: Variant) -> String:
+	var t: Dictionary = DataTables.game("settings")
+	return name if name is String and t.presets.has(name) else t.default
 
 
 ## The tier in force, with the choices kept over it.
@@ -141,8 +145,8 @@ func apply_now() -> void:
 
 ## Auto or a tier; a tier chosen by hand forgets what was chosen over the last one.
 func set_preset(next: String) -> void:
-	preset = next
-	level = hardware if next == "auto" else next
+	preset = known_preset(next)
+	level = hardware if preset == "auto" else preset
 	kept = {}
 	_quality_governor.set_level(level)
 	_resolution.reset()

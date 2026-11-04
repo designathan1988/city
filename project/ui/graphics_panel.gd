@@ -2,8 +2,6 @@
 class_name GraphicsPanel
 extends HudDialog
 
-const PRESETS := ["auto", "low", "medium", "high", "ultra"]
-
 
 func _row(name_key: String, items: Array, value: Variant, pick: Callable, note_key := "") -> void:
 	column.add_child(HSeparator.new())
@@ -28,7 +26,7 @@ func fill() -> void:
 	column.theme_type_variation = &"VDialog"
 	HudWidgets.label(column, &"HeadLabel", tr("gfx.title"))
 	var presets := []
-	for p: String in PRESETS:
+	for p: String in t.presets:
 		presets.append([p, tr("quality." + p)])
 	_row("gfx.preset", presets, Settings.preset, Settings.set_preset)
 	var shadows := []
