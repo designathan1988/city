@@ -1,0 +1,12 @@
+{
+  "_doc": "Reference photos of the Roadcraft 4.0 by its own scripts/look.mjs (node scripts/port.ts reference <feature> <this file>): the small city, seed 7, a view of the whole and a street. Copy it per feature and add the shots the feature needs (its tool open, its objects in view).",
+  "city": { "size": "small", "seed": 7 },
+  "steps": [
+    { "lookAt": [0, 0, 0.35] }, { "wait": 3500 },
+    { "shot": "city" },
+    { "lookAt": [0, 0, 1.0] }, { "wait": 3500 },
+    { "shot": "city-high" },
+    { "setView": [150, 90, 8, 20, 12] }, { "wait": 3500 },
+    { "shot": "street" }
+  ]
+}

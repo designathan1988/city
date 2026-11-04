@@ -1,0 +1,16 @@
+{
+  "_doc": "Where things are on this machine, for scripts/port.ts. Paths change: edit them here, nowhere else, then run `node scripts/port.ts doctor`. ${name} refers to another key of this file.",
+  "source": "C:/Users/Jonathan/Documents/Labs/roadcraft-4.0-main",
+  "game": "C:/Projects/Roadcraft-windows/fonte",
+  "ports": "C:/Projects/Roadcraft-windows/ports",
+  "jelly": "C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly",
+  "typescript": "${source}/node_modules/typescript",
+  "types": "${source}/node_modules/@types",
+  "postcss": "${source}/node_modules/postcss",
+  "mingw": "C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64",
+  "clangd": "${mingw}/bin/clangd.exe",
+  "cxx": "${mingw}/bin/x86_64-w64-mingw32-clang++.exe",
+  "godot": "C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe",
+  "bash": "C:/Program Files/Git/bin/bash.exe",
+  "python": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe"
+}
