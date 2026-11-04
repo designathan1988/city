@@ -24,12 +24,13 @@ const TREE_HEIGHT_M := 14.0
 const CASCADES := 4
 const BLADE_TILT := 8.0
 const BLADE_ZOOM := 6.0
-const POLE_WIDE := 0.008 # of the distance: a few pixels at any depth
-const POLE_TALL := 0.06
-const SLAB_SIDE := 0.05
-const SLAB_APART := 0.08
-const SLAB_LIFT := 0.012
-const SLAB_TILT := 12.0
+const PLATES := 8
+const PLATE_FIRST_TEXEL := 0.125
+const PLATE_TEXELS := 16.0
+const PLATE_APART := 2.5
+const PLATE_THIN := 0.02
+const PLATE_MOST_OF_CASCADE := 0.3
+const BLOCK_PLATES := 2.0
 
 
 ## Unlit cards of the same radiance in both games: what the tone chain does to each grey.
@@ -88,32 +89,74 @@ static func weave(on: Node3D, at: Vector3) -> void:
 			await on.shot("trama_%d_%d" % [f, roundi(b * BLUR_TENTHS)], at + Vector3(0, 20.0, 0), 45.0, 15.0, 6.0)
 
 
-## How far above the ground each cascade's shadow starts: a thin pole and a tilted slab in the middle of each cascade, seen from
-## one pose. The foot of the pole and the tip of its shadow are printed for the measure; the gap is the bias on the ground.
+## How far above the ground a caster starts to mark it, in each cascade: a row of plates that only cast, at heights doubling from a
+## fraction of a texel, and a grey block for acne. The bias and the normal offset together are the height below which a plate leaves no mark.
 static func blades(on: Node3D, at: Vector3) -> void:
 	await on.shot("lamina_vazia", at, 45.0, BLADE_TILT, BLADE_ZOOM)
 	var sun: DirectionalLight3D = on.world.sun
 	var cam: Camera3D = on.rig.camera
+	var end: float = minf(sun.directional_shadow_max_distance, cam.far)
 	var splits: Array[float] = [0.0, sun.directional_shadow_split_1, sun.directional_shadow_split_2, sun.directional_shadow_split_3, 1.0]
-	var spots: Array[Vector3] = []
-	var sizes: Array[float] = []
-	for j in CASCADES:
-		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * sun.directional_shadow_max_distance
-		var spot := _ground_at_depth(cam, at.y, depth)
-		print("lamina_cascata ", j, " profundidade ", depth, " chao ", spot)
-		if spot == Vector3.INF:
-			continue
-		spot.y = CityStore.query(&"height_at", [spot.x, spot.z])
-		spots.append(spot)
-		sizes.append(depth)
-		_grey(on, Vector3(POLE_WIDE, POLE_TALL, POLE_WIDE) * depth, spot + Vector3.UP * POLE_TALL * depth * 0.5, 0.0)
-		_grey(on, Vector3(SLAB_SIDE, POLE_WIDE, SLAB_SIDE) * depth, spot + Vector3(SLAB_APART * depth, depth * SLAB_LIFT, 0.0), SLAB_TILT)
-	await on.shot("lamina", at, 45.0, BLADE_TILT, BLADE_ZOOM)
+	var right := Vector3(cam.global_basis.x.x, 0.0, cam.global_basis.x.z).normalized()
 	var to_sun: Vector3 = sun.global_basis.z
-	for j in spots.size():
-		var tall: float = POLE_TALL * sizes[j]
-		var tip: Vector3 = spots[j] - Vector3(to_sun.x, 0.0, to_sun.z) / to_sun.y * tall
-		print("lamina ", j, " pe ", cam.unproject_position(spots[j]), " ponta ", cam.unproject_position(tip), " alto_m ", tall, " laje ", cam.unproject_position(spots[j] + Vector3(SLAB_APART * sizes[j], sizes[j] * SLAB_LIFT, 0.0)))
+	var marks: Array[String] = []
+	print("escada vies ", sun.shadow_bias, " normal ", sun.shadow_normal_bias, " fim ", end, " lado ", on.world.daylight.shadow_side_px, " cortes ", splits)
+	for j in CASCADES:
+		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * end
+		var spot := _ground_at_depth(cam, at.y, depth)
+		if spot == Vector3.INF:
+			print("escada ", j, " fora da foto, profundidade ", depth)
+			continue
+		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.shadow_side_px)
+		var side: float = texel * PLATE_TEXELS
+		var long: float = minf(side * cam.global_position.distance_to(spot) / (cam.global_position.y - spot.y), (splits[j + 1] - splits[j]) * end * PLATE_MOST_OF_CASCADE)
+		for k in PLATES:
+			var high: float = texel * PLATE_FIRST_TEXEL * pow(2.0, k)
+			var foot: Vector3 = spot + right * (k - (PLATES - 1) * 0.5) * side * PLATE_APART
+			foot.y = CityStore.query(&"height_at", [foot.x, foot.z])
+			_plate(on, Vector3(side, texel * PLATE_THIN, long), foot + Vector3.UP * high, cam.global_rotation.y)
+			var mark: Vector3 = foot - Vector3(to_sun.x, 0.0, to_sun.z) / to_sun.y * high
+			marks.append("%d %d %f %f %f" % [j, k, high, texel, depth])
+			marks[-1] += " %s %s %s" % [foot, mark, Vector2(side, long)]
+		var block: Vector3 = spot + right * (PLATES * 0.5 + 1.0) * side * PLATE_APART
+		block.y = CityStore.query(&"height_at", [block.x, block.z])
+		_grey(on, Vector3.ONE * side * BLOCK_PLATES, block + Vector3.UP * side * BLOCK_PLATES * 0.5, 0.0)
+	await on.shot("lamina", at, 45.0, BLADE_TILT, BLADE_ZOOM)
+	for line in marks:
+		var cut: PackedStringArray = line.split(" ", false, 5)
+		print("degrau ", " ".join(cut.slice(0, 5)), " ", _on_screen(cam, cut[5], right))
+
+
+## Where a plate's mark falls on the picture and how far it reaches, for the measure.
+static func _on_screen(cam: Camera3D, text: String, right: Vector3) -> String:
+	var n: PackedFloat64Array = []
+	for bit in text.replace("(", " ").replace(")", " ").replace(",", " ").split(" ", false):
+		n.append(float(bit))
+	var mark := Vector3(n[3], n[4], n[5])
+	var ahead := Vector3(-right.z, 0.0, right.x)
+	var mid: Vector2 = cam.unproject_position(mark)
+	var across: Vector2 = cam.unproject_position(mark + right * n[6] * 0.5) - mid
+	var along: Vector2 = cam.unproject_position(mark + ahead * n[7] * 0.5) - mid
+	return "%f %f %f %f" % [mid.x, mid.y, absf(across.x), absf(along.y)]
+
+
+## A cascade's texel in metres, from the sphere round its slice of the view (the sum Daylight makes for the first).
+static func _texel(cam: Camera3D, from: float, to: float, side_px: float) -> float:
+	var screen := cam.get_viewport().get_visible_rect().size
+	var across: float = to * tan(deg_to_rad(cam.fov) * 0.5) * Vector2(screen.x / screen.y, 1.0).length()
+	return 2.0 * Vector2(across, (to - from) * 0.5).length() / side_px
+
+
+## A plate that only casts: the picture shows its mark and nothing of it.
+static func _plate(on: Node3D, size: Vector3, spot: Vector3, yaw: float) -> void:
+	var box := BoxMesh.new()
+	box.size = size
+	var node := MeshInstance3D.new()
+	node.mesh = box
+	node.position = spot
+	node.rotation.y = yaw
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	on.add_child(node)
 
 
 ## The ground on the middle column of the picture at this depth along the view, by walking up the rows; INF past the horizon.

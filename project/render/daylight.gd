@@ -200,7 +200,7 @@ func _fit_cascades(camera: Camera3D) -> void:
 ## of margin on each side, and the pancake. The bias of the others grows with theirs, and so stays the same in texels.
 func _first_depth(camera: Camera3D, end: float) -> float:
 	var near := camera.near
-	var far: float = near + _sun.directional_shadow_split_1 * (end - near)
+	var far: float = near + _sun.directional_shadow_split_1 * (minf(end, camera.far) - near)
 	var screen := camera.get_viewport().get_visible_rect().size
 	var across: float = far * tan(deg_to_rad(camera.fov) * HALF) * Vector2(screen.x / screen.y, 1.0).length()
 	var radius: float = Vector2(across, (far - near) * HALF).length() * shadow_side_px / (shadow_side_px - MARGIN_TEXELS)
