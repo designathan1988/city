@@ -22,7 +22,7 @@ constexpr float CLOTHES_SHARE = 0.5f, LINE_MIN_D = 6.f, LINE_H = 1.9f, LINE_SPAN
 constexpr float BENCH_W = 1.4f, BENCH_D = 0.45f, BENCH_H = 0.45f, BENCH_X = 1.5f, POT = 0.5f, POT_H = 0.55f, POT_EVERY = 1.6f;
 constexpr float POT_IN = 0.4f, CORNER = 3.f, BIN_W = 1.3f, BIN_D = 0.65f, BIN_H = 1.1f, DRAIN = 0.5f, DRAIN_H = 0.02f;
 constexpr float LIFE_FROM = 0.45f, LIFE_IN = 0.5f, ORCHARD_EVERY = 4.f, FRUIT = 3.f, FRUIT_H = 4.2f;
-constexpr float BOX_W = 1.15f, BOX_D = 0.85f, BOX_H = 0.35f, BOX_X = 1.5f, BOX_Y = 1.25f, BOX_IN = 0.8f;
+constexpr float PLOT_W = 1.15f, BOX_D = 0.85f, BOX_H = 0.35f, BOX_X = 1.5f, BOX_Y = 1.25f, BOX_IN = 0.8f;
 constexpr int BOX_COLS = 4, BOX_ROWS = 3, THEMES = 5;
 constexpr float COOP_W = 2.4f, COOP_D = 1.6f, COOP_H = 1.2f, COOP_IN = 0.3f, SWING_W = 2.3f, SWING_D = 1.2f, SWING_H = 2.2f;
 constexpr float SAND = 3.5f, SHED_W = 3.f, SHED_D = 2.4f, SHED_H = 2.4f, EDICULA_W = 5.f, EDICULA_D = 3.6f, EDICULA_H = 2.6f;
@@ -51,7 +51,7 @@ void yard_life(LotSpace &s, const Rect &a) {
 			const int bed = s.paint("deck");
 			for (int i = 0; i < BOX_COLS; i++)
 				for (int j = 0; j < BOX_ROWS; j++)
-					s.put(EL_PLANTER, Rect::around(fx(a.x0 + BOX_IN + BOX_W * HALF + float(i) * BOX_X), a.y0 + BOX_IN + float(j) * BOX_Y, BOX_W, BOX_D), BOX_H, bed);
+					s.put(EL_PLANTER, Rect::around(fx(a.x0 + BOX_IN + PLOT_W * HALF + float(i) * BOX_X), a.y0 + BOX_IN + float(j) * BOX_Y, PLOT_W, BOX_D), BOX_H, bed);
 			s.put(EL_CAGE, Rect::around(fx(a.x1 - COOP_IN - COOP_W * HALF), a.y1 - COOP_IN - COOP_D * HALF, COOP_W, COOP_D), COOP_H, s.paint("fence"));
 			break;
 		}
