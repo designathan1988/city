@@ -42,6 +42,11 @@ private:
 	void pile(const Ruin &r, bool falling); // the heap a building left (effect_ruins.cpp)
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	void furniture(const DamageEvent &e, const CityState &s);
+	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
+	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
+	void tracer(const DamageEvent &e); // a bullet's line and where it ends
+	void wound(const DamageEvent &e);
+	void vehicle_hit(const DamageEvent &e);
 	void vehicle(const DamageEvent &e, const CityState &s);
 	void casualty(const DamageEvent &e, const CityState &s);
 	void burn_fires(const CityState &s, float dt);
@@ -58,6 +63,7 @@ private:
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	std::vector<Geyser> geysers_;
+	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
 	bool started_ = false;

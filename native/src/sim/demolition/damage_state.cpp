@@ -33,6 +33,7 @@ void damage_step(CityState &s, double dt) {
 	DamageState &d = s.damage;
 	d.now += dt;
 	d.fires.erase(std::remove_if(d.fires.begin(), d.fires.end(), [&](const Fire &f) { return d.now >= f.until; }), d.fires.end());
+	bleed_step(s, dt);
 }
 
 } // namespace city

@@ -54,6 +54,7 @@ struct DamageState {
 	std::vector<Fire> fires; // not saved: a fire does not outlast the session
 	double now = 0; // seconds of simulation since the map began (the clock of fires and of the growth hold)
 	double growth_hold_until = 0; // nothing grows on the lots while rubble lies (seconds of `now`)
+	uint32_t shots = 0; // rounds fired since the map began (the stream of a round)
 	uint32_t strikes = 0; // blows struck since the map began: the stream every draw of a blow comes from
 
 	void clear() { *this = DamageState(); }
@@ -68,5 +69,6 @@ struct DamageState {
 // One step of the damage clock (caller holds the map exclusively): time passes, fires burn out.
 struct CityState;
 void damage_step(CityState &s, double dt);
+void bleed_step(CityState &s, double dt); // wounds.cpp: the wounded bleed, and die of it
 
 } // namespace city

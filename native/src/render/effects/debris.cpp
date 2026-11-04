@@ -68,6 +68,7 @@ void Debris::add(const PieceSpec &s) {
 	b.still = s.still;
 	b.asleep = s.still;
 	b.burn_until = s.burn_s;
+	b.life = s.life_s;
 	b.charred = s.burn_s > 0;
 	const Vector3 half = s.cylinder ? Vector3(s.size.x, s.size.y * 0.5f, s.size.z) : s.size * 0.5f;
 	int k = 0;
@@ -102,6 +103,15 @@ void Debris::burn(Piece &p, double, float dt, Puffs &puffs) {
 			puffs.burst(p.p.x, p.p.y + SMOKE_OVER_M, p.p.z, 1, params_.smoke_kind, SMOKE_SPREAD_M, params_.smoke_size, params_.smoke_life);
 	}
 	if (p.burn_until <= 0) p.burn_until = 0;
+}
+
+void Debris::reap(float dt) {
+	if (!std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.life > 0; })) return;
+	const size_t before = pieces_.size();
+	for (Piece &p : pieces_)
+		if (p.life > 0) p.life -= dt;
+	pieces_.erase(std::remove_if(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.life < 0; }), pieces_.end());
+	if (pieces_.size() != before) dirty_ = true;
 }
 
 void Debris::flush() {

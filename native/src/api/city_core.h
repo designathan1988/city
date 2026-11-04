@@ -48,7 +48,12 @@ public:
 	// --- the bomb (city_core_strike.cpp)
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
 	float effects_shake() const { return render_.shake(); } // metres the blasts move the camera now
-	godot::Dictionary damage_probe() const; // what blows left on the map (counts)
+	// The pistol along a line of sight (origin, direction): {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}. A car
+	// that took enough rounds bursts as a blow of the data's force (one more undo step of its own).
+	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
+	godot::Dictionary damage_probe() const;
+	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, health, fallen, ...
+	godot::Dictionary shot_targets(int limit) const; // what blows left on the map (counts)
 	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)

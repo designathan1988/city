@@ -107,6 +107,15 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.shot_knock_span_s = number(shot, "shot", "knock_span_s", errors);
 	p.glass_above = number(shot, "shot", "glass_above", errors);
 	p.two_wheeler_rider_m = number(shot, "shot", "two_wheeler_rider_m", errors);
+	p.flinch_s = number(shot, "shot", "flinch_s", errors);
+	p.startle_m = number(shot, "shot", "startle_m", errors);
+	p.pace_light = number(shot, "shot", "pace_light", errors);
+	p.pace_leg = number(shot, "shot", "pace_leg", errors);
+	p.pace_grave = number(shot, "shot", "pace_grave", errors);
+	p.max_range_m = number(shot, "shot", "max_range_m", errors);
+	Array boxes = shot.has("vehicle_box_m") ? Array(shot["vehicle_box_m"]) : Array();
+	if (boxes.size() != VEHICLE_TYPES) errors.push_back("blast.shot.vehicle_box_m: one height per vehicle type");
+	for (int k = 0; k < int(boxes.size()) && k < VEHICLE_TYPES; k++) p.vehicle_box_m[k] = float(double(boxes[k]));
 	p.open_hits = int(number(shot, "shot", "open_hits", errors));
 	p.vehicle_shots_to_burst = int(number(shot, "shot", "vehicle_shots_to_burst", errors));
 	p.burst_force = int(number(shot, "shot", "burst_force", errors));

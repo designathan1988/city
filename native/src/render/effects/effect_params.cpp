@@ -129,6 +129,13 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	down_dust_size = down.num("dust_size_m");
 	down_dust_life = down.num("dust_life_s");
 	down_dust_spread = down.num("dust_spread_m");
+	body_life = down.num("body_life_s");
+	push_ms = down.num("push_ms");
+	lift_ms = down.num("lift_ms");
+	limb_push_ms = down.num("limb_push_ms");
+	tracer_life = down.num("tracer_life_s");
+	tracer_m = down.num("tracer_m");
+	flash_m = down.num("flash_m");
 }
 
 } // namespace city

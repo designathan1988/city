@@ -12,6 +12,22 @@ Dictionary CityCore::strike(const Vector3 &p, int strength) {
 	return run_edit(*state_, "cmd.strike", [&](CityState &s) { return strike_at(s, p.x, p.z, double(strength), double(p.y)); });
 }
 
+Dictionary CityCore::shoot(const Vector3 &origin, const Vector3 &direction) {
+	Dictionary d;
+	ShotResult r;
+	{
+		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		if (!state_->ready) return d;
+		r = shoot_at(*state_, double(origin.x), double(origin.y), double(origin.z), double(direction.x), double(direction.y), double(direction.z));
+	}
+	d["ok"] = true;
+	d["hit"] = int(r.hit);
+	d["killed"] = r.killed;
+	d["burst"] = r.burst;
+	if (r.burst) strike(Vector3(r.burst_x, r.burst_y, r.burst_z), state_->catalog.blast.burst_force);
+	return d;
+}
+
 Dictionary CityCore::damage_probe() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -32,6 +48,41 @@ Dictionary CityCore::damage_probe() const {
 	for (const RoadSegment &g : s.roads.segs) segs += g.alive ? 1 : 0;
 	d["segments"] = segs;
 	return d;
+}
+
+Dictionary CityCore::shot_targets(int limit) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const TrafficState &t = state_->traffic;
+	Array walkers, vehicles;
+	for (int id = 0; id < int(t.peds.size()) && int(walkers.size()) < limit; id++) {
+		const Pedestrian &w = t.peds[size_t(id)];
+		if (!w.alive) continue;
+		Dictionary d;
+		d["id"] = id;
+		d["position"] = Vector3(w.cur.x, w.cur.y, w.cur.z);
+		d["hp"] = w.hp;
+		d["fallen"] = float(t.time) < w.down_until;
+		d["lost"] = int(w.lost);
+		d["bleed"] = w.bleed;
+		d["scale"] = w.scale;
+		walkers.push_back(d);
+	}
+	for (int id = 0; id < int(t.vehicles.size()) && int(vehicles.size()) < limit; id++) {
+		const Vehicle &v = t.vehicles[size_t(id)];
+		if (!v.alive) continue;
+		Dictionary d;
+		d["id"] = id;
+		d["position"] = Vector3(v.cur.x, v.cur.y, v.cur.z);
+		d["type"] = int(v.type);
+		d["shots"] = int(v.shots);
+		d["stopped"] = v.vf <= 0.f;
+		vehicles.push_back(d);
+	}
+	Dictionary out;
+	out["walkers"] = walkers;
+	out["vehicles"] = vehicles;
+	out["count_walkers"] = t.ped_count;
+	return out;
 }
 
 // What a charge of `strength` does at a distance: the model's numbers, for the tests (kg, overpressure kPa, impulse

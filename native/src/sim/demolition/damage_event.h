@@ -9,7 +9,7 @@ namespace city {
 
 // Fields by kind (x, z ground; y height; dx, dz direction; a, b, c, d scalars; u, v bits; id the subject):
 //   BLAST          x y z, a = blast radius m, b = charge kg, c = soil (0 earth, 1 hard, 2 building), d = collapse range m
-//   SHOT           x y z (muzzle) -> dx dz, a = end height, b = end x, c = end z
+//   SHOT           x y z where the round ended, dx dz = its unit direction (xz), a = dy, u = what it met (0 nothing, 1 walker, 2 vehicle)
 //   WOUND          x y z, dx dz = way of the bullet, u = 1 when a limb came off
 //   BUILDING_DOWN  id = building, x z centre, a = force; the ruin is in DamageState
 //   BUILDING_HIT   id = building, x y z the point struck, a = overpressure kPa
@@ -35,7 +35,7 @@ enum CasualtyKind : uint32_t { CAS_DEAD = 0, CAS_TORN = 1, CAS_KNOCKED = 2 };
 enum CasLimb : uint32_t { CAS_LIMB_HEAD = 1u << 0, CAS_LIMB_ARM_L = 1u << 1, CAS_LIMB_ARM_R = 1u << 2, CAS_LIMB_LEG_L = 1u << 3, CAS_LIMB_LEG_R = 1u << 4 };
 constexpr uint32_t VEHICLE_PAINT_SHIFT = 8; // VEHICLE_BLOWN / VEHICLE_DROP: u = type | paint << this
 constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31;
-constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
+constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_BLED = 1u << 15, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
 constexpr int VEHICLE_BODY_ID_BASE = 8'000'000; // CASUALTY ids of a vehicle's occupants (the 4.0's convention)
 
 } // namespace city

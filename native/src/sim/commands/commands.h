@@ -87,6 +87,16 @@ EditResult edit_building(CityState &s, int id, int fn, int floors);
 // Changes the buildings, the ground, the roads, the furniture, the vehicles and the walkers it reaches (one undo step).
 EditResult strike_at(CityState &s, double x, double z, double strength, double height);
 
+// The pistol: one round along the line of sight from (ox, oy, oz) in direction (dx, dy, dz) (any length). What it hit, and
+// whether the car it hit took enough rounds to burst (the caller then strikes at `burst_*`: a blow of burst_force).
+struct ShotResult {
+	enum Hit : uint8_t { NONE = 0, WALKER, VEHICLE } hit = NONE;
+	bool killed = false, burst = false;
+	int id = -1;
+	float burst_x = 0, burst_y = 0, burst_z = 0;
+};
+ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, double dy, double dz);
+
 // Value of one segment (R$): length x price per metre x structure factor (ground).
 double segment_value(const CityState &s, int seg);
 

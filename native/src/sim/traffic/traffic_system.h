@@ -145,6 +145,8 @@ void reset_pedestrians(CityState &s);
 void remove_pedestrian(CityState &s, int id);
 void down_pedestrian(CityState &s, int id, float seconds);
 void frighten_pedestrian(CityState &s, int id, float seconds);
+// ped_wounds.cpp: the share of its own pace a hurt walker keeps (1 unhurt).
+float wounded_pace(const BlastParams &b, const Pedestrian &w);
 
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it

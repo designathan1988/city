@@ -89,7 +89,8 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
 	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 	shell.tint = PAINT_GREY;
-	shell.burn_s = two_wheeler ? MOPED_BURN_S : CAR_BURN_S;
+	const bool drop = e.kind == DamageEvent::VEHICLE_DROP; // a rider shot off: the machine falls over, it does not burn
+	shell.burn_s = drop ? 0.f : two_wheeler ? MOPED_BURN_S : CAR_BURN_S;
 	debris_.add(shell);
 	for (int k = 0; k < 2; k++) { // two wheels thrown clear
 		PieceSpec w;
@@ -100,12 +101,13 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 		w.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT + rng_.f() * THROW_SCATTER, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 		debris_.add(w);
 	}
-	puffs_.burst(e.x, e.y + 1.f, e.z, int(two_wheeler ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, two_wheeler ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
+	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(two_wheeler ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, two_wheeler ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
 }
 
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	const uint32_t kind = e.v & CAS_KIND_MASK;
-	if (kind == CAS_KNOCKED) return; // knocked down: the body falls (the ragdoll, effect_ragdoll.cpp)
+	if ((e.v & CAS_BLED) == 0) body(e, s); // the walker is drawn no more: the body takes its place (one that bled out is already lying there)
+	if (kind == CAS_KNOCKED) return; // a knock bleeds no more than the wound that came with it
 	puffs_.burst(e.x, e.y + CHEST_RISE_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
 	const bool torn = kind == CAS_TORN;
 	for (int k = 0; k < (torn ? TORN_POOLS : 1); k++) { // the pool the body leaves, spreading
@@ -137,6 +139,10 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::FURNITURE: furniture(e, s); break;
 		case DamageEvent::VEHICLE_BLOWN: vehicle(e, s); break;
 		case DamageEvent::CASUALTY: casualty(e, s); break;
+		case DamageEvent::SHOT: tracer(e); break;
+		case DamageEvent::WOUND: wound(e); break;
+		case DamageEvent::VEHICLE_HIT: vehicle_hit(e); break;
+		case DamageEvent::VEHICLE_DROP: vehicle(e, s); break;
 		case DamageEvent::GEYSER: geysers_.push_back({ e.x, e.y, e.z, now_ + double(params_.geyser_s), 0.f }); break;
 		default: break;
 	}

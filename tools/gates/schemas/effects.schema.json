@@ -364,7 +364,14 @@
     "dust_count",
     "dust_size_m",
     "dust_life_s",
-    "dust_spread_m"
+    "dust_spread_m",
+    "body_life_s",
+    "push_ms",
+    "lift_ms",
+    "limb_push_ms",
+    "tracer_life_s",
+    "tracer_m",
+    "flash_m"
    ],
    "properties": {
     "dust_count": {
@@ -377,6 +384,27 @@
      "type": "number"
     },
     "dust_spread_m": {
+     "type": "number"
+    },
+    "body_life_s": {
+     "type": "number"
+    },
+    "push_ms": {
+     "type": "number"
+    },
+    "lift_ms": {
+     "type": "number"
+    },
+    "limb_push_ms": {
+     "type": "number"
+    },
+    "tracer_life_s": {
+     "type": "number"
+    },
+    "tracer_m": {
+     "type": "number"
+    },
+    "flash_m": {
      "type": "number"
     }
    }

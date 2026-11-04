@@ -135,6 +135,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/citygen/road_gen_tidy.cpp` — limpeza do grafo gerado (nós e braços degenerados)
 - `native/src/sim/demolition/blast_model.cpp` · `native/src/sim/demolition/blast_model.h` — dono único da física do sopro: escala de Hopkinson-Cranz e curvas de Kingery-Bulmash (Swisdak), pressão sentida pela estrutura, letalidade e tímpano, alcance, cratera
 - `native/src/sim/demolition/damage_state.cpp` · `native/src/sim/demolition/damage_state.h` · `native/src/sim/demolition/damage_event.h` — o que sobra dos golpes no `CityState` (crateras, ruínas, mobiliário derrubado, dano dos prédios, fogos) e o relógio do dano; os eventos que o render toca uma vez
+- `native/src/sim/demolition/wounds.cpp` — os feridos sangram e morrem do sangramento (pelo relógio do dano, sob a trava exclusiva)
 - `native/src/sim/commands/commands.h` — API de comandos do jogador
 - `native/src/sim/commands/edit_history.cpp` — pilhas de desfazer/refazer e limites
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
@@ -148,9 +149,11 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/strike_commands.cpp` · `native/src/sim/commands/strike_internal.h` — a bomba: um golpe de força 1..50 aplicado à cidade pelo diário (prédios, chão, vias, mobiliário, veículos, pedestres) e avisado ao render por eventos
 - `native/src/sim/commands/strike_buildings.cpp` · `native/src/sim/commands/strike_ground.cpp` · `native/src/sim/commands/strike_roads.cpp` · `native/src/sim/commands/strike_people.cpp` — prédios (dano que se soma, queda e ruína, fogo, desgaste); cratera, terreno e mobiliário derrubado; o trecho de via que a cratera corta; pedestres (mortos, derrubados, assustados) e veículos explodidos
+- `native/src/sim/commands/shoot_commands.cpp` · `native/src/sim/commands/shoot_internal.h` · `native/src/sim/commands/shoot_people.cpp` · `native/src/sim/commands/shoot_vehicles.cpp` — a pistola: um tiro ao longo da linha de visão (para no terreno; pega o primeiro pedestre, em pé ou caído, ou veículo); ferida por parte do corpo (cabeça mata, tronco um terço da vida, membro um quinto; membro arrancado, barriga aberta, sangramento até morrer), motociclista derrubado, vidro de carro (para o carro), rajada que o faz explodir; avisa o render por eventos
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/persistence/save_format.h` — formato do save da cidade
+- `native/src/sim/persistence/save_demolition.cpp` · `native/src/sim/persistence/save_demolition.h` — o bloco do save com o que golpes deixaram (crateras, ruínas, mobiliário derrubado, prédios com dano, a espera do crescimento); etiqueta e tamanho antes de SAVE_END, um leitor sem a etiqueta pula o bloco; o registro de prédio compartilhado
 - `native/src/sim/persistence/save_read.cpp` — abrir: terreno do seed, ladrilhos esculpidos, modificadores e grafo
 - `native/src/sim/persistence/save_write.cpp` — gravar: cabeçalho, terreno, modificadores, vias e prédios
 - `native/src/sim/roads/geometry.cpp` · `native/src/sim/roads/geometry.h` — geometria pura das vias (Bézier, tabelas, interseções)
@@ -182,6 +185,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: quem vê quem (listas por calçada e por cruzamento, as "walking areas" do SUMO) e os corpos remapeados no trecho de cada um
 - `native/src/sim/traffic/ped_furniture.cpp` · `native/src/sim/traffic/ped_kerb.cpp` · `native/src/sim/traffic/ped_stripes.cpp` · `native/src/sim/traffic/ped_stripes.h` — mobiliário como corpos nas calçadas; espera na guia; faixas do SUMO em calçada, esquina e faixa
 - `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
+- `native/src/sim/traffic/ped_wounds.cpp` — quanto do passo próprio guarda um pedestre ferido (leve, na perna, grave)
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/ped_state.h` — grafo de faixas, veículos, meso e pools; os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
@@ -219,7 +223,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/shell.cpp` · `native/src/render/buildings/shell.h` — escrita de vértices das malhas de prédio
 - `native/src/render/chunk_jobs.h` · `native/src/render/chunk_queue.h` · `native/src/render/mesh_queue.h` — jobs por chunk, conversão no orçamento de envio e commit orçado; chunks ao redor da câmera; fila de uma superfície
 - `native/src/render/effects/effect_world.cpp` · `native/src/render/effects/effect_world.h` — dono dos efeitos da explosão: lê os eventos dos golpes no ChangeLog, desenha crateras e fogos do estado, relógio próprio, clarão (luz), tremor da câmera, gêiseres
-- `native/src/render/effects/effect_blast.cpp` · `native/src/render/effects/effect_things.cpp` · `native/src/render/effects/effect_ruins.cpp` — o monte que um prédio derrubado deixa (cai dentro dele e assenta; o do estado é posto direto, igual toda vez); os eventos tocados uma vez: bola de fogo, fumaça, poeira, estilhaços, anel de onda, fuligem, prédio atingido e caído; mobiliário jogado, veículos explodidos, sangue e corpo dilacerado
+- `native/src/render/effects/effect_blast.cpp` · `native/src/render/effects/effect_things.cpp` · `native/src/render/effects/effect_ruins.cpp` · `native/src/render/effects/effect_bodies.cpp` — o corpo de quem foi atingido, como peças rígidas (cabeça, tronco, braços, pernas na pele e roupa do pedestre; membro arrancado voa sozinho; some quando a pessoa se levanta), o traçante, a ferida e o carro atingido; o monte que um prédio derrubado deixa (cai dentro dele e assenta; o do estado é posto direto, igual toda vez); os eventos tocados uma vez: bola de fogo, fumaça, poeira, estilhaços, anel de onda, fuligem, prédio atingido e caído; mobiliário jogado, veículos explodidos, sangue e corpo dilacerado
 - `native/src/render/effects/effect_params.cpp` · `native/src/render/effects/effect_params.h` — data/render/effects.json estrito (aparência dos efeitos)
 - `native/src/render/effects/mm_layer.h` · `native/src/render/effects/puffs.cpp` · `native/src/render/effects/puffs.h` — um MultiMesh de capacidade fixa; a reserva circular de fumaça, poeira, chama, faísca, sangue, água e papel (o shader move cada uma pela idade)
 - `native/src/render/effects/marks.cpp` · `native/src/render/effects/marks.h` — marcas no chão em um MultiMesh: crateras do estado, fuligem e sangue guardados, anel de onda
@@ -250,6 +254,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
+- `project/game/camera/camera_shake.gd` — o tremor da câmera pelo relógio dos efeitos (a bomba), desfeito quando passa
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
@@ -259,6 +264,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
 - `project/game/tools/demolish_tool.gd` — demolir
+- `project/game/tools/strike_tool.gd` · `project/game/tools/shoot_tool.gd` — bomba (um clique, força do parâmetro `strength`) e pistola (um tiro pelo raio da câmera); a aba Demolir da interface chama `set_tool(STRIKE|SHOOT, ...)`
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
 - `project/game/tools/road_tool.gd` — via reta/curva com prévia
@@ -284,6 +290,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/strike_test.gd` · `project/tests/core/strike_test.tscn` — a bomba pela store: curva K-B contra o ponto conhecido, prédios que caem aos poucos, via cortada pela cratera, mobiliário derrubado, desfazer e refazer
+- `project/tests/core/shoot_test.gd` · `project/tests/core/shoot_test.tscn` — a pistola pela store (cabeça mata, tronco fere, o ferido sangra, tiro no céu erra, rajada faz o carro explodir) e o que um golpe deixa num save: ida e volta de crateras, ruínas e mobiliário
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador

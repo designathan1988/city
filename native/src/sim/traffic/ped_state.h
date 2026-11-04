@@ -61,7 +61,7 @@ struct Pedestrian {
 	uint8_t lost = 0; // limbs gone (damage_event.h CasLimb bits), shot or blown off
 	uint8_t hits = 0;
 	bool opened = false; // the trunk shot open
-	float down_until = 0, panic_until = 0; // t.time until which a blow keeps it on the ground / running
+	float down_until = 0, panic_until = 0, flinch_until = 0; // t.time until which a blow keeps it on the ground / running / bent over a wound
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the

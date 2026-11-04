@@ -23,6 +23,7 @@ struct PieceSpec {
 	float burn_s = 0; // seconds it burns (a wreck), 0 none
 	bool still = false; // laid where it is, never moved
 	bool random_spin = true;
+	float life_s = 0; // seconds until it is gone (a body that gets up, a tracer), 0 forever
 };
 
 class Debris {
@@ -41,6 +42,7 @@ public:
 				if (!p.asleep) step(p, ground_of);
 		}
 		for (Piece &p : pieces_) burn(p, now, dt, puffs);
+		reap(dt);
 		flush();
 	}
 	bool moving() const;
@@ -55,11 +57,13 @@ private:
 		godot::Color tint;
 		godot::Vector3 corners[CORNERS];
 		float inv_inertia = 0, rest = 0, burn_until = 0, carry = 0;
+		float life = 0;
 		bool cylinder = false, asleep = false, still = false, charred = false;
 	};
 	template <typename F>
 	void step(Piece &b, F &&ground_of);
 	void burn(Piece &p, double now, float dt, Puffs &puffs);
+	void reap(float dt); // the pieces whose time is up leave
 	void flush();
 	MmLayer boxes_, cylinders_;
 	std::deque<Piece> pieces_;

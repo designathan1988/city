@@ -346,7 +346,14 @@
     "two_wheeler_rider_m",
     "open_hits",
     "vehicle_shots_to_burst",
-    "burst_force"
+    "burst_force",
+    "flinch_s",
+    "startle_m",
+    "pace_light",
+    "pace_leg",
+    "pace_grave",
+    "max_range_m",
+    "vehicle_box_m"
    ],
    "properties": {
     "walker_hp": {
@@ -414,6 +421,32 @@
     },
     "burst_force": {
      "type": "number"
+    },
+    "flinch_s": {
+     "type": "number"
+    },
+    "startle_m": {
+     "type": "number"
+    },
+    "pace_light": {
+     "type": "number"
+    },
+    "pace_leg": {
+     "type": "number"
+    },
+    "pace_grave": {
+     "type": "number"
+    },
+    "max_range_m": {
+     "type": "number"
+    },
+    "vehicle_box_m": {
+     "type": "array",
+     "minItems": 8,
+     "maxItems": 8,
+     "items": {
+      "type": "number"
+     }
     }
    }
   }

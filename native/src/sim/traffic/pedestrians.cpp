@@ -86,6 +86,7 @@ bool spawn_one(CityState &s) {
 	const RoadSegment &g = s.roads.segs[seg];
 	Pedestrian w;
 	w.alive = true;
+	w.hp = s.catalog.blast.walker_hp;
 	w.seg = seg;
 	w.dir = int(t.rng.next() & 1);
 	w.look = t.rng.next();
@@ -213,7 +214,7 @@ void walk(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
-	if (t.time < w.down_until) return; // knocked down by a blow: lies where it fell (the render shows the body)
+	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
 	if (w.mode == PedMode::WAIT) {
 		w.wait += dt;
 		t.ped_waiting++;
@@ -227,7 +228,7 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT && step_to_nearer_place(s, id)) begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
-	const float run = t.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f; // frightened by a bang: runs
+	const float run = (t.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f) * traffic::wounded_pace(s.catalog.blast, w); // frightened by a bang: runs
 	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
