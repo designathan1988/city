@@ -49,7 +49,14 @@ public:
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
-	int pending() const;
+	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
+	// What the view asked of the last frame and what the frame's budget left unasked.
+	struct ViewNeed {
+		int want = 0, unmet = 0, requested = 0, done = 0;
+	};
+	ViewNeed view_need() const;
+	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
+	int chunk_flags(float x, float z) const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
@@ -153,6 +160,7 @@ private:
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_far_, material_parts_;
+	ViewNeed need_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;

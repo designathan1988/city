@@ -139,10 +139,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
+		// The buildings first: a chunk they leave for the next frame is a hole in the city, a tree a little later is not.
+		buildings_.update_view(cam, budget);
 		trees_.sync(s, cam, budget);
 		cover_.sync(s, cam, budget);
-		buildings_.update_view(cam, budget);
 		cost_.levels = laps.lap();
+		cost_.backlog = backlog;
+		cost_.budget_left = budget.left;
 	}
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	UploadBudget upload(window, roads_.baking() + props_.baking() + buildings_.baking());

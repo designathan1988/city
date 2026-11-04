@@ -173,7 +173,7 @@ void TreeRenderer::commit(const std::chrono::steady_clock::time_point &until) {
 
 int TreeRenderer::pending() const {
 	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return pending_ + int(tier_[TIER_NEAR].requested.size() + tier_[TIER_NEAR].done.size() + tier_[TIER_FAR].requested.size() + tier_[TIER_FAR].done.size());
+	return pending_ + int(tier_[TIER_NEAR].dirty.size() + tier_[TIER_FAR].dirty.size()) + int(tier_[TIER_NEAR].requested.size() + tier_[TIER_NEAR].done.size() + tier_[TIER_FAR].requested.size() + tier_[TIER_FAR].done.size());
 }
 
 void TreeRenderer::sync(const CityState &s, const Vector3 &cam, BuildBudget &budget) {

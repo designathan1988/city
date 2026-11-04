@@ -131,13 +131,14 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 	sp.dirty = true;
 }
 
-// Chunk instances: near and mid hand over at the near end; the mid level has no end of its own (the chunk is shown or
-// left to the far mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
+// Chunk instances: near and mid hand over at the near end, once the near level stands: until then the mid level draws from
+// the eye, or a camera that jumps in sees a hole. The mid level has no end of its own (the chunk is shown or left to the far
+// mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		range(ch.near[size_t(i)], 0, near_end_);
 		range(ch.parts[size_t(i)], 0, parts_end_);
-		range(ch.mid[size_t(i)], near_end_, 0);
+		range(ch.mid[size_t(i)], ch.built[LEVEL_NEAR] ? near_end_ : 0, 0);
 	}
 	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
 }
@@ -186,6 +187,7 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 	}
 	ch.built[level] = false;
 	ch.stale[level] = false;
+	ranges(ch);
 }
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
@@ -272,11 +274,6 @@ void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_cl
 			}, &times_);
 }
 
-int BuildingRenderer::pending() const {
-	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size());
-}
-
 // A superchunk, every frame: each chunk's switch between its own detail and the far mesh, the levels it needs or no
 // longer needs, and the far mesh's mask of the chunks drawn in detail (never a hole: a chunk leaves the far mesh only
 // once its mid level is up, and shows itself whatever the distance while no far mesh stands in).
@@ -316,6 +313,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
 	const double now = now_s();
 	std::vector<Want> want, want_super;
+	int waiting = 0; // far meshes to redo, each on its clock
 	for (auto &[key, sp] : supers_) {
 		// the far reach from the superchunk's centre, as the chunks are streamed (a nearest-point reach would hold a
 		// ring of extra far meshes, a quarter more memory, for buildings past building_far_end_m)
@@ -324,20 +322,27 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 		visit_super(key, sp, cam, eye, want);
 		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
 		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);
-		if (sp.dirty && due && ground <= far_end_) {
+		if (sp.dirty && ground <= far_end_) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
-			if (!super_requested_.count(key)) want_super.push_back({ ground, key, 0 });
+			if (!super_requested_.count(key)) {
+				if (due) want_super.push_back({ ground, key, 0 });
+				else waiting++;
+			}
 		}
 	}
+	need_.want = int(want.size() + want_super.size()) + waiting;
+	need_.unmet = need_.want;
 	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want) {
 		if (!budget.take()) break;
 		submit(*state_, w.key, false, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, w.d);
+		need_.unmet--;
 	}
 	std::sort(want_super.begin(), want_super.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want_super) {
 		if (!budget.take()) break;
 		submit_super(*state_, w.key, w.d);
+		need_.unmet--;
 	}
 }
 
