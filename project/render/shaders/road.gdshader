@@ -30,7 +30,6 @@ uniform float normal_kerb = 0.85;
 uniform vec3 detail_asphalt = vec3(0.6, 0.65, 1.6); // how hard the detail colours, how hard it bends, the macro map's blur
 uniform vec3 detail_footway = vec3(0.7, 0.8, 0.6);
 uniform vec3 detail_kerb = vec3(0.55, 0.7, 0.8);
-uniform float kerb_block_m = 1.0;
 uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
@@ -132,7 +131,7 @@ void fragment() {
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
-		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
+		vec2 kq = v_world.xz; // laid over the ground as the map tiles: along a road it runs through the stone and the grime
 		vec3 t = source_linear(texture(kerb_map, kq / kerb_m, near * detail_kerb.z).rgb);
 		vec2 duv = kq / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
@@ -141,9 +140,6 @@ void fragment() {
 		}
 		albedo = t * base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
 		bend_scale = normal_kerb;
-		float tone = 1.0 + (hash2(vec2(floor(kq.x / kerb_block_m), 7.0)) - 0.5) * 0.1;
-		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(kq.x / kerb_block_m + 0.5) - 0.5) * kerb_block_m);
-		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {
 		albedo = source_linear(texture(verge_map, v_world.xz / verge_m).rgb) * base

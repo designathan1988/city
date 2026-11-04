@@ -76,9 +76,6 @@
       "concrete_detail_normal": {
         "type": "string"
       },
-      "kerb_block_m": {
-       "type": "number"
-      },
       "paver_w": {
        "type": "number"
       },
@@ -127,7 +124,6 @@
       "concrete_detail_m",
       "detail_near_m",
       "detail_far_m",
-      "kerb_block_m",
       "paver_w",
       "paver_h",
       "cobble_per_m",

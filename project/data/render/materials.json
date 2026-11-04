@@ -24,7 +24,6 @@
    "concrete_detail_m": 1.04,
    "detail_near_m": 0.018,
    "detail_far_m": 0.064,
-   "kerb_block_m": 1.0,
    "paver_w": 0.2,
    "paver_h": 0.1,
    "cobble_per_m": 4.2,
