@@ -14,7 +14,7 @@
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \
-	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
+	X(render, road_end_m) X(render, props_end_m) X(render, pool_handover_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
 	X(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) X(render, upload_budget_mb) X(render, pose_delay_ticks) \
 	X(history, max_entries) X(history, max_mb) \
 	X(roundabout, radius_min_m) X(roundabout, radius_max_m) X(roundabout, approach_m) X(roundabout, entry_merge_m) \

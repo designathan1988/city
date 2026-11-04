@@ -13,6 +13,8 @@ uniform float beam_softness = 1.6; // how hard the cone's edges are seen from th
 uniform float beam_fade_near_m = 60.0;
 uniform float beam_fade_far_m = 140.0;
 uniform float haze = 0.0;
+uniform float pool_far_m = 900.0; // render.props_end_m and render.pool_handover_m, set by the prop renderer
+uniform float pool_handover_m = 200.0;
 
 const float HAZE_SHOWN = 0.02;
 const float BEAM_PART = 1.5; // UV2.y over this: the beam
@@ -20,6 +22,7 @@ const float BEAM_PART = 1.5; // UV2.y over this: the beam
 varying float v_part;
 varying float v_along; // the pool: 0 centre, 1 rim; the beam: 0 lens, 1 ground
 varying float v_fade;
+varying float v_near; // the pool: 1 near, 0 where the road draws it
 varying vec3 v_normal_w;
 varying vec3 v_to_eye;
 
@@ -34,6 +37,7 @@ void vertex() {
 	v_normal_w = mat3(MODEL_MATRIX) * (NORMAL / (s * s)); // a scaled cone's normal: through the inverse transpose
 	v_to_eye = CAMERA_POSITION_WORLD - world;
 	v_fade = 1.0 - smoothstep(beam_fade_near_m, beam_fade_far_m, length(v_to_eye));
+	v_near = 1.0 - pool_handed_over(length(v_to_eye.xz), pool_far_m, pool_handover_m);
 	int shown = int(INSTANCE_CUSTOM.a + 0.5);
 	if ((shown & int(v_part + 0.5)) == 0 || (v_part > BEAM_PART && haze <= HAZE_SHOWN)) {
 		VERTEX = vec3(0.0);
@@ -43,7 +47,7 @@ void vertex() {
 void fragment() {
 	float light;
 	if (v_part < BEAM_PART) {
-		light = pool_gain * pool_fall(v_along);
+		light = pool_gain * pool_fall(v_along) * v_near;
 	} else {
 		if (!FRONT_FACING) {
 			discard;

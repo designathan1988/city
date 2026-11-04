@@ -20,6 +20,7 @@ struct FurnitureSpot {
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
 	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
 	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
+	bool lit = true; // a lamp: this pole carries a light (lamps.pole_lit_every)
 	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;
 	float u = 0;

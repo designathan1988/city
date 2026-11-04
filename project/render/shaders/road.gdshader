@@ -34,6 +34,8 @@ uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it end
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
 uniform float pool_gain = 0.32;
 uniform float plate_glow = 0.55;
+uniform float pool_far_m = 900.0; // render.props_end_m and render.pool_handover_m, set by the road renderer
+uniform float pool_handover_m = 200.0;
 
 const int M_ROAD = 0;
 const int M_PLATE = 1;
@@ -52,6 +54,7 @@ const int M_SHOULDER_EDGE = 12;
 varying flat int v_mat;
 varying vec3 v_world;
 varying vec2 v_pool;
+varying float v_eye_m;
 
 const float MEAN_FLOOR = 0.001;
 
@@ -70,6 +73,7 @@ void vertex() {
 	v_mat = int(floor(COLOR.a * 16.0));
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_pool = UV2;
+	v_eye_m = length(v_world.xz - CAMERA_POSITION_WORLD.xz);
 }
 
 #include "res://render/shaders/lamp_pool.gdshaderinc"
@@ -140,6 +144,7 @@ void fragment() {
 		vec3 n = normalize(nw + vec3(-bend.x * fade, 0.0, -bend.y * fade));
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
-	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
+	float far = pool_handed_over(v_eye_m, pool_far_m, pool_handover_m);
+	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
 	EMISSION = linear_out(source_linear(pool_color) * pools * night * pool_gain); // light added, as an additive pool adds it: pale paving does not burn
 }

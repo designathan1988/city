@@ -101,9 +101,12 @@ void lamps(Placer &c) {
 		const double v = row.origin + row.spacing * k;
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
+		main_pole.lit = !row.twin || k % int(defs(c.net).lamps.pole_lit_every) == 0;
 		c.all.push_back(main_pole);
-		if (!row.twin) continue;
-		FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u2, toward_road(1 - row.side), 0.f);
+		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
+		if (!row.twin || (!one && k + 1 == row.stations)) continue;
+		const double between = one ? v : v + row.spacing * defs(c.net).lamps.twin_stagger;
+		FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, between, row.pole_u2, toward_road(1 - row.side), 0.f);
 		s.row = 1;
 		s.station = k;
 		c.all.push_back(s);

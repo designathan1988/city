@@ -47,6 +47,12 @@
     },
     "pool_back_m": {
      "type": "number"
+    },
+    "twin_stagger": {
+     "type": "number"
+    },
+    "pole_lit_every": {
+     "type": "number"
     }
    },
    "required": [
@@ -56,7 +62,9 @@
     "pool_share",
     "pool_margin_m",
     "pool_least_m",
-    "pool_back_m"
+    "pool_back_m",
+    "twin_stagger",
+    "pole_lit_every"
    ],
    "strict": true
   },

@@ -7,7 +7,8 @@
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
 ##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
 ##   saturate and hide an error);
-## - by night likewise, a black road surface under the even light of a junction plate must show pool_color x plate_glow x
+## - by night likewise, a black road surface under the even light of a junction plate, seen as the road draws it past the
+##   lamps' own pools (pool_far_m 0), must show pool_color x plate_glow x
 ##   pool_gain x night (road.gdshader: the pool adds its light whatever the surface's albedo), with plate_glow
 ##   raised on a copy of the material so the light stays mid range: at the game's own it is nearly black, where
 ##   Compatibility itself is measured two steps off the blue (and its glow two more), on any material.
@@ -91,6 +92,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	world.environment.glow_enabled = false
 	road = road.duplicate()
 	road.set_shader_parameter("plate_glow", ROAD_PLATE_GLOW)
+	road.set_shader_parameter("pool_far_m", 0.0)
 	var node := MeshInstance3D.new()
 	node.mesh = _square(Vector2(GLOW_TAG, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
 	node.material_override = material

@@ -24,7 +24,7 @@ struct WireLook {
 struct FurnitureLook {
 	WireLook wire;
 	bool beams = false;
-	float pool_radius = 0, pool_along = 0, beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
+	float pool_along = 0, pool_lift = 0, beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 

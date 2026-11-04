@@ -411,9 +411,9 @@
   }
  },
  "lamp_light": {
-  "_doc": "The night light of a lamp: pool on the ground and beam from the lens, as the Roadcraft 4.0 draws them (scenery.ts). lamp_* are the utility pole lens, column_* the lighting column lens in props.pole.",
-  "pool_radius_m": 4.6,
+  "_doc": "The night light of a lamp: pool on the ground and beam from the lens, as the Roadcraft 4.0 draws them (scenery.ts). pool_along: how far the pool runs along the road, in lamp heights; pool_lift_m: over the footway it lies on, so the two never fight for a pixel; across, the street furniture owner sets it. lamp_* are the utility pole lens, column_* the lighting column lens in props.pole.",
   "pool_along": 1.6,
+  "pool_lift_m": 0.014,
   "beams": false,
   "beam_radius_m": 3.68,
   "lamp_height_m": 7.16,

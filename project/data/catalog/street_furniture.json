@@ -6,13 +6,15 @@
   "kerb_clear_m": 0.5
  },
  "lamps": {
-  "_doc": "pool_*: the night pool, across: pool_share of the carriageway plus pool_margin_m, at least pool_least_m, its middle pool_back_m short of that from the pole on a one-sided street; behaviour of the Roadcraft 4.0 (no norm found). The lamps hang on the utility poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). The line stands on the east or south face (NPIP-1 5.2); the other face, when it has a sidewalk, gets a lighting column at each station, as on the Roadcraft 4.0 streets (photographed: reference/rua). reach_m is measured on props.pole in data/render/streets.json: the lens 1.6 m out along its arm.",
+  "_doc": "pole_lit_every: on a street lit from both faces the line of poles lights one pole in this many, the columns of the other face the rest (a lamp on every pole doubles the light of the street); a street with the poles alone lights them all; behaviour of the Roadcraft 4.0 (editor/poles.ts, lamps alternate). twin_stagger: the row on the other face of a street lit from both, in shares of the spacing, so the lamps fall between each other and their pools run on; behaviour of the Roadcraft 4.0. pool_*: the night pool, across: pool_share of the carriageway plus pool_margin_m, at least pool_least_m, its middle pool_back_m short of that from the pole on a one-sided street; behaviour of the Roadcraft 4.0 (no norm found). The lamps hang on the utility poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). The line stands on the east or south face (NPIP-1 5.2); the other face, when it has a sidewalk, gets a lighting column at each station, as on the Roadcraft 4.0 streets (photographed: reference/rua). reach_m is measured on props.pole in data/render/streets.json: the lens 1.6 m out along its arm.",
   "span_m": 35,
   "reach_m": 1.6,
   "pool_share": 0.55,
   "pool_margin_m": 2.5,
   "pool_least_m": 4.6,
-  "pool_back_m": 3
+  "pool_back_m": 3,
+  "twin_stagger": 0.5,
+  "pole_lit_every": 2
  },
  "signals": {
   "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
