@@ -1,5 +1,5 @@
-## The only owner of UI styles (gate UI_SEM_ESTILO_SOLTO): builds one Theme from data/ui/tokens.json (Roadcraft's
-## shell.css tokens, specs ui.md §1) with a type variation per control style of §1.6. Controls only pick a
+## The only owner of UI styles (gate UI_SEM_ESTILO_SOLTO): builds one Theme from data/ui/tokens.json with a type
+## variation per control style. Controls only pick a
 ## `theme_type_variation`; colours other code needs (preview ribbon, swatches) come from `color()`.
 class_name ThemeBuilder
 extends RefCounted

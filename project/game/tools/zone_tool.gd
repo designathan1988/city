@@ -1,4 +1,4 @@
-## Zone brush (Roadcraft features/zones/zoneTool.ts): click or drag to paint the chosen zone on the road sides under
+## Zone brush: click or drag to paint the chosen zone on the road sides under
 ## the brush; the core knocks down buildings of another zone there and queues the new lots for growth.
 extends ToolBase
 
@@ -22,7 +22,7 @@ func click(p: Vector3) -> void:
 	_dab(p)
 
 
-## The whole stroke is one undo step (Roadcraft zoneTool begin/end).
+## The whole stroke is one undo step.
 func release(_p: Vector3) -> void:
 	CityStore.dispatch(&"end_stroke")
 	_last = Vector3.INF

@@ -92,6 +92,7 @@
     "<!-- MAPA:INICIO -->",
     "<!-- MAPA:FIM -->"
   ],
+  "claude_md_max_lines": 500,
   "cpp_layers": {
     "native/src/core": [
       "core/"
@@ -292,6 +293,7 @@
     "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
+    "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",

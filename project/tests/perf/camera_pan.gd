@@ -33,7 +33,7 @@ const PERCENTILES := [0.5, 0.95, 0.99]
 const BROKEN_DOWN := 3
 ## render_cost sections, in the order of the core's frame.
 const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"flush", &"roads", &"props", &"buildings", &"chunk_max",
-	&"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"trees", &"overlays"]
+	&"super_max", &"b_scan", &"b_freed", &"b_sort", &"b_admit", &"b_hand", &"b_tail", &"super_mb_max", &"trees", &"overlays"]
 
 var rig: CityCamera
 var map := 0
@@ -176,6 +176,7 @@ func _report(name: String) -> void:
 	print("  memória: estática %.0f MiB, vídeo %.0f MiB, buffers %.0f MiB | chunks a desenhar: %d" % [
 		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
+	print("  maior HLOD de superchunk construído: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.

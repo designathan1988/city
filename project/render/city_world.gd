@@ -17,6 +17,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
 	"res://render/shaders/agent_glass.gdshader",
 ]
+const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
 var terrain: Node3D
 var sun: DirectionalLight3D
@@ -46,6 +47,8 @@ func materials() -> Dictionary:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":
 				_set_means(m, table[key].params)
+			elif key == "prop":
+				_set_lens_radiance(m)
 			_materials[key] = m
 	return _materials
 
@@ -58,6 +61,22 @@ func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
 			continue
 		var col := _mean_color(_param(params[name]))
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
+
+
+## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its
+## colour (render/tone_map.gd mirrors Godot's ACES).
+func _set_lens_radiance(m: ShaderMaterial) -> void:
+	if environment.tonemap_mode != Environment.TONE_MAPPER_ACES:
+		push_error("CityWorld: ToneMap só espelha o ACES; as lentes não mostrariam a sua cor")
+	var lit := PackedVector3Array()
+	lit.resize(LENSES)
+	var done := {}
+	for part: Dictionary in DataTables.render().streets.props.signal:
+		if part.has("lens") and not done.has(int(part.lens)):
+			done[int(part.lens)] = true
+			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
+					environment.tonemap_white)
+	m.set_shader_parameter("lit_radiance", lit)
 
 
 func _mean_color(tex: Texture2D) -> Color:

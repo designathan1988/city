@@ -20,7 +20,7 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
-	ok = ok && trees_.init(ctx, roads_.look(), props_.furniture(), errors);
+	ok = ok && trees_.init(ctx, roads_.look(), errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;

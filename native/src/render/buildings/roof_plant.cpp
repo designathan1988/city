@@ -1,9 +1,10 @@
-// Roof plant on flat roofs (4.0 r40/world/buildings/roofPlant.ts, roofMesh.ts :23-112): the 12 kinds in catalogue
+// Roof plant on flat roofs: the 12 kinds in catalogue
 // order with their sizes, caps and chances by use, packed on a 0.5 m occupancy grid inside a 0.8 m margin, with a
 // two-cell clear ring round every piece and the machine rooms. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
 // 0x5f3759df). Drains, masts and dish posts are fine parts.
 #include "render/buildings/facade.h"
 
+#include "core/math.h"
 #include "core/seeded.h"
 
 #include <cmath>
@@ -38,10 +39,9 @@ constexpr float LADDER = 0.1f, LADDER_UP = 0.9f;
 constexpr int CYL_SIDES = 12, CYL_SIDES_COARSE = 6;
 
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin) {
-	constexpr float TAU = 6.2831853f;
 	int sides = s.coarse ? CYL_SIDES_COARSE : CYL_SIDES;
 	for (int i = 0; i < sides; i++) {
-		float a0 = TAU * float(i) / float(sides), a1 = TAU * float(i + 1) / float(sides);
+		float a0 = TAU_F * float(i) / float(sides), a1 = TAU_F * float(i + 1) / float(sides);
 		Vector3 p0 = b.at(cx + r * std::cos(a0), cy + r * std::sin(a0), z0), p1 = b.at(cx + r * std::cos(a1), cy + r * std::sin(a1), z0);
 		Vector3 out = (b.e0 * std::cos((a0 + a1) / 2) + b.e1 * std::sin((a0 + a1) / 2));
 		s.quad(p0, p1, p1 + b.e2 * (z1 - z0), p0 + b.e2 * (z1 - z0), out, side, fin);
@@ -174,7 +174,7 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;
 	for (int k = 0; k < PLANT_KINDS; k++) {
 		const PlantDef &d = PLANT[k];
-		float per_area = k == AIR_HANDLER ? pl.data->air_handler_per_area : d.per_area;
+		float per_area = k == AIR_HANDLER ? pl.look->air_handler_per_area : d.per_area;
 		float p = std::min(1.f, chance(PlantKind(k), use, v.top(), area, age, !b.cores.empty()));
 		int count = per_area > 0 ? std::min(PER_AREA_CAP * d.max, int(std::round(area / per_area * p + ROUND_JITTER * float(r.next())))) : 0;
 		for (int n = 0; per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {

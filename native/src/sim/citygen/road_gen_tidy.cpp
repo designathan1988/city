@@ -1,6 +1,7 @@
 // The generated graph must open clean (cityGen.ts tidyGraph): no node where two roads leave closer than MIN_LEG_ANGLE
 // (the weaker leg goes) and no dead end lying inside another road (it joins the road, ends on its node or goes).
 #include "core/math.h"
+#include "core/units.h"
 #include "sim/citygen/road_gen.h"
 
 #include <algorithm>
@@ -15,7 +16,6 @@ constexpr double END_GAP = 4, MIN_PIECE = 9, CELL = 64, PAD = 12, ON_ROAD_MIN = 
 constexpr int64_t CELL_OFF = 4000, CELL_ROW = 8192;
 constexpr int MAX_PASSES = 20, MAX_LEGS = 6, KEEPS_LEGS = 3;
 constexpr double NO_ROOM = 1e300, EPS = 1e-6;
-constexpr double FULL_TURN = 360, HALF_TURN = 180;
 
 class Tidy {
 public:
@@ -57,10 +57,10 @@ private:
 		return legs_[n];
 	}
 	int other(int s, int n) const { return a_[s] == n ? b_[s] : a_[s]; }
-	double heading(int n, int m) const { return std::atan2(nz_[m] - nz_[n], nx_[m] - nx_[n]) * HALF_TURN / PI_D; }
+	double heading(int n, int m) const { return std::atan2(nz_[m] - nz_[n], nx_[m] - nx_[n]) * DEG_PER_HALF_TURN / PI_D; }
 	static double gap_between(double h1, double h2) {
-		double d = std::fmod(std::fabs(h1 - h2), FULL_TURN);
-		return std::min(d, FULL_TURN - d);
+		double d = std::fmod(std::fabs(h1 - h2), DEG_PER_TURN);
+		return std::min(d, DEG_PER_TURN - d);
 	}
 	double seg_len(int s) const { return std::hypot(nx_[a_[s]] - nx_[b_[s]], nz_[a_[s]] - nz_[b_[s]]); }
 
@@ -93,7 +93,7 @@ private:
 		double gap = MIN_LEG_ANGLE;
 		for (size_t i = 0; i < hs.size(); i++) {
 			size_t j = (i + 1) % hs.size();
-			double g = j == 0 ? hs[0].second + FULL_TURN - hs[i].second : hs[j].second - hs[i].second;
+			double g = j == 0 ? hs[0].second + DEG_PER_TURN - hs[i].second : hs[j].second - hs[i].second;
 			if (g < gap) { gap = g; best = { hs[i].first, hs[j].first }; }
 		}
 		return best;
@@ -137,7 +137,7 @@ private:
 		if (s < 0) return false;
 		int far = other(own, n);
 		double x = nx_[a_[s]] + (nx_[b_[s]] - nx_[a_[s]]) * t, z = nz_[a_[s]] + (nz_[b_[s]] - nz_[a_[s]]) * t;
-		double h = std::atan2(nz_[far] - z, nx_[far] - x) * HALF_TURN / PI_D, hr = heading(a_[s], b_[s]);
+		double h = std::atan2(nz_[far] - z, nx_[far] - x) * DEG_PER_HALF_TURN / PI_D, hr = heading(a_[s], b_[s]);
 		double L = seg_len(s);
 		if (t * L < MIN_PIECE || (1 - t) * L < MIN_PIECE) {
 			int e = t * L < MIN_PIECE ? a_[s] : b_[s];
@@ -149,7 +149,7 @@ private:
 				add(a_[own] == n ? e : a_[own], a_[own] == n ? b_[own] : e, prof_s_[own], zl_[own], zr_[own], rk_[own]);
 			return true;
 		}
-		if (gap_between(h, hr) < MIN_LEG_ANGLE || gap_between(h, hr + HALF_TURN) < MIN_LEG_ANGLE ||
+		if (gap_between(h, hr) < MIN_LEG_ANGLE || gap_between(h, hr + DEG_PER_HALF_TURN) < MIN_LEG_ANGLE ||
 				std::hypot(nx_[far] - x, nz_[far] - z) < MIN_PIECE || !road_gen::land(terrain_, x, z)) {
 			remove(own);
 			return true;

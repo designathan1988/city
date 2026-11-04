@@ -18,31 +18,32 @@ Vector3 vec3(const Variant &v) {
 	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
 }
 
-// One part in `col` tagged `tag`; a blob grows by `grow` (the lit lens over its dim one).
-void shape(MeshBuilder &b, const Dictionary &p, const Color &col, PropTag tag, float grow, PackedStringArray &errors) {
-	const Vector2 t2(float(int(tag)), 0);
+// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens in y).
+void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 &t2, PackedStringArray &errors) {
 	String shape = p.get("shape", "");
 	if (shape == "box") b.box(vec3(p["min"]), vec3(p["max"]), col, t2, true);
 	else if (shape == "cylinder") b.cylinder(vec3(p["base"]), float(p["radius"]), float(p["height"]), int(p["segments"]), col, true, t2);
-	else if (shape == "blob") b.blob(vec3(p["center"]), vec3(p["radius"]) * grow, col, t2);
+	else if (shape == "blob") b.blob(vec3(p["center"]), vec3(p["radius"]), col, t2);
 	else errors.push_back(String("streets.json props: forma desconhecida '") + shape + "'");
 }
 
-// A prop's parts; its lenses (parts with "lens") dimmed by `dim`.
+Color part_color(const Dictionary &p) {
+	return rgba8_to_color(parse_hex_color(String(p.get("color", "")).utf8().get_data()));
+}
+
+// A prop's parts, its lenses (parts with "lens") left to PropKit::lenses.
 MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &errors) {
 	MeshBuilder b;
 	if (!props.has(name)) {
 		errors.push_back(String("streets.json props: falta ") + name);
 		return b;
 	}
-	const float dim = float(props.get("lens_dim", 0.f));
 	Array list = props[name];
 	for (int i = 0; i < list.size(); i++) {
 		const Dictionary p = list[i];
-		Color col = rgba8_to_color(parse_hex_color(String(p.get("color", "")).utf8().get_data()));
+		if (p.has("lens")) continue;
 		const PropTag tag = String(p.get("glow", "")) == "night" ? PropTag::NIGHT_GLOW : PropTag::FIXED;
-		if (p.has("lens")) col = Color(col.r * dim, col.g * dim, col.b * dim, col.a);
-		shape(b, p, col, tag, 1.f, errors);
+		shape(b, p, part_color(p), Vector2(float(int(tag)), 0), errors);
 	}
 	return b;
 }
@@ -55,7 +56,8 @@ bool PropKit::build(const Dictionary &props, PackedStringArray &errors) {
 	meshes_[int(PropKind::BIN)] = parts(props, "bin", errors);
 	meshes_[int(PropKind::BENCH)] = parts(props, "bench", errors);
 	if (!props.has("signal")) return false;
-	const float grow = float(props.get("lens_lit_grow", 1.f));
+	const float dim = float(props.get("lens_dim", 0.f));
+	bool seen[int(Lens::COUNT)] = {};
 	Array list = props["signal"];
 	for (int i = 0; i < list.size(); i++) {
 		const Dictionary p = list[i];
@@ -65,10 +67,12 @@ bool PropKit::build(const Dictionary &props, PackedStringArray &errors) {
 			errors.push_back("streets.json props.signal: lente fora de 0..4");
 			continue;
 		}
-		shape(lenses_[k], p, rgba8_to_color(parse_hex_color(String(p["color"]).utf8().get_data())), PropTag::LIT, grow, errors);
+		const Color lit = part_color(p);
+		shape(lenses_, p, Color(lit.r * dim, lit.g * dim, lit.b * dim, lit.a), Vector2(float(int(PropTag::LENS)), float(k)), errors);
+		seen[k] = true;
 	}
-	for (const MeshBuilder &l : lenses_)
-		if (l.v.size() == 0) errors.push_back("streets.json props.signal: falta uma das lentes 0..4");
+	for (bool s : seen)
+		if (!s) errors.push_back("streets.json props.signal: falta uma das lentes 0..4");
 	return errors.is_empty();
 }
 

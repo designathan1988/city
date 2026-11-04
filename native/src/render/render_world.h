@@ -40,6 +40,7 @@ public:
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }
+	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Dictionary agent_cost() const { return agents_.cost(); }

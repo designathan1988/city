@@ -1,6 +1,7 @@
 // Lifecycle: catalog, render setup, new map, speed, per-frame render sync.
 #include "api/city_core.h"
 
+#include "api/buildings_loader.h"
 #include "api/catalog_loader.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -50,10 +51,18 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 		errors.push_back("CityCore fora da arvore");
 		return errors;
 	}
+	if (!catalog_ok_) { // the render draws the simulation's street furniture and crosswalks from the catalog
+		errors.push_back("render antes do catalogo");
+		return errors;
+	}
+	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
+	state_->buildings.designs = b40::Data{};
+	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
 	materials_ = materials;
 	ctx.tables = tables;
+	ctx.catalog = &state_->catalog;
 	Array names = materials.keys();
 	for (int i = 0; i < names.size(); i++) {
 		Ref<Material> m = materials[names[i]];

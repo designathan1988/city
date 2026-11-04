@@ -7,7 +7,6 @@ uint pcg(uint v) {
 	return (w >> 22u) ^ w;
 }
 float h01(uint v) { return float(pcg(v)) / 4294967295.0; }
-vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
 
 float vnoise(vec2 p) {
 	vec2 i = floor(p), f = fract(p);
@@ -34,7 +33,7 @@ void finish_layer(int fin, vec3 n, out vec3 tone, out vec3 nn, out float rough, 
 	metal = finish_metal[fin] * (fin == 8 ? r.b : 1.0);
 }
 
-// Weathering of plain finishes (city.ts: macro tone and stains, streaks on walls).
+// Weathering of plain finishes: a macro tone and stains, streaks down the walls.
 float weather(vec3 n) {
 	vec3 t = dot(n.xz, n.xz) < 0.0025 ? vec3(1.0, 0.0, 0.0) : normalize(vec3(n.z, 0.0, -n.x));
 	vec2 pm = vec2(dot(v_world, t), v_world.y);

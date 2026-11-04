@@ -1,4 +1,4 @@
-## The camera's mouse gestures (Roadcraft view/cameraGestures.ts + main.ts pointerDown), the left button stays the
+## The camera's mouse gestures, the left button stays the
 ## tools': right drag turns and tilts about the ground under the press (a turntable: the near side follows the hand,
 ## dragging down lifts towards a plan view); middle drag or Shift + right drag grabs the ground and drags it (the point
 ## under the cursor stays under it; past the hold reach it slides). A right press that moves less than

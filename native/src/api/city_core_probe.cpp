@@ -27,6 +27,7 @@ Dictionary CityCore::render_cost() const {
 	d["flush"] = c.flush;
 	d["chunk_max"] = c.chunk_max;
 	d["super_max"] = c.super_max;
+	d["super_mb_max"] = double(render_.super_bytes_max()) / BYTES_PER_MIB; // largest far mesh built
 	d["b_scan"] = c.building.scan;
 	d["b_freed"] = c.building.freed;
 	d["b_sort"] = c.building.sort;
@@ -85,8 +86,6 @@ namespace {
 
 constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long count as waiting
 constexpr float BOX_STOP_MS = 0.5f; // traffic_probe: a vehicle on a connector slower than this stands in the junction
-constexpr float BOX_LEADER_M = 6.f; // ... behind the one ahead when it is this close
-enum BoxStop { BOX_LEADER = 0, BOX_CROSSING, BOX_OTHER, BOX_KINDS };
 constexpr float BODIES_TOUCH_M = 0.45f; // traffic_probe: two walkers' centres closer than this overlap (two body radii)
 
 // Ground position of the signalled node with the most pedestrians at its kerbs or on its crosswalks (captures).
@@ -101,29 +100,6 @@ Vector3 busy_crossing(const CityState &s) {
 	if (best < 0) return Vector3();
 	const RoadNode &node = s.roads.nodes[best];
 	return Vector3(float(node.x), float(node.y), float(node.z));
-}
-
-// Why vehicle `id`, on a connector, stands in the junction box: the one ahead close (on its connector or the exit
-// lane's tail), walkers on the exit crosswalk, or nothing in its way.
-int box_stop(const CityState &s, int id) {
-	const TrafficState &t = s.traffic;
-	const Vehicle &v = t.vehicles[id];
-	const Conn &c = t.g.conns[v.conn];
-	const auto &on = t.conn_vehicles[v.conn];
-	const auto me = std::find(on.begin(), on.end(), id);
-	float gap = BIG;
-	if (me != on.begin() && me != on.end()) {
-		const Vehicle &o = t.vehicles[*(me - 1)];
-		gap = o.cs - s.catalog.traffic.classes[int(o.type)].length - v.cs;
-	} else {
-		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
-		if (!lane.empty()) {
-			const Vehicle &o = t.vehicles[lane.front()];
-			gap = c.len - v.cs + o.s - s.catalog.traffic.classes[int(o.type)].length;
-		}
-	}
-	if (gap < BOX_LEADER_M) return BOX_LEADER;
-	return traffic::peds_in_way(s, v.conn, traffic::FRONT_PAST, 0.f) ? BOX_CROSSING : BOX_OTHER;
 }
 
 // Walkers whose body overlaps another's (centres closer than BODIES_TOUCH_M): [walking, waiting at a kerb].
@@ -145,6 +121,21 @@ Array people_overlaps(const TrafficState &t) {
 	Array out;
 	out.push_back(walking);
 	out.push_back(waiting);
+	return out;
+}
+
+// The street furniture of the whole map by kind (signal posts, lamps, hydrants, bins, benches, trees).
+Array furniture_counts(const CityState &s) {
+	int count[FURNITURE_KINDS] = {};
+	std::vector<FurnitureSpot> spots;
+	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
+		if (!s.roads.segs[size_t(sid)].alive) continue;
+		spots.clear();
+		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
+		for (const FurnitureSpot &f : spots) count[int(f.kind)]++;
+	}
+	Array out;
+	for (int k = 0; k < FURNITURE_KINDS; k++) out.push_back(count[k]);
 	return out;
 }
 
@@ -198,6 +189,9 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t); // walkers inside another's body: walking, waiting
+	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
+	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
+	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);
 	d["reroutes"] = t.reroutes;
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;
@@ -210,7 +204,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
 	Array poses, dirs, types, held, jams, jam_info, behind, box;
-	box.resize(BOX_KINDS);
+	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
 	held.resize(int(Hold::COUNT));
 	held.fill(0);
@@ -235,7 +229,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 		waiting += v.wait > WAITING_S ? 1 : 0;
 		on_connectors += v.conn >= 0 ? 1 : 0;
 		if (v.conn >= 0 && v.v < BOX_STOP_MS) {
-			const int k = box_stop(*state_, id);
+			const int k = int(traffic::box_hold(*state_, id));
 			box[k] = int(box[k]) + 1;
 		}
 		if (poses.size() < sample) {
@@ -250,7 +244,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["waiting"] = waiting; // held more than WAITING_S
 	d["on_connectors"] = on_connectors;
 	d["queued_behind"] = behind; // queued vehicles by what their lane head waits for
-	d["box_stops"] = box; // standing on connectors now: behind the one ahead, for walkers, for nothing
+	d["box_stops"] = box; // standing on connectors now: behind the one ahead, for walkers, moving off (traffic::BoxHold)
 	d["red_entries"] = t.red_entries; // vehicles that went onto a connector with their light red
 	d["red_from_stop"] = t.red_from_stop; // ... of which from a standstill (not an amber they could not stop for)
 	d["held_by"] = held; // waiting vehicles by Hold: queued, wrong lane, red, exit room, conflict busy, yield, connector, free, crosswalk

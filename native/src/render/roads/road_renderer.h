@@ -1,6 +1,6 @@
-// Road chunk meshes (Roadcraft jobs/roadMesh.ts): each segment's cross-section extruded between its two mouths,
-// junction plates with kerb returns filling the nodes (render/roads/road_mesh.h). A segment belongs to the chunk of its midpoint, a node to the chunk of its
-// position. Materials: "road" (data/render/materials.json).
+// Road chunk meshes: each segment's cross-section extruded between its two mouths, junction plates with kerb returns
+// filling the nodes (render/roads/road_mesh.h). A segment belongs to the chunk of its midpoint, a node to the chunk of
+// its position. Materials: "road" (data/render/materials.json).
 #pragma once
 
 #include "core/job_pool.h"

@@ -24,7 +24,10 @@ int clear_under(CityState &s, int seg);
 void conform_under(CityState &s, int seg);
 // The ground moved under the box: its roads, buildings and lots are drawn / derived again (brush.ts touchSamples).
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
-// Ends an edit over the box: refreshes node shapes there, recomputes the dirty lot cells (queued for growth) and bumps
+// The segment's street furniture is placed and drawn again (its zones changed, or its square's hydrant may move).
+void mark_furniture(CityState &s, int seg);
+// Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
+// of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
 // the revision.
 void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz);
 

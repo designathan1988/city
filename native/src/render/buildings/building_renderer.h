@@ -1,4 +1,4 @@
-// Building chunk meshes, Roadcraft "4.0" buildings (r40/render/buildings): 256 m chunks carried by four levels
+// Building chunk meshes: 256 m chunks carried by four levels
 // (tuning render.building_detail_end_m = D, building_mid_end_m, building_far_end_m; shares in buildings.json "lod"):
 //   parts  0 .. D x parts_share        instanced unit boxes in five thickness bands (material building_parts) + fine
 //                                      geometry that is not a box (lamps, AC fans, awnings) in the "building" material
@@ -15,7 +15,7 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/buildings/b40_data.h"
+#include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
 #include "render/buildings/shell.h"
 #include "render/chunk_jobs.h"
@@ -27,6 +27,7 @@
 #include <godot_cpp/classes/array_mesh.hpp>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <limits>
 #include <mutex>
@@ -50,6 +51,8 @@ public:
 	int pending() const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
+	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
+	int64_t super_bytes_max() const { return super_bytes_max_.load(); }
 	const CommitTimes &commit_times() const { return times_; }
 
 private:
@@ -75,7 +78,7 @@ private:
 		int mask = 0; // its chunks drawn in detail (bit = chunk in the superchunk): hidden in the far mesh
 		int mask_sent = -1; // the chunk_mask last given to the far instance (-1: none yet)
 		int chunks = 0; // its streamed chunks: the superchunk lives while one is
-		// A built far mesh is rebuilt on its own clock (Roadcraft deferredRebuild.ts): not before `due` (a delay
+		// A built far mesh is rebuilt on its own clock: not before `due` (a delay
 		// after the first change it waits for) nor within an interval of the previous request (`asked`).
 		double due = 0, asked = -std::numeric_limits<double>::infinity();
 	};
@@ -140,7 +143,9 @@ private:
 	void ranges(Chunk &ch) const;
 	float near_reach() const;
 	void send_mask(Super &sp);
-	b40::Data data_;
+	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
+	const b40::Data &designs() const { return state_->buildings.designs; }
+	b40::BuildingLook look_;
 	BuildingBodies bodies_;
 	godot::RID scenario_, material_, material_far_, material_parts_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
@@ -152,6 +157,7 @@ private:
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job
 	BakingSet baking_, super_baking_;
 	int64_t waiting_ = 0, super_waiting_ = 0;
+	std::atomic<int64_t> super_bytes_max_{ 0 }; // written by the superchunk jobs
 	CommitTimes times_; // the last commit's (render_cost probe)
 	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;

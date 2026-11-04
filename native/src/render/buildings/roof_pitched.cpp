@@ -1,7 +1,9 @@
-// Pitched roofs (4.0 roofMesh.ts :543-680, geometry.ts): gable and hip with 0.45 m eaves all round, a 0.18 m roof
+// Pitched roofs: gable and hip with 0.45 m eaves all round, a 0.18 m roof
 // body (fascia trim x 0.92, soffit trim x 0.7), ridge cap (roof x 0.85), gable triangles in the wall paint; shed roofs
 // with their tall back wall and triangular end walls; sawtooth (north-light) roofs of glazed teeth. Built in a ridge frame: u along the ridge, s across, z up.
 #include "render/buildings/facade.h"
+
+#include "core/units.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +14,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float EAVES = 0.45f, THICK = 0.18f, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
-constexpr float DEG = 3.14159265f / 180.f, DEFAULT_GABLE = 30.f, DEFAULT_SHED = 12.f, SAW_STEP = 6.f, HALF = 0.5f, MULLION = 0.08f;
+constexpr float DEFAULT_GABLE = 30.f, DEFAULT_SHED = 12.f, SAW_STEP = 6.f, HALF = 0.5f, MULLION = 0.08f;
 
 struct Pitch {
 	Shell &s;
@@ -105,7 +107,7 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 	const Paint &rp = b.roof_of(v), &tp = b.paints[size_t(b.trim)], &wp = b.wall_of(v);
 	float pitch = v.pitch > 0 ? v.pitch : v.roof == ROOF_SHED ? DEFAULT_SHED : DEFAULT_GABLE;
 	Lin trim = paint_lin(tp);
-	Pitch P{ shell, Basis{}, 0, 0, std::tan(pitch * DEG), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
+	Pitch P{ shell, Basis{}, 0, 0, std::tan(pitch * DEG_TO_RAD), paint_lin(rp), trim * FASCIA, trim * SOFFIT, wall_lin(pl, v, v.storeys - 1, 0),
 		rp.finish, tp.finish, wp.finish };
 	shell.grime_floor = -FAR_AWAY;
 	const Basis &lot = pl.lot;

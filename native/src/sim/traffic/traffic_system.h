@@ -3,6 +3,7 @@
 // in its own .cpp; Simulation::tick calls step() once per tick holding map_mutex shared and traffic_mutex.
 #pragma once
 
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 namespace city {
@@ -64,9 +65,25 @@ void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
 bool may_enter(const CityState &s, int vehicle, int conn, float dist_to_line);
+int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
 int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
+
+// light_rule.cpp: the one rule of the lights (as in Roadcraft 4.0), for admission, commitments and
+// the stops ahead. `v` can stop comfortably (its class's b) within `stop_m`; the light of approach `ds` holds it with
+// its stop `stop_m` metres ahead (red always; amber when it can stop comfortably, a decision held until green).
+bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m);
+bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m);
+// Where a vehicle stops for the lights down its route: the first stop line within its horizon whose light holds it.
+struct LightStop {
+	float gap = NO_LEADER; // metres to where it stops
+	bool here = false; // that stop is on the lane it is on: it does not cross its junction now
+	int amber_hold = -1; // its amber decision from now on (Vehicle::amber_hold)
+};
+// The walk starts at route step `ri` on lane `lane`, whose start is `start` metres ahead (negative: it is on it); the
+// last step's junction is never crossed.
+LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start);
 
 // junction_admission.cpp (anti-gridlock)
 bool is_splice(const CityState &s, int node); // a road joint: no junction to block
@@ -98,6 +115,10 @@ void spawn_vehicles(CityState &s, float dt);
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
+// What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
+// ahead, walkers on its exit crosswalk, a light down the street, or none of them holds it back (it is moving off).
+enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
+BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);
 
@@ -108,13 +129,29 @@ void change_lanes(CityState &s);
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
 
-// ped_crowd.cpp: walkers among walkers (stripes of the sidewalk, places to wait along a kerb)
-void crowd_step(CityState &s, float dt); // the sidewalk walkers' stripes and paces, from those around them
+// ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
+void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
 float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle
 void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way, its own pace
+void onto_line(Pedestrian &w); // onto a new line round a corner or over a zebra: from where it stands
+void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+
+// ped_kerb.cpp: places to wait at the kerb of a crosswalk
 void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
 void free_kerb_place(TrafficState &t, int id);
-void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+// A waiting walker with a free place nearer the kerb: turned back toward its kerb (ways[wi]) to take it; true.
+bool step_to_nearer_place(CityState &s, int id);
+
+// ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
+// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
+const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
+bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
+// The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.
+float clear_arc(CityState &s, int seg, int side, float at, float u);
+void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
+void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
+int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);
@@ -133,8 +170,11 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it o
 bool peds_in_way(const CityState &s, int conn, float front_in = 0, float front_out = 0);
 constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the vehicle has already passed
 
-// Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top` (Roadcraft
-// 4.0 admission: a vehicle starting at its line reaches a crosswalk sooner than its speed now says).
+// Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top`: a vehicle
+// starting at its line reaches a crosswalk sooner than its speed now says. Measured on 155 000 commitments (soak, 7
+// seeds): to the exit crosswalk it errs 0.2 s early on average, where metres / max(2 m/s, v) was 0.9 s late and let
+// vehicles in that then stood in the box for walkers (4x the box stops, 6x the hard brakes for walkers, the same for
+// walkers). What it leaves out (the jerk ramp from rest, slowing to the turn speed) only makes it early, the safe side.
 float front_time(const CityState &s, const Vehicle &v, float metres, float top);
 float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
 

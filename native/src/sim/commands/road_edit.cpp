@@ -1,10 +1,12 @@
 // Shared steps of the road commands (Roadcraft construction/execute.ts splitSeg, anchorNode, clearAndConform).
 #include "sim/commands/road_edit.h"
 
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace city {
 
@@ -113,8 +115,33 @@ void mark_ground(CityState &s, double minx, double minz, double maxx, double max
 		}
 }
 
+void mark_furniture(CityState &s, int seg) {
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	s.log.furniture_segs.push_back(seg);
+	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
+		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) s.log.road_chunks.push_back(cell_key(i, j));
+}
+
 void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz) {
 	RoadNetwork &net = s.roads;
+	std::vector<std::pair<double, double>> squares; // a hydrant may move to another corner of the changed nodes' squares
+	for (int n : s.log.net_nodes) {
+		double x0, z0, x1, z1;
+		hydrant_square(net, net.nodes[size_t(n)].x, net.nodes[size_t(n)].z, x0, z0, x1, z1);
+		squares.push_back({ x0, z0 });
+	}
+	std::sort(squares.begin(), squares.end());
+	squares.erase(std::unique(squares.begin(), squares.end()), squares.end());
+	std::vector<int> segs;
+	for (const auto &sq : squares) {
+		double x0, z0, x1, z1;
+		hydrant_square(net, sq.first, sq.second, x0, z0, x1, z1);
+		net.node_hash.query(float(x0), float(z0), float(x1), float(z1), [&](int k) {
+			if (net.nodes[size_t(k)].alive) segs.insert(segs.end(), net.nodes[size_t(k)].segs.begin(), net.nodes[size_t(k)].segs.end());
+		});
+	}
+	ChangeLog::dedup(segs);
+	for (int seg : segs) mark_furniture(s, seg);
 	float p = NODE_REFRESH_PAD_M;
 	std::vector<int> nodes;
 	net.node_hash.query(float(minx) - p, float(minz) - p, float(maxx) + p, float(maxz) + p, [&](int n) {

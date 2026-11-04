@@ -1,7 +1,10 @@
-// The lit lenses of the signal posts (render/props/street_props.h SignalHead): per chunk the posts its furniture mesh
-// carries (dim lenses, PropKit), and over them the lens each post's approach shows now (PoseFrame::signals: the car
-// light and the walkers' stop or walk), one MultiMesh per lens. The buffers are written again only when a post's
-// lenses change; a post beyond the published radius stays dim.
+// The lenses of the signal posts (render/props/street_props.h SignalHead), each drawn once: per chunk one MultiMesh of
+// its posts, every instance a post's lenses (PropKit::lenses) with the lenses it shows lit in INSTANCE_CUSTOM (the car
+// light and the walkers' stop or walk its approach publishes, PoseFrame::signals); render/shaders/props.gdshader (the
+// "prop" material) draws those lit and every other lens unlit. A chunk's buffer is written again only when one of its posts changes, the
+// whole of it (a few posts): writing single instances would first read the MultiMesh back from the GPU (Godot
+// renderer_rd/storage_rd/mesh_storage.cpp _multimesh_make_local). A post beyond the published radius shows every lens
+// unlit.
 #pragma once
 
 #include "render/props/prop_kit.h"
@@ -19,20 +22,28 @@ class SignalLamps {
 public:
 	void init(const godot::RID &scenario, const godot::RID &material, const PropKit &kit);
 	void reset();
-	void set_chunk(int64_t key, std::vector<SignalHead> &&heads); // the posts of a chunk whose mesh is now drawn
+	// The posts of a chunk whose mesh is now drawn: their lenses drawn at once, in the states last published.
+	void set_chunk(int64_t key, std::vector<SignalHead> &&heads);
 	void drop_chunk(int64_t key);
 	void update(const PoseFrame &f);
-	int lit() const { return lit_; } // lenses lit at the last update (render_cost probe)
+	int lit() const { return lit_; } // lenses lit in the buffers sent (render_cost probe)
 
 private:
+	struct Chunk {
+		std::vector<SignalHead> heads;
+		std::vector<uint8_t> shown; // per post: the lenses its instance shows lit (car lens | walker lens << 4)
+		godot::AABB box; // the posts' feet, grown by the lenses' reach from them
+		MultiMeshDraw draw;
+		int lit = 0;
+	};
+	uint8_t showing(const SignalHead &h) const;
+	void write(Chunk &c) const;
 	godot::RID scenario_, material_;
-	OwnedMesh lens_[int(Lens::COUNT)];
-	MultiMeshDraw draw_[int(Lens::COUNT)];
-	std::unordered_map<int64_t, std::vector<SignalHead>> chunks_;
-	std::vector<uint8_t> shown_; // per post, in chunk order: the lenses drawn (car lens | walker lens << 4)
-	bool posts_changed_ = true;
-	int lit_ = 0;
+	OwnedMesh lenses_;
 	float reach_ = 0; // farthest lens from a post's foot
+	std::unordered_map<int64_t, Chunk> chunks_;
+	std::vector<SignalRecord> signals_; // the last published lights, by ds
+	int lit_ = 0;
 };
 
 } // namespace city

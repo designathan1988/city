@@ -13,7 +13,7 @@ namespace city {
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) X(conflict_samples) X(conflict_clear_m) \
-	X(signal_green_s) X(signal_all_red_s) X(amber_min_s) X(amber_max_s) X(amber_decel) X(stage_opposite_dot) \
+	X(signal_green_s) X(signal_all_red_s) X(amber_min_s) X(amber_max_s) X(stage_opposite_dot) \
 	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
 	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
@@ -28,14 +28,15 @@ namespace city {
 	X(rejoin_ds) X(detour_max_expanded) X(bpr_gain) X(tail_credit_s) X(tail_credit_cap_ms) X(short_exit_m) \
 	X(tail_moving_ms) X(commit_min_m) X(at_line_m) X(gov_every_s) X(gov_min_fleet) X(gov_jammed) X(gov_lo) X(gov_hi) \
 	X(gov_floor) X(gov_rate) X(reroute_budget_per_step) \
-	X(ped_route_max_expanded) X(cross_at_m) X(crosswalk_m) X(stop_back_m) X(kerb_stand_m) X(ped_courtesy_s) \
+	X(ped_route_max_expanded) X(kerb_stand_m) X(ped_courtesy_s) \
 	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) X(ped_routes_per_step) \
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
+	X(ped_jam_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
-	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m)
+	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
 
 #define CITY_TRAFFIC_DECLARE(name) float name = 0;
 

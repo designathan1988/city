@@ -1,4 +1,4 @@
-// Vertex writing for the building meshes: faces with the 4.0 tone (shellParts.ts macroNoise, meshCore.ts Shell.face
+// Vertex writing for the building meshes: faces with their tone (a macro noise over the walls and the grime at their foot
 // grime), clockwise winding toward `out` (Godot front faces), the vertex code of each surface kind, and the commit of
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
@@ -39,7 +39,7 @@ float smooth(float t) { return t * t * (3 - 2 * t); }
 float gamma(float v) { return std::pow(std::clamp(v, 0.f, 1.f), GAMMA_INV); }
 } // namespace
 
-// Trilinear value noise in map axes (x, north = -z, up), metres / 12 (4.0 shellParts.ts macroNoise).
+// Trilinear value noise in map axes (x, north = -z, up), metres / 12.
 float macro_noise(const Vector3 &p) {
 	float x = p.x / MACRO_M, y = -p.z / MACRO_M, z = p.y / MACRO_M;
 	int32_t i = int32_t(std::floor(x)), j = int32_t(std::floor(y)), k = int32_t(std::floor(z));

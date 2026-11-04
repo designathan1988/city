@@ -1,9 +1,14 @@
-// Walkers among walkers (Roadcraft 4.0 walk.ts, after SUMO's striping model): on a sidewalk the footway is a few
-// stripes wide; each walker looks ahead, takes the stripe with the most room (aside costs, off its own side of the
-// way costs, a change must be clearly better and the last one must have held), steps aside at a share of its pace and
-// keeps its gap behind the body ahead in its stripe. At a crosswalk the waiting take places along the kerb and in rows
-// back from it, and cross keeping that place across, so nobody stands or walks inside another.
-#include "sim/traffic/traffic_system.h"
+// Walkers among walkers and street furniture (SUMO's striping pedestrian model, MSPModel_Striping): every step each
+// walker on a sidewalk or a line round a corner or over a zebra gets its way's frame, sees the bodies that can be in
+// its way remapped into that frame, and ped_stripes.cpp picks its stripe and pace. On a sidewalk it sees the walkers of
+// that sidewalk and its furniture by arc. Each junction is a walking area (SUMO): the walkers round its corners, at its
+// kerbs and on its arms' sidewalks within reach of it are filed with it, and whoever is near it sees them all; round a
+// corner a walker also sees the furniture of its arms' sidewalks near the junction. On a sidewalk the room is the
+// footway less ped_margin_m; round a corner as wide either side of its line as the sidewalk it heads for, opening off
+// the line's start and closing toward a kerb place it must reach as fast as it steps aside (ped_lateral_share); over a
+// zebra its own right half (the other half is the other way's). Everything a choice reads is copied once a step into the walkers' entries
+// (CrowdEntry), each sidewalk's in order of arc, so a step reads arrays in order.
+#include "sim/traffic/ped_stripes.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,64 +18,220 @@ namespace traffic {
 
 namespace {
 
-constexpr int MAX_STRIPES = 8;
-constexpr int MAX_PLACES = 32; // bits of TrafficState::kerb_slots
-constexpr float ONE_WAY_CLOSING = 0.5f; // a body coming the other way closes the gap at both paces: half the room
-constexpr float ZERO_SPAN_M = 1e-4f; // a way across shorter than this has no direction
-constexpr int KERB_NODE_BITS = 32; // a kerb's key: its node above these bits, the arm crossed and which way below
+constexpr float NEAR_END_LOOKS = 2.f; // a sidewalk walker this many ped_look_m from a junction is filed with it
+constexpr float SHORT_ARM_LOOKS = 3.f; // walkers round a junction also meet those of the next over an arm this short
+constexpr int MAX_FILED = 1 + NODE_ARMS_MAX; // junctions a walker is filed with: its own and those over short arms
 
-int sidewalk_key(const Pedestrian &w) { return w.seg * 2 + w.side; }
-float own_u(const Pedestrian &w) { return w.dir == 0 ? -w.track : w.track; } // its own side of the way
 
-struct Decision {
-	float u = 0, u_goal = 0, held = 0, pace = 0;
+// A sidewalk's ends as the crowd step reads them: where it starts and ends along the arc and their junctions.
+struct SidewalkEnds {
+	float lo = 0, hi = 0, reach = 0;
+	int a = -1, b = -1;
+	SidewalkEnds(const CityState &s, int seg) {
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		lo = float(g.retreat_a);
+		hi = float(g.len - g.retreat_b);
+		reach = NEAR_END_LOOKS * s.catalog.traffic.ped_look_m;
+		a = g.a;
+		b = g.b != g.a ? g.b : -1;
+	}
+	// The junctions a walker at arc `s` is near (both on a short sidewalk).
+	int near(float s, int *out) const {
+		int n = 0;
+		if (s - lo < reach) out[n++] = a;
+		if (hi - s < reach && b >= 0) out[n++] = b;
+		return n;
+	}
+	// Those it may meet someone of: near, and either heading for it or still inside its walking area (`zone` metres of
+	// arc from the mouth: the kerb places and the lines round its corner); walking away past that, all of it is behind.
+	int ahead(float s, int dir, float zone, int *out) const {
+		int n = 0;
+		if (s - lo < reach && (dir == 1 || s - lo < zone)) out[n++] = a;
+		if (hi - s < reach && b >= 0 && (dir == 0 || hi - s < zone)) out[n++] = b;
+		return n;
+	}
 };
 
-// The stripe, pace and step aside of walker `id` (index k of its sidewalk's `list`, sorted by arc).
-Decision decide(const CityState &s, const std::vector<int> &list, size_t k, float dt) {
-	const TrafficParams &p = s.catalog.traffic;
-	const TrafficState &t = s.traffic;
-	const Pedestrian &w = t.peds[size_t(list[k])];
-	const float half = walk_half(s, w.seg, w.side), touch = 2 * p.ped_body_m, ahead_sign = w.dir == 0 ? 1.f : -1.f;
-	const int n = std::clamp(1 + int(2 * half / p.ped_stripe_m), 1, MAX_STRIPES);
-	float centre[MAX_STRIPES], room[MAX_STRIPES];
-	for (int m = 0; m < n; m++) {
-		centre[m] = n == 1 ? 0.f : -half + 2 * half * float(m) / float(n - 1);
-		room[m] = p.ped_look_m;
+// The widest room either side of a sidewalk's middle among the catalog's profiles (a corner line's room is at most this).
+float widest_walk_half(const CityState &s) {
+	float widest = 0;
+	for (const Profile &pf : s.catalog.profiles) {
+		if (pf.edges.empty()) continue;
+		for (const StripEdge *e : { &pf.edges.front(), &pf.edges.back() })
+			if (e->strip.kind == StripKind::SIDEWALK) widest = std::max(widest, (e->u1 - e->u0) * 0.5f - s.catalog.traffic.ped_margin_m);
 	}
-	float lead_gap = p.ped_look_m;
-	auto see = [&](const Pedestrian &o) {
-		const float d = (o.s - w.s) * ahead_sign;
-		if (d <= 0) return; // behind: theirs to keep the gap
-		const float gap = (o.dir == w.dir ? d : d * ONE_WAY_CLOSING) - touch;
-		for (int m = 0; m < n; m++)
-			if (std::fabs(o.u - centre[m]) < touch) room[m] = std::min(room[m], gap);
-		if (std::fabs(o.u - w.u) < touch) lead_gap = std::min(lead_gap, gap);
-	};
-	for (size_t j = k + 1; j < list.size() && std::fabs(t.peds[size_t(list[j])].s - w.s) < p.ped_look_m; j++) see(t.peds[size_t(list[j])]);
-	for (size_t j = k; j-- > 0 && std::fabs(t.peds[size_t(list[j])].s - w.s) < p.ped_look_m;) see(t.peds[size_t(list[j])]);
-	auto score = [&](int m) {
-		return room[m] - p.ped_lateral_cost * std::fabs(centre[m] - w.u) - p.ped_keep_right_cost * std::fabs(centre[m] - own_u(w));
-	};
-	int best = 0, cur = 0;
-	for (int m = 0; m < n; m++) {
-		if (score(m) > score(best)) best = m;
-		if (std::fabs(centre[m] - w.u_goal) < std::fabs(centre[cur] - w.u_goal)) cur = m;
+	return widest;
+}
+
+// Round a corner or at a kerb: its junction and the next one over each short arm.
+int junctions_round(const CityState &s, int node, int *out) {
+	const float look = s.catalog.traffic.ped_look_m;
+	int n = 0;
+	out[n++] = node;
+	for (int seg : s.roads.nodes[size_t(node)].segs) {
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		if (n < MAX_FILED && g.alive && g.a != g.b && g.len - g.retreat_a - g.retreat_b < SHORT_ARM_LOOKS * look)
+			out[n++] = g.a == node ? g.b : g.a;
 	}
-	Decision out;
-	out.held = w.stripe_held + dt;
-	out.u_goal = centre[cur];
-	const bool shut = room[cur] < p.ped_gap_m; // the way ahead in its stripe is closed: no waiting out the hold
-	if (best != cur && score(best) > score(cur) + p.ped_stripe_gain_m && (out.held >= p.ped_stripe_hold_s || shut)) {
-		out.u_goal = centre[best];
-		out.held = 0;
+	return n;
+}
+
+// The bodies one walker sees this step, in its frame; only those that can stand in its room.
+struct Seen {
+	const WayFrame &f;
+	Body *out;
+	int n = 0;
+	float look, touch, reach; // ped_look_m, two body radii, a body radius
+
+	void walker(float along, float lat, bool oncoming) {
+		if (along <= 0 || along > look || lat < f.lo - touch || lat > f.hi + touch || n >= MAX_BODIES) return;
+		Body &b = out[n++];
+		b = Body();
+		b.along_lo = b.along_hi = along;
+		b.lat_lo = b.lat_hi = lat;
+		b.reach = touch;
+		b.oncoming = oncoming;
 	}
-	// the gap behind the body ahead in its own span; aside at a share of its own pace (it can step aside standing)
-	const float want = std::clamp((lead_gap - p.ped_gap_m) / p.ped_headway_s, 0.f, w.speed);
-	out.pace = std::min(want, w.pace + p.ped_accel * dt);
-	const float aside = p.ped_lateral_share * w.speed * dt;
-	out.u = w.u + std::clamp(out.u_goal - w.u, -aside, aside);
-	return out;
+	void furniture(const Body &b) {
+		if (b.along_hi < -reach || b.along_lo > look || b.lat_hi < f.lo - reach || b.lat_lo > f.hi + reach || n >= MAX_BODIES) return;
+		out[n++] = b;
+	}
+};
+
+// The walkers ahead on its own sidewalk (behind or abreast: theirs to keep the gap), by arc.
+void see_sidewalk(const std::vector<CrowdEntry> &list, size_t k, Seen &sn) {
+	const CrowdEntry &w = list[k];
+	if (w.dir == 0) {
+		for (size_t j = k + 1; j < list.size() && list[j].s - w.s <= sn.look; j++) sn.walker(list[j].s - w.s, list[j].u, list[j].dir != w.dir && list[j].moving);
+	} else {
+		for (size_t j = k; j-- > 0 && w.s - list[j].s <= sn.look;) sn.walker(w.s - list[j].s, list[j].u, list[j].dir != w.dir && list[j].moving);
+	}
+}
+
+// The walkers filed with junction `node`, remapped into its frame (SUMO's walking areas); a sidewalk walker leaves out
+// its own sidewalk's, already seen by arc.
+void see_junction(const TrafficState &t, int node, int id, int own_sidewalk, Seen &sn) {
+	for (const CrowdEntry &o : t.node_walkers[size_t(node)]) {
+		if (o.id == id || (own_sidewalk >= 0 && o.sidewalk == own_sidewalk)) continue;
+		const V2 rel(o.x - sn.f.at.x, o.z - sn.f.at.y);
+		const bool facing = o.fx * sn.f.fwd.x + o.fz * sn.f.fwd.y < 0; // heading against its way (SUMO's direction)
+		sn.walker(rel.dot(sn.f.fwd), sn.f.u + rel.dot(sn.f.left), facing && o.moving);
+	}
+}
+
+// Its own sidewalk's furniture near it, by arc: `from` is the first piece that may reach back to it, carried along by
+// the caller as it goes through the sidewalk's walkers in order of arc.
+void see_sidewalk_furniture(const std::vector<StreetObstacle> &list, size_t from, const CrowdEntry &w, Seen &sn) {
+	for (auto it = list.begin() + std::ptrdiff_t(from); it != list.end() && it->s0 <= w.s + sn.look; ++it) {
+		Body b;
+		b.furniture = true;
+		b.reach = sn.reach;
+		b.along_lo = w.dir == 0 ? it->s0 - w.s : w.s - it->s1;
+		b.along_hi = w.dir == 0 ? it->s1 - w.s : w.s - it->s0;
+		b.lat_lo = it->u0;
+		b.lat_hi = it->u1;
+		sn.furniture(b);
+	}
+}
+
+// The furniture on the sidewalks of junction `n`'s arms as far from it as its walkers may be and look.
+void junction_furniture(CityState &s, int n, float look, std::vector<const StreetObstacle *> &out) {
+	out.clear();
+	const float reach = s.catalog.furniture.crossing.zebra_to_m + look + s.catalog.traffic.ped_body_m;
+	for (int seg : s.roads.nodes[size_t(n)].segs) {
+		if (!walkable(s, seg)) continue;
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		const SidewalkFurniture &sf = sidewalk_furniture(s, seg);
+		const float lo = g.a == n ? -BIG : float(g.len - g.retreat_b) - reach - sf.longest;
+		const float hi = g.a == n ? float(g.retreat_a) + reach : BIG;
+		for (const auto &side : sf.side)
+			for (auto it = std::lower_bound(side.begin(), side.end(), lo, [](const StreetObstacle &o, float v) { return o.s0 < v; });
+					it != side.end() && it->s0 <= hi; ++it)
+				out.push_back(&*it);
+	}
+}
+
+// A footprint's corners projected ahead and across the walker's frame.
+void see_footprint(const StreetObstacle &o, Seen &sn) {
+	const V2 c = V2(o.x, o.z) - sn.f.at, a(o.fx, o.fz), l = left_of(a);
+	// by its centre first: a piece wholly behind, beyond the look or off the room across is not projected
+	const float spread = o.half_along + o.half_across, ahead = c.dot(sn.f.fwd), across = sn.f.u + c.dot(sn.f.left);
+	if (ahead + spread < -sn.reach || ahead - spread > sn.look || across + spread < sn.f.lo - sn.reach || across - spread > sn.f.hi + sn.reach) return;
+	Body b;
+	b.furniture = true;
+	b.reach = sn.reach;
+	b.along_lo = b.lat_lo = BIG;
+	b.along_hi = b.lat_hi = -BIG;
+	for (int k = 0; k < 4; k++) {
+		const V2 q = c + a * (k & 1 ? o.half_along : -o.half_along) + l * (k & 2 ? o.half_across : -o.half_across);
+		const float along = q.dot(sn.f.fwd), lat = sn.f.u + q.dot(sn.f.left);
+		b.along_lo = std::min(b.along_lo, along);
+		b.along_hi = std::max(b.along_hi, along);
+		b.lat_lo = std::min(b.lat_lo, lat);
+		b.lat_hi = std::max(b.lat_hi, lat);
+	}
+	sn.furniture(b);
+}
+
+void file(std::vector<std::vector<CrowdEntry>> &lists, std::vector<int> &keys, int key, const CrowdEntry &e) {
+	auto &list = lists[size_t(key)];
+	if (list.empty()) keys.push_back(key);
+	list.push_back(e);
+}
+
+CrowdEntry entry_of(const Pedestrian &w, int id, float moving) {
+	CrowdEntry e;
+	e.id = id;
+	e.sidewalk = w.mode == PedMode::SIDEWALK ? w.seg * 2 + w.side : -1;
+	e.s = w.s;
+	e.u = w.u;
+	e.x = w.cur.x;
+	e.z = w.cur.z;
+	e.fx = w.cur.fx;
+	e.fz = w.cur.fz;
+	e.u_goal = w.u_goal;
+	e.held = w.stripe_held;
+	e.pace = w.pace;
+	e.jam = w.jam;
+	e.speed = w.speed;
+	e.keep = w.dir == 0 ? -w.track : w.track; // its own side of the way
+	e.dir = uint8_t(w.dir);
+	e.moving = w.mode != PedMode::WAIT && w.pace > moving;
+	return e;
+}
+
+// Each sidewalk's walkers by arc and each junction's walkers, from where they stand now.
+void file_walkers(CityState &s) {
+	TrafficState &t = s.traffic;
+	if (t.crowd.size() != s.roads.segs.size() * 2) {
+		t.crowd.assign(s.roads.segs.size() * 2, {});
+		t.crowd_keys.clear();
+	}
+	if (t.node_walkers.size() != s.roads.nodes.size()) {
+		t.node_walkers.assign(s.roads.nodes.size(), {});
+		t.node_keys.clear();
+	}
+	for (int key : t.crowd_keys) t.crowd[size_t(key)].clear();
+	for (int key : t.node_keys) t.node_walkers[size_t(key)].clear();
+	t.crowd_keys.clear();
+	t.node_keys.clear();
+	int near[MAX_FILED];
+	const float moving = s.catalog.traffic.ped_moving_ms;
+	for (int id = 0; id < int(t.peds.size()); id++) {
+		const Pedestrian &w = t.peds[size_t(id)];
+		if (!w.alive) continue;
+		const CrowdEntry e = entry_of(w, id, moving);
+		if (e.sidewalk >= 0) file(t.crowd, t.crowd_keys, e.sidewalk, e);
+		else if (w.way_node >= 0)
+			for (int k = junctions_round(s, w.way_node, near); k-- > 0;) file(t.node_walkers, t.node_keys, near[k], e);
+	}
+	for (int key : t.crowd_keys) { // in order of arc; those within reach of an end also with its junction
+		auto &list = t.crowd[size_t(key)];
+		std::sort(list.begin(), list.end(), [](const CrowdEntry &a, const CrowdEntry &b) { return a.s < b.s; });
+		const SidewalkEnds ends(s, key / 2);
+		for (const CrowdEntry &e : list)
+			for (int k = ends.near(e.s, near); k-- > 0;) file(t.node_walkers, t.node_keys, near[k], e);
+	}
 }
 
 } // namespace
@@ -84,84 +245,74 @@ float walk_half(const CityState &s, int seg, int side) {
 
 void crowd_step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
-	const size_t sides = s.roads.segs.size() * 2;
-	if (t.crowd.size() != sides) {
-		t.crowd.assign(sides, {});
-		t.crowd_keys.clear();
-	}
-	for (int key : t.crowd_keys) t.crowd[size_t(key)].clear();
-	t.crowd_keys.clear();
-	for (int id = 0; id < int(t.peds.size()); id++) {
-		const Pedestrian &w = t.peds[size_t(id)];
-		if (!w.alive || w.mode != PedMode::SIDEWALK) continue;
-		auto &list = t.crowd[size_t(sidewalk_key(w))];
-		if (list.empty()) t.crowd_keys.push_back(sidewalk_key(w));
-		list.push_back(id);
-	}
-	std::vector<Decision> next;
-	for (int key : t.crowd_keys) {
-		auto &list = t.crowd[size_t(key)];
-		std::sort(list.begin(), list.end(), [&](int a, int b) { return t.peds[size_t(a)].s < t.peds[size_t(b)].s; });
-		next.resize(list.size());
-		for (size_t k = 0; k < list.size(); k++) next[k] = decide(s, list, k, dt); // all read the step's start
+	const TrafficParams &p = s.catalog.traffic;
+	file_walkers(s);
+	const StripeRules rules(p, dt);
+	std::vector<std::pair<int, StripeChoice>> next;
+	std::vector<const StreetObstacle *> around;
+	next.reserve(t.peds.size());
+	Body bodies[MAX_BODIES];
+	const float touch = 2 * p.ped_body_m, reach = p.ped_body_m;
+	int near[MAX_FILED];
+	// a junction's walking area reaches this far along its arms: the zebra, a corner line's room either side, a body
+	const float zone = s.catalog.furniture.crossing.zebra_to_m + widest_walk_half(s) + p.ped_body_m;
+	for (int key : t.crowd_keys) { // on the sidewalks (all read the step's start)
+		const auto &list = t.crowd[size_t(key)];
+		const int seg = key / 2;
+		if (!walkable(s, seg)) continue;
+		const SidewalkEnds ends(s, seg);
+		const SidewalkFurniture &sf = sidewalk_furniture(s, seg);
+		const auto &pieces = sf.side[key % 2];
+		const float half = walk_half(s, seg, key % 2);
+		size_t from = 0; // the first piece within look behind the walker (the walkers come in order of arc)
 		for (size_t k = 0; k < list.size(); k++) {
-			Pedestrian &w = t.peds[size_t(list[k])];
-			w.u = next[k].u;
-			w.u_goal = next[k].u_goal;
-			w.stripe_held = next[k].held;
-			w.pace = next[k].pace;
+			const CrowdEntry &w = list[k];
+			const int nn = ends.ahead(w.s, w.dir, zone, near);
+			WayFrame f;
+			sidewalk_frame(w, half, nn > 0, f);
+			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
+			see_sidewalk(list, k, sn);
+			for (int j = 0; j < nn; j++) see_junction(t, near[j], w.id, key, sn);
+			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
+			see_sidewalk_furniture(pieces, from, w, sn);
+			next.emplace_back(w.id, choose_stripe(rules, w, f, bodies, sn.n));
 		}
+	}
+	for (int node : t.node_keys) { // round the corners and over the zebras of each junction
+		bool gathered = false;
+		for (const CrowdEntry &e : t.node_walkers[size_t(node)]) {
+			const Pedestrian &w = t.peds[size_t(e.id)];
+			if (w.mode != PedMode::WAY || w.way_node != node) continue;
+			if (!gathered) junction_furniture(s, node, p.ped_look_m, around);
+			gathered = true;
+			WayFrame f;
+			line_frame(s, w, f);
+			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
+			for (int j = junctions_round(s, node, near); j-- > 0;) see_junction(t, near[j], e.id, -1, sn);
+			for (const StreetObstacle *o : around) see_footprint(*o, sn);
+			next.emplace_back(e.id, choose_stripe(rules, e, f, bodies, sn.n));
+		}
+	}
+	for (const auto &d : next) {
+		Pedestrian &w = t.peds[size_t(d.first)];
+		w.u = d.second.u;
+		w.u_goal = d.second.u_goal;
+		w.stripe_held = d.second.held;
+		w.pace = d.second.pace;
+		w.jam = d.second.jam;
 	}
 }
 
 void on_sidewalk(Pedestrian &w) {
-	w.u = w.u_goal = own_u(w);
+	w.u = w.u_goal = w.dir == 0 ? -w.track : w.track; // its own side of the way
 	w.stripe_held = 0;
 	w.pace = w.speed;
+	w.jam = 0;
 }
 
-void take_kerb_place(CityState &s, int id) {
-	TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
-	Pedestrian &w = t.peds[size_t(id)];
-	if (w.wi + 1 >= w.wn || w.ways[w.wi].cross >= 0 || w.ways[w.wi + 1].cross < 0) return;
-	free_kerb_place(t, id);
-	Waypoint &kerb = w.ways[w.wi], &far = w.ways[w.wi + 1];
-	V2 d(far.x - kerb.x, far.z - kerb.z);
-	const float len = d.len();
-	if (len < ZERO_SPAN_M) return;
-	d = d * (1.f / len);
-	const V2 right(-d.y, d.x); // the right of the way across (left is (d.z, -d.x), lane_geometry.cpp)
-	const int64_t key = (int64_t(w.way_node) << KERB_NODE_BITS) | (int64_t(far.cross) << 1) | ((d.x > 0 || (d.x == 0 && d.y > 0)) ? 1 : 0);
-	const int per_row = 2 * int(p.kerb_wait_half_m / p.kerb_wait_gap_m) + 1;
-	const int places = std::min(MAX_PLACES, per_row * int(p.kerb_wait_rows));
-	uint32_t &taken = t.kerb_slots[key];
-	int k = 0;
-	while (k < places && (taken >> k) & 1u) k++;
-	if (k >= places) return; // every place taken: it waits behind them at the kerb point
-	taken |= 1u << k;
-	w.slot_key = key;
-	w.slot = k;
-	const int in_row = k % per_row;
-	// the middle first, then either side of it; the whole row a half gap to the right so the two ways do not meet
-	const float lateral = float((in_row + 1) / 2) * p.kerb_wait_gap_m * (in_row % 2 ? 1.f : -1.f) + p.kerb_wait_gap_m * 0.5f;
-	const float back = float(k / per_row) * p.kerb_wait_gap_m;
-	kerb.x += right.x * lateral - d.x * back;
-	kerb.z += right.y * lateral - d.y * back;
-	far.x += right.x * lateral;
-	far.z += right.y * lateral;
-}
-
-void free_kerb_place(TrafficState &t, int id) {
-	Pedestrian &w = t.peds[size_t(id)];
-	if (w.slot < 0) return;
-	auto it = t.kerb_slots.find(w.slot_key);
-	if (it != t.kerb_slots.end()) {
-		it->second &= ~(1u << w.slot);
-		if (it->second == 0) t.kerb_slots.erase(it);
-	}
-	w.slot = -1;
-	w.slot_key = -1;
+void onto_line(Pedestrian &w) {
+	w.u = w.u_goal = 0; // a new line starts where the walker stands
+	w.stripe_held = 0;
 }
 
 } // namespace traffic

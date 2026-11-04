@@ -7,7 +7,6 @@
 namespace city {
 
 namespace {
-constexpr float CENTRE_LINE_W = 0.12f, LANE_LINE_W = 0.12f, BUS_LINE_W = 0.2f, EDGE_LINE_W = 0.15f;
 
 LineKind centre_kind(const std::string &centre) {
 	if (centre == "solid") return LineKind::SOLID;
@@ -23,16 +22,16 @@ void derive_lines(Profile &p) {
 		float at = p.edges[i].u1;
 		bool la = a.kind == StripKind::LANE, lb = b.kind == StripKind::LANE;
 		if (la && lb) {
-			if (a.dir != b.dir) p.lines.push_back({ at, CENTRE_LINE_W, centre_kind(p.centre), LineColor::YELLOW });
+			if (a.dir != b.dir) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW });
 			else {
 				bool solid = (a.dir == 1 ? b.solid : a.solid) || a.bus != b.bus;
-				p.lines.push_back({ at, a.bus != b.bus ? BUS_LINE_W : LANE_LINE_W, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE });
+				p.lines.push_back({ at, a.bus != b.bus, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE });
 			}
 		} else if (la != lb && is_asphalt(a.kind) && is_asphalt(b.kind)) {
-			p.lines.push_back({ at, EDGE_LINE_W, LineKind::SOLID, LineColor::WHITE });
+			p.lines.push_back({ at, false, LineKind::SOLID, LineColor::WHITE });
 		} else if (a.kind == StripKind::MEDIAN && a.flush && i > 0) {
-			p.lines.push_back({ p.edges[i].u0, CENTRE_LINE_W, LineKind::SOLID, LineColor::YELLOW });
-			p.lines.push_back({ at, CENTRE_LINE_W, LineKind::SOLID, LineColor::YELLOW });
+			p.lines.push_back({ p.edges[i].u0, false, LineKind::SOLID, LineColor::YELLOW });
+			p.lines.push_back({ at, false, LineKind::SOLID, LineColor::YELLOW });
 		}
 	}
 }

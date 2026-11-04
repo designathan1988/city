@@ -14,11 +14,10 @@ constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 } // namespace
 
-bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, const FurnitureLook &furniture, PackedStringArray &errors) {
+bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("prop", errors);
 	look_ = &look;
-	furniture_ = &furniture;
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!t.has("trees")) {
@@ -47,7 +46,7 @@ TreeRenderer::Built TreeRenderer::build_cpu(const CityState &s, int64_t key) con
 	Built out;
 	out.key = key;
 	std::vector<TreeSpot> spots;
-	place_trees(s, *look_, *furniture_, trees_, kit_, key, spots);
+	place_trees(s, *look_, trees_, kit_, key, spots);
 	int n = kit_.count();
 	out.bufs.resize(static_cast<size_t>(n));
 	for (const TreeSpot &t : spots) {

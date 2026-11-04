@@ -1,4 +1,4 @@
-## Where cities are saved (Roadcraft platform/cities.ts: one save per city, so saving a city never overwrites
+## Where cities are saved (one save per city, so saving a city never overwrites
 ## another): the city on screen is written to a slot of its own, cidade-<seed> (cidade-<seed>-2... when another city
 ## holds that name); "Save map" copies it to mapa-<seed>, a copy that opens as a new city; the index names the
 ## player's last city (what "Load the last game" opens). Runs driven by tests (GameFlow.tests_drive) keep their files
@@ -74,7 +74,7 @@ static func last() -> String:
 	return ""
 
 
-## Records the city last opened or saved (Roadcraft cities.ts index.last). Returns the ConfigFile error.
+## Records the city last opened or saved. Returns the ConfigFile error.
 static func remember_last(slot: String) -> Error:
 	var index := ConfigFile.new()
 	index.load(_index_path()) # a missing index is a new one

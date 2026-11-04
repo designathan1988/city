@@ -1,4 +1,4 @@
-// Where trees grow (Roadcraft jobs/props.ts wild trees and buildingGen/civic.ts parks): street trees from the
+// Where trees grow: street trees from the
 // footways (render/props/street_props.h), a grove in every park or square lot, and wild trees on a jittered grid
 // outside roads, lots and water with a noise-driven density. Numbers from data/render/streets.json "trees".
 #pragma once
@@ -18,7 +18,7 @@ struct TreeLook {
 	bool load(const godot::Dictionary &trees, godot::PackedStringArray &errors);
 };
 
-void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeSpot> &out);
 
 } // namespace city

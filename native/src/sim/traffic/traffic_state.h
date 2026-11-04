@@ -103,6 +103,8 @@ struct Vehicle {
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
+	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
+	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
 	int ri = 0;
@@ -110,17 +112,41 @@ struct Vehicle {
 	PoseTrail trail;
 };
 
-// A point on a walker's way round a corner: `cross` is the arm segment crossed on the way to it (-1: along the kerb).
+// A point on a walker's way round a corner: `cross` is the arm segment crossed on the way to it (-1: along the kerb);
+// a kerb end of a crosswalk also names the sidewalk of the arm it stands on (`side`, -1 elsewhere).
 struct Waypoint {
 	float x = 0, y = 0, z = 0;
-	int cross = -1;
+	int cross = -1, side = -1;
 };
 constexpr int MAX_WAYS = 12; // two per arm crossed (at most 3 at a 6-arm node) and the exit sidewalk start
 
 enum class PedMode : uint8_t { SIDEWALK = 0, WAY = 1, WAIT = 2 };
 
+// A piece of street furniture as a body standing on a sidewalk: its footprint along the segment's arc (s0..s1) and
+// across from the sidewalk's middle (u0..u1), and in the world (centre, the arc's direction there, half sizes).
+struct StreetObstacle {
+	float s0 = 0, s1 = 0, u0 = 0, u1 = 0;
+	float x = 0, z = 0, fx = 1, fz = 0, half_along = 0, half_across = 0;
+};
+// A walker as the crowd step reads it (ped_crowd.cpp), copied out once a step so that looking round and choosing read
+// one array: on a sidewalk its arc and across, in the world its place and heading, whether it moves, and what its own
+// choice starts from (the stripe aimed at and how long held, its pace, how long held up, its speed and own side).
+struct CrowdEntry {
+	int id = -1, sidewalk = -1; // seg * 2 + side while on a sidewalk, else -1
+	float s = 0, u = 0, x = 0, z = 0, fx = 0, fz = 0;
+	float u_goal = 0, held = 0, pace = 0, jam = 0, speed = 0, keep = 0;
+	uint8_t dir = 0;
+	bool moving = false;
+};
+
+struct SidewalkFurniture {
+	std::vector<StreetObstacle> side[2]; // right (0) and left (1) sidewalk, by s0
+	float longest = 0; // the longest footprint along the arc (a search by s0 starts this far back)
+};
+
 // A walker with a destination (Roadcraft peds.ts): a route of nodes over streets with sidewalks; along a sidewalk on
 // its own track, round each corner and over the crosswalks (waiting at the kerb for the walk phase or a gap).
+// What every step reads comes first (two cache lines, copied out by ped_crowd.cpp), the way and the trail after.
 struct Pedestrian {
 	bool alive = false;
 	PedMode mode = PedMode::SIDEWALK;
@@ -128,18 +154,21 @@ struct Pedestrian {
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
+	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
+	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
+	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)
+	float u = 0, u_goal = 0, stripe_held = 0, pace = 0, jam = 0;
+	int way_node = -1; // the node it goes round (waypoints below)
+	Pose cur;
 	RouteRef route; // nodes; route[ri] is the node it walks toward, in TrafficState::ped_pool
 	int ri = 0;
 	Waypoint ways[MAX_WAYS];
-	int wn = 0, wi = 0, way_node = -1; // waypoints round node `way_node`, the next one
+	int wn = 0, wi = 0; // waypoints round node `way_node`, the next one
 	float lx = 0, ly = 0, lz = 0, llen = 0, ls = 0; // current straight line: start, length, metres walked on it
 	int cross_seg = -1; // the arm it is crossing now (-1 when not on a crosswalk)
-	// on a sidewalk (ped_crowd.cpp): across it, metres from its middle (u), the stripe aimed at, how long that has
-	// held and the pace the walkers ahead leave it
-	float u = 0, u_goal = 0, stripe_held = 0, pace = 0;
 	int64_t slot_key = -1; // the kerb a place to wait is held at (TrafficState::kerb_slots), and which place
 	int slot = -1;
-	Pose cur;
+	float line_off = 0; // its line over the zebra lies this far left of the crosswalk's middle line (its place there)
 	PoseTrail trail;
 };
 
@@ -159,8 +188,16 @@ struct TrafficState {
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
 	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
-	std::vector<std::vector<int>> crowd; // per sidewalk (seg * 2 + side): its walkers by arc, rebuilt every step
-	std::vector<int> crowd_keys; // the sidewalks of `crowd` with walkers this step
+	// Who walks near whom, rebuilt every step (ped_crowd.cpp): each sidewalk's walkers by arc (seg * 2 + side) and the
+	// sidewalks with walkers; each junction's walkers (round its corners, at its kerbs, or on a sidewalk within reach of
+	// it: SUMO's walking area) and the junctions with walkers.
+	std::vector<std::vector<CrowdEntry>> crowd;
+	std::vector<int> crowd_keys;
+	std::vector<std::vector<CrowdEntry>> node_walkers;
+	std::vector<int> node_keys;
+	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
+	// dropped when an edit touches the segment or a node of it, and far from the camera.
+	std::unordered_map<int, SidewalkFurniture> furniture;
 	// Far (meso) model, Roadcraft traffic/meso.ts: one queue per lane in order of entry and one event per vehicle at
 	// the end of its lane; lane_last_exit spaces the queues; micro_list holds the near vehicles only.
 	std::vector<int> meso_head, meso_tail;
@@ -196,7 +233,7 @@ struct TrafficState {
 	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
-	int red_entries = 0, red_from_stop = 0; // onto a connector on red (probe): all, and from a standstill (a violation)
+	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;

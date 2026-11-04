@@ -1,7 +1,8 @@
-// Roads (Roadcraft render/roads.ts): the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
+// Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
 // corners) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
-// lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour.
+// lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
+// on both renderers (color_space.gdshaderinc).
 shader_type spatial;
 
 global uniform float night;
@@ -30,7 +31,7 @@ uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
 uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
 uniform float pool_sigma = 7.5;
-uniform float pool_step = 32.0;
+uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
 uniform float pool_gain = 1.6;
 uniform float plate_glow = 0.55;
 uniform float pool_floor = 0.08; // pools light dark asphalt as if it were this much brighter
@@ -55,16 +56,7 @@ varying vec2 v_pool;
 
 const float MEAN_FLOOR = 0.001;
 
-vec3 to_linear(vec3 c) {
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
-}
-
-// The strip colour (sRGB in the mesh) as linear albedo. The Compatibility renderer (OUTPUT_IS_SRGB) already hands
-// COLOR over decoded, and decoding it again crushed dark strips: asphalt #4a4d53 came out at 0.3 % albedo, black.
-vec3 vertex_albedo(vec3 c) {
-	return OUTPUT_IS_SRGB ? c : to_linear(c);
-}
-
+#include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/noise2d.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
@@ -96,7 +88,7 @@ float lamp_pools() {
 }
 
 void fragment() {
-	vec3 base = vertex_albedo(COLOR.rgb);
+	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
 	float pix = max(max(fwidth(v_world.x), fwidth(v_world.z)), 0.001);
 	vec2 uv = UV;
 	vec3 albedo = base;
@@ -106,13 +98,14 @@ void fragment() {
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT) {
-		vec3 t = texture(asphalt_map, uv / asphalt_m).rgb;
-		vec3 asphalt_avg = max(mean_asphalt, vec3(MEAN_FLOOR));
+		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m).rgb);
+		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / asphalt_avg * blotch;
 		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
-		albedo = texture(footway_map, uv.yx / footway_m).rgb * base / max(mean_footway, vec3(MEAN_FLOOR));
+		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m).rgb);
+		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
 		bend = (texture(footway_normal, uv.yx / footway_m).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
@@ -120,7 +113,8 @@ void fragment() {
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE || v_mat == M_GUTTER) {
 		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
-		albedo = texture(kerb_map, kq / kerb_m).rgb * base / max(mean_kerb, vec3(MEAN_FLOOR));
+		albedo = source_linear(texture(kerb_map, kq / kerb_m).rgb)
+				* base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
 		float cell = v_mat == M_GUTTER ? gutter_joint_m : kerb_block_m;
 		float along = v_mat == M_GUTTER ? uv.y : kq.x;
 		float tone = 1.0 + (hash(vec2(floor(along / cell), 7.0)) - 0.5) * 0.1;
@@ -128,7 +122,8 @@ void fragment() {
 		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {
-		albedo = texture(verge_map, v_world.xz / verge_m).rgb * base / max(mean_verge, vec3(MEAN_FLOOR));
+		albedo = source_linear(texture(verge_map, v_world.xz / verge_m).rgb) * base
+				/ max(source_linear(mean_verge), vec3(MEAN_FLOOR));
 		rough = 0.95;
 	} else if (v_mat == M_COBBLE) {
 		vec2 c = uv * cobble_per_m;
@@ -137,7 +132,7 @@ void fragment() {
 	} else if (v_mat == M_CONCRETE || v_mat == M_BALLAST) {
 		albedo = base * blotch * (0.94 + 0.12 * noise(v_world.xz * 3.0));
 	}
-	ALBEDO = albedo;
+	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
 	SPECULAR = 0.35;
 	if (up) {
@@ -146,5 +141,5 @@ void fragment() {
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
 	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
-	EMISSION = (albedo + vec3(pool_floor)) * pool_color * pools * night * pool_gain;
+	EMISSION = linear_out((albedo + vec3(pool_floor)) * source_linear(pool_color) * pools * night * pool_gain);
 }
