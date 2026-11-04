@@ -22,6 +22,7 @@ uniform float tail_power;
 uniform float brake_ratio; // a stop lamp's light against its rear position lamp's
 uniform vec3 head_lit; // a lens burning, by day: the radiance the tone mapping shows as its colour (render/tone_map.gd)
 uniform vec3 tail_lit;
+uniform vec3 brake_lit;
 uniform vec3 black_roof : source_color;
 uniform float black_roof_share;
 uniform vec3 sign_glow : source_color;
@@ -158,7 +159,8 @@ void fragment() {
 		rough = lens_roughness;
 	} else if (tag == 3) {
 		bool on = v_custom.b > -0.5;
-		emit = on ? tail_lit + source_linear(tail_glow) * tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio) : vec3(0.0);
+		bool braking = v_custom.g >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
+		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == 4) {

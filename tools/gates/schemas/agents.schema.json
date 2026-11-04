@@ -22,12 +22,13 @@
     "truck_box": {"type": "string", "pattern_prefix": "#"},
     "head_lit": {"type": "string", "pattern_prefix": "#"},
     "tail_lit": {"type": "string", "pattern_prefix": "#"},
+    "brake_lit": {"type": "string", "pattern_prefix": "#"},
     "indicator": {"type": "string", "pattern_prefix": "#"},
     "mirror": {"type": "string", "pattern_prefix": "#"},
     "chrome": {"type": "string", "pattern_prefix": "#"},
     "roof": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": ["tyre", "hub", "under", "blackout", "grille", "plate", "glass", "headlamp", "tail", "truck_box", "chrome", "roof", "head_lit", "tail_lit", "indicator", "mirror"],
+   "required": ["tyre", "hub", "under", "blackout", "grille", "plate", "glass", "headlamp", "tail", "truck_box", "chrome", "roof", "head_lit", "tail_lit", "brake_lit", "indicator", "mirror"],
    "strict": true
   },
   "cars": {"type": "array", "items": {
