@@ -18,6 +18,8 @@ const NODE_VIEW_M := 200.0
 const DRAG_STEPS := 6
 const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
+const POINTER_AIMS := 40
+const POINTER_VIEWS_M: Array[float] = [NEAR_M, CLOSE_M, WIDE_M]
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -63,6 +65,7 @@ func _run() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	o = ui.ground(b.max.x + OPEN_GROUND_M, (b.min.z + b.max.z) * 0.5)
 	_lay()
+	await _pointer_error()
 	if "--tool-only" in OS.get_cmdline_user_args():
 		await _tool()
 		print("FALHAS: ", failures)
@@ -81,6 +84,25 @@ func _run() -> void:
 		await _tool()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## Where a click lands against where it aimed, in pixels, at three distances of the camera: the pixel grid and the ray to the
+## ground, all a test can see of the pointer's error. The player's hand is not in this number.
+func _pointer_error() -> void:
+	var worst := 0.0
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	for dist in POINTER_VIEWS_M:
+		rig.jump(at(0, -120), TOP[0], TOP[1], dist)
+		await ui.frames(2)
+		for i in POINTER_AIMS:
+			var aim: Variant = rig.ground_at(size * Vector2(fposmod(i * 0.381966, 1.0), fposmod(i * 0.618034, 1.0)))
+			if aim == null:
+				continue
+			var seen := rig.camera.unproject_position(aim)
+			var hit: Variant = rig.ground_at(seen.round())
+			if hit != null:
+				worst = maxf(worst, rig.camera.unproject_position(hit).distance_to(seen))
+	print("erro do ponteiro: %.2f px" % worst)
 
 
 ## The same crossings under the game's night, then the day again for the tool.

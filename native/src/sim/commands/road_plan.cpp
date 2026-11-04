@@ -44,15 +44,17 @@ void intersect_quads(const Quad &a, const Quad &b, std::vector<std::pair<double,
 		}
 }
 
-bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> &table, int profile) {
+bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> &table, int profile, const Anchor &a, const Anchor &b) {
 	const RoadNetwork &net = s.roads;
 	const Tuning &tn = s.catalog.tune;
-	double len = table.back(), half = s.catalog.profile(profile).right, pad = half + tn.road_overlap_pad_m;
-	double gap = half + tn.road_overlap_pad_m, run = 0;
+	const EndMouth from = end_mouth(s, a, q, 0, profile), to_end = end_mouth(s, b, q, 1, profile);
+	double len = table.back(), half = s.catalog.profile(profile).right, widest = 0, run = 0;
+	for (const Profile &c : s.catalog.profiles) widest = std::max(widest, double(c.right));
+	const double pad = (half + widest) * tn.road_overlap_share;
 	std::vector<int> cands;
 	net.for_segments_near(std::min({ q.x0, q.cx, q.x1 }) - pad, std::min({ q.z0, q.cz, q.z1 }) - pad,
 			std::max({ q.x0, q.cx, q.x1 }) + pad, std::max({ q.z0, q.cz, q.z1 }) + pad, [&](int o) { cands.push_back(o); });
-	for (double at = gap; at <= len - gap; at += SIDE_BY_SIDE_STRIDE_M) {
+	for (double at = from.own; at <= len - to_end.own; at += SIDE_BY_SIDE_STRIDE_M) {
 		double t = t_at_length(table, at), px, pz;
 		q.at(t, px, pz);
 		bool over = false;
@@ -61,6 +63,7 @@ bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> 
 			closest_t(net.segs[o].q, px, pz, to, dist);
 			if (dist >= (half + net.profile_of(o).right) * tn.road_overlap_share) continue;
 			if (dir_cos(q, t, net.segs[o].q, to) < tn.road_parallel_cos) continue;
+			if (from.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M) || to_end.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M)) continue;
 			if (std::fabs(s.terrain.height_at(float(px), float(pz)) - net.seg_y(o, to * net.segs[o].len)) >= tn.road_level_dy_m) continue;
 			over = true;
 			break;
@@ -181,7 +184,7 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	else if (a.node >= 0 && a.node == b.node) p.reason = "refuse.road.selfLoop";
 	if (!p.reason.empty() || !find_crossings(s, a, b, p)) return p;
 	if (sharp_at(s, a, p.q.cx - a.x, p.q.cz - a.z) || sharp_at(s, b, p.q.cx - b.x, p.q.cz - b.z)) p.reason = "refuse.road.sharpAngle";
-	else if (overlaps_road(s, p.q, table, profile)) p.reason = "road.reason.overlap";
+	else if (overlaps_road(s, p.q, table, profile, a, b)) p.reason = "road.reason.overlap";
 	else if (!degrees_fit(s, a, b, p)) p.reason = "road.reason.fullNode";
 	if (!p.reason.empty()) return p;
 	double prev = 0;

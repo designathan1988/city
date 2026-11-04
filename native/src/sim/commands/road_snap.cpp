@@ -2,6 +2,7 @@
 // once the angles and the grid have had their say. Radii are screen pixels, so a click means the same at any zoom. The
 // result is only a position: the plan (road_plan.cpp) validates it like any other point.
 #include "sim/commands/commands.h"
+#include "sim/roads/junction.h"
 
 #include "sim/state/city_state.h"
 
@@ -17,7 +18,6 @@ constexpr double TAU = 2 * PI;
 constexpr double DEG_TO_RAD = PI / 180;
 constexpr int GRID_HEADINGS = 8; // the grid's two lines both ways, then the diagonals between them
 constexpr double ON_HEADING = 1e-9;
-constexpr double LOOK_MIN_M = 0.4, LOOK_MAX_M = 4.8, LOOK_SHARE = 0.2; // an arm's direction is read this far out of its node
 constexpr double RAY_PAD_M = 1; // the snapped ray reaches past twice the pointer's distance by this
 constexpr double HALF = 0.5;
 
@@ -34,10 +34,8 @@ double wrap(double a) {
 // The direction a segment leaves `node` in.
 double arm_heading(const RoadNetwork &net, int seg, int node) {
 	const RoadSegment &g = net.segs[seg];
-	double look = std::min(LOOK_MAX_M, std::max(LOOK_MIN_M, g.len * LOOK_SHARE)), x, z;
-	bool from_a = g.a == node;
-	g.q.at(t_at_length(g.table, from_a ? look : g.len - look), x, z);
-	return std::atan2(z - net.nodes[node].z, x - net.nodes[node].x);
+	const Arm arm = arm_of(g.q, net.profile_of(seg), g.a == node ? 0 : 1);
+	return std::atan2(arm.dz, arm.dx);
 }
 
 // The heading a drag may take and why: inside the cone of a candidate, that candidate; else the pointer's own. Landing
@@ -134,12 +132,12 @@ Anchor find_anchor(const CityState &s, double x, double z, double px) {
 	// A road is picked anywhere on its surface, however small the pointer's own radius is at this zoom.
 	double pick = tn.road_snap_pick_px * px, widest = 0, best = std::numeric_limits<double>::max(), best_t = 0;
 	for (const Profile &p : s.catalog.profiles) widest = std::max(widest, double(p.half()));
-	double reach = std::max(pick, widest + tn.road_verge_m);
+	double reach = std::max(pick, widest);
 	int seg = -1;
 	net.for_segments_near(x - reach, z - reach, x + reach, z + reach, [&](int id) {
 		double t, d;
 		closest_t(net.segs[id].q, x, z, t, d);
-		if (d > std::max(pick, double(net.profile_of(id).half()) + tn.road_verge_m)) return;
+		if (d > std::max(pick, double(net.profile_of(id).half()))) return;
 		if (d < best || (d == best && id < seg)) {
 			best = d;
 			best_t = t;

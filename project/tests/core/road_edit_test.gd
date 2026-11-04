@@ -23,6 +23,15 @@ const RULES_OFF_M := 540.0
 const SHARP_DEG := 15.0
 const OPEN_DEG := 40.0
 const AVENUE_GAP_M := 20.0
+const SIDE_OFF_M := 720.0
+const SIDE_GAP_M := 8.0
+const CURVE_OFF_M := 800.0
+const CHORD_M := 100.0
+const BEND_M := 20.0
+const TIGHT_CHORD_M := 20.0
+const TIGHT_CONTROL_M := 30.0
+const TIGHTEST_M := 8.7
+const NEAR_M := 0.01
 
 var failures := 0
 
@@ -40,6 +49,8 @@ func _ready() -> void:
 	_move_node(e)
 	_control(e)
 	_rules(e)
+	_side_by_side(e)
+	_curves(e)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -135,6 +146,36 @@ func _rules(e: Vector3) -> void:
 	_check(r.get("error", "") == "hint.rule.squeezed", "trecho apertado é recusado: %s" % r)
 	CityStore.refresh()
 	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.money == m0, "recusa desfaz a obra inteira")
+
+
+## A road on top of another is refused along its length, and only there: going on from a road's end is not lying beside it.
+func _side_by_side(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, SIDE_OFF_M)
+	var b := a + Vector3(MOVE_LEN_M, 0, 0)
+	var urban: int = CityStore.first_road()
+	CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, urban, PX])
+	var beside := a + Vector3(0, 0, SIDE_GAP_M)
+	var r: Dictionary = CityStore.dispatch(&"build_road", [beside, beside + Vector3(MOVE_LEN_M, 0, 0), false, Vector3.ZERO, urban, PX])
+	_check(r.get("error", "") == "road.reason.overlap", "via em cima de outra é recusada: %s" % r)
+	r = CityStore.dispatch(&"build_road", [b, b + Vector3(MOVE_LEN_M, 0, 0), false, Vector3.ZERO, urban, PX])
+	_check(r.get("ok", false), "seguir da ponta passa: %s" % r)
+
+
+## A dragged curve passes through the farthest point of the drag, and no curve turns tighter than the design car does.
+func _curves(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, CURVE_OFF_M)
+	var b := a + Vector3(CHORD_M, 0, 0)
+	var urban: int = CityStore.first_road()
+	var far := (a + b) * 0.5 + Vector3(0, 0, BEND_M)
+	var q: PackedVector3Array = CityStore.query(&"road_pieces", [a, b, 1, false, Vector3.ZERO, PackedVector3Array([a, far, b]), urban, PX])
+	var apex := (q[0] + 2 * q[1] + q[2]) * 0.25
+	_check(apex.distance_to(far) < NEAR_M, "a curva passa pelo ponteiro: %s" % apex.distance_to(far))
+	b = a + Vector3(TIGHT_CHORD_M, 0, 0)
+	var control := (a + b) * 0.5 + Vector3(0, 0, TIGHT_CONTROL_M)
+	q = CityStore.query(&"road_pieces", [a, b, 1, true, control, PackedVector3Array(), urban, PX])
+	var rise := q[1].distance_to((q[0] + q[2]) * 0.5)
+	var radius := TIGHT_CHORD_M * TIGHT_CHORD_M / (4 * rise)
+	_check(radius >= TIGHTEST_M - NEAR_M, "raio mínimo do carro de projeto: %s" % radius)
 
 
 func _check(ok: bool, what: String) -> void:
