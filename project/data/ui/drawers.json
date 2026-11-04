@@ -567,7 +567,7 @@
      "action": "about"
     }
    ],
-   "large_map": 4
+   "large_maps": ["metropolis", "km24"]
   },
   "camera": {
    "title_key": "camera.label",

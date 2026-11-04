@@ -84,6 +84,11 @@ static func catalog() -> Dictionary:
 	return out
 
 
+## The maps of the catalogue, in the order the core numbers them.
+static func maps() -> Array:
+	return _read(CATALOG.maps).maps
+
+
 static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
 

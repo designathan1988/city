@@ -1,5 +1,5 @@
 {
- "_doc": "The title screen (ui/start_screen.gd). reveal_limit_s: the most it waits for the first view to be drawn before lifting the curtain: never a curtain for ever. The map 0 draws its first view in a few seconds; the limit only guards a machine that cannot. styles: the regional styles a new city can take, a list that grows by data (regras-sessoes.md section 10); each says how the interface shows speed, length and money, the state staying in SI. units: an exact definition each, metres and seconds of the unit (1 mile = 1609.344 m, 1 foot = 0.3048 m: the international yard and pound of 1959).",
+ "_doc": "The title screen (ui/start_screen.gd). reveal_limit_s: the most it waits for the first view to be drawn before lifting the curtain: never a curtain for ever. The map 0 draws its first view in a few seconds; the limit only guards a machine that cannot. styles: the regional styles a new city can take, a list that grows by data (regras-sessoes.md section 10); each says how the interface shows speed, length and money, the state staying in SI. units: an exact definition each, metres and seconds of the unit (1 mile = 1609.344 m, 1 foot = 0.3048 m: the international yard and pound of 1959). sizes: the maps a new city can take, by id in catalog/maps.json; an id the table does not have yet is left out. seed_max: the largest seed the form takes.",
  "reveal_limit_s": 90,
  "default_style": "roadcraft",
  "styles": {
@@ -31,5 +31,10 @@
    "m": 0.3048,
    "s": 1
   }
- }
+ },
+ "sizes": [
+  "town",
+  "metropolis"
+ ],
+ "seed_max": 9999
 }

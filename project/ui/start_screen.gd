@@ -5,6 +5,7 @@ class_name StartScreen
 extends Control
 
 signal chosen(action: String)
+signal city_chosen(map: int, seed: int) # the form names another city than the one standing
 
 const LANGUAGES := [["en", "English"], ["pt_BR", "Português"]]
 
@@ -12,6 +13,10 @@ const LANGUAGES := [["en", "English"], ["pt_BR", "Português"]]
 @onready var _curtain: PanelContainer
 @onready var _card_box: VBoxContainer
 @onready var _worked := 0.0
+@onready var _map := 0 # what the form holds, until a choice sends it
+@onready var seed_box: SpinBox
+@onready var _seed := 0
+@onready var _first_seed := 0
 
 
 func _ready() -> void:
@@ -42,6 +47,7 @@ func _fill() -> void:
 	_action(&"StartBtn", "action.openMap", "open", "start_btn2_h")
 	_action(&"StartBtn", "menu.graphicsOptions", "graphics", "start_btn2_h")
 	var t: Dictionary = DataTables.game("start")
+	_city_form(t)
 	var styles := []
 	for id: String in t.styles:
 		styles.append([id, tr(t.styles[id].name_key)])
@@ -66,6 +72,28 @@ func _fill() -> void:
 	_card_box.add_child(about)
 
 
+## Size and seed of a new city. The map and seed on screen are the form's start: left alone, it opens nothing new.
+func _city_form(t: Dictionary) -> void:
+	var sizes := []
+	var maps: Array = DataTables.maps()
+	for id: String in t.sizes:
+		var at := HudActions.map_index(id)
+		if at >= 0:
+			sizes.append([at, tr(maps[at].name_key)])
+	HudWidgets.dropdown(_card_box, tr("start.size"), sizes, _map, func(at: int) -> void: _map = at)
+	if _first_seed == 0:
+		_first_seed = mini(int(CityStore.snapshot.get("seed", 1)), int(t.seed_max))
+		_seed = _first_seed
+	var row := HudWidgets.option_row(_card_box, tr("start.seed"))
+	seed_box = SpinBox.new()
+	seed_box.min_value = 1
+	seed_box.max_value = t.seed_max
+	seed_box.value = _seed
+	seed_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	seed_box.value_changed.connect(func(v: float) -> void: _seed = int(v))
+	row.add_child(seed_box)
+
+
 func _action(variation: StringName, key: String, action: String, h: String) -> void:
 	var b := HudWidgets.button(variation, "", tr(key), "", "", h)
 	b.pressed.connect(_pick.bind(action))
@@ -73,6 +101,10 @@ func _action(variation: StringName, key: String, action: String, h: String) -> v
 
 
 func _pick(action: String) -> void:
+	var another := _map != 0 or _seed != _first_seed
+	if another and (action == "play" or action == "new"):
+		city_chosen.emit(_map, _seed)
+		action = "play"
 	chosen.emit(action)
 	queue_free()
 

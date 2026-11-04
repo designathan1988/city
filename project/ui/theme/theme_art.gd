@@ -19,6 +19,18 @@ static func slider(theme: Theme) -> void:
 	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", filled)
 
 
+## How wide each kind of button draws its icon.
+static func icon_widths(theme: Theme) -> void:
+	for name in [&"SegButton", &"DockButton", &"DockDanger", &"IconButton", &"Row", &"DrawerTab"]:
+		theme.set_constant(&"icon_max_width", name, int(ThemeBuilder.size("cat_icon")))
+	theme.set_constant(&"icon_max_width", &"IconButton", int(ThemeBuilder.size("bar_icon")))
+	theme.set_constant(&"icon_max_width", &"SegButton", int(ThemeBuilder.size("seg_icon")))
+	theme.set_constant(&"icon_max_width", &"Row", int(ThemeBuilder.size("row_icon")))
+	theme.set_constant(&"icon_max_width", &"LayerRow", int(ThemeBuilder.size("row_icon")))
+	theme.set_constant(&"icon_max_width", &"IconChoice", int(ThemeBuilder.size("bar_icon")))
+	theme.set_constant(&"icon_max_width", &"Card", int(ThemeBuilder.size("card_glyph")))
+
+
 ## A round knob with a soft edge.
 static func disc(colour: Color, px: int) -> Texture2D:
 	var img := Image.create_empty(px, px, false, Image.FORMAT_RGBA8)

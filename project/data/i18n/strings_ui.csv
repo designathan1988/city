@@ -84,6 +84,8 @@ hint.opened,Mapa aberto,Map opened
 inspector.group,GRUPO {id},GROUP {id}
 inspector.roadClass,Classe da via,Road class
 menu.effectsPanel,Painel de efeitos (F7)…,Effects panel (F7)…
+menu.size.metropolis,Cidade grande,Large city
+menu.size.town,Cidade pequena,Small city
 opt.tier,nível,tier
 profiler.hide,Shift+F9 esconde,Shift+F9 hides
 signal.amber,amarelo,amber
@@ -91,6 +93,8 @@ signal.green,verde,green
 signal.red,vermelho,red
 start.continue,Continuar,Continue
 start.play,Começar a construir,Start building
+start.seed,Semente,Seed
+start.size,Tamanho,Size
 start.tagline,"Construa as ruas, a cidade cresce sozinha.","Build the streets, the city grows by itself."
 style.label,Estilo regional,Regional style
 style.roadcraft,Roadcraft,Roadcraft

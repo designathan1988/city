@@ -4,7 +4,9 @@
   "reveal_limit_s",
   "default_style",
   "styles",
-  "units"
+  "units",
+  "sizes",
+  "seed_max"
  ],
  "properties": {
   "_doc": {
@@ -35,6 +37,17 @@
      "s"
     ]
    }
+  },
+  "sizes": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "minItems": 1
+  },
+  "seed_max": {
+   "type": "integer",
+   "minimum": 1
   }
  }
 }

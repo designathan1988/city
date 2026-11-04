@@ -93,6 +93,8 @@ static func _panels() -> void:
 	var surface := box("bg", "radius", "line", true)
 	surface.set_content_margin_all(size("pad"))
 	_panel(&"Surface", surface)
+	for state in [&"normal", &"focus", &"read_only"]:
+		_theme.set_stylebox(state, &"LineEdit", _margins(box("raise", "kbd_radius", "line"), "pad", "pad_s", "pad_s"))
 	_panel(&"SidePanel", _pad(box("bg", "radius", "line", true), "gap"))
 	var icons := box("bg_strong", "radius", "line", true)
 	icons.set_content_margin_all(size("pad_s") + 1.0)
@@ -181,17 +183,6 @@ static func _wide(sb: StyleBoxFlat) -> StyleBoxFlat:
 	return sb
 
 
-static func _icon_widths() -> void:
-	for name in [&"SegButton", &"DockButton", &"DockDanger", &"IconButton", &"Row", &"DrawerTab"]:
-		_theme.set_constant(&"icon_max_width", name, int(size("cat_icon")))
-	_theme.set_constant(&"icon_max_width", &"IconButton", int(size("bar_icon")))
-	_theme.set_constant(&"icon_max_width", &"SegButton", int(size("seg_icon")))
-	_theme.set_constant(&"icon_max_width", &"Row", int(size("row_icon")))
-	_theme.set_constant(&"icon_max_width", &"LayerRow", int(size("row_icon")))
-	_theme.set_constant(&"icon_max_width", &"IconChoice", int(size("bar_icon")))
-	_theme.set_constant(&"icon_max_width", &"Card", int(size("card_glyph")))
-
-
 static func _buttons() -> void:
 	var none := StyleBoxEmpty.new()
 	none.set_content_margin_all(size("pad_s"))
@@ -240,7 +231,7 @@ static func _buttons() -> void:
 	for name in [&"Row", &"LayerRow"]:
 		_theme.set_color(&"icon_normal_color", name, color("muted"))
 		_theme.set_color(&"icon_hover_color", name, color("muted"))
-	_icon_widths()
+	ThemeArt.icon_widths(_theme)
 	_theme.set_constant(&"icon_max_width", &"SwatchCard", int(size("card_glyph")))
 	_theme.set_constant(&"icon_max_width", &"RcCard", int(size("rc_card_w")))
 

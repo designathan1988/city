@@ -4,6 +4,7 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 1
+const CHOSEN_SEED := 4321
 const COST_SLOW_MS := 30.0
 const COST_FAST_MS := 4.0
 const BUDGET_MS := 16.0
@@ -36,6 +37,7 @@ func _ready() -> void:
 	_levels()
 	_panels(hud)
 	await _session(rig)
+	_new_city(hud)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -140,6 +142,26 @@ func _session(rig: CityCamera) -> void:
 	for f: String in kept:
 		DirAccess.remove_absolute("%s/%s" % [aside, f])
 	DirAccess.remove_absolute(Session.path(slot))
+
+
+## The title screen's form: left alone it asks for nothing, a new seed asks for that city.
+func _new_city(hud: RoadcraftHud) -> void:
+	_check(HudActions.map_index("town") == 0, "a cidade pequena é o mapa 0")
+	_check(HudActions.map_index("nao_existe") == -1, "mapa que a tabela não tem")
+	var asked := []
+	var keep := StartScreen.new()
+	keep.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
+	hud.root.add_child(keep)
+	keep._pick("play")
+	_check(asked.is_empty(), "sem mexer no formulário não abre cidade nova")
+	var form := StartScreen.new()
+	form.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
+	hud.root.add_child(form)
+	form.seed_box.value = CHOSEN_SEED
+	form._pick("play")
+	_check(asked == [[0, CHOSEN_SEED]], "a semente do formulário vai para a cidade nova: %s" % [asked])
+	hud.actions.new_city_at(0, CHOSEN_SEED)
+	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "o núcleo abre a cidade dessa semente")
 
 
 func _panels(hud: RoadcraftHud) -> void:

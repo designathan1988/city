@@ -5,7 +5,6 @@ class_name HudActions
 extends Node
 
 const TOWN_MAP := 0
-const SEED_LIMIT := 9999
 const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
@@ -45,13 +44,38 @@ func menu(action: String) -> void:
 
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
-	CityStore.saves.save_on_close()
-	_hud().drawer.close()
-	var large: bool = action == "new_large"
-	var map: int = int(DataTables.ui("drawers").popovers.menu.large_map) if large else TOWN_MAP
-	CityStore.new_map(map, randi_range(1, SEED_LIMIT), action != "new_empty")
+	var map := _large_map() if action == "new_large" else TOWN_MAP
+	_open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
 	if action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
+
+
+## The city the title screen's form asks for.
+func new_city_at(map: int, seed: int) -> void:
+	_open_new(map, seed, true)
+
+
+func _open_new(map: int, seed: int, with_city: bool) -> void:
+	CityStore.saves.save_on_close()
+	_hud().drawer.close()
+	CityStore.new_map(map, seed, with_city)
+
+
+## Where a map of that id stands in the catalogue; -1: the table does not have it.
+static func map_index(id: String) -> int:
+	var maps: Array = DataTables.maps()
+	for i in maps.size():
+		if maps[i].id == id:
+			return i
+	return -1
+
+
+## The first large map the table has.
+func _large_map() -> int:
+	for id: String in DataTables.ui("drawers").popovers.menu.large_maps:
+		if map_index(id) >= 0:
+			return map_index(id)
+	return TOWN_MAP
 
 
 ## Open a file from anywhere: the system's own dialog.

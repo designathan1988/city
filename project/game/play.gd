@@ -4,7 +4,6 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SHOT_DELAY_S := 25.0
-const SEED_LIMIT := 9999
 
 
 func _ready() -> void:
@@ -20,7 +19,7 @@ func _ready() -> void:
 	cam.look_at_ground(Vector3.ZERO)
 	var saved := _open_last()
 	if not saved:
-		print("cidade: ", CityStore.new_map(TOWN_MAP, randi_range(1, SEED_LIMIT), true))
+		print("cidade: ", CityStore.new_map(TOWN_MAP, randi_range(1, int(DataTables.game("start").seed_max)), true))
 	Settings.attach(world, get_viewport())
 	var tools := ToolController.new(cam)
 	add_child(tools)
@@ -51,6 +50,7 @@ func _title(hud: RoadcraftHud, saved: bool) -> void:
 	var start := StartScreen.new()
 	start.saved = saved
 	start.chosen.connect(_on_title.bind(hud))
+	start.city_chosen.connect(hud.actions.new_city_at)
 	hud.root.add_child(start)
 
 
