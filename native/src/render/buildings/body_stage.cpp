@@ -41,7 +41,11 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 		hi = hi.max(glass_hi);
 	}
 	MeshDraw &draw = shown_[handle];
-	draw.adopt(scenario, ghost ? ghost_ : solid_, !ghost, mesh); // as the city's chunks are drawn
+	if (!ghost) { // as the city's chunks are drawn: the walls and the panes each with their material
+		if (shell.triangles() > 0) rs->mesh_surface_set_material(mesh, 0, solid_);
+		if (glass.triangles() > 0) rs->mesh_surface_set_material(mesh, shell.triangles() > 0 ? 1 : 0, glass_);
+	}
+	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh);
 	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles());

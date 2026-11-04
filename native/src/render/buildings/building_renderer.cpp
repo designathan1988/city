@@ -63,6 +63,7 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("building", errors);
+	material_glass_ = ctx.material("building_glass", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	Dictionary t = ctx.table("buildings", errors);

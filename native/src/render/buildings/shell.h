@@ -42,10 +42,11 @@ struct PaneLook {
 	PaneRoom room;
 	Lin trim;
 	float frame = 0;
+	float recess = 0; // metres of opening the pane draws behind the wall's face, the glass at its back (0: none)
 };
 
 // A far wall's window row: shares of the bay and the storey, flags (building_pane.gdshaderinc far_window).
-constexpr int WINDOW_FLAG_CURTAIN = 2, WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8;
+constexpr int WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark
 struct FarWindows {
 	float width = 0, sill = 0, head = 0;
 	int flags = 0;

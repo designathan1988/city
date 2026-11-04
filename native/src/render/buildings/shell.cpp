@@ -21,6 +21,8 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr float PANE_RECESS_STEP_M = 0.01f; // COLOR.a above the kind: building_glass.gdshader reads the same
+constexpr int PANE_KIND_BITS = 3, PANE_RECESS_MAX = 31;
 constexpr float MACRO_M = 12.f, TONE_BASE = 0.97f, TONE_SPAN = 0.06f, GRIME_M = 1.2f, GRIME_FLOOR = 0.8f, GRIME_SPAN = 0.2f;
 constexpr float SHELL_WALL_TOP = 0.5f, GAMMA_INV = 1.f / 2.2f, BYTE = 255.f, DEGENERATE = 1e-12f, BIG = 1e30f;
 constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85ebca6b;
@@ -156,8 +158,9 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	}
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	Vector3 n = f.e2;
+	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float(look.dark ? SK_PANE_DARK : SK_PANE) / BYTE);
+			float((look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
 	Vector2 size(a1 - a0, b1 - b0);
 	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
 	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);
