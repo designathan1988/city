@@ -33,6 +33,7 @@ void vertex() {
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
+#include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/building_common.gdshaderinc"
 
 // One window cell (fx, fy in 0..1) of a room w x h metres seen along V: the lit interior, blinds/curtains, the glass.
@@ -67,7 +68,7 @@ void window(vec2 f, vec2 size, uint seed, bool dark, vec3 n, vec3 V, out vec3 al
 	vec3 sky = mix(vec3(0.20, 0.21, 0.22), vec3(0.42, 0.44, 0.46), clamp(0.3 - V.y, 0.0, 1.0)) * (1.0 - 0.92 * night);
 	albedo = (vec3(0.03, 0.04, 0.05) + sky * F) * (dark ? 0.6 : 1.0);
 	// Daylight sky reflection as light leaving the glass (the compatibility renderer reflects little of the sky).
-	vec3 refl = glass_sky * mix(0.75, 1.15, clamp(-V.y + 0.2, 0.0, 1.0)) * (F + glass_sky_floor) * (1.0 - night);
+	vec3 refl = uniform_linear(glass_sky) * mix(0.75, 1.15, clamp(-V.y + 0.2, 0.0, 1.0)) * (F + glass_sky_floor) * (1.0 - night);
 	emit = inside * (dark ? 0.3 : 1.0) * (1.0 - F) + refl * (dark ? 0.7 : 1.0);
 }
 
@@ -100,7 +101,7 @@ void fragment() {
 	int kind = int(COLOR.a * 255.0 + 0.5);
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
-	vec3 albedo = lin(COLOR.rgb), emit = vec3(0.0), nn = n;
+	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = 0.86, metal = 0.0;
 	if (kind == 1 || kind == 2) {
 		uint seed = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u) | (uint(COLOR.b * 255.0 + 0.5) << 16u);
@@ -128,8 +129,8 @@ void fragment() {
 			nn = normalize(mix(nn, n, glass));
 		}
 	}
-	ALBEDO = albedo;
-	EMISSION = emit;
+	ALBEDO = surface_out(albedo);
+	EMISSION = surface_out(emit);
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(nn, 0.0)).xyz);

@@ -7,7 +7,6 @@ uint pcg(uint v) {
 	return (w >> 22u) ^ w;
 }
 float h01(uint v) { return float(pcg(v)) / 4294967295.0; }
-vec3 lin(vec3 c) { return pow(c, vec3(2.2)); }
 
 float vnoise(vec2 p) {
 	vec2 i = floor(p), f = fract(p);

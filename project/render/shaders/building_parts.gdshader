@@ -20,6 +20,7 @@ varying vec3 v_world;
 varying vec3 v_wn;
 varying flat vec4 v_custom;
 
+#include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/building_common.gdshaderinc"
 
 void vertex() {
@@ -30,16 +31,16 @@ void vertex() {
 
 void fragment() {
 	vec3 n = normalize(v_wn);
-	vec3 albedo = lin(v_custom.rgb), nn = n;
+	vec3 albedo = to_linear(v_custom.rgb), nn = n;
 	float rough = 0.86, metal = 0.0;
-	int fin = int(v_custom.a + 0.5);
+	int fin = int(floor(v_custom.a + 0.5)); // -1: no finish (int() would truncate -0.5 to layer 0)
 	if (fin >= 0 && fin < 13) {
 		vec3 tone;
 		finish_layer(fin, n, tone, nn, rough, metal);
 		albedo *= tone;
 		if (fin != 8 && fin != 7) albedo *= weather(n);
 	}
-	ALBEDO = albedo * wall_gain;
+	ALBEDO = surface_out(albedo * wall_gain);
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(nn, 0.0)).xyz);
