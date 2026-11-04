@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/math.h"
+#include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/traffic/manoeuvre.h"
 #include "sim/traffic/yard.h"
@@ -23,10 +24,6 @@ struct LaneSpot {
 	float at = 0, entry = 0;
 	V2 p, t;
 };
-
-// What kind of place a bay's building is: what its cars' trips follow over the day (traffic.json hours_working, hours_purchasing).
-enum class PlaceKind : uint8_t { HOME = 0, SHOP, WORK, CIVIC, COUNT };
-constexpr int PLACE_KINDS = int(PlaceKind::COUNT);
 
 struct Bay {
 	bool alive = false, kerb = false, dock = false;
