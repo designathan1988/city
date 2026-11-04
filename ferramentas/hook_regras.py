@@ -2,7 +2,8 @@
 
 - Toda sessão recebe o Processo de trabalho, tirado do próprio `fonte/CLAUDE.md`, o dono dele: nunca há cópia.
 - A sessão listada em `coordenadoras.txt` recebe antes dele a ordem do usuário, palavra por palavra, de
-  `ordem_do_usuario.txt` (o dono do texto), e o usuário vê uma linha (`systemMessage`) a cada entrega.
+  `ordem_do_usuario.txt` (o dono do texto), e o usuário vê no `systemMessage`, a cada entrega, a mensagem inteira
+  que a sessão recebeu (a ordem e o Processo de trabalho), igual ao `additionalContext`, nunca um resumo.
 - Falha de leitura vira aviso visível ao usuário e no contexto, nunca silêncio.
 """
 import json
@@ -50,11 +51,8 @@ def main():
     partes, avisos = [], []
     if coordenadora:
         try:
-            ordem = ler(ORDEM)
-            partes.append(CABECALHO + '\n\n' + ordem)
-            primeira = ordem.split('\n')[0]
+            partes.append(CABECALHO + '\n\n' + ler(ORDEM))
         except OSError as erro:
-            primeira = ''
             avisos.append(f'HOOK COM FALHA: não li {ORDEM.name} ({erro}). A ordem do usuário NÃO foi entregue.')
     try:
         partes.append(regras())
@@ -63,10 +61,11 @@ def main():
     if not coordenadora:
         partes.append(f'[hook] session_id desta sessão: {sessao}')
     partes.extend(avisos)
-    saida = {'hookSpecificOutput': {'hookEventName': evento, 'additionalContext': '\n\n'.join(partes)}}
+    contexto = '\n\n'.join(partes)
+    saida = {'hookSpecificOutput': {'hookEventName': evento, 'additionalContext': contexto}}
     if coordenadora:
         alvo = entrada.get('tool_name') or 'mensagem recebida'
-        saida['systemMessage'] = ' '.join(avisos) if avisos else f'Hook da ordem do usuário entregue à coordenadora ({evento}, {alvo}): «{primeira}»'
+        saida['systemMessage'] = f'Hook da ordem do usuário entregue à coordenadora ({evento}, {alvo}), mensagem inteira:\n\n{contexto}'
     sys.stdout.reconfigure(encoding='utf-8')
     print(json.dumps(saida, ensure_ascii=False))
 
