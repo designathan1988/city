@@ -1,7 +1,7 @@
 // The intermediate representation every later stage reads: the source's declarations ("units"), the typed edges
 // between them, the external APIs they touch and the per-unit facts the classifier and the rule catalog decide on.
 
-export const IR_VERSION = 3;
+export const IR_VERSION = 4;
 
 export type UnitKind =
   | 'class'
@@ -71,11 +71,14 @@ export interface PatternSite {
   readonly detail: string;
 }
 
+/**
+ * A number written in the code. `constant`: the value of a named constant (its owner); `value`: anywhere else in an
+ * expression. Which values are allowed bare is the target project's rule (rules.json magic_numbers), not the graph's.
+ */
 export interface NumericLiteral {
   readonly text: string;
   readonly line: number;
-  readonly context: 'value' | 'index' | 'enum' | 'default';
-  readonly trivial: boolean;
+  readonly context: 'value' | 'constant' | 'index' | 'enum' | 'default';
 }
 
 export interface UnitFacts {

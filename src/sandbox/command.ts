@@ -29,6 +29,7 @@ export function runSandboxCommand(argv: readonly string[]): void {
   const flags = parseFlags(argv, SANDBOX_FLAGS);
   const result = runSandbox({ packageDir: flags.require('package'), config: readSandboxConfig(flags.require('config')), sandboxDir: flags.require('dir') });
   print(result.steps);
+  if (result.gameChanged) console.log('\nnote: the game repository changed meanwhile (another process); the evidence is of its base as cloned');
   console.log(result.ok ? `\nsandbox OK: ${result.sandbox} (branch ${result.branch})` : '\nsandbox FAILED');
   if (result.ok) {
     console.log('\nManual integration, when you decide (nothing below is run by the converter):');
@@ -44,6 +45,7 @@ export function runBaselineCommand(argv: readonly string[]): void {
     sandboxDir: flags.require('dir'), evidenceDir: flags.require('evidence'),
   });
   print(result.steps);
+  if (result.gameChanged) console.log('\nnote: the game repository changed meanwhile (another process); the evidence is of its base as cloned');
   console.log(result.ok ? `\nbaseline OK at ${result.base}` : `\nbaseline FAILED at ${result.base}`);
   process.exitCode = result.ok ? 0 : 1;
 }

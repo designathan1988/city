@@ -1,21 +1,18 @@
 // Tests of the audit stage: every rule of the catalog fires on the fixture pattern made for it, rules that lack
 // their inputs say so, and severity follows the hot path.
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { describe, it } from 'node:test';
 import { RULES } from '../src/audit/catalog.ts';
 import type { AuditOptions } from '../src/audit/context.ts';
 import { runAudit } from '../src/audit/run.ts';
-import { buildGraph } from '../src/graph/build.ts';
+import { fixtureGraph } from './support.ts';
 
-const typescriptDir = process.env['CONVERTER_TYPESCRIPT'];
-if (!typescriptDir) throw new Error('set CONVERTER_TYPESCRIPT to a typescript package directory to run these tests');
-const ir = buildGraph({ sourceRoot: path.join(import.meta.dirname, 'fixtures', 'basic'), typescriptDir, entries: [], include: [], exclude: [] });
+const ir = fixtureGraph();
 
 const base: AuditOptions = {
   hot: ['src/world.ts#World.tick'], uiDirs: ['src/ui'], stateDirs: ['src/world.ts'], simDirs: ['src/world.ts'],
   maxFileLines: 25, maxFunctionLines: 8, features: [{ name: 'tick', entry: 'src/world.ts#World.tick' }],
-  maxScattering: 0, minWriterFiles: 2, minConstantFiles: 2,
+  maxScattering: 0, minWriterFiles: 2, minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
 };
 
 describe('audit', () => {
@@ -70,8 +67,17 @@ describe('audit', () => {
   });
 
   it('says which rules could not run and why, instead of reporting nothing', () => {
-    const bare = runAudit(ir, { ...base, uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [] });
+    const bare = runAudit(ir, {
+      ...base, uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [], allowedNumbers: null,
+    });
     const skipped = Object.fromEntries(bare.rules.filter((r) => r.skipped).map((r) => [r.id, r.skipped]));
-    assert.deepEqual(Object.keys(skipped).sort(), ['feature-scattering', 'god-file', 'god-function', 'nondeterminism-in-simulation', 'ui-writes-state']);
+    assert.deepEqual(Object.keys(skipped).sort(),
+      ['duplicated-constant', 'feature-scattering', 'god-file', 'god-function', 'nondeterminism-in-simulation', 'ui-writes-state']);
+  });
+
+  it('takes the numbers allowed bare from the target\'s rules, and never flags a named constant', () => {
+    const strict = runAudit(ir, { ...base, allowedNumbers: [0, 1, -1, 2, 0.5, 0.25, 0.125] });
+    assert.ok(!strict.findings.some((f) => f.rule === 'duplicated-constant' && /^0\.(25|125) /.test(f.message)));
+    assert.ok(!runAudit(ir, base).findings.some((f) => f.rule === 'duplicated-constant' && f.message.startsWith('13.9 ')));
   });
 });

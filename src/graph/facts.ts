@@ -29,7 +29,8 @@ const ITERATION_METHODS = new Set([
 ]);
 /** Calls that return a fresh array or string. */
 const COPYING_METHODS = new Set(['slice', 'map', 'filter', 'concat', 'flat', 'flatMap', 'toSorted', 'toReversed', 'split', 'join']);
-const TRIVIAL_NUMBERS = new Set(['0', '1', '-1', '2', '0.5']);
+/** The naming convention of a named constant: its value is owned there, not a bare number. */
+const CONSTANT_NAME = /^[A-Z][A-Z0-9_]*$/;
 /** WebGL calls that stall the calling thread until the GPU answers (MDN, WebGL best practices). */
 const SYNC_GPU_CALLS = new Set([
   'readPixels', 'getError', 'getBufferSubData', 'checkFramebufferStatus', 'getParameter', 'getProgramParameter',
@@ -68,6 +69,10 @@ function literalContext(ts: TypeScriptApi, n: TS.Node): NumericLiteral['context'
   if (p && ts.isElementAccessExpression(p) && p.argumentExpression === n) return 'index';
   if (p && ts.isEnumMember(p)) return 'enum';
   if (p && (ts.isParameter(p) || ts.isBindingElement(p)) && p.initializer === n) return 'default';
+  if (p && (ts.isVariableDeclaration(p) || ts.isPropertyDeclaration(p)) && p.initializer === n && ts.isIdentifier(p.name) &&
+    CONSTANT_NAME.test(p.name.text)) {
+    return 'constant';
+  }
   return 'value';
 }
 
@@ -161,7 +166,7 @@ export function syntaxFacts(ts: TypeScriptApi, ref: UnitRef): SyntaxFacts {
     if (ts.isNumericLiteral(n)) {
       const negative = n.parent !== undefined && ts.isPrefixUnaryExpression(n.parent) && n.parent.operator === ts.SyntaxKind.MinusToken;
       const text = (negative ? '-' : '') + n.text;
-      facts.numericLiterals.push({ text, line: line(n), context: literalContext(ts, negative ? n.parent : n), trivial: TRIVIAL_NUMBERS.has(text) });
+      facts.numericLiterals.push({ text, line: line(n), context: literalContext(ts, negative ? n.parent : n) });
     }
     ts.forEachChild(n, (child) => visit(child, depth));
   };

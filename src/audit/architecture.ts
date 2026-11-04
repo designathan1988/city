@@ -57,10 +57,12 @@ export function duplicatedCode(ctx: AuditContext): RuleOutcome {
 }
 
 export function duplicatedConstants(ctx: AuditContext): RuleOutcome {
+  if (ctx.options.allowedNumbers === null) return { skipped: 'needs --target-rules (its magic_numbers.allowed_values says which numbers may stand bare)' };
+  const allowed = new Set(ctx.options.allowedNumbers);
   const byText = new Map<string, Map<string, number[]>>();
   for (const unit of ctx.ir.units) {
     for (const literal of unit.facts.numericLiterals) {
-      if (literal.trivial || literal.context !== 'value') continue;
+      if (literal.context !== 'value' || allowed.has(Number(literal.text))) continue;
       const files = byText.get(literal.text) ?? new Map<string, number[]>();
       files.set(unit.file, [...(files.get(unit.file) ?? []), literal.line]);
       byText.set(literal.text, files);

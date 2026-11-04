@@ -4,7 +4,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { cloneIsolated, git, revParse } from '../common/git.ts';
+import { removeTree, sha256 } from '../common/files.ts';
+import { cloneIsolated, git, revParse, uncommitted } from '../common/git.ts';
 import { normalizePath } from '../common/paths.ts';
 import { MANIFEST, PACKAGE_VERSION, PATCHES, type PackageManifest } from './manifest.ts';
 
@@ -17,23 +18,39 @@ export interface Topic {
 export interface PackageInput {
   readonly feature: string;
   readonly sourceRoot: string;
+  /** The source files the conversion read, relative to the source root (recorded by content hash). */
+  readonly sourceFiles: readonly string[];
   readonly gameRoot: string;
   /** The game commit the package is made against (default: the game's HEAD). */
   readonly base?: string | undefined;
   readonly outDir: string;
   readonly author: { readonly name: string; readonly email: string };
+  /** The repository of the converter making the package (default: this converter). */
+  readonly converterRoot?: string | undefined;
   /** Edits the clone sees: file contents are read from it, so a topic may extend an existing file. */
   readonly topics: (readClone: (relative: string) => string | null) => readonly Topic[];
 }
 
-function converterCommit(): string {
-  return revParse(path.resolve(import.meta.dirname, '..', '..'), 'HEAD');
+/** The converter's own repository. */
+export const CONVERTER_ROOT = path.resolve(import.meta.dirname, '..', '..');
+
+/** The converter's commit; refused when its tree has changes, which that commit would not describe. */
+function converterCommit(root: string): string {
+  const changed = uncommitted(root);
+  if (changed.length > 0) throw new Error(`the converter has uncommitted changes (${changed.slice(0, 5).join(', ')}): commit them so the package names the code that made it`);
+  return revParse(root, 'HEAD');
 }
 
 export function createPackage(input: PackageInput): PackageManifest {
   const gameRoot = normalizePath(input.gameRoot);
   const base = revParse(gameRoot, input.base ?? 'HEAD');
   const sourceCommit = revParse(input.sourceRoot, 'HEAD');
+  const converter = converterCommit(input.converterRoot ?? CONVERTER_ROOT);
+  const sourceFiles = [...input.sourceFiles].sort().map((relative) => {
+    const file = path.join(input.sourceRoot, relative);
+    if (!fs.existsSync(file)) throw new Error(`source file ${relative} does not exist under ${input.sourceRoot}`);
+    return { path: relative.replace(/\\/g, '/'), sha256: sha256(file) };
+  });
   const outDir = path.resolve(input.outDir);
   if (normalizePath(outDir).startsWith(gameRoot + '/')) throw new Error(`the package must live outside the game (${outDir})`);
   if (fs.existsSync(outDir) && fs.readdirSync(outDir).length > 0) throw new Error(`${outDir} is not empty`);
@@ -63,15 +80,15 @@ export function createPackage(input: PackageInput): PackageManifest {
     const manifest: PackageManifest = {
       version: PACKAGE_VERSION,
       feature: input.feature,
-      source: { root: normalizePath(input.sourceRoot), commit: sourceCommit },
+      source: { root: normalizePath(input.sourceRoot), commit: sourceCommit, files: sourceFiles },
       game: { root: gameRoot, base },
-      converter: { commit: converterCommit() },
+      converter: { commit: converter },
       author: { name: input.author.name, email: input.author.email },
       patches: written,
     };
     fs.writeFileSync(path.join(outDir, MANIFEST), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
     return manifest;
   } finally {
-    fs.rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    removeTree(work);
   }
 }

@@ -1,18 +1,8 @@
 // Tests of the graph stage on a fixture that holds, in small, every pattern the real source has at scale.
-// Needs CONVERTER_TYPESCRIPT: the directory of a `typescript` package (5.8 or newer).
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import { describe, it } from 'node:test';
-import { buildGraph } from '../src/graph/build.ts';
 import type { EdgeKind, GraphIR } from '../src/graph/ir.ts';
-
-const typescriptDir = process.env['CONVERTER_TYPESCRIPT'];
-if (!typescriptDir) throw new Error('set CONVERTER_TYPESCRIPT to a typescript package directory to run these tests');
-const fixture = path.join(import.meta.dirname, 'fixtures', 'basic');
-
-function graph(entries: string[]): GraphIR {
-  return buildGraph({ sourceRoot: fixture, typescriptDir, entries, include: [], exclude: [] });
-}
+import { fixtureGraph as graph } from './support.ts';
 
 function kinds(ir: GraphIR, from: string, to: string): EdgeKind[] {
   return ir.edges.filter((e) => e.from === from && e.to === to).map((e) => e.kind).sort();
@@ -87,8 +77,10 @@ describe('graph from an entry', () => {
     assert.equal(unit(ir, 'src/lib/math.ts#SPEED_LIMIT').facts.mutableModuleState, false);
     assert.equal(unit(ir, 'src/world.ts#World.tick').parent, 'src/world.ts#World');
     assert.equal(unit(ir, 'src/lib/math.ts#clamp').facts.decisions, 2);
+    // A named constant's value is its owner, not a bare number; inside an expression a number is a value.
     const literals = unit(ir, 'src/lib/math.ts#SPEED_LIMIT').facts.numericLiterals;
-    assert.deepEqual(literals.map((l) => [l.text, l.trivial]), [['13.9', false]]);
+    assert.deepEqual(literals.map((l) => [l.text, l.context]), [['13.9', 'constant']]);
+    assert.ok(unit(graph(), 'src/dupA.ts#blendA').facts.numericLiterals.some((l) => l.text === '0.25' && l.context === 'value'));
   });
 });
 

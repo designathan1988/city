@@ -8,7 +8,11 @@ export const PACKAGE_VERSION = 1;
 export interface PackageManifest {
   readonly version: number;
   readonly feature: string;
-  readonly source: { readonly root: string; readonly commit: string };
+  /**
+   * The source as read: its commit, and the SHA-256 of every source file the conversion read, which identifies the
+   * input even when the source's working tree has uncommitted changes (the source is never written).
+   */
+  readonly source: { readonly root: string; readonly commit: string; readonly files: readonly { readonly path: string; readonly sha256: string }[] };
   readonly game: { readonly root: string; readonly base: string };
   readonly converter: { readonly commit: string };
   /** Who the package's commits are by; applying them commits under the same identity. */

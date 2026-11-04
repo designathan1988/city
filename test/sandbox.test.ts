@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { removeTree, sha256 } from '../src/common/files.ts';
 import { fingerprint, git } from '../src/common/git.ts';
 import { createPackage } from '../src/package/create.ts';
 import { readManifest } from '../src/package/manifest.ts';
@@ -32,14 +33,17 @@ describe('package and sandbox', () => {
   fs.mkdirSync(path.join(game, 'vendor'));
   fs.writeFileSync(path.join(game, 'vendor', 'lib.txt'), 'outside version control\n');
   const source = repo({ 'feature.ts': 'export const x = 1;\n' });
+  // The source's working tree may hold uncommitted changes: the package records what it read by content.
+  fs.writeFileSync(path.join(source, 'feature.ts'), 'export const x = 2;\n');
+  const converterRoot = repo({ 'converter.ts': '' });
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-test-out-'));
   const pkg = path.join(out, 'transit');
   const gameBefore = fingerprint(game);
   after(() => {
-    for (const dir of [game, source, out]) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    for (const dir of [game, source, converterRoot, out]) removeTree(dir);
   });
   const manifest = createPackage({
-    feature: 'transit', sourceRoot: source, gameRoot: game, outDir: pkg, author,
+    feature: 'transit', sourceRoot: source, sourceFiles: ['feature.ts'], gameRoot: game, outDir: pkg, author, converterRoot,
     topics: (read) => [
       { message: 'Add the transit state\n\nNew owner of stops and lines.', files: new Map([['native/src/sim/transit/transit_state.h', '#pragma once\n']]) },
       { message: 'Mention transit in the readme', files: new Map([['readme.txt', `${read('readme.txt')}transit\n`]]) },
@@ -51,6 +55,20 @@ describe('package and sandbox', () => {
     assert.deepEqual(readManifest(pkg), manifest);
     assert.match(fs.readFileSync(path.join(pkg, 'patches', manifest.patches[1]!), 'utf8'), /\+transit/);
     assert.equal(fingerprint(game), gameBefore, 'making the package left the game as it was');
+    assert.deepEqual(manifest.source.files, [{ path: 'feature.ts', sha256: sha256(path.join(source, 'feature.ts')) }]);
+  });
+
+  it('refuses to package from a converter with uncommitted changes', () => {
+    const dirty = repo({ 'converter.ts': '' });
+    fs.writeFileSync(path.join(dirty, 'converter.ts'), 'changed');
+    try {
+      assert.throws(() => createPackage({
+        feature: 'x', sourceRoot: source, sourceFiles: [], gameRoot: game, outDir: path.join(out, 'dirty'), author, converterRoot: dirty,
+        topics: () => [{ message: 'x', files: new Map([['x.txt', 'x']]) }],
+      }), /uncommitted changes/);
+    } finally {
+      removeTree(dirty);
+    }
   });
 
   it('verifies the base and the package in an isolated clone, never touching the game', () => {
@@ -70,6 +88,7 @@ describe('package and sandbox', () => {
     assert.match(fs.readFileSync(path.join(pkg, 'evidence', 'after', 'readme.log'), 'utf8'), /transit/);
     assert.equal(git(sandbox, ['rev-list', '--count', `${manifest.game.base}..convert/transit`]).trim(), '2');
     assert.equal(fingerprint(game), gameBefore, 'the game is exactly as it was');
+    assert.equal(result.gameChanged, false);
     assert.ok(integrationCommands(result).some((line) => line.includes(`fetch "${result.sandbox}" convert/transit:convert/transit`)));
   });
 
@@ -87,7 +106,9 @@ describe('package and sandbox', () => {
   });
 
   it('refuses a package or a sandbox inside the game', () => {
-    assert.throws(() => createPackage({ feature: 'x', sourceRoot: source, gameRoot: game, outDir: path.join(game, 'pkg'), author, topics: () => [] }), /outside the game/);
+    assert.throws(() => createPackage({
+      feature: 'x', sourceRoot: source, sourceFiles: [], gameRoot: game, outDir: path.join(game, 'pkg'), author, converterRoot, topics: () => [],
+    }), /outside the game/);
     assert.throws(() => runSandbox({ packageDir: pkg, config: { copy: [], hiddenRunner: '', setup: [], verify: [] }, sandboxDir: path.join(game, 'sb') }), /outside the game/);
   });
 });

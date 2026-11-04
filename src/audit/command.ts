@@ -33,23 +33,36 @@ function number(value: string | undefined, name: string): number | undefined {
   return n;
 }
 
-function targetLimits(file: string | undefined, extension: string): { file?: number; fn?: number } {
-  if (file === undefined) return {};
-  const rules = JSON.parse(fs.readFileSync(file, 'utf8')) as { max_lines?: Record<string, number>; max_function_lines?: Record<string, number> };
-  const limits: { file?: number; fn?: number } = {};
+/** Degree of scattering at which a feature is reported: a project decision (Eaddy et al. give no threshold). */
+const DEFAULT_MAX_SCATTERING = 0.5;
+const DEFAULT_MIN_WRITER_FILES = 3;
+const DEFAULT_MIN_CONSTANT_FILES = 3;
+
+interface TargetRules {
+  readonly file?: number;
+  readonly fn?: number;
+  readonly allowed: readonly number[] | null;
+}
+
+/** What the target project's gate rules (rules.json) say about sizes and bare numbers. */
+function targetRules(file: string | undefined, extension: string): TargetRules {
+  if (file === undefined) return { allowed: null };
+  const rules = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+    max_lines?: Record<string, number>; max_function_lines?: Record<string, number>; magic_numbers?: { allowed_values?: number[] };
+  };
   const fileLimit = rules.max_lines?.[extension];
   const fnLimit = rules.max_function_lines?.[extension];
+  const allowed = rules.magic_numbers?.allowed_values;
   if (fileLimit === undefined || fnLimit === undefined) throw new ArgsError(`${file} has no max_lines / max_function_lines for ${extension}`);
-  limits.file = fileLimit;
-  limits.fn = fnLimit;
-  return limits;
+  if (!Array.isArray(allowed)) throw new ArgsError(`${file} has no magic_numbers.allowed_values`);
+  return { file: fileLimit, fn: fnLimit, allowed };
 }
 
 export function runAuditCommand(argv: readonly string[]): void {
   const flags = parseFlags(argv, AUDIT_FLAGS);
   const ir = JSON.parse(fs.readFileSync(flags.require('graph'), 'utf8')) as GraphIR;
   if (ir.version !== IR_VERSION) throw new ArgsError(`the graph is IR version ${ir.version}; this audit reads version ${IR_VERSION}: run \`converter graph\` again`);
-  const limits = targetLimits(flags.one('target-rules'), flags.one('target-extension') ?? '.cpp');
+  const limits = targetRules(flags.one('target-rules'), flags.one('target-extension') ?? '.cpp');
   const options: AuditOptions = {
     hot: flags.all('hot'),
     uiDirs: flags.all('ui-dir'),
@@ -62,9 +75,10 @@ export function runAuditCommand(argv: readonly string[]): void {
       if (eq <= 0) throw new ArgsError(`--feature ${spec}: expected name=unitId`);
       return { name: spec.slice(0, eq), entry: spec.slice(eq + 1) };
     }),
-    maxScattering: number(flags.one('max-scattering'), 'max-scattering') ?? 0.5,
-    minWriterFiles: number(flags.one('min-writer-files'), 'min-writer-files') ?? 3,
-    minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? 3,
+    maxScattering: number(flags.one('max-scattering'), 'max-scattering') ?? DEFAULT_MAX_SCATTERING,
+    minWriterFiles: number(flags.one('min-writer-files'), 'min-writer-files') ?? DEFAULT_MIN_WRITER_FILES,
+    minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? DEFAULT_MIN_CONSTANT_FILES,
+    allowedNumbers: limits.allowed,
   };
   const result = runAudit(ir, options);
   const out = path.resolve(flags.require('out'));

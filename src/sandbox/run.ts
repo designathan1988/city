@@ -1,11 +1,13 @@
 // Tests a conversion package without touching the game: an isolated clone of the game at the package's base commit
 // gets the files the build needs, runs the game's own setup and verification (the base, "before"), receives the
 // package with `git am` on a branch of its own, and runs the verification again ("after"). Every step's output and
-// the photos go to the package's evidence folder. The game is read, never written: its state is fingerprinted before
-// and after, and any difference is an error.
+// the photos go to the package's evidence folder. The game is only read (cloned, copied from); its state is
+// fingerprinted before and after, and a difference, which can only come from another process working on the game
+// meanwhile, is recorded so that the result says which base the evidence was taken against.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
 import { cloneIsolated, fingerprint, git } from '../common/git.ts';
 import { normalizePath } from '../common/paths.ts';
 import { EVIDENCE, PATCHES, readManifest } from '../package/manifest.ts';
@@ -28,17 +30,26 @@ export interface SandboxResult {
   readonly branch: string;
   readonly steps: StepResult[];
   readonly ok: boolean;
+  /** The game's repository changed while the sandbox ran (another process): the base was cloned before that. */
+  readonly gameChanged: boolean;
 }
+
+/** A step's time limit when its configuration gives none. */
+const DEFAULT_STEP_TIMEOUT_S = 900;
+const LAUNCHER_GRACE_MS = 60_000;
+const MS_PER_SECOND = 1000;
 
 function runStep(step: Step, config: SandboxConfig, vars: Variables, logFile: string): { code: number | null; output: string } {
   const argv = step.run.map((part) => expand(part, vars));
-  const timeout = (step.timeoutSeconds ?? 900) * 1000;
+  const seconds = step.timeoutSeconds ?? DEFAULT_STEP_TIMEOUT_S;
+  const timeout = seconds * MS_PER_SECOND;
   const command = step.hidden
     ? ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(vars.sandbox, config.hiddenRunner),
-      '-TimeoutS', String(step.timeoutSeconds ?? 900), '-WorkDir', vars.sandbox, '-Command', argv.join(' ')]
+      '-TimeoutS', String(seconds), '-WorkDir', vars.sandbox, '-Command', argv.join(' ')]
     : argv;
+  // The hidden launcher enforces the step's own timeout; this outer one only stops a launcher that hangs.
   const result = spawnSync(command[0]!, command.slice(1), {
-    cwd: vars.sandbox, encoding: 'utf8', timeout: timeout + 60_000, maxBuffer: 256 * 1024 * 1024,
+    cwd: vars.sandbox, encoding: 'utf8', timeout: timeout + LAUNCHER_GRACE_MS, maxBuffer: MAX_CHILD_OUTPUT_BYTES,
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}${result.error ? `\n${result.error.message}` : ''}`;
   fs.writeFileSync(logFile, `$ ${command.join(' ')}\n\n${output}`, 'utf8');
@@ -77,7 +88,7 @@ function runPhase(phase: string, steps: readonly Step[], config: SandboxConfig, 
     const log = path.join(vars.evidence, `${step.name}.log`);
     const { code, output } = runStep(step, config, vars, log);
     const problem = check(step.expect, code, output, vars);
-    results.push({ phase, name: step.name, ok: problem === null, seconds: Math.round((Date.now() - started) / 1000), problem, log });
+    results.push({ phase, name: step.name, ok: problem === null, seconds: Math.round((Date.now() - started) / MS_PER_SECOND), problem, log });
     if (problem) return false;
   }
   return true;
@@ -111,7 +122,7 @@ export interface BaselineInput {
 }
 
 /** The game's own setup and verification on its base, in a sandbox: proves a configuration and keeps the base's evidence. */
-export function runBaseline(input: BaselineInput): { readonly ok: boolean; readonly base: string; readonly steps: StepResult[] } {
+export function runBaseline(input: BaselineInput): { readonly ok: boolean; readonly base: string; readonly steps: StepResult[]; readonly gameChanged: boolean } {
   const game = normalizePath(input.gameRoot);
   const base = git(game, ['rev-parse', '--verify', `${input.base ?? 'HEAD'}^{commit}`]).trim();
   const sandbox = path.resolve(input.sandboxDir);
@@ -121,8 +132,7 @@ export function runBaseline(input: BaselineInput): { readonly ok: boolean; reado
   const evidence = (phase: string): Variables => ({ sandbox, evidence: path.join(path.resolve(input.evidenceDir), phase), game });
   const ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results) &&
     runPhase('before', input.config.verify, input.config, evidence('before'), results);
-  if (fingerprint(game) !== before) throw new Error(`the game at ${game} changed while the sandbox ran: this must never happen`);
-  return { ok, base, steps: results };
+  return { ok, base, steps: results, gameChanged: fingerprint(game) !== before };
 }
 
 export function runSandbox(input: SandboxInput): SandboxResult {
@@ -151,8 +161,10 @@ export function runSandbox(input: SandboxInput): SandboxResult {
       ok = runPhase('after', input.config.verify, input.config, evidence('after'), results);
     }
   }
-  if (fingerprint(game) !== before) throw new Error(`the game at ${game} changed while the sandbox ran: this must never happen`);
-  const result: SandboxResult = { feature: manifest.feature, game: normalizePath(game), sandbox: normalizePath(sandbox), base: manifest.game.base, branch, steps: results, ok };
+  const result: SandboxResult = {
+    feature: manifest.feature, game: normalizePath(game), sandbox: normalizePath(sandbox), base: manifest.game.base, branch,
+    steps: results, ok, gameChanged: fingerprint(game) !== before,
+  };
   fs.writeFileSync(path.join(packageDir, EVIDENCE, 'sandbox.json'), JSON.stringify(result, null, 2) + '\n', 'utf8');
   return result;
 }

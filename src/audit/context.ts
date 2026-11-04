@@ -14,6 +14,8 @@ export interface AuditOptions {
   readonly maxScattering: number;
   readonly minWriterFiles: number;
   readonly minConstantFiles: number;
+  /** Numbers the target project allows bare (its rules.json magic_numbers.allowed_values); null: no target rules. */
+  readonly allowedNumbers: readonly number[] | null;
 }
 
 export type Severity = 'high' | 'medium' | 'low';
