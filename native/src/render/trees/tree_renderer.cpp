@@ -1,5 +1,5 @@
 // Streams the tree chunks (see tree_renderer.h). An instance carries its basis (turn, width, height and lean), its
-// foot, and in its custom data the tint (near) or the linear tone (far) and the species index the shader reads its
+// foot, and in its custom data the tint and the species index the shader reads its
 // wind response by.
 #include "render/trees/tree_renderer.h"
 #include "render/chunk_jobs.h"
@@ -20,12 +20,6 @@ constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 const float DIAGONAL = std::sqrt(2.f);
-// Job keys: lane 2 of the shared key * 4 + lane scheme; far superchunk keys are moved clear of every chunk key (and of
-// the buildings' and the zones' offsets, 1 << 20 and 1 << 19) before they take the lane.
-constexpr int64_t KEY_LANES = 4, TREE_LANE = 2, FAR_JOB_OFFSET = int64_t(1) << 21;
-int64_t job_key(int64_t key, bool far) {
-	return (far ? cell_key(key_x(key) + int(FAR_JOB_OFFSET), key_y(key) + int(FAR_JOB_OFFSET)) : key) * KEY_LANES + TREE_LANE;
-}
 
 AABB box_of(int64_t key, float size) { return AABB(Vector3(key_x(key) * size, AABB_MIN_Y, key_y(key) * size), Vector3(size, AABB_H, size)); }
 
@@ -57,8 +51,12 @@ void TreeRenderer::set_params(const RID &material) const {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material, "near_m", trees_.near_m);
 	rs->material_set_param(material, "fade_m", trees_.fade_m);
-	rs->material_set_param(material, "pop_m", trees_.pop_m);
 	rs->material_set_param(material, "leaf_atlas", kit_.atlas().texture());
+	rs->material_set_param(material, "tree_albedo", kit_.pictures().albedo());
+	rs->material_set_param(material, "tree_normal", kit_.pictures().normal());
+	rs->material_set_param(material, "picture_frames", kit_.pictures().frames());
+	rs->material_set_param(material, "picture_rows", kit_.pictures().rows());
+	rs->material_set_param(material, "picture_top_deg", kit_.pictures().top_elevation_deg());
 }
 
 void TreeRenderer::reset() {
@@ -106,7 +104,7 @@ TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) con
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
 			place_far(s, *look_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
-	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, FAR_CARD_HALF_TALL);
+	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, kit_.pictures().frame_share() * HALF);
 	return out;
 }
 
@@ -152,7 +150,7 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 		seq = ++seq_;
 		t.requested[key] = seq;
 	}
-	s.jobs->submit(job_key(key, far), priority, [this, &s, &t, key, seq, priority, far]() {
+	s.jobs->submit(JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key }, priority, [this, &s, &t, key, seq, priority, far]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b = far ? build_far(s, key) : build_near(s, key);
 		b.seq = seq;
@@ -169,7 +167,7 @@ void TreeRenderer::commit(const std::chrono::steady_clock::time_point &until) {
 
 int TreeRenderer::pending() const {
 	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return pending_ + int(tier_[TIER_NEAR].requested.size() + tier_[TIER_NEAR].done.size() + tier_[TIER_FAR].requested.size() + tier_[TIER_FAR].done.size());
+	return pending_ + int(tier_[TIER_NEAR].dirty.size() + tier_[TIER_FAR].dirty.size()) + int(tier_[TIER_NEAR].requested.size() + tier_[TIER_NEAR].done.size() + tier_[TIER_FAR].requested.size() + tier_[TIER_FAR].done.size());
 }
 
 void TreeRenderer::sync(const CityState &s, const Vector3 &cam, BuildBudget &budget) {

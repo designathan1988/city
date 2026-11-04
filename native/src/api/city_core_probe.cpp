@@ -22,6 +22,8 @@ Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
 	d["process"] = process_ms_;
+	d["worn_cells"] = render_.worn_cells();
+	d["wear_publications"] = render_.wear_publications();
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;
 	d["stream"] = c.stream;
@@ -42,6 +44,14 @@ Dictionary CityCore::render_cost() const {
 	d["trees"] = c.trees;
 	d["overlays"] = overlays_ms_;
 	d["uploads"] = c.uploads; // MiB
+	const BuildingRenderer::ViewNeed need = render_.building_need();
+	d["backlog"] = c.backlog;
+	d["budget_left"] = c.budget_left;
+	d["b_want"] = need.want;
+	d["b_unmet"] = need.unmet;
+	d["b_requested"] = need.requested;
+	d["b_done"] = need.done;
+	d["jobs_replaced"] = int64_t(state_->jobs ? state_->jobs->replaced() : 0);
 	return d;
 }
 

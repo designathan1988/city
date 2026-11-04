@@ -14,7 +14,7 @@ constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT
 constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
-constexpr float RAIL_POST = 0.05f, RAIL_TOP = 0.05f, RAIL_MID = 0.45f, RAIL_EVERY = 1.5f, MACHINE_H = 3.f, MACHINE_IN = 0.3f;
+constexpr float MACHINE_H = 3.f, MACHINE_IN = 0.3f;
 constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
@@ -22,7 +22,7 @@ constexpr int ID_OFF = 7;
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
 	for (const Volume &o : b.volumes) {
-		if (&o == &v || o.base > v.top() - 1 || o.top() < v.top()) continue;
+		if (&o == &v || o.base > v.top() || o.top() < v.top()) continue; // the storey under the roof, or a block standing on it
 		if (p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
 	}
 	return false;
@@ -61,12 +61,8 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 		Point2 p{ sd.p0.x + dir.x * am - sd.n.x * TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * TEST_OUT };
 		if (roof_covered(b, v, p)) continue;
 		if (terrace) {
-			Basis rf{ sd.f.at(a0, 0, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
-			Lin rail = paint_lin(pl.data->color("roof_railing"));
-			const float guard = pl.look->guard_h_m;
-			parts.box(rf, 0, W, guard - RAIL_TOP, guard, -RAIL_TOP, 0, rail, FIN_METAL);
-			parts.box(rf, 0, W, RAIL_MID - RAIL_POST / 2, RAIL_MID + RAIL_POST / 2, -RAIL_POST, 0, rail, FIN_METAL);
-			for (float a = 0; a < W; a += RAIL_EVERY) parts.box(rf, a, a + RAIL_POST, 0, guard, -RAIL_POST, 0, rail, FIN_METAL);
+			Basis rf{ sd.f.at(a0, eaves, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
+			shell.card(rf, 0, W, 0, pl.look->guard_h_m, 0, paint_lin(pl.data->color("roof_railing")), CARD_ROOF_RAILING);
 			continue;
 		}
 		shell.grime_floor = -FAR_AWAY;
@@ -116,11 +112,15 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 	for (size_t i = 0; i < b.volumes.size(); i++) {
 		const Volume &v = b.volumes[i];
 		float eaves = b.level_z(v.top());
-		bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
+		emit_roof_gear(shell, pl, v, eaves);
+		const bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE;
 		if (pl.coarse) {
 			if (!roof_flat(v.roof)) continue;
 			RoofEmit re{ shell, parts, pl, v, eaves };
-			for (const Side &sd : sides_of(pl, v, 0)) re.crown_bands(sd, on_top ? CROWN_NONE : v.crown);
+			for (const Side &sd : sides_of(pl, v, 0)) {
+				re.crown_bands(sd, v.crown);
+				if (terrace) re.edge(sd, true, v.crown);
+			}
 			if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
 			continue;
 		}
@@ -131,10 +131,9 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 		shell.grime_floor = -FAR_AWAY;
 		top_face(shell, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
 		RoofEmit re{ shell, parts, pl, v, eaves };
-		Crown crown = on_top ? CROWN_NONE : v.crown;
 		for (const Side &sd : sides_of(pl, v, 0)) {
-			if (!on_top) re.edge(sd, terrace, crown);
-			re.crown_bands(sd, crown);
+			re.edge(sd, terrace, v.crown); // bay by bay, only where the roof really ends: a setback's ledge has its own
+			re.crown_bands(sd, v.crown);
 		}
 		re.machine_rooms();
 		if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
