@@ -65,6 +65,11 @@ static func format_money(v: float) -> String:
 	return "%s %s" % [style().currency, format_int(v)]
 
 
+## A slider's value, already in percentage points.
+static func format_points(v: float) -> String:
+	return "%d %%" % int(v)
+
+
 static func format_percent(v: float) -> String:
 	return "%d%%" % int(round(v * PERCENT))
 

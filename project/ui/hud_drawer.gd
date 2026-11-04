@@ -231,7 +231,7 @@ func _relief_strip() -> void:
 	for key in ["radius", "strength"]:
 		var spec: Dictionary = category.brush[key]
 		HudWidgets.range_row(_options, tr(spec.label_key), spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
-			Formatters.format_length if key == "radius" else func(v: float) -> String: return "%d%%" % int(v), _retool.bind("TERRAIN", key))
+			Formatters.format_length if key == "radius" else Formatters.format_points, _retool.bind("TERRAIN", key))
 
 
 func _zone_card(c: Dictionary) -> Button:

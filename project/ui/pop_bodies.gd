@@ -29,10 +29,10 @@ static func sim(col: Control, spec: Dictionary, metrics: Dictionary) -> void:
 	var send := func(traffic: float, people: float, demand: float) -> void:
 		CityStore.set_levels(traffic, people, demand)
 	HudWidgets.range_row(col, _short("sim.traffic"), 0, spec.level_max_pct, spec.level_step_pct,
-		s.get("traffic_level", 1.0) * PERCENT, " %", func(v: float) -> void:
+		s.get("traffic_level", 1.0) * PERCENT, Formatters.format_points, func(v: float) -> void:
 			send.call(v / PERCENT, CityStore.snapshot.people_level, CityStore.snapshot.demand))
 	HudWidgets.range_row(col, _short("sim.people"), 0, spec.level_max_pct, spec.level_step_pct,
-		s.get("people_level", 1.0) * PERCENT, " %", func(v: float) -> void:
+		s.get("people_level", 1.0) * PERCENT, Formatters.format_points, func(v: float) -> void:
 			send.call(CityStore.snapshot.traffic_level, v / PERCENT, CityStore.snapshot.demand))
 	var row := HudWidgets.option_row(col, TranslationServer.translate("sim.demand"))
 	var items := []
