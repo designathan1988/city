@@ -95,7 +95,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa; a regra do âmbar para os testes
 - `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
-- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
+- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
@@ -303,6 +303,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
 - `project/game/settings/settings.gd` — qualidade gráfica persistida em user://settings.cfg e limite de quadros (menor fora de foco)
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
+- `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore (tabelas lidas pelo store)
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/model_library.gd` — os modelos do jogador: um arquivo cada, valem para toda cidade
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
@@ -356,7 +357,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
 - `project/tests/core/yard_test.gd` · `project/tests/core/yard_test.tscn` — pátios de zona industrial em várias direções: docas com caminho, caminhão na própria faixa e um ciclo inteiro
-- `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
+- `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` · `project/tests/core/signal_cases.gd` — desfazer/refazer e ida e volta do save; o semáforo ajustável pelo store e pelo painel
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_lorry.gd` · `project/tests/visual/capture_parity.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` · `project/tests/visual/capture_traffic.gd` · `project/tests/visual/capture_wait.gd` — rebaixo da guia, caminhão na doca, par de uma foto do 4.0, memória, semáforos, tráfego (soak) e lado parado do tráfego das capturas; a espera de toda foto até a cidade estar desenhada, registrada, com aviso de foto incompleta
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_clock.gd` · `project/tests/visual/capture_clock.tscn` — a luz no jogo de verdade: botões sol, lua e relógio de play.tscn

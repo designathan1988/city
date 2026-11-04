@@ -110,7 +110,7 @@ void bay_line(const Painter &pt, const KerbStretch &k, double v) {
 }
 
 // The street's parking (CONTRAN MBST vol. IV): each bay's division and the run closed at both ends, the band's edge dashed
-// along the run (MER, white), the yellow no-parking line by the gutter along the rest of that kerb (LPP).
+// along the run (MER, white), the yellow no-parking line by the kerb along the rest of that kerb (LPP).
 void parking_paint(const Painter &pt) {
 	const StreetLook &L = pt.e.L;
 	if (!parks_along(pt.e.s.roads, pt.sid)) return;
@@ -126,7 +126,7 @@ void parking_paint(const Painter &pt) {
 	}
 	for (const KerbStretch &n : k.bans) {
 		if (n.v1 - n.v0 < L.no_parking_min) continue;
-		const float inward = n.u_inner > n.u_kerb ? 1.f : -1.f, u = n.u_kerb + inward * (L.gutter_w + L.no_parking_w / 2);
+		const float inward = n.u_inner > n.u_kerb ? 1.f : -1.f, u = n.u_kerb + inward * (L.no_parking_w / 2); // on the kerb's foot: the carriageway reaches the kerb
 		pt.rect(u - L.no_parking_w / 2, u + L.no_parking_w / 2, n.v0, n.v1, L.yellow);
 	}
 }

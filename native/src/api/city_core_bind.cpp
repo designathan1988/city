@@ -17,6 +17,7 @@ void CityCore::_bind_methods() {
 	bind_models();
 	bind_bodies();
 	bind_nature();
+	bind_transit();
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);
@@ -32,21 +33,6 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
-	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityCore::transit_stop);
-	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityCore::transit_terminal);
-	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityCore::transit_station);
-	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityCore::transit_track);
-	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityCore::transit_line);
-	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityCore::transit_remove);
-	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityCore::transit_drop_line);
-	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
-	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
-	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
-	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityCore::transit_footway);
-	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityCore::transit_xray);
-	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityCore::transit_preview);
-	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
-	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("road_variant", "base", "lanes", "width", "parking"), &CityCore::road_variant);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
@@ -105,6 +91,25 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);
+}
+
+// Public transport's script API: stops, stations, tracks, lines, the plan, the footway and the pickers.
+void CityCore::bind_transit() {
+	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityCore::transit_stop);
+	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityCore::transit_terminal);
+	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityCore::transit_station);
+	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityCore::transit_track);
+	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityCore::transit_line);
+	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityCore::transit_remove);
+	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityCore::transit_drop_line);
+	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
+	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
+	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
+	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityCore::transit_footway);
+	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityCore::transit_xray);
+	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityCore::transit_preview);
+	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
+	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
 }
 
 // The edited body's script API: reading, the shape tools, the facade tools, the roof, the gear and the parts.

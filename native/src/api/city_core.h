@@ -201,6 +201,7 @@ protected:
 	static void bind_models();
 	static void bind_bodies();
 	static void bind_nature();
+	static void bind_transit();
 
 private:
 	godot::Object *terrain3d() const;

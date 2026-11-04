@@ -125,7 +125,7 @@ func at(x: float, z: float) -> Vector3:
 
 func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> void:
 	var args := [a, e, control != null, control if control != null else Vector3.ZERO, profiles[profile]]
-	if CityStore.COMMANDS.has(&"build_road_path"):
+	if StoreApi.COMMANDS.has(&"build_road_path"):
 		args.push_back(PX)
 	var r: Dictionary = CityStore.dispatch(&"build_road", args)
 	_check(r.get("ok", false), "via %s: %s" % [profile, r])
@@ -197,7 +197,7 @@ func _tool() -> void:
 	await ui.hover(at(0, -420))
 	await ui.shot("tool_curve_bend")
 	tools.active.cancel()
-	if CityStore.COMMANDS.has(&"build_road_path"):
+	if StoreApi.COMMANDS.has(&"build_road_path"):
 		await _freehand(street)
 	if ToolController.Tool.has("MOVE"):
 		await _node_tools()
