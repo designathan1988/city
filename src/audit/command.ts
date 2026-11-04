@@ -24,6 +24,7 @@ export const AUDIT_FLAGS: readonly FlagSpec[] = [
   { name: 'max-scattering', help: 'degree of scattering at which a feature is reported (default 0.5, a project decision)' },
   { name: 'writer-dir', repeatable: true, help: 'folder the architecture designates to change state owned elsewhere (commands, time step, loading)' },
   { name: 'channel', repeatable: true, help: 'unit id (or prefix) of a designated shared channel every producer writes (a change log)' },
+  { name: 'state-root', help: 'unit id of the class holding all state (the state manager): its members are owned by the subsystem of their type' },
   { name: 'min-constant-files', help: 'files repeating one value before it is reported (default 3)' },
 ];
 
@@ -78,6 +79,7 @@ export function runAuditCommand(argv: readonly string[]): void {
     maxScattering: number(flags.one('max-scattering'), 'max-scattering') ?? DEFAULT_MAX_SCATTERING,
     writerDirs: flags.all('writer-dir'),
     channels: flags.all('channel'),
+    stateRoot: flags.one('state-root') ?? null,
     minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? DEFAULT_MIN_CONSTANT_FILES,
     allowedNumbers: limits.allowed,
   };

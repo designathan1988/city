@@ -15,6 +15,7 @@ float Cruise::step(Car &c, float dt) {
 }
 
 void Fleet::tick(Mover &m, float dt) {
+	ticks.bump();
 	for (Car &c : cars) {
 		std::vector<float> trail;
 		total += m.step(c, dt);

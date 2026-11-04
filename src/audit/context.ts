@@ -16,6 +16,11 @@ export interface AuditOptions {
   readonly writerDirs: readonly string[];
   /** Units (ids or id prefixes) the architecture designates as shared channels every producer writes (a change log). */
   readonly channels: readonly string[];
+  /**
+   * The class that holds all the state (the single source of truth): each member belongs to the subsystem of its
+   * type, and that owner goes down to the types it contains. Null: a field is owned by the folder declaring it.
+   */
+  readonly stateRoot: string | null;
   readonly minConstantFiles: number;
   /** Numbers the target project allows bare (its rules.json magic_numbers.allowed_values); null: no target rules. */
   readonly allowedNumbers: readonly number[] | null;

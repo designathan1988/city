@@ -12,7 +12,7 @@ const ir = fixtureGraph();
 const base: AuditOptions = {
   hot: ['src/world.ts#World.tick'], uiDirs: ['src/ui'], stateDirs: ['src/world.ts'], simDirs: ['src/world.ts'],
   maxFileLines: 25, maxFunctionLines: 8, features: [{ name: 'tick', entry: 'src/world.ts#World.tick' }],
-  maxScattering: 0, writerDirs: [], channels: [], minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
+  maxScattering: 0, writerDirs: [], channels: [], stateRoot: null, minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
 };
 
 describe('audit', () => {

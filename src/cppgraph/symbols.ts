@@ -1,6 +1,6 @@
 // The units of a C++ file, from clangd's hierarchical document symbols: functions, methods and constructors with a
-// body, class and struct heads, their fields, enums, and namespace-scope variables. A declaration without a body is
-// part of its class head; its definition elsewhere is the unit.
+// body, class and struct definitions, their fields, enums, and namespace-scope variables. A declaration without a body
+// (a method declared in its class, a forward-declared `struct X;`) is not a unit: its definition is.
 import type { UnitKind } from '../graph/ir.ts';
 
 export interface LspPosition {
@@ -33,7 +33,9 @@ export interface CppUnit {
   readonly detail: string;
   /** The qualified name of the class it belongs to, or null. */
   readonly owner: string | null;
-  /** A namespace-scope variable that is neither const nor constexpr: state shared by every caller. */
+  /** For a member written inside its class: where that class's name is, in the same file (its definition exactly). */
+  readonly ownerAt: LspPosition | null;
+  /** A namespace-scope variable that is neither const, constexpr nor thread_local: state shared by every caller. */
   readonly mutable: boolean;
 }
 
@@ -65,20 +67,23 @@ function qualify(scope: readonly string[], name: string): string {
 
 export function unitsOf(file: FileText, symbols: readonly DocumentSymbol[]): CppUnit[] {
   const out: CppUnit[] = [];
-  const walk = (list: readonly DocumentSymbol[], scope: readonly string[], inClass: boolean): void => {
+  // `classAt`: the name position of the class whose body is being walked, null outside a class body.
+  const walk = (list: readonly DocumentSymbol[], scope: readonly string[], classAt: LspPosition | null): void => {
+    const inClass = classAt !== null;
     for (const s of list) {
       // `using namespace x;` and `using x::y;` are listed as symbols; they declare no state.
       if (/^using\b/.test(s.name)) continue;
-      const base = { range: s.range, selection: s.selectionRange, detail: s.detail ?? '', mutable: false };
+      const base = { range: s.range, selection: s.selectionRange, detail: s.detail ?? '', mutable: false, ownerAt: classAt };
       const owner = inClass ? scope.join('::') : s.name.includes('::') ? s.name.slice(0, s.name.lastIndexOf('::')) : null;
       switch (s.kind) {
         case KIND.namespace:
-          walk(s.children ?? [], scope, false);
+          walk(s.children ?? [], scope, null);
           break;
         case KIND.class: case KIND.struct: case KIND.interface: {
+          if (!file.slice(s.range).includes('{')) break; // a forward declaration: the definition is the unit
           const name = qualify(scope, s.name);
           out.push({ ...base, name, kind: 'class', owner: inClass ? scope.join('::') : null });
-          walk(s.children ?? [], name.split('::'), true);
+          walk(s.children ?? [], name.split('::'), s.selectionRange.start);
           break;
         }
         case KIND.function: case KIND.method: case KIND.constructor: {
@@ -96,7 +101,8 @@ export function unitsOf(file: FileText, symbols: readonly DocumentSymbol[]): Cpp
             break;
           }
           const declaration = file.slice({ start: s.range.start, end: s.selectionRange.start });
-          out.push({ ...base, name: qualify(scope, s.name), kind: 'variable', owner: null, mutable: !/\b(const|constexpr)\b/.test(declaration) });
+          // thread_local gives each thread its own copy (a re-entrancy guard): not state shared by every caller.
+          out.push({ ...base, name: qualify(scope, s.name), kind: 'variable', owner: null, mutable: !/\b(const|constexpr|thread_local)\b/.test(declaration) });
           break;
         }
         case KIND.enum:
@@ -107,6 +113,6 @@ export function unitsOf(file: FileText, symbols: readonly DocumentSymbol[]): Cpp
       }
     }
   };
-  walk(symbols, [], false);
+  walk(symbols, [], null);
   return out;
 }

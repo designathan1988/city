@@ -1,13 +1,19 @@
 // Fixture: a tiny C++ subsystem with every pattern the C++ graph must see.
 #pragma once
 
+#include "core/counter.h"
+
 #include <vector>
 
 namespace city {
 
 constexpr float SPEED_LIMIT = 13.9f;
 
+// Declared here, defined in sim/state/world.h: the definition is the unit.
+struct World;
+
 int g_counter = 0;
+thread_local bool t_inside = false; // per thread: not shared state
 
 struct Car {
 	float s = 0, v = 0;
@@ -28,6 +34,7 @@ struct Fleet {
 	std::vector<Car> cars;
 	std::vector<int> queue;
 	float total = 0;
+	Counter ticks;
 	void tick(Mover &m, float dt);
 	float drain();
 	float probe();

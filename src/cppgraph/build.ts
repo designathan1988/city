@@ -209,8 +209,20 @@ function assemble(
   root: string, options: CppGraphOptions, files: Map<string, FileData>, byKey: Map<string, Unit>, reached: Set<string>,
   edges: Map<string, Map<EdgeKind, number>>, external: Map<string, Map<string, Map<EdgeKind, number>>>, version: string, started: number,
 ): GraphIR {
-  const classId = new Map<string, string>();
-  for (const unit of byKey.values()) if (unit.u.kind === 'class' && !classId.has(unit.u.name)) classId.set(unit.u.name, unit.id);
+  const classes = new Map<string, Unit[]>();
+  for (const unit of byKey.values()) if (unit.u.kind === 'class') classes.set(unit.u.name, [...(classes.get(unit.u.name) ?? []), unit]);
+  const stem = (file: string): string => file.replace(/\.[^./]+$/, '');
+  // A member written in its class body belongs to that exact class. An out-of-line definition (`void Fleet::tick()`
+  // in fleet.cpp) names its class: the one defined in the same file, else in the header of the same name, else the
+  // only one with that name (classes of one name in different files are different classes).
+  const parentOf = (unit: Unit): string | null => {
+    const { owner, ownerAt } = unit.u;
+    if (owner === null) return null;
+    if (ownerAt !== null) return byKey.get(`${unit.file}@${ownerAt.line}:${ownerAt.character}`)?.id ?? null;
+    const named = classes.get(owner) ?? [];
+    return (named.find((c) => c.file === unit.file) ?? named.find((c) => stem(c.file) === stem(unit.file))
+      ?? (named.length === 1 ? named[0] : undefined))?.id ?? null;
+  };
   const units: UnitRecord[] = [...reached].map((key) => {
     const unit = byKey.get(key)!;
     const data = files.get(unit.file)!;
@@ -226,7 +238,7 @@ function assemble(
       id: unit.id, kind: unit.u.kind, name: unit.u.name, file: relativePath(root, unit.file),
       start: { line: start.line + 1, column: start.character + 1 }, end: { line: end.line + 1, column: end.character + 1 },
       lines: end.line - start.line + 1, exported: HEADER.test(unit.file), signature: unit.u.detail,
-      parent: unit.u.owner ? classId.get(unit.u.owner) ?? null : null, nested: [],
+      parent: parentOf(unit), nested: [],
       facts: {
         external: uses, nondeterminism: [...new Set(facts.nondeterminism)].sort(), loopAllocations: facts.loopAllocations,
         numericLiterals: facts.numericLiterals, stringLiterals: facts.stringLiterals, decisions: facts.decisions, loops: facts.loops,
