@@ -4,6 +4,12 @@
   "_doc": {
    "type": "string"
   },
+  "overcast_sun": { "type": "number" },
+  "overcast_ambient": { "type": "number" },
+  "overcast_sky": { "type": "number" },
+  "overcast_grey": { "type": "string", "pattern_prefix": "#" },
+  "flash_ambient": { "type": "number" },
+  "flash_sky": { "type": "number" },
   "sun_day": {
    "type": "string",
    "pattern_prefix": "#"

@@ -1,61 +1,220 @@
 {
  "type": "object",
  "properties": {
-  "vehicle_tints": { "type": "array", "items": { "type": "string", "pattern_prefix": "#" }, "minItems": 1 },
-  "person_tints": { "type": "array", "items": { "type": "string", "pattern_prefix": "#" }, "minItems": 1 },
-  "foliage_round": { "type": "array", "items": { "type": "string", "pattern_prefix": "#" }, "minItems": 1 },
+  "vehicle_tints": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 1
+  },
+  "person_tints": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 1
+  },
+  "foliage_round": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern_prefix": "#"
+   },
+   "minItems": 1
+  },
   "water": {
    "type": "object",
    "properties": {
-    "_doc": { "type": "string" },
-    "shallow": { "type": "string", "pattern_prefix": "#" },
-    "deep": { "type": "string", "pattern_prefix": "#" },
-    "sea_level_m": { "type": "number" },
-    "wave_scale": { "type": "number" },
-    "peak_hz": { "type": "number" },
-    "detail_ratio": { "type": "number" },
-    "ripple_strength": { "type": "number" },
-    "slope_sigma": { "type": "number" },
-    "specular_f0": { "type": "number" },
-    "fetch_m": { "type": "number" }
+    "_doc": {
+     "type": "string"
+    },
+    "shallow": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "deep": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "sea_level_m": {
+     "type": "number"
+    },
+    "wave_scale": {
+     "type": "number"
+    },
+    "peak_hz": {
+     "type": "number"
+    },
+    "detail_ratio": {
+     "type": "number"
+    },
+    "ripple_strength": {
+     "type": "number"
+    },
+    "slope_sigma": {
+     "type": "number"
+    },
+    "specular_f0": {
+     "type": "number"
+    },
+    "fetch_m": {
+     "type": "number"
+    }
    },
-   "required": ["shallow", "deep", "sea_level_m", "wave_scale", "peak_hz", "detail_ratio", "ripple_strength", "slope_sigma", "specular_f0", "fetch_m"],
+   "required": [
+    "shallow",
+    "deep",
+    "sea_level_m",
+    "wave_scale",
+    "peak_hz",
+    "detail_ratio",
+    "ripple_strength",
+    "slope_sigma",
+    "specular_f0",
+    "fetch_m"
+   ],
    "strict": true
   },
   "sky": {
    "type": "object",
    "properties": {
-    "top": { "type": "string", "pattern_prefix": "#" },
-    "horizon": { "type": "string", "pattern_prefix": "#" },
-    "ground": { "type": "string", "pattern_prefix": "#" }
+    "top": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "horizon": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "ground": {
+     "type": "string",
+     "pattern_prefix": "#"
+    }
    },
-   "required": ["top", "horizon", "ground"],
+   "required": [
+    "top",
+    "horizon",
+    "ground"
+   ],
    "strict": true
   },
   "terrain": {
    "type": "object",
    "properties": {
-    "grass_map": { "type": "string" },
-    "grass_tint": { "type": "string", "pattern_prefix": "#" },
-    "rock": { "type": "string", "pattern_prefix": "#" },
-    "sand": { "type": "string", "pattern_prefix": "#" },
-    "land_map": { "type": "string" },
-    "patch_scale": { "type": "number" },
-    "grass_m": { "type": "number" },
-    "dirt_m": { "type": "number" },
-    "rock_m": { "type": "number" },
-    "land_layers": { "type": "number" },
-    "dirt_layer": { "type": "number" },
-    "rock_layer": { "type": "number" },
-    "_doc": { "type": "string" },
-    "dirt_from": { "type": "number" },
-    "dirt_to": { "type": "number" },
-    "rock_slope": { "type": "number" }
+    "grass_map": {
+     "type": "string"
+    },
+    "grass_tint": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "rock": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "sand": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "land_map": {
+     "type": "string"
+    },
+    "patch_scale": {
+     "type": "number"
+    },
+    "grass_m": {
+     "type": "number"
+    },
+    "dirt_m": {
+     "type": "number"
+    },
+    "rock_m": {
+     "type": "number"
+    },
+    "land_layers": {
+     "type": "number"
+    },
+    "dirt_layer": {
+     "type": "number"
+    },
+    "rock_layer": {
+     "type": "number"
+    },
+    "_doc": {
+     "type": "string"
+    },
+    "dirt_from": {
+     "type": "number"
+    },
+    "dirt_to": {
+     "type": "number"
+    },
+    "rock_slope": {
+     "type": "number"
+    },
+    "biome_tint": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "gully_m": {
+     "type": "number"
+    },
+    "gully_depth": {
+     "type": "number"
+    },
+    "gully_slope_from": {
+     "type": "number"
+    },
+    "gully_slope_to": {
+     "type": "number"
+    },
+    "grass_detail": {
+     "type": "string"
+    },
+    "detail_m": {
+     "type": "number"
+    },
+    "detail_near_px": {
+     "type": "number"
+    },
+    "detail_far_px": {
+     "type": "number"
+    },
+    "detail_albedo": {
+     "type": "number"
+    }
    },
-   "required": ["grass_map", "grass_tint", "rock", "sand", "land_map", "grass_m", "dirt_m", "rock_m", "land_layers", "dirt_layer", "rock_layer", "dirt_from", "dirt_to", "rock_slope"],
+   "required": [
+    "grass_map",
+    "grass_tint",
+    "rock",
+    "sand",
+    "land_map",
+    "grass_m",
+    "dirt_m",
+    "rock_m",
+    "land_layers",
+    "dirt_layer",
+    "rock_layer",
+    "dirt_from",
+    "dirt_to",
+    "rock_slope"
+   ],
    "strict": true
   }
  },
- "required": ["vehicle_tints", "person_tints", "foliage_round", "water", "sky", "terrain"],
+ "required": [
+  "vehicle_tints",
+  "person_tints",
+  "foliage_round",
+  "water",
+  "sky",
+  "terrain"
+ ],
  "strict": true
 }

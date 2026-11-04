@@ -27,6 +27,7 @@ const QUERIES := {
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status", &"landscape": "landscape", &"cloud_at": "cloud_at",
+	&"sky_revision": "sky_revision", &"fog_field": "fog_field",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
@@ -71,6 +72,11 @@ func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
 	_city_slot = "" # a new city: its first save gives it a slot of its own
 	refresh()
 	return report
+
+
+## The core is up and holds a map (views that read it each frame wait for this).
+func ready_to_read() -> bool:
+	return _core != null and not snapshot.is_empty()
 
 
 ## The slot the city on screen is saved to ("" until its first save).

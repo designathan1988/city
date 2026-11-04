@@ -9,6 +9,9 @@ var _sun: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
+var _hour := 0.0
+var _overcast := 0.0
+var _flash := 0.0
 
 
 func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
@@ -22,7 +25,17 @@ func _c(key: String) -> Color:
 	return Color.html(_d[key])
 
 
+## How overcast it is (0..1, rain and storm) and how bright a bolt's flash is now: the light follows at once.
+func set_weather(overcast: float, flash: float) -> void:
+	if is_equal_approx(overcast, _overcast) and is_equal_approx(flash, _flash):
+		return
+	_overcast = overcast
+	_flash = flash
+	set_hour(_hour)
+
+
 func set_hour(hour: float) -> void:
+	_hour = hour
 	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
 	var elev: float = _d.max_elev_deg * sin(PI * k)
 	var az: float = _d.az_start_deg + _d.az_span_deg * k
@@ -31,14 +44,14 @@ func set_hour(hour: float) -> void:
 	if elev > _d.day_from_deg:
 		_aim(maxf(elev, _d.sun_min_elev_deg), az)
 		_sun.light_color = _c("sun_low").lerp(_c("sun_day"), smoothstep(_d.sun_warm_from_deg, _d.sun_warm_to_deg, elev))
-		_sun.light_energy = _d.sun_energy * day
+		_sun.light_energy = _d.sun_energy * day * (1.0 - _overcast * _d.overcast_sun)
 	else:
 		_aim(_d.moon_elev_deg, az + _d.moon_offset_deg)
 		_sun.light_color = _c("moon")
 		_sun.light_energy = _d.moon_energy * night
 	var hemi: float = _d.hemi_base + _d.hemi_day_k * day + _d.hemi_night_k * night
 	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), day)
-	_env.ambient_light_energy = hemi * _d.ambient_scale
+	_env.ambient_light_energy = hemi * _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
 	_set_sky(elev)
 	_env.glow_enabled = night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
@@ -61,6 +74,9 @@ func _set_sky(elev: float) -> void:
 	var horizon := _c("horizon_day").lerp(_c("horizon_dusk"), warm * light * _d.dusk_share)
 	horizon = horizon.lerp(_c("horizon_night"), 1.0 - light)
 	var sun_col := _c("sun_day").lerp(_c("sun_low"), minf(1.0, warm)) * light
+	var grey: Color = _c("overcast_grey") * light
+	zenith = zenith.lerp(grey, _overcast * _d.overcast_sky)
+	horizon = horizon.lerp(grey, _overcast * _d.overcast_sky)
 	_sky.set_shader_parameter("zenith", zenith)
 	_sky.set_shader_parameter("horizon", horizon)
 	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
@@ -68,7 +84,7 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))
 	_sky.set_shader_parameter("low", _d.low_sky * light * (1.0 - minf(1.0, warm)))
 	_sky.set_shader_parameter("sun_color", sun_col)
-	_sky.set_shader_parameter("gain", _d.sky_gain)
+	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
 	var fog := horizon.lerp(_c("low_horizon"), _d.low_sky * light * (1.0 - minf(1.0, warm)) * _d.fog_low_share)
 	_env.fog_light_color = fog
 	_env.fog_density = _d.fog_density

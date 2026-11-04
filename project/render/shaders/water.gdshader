@@ -21,8 +21,12 @@ uniform float ripple_strength;
 uniform float slope_sigma; // rms slope the ripples stand for, as a roughness when unresolved
 uniform float specular_f0;
 uniform float fetch_m; // the width of a water body: shallow and deep colours mix in patches this wide
-uniform float wind_x = 1.0;
-uniform float wind_z = 0.0;
+global uniform float wind_x;
+global uniform float wind_z;
+uniform float waves = 0.3; // the map's weather: how rough, how much foam, how fast the rivers run (render/sky_view.gd)
+uniform float foam = 0.4;
+uniform float current = 1.2;
+uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 #include "res://render/shaders/color_space.gdshaderinc"
@@ -44,10 +48,23 @@ void fragment() {
 	vec3 world = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float pixel = max(fwidth(world.x), fwidth(world.z));
 	float fine = 1.0 - smoothstep(0.5 / (wave_scale * detail_ratio), 0.5 / wave_scale, pixel);
-	vec2 s = ripple(world.xz, TIME, fine) * ripple_strength * fine;
+	float rough = 0.5 + 2.0 * waves;
+	vec2 s = ripple(world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME, TIME, fine) * ripple_strength * fine * rough;
 	vec3 n = normalize(vec3(-s.x, 1.0, -s.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	vec3 c = mix(source_linear(shallow), source_linear(deep), vnoise(world.xz / fetch_m));
+	// Foam: where the water is shallow over the ground, broken by the ripples' own noise.
+	float depth = texture(depth_texture, SCREEN_UV).x;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	vec3 ndc = vec3(SCREEN_UV, depth) * 2.0 - 1.0;
+#else
+	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, depth);
+#endif
+	vec4 under = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
+	float below = length(under.xyz / under.w) - length(VERTEX);
+	float edge = (1.0 - smoothstep(0.0, 1.6, below)) * foam;
+	float froth = smoothstep(0.35, 0.8, vnoise(world.xz * 0.9 + current * TIME * 0.3) + edge * 0.6);
+	c = mix(c, vec3(0.9, 0.93, 0.95), froth * edge);
 	ALBEDO = linear_out(c);
 	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine));
 	SPECULAR = specular_f0;

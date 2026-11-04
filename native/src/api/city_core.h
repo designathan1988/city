@@ -61,6 +61,8 @@ public:
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary clear_relief();
 	godot::Dictionary landscape() const;
+	int64_t sky_revision() const;
+	godot::Dictionary fog_field(const godot::Vector3 &camera);
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();

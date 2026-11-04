@@ -37,3 +37,20 @@ vec3 grass(vec2 p, float detail) {
 	float k = smoothstep(0.35, 0.65, vnoise(p * 0.25));
 	return mix(g, texture(grass_map, r).rgb, k * detail);
 }
+
+// The close-up grain of the grass (Roadcraft's detail layer): a tile of blades under the map, twice its value around 1,
+// read a second time turned and larger so it does not repeat, gone once a metre takes under a few pixels.
+const float DETAIL_TURN_C = 0.5403;
+const float DETAIL_TURN_S = 0.8415;
+const float DETAIL_SECOND = 0.4137;
+
+vec3 grass_grain(vec2 xz, float per_pixel) {
+	float w = 1.0 - smoothstep(detail_near_px, detail_far_px, per_pixel);
+	if (w <= 0.0) return vec3(1.0);
+	vec2 uv = xz / detail_m;
+	vec2 dx = dFdx(uv), dy = dFdy(uv);
+	mat2 turn = mat2(vec2(DETAIL_TURN_C, DETAIL_TURN_S), vec2(-DETAIL_TURN_S, DETAIL_TURN_C));
+	vec3 a = textureGrad(grass_detail, uv, dx, dy).rgb * 2.0;
+	vec3 b = textureGrad(grass_detail, turn * uv * DETAIL_SECOND + 0.31, turn * dx * DETAIL_SECOND, turn * dy * DETAIL_SECOND).rgb * 2.0;
+	return mix(vec3(1.0), a * mix(vec3(1.0), b, 0.55), w * detail_albedo);
+}

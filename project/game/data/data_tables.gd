@@ -39,6 +39,7 @@ const GAME := {
 	"camera": "res://data/game/camera.json",
 	"settings": "res://data/game/settings.json",
 	"daylight": "res://data/game/daylight.json",
+	"sky": "res://data/game/sky.json",
 	"saves": "res://data/game/saves.json",
 }
 const STRINGS := [

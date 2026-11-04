@@ -18,12 +18,15 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
 	"res://render/shaders/vegetation_cards.gdshader",
 ]
+const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
 var terrain: Node3D
 var sun: DirectionalLight3D
 var environment: Environment
 var daylight: Daylight
+var sky: SkyView
+var _water_mat: ShaderMaterial
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
 
@@ -33,6 +36,8 @@ func _ready() -> void:
 	_build_environment(palette)
 	_build_terrain(palette)
 	_build_water(palette)
+	sky = SkyView.new(self)
+	add_child(sky)
 
 
 ## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
@@ -51,6 +56,7 @@ func materials() -> Dictionary:
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
+		_materials["water"] = _water_mat # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
 
 
@@ -105,9 +111,27 @@ func _param(v: Variant) -> Variant:
 		return load(v)
 	if v is String and v.begins_with("#"):
 		return Color.html(v)
+	if v is Array and not v.is_empty() and v[0] is String:
+		var colours := PackedColorArray()
+		for c: String in v:
+			colours.append(Color.html(c))
+		return colours
 	if v is Array:
 		return PackedFloat32Array(v)
 	return v
+
+
+## The map's biome tints the grass (0 none, else the biome's index + 1).
+func set_map_biome(region: int) -> void:
+	_terrain_material.set_shader_param("map_biome", region + 1)
+
+
+## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
+func set_water_look(weather: Dictionary) -> void:
+	_water_mat.set_shader_parameter("waves", minf(1.0, weather.waves + weather.wind / WIND_FULL_WAVES_MS))
+	_water_mat.set_shader_parameter("foam", weather.foam)
+	_water_mat.set_shader_parameter("current", weather.current)
+	_terrain_material.set_shader_param("gully_auto", weather.gully_auto)
 
 
 func _build_environment(_palette: Dictionary) -> void:
@@ -199,10 +223,7 @@ func _build_water(palette: Dictionary) -> void:
 	for key in palette.water:
 		if key != "sea_level_m" and not key.begins_with("_"):
 			mat.set_shader_parameter(key, _param(palette.water[key]))
-	# The ripples move the way the wind blows: the vegetation material holds the wind (its single owner).
-	var wind: Dictionary = DataTables.render().materials.vegetation.params
-	mat.set_shader_parameter("wind_x", wind.wind_dir_x)
-	mat.set_shader_parameter("wind_z", wind.wind_dir_z)
+	_water_mat = mat
 	var water := MeshInstance3D.new()
 	water.mesh = plane
 	water.material_override = mat

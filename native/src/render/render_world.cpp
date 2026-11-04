@@ -21,6 +21,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
+	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
@@ -31,6 +32,7 @@ void RenderWorld::reset() {
 	roads_.reset();
 	props_.reset();
 	trees_.reset();
+	water_.reset();
 	buildings_.reset();
 	agents_.reset();
 	overlays_.reset();
@@ -42,7 +44,12 @@ void RenderWorld::reset() {
 void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	reset();
 	budget_ = std::max(1, int(s.catalog.tune.render_max_chunk_rebuilds_per_frame));
-	if (terrain3d) terrain_.push_all(s.terrain, terrain3d);
+	if (terrain3d) {
+		terrain_.push_all(s.terrain, terrain3d);
+		terrain_.push_all_paint(s.terrain, s.nature.ground, terrain3d);
+	}
+	fog_.reset();
+	water_.mark_all(s.terrain);
 	for (const RoadSegment &g : s.roads.segs)
 		if (g.alive) {
 			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
@@ -69,6 +76,9 @@ void RenderWorld::drain_log(CityState &s) {
 	road_keys_.swap(s.log.road_chunks);
 	building_keys_.swap(s.log.building_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
+	paint_rects_.swap(s.log.paint_rects);
+	nature_keys_.swap(s.log.nature_chunks);
+	water_keys_.swap(s.log.water_chunks);
 }
 
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
@@ -83,6 +93,14 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.lock = laps.lap();
 		drain_log(s);
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
+		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
+		paint_rects_.clear();
+		ChangeLog::dedup(nature_keys_);
+		for (int64_t k : nature_keys_) trees_.mark_dirty(k);
+		nature_keys_.clear();
+		for (int64_t k : water_keys_) water_.mark(k);
+		water_keys_.clear();
+		water_.sync(s.terrain);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
 		ChangeLog::dedup(road_keys_);
 		ChangeLog::dedup(building_keys_);

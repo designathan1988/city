@@ -51,6 +51,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityCore::set_biome);
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityCore::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityCore::landscape);
+	ClassDB::bind_method(D_METHOD("sky_revision"), &CityCore::sky_revision);
+	ClassDB::bind_method(D_METHOD("fog_field", "camera"), &CityCore::fog_field);
 	ClassDB::bind_method(D_METHOD("draw_building", "corner_a", "corner_b", "function", "zone"), &CityCore::draw_building);
 	ClassDB::bind_method(D_METHOD("preview_lot", "corner_a", "corner_b"), &CityCore::preview_lot);
 	ClassDB::bind_method(D_METHOD("set_building", "id", "function", "floors"), &CityCore::set_building);
