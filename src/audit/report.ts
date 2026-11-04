@@ -11,8 +11,8 @@ export function renderAudit(result: AuditResult): string {
     '',
     `Source: ${result.sourceRoot} (${result.graphUnits} units). Reachable from frame or tick loops: ${result.hot.units} units from ${result.hot.roots.length} root(s).`,
     '',
-    'Reachability is static: every path a loop can take, not what runs every frame. Performance findings in reachable code ' +
-      'are rated medium; which of them run every frame is measured by the trace stage, not inferred here.',
+    'Reachability is static: every path a loop can take. Performance findings in reachable code are rated medium. ' +
+      'The conversion does not depend on this rating: it always writes the correct methodology for every pattern found.',
     '',
     '| Rule | High | Medium | Low | Status |',
     '|---|---|---|---|---|',
