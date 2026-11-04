@@ -126,6 +126,10 @@ void load_ecology(const Dictionary &t, const PaintDef &paint, EcologyDef &c, Pac
 	Read r{ e, "ecology" };
 	Dictionary f = r.dict(t, "formations");
 	for (int i = 0; i < FORMATIONS; i++) c.formations[size_t(i)] = community(r.dict(f, NAMES[i]), r);
+	Dictionary mixes = r.dict(t, "mixes");
+#define CITY_MIX_READ(name) c.mix.name = r.num(mixes, #name);
+	CITY_ECOLOGY_MIX_FIELDS(CITY_MIX_READ)
+#undef CITY_MIX_READ
 	c.grid_m = r.num(t, "site_grid_m"); c.patch_m = r.num(t, "patch_m"); c.fray_m = r.num(t, "fray_m"); c.mean_cells = r.integer(t, "mean_cells");
 	c.low_m = r.num(t, "site_low_m"); c.high_m = r.num(t, "site_high_m");
 	c.flat_from_deg = r.num(t, "flat_from_deg"); c.flat_to_deg = r.num(t, "flat_to_deg");

@@ -76,8 +76,25 @@ constexpr int FORMATIONS = int(Formation::COUNT);
 enum class Biome : int { NONE = -1, CERRADO = 0, ATLANTIC, AMAZON, CAATINGA, PAMPA, PANTANAL, COUNT };
 constexpr int BIOMES = int(Biome::COUNT);
 
+// How a biome mixes its communities by the site, the keys of nature.json ecology.mixes (each one's origin is in its _doc).
+#define CITY_ECOLOGY_MIX_FIELDS(X) \
+	X(vereda_deep_from) X(vereda_deep_to) X(vereda_patch_from) X(vereda_patch_to) X(vereda_water_near_m) X(vereda_water_far_m) \
+	X(dense_deep_from) X(dense_deep_to) X(dense_deep_share) X(dense_patch_from) X(dense_patch_to) X(dense_patch_share) \
+	X(rupestre_ridge) X(rupestre_sandstone) X(cerrado_floor) X(ridge_altitude_m) X(patch_altitude_m) X(varzea_water_near_m) \
+	X(varzea_water_far_m) X(varzea_valley) X(caatinga_ridge) X(capao_patch_from) X(capao_patch_to) X(capao_deep_from) \
+	X(capao_deep_to) X(capao_riparian) X(pampa_ridge) X(low_valley_base) X(low_valley) X(low_ridge_from) \
+	X(low_ridge_to) X(low_water_near_m) X(low_water_far_m) X(cordilheira_patch_from) X(cordilheira_patch_to) X(cordilheira_low) \
+	X(pantanal_riparian) X(pantanal_rest) X(ragged_base) X(ragged_span) X(shrub_base) X(shrub_span)
+
+struct EcologyMixDef {
+#define CITY_MIX_FIELD(name) float name = 0;
+	CITY_ECOLOGY_MIX_FIELDS(CITY_MIX_FIELD)
+#undef CITY_MIX_FIELD
+};
+
 struct EcologyDef {
 	std::array<Community, FORMATIONS> formations;
+	EcologyMixDef mix;
 	float grid_m = 0, patch_m = 0, fray_m = 0;
 	float low_m = 0, high_m = 0, flat_from_deg = 0, flat_to_deg = 0, steep_from_deg = 0, steep_to_deg = 0;
 	float riparian_near_m = 0, riparian_near_patch_m = 0, riparian_far_m = 0, riparian_far_patch_m = 0;

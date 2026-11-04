@@ -18,18 +18,8 @@ constexpr uint32_t SEED_MOD = 997u; // a seed moves the patches by up to this ma
 constexpr float SHIFT_X = 1.731f, SHIFT_Z = 2.113f;
 constexpr uint32_t PATCH_SALT = 0x70617463u, FRAY_SALT = 0x66726179u;
 constexpr int STRATA_MIX = 6; // the most communities one biome mixes
-// The shares of a mix (each site reading): the sides of a smoothstep, in 0..1 of the patch or valley.
-constexpr float VEREDA_DEEP_FROM = 0.15f, VEREDA_DEEP_TO = 0.55f, VEREDA_PATCH_FROM = 0.3f, VEREDA_PATCH_TO = 0.6f, VEREDA_WATER_NEAR_M = 24.f, VEREDA_WATER_FAR_M = 128.f;
-constexpr float DENSE_DEEP_FROM = 0.1f, DENSE_DEEP_TO = 0.5f, DENSE_DEEP_SHARE = 0.8f, DENSE_PATCH_FROM = 0.62f, DENSE_PATCH_TO = 0.85f, DENSE_PATCH_SHARE = 0.6f;
-constexpr float RUPESTRE_RIDGE = 0.9f, RUPESTRE_SANDSTONE = 0.45f, CERRADO_FLOOR = 0.05f;
-constexpr float RIDGE_ALTITUDE_M = 24.f, PATCH_ALTITUDE_M = 20.f;
-constexpr float VARZEA_WATER_NEAR_M = 16.f, VARZEA_WATER_FAR_M = 88.f, VARZEA_VALLEY = 0.4f;
-constexpr float CAATINGA_RIDGE = 0.35f, CAPAO_PATCH_FROM = 0.62f, CAPAO_PATCH_TO = 0.8f, CAPAO_DEEP_FROM = 0.05f, CAPAO_DEEP_TO = 0.4f, CAPAO_RIPARIAN = 0.9f, PAMPA_RIDGE = 0.2f;
-constexpr float LOW_VALLEY_BASE = 0.35f, LOW_VALLEY = 1.2f, LOW_RIDGE_FROM = 0.25f, LOW_RIDGE_TO = 0.6f, LOW_WATER_NEAR_M = 8.f, LOW_WATER_FAR_M = 88.f;
-constexpr float CORDILHEIRA_PATCH_FROM = 0.55f, CORDILHEIRA_PATCH_TO = 0.75f, CORDILHEIRA_LOW = 0.7f, PANTANAL_RIPARIAN = 0.35f, PANTANAL_REST = 0.6f;
-constexpr float RAGGED_BASE = 0.8f, RAGGED_SPAN = 0.4f, SHRUB_BASE = 1.2f, SHRUB_SPAN = 0.4f;
 constexpr float NO_WEIGHT = 1e-6f, MIN_WEIGHT = 0.01f, BYTE_MAX = 255.f;
-constexpr float FAR_FROM_WATER_M = 1e9f;
+constexpr float UNREACHED_M = 1e9f;
 constexpr int CHAMFER_STRAIGHT = 3, CHAMFER_DIAGONAL = 4; // two-pass chamfer distance (Borgefors 1986)
 
 float smooth(float a, float b, float x) { return smooth01((x - a) / (b - a)); }
@@ -68,29 +58,30 @@ struct Mix {
 Community biome_community(Biome b, const Site &s, const EcologyDef &d) {
 	float riparian = 1.f - smooth(d.riparian_near_m + d.riparian_near_patch_m * s.patch, d.riparian_far_m + d.riparian_far_patch_m * s.patch, s.water);
 	float cliff = s.steep, open = 1.f - cliff;
+	const EcologyMixDef &x = d.mix;
 	Mix m;
 	switch (b) {
 		case Biome::CERRADO: {
-			float vereda = s.flat * smooth(VEREDA_DEEP_FROM, VEREDA_DEEP_TO, s.valley) * (1.f - smooth(VEREDA_WATER_NEAR_M, VEREDA_WATER_FAR_M, s.water)) * smooth(VEREDA_PATCH_FROM, VEREDA_PATCH_TO, s.patch);
-			float dense = clamp01(smooth(DENSE_DEEP_FROM, DENSE_DEEP_TO, s.valley) * DENSE_DEEP_SHARE + smooth(DENSE_PATCH_FROM, DENSE_PATCH_TO, s.patch) * DENSE_PATCH_SHARE);
-			float rupestre = clamp01(s.ridge * RUPESTRE_RIDGE + s.sandstone * RUPESTRE_SANDSTONE * s.flat) * (1.f - riparian);
+			float vereda = s.flat * smooth(x.vereda_deep_from, x.vereda_deep_to, s.valley) * (1.f - smooth(x.vereda_water_near_m, x.vereda_water_far_m, s.water)) * smooth(x.vereda_patch_from, x.vereda_patch_to, s.patch);
+			float dense = clamp01(smooth(x.dense_deep_from, x.dense_deep_to, s.valley) * x.dense_deep_share + smooth(x.dense_patch_from, x.dense_patch_to, s.patch) * x.dense_patch_share);
+			float rupestre = clamp01(s.ridge * x.rupestre_ridge + s.sandstone * x.rupestre_sandstone * s.flat) * (1.f - riparian);
 			m.add(riparian * open, Formation::GALLERY);
 			m.add(vereda * (1.f - riparian) * open, Formation::VEREDA);
 			m.add(dense * (1.f - riparian) * (1.f - vereda) * open, Formation::CERRADAO);
 			m.add(rupestre * open, Formation::RUPESTRE);
-			m.add(std::max(0.f, 1.f - riparian - vereda - dense - rupestre) * open + CERRADO_FLOOR, Formation::CERRADO);
+			m.add(std::max(0.f, 1.f - riparian - vereda - dense - rupestre) * open + x.cerrado_floor, Formation::CERRADO);
 			m.add(cliff, Formation::OUTCROP);
 			break;
 		}
 		case Biome::ATLANTIC: {
-			float high = smooth(d.forest_line_from_m, d.forest_line_to_m, s.altitude + s.ridge * RIDGE_ALTITUDE_M + (s.patch - 0.5f) * PATCH_ALTITUDE_M);
+			float high = smooth(d.forest_line_from_m, d.forest_line_to_m, s.altitude + s.ridge * x.ridge_altitude_m + (s.patch - 0.5f) * x.patch_altitude_m);
 			m.add((1.f - high) * open + riparian, Formation::OMBROPHILOUS);
 			m.add(high * open * (1.f - riparian), Formation::HIGH_GRASSLAND);
 			m.add(cliff, Formation::OUTCROP);
 			break;
 		}
 		case Biome::AMAZON: {
-			float varzea = (1.f - smooth(VARZEA_WATER_NEAR_M, VARZEA_WATER_FAR_M, s.water)) * clamp01(VARZEA_VALLEY + s.valley);
+			float varzea = (1.f - smooth(x.varzea_water_near_m, x.varzea_water_far_m, s.water)) * clamp01(x.varzea_valley + s.valley);
 			m.add((1.f - varzea) * open, Formation::TERRA_FIRME);
 			m.add(varzea * open, Formation::VARZEA);
 			m.add(cliff, Formation::OUTCROP);
@@ -99,40 +90,40 @@ Community biome_community(Biome b, const Site &s, const EcologyDef &d) {
 		case Biome::CAATINGA:
 			m.add(riparian * open, Formation::CAATINGA_RIVER);
 			m.add((1.f - riparian) * open, Formation::THORN_SCRUB);
-			m.add(cliff + s.ridge * CAATINGA_RIDGE, Formation::OUTCROP);
+			m.add(cliff + s.ridge * x.caatinga_ridge, Formation::OUTCROP);
 			break;
 		case Biome::PAMPA: {
-			float capao = smooth(CAPAO_PATCH_FROM, CAPAO_PATCH_TO, s.patch) * smooth(CAPAO_DEEP_FROM, CAPAO_DEEP_TO, s.valley);
-			m.add(riparian * open * CAPAO_RIPARIAN, Formation::CAPAO);
+			float capao = smooth(x.capao_patch_from, x.capao_patch_to, s.patch) * smooth(x.capao_deep_from, x.capao_deep_to, s.valley);
+			m.add(riparian * open * x.capao_riparian, Formation::CAPAO);
 			m.add(capao * (1.f - riparian) * open, Formation::CAPAO);
 			m.add((1.f - capao) * (1.f - riparian) * open, Formation::CAMPOS);
-			m.add(cliff + s.ridge * PAMPA_RIDGE + s.basalt * PAMPA_RIDGE, Formation::OUTCROP);
+			m.add(cliff + s.ridge * x.pampa_ridge + s.basalt * x.pampa_ridge, Formation::OUTCROP);
 			break;
 		}
 		case Biome::PANTANAL: {
-			float low = std::max(s.flat * clamp01(LOW_VALLEY_BASE + s.valley * LOW_VALLEY) * (1.f - smooth(LOW_RIDGE_FROM, LOW_RIDGE_TO, s.ridge)), 1.f - smooth(LOW_WATER_NEAR_M, LOW_WATER_FAR_M, s.water));
-			float cord = smooth(CORDILHEIRA_PATCH_FROM, CORDILHEIRA_PATCH_TO, s.patch) * (1.f - low * CORDILHEIRA_LOW);
-			m.add(riparian * open * PANTANAL_RIPARIAN, Formation::CORDILHEIRA);
+			float low = std::max(s.flat * clamp01(x.low_valley_base + s.valley * x.low_valley) * (1.f - smooth(x.low_ridge_from, x.low_ridge_to, s.ridge)), 1.f - smooth(x.low_water_near_m, x.low_water_far_m, s.water));
+			float cord = smooth(x.cordilheira_patch_from, x.cordilheira_patch_to, s.patch) * (1.f - low * x.cordilheira_low);
+			m.add(riparian * open * x.pantanal_riparian, Formation::CORDILHEIRA);
 			m.add(low * (1.f - cord) * open, Formation::FLOODED_FIELD);
 			m.add(cord * open, Formation::CORDILHEIRA);
-			m.add(std::max(0.f, 1.f - low - cord) * open * PANTANAL_REST, Formation::CERRADO);
+			m.add(std::max(0.f, 1.f - low - cord) * open * x.pantanal_rest, Formation::CERRADO);
 			m.add(cliff, Formation::OUTCROP);
 			break;
 		}
 		default: return Community{};
 	}
 	Community c = m.blend(d);
-	float jitter = RAGGED_BASE + RAGGED_SPAN * s.fray;
+	float jitter = x.ragged_base + x.ragged_span * s.fray;
 	c.canopy = clamp01(c.canopy * jitter);
 	c.trees = clamp01(c.trees * jitter);
-	c.shrub = clamp01(c.shrub * (SHRUB_BASE - SHRUB_SPAN * s.fray));
+	c.shrub = clamp01(c.shrub * (x.shrub_base - x.shrub_span * s.fray));
 	return c;
 }
 
 // Distance to the nearest wet corner, metres.
 void water_distance(const std::vector<uint8_t> &wet, int side, float cell, std::vector<float> &d) {
 	d.resize(wet.size());
-	for (size_t i = 0; i < wet.size(); i++) d[i] = wet[i] ? 0.f : FAR_FROM_WATER_M;
+	for (size_t i = 0; i < wet.size(); i++) d[i] = wet[i] ? 0.f : UNREACHED_M;
 	auto relax = [&](int x, int y, int dx, int dy, int w) {
 		int nx = x + dx, ny = y + dy;
 		if (nx < 0 || ny < 0 || nx >= side || ny >= side) return;
