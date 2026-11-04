@@ -36,6 +36,7 @@ void row(LotSpace &s, float y0, float y1, int facing, std::vector<std::pair<floa
 	for (const auto &c : cuts) {
 		float a = at, b = std::min(c.first, s.R - ROW_FROM);
 		at = std::max(at, c.second);
+		if (b <= a) continue; // a cut ending past the row's end leaves nothing (never a planter in a drive's mouth)
 		int n = int(std::floor((b - a) / l.stall_w));
 		float used = float(n) * l.stall_w, x0 = a + (b - a - used) * HALF;
 		for (int k = 0; k < n; k++) s.flat(EL_STALL, { x0 + float(k) * l.stall_w, y0, x0 + float(k + 1) * l.stall_w, y1 }, 0, line, facing);
