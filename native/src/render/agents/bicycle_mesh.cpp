@@ -19,8 +19,7 @@ int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const Person 
 	const Vector2 bracket = agent_v2(d["bracket"]), head = agent_v2(d["head"]); // [z, y]
 	const Vector3 bb(0, bracket.y, bracket.x), top(0, head.y, head.x), seat(0, saddle - SADDLE_TOP, bracket.x - float(d["seat_back_m"]));
 	const Vector3 low(0, head.y - float(d["head_tube_m"]), head.x + float(d["head_rake_m"]));
-	agent_wheel(mb, Vector3(0, r, -az), r, tyre.y, sides, 1, trim);
-	agent_wheel(mb, Vector3(0, r, az), r, tyre.y, sides, 1, trim);
+	for (float z : { -az, az }) agent_spoked_wheel(mb, Vector3(0, r, z), r, tyre.y, sides, int(d["spokes"]), trim);
 	agent_strut(mb, bb, seat, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, seat, top, tube, tube, AGENT_WHITE, AgentTag::PAINT);
 	agent_strut(mb, bb, low, tube, tube, AGENT_WHITE, AgentTag::PAINT);
@@ -34,6 +33,11 @@ int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const Person 
 	agent_box(mb, Vector3(-SADDLE_HALF_W, saddle - SADDLE_TOP, seat.z - SADDLE_LONG * 0.5f), Vector3(SADDLE_HALF_W, saddle, seat.z + SADDLE_LONG * 0.5f),
 			trim.blackout, AgentTag::FIXED);
 	agent_strut(mb, Vector3(-BAR_HALF, head.y, head.x), Vector3(BAR_HALF, head.y, head.x), tube, tube, trim.blackout, AgentTag::FIXED);
+	const Dictionary rack = d["rack"];
+	const Vector2 at = agent_v2(rack["at"]), lens = agent_v2(rack["lens_m"]);
+	const Vector3 size = agent_v3(rack["size_m"]);
+	agent_box(mb, Vector3(-size.x * 0.5f, at.y, at.x - size.z * 0.5f), Vector3(size.x * 0.5f, at.y + size.y, at.x + size.z * 0.5f), trim.blackout, AgentTag::FIXED);
+	agent_box(mb, Vector3(-lens.x * 0.5f, at.y + size.y, at.x - size.z * 0.5f), Vector3(lens.x * 0.5f, at.y + size.y + lens.y, at.x - size.z * 0.5f + lens.y), trim.tail, AgentTag::TAIL);
 	const float helmet = float(d["helmet_r"]);
 	agent_rider(mb, rider, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;

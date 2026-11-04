@@ -119,7 +119,7 @@ constexpr float TYRE_SECTION = 0.2f, TYRE_LIP = 0.9f; // the shoulder's radius, 
 constexpr int SHOULDER_STEPS = 4, SPOKES = 5, BOSS_SIDES = 8;
 constexpr float DISC_R = 0.72f, RIM_FACE = 0.25f; // the rim's disc: of r, and how far out its face stands, of the width
 constexpr float SPOKE_REACH = 0.56f, SPOKE_ROOT = 0.3f, SPOKE_TIP = 0.12f, SPOKE_FACE = 0.34f; // of r; its face of the width
-constexpr float BOSS_R = 0.18f, BOSS_FACE = 0.36f;
+constexpr float BOSS_R = 0.18f, BOSS_FACE = 0.36f, WIRE_M = 0.006f;
 
 struct Lathe {
 	MeshBuilder &mb;
@@ -186,6 +186,23 @@ void agent_wheel_near(MeshBuilder &mb, const Vector3 &c, float r, float w, int s
 	for (int i = 0; i < SPOKES; i++) spoke(l, TAU_F * i / SPOKES, r * SPOKE_REACH, r * SPOKE_ROOT, r * SPOKE_TIP, w * SPOKE_FACE, trim.hub);
 	Lathe boss{ mb, c, side, BOSS_SIDES, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
 	lathe_disc(boss, r * BOSS_R, w * BOSS_FACE, trim.hub);
+}
+
+void agent_spoked_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int spokes, const AgentTrim &trim) {
+	const float half = w * 0.5f, inner = r - w;
+	for (int side : { -1, 1 }) {
+		Lathe l{ mb, c, side, sides, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+		std::vector<int> ring = lathe_ring(l, r - half, 0, 1, 0, trim.tyre);
+		for (int i = 1; i <= SHOULDER_STEPS; i++) {
+			const float a = PI_F * float(i) / SHOULDER_STEPS, cs = std::cos(a), sn = std::sin(a);
+			std::vector<int> next = lathe_ring(l, r - half + cs * half, sn * half, cs, sn, trim.tyre);
+			lathe_band(l, ring, next, Vector3());
+			ring = std::move(next);
+		}
+		for (int i = 0; i < spokes / 2; i++) spoke(l, TAU_F * (float(i) + (side > 0 ? 0.f : 0.5f)) / float(spokes / 2), inner, WIRE_M, WIRE_M, half * RIM_FACE, trim.hub);
+		Lathe boss{ mb, c, side, BOSS_SIDES, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
+		lathe_disc(boss, r * BOSS_R * BOSS_R, half, trim.hub);
+	}
 }
 
 void agent_extrude(MeshBuilder &mb, const std::vector<Vector2> &p, float x0, float x1, const Color &c, AgentTag tag) {

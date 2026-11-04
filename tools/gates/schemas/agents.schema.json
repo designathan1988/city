@@ -268,7 +268,7 @@
     "front_tyre": {"type": "array", "items": {"type": "number"}},
     "wheelbase_m": {"type": "number"},
     "saddle_m": {"type": "number"},
-    "body": {"type": "array", "items": {"type": "number"}},
+    "shape": {"type": "object"},
     "helmet_r": {"type": "number"},
     "rider": {
      "type": "object",
@@ -283,7 +283,7 @@
      "strict": true
     }
    },
-   "required": ["_doc", "length", "tyre", "front_tyre", "wheelbase_m", "saddle_m", "body", "helmet_r", "rider"],
+   "required": ["_doc", "length", "tyre", "front_tyre", "wheelbase_m", "saddle_m", "shape", "helmet_r", "rider"],
    "strict": true
   },
   "bus": {
@@ -387,7 +387,7 @@
    "required": ["_doc", "length", "tyre", "dual_m", "track_m", "front_overhang_m", "wheelbase_m", "cab_w", "cab_top", "body_from_axle_m", "cab_lines", "box_m", "rails_m", "mirror_out_m", "fuel_l", "fuel_tank_m", "wall_m", "lamps_m", "interior"],
    "strict": true
   },
-  "bicycle": {"type": "object", "properties": {"_doc": {"type": "string"}, "length": {"type": "number"}, "tyre": {"type": "array", "items": {"type": "number"}}, "wheelbase_m": {"type": "number"}, "saddle_m": {"type": "number"}, "bracket": {"type": "array", "items": {"type": "number"}}, "head": {"type": "array", "items": {"type": "number"}}, "seat_back_m": {"type": "number"}, "head_tube_m": {"type": "number"}, "head_rake_m": {"type": "number"}, "tube_m": {"type": "number"}, "helmet_r": {"type": "number"}, "rider": {"type": "object", "properties": {"hip": {"type": "array", "items": {"type": "number"}}, "shoulders": {"type": "array", "items": {"type": "number"}}, "knee": {"type": "array", "items": {"type": "number"}}, "ankle": {"type": "array", "items": {"type": "number"}}, "hand": {"type": "array", "items": {"type": "number"}}}, "required": ["hip", "shoulders", "knee", "ankle", "hand"], "strict": true}}, "strict": true},
+  "bicycle": {"type": "object", "properties": {"spokes": {"type": "integer"}, "rack": {"type": "object"}, "_doc": {"type": "string"}, "length": {"type": "number"}, "tyre": {"type": "array", "items": {"type": "number"}}, "wheelbase_m": {"type": "number"}, "saddle_m": {"type": "number"}, "bracket": {"type": "array", "items": {"type": "number"}}, "head": {"type": "array", "items": {"type": "number"}}, "seat_back_m": {"type": "number"}, "head_tube_m": {"type": "number"}, "head_rake_m": {"type": "number"}, "tube_m": {"type": "number"}, "helmet_r": {"type": "number"}, "rider": {"type": "object", "properties": {"hip": {"type": "array", "items": {"type": "number"}}, "shoulders": {"type": "array", "items": {"type": "number"}}, "knee": {"type": "array", "items": {"type": "number"}}, "ankle": {"type": "array", "items": {"type": "number"}}, "hand": {"type": "array", "items": {"type": "number"}}}, "required": ["hip", "shoulders", "knee", "ankle", "hand"], "strict": true}}, "strict": true},
   "wheel_jump_m": {"type": "number"},
   "people": {
    "type": "object",

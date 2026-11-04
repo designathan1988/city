@@ -110,6 +110,8 @@ void agent_pane(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &
 void agent_wheel(MeshBuilder &mb, const godot::Vector3 &centre, float r, float width, int sides, int side, const AgentTrim &trim);
 // The same near: a tyre with a rounded shoulder, its rim sunk in it and five spokes.
 void agent_wheel_near(MeshBuilder &mb, const godot::Vector3 &centre, float r, float width, int sides, int side, const AgentTrim &trim);
+// A thin tyre round a rim, both sides alike, and `spokes` wires from the hub (a bicycle's).
+void agent_spoked_wheel(MeshBuilder &mb, const godot::Vector3 &centre, float r, float width, int sides, int spokes, const AgentTrim &trim);
 // A convex side profile (z, y) run across from x0 to x1, with its two ends.
 void agent_extrude(MeshBuilder &mb, const std::vector<godot::Vector2> &profile, float x0, float x1, const godot::Color &c, AgentTag tag);
 // A slab from x0 to x1 and y0 to y1 over [z0, z1], raised to arch_top over each axle (wheel-arch cut-outs).
