@@ -42,8 +42,8 @@
   "stop_to_m": 7.0
  },
  "poles": {
-  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: a 10 m pole set e = 0.1 L + 0.6 m deep (Celesc E-313.0025) stands 8.4 m clear. max_spacing_m: Enel Especificacao Tecnica 255, the urban secondary span up to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, read from the Roadcraft 4.0 tool in play, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
-  "height_m": 8.4,
+  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: a 12 m pole, the urban medium voltage minimum, set 1.8 m deep, stands 10.2 m clear (Neoenergia DIS-NOR-012 rev. 08, 6.8.2.2 and table 30). max_spacing_m: the same norm, 6.6.31.9: spans of 30 to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, read from the Roadcraft 4.0 tool in play, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
+  "height_m": 10.2,
   "kerb_inset_m": 0.68,
   "min_spacing_m": 15,
   "max_spacing_m": 40,
