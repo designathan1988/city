@@ -11,8 +11,7 @@ const PX := 0.25
 const OPEN_GROUND_M := 420.0
 const TOP := [20.0, 62.0]
 const LOW := [30.0, 24.0]
-const PAIR_LINES := 900.0 # the 4.0's zoom is pixels a metre, on the lines of its photos
-const RIGHT_ANGLE := 90.0
+const PAIR_HOUR := 16.0
 const CLOSE_M := 90.0
 const NEAR_M := 42.0
 const WIDE_M := 520.0
@@ -68,8 +67,10 @@ func _ready() -> void:
 func _run() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	o = ui.ground(b.max.x + OPEN_GROUND_M, (b.min.z + b.max.z) * 0.5)
+	CityStore.dispatch(&"clear_trees") # the 4.0's free ground is a bare field
+	CityStore.dispatch(&"set_day_hour", [PAIR_HOUR])
 	_lay()
-	await _pointer_error()
+	print("erro do ponteiro: %.2f px" % await ui.pointer_error(at(0, -120), TOP, POINTER_VIEWS_M, POINTER_AIMS))
 	if "--tool-only" in OS.get_cmdline_user_args():
 		await _tool()
 		print("FALHAS: ", failures)
@@ -105,25 +106,6 @@ func _run() -> void:
 		await _tool()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
-
-
-## Where a click lands against where it aimed, in pixels, at three distances of the camera: the pixel grid and the ray to the
-## ground, all a test can see of the pointer's error. The player's hand is not in this number.
-func _pointer_error() -> void:
-	var worst := 0.0
-	var size: Vector2 = get_viewport().get_visible_rect().size
-	for dist in POINTER_VIEWS_M:
-		rig.jump(at(0, -120), TOP[0], TOP[1], dist)
-		await ui.frames(2)
-		for i in POINTER_AIMS:
-			var aim: Variant = rig.ground_at(size * Vector2(fposmod(i * 0.381966, 1.0), fposmod(i * 0.618034, 1.0)))
-			if aim == null:
-				continue
-			var seen := rig.camera.unproject_position(aim)
-			var hit: Variant = rig.ground_at(seen.round())
-			if hit != null:
-				worst = maxf(worst, rig.camera.unproject_position(hit).distance_to(seen))
-	print("erro do ponteiro: %.2f px" % worst)
 
 
 ## The same crossings under the game's night, then the day again for the tool.
@@ -174,7 +156,13 @@ func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
 
 ## The camera of a 4.0 photo (`__roadcraft.setView`): its bearing runs from +X towards +Z, ours from +Z towards +X.
 func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -> void:
-	await _photo(name, p, [RIGHT_ANGLE - azimuth, tilt], CameraProfile.view_distance(rig.cfg, PAIR_LINES / (2.0 * zoom)))
+	if not only.is_empty() and not only.has(name):
+		return
+	await PairCamera.stand(rig, ui, p, azimuth, tilt, zoom)
+	if await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES, name) == 0:
+		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " de novo")
+	await ui.shot(name)
+	rig.set_process(true)
 
 
 ## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.
