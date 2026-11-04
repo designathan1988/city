@@ -136,6 +136,14 @@ func _walker(id: int) -> Dictionary:
 	return {}
 
 
+## Nothing in `tall` within OPEN_M of the point: nothing between the camera and the target.
+func _clear_of(at: Vector3, tall: Array) -> bool:
+	for other in tall:
+		if at.distance_to(other) < OPEN_M:
+			return false
+	return true
+
+
 func _vehicle(id: int) -> Dictionary:
 	for v in CityStore.query(&"shot_targets", [TARGETS * 4]).vehicles:
 		if v.id == id:
