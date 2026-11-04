@@ -49,5 +49,7 @@ static func report(minutes: int) -> void:
 			float(furniture_seconds) / SECONDS_PER_MINUTE])
 		print("  parados no cruzamento, veículo-segundos no minuto (atrás de outro, por pedestres, por semáforo à frente, partindo): ", box,
 			", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
-	for line in CityStore.query(&"traffic_probe", [SOAK_JAMS]).jam_info:
+	var last: Dictionary = CityStore.query(&"traffic_probe", [SOAK_JAMS])
+	print("  mobiliário da rua (semáforos, postes, hidrantes, lixeiras, bancos, árvores): ", last.get("street_furniture", []))
+	for line in last.jam_info:
 		print("  retido: ", line)

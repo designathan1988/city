@@ -122,6 +122,21 @@ Array people_overlaps(const TrafficState &t) {
 	return out;
 }
 
+// The street furniture of the whole map by kind (signal posts, lamps, hydrants, bins, benches, trees).
+Array furniture_counts(const CityState &s) {
+	int count[FURNITURE_KINDS] = {};
+	std::vector<FurnitureSpot> spots;
+	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
+		if (!s.roads.segs[size_t(sid)].alive) continue;
+		spots.clear();
+		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
+		for (const FurnitureSpot &f : spots) count[int(f.kind)]++;
+	}
+	Array out;
+	for (int k = 0; k < FURNITURE_KINDS; k++) out.push_back(count[k]);
+	return out;
+}
+
 // Everything the HUD/captures show about one held vehicle (why it waits and what blocks it).
 String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 	const TrafficState &t = s.traffic;
@@ -173,6 +188,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t); // walkers inside another's body: walking, waiting
 	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
+	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
+	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);
 	d["reroutes"] = t.reroutes;
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;
