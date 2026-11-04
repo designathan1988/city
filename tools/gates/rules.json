@@ -155,6 +155,10 @@
       "core/",
       "sim/"
     ],
+    "native/src/sim/demolition": [
+      "core/",
+      "sim/"
+    ],
     "native/src/sim/commands": [
       "core/",
       "sim/"
@@ -294,6 +298,7 @@
     "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
+    "project/data/catalog/blast.json": "tools/gates/schemas/blast.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",

@@ -124,6 +124,7 @@ cmd.demolish.line,apagar linha,delete line
 cmd.demolish.lot,apagar lote,delete lot
 cmd.demolish.lots,apagar lotes,delete lots
 cmd.demolish.road,demolir via,demolish road
+cmd.strike,bomba,bomb
 cmd.demolish.signRule,tirar placa com regra,remove sign with a rule
 cmd.demolish.stop,tirar parada,remove stop
 cmd.place.autoLaneLinks,conexões automáticas,automatic lane connections

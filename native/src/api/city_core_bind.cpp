@@ -25,6 +25,9 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
+	ClassDB::bind_method(D_METHOD("strike", "position", "strength"), &CityCore::strike);
+	ClassDB::bind_method(D_METHOD("damage_probe"), &CityCore::damage_probe);
+	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
 	ClassDB::bind_method(D_METHOD("redo"), &CityCore::redo);
 	ClassDB::bind_method(D_METHOD("begin_stroke", "label"), &CityCore::begin_stroke);

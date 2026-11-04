@@ -56,6 +56,7 @@ struct Pedestrian {
 	uint32_t look = 0; // render hash: clothes, skin, hair
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
+	float down_until = 0, panic_until = 0; // t.time until which a blow keeps it on the ground / running
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the

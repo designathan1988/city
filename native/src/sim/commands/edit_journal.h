@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/buildings/building_store.h"
+#include "sim/demolition/damage_state.h"
 #include "sim/roads/road_network.h"
 #include "sim/terrain/heightfield.h"
 
@@ -18,7 +19,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY };
+	MONEY, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
@@ -29,6 +30,11 @@ struct EditOp {
 	RoadSegment seg;
 	Building bld, bld_after;
 	TerrainModifier mod;
+	Crater crater; // DMG_CRATER
+	Ruin ruin; // DMG_RUIN (side 0 added, 1 removed; id its index)
+	Gone gone; // DMG_GONE
+	Hurt hurt; // DMG_HURT: the building's damage after (hurt_before: before; 0 means none)
+	float hurt_before = 0;
 };
 
 // One undoable step. Terrain samples are kept apart: their values before (while open, by index) and after.
@@ -91,6 +97,14 @@ void j_remove_building(CityState &s, int id);
 void j_edit_building(CityState &s, int id, const Building &after);
 int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, float max_run);
 void j_money(CityState &s, double delta);
+// Damage (journal_damage.cpp): a crater dug, a ruin left or cleared, a piece of street furniture knocked out.
+void j_add_crater(CityState &s, const Crater &c);
+void j_add_ruin(CityState &s, const Ruin &r);
+void j_remove_ruin(CityState &s, int index);
+void j_add_gone(CityState &s, const Gone &g);
+// Sets what a building has taken (0 clears it).
+void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount);
+void apply_damage_op(CityState &s, const EditOp &op, bool forward);
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 

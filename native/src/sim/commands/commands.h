@@ -82,6 +82,11 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 // The function and floors of a building (Build drawer, Mass tab).
 EditResult edit_building(CityState &s, int id, int fn, int floors);
 
+// --- Demolition (strike_commands.cpp, shoot_commands.cpp)
+// The bomb: a blow of force `strength` (1..50) bursting at (x, z) at `height` (the ground, or the roof it landed on).
+// Changes the buildings, the ground, the roads, the furniture, the vehicles and the walkers it reaches (one undo step).
+EditResult strike_at(CityState &s, double x, double z, double strength, double height);
+
 // Value of one segment (R$): length x price per metre x structure factor (ground).
 double segment_value(const CityState &s, int seg);
 

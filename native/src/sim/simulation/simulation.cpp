@@ -64,6 +64,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
 			if (map.owns_lock()) {
 				grow_step(s, owed_ + dt);
+				damage_step(s, owed_ + dt);
 				owed_ = 0;
 			} else owed_ += dt;
 		}

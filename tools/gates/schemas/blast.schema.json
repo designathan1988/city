@@ -1,0 +1,324 @@
+{
+ "type": "object",
+ "strict": true,
+ "required": [
+  "_doc",
+  "charge_kg_per_s2",
+  "strength_min",
+  "strength_max",
+  "atmosphere_kpa",
+  "pressure_curves",
+  "impulse_curves",
+  "limits_kpa",
+  "eardrum",
+  "noise",
+  "crater",
+  "lethality",
+  "people",
+  "strike",
+  "duration_curves",
+  "structure"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "strength_min": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "strength_max": {
+   "type": "integer",
+   "maximum": 200
+  },
+  "atmosphere_kpa": {
+   "type": "number",
+   "minimum": 50,
+   "maximum": 110
+  },
+  "pressure_curves": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "z0",
+     "z1",
+     "c"
+    ],
+    "properties": {
+     "z0": {
+      "type": "number"
+     },
+     "z1": {
+      "type": "number"
+     },
+     "c": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "impulse_curves": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "z0",
+     "z1",
+     "c"
+    ],
+    "properties": {
+     "z0": {
+      "type": "number"
+     },
+     "z1": {
+      "type": "number"
+     },
+     "c": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "limits_kpa": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "light",
+    "structural",
+    "collapse",
+    "vehicle",
+    "pole"
+   ],
+   "properties": {
+    "light": {
+     "type": "number"
+    },
+    "structural": {
+     "type": "number"
+    },
+    "collapse": {
+     "type": "number"
+    },
+    "vehicle": {
+     "type": "number"
+    },
+    "pole": {
+     "type": "number"
+    }
+   }
+  },
+  "eardrum": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "threshold_kpa",
+    "half_kpa",
+    "threshold_probability"
+   ],
+   "properties": {
+    "threshold_kpa": {
+     "type": "number"
+    },
+    "half_kpa": {
+     "type": "number"
+    },
+    "threshold_probability": {
+     "type": "number"
+    }
+   }
+  },
+  "noise": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "startle_pa",
+    "reference_pa",
+    "startle_cap_m"
+   ],
+   "properties": {
+    "startle_pa": {
+     "type": "number"
+    },
+    "reference_pa": {
+     "type": "number"
+    },
+    "startle_cap_m": {
+     "type": "number"
+    }
+   }
+  },
+  "crater": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "k_earth",
+    "k_hard",
+    "diameter_to_depth",
+    "min_radius_m",
+    "pass_width_m"
+   ],
+   "properties": {
+    "k_earth": {
+     "type": "number"
+    },
+    "k_hard": {
+     "type": "number"
+    },
+    "diameter_to_depth": {
+     "type": "number"
+    },
+    "min_radius_m": {
+     "type": "number"
+    },
+    "pass_width_m": {
+     "type": "number"
+    }
+   }
+  },
+  "lethality": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "threshold_kpa",
+    "half_kpa",
+    "threshold_probability"
+   ],
+   "properties": {
+    "threshold_kpa": {
+     "type": "number"
+    },
+    "half_kpa": {
+     "type": "number"
+    },
+    "threshold_probability": {
+     "type": "number"
+    }
+   }
+  },
+  "people": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "knock_min_s",
+    "knock_span_s",
+    "panic_s",
+    "panic_gain",
+    "torn_kpa",
+    "sever_chance",
+    "maim_chance"
+   ],
+   "properties": {
+    "knock_min_s": {
+     "type": "number"
+    },
+    "knock_span_s": {
+     "type": "number"
+    },
+    "panic_s": {
+     "type": "number"
+    },
+    "panic_gain": {
+     "type": "number"
+    },
+    "torn_kpa": {
+     "type": "number"
+    },
+    "sever_chance": {
+     "type": "number"
+    },
+    "maim_chance": {
+     "type": "number"
+    }
+   }
+  },
+  "strike": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "hold_growth_s",
+    "fire_max",
+    "fire_min_s",
+    "fire_span_s",
+    "wear_gain"
+   ],
+   "properties": {
+    "hold_growth_s": {
+     "type": "number"
+    },
+    "fire_max": {
+     "type": "number"
+    },
+    "fire_min_s": {
+     "type": "number"
+    },
+    "fire_span_s": {
+     "type": "number"
+    },
+    "wear_gain": {
+     "type": "number"
+    }
+   }
+  },
+  "charge_kg_per_s2": {
+   "type": "number",
+   "minimum": 0.001,
+   "maximum": 10
+  },
+  "duration_curves": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "z0",
+     "z1",
+     "c"
+    ],
+    "properties": {
+     "z0": {
+      "type": "number"
+     },
+     "z1": {
+      "type": "number"
+     },
+     "c": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "structure": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "response_ms"
+   ],
+   "properties": {
+    "response_ms": {
+     "type": "number"
+    }
+   }
+  }
+ }
+}

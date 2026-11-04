@@ -140,6 +140,11 @@ void change_lanes(CityState &s);
 // pedestrians.cpp
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
+// A blow or a shot reached a walker (sim/commands/strike_people.cpp): gone for good, knocked to the ground for a while
+// (it walks on after), or frightened into running for a while.
+void remove_pedestrian(CityState &s, int id);
+void down_pedestrian(CityState &s, int id, float seconds);
+void frighten_pedestrian(CityState &s, int id, float seconds);
 
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
@@ -157,6 +162,8 @@ bool step_to_nearer_place(CityState &s, int id);
 // ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
 // The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
 void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
+// Where a piece on a sidewalk stands in the world; false for a piece with no sidewalk (it cannot be knocked out).
+bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
 bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
 // The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.

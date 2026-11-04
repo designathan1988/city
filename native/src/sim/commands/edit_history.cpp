@@ -62,6 +62,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ADD_MOD: if (fwd) s.terrain.put_modifier(op.id, op.mod); else s.terrain.remove_modifier(op.id); break;
 		case OpKind::MONEY: s.money += fwd ? op.money : -op.money; break;
+		case OpKind::DMG_CRATER:
+		case OpKind::DMG_RUIN:
+		case OpKind::DMG_GONE:
+		case OpKind::DMG_HURT: apply_damage_op(s, op, fwd); break;
 	}
 }
 

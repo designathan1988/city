@@ -3,6 +3,7 @@
 #pragma once
 
 #include "render/render_world.h"
+#include "sim/demolition/blast_model.h"
 #include "sim/simulation/simulation.h"
 
 #include <godot_cpp/classes/node3d.hpp>
@@ -43,6 +44,11 @@ public:
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
+
+	// --- the bomb (city_core_strike.cpp)
+	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
+	godot::Dictionary damage_probe() const; // what blows left on the map (counts)
+	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
