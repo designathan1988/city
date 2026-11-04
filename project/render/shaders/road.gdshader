@@ -27,6 +27,7 @@ uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
 uniform vec3 lane_tone[8]; // linear, by road class (road_look.h wear_color)
 uniform vec3 footway_tone;
+uniform float plate_blend = 2.26; // metres of that difference over which two arms share a plate
 uniform float normal_asphalt = 1.0;
 uniform float normal_footway = 1.0;
 uniform float normal_kerb = 0.85;
@@ -58,6 +59,7 @@ const int M_STONE = 9;
 const int M_COBBLE = 10;
 const int M_BALLAST = 11;
 const int M_SHOULDER_EDGE = 12;
+const int M_JOIN = 13; // a plate between two arms: tones in the alpha and in red, how far from the one to the other in UV2.y
 
 varying flat int v_mat;
 varying float v_id;
@@ -105,6 +107,8 @@ void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
 	if (v_mat == M_LANE) {
 		base = lane_tone[int(fract(v_id) * TONE_SLOTS)];
+	} else if (v_mat == M_JOIN) {
+		base = mix(lane_tone[int(fract(v_id) * TONE_SLOTS)], lane_tone[int(COLOR.r * TONE_SLOTS)], clamp(0.5 + v_pool.y / (2.0 * plate_blend), 0.0, 1.0));
 	} else if (v_mat == M_FOOTPATH) {
 		base = footway_tone;
 	}
@@ -120,7 +124,7 @@ void fragment() {
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
-	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_LANE) {
+	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_JOIN || v_mat == M_PAINT || v_mat == M_LANE) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {

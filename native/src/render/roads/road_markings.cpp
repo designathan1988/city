@@ -13,7 +13,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float STRAIGHT_TOL = 0.5f;
 
 struct Painter {
 	const RoadEmit &e;

@@ -10,6 +10,8 @@
 
 namespace city {
 
+constexpr float STRAIGHT_TOL = 0.5f; // metres off its chord under which a segment is drawn as a straight one
+
 struct RoadEmit {
 	const CityState &s;
 	const StreetLook &L;

@@ -58,7 +58,8 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (p.edges.empty() || p.rail || v1 <= v0) return;
 	const std::vector<Piece> ps = pieces_of(e.L, p);
-	const int n = std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
+	// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
+	const int n = g.q.is_straight(STRAIGHT_TOL) ? 1 : std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
 	std::vector<Vector3> right, right_out, left, left_out;
 	for (int k = 0; k <= n; k++) {
 		const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);

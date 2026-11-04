@@ -11,7 +11,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float BIG_D = 1e9f, STRAIGHT_TOL = 0.5f;
+constexpr float BIG_D = 1e9f;
 constexpr float ROAD_MIN_SPAN = 0.05f, ISLAND_MIN_M = 1.f; // shorter than this no island is drawn
 
 // Share of the full kerb height at d metres from a crossing mouth: none over the dropped kerb, rising over its flare.
@@ -33,7 +33,22 @@ void heights(const StreetLook &L, const Piece &pc, float d, float &h0, float &h1
 struct Sample {
 	SegFrame f;
 	float at = 0, d = BIG_D;
+	float tex = 0; // how far along its street, what the maps read
 };
+
+// How far along its street a segment starts: a road is laid in pieces (road_max_seg_m) joined in line, and its maps run on across them.
+double street_start(const RoadNetwork &net, int sid) {
+	double run = 0;
+	for (int at = sid, left = int(net.segs.size()); left > 0; left--) {
+		const RoadNode &n = net.nodes[net.segs[at].a];
+		if (!n.joint || n.segs.size() != 2) break;
+		const int back = n.segs[0] == at ? n.segs[1] : n.segs[0];
+		if (back == sid || net.segs[back].b != net.segs[at].a) break; // a ring, or a piece laid the other way
+		run += net.segs[back].len;
+		at = back;
+	}
+	return run;
+}
 
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
 	const RoadSegment &g = e.s.roads.segs[sid];
@@ -52,10 +67,12 @@ std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bo
 	std::sort(at.begin(), at.end());
 	at.erase(std::unique(at.begin(), at.end(), [](double a, double b) { return std::fabs(a - b) < ROAD_MIN_SPAN; }), at.end());
 	std::vector<Sample> out;
+	const double start = street_start(e.s.roads, sid);
 	for (double a : at) {
 		Sample sm;
 		sm.f = seg_frame(e.s, sid, a);
 		sm.at = float(a);
+		sm.tex = float(start + a);
 		if (ca) sm.d = std::min(sm.d, float(a - v0));
 		if (cb) sm.d = std::min(sm.d, float(v1 - a));
 		out.push_back(sm);
@@ -88,8 +105,8 @@ void tops(const Ctx &c, const Piece &pc) {
 		heights(c.e.L, pc, c.sm[k].d, a0, a1);
 		heights(c.e.L, pc, c.sm[k + 1].d, b0, b1);
 		const Vector3 p[4] = { c.at_u(k, pc.u0, a0), c.at_u(k, pc.u1, a1), c.at_u(k + 1, pc.u1, b1), c.at_u(k + 1, pc.u0, b0) };
-		float va = c.sm[k].at, vb = c.sm[k + 1].at;
-		const Vector2 uv[4] = { Vector2(pc.u0, va), Vector2(pc.u1, va), Vector2(pc.u1, vb), Vector2(pc.u0, vb) };
+		float va = c.sm[k].at, vb = c.sm[k + 1].at, ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
+		const Vector2 uv[4] = { Vector2(pc.u0, ta), Vector2(pc.u1, ta), Vector2(pc.u1, tb), Vector2(pc.u0, tb) };
 		const Vector2 uv2[4] = { c.pool(pc.u0, va), c.pool(pc.u1, va), c.pool(pc.u1, vb), c.pool(pc.u0, vb) };
 		const Color plain = road_color(pc.col, pc.mat);
 		const bool wears = pc.mat == RoadMat::LANE || pc.mat == RoadMat::FOOTWAY;
@@ -103,7 +120,8 @@ void tops(const Ctx &c, const Piece &pc) {
 void wall(const Ctx &c, size_t k, float u, float lo0, float hi0, float lo1, float hi1, float side, const Color &col) {
 	const Vector3 p[4] = { c.at_u(k, u, lo0), c.at_u(k + 1, u, lo1), c.at_u(k + 1, u, hi1), c.at_u(k, u, hi0) };
 	float va = c.sm[k].at, vb = c.sm[k + 1].at;
-	const Vector2 uv[4] = { Vector2(va, lo0), Vector2(vb, lo1), Vector2(vb, hi1), Vector2(va, hi0) }; // a face: the run along it first
+	const float ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
+	const Vector2 uv[4] = { Vector2(ta, lo0), Vector2(tb, lo1), Vector2(tb, hi1), Vector2(ta, hi0) }; // a face: the run along it first
 	const Vector2 uv2[4] = { c.pool(u, va), c.pool(u, vb), c.pool(u, vb), c.pool(u, va) };
 	emit_quad(c.e.mb, p, uv, uv2, road_color(col, RoadMat::SKIRT), c.sm[k].f.left * side);
 }

@@ -17,7 +17,6 @@ namespace {
 constexpr double FILLET_SLACK = 0.05, PLATE_MIN_RETREAT = 0.05, CTRL_MAX = 0.5, CTRL_MIN = -60;
 constexpr double PARALLEL = 1e-3, SAME = 1e-3;
 constexpr int MIN_ARC = 2;
-constexpr float PLATE_CORE = 0.2f, PLATE_MEET = 0.15f; // share of the way out that fades to the mean; half the share of a corner where two arms blend
 constexpr double TAU_D = 2 * PI_D;
 const Vector3 UP(0, 1, 0);
 
@@ -147,51 +146,64 @@ size_t sharpen(std::vector<Vector3> &out, const End &a, const End &b) {
 	return tip;
 }
 
-// A plate from `centre` out to `ring`, each ring point in its own colour: a junction wears each arm's asphalt from its mouth to
-// near the centre, and only the core around the node, a share of the way out, fades into the mean of the arms.
-void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<Vector3> &ring, const std::vector<Color> &cols) {
+// A plate from the node out to `ring`, each point in the tone of the road nearest it: the paving that is not asphalt and the turning
+// bulb, which have no tones to share.
+void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<End> &ends, const std::vector<Vector3> &ring) {
 	const Vector2 pl(POOL_PLATE, 0);
 	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, road_color(c, RoadMat::PLATE), Vector2(p.x, p.z), pl); };
 	Color mean(0, 0, 0);
-	for (const Color &c : cols) mean += c;
-	const int c0 = add(centre, mean / float(cols.size()));
-	std::vector<int> out, in;
-	for (size_t i = 0; i < ring.size(); i++) {
-		out.push_back(add(ring[i], cols[i]));
-		in.push_back(add(centre + (ring[i] - centre) * PLATE_CORE, cols[i]));
+	for (const End &en : ends) mean += e.L.carriage(*en.prof);
+	const int c0 = add(centre, mean / float(ends.size()));
+	std::vector<int> out;
+	for (const Vector3 &p : ring) {
+		const End *nearest = &ends[0];
+		for (const End &en : ends) nearest = (p - en.p).length() < (p - nearest->p).length() ? &en : nearest;
+		out.push_back(add(p, e.L.carriage(*nearest->prof)));
 	}
-	for (size_t i = 0; i < ring.size(); i++) {
-		const size_t j = (i + 1) % ring.size();
-		e.mb.tri(c0, in[i], in[j], UP);
-		e.mb.tri(in[i], out[i], out[j], UP);
-		e.mb.tri(in[i], out[j], in[j], UP);
+	for (size_t i = 0; i < ring.size(); i++) e.mb.tri(c0, out[i], out[(i + 1) % ring.size()], UP);
+}
+
+// The asphalt between two arms, from a's centre line round the kerb to b's. Across a wedge the difference of the distances to the
+// two lines is linear, so the mesh carries it and the shader lays the passage between the tones over a width of its own, the same
+// from the kerb to the node (road.gdshader M_JOIN). Fans of arms of one tone are the same, and no more triangles.
+void wedge(const RoadEmit &e, const Vector3 &node, const End &a, const End &b, const std::vector<Vector3> &line) {
+	const Vector3 left_a(a.d.z, 0, -a.d.x), left_b(b.d.z, 0, -b.d.x);
+	Color tones = wear_color(0, 0, 0, RoadMat::JOIN, int(a.prof->road_class));
+	tones.r = (float(int(b.prof->road_class)) + MAT_HALF) / TONE_SLOTS;
+	auto add = [&](const Vector3 &p) {
+		const Vector3 v = p - node;
+		return e.mb.add(p, UP, tones, Vector2(p.x, p.z), Vector2(POOL_PLATE, v.dot(left_a) + v.dot(left_b)));
+	};
+	const int c0 = add(node);
+	int prev = add(a.p);
+	for (const Vector3 &p : line) {
+		const int next = add(p);
+		e.mb.tri(c0, prev, next, UP);
+		prev = next;
 	}
+	e.mb.tri(c0, prev, add(b.p), UP);
 }
 
 void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 	const RoadNode &nd = e.s.roads.nodes[n];
 	Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 	std::vector<Vector3> ring;
-	std::vector<Color> cols;
+	bool asphalt = true;
+	for (const End &en : ends) asphalt = asphalt && en.prof->surface == Surface::ASPHALT;
 	size_t k = ends.size();
 	for (size_t i = 0; i < k; i++) {
 		const End &a = ends[i], &b = ends[(i + 1) % k];
 		ring.push_back(side(a, -a.arm.asph_right));
-		cols.push_back(e.L.carriage(*a.prof));
 		std::vector<Vector3> in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
 		ring.insert(ring.end(), in.begin(), in.end());
-		for (size_t j = 0; j < in.size(); j++) {
-			const float t = float(j + 1) / float(in.size() + 1); // along the corner: the arms meet on its bisector
-			const float share = std::clamp((t - 0.5f) / (2.f * PLATE_MEET) + 0.5f, 0.f, 1.f);
-			cols.push_back(e.L.carriage(*a.prof).lerp(e.L.carriage(*b.prof), share));
-		}
+		if (asphalt) wedge(e, node, a, b, in);
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
 		std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
 		sharpen(out, a, b);
 		kerbed_line(e, in, bk, out, float(a.arm.asph_left), ka > 0 || kb > 0, walk_color(e.L, a, 1));
 	}
-	fan(e, node, ring, cols);
+	if (!asphalt) fan(e, node, ends, ring);
 }
 
 struct EndFrame {
@@ -247,7 +259,7 @@ void bulb(const RoadEmit &e, int n, const End &en) {
 	float kw = f.kw;
 	auto ring = [&](double r) { return bulb_ring(L, f, en, setback, r); };
 	std::vector<Vector3> in = ring(BULB_R);
-	fan(e, node, in, std::vector<Color>(in.size(), L.carriage(*en.prof)));
+	fan(e, node, { en }, in);
 	kerbed_line(e, in, ring(BULB_R + kw), ring(BULB_R + BULB_WALK), float(en.arm.asph_left), kw > 0, walk_color(L, en, 1));
 }
 // What a node is, and the function that draws that shape.
@@ -286,8 +298,8 @@ void junction_verge(const RoadEmit &e, int n, const std::vector<End> &ends) {
 		for (size_t k = 0; k < in.size(); k++) away.push_back(flat_unit(unit[k] - in[k]));
 		const float rise = kerb_w(a, 1) > 0 || kerb_w(b, -1) > 0 ? e.L.h_sidewalk : 0.f;
 		if (tip > 0) { // each edge sends its ground straight out: past the point they overlap, the nearer one on top, and that is the mitre
-			verge_from(e, { out.begin(), out.begin() + tip + 1 }, std::vector<Vector3>(tip + 1, away.front()), rise);
-			verge_from(e, { out.begin() + tip, out.end() }, std::vector<Vector3>(out.size() - tip, away.back()), rise);
+			verge_from(e, { out.front(), out[tip] }, { away.front(), away.front() }, rise);
+			verge_from(e, { out[tip], out.back() }, { away.back(), away.back() }, rise);
 			continue;
 		}
 		// Where the outer line runs back on itself the arms' own ribbons already meet: only where it runs with the kerb is the ground its own.
