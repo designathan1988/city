@@ -67,6 +67,8 @@ export function unitsOf(file: FileText, symbols: readonly DocumentSymbol[]): Cpp
   const out: CppUnit[] = [];
   const walk = (list: readonly DocumentSymbol[], scope: readonly string[], inClass: boolean): void => {
     for (const s of list) {
+      // `using namespace x;` and `using x::y;` are listed as symbols; they declare no state.
+      if (/^using\b/.test(s.name)) continue;
       const base = { range: s.range, selection: s.selectionRange, detail: s.detail ?? '', mutable: false };
       const owner = inClass ? scope.join('::') : s.name.includes('::') ? s.name.slice(0, s.name.lastIndexOf('::')) : null;
       switch (s.kind) {

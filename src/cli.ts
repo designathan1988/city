@@ -1,5 +1,6 @@
 // Entry point: `node src/cli.ts <command> --flag value ...`. Each stage of the conversion is one command.
 import { AUDIT_FLAGS, runAuditCommand } from './audit/command.ts';
+import { CLASSIFY_FLAGS, runClassifyCommand } from './classify/command.ts';
 import { ArgsError, usage } from './common/args.ts';
 import { CPPGRAPH_FLAGS, runCppGraph } from './cppgraph/command.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
@@ -8,6 +9,7 @@ import { BASELINE_FLAGS, SANDBOX_FLAGS, runBaselineCommand, runSandboxCommand } 
 const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promise<void>; help: string }> = {
   graph: { run: runGraph, help: usage('graph', GRAPH_FLAGS) },
   cppgraph: { run: runCppGraph, help: usage('cppgraph', CPPGRAPH_FLAGS) },
+  classify: { run: runClassifyCommand, help: usage('classify', CLASSIFY_FLAGS) },
   audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
   sandbox: { run: runSandboxCommand, help: usage('sandbox', SANDBOX_FLAGS) },
   baseline: { run: runBaselineCommand, help: usage('baseline', BASELINE_FLAGS) },

@@ -25,6 +25,15 @@ void Fleet::tick(Mover &m, float dt) {
 	g_counter++;
 }
 
+// A copy's field written (not state) and a referenced element's field written (state).
+float Fleet::probe() {
+	Car copy = cars.front();
+	copy.v = 1;
+	Car &live = cars.front();
+	live.s = 2;
+	return copy.v + live.s;
+}
+
 void Driver::_process(double delta) {
 	fleet.tick(cruise, float(delta));
 }

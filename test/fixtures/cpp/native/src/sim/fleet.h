@@ -30,6 +30,7 @@ struct Fleet {
 	float total = 0;
 	void tick(Mover &m, float dt);
 	float drain();
+	float probe();
 };
 
 float clampf(float v, float lo, float hi);

@@ -20,14 +20,24 @@ export function moduleState(ctx: AuditContext): RuleOutcome {
     });
 }
 
+const folderOf = (file: string): string => file.slice(0, Math.max(0, file.lastIndexOf('/')));
+
+/**
+ * State written from outside its owner. The owner is the folder of the state's declaration (a subsystem); the
+ * architecture's designated writers (`writerDirs`) and channels (`channels`) are not outside it.
+ */
 export function scatteredWrites(ctx: AuditContext): RuleOutcome {
   const findings: Finding[] = [];
+  const isChannel = (id: string): boolean => ctx.options.channels.some((c) => id === c || id.startsWith(c + '::') || id.startsWith(c + '.'));
   for (const unit of ctx.ir.units) {
-    const files = writerFiles(ctx, unit.id);
-    if (files.length < ctx.options.minWriterFiles) continue;
-    findings.push({ rule: 'scattered-writes', severity: files.length >= 2 * ctx.options.minWriterFiles ? 'high' : 'medium',
-      unit: unit.id, file: unit.file, line: unit.start.line,
-      message: `${unit.name} is written from ${files.length} files: ${files.slice(0, 6).join(', ')}${files.length > 6 ? ', ...' : ''}` });
+    if (isChannel(unit.id) || (unit.parent !== null && isChannel(unit.parent))) continue;
+    const owner = folderOf(unit.file);
+    const foreign = [...new Set(writerFiles(ctx, unit.id).map(folderOf))]
+      // The owner is the exact folder: a subfolder is another subsystem (src/ui is not src).
+      .filter((dir) => dir !== owner && !ctx.inDirs(dir, ctx.options.writerDirs)).sort();
+    if (foreign.length === 0) continue;
+    findings.push({ rule: 'scattered-writes', severity: foreign.length >= 2 ? 'high' : 'medium', unit: unit.id, file: unit.file,
+      line: unit.start.line, message: `${unit.name} (owned by ${owner}) is written from ${foreign.length} other owner(s): ${foreign.slice(0, 6).join(', ')}` });
   }
   return findings;
 }

@@ -57,6 +57,12 @@ describe('C++ graph', async () => {
     assert.ok(kinds('native/src/sim/fleet.cpp#Fleet::drain', 'native/src/sim/fleet.h#Fleet::queue').includes('write'));
   });
 
+  it('tells a write to a copy from a write to state', () => {
+    const probe = 'native/src/sim/fleet.cpp#Fleet::probe';
+    assert.ok(!kinds(probe, 'native/src/sim/fleet.h#Car::v').includes('write'), 'a field of a local copy is not state');
+    assert.ok(kinds(probe, 'native/src/sim/fleet.h#Car::s').includes('write'), 'a field through a reference is state');
+  });
+
   it('records facts, patterns and the standard library as external', () => {
     assert.ok(unit(tick).facts.loopAllocations.some((a) => a.what === 'std::vector local'));
     assert.ok(unit(tick).facts.patterns.some((p) => p.id === 'quadratic-proximity'));
@@ -70,7 +76,7 @@ describe('C++ graph', async () => {
   it('is audited by the same catalog, the engine\'s _process rooting the frame path', () => {
     const result = runAudit(ir, {
       hot: [], uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [],
-      maxScattering: 0.5, minWriterFiles: 3, minConstantFiles: 3, allowedNumbers: null,
+      maxScattering: 0.5, writerDirs: [], channels: [], minConstantFiles: 3, allowedNumbers: null,
     });
     assert.deepEqual(result.hot.roots, ['native/src/sim/fleet.cpp#Driver::_process']);
     const of = (rule: string) => result.findings.filter((f) => f.rule === rule).map((f) => `${f.severity} ${f.unit}`);

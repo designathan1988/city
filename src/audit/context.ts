@@ -12,7 +12,10 @@ export interface AuditOptions {
   readonly features: readonly { readonly name: string; readonly entry: string }[];
   /** Degree of scattering at or above which a feature is reported (a project decision; Eaddy gives no threshold). */
   readonly maxScattering: number;
-  readonly minWriterFiles: number;
+  /** Folders the architecture designates to change state owned elsewhere (player commands, the time step, loading). */
+  readonly writerDirs: readonly string[];
+  /** Units (ids or id prefixes) the architecture designates as shared channels every producer writes (a change log). */
+  readonly channels: readonly string[];
   readonly minConstantFiles: number;
   /** Numbers the target project allows bare (its rules.json magic_numbers.allowed_values); null: no target rules. */
   readonly allowedNumbers: readonly number[] | null;

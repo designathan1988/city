@@ -7,7 +7,7 @@ import { performance } from 'node:perf_hooks';
 import { isInside, normalizePath, relativePath } from '../common/paths.ts';
 import { externalSummary } from '../graph/records.ts';
 import { IR_VERSION, type EdgeKind, type EdgeRecord, type GraphIR, type PatternSite, type UnitRecord } from '../graph/ir.ts';
-import { edgeKinds, followed } from './edges.ts';
+import { accessRoot, declaredByValue, edgeKinds, followed } from './edges.ts';
 import { ExternalNames, moduleOfCpp } from './external.ts';
 import { cppFacts } from './facts.ts';
 import { tokenize, type CppToken } from './lexer.ts';
@@ -33,6 +33,8 @@ const HEADER = /\.(h|hh|hpp|hxx|inl)$/;
 /** Definition requests in flight at once. */
 const BATCH = 64;
 const RS_GETTER = /^godot-cpp:RenderingServer\.(?!get_singleton$)(\w*_get\w*|get_\w+)$/;
+/** Field types that synchronise threads rather than hold state. */
+const SYNCHRONISATION = /\b(recursive_|shared_|timed_|recursive_timed_|shared_timed_)?mutex\b|\bcondition_variable(_any)?\b/;
 
 interface Unit {
   readonly key: string;
@@ -79,12 +81,16 @@ export async function buildCppGraph(options: CppGraphOptions): Promise<GraphIR> 
         let id = `${relativePath(root, file)}#${u.name}`;
         if (ids.has(id)) id = `${id}@${u.range.start.line + 1}`;
         ids.add(id);
-        return { key: `${file}@${u.range.start.line}:${u.range.start.character}`, id, file, u };
+        // The name's position identifies a unit: declarators of one statement (`float s = 0, v = 0;`) share its range.
+        return { key: `${file}@${u.selection.start.line}:${u.selection.start.character}`, id, file, u };
       });
       files.set(file, { text, tokens, at, units });
     }
     const byKey = new Map([...files.values()].flatMap((f) => f.units.map((u) => [u.key, u] as const)));
+    // A definition points at the declared name: the unit named there, else the innermost unit containing it.
     const locate = (file: string, p: LspPosition): Unit | null => {
+      const named = byKey.get(`${file}@${p.line}:${p.character}`);
+      if (named) return named;
       let best: Unit | null = null;
       for (const unit of files.get(file)?.units ?? []) {
         if (!before(unit.u.range.start, p) || !before(p, unit.u.range.end)) continue;
@@ -112,6 +118,24 @@ export async function buildCppGraph(options: CppGraphOptions): Promise<GraphIR> 
       const data = files.get(unit.file)!;
       let semantic = tokensOf.get(unit.file);
       if (!semantic) tokensOf.set(unit.file, (semantic = await session.tokens(unit.file, data.text.text)));
+      const semanticAt = new Map(semantic.map((t) => [`${t.line}:${t.column}`, t]));
+      /**
+       * What a write really changes. A lock taken on a mutex is synchronisation, not state; a field of a local or
+       * parameter declared by value is a copy's (`Pose p; p.fz = ...`), not the shared state's; a write through a
+       * reference, a pointer, a global or the object's own member is a state write.
+       */
+      const stateKinds = async (token: SemanticToken, index: number, kinds: EdgeKind[], target: Unit): Promise<EdgeKind[]> => {
+        if (!kinds.includes('write') || token.type !== 'property') return kinds;
+        if (SYNCHRONISATION.test(target.u.detail)) return ['reference'];
+        const root = accessRoot(data.tokens, index);
+        if (root === null) return kinds;
+        const rootToken = semanticAt.get(`${data.tokens[root]!.line}:${data.tokens[root]!.column}`);
+        if (!rootToken || !(rootToken.type === 'parameter' || (rootToken.type === 'variable' && rootToken.modifiers.includes('functionScope')))) return kinds;
+        const declaration = (await session.definition(unit.file, { line: rootToken.line, character: rootToken.column }))[0];
+        if (!declaration) return kinds;
+        const declared = files.get(declaration.file)?.text.text.split('\n')[declaration.range.start.line] ?? '';
+        return declaredByValue(declared, data.tokens[root]!.text) ? ['reference'] : kinds;
+      };
       // A class head owns its name and heritage only: its members are units of their own.
       const end = unit.u.kind === 'class' ? headEnd(unit.u, data) : unit.u.range.end;
       const own = semantic.filter((t) => followed(t) && before(unit.u.range.start, { line: t.line, character: t.column }) &&
@@ -138,7 +162,7 @@ export async function buildCppGraph(options: CppGraphOptions): Promise<GraphIR> 
             }
             const target = locate(loc.file, loc.range.start);
             if (!target) continue;
-            for (const kind of kinds) add(unit, target, kind);
+            for (const kind of await stateKinds(token, index, kinds, target)) add(unit, target, kind);
             if (token.type === 'method' && token.modifiers.includes('virtual')) {
               const k = `${loc.file}@${loc.range.start.line}:${loc.range.start.character}`;
               let list = overrides.get(k);

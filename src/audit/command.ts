@@ -22,7 +22,8 @@ export const AUDIT_FLAGS: readonly FlagSpec[] = [
   { name: 'sim-dir', repeatable: true, help: 'directory of simulation code that must be deterministic' },
   { name: 'feature', repeatable: true, help: 'name=unitId: a feature whose scattering is measured' },
   { name: 'max-scattering', help: 'degree of scattering at which a feature is reported (default 0.5, a project decision)' },
-  { name: 'min-writer-files', help: 'files writing one state before it is reported as scattered (default 3)' },
+  { name: 'writer-dir', repeatable: true, help: 'folder the architecture designates to change state owned elsewhere (commands, time step, loading)' },
+  { name: 'channel', repeatable: true, help: 'unit id (or prefix) of a designated shared channel every producer writes (a change log)' },
   { name: 'min-constant-files', help: 'files repeating one value before it is reported (default 3)' },
 ];
 
@@ -35,7 +36,6 @@ function number(value: string | undefined, name: string): number | undefined {
 
 /** Degree of scattering at which a feature is reported: a project decision (Eaddy et al. give no threshold). */
 const DEFAULT_MAX_SCATTERING = 0.5;
-const DEFAULT_MIN_WRITER_FILES = 3;
 const DEFAULT_MIN_CONSTANT_FILES = 3;
 
 interface TargetRules {
@@ -76,7 +76,8 @@ export function runAuditCommand(argv: readonly string[]): void {
       return { name: spec.slice(0, eq), entry: spec.slice(eq + 1) };
     }),
     maxScattering: number(flags.one('max-scattering'), 'max-scattering') ?? DEFAULT_MAX_SCATTERING,
-    minWriterFiles: number(flags.one('min-writer-files'), 'min-writer-files') ?? DEFAULT_MIN_WRITER_FILES,
+    writerDirs: flags.all('writer-dir'),
+    channels: flags.all('channel'),
     minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? DEFAULT_MIN_CONSTANT_FILES,
     allowedNumbers: limits.allowed,
   };

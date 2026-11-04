@@ -17,6 +17,37 @@ export function followed(token: SemanticToken): boolean {
   return ['function', 'method', 'property', 'enumMember', ...TYPES].includes(token.type);
 }
 
+/**
+ * The root of the member access a field token ends (`root` in `root.a[i].field` or `root->field`): its token index,
+ * or null when the field is accessed directly (`field`, the object's own member) or through a call's result.
+ */
+export function accessRoot(tokens: readonly CppToken[], index: number): number | null {
+  let i = index - 1;
+  if (tokens[i]?.text !== '.' && tokens[i]?.text !== '->') return null;
+  for (;;) {
+    i--;
+    while (tokens[i]?.text === ']') {
+      let depth = 0;
+      for (; i >= 0; i--) {
+        if (tokens[i]!.text === ']') depth++;
+        else if (tokens[i]!.text === '[' && --depth === 0) break;
+      }
+      i--;
+    }
+    const t = tokens[i];
+    if (!t || t.kind !== 'id') return null;
+    if (tokens[i - 1]?.text === '.' || tokens[i - 1]?.text === '->') { i--; continue; }
+    return t.text === 'this' ? null : i;
+  }
+}
+
+/** A declaration of `name` on `line` that binds it by value (no `&` or `*` right before the name). */
+export function declaredByValue(line: string, name: string): boolean {
+  const at = new RegExp(`\\b${name}\\b`).exec(line);
+  if (!at) return false;
+  return !/[&*]\s*(const\s+)?$/.test(line.slice(0, at.index));
+}
+
 /** The index past a template argument list starting at `open` (`<`), or `open` when there is none. */
 function pastTemplate(tokens: readonly CppToken[], open: number): number {
   if (tokens[open]?.text !== '<') return open;

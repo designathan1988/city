@@ -12,7 +12,7 @@ const ir = fixtureGraph();
 const base: AuditOptions = {
   hot: ['src/world.ts#World.tick'], uiDirs: ['src/ui'], stateDirs: ['src/world.ts'], simDirs: ['src/world.ts'],
   maxFileLines: 25, maxFunctionLines: 8, features: [{ name: 'tick', entry: 'src/world.ts#World.tick' }],
-  maxScattering: 0, minWriterFiles: 2, minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
+  maxScattering: 0, writerDirs: [], channels: [], minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
 };
 
 describe('audit', () => {
@@ -33,6 +33,11 @@ describe('audit', () => {
   it('finds state without an owner', () => {
     assert.ok(found('module-state').some((f) => f.endsWith('src/lib/math.ts#counter')));
     assert.ok(found('scattered-writes').some((f) => f.endsWith('src/world.ts#World.total')));
+    // A folder the architecture designates as a writer (or a designated channel) is not outside the owner.
+    const designated = runAudit(ir, { ...base, writerDirs: ['src/ui'] });
+    assert.ok(!designated.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/world.ts#World.total'));
+    const channel = runAudit(ir, { ...base, channels: ['src/world.ts#World'] });
+    assert.ok(!channel.findings.some((f) => f.rule === 'scattered-writes' && f.unit === 'src/world.ts#World.total'));
     assert.deepEqual(found('ui-writes-state'), ['high src/ui/panel.ts#overrideTotal']);
     assert.deepEqual(found('nondeterminism-in-simulation'), ['high src/world.ts#World.tick']);
   });
