@@ -104,6 +104,18 @@ void transit_set_vehicles(TransitData &t, int id, int vehicles, int most) {
 		if (l.id == id) l.vehicles = std::clamp(vehicles, 1, most);
 }
 
+void transit_normalize(TransitData &t) {
+	const auto known = [](TransitMode m) { return m == TransitMode::BUS || m == TransitMode::TRAIN || m == TransitMode::METRO; };
+	t.stops.erase(std::remove_if(t.stops.begin(), t.stops.end(), [&](const TransitStop &s) { return !known(s.mode); }), t.stops.end());
+	t.tracks.erase(std::remove_if(t.tracks.begin(), t.tracks.end(), [&](const RailTrack &k) { return !known(k.mode) || k.mode == TransitMode::BUS || int(k.points.size()) < MIN_LINE_STOPS; }), t.tracks.end());
+	for (TransitLine &l : t.lines)
+		l.stops.erase(std::remove_if(l.stops.begin(), l.stops.end(), [&](int id) {
+			const TransitStop *s = t.stop(id);
+			return !s || s->mode != l.mode;
+		}), l.stops.end());
+	t.lines.erase(std::remove_if(t.lines.begin(), t.lines.end(), [](const TransitLine &l) { return int(l.stops.size()) < MIN_LINE_STOPS; }), t.lines.end());
+}
+
 RailGraph rail_graph(const TransitData &t, TransitMode mode, float join) {
 	RailGraph g;
 	std::unordered_map<int64_t, std::vector<int>> cells;

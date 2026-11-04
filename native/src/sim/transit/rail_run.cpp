@@ -186,8 +186,9 @@ float crossing_gap(const CityState &s, int key, float at) {
 	for (const auto &e : it->second) {
 		const RailLine &r = run.rails[size_t(e.first)];
 		const LevelCrossing &c = r.crossings[size_t(e.second)];
-		const float stop = c.at - p.crossing_stop_m - at;
-		if (stop < 0 || (best >= 0 && stop >= best)) continue;
+		if (c.at <= at) continue; // over the line already: it goes on across
+		const float stop = std::max(0.f, c.at - p.crossing_stop_m - at);
+		if (best >= 0 && stop >= best) continue;
 		const float cars = float(cars_of(s, r)) * p.train_car_m;
 		for (const Train &t : r.trains) {
 			const float coming = mod_loop(c.loop_s - t.s, r.length);
@@ -198,6 +199,68 @@ float crossing_gap(const CityState &s, int key, float at) {
 		}
 	}
 	return best;
+}
+
+float crossing_near_end(const CityState &s, int key, float length) {
+	const TransitRun &run = s.transit_run;
+	const auto it = run.crossings_by_lane.find(key);
+	if (it == run.crossings_by_lane.end()) return -1;
+	float best = -1;
+	for (const auto &e : it->second) {
+		const LevelCrossing &c = run.rails[size_t(e.first)].crossings[size_t(e.second)];
+		if (length - c.at < s.catalog.traffic.crossing_keep_clear_m && (best < 0 || c.at < best)) best = c.at;
+	}
+	return best;
+}
+
+void train_zones(CityState &s) {
+	TransitRun &run = s.transit_run;
+	run.zones.clear();
+	const TrafficParams &p = s.catalog.traffic;
+	const V2 cam(s.camera_x.load(), s.camera_z.load());
+	for (const RailLine &r : run.rails) {
+		if (r.metro) continue;
+		const int cars = cars_of(s, r);
+		for (const Train &t : r.trains) {
+			const float ahead = std::max(p.train_clear_ahead_m, t.v * p.train_clear_time_s), reach = float(cars) * p.train_car_m + ahead;
+			if ((point_at(r, t.s).at - cam).len() > p.ped_window_m + reach) continue;
+			TrainZone z;
+			z.x0 = z.z0 = FREE_LINE_M;
+			z.x1 = z.z1 = -FREE_LINE_M;
+			auto disc = [&](const V2 &at, float radius) {
+				z.discs.push_back({ at, radius });
+				z.x0 = std::min(z.x0, at.x - radius);
+				z.z0 = std::min(z.z0, at.y - radius);
+				z.x1 = std::max(z.x1, at.x + radius);
+				z.z1 = std::max(z.z1, at.y + radius);
+			};
+			// standing at a station it is ground to keep off only once it is about to leave
+			if (t.v >= p.train_idle_ms || t.dwell <= p.train_clear_time_s)
+				for (float d = p.train_clear_from_m; d < ahead; d += p.train_clear_step_m) disc(point_at(r, t.s + d).at, p.train_clear_disc_m);
+			const float half = p.train_car_m * 0.5f - p.train_car_margin_m;
+			for (int k = 0; k < cars; k++) {
+				const LoopPoint car = point_at(r, t.s - p.train_car_m * (float(k) + 0.5f));
+				for (float d = -half; d <= half; d += p.train_car_step_m) disc(car.at + car.dir * d, p.train_car_disc_m);
+			}
+			run.zones.push_back(std::move(z));
+		}
+	}
+}
+
+namespace {
+bool in_zone(const TransitRun &run, const V2 &q) {
+	for (const TrainZone &z : run.zones) {
+		if (q.x < z.x0 || q.x > z.x1 || q.y < z.z0 || q.y > z.z1) continue;
+		for (const WalkerDisc &d : z.discs)
+			if ((d.at - q).len() < d.r) return true;
+	}
+	return false;
+}
+} // namespace
+
+bool walker_held(const CityState &s, const V2 &at, const V2 &ahead) {
+	const TransitRun &run = s.transit_run;
+	return !run.zones.empty() && in_zone(run, at + ahead * s.catalog.traffic.train_walker_look_m) && !in_zone(run, at);
 }
 
 void publish(CityState &s, PoseFrame &f, int64_t stamp, int64_t before, float cx, float cz, float radius) {

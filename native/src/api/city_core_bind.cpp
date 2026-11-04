@@ -34,6 +34,10 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
 	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
 	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
+	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityCore::transit_footway);
+	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityCore::transit_xray);
+	ClassDB::bind_method(D_METHOD("set_clock_hour", "hour"), &CityCore::set_clock_hour);
+	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityCore::transit_preview);
 	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
 	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);

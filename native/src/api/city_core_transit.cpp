@@ -3,6 +3,7 @@
 
 #include "api/edit_result.h"
 #include "sim/commands/transit_commands.h"
+#include "sim/transit/transit_ground.h"
 
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -22,6 +23,10 @@ Dictionary stop_dict(const CityState &s, const TransitStop &q) {
 	d["mode"] = int(q.mode);
 	d["at"] = on_ground(s, q.at);
 	d["terminal"] = q.terminal;
+	V2 along, out;
+	transit_stop_frame(s, q, along, out);
+	d["along"] = Vector3(along.x, 0, along.y);
+	d["out"] = Vector3(out.x, 0, out.y);
 	return d;
 }
 
@@ -104,6 +109,17 @@ Dictionary CityCore::transit_run() {
 		if (b.vehicle < 0) continue;
 		const Vehicle &v = state_->traffic.vehicles[size_t(b.vehicle)];
 		d["first_bus"] = Array::make(b.next, b.dwell, v.ds, v.s, v.v, v.bus_stop_at, v.conn, v.micro);
+		d["bus_at"] = Vector3(v.cur.x, v.cur.y, v.cur.z);
+		d["bus_heading"] = Vector3(v.cur.fx, 0, v.cur.fz);
+		break;
+	}
+	for (const RailLine &r : run.rails) {
+		if (r.metro || r.trains.empty() || r.trains[0].cars.empty()) continue;
+		const Train &t = r.trains[0];
+		const Pose &head = t.cars[0].at[POSE_TRAIL - 1];
+		d["train_at"] = Vector3(head.x, head.y, head.z);
+		d["train_heading"] = Vector3(head.fx, 0, head.fz);
+		d["train_speed"] = t.v;
 		break;
 	}
 	return d;
@@ -113,6 +129,31 @@ int CityCore::transit_pick(const Vector3 &p, int mode, bool any) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const TransitStop *q = stop_near(state_->transit, V2(p.x, p.z), state_->catalog.traffic.transit_pick_m, mode_of(mode), any);
 	return q ? q->id : -1;
+}
+
+Dictionary CityCore::transit_footway(const Vector3 &p, float reach) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	Dictionary d;
+	TransitStop q;
+	if (!transit_find_footway(s, V2(p.x, p.z), reach, q.at, q.seg)) return d;
+	V2 along, out;
+	transit_stop_frame(s, q, along, out);
+	d["at"] = on_ground(s, q.at);
+	d["along"] = Vector3(along.x, 0, along.y);
+	d["out"] = Vector3(out.x, 0, out.y);
+	return d;
+}
+
+void CityCore::set_clock_hour(double hour) { state_->clock.skip_to(hour); }
+
+void CityCore::transit_xray(bool on) { render_.transit_xray(on); }
+
+void CityCore::transit_preview(const PackedVector3Array &points, int mode) {
+	std::vector<V2> run;
+	for (const Vector3 &q : points) run.push_back(V2(q.x, q.z));
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	render_.transit_preview(*state_, run, mode_of(mode));
 }
 
 Vector3 CityCore::transit_snap(const Vector3 &p, int mode) {

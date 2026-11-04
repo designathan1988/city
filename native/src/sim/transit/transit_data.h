@@ -78,6 +78,8 @@ int transit_add_line(TransitData &t, TransitMode mode, const std::vector<int> &s
 void transit_remove_line(TransitData &t, int id);
 void transit_set_vehicles(TransitData &t, int id, int vehicles, int most);
 
+// A plan read from a file: anything malformed dropped; a line keeps only stops that exist and are of its mode.
+void transit_normalize(TransitData &t);
 RailGraph rail_graph(const TransitData &t, TransitMode mode, float join);
 // The points to pass along the tracks from one point on them to another; empty when no way joins them.
 std::vector<V2> rail_path(const RailGraph &g, const V2 &from, const V2 &to);

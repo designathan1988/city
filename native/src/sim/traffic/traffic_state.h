@@ -89,6 +89,9 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 	}
 }
 
+// A vehicle's paint from here up is the colour of a transport line, not one of the paints (agent_renderer.cpp).
+constexpr int LINE_PAINT = 64;
+
 struct Vehicle {
 	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue

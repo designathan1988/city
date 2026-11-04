@@ -226,6 +226,7 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT && step_to_nearer_place(s, id)) begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
+	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
 	const float step = w.pace * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {

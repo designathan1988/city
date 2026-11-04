@@ -4,6 +4,7 @@
 #include "sim/commands/edit_journal.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
+#include "sim/transit/transit_ground.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,7 @@ constexpr float ROAD_STEP_M = 1.f;
 constexpr float SNAP_REACH = 2.f; // of the joining reach
 constexpr float STATION_PICK = 1.5f; // of the pick reach
 constexpr int MIN_STOPS = 2;
+constexpr float BUILDING_PAD_M = 1.f, FREE_STEP_M = 1.f; // a way down keeps this off a building; the footway walked this often
 
 EditResult done() {
 	EditResult r;
@@ -36,12 +38,6 @@ struct Footway {
 	V2 at;
 };
 
-bool under_building(const CityState &s, const V2 &p) {
-	bool built = false;
-	s.buildings.query(p.x, p.y, p.x, p.y, [&](int) { built = true; });
-	return built;
-}
-
 Footway footway_at(const CityState &s, const V2 &p, float reach, bool clear) {
 	Footway best;
 	float dist = reach;
@@ -51,31 +47,34 @@ Footway footway_at(const CityState &s, const V2 &p, float reach, bool clear) {
 		double t, d;
 		closest_t(g.q, p.x, p.y, t, d);
 		const float arc = float(t) * float(g.len);
+		auto at_arc = [&](int side, float along) {
+			Pose q;
+			traffic::sidewalk_pose(s, seg, side, along, 0, q);
+			return V2(q.x, q.z);
+		};
 		for (int side : { 0, 1 }) {
 			if (!(side == 0 ? pf.has_walk_right : pf.has_walk_left)) continue;
-			Pose q;
-			traffic::sidewalk_pose(s, seg, side, arc, 0, q);
-			const V2 at(q.x, q.z);
-			const float away = (at - p).len();
-			if (away >= dist || (clear && under_building(s, at))) continue;
+			V2 at = at_arc(side, arc);
+			float away = (at - p).len();
+			if (away >= dist) continue;
+			if (clear && transit_built(s, at, BUILDING_PAD_M)) { // the nearest of this footway that is free, a step apart along it
+				bool found = false;
+				for (float along = 0, end = float(g.len); along <= end; along += FREE_STEP_M) {
+					const V2 q = at_arc(side, along);
+					const float d2 = (q - p).len();
+					if (d2 < dist && (!found || d2 < away) && !transit_built(s, q, BUILDING_PAD_M)) {
+						found = true;
+						at = q;
+						away = d2;
+					}
+				}
+				if (!found) continue;
+			}
 			dist = away;
 			best = { seg, at };
 		}
 	});
 	return best;
-}
-
-// Whether a point is on a road's carriageway.
-bool on_road(const CityState &s, const V2 &p) {
-	bool on = false;
-	const float reach = s.catalog.traffic.transit_along_road_m;
-	s.roads.for_segments_near(p.x - reach, p.y - reach, p.x + reach, p.y + reach, [&](int seg) {
-		double t, d;
-		closest_t(s.roads.segs[size_t(seg)].q, p.x, p.y, t, d);
-		const Profile &pf = s.roads.profile_of(seg);
-		on = on || d < std::max(pf.asph_left, pf.asph_right);
-	});
-	return on;
 }
 } // namespace
 
@@ -129,7 +128,7 @@ EditResult transit_lay_track(CityState &s, const std::vector<V2> &points, Transi
 	if (run.size() < 2) return refused("hint.transit.trackShort");
 	const TrafficParams &p = s.catalog.traffic;
 	// a train track crosses streets, it does not run down one; the metro is under them
-	if (mode == TransitMode::TRAIN && longest_on_road(run, ROAD_STEP_M, [&](const V2 &q) { return on_road(s, q); }) > p.transit_along_road_m) return refused("hint.transit.trackOnRoad");
+	if (mode == TransitMode::TRAIN && longest_on_road(run, ROAD_STEP_M, [&](const V2 &q) { return transit_on_road(s, q); }) > p.transit_along_road_m) return refused("hint.transit.trackOnRoad");
 	TransitData next = s.transit;
 	transit_add_track(next, mode, run);
 	j_transit(s, std::move(next));
@@ -182,6 +181,13 @@ EditResult transit_set_line_vehicles(CityState &s, int id, int vehicles) {
 	transit_set_vehicles(next, id, vehicles, int(s.catalog.traffic.transit_most_vehicles));
 	j_transit(s, std::move(next));
 	return done();
+}
+
+bool transit_find_footway(const CityState &s, const V2 &p, float reach, V2 &at, int &seg) {
+	const Footway way = footway_at(s, p, reach, false);
+	at = way.at;
+	seg = way.seg;
+	return way.seg >= 0;
 }
 
 V2 transit_snap_track(const CityState &s, const V2 &p, TransitMode mode) {

@@ -16,6 +16,8 @@ EditResult transit_remove_at(CityState &s, float x, float z); // the stop, else 
 EditResult transit_remove_line(CityState &s, int id);
 EditResult transit_set_line_vehicles(CityState &s, int id, int vehicles);
 // The end or corner of a track of `mode` near a point, else the nearest point on one, else the point itself.
+// The nearest footway to a point within `reach`: where, and on which road; false when none is.
+bool transit_find_footway(const CityState &s, const V2 &p, float reach, V2 &at, int &seg);
 V2 transit_snap_track(const CityState &s, const V2 &p, TransitMode mode);
 
 } // namespace city

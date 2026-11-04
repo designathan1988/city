@@ -162,6 +162,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.growth.grown = r.get<int32_t>();
 	s.transit = TransitData();
 	if (version >= SAVE_VERSION && !read_transit(r, s.transit)) return false;
+	transit_normalize(s.transit);
 	s.transit_revision++;
 	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
 	mark_all_lot_cells(s);

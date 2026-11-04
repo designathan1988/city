@@ -139,7 +139,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			l.take(o.s - body(s, o) - v.s, o.v);
 		}
 		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
-		if (const float hold = transit::hold_ahead(s, v, ds, through); hold >= 0) l.take(hold, 0.f);
+		if (const float hold = transit::hold_ahead(s, v, ds, through, head); hold >= 0) l.take(hold, 0.f);
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
 		if (!through) {
 			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }

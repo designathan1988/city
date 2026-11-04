@@ -15,6 +15,7 @@ namespace {
 constexpr int STOP_SIDE_RIGHT = 0;
 constexpr float NO_GOAL_M = 1e9f; // a bus never arrives: its stops hold it
 constexpr float MIN_LIMIT_MS = 2.f;
+constexpr int CROSSING_LOOK_LANES = 3; // the lanes ahead on a route a driver sees a closed crossing on
 
 // The kerb lane beside a stop: the direction of its road with the stop's footway on its right.
 bool lane_beside(const CityState &s, const TransitStop &q, StopLane &out) {
@@ -82,7 +83,9 @@ int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 		const Vehicle &o = t.vehicles[size_t(id)];
 		if (o.s > start - len * 2 && o.s - p.classes[int(o.type)].length < lane.at + len) return -1; // not into another vehicle
 	}
-	const int id = traffic::new_vehicle(s, VehicleType::BUS, uint8_t(l.id));
+	const std::vector<uint32_t> &colours = p.line_colours;
+	const int colour = int(std::find(colours.begin(), colours.end(), l.colour) - colours.begin());
+	const int id = traffic::new_vehicle(s, VehicleType::BUS, uint8_t(LINE_PAINT + (colour < int(colours.size()) ? colour : 0)));
 	Vehicle &v = t.vehicles[size_t(id)];
 	v.ds = lane.ds;
 	v.lane = lane.lane;
@@ -148,7 +151,8 @@ void step_bus(CityState &s, Bus &b, float dt) {
 	send_bus(s, *l, b, v);
 }
 
-void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &out) {
+// A line's buses: those it had stay where they are, more wait at its terminal, up to its number.
+void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &was, std::vector<Bus> &out) {
 	const TrafficParams &p = s.catalog.traffic;
 	int served = 0, start = 0;
 	for (size_t i = 0; i < l.stops.size(); i++) {
@@ -157,7 +161,18 @@ void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &out) {
 		if (q && q->terminal && start == 0) start = int(i);
 	}
 	if (served < 2) return;
-	for (int k = 0; k < l.vehicles; k++) {
+	int k = 0;
+	for (Bus &b : was) {
+		if (b.line != l.id || k >= l.vehicles) continue;
+		if (b.next >= int(l.stops.size())) {
+			b.next = start;
+			b.dir = 1;
+		}
+		out.push_back(b);
+		b.line = -1; // kept
+		k++;
+	}
+	for (; k < l.vehicles; k++) {
 		Bus b;
 		b.line = l.id;
 		b.next = start;
@@ -166,13 +181,10 @@ void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &out) {
 	}
 }
 
+// An edit of the plan or of the roads: every stop's lane found again, the lines' buses going on from where they are.
 void rebuild(CityState &s) {
 	TransitRun &run = s.transit_run;
-	for (Bus &b : run.buses)
-		if (b.vehicle >= 0) {
-			s.traffic.vehicles[size_t(b.vehicle)].bus = -1;
-			traffic::despawn_vehicle(s, b.vehicle, true);
-		}
+	std::vector<Bus> was = std::move(run.buses);
 	run.buses.clear();
 	run.stop_lanes.clear();
 	for (const TransitStop &q : s.transit.stops) {
@@ -180,7 +192,19 @@ void rebuild(CityState &s) {
 		if (q.mode == TransitMode::BUS && lane_beside(s, q, lane)) run.stop_lanes[q.id] = lane;
 	}
 	for (const TransitLine &l : s.transit.lines)
-		if (l.mode == TransitMode::BUS) place_buses(s, l, run.buses);
+		if (l.mode == TransitMode::BUS) place_buses(s, l, was, run.buses);
+	for (const Bus &b : was)
+		if (b.line >= 0 && b.vehicle >= 0) { // its line went, or has fewer
+			s.traffic.vehicles[size_t(b.vehicle)].bus = -1;
+			traffic::despawn_vehicle(s, b.vehicle, true);
+		}
+	for (size_t i = 0; i < run.buses.size(); i++) {
+		Bus &b = run.buses[i];
+		if (b.vehicle < 0) continue;
+		Vehicle &v = s.traffic.vehicles[size_t(b.vehicle)];
+		v.bus = int(i);
+		if (const TransitLine *l = s.transit.line(b.line)) send_bus(s, *l, b, v);
+	}
 	place_rails(s);
 	run.plan_seen = s.transit_revision;
 	run.roads_seen = uint64_t(s.roads.version);
@@ -194,12 +218,32 @@ void step(CityState &s, float dt) {
 	for (Bus &b : run.buses) step_bus(s, b, dt);
 	for (RailLine &r : run.rails)
 		for (Train &tr : r.trains) step_train(s, r, tr, dt);
+	train_zones(s);
 }
 
 void reset(CityState &s) { s.transit_run = TransitRun(); }
 
-float hold_ahead(const CityState &s, const Vehicle &v, int ds, bool through) {
-	float hold = crossing_gap(s, ds * MAX_LANES + v.lane, v.s);
+float hold_ahead(const CityState &s, const Vehicle &v, int ds, bool through, bool head) {
+	float hold = -1;
+	if (!s.transit_run.crossings_by_lane.empty()) {
+		const TrafficState &t = s.traffic;
+		hold = crossing_gap(s, ds * MAX_LANES + v.lane, v.s);
+		float offset = t.g.ds[size_t(ds)].len - v.s;
+		for (int k = v.ri + 1; k < v.route.len && k <= v.ri + CROSSING_LOOK_LANES; k++) {
+			const int next = route_at(t.route_pool, v.route, k);
+			const float gap = crossing_gap(s, next * MAX_LANES, 0); // every lane of a road has its crossing
+			if (gap >= 0) hold = hold < 0 ? offset + gap : std::min(hold, offset + gap);
+			offset += t.g.ds[size_t(next)].len;
+		}
+		// a level crossing too near the stop line to wait between the two: it waits before the track until it may go on
+		if (through && v.pass < 0 && (head || traffic::light_for(s, ds) != Light::GREEN)) {
+			const float track = crossing_near_end(s, ds * MAX_LANES + v.lane, t.g.ds[size_t(ds)].len);
+			if (track >= 0 && v.s < track) {
+				const float wait = std::max(0.f, track - s.catalog.traffic.crossing_stop_m - v.s);
+				hold = hold < 0 ? wait : std::min(hold, wait);
+			}
+		}
+	}
 	if (!through && v.bus_stop_at >= 0) { // the IDM stops s0 short of what it is given
 		const float stop = std::max(0.f, v.bus_stop_at - v.s + s.catalog.traffic.classes[int(v.type)].min_gap);
 		hold = hold < 0 ? stop : std::min(hold, stop);
@@ -215,6 +259,12 @@ void bus_gone(CityState &s, int vehicle) {
 	b.vehicle = -1;
 	b.wait = p.bus_spacing_s;
 	v.bus = -1;
+	const TransitLine *l = s.transit.line(b.line);
+	if (!l || b.next >= int(l->stops.size())) return;
+	const auto it = s.transit_run.stop_lanes.find(l->stops[size_t(b.next)]);
+	if (it == s.transit_run.stop_lanes.end()) return;
+	const DirSeg &d = s.traffic.g.ds[size_t(it->second.ds)]; // on by the timetable: the time to drive to the stop it was going to
+	b.wait = travel_time(p, (V2(v.cur.x, v.cur.z) - V2(d.ex, d.ez)).len(), d.speed);
 }
 
 } // namespace transit

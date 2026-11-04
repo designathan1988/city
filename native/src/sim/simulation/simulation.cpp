@@ -21,6 +21,11 @@ double CityClock::hour() const {
 	return m / MINUTES_PER_HOUR;
 }
 
+void CityClock::skip_to(double to) {
+	const double ahead = std::fmod(to - hour() + HOURS_PER_DAY, HOURS_PER_DAY);
+	minutes.store(minutes.load() + ahead * MINUTES_PER_HOUR);
+}
+
 void Simulation::start(CityState &s) {
 	stop();
 	s_ = &s;

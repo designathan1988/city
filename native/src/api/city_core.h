@@ -52,6 +52,10 @@ public:
 	godot::Dictionary transit_vehicles(int id, int vehicles);
 	godot::Dictionary transit_plan();
 	godot::Dictionary transit_run(); // what is running, for the tests
+	godot::Dictionary transit_footway(const godot::Vector3 &p, float reach); // for the captures
+	void transit_xray(bool on);
+	void set_clock_hour(double hour); // tests only, like step_ticks
+	void transit_preview(const godot::PackedVector3Array &points, int mode);
 	int transit_pick(const godot::Vector3 &p, int mode, bool any);
 	godot::Vector3 transit_snap(const godot::Vector3 &p, int mode);
 	godot::Array road_profiles() const;

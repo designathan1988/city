@@ -56,6 +56,16 @@ struct StopLane {
 	float at = 0;
 };
 
+// The ground a walker keeps off round one train at grade (its cars, the track just ahead): discs inside a box.
+struct WalkerDisc {
+	V2 at;
+	float r = 0;
+};
+struct TrainZone {
+	float x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+	std::vector<WalkerDisc> discs;
+};
+
 struct TransitRun {
 	uint64_t plan_seen = 0, roads_seen = 0;
 	bool built = false;
@@ -63,6 +73,7 @@ struct TransitRun {
 	std::vector<RailLine> rails;
 	std::unordered_map<int, StopLane> stop_lanes; // per bus stop
 	std::unordered_map<int, std::vector<std::pair<int, int>>> crossings_by_lane; // key: (rail, crossing)
+	std::vector<TrainZone> zones; // made again each tick, for the trains near the walkers
 	int stops_called = 0, trains_at_stations = 0; // counted for the probe
 };
 
@@ -75,8 +86,12 @@ void publish(CityState &s, PoseFrame &f, int64_t stamp, int64_t before, float cx
 // Metres to the nearest closed level crossing ahead on a lane, minus where a vehicle waits for it; negative when none is.
 float crossing_gap(const CityState &s, int key, float at);
 // Metres to what holds a vehicle on lane `ds`: a closed crossing, or a bus's stop on the last lane of its leg; negative when nothing does.
-float hold_ahead(const CityState &s, const Vehicle &v, int ds, bool through);
+float hold_ahead(const CityState &s, const Vehicle &v, int ds, bool through, bool head);
+// The first level crossing near enough to the end of a lane that nobody may wait between the two; negative when none is.
+float crossing_near_end(const CityState &s, int key, float length);
 void bus_gone(CityState &s, int vehicle); // the traffic took it off the road
+// Whether a walker at `at` facing `ahead` stops short of a train's ground; who is on it already walks on off it.
+bool walker_held(const CityState &s, const V2 &at, const V2 &ahead);
 
 } // namespace transit
 } // namespace city

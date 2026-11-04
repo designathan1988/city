@@ -7,6 +7,7 @@ namespace city {
 namespace transit {
 
 void place_rails(CityState &s); // the loops, trains and crossings made from the plan
+void train_zones(CityState &s); // what the walkers keep off this tick
 void step_train(CityState &s, RailLine &r, Train &t, float dt);
 int cars_of(const CityState &s, const RailLine &r);
 
