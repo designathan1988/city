@@ -20,9 +20,11 @@ func _ready() -> void:
 	_up = HudWidgets.button(&"IconButton", "floorUp", "", "inside.up", "icon_btn", "icon_btn")
 	_up.pressed.connect(func() -> void: floor_step.emit(1))
 	row.add_child(_up)
-	set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	anchor_left = 1.0 # both anchors on the right edge and the width left to the content, which grows to the left
+	anchor_right = 1.0
 	grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	offset_top = HudWidgets.px("toast_top") + HudWidgets.px("seg_h")
+	offset_left = -HudWidgets.px("margin")
 	offset_right = -HudWidgets.px("margin")
 	hide()
 

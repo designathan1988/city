@@ -1,6 +1,7 @@
 ## The Interior layer on the script side (the core holds what is open: its set_interior command and interior query). Here: the switch (the layers
 ## popover), the building in the middle of the view or double-clicked, the floor, the camera's direction in eight steps, the
-## framing of the building and the room lights. It keeps no number of the game: the floor and the building live in the core.
+## framing of the building and its floor, and the room lights. It keeps no number of the game: the floor and the building live in the core;
+## `_state` is only the last reading of them, read again when the core's revision changes (the query is heavy: never every frame).
 class_name InteriorController
 extends Node
 
@@ -8,6 +9,8 @@ const STEPS := 8
 const STEP_RAD := TAU / float(STEPS)
 ## Looking straight down the horizontal "forward" of the lens is nothing: the screen's up on the ground stands in for it.
 const FLAT_LOOK := 0.2
+## The tilt below which a floor's height shifts the view without end (a lens looking along the ground).
+const MIN_FRAME_TILT := 0.05
 
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var hud: RoadcraftHud = get_tree().get_first_node_in_group(&"hud")
@@ -15,6 +18,8 @@ var _world: CityWorld
 var _bar: InteriorBar
 var _lights: InteriorLights
 var _cfg: Dictionary
+var _state: Dictionary = {}
+var _revision := -1
 var _step := -1
 
 
@@ -49,7 +54,16 @@ func set_enabled(on: bool) -> bool:
 
 
 func is_on() -> bool:
-	return CityStore.query(&"interior").get("on", false)
+	return _state.get("on", false)
+
+
+## Puts the floor seen in the middle of the screen: the rig turns about a point on the ground, so a floor high above it
+## stands further back along the line of sight, by its height over the tangent of the tilt.
+func frame_floor() -> void:
+	if not is_on():
+		return
+	var ahead := Vector3(-sin(rig.yaw), 0.0, -cos(rig.yaw))
+	rig.look_at_ground(_state.focus + ahead * (float(_state.floor_height) / tan(maxf(rig.pitch, MIN_FRAME_TILT))))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -66,43 +80,50 @@ func _unhandled_input(event: InputEvent) -> void:
 			_send(false, -1, 0)
 		else:
 			_open(id, 0)
-	elif id >= 0 and id != CityStore.query(&"interior").target:
-		_open(id, CityStore.query(&"interior").level)
+	elif id >= 0 and id != _state.target:
+		_open(id, _state.level)
 
 
 func _process(_delta: float) -> void:
+	if int(CityStore.query(&"interior_revision")) != _revision:
+		_refresh() # a new city or a load closed the layer under us
 	if not is_on():
 		return
 	var step := _direction_step()
 	if step != _step:
-		var s: Dictionary = CityStore.query(&"interior")
-		_send(true, s.target, s.level, step)
+		_send(true, _state.target, _state.level, step)
 	_lights.follow(rig.focus, _world.daylight.night if _world else 0.0)
 
 
-## Opens building `id` at `level` and frames it. The floor kept goes no higher than the building's top.
+## Opens building `id` at `level` and frames it: its body, and the floor.
 func _open(id: int, level: int) -> void:
-	var info: Dictionary = CityStore.query(&"probe_building", [id])
 	_send(true, id, level)
-	if info.is_empty():
+	if not is_on():
 		return
-	rig.jump(info.focus, rad_to_deg(rig.yaw), _cfg.camera.pitch_deg, maxf(info.extent * _cfg.camera.distance_per_m, _cfg.camera.min_distance_m))
+	rig.jump(_state.focus, rad_to_deg(rig.yaw), _cfg.camera.pitch_deg, maxf(float(_state.extent) * _cfg.camera.distance_per_m, _cfg.camera.min_distance_m))
+	frame_floor()
 
 
 func _move_floor(delta: int) -> void:
-	var s: Dictionary = CityStore.query(&"interior")
-	if s.on:
-		_send(true, s.target, clampi(s.level + delta, 0, maxi(s.floors - 1, 0)))
+	if is_on():
+		_send(true, _state.target, clampi(_state.level + delta, 0, maxi(_state.floors - 1, 0)))
+		frame_floor()
 
 
 func _send(on: bool, target: int, level: int, step := -1) -> void:
 	_step = _direction_step() if step < 0 else step
 	CityStore.dispatch(&"set_interior", [on, target, level, _step, Vector3.ZERO, 0.0])
-	var s: Dictionary = CityStore.query(&"interior")
-	_bar.show_state(s)
-	_lights.set_lamps(s.lamps if s.on else PackedVector3Array())
+	_refresh()
 	if not on:
 		_step = -1
+
+
+## Reads the core's view again: the bar and the lights follow it.
+func _refresh() -> void:
+	_state = CityStore.query(&"interior")
+	_revision = _state.revision
+	_bar.show_state(_state)
+	_lights.set_lamps(_state.lamps if is_on() else PackedVector3Array())
 
 
 ## The way the camera looks on the ground, as one of the eight steps the core cuts for (from +x towards +z).

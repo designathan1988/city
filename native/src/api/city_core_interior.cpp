@@ -39,12 +39,26 @@ Dictionary CityCore::interior() const {
 	d["target"] = s.interior.target;
 	d["level"] = s.interior.cut.level;
 	d["dir"] = s.interior.cut.dir;
-	d["floors"] = interior_floors(s, s.interior.target);
+	d["revision"] = int(s.interior.revision);
+	if (s.interior.on && s.interior.target >= 0) {
+		const InteriorFocus f = interior_focus(s, s.interior.target, s.interior.cut.level);
+		d["floors"] = f.floors;
+		d["focus"] = Vector3(f.at.x, s.terrain.height_at(f.at.x, f.at.y), f.at.y);
+		d["extent"] = f.extent;
+		d["floor_height"] = f.floor_height;
+	} else {
+		d["floors"] = 0;
+	}
 	PackedVector3Array lamps;
 	if (s.interior.on && s.interior.target >= 0)
 		for (const Vector3 &p : interior_lamps(s, s.interior.target, s.interior.cut.level)) lamps.push_back(p);
 	d["lamps"] = lamps;
 	return d;
+}
+
+int CityCore::interior_revision() const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return int(state_->interior.revision);
 }
 
 Dictionary CityCore::interior_cost(int id, int level, int dir) const {

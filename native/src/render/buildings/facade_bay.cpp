@@ -87,6 +87,16 @@ Opening opening_of(const Data &data, const BayCtx &c) {
 	return o;
 }
 
+void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, float to, const Lin &jamb, const Lin &sill, const Lin &head, int8_t fin,
+		float sill_h) {
+	Basis jl{ c.f.at(o.a0, 0, 0), c.f.e2, c.f.e1, c.f.e0 }, jr{ c.f.at(o.a1, 0, 0), c.f.e2, c.f.e1, -c.f.e0 };
+	shell.rect(jl, from, to, o.h0, o.h1, 0, jamb, fin);
+	shell.rect(jr, from, to, o.h0, o.h1, 0, jamb, fin);
+	Basis flat{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
+	shell.rect(flat, o.a0, o.a1, from, to, sill_h, sill, fin);
+	shell.rect(flat, o.a0, o.a1, from, to, o.h1, head, fin, true);
+}
+
 void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c) {
 	Opening o = opening_of(*pl.data, c);
 	if (!o.has) {
@@ -100,13 +110,8 @@ void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c) {
 	bool porch = c.comp == BAY_LOGGIA;
 	Lin reveal = porch ? c.wall * REVEAL : c.trim * REVEAL;
 	int8_t rfin = porch ? c.wall_fin : c.trim_fin;
-	Basis jl{ c.f.at(o.a0, 0, 0), c.f.e2, c.f.e1, c.f.e0 }, jr{ c.f.at(o.a1, 0, 0), c.f.e2, c.f.e1, -c.f.e0 };
-	shell.rect(jl, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
-	shell.rect(jr, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
-	Basis flat{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
 	float sill_h = o.h0 < THRESHOLD_BELOW ? THRESHOLD : o.h0;
-	shell.rect(flat, o.a0, o.a1, -o.depth, 0, sill_h, porch ? reveal : c.trim * SILL_SHADE, rfin);
-	shell.rect(flat, o.a0, o.a1, -o.depth, 0, o.h1, reveal * HEAD_SHADE, rfin, true);
+	emit_reveal(shell, c, o, -o.depth, 0, reveal, porch ? reveal : c.trim * SILL_SHADE, reveal * HEAD_SHADE, rfin, sill_h);
 	closing(shell, pl, c, o);
 	streak(shell, c, o);
 	emit_bay_parts(shell, parts, pl, c, o);
