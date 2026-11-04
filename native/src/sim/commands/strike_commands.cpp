@@ -46,6 +46,7 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	DamageEvent e;
 	e.kind = DamageEvent::BLAST;
 	e.x = b.x; e.y = b.height; e.z = b.z;
+	e.dx = st;
 	e.a = blast::range_at_pressure(p, b.kg, p.collapse_kpa);
 	e.b = b.kg;
 	e.c = on_building ? 2.f : b.soil == blast::Surface::HARD ? 1.f : 0.f;

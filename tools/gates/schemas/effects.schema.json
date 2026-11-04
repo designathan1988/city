@@ -3,7 +3,7 @@
  "strict": true,
  "required": [
   "_doc",
-  "fireball_per_cbrt_kg",
+  "fireball",
   "bursts",
   "puffs",
   "burn",
@@ -16,14 +16,125 @@
   "blood",
   "paper",
   "down",
-  "flash"
+  "flash",
+  "sources",
+  "emitter"
  ],
  "properties": {
   "_doc": {
    "type": "string"
   },
-  "fireball_per_cbrt_kg": {
-   "type": "number"
+  "sources": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "for_s",
+     "for_k",
+     "for_cap_s",
+     "rate_hz",
+     "size_k",
+     "size_cap_m",
+     "height_m"
+    ],
+    "properties": {
+     "for_s": {
+      "type": "number"
+     },
+     "for_k": {
+      "type": "number"
+     },
+     "for_cap_s": {
+      "type": "number"
+     },
+     "rate_hz": {
+      "type": "number"
+     },
+     "size_k": {
+      "type": "number"
+     },
+     "size_cap_m": {
+      "type": "number"
+     },
+     "height_m": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "emitter": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "flame_base_m",
+    "flame_k",
+    "dying_s",
+    "dying_floor",
+    "puff_height_m",
+    "chimney_height_m",
+    "chimney_spread_m",
+    "light_chance",
+    "light_height_m",
+    "light_spread_k",
+    "light_size_m",
+    "light_life_s"
+   ],
+   "properties": {
+    "flame_base_m": {
+     "type": "number"
+    },
+    "flame_k": {
+     "type": "number"
+    },
+    "dying_s": {
+     "type": "number"
+    },
+    "dying_floor": {
+     "type": "number"
+    },
+    "puff_height_m": {
+     "type": "number"
+    },
+    "chimney_height_m": {
+     "type": "number"
+    },
+    "chimney_spread_m": {
+     "type": "number"
+    },
+    "light_chance": {
+     "type": "number"
+    },
+    "light_height_m": {
+     "type": "number"
+    },
+    "light_spread_k": {
+     "type": "number"
+    },
+    "light_size_m": {
+     "type": "number"
+    },
+    "light_life_s": {
+     "type": "number"
+    }
+   }
+  },
+  "fireball": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "base_m",
+    "per_force_m"
+   ],
+   "properties": {
+    "base_m": {
+     "type": "number"
+    },
+    "per_force_m": {
+     "type": "number"
+    }
+   }
   },
   "bursts": {
    "type": "array",

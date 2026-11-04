@@ -208,6 +208,7 @@
  },
  "puffs": {
   "shader": "res://render/shaders/puffs.gdshader",
+  "render_priority": 1,
   "params": {}
  },
  "debris": {

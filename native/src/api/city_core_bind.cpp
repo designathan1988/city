@@ -31,6 +31,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("damage_probe"), &CityCore::damage_probe);
 	ClassDB::bind_method(D_METHOD("shot_targets", "limit"), &CityCore::shot_targets);
 	ClassDB::bind_method(D_METHOD("effects_shake"), &CityCore::effects_shake);
+	ClassDB::bind_method(D_METHOD("effects_since_blast"), &CityCore::effects_since_blast);
 	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
 	ClassDB::bind_method(D_METHOD("redo"), &CityCore::redo);

@@ -8,7 +8,7 @@
 namespace city {
 
 // Fields by kind (x, z ground; y height; dx, dz direction; a, b, c, d scalars; u, v bits; id the subject):
-//   BLAST          x y z, a = blast radius m, b = charge kg, c = soil (0 earth, 1 hard, 2 building), d = collapse range m
+//   BLAST          x y z, a = collapse range m, b = charge kg, c = soil (0 earth, 1 hard, 2 building), d = light range m, dx = the force
 //   SHOT           x y z where the round ended, dx dz = its unit direction (xz), a = dy, u = what it met (0 nothing, 1 walker, 2 vehicle)
 //   WOUND          x y z, dx dz = way of the bullet, u = 1 when a limb came off
 //   BUILDING_DOWN  id = building, x z centre, a = force; the ruin is in DamageState

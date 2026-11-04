@@ -33,8 +33,9 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 	pool = puffs.integer("pool");
 	wind_x = puffs.num("wind_x");
 	wind_z = puffs.num("wind_z");
-	fireball_k = t.has("fireball_per_cbrt_kg") ? float(double(t["fireball_per_cbrt_kg"])) : 0.f;
-	if (!t.has("fireball_per_cbrt_kg")) errors.push_back("effects: falta 'fireball_per_cbrt_kg'");
+	Reader fireball(errors, t, "fireball");
+	fireball_base = fireball.num("base_m");
+	fireball_per_force = fireball.num("per_force_m");
 	Array list = t.has("bursts") ? Array(t["bursts"]) : Array();
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary row = list[i];
@@ -49,6 +50,32 @@ bool EffectParams::load(const Dictionary &t, PackedStringArray &errors) {
 		b.life = float(double(row.get("life_s", 0)));
 		bursts.push_back(b);
 	}
+	Array srcs = t.has("sources") ? Array(t["sources"]) : Array();
+	for (int i = 0; i < srcs.size(); i++) {
+		Dictionary row = srcs[i];
+		SourceDef d;
+		d.for_s = float(double(row.get("for_s", 0)));
+		d.for_k = float(double(row.get("for_k", 0)));
+		d.for_cap_s = float(double(row.get("for_cap_s", 0)));
+		d.rate_hz = float(double(row.get("rate_hz", 0)));
+		d.size_k = float(double(row.get("size_k", 0)));
+		d.size_cap_m = float(double(row.get("size_cap_m", 0)));
+		d.height_m = float(double(row.get("height_m", 0)));
+		sources.push_back(d);
+	}
+	Reader emit(errors, t, "emitter");
+	flame_base = emit.num("flame_base_m");
+	flame_k = emit.num("flame_k");
+	dying_s = emit.num("dying_s");
+	dying_floor = emit.num("dying_floor");
+	puff_height = emit.num("puff_height_m");
+	chimney_height = emit.num("chimney_height_m");
+	chimney_spread = emit.num("chimney_spread_m");
+	light_chance = emit.num("light_chance");
+	light_height = emit.num("light_height_m");
+	light_spread_k = emit.num("light_spread_k");
+	light_size = emit.num("light_size_m");
+	light_life = emit.num("light_life_s");
 	load_look(t, errors);
 	load_things(t, errors);
 	return int(errors.size()) == before && !bursts.empty();

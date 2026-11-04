@@ -41,6 +41,7 @@ public:
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
+	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int effect_pieces() const { return effects_.pieces(); }
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }

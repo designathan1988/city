@@ -49,9 +49,11 @@ void EffectWorld::reset() {
 	marks_.reset();
 	debris_.reset();
 	geysers_.clear();
+	sources_.clear();
 	fire_carry_.clear();
 	events_.clear();
 	shake_ = 0;
+	blast_at_ = -1;
 	flash_left_ = 0;
 	craters_seen_ = ~size_t(0);
 }
@@ -142,6 +144,7 @@ void EffectWorld::sync(CityState &s) {
 	}
 	burn_fires(s, dt);
 	step_geysers(dt);
+	step_sources(dt);
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
 	shake_ *= std::exp(-params_.shake_decay * dt);
 	if (shake_ < SHAKE_FLOOR) shake_ = 0;

@@ -25,7 +25,8 @@ public:
 	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects.
 	void sync(CityState &s);
 	float shake() const { return shake_; } // metres the camera moves now
-	bool busy() const { return puffs_.active(now_) || debris_.moving() || flash_left_ > 0; }
+	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
+	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || flash_left_ > 0; }
 	int pieces() const { return debris_.count(); }
 	size_t events_played() const { return played_; }
 
@@ -51,6 +52,7 @@ private:
 	void casualty(const DamageEvent &e, const CityState &s);
 	void burn_fires(const CityState &s, float dt);
 	void step_geysers(float dt);
+	void step_sources(float dt); // the flame sources a blast leaves (effect_blast.cpp)
 	void flash(float radius);
 	void light_update(float dt);
 	void piece(const godot::Vector3 &at, const godot::Vector3 &size, const godot::Vector3 &v, const godot::Color &tint, bool cylinder = false, float burn = 0.f);
@@ -62,12 +64,17 @@ private:
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
+	struct Source {
+		float x = 0, y = 0, z = 0, size = 0, rate = 0, carry = 0;
+		double until = 0;
+	};
+	std::vector<Source> sources_;
 	std::vector<Geyser> geysers_;
 	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
 	bool started_ = false;
-	double now_ = 0;
+	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
 	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), played_ = 0;

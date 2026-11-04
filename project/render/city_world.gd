@@ -45,6 +45,7 @@ func materials() -> Dictionary:
 				continue
 			var m := ShaderMaterial.new()
 			m.shader = load(table[key].shader)
+			m.render_priority = int(table[key].get("render_priority", 0)) # between transparent layers: the later is drawn over
 			for name in table[key].params:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":

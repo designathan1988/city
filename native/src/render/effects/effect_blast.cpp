@@ -50,15 +50,25 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 }
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
-	const float radius = params_.fireball_k * std::cbrt(e.b); // the fireball: from the charge
+	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
 		const int kind = b.kind >= 0 ? b.kind : (soil == SOIL_SOIL_TINT ? PUFF_DUST : PUFF_CONCRETE);
 		puffs_.burst(e.x, e.y + b.height, e.z, b.count, kind, b.spread_m + b.spread_r * radius, b.size_m + b.size_r * radius, b.life);
 	}
+	for (const SourceDef &d : params_.sources) {
+		Source src;
+		src.x = e.x; src.y = e.y + d.height_m; src.z = e.z;
+		const float big = d.size_k * radius;
+		src.size = d.size_cap_m > 0.f ? std::min(d.size_cap_m, big) : big;
+		src.rate = d.rate_hz;
+		src.until = now_ + double(d.for_s + std::min(d.for_cap_s, d.for_k * radius));
+		sources_.push_back(src);
+	}
 	flash_at_ = Vector3(e.x, e.y + params_.flash_height, e.z);
 	flash(radius);
 	shake_ = std::max(shake_, params_.shake_base + params_.shake_per_r * radius);
+	blast_at_ = now_;
 	Mark ring;
 	ring.kind = MARK_RING;
 	ring.x = e.x; ring.z = e.z; ring.y = s.terrain.height_at(e.x, e.z) + params_.ring_height;
@@ -109,6 +119,24 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 		}
 	}
 	puffs_.burst(e.x, e.y + DOWN_PAPER_HEIGHT_M, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);
+}
+
+// What the blast leaves burning: each source puffs flames at its rate (smaller as it dies down), now and then a chimney of dark
+// smoke and a light smoke (render/blast.ts, the loop over `fires`).
+void EffectWorld::step_sources(float dt) {
+	for (Source &f : sources_) {
+		f.carry += f.rate * dt;
+		const float dying = std::min(1.f, float(f.until - now_) / params_.dying_s + params_.dying_floor);
+		while (f.carry >= 1.f) {
+			f.carry -= 1.f;
+			puffs_.burst(f.x, f.y + params_.puff_height, f.z, 1, params_.flame_kind, f.size, (params_.flame_base + f.size * params_.flame_k) * dying, params_.flame_life);
+			if (rng_.f() < params_.column_chance)
+				puffs_.burst(f.x, f.y + params_.chimney_height, f.z, 1, params_.smoke_kind, params_.chimney_spread, params_.smoke_size, params_.smoke_life);
+			if (rng_.f() < params_.light_chance)
+				puffs_.burst(f.x, f.y + params_.light_height, f.z, 1, PUFF_EXHAUST, f.size * params_.light_spread_k, params_.light_size, params_.light_life);
+		}
+	}
+	sources_.erase(std::remove_if(sources_.begin(), sources_.end(), [&](const Source &f) { return now_ > f.until; }), sources_.end());
 }
 
 } // namespace city

@@ -9,10 +9,6 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SEED := 7
-const SMALL := 5
-const BIG := 45
-const VIEW_YAW := 25.0
-const VIEW_PITCH := 38.0
 const VIEW_DIST := 70.0
 const LOW_DIST := 45.0
 const WALKER_DIST := 8.0
@@ -38,6 +34,7 @@ var out_dir := "user://captures"
 var phases := ["pareada"]
 var rig: CityCamera
 var ui: UiDriver
+var blast: CaptureBlast
 var failures := 0
 
 
@@ -61,17 +58,20 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	CityStore.step_ticks(WARM_TICKS)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
+	blast = CaptureBlast.new(rig, ui)
 	await _run()
 
 
 func _run() -> void:
 	if "pareada" in phases:
 		await _paired()
+	if "earth" in phases:
+		await blast.earth()
 	if "people" in phases:
 		await _people()
 	if "car" in phases:
 		await _car()
-	print("FALHAS: ", failures)
+	print("FALHAS: ", failures + blast.failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -81,8 +81,8 @@ func _paired() -> void:
 	if lows.size() < 3:
 		_check(false, "casas baixas para a pareada")
 		return
-	await _blow("bomba_f%d" % SMALL, lows[lows.size() / 2], SMALL, LOW_DIST, PAIRED_MOMENTS)
-	await _blow("bomba_f%d_grande" % BIG, lows[lows.size() / 3], BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
+	await blast.blow("bomba_f%d" % CaptureBlast.SMALL, lows[lows.size() / 2], CaptureBlast.SMALL, LOW_DIST, PAIRED_MOMENTS)
+	await blast.blow("bomba_f%d_grande" % CaptureBlast.BIG, lows[lows.size() / 3], CaptureBlast.BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
 
 
 func _people() -> void:
@@ -108,7 +108,7 @@ func _car() -> void:
 		return
 	var car: Dictionary = cars[0]
 	CityStore.dispatch(&"set_speed", [0])
-	rig.jump(car.position, VIEW_YAW, WALKER_PITCH, CAR_DIST)
+	rig.jump(car.position, CaptureBlast.VIEW_YAW, WALKER_PITCH, CAR_DIST)
 	await ui.drawn()
 	await ui.shot("carro_antes")
 	_fire(car.position + Vector3(0, GLASS_M, 0))
@@ -160,7 +160,7 @@ func _fire(at: Vector3) -> Dictionary:
 func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Array) -> void:
 	CityStore.dispatch(&"set_speed", [0]) # nobody moves while the camera comes and aims
 	var w := _walker(first.id)
-	rig.jump(w.position, VIEW_YAW, WALKER_PITCH, WALKER_DIST)
+	rig.jump(w.position, CaptureBlast.VIEW_YAW, WALKER_PITCH, WALKER_DIST)
 	await ui.drawn()
 	await ui.shot("%s_antes" % label)
 	var r := _fire(w.position + Vector3(0, aim_m * w.scale, 0))
@@ -193,28 +193,6 @@ func _houses(lo: int, hi: int) -> Array:
 		if open:
 			out.append(info.position + Vector3(0, 3.0 * info.floors, 0))
 	return out
-
-
-func _blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -> void:
-	_check(at != Vector3.INF, "%s: ponto achado" % label)
-	if at == Vector3.INF:
-		return
-	rig.jump(at, VIEW_YAW, VIEW_PITCH, dist)
-	await ui.drawn()
-	await ui.shot("%s_0_antes" % label)
-	var before: Dictionary = CityStore.query(&"damage_probe")
-	var r: Dictionary = CityStore.dispatch(&"strike", [at, force])
-	_check(r.ok, "%s: golpe" % label)
-	await ui.frames(SETTLE_FRAMES)
-	var elapsed := 0.0
-	for t in moments:
-		if t > elapsed:
-			await get_tree().create_timer(t - elapsed).timeout
-			elapsed = t
-		await ui.drawn()
-		await ui.shot("%s_t%s" % [label, ("%.1f" % t).replace(".", "")])
-	var after: Dictionary = CityStore.query(&"damage_probe")
-	print(label, ": ", before, " -> ", after, " tremor ", CityStore.query(&"effects_shake"))
 
 
 func _check(ok: bool, what: String) -> void:

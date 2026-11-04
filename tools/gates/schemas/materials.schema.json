@@ -651,10 +651,8 @@
     "shader": {
      "type": "string"
     },
-    "params": {
-     "type": "object",
-     "properties": {}
-    }
+    "render_priority": { "type": "integer" },
+    "params": { "type": "object", "properties": {} }
    }
   },
   "debris": {
