@@ -1,5 +1,5 @@
 {
- "_doc": "The Interior layer's drawing on the Godot side. lights: the room lights of the floor seen (count, reach in metres, energy by day and at night, colour: 3000 K warm white, the colour of a home's lamp in data/render, energies measured on the photos of the cut floor). camera: how a building opened is framed (tilt in degrees, distance per metre of its side, and the least distance).",
+ "_doc": "The Interior layer's drawing on the Godot side. lights: the room lights of the floor seen (count, reach in metres, energy by day and at night; colour: the 3000 K lamp of a home, LAMP_3000 of building_lamps.gdshaderinc normalised). The count, reach and energies are STARTING VALUES, not calibrated: there is no open lux source for rooms and Godot's light energy is not in lux; only checked that the night photo reads as a lit room. camera: how a building opened is framed (tilt in degrees, distance per metre of its side, and the least distance).",
  "lights": {"count": 6, "range_m": 7, "energy_day": 0.8, "energy_night": 3, "color": "#ffb46b"},
  "camera": {"pitch_deg": 55, "distance_per_m": 1.8, "min_distance_m": 22}
 }
