@@ -1,10 +1,10 @@
 ## The tone mapping the Environment applies to the 3D image (render/city_world.gd: ACES with its exposure and white), as
 ## Godot 4.7 computes it (servers/rendering/renderer_rd/shaders/effects/tonemap.glsl tonemap_aces, the white from
 ## storage/environment_storage.cpp environment_get_tonemap_parameters; drivers/gles3 tonemap_inc.glsl is the same), and
-## its inverse: the scene radiance a light needs to show as a display colour (a lit signal lens shown as its colour, as
-## the Roadcraft 4.0 draws it untone-mapped). ACES's input matrix mixes the channels, so a bright saturated green or
-## amber would need a negative radiance in another channel: such a colour becomes the nearest one ACES shows (least
-## CIELAB distance, every channel of the radiance >= 0).
+## its inverse: the scene radiance a light needs to show as a display colour (a lit signal lens shown in its signal
+## colour, whatever the tone mapping does to bright light). ACES's input matrix mixes the channels, so a bright
+## saturated green or amber would need a negative radiance in another channel: such a colour becomes the nearest one
+## ACES shows (least CIELAB distance, every channel of the radiance >= 0).
 class_name ToneMap
 extends RefCounted
 
