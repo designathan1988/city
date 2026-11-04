@@ -35,6 +35,8 @@ const SLOT_POLL_MS = 2000;
 const SLOT_TELL_MS = 30_000;
 const SLOT_MAX_WAIT_MS = 45 * 60_000;
 const SLOT_STALE_GRACE_S = 600;
+/** Win32_ProcessStartup.ShowWindow takes the nCmdShow values of ShowWindow(); 0 is SW_HIDE (Microsoft Learn: Win32_ProcessStartup, Create method of Win32_Process). Without it the 4.0 server's console opens on the user's desktop. */
+const SW_HIDE = 0;
 const MIN_NODE = [23, 6];
 
 const MACHINE_KEYS = ['source', 'game', 'ports', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
@@ -67,12 +69,12 @@ function environment(m: Machine): NodeJS.ProcessEnv {
 /** Runs a converter command, its output shown as it comes; returns its exit code. */
 function converter(m: Machine, args: readonly string[]): number {
   console.log(`\n> converter ${args.join(' ')}`);
-  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', CLI, ...args], { cwd: CONVERTER, env: environment(m), stdio: 'inherit' });
+  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', CLI, ...args], { cwd: CONVERTER, env: environment(m), stdio: 'inherit', windowsHide: true });
   return run.status ?? 1;
 }
 
 function git(dir: string, args: readonly string[]): string {
-  const run = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  const run = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true });
   if (run.status !== 0) fail(`git ${args.join(' ')} in ${dir}: ${run.stderr.trim()}`);
   return run.stdout;
 }
@@ -218,7 +220,7 @@ async function answers(url: string): Promise<boolean> {
 /** The same question, answered at once: whether to start the server is decided under the lock. */
 function answersNow(url: string): boolean {
   const probe = 'fetch(process.argv[1]).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))';
-  return spawnSync(process.execPath, ['-e', probe, url], { stdio: 'ignore' }).status === 0;
+  return spawnSync(process.execPath, ['-e', probe, url], { stdio: 'ignore', windowsHide: true }).status === 0;
 }
 
 function alive(pid: number): boolean {
@@ -286,12 +288,12 @@ function recordedServer(): number | null {
   }
 }
 
-/** Starts a process outside this process's tree (WMI makes it nobody's child): a run stopped with its whole tree must not take the shared server along. */
+/** Starts a process outside this process's tree (WMI makes it nobody's child): a run stopped with its whole tree must not take the shared server along. Its window is created hidden (ProcessStartupInformation.ShowWindow = SW_HIDE). */
 function startOutsideTree(exe: string, args: readonly string[], cwd: string): number {
   const literal = (s: string): string => `'${s.replace(/'/g, "''")}'`;
   const line = [exe, ...args].map((s) => `"${s}"`).join(' ');
-  const script = `$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ${literal(line)}; CurrentDirectory = ${literal(cwd)} }; if ($r.ReturnValue -ne 0) { exit 1 }; $r.ProcessId`;
-  const run = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+  const script = `$hidden = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]${SW_HIDE} }; $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ${literal(line)}; CurrentDirectory = ${literal(cwd)}; ProcessStartupInformation = $hidden }; if ($r.ReturnValue -ne 0) { exit 1 }; $r.ProcessId`;
+  const run = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', windowsHide: true });
   const pid = Number(String(run.stdout).trim());
   if (run.status !== 0 || !Number.isInteger(pid) || pid <= 0) fail(`could not start ${exe} outside this process's tree: ${String(run.stderr).trim()}`);
   return pid;
@@ -301,7 +303,7 @@ function startOutsideTree(exe: string, args: readonly string[], cwd: string): nu
 function stopServerIfIdle(): boolean {
   if (liveLeases().length > 0) return false;
   const pid = recordedServer();
-  if (pid !== null) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+  if (pid !== null) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
   fs.rmSync(SERVER_STATE, { force: true });
   return true;
 }
@@ -404,12 +406,12 @@ async function leaseServer(m: Machine): Promise<void> {
 /** The 4.0's photo tool under a time limit: past it, the whole tree (node, Chrome) is stopped by its PID. */
 function runLook(m: Machine, plan: string, out: string, timeoutS: number): Promise<number> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [path.join('scripts', 'look.mjs'), path.resolve(plan), out], { cwd: m.source, stdio: 'inherit' });
+    const child = spawn(process.execPath, [path.join('scripts', 'look.mjs'), path.resolve(plan), out], { cwd: m.source, stdio: 'inherit', windowsHide: true });
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       console.error(`port: look.mjs passed ${timeoutS} s; its whole tree is stopped`);
-      if (child.pid) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+      if (child.pid) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
     }, timeoutS * 1000);
     child.on('exit', (code) => {
       clearTimeout(timer);
