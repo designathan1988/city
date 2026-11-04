@@ -57,7 +57,6 @@ void TreeRenderer::set_params(const RID &material) const {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material, "near_m", trees_.near_m);
 	rs->material_set_param(material, "fade_m", trees_.fade_m);
-	rs->material_set_param(material, "pop_m", trees_.pop_m);
 	rs->material_set_param(material, "leaf_atlas", kit_.atlas().texture());
 	rs->material_set_param(material, "tree_albedo", kit_.pictures().albedo());
 	rs->material_set_param(material, "tree_normal", kit_.pictures().normal());

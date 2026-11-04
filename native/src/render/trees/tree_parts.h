@@ -44,13 +44,13 @@ struct BloomSpec {
 	float above = 0; // faces and cards higher than this (model units) take the bloom's tones
 };
 
-// Palm fronds: each a quadratic Bezier from the crown out to its tip, arched over a control point `rise` of its length
-// above the crown and ending `droop` of its length below it (young fronds stand up), drawn as a strip `width` wide
-// whose sides fold down by `fold` of the width.
+// Palm fronds: each leaves the crown `lift` radians above level and bends over by `bend` along its length, in `steps` straight
+// runs; a strip `width` of its length wide either side of the rib, whose sides fold down by `fold` of that (young fronds, the
+// last `young`, stand up out of the middle).
 struct FrondSpec {
 	int count = 0, young = 0, steps = 1;
-	float len0 = 0, len1 = 0, rise0 = 0, rise1 = 0, droop0 = 0, droop1 = 0;
-	float young_len = 0, young_rise = 0, young_droop = 0, width = 0, fold = 0;
+	float len0 = 0, len1 = 0, lift0 = 0, lift1 = 0, bend0 = 0, bend1 = 0, spin = 0;
+	float young_len0 = 0, young_len1 = 0, young_lift0 = 0, young_lift1 = 0, young_bend = 0, young_turn = 1, width = 0, fold = 0, young_fold = 0;
 };
 
 // The shading every face and card of a species shares.

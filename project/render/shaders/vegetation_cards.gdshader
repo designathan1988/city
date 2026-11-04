@@ -19,9 +19,6 @@ uniform sampler2D tree_normal : hint_normal, filter_linear_mipmap, repeat_disabl
 #include "res://render/shaders/color_space.gdshaderinc"
 
 void fragment() {
-	if (v_fade < 1.0 && dither(FRAGCOORD.xy) > v_fade) {
-		discard;
-	}
 	if (v_part > PART_FAR - 0.5) {
 		vec2 at = (v_cell + vec2(UV.x, 1.0 - UV.y)) / vec2(float(picture_frames), float(picture_rows));
 		vec4 p = texture(tree_albedo, at);

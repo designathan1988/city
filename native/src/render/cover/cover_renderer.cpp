@@ -63,7 +63,6 @@ bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	for (const RID &m : { plant_material_, rock_material_ }) {
 		rs->material_set_param(m, "near_m", kit_.reach_m);
 		rs->material_set_param(m, "fade_m", kit_.fade_m);
-		rs->material_set_param(m, "pop_m", kit_.pop_m);
 	}
 	return true;
 }

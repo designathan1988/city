@@ -3,6 +3,8 @@
 // right, y up the view, z towards the eye, the same as view space, so the shader takes the normal as it is.
 #include "render/trees/tree_pictures.h"
 
+#include "render/trees/linear_mips.h"
+
 #include "core/math.h"
 #include "core/units.h"
 #include "render/trees/tree_kit.h"
@@ -174,11 +176,9 @@ void TreePictures::draw(int row, const MeshBuilder &body, const MeshBuilder &car
 
 void TreePictures::finish() {
 	const int width = px_ * frames(), height = px_ * rows_;
-	Ref<Image> a = Image::create_from_data(width, height, false, Image::FORMAT_RGBA8, colour_);
 	Ref<Image> n = Image::create_from_data(width, height, false, Image::FORMAT_RGBA8, normals_);
-	a->generate_mipmaps();
 	n->generate_mipmaps();
-	albedo_ = ImageTexture::create_from_image(a);
+	albedo_ = ImageTexture::create_from_image(image_with_linear_mips(width, height, colour_));
 	normal_ = ImageTexture::create_from_image(n);
 	colour_ = PackedByteArray();
 	normals_ = PackedByteArray();

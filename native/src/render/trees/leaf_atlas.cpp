@@ -2,6 +2,8 @@
 // drawn in grey with a lit half and a darker rim; later leaves cover earlier ones.
 #include "render/trees/leaf_atlas.h"
 
+#include "render/trees/linear_mips.h"
+
 #include "core/math.h"
 #include "core/random.h"
 
@@ -113,9 +115,7 @@ bool LeafAtlas::build(const Dictionary &atlas, PackedStringArray &errors) {
 	cluster(cv, L, r, TUFT_WIDE, L.leaves, 1.f);
 	cluster(cv, L, r, TUFT_CLOSE, int(std::lround(L.leaves * L.near_leaves)), 1.f / std::sqrt(L.near_leaves));
 	frond(cv, L, r);
-	Ref<Image> img = Image::create_from_data(cv.w, cv.h, false, Image::FORMAT_RGBA8, cv.px);
-	img->generate_mipmaps();
-	texture_ = ImageTexture::create_from_image(img);
+	texture_ = ImageTexture::create_from_image(image_with_linear_mips(cv.w, cv.h, cv.px));
 	return texture_.is_valid();
 }
 

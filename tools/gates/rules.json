@@ -351,7 +351,7 @@
     "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START"
+      "native/src/sim/terrain/heightfield.cpp:BANK_START", "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID"
     ],
     "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
   },

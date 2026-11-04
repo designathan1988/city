@@ -8,7 +8,9 @@ const TOWN_MAP := 0
 const SEED := 7
 const SETTLE_FRAMES := 240
 const SHOT_FRAMES := 30
-const CITY_FREE_X := 2600.0
+const FIELD_AT := Vector2(3000.0, 0.0) # the 4.0 runs' setView x and -y: the same ground in both games
+const PAINT_AT := Vector2(4500.0, -1500.0)
+const RIVER_AT := Vector2(3000.0, 2250.0)
 const VIEW_LINES := 1080.0
 const SHOT_SIZE := Vector2i(1920, 1080) # a window with a title bar loses 19 lines on a 1080-line screen
 const CITY_ZOOM := 0.8695652 # the view the 4.0 opens on
@@ -143,7 +145,7 @@ func _measure_card(c: Vector3) -> bool:
 
 
 func _run() -> void:
-	var c := _ground(CITY_FREE_X, 0.0)
+	var c := _ground(FIELD_AT.x, FIELD_AT.y)
 	await _frames(SETTLE_FRAMES)
 	if await _measure_card(c):
 		return
@@ -168,7 +170,7 @@ func _run() -> void:
 	CityStore.dispatch(&"clear_fog")
 	var nature: Dictionary = DataTables.catalog_table("nature")
 	var kinds: Array = nature.paint.kinds
-	var d := _ground(CITY_FREE_X + 600.0, 600.0)
+	var d := _ground(PAINT_AT.x, PAINT_AT.y)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in CLEAR_DABS:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 90.0 - 450.0, 0, 0), 240.0, TREE_CUT, 0, {"density": 0.0, "height": 1.0, "variation": 0.0, "spacing": 1.0}])
@@ -192,7 +194,7 @@ func _run() -> void:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 30.0 - 150.0, 0, 260.0), 40.0, 0, i % 4, {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}])
 	CityStore.dispatch(&"end_stroke")
 	await shot("plantadas", d + Vector3(0, 0, 260.0), 90.0, 14.0, 10.0)
-	var r := _ground(CITY_FREE_X, -900.0)
+	var r := _ground(RIVER_AT.x, RIVER_AT.y)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 	for i in RIVER_DABS:
 		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])

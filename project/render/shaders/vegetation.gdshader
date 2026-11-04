@@ -20,9 +20,6 @@ float bark(vec3 p, float dist) {
 }
 
 void fragment() {
-	if (v_fade < 1.0 && dither(FRAGCOORD.xy) > v_fade) {
-		discard;
-	}
 	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint;
 	if (v_part > PART_BARK - 0.5) {
 		ALBEDO *= bark(v_model, length(VERTEX));

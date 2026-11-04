@@ -37,6 +37,9 @@ constexpr float CARD_LOW_TONE = 0.45f, CARD_TONE_VARY = 0.12f;
 constexpr float CARD_SKY_LIFT = 0.2f;
 // A frond row's tone: its share of the lit tone at a level row, plus this much per unit of its up axis.
 constexpr float FROND_ROW_BASE = 0.5f, FROND_TONE_UP = 0.3f;
+// How far a row's tone wanders, and the crown's shade over a frond: FROND_SHADE_LOW of the light from FROND_SHADE_BELOW under the crown, whole FROND_SHADE_SPAN higher.
+constexpr float FROND_ROW_WANDER = 0.1f, FROND_SHADE_LOW = 0.7f, FROND_SHADE_BELOW = 0.25f, FROND_SHADE_SPAN = 0.35f;
+constexpr float FROND_ROUND = 0.45f; // a strip's edges face this far out from its rib
 constexpr int FROND_COLS = 3; // left edge, rachis, right edge
 // A conifer: the core's faces; cards thicker low (a power of a uniform share of the height) up to this share of it; the
 // tip's reach as a share of the core; how far in a card may stand; how much a card's normal looks up.
@@ -181,23 +184,28 @@ void tree_fronds(MeshBuilder &cards, const Vector3 &top, const FrondSpec &f, con
 	const Vector2 tag(float(int(TreePart::FROND)), 0);
 	for (int k = 0; k < f.count; k++) {
 		bool young = k >= f.count - f.young;
-		float az = TAU_F * (k + r.f()) / f.count;
+		float az = TAU_F * k / f.count * (young ? f.young_turn : 1.f) + r.f() * f.spin;
 		Vector3 out(std::cos(az), 0, std::sin(az)), side(-std::sin(az), 0, std::cos(az));
-		float len = young ? f.young_len : r.range(f.len0, f.len1);
-		float rise = young ? f.young_rise : r.range(f.rise0, f.rise1), droop = young ? f.young_droop : r.range(f.droop0, f.droop1);
-		Vector3 ctrl = top + out * (len * HALF_F) + UP * (len * rise), tip = top + out * len + UP * (len * droop);
+		float len = young ? r.range(f.young_len0, f.young_len1) : r.range(f.len0, f.len1);
+		float lift = young ? r.range(f.young_lift0, f.young_lift1) : r.range(f.lift0, f.lift1), bend = young ? f.young_bend : r.range(f.bend0, f.bend1);
+		float half = len * f.width, fold = young ? f.young_fold : f.fold;
+		std::vector<Vector3> spine{ top };
+		for (int i = 1; i <= f.steps; i++) {
+			float a = lift - bend * float(i) / f.steps;
+			spine.push_back(spine.back() + (out * std::cos(a) + UP * std::sin(a)) * (len / f.steps));
+		}
 		int first = int(cards.v.size());
 		for (int i = 0; i <= f.steps; i++) {
-			float t = float(i) / f.steps, u = 1.f - t;
-			Vector3 p = top * (u * u) + ctrl * (2.f * u * t) + tip * (t * t);
-			Vector3 along = ((ctrl - top) * u + (tip - ctrl) * t).normalized();
+			Vector3 p = spine[size_t(i)], along = (spine[size_t(std::min(i + 1, f.steps))] - spine[size_t(std::max(i - 1, 0))]).normalized();
 			Vector3 up = side.cross(along).normalized();
 			if (up.y < 0) up = -up;
-			Color col = with_alpha(tones.tone(clampf(FROND_ROW_BASE + FROND_TONE_UP * up.y, 0.f, 1.f)), 1);
-			Vector3 drop = UP * (-f.width * f.fold);
-			const Vector3 row[FROND_COLS] = { p - side * f.width + drop, p, p + side * f.width + drop };
+			float shade = FROND_SHADE_LOW + (1.f - FROND_SHADE_LOW) * clampf((p.y - top.y + FROND_SHADE_BELOW) / FROND_SHADE_SPAN, 0.f, 1.f);
+			Color col = with_alpha(tones.tone(clampf(FROND_ROW_BASE + FROND_TONE_UP * up.y + (r.f() - HALF_F) * FROND_ROW_WANDER, 0.f, 1.f) * shade), 1);
+			Vector3 drop = UP * (-half * fold);
+			const Vector3 row[FROND_COLS] = { p - side * half + drop, p, p + side * half + drop };
+			const Vector3 faces[FROND_COLS] = { (up - side * FROND_ROUND).normalized(), up, (up + side * FROND_ROUND).normalized() };
 			for (int c = 0; c < FROND_COLS; c++)
-				cards.add(row[c], up, col, Vector2(c * HALF_F, 1.f - t), tag); // the frond's base is the atlas region's bottom row
+				cards.add(row[c], faces[c], col, Vector2(c * HALF_F, 1.f - float(i) / f.steps), tag); // the frond's base is the atlas region's bottom row
 		}
 		for (int i = 0; i < f.steps; i++)
 			for (int c = 0; c + 1 < FROND_COLS; c++) {

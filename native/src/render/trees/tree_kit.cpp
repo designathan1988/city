@@ -45,9 +45,10 @@ ConeSpec cone_of(const Dictionary &c) {
 FrondSpec fronds_of(const Dictionary &f) {
 	FrondSpec s;
 	s.count = f["count"]; s.young = f["young"]; s.steps = f["segments"];
-	s.len0 = at(f["length"], 0); s.len1 = at(f["length"], 1); s.rise0 = at(f["rise"], 0); s.rise1 = at(f["rise"], 1);
-	s.droop0 = at(f["droop"], 0); s.droop1 = at(f["droop"], 1);
-	s.young_len = f["young_length"]; s.young_rise = f["young_rise"]; s.young_droop = f["young_droop"]; s.width = f["width"]; s.fold = f["fold"];
+	s.len0 = at(f["length"], 0); s.len1 = at(f["length"], 1); s.lift0 = at(f["lift"], 0); s.lift1 = at(f["lift"], 1);
+	s.bend0 = at(f["droop_rad"], 0); s.bend1 = at(f["droop_rad"], 1); s.spin = f["spin"];
+	s.young_len0 = at(f["young_length"], 0); s.young_len1 = at(f["young_length"], 1); s.young_lift0 = at(f["young_lift"], 0); s.young_lift1 = at(f["young_lift"], 1);
+	s.young_bend = f["young_droop_rad"]; s.young_turn = f["young_turn"]; s.width = f["width"]; s.fold = f["fold"]; s.young_fold = f["young_fold"];
 	return s;
 }
 
@@ -103,10 +104,12 @@ TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, P
 		Dictionary c = crowns[i];
 		CrownSpec cs{ vec3(c["center"]) + Vector3(top.x, 0, top.z), vec3(c["radius"]), float(c["rough"]), uint32_t(int(c["seed"])), int(c["subdiv"]),
 			int(c["cards"]), float(c["card"]), float(c["taper"]) };
-		sum += tree_crown(body, cards, cs, sh, r);
+		Shade own = sh; // a palm's crownshaft and nuts are not leaves: their own tones
+		if (c.has("dark")) own.leaf = Tones{ hexc(c["dark"]), hexc(c["lit"]) };
+		sum += tree_crown(body, cards, cs, own, r);
 	}
 	if (d.has("fronds")) tree_fronds(cards, top, fronds_of(d["fronds"]), sh.leaf, r);
-	sp.far_tone = crowns.is_empty() ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
+	sp.far_tone = crowns.is_empty() || d.has("fronds") ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
 	if (d.has("cone")) sp.far_tone = tree_cone(body, cards, cone_of(d["cone"]), sh, r);
 	sp.far_tone.a = 1;
 	pictures.draw(row, body, cards, sp.far_tone);

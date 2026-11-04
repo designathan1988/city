@@ -26,7 +26,7 @@ class CoverKit {
 public:
 	bool build(const godot::Dictionary &table, godot::PackedStringArray &errors);
 	const CoverLook &look(CoverPiece p) const { return looks_[size_t(p)]; }
-	float reach_m = 0, fade_m = 0, pop_m = 0, tuft_share = 0;
+	float reach_m = 0, fade_m = 0, tuft_share = 0;
 
 private:
 	std::array<CoverLook, COVER_PIECES> looks_;

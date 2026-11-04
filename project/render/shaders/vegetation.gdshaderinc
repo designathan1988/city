@@ -22,7 +22,6 @@ const float FAR_TINT_SPAN = 2.0; // far_cards.cpp: a vertex colour stops at 1, a
 
 uniform float near_m = 240.0;
 uniform float fade_m = 30.0;
-uniform float pop_m = 3.0;
 global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
 global uniform float wind_z;
 global uniform float wind_ms;
@@ -39,7 +38,6 @@ uniform float picture_top_deg = 80.0;
 
 varying flat vec3 v_tint;
 varying flat vec2 v_cell; // far: the picture's frame (column, row)
-varying flat float v_fade;
 varying flat float v_part;
 varying vec3 v_model; // the point on the tree, metres from its foot
 
@@ -52,13 +50,12 @@ vec3 vertex_albedo(vec3 c, bool srgb_out) {
 	return srgb_out ? c : to_linear(c);
 }
 
-// How much of the tree standing at `root` is drawn at distance `d`: its near level inside its own switch distance, its
-// far card past it. Each tree switches at its own distance spread over fade_m, whole, crossing over only pop_m: a wood
-// changes level tree by tree instead of every crown half dithered at once.
-float tree_fade(vec3 root, float d, bool far) {
+// Whether this level of the tree standing at `root` is drawn at distance `d`: its near level inside its own switch distance,
+// its far card past it. Each tree switches whole at its own distance, spread over fade_m, so a wood changes level tree by tree
+// and a still frame holds no tree between levels.
+bool tree_shown(vec3 root, float d, bool far) {
 	float at = near_m + fade_m * fract(dot(floor(root.xz), vec2(0.0973, 0.1031)) * 47.53);
-	float k = smoothstep(at, at + pop_m, d);
-	return far ? k : 1.0 - k;
+	return (d >= at) == far;
 }
 
 // The wind's push on a point `local` (model units, the tree one unit tall) of a tree standing at `root`, `height`
@@ -81,29 +78,20 @@ vec3 keep_length(vec3 p, vec3 root, vec3 off) {
 	return len > 1e-4 ? root + normalize(a + off) * len : p + off;
 }
 
-// 4x4 ordered dither threshold of a pixel, for the cross-fade between a tree's levels.
-float dither(vec2 frag) {
-	ivec2 c = ivec2(mod(frag, 4.0));
-	int k = c.x + c.y * 4;
-	int bayer[16] = int[](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
-	return (float(bayer[k]) + 0.5) / 16.0;
-}
-
 // Places one vertex of a tree (see the header): `vertex` and `normal` come in model space and leave in view space;
-// `fade` is how much of the tree this level draws (0: none, its vertices collapsed); `tint` and `part` go on to the
+// A level not shown has its vertices collapsed; `tint` and `part` go on to the
 // fragment. `view` is the pass's (the light's in the shadow pass), `main_inv` the main camera's, for the distance the
 // levels switch at. Two sources: a MultiMesh instance (near models: `inst`, the instance's custom data, is its tint and
 // species), or a far-card mesh (render/trees/far_cards.h: CUSTOM0 is the card's width, the tree's height, the species
 // and the card's half height; COLOR.a the card centre's height; the corner is the vertex's index modulo 4).
 void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, vec4 color, vec4 inst, vec4 custom0, int vertex_id,
-		mat4 model, mat4 view, mat4 main_inv, float t, out float fade, out vec3 tint, out float part, out vec2 cell) {
+		mat4 model, mat4 view, mat4 main_inv, float t, out vec3 tint, out float part, out vec2 cell) {
 	bool far = custom0.w > 0.0;
 	part = far ? PART_FAR : uv2.x;
 	tint = far ? color.rgb * FAR_TINT_SPAN : inst.rgb;
 	cell = vec2(0.0);
 	vec3 root = (model * vec4(far ? vertex : vec3(0.0), 1.0)).xyz;
-	fade = tree_fade(root, distance(root, main_inv[3].xyz), far);
-	if (fade <= 0.0) {
+	if (!tree_shown(root, distance(root, main_inv[3].xyz), far)) {
 		vertex = vec3(0.0);
 		return;
 	}
@@ -133,13 +121,12 @@ void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, 
 // The vertex stage both vegetation shaders share.
 void vertex() {
 	v_model = VERTEX * length(MODEL_MATRIX[1].xyz);
-	float fade, part;
+	float part;
 	vec3 tint;
 	vec2 cell;
-	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR, INSTANCE_CUSTOM, CUSTOM0, VERTEX_ID, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, fade, tint,
+	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR, INSTANCE_CUSTOM, CUSTOM0, VERTEX_ID, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, tint,
 			part, cell);
 	v_cell = cell;
 	v_tint = tint;
-	v_fade = fade;
 	v_part = part;
 }

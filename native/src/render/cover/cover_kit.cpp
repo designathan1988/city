@@ -92,11 +92,11 @@ Ref<ArrayMesh> variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
 } // namespace
 
 bool CoverKit::build(const Dictionary &t, PackedStringArray &errors) {
-	static const char *const TOP[] = { "reach_m", "fade_m", "pop_m", "tuft_share" };
+	static const char *const TOP[] = { "reach_m", "fade_m", "tuft_share" };
 	for (const char *key : TOP)
 		if (!t.has(key)) errors.push_back(String("cover.json: falta ") + key);
 	if (!errors.is_empty()) return false;
-	reach_m = t["reach_m"]; fade_m = t["fade_m"]; pop_m = t["pop_m"]; tuft_share = t["tuft_share"];
+	reach_m = t["reach_m"]; fade_m = t["fade_m"]; tuft_share = t["tuft_share"];
 	for (int i = 0; i < COVER_PIECES; i++) {
 		if (!t.has(PIECE_KEYS[i])) {
 			errors.push_back(String("cover.json: falta ") + PIECE_KEYS[i]);
