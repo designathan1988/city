@@ -5,6 +5,7 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/traffic/traffic_system.h"
 
+#include <algorithm>
 #include <mutex>
 #include <shared_mutex>
 
@@ -15,10 +16,29 @@ namespace city {
 namespace {
 constexpr float CLEAR_M = 25.f; // no tall building this near a target
 constexpr int TALL_FLOORS = 4;
+constexpr float TREE_SPREAD_M = 3.f; // a street tree seen from a capture's eye: the crown of the medium trees the town plants (6 to 9 m tall)
 
 bool clear_of_towers(const CityState &s, float x, float z) {
 	bool clear = true;
 	s.buildings.query(x - CLEAR_M, z - CLEAR_M, x + CLEAR_M, z + CLEAR_M, [&](int id) { clear = clear && s.buildings.items[size_t(id)].floors <= TALL_FLOORS; });
+	return clear;
+}
+
+// No lamp, signal post, bin, bench or street tree within `radius` of the point.
+bool clear_of_furniture(const CityState &s, const Vector3 &at, float radius) {
+	const float reach = radius + TREE_SPREAD_M;
+	bool clear = true;
+	std::vector<FurnitureSpot> spots;
+	s.roads.for_segments_near(at.x - reach, at.z - reach, at.x + reach, at.z + reach, [&](int seg) {
+		spots.clear();
+		traffic::street_furniture_of(s, seg, FURNITURE_ALL, spots);
+		for (const FurnitureSpot &f : spots) {
+			Pose p;
+			traffic::seg_point(s, seg, float(f.v), f.u, p);
+			const float room = radius + (f.kind == FurnitureKind::TREE ? TREE_SPREAD_M : 0.f);
+			clear = clear && (p.x - at.x) * (p.x - at.x) + (p.z - at.z) * (p.z - at.z) >= room * room;
+		}
+	});
 	return clear;
 }
 
@@ -104,18 +124,29 @@ Dictionary CityCore::park_sample() {
 	Array calls;
 	for (int n : pk.lorry_calls) calls.push_back(n);
 	d["lorry_calls"] = calls; // no dock, planning, no way, no truck, no route, sent
-	int trucks = 0, ways = 0, planned = 0;
+	int trucks = 0, ways = 0, planned = 0, gates = 0;
+	double slowest = 0;
+	Array reached;
+	reached.resize(traffic::YARD_REACHES);
+	reached.fill(0);
 	for (int id : s.traffic.micro_list) trucks += s.traffic.vehicles[size_t(id)].type == VehicleType::TRUCK ? 1 : 0;
 	for (const auto &y : pk.yards) {
 		if (!y.second.job->done.load()) continue;
+		gates += int(y.second.job->plan.gates.size());
+		slowest = std::max(slowest, y.second.job->plan.planned_ms);
 		for (const traffic::DockWays &w : y.second.job->plan.docks) {
 			planned++;
 			ways += w.gate >= 0 ? 1 : 0;
+			reached[w.reached] = int(reached[w.reached]) + 1;
 		}
 	}
 	d["trucks_near"] = trucks;
 	d["docks_planned"] = planned;
 	d["docks_with_way"] = ways;
+	d["docks_reached"] = reached; // traffic::YardReach
+	d["yards"] = int(pk.yards.size());
+	d["yard_gates"] = gates;
+	d["yard_slowest_ms"] = slowest;
 	for (const Lorry &l : pk.lorries)
 		if (l.phase != LorryPhase::COMING) d["lorry"] = Vector3(s.traffic.vehicles[size_t(l.id)].cur.x, s.traffic.vehicles[size_t(l.id)].cur.y, s.traffic.vehicles[size_t(l.id)].cur.z);
 	return d;
@@ -151,6 +182,7 @@ bool CityCore::camera_clear(const Vector3 &at, float radius) {
 	const CityState &s = *state_;
 	bool clear = true;
 	s.buildings.query(at.x - radius, at.z - radius, at.x + radius, at.z + radius, [&](int) { clear = false; });
+	clear = clear && clear_of_furniture(s, at, radius);
 	for (const Vehicle &v : s.traffic.vehicles) {
 		if (!clear) break;
 		if (!v.alive || !v.micro) continue;

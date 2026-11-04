@@ -47,8 +47,9 @@ struct WayGoal {
 	double reach = 0, turn = 0; // how near its place and heading a pose must come
 };
 
-// The poses from `start` to near the goal; false when there is no way, or none within the search's limit.
-bool find_way(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::vector<AxlePose> &way);
+// The poses from `start` to near the goal; false when there is no way, or none within the search's limit. `fine`: at half the grain,
+// for the tight yard the usual search loses; some eight times the work.
+bool find_way(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::vector<AxlePose> &way, bool fine = false);
 
 } // namespace traffic
 } // namespace city

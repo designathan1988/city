@@ -91,17 +91,50 @@ bool pre_dock(const YardInput &in, const Field &f, const AxlePose &docked, const
 	return false;
 }
 
-// Both ways of a dock through one gate.
+// A way found and brought exactly onto its goal.
+bool way_to(const YardInput &in, const Field &f, const AxlePose &from, const AxlePose &to, bool reversing, std::vector<AxlePose> &way, bool fine = false) {
+	if (!find_way(f, in.body, from, { to, reversing, in.reach, in.turn }, way, fine)) return false;
+	const std::vector<AxlePose> tail = settle(way.back(), to, reversing, in.settle_step);
+	if (!all_fit(f, in.body, tail, in.fit_margin)) return false;
+	way.insert(way.end(), tail.begin() + 1, tail.end());
+	return true;
+}
+
+// The same way driven the other way round: a pose is reached the opposite way to how the one after it was.
+std::vector<AxlePose> driven_back(const std::vector<AxlePose> &way) {
+	std::vector<AxlePose> out(way.rbegin(), way.rend());
+	for (size_t i = 1; i < out.size(); i++) out[i].reverse = !way[way.size() - i].reverse;
+	if (out.size() > 1) out[0].reverse = out[1].reverse;
+	return out;
+}
+
+// One way after another, the pose they share once.
+void joined(const std::vector<AxlePose> &first, const std::vector<AxlePose> &then, std::vector<AxlePose> &out) {
+	out = first;
+	out.insert(out.end(), then.begin() + 1, then.end());
+}
+
+// Both ways of a dock through one gate. The lorry backs in from past the gate, or backs out to the stop, when only the other way was
+// found: the street is closed for it all the same (sweep_lanes).
 bool through_gate(const YardInput &in, const Field &f, const YardGate &g, const AxlePose &docked, const AxlePose &pre, DockWays &out) {
+	const auto got = [&](int stage) { out.reached = std::max(out.reached, stage); };
+	got(YARD_NO_STOP);
+	if (!body_clear(f, in.body, g.stop)) return false;
+	got(YARD_NO_WAY);
 	std::vector<AxlePose> onto, away;
-	if (!find_way(f, in.body, g.stop, { pre, true, in.reach, in.turn }, onto)) return false;
-	const std::vector<AxlePose> settle_in = settle(onto.back(), pre, true, in.settle_step);
-	if (!all_fit(f, in.body, settle_in, in.fit_margin)) return false;
-	if (!find_way(f, in.body, pre, { g.join, false, in.reach, in.turn }, away)) return false;
-	const std::vector<AxlePose> settle_out = settle(away.back(), g.join, false, in.settle_step);
-	if (!all_fit(f, in.body, settle_out, in.fit_margin)) return false;
+	bool found_in = way_to(in, f, g.stop, pre, true, onto);
+	const bool found_out = way_to(in, f, pre, g.join, false, away);
+	found_in = found_in || (!found_out && way_to(in, f, g.stop, pre, true, onto, true));
+	if (!found_in && !found_out) return false;
+	if (!found_in || !found_out) { // the search keeps one pose to a cell, so it can lose a way that exists: one found holds for both
+		got(YARD_NO_LANE);
+		const std::vector<AxlePose> lane = settle(g.stop, g.join, false, in.settle_step);
+		if (!all_fit(f, in.body, lane, in.fit_margin)) return false;
+		got(YARD_ONE_WAY);
+		if (found_in) joined(driven_back(onto), lane, away);
+		else joined(lane, driven_back(away), onto);
+	} else got(YARD_BOTH_WAYS);
 	out.into = onto;
-	out.into.insert(out.into.end(), settle_in.begin() + 1, settle_in.end());
 	const std::vector<AxlePose> to_dock = straight(pre, docked, true, in.settle_step);
 	out.into.insert(out.into.end(), to_dock.begin() + 1, to_dock.end());
 	out.into_street = int(out.into.size()) - 1;
@@ -109,7 +142,6 @@ bool through_gate(const YardInput &in, const Field &f, const YardGate &g, const 
 		if (body_in_lot(in, out.into[i])) { out.into_street = int(i); break; }
 	out.away = straight(docked, pre, false, in.settle_step);
 	out.away.insert(out.away.end(), away.begin() + 1, away.end());
-	out.away.insert(out.away.end(), settle_out.begin() + 1, settle_out.end());
 	out.away_street = int(out.away.size()) - 1;
 	for (size_t i = 0; i < out.away.size(); i++)
 		if (!body_in_lot(in, out.away[i])) { out.away_street = std::max(0, int(i) - 1); break; }

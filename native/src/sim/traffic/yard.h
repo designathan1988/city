@@ -40,8 +40,13 @@ struct YardInput {
 };
 
 // A dock's ways, rear-axle poses; `into_street` / `away_street`: where along them the part on the street ends and begins.
+// How far a dock's ways got, the farthest any gate did (the probes): no room to start the reverse, no room at the stop on the lane,
+// no way either way, one way but the lane between stop and join does not hold the body, one way driven back for the other, both found.
+enum YardReach { YARD_NO_PRE, YARD_NO_STOP, YARD_NO_WAY, YARD_NO_LANE, YARD_ONE_WAY, YARD_BOTH_WAYS, YARD_REACHES };
+
 struct DockWays {
 	int bay = -1, gate = -1; // -1: no way
+	int reached = YARD_NO_PRE;
 	std::vector<AxlePose> into, away;
 	int into_street = 0, away_street = 0;
 };
@@ -49,6 +54,7 @@ struct DockWays {
 struct YardPlan {
 	std::vector<YardGate> gates;
 	std::vector<DockWays> docks;
+	double planned_ms = 0; // what the worker took (the probes)
 };
 
 // What a worker fills: `done` is set once `plan` may be read.

@@ -6,6 +6,7 @@
 #include "sim/traffic/lane_closures.h"
 
 #include "core/job_pool.h"
+#include "core/laps.h"
 #include "sim/traffic/yard.h"
 
 #include <algorithm>
@@ -208,7 +209,9 @@ std::shared_ptr<YardJob> yard_of(CityState &s, int building) {
 		return nullptr;
 	}
 	s.jobs->submit(YARD_JOB_KEY_BASE + building, JOB_PRIORITY, [in, job] {
+		Laps took;
 		plan_yard(*in, job->plan);
+		job->plan.planned_ms = took.lap();
 		job->done.store(true);
 	});
 	return nullptr;
