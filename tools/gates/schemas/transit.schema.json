@@ -1,0 +1,9 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": { "type": "string" },
+  "params": { "type": "object", "additional": { "type": "number" } },
+  "line_colours": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+ },
+ "required": ["_doc", "params", "line_colours"]
+}

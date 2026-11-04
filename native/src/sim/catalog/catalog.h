@@ -6,6 +6,7 @@
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
+#include "sim/catalog/transit_params.h"
 
 #include <cstdint>
 #include <string>
@@ -73,6 +74,7 @@ struct Catalog {
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
 	StreetFurnitureDef furniture; // data/catalog/street_furniture.json
+	TransitParams transit; // data/catalog/transit.json
 
 	bool ready() const { return !profiles.empty(); }
 	const Profile &profile(int id) const { return profiles[size_t(id) < profiles.size() ? size_t(id) : 0]; }

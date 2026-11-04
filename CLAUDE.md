@@ -88,7 +88,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
-- `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
+- `native/src/api/traffic_loader.cpp` · `native/src/api/transit_loader.cpp` — Dictionary → TrafficParams / TransitParams estritos
 
 **Núcleo — native/src/core**
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
@@ -105,7 +105,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
-- `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
+- `native/src/sim/catalog/traffic_params.h` · `native/src/sim/catalog/transit_params.h` — parâmetros de tráfego e pedestres; do transporte público
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
 - `native/src/sim/citygen/block_lots.cpp` — quarteirão fechado cortado em lotes (blockLots.ts)
 - `native/src/sim/citygen/city_gen.cpp` · `native/src/sim/citygen/city_gen.h` — pipeline da cidade gerada
@@ -285,7 +285,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/transit.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, transporte público, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render

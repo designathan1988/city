@@ -294,6 +294,7 @@
     "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
+    "project/data/catalog/transit.json": "tools/gates/schemas/transit.schema.json",
     "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
@@ -350,9 +351,11 @@
     "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START"
+      "native/src/sim/terrain/heightfield.cpp:BANK_START",
+      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
+      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M"
     ],
-    "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
+    "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants; the lots' 160 m street look, unrelated to transit.json crossing_warn_m, Roadcraft 4.0 transit.ts:39)."
   },
   "clones": {
     "min_tokens": 80,

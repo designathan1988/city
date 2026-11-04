@@ -12,7 +12,7 @@ namespace city {
 
 class CatalogLoader {
 public:
-	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture" } (parsed JSON)
+	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture", "transit" } (parsed JSON)
 	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
 	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
 };
@@ -22,5 +22,8 @@ bool load_traffic_params(const godot::Dictionary &t, TrafficParams &p, godot::Pa
 
 // data/catalog/street_furniture.json (api/furniture_loader.cpp).
 bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, godot::PackedStringArray &errors);
+
+// data/catalog/transit.json (api/transit_loader.cpp).
+bool load_transit_params(const godot::Dictionary &t, TransitParams &p, godot::PackedStringArray &errors);
 
 } // namespace city
