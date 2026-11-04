@@ -1,13 +1,15 @@
 // The shared code the feature uses, as what it is called by: each declaration as the source writes it with its
 // documentation, a function or method up to its body (name, parameters, types, what it returns), a class its head (its
 // members used are declarations of their own), anything else whole (types, interfaces, enums, constants, fields: their
-// whole text is what they are). The types that text names are written too, to a fixpoint, so the interface reads on
-// its own. Written by source file into interface/.
+// whole text is what they are). The types that text names, the values a value is written from and what the slices of
+// shared code read are written too, to a fixpoint, so the interface reads on its own. Written by source file into
+// interface/.
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import type { UnitRecord } from '../graph/ir.ts';
 import type { FeatureBoundary } from './boundary.ts';
+import type { FeatureSlice } from './slice.ts';
 import type { UnitIndex } from './units.ts';
 
 export interface InterfaceOut {
@@ -15,7 +17,7 @@ export interface InterfaceOut {
   readonly declarations: number;
 }
 
-export function writeInterface(ts: typeof TS, checker: TS.TypeChecker, index: UnitIndex, b: FeatureBoundary, dir: string): InterfaceOut[] {
+export function writeInterface(ts: typeof TS, checker: TS.TypeChecker, index: UnitIndex, b: FeatureBoundary, slices: readonly FeatureSlice[], dir: string): InterfaceOut[] {
   const own = new Set(b.own);
   const included = new Map<string, string>();
   /** The declarations written whole (a declaration inside one of them is in its text already). */
@@ -25,7 +27,22 @@ export function writeInterface(ts: typeof TS, checker: TS.TypeChecker, index: Un
     if (!u || own.has(u.id) || included.has(u.id) || queue.includes(u)) return;
     queue.push(u);
   };
+  /** The declaration a name in the program stands for, when it is a declaration of the file's top level or a member. */
+  const follow = (ref: TS.Node): void => {
+    const symbol = checker.getSymbolAtLocation(ref);
+    const s = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+    for (const d of s?.declarations ?? []) {
+      const u = index.unitAt(d);
+      // A local of the code it stands in is in that code's text.
+      if (u && !isLocalTo(ts, d)) add(u);
+    }
+  };
   for (const x of b.uses) add(index.units.get(x.unit));
+  // A slice of shared code is the feature's code too: what its lines read is part of what the feature uses.
+  for (const slice of slices) {
+    const node = index.nodeOf(index.units.get(slice.unit)!);
+    if (node) for (const ref of namesOnLines(ts, node, new Set(slice.lines))) follow(ref);
+  }
   for (let i = 0; i < queue.length; i++) {
     const u = queue[i]!;
     const node = index.nodeOf(u);
@@ -33,12 +50,9 @@ export function writeInterface(ts: typeof TS, checker: TS.TypeChecker, index: Un
     const { text, named, all } = written(ts, u, node);
     included.set(u.id, text);
     if (all) whole.add(u.id);
-    // The types the written text names, declared in the program.
-    for (const ref of named) {
-      const symbol = checker.getSymbolAtLocation(ref);
-      const s = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
-      for (const d of s?.declarations ?? []) add(index.unitAt(d));
-    }
+    // The types the written text names and the values a whole value is written from, declared in the program.
+    for (const ref of named) follow(ref);
+    if (all) for (const ref of namesIn(ts, node)) follow(ref);
   }
 
   const byFile = new Map<string, UnitRecord[]>();
@@ -88,6 +102,33 @@ function functionOf(ts: typeof TS, node: TS.Node): TS.SignatureDeclaration | nul
   }
   if (ts.isPropertyAssignment(node) && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) return node.initializer;
   return null;
+}
+
+/** Whether a declaration sits inside a function: a local of that code, not a declaration of the program. */
+function isLocalTo(ts: typeof TS, d: TS.Node): boolean {
+  for (let p = d.parent; p; p = p.parent) if (ts.isFunctionLike(p)) return true;
+  return false;
+}
+
+/** The identifiers a node reads: a property name after a dot or in an object literal stands for no declaration here. */
+function namesIn(ts: typeof TS, node: TS.Node): TS.Identifier[] {
+  const out: TS.Identifier[] = [];
+  const visit = (n: TS.Node): void => {
+    if (ts.isIdentifier(n)) {
+      const p = n.parent;
+      const named = (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isPropertyAssignment(p) && p.name === n);
+      if (!named) out.push(n);
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return out;
+}
+
+/** The identifiers a node reads on the given lines (1-based). */
+function namesOnLines(ts: typeof TS, node: TS.Node, lines: ReadonlySet<number>): TS.Identifier[] {
+  const sf = node.getSourceFile();
+  return namesIn(ts, node).filter((id) => lines.has(sf.getLineAndCharacterOfPosition(id.getStart(sf)).line + 1));
 }
 
 /** The names of types written in a node: type references, heritage, `typeof` queries. */

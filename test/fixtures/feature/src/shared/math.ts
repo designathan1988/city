@@ -17,8 +17,11 @@ export interface Range {
   readonly hi: number;
 }
 
+/** A figure of this file alone, read only through another value's text. */
+const WIDE = 100;
+
 /** The whole span a ferry sails. */
-export const FULL: Range = { lo: 0, hi: 100 };
+export const FULL: Range = { lo: 0, hi: WIDE };
 
 /** Whether a value is inside a span. */
 export function within(v: number, r: Range): boolean {

@@ -71,3 +71,9 @@ store.set('mode', 'dock');
 export const other = { mode: typed };
 export const storeKey = `ferry.${store.values.mode}`;
 export const inRange = within(3, FULL);
+/** A figure of this file alone, read by a slice: the feature uses it, though no declaration of its own names it. */
+const PACE = 3;
+function paced(f: Ferry): number {
+  return f.at * PACE;
+}
+export const pace = paced(ferry);

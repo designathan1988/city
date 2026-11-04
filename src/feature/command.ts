@@ -63,7 +63,7 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const pts = new PointsTo(ts, analysis.tokens, base);
   const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, pts, flags.one('postcss'));
   const sources = writeSources(ir, boundary, slices, resources, sourceRoot, path.join(out, 'source'));
-  const shared = writeInterface(ts, sp.checker, index, boundary, path.join(out, 'interface'));
+  const shared = writeInterface(ts, sp.checker, index, boundary, slices, path.join(out, 'interface'));
   const { program: _program, ...written } = boundary;
   fs.writeFileSync(path.join(out, 'boundary.json'), JSON.stringify({ ...written, slices, resources }, null, 1), 'utf8');
   fs.writeFileSync(path.join(out, 'feature.md'), renderFeature(index, boundary, slices, resources, sources, shared), 'utf8');

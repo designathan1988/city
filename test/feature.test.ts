@@ -140,13 +140,15 @@ describe('feature cut', () => {
     assert.ok(!b.uses.some((u) => u.unit === 'src/shared/math.ts#Range'), 'the feature does not name Range itself');
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-interface-'));
     try {
-      const written = writeInterface(ts, sp.checker, index, b, dir);
-      assert.deepEqual(written.map((w) => `${w.file} ${w.declarations}`), ['src/main.ts 1', 'src/only/snap.ts 1', 'src/shared/i18n.ts 1', 'src/shared/math.ts 4']);
+      const written = writeInterface(ts, sp.checker, index, b, slices, dir);
+      assert.deepEqual(written.map((w) => `${w.file} ${w.declarations}`), ['src/main.ts 10', 'src/only/snap.ts 1', 'src/shared/i18n.ts 1', 'src/shared/math.ts 5', 'src/shared/table.ts 1']);
       const math = fs.readFileSync(path.join(dir, 'src/shared/math.ts'), 'utf8');
       assert.match(math, /export function clamp\(v: number, lo: number, hi: number\): number;/);
       assert.match(math, /\/\*\* Whether a value is inside a span\. \*\/\nexport function within\(v: number, r: Range\): boolean;/);
       assert.match(math, /\/\*\* A span of values, from lo to hi\. \*\/\nexport interface Range \{\n {2}readonly lo: number;/, 'the type a signature names');
-      assert.match(math, /export const FULL: Range = \{ lo: 0, hi: 100 \};/);
+      assert.match(math, /export const FULL: Range = \{ lo: 0, hi: WIDE \};/);
+      assert.match(math, /const WIDE = 100;/, 'the value another value is written from');
+      assert.match(fs.readFileSync(path.join(dir, 'src/main.ts'), 'utf8'), /const PACE = 3;/, 'what a slice of shared code reads');
       assert.doesNotMatch(math, /return /, 'no body');
       assert.doesNotMatch(math, /roundTo/, 'the feature own code is not its interface');
     } finally {
