@@ -377,6 +377,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - `grass.detail` e `grass.detail-normal` sem mipmaps, e o shader pede mipmaps: importar com eles e reajustar os `detail_*` de `palette.json` contra o 4.0 (cintilado de longe). `Grass.png` sem mipmaps: fica pálido de longe.
+- Paisagem, não feito: sombra de contato do `canyonLight` (o passe de tela não lê o atlas de sombra, então portar como está escureceria a sombra duas vezes); prova do hemisfério (laje vista de baixo nos dois jogos); longe da chuva menos azul que no 4.0, causa não provada; pedras da margem mais claras que as do 4.0; par com o 4.0 da cor dos elementos de longe. Vídeo em `parada`, 1600x900, médio: 437 MiB (base `a11384a` 547, com 146 a mais de buffers); texturas +34 e staging +3 sobre a base.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
   24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
   maior HLOD de superchunk 8,1 MiB).
