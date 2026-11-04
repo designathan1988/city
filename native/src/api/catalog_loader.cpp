@@ -130,6 +130,25 @@ void load_zones(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 
 void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	Reader r{ errors, "growth" };
+	Dictionary p = r.dict(t, "plan");
+	CityPlanDef &d = g.plan;
+	d.medium_radius_m = r.num(p, "medium_radius_m");
+	d.centres = r.integer(p, "centres");
+	d.main_offset = r.num(p, "main_offset");
+	d.centre_turn = r.num(p, "centre_turn");
+	d.second_from = r.num(p, "second_from");
+	d.second_to = r.num(p, "second_to");
+	d.second_pull = r.num(p, "second_pull");
+	d.density = r.num(p, "density");
+	d.density_pull = r.num(p, "density_pull");
+	d.noise_cell_m = r.num(p, "noise_cell_m");
+	d.noise_heat = r.num(p, "noise_heat");
+	d.high_heat = r.num(p, "high_heat");
+	d.medium_heat = r.num(p, "medium_heat");
+	d.commerce_heat = r.num(p, "commerce_heat");
+	d.main_commerce_heat = r.num(p, "main_commerce_heat");
+	d.industry_from = r.num(p, "industry_from");
+	d.industry_half_angle = r.num(p, "industry_half_angle");
 	g.avenue_priority = r.integer(t, "avenue_priority");
 	Dictionary f = r.dict(t, "floors");
 	g.low_res = r.range(f, "low_residential");

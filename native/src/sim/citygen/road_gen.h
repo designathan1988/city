@@ -1,9 +1,10 @@
 // The generated city's streets (Roadcraft src/jobs/cityGen.ts + cityField.ts): one straight grid of 120 x 72 m blocks
 // round the map's middle, avenues every 4 lines, collectors between, local streets the rest; water and steep slopes
-// cut it, a planar graph is built (crossings, merged nodes), zones are painted by the distance to the centre and the
+// cut it, a planar graph is built (crossings, merged nodes), zones are painted by the city's plan (city_plan.h) and the
 // street profiles vary by district noise. Deterministic: the same seed gives the TypeScript game's graph.
 #pragma once
 
+#include "sim/citygen/city_plan.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <cstdint>
@@ -32,7 +33,7 @@ struct GeneratedRoads {
 	int seg_count() const { return int(segs.size() / SEG_FIELDS); }
 };
 
-GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof);
+GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan);
 
 // Internals shared by the generator's files.
 namespace road_gen {
@@ -41,7 +42,7 @@ struct Piece {
 	int profile;
 };
 bool land(TerrainGen &t, double x, double z);
-GeneratedRoads build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof);
+GeneratedRoads build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof, const CityPlan &plan);
 void tidy_graph(std::vector<double> &nx, std::vector<double> &nz, std::vector<double> &ny, std::vector<int> &segs,
 		const std::vector<int> &strength, TerrainGen &terrain, const GenProfiles &prof);
 GeneratedRoads dry_crossings(const GeneratedRoads &r, TerrainGen &terrain);

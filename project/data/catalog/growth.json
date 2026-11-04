@@ -1,5 +1,25 @@
 {
  "_doc": "Roadcraft world/growth.ts floorsFor and world/arch.ts civicFor. Ranges are [min, max_exclusive] drawn with Rng.int; 'avenue' = street priority >= avenue_priority.",
+ "plan": {
+  "_doc": "The city's shape, authored as the 4.0's world/cityGen/plan.ts has it: no survey behind these numbers. heat = 1 - distance share + density term + noise; the thresholds make it low, medium or high, and commerce on main roads.",
+  "medium_radius_m": 640,
+  "centres": 2,
+  "main_offset": 0.08,
+  "centre_turn": 2.1,
+  "second_from": 0.38,
+  "second_to": 0.6,
+  "second_pull": 0.75,
+  "density": 0.6,
+  "density_pull": 0.6,
+  "noise_cell_m": 220,
+  "noise_heat": 0.08,
+  "high_heat": 0.72,
+  "medium_heat": 0.42,
+  "commerce_heat": 0.85,
+  "main_commerce_heat": 0.35,
+  "industry_from": 0.62,
+  "industry_half_angle": 0.55
+ },
  "avenue_priority": 2,
  "floors": {
   "low_residential": [1, 3],

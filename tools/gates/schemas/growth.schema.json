@@ -162,6 +162,9 @@
   },
   "decay_span_min": {
    "type": "integer"
+  },
+  "plan": {
+   "type": "object"
   }
  },
  "required": [
@@ -173,7 +176,8 @@
   "organic_reach_m",
   "organic_extra_floors",
   "decay_grace_min",
-  "decay_span_min"
+  "decay_span_min",
+  "plan"
  ],
  "strict": true
 }

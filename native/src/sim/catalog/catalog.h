@@ -49,8 +49,17 @@ struct IntRange {
 	int lo = 0, hi = 0;
 };
 
+// The plan of a generated city (data/catalog/growth.json "plan", sim/citygen/city_plan.h).
+struct CityPlanDef {
+	double medium_radius_m = 0, main_offset = 0, centre_turn = 0, second_from = 0, second_to = 0, second_pull = 0;
+	double density = 0, density_pull = 0, noise_cell_m = 0, noise_heat = 0, high_heat = 0, medium_heat = 0, commerce_heat = 0, main_commerce_heat = 0;
+	double industry_from = 0, industry_half_angle = 0;
+	int centres = 0;
+};
+
 // How many floors a grown building gets and which lots become civic buildings (data/catalog/growth.json).
 struct GrowthDef {
+	CityPlanDef plan;
 	int avenue_priority = 0;
 	IntRange low_res, low_other, high_res, high_res_avenue, high_other, high_other_avenue, res_avenue;
 	float res_split[2] = {};

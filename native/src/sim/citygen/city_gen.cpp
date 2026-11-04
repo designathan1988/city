@@ -163,7 +163,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = generate_roads(s.seed, s.map_half, medium, gen, gen_profiles(c));
+		GeneratedRoads r = generate_roads(s.seed, s.map_half, medium, gen, gen_profiles(c), c.growth.plan);
 		insert_roads(s, r);
 		follow_ground(s);
 		conform_terrain(s);
