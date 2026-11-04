@@ -51,7 +51,7 @@
    "ring": {
     "label_key": "v2.roundabout.radius",
     "step": 2,
-    "default": 22
+    "default": 40
    }
   },
   {
@@ -89,11 +89,6 @@
      "label_key": "zone.industrial",
      "zone": 3,
      "swatch": "zone_ind"
-    },
-    {
-     "label_key": "zone.mixed",
-     "zone": 4,
-     "swatch": "zone_mix"
     },
     {
      "label_key": "zone.remove",
@@ -241,11 +236,6 @@
      "id": "street",
      "icon": "ls_bench",
      "label_key": "v2.land.street"
-    },
-    {
-     "id": "people",
-     "icon": "people",
-     "label_key": "tool.person"
     }
    ],
    "strip": "relief_cards",
@@ -487,7 +477,8 @@
    "rows": [
     {
      "icon": "grid",
-     "label_key": "v2.layer.grid"
+     "label_key": "v2.layer.grid",
+     "action": "grid"
     },
     {
      "icon": "zones",
@@ -518,6 +509,11 @@
      "action": "new_city"
     },
     {
+     "icon": "m_new",
+     "label_key": "action.newLargeWorld",
+     "action": "new_large"
+    },
+    {
      "icon": "m_open",
      "label_key": "action.openMap",
      "action": "open"
@@ -528,68 +524,86 @@
      "action": "save_map"
     },
     {
-     "icon": "m_open",
-     "label_key": "ui.menu.load",
-     "action": "load_last"
-    },
-    {
      "icon": "m_save",
      "label_key": "ui.menu.save",
      "action": "save"
     },
     {
-     "icon": "roads",
-     "label_key": "ui.menu.start"
+     "icon": "m_open",
+     "label_key": "ui.menu.load",
+     "action": "load_last"
+    },
+    {
+     "rule": true
+    },
+    {
+     "seg": "quality",
+     "label_key": "menu.quality"
+    },
+    {
+     "icon": "m_quality",
+     "label_key": "menu.graphicsOptions",
+     "action": "graphics"
+    },
+    {
+     "icon": "m_quality",
+     "label_key": "menu.effectsPanel",
+     "action": "effects"
+    },
+    {
+     "seg": "language",
+     "label_key": "menu.language"
+    },
+    {
+     "seg": "paint",
+     "label_key": "menu.paint"
+    },
+    {
+     "rule": true
     },
     {
      "icon": "m_about",
-     "label_key": "action.about"
+     "label_key": "action.about",
+     "action": "about"
     }
-   ]
+   ],
+   "large_map": 4
   },
   "camera": {
    "title_key": "camera.label",
    "buttons": [
     {
-     "icon": "undo",
+     "icon": "cam_turn_left",
      "label_key": "ui.camera.turnLeft",
      "action": "turn_left"
     },
     {
-     "icon": "lower",
+     "icon": "cam_tilt_down",
      "label_key": "camera.tiltDown",
      "action": "tilt_down"
     },
     {
-     "icon": "roundabout",
+     "icon": "cam_north",
      "label_key": "camera.north",
      "action": "north"
     },
     {
-     "icon": "raise",
+     "icon": "cam_tilt_up",
      "label_key": "camera.tiltUp",
      "action": "tilt_up"
     },
     {
-     "icon": "redo",
+     "icon": "cam_turn_right",
      "label_key": "ui.camera.turnRight",
      "action": "turn_right"
     },
     {
-     "icon": "mass",
-     "label_key": "camera.perspective"
+     "icon": "cam_perspective",
+     "label_key": "camera.perspective",
+     "action": "perspective"
     },
     {
-     "icon": "top",
-     "label_key": "ui.camera.top",
-     "action": "top"
-    },
-    {
-     "icon": "follow",
-     "label_key": "ui.camera.follow"
-    },
-    {
-     "icon": "resetView",
+     "icon": "cam_reset",
      "label_key": "action.resetView",
      "action": "reset"
     }
@@ -597,6 +611,22 @@
   },
   "sim": {
    "title_key": "builder.menu.simulation",
+   "level_max_pct": 300,
+   "level_step_pct": 5,
+   "demand": [
+    [
+     0.55,
+     "sim.demand.low"
+    ],
+    [
+     1,
+     "sim.demand.normal"
+    ],
+    [
+     1.55,
+     "sim.demand.peak"
+    ]
+   ],
    "metrics": [
     [
      "sim.metric.trips",
@@ -607,73 +637,17 @@
      "trips_lost"
     ],
     [
-     "ui.metric.vehicles",
-     "vehicles"
+     "sim.metric.speed",
+     "mean_speed"
     ],
     [
-     "ui.metric.peds",
-     "people"
-    ],
-    [
-     "ui.metric.residents",
-     "residents"
-    ],
-    [
-     "ui.metric.jobs",
-     "jobs"
-    ],
-    [
-     "ui.metric.buildings",
-     "buildings"
-    ],
-    [
-     "status.roads.other",
-     "segments"
-    ],
-    [
-     "status.nodes.other",
-     "nodes"
+     "sim.metric.queued",
+     "queued"
     ]
    ]
   },
   "help": {
-   "title_key": "builder.help",
-   "groups": [
-    {
-     "title_key": "help.section.tool",
-     "rows": [
-      [
-       "help.key.click",
-       "ui.do.roadPoint"
-      ],
-      [
-       "ui.key.v",
-       "roadKeys.alignment"
-      ],
-      [
-       "help.key.esc",
-       "ui.do.cancel"
-      ]
-     ]
-    },
-    {
-     "title_key": "help.section.camera",
-     "rows": [
-      [
-       "help.key.panDrag",
-       "help.do.pan"
-      ],
-      [
-       "help.key.wheel",
-       "help.do.zoom"
-      ],
-      [
-       "help.key.qe",
-       "ui.do.turn"
-      ]
-     ]
-    }
-   ]
+   "title_key": "builder.help"
   },
   "files": {
    "title_key": "action.openMap",

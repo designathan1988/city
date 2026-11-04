@@ -1,0 +1,96 @@
+{
+ "tool_keys": {
+  "DEMOLISH": [
+   [
+    "help.key.click",
+    "help.do.remove"
+   ],
+   [
+    "help.key.undo",
+    "help.do.undo"
+   ]
+  ],
+  "INSPECT": [
+   [
+    "help.key.click",
+    "help.do.pick"
+   ],
+   [
+    "help.key.pageUpDown",
+    "camera.tiltUp"
+   ],
+   [
+    "help.key.esc",
+    "help.do.close"
+   ]
+  ],
+  "ROAD": [
+   [
+    "v2.key.drag",
+    "v2.do.road"
+   ],
+   [
+    "help.key.pageUpDown",
+    "palette.height"
+   ],
+   [
+    "v2.key.digits",
+    "palette.kind"
+   ]
+  ]
+ },
+ "groups": [
+  {
+   "title_key": "help.section.camera",
+   "rows": [
+    [
+     "help.key.orbitDrag",
+     "help.do.orbit"
+    ],
+    [
+     "help.key.panDrag",
+     "help.do.pan"
+    ],
+    [
+     "help.key.wheel",
+     "help.do.zoom"
+    ],
+    [
+     "help.key.qe",
+     "help.do.turn"
+    ],
+    [
+     "help.key.home",
+     "help.do.resetView"
+    ]
+   ]
+  },
+  {
+   "title_key": "v2.help.global",
+   "rows": [
+    [
+     "help.key.undo",
+     "v2.do.undo"
+    ],
+    [
+     "v2.key.redo",
+     "v2.do.redo"
+    ],
+    [
+     "v2.key.space",
+     "v2.do.pause"
+    ]
+   ]
+  }
+ ],
+ "tool_names": {
+  "roads": "tool.road",
+  "zones": "tool.zone",
+  "build": "tool.building",
+  "landscape": "v2.cat.landscape",
+  "transit": "tool.transit",
+  "demolish": "tool.bulldoze",
+  "info": "v2.cat.info"
+ },
+ "_doc": "The Help popover (ui/pop_bodies.gd): the keys of the tool in hand (tool_keys, by ToolController.Tool name), the camera's and the game's, and each tool's letter (data/ui/keys.json tools) with its name."
+}

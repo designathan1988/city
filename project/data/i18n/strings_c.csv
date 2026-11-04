@@ -152,7 +152,6 @@ ui.build.renovateTip,Reformar o prédio: fica novo de novo (Shift+clique faz o m
 ui.build.style,Estilo,Style
 ui.build.styleAuto,Automático (bairro),Automatic (neighbourhood)
 ui.camera.follow,Seguir o veículo mais perto do centro (C),Follow the vehicle nearest the centre (C)
-ui.camera.top,Vista de cima,Top view
 ui.camera.turnLeft,Girar à esquerda (Q),Turn left (Q)
 ui.camera.turnRight,Girar à direita (E),Turn right (E)
 ui.cat.build,Construir prédios,Build buildings

@@ -1,0 +1,107 @@
+keys,pt_BR,en
+about.title,Sobre o Roadcraft,About Roadcraft
+action.newLargeWorld,Nova metrópole (cidade grande),New metropolis (large city)
+build.stamp,{branch} · {hash} · {date},{branch} · {hash} · {date}
+confirm.newLargeWorld,"Criar uma cidade grande planejada (a cidade pequena em tamanho grande, cerca de 2,7 km)? Ela abre num distrito; o resto da cidade chega depois da cortina.","Create a large planned city (the small city made larger, about 2.7 km across)? It opens at a district; the rest of the city fills in after the curtain."
+confirm.newMap,Criar um novo mapa? O mapa atual já foi salvo automaticamente.,Start a new map? The current one has already been saved automatically.
+confirm.newWorld,Criar uma nova cidade no mapa inteiro de 10 km × 10 km? O mapa atual já foi salvo automaticamente.,Create a new city over the whole 10 km × 10 km map? The current map has already been saved automatically.
+control.disconnected,Desconectado,Disconnected
+control.priority,Preferencial,Priority road
+control.signal,Semáforo,Traffic signal
+fx.allOff,Desligar todos,All off
+fx.allOn,Ligar todos,All on
+fx.ambient,Luz ambiente,Ambient light
+fx.ambientOcclusion,Oclusão ambiente (GTAO),Ambient occlusion (GTAO)
+fx.bDetail,Células em detalhe (L0),Cells in detail (L0)
+fx.bFacadeDetails,"Grades, toldos, colunas, brises","Railings, awnings, columns, fins"
+fx.bFacadeLevel,Nível de fachada (L1),Facade level (L1)
+fx.bGlass,Vidro,Glass
+fx.bLots,Lotes,Lots
+fx.bMasses,Massas e níveis distantes,Masses and far levels
+fx.bNightWindows,Janelas à noite,Night windows
+fx.bParts,Peças das células (instanciadas),Cell parts (instanced)
+fx.bShadows,Prédios projetam sombra,Buildings cast shadows
+fx.bloom,Bloom (luzes à noite),Bloom (night lights)
+fx.buildings,Prédios,Buildings
+fx.canyonLight,Luz da rua (cânion),Street light (canyon)
+fx.environmentMap,Reflexo do céu (mapa de ambiente),Sky reflection (environment map)
+fx.furniture,Mobiliário urbano e capim alto,Street furniture and long grass
+fx.group.buildings,Prédios (GPU),Buildings (GPU)
+fx.group.cpu,Simulação e laço (CPU e memória),Simulation and loop (CPU and memory)
+fx.group.layers,Camadas desenhadas (GPU),Layers drawn (GPU)
+fx.group.light,Luz e sombras (GPU),Light and shadows (GPU)
+fx.group.post,Pós-processamento (GPU),Post-processing (GPU)
+fx.growth,Crescimento da cidade,City growth
+fx.note,"Liga e desliga cada efeito e sistema ao vivo, para medir quanto custa. Fica guardado entre sessões: “Tudo ligado” volta o jogo ao normal.","Switches each effect and system live, to measure what it costs. Kept between sessions: “Everything on” puts the game back as it draws."
+fx.occlusion,Oclusão por cena,Scene occlusion
+fx.pedestrians,Pedestres,Pedestrians
+fx.people,Pessoas e veículos,People and vehicles
+fx.reset,Tudo ligado,Everything on
+fx.resolution,Resolução desenhada,Resolution drawn
+fx.roads,"Ruas, viadutos e pinturas","Roads, decks and markings"
+fx.shadows,Sombras do sol (cascatas),Sun shadows (cascades)
+fx.signals,Semáforos,Traffic signals
+fx.smaa,Antisserrilhado (SMAA),Anti-aliasing (SMAA)
+fx.stat.calls,Chamadas de desenho,Draw calls
+fx.stat.cpu,CPU por quadro,CPU per frame
+fx.stat.fps,Quadros por segundo,Frames per second
+fx.stat.geometries,Geometrias,Geometries
+fx.stat.gpu,GPU por quadro,GPU per frame
+fx.stat.pixels,Pixels desenhados,Pixels drawn
+fx.stat.static,Memória estática,Static memory
+fx.stat.textures,Texturas,Textures
+fx.stat.triangles,Triângulos desenhados,Triangles drawn
+fx.tab.optimizations,Otimizações,Optimisations
+fx.tab.switches,Chaves,Switches
+fx.terrain,Terreno,Terrain
+fx.title,Painel de efeitos,Effects panel
+fx.traffic,Tráfego,Traffic
+fx.vegetation,"Árvores, florestas e jardins","Trees, forests and gardens"
+fx.water,Água (rios e lagos),Water (rivers and lakes)
+gfx.aa,Suavização de bordas (SMAA),Anti-aliasing (SMAA)
+gfx.dynamicResolution,Resolução dinâmica,Dynamic resolution
+gfx.dynamicResolution.note,"Baixa a resolução quando a placa de vídeo não dá conta, para manter os quadros por segundo.","Lowers the resolution when the graphics card cannot keep up, to hold the frame rate."
+gfx.fpsLimit,Limite de quadros por segundo,Frame rate limit
+gfx.fpsLimit.none,Sem limite,No limit
+gfx.off,Desligado,Off
+gfx.on,Ligado,On
+gfx.shadows.0,Sem sombras,No shadows
+gfx.shadows.1024,Baixas,Low
+gfx.shadows.2048,Médias,Medium
+gfx.shadows.4096,Altas,High
+gfx.title,Opções gráficas,Graphics options
+gfx.vsync,Sincronia vertical (VSync),Vertical sync (VSync)
+health.earlier,antes,earlier
+health.msg.slowFrame,Quadro longo: {what},Long frame: {what}
+health.msg.slowFrameOutside,Quadro longo fora do laço do jogo,Long frame outside the game loop
+health.msg.steps,etapas: {list},steps: {list}
+health.world.undo,Última edição: {label},Last edit: {label}
+help.do.resetView,"Vista padrão, mapa enquadrado","Default view, map framed"
+help.do.turn,Girar enquanto segura (Shift: um quarto de volta),Turn while held (Shift: a quarter turn)
+hint.newMap,Novo mapa iniciado · o anterior volta com Ctrl+Z,New map started · the previous one can be restored with Ctrl+Z
+hint.openFailed,Esse arquivo não é um mapa do Roadcraft ou está danificado. Nada foi alterado,"That file is not a Roadcraft map, or it is damaged. Nothing was changed"
+hint.opened,Mapa aberto,Map opened
+inspector.group,GRUPO {id},GROUP {id}
+inspector.roadClass,Classe da via,Road class
+menu.effectsPanel,Painel de efeitos (F7)…,Effects panel (F7)…
+opt.tier,nível,tier
+profiler.hide,Shift+F9 esconde,Shift+F9 hides
+signal.amber,amarelo,amber
+signal.green,verde,green
+signal.red,vermelho,red
+start.continue,Continuar,Continue
+start.play,Começar a construir,Start building
+start.tagline,"Construa as ruas, a cidade cresce sozinha.","Build the streets, the city grows by itself."
+tool.building,Construção,Build
+tool.road,Via,Road
+tool.transit,Transporte público,Public transport
+tool.zone,Zoneamento,Zoning
+ui.confirm.no,Não,No
+ui.confirm.yes,Sim,Yes
+ui.menu.openFile,Abrir arquivo…,Open file…
+v2.cat.info,Informações,Info
+v2.cat.landscape,Paisagem,Landscape
+v2.do.road,Desenhar a via,Draw the road
+v2.do.tools,Escolher a ferramenta,Pick a tool
+v2.help.global,Atalhos,Shortcuts
+v2.key.digits,1 – 6,1 – 6
