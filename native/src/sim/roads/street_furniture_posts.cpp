@@ -53,12 +53,15 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	const float pole = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::LAMP)].z_m * 0.5f;
 	r.pole_u = kerb_in(p, r.side, pole);
 	r.head_u = r.pole_u + toward_road(r.side) * d.lamps.reach_m;
-	r.centre = r.head_u;
+	// The light falls over the carriageway and a little past it: wider with the road, centred on it.
+	const StripEdge &re = p.edges.front(), &le = p.edges.back();
+	const float lo = re.strip.kind == StripKind::SIDEWALK ? re.u1 : re.u0, hi = le.strip.kind == StripKind::SIDEWALK ? le.u0 : le.u1;
+	r.across = std::max(d.lamps.pool_least_m, (hi - lo) * d.lamps.pool_share + d.lamps.pool_margin_m);
+	r.centre = r.pole_u + toward_road(r.side) * std::max(d.lamps.reach_m, r.across - d.lamps.pool_back_m);
 	if (r.twin) {
 		r.pole_u2 = kerb_in(p, 1, pole);
 		r.head_u2 = r.pole_u2 + toward_road(1) * d.lamps.reach_m;
 		r.centre = (r.head_u + r.head_u2) * 0.5f;
-		r.half_span = std::fabs(r.head_u2 - r.head_u) * 0.5f;
 	}
 	// a pole just past each crosswalk, after the place a signal post may take, and evenly at most span_m apart between
 	const double past = d.crossing.zebra_to_m + d.footprint[int(FurnitureKind::SIGNAL)].z_m + d.footprint[int(FurnitureKind::LAMP)].x_m * 0.5;

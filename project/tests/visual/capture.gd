@@ -75,6 +75,7 @@ func _ready() -> void:
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
 	print("sonda: ", probe.vehicles, " veículos, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " em conectores, ", probe.signals, " semáforos, parados por ", probe.held_by)
 	if measure:
+		print("rua: ", CityStore.query(&"street_counts"))
 		_memory("medido")
 		get_tree().quit(0)
 		return

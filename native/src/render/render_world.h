@@ -41,6 +41,7 @@ public:
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int street_instances() const { return props_.instances(); }
+	int sign_cells() const { return props_.sign_cells(); }
 	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
 	void set_pole_preview(const CityState &s, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing) {
 		props_.set_pole_preview(s, at, lamp, standing);

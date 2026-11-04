@@ -35,6 +35,7 @@ public:
 	void set_pole_preview(const CityState &s, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
+	int sign_cells() const { return atlas_.cells_used(); }
 
 private:
 	// What a chunk draws as instances.

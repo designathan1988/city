@@ -27,7 +27,6 @@
       "cobble_per_m": {"type": "number"},
       "pool_color": {"type": "string", "pattern_prefix": "#"},
       "pool_along_m": {"type": "number"},
-      "pool_across_m": {"type": "number"},
       "pool_gain": {"type": "number"},
       "plate_glow": {"type": "number"}
      },
@@ -50,7 +49,6 @@
       "cobble_per_m",
       "pool_color",
       "pool_along_m",
-      "pool_across_m",
       "pool_gain",
       "plate_glow"
      ],

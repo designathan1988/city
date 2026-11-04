@@ -95,7 +95,7 @@ EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::str
 	it.sign = sign;
 	it.x = float(snap.x);
 	it.z = float(snap.z);
-	it.text = text;
+	if (kind != ItemKind::SIGN || sign_has_text(sign)) it.text = text;
 	j_add_item(s, it);
 	if (kind == ItemKind::STREETNAME) mark_name(s, it);
 	finish_edit(s, snap.x, snap.z, snap.x, snap.z);

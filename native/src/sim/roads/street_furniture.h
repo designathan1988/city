@@ -33,13 +33,13 @@ struct LampRow {
 	bool any = false, twin = false;
 	int side = 0;
 	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
-	float centre = 0, half_span = 0;
+	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width
 	double origin = 0, spacing = 1, span = 1; // span: lamps.span_m, the period the night pools repeat with
 	int stations = 0;
-	// A point's place in the night pools: du = |u - centre| - half_span across, dv the arc from the first station on
-	// a period of `span` (the stations' own spacing stretched to it).
+	// A point's place in the night pools: du across, in shares of `across` and signed so a quad interpolates it, dv the arc
+	// from the first station on a period of `span` (the stations' own spacing stretched to it).
 	void pool(float u, double at, float &du, float &dv) const {
-		du = (u > centre ? u - centre : centre - u) - half_span;
+		du = (u - centre) / across;
 		dv = float((at - origin) * span / spacing);
 	}
 };

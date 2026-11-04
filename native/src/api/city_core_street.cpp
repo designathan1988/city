@@ -133,6 +133,7 @@ Dictionary CityCore::street_counts() {
 	d["barriers"] = w.barriers.alive;
 	d["cuts"] = w.cuts.alive;
 	d["instances"] = render_.street_instances();
+	d["sign_cells"] = render_.sign_cells();
 	return d;
 }
 

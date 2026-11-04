@@ -9,7 +9,7 @@ namespace city {
 
 // Scalar keys of the blocks (X-macros: declared here, required by the loader).
 #define CITY_SIDEWALK_FIELDS(X) X(free_width_m) X(kerb_clear_m)
-#define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m)
+#define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m) X(pool_share) X(pool_margin_m) X(pool_least_m) X(pool_back_m)
 #define CITY_SIGNAL_FIELDS(X) X(kerb_m)
 #define CITY_HYDRANT_FIELDS(X) X(reach_m)
 #define CITY_FURNITURE_FIELDS(X) X(corner_clear_m) X(bin_spacing_m)
@@ -37,6 +37,8 @@ enum class BarrierKind : uint8_t { FENCE = 0, WALL, HEDGE, GUARDRAIL, RAILING, C
 constexpr int BARRIER_KINDS = int(BarrierKind::COUNT);
 enum class SignType : uint8_t { STOP = 0, YIELD, SPEED, NO_PARKING, NO_ENTRY, PEDESTRIAN, SCHOOL, DIRECTION, STREET, INFO, COUNT };
 constexpr int SIGN_TYPES = int(SignType::COUNT);
+// The plates that carry words of the player's: the others read as their picture, whatever was typed before.
+constexpr bool sign_has_text(SignType t) { return t == SignType::SPEED || t == SignType::DIRECTION || t == SignType::STREET || t == SignType::INFO; }
 
 // The sidewalk's own zones: the free width kept for walking, and how far from the kerb's face a piece's face stands.
 struct SidewalkDef {

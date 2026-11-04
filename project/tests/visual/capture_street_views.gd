@@ -3,6 +3,12 @@
 class_name CaptureStreetViews
 extends RefCounted
 
+const RULE_PLATES := 2
+const RULE_GAP := 2.0
+const FIRST_STREET_FACED := 7 # direction, street and information look at the street; the others at the traffic
+const FACE_M := 5.0
+const FACE_ROAD_M := 0.8
+
 
 ## At a person's height along the street, from both ends and from above, by day and by night; the HUD off.
 static func views(cap: Node, a: Vector3, b: Vector3) -> void:
@@ -43,16 +49,20 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 		if field:
 			field.text = cap.SIGN_WORDS
 			field.text_changed.emit(cap.SIGN_WORDS)
-		var at: Dictionary = {}
-		while walked < cap.RUN_M and not at.get("ok", false):
-			at = CityStore.query(&"preview_item", [across + dir * walked, cap.ITEM_SIGN, 1.0])
+		var want: Vector3 = across + dir * walked
+		if i < RULE_PLATES: # Stop and Give Way away from a junction, or they are that leg's rule and no plate of the player's
+			want = across - dir * cap.SIGN_GAP_M * (i + 1) * RULE_GAP
+		var at: Dictionary = CityStore.query(&"preview_item", [want, cap.ITEM_SIGN, 1.0])
+		while i >= RULE_PLATES and walked < cap.RUN_M and not at.get("ok", false):
 			walked += cap.ITEM_STEP_M
+			at = CityStore.query(&"preview_item", [across + dir * walked, cap.ITEM_SIGN, 1.0])
 		if at.get("ok", false):
+			var had: int = CityStore.query(&"street_counts").items
 			await cap.ui.click(at.position)
-			walked += cap.SIGN_GAP_M
-			print("placa ", i, " em ", at.position, " ", CityStore.query(&"street_counts").items)
-		if i == 0:
-			cap.spots["placas"] = at.get("position", across)
+			cap._check(CityStore.query(&"street_counts").items == had + 1, "placa %d colocada" % i)
+			cap.spots["placa_%d" % i] = at.position
+			if i >= RULE_PLATES:
+				walked += cap.SIGN_GAP_M
 	await cap.ui.shot("rua_07_placa_opcoes")
 
 
@@ -81,11 +91,16 @@ static func _close_views(cap: Node, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	for key: String in cap.spots:
 		var at: Vector3 = cap.spots[key]
-		var toward := -side if key == "placas" or key.begins_with("barrier") else side
+		if key.begins_with("placa"):
+			continue
+		var toward := -side if key.begins_with("barrier") else side
 		var name: String = key.get_slice(".", key.get_slice_count(".") - 1)
 		await _look(cap, "rua_20_" + name, at + toward * cap.CLOSE_SIDE_M - dir * cap.CLOSE_BACK_M, at + Vector3.UP * cap.CLOSE_LOOK_M)
-	var row: Vector3 = cap.spots.get("placas", Vector3.ZERO)
-	await _look(cap, "rua_21_placas", row - side * cap.SIGNS_SIDE_M + dir * cap.SIGNS_ALONG_M, row + dir * cap.SIGNS_ALONG_M + Vector3.UP * cap.SIGN_LOOK_M)
+	for i in DataTables.ui("drawers").street.signs.size():
+		if cap.spots.has("placa_%d" % i):
+			var at: Vector3 = cap.spots["placa_%d" % i]
+			var from: Vector3 = at - side * FACE_M if i >= FIRST_STREET_FACED else at - dir * FACE_M - side * FACE_ROAD_M
+			await _look(cap, "rua_22_placa_%d" % i, from, at + Vector3.UP * cap.SIGN_LOOK_M)
 
 
 static func _look(cap: Node, name: String, from: Vector3, at: Vector3) -> void:

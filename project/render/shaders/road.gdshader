@@ -30,8 +30,7 @@ uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
 uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
-uniform float pool_along_m = 11.5; // a lamp's pool along the road and across it: where it ends
-uniform float pool_across_m = 8.0;
+uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it ends; across, the street furniture owner sets it
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
 uniform float pool_gain = 0.32;
 uniform float plate_glow = 0.55;
@@ -83,7 +82,7 @@ float lamp_pools() {
 		return 0.0;
 	}
 	float dv = v_pool.y - pool_step * round(v_pool.y / pool_step);
-	float du = max(v_pool.x, 0.0) / pool_across_m;
+	float du = abs(v_pool.x);
 	float far = pool_step - abs(dv);
 	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
 }

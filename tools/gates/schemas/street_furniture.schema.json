@@ -35,12 +35,28 @@
     },
     "reach_m": {
      "type": "number"
+    },
+    "pool_share": {
+     "type": "number"
+    },
+    "pool_margin_m": {
+     "type": "number"
+    },
+    "pool_least_m": {
+     "type": "number"
+    },
+    "pool_back_m": {
+     "type": "number"
     }
    },
    "required": [
     "_doc",
     "span_m",
-    "reach_m"
+    "reach_m",
+    "pool_share",
+    "pool_margin_m",
+    "pool_least_m",
+    "pool_back_m"
    ],
    "strict": true
   },

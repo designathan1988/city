@@ -23,6 +23,8 @@ public:
 	godot::Rect2 cell(SignType type, const std::string &text);
 	// The cells to paint since the last call, each [type, text, x, y, width, height] in pixels. Main thread.
 	godot::Array take_pending();
+	int cells_used() const { return square_used_ + wide_used_; }
+	int square_used() const { return square_used_; }
 
 private:
 	struct Pending {

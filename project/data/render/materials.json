@@ -21,7 +21,6 @@
    "cobble_per_m": 4.2,
    "pool_color": "#ffd3a5",
    "pool_along_m": 11.5,
-   "pool_across_m": 8.0,
    "pool_gain": 0.32,
    "plate_glow": 0.03
   }

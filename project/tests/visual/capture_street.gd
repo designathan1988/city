@@ -45,6 +45,7 @@ const SIGNS_SIDE_M := 6.0
 const SIGNS_ALONG_M := 12.0
 const ALONG_BACK_M := 50.0
 const ALONG_UP_M := 42.0
+const CHAIN_SHARE := 0.33
 const LOW_BACK_M := 14.0
 const LOW_SIDE_M := 8.0
 const LOW_UP_M := 9.0
@@ -105,6 +106,7 @@ func _run() -> void:
 	await _poles(a, b)
 	await _items(a, dir)
 	await _barriers(a, b)
+	await CaptureStreetGestures.run(self, dir)
 	await CaptureStreetViews.views(self, a, b)
 	print("contagens: ", CityStore.query(&"street_counts"))
 	print("FALHAS: ", failures)
@@ -162,13 +164,17 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	var before: Dictionary = CityStore.query(&"street_counts")
 	await ui.hover(a)
 	await ui.button(rig.camera.unproject_position(ui.ground(a.x, a.z)), true)
-	await ui.hover(a.lerp(b, 0.5))
-	await ui.hover(b)
+	var first: Vector3 = CityStore.query(&"preview_item", [a.lerp(b, CHAIN_SHARE), ITEM_BIN, REACH]).position
+	await ui.hover(first)
 	await _shot_low("rua_03_postes_previa", a, b)
-	await ui.button(rig.camera.unproject_position(ui.ground(b.x, b.z)), false)
+	await ui.button(rig.camera.unproject_position(ui.ground(first.x, first.z)), false)
 	await ui.drawn()
 	var after: Dictionary = CityStore.query(&"street_counts")
 	_check(after.poles > before.poles and after.spans > before.spans, "linha pelo mouse %s" % after)
+	await ui.click(b) # the next stretch starts where this one ended
+	await ui.drawn()
+	var chained: Dictionary = CityStore.query(&"street_counts")
+	_check(chained.poles > after.poles and chained.spans > after.spans, "trecho encadeado %s" % chained)
 	await _shot_low("rua_04_postes_prontos", a, b)
 	await ui.key(KEY_ESCAPE, false)
 

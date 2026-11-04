@@ -23,6 +23,8 @@ const SCAN_M := 3.0
 const FENCE_M := 12.0
 const AWAY_M := 3000.0
 const SLOT := "teste_rua"
+const TAG_BYTES := [0x53, 0x54, 0x52, 0x54] # save_street.cpp: STRT
+const SIZE_BYTES := 4
 
 var failures := 0
 
@@ -41,7 +43,6 @@ func _ready() -> void:
 		_barriers(a)
 		_rule_and_kit(a)
 		await _save(a)
-	_check(_counts().poles > 0 and _counts().spans > 0 and _counts().items > 0 and _counts().barriers > 0, "algo foi salvo e aberto")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -206,7 +207,34 @@ func _save(_a: Vector3) -> void:
 	var after := _counts()
 	for key in ["items", "poles", "spans", "barriers", "cuts"]:
 		_check(after[key] == before[key], "save guarda " + key)
+	_check(after.poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "algo foi salvo e aberto")
+	await _old_save(before)
 	DirAccess.remove_absolute(CityStore.save_path(SLOT))
+
+
+## The save with the street's block cut out, as one from before it: it opens, with no street records and the same roads.
+func _old_save(with_street: Dictionary) -> void:
+	var path: String = CityStore.save_path(SLOT)
+	var f := FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
+	var bytes := f.get_buffer(f.get_length())
+	f.close()
+	var o := bytes.size() - TAG_BYTES.size()
+	while o >= 0 and not (bytes[o] == TAG_BYTES[0] and bytes[o + 1] == TAG_BYTES[1] and bytes[o + 2] == TAG_BYTES[2] and bytes[o + 3] == TAG_BYTES[3]):
+		o -= 1
+	_check(o > 0 and with_street.poles > 0, "bloco da rua achado no save")
+	var size := bytes.decode_u32(o + TAG_BYTES.size())
+	var old := bytes.slice(0, o)
+	old.append_array(bytes.slice(o + TAG_BYTES.size() + SIZE_BYTES + size))
+	var w := FileAccess.open_compressed(path, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
+	w.store_buffer(old)
+	w.close()
+	var bounds: Dictionary = CityStore.query(&"city_bounds")
+	var r: Dictionary = CityStore.load_game(SLOT)
+	_check(r.get("ok", false), "save sem o bloco abre %s" % r)
+	var now := _counts()
+	for key in ["items", "poles", "spans", "barriers", "cuts"]:
+		_check(now[key] == 0, "sem o bloco, nada de " + key)
+	_check(CityStore.query(&"city_bounds").max == bounds.max, "as vias do save antigo voltam")
 
 
 func _check(ok: bool, what: String) -> void:
