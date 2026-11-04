@@ -1,6 +1,5 @@
-## Captures of the Street tab driven like a player (real mouse and keys through the viewport): the tab, a line of poles with
-## its preview, each barrier, each piece, a sign that becomes a rule and the street at night. Each step checks the core's
-## counts and saves a PNG; the close views look along the footway at a person's height, as the Roadcraft photos do.
+## Captures of the Street tab driven like a player (real mouse and keys): poles, barriers, pieces, a sign that becomes a
+## rule, the street at night. Each step checks the core's counts and saves a PNG; the close views stand at a person's height.
 ## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_street.tscn -- --no-flow --capture-dir=/tmp/x
 extends Node3D
 
@@ -70,8 +69,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
 	add_child(world)
-	Settings.apply(world, get_viewport()) # the game's picture: game/play.gd; without it a wire of half a pixel breaks up
-	print("qualidade: ", Settings.preset, " msaa ", get_viewport().msaa_3d, " escala ", get_viewport().scaling_3d_scale)
+	CaptureStreetPairs.picture(world, get_viewport())
 	rig = CityCamera.new()
 	add_child(rig)
 	var errors := CityStore.boot(world.terrain, world.materials())
