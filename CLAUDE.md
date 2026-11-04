@@ -322,7 +322,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
-- Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
+- Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo); barras da zebra 0,55 m (MBST 0,30–0,40).
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar

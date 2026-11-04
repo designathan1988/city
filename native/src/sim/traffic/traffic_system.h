@@ -167,6 +167,13 @@ int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out,
 // ped_crossing.cpp
 // The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
 void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red);
+// Places the detection section of signalled approach `ds` and its green extension (MBST vol. V 7.3.2, optimum cut:
+// table 8.1 by its lanes, at its speed) and returns the minimum green that clears the queue before it (7.3.1, Eq. 8.2).
+float detection(CityState &s, int ds);
+// A vehicle on approach `ds` moved from arc `from` to `to`: over the detection section it wants the green until it
+// reaches the line. A far (meso) vehicle asks as it leaves at the line, one saturation headway on.
+void signal_call(CityState &s, int ds, float from, float to);
+void signal_call_far(CityState &s, int ds);
 // Walkers at signalled node `node` may step onto the crosswalk over arm `arm_seg` (its traffic in `arm_stage`) now: while
 // another stage runs and their flashing red and all-red still fit before it ends (CONTRAN MBST vol. V 5.7.2).
 bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage);

@@ -48,6 +48,7 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 		if (!numbers(row, "r", v, CLASS_FIELDS, errors)) continue;
 		std::memcpy(&p.classes[i], v, sizeof(v));
 	}
+	numbers(t, "signal_extension_s", p.signal_extension_s, EXTENSION_LANES, errors);
 	numbers(t, "style_share", p.style_share, CAR_STYLES, errors);
 	numbers(t, "zone_home", p.zone_home, BASE_ZONES, errors);
 	numbers(t, "zone_work", p.zone_work, BASE_ZONES, errors);

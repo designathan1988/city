@@ -13,7 +13,8 @@ namespace city {
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) X(conflict_samples) X(conflict_clear_m) \
-	X(signal_green_s) X(signal_reaction_s) X(signal_decel) X(signal_vehicle_m) X(amber_low_kmh) X(amber_mid_kmh) \
+	X(signal_safety_green_s) X(signal_lost_start_s) X(signal_queue_spacing_m) \
+	X(signal_sat_flow_lane_h) X(signal_cycle_max_s) X(signal_reaction_s) X(signal_decel) X(signal_vehicle_m) X(amber_low_kmh) X(amber_mid_kmh) \
 	X(amber_min_s) X(amber_min_mid_s) X(amber_min_high_s) X(amber_max_s) X(signal_ped_red_s) X(ped_reaction_s) \
 	X(ped_clear_speed) X(ped_all_red_s) X(ped_safety_green_s) X(stage_opposite_dot) \
 	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
@@ -47,6 +48,7 @@ enum class VehicleType : uint8_t { SEDAN = 0, HATCH, SUV, VAN, PICKUP, MOTO, BUS
 constexpr int VEHICLE_TYPES = int(VehicleType::COUNT);
 constexpr int CAR_STYLES = 6;
 constexpr int BASE_ZONES = 5; // none, residential, commercial, industrial, mixed
+constexpr int EXTENSION_LANES = 5; // traffic.json signal_extension_s: approaches of 1 to 5 lanes
 constexpr int PAINTS = 16; // Roadcraft shared/vehiclePaints.ts
 
 // Driver archetype of a class (drivers.ts ARCH) plus the body length and half width the simulation uses.
@@ -57,6 +59,7 @@ struct VehicleClass {
 struct TrafficParams {
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_DECLARE)
 	VehicleClass classes[VEHICLE_TYPES];
+	float signal_extension_s[EXTENSION_LANES] = {};
 	float style_share[CAR_STYLES] = {};
 	float zone_home[BASE_ZONES] = {}, zone_work[BASE_ZONES] = {}, zone_mid[BASE_ZONES] = {}, zone_truck[BASE_ZONES] = {};
 	float zone_walk[BASE_ZONES] = {};

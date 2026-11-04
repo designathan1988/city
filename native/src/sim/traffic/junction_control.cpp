@@ -16,7 +16,7 @@ constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's de
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr uint8_t CTL_SIGNAL = 1, CTL_PRIORITY = 2; // RoadNode::ctl (roads/control.ts Ctl)
-constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000;
+constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
 constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
@@ -87,18 +87,21 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 		if (best >= 0) stage[best] = count;
 		count++;
 	}
-	j.green.assign(count, tp.signal_green_s);
+	j.green.assign(count, tp.signal_safety_green_s);
 	j.amber.assign(count, 0.f);
 	j.all_red.assign(count, 0.f);
+	j.approaches.assign(count, {});
 	const bool walkers = crosswalk_node(s, n);
 	for (size_t i = 0; i < arms.size(); i++) {
 		if (arms[i].in < 0) continue;
 		DirSeg &d = s.traffic.g.ds[arms[i].in];
 		d.stage = stage[i];
+		j.approaches[stage[i]].push_back(arms[i].in);
 		float amber = 0, all_red = 0;
 		intergreen(s, n, arms[i].in, walkers, amber, all_red);
 		j.amber[stage[i]] = std::max(j.amber[stage[i]], amber);
 		j.all_red[stage[i]] = std::max(j.all_red[stage[i]], all_red);
+		j.green[stage[i]] = std::max(j.green[stage[i]], detection(s, arms[i].in));
 	}
 	// MBST vol. V 5.14: a stage's green lets the walkers it lets cross have their own safety green and still clear
 	for (size_t i = 0; walkers && i < arms.size(); i++)
@@ -107,9 +110,18 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 			const float need = tp.ped_safety_green_s + ped_clearance(s, arms[i].seg) + tp.ped_all_red_s;
 			j.green[k] = std::max(j.green[k], need - j.amber[k] - j.all_red[k]);
 		}
-	j.cycle = 0;
-	for (int k = 0; k < count; k++) j.cycle += j.green[k] + j.amber[k] + j.all_red[k];
-	j.offset = float((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.cycle;
+	// MBST vol. V 7.3.3 and 5.9: the longest cycle less the intergreens, in equal shares (no fixed plan's flows to weigh)
+	float lost = 0;
+	for (int k = 0; k < count; k++) lost += j.amber[k] + j.all_red[k];
+	j.green_max.assign(count, 0.f);
+	j.cycle = lost;
+	for (int k = 0; k < count; k++) {
+		j.green_max[k] = std::max(j.green[k], (tp.signal_cycle_max_s - lost) / float(count));
+		j.cycle += j.green[k];
+	}
+	j.run = 0;
+	j.run_green = -1;
+	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
 }
 
 int movement(Turn t) {
@@ -153,7 +165,7 @@ void build_junction(CityState &s, int n) {
 	std::vector<Arm> arms = arms_of(s, n);
 	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
 	for (const Arm &a : arms)
-		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; }
+		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
 	if (crosswalk_node(s, n))
 		for (const Arm &a : arms)

@@ -39,6 +39,7 @@ struct DirSeg {
 	int stage = -1; // signal stage serving this approach at node `to`
 	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
 	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
+	float detector = 0, extension = 0; // a signalled approach: its detection section before the line, green per call
 };
 
 // A lane connector through a node: quadratic Bézier from the end of an in-lane to the start of an out-lane.
@@ -58,8 +59,13 @@ struct Conn {
 
 struct Junction {
 	Control ctl = Control::NONE;
-	std::vector<float> green, amber, all_red; // per stage, seconds (the intergreen is the amber, then the all-red)
-	float cycle = 0, offset = 0;
+	// per stage, seconds: minimum and maximum green, then the intergreen (amber, all-red); its approaches
+	std::vector<float> green, green_max, amber, all_red;
+	std::vector<std::vector<int>> approaches;
+	float cycle = 0; // with the minimum greens
+	int run = 0; // the stage running, since `run_start` (its green); its green once ended (-1 while the green lasts)
+	double run_start = 0;
+	float run_green = -1;
 	int degree = 0; // arms with lanes
 };
 
@@ -120,6 +126,7 @@ struct TrafficState {
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
+	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
