@@ -284,7 +284,7 @@
   "color": "#202224"
  },
  "trees": {
-  "_doc": "Low-poly trees (Roadcraft render/treeMeshes.ts tones) and where they grow (jobs/props.ts wild trees).",
+  "_doc": "Low-poly trees and where the wild and park trees grow (their tones and placement numbers are still to be sourced by the vegetation area); the street trees stand where data/catalog/street_furniture.json places them.",
   "species": [
    {
     "name": "broadleaf",

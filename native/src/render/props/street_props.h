@@ -1,4 +1,4 @@
-// The street furniture as it is drawn (Roadcraft jobs/props.ts): signal posts on the approaches of signalled junctions,
+// The street furniture as it is drawn: signal posts for the approaches of signalled junctions,
 // concrete utility poles with lamps, wires between consecutive poles, hydrants, bins, benches and street trees. Where
 // each piece stands is the simulation's (sim/roads/street_furniture.h, also read by the walkers); here only the world
 // pose of each place, the wires' look and the trees' look. The meshes are render/props/prop_kit.h, the trees render/trees.

@@ -1,4 +1,4 @@
-// The frame of each way a walker walks, and its stripe and pace among the bodies around it (Roadcraft 4.0 walk.ts, SUMO
+// The frame of each way a walker walks, and its stripe and pace among the bodies around it (SUMO
 // MSPModel_Striping PState::walk), see ped_stripes.h. The candidate stripes are the footway's own (ped_stripe_m apart) and the places just clear of each
 // piece of furniture, so a gap between two pieces is found even off the stripes. A stripe a footprint stands in beside
 // the walker is shut; ahead, each stripe's room is the gap to the nearest body across it. The walker takes the stripe

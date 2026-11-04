@@ -1,4 +1,4 @@
-// Places to wait at the kerb of a crosswalk (Roadcraft 4.0 walk.ts kerb queue, SUMO's walking area before a crossing):
+// Places to wait at the kerb of a crosswalk (SUMO's walking area before a crossing):
 // the walkers about to cross stand on their own right half of the zebra, in columns kerb_wait_gap_m apart within
 // kerb_wait_half_m of its middle line, front row first and further rows back from the kerb, as many rows as leave a
 // walker its way along the sidewalk behind them; never on street furniture. The other half is the way of those

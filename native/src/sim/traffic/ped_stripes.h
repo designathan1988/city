@@ -1,4 +1,4 @@
-// The stripes of every way a walker walks (Roadcraft 4.0 walk.ts, SUMO MSPModel_Striping): a sidewalk, a line round a
+// The stripes of every way a walker walks (SUMO MSPModel_Striping): a sidewalk, a line round a
 // corner or a zebra is a frame (ahead, across) with a room for the walker's centre; every body near it (other walkers
 // in any mode, the street furniture's footprints) is remapped into that frame, as SUMO maps the persons of the other
 // paths of a walking area into the current one. Internal to sim/traffic (ped_crowd.cpp builds the frames).

@@ -1,4 +1,4 @@
-// Walkers among walkers and street furniture (Roadcraft 4.0 walk.ts, after SUMO's striping model): every step each
+// Walkers among walkers and street furniture (SUMO's striping pedestrian model, MSPModel_Striping): every step each
 // walker on a sidewalk or a line round a corner or over a zebra gets its way's frame, sees the bodies that can be in
 // its way remapped into that frame, and ped_stripes.cpp picks its stripe and pace. On a sidewalk it sees the walkers of
 // that sidewalk and its furniture by arc. Each junction is a walking area (SUMO): the walkers round its corners, at its
