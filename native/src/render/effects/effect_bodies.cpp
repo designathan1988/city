@@ -27,7 +27,8 @@ constexpr float LIMB_SCATTER_MS = 1.5f; // each part leaves a little differently
 constexpr float TRUNK_PUSH_SHARE = 0.7f; // the heavy trunk leaves slower than the limbs
 constexpr float TORN_PUSH = 1.5f; // a body blown apart flies faster
 constexpr float NO_PUSH_BELOW_M = 0.05f;
-constexpr uint32_t LOOK_SKIN_SHIFT = 21, CLOTHES_BOTTOM_SHIFT = 8; // bits of the walker's look hash (people_renderer.cpp)
+constexpr float LEAST_LIFE_S = 0.2f;
+constexpr uint32_t LOOK_SKIN_SHIFT = 21, LOOK_TWO_BITS = 3, LOOK_TOP_SHIFT = 4, LOOK_BOTTOM_TEST = 2, LOOK_BOTTOM_SHIFT = 9; // bits of the walker's look hash (people_renderer.cpp)
 const Color BODY_CHAR = Color(0.05f, 0.045f, 0.04f);
 const Color TRACER_HOT = Color(1.f, 0.82f, 0.35f);
 const Color GLASS_SHARD = Color(0.55f, 0.7f, 0.78f);
@@ -61,13 +62,17 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0;
 	const uint32_t h = hash_u32(e.u ^ SALT_LOOK);
 	const Color skin = skins_[(e.u >> LOOK_SKIN_SHIFT) % skins_.size()];
-	const Color top = clothes_[h % clothes_.size()], bottom = clothes_[(h >> CLOTHES_BOTTOM_SHIFT) % clothes_.size()];
+	// The walker's own clothes as the people renderer decodes the look hash (a top or bottom tinted by the hash; one drawn in
+	// the texture's own colour has no tint to copy: a clothes colour from the hash stands in).
+	const Color top = clothes_[((e.u & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_TOP_SHIFT : h) % clothes_.size()];
+	const Color bottom = clothes_[(((e.u >> LOOK_BOTTOM_TEST) & LOOK_TWO_BITS) != 0 ? e.u >> LOOK_BOTTOM_SHIFT : h >> LOOK_BOTTOM_SHIFT) % clothes_.size()];
 	const float ground = s.terrain.height_at(e.x, e.z);
 	float px = e.x - e.b, pz = e.z - e.c;
 	const float pl = std::hypot(px, pz);
 	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
 	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
-	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::min(e.dx, params_.body_life) : params_.body_life;
+	// Someone knocked down gets up when the simulation says; the effects clock runs a little late, so the body goes a moment early.
+	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, std::min(e.dx, params_.body_life) - params_.body_lead) : params_.body_life;
 	const float yaw = e.a;
 	const float side_x = -std::sin(yaw), side_z = std::cos(yaw); // to the walker's left
 	struct Part { Vector3 box, at; Color tint; uint32_t bit; };

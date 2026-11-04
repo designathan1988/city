@@ -1,5 +1,5 @@
 ## Captures of the bomb and the pistol in the real game (the store's `strike` and `shoot`, the effects drawn by the native
-## renderer), in phases picked by --phase=: `bomb` (a house, a street, bare earth, a big one), `pareada` (the views the
+## renderer), in phases picked by --phase=: `pareada` (the views the
 ## reference game was photographed from: a low house hit by force 5 and 45), `people` (a walker shot in the trunk, the leg
 ## and the head: bodies, tracer, blood), `car` (a car shot through its glass until it bursts). The time between shots is real
 ## time: the effects run on their own clock. Writes PNGs in --capture-dir.
@@ -14,14 +14,10 @@ const BIG := 45
 const VIEW_YAW := 25.0
 const VIEW_PITCH := 38.0
 const VIEW_DIST := 70.0
-const FAR_DIST := 140.0
 const LOW_DIST := 45.0
 const WALKER_DIST := 8.0
 const CAR_DIST := 18.0
 const WALKER_PITCH := 25.0
-const EARTH_OUT_M := 500.0
-const SCAN_STEP_M := 40.0
-const MOMENTS := [0.0, 1.0, 2.0, 5.0]
 const PAIRED_MOMENTS := [0.1, 0.5, 1.0, 2.0, 5.0, 12.0]
 const SETTLE_FRAMES := 4
 const WARM_TICKS := 600
@@ -39,7 +35,7 @@ const FIRST_HEAVY := 6
 const FLOORS_LOW := 2
 
 var out_dir := "user://captures"
-var phases := ["bomb"]
+var phases := ["pareada"]
 var rig: CityCamera
 var ui: UiDriver
 var failures := 0
@@ -69,8 +65,6 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	if "bomb" in phases:
-		await _bomb()
 	if "pareada" in phases:
 		await _paired()
 	if "people" in phases:
@@ -79,16 +73,6 @@ func _run() -> void:
 		await _car()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
-
-
-func _bomb() -> void:
-	var house := _house(FLOORS_LOW + 1)
-	await _blow("bomba_casa_f%d" % SMALL, house, SMALL, VIEW_DIST, MOMENTS)
-	await _blow("bomba_rua_f%d" % SMALL, _road(), SMALL, VIEW_DIST, MOMENTS)
-	var b: Dictionary = CityStore.query(&"city_bounds")
-	var earth := ui.ground(b.max.x + EARTH_OUT_M, (b.min.z + b.max.z) * 0.5)
-	await _blow("bomba_terra_f%d" % SMALL, earth, SMALL, VIEW_DIST, MOMENTS)
-	await _blow("bomba_grande_f%d" % BIG, house, BIG, FAR_DIST, MOMENTS)
 
 
 ## The reference game's views: a low house, force 5 and then force 45 on another, the same moments.
@@ -113,7 +97,12 @@ func _people() -> void:
 
 
 func _car() -> void:
-	var cars: Array = CityStore.query(&"shot_targets", [TARGETS]).vehicles.filter(func(v): return v.type != MOTO and v.type < FIRST_HEAVY)
+	var tall := []
+	for id in CityStore.query(&"list_buildings"):
+		var info: Dictionary = CityStore.query(&"probe_building", [id])
+		if info.floors > FLOORS_LOW:
+			tall.append(info.position)
+	var cars: Array = CityStore.query(&"shot_targets", [TARGETS * 8]).vehicles.filter(func(v): return v.type != MOTO and v.type < FIRST_HEAVY and _clear_of(v.position, tall))
 	if cars.is_empty():
 		_check(false, "um carro para as fotos")
 		return
@@ -196,29 +185,6 @@ func _houses(lo: int, hi: int) -> Array:
 		if open:
 			out.append(info.position + Vector3(0, 3.0 * info.floors, 0))
 	return out
-
-
-## The first building with at least `floors` floors, as a point on its roof.
-func _house(floors: int) -> Vector3:
-	for id in CityStore.query(&"list_buildings"):
-		var info: Dictionary = CityStore.query(&"probe_building", [id])
-		if info.floors >= floors and info.zone > 0:
-			return info.position + Vector3(0, 6.0, 0)
-	return Vector3.INF
-
-
-func _road() -> Vector3:
-	var bounds: Dictionary = CityStore.query(&"city_bounds")
-	var x: float = bounds.min.x
-	while x < bounds.max.x:
-		var z: float = bounds.min.z
-		while z < bounds.max.z:
-			var anchor: Dictionary = CityStore.query(&"snap_road", [Vector3(x, 0, z), 0])
-			if anchor.get("seg", -1) >= 0:
-				return anchor.position
-			z += SCAN_STEP_M
-		x += SCAN_STEP_M
-	return Vector3.INF
 
 
 func _blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -> void:

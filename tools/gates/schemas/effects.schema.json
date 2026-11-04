@@ -371,7 +371,8 @@
     "limb_push_ms",
     "tracer_life_s",
     "tracer_m",
-    "flash_m"
+    "flash_m",
+    "body_lead_s"
    ],
    "properties": {
     "dust_count": {
@@ -405,6 +406,9 @@
      "type": "number"
     },
     "flash_m": {
+     "type": "number"
+    },
+    "body_lead_s": {
      "type": "number"
     }
    }
