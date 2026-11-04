@@ -80,7 +80,7 @@ static func _sees(probe: Dictionary, k: int, eye: Vector3, pair: Dictionary) -> 
 	var at: Vector3 = probe.sample[k]
 	var along: Vector3 = probe.sample_dir[k] * float(pair.reach) * SIGHT_SPREAD
 	for end: Vector3 in [at, at + along, at - along]:
-		if not _line_clear(eye, end):
+		if not line_clear(eye, end):
 			return false
 	for j in probe.sample.size():
 		if j == k:
@@ -93,7 +93,7 @@ static func _sees(probe: Dictionary, k: int, eye: Vector3, pair: Dictionary) -> 
 
 
 ## Metre by metre: no wall, street piece or parked car. The vehicles are `_sees`'s, or the line would stop at the one it looks at.
-static func _line_clear(eye: Vector3, end: Vector3) -> bool:
+static func line_clear(eye: Vector3, end: Vector3) -> bool:
 	var far := eye.distance_to(end)
 	var walked := SIGHT_STEP_M
 	while walked < far:
