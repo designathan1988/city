@@ -2,7 +2,6 @@
  "_doc": "The plan of a generated city and world/arch.ts civicFor. A building's storeys are its body's (sim/buildings/b40).",
  "plan": {
   "_doc": "The city's shape, authored as the 4.0's world/cityGen/plan.ts has it: no survey behind these numbers. heat = 1 - distance share + density term + noise; the thresholds make it low, medium or high, and commerce on main roads.",
-  "medium_radius_m": 640,
   "centres": 2,
   "main_offset": 0.08,
   "centre_turn": 2.1,
@@ -18,7 +17,21 @@
   "commerce_heat": 0.85,
   "main_commerce_heat": 0.35,
   "industry_from": 0.62,
-  "industry_half_angle": 0.55
+  "industry_half_angle": 0.55,
+  "squares": {
+   "green_cell_m": 420,
+   "green_touch_m": 1,
+   "green_front_m": 20,
+   "green_area_low_m2": 1500,
+   "green_area_high_m2": 14000,
+   "green_walk_half_m": 2.2,
+   "green_plaza_m": 7,
+   "green_tree_grid_m": 9,
+   "green_tree_edge_m": 3,
+   "green_tree_low_m": 9,
+   "green_tree_high_m": 14,
+   "green_main_roads": ["avenue", "avenue4Lanes", "avenueWithCycleTrack", "boulevard", "curbsideBusLane", "urbanStreet"]
+  }
  },
  "civic": {
   "min_area": 500,
@@ -31,7 +44,6 @@
    [[1, 15], [2, 12], [5, 20], [8, 14], [7, 12], [4, 10], [3, 6], [12, 5]]
   ]
  },
- "square_min_area": 500,
  "organic_reach_m": 30,
  "organic_extra_floors": 3,
  "decay_grace_min": 7200,

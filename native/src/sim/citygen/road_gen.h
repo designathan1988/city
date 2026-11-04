@@ -33,7 +33,8 @@ struct GeneratedRoads {
 	int seg_count() const { return int(segs.size() / SEG_FIELDS); }
 };
 
-GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan);
+// `radius`: the city's, 0 for one that fills the map.
+GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan);
 
 // Internals shared by the generator's files.
 namespace road_gen {

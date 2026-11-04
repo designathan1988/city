@@ -35,9 +35,6 @@
    ],
    "strict": true
   },
-  "square_min_area": {
-   "type": "integer"
-  },
   "organic_reach_m": {
    "type": "integer"
   },
@@ -57,7 +54,6 @@
  "required": [
   "_doc",
   "civic",
-  "square_min_area",
   "organic_reach_m",
   "organic_extra_floors",
   "decay_grace_min",

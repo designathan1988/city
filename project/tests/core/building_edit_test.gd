@@ -95,7 +95,7 @@ func _a_tall_building() -> int:
 
 func _another_building(id: int) -> int:
 	for other: int in CityStore.query(&"list_buildings"):
-		if other != id:
+		if other != id and not _info(other).edited: # a square has a body of its own from the start
 			return other
 	return -1
 

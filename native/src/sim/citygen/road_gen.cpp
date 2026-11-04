@@ -85,8 +85,8 @@ bool road_gen::land(TerrainGen &t, double x, double z) {
 	return h > TerrainGen::OCEAN_Y + LAND_CLEAR && t.water_level_at(x, z) < h - LAND_CLEAR;
 }
 
-GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan) {
-	double R = medium ? plan.medium_radius_m : map_half - EDGE_PAD;
+GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan) {
+	double R = radius > 0 ? radius : map_half - EDGE_PAD;
 	std::vector<road_gen::Piece> pieces;
 	for (const Line &l : block_lines(R)) {
 		int profile = l.level == AVENUE ? prof.avenue : l.level == COLLECTOR ? prof.collector : prof.local;

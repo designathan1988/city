@@ -131,6 +131,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
 - `native/src/sim/citygen/block_lots.cpp` — quarteirão fechado cortado em lotes (blockLots.ts)
 - `native/src/sim/citygen/city_plan.cpp` · `native/src/sim/citygen/city_plan.h` — o plano da cidade gerada: centros da semente e curva de calor (zona por densidade, comércio nas vias principais, indústria num setor da borda)
+- `native/src/sim/citygen/squares.cpp` · `native/src/sim/citygen/squares.h` — as praças da cidade gerada: em cada bairro, a quadra em via principal mais perto do meio vira gramado com caminhos e árvores
 - `native/src/sim/citygen/city_gen.cpp` · `native/src/sim/citygen/city_gen.h` — pipeline da cidade gerada
 - `native/src/sim/citygen/lot_gen.cpp` · `native/src/sim/citygen/lot_gen.h` — lotes ao longo das ruas zonadas: grade de ocupação, recuos, testes
 - `native/src/sim/citygen/lot_place.cpp` — colocação dos lotes: quarteirões fechados e testadas das ruas

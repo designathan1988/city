@@ -5,6 +5,7 @@
 extends Node3D
 
 const TOWN_MAP := 0
+const LARGE_MAP := 5
 const SEED := 7
 const BANDS: Array[float] = [0.0, 0.15, 0.3, 0.5, 0.75, 1.01]
 const TOWER_FLOORS := 10
@@ -21,8 +22,9 @@ func _ready() -> void:
 	var world := CityWorld.new()
 	add_child(world)
 	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
-	var made: Dictionary = CityStore.new_map(TOWN_MAP, SEED, true)
-	print("mapa: %d nós, %d ruas, %d lotes, %d prédios em %.2f s" % [made.nodes, made.segments, made.lots, made.buildings, made.seconds])
+	var map := _arg("--map=", TOWN_MAP)
+	var made: Dictionary = CityStore.new_map(map, _arg("--seed=", SEED), true)
+	print("mapa: %d nós, %d ruas, %d lotes, %d prédios, %d praças em %.2f s" % [made.nodes, made.segments, made.lots, made.buildings, made.squares, made.seconds])
 	CityStore.dispatch(&"set_speed", [0])
 	var rows: Array = []
 	var middle := Vector2.ZERO
@@ -42,14 +44,35 @@ func _ready() -> void:
 	print("registros %d centro %s raio %.0f" % [rows.size(), middle, reach])
 	for i in BANDS.size() - 1:
 		var towers := _band(rows, middle, reach, BANDS[i], BANDS[i + 1])
+		if map != TOWN_MAP:
+			continue
 		if i < CORE_BANDS:
 			_check(towers > CORE_TOWERS, "miolo: %.2f das torres na faixa %d" % [towers, i])
 		elif i >= RIM_BAND:
 			_check(towers < RIM_TOWERS, "borda: %.2f de torres na faixa %d" % [towers, i])
 	var f := FileAccess.open(OUT_FILE, FileAccess.WRITE)
 	f.store_string(JSON.stringify(rows))
+	if map == TOWN_MAP:
+		_large_city()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The large city, on its own radius: every record still says what its body has.
+func _large_city() -> void:
+	var made: Dictionary = CityStore.new_map(LARGE_MAP, SEED, true)
+	print("cidade grande: %d nós, %d ruas, %d prédios, %d praças" % [made.nodes, made.segments, made.buildings, made.squares])
+	for id: int in CityStore.query(&"list_buildings"):
+		var floors: int = CityStore.query(&"probe_building", [id]).floors
+		var top := _top(id)
+		_check(floors == top, "cidade grande, prédio %d: a sonda diz %d andares e o corpo tem %d" % [id, floors, top])
+
+
+func _arg(prefix: String, fallback: int) -> int:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with(prefix):
+			return int(a.trim_prefix(prefix))
+	return fallback
 
 
 ## The storeys of the body drawn, not the record's: a tower chooses its own.

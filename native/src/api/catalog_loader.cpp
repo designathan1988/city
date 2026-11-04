@@ -132,7 +132,6 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	Reader r{ errors, "growth" };
 	Dictionary p = r.dict(t, "plan");
 	CityPlanDef &d = g.plan;
-	d.medium_radius_m = r.num(p, "medium_radius_m");
 	d.centres = r.integer(p, "centres");
 	d.main_offset = r.num(p, "main_offset");
 	d.centre_turn = r.num(p, "centre_turn");
@@ -149,13 +148,25 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	d.main_commerce_heat = r.num(p, "main_commerce_heat");
 	d.industry_from = r.num(p, "industry_from");
 	d.industry_half_angle = r.num(p, "industry_half_angle");
+	Dictionary sq = r.dict(p, "squares");
+	d.square_cell_m = r.num(sq, "green_cell_m");
+	d.square_touch_m = r.num(sq, "green_touch_m");
+	d.square_front_m = r.num(sq, "green_front_m");
+	d.square_area_low = r.num(sq, "green_area_low_m2");
+	d.square_area_high = r.num(sq, "green_area_high_m2");
+	d.square_walk_half_m = r.num(sq, "green_walk_half_m");
+	d.square_plaza_m = r.num(sq, "green_plaza_m");
+	d.square_tree_grid_m = r.num(sq, "green_tree_grid_m");
+	d.square_tree_edge_m = r.num(sq, "green_tree_edge_m");
+	d.square_tree_low_m = r.num(sq, "green_tree_low_m");
+	d.square_tree_high_m = r.num(sq, "green_tree_high_m");
+	for (const Variant &name : r.arr(sq, "green_main_roads")) d.square_main_roads.push_back(String(name).utf8().get_data());
 	Dictionary cv = r.dict(t, "civic");
 	g.civic_min_area = r.num(cv, "min_area");
 	g.civic_chance = r.num(cv, "chance");
 	Array by_zone = r.arr(cv, "by_zone");
 	for (int z = 0; z < 5 && z < by_zone.size(); z++)
 		for (const Variant &e : Array(by_zone[z])) { Array p = e; g.civic_by_zone[z].push_back({ int(p[0]), int(p[1]) }); }
-	g.square_min_area = r.num(t, "square_min_area");
 	g.organic_reach_m = r.num(t, "organic_reach_m");
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_grace_min = r.num(t, "decay_grace_min");
@@ -173,6 +184,7 @@ void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		m.name_key = s8(r.str(d, "name_key"));
 		m.tiles = r.integer(d, "tiles");
 		m.medium = r.flag(d, "medium");
+		m.city_radius_m = double(d.get("city_radius_m", 0.0));
 		c.maps.push_back(m);
 	}
 }
