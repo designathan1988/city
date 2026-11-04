@@ -53,7 +53,7 @@ func release(p: Vector3) -> void:
 	if p != Vector3.INF and every > 0.0 and from.distance_to(p) >= every:
 		r = CityStore.dispatch(&"place_item_row", [from, p, _kind(), every])
 	else:
-		r = CityStore.dispatch(&"place_item", [from, _kind(), params.get("sign", 0), params.get("text", ""), _reach()])
+		r = CityStore.dispatch(&"place_item", [from, _kind(), params.get("sign", 0), params.get("words", ""), _reach()])
 	var ok: bool = r.get("ok", false)
 	if not ok:
 		ctl.hint.emit(refusal(r), false)

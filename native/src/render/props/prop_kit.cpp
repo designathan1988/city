@@ -15,7 +15,8 @@ namespace city {
 
 namespace {
 constexpr float HORIZONTAL_EPS = 1e-6f;
-constexpr int LIGHT_SIDES = 20;
+constexpr int LIGHT_SIDES = 18, BEAM_SEGMENTS = 4; // Volumetric Light Beam: 18 sides, at least 3 segments for a smooth fall
+constexpr float BEAM_LENS = 0.075f; // the cut apex over the radius at the ground: the lens, some 0.28 m of 3.7
 constexpr float LIGHT_POOL_PART = 1.f, LIGHT_BEAM_PART = 2.f;
 const Color WHITE(1, 1, 1, 1);
 
@@ -114,14 +115,25 @@ void light_mesh(MeshBuilder &b) {
 		rim.push_back(b.add(Vector3(std::cos(a), 0, std::sin(a)), up, WHITE, Vector2(1, 0), Vector2(0, LIGHT_POOL_PART)));
 	}
 	for (int i = 0; i < LIGHT_SIDES; i++) b.tri(centre, rim[size_t(i)], rim[size_t((i + 1) % LIGHT_SIDES)], up);
-	const int apex = b.add(up, up, WHITE, Vector2(0, 1), Vector2(0, LIGHT_BEAM_PART));
-	std::vector<int> base;
-	for (int i = 0; i < LIGHT_SIDES; i++) {
-		const float a = TAU_F * i / LIGHT_SIDES;
-		const Vector3 d(std::cos(a), 0, std::sin(a));
-		base.push_back(b.add(d, d, WHITE, Vector2(0, 0), Vector2(0, LIGHT_BEAM_PART)));
+	// The beam: a unit cone cut at the lens, in rings so the fall along it stays smooth; apex up, foot on the ground.
+	std::vector<int> ring(size_t(LIGHT_SIDES) * size_t(BEAM_SEGMENTS + 1));
+	for (int s = 0; s <= BEAM_SEGMENTS; s++) {
+		const float k = float(s) / BEAM_SEGMENTS, radius = BEAM_LENS + (1.f - BEAM_LENS) * k;
+		for (int i = 0; i < LIGHT_SIDES; i++) {
+			const float a = TAU_F * i / LIGHT_SIDES;
+			const Vector3 d(std::cos(a), 0, std::sin(a));
+			ring[size_t(s * LIGHT_SIDES + i)] = b.add(d * radius + up * (1.f - k), (d + up * (1.f - BEAM_LENS)).normalized(), WHITE, Vector2(0, 1.f - k), Vector2(0, LIGHT_BEAM_PART));
+		}
 	}
-	for (int i = 0; i < LIGHT_SIDES; i++) b.tri(apex, base[size_t(i)], base[size_t((i + 1) % LIGHT_SIDES)], up);
+	for (int s = 0; s < BEAM_SEGMENTS; s++)
+		for (int i = 0; i < LIGHT_SIDES; i++) {
+			const int j = (i + 1) % LIGHT_SIDES, a = ring[size_t(s * LIGHT_SIDES + i)], c = ring[size_t(s * LIGHT_SIDES + j)];
+			const int d = ring[size_t((s + 1) * LIGHT_SIDES + i)], e = ring[size_t((s + 1) * LIGHT_SIDES + j)];
+			const float mid = TAU_F * (i + 0.5f) / LIGHT_SIDES;
+			const Vector3 out(std::cos(mid), 1.f - BEAM_LENS, std::sin(mid));
+			b.tri(a, d, c, out);
+			b.tri(c, d, e, out);
+		}
 }
 } // namespace
 

@@ -5,6 +5,7 @@ extends ToolBase
 
 var _points := PackedVector3Array()
 var _last_click_ms := -1
+var _last_click := Vector3.INF
 
 
 func enter() -> void:
@@ -29,8 +30,9 @@ func click(p: Vector3) -> void:
 		ctl.hint.emit(tr("hint.barrier.removed" if r.get("ok", false) else "hint.barrier.nothing"), r.get("ok", false))
 		return
 	var now := Time.get_ticks_msec()
-	var twice: bool = _last_click_ms >= 0 and now - _last_click_ms < int(params.get("double_click_ms", 0))
+	var twice: bool = _last_click_ms >= 0 and now - _last_click_ms < int(params.get("double_click_ms", 0)) 		and p.distance_to(_last_click) < params.get("double_click_m", 0.0)
 	_last_click_ms = now
+	_last_click = p
 	if twice:
 		_last_click_ms = -1
 		_finish()

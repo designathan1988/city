@@ -35,7 +35,9 @@ func _show(a: Vector3, b: Vector3) -> void:
 	if _plan.is_empty():
 		return
 	CityStore.dispatch(&"preview_pole_line", [_plan.poles if _plan.ok else []])
-	if not _plan.ok and not _plan.error.is_empty():
+	if _plan.ok:
+		ctl.hint.emit(tr("help.tool.pole"), true)
+	elif not _plan.error.is_empty():
 		ctl.hint.emit(tr(_plan.error), false)
 
 

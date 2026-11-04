@@ -21,8 +21,9 @@ struct FootwayHit {
 void footway_point(const RoadNetwork &net, int seg, double v, float u, double &x, double &z, double &y);
 // The segment's frame at arc v: its tangent (a to b) and its left.
 void segment_frame(const RoadNetwork &net, int seg, double v, double &fx, double &fz, double &lx, double &lz);
-// The arc and offset of a point on a segment.
-void segment_place(const RoadNetwork &net, int seg, double x, double z, double &v, float &u);
+// The arc and offset of a point on a segment, and how far it lies past the segment's ends along the tangent (0 beside it): a
+// point ahead of an end has that end as its closest place, and only `past` tells it from one beside the road.
+void segment_place(const RoadNetwork &net, int seg, double x, double z, double &v, float &u, float &past);
 // The sidewalk under (x, z), or within `reach` of its band, between the segment's mouths.
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach);
 // The median under (x, z) within `reach` of its centre line (side -1): a plant may stand there.

@@ -39,6 +39,7 @@ func _ready() -> void:
 		_poles(a)
 		_items(a)
 		_barriers(a)
+		_rule_and_kit(a)
 		await _save(a)
 	_check(_counts().poles > 0 and _counts().spans > 0 and _counts().items > 0 and _counts().barriers > 0, "algo foi salvo e aberto")
 	print("FALHAS: ", failures)
@@ -151,6 +152,45 @@ func _barriers(a: Vector3) -> void:
 	_check(short.get("error", "") == "hint.barrier.short", "barreira curta recusa")
 	var over_road: Dictionary = CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, a + Vector3(0, 0, FENCE_M)]), FENCE])
 	_check(over_road.get("error", "") == "hint.barrier.road", "cerca sobre a calçada recusa")
+
+
+## A Stop plate at an approach becomes the rule of that leg and undoes as one step; a piece of the street's own kit taken
+## away is a cut, and comes back with undo.
+func _rule_and_kit(a: Vector3) -> void:
+	var before := _counts()
+	var ruled := false
+	for i in SCAN_STEPS * SCAN_ROWS:
+		var p := a + Vector3((i % SCAN_STEPS) * SCAN_M, 0, (i / SCAN_STEPS) * SCAN_M)
+		var at: Dictionary = CityStore.query(&"preview_item", [p, ITEM_SIGN, 1.0])
+		if not at.get("ok", false):
+			continue
+		var r: Dictionary = CityStore.dispatch(&"place_item", [at.position, ITEM_SIGN, SIGN_STOP, "", 1.0])
+		if r.get("note", "") == "hint.streetscape.rule.stop":
+			ruled = true
+			_check(_counts().items == before.items, "a regra não é uma peça")
+			CityStore.dispatch(&"undo")
+			var again: Dictionary = CityStore.dispatch(&"place_item", [at.position, ITEM_SIGN, SIGN_STOP, "", 1.0])
+			_check(again.get("note", "") == "hint.streetscape.rule.stop", "a regra desfeita pode voltar")
+			CityStore.dispatch(&"undo")
+			break
+		CityStore.dispatch(&"undo")
+	_check(ruled, "placa de Pare vira regra")
+	var cut := false
+	for i in SCAN_STEPS * SCAN_ROWS:
+		var p := a + Vector3((i % SCAN_STEPS) * SCAN_M, 0, (i / SCAN_STEPS) * SCAN_M)
+		var at: Dictionary = CityStore.query(&"preview_item", [p, ITEM_BENCH, 1.0])
+		if at.get("error", "") != "hint.streetscape.occupied":
+			continue
+		var was := _counts()
+		var r: Dictionary = CityStore.dispatch(&"remove_street", [at.position, REACH])
+		if r.get("ok", false) and _counts().cuts == was.cuts + 1:
+			cut = true
+			CityStore.dispatch(&"undo")
+			_check(_counts().cuts == was.cuts, "desfazer o corte")
+			break
+		if r.get("ok", false):
+			CityStore.dispatch(&"undo")
+	_check(cut, "peça do kit cortada")
 
 
 func _save(_a: Vector3) -> void:

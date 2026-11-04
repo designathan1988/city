@@ -10,6 +10,7 @@ namespace city {
 namespace {
 constexpr float WIDEST_M = 48.f; // no profile reaches farther from its centre line (a query's pad)
 constexpr int ARMS_WITH_CROSSWALK = 3;
+constexpr float BESIDE_M = 0.05f; // the closest-point search's own error: under this a point is beside the segment
 
 double arc_of(const RoadSegment &g, double t) {
 	if (g.table.size() < 2) return g.len * t;
@@ -35,9 +36,9 @@ bool on_band(const RoadNetwork &net, double x, double z, F &&band) {
 		const Profile &p = net.profile_of(sid);
 		if (on || p.edges.empty()) return;
 		double v;
-		float u;
-		segment_place(net, sid, x, z, v, u);
-		on = v >= 0 && v <= net.segs[size_t(sid)].len && band(p, u);
+		float u, past;
+		segment_place(net, sid, x, z, v, u, past);
+		on = past < BESIDE_M && band(p, u);
 	});
 	return on;
 }
@@ -66,7 +67,7 @@ void footway_point(const RoadNetwork &net, int seg, double v, float u, double &x
 	y = net.seg_y(seg, v);
 }
 
-void segment_place(const RoadNetwork &net, int seg, double x, double z, double &v, float &u) {
+void segment_place(const RoadNetwork &net, int seg, double x, double z, double &v, float &u, float &past) {
 	const RoadSegment &g = net.segs[size_t(seg)];
 	double t, d, cx, cz, fx, fz, lx, lz;
 	closest_t(g.q, x, z, t, d);
@@ -74,6 +75,7 @@ void segment_place(const RoadNetwork &net, int seg, double x, double z, double &
 	g.q.at(t, cx, cz);
 	segment_frame(net, seg, v, fx, fz, lx, lz);
 	u = float((x - cx) * lx + (z - cz) * lz);
+	past = float(std::fabs((x - cx) * fx + (z - cz) * fz));
 }
 
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) {
@@ -85,13 +87,13 @@ FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) 
 		const Profile &p = net.profile_of(sid);
 		if (p.edges.empty() || g.a == g.b) return;
 		double v;
-		float u;
-		segment_place(net, sid, x, z, v, u);
-		if (v < g.retreat_a - reach || v > g.len - g.retreat_b + reach) return;
+		float u, past;
+		segment_place(net, sid, x, z, v, u, past);
+		if (past > reach || v < g.retreat_a - reach || v > g.len - g.retreat_b + reach) return;
 		for (int side = 0; side < 2; side++) {
 			const StripEdge &e = side == 0 ? p.edges.front() : p.edges.back();
 			if (e.strip.kind != StripKind::SIDEWALK) continue;
-			const float away = std::max({ e.u0 - u, u - e.u1, 0.f });
+			const float away = std::max({ e.u0 - u, u - e.u1, past });
 			if (away > reach || away >= best.away) continue;
 			double fx, fz, lx, lz;
 			segment_frame(net, sid, v, fx, fz, lx, lz);
@@ -115,9 +117,9 @@ FootwayHit median_at(const RoadNetwork &net, double x, double z, double reach) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
 		double v;
-		float u, centre;
-		segment_place(net, sid, x, z, v, u);
-		if (hit.ok || v < g.retreat_a || v > g.len - g.retreat_b || !strip_at(p, u, StripKind::MEDIAN, centre)) return;
+		float u, centre, past;
+		segment_place(net, sid, x, z, v, u, past);
+		if (hit.ok || past > BESIDE_M || v < g.retreat_a || v > g.len - g.retreat_b || !strip_at(p, u, StripKind::MEDIAN, centre)) return;
 		if (std::fabs(u - centre) > reach) return;
 		hit.ok = true;
 		hit.seg = sid;

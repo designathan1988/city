@@ -333,7 +333,7 @@
      "type": "object",
      "strict": true,
      "required": ["glow_color", "pool_gain", "beam_gain"],
-     "properties": {"glow_color": {"type": "string", "pattern_prefix": "#"}, "pool_gain": {"type": "number"}, "beam_gain": {"type": "number"}}
+     "properties": {"glow_color": {"type": "string", "pattern_prefix": "#"}, "pool_gain": {"type": "number"}, "beam_gain": {"type": "number"}, "beam_softness": {"type": "number"}, "beam_fade_near_m": {"type": "number"}, "beam_fade_far_m": {"type": "number"}, "haze": {"type": "number"}}
     }
    }
   }

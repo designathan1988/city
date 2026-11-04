@@ -501,14 +501,3 @@ streetscape.streetname,Nome da rua,Street name
 tool.barrier,Muros,Walls
 cmd.place.streetItem,Colocar peça,Place item
 cmd.place.poleRun,Construir rede,String a line
-sign.text,Texto da placa,Words on the plate
-sign.stop,Pare,Stop
-sign.yield,Dê a preferência,Give way
-sign.speed,Velocidade,Speed
-sign.noParking,Proibido estacionar,No parking
-sign.noEntry,Sentido proibido,No entry
-sign.pedestrian,Pedestres,Pedestrians
-sign.school,Escola,School
-sign.direction,Direção,Direction
-sign.street,Rua,Street
-sign.info,Informação,Information
