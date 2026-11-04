@@ -1,5 +1,6 @@
 // Build > Models for the script side: the catalogue, a body in hand as bytes (a model, a building, a file of the player's), where its
 // ghost goes, setting it down and drawing it apart from the city.
+#include "api/body_doc.h"
 #include "api/city_core.h"
 #include "api/edit_result.h"
 #include "sim/buildings/b40/record.h"
@@ -46,6 +47,19 @@ Array CityCore::model_list() const {
 		d["zone"] = m.zone;
 		out.push_back(d);
 	}
+	return out;
+}
+
+Dictionary CityCore::doc_body(const Dictionary &doc) const {
+	Dictionary out;
+	b40::Body b;
+	float front_x = 0, front_y = 0;
+	PackedStringArray errors;
+	if (body_from_doc(doc, state_->buildings.designs, b, front_x, front_y, errors)) {
+		out["bytes"] = bytes_of(b);
+		out["front"] = Vector2(front_x, front_y);
+	}
+	out["errors"] = errors;
 	return out;
 }
 
@@ -121,6 +135,7 @@ void CityCore::bind_models() {
 	ClassDB::bind_method(D_METHOD("building_bytes", "id"), &CityCore::building_bytes);
 	ClassDB::bind_method(D_METHOD("body_size", "bytes"), &CityCore::body_size);
 	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityCore::place_fit);
+	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityCore::doc_body);
 	ClassDB::bind_method(D_METHOD("place_check", "bytes", "x", "z", "rot"), &CityCore::place_check);
 	ClassDB::bind_method(D_METHOD("place_model", "bytes", "x", "z", "rot", "function", "zone"), &CityCore::place_model);
 	ClassDB::bind_method(D_METHOD("stage_show", "bytes", "scenario", "ghost"), &CityCore::stage_show);
