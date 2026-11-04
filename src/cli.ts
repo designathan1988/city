@@ -2,10 +2,13 @@
 import { AUDIT_FLAGS, runAuditCommand } from './audit/command.ts';
 import { ArgsError, usage } from './common/args.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
+import { BASELINE_FLAGS, SANDBOX_FLAGS, runBaselineCommand, runSandboxCommand } from './sandbox/command.ts';
 
 const COMMANDS: Record<string, { run: (argv: readonly string[]) => void; help: string }> = {
   graph: { run: runGraph, help: usage('graph', GRAPH_FLAGS) },
   audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
+  sandbox: { run: runSandboxCommand, help: usage('sandbox', SANDBOX_FLAGS) },
+  baseline: { run: runBaselineCommand, help: usage('baseline', BASELINE_FLAGS) },
 };
 
 function main(argv: readonly string[]): number {
