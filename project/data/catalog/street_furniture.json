@@ -93,8 +93,9 @@
   }
  },
  "signs": {
-  "_doc": "The signs the rules put up and how far a placed plate governs an approach, as the Roadcraft 4.0 places them (no norm): the rule's plate a metre past the stop line, the speed plate 14 m past the mouth of a stretch of at least 60 m, a name plate 1.5 m past the mouth. approach_reach_m: how far back from a mouth a placed Stop or Give Way is still the rule of that approach. far_share: no plate past this share of a short segment. The drawings and sizes of the plates are data/render/streets.json signs.",
+  "_doc": "The signs the rules put up and how far a placed plate governs an approach, as the Roadcraft 4.0 places them (no norm): the rule's plate a metre past the stop line, the speed plate 14 m past the mouth of a stretch of at least 60 m, a name plate 1.5 m past the mouth. approach_reach_m: how far back from a mouth a placed Stop or Give Way is still the rule of that approach. plate_kerb_m: the post from the kerb, CONTRAN MBST vol. I (2022) 3.11: a plate edge at least 0.30 m off the carriageway on a straight, with the 0.45 m half of the widest plate, R-2. far_share: no plate past this share of a short segment. The drawings and sizes of the plates are data/render/streets.json signs.",
   "approach_reach_m": 25,
+  "plate_kerb_m": 0.75,
   "speed_past_mouth_m": 14,
   "speed_min_length_m": 60,
   "stop_past_line_m": 1,

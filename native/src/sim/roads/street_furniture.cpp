@@ -242,9 +242,13 @@ bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, Furnitur
 		u = kerb_in(p, side, d.trees.kerb_clear_m + d.trees.pit_m * 0.5f);
 		return fits_walk(net, p, side, d.trees.kerb_clear_m + d.trees.pit_m);
 	}
+	if (k == FurnitureKind::SIGN) {
+		u = kerb_in(p, side, d.signs.plate_kerb_m);
+		return true;
+	}
 	const float across = d.footprint[int(k)].z_m;
 	u = kerb_in(p, side, d.sidewalk.kerb_clear_m + across * 0.5f);
-	return k == FurnitureKind::COLUMN || k == FurnitureKind::SIGN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
+	return k == FurnitureKind::COLUMN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
 }
 
 void hydrant_square(const RoadNetwork &net, double x, double z, double &x0, double &z0, double &x1, double &z1) {

@@ -533,6 +533,9 @@
     },
     "far_share": {
      "type": "number"
+    },
+    "plate_kerb_m": {
+     "type": "number"
     }
    },
    "required": [
@@ -543,7 +546,8 @@
     "stop_past_line_m",
     "name_past_mouth_m",
     "speed_round_kmh",
-    "far_share"
+    "far_share",
+    "plate_kerb_m"
    ],
    "strict": true
   },

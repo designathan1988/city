@@ -456,7 +456,7 @@
   "guard_beam_m": 0.3
  },
  "signs": {
-  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). stop: R-1, side 0.35 m in town (Anexo II do CTB), 0.845 m across, an octagon. yield: R-2, side 0.90 m. A plate centre stands 2.2 m up, its bottom over the 2.0 m clear height. The round plates, the warnings and the name plates follow the Roadcraft 4.0 look: no norm was read for them (the MBST volume I PDF could not be opened). outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order.",
+  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m. The round plates, the warnings and the name plates follow the Roadcraft 4.0 look: no norm was read for them (the MBST volume I PDF could not be opened). outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order.",
   "post_radius_m": 0.04,
   "post_sides": 8,
   "post_color": "#8e979b",
@@ -464,16 +464,16 @@
   "face_out_m": 0.06,
   "blade_half_m": 0.005,
   "plates": {
-   "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.2, "turn": 0.0625, "outline_points": 8},
-   "yield": {"w_m": 0.9, "h_m": 0.78, "z_m": 2.2, "turn": 0.75, "outline_points": 3},
-   "speed": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
-   "noParking": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
-   "noEntry": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
-   "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "turn": 0.0, "outline_points": 4},
-   "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "turn": 0.0, "outline_points": 4},
+   "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "turn": 0.0625, "outline_points": 8},
+   "yield": {"w_m": 0.9, "h_m": 0.78, "z_m": 2.49, "turn": 0.75, "outline_points": 3},
+   "speed": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+   "noParking": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+   "noEntry": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+   "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
+   "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
    "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "turn": 0.0, "outline_points": 0},
    "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "turn": 0.0, "outline_points": 0},
-   "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 0}
+   "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.4, "turn": 0.0, "outline_points": 0}
   },
   "drawings": [
    {"field": "#c8102e", "ink": "#ffffff", "words": "PARE"},

@@ -22,7 +22,7 @@ void put(const CityState &s, int seg, double v, int side, SignType type, const s
 	const StreetFurnitureDef &d = s.catalog.furniture;
 	if (!sidewalk_on(p, side)) return;
 	double x, z, y, fx, fz, lx, lz;
-	footway_point(net, seg, v, sidewalk_u(p, side, d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::SIGN)].z_m * 0.5f), x, z, y);
+	footway_point(net, seg, v, sidewalk_u(p, side, d.signs.plate_kerb_m), x, z, y);
 	segment_frame(net, seg, v, fx, fz, lx, lz);
 	SignStand st;
 	st.x = float(x);
