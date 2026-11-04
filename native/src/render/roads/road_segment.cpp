@@ -53,7 +53,7 @@ double street_start(const RoadNetwork &net, int sid) {
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
 	const RoadSegment &g = e.s.roads.segs[sid];
 	// a straight segment is linear in position, height, texture and pool coordinates: its two mouths are enough
-	bool straight = g.q.is_straight(STRAIGHT_TOL);
+	bool straight = g.q.is_straight(STRAIGHT_TOL) && g.lift.empty();
 	std::vector<double> at;
 	int n = straight ? 1 : std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
 	for (int k = 0; k <= n; k++) at.push_back(v0 + (v1 - v0) * k / n);

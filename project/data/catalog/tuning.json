@@ -35,6 +35,7 @@
   "min_run_m": 7,
   "road_sink_m": 0.1,
   "road_hold_m": 2.2,
+  "lift_on_m": 0.6,
   "rough_reach_min": 0.78,
   "min_hard_rim": 0.08,
   "min_hard_wall_m": 8,
@@ -43,6 +44,12 @@
   "river_floor_share": 0.72
  },
  "road": {
+  "clearance_elevated_m": 5.6,
+  "clearance_bridge_m": 3,
+  "ramp_grade": 0.16,
+  "deck_grade": 0.05,
+  "ramp_curve_m": 8,
+  "station_m": 1.6,
   "min_len_m": 8,
   "snap_m": 8,
   "snap_end_m": 6,

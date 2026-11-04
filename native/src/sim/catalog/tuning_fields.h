@@ -12,11 +12,12 @@
 	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, inner_radius_m) X(road, bend_limit) X(road, bend_gain) \
 	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
 	X(road, bay_m) X(road, max_variants) \
+	X(road, clearance_elevated_m) X(road, clearance_bridge_m) X(road, ramp_grade) X(road, deck_grade) X(road, ramp_curve_m) X(road, station_m) \
 	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
-	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) \
+	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) X(terrain, lift_on_m) \
 	X(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
 	X(terrain, river_freeboard_m) X(terrain, river_floor_share) \
 	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \

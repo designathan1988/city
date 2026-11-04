@@ -16,8 +16,9 @@ namespace city {
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
 	SEG_FREE = 0x80, // built by the generator: worth nothing when demolished
+	SEG_STRUCTURE_MASK = 0x300, // bits 8-9: RoadStructure
 };
-constexpr int SEG_FURNITURE_SHIFT = 1;
+constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 8;
 
 // What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
@@ -42,6 +43,7 @@ struct RoadSegment {
 	std::vector<double> table; // arc length at t = i / ARC_STEPS
 	double len = 0;
 	double retreat_a = 0, retreat_b = 0; // the mouths: metres before each node
+	std::vector<float> lift; // metres over the chord between the nodes, at equal steps; empty: the road is its chord
 	float minx = 0, minz = 0, maxx = 0, maxz = 0;
 };
 

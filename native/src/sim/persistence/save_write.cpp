@@ -62,6 +62,8 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 		w.put<uint8_t>(g.zl);
 		w.put<uint8_t>(g.zr);
 		w.put<uint16_t>(g.flags);
+		w.put<uint32_t>(uint32_t(g.lift.size()));
+		for (float h : g.lift) w.put<float>(h);
 	}
 }
 

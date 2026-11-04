@@ -15,7 +15,7 @@ struct ByteReader;
 constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
 constexpr uint32_t SAVE_BODIES = 0x53594442U; // 'BDYS': the section of edited bodies; a file without it has none
-constexpr uint32_t SAVE_VERSION = 3; // 2: the landscape after the buildings; 3: the road variants, before the roads that use them
+constexpr uint32_t SAVE_VERSION = 4; // 2: the landscape after the buildings; 3: the road variant; 4: the raised road's lifts, before the roads that use them
 
 // The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).
 std::vector<uint8_t> encode_city(const CityState &s);

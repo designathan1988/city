@@ -147,7 +147,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 			RoadSegment rec = s.roads.segs[sg];
 			j_remove_segment(s, sg);
 			Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags);
+			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags, std::vector<float>(rec.lift.rbegin(), rec.lift.rend()));
 		}
 		j_set_profile(s, sg, profile);
 		r.buildings_removed += settle_under(s, sg);

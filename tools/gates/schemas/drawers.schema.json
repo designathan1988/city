@@ -241,7 +241,8 @@
    "type": "object",
    "required": [
     "trace",
-    "snap"
+    "snap",
+    "level"
    ],
    "properties": {
     "_doc": {
@@ -316,6 +317,40 @@
            "angles",
            "grid"
           ]
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     },
+     "additionalProperties": false
+    },
+    "level": {
+     "type": "object",
+     "required": [
+      "label_key",
+      "choices"
+     ],
+     "properties": {
+      "label_key": {
+       "type": "string"
+      },
+      "choices": {
+       "type": "array",
+       "minItems": 3,
+       "maxItems": 3,
+       "items": {
+        "type": "object",
+        "required": [
+         "icon",
+         "label_key"
+        ],
+        "properties": {
+         "icon": {
+          "type": "string"
+         },
+         "label_key": {
+          "type": "string"
          }
         },
         "additionalProperties": false

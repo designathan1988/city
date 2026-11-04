@@ -21,6 +21,7 @@
  "median_nose_m": 0.5,
  "verge": {"reach_m": 1.0, "under_m": 0.08, "strips": 1},
  "sample_step_m": 3,
+ "structures": {"_doc": "A raised road (Roadcraft structures.ts, render/structures.ts and roads/tuning.ts): deck thickness, distance between bents, the height over the ground from which piers and parapets stand, the cap and columns of a bent. Columns are height / slenderness wide; spread is where an elevated road's two stand, wall_share how much of the road a bridge's one takes.", "concrete": "#a39f97", "deck_elevated_m": 1.04, "deck_bridge_m": 0.96, "spacing_elevated_m": 29.6, "spacing_bridge_m": 38.4, "bent_from_m": 2.8, "rail_from_m": 0.64, "rail_m": 0.88, "rail_w_m": 0.36, "cap_m": 0.72, "cap_depth_m": 1.6, "column_min_m": 0.36, "slenderness": 8, "spread": 0.55, "wall_share": 0.55, "foot_m": 0.5},
  "plate_blend_m": 2.26,
  "face_eps_m": 0.004,
  "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "style": "roadcraft",

@@ -99,7 +99,7 @@ int j_add_node(CityState &s, double x, double z, double y);
 void j_remove_node_if_orphan(CityState &s, int n);
 void j_set_plain(CityState &s, int n, bool plain);
 void j_set_control(CityState &s, int n, uint8_t ctl);
-int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
+int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags, std::vector<float> lift = {});
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);
 void j_set_zone(CityState &s, int seg, int side, int zone);

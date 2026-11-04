@@ -118,16 +118,16 @@ PackedVector3Array CityCore::road_pieces(const Vector3 &a, const Vector3 &b, int
 	return out;
 }
 
-Dictionary CityCore::preview_road_path(const PackedVector3Array &pieces, int profile, double px) {
+Dictionary CityCore::preview_road_path(const PackedVector3Array &pieces, int profile, double px, int structure) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	std::vector<Quad> q = quads_of(pieces);
 	if (!s.ready || q.empty()) return Dictionary();
 	Anchor a = find_anchor(s, q.front().x0, q.front().z0, px), b = find_anchor(s, q.back().x1, q.back().z1, px);
-	return plan_dict(s, q, plan_path(s, q, a, b, profile), a, b, profile);
+	return plan_dict(s, q, plan_path(s, q, a, b, profile, structure), a, b, profile);
 }
 
-Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profile, double px) {
+Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profile, double px, int structure) {
 	return run_edit(*state_, "cmd.build.road", [&](CityState &s) {
 		std::vector<Quad> q = quads_of(pieces);
 		if (q.empty()) {
@@ -136,7 +136,7 @@ Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profi
 			return none;
 		}
 		Anchor a = find_anchor(s, q.front().x0, q.front().z0, px), b = find_anchor(s, q.back().x1, q.back().z1, px);
-		return build_path(s, q, a, b, profile);
+		return build_path(s, q, a, b, profile, structure);
 	});
 }
 

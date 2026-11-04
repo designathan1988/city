@@ -87,8 +87,8 @@ public:
 	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid);
 	godot::PackedVector3Array road_pieces(const godot::Vector3 &a, const godot::Vector3 &b, int alignment, bool has_control, const godot::Vector3 &c,
 			const godot::PackedVector3Array &samples, int profile, double px);
-	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
-	godot::Dictionary build_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
+	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px, int structure = 0);
+	godot::Dictionary build_road_path(const godot::PackedVector3Array &pieces, int profile, double px, int structure = 0);
 	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary demolish(const godot::Vector3 &p);
@@ -149,6 +149,7 @@ public:
 	godot::Dictionary snapshot();
 	godot::Dictionary constants() const;
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
+	float road_y_at(float x, float z); // the road surface nearest a point (tests: a raised road's profile)
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
 	godot::Dictionary inspect(const godot::Vector3 &p);
 	godot::Dictionary probe_building(int id);

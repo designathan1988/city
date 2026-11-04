@@ -27,7 +27,7 @@ struct Painter {
 	}
 	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
-		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL);
+		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL) && e.s.roads.segs[sid].lift.empty();
 		int n = straight ? 1 : std::max(1, int(std::ceil((vb - va) / e.L.step)));
 		Color col = road_color(c, RoadMat::PAINT);
 		for (int k = 0; k < n; k++) {

@@ -1,6 +1,7 @@
 // Shared steps of the road commands (Roadcraft construction/execute.ts splitSeg, anchorNode, clearAndConform).
 #include "sim/commands/road_edit.h"
 
+#include "sim/roads/road_grade.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
@@ -11,6 +12,7 @@
 namespace city {
 
 namespace {
+constexpr size_t RUN_FLOATS = 6; // two points of x, height, z: a run of ground the terrain can lie along
 constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is still on the segment, away from its ends
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
@@ -49,10 +51,18 @@ int split_segment(CityState &s, int seg, double t) {
 	RoadSegment rec = net.segs[seg];
 	auto halves = split_quad(rec.q, t);
 	double y = net.seg_y(seg, t * rec.len);
+	const double ya = net.nodes[rec.a].y, yb = net.nodes[rec.b].y;
+	auto height = [&](double share) { return float(ya + (yb - ya) * share + height_on(rec.lift, share)); };
+	const float step = s.catalog.tune.road_station_m;
+	std::vector<float> first, second;
+	if (!rec.lift.empty()) {
+		first = lift_over(height, 0, t, t * rec.len, step);
+		second = lift_over(height, t, 1, (1 - t) * rec.len, step);
+	}
 	j_remove_segment(s, seg);
 	int n = j_add_node(s, halves[0].x1, halves[0].z1, y);
-	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, rec.flags);
-	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, rec.flags);
+	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, rec.flags, std::move(first));
+	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, rec.flags, std::move(second));
 	return n;
 }
 
@@ -96,13 +106,24 @@ int clear_under(CityState &s, int seg) {
 void conform_under(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[seg];
 	int n = std::max(1, int(std::ceil(g.len / CONFORM_STEP_M)));
+	// Where the deck stands clear the landscape passes under it untouched (elevation.ts roadShapeAt): one run of ground each side.
+	const Tuning &tn = s.catalog.tune;
 	std::vector<float> pts;
+	auto lay = [&]() {
+		if (pts.size() >= RUN_FLOATS) j_add_modifier(s, pts, s.catalog.profile(g.profile).half() + tn.terrain_road_hold_m, tn.terrain_min_run_m);
+		pts.clear();
+	};
 	for (int i = 0; i <= n; i++) {
 		double x, z;
 		g.q.at(double(i) / n, x, z);
-		pts.insert(pts.end(), { float(x), float(s.roads.seg_y(seg, g.len * i / n)), float(z) });
+		const float y = float(s.roads.seg_y(seg, g.len * i / n));
+		if (y - s.terrain.base_height_at(float(x), float(z)) > tn.terrain_lift_on_m) {
+			lay();
+			continue;
+		}
+		pts.insert(pts.end(), { float(x), y, float(z) });
 	}
-	j_add_modifier(s, pts, s.catalog.profile(g.profile).half() + s.catalog.tune.terrain_road_hold_m, s.catalog.tune.terrain_min_run_m);
+	lay();
 }
 
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz) {

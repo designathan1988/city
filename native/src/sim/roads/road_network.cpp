@@ -1,5 +1,6 @@
 // Road graph storage, spatial queries and node shape (Roadcraft roads/network.ts, roads/junction.ts bulbAt).
 #include "sim/roads/road_network.h"
+#include "sim/roads/road_grade.h"
 
 #include "sim/roads/junction.h"
 
@@ -173,7 +174,9 @@ int RoadNetwork::find_segment_near(double x, double z, double radius, double &t_
 double RoadNetwork::seg_y(int s, double at) const {
 	const RoadSegment &g = segs[s];
 	double ya = nodes[g.a].y, yb = nodes[g.b].y;
-	return g.len > 0 ? ya + (yb - ya) * std::max(0.0, std::min(1.0, at / g.len)) : ya;
+	if (g.len <= 0) return ya;
+	const double share = std::max(0.0, std::min(1.0, at / g.len));
+	return ya + (yb - ya) * share + height_on(g.lift, share);
 }
 
 bool RoadNetwork::bulb_clear(int n) const {

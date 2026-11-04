@@ -364,3 +364,7 @@ building.blueprintNotRemoved,Modelo não removido: não foi possível apagar o a
 builder.tool.saveModel,Salvar como modelo,Save as model
 builder.city.remove,Remover modelo,Remove model
 cmd.build.model,colocar prédio,place building
+palette.level,Altura,Height
+palette.level.ground,No chão,On the ground
+palette.level.elevated,Elevada,Elevated
+palette.level.bridge,Ponte,Bridge

@@ -38,6 +38,7 @@ struct RoadPlan {
 	double len = 0;
 	double price = 0; // what building it costs (R$)
 	std::vector<Crossing> crossings;
+	std::vector<float> heights; // the deck along the road, a raised road's; empty: it lies on the ground
 };
 
 // What a command did. `error` is a strings.csv key (empty when ok); `money` > 0 charged, < 0 refunded.
@@ -91,18 +92,18 @@ SnappedEnd snap_road_end(const CityState &s, const Anchor &start, double x, doub
 // The curves a gesture is laid as: one, or the chain of a freehand stroke; none are tighter than the road allows.
 std::vector<Quad> road_pieces(const CityState &s, const RoadStroke &k);
 // plan_road over the pieces: the sum of their prices and lengths, the first refusal.
-RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile);
+RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile, int structure = 0);
 // Builds every piece, in one undo entry when the caller runs it in one: a refused piece refuses the whole road.
-EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile);
+EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile, int structure = 0);
 
 // Snaps (x, z) to the nearest node within `radius`, else to a segment within 0.8 radius (its end node when the hit is
 // within road_snap_end_m of an end), else returns the free point.
 Anchor snap_point(const CityState &s, double x, double z, double radius);
 // Validates a road from a to b (control point used when has_control) with the given profile. Changes nothing.
-RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, int structure = 0);
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
-EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, int structure = 0);
 // Bulldoze at (x, z) (Roadcraft tool `bulldoze`): the building under the point, else the nearest segment within
 // road_pick_m (loose nodes go with it; refund road_refund_share of its value unless it was free).
 EditResult demolish_at(CityState &s, double x, double z);

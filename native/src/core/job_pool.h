@@ -20,7 +20,7 @@
 namespace city {
 
 // One lane for each user of the pool. A new user adds its own: never shares one, never does arithmetic on an id to stay clear of another.
-enum class JobLane : uint8_t { ROADS, VERGES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, FOG };
+enum class JobLane : uint8_t { ROADS, VERGES, STRUCTURES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, FOG };
 
 // What a job is the latest of. `baked`: the second job of a result, the upload's conversion of what the first built.
 struct JobKey {

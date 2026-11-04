@@ -89,7 +89,7 @@ func retool(value: Variant, tool: String, key: String) -> void:
 	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}).duplicate() if tools else {}
 	params[key] = value
 	tool_requested.emit(tool, params)
-	if key not in ["radius", "strength", "lanes", "width", "parking"]:
+	if key not in ["radius", "strength", "lanes", "width", "parking", "structure"]:
 		DrawerStrips.light(_strip, value)
 
 

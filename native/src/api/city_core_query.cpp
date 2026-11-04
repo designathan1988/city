@@ -160,6 +160,14 @@ Dictionary CityCore::snapshot() {
 	return d;
 }
 
+float CityCore::road_y_at(float x, float z) {
+	if (!state_->ready) return 0.f;
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	double t, d;
+	const int seg = state_->roads.find_segment_near(x, z, state_->catalog.tune.road_pick_m, t, d);
+	return seg < 0 ? 0.f : float(state_->roads.seg_y(seg, t * state_->roads.segs[seg].len));
+}
+
 float CityCore::height_at(float x, float z) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return state_->ready ? state_->terrain.height_at(x, z) : 0.f;

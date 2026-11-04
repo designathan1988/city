@@ -50,6 +50,10 @@ func refresh() -> void:
 		_toggle(row, c, snap[key] and live, live, func() -> void:
 			Settings.set_road_snap(key, not snap[key])
 			refresh())
+	row = _row(spec.level.label_key)
+	var level: int = _param("structure", 0)
+	for i in spec.level.choices.size():
+		_toggle(row, spec.level.choices[i], i == level, true, func() -> void: option_picked.emit("structure", i))
 	if _base().class_card:
 		_class_rows(spec)
 

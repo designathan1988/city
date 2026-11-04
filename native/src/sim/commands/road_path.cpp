@@ -120,13 +120,13 @@ std::vector<Quad> road_pieces(const CityState &s, const RoadStroke &k) {
 	return out;
 }
 
-RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile) {
+RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile, int structure) {
 	RoadPlan total;
 	total.ok = !pieces.empty();
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor from = i == 0 ? a : free_anchor(q.x0, q.z0), to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
-		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
+		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile, structure);
 		total.len += p.len;
 		total.price += p.price;
 		total.crossings.insert(total.crossings.end(), p.crossings.begin(), p.crossings.end());
@@ -138,14 +138,14 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 	return total;
 }
 
-EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile) {
+EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile, int structure) {
 	EditResult total;
 	if (pieces.empty()) total.error = "refuse.road.tooShort";
 	Anchor from = a;
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
-		EditResult r = build_road(s, from, true, q.cx, q.cz, to, profile);
+		EditResult r = build_road(s, from, true, q.cx, q.cz, to, profile, structure);
 		if (!r.ok) return r; // the undo entry rolls the pieces already laid back
 		total.money += r.money;
 		total.segments += r.segments;

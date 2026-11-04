@@ -82,8 +82,9 @@ void j_set_plain(CityState &s, int n, bool plain) {
 	s.log.net_node(n);
 }
 
-int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
+int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags, std::vector<float> lift) {
 	int id = s.roads.add_segment(a, b, q, profile, zl, zr, flags);
+	s.roads.segs[id].lift = std::move(lift);
 	s.log.net_seg(id);
 	s.log.net_node(a);
 	s.log.net_node(b);

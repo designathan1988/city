@@ -37,6 +37,9 @@ void emit_segment(const RoadEmit &e, int sid);
 void emit_markings(const RoadEmit &e, int sid);
 void emit_node(const RoadEmit &e, int node);
 
+// What holds a raised road up (road_structure.cpp).
+void emit_structure(const RoadEmit &e, int sid);
+
 // A kerbed edge along three lines, inner, back of the kerb and the lot's. `across` is where the line stands on the road's section.
 void kerbed_line(const RoadEmit &e, const std::vector<godot::Vector3> &in, const std::vector<godot::Vector3> &bk, const std::vector<godot::Vector3> &out,
 		float across, bool kerbed, const godot::Color &walk);

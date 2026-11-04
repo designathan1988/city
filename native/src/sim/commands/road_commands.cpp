@@ -5,6 +5,7 @@
 
 #include "core/math.h"
 #include "sim/roads/junction.h"
+#include "sim/roads/road_grade.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -52,17 +53,31 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 		const RoadKeeps &keeps, std::vector<int> &out) {
 	RoadNetwork &net = s.roads;
 	double sa = arc_at(table, a.t), sb = arc_at(table, b.t);
-	int pieces = std::max(1, int(std::ceil((sb - sa) / s.catalog.tune.road_max_seg_m)));
+	const Tuning &tn = s.catalog.tune;
+	const int pieces = std::max(1, int(std::ceil((sb - sa) / tn.road_max_seg_m)));
+	const int structure = (keeps.flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT;
+	std::vector<float> stretch;
+	if (structure != 0) {
+		stretch = raised_heights(sb - sa, float(net.nodes[a.node].y), float(net.nodes[b.node].y), raised_rules(tn, RoadStructure(structure)), [&](double at) {
+			double px, pz;
+			q.at(t_at_length(table, sa + at), px, pz);
+			return s.terrain.base_height_at(float(px), float(pz));
+		});
+	}
+	auto height = [&](double share) { return height_on(stretch, share); };
 	int prev = a.node;
 	for (int k = 1; k <= pieces; k++) {
 		double t0 = t_at_length(table, sa + (sb - sa) * (k - 1) / pieces), t1 = k == pieces ? b.t : t_at_length(table, sa + (sb - sa) * k / pieces);
 		Quad sub = sub_quad(q, t0, t1);
-		int next = k == pieces ? b.node : j_add_node(s, sub.x1, sub.z1, s.terrain.height_at(float(sub.x1), float(sub.z1)));
+		const float y = stretch.empty() ? s.terrain.height_at(float(sub.x1), float(sub.z1)) : height(double(k) / pieces);
+		int next = k == pieces ? b.node : j_add_node(s, sub.x1, sub.z1, y);
 		const RoadNode &np = net.nodes[prev], &nn = net.nodes[next];
 		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
 		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
-		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, keeps.flags));
+		std::vector<float> lift;
+		if (!stretch.empty()) lift = lift_over(height, double(k - 1) / pieces, double(k) / pieces, (sb - sa) / pieces, tn.road_station_m);
+		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, keeps.flags, std::move(lift)));
 		prev = next;
 	}
 }
@@ -70,12 +85,14 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 bool affords(const CityState &s, double price) { return s.unlimited_money || price <= s.money; }
 } // namespace
 
-EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, int structure) {
 	RoadBox box;
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
 	const std::map<int, double> before = squeezes_in(s, box);
-	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
+	RoadKeeps keeps;
+	keeps.flags = uint16_t(structure << SEG_STRUCTURE_SHIFT);
+	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, keeps);
 	if (r.ok && squeezed_worse(s, before, box)) {
 		r = EditResult{};
 		r.error = "hint.rule.squeezed";
@@ -112,6 +129,7 @@ void merge_stubs(CityState &s, int node, RoadBox &box) {
 		const int other = joint.segs[0] == seg ? joint.segs[1] : joint.segs[0];
 		const bool onward = g.b == far && o.a == far, back = g.a == far && o.b == far;
 		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || o.flags != g.flags) continue;
+		if (!g.lift.empty() || !o.lift.empty()) continue; // a deck keeps the pieces its profile was cut in
 		const RoadSegment &first = onward ? g : o, &second = onward ? o : g;
 		Quad q;
 		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) continue;
@@ -128,7 +146,7 @@ void merge_stubs(CityState &s, int node, RoadBox &box) {
 
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps) {
 	EditResult r;
-	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile);
+	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile, (keeps.flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT);
 	if (!plan.ok) {
 		r.error = plan.reason;
 		return r;

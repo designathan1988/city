@@ -47,7 +47,9 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 	return r.ok;
 }
 
-bool read_roads(ByteReader &r, RoadNetwork &net) {
+constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3, LIFT_VERSION = 4;
+
+bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	uint32_t nodes = r.get<uint32_t>();
 	if (!r.ok || nodes > MAX_RECORDS) return false;
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
@@ -68,6 +70,12 @@ bool read_roads(ByteReader &r, RoadNetwork &net) {
 		g.profile = r.get<int32_t>();
 		g.zl = r.get<uint8_t>(); g.zr = r.get<uint8_t>();
 		g.flags = r.get<uint16_t>();
+		if (version >= LIFT_VERSION) {
+			const uint32_t stations = r.get<uint32_t>();
+			if (!r.ok || stations > MAX_RECORDS) return false;
+			g.lift.resize(stations);
+			for (float &h : g.lift) h = r.get<float>();
+		}
 		bool ends_ok = g.a >= 0 && g.b >= 0 && g.a < int(net.nodes.size()) && g.b < int(net.nodes.size()) &&
 				net.nodes[g.a].alive && net.nodes[g.b].alive && size_t(g.profile) < net.cat->profiles.size();
 		if (!ends_ok) return false;
@@ -99,7 +107,6 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 } // namespace
 
 namespace {
-constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 
 // Made again in the saved order, so each keeps the index the roads hold.
 bool read_variants(ByteReader &r, Catalog &c) {
@@ -136,7 +143,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
-	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
 	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);

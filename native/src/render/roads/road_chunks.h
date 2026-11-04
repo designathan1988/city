@@ -24,6 +24,7 @@ public:
 protected:
 	void commit_one(BuiltMesh &b) override;
 	godot::RID scenario_, material_;
+	bool shadows_ = false;
 
 private:
 	struct Chunk {

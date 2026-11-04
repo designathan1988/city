@@ -26,8 +26,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid"), &CityCore::road_start);
 	ClassDB::bind_method(D_METHOD("road_end", "start", "position", "px", "on", "angles", "grid"), &CityCore::road_end);
 	ClassDB::bind_method(D_METHOD("road_pieces", "start", "end", "alignment", "has_control", "control", "samples", "profile", "px"), &CityCore::road_pieces);
-	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px"), &CityCore::preview_road_path);
-	ClassDB::bind_method(D_METHOD("build_road_path", "pieces", "profile", "px"), &CityCore::build_road_path);
+	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px", "structure"), &CityCore::preview_road_path, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("build_road_path", "pieces", "profile", "px", "structure"), &CityCore::build_road_path, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::preview_road);
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
@@ -60,6 +60,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("snapshot"), &CityCore::snapshot);
 	ClassDB::bind_method(D_METHOD("constants"), &CityCore::constants);
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
+	ClassDB::bind_method(D_METHOD("road_y_at", "x", "z"), &CityCore::road_y_at);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);

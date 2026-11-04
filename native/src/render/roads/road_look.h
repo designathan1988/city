@@ -35,7 +35,15 @@ inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m
 	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
 }
 
+// The parts of a raised road (streets.json structures; Roadcraft render/structures.ts, roads/tuning.ts).
+struct StructureLook {
+	godot::Color concrete;
+	float deck_elevated = 0, deck_bridge = 0, spacing_elevated = 1, spacing_bridge = 1, pier_from = 0, parapet_from = 0, parapet_h = 0, parapet_w = 0;
+	float cap_h = 0, cap_depth = 0, column_min = 0, slenderness = 1, spread = 0, wall_share = 0, foot = 0;
+};
+
 struct StreetLook {
+	StructureLook structure;
 	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
 	float face_eps = 0; // coplanar faces closer than this are one

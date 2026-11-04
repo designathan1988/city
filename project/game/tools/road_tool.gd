@@ -14,6 +14,7 @@ const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0
 
 var alignment: Alignment = Alignment.STRAIGHT
+var structure := 0 # RoadStructure: on the ground, elevated or a bridge
 var profile := 0
 ## The start held by a click, while the next stretch is previewed.
 var chain := Vector3.INF
@@ -34,6 +35,7 @@ func enter() -> void:
 	if drawn < 0:
 		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
+	structure = params.get("structure", 0)
 	ctl.hint.emit(tr("ui.do.roadPoint"), true)
 
 
@@ -159,7 +161,7 @@ func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 	if pieces.is_empty():
 		_clear_preview()
 		return
-	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
+	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, drawn, ctl.px_at(pieces[-1]), structure])
 	if _last_plan.is_empty():
 		_clear_preview()
 		return
@@ -192,7 +194,7 @@ func _lay(pieces: PackedVector3Array) -> void:
 	_clear_preview()
 	if pieces.is_empty():
 		return
-	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
+	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1]), structure])
 	if r.is_empty() or not r.ok:
 		ctl.hint.emit(refusal(r, _last_plan.get("price", 0.0)), false)
 		return
