@@ -1,5 +1,5 @@
 {
- "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. car_body.bumper_top_m: the ends' dark bumper face up to the top of the bumper zone, 20 in over the road (US 49 CFR Part 581, bumper standard). Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
+ "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. car_body: [fine (the cabin level), coarse] stations, steps round each arch and in each rounded end; the half ring's bottom corner radius bottom_round_m and the flank's bulge (share of the half width), measured on side and front photos of the reference cars at ~130 px/m (a 6-8 px corner, a 2 % wider waist); the B pillar b_pillar_m and the door seams door_seam_m wide (the seams drawn wider than a real 3-5 mm gap so they read at ~10 m, 1 px at 100 px/m); the wing mirror's housing [out, high, long] on its arm, the door handle [long, high, out], measured on the same photos. car_body.bumper_top_m: the ends' dark bumper face up to the top of the bumper zone, 20 in over the road (US 49 CFR Part 581, bumper standard). Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
  "vehicle_radius_m": 900,
  "cabin_radius_m": 140,
  "people_radius_m": 280,
@@ -35,8 +35,9 @@
    "top": [[0.5, 0.45], [0.488, 0.54], [0.45, 0.6], [0.33, 0.63], [0.21, 0.645], [0.14, 0.77], [0.07, 0.965], [-0.02, 1], [-0.2, 0.99], [-0.235, 0.96], [-0.25, 0.64], [-0.27, 0.6], [-0.49, 0.6], [-0.5, 0.52]],
    "screen": [0.21, 0.07], "rear": [-0.235, -0.248], "side_glass": [-0.23, 0.19], "belt": [0.62, 0.64], "nose_r": 0.34, "tail_r": 0.12}
  ],
- "car_body": {"stations": 18, "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12,
-  "bumper_top_m": 0.51},
+ "car_body": {"stations": [32, 10], "arch_steps": [6, 2], "end_steps": [6, 1], "station_eps_m": 0.004, "sill_m": 0.15, "tumble": 0.35, "glass_top_m": 0.08, "crown_m": 0.03, "lamp_y": 0.72, "tail_y": 0.7, "wheel_inset_m": 0.14, "wheel_w": 0.22, "axle": 0.31, "wheel_sides": 12,
+  "bumper_top_m": 0.51, "bottom_round_m": 0.06, "bulge": 0.02, "b_pillar_m": 0.1, "door_seam_m": 0.01, "wing_mirror_m": [0.22, 0.13, 0.1, 0.06],
+  "car_handle_m": [0.17, 0.035, 0.02]},
  "cars_cabin": {"_doc": "A car's cabin (agent_cabin over car_body.cpp): rows of two seats from the windscreen base back, as many as fit before the rear screen; seat_spread: a seat's middle from the car's, as a share of the cabin width; metres.",
   "seat_spread": 0.22, "front_hip_m": 1.0, "row_pitch_m": 0.82, "back_clear_m": 0.08, "rows": 2, "dash_d_m": 0.35, "dash_h_m": 0.16,
   "lining": "#1b1c1f", "floor": "#1b1c1f", "seat": "#2b2c31", "dash": "#1b1c1f"},

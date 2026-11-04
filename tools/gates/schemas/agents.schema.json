@@ -48,7 +48,9 @@
   "car_body": {
    "type": "object",
    "properties": {
-    "stations": {"type": "integer"},
+    "stations": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+    "arch_steps": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+    "end_steps": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
     "station_eps_m": {"type": "number"},
     "sill_m": {"type": "number"},
     "tumble": {"type": "number"},
@@ -60,9 +62,15 @@
     "wheel_w": {"type": "number"},
     "axle": {"type": "number"},
     "wheel_sides": {"type": "integer"},
-    "bumper_top_m": {"type": "number"}
+    "bumper_top_m": {"type": "number"},
+    "bottom_round_m": {"type": "number"},
+    "bulge": {"type": "number"},
+    "b_pillar_m": {"type": "number"},
+    "door_seam_m": {"type": "number"},
+    "wing_mirror_m": {"type": "array", "items": {"type": "number"}},
+    "car_handle_m": {"type": "array", "items": {"type": "number"}}
    },
-   "required": ["stations", "station_eps_m", "sill_m", "tumble", "glass_top_m", "crown_m", "lamp_y", "tail_y", "wheel_inset_m", "wheel_w", "axle", "wheel_sides", "bumper_top_m"],
+   "required": ["stations", "arch_steps", "end_steps", "station_eps_m", "sill_m", "tumble", "glass_top_m", "crown_m", "lamp_y", "tail_y", "wheel_inset_m", "wheel_w", "axle", "wheel_sides", "bumper_top_m", "bottom_round_m", "bulge", "b_pillar_m", "door_seam_m", "wing_mirror_m", "car_handle_m"],
    "strict": true
   },
   "cars_cabin": {
