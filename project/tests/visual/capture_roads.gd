@@ -20,6 +20,7 @@ const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
 
 var out_dir := "user://captures"
+var world: CityWorld
 var rig: CityCamera
 var tools: ToolController
 var hud: RoadcraftHud
@@ -34,7 +35,7 @@ func _ready() -> void:
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
 	DirAccess.make_dir_recursive_absolute(out_dir)
-	var world := CityWorld.new()
+	world = CityWorld.new()
 	add_child(world)
 	rig = CityCamera.new()
 	add_child(rig)
@@ -72,9 +73,20 @@ func _run() -> void:
 	await _photo("road_end", at(0, -40), [200.0, 55.0], NEAR_M * 1.5)
 	await _photo("curve_top", at(280, -80), [0.0, 70.0], WIDE_M * 0.5)
 	await _photo("layout_top", at(40, 0), [0.0, 70.0], WIDE_M)
+	await _night()
 	await _tool()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The same crossings under the game's night, then the day again for the tool.
+func _night() -> void:
+	var sky: Dictionary = DataTables.game("daylight")
+	world.set_hour(sky.night_hour)
+	await _photo("night_urban_top", at(0, -120), TOP, CLOSE_M)
+	await _photo("night_urban_low", at(0, -120), LOW, NEAR_M)
+	await _photo("night_avenue_low", at(-60, 100), LOW, NEAR_M)
+	world.set_hour(sky.day_hour)
 
 
 func at(x: float, z: float) -> Vector3:

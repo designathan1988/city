@@ -1,4 +1,4 @@
-// Value noise on an integer hash, shared by terrain.gdshader and water.gdshader.
+// Value noise on an integer hash, shared by terrain.gdshader, water.gdshader and road.gdshader.
 
 // Integer hash (pcg, as building.gdshader): exact on every GPU, unlike fract(sin(...)).
 uint pcg(uint v) {

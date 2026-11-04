@@ -267,8 +267,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc`
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa)
-- `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
-  modelo do renderizador); ruído de valor das vias; ruído de valor por hash inteiro do terreno e da água
+- `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
+  modelo do renderizador); ruído de valor por hash inteiro do terreno, da água e das vias
 - `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
@@ -317,7 +317,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.
-- Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
+- Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a
   lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).

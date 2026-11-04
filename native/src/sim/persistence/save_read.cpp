@@ -102,7 +102,6 @@ constexpr uint32_t VARIANTS_VERSION = 2;
 
 // Made again in the saved order, so each keeps the index the roads hold.
 bool read_variants(ByteReader &r, Catalog &c) {
-	clear_variants(c);
 	const uint32_t n = r.get<uint32_t>();
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		RoadVariant v;
@@ -134,6 +133,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
+	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
 	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
 	std::vector<int64_t> growth_cells;

@@ -18,6 +18,8 @@ const FREE_OFFSET_M := 200.0
 const LOOSE_M := 0.01
 const TANGENT_DOT := 0.999
 const COST_RUNS := 20
+const TOWN_STEPS := 400
+const TOWN_SWING_M := 60.0
 
 var failures := 0
 
@@ -124,6 +126,7 @@ func _freehand(e: Vector3) -> void:
 	r = CityStore.dispatch(&"build_road_path", [bad, PROFILE, PX])
 	_check(not r.ok and r.error == "refuse.road.tooShort" and CityStore.snapshot.segments == seg0, "peça recusada recusa a via inteira: %s" % r)
 	_plan_cost(base)
+	_plan_cost_town()
 	var tight: PackedVector3Array = CityStore.query(&"road_pieces", [base, base + Vector3(20, 0, 0), 1, true, base + Vector3(10, 0, 60), PackedVector3Array(), PROFILE, PX])
 	_check(tight.size() == 3 and tight[1].z - base.z < 60.0, "curva apertada é aberta até o raio da via: %s" % tight[1])
 
@@ -139,6 +142,22 @@ func _plan_cost(base: Vector3) -> void:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("prévia: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
 	_check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "peças dentro do limite (%d)" % [pieces.size() / 3])
+
+
+## The same stroke across the town, among its roads: a preview's cost where it looks at the most.
+func _plan_cost_town() -> void:
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	var from := Vector3(b.min.x, 0, (b.min.z + b.max.z) * 0.5)
+	var samples := PackedVector3Array()
+	for i in TOWN_STEPS + 1:
+		var at := from.lerp(Vector3(b.max.x, 0, from.z), float(i) / TOWN_STEPS)
+		samples.push_back(at + Vector3(0, 0, TOWN_SWING_M * sin(i * 0.25)))
+	var pieces: PackedVector3Array = CityStore.query(&"road_pieces", [samples[0], samples[-1], 2, false, Vector3.ZERO, samples, PROFILE, PX])
+	var t0 := Time.get_ticks_usec()
+	for i in COST_RUNS:
+		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
+	print("prévia na cidade: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
+	_check(pieces.size() >= 3, "traço pela cidade tem peças")
 
 
 func _check(ok: bool, what: String) -> void:

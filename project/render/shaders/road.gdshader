@@ -58,7 +58,7 @@ varying vec2 v_pool;
 const float MEAN_FLOOR = 0.001;
 
 #include "res://render/shaders/color_space.gdshaderinc"
-#include "res://render/shaders/noise2d.gdshaderinc"
+#include "res://render/shaders/lattice_noise.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -95,7 +95,7 @@ void fragment() {
 	vec3 albedo = base;
 	vec2 bend = vec2(0.0);
 	float rough = 0.88;
-	float blotch = 1.0 + (noise(v_world.xz * 0.08) - 0.5) * 0.12;
+	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT) {
@@ -118,7 +118,7 @@ void fragment() {
 				* base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
 		float cell = v_mat == M_GUTTER ? gutter_joint_m : kerb_block_m;
 		float along = v_mat == M_GUTTER ? uv.y : kq.x;
-		float tone = 1.0 + (hash(vec2(floor(along / cell), 7.0)) - 0.5) * 0.1;
+		float tone = 1.0 + (hash2(vec2(floor(along / cell), 7.0)) - 0.5) * 0.1;
 		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(along / cell + 0.5) - 0.5) * cell);
 		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
@@ -129,9 +129,9 @@ void fragment() {
 	} else if (v_mat == M_COBBLE) {
 		vec2 c = uv * cobble_per_m;
 		float edge = joints(c, vec2(1.0), vec2(0.18), pix * cobble_per_m);
-		albedo = base * (1.0 - 0.4 * edge) * (0.9 + 0.2 * hash(floor(c)));
+		albedo = base * (1.0 - 0.4 * edge) * (0.9 + 0.2 * hash2(floor(c)));
 	} else if (v_mat == M_CONCRETE || v_mat == M_BALLAST) {
-		albedo = base * blotch * (0.94 + 0.12 * noise(v_world.xz * 3.0));
+		albedo = base * blotch * (0.94 + 0.12 * vnoise(v_world.xz * 3.0));
 	}
 	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
