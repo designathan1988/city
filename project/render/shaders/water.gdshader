@@ -21,6 +21,9 @@ uniform float ripple_strength;
 uniform float slope_sigma; // rms slope the ripples stand for, as a roughness when unresolved
 uniform float specular_f0;
 uniform float fetch_m; // the width of a water body: shallow and deep colours mix in patches this wide
+uniform float absorb_per_m; // how fast the deep colour takes over with the depth seen through
+uniform float paws_m; // the gust patches that roughen the surface: how wide, and how rough
+uniform float paws_rough;
 global uniform float wind_x;
 global uniform float wind_z;
 uniform float waves = 0.3; // the map's weather: how rough, how much foam, how fast the rivers run (render/sky_view.gd)
@@ -52,7 +55,6 @@ void fragment() {
 	vec2 s = ripple(world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME, TIME, fine) * ripple_strength * fine * rough;
 	vec3 n = normalize(vec3(-s.x, 1.0, -s.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
-	vec3 c = mix(source_linear(shallow), source_linear(deep), vnoise(world.xz / fetch_m));
 	// Foam: where the water is shallow over the ground, broken by the ripples' own noise.
 	float depth = texture(depth_texture, SCREEN_UV).x;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
@@ -62,10 +64,12 @@ void fragment() {
 #endif
 	vec4 under = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	float below = length(under.xyz / under.w) - length(VERTEX);
+	vec3 c = mix(source_linear(shallow), source_linear(deep), max(vnoise(world.xz / fetch_m), 1.0 - exp(-max(below, 0.0) * absorb_per_m)));
 	float edge = (1.0 - smoothstep(0.0, 1.6, below)) * foam;
 	float froth = smoothstep(0.35, 0.8, vnoise(world.xz * 0.9 + current * TIME * 0.3) + edge * 0.6);
 	c = mix(c, vec3(0.9, 0.93, 0.95), froth * edge);
 	ALBEDO = linear_out(c);
-	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine));
+	float paws = vnoise((world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME) / paws_m) * vnoise(world.xz / (paws_m * 3.1) + 7.0);
+	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine)) + paws * paws_rough * rough;
 	SPECULAR = specular_f0;
 }

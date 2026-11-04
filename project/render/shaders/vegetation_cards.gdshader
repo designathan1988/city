@@ -30,6 +30,7 @@ void fragment() {
 		ALBEDO = linear_out(source_linear(p.rgb) * v_tint);
 		NORMAL = normalize(texture(tree_normal, at).xyz * 2.0 - 1.0);
 		ROUGHNESS = roughness;
+		SPECULAR = leaf_specular;
 	} else {
 	bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
 	vec2 uv = vec2((frond ? FROND_U : LEAF_U) + clamp(UV.x, 0.0, 1.0) * REGION_W, UV.y);
@@ -40,5 +41,6 @@ void fragment() {
 	ALPHA_SCISSOR_THRESHOLD = CUT;
 	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
 	ROUGHNESS = roughness;
+	SPECULAR = leaf_specular;
 	}
 }

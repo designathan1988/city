@@ -42,8 +42,7 @@ uniform float water_level = 0.0;
 uniform float sand_band = 2.0;
 uniform float rock_slope; // 1 - normal.y; data/render/palette.json terrain (angle of repose)
 uniform float patch_scale;
-uniform sampler2D land_map : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
-uniform float land_layers = 9.0; // terrain-land.map: square layers stacked vertically
+uniform sampler2DArray land_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float dirt_layer = 8.0;
 uniform float rock_layer = 2.0;
 uniform float dirt_m = 13.6;
@@ -56,6 +55,9 @@ uniform float detail_m = 1.6; // metres one tile of the grain covers
 uniform float detail_near_px = 0.018; // metres a pixel under which the grain is whole, and over which it is gone
 uniform float detail_far_px = 0.064;
 uniform float detail_albedo = 0.9;
+uniform float land_gain;
+global uniform float night;
+uniform float night_ground;
 group_uniforms;
 
 // Varyings & Types
@@ -208,7 +210,6 @@ void fragment() {
 	float gully = gully_weight(dot(cw, vec4(p00.gully, p10.gully, p01.gully, p11.gully)), dot(cw, vec4(p00.wipe, p10.wipe, p01.wipe, p11.wipe)), slope);
 	float gully_shade = 1.0;
 	if (gully > 0.0) w_normal = gully_normal(w_normal, v_vertex.xz, gully, gully_shade);
-	NORMAL = mat3(VIEW_MATRIX) * w_normal;
 	float detail = 1.0 - smoothstep(DETAIL_NEAR_M, DETAIL_FAR_M, length(v_vertex.xz - v_camera_pos.xz));
 	float n = vnoise(v_vertex.xz * patch_scale) * 0.7 + vnoise(v_vertex.xz * patch_scale * 6.0) * 0.3;
 	n = mix(0.5, n, detail);
@@ -220,17 +221,20 @@ void fragment() {
 	if (biome_cover > 0.0) tint = mix(tint, biome_tint[(cw.x + cw.y > cw.z + cw.w ? (cw.x > cw.y ? p00.biome : p10.biome) : (cw.z > cw.w ? p01.biome : p11.biome))], biome_cover);
 	vec3 c = g * mix(1.0, macro, 0.35) * grass_tint * tint * mix(0.9, 1.08, n);
 	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
-	c *= grass_grain(v_vertex.xz, max(fwidth(v_vertex.x), fwidth(v_vertex.z)));
+	float per_pixel = max(fwidth(v_vertex.x), fwidth(v_vertex.z));
+	c *= grass_grain(v_vertex.xz, per_pixel) * grass_speckle(v_vertex.xz, per_pixel);
 	float wander = (n - 0.5) * 0.08;
 	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope));
 	float rock_w = smoothstep(rock_slope, rock_slope + 0.1, slope + wander);
 	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
+	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel) * (1.0 - max(dirt_w, rock_w));
+	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
 	if (dirt_w > 0.0) {
-		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
+		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal) * land_gain, dirt_w);
 	}
 	c = mix(c, sand, 1.0 - smoothstep(water_level + sand_band * 0.5, water_level + sand_band, v_vertex.y));
 	if (rock_w > 0.0) {
-		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
+		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal) * land_gain, rock, 0.25), rock_w);
 	}
 	float painted = dot(cw, vec4(p00.amount, p10.amount, p01.amount, p11.amount));
 	if (painted > 0.004) {
@@ -243,9 +247,9 @@ void fragment() {
 		if (p10.surface > 0 && cw.y * p10.amount > 0.0) { sum += surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.y * p10.amount; weights += cw.y * p10.amount; }
 		if (p01.surface > 0 && cw.z * p01.amount > 0.0) { sum += surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.z * p01.amount; weights += cw.z * p01.amount; }
 		if (p11.surface > 0 && cw.w * p11.amount > 0.0) { sum += surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.w * p11.amount; weights += cw.w * p11.amount; }
-		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
+		if (weights > 0.0) c = mix(c, sum / weights * land_gain, clamp(weights, 0.0, 1.0));
 	}
-	c *= gully_shade * (1.0 - 0.3 * rain_wet);
+	c *= gully_shade * (1.0 - 0.3 * rain_wet) * mix(1.0, night_ground, night);
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	ALBEDO = c;
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);

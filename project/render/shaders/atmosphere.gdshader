@@ -74,6 +74,15 @@ float mist_amount(vec3 ro, vec3 rd, float t, float top) {
 	return clamp(1.0 - exp(-mist * mist_beta * dist * thick), 0.0, 0.95);
 }
 
+// The noise of a fog bank: the tile (which repeats) read at two sizes that share no period, the smaller turned, or its
+// repeats line up into a lattice over a bank wider than the tile.
+float fog_noise(vec3 q) {
+	vec3 p = vec3(q.x, q.y * 1.6, q.z);
+	float wide = texture(noise_volume, p / 137.0).r;
+	float fine = texture(noise_volume, vec3(0.8 * p.x - 0.6 * p.z, p.y, 0.6 * p.x + 0.8 * p.z) / 53.0).r;
+	return wide * 0.6 + fine * 0.4;
+}
+
 // The painted fog along the ray: the slab it fills, read from its window; thickness thinning with height over the ground
 // the texel keeps, broken into wisps the wind carries (noise_volume moved by a flow of two phases, Vlachos 2010).
 float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
@@ -99,8 +108,8 @@ float fog_amount(vec3 ro, vec3 rd, float t_scene, float jitter, float time) {
 		if (over < -1.6) continue;
 		float thin = exp(-max(over, 0.0) / max(m.b, 0.4));
 		vec2 flow = wind_dir * m.a * 9.0;
-		float na = texture(noise_volume, vec3(q.x - flow.x * phase_a, q.y * 1.6, q.z - flow.y * phase_a) / 44.0).r;
-		float nb = texture(noise_volume, vec3(q.x - flow.x * phase_b + 15.0, q.y * 1.6, q.z - flow.y * phase_b + 37.0) / 44.0).r;
+		float na = fog_noise(q - vec3(flow.x, 0.0, flow.y) * phase_a);
+		float nb = fog_noise(q - vec3(flow.x, 0.0, flow.y) * phase_b + vec3(15.0, 0.0, 37.0));
 		float wisp = smoothstep(0.25, 0.75, mix(na, nb, blend_b) * (0.7 + 0.6 * thin));
 		keep *= exp(-m.r * fog_density * thin * wisp * fog_extinction * step_len);
 		if (keep < 0.02) break;

@@ -558,6 +558,9 @@
       },
       "roughness": {
        "type": "number"
+      },
+      "leaf_specular": {
+       "type": "number"
       }
      },
      "required": [
@@ -565,7 +568,8 @@
       "gust_m",
       "turbulence",
       "sway_hz",
-      "roughness"
+      "roughness",
+      "leaf_specular"
      ],
      "strict": true
     }
@@ -620,6 +624,12 @@
     "params"
    ],
    "strict": true
+  },
+  "cover_plant": {
+   "type": "object"
+  },
+  "cover_rock": {
+   "type": "object"
   }
  },
  "required": [
@@ -634,7 +644,9 @@
   "overlay",
   "agent_glass",
   "vegetation",
-  "vegetation_cards"
+  "vegetation_cards",
+  "cover_plant",
+  "cover_rock"
  ],
  "strict": true
 }

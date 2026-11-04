@@ -27,11 +27,9 @@ float corner_level(const Heightfield &hf, int gx, int gz) {
 	return best;
 }
 
-// A cell is drawn when any of its corners stands in water: its dry corners lie on ground at or over the level, so the
-// shore is where the terrain comes through the surface and not along the grid.
-bool touches_water(const Heightfield &hf, int gx, int gz) {
-	return corner_level(hf, gx + 1, gz + 1) != TerrainGen::NO_WATER; // the four samples round that corner are the cell's
-}
+// The water of a cell, the highest of its four samples: any wet corner draws it, its dry corners lying on ground at or over
+// the level, so the shore is where the terrain comes through the surface and not along the grid.
+float cell_level(const Heightfield &hf, int gx, int gz) { return corner_level(hf, gx + 1, gz + 1); }
 } // namespace
 
 bool WaterRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -64,10 +62,15 @@ void WaterRenderer::build(const Heightfield &hf, int64_t key) {
 	const Color white(1, 1, 1, 1);
 	for (int gz = z0; gz < z1; gz++)
 		for (int gx = x0; gx < x1; gx++) {
-			if (!touches_water(hf, gx, gz)) continue;
+			float cell = cell_level(hf, gx, gz);
+			if (cell == TerrainGen::NO_WATER) continue;
+			auto level = [&](int cx, int cz) {
+				float l = corner_level(hf, cx, cz);
+				return l == TerrainGen::NO_WATER ? cell : l; // a corner with no water round it stays on the cell's surface
+			};
 			float ax = (gx - shift) * step, az = (gz - shift) * step;
-			mb.quad(Vector3(ax, corner_level(hf, gx, gz), az), Vector3(ax + step, corner_level(hf, gx + 1, gz), az),
-					Vector3(ax + step, corner_level(hf, gx + 1, gz + 1), az + step), Vector3(ax, corner_level(hf, gx, gz + 1), az + step), white, up);
+			mb.quad(Vector3(ax, level(gx, gz), az), Vector3(ax + step, level(gx + 1, gz), az), Vector3(ax + step, level(gx + 1, gz + 1), az + step),
+					Vector3(ax, level(gx, gz + 1), az + step), white, up);
 		}
 	Draw &d = chunks_[key];
 	OwnedMesh next = mb.empty() ? OwnedMesh() : mb.bake();

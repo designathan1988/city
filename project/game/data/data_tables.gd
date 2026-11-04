@@ -23,6 +23,7 @@ static var _catalog_cache := {}
 const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
+	"cover": "res://data/render/cover.json",
 	"buildings": "res://data/render/buildings.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",

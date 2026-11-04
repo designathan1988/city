@@ -62,6 +62,15 @@
     },
     "fetch_m": {
      "type": "number"
+    },
+    "absorb_per_m": {
+     "type": "number"
+    },
+    "paws_m": {
+     "type": "number"
+    },
+    "paws_rough": {
+     "type": "number"
     }
    },
    "required": [
@@ -134,9 +143,6 @@
     "rock_m": {
      "type": "number"
     },
-    "land_layers": {
-     "type": "number"
-    },
     "dirt_layer": {
      "type": "number"
     },
@@ -187,6 +193,48 @@
     },
     "detail_albedo": {
      "type": "number"
+    },
+    "detail_wide_near_px": {
+     "type": "number"
+    },
+    "detail_wide_far_px": {
+     "type": "number"
+    },
+    "detail_wide": {
+     "type": "number"
+    },
+    "grain_per_m": {
+     "type": "number"
+    },
+    "grain_repeat": {
+     "type": "number"
+    },
+    "grain_low": {
+     "type": "number"
+    },
+    "grain_high": {
+     "type": "number"
+    },
+    "grain_share": {
+     "type": "number"
+    },
+    "land_gain": {
+     "type": "number"
+    },
+    "night_ground": {
+     "type": "number"
+    },
+    "grass_bump": {
+     "type": "number"
+    },
+    "blade_bump": {
+     "type": "number"
+    },
+    "grass_normal": {
+     "type": "string"
+    },
+    "grass_blades_normal": {
+     "type": "string"
     }
    },
    "required": [
@@ -198,7 +246,6 @@
     "grass_m",
     "dirt_m",
     "rock_m",
-    "land_layers",
     "dirt_layer",
     "rock_layer",
     "dirt_from",

@@ -16,6 +16,7 @@ const float BLEND_FULL = 255.0;
 const float BIOME_FULL = 127.0;
 const float GULLY_FULL = 7.0;
 const uint BIT_WIPE = 8u;
+const float ROCK_GRANITE = 2.0, ROCK_SANDSTONE = 4.0, ROCK_BASALT = 6.0; // the rock faces among the layers of the land map
 
 struct PaintCorner {
 	int surface;
@@ -49,9 +50,9 @@ vec3 surface_colour(int surface, vec3 grass_c, vec3 dirt_c, vec3 world, vec3 dx,
 		case 5: return vec3(0.55, 0.54, 0.51) * mix(0.6, 1.25, speck) * mix(0.9, 1.05, grain); // gravel
 		case 6: return vec3(0.17, 0.17, 0.19) * mix(0.85, 1.15, speck); // asphalt
 		case 7: return vec3(0.66, 0.65, 0.62) * mix(0.9, 1.06, grain) * mix(0.96, 1.03, speck); // concrete
-		case 8: return land_triplanar(0.0, world / rock_m, dx / rock_m, dy / rock_m, n); // granite
-		case 9: return land_triplanar(2.0, world / rock_m, dx / rock_m, dy / rock_m, n); // sandstone
-		default: return land_triplanar(4.0, world / rock_m, dx / rock_m, dy / rock_m, n); // basalt
+		case 8: return land_triplanar(ROCK_GRANITE, world / rock_m, dx / rock_m, dy / rock_m, n); // granite
+		case 9: return land_triplanar(ROCK_SANDSTONE, world / rock_m, dx / rock_m, dy / rock_m, n); // sandstone
+		default: return land_triplanar(ROCK_BASALT, world / rock_m, dx / rock_m, dy / rock_m, n); // basalt
 	}
 }
 

@@ -176,7 +176,7 @@ void tree_fronds(MeshBuilder &cards, const Vector3 &top, const FrondSpec &f, con
 		for (int i = 0; i < f.steps; i++)
 			for (int c = 0; c + 1 < FROND_COLS; c++) {
 				int a = first + i * FROND_COLS + c, b = a + 1, d = a + FROND_COLS, e = d + 1;
-				for (int q : { a, b, e, a, e, d }) cards.idx.push_back(q);
+				for (int q : { a, e, b, a, d, e }) cards.idx.push_back(q); // clockwise from above, so the sun finds the face the normal says
 			}
 	}
 }

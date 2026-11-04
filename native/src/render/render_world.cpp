@@ -21,6 +21,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
+	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
@@ -32,6 +33,7 @@ void RenderWorld::reset() {
 	roads_.reset();
 	props_.reset();
 	trees_.reset();
+	cover_.reset();
 	water_.reset();
 	buildings_.reset();
 	agents_.reset();
@@ -96,7 +98,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
 		paint_rects_.clear();
 		ChangeLog::dedup(nature_keys_);
-		for (int64_t k : nature_keys_) trees_.mark_dirty(k);
+		for (int64_t k : nature_keys_) {
+			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
+		}
 		nature_keys_.clear();
 		for (int64_t k : water_keys_) water_.mark(k);
 		water_keys_.clear();
@@ -108,11 +113,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			road_stream_.mark(k);
 			props_stream_.mark(k);
 			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
 			overlays_.mark_dirty(k);
 		}
 		for (int64_t k : building_keys_) {
 			building_stream_.mark(k);
 			trees_.mark_dirty(k);
+			cover_.mark_dirty(k);
 		}
 		road_keys_.clear();
 		building_keys_.clear();
@@ -129,6 +136,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
 		trees_.sync(s, cam, budget);
+		cover_.sync(s, cam, budget);
 		buildings_.update_view(cam, budget);
 		cost_.levels = laps.lap();
 	}
@@ -144,6 +152,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	trees_.commit(until);
+	cover_.commit(until);
 	cost_.trees = laps.lap();
 	cost_.uploads = double(upload.used) / BYTES_PER_MIB;
 }

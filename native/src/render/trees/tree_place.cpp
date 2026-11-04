@@ -30,13 +30,10 @@ float smoothstep(float a, float b, float x) {
 uint32_t cell_hash(int ix, int iz, uint32_t salt) { return hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), salt); }
 float h01(uint32_t h, Stream s) { return hash_float(h + s); }
 
-struct Lists {
-	std::vector<int> segs, lots;
-	EcologyField eco;
-};
+} // namespace
 
-Lists lists(const CityState &s, int64_t key) {
-	Lists l;
+ChunkGround chunk_ground(const CityState &s, int64_t key) {
+	ChunkGround l;
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int sid) { l.segs.push_back(sid); });
 	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int id) { l.lots.push_back(id); });
@@ -44,7 +41,7 @@ Lists lists(const CityState &s, int64_t key) {
 	return l;
 }
 
-bool near_road(const CityState &s, const Lists &l, float x, float z, float r) {
+bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r) {
 	for (int sid : l.segs) {
 		double t, d;
 		closest_t(s.roads.segs[sid].q, x, z, t, d);
@@ -53,7 +50,7 @@ bool near_road(const CityState &s, const Lists &l, float x, float z, float r) {
 	return false;
 }
 
-bool in_lot(const CityState &s, const Lists &l, float margin, float x, float z) {
+bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[id];
 		float dx = x - b.x, dz = z - b.z;
@@ -63,12 +60,13 @@ bool in_lot(const CityState &s, const Lists &l, float margin, float x, float z) 
 	return false;
 }
 
+namespace {
 float grade_at(const Heightfield &hf, float x, float z) {
 	return std::hypot(hf.height_at(x + GRADE_PROBE, z) - hf.height_at(x - GRADE_PROBE, z), hf.height_at(x, z + GRADE_PROBE) - hf.height_at(x, z - GRADE_PROBE)) / (2 * GRADE_PROBE);
 }
 
 // The woods field at (x, z): the patches, raised on steep ground and along water.
-float field(const CityState &s, const TreeLook &T, const Lists &l, float x, float z) {
+float field(const CityState &s, const TreeLook &T, const ChunkGround &l, float x, float z) {
 	float f = fbm(x / T.mass_m, z / T.mass_m, FIELD_SEED ^ s.seed, T.octaves);
 	if (l.eco.side > 0) f += T.eco_gain * (wood_share(l.eco.near(x, z), s.catalog.nature.ecology) - T.eco_mean);
 	f += T.forest_gain * s.nature.ground.cover_at(CoverKind::FOREST, x, z);
@@ -102,7 +100,7 @@ bool ground_ok(const CityState &s, const TreeLook &T, float x, float z, float ma
 }
 
 // The woods' and the open land's trees of the chunk (only the open band's when `open_only`).
-void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Lists &l, int64_t key, bool open_only, std::vector<TreeInstance> &out) {
+void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, bool open_only, std::vector<TreeInstance> &out) {
 	int n = int(CHUNK / T.grid_m), cx = key_x(key), cz = key_y(key);
 	// The highest chance any band gives: a candidate drawn above it stands in no band, so its field is never read.
 	float most = T.band[size_t(WoodBand::OPEN)].keep;
@@ -136,7 +134,7 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Lists
 		}
 }
 
-void parks(const CityState &s, const TreeLook &T, const Lists &l, int64_t key, std::vector<TreeInstance> &out) {
+void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t key, std::vector<TreeInstance> &out) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[size_t(id)];
 		if (!b40::is_open_lot(b.fn) || chunk_of(b.x, b.z) != key) continue;
@@ -184,7 +182,7 @@ void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<Tre
 
 void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeInstance> &out) {
-	Lists l = lists(s, key);
+	ChunkGround l = chunk_ground(s, key);
 	street(s, L, T, key, out);
 	parks(s, T, l, key, out);
 	planted(s, T, key, out);
@@ -193,7 +191,7 @@ void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, con
 
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<FarCard> &out) {
-	Lists l = lists(s, key);
+	ChunkGround l = chunk_ground(s, key);
 	std::vector<TreeInstance> lone;
 	street(s, L, T, key, lone);
 	parks(s, T, l, key, lone);

@@ -14,6 +14,7 @@
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
 #include "render/terrain_bridge.h"
+#include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
 #include "render/water/water_renderer.h"
 
@@ -53,7 +54,7 @@ public:
 	FogField &fog() { return fog_; }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
-				buildings_.pending() + trees_.pending();
+				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
 private:
@@ -61,6 +62,7 @@ private:
 	RoadRenderer roads_;
 	PropRenderer props_;
 	TreeRenderer trees_;
+	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;
 	BuildingRenderer buildings_;

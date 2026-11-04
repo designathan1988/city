@@ -71,12 +71,13 @@ struct TreePictures::Frame {
 };
 
 bool TreePictures::begin(const Dictionary &spec, int species, const Ref<Image> &leaves, PackedStringArray &errors) {
-	if (!spec.has("picture_px") || !spec.has("elevations_deg") || !spec.has("picture_share")) {
+	if (!spec.has("picture_px") || !spec.has("elevations_deg") || !spec.has("picture_share") || !spec.has("picture_shade")) {
 		errors.push_back("streets.json trees: falta pictures");
 		return false;
 	}
 	px_ = spec["picture_px"];
 	share_ = spec["picture_share"];
+	shade_ = spec["picture_shade"];
 	rows_ = species;
 	Array e = spec["elevations_deg"];
 	elevations_.clear();
@@ -144,7 +145,7 @@ void TreePictures::store(const Frame &f, int row, int col, const Color &tone) {
 			size_t i = size_t(y) * px_ + x, o = (size_t(row * px_ + y) * width + size_t(col * px_ + x)) * RGBA;
 			bool hit = f.depth[i] > -std::numeric_limits<float>::max();
 			// Empty texels hold the crown's mean tone: the mips then fade to it and not to black.
-			Color k = hit ? f.colour[i] : tone;
+			Color k = ((hit ? f.colour[i] : tone).srgb_to_linear() * shade_).linear_to_srgb();
 			Vector3 v = hit ? f.normal[i].normalized() : Vector3(0, 0, 1);
 			c[o] = uint8_t(clampf(k.r, 0.f, 1.f) * BYTE); c[o + 1] = uint8_t(clampf(k.g, 0.f, 1.f) * BYTE); c[o + 2] = uint8_t(clampf(k.b, 0.f, 1.f) * BYTE);
 			c[o + 3] = hit ? uint8_t(BYTE) : 0;

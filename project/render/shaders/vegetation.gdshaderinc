@@ -31,6 +31,7 @@ uniform float gust_m = 220.0;
 uniform float turbulence = 0.19;
 uniform float sway_hz = 0.25;
 uniform float roughness = 0.85;
+uniform float leaf_specular = 0.15; // materials.json
 
 uniform int picture_frames = 1;
 uniform int picture_rows = 1;

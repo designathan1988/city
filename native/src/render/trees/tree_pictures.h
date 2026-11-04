@@ -35,6 +35,7 @@ private:
 	void store(const Frame &f, int row, int col, const godot::Color &tone);
 	int px_ = 0, rows_ = 0;
 	float share_ = 1;
+	float shade_ = 1; // the light a crown keeps from its own shadow and its neighbours, which a picture cannot cast
 	std::vector<float> elevations_;
 	godot::Ref<godot::Image> leaves_;
 	godot::PackedByteArray colour_, normals_;

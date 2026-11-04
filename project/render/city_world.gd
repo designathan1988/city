@@ -4,6 +4,7 @@ class_name CityWorld
 extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
+const LUMA := Vector3(0.3, 0.6, 0.1) # the weights terrain_layers.gdshaderinc reads a colour's luma with
 const WATER_SHADER := "res://render/shaders/water.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
 const WATER_EXTENT_M := 70000.0
@@ -213,6 +214,8 @@ func _build_terrain(palette: Dictionary) -> void:
 	for key in palette.terrain:
 		if not key.begins_with("_"):
 			mat.set_shader_param(key, _param(palette.terrain[key]))
+	var grass_mean := _mean_color(_param(palette.terrain.grass_map)).srgb_to_linear()
+	mat.set_shader_param("grass_mean", grass_mean.r * LUMA.x + grass_mean.g * LUMA.y + grass_mean.b * LUMA.z)
 
 
 func _build_water(palette: Dictionary) -> void:
