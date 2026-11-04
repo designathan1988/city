@@ -4,7 +4,6 @@
 extends Node3D
 
 const SETTLE_FRAMES := 4
-const BUILD_FRAMES := 400
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
@@ -12,6 +11,7 @@ const MAX_NEAR_M := 8.0
 const TRAFFIC_WARMUP_TICKS := 2400
 ## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (CaptureSoak).
 const TRAFFIC_SAMPLE := 400
+const FASTEST_SPEED := 3
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
 ## Offsets in the vehicle frame: x to its left, y up, z ahead.
@@ -24,24 +24,8 @@ const CROSSING_NEAR_FROM := Vector3(-6, 22, 10)
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
-## Hours the light is pinned to (Roadcraft "always day" / "always night"); a view may name its own.
-const DAY := 16.0
-const NIGHT := 22.0
-## Views: name, camera offset from the city centre, look-at offset (metres); 17-18: superchunk far switch.
-const VIEWS := [
-	["01_rua", Vector3(-58, 62, 40), Vector3(-58, 0, -70)],
-	["02_bairro", Vector3(-260, 260, 260), Vector3(40, 0, -40)],
-	["03_cidade", Vector3(-900, 700, 900), Vector3(0, 0, 0)],
-	["04_rua_baixa", Vector3(-62, 14, 30), Vector3(-62, 6, -60)],
-	["05_transito", Vector3(-60, 6, 18), Vector3(-62, 1, -30)],
-	["06_cruzamento", Vector3(-20, 30, 40), Vector3(-60, 0, -20)],
-	["13_calcada", Vector3(-53, 2.2, 6), Vector3(-55, 1.0, -22)],
-	["10_noite", Vector3(-58, 62, 40), Vector3(-58, 0, -70), NIGHT],
-	["11_relevo", Vector3(1750, 150, 1950), Vector3(2050, 0, 1650), DAY],
-	["12_encosta", Vector3(3750, 70, 300), Vector3(4400, 0, 80), DAY],
-	["17_horizonte", Vector3(-1500, 140, 1500), Vector3(600, 0, -600), DAY],
-	["18_alto", Vector3(0, 2600, 2600), Vector3(0, 0, 0), DAY],
-]
+const DAY := CaptureViews.DAY
+const NIGHT := CaptureViews.NIGHT
 
 ## Functions shot by _civic_tour (sim/buildings/building_store.h BuildingFn) and the view offset per lot size.
 const CIVIC_SHOTS := {1: "escola", 2: "igreja", 3: "hospital", 4: "clinica", 5: "praca", 6: "parque", 7: "posto", 8: "mercado",
@@ -57,6 +41,8 @@ var seed := 1
 var only := PackedStringArray()
 var soak := 0
 var measure := false
+## --wear=N: N frames of traffic at full speed before the shots, the agents drawn: the wear the streets take.
+var wear_frames := 0
 
 
 func _ready() -> void:
@@ -69,6 +55,12 @@ func _ready() -> void:
 		CaptureSoak.report(soak)
 	else:
 		CityStore.step_ticks(120 if measure else TRAFFIC_WARMUP_TICKS)
+	if wear_frames > 0:
+		CityStore.dispatch(&"set_speed", [FASTEST_SPEED])
+		await _frames(wear_frames)
+		CityStore.dispatch(&"set_speed", [0])
+		var cost: Dictionary = CityStore.query(&"render_cost")
+		print("desgaste: ", cost.worn_cells, " células, ", cost.wear_publications, " publicações")
 	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
 	_memory("tráfego aquecido")
 	var ground := _ground(0, 0)
@@ -85,6 +77,12 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 
+## The shot's hour: the light and the clock the top bar shows.
+func set_hour(hour: float) -> void:
+	world.set_hour(hour)
+	CityStore.dispatch(&"set_day_hour", [hour])
+
+
 func _boot_world() -> bool:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
@@ -98,6 +96,7 @@ func _boot_world() -> bool:
 		push_error("boot: %s" % errors)
 		return false
 	add_child(RoadcraftHud.new())
+	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
 	var report: Dictionary = CityStore.new_map(map, seed, true)
 	print("cidade: ", report)
 	_memory("cidade gerada")
@@ -108,22 +107,18 @@ func _boot_world() -> bool:
 
 
 func _wait_render() -> void:
-	var waited := 0
-	await _frames(2)
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await _frames(1)
-		waited += 1
+	var waited: int = await CaptureWait.until_drawn(self, 2, "cidade")
 	print("quadros até desenhar tudo: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 	_memory("cidade desenhada")
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	var hour := DAY
-	for v in VIEWS:
+	for v in CaptureViews.VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
 		var h: float = v[3] if v.size() > 3 else DAY
-		world.set_hour(h)
+		set_hour(h)
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
 			await _frames(_sky_frames())
@@ -159,6 +154,8 @@ func _parse_args() -> void:
 			map = int(arg.trim_prefix("--map="))
 		elif arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=").split(",")
+		elif arg.begins_with("--wear="):
+			wear_frames = int(arg.trim_prefix("--wear="))
 		elif arg.begins_with("--soak="):
 			soak = int(arg.trim_prefix("--soak="))
 		elif arg == "--measure":
@@ -177,11 +174,7 @@ func _shot(name: String, from: Vector3, at: Vector3) -> void:
 	camera.global_position = from
 	camera.look_at(at)
 	camera.near = clampf(from.distance_to(at) * NEAR_PER_M, MIN_NEAR_M, MAX_NEAR_M)
-	await _frames(SETTLE_FRAMES)
-	var waited := 0
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await _frames(1)
-		waited += 1
+	await CaptureWait.until_drawn(self, SETTLE_FRAMES, name)
 	var img := get_viewport().get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)

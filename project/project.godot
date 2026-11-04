@@ -47,3 +47,15 @@ night={
 "type": "float",
 "value": 0.0
 }
+rooms_awake={
+"type": "float",
+"value": 0.63
+}
+room_daylight={
+"type": "float",
+"value": 0.2
+}
+outside_on={
+"type": "float",
+"value": 0.79
+}

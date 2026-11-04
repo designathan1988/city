@@ -37,13 +37,21 @@ void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const 
 	d.visible(any && shown);
 }
 
-BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2) {
+BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass) {
 	Surface sf;
-	if (shell.triangles() == 0) return sf;
+	const bool any_glass = glass && glass->triangles() > 0;
+	if (shell.triangles() == 0 && !any_glass) return sf;
 	sf.mesh.rid = RenderingServer::get_singleton()->mesh_create();
 	shell.commit_to(sf.mesh.rid, with_uv2);
+	if (any_glass) glass->commit_to(sf.mesh.rid, with_uv2);
 	Vector3 mn, mx, pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	shell.bounds(mn, mx);
+	if (any_glass) {
+		Vector3 gn, gx;
+		glass->bounds(gn, gx);
+		mn = mn.min(gn);
+		mx = mx.max(gx);
+	}
 	sf.box = AABB(mn - pad, mx - mn + pad * 2);
 	return sf;
 }
@@ -63,7 +71,8 @@ PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstanc
 int64_t BuildingRenderer::Built::bytes() const {
 	int64_t n = 0;
 	for (int i = 0; i < SUB_COUNT; i++)
-		n += near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true);
+		n += near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
+				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true);
 	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
 	return n;
 }
@@ -71,14 +80,16 @@ int64_t BuildingRenderer::Built::bytes() const {
 void BuildingRenderer::Built::bake() {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		if (has_near) {
-			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true);
+			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)]);
 			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
 		}
-		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true);
+		if (has_mid) mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)]);
 		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
 		near_shell[size_t(i)] = b40::Shell();
 		parts_shell[size_t(i)] = b40::Shell();
 		mid_shell[size_t(i)] = b40::Shell();
+		near_glass[size_t(i)] = b40::Shell();
+		mid_glass[size_t(i)] = b40::Shell();
 	}
 	for (int b = 0; b < BAND_COUNT; b++) {
 		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_STRIDE);

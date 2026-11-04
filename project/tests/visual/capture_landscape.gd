@@ -92,9 +92,7 @@ func shot(name: String, at: Vector3, azimuth: float, tilt: float, zoom: float) -
 	var half := VIEW_LINES / (2.0 * zoom)
 	rig.jump(at, RIGHT_ANGLE - azimuth, tilt, CameraProfile.view_distance(rig.cfg, half))
 	print("pose ", name, ": inclinacao ", rad_to_deg(rig.pitch), " lente ", rig.camera.fov, " meia altura ", half, " olho ", rig.camera.global_position)
-	await _frames(SHOT_FRAMES)
-	while CityStore.query(&"render_pending") > 0:
-		await get_tree().process_frame
+	await CaptureWait.until_drawn(self, SHOT_FRAMES, name)
 	var gpu_ms := 0.0
 	for i in SHOT_FRAMES:
 		await get_tree().process_frame

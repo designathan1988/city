@@ -14,6 +14,7 @@ struct ByteReader;
 
 constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
+constexpr uint32_t SAVE_BODIES = 0x53594442U; // 'BDYS': the section of edited bodies; a file without it has none
 constexpr uint32_t SAVE_VERSION = 2;
 
 // The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).

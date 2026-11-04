@@ -6,7 +6,9 @@
 #include "sim/commands/road_edit.h"
 
 #include "core/random.h"
+#include "sim/buildings/b40/record.h"
 #include "sim/buildings/growth.h"
+#include "sim/commands/body_ops.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/terrain_gen.h"
 
@@ -138,7 +140,6 @@ std::string lot_frame(const CityState &s, double ax, double az, double bx, doubl
 
 EditResult place_building(CityState &s, double ax, double az, double bx, double bz, int fn, int zone) {
 	EditResult r;
-	const GrowthDef &g = s.catalog.growth;
 	if (fn < 0 || fn >= FN_COUNT || zone < 1 || zone >= ZONE_CODES) {
 		r.error = "tool.failed";
 		return r;
@@ -157,8 +158,7 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 	b.fn = uint8_t(fn);
 	b.seed = hash_combine(uint32_t(int32_t(std::lround(ax / SEED_GRID_M))), uint32_t(int32_t(std::lround(az / SEED_GRID_M))) ^ LOT_SALT);
 	b.style = uint16_t(b.seed & BUILDING_AUTO_STYLE_MASK);
-	bool open_space = fn == FN_PARK || fn == FN_SQUARE;
-	b.floors = uint16_t(open_space ? 0 : floors_for(g, zone, s.catalog.profile(b.profile), b.seed));
+	b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	b.built = s.clock.minutes.load();
 	j_add_building(s, b);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
@@ -179,8 +179,30 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 		r.ok = true;
 		return r;
 	}
+	const bool other_use = b.fn != fn;
 	b.fn = uint8_t(fn);
-	b.floors = uint16_t(floors);
+	if (other_use) {
+		b.body = 0; // another use is another building, made again from the seed; undo brings the edited one back
+		b.floors = 0;
+		b.floors = uint16_t(body_floors(s.buildings.designs, b));
+	}
+	if (floors != b.floors && floors > 0) {
+		// Another height is the body's: its tallest block grows or shrinks by the difference.
+		b40::Body body;
+		b40::record_body(s.buildings.designs, b, body);
+		int tallest = -1;
+		for (size_t i = 0; i < body.volumes.size(); i++)
+			if (tallest < 0 || body.volumes[i].top() > body.volumes[size_t(tallest)].top()) tallest = int(i);
+		if (tallest < 0) {
+			r.error = "tool.failed";
+			return r;
+		}
+		const b40::Volume &v = body.volumes[size_t(tallest)];
+		r.error = op_set_storeys(body, s.catalog.tune, tallest, std::max(1, floors - v.base));
+		if (!r.error.empty()) return r;
+		b.body = s.buildings.designs.edited->add(std::move(body));
+		b.floors = uint16_t(body_floors(s.buildings.designs, b));
+	}
 	j_edit_building(s, id, b);
 	float reach = std::max(b.w, b.d);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);

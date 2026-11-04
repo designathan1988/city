@@ -1,9 +1,10 @@
 {
  "maps": [
-  { "id": "town", "name_key": "menu.size.town", "tiles": 10, "medium": true },
+  { "id": "town", "name_key": "menu.size.town", "tiles": 10, "medium": true, "city_radius_m": 640 },
   { "id": "km10", "name_key": "menu.size.km10", "tiles": 10, "medium": false },
   { "id": "km16", "name_key": "menu.size.km16", "tiles": 16, "medium": false },
   { "id": "km20", "name_key": "menu.size.km20", "tiles": 20, "medium": false },
-  { "id": "km24", "name_key": "menu.size.km24", "tiles": 24, "medium": false }
+  { "id": "km24", "name_key": "menu.size.km24", "tiles": 24, "medium": false },
+  { "id": "metropolis", "name_key": "menu.size.metropolis", "tiles": 10, "medium": true, "city_radius_m": 1600 }
  ]
 }
