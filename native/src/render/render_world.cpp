@@ -67,6 +67,7 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 void RenderWorld::drain_log(CityState &s) {
 	std::lock_guard<std::mutex> log(s.log.mutex);
 	road_keys_.swap(s.log.road_chunks);
+	prop_keys_.swap(s.log.prop_chunks);
 	building_keys_.swap(s.log.building_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
 }
@@ -96,6 +97,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			building_stream_.mark(k);
 			trees_.mark_dirty(k);
 		}
+		ChangeLog::dedup(prop_keys_);
+		for (int64_t k : prop_keys_) {
+			props_stream_.mark(k);
+			trees_.mark_dirty(k);
+		}
+		prop_keys_.clear();
 		road_keys_.clear();
 		building_keys_.clear();
 		terrain_rects_.clear();

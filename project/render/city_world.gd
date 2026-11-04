@@ -15,12 +15,13 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
-	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
+	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader", "res://render/shaders/lamp_glow.gdshader",
 	"res://render/shaders/vegetation_cards.gdshader",
 ]
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
 var terrain: Node3D
+var _sign_sheet: SignSheet
 var sun: DirectionalLight3D
 var environment: Environment
 var daylight: Daylight
@@ -51,6 +52,9 @@ func materials() -> Dictionary:
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
+		_sign_sheet = SignSheet.new(DataTables.render().streets.signs)
+		add_child(_sign_sheet)
+		_materials.prop.set_shader_parameter("sign_atlas", _sign_sheet.get_texture())
 	return _materials
 
 

@@ -6,10 +6,8 @@
   "kerb_clear_m": 0.5
  },
  "lamps": {
-  "_doc": "The lamps hang on the concrete distribution poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). Rioluz NPIP-1 5.1.1: mounting height over street width 1.00 on one side; a street wider than mount_height_m / unilateral_ratio gets poles on both sides, and on one side they stand on the east or south face (5.2), leaving the north and west faces to the trees. mount_height_m and reach_m are measured on the utility pole mesh (data/render/streets.json props.pole: lens 7.3 m high, 1.6 m out along its arm).",
+  "_doc": "The lamps hang on the utility poles that carry the wires: Enel SP PD-4.003 (urban overhead distribution networks), basic span 35 m; the poles spread evenly from one end of the block to the other, one past each crosswalk (Rioluz NPIP-1 item 4: a crossing is lit by the sum of both streets). The line stands on the east or south face (NPIP-1 5.2); the other face, when it has a sidewalk, gets a lighting column at each station, as on the Roadcraft 4.0 streets (photographed: reference/rua). reach_m is measured on props.pole in data/render/streets.json: the lens 1.6 m out along its arm.",
   "span_m": 35,
-  "mount_height_m": 7.3,
-  "unilateral_ratio": 1.0,
   "reach_m": 1.6
  },
  "signals": {

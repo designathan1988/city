@@ -1,82 +1,35 @@
 {
  "type": "object",
  "properties": {
-  "_doc": {
-   "type": "string"
-  },
+  "_doc": {"type": "string"},
   "road": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "asphalt_map": {
-       "type": "string"
-      },
-      "asphalt_normal": {
-       "type": "string"
-      },
-      "footway_map": {
-       "type": "string"
-      },
-      "footway_normal": {
-       "type": "string"
-      },
-      "kerb_map": {
-       "type": "string"
-      },
-      "verge_map": {
-       "type": "string"
-      },
-      "asphalt_m": {
-       "type": "number"
-      },
-      "footway_m": {
-       "type": "number"
-      },
-      "kerb_m": {
-       "type": "number"
-      },
-      "verge_m": {
-       "type": "number"
-      },
-      "normal_strength": {
-       "type": "number"
-      },
-      "kerb_block_m": {
-       "type": "number"
-      },
-      "gutter_joint_m": {
-       "type": "number"
-      },
-      "paver_w": {
-       "type": "number"
-      },
-      "paver_h": {
-       "type": "number"
-      },
-      "cobble_per_m": {
-       "type": "number"
-      },
-      "pool_color": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "pool_sigma": {
-       "type": "number"
-      },
-      "pool_gain": {
-       "type": "number"
-      },
-      "plate_glow": {
-       "type": "number"
-      },
-      "pool_floor": {
-       "type": "number"
-      }
+      "asphalt_map": {"type": "string"},
+      "asphalt_normal": {"type": "string"},
+      "footway_map": {"type": "string"},
+      "footway_normal": {"type": "string"},
+      "kerb_map": {"type": "string"},
+      "verge_map": {"type": "string"},
+      "asphalt_m": {"type": "number"},
+      "footway_m": {"type": "number"},
+      "kerb_m": {"type": "number"},
+      "verge_m": {"type": "number"},
+      "normal_strength": {"type": "number"},
+      "kerb_block_m": {"type": "number"},
+      "gutter_joint_m": {"type": "number"},
+      "paver_w": {"type": "number"},
+      "paver_h": {"type": "number"},
+      "cobble_per_m": {"type": "number"},
+      "pool_color": {"type": "string", "pattern_prefix": "#"},
+      "pool_sigma": {"type": "number"},
+      "pool_gain": {"type": "number"},
+      "plate_glow": {"type": "number"},
+      "pool_floor": {"type": "number"}
      },
      "required": [
       "asphalt_map",
@@ -104,85 +57,33 @@
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "building": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "finish_map": {
-       "type": "string"
-      },
-      "finish_normal": {
-       "type": "string"
-      },
-      "finish_rough": {
-       "type": "string"
-      },
-      "finish_m": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "finish_mean": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "day_inside": {
-       "type": "number"
-      },
-      "glass_reflect": {
-       "type": "number"
-      },
-      "glass_sky": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "glass_sky_floor": {
-       "type": "number"
-      },
-      "finish_normal_k": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "finish_metal": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "wall_gain": {
-       "type": "number"
-      },
-      "lit_min": {
-       "type": "number"
-      },
-      "lit_max": {
-       "type": "number"
-      },
-      "room_depth_m": {
-       "type": "number"
-      },
-      "lamp_glow": {
-       "type": "number"
-      },
-      "window_glow": {
-       "type": "number"
-      }
+      "finish_map": {"type": "string"},
+      "finish_normal": {"type": "string"},
+      "finish_rough": {"type": "string"},
+      "finish_m": {"type": "array", "items": {"type": "number"}},
+      "finish_mean": {"type": "array", "items": {"type": "number"}},
+      "day_inside": {"type": "number"},
+      "glass_reflect": {"type": "number"},
+      "glass_sky": {"type": "string", "pattern_prefix": "#"},
+      "glass_sky_floor": {"type": "number"},
+      "finish_normal_k": {"type": "array", "items": {"type": "number"}},
+      "finish_metal": {"type": "array", "items": {"type": "number"}},
+      "wall_gain": {"type": "number"},
+      "lit_min": {"type": "number"},
+      "lit_max": {"type": "number"},
+      "room_depth_m": {"type": "number"},
+      "lamp_glow": {"type": "number"},
+      "window_glow": {"type": "number"}
      },
      "required": [
       "finish_map",
@@ -206,91 +107,38 @@
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "building_far": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
-     "properties": {
-      "glass_sky": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "glass_floor": {
-       "type": "number"
-      },
-      "wall_gain": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "glass_sky",
-      "glass_floor",
-      "wall_gain"
-     ],
+     "properties": {"glass_sky": {"type": "string", "pattern_prefix": "#"}, "glass_floor": {"type": "number"}, "wall_gain": {"type": "number"}},
+     "required": ["glass_sky", "glass_floor", "wall_gain"],
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "building_parts": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "finish_map": {
-       "type": "string"
-      },
-      "finish_normal": {
-       "type": "string"
-      },
-      "finish_rough": {
-       "type": "string"
-      },
-      "finish_m": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "finish_mean": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "finish_normal_k": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "finish_metal": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       }
-      },
-      "wall_gain": {
-       "type": "number"
-      }
+      "finish_map": {"type": "string"},
+      "finish_normal": {"type": "string"},
+      "finish_rough": {"type": "string"},
+      "finish_m": {"type": "array", "items": {"type": "number"}},
+      "finish_mean": {"type": "array", "items": {"type": "number"}},
+      "finish_normal_k": {"type": "array", "items": {"type": "number"}},
+      "finish_metal": {"type": "array", "items": {"type": "number"}},
+      "wall_gain": {"type": "number"}
      },
      "required": [
       "finish_map",
@@ -305,105 +153,52 @@
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "prop": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "glow_color": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "glow_gain": {
-       "type": "number"
-      },
-      "roughness": {
-       "type": "number"
-      },
-      "lens_roughness": {
-       "type": "number"
-      },
-      "lens_ior": {
-       "type": "number"
-      }
+      "glow_color": {"type": "string", "pattern_prefix": "#"},
+      "glow_gain": {"type": "number"},
+      "roughness": {"type": "number"},
+      "lens_roughness": {"type": "number"},
+      "lens_ior": {"type": "number"},
+      "wire_min_px": {"type": "number"},
+      "wire_sway_m": {"type": "number"},
+      "wood_grain": {"type": "number"}
      },
-     "required": [
-      "glow_color",
-      "glow_gain",
-      "roughness",
-      "lens_roughness",
-      "lens_ior"
-     ],
+     "required": ["glow_color", "glow_gain", "roughness", "lens_roughness", "lens_ior", "wire_min_px", "wire_sway_m", "wood_grain"],
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "agent": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "head_glow": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "tail_glow": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "head_power": {
-       "type": "number"
-      },
-      "tail_power": {
-       "type": "number"
-      },
-      "brake_ratio": {
-       "type": "number"
-      },
-      "sign_glow": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "sign_power": {
-       "type": "number"
-      },
-      "paint_roughness": {
-       "type": "number"
-      },
-      "lens_roughness": {
-       "type": "number"
-      },
-      "skin_roughness": {
-       "type": "number"
-      },
-      "helmet_roughness": {
-       "type": "number"
-      },
-      "trim_roughness": {
-       "type": "number"
-      },
-      "cloth_roughness": {
-       "type": "number"
-      }
+      "head_glow": {"type": "string", "pattern_prefix": "#"},
+      "tail_glow": {"type": "string", "pattern_prefix": "#"},
+      "head_power": {"type": "number"},
+      "tail_power": {"type": "number"},
+      "brake_ratio": {"type": "number"},
+      "sign_glow": {"type": "string", "pattern_prefix": "#"},
+      "sign_power": {"type": "number"},
+      "paint_roughness": {"type": "number"},
+      "lens_roughness": {"type": "number"},
+      "skin_roughness": {"type": "number"},
+      "helmet_roughness": {"type": "number"},
+      "trim_roughness": {"type": "number"},
+      "cloth_roughness": {"type": "number"}
      },
      "required": [
       "head_glow",
@@ -422,208 +217,94 @@
      ],
      "strict": true
     },
-    "_doc": {
-     "type": "string"
-    }
+    "_doc": {"type": "string"}
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "people": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "tint_mix": {
-       "type": "number"
-      },
-      "skin_base": {
-       "type": "number"
-      },
-      "skin_step": {
-       "type": "number"
-      },
-      "roughness_body": {
-       "type": "number"
-      },
-      "eye_color": {
-       "type": "string",
-       "pattern_prefix": "#"
-      }
+      "tint_mix": {"type": "number"},
+      "skin_base": {"type": "number"},
+      "skin_step": {"type": "number"},
+      "roughness_body": {"type": "number"},
+      "eye_color": {"type": "string", "pattern_prefix": "#"}
      },
-     "required": [
-      "tint_mix",
-      "skin_base",
-      "skin_step",
-      "roughness_body",
-      "eye_color"
-     ],
+     "required": ["tint_mix", "skin_base", "skin_step", "roughness_body", "eye_color"],
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "overlay": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
-    "params": {
-     "type": "object",
-     "properties": {
-      "opacity": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "opacity"
-     ],
-     "strict": true
-    }
+    "shader": {"type": "string"},
+    "params": {"type": "object", "properties": {"opacity": {"type": "number"}}, "required": ["opacity"], "strict": true}
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "agent_glass": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
-     "properties": {
-      "transmittance": {
-       "type": "number"
-      },
-      "ior": {
-       "type": "number"
-      },
-      "roughness": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "transmittance",
-      "ior",
-      "roughness"
-     ],
+     "properties": {"transmittance": {"type": "number"}, "ior": {"type": "number"}, "roughness": {"type": "number"}},
+     "required": ["transmittance", "ior", "roughness"],
      "strict": true
     },
-    "_doc": {
-     "type": "string"
-    }
+    "_doc": {"type": "string"}
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "vegetation": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": {
-       "type": "number"
-      },
-      "wind_dir_z": {
-       "type": "number"
-      },
-      "wind_speed_ms": {
-       "type": "number"
-      },
-      "sway_per_ms2": {
-       "type": "number"
-      },
-      "gust_m": {
-       "type": "number"
-      },
-      "turbulence": {
-       "type": "number"
-      },
-      "sway_hz": {
-       "type": "number"
-      },
-      "roughness": {
-       "type": "number"
-      }
+      "wind_dir_x": {"type": "number"},
+      "wind_dir_z": {"type": "number"},
+      "wind_speed_ms": {"type": "number"},
+      "sway_per_ms2": {"type": "number"},
+      "gust_m": {"type": "number"},
+      "turbulence": {"type": "number"},
+      "sway_hz": {"type": "number"},
+      "roughness": {"type": "number"}
      },
-     "required": [
-      "wind_dir_x",
-      "wind_dir_z",
-      "wind_speed_ms",
-      "sway_per_ms2",
-      "gust_m",
-      "turbulence",
-      "sway_hz",
-      "roughness"
-     ],
+     "required": ["wind_dir_x", "wind_dir_z", "wind_speed_ms", "sway_per_ms2", "gust_m", "turbulence", "sway_hz", "roughness"],
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
   },
   "vegetation_cards": {
    "type": "object",
    "properties": {
-    "shader": {
-     "type": "string"
-    },
+    "shader": {"type": "string"},
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": {
-       "type": "number"
-      },
-      "wind_dir_z": {
-       "type": "number"
-      },
-      "wind_speed_ms": {
-       "type": "number"
-      },
-      "sway_per_ms2": {
-       "type": "number"
-      },
-      "gust_m": {
-       "type": "number"
-      },
-      "turbulence": {
-       "type": "number"
-      },
-      "sway_hz": {
-       "type": "number"
-      },
-      "roughness": {
-       "type": "number"
-      },
-      "cover_per_mip": {
-       "type": "number"
-      }
+      "wind_dir_x": {"type": "number"},
+      "wind_dir_z": {"type": "number"},
+      "wind_speed_ms": {"type": "number"},
+      "sway_per_ms2": {"type": "number"},
+      "gust_m": {"type": "number"},
+      "turbulence": {"type": "number"},
+      "sway_hz": {"type": "number"},
+      "roughness": {"type": "number"},
+      "cover_per_mip": {"type": "number"}
      },
      "required": [
       "wind_dir_x",
@@ -639,11 +320,22 @@
      "strict": true
     }
    },
-   "required": [
-    "shader",
-    "params"
-   ],
+   "required": ["shader", "params"],
    "strict": true
+  },
+  "lamp_glow": {
+   "type": "object",
+   "strict": true,
+   "required": ["shader", "params"],
+   "properties": {
+    "shader": {"type": "string"},
+    "params": {
+     "type": "object",
+     "strict": true,
+     "required": ["glow_color", "pool_gain", "beam_gain"],
+     "properties": {"glow_color": {"type": "string", "pattern_prefix": "#"}, "pool_gain": {"type": "number"}, "beam_gain": {"type": "number"}}
+    }
+   }
   }
  },
  "required": [
@@ -658,7 +350,8 @@
   "overlay",
   "agent_glass",
   "vegetation",
-  "vegetation_cards"
+  "vegetation_cards",
+  "lamp_glow"
  ],
  "strict": true
 }

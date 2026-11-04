@@ -6,6 +6,7 @@
 
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
+#include "sim/street/street_spots.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,7 +17,6 @@ namespace city {
 namespace {
 constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 constexpr float SAME_WIDTH_M = 0.01f;
-constexpr int CHAIN_GUARD = 4000;
 
 // The profile reads the same from both ends (strips mirrored, lane directions turned).
 bool mirror_symmetric(const Profile &p) {
@@ -68,35 +68,6 @@ int settle_under(CityState &s, int seg) {
 }
 } // namespace
 
-std::vector<int> street_chain(const CityState &s, int s0) {
-	const RoadNetwork &net = s.roads;
-	int prof = net.segs[s0].profile;
-	const Profile &p = s.catalog.profile(prof);
-	std::vector<int> out{ s0 };
-	for (int start_end : { 1, 0 }) {
-		int sg = s0, end = start_end;
-		for (int guard = 0; guard < CHAIN_GUARD; guard++) {
-			int n = end == 1 ? net.segs[sg].b : net.segs[sg].a;
-			Arm here = arm_of(net.segs[sg].q, p, end);
-			double best_dot = s.catalog.tune.edit_street_cos;
-			int best = -1, best_end = 0;
-			for (int t : net.nodes[n].segs) {
-				if (std::count(out.begin(), out.end(), t) || net.segs[t].profile != prof || s.catalog.profile(prof).ring) continue;
-				int t_end = net.segs[t].a == n ? 0 : 1;
-				if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
-				Arm arm = arm_of(net.segs[t].q, p, t_end);
-				double d = -(arm.dx * here.dx + arm.dz * here.dz);
-				if (d > best_dot) { best_dot = d; best = t; best_end = t_end; }
-			}
-			if (best < 0) break;
-			out.push_back(best);
-			sg = best;
-			end = best_end == 0 ? 1 : 0;
-		}
-	}
-	return out;
-}
-
 EditResult split_road_at(CityState &s, double x, double z) {
 	EditResult r;
 	double t, d;
@@ -128,7 +99,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		r.error = seg < 0 ? "tools.hint.upgradePick" : "ui.insp.ring";
 		return r;
 	}
-	std::vector<int> segs = whole_street ? street_chain(s, seg) : std::vector<int>{ seg };
+	std::vector<int> segs = whole_street ? street_chain(s.roads, seg) : std::vector<int>{ seg };
 	double price = profile_delta(s, segs, profile);
 	if (price > 0 && !s.unlimited_money && price > s.money) {
 		r.error = "ui.insp.noMoney";

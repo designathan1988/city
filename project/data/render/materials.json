@@ -118,10 +118,66 @@
    "finish_map": "res://assets/surfaces/building-finishes.map.png",
    "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
    "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
-   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
-   "finish_mean": [1, 1, 1, 1, 1, 1, 1, 1, 0.081, 1, 0.226, 1, 1],
-   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
-   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
+   "finish_m": [
+    8,
+    6,
+    2,
+    2.4,
+    3.2,
+    9.6,
+    4.8,
+    3.2,
+    6,
+    4,
+    4,
+    4.8,
+    8
+   ],
+   "finish_mean": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.081,
+    1,
+    0.226,
+    1,
+    1
+   ],
+   "finish_normal_k": [
+    0.2,
+    0.22,
+    0.25,
+    0.55,
+    0.3,
+    0.3,
+    0.45,
+    0.6,
+    0.3,
+    0.7,
+    0.6,
+    0.3,
+    0.35
+   ],
+   "finish_metal": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.55,
+    1.0,
+    0,
+    0,
+    0.15,
+    0
+   ],
    "wall_gain": 1.0
   }
  },
@@ -132,7 +188,10 @@
    "glow_gain": 6.0,
    "roughness": 0.85,
    "lens_roughness": 0.0,
-   "lens_ior": 1.5848
+   "lens_ior": 1.5848,
+   "wire_min_px": 0.7,
+   "wire_sway_m": 0.35,
+   "wood_grain": 0.5
   }
  },
  "agent": {
@@ -204,6 +263,14 @@
    "sway_hz": 0.25,
    "roughness": 0.85,
    "cover_per_mip": 0.25
+  }
+ },
+ "lamp_glow": {
+  "shader": "res://render/shaders/lamp_glow.gdshader",
+  "params": {
+   "glow_color": "#ffdba0",
+   "pool_gain": 0.32,
+   "beam_gain": 0.08
   }
  }
 }

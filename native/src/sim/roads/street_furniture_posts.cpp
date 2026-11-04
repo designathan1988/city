@@ -45,8 +45,8 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	if (!right && !left) return r;
 	const StreetFurnitureDef &d = defs(net);
 	r.any = true;
-	// both faces when the carriageway is wider than one row lights (NPIP-1 5.1.1); one row on the east or south face
-	r.twin = right && left && p.asph_left + p.asph_right > d.lamps.mount_height_m / d.lamps.unilateral_ratio;
+	// the wires on one face, a lighting column on the other when there is one (the Roadcraft 4.0 street); the line on the east or south face
+	r.twin = right && left;
 	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
 	const double dx = b.x - a.x, dz = b.z - a.z; // the right face looks to (-dz, dx): east is +x, south +z
 	r.side = right && left ? (r.twin || dx - dz >= 0 ? 0 : 1) : (right ? 0 : 1);

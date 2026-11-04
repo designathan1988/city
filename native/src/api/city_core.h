@@ -44,6 +44,20 @@ public:
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
 
+	// --- the Street tab (city_core_street.cpp)
+	godot::Dictionary preview_item(const godot::Vector3 &p, int kind, float reach);
+	godot::Dictionary place_item(const godot::Vector3 &p, int kind, int sign, const godot::String &text, float reach);
+	godot::Dictionary place_item_row(const godot::Vector3 &a, const godot::Vector3 &b, int kind, float every_m);
+	godot::Dictionary preview_barrier(const godot::PackedVector3Array &pts, const godot::Vector3 &cursor, int kind);
+	godot::Dictionary build_barrier(const godot::PackedVector3Array &pts, int kind);
+	godot::Dictionary remove_street(const godot::Vector3 &p, float reach);
+	godot::Dictionary preview_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps);
+	godot::Dictionary build_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps);
+	void show_pole_preview(const godot::Array &poles);
+	void set_road_furniture(int level); // what new roads are laid with: 0 complete, 1 basic, 2 none
+	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
+	godot::Dictionary street_counts();
+
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
 	bool redo();

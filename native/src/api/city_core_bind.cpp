@@ -23,6 +23,18 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile"), &CityCore::preview_road);
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
+	ClassDB::bind_method(D_METHOD("preview_item", "position", "kind", "reach"), &CityCore::preview_item);
+	ClassDB::bind_method(D_METHOD("place_item", "position", "kind", "sign", "text", "reach"), &CityCore::place_item);
+	ClassDB::bind_method(D_METHOD("place_item_row", "from", "to", "kind", "every_m"), &CityCore::place_item_row);
+	ClassDB::bind_method(D_METHOD("preview_barrier", "points", "cursor", "kind"), &CityCore::preview_barrier);
+	ClassDB::bind_method(D_METHOD("build_barrier", "points", "kind"), &CityCore::build_barrier);
+	ClassDB::bind_method(D_METHOD("remove_street", "position", "reach"), &CityCore::remove_street);
+	ClassDB::bind_method(D_METHOD("preview_pole_run", "from", "to", "reach", "lamps"), &CityCore::preview_pole_run);
+	ClassDB::bind_method(D_METHOD("build_pole_run", "from", "to", "reach", "lamps"), &CityCore::build_pole_run);
+	ClassDB::bind_method(D_METHOD("show_pole_preview", "poles"), &CityCore::show_pole_preview);
+	ClassDB::bind_method(D_METHOD("set_road_furniture", "level"), &CityCore::set_road_furniture);
+	ClassDB::bind_method(D_METHOD("sign_cells"), &CityCore::sign_cells);
+	ClassDB::bind_method(D_METHOD("street_counts"), &CityCore::street_counts);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);

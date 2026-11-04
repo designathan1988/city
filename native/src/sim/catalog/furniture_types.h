@@ -9,7 +9,7 @@ namespace city {
 
 // Scalar keys of the blocks (X-macros: declared here, required by the loader).
 #define CITY_SIDEWALK_FIELDS(X) X(free_width_m) X(kerb_clear_m)
-#define CITY_LAMP_FIELDS(X) X(span_m) X(mount_height_m) X(unilateral_ratio) X(reach_m)
+#define CITY_LAMP_FIELDS(X) X(span_m) X(reach_m)
 #define CITY_SIGNAL_FIELDS(X) X(kerb_m)
 #define CITY_HYDRANT_FIELDS(X) X(reach_m)
 #define CITY_FURNITURE_FIELDS(X) X(corner_clear_m) X(bin_spacing_m)

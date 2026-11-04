@@ -69,8 +69,6 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 EditResult split_road_at(CityState &s, double x, double z);
 // Puts `profile` on the segment under (x, z), or on its whole street; charges the difference or refunds a share.
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
-// The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
-std::vector<int> street_chain(const CityState &s, int seg);
 // Why a roundabout cannot go there ("" = it can); `cut` allows cutting the roads inside the circle.
 std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius, bool cut);
 EditResult build_roundabout(CityState &s, double cx, double cz, double radius, bool cut);

@@ -15,7 +15,7 @@
 namespace city {
 
 namespace {
-constexpr double SAME_PLACE_M = 1e-3;
+constexpr double SAME_PLACE_M = 0.002; // two ends this close are one place
 constexpr int MARGIN_GROWTH = 2;
 constexpr float CLEAR_STEP_M = 1.f; // how far along the route a pole is nudged each try
 constexpr int LAMP_PERIOD = 2; // alternate: every other pole

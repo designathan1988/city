@@ -20,6 +20,8 @@ struct SignStand {
 	float face_x = 0, face_z = 1;
 };
 
+// The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
+std::vector<int> street_chain(const RoadNetwork &net, int seg);
 // The kind of piece an item is; FurnitureKind::COUNT for the ones with no footprint of their own.
 FurnitureKind item_piece(ItemKind k);
 // Applies the player's records to the derived pieces `out` of segment `sid`, of the kinds in `kinds`.

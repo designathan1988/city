@@ -40,6 +40,11 @@ public:
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }
+	int street_instances() const { return props_.instances(); }
+	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
+	void set_pole_preview(const CityState &s, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing) {
+		props_.set_pole_preview(s, at, lamp, standing);
+	}
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
@@ -64,7 +69,7 @@ private:
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
-	std::vector<int64_t> road_keys_, building_keys_;
+	std::vector<int64_t> road_keys_, building_keys_, prop_keys_;
 	std::vector<int> terrain_rects_;
 	Cost cost_;
 	void drain_log(CityState &s);

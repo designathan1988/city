@@ -52,6 +52,7 @@ struct MultiMeshDraw {
 			const godot::AABB &bounds, bool shadows) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		int count = int(buf.size() / MM_STRIDE);
+		if (count == 0 && !mm.is_valid()) return; // nothing drawn here yet
 		if (!mm.is_valid()) {
 			mm = rs->multimesh_create();
 			inst = rs->instance_create2(mm, scenario);

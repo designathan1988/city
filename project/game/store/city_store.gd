@@ -14,6 +14,9 @@ const COMMANDS := {
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
 	&"set_building": "set_building", &"set_overlay": "set_overlay",
+	&"place_item": "place_item", &"place_item_row": "place_item_row", &"build_barrier": "build_barrier",
+	&"remove_street": "remove_street", &"build_pole_run": "build_pole_run", &"show_pole_preview": "show_pole_preview",
+	&"set_road_furniture": "set_road_furniture",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -22,6 +25,8 @@ const QUERIES := {
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status",
+	&"preview_item": "preview_item", &"preview_barrier": "preview_barrier", &"preview_pole_run": "preview_pole_run",
+	&"sign_cells": "sign_cells", &"street_counts": "street_counts",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every

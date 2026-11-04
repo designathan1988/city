@@ -2,9 +2,12 @@
 #include "render/props/prop_kit.h"
 
 #include "core/color.h"
+#include "core/units.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
+
+#include <cmath>
 
 using namespace godot;
 
@@ -12,23 +15,65 @@ namespace city {
 
 namespace {
 constexpr float HORIZONTAL_EPS = 1e-6f;
+constexpr int LIGHT_SIDES = 20;
+constexpr float LIGHT_POOL_PART = 1.f, LIGHT_BEAM_PART = 2.f;
+const Color WHITE(1, 1, 1, 1);
 
 Vector3 vec3(const Variant &v) {
 	Array a = v;
 	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
 }
 
-// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens in y).
+// A cylinder narrowing from r0 at its base to r1 at its top, its top closed.
+void frustum(MeshBuilder &b, const Vector3 &base, float r0, float r1, float h, int seg, const Color &col, const Vector2 &t2) {
+	const Vector3 top = base + Vector3(0, h, 0), up(0, 1, 0);
+	const float lean = (r0 - r1) / h;
+	for (int i = 0; i < seg; i++) {
+		const float a0 = TAU_F * i / seg, a1 = TAU_F * (i + 1) / seg;
+		const Vector3 d0(std::cos(a0), 0, std::sin(a0)), d1(std::cos(a1), 0, std::sin(a1));
+		const Vector3 n0 = (d0 + up * lean).normalized(), n1 = (d1 + up * lean).normalized(), nn = (n0 + n1).normalized();
+		const int i0 = b.add(base + d0 * r0, n0, col, Vector2(), t2), i1 = b.add(base + d1 * r0, n1, col, Vector2(), t2);
+		const int i2 = b.add(top + d1 * r1, n1, col, Vector2(), t2), i3 = b.add(top + d0 * r1, n0, col, Vector2(), t2);
+		b.tri(i0, i1, i2, nn);
+		b.tri(i0, i2, i3, nn);
+		const int c0 = b.add(top, up, col, Vector2(), t2), c1 = b.add(top + d0 * r1, up, col, Vector2(), t2), c2 = b.add(top + d1 * r1, up, col, Vector2(), t2);
+		b.tri(c0, c1, c2, up);
+	}
+}
+
+// A bar of section width x height from a to b.
+void beam(MeshBuilder &b, const Vector3 &from, const Vector3 &to, float w, float h, const Color &col, const Vector2 &t2) {
+	const Vector3 along = (to - from).normalized();
+	const Vector3 side = (std::fabs(along.y) > 1.f - HORIZONTAL_EPS ? Vector3(1, 0, 0) : along.cross(Vector3(0, 1, 0)).normalized()) * (w * 0.5f);
+	const Vector3 up = side.cross(along).normalized() * (h * 0.5f);
+	const Vector3 c[4] = { side + up, up - side, -side - up, side - up };
+	for (int i = 0; i < 4; i++) {
+		const Vector3 p = c[i], q = c[(i + 1) % 4];
+		b.quad(from + p, from + q, to + q, to + p, col, (p + q).normalized(), nullptr, t2);
+	}
+	b.quad(from + c[0], from + c[1], from + c[2], from + c[3], col, -along, nullptr, t2);
+	b.quad(to + c[0], to + c[1], to + c[2], to + c[3], col, along, nullptr, t2);
+}
+
+// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens or a pole's PolePart in y).
 void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 &t2, PackedStringArray &errors) {
 	String shape = p.get("shape", "");
 	if (shape == "box") b.box(vec3(p["min"]), vec3(p["max"]), col, t2, true);
 	else if (shape == "cylinder") b.cylinder(vec3(p["base"]), float(p["radius"]), float(p["height"]), int(p["segments"]), col, true, t2);
 	else if (shape == "blob") b.blob(vec3(p["center"]), vec3(p["radius"]), col, t2);
+	else if (shape == "frustum") frustum(b, vec3(p["base"]), float(p["radius"]), float(p["top_radius"]), float(p["height"]), int(p["segments"]), col, t2);
+	else if (shape == "beam") beam(b, vec3(p["from"]), vec3(p["to"]), float(p["width"]), float(p["thick"]), col, t2);
 	else errors.push_back(String("streets.json props: forma desconhecida '") + shape + "'");
 }
 
 Color part_color(const Dictionary &p) {
 	return rgba8_to_color(parse_hex_color(String(p.get("color", "")).utf8().get_data()));
+}
+
+PropTag part_tag(const Dictionary &p) {
+	const String look = p.get("glow", "");
+	if (look == "night") return PropTag::NIGHT_GLOW;
+	return bool(p.get("wood", false)) ? PropTag::WOOD : PropTag::FIXED;
 }
 
 // A prop's parts, its lenses (parts with "lens") left to PropKit::lenses.
@@ -42,19 +87,59 @@ MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &
 	for (int i = 0; i < list.size(); i++) {
 		const Dictionary p = list[i];
 		if (p.has("lens")) continue;
-		const PropTag tag = String(p.get("glow", "")) == "night" ? PropTag::NIGHT_GLOW : PropTag::FIXED;
-		shape(b, p, part_color(p), Vector2(float(int(tag)), 0), errors);
+		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), float(p.get("part", 0))), errors);
 	}
 	return b;
 }
+
+// A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side.
+void wire_mesh(MeshBuilder &b, float radius, int chords, int sides) {
+	const Vector2 t2(float(int(PropTag::WIRE)), 0);
+	for (int s = 0; s < chords; s++) {
+		const float t0 = float(s) / chords, t1 = float(s + 1) / chords;
+		for (int k = 0; k < sides; k++) {
+			const float a0 = TAU_F * k / sides, a1 = TAU_F * (k + 1) / sides;
+			const Vector3 r0(0, std::cos(a0) * radius, std::sin(a0) * radius), r1(0, std::cos(a1) * radius, std::sin(a1) * radius);
+			b.quad(Vector3(t0, 0, 0) + r0, Vector3(t1, 0, 0) + r0, Vector3(t1, 0, 0) + r1, Vector3(t0, 0, 0) + r1, WHITE, (r0 + r1).normalized(), nullptr, t2);
+		}
+	}
+}
+
+void light_mesh(MeshBuilder &b) {
+	const Vector3 up(0, 1, 0);
+	const int centre = b.add(Vector3(), up, WHITE, Vector2(), Vector2(0, LIGHT_POOL_PART));
+	std::vector<int> rim;
+	for (int i = 0; i < LIGHT_SIDES; i++) {
+		const float a = TAU_F * i / LIGHT_SIDES;
+		rim.push_back(b.add(Vector3(std::cos(a), 0, std::sin(a)), up, WHITE, Vector2(1, 0), Vector2(0, LIGHT_POOL_PART)));
+	}
+	for (int i = 0; i < LIGHT_SIDES; i++) b.tri(centre, rim[size_t(i)], rim[size_t((i + 1) % LIGHT_SIDES)], up);
+	const int apex = b.add(up, up, WHITE, Vector2(0, 1), Vector2(0, LIGHT_BEAM_PART));
+	std::vector<int> base;
+	for (int i = 0; i < LIGHT_SIDES; i++) {
+		const float a = TAU_F * i / LIGHT_SIDES;
+		const Vector3 d(std::cos(a), 0, std::sin(a));
+		base.push_back(b.add(d, d, WHITE, Vector2(0, 0), Vector2(0, LIGHT_BEAM_PART)));
+	}
+	for (int i = 0; i < LIGHT_SIDES; i++) b.tri(apex, base[size_t(i)], base[size_t((i + 1) % LIGHT_SIDES)], up);
+}
 } // namespace
 
-bool PropKit::build(const Dictionary &props, PackedStringArray &errors) {
+bool PropKit::build(const Dictionary &props, const Dictionary &wires, PackedStringArray &errors) {
 	meshes_[int(PropKind::SIGNAL)] = parts(props, "signal", errors);
-	meshes_[int(PropKind::LAMP)] = parts(props, "lamp", errors);
 	meshes_[int(PropKind::HYDRANT)] = parts(props, "hydrant", errors);
 	meshes_[int(PropKind::BIN)] = parts(props, "bin", errors);
 	meshes_[int(PropKind::BENCH)] = parts(props, "bench", errors);
+	meshes_[int(PropKind::POSTBOX)] = parts(props, "postbox", errors);
+	meshes_[int(PropKind::PHONE)] = parts(props, "phone", errors);
+	meshes_[int(PropKind::DRAIN)] = parts(props, "drain", errors);
+	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
+	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
+	pole_ = parts(props, "pole", errors);
+	wire_mesh(wire_near_, float(wires["radius_m"]), int(wires["near_chords"]), int(wires["near_sides"]));
+	wire_mesh(wire_far_, float(wires["radius_m"]), int(wires["far_chords"]), int(wires["far_sides"]));
+	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(), true);
+	light_mesh(light_);
 	if (!props.has("signal")) return false;
 	const float dim = float(props.get("lens_dim", 0.f));
 	bool seen[int(Lens::COUNT)] = {};

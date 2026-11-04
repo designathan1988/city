@@ -16,7 +16,7 @@ namespace city {
 namespace {
 constexpr uint8_t CTL_PRIORITY_NODE = 1; // RoadNode::ctl of a junction by priority (junction_control.cpp)
 constexpr int MIN_RULE_ARMS = 3;
-constexpr double ROW_STEP_EPS_M = 1e-3;
+constexpr double ROW_STEP_EPS_M = 0.002; // a row reaches its last station past the rounding of the sum
 
 // The approach a Stop or Give Way plate at (x, z) governs ("placa = regra"), or -1: the node of the segment end it stands
 // by, within signs.approach_reach_m of its mouth, where traffic arrives.
@@ -50,7 +50,7 @@ void set_rule(CityState &s, int seg, int n, uint16_t rule) {
 void mark_name(CityState &s, const StreetItem &item) {
 	const FootwayHit h = footway_at(s.roads, item.x, item.z, s.catalog.furniture.poles.footway_catch_m);
 	if (!h.ok) return;
-	for (int seg : street_chain(s, h.seg)) mark_furniture(s, seg);
+	for (int seg : street_chain(s.roads, h.seg)) mark_furniture(s, seg);
 }
 
 template <typename F>

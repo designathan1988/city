@@ -33,12 +33,6 @@
     "span_m": {
      "type": "number"
     },
-    "mount_height_m": {
-     "type": "number"
-    },
-    "unilateral_ratio": {
-     "type": "number"
-    },
     "reach_m": {
      "type": "number"
     }
@@ -46,8 +40,6 @@
    "required": [
     "_doc",
     "span_m",
-    "mount_height_m",
-    "unilateral_ratio",
     "reach_m"
    ],
    "strict": true
