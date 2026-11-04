@@ -175,6 +175,10 @@ String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 
 } // namespace
 
+float CityCore::amber_wanted(float kmh) const {
+	return traffic::amber_wanted(state_->catalog.traffic, kmh / KMH_PER_MS);
+}
+
 Dictionary CityCore::traffic_probe(int sample) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);

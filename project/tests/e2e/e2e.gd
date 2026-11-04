@@ -11,6 +11,7 @@ const WARMUP_TICKS := 2400
 const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
 const LENSES_PER_POST := 2
+const AMBER_EPS_S := 0.01
 
 var failures := 0
 
@@ -44,6 +45,9 @@ func _ready() -> void:
 	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published
 	print("semáforos: ", probe.signals, ", lentes acesas ", probe.drawn_signal_lenses)
 	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "lentes dos semáforos acesas")
+	var core: Object = CityStore._core
+	_check(absf(core.amber_wanted(60.0) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
+	_check(absf(core.amber_wanted(70.0) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 

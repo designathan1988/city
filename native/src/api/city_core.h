@@ -73,6 +73,7 @@ public:
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
+	float amber_wanted(float kmh) const; // tests: the amber a speed in km/h asks
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	godot::Dictionary overlays() const;

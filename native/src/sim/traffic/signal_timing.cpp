@@ -12,18 +12,25 @@
 namespace city {
 namespace traffic {
 
-// The intergreen after an approach's green (CONTRAN MBST vol. V 5.7.1, Eq. 6.4-6.5): the amber t_pr + v/(2 a_ad) at its
-// regulated speed, at least the minimum that speed asks and at most amber_max_s (what is left goes to the all-red); the
-// all-red (d2 + c)/v to take a vehicle of length c from the stop line past the conflict area (its longest way over the
-// junction and the far crosswalk), plus signal_ped_red_s when walkers cross in the next stage.
+// The amber an approach's regulated speed asks (CONTRAN MBST vol. V 5.7.1, Eq. 6.4): t_pr + v/(2 a_ad), at least the
+// minimum of that speed. Regulated speeds are whole km/h: 60 km/h comes back from m/s a hair over 60.
+float amber_wanted(const TrafficParams &tp, float v) {
+	const float kmh = std::round(v * KMH_PER_MS);
+	const float least = kmh <= tp.amber_low_kmh ? tp.amber_min_s : (kmh <= tp.amber_mid_kmh ? tp.amber_min_mid_s : tp.amber_min_high_s);
+	return std::max(least, tp.signal_reaction_s + v / (2 * tp.signal_decel));
+}
+
+// The intergreen after an approach's green (5.7.1, Eq. 6.4-6.5): the amber its regulated speed asks, at most amber_max_s
+// (what is left goes to the all-red); the all-red (d2 + c)/v to take a vehicle of length c from the stop line past the
+// conflict area (its longest way over the junction and the far crosswalk), plus signal_ped_red_s when walkers cross in
+// the next stage.
 void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red) {
 	const TrafficParams &tp = s.catalog.traffic;
 	const LaneGraph &g = s.traffic.g;
 	const DirSeg &d = g.ds[size_t(ds)];
-	const float v = d.speed, kmh = v * KMH_PER_MS;
+	const float v = d.speed;
 	if (v <= 0) return;
-	const float least = kmh <= tp.amber_low_kmh ? tp.amber_min_s : (kmh <= tp.amber_mid_kmh ? tp.amber_min_mid_s : tp.amber_min_high_s);
-	const float wanted = std::max(least, tp.signal_reaction_s + v / (2 * tp.signal_decel));
+	const float wanted = amber_wanted(tp, v);
 	float across = 0;
 	for (int ci = g.node_conn[size_t(n)]; ci >= 0; ci = g.conns[size_t(ci)].next_at_node)
 		if (g.conns[size_t(ci)].from_ds == ds) across = std::max(across, g.conns[size_t(ci)].len);

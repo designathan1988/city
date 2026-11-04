@@ -165,6 +165,7 @@ bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &o
 int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, Waypoint *ways, int &side_out);
 
 // ped_crossing.cpp
+float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s
 // The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
 void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red);
 // Places the detection section of signalled approach `ds` and its green extension (MBST vol. V 7.3.2, optimum cut:
