@@ -83,17 +83,25 @@ void pool_disc(MeshBuilder &b, const Vector3 &middle, const Vector3 &a, const Ve
 	for (int i = 0; i < sides; i++) b.tri(hub, first + i, first + (i + 1) % sides, UP);
 }
 
-// A lamp's light, on segment `seg` at arc `v` (-1: off the streets): one long disc over the road and the footway (a road
-// luminaire's patch, not a spotlight's), added to whatever lies under it, so a junction or a corner is lit like the rest.
-void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &F, int seg, double v, const Vector3 &foot, const Vector3 &toward, float reach, float height) {
-	const Vector3 head = foot + toward * reach, along = toward.cross(UP);
-	const float half = height * F.pool_along;
+// What the light of a lamp asks of it: how far out its lens hangs, how tall it stands, and whether it is a lighting column.
+struct LampLens {
+	float reach = 0, height = 0;
+	bool column = false;
+};
+
+// A lamp's light, on segment `seg` at arc `v` (-1: off the streets), added to whatever lies under it, so a junction or a
+// corner is lit like the rest. A lighting column lays one long disc over the road and the footway, a road luminaire's patch;
+// the lamp of a utility pole a round spot of pool_least_m under its head, and the road between them goes dark (Roadcraft 4.0).
+void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &F, int seg, double v, const Vector3 &foot, const Vector3 &toward, const LampLens &lens) {
+	const LampDef &d = s.catalog.furniture.lamps;
+	const Vector3 head = foot + toward * lens.reach, along = toward.cross(UP);
+	const float half = lens.column ? lens.height * F.pool_along : d.pool_least_m;
 	const PoolBed bed = pool_bed(s, seg, v, half, along);
-	const Vector3 middle = foot + toward * std::max(reach, bed.across - s.catalog.furniture.lamps.pool_back_m) + UP * F.pool_lift;
-	const Vector3 a = (along + UP * bed.rise) * half, c = toward * bed.across;
-	pool_disc(inst.pools, middle, a, c, F.pool_sides);
+	const float across = lens.column ? bed.across : d.pool_least_m;
+	const float out = lens.column ? std::max(lens.reach, across - d.pool_back_m) : lens.reach;
+	pool_disc(inst.pools, foot + toward * out + UP * F.pool_lift, (along + UP * bed.rise) * half, toward * across, F.pool_sides);
 	if (F.beams) // lit air: rain and storm, and there is no weather yet
-		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
+		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * lens.height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
 }
 
 struct PoleFrame {
@@ -128,7 +136,7 @@ void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F,
 	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(PolePart::CAN);
 	push_part(inst.poles, PropKit::facing(f.kerb), f.foot, mask);
 	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(Vector3(a.x, 0, a.z)), f.foot, int(PolePart::ARM));
-	if (p.lamp) push_light(inst, s, F, f.seg, f.v, f.foot, f.kerb, F.lamp_reach, F.lamp_height);
+	if (p.lamp) push_light(inst, s, F, f.seg, f.v, f.foot, f.kerb, { F.lamp_reach, F.lamp_height, false });
 	for (size_t i = 0; i < p.spans.size(); i++) {
 		const UtilitySpan &sp = s.street.spans.items[size_t(p.spans[i])];
 		if (sp.a != id) continue;
@@ -178,7 +186,7 @@ void place_row_pole(const CityState &s, const FurnitureLook &F, const FurnitureS
 	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | (p.lit ? int(PolePart::LAMP) : 0);
 	if (!column && h % uint32_t(CAN_PERIOD) == uint32_t(CAN_PHASE)) mask |= int(PolePart::CAN);
 	push_part(inst.poles, at.basis, at.origin, mask);
-	if (p.lit) push_light(inst, s, F, sid, p.v, at.origin, at.basis.get_column(2), column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height);
+	if (p.lit) push_light(inst, s, F, sid, p.v, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height, column });
 }
 
 PropKind prop_kind(FurnitureKind k) {

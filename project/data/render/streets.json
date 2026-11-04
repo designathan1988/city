@@ -411,7 +411,7 @@
   }
  },
  "lamp_light": {
-  "_doc": "The night light of a lamp: pool on the ground and beam from the lens, as the Roadcraft 4.0 draws them (scenery.ts). pool_along: how far the pool runs along the road, in lamp heights; pool_sides: the polygon round the pool, whose rim is an ellipse of pi a c: a square 4 a c (27% of its fragments add nothing), 8 sides 3.31 a c (5.5%) for 6 more triangles a lamp, 12 sides 3.22 a c (2.3%) for 4 more; pool_lift_m: over the footway it lies on, so the two never fight for a pixel; across, the street furniture owner sets it. lamp_* are the utility pole lens, column_* the lighting column lens in props.pole.",
+  "_doc": "The night light of a lamp: pool on the ground and beam from the lens, as the Roadcraft 4.0 draws them (scenery.ts). pool_along: how far a lighting column's pool runs along the road, in its height; pool_sides: the polygon round the pool, whose rim is an ellipse of pi a c: a square 4 a c (27% of its fragments add nothing), 8 sides 3.31 a c (5.5%) for 6 more triangles a lamp, 12 sides 3.22 a c (2.3%) for 4 more; pool_lift_m: over the footway it lies on, so the two never fight for a pixel; across, the street furniture owner sets it. lamp_* are the utility pole lens, column_* the lighting column lens in props.pole.",
   "pool_along": 1.6,
   "pool_sides": 8,
   "pool_lift_m": 0.014,
