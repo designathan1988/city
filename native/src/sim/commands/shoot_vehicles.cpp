@@ -21,7 +21,7 @@ void shoot_vehicle(Round &r, int id, float up, float hx, float hy, float hz) {
 	r.out.hit = ShotResult::VEHICLE;
 	r.out.id = id;
 	const uint32_t type = uint32_t(v.type) | (uint32_t(v.paint) << VEHICLE_PAINT_SHIFT);
-	if (v.type == VehicleType::MOTO) {
+	if (two_wheeler(v.type)) {
 		DamageEvent wound;
 		wound.kind = DamageEvent::WOUND;
 		wound.x = hx; wound.y = v.cur.y + RIDER_HIT_M; wound.z = hz;

@@ -44,7 +44,6 @@ constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone f
 constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
 constexpr int TORN_POOLS = 3;
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
-constexpr uint32_t VEHICLE_MOTO = 5; // VehicleType::MOTO
 
 Vector3 scatter(Rng &r, float k) { return Vector3((r.f() - 0.5f) * k, r.f() * k, (r.f() - 0.5f) * k); }
 } // namespace
@@ -82,15 +81,15 @@ void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 }
 
 void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
-	const bool two_wheeler = (e.u & VEHICLE_TYPE_MASK) == VEHICLE_MOTO;
+	const bool rider = two_wheeler(VehicleType(e.u & VEHICLE_TYPE_MASK));
 	PieceSpec shell;
 	shell.at = Vector3(e.x, e.y + WRECK_H * TRUNK_HALF, e.z);
-	shell.size = two_wheeler ? Vector3(WRECK_L * MOPED_L, WRECK_H * MOPED_H, WRECK_W * MOPED_W) : Vector3(WRECK_L, WRECK_H, WRECK_W);
+	shell.size = rider ? Vector3(WRECK_L * MOPED_L, WRECK_H * MOPED_H, WRECK_W * MOPED_W) : Vector3(WRECK_L, WRECK_H, WRECK_W);
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
 	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 	shell.tint = PAINT_GREY;
 	const bool drop = e.kind == DamageEvent::VEHICLE_DROP; // a rider shot off: the machine falls over, it does not burn
-	shell.burn_s = drop ? 0.f : two_wheeler ? MOPED_BURN_S : CAR_BURN_S;
+	shell.burn_s = drop ? 0.f : rider ? MOPED_BURN_S : CAR_BURN_S;
 	debris_.add(shell);
 	for (int k = 0; k < 2; k++) { // two wheels thrown clear
 		PieceSpec w;
@@ -101,7 +100,7 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 		w.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT + rng_.f() * THROW_SCATTER, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 		debris_.add(w);
 	}
-	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(two_wheeler ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, two_wheeler ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
+	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(rider ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, rider ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
 }
 
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {

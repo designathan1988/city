@@ -89,7 +89,7 @@ void aim_at_vehicles(const Round &r, float limit, Found &best) {
 	for (int id = 0; id < int(t.vehicles.size()); id++) {
 		const Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive) continue;
-		const bool two = v.type == VehicleType::MOTO;
+		const bool two = two_wheeler(v.type);
 		const float half_l = tp.classes[int(v.type)].length * 0.5f, half_w = std::max(tp.classes[int(v.type)].half_width, two ? RIDER_HALF_M : 0.f);
 		const float height = r.p.vehicle_box_m[int(v.type)];
 		// the ray in the vehicle's frame: along its heading, up, across; clipped by each pair of faces (slabs)

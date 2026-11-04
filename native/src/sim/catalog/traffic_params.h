@@ -61,6 +61,8 @@ namespace city {
 // Vehicle classes (spec sim.md §5.1): car styles 0-5, then bus and truck.
 enum class VehicleType : uint8_t { SEDAN = 0, HATCH, SUV, VAN, PICKUP, MOTO, BUS, TRUCK, BICYCLE, COUNT };
 constexpr int VEHICLE_TYPES = int(VehicleType::COUNT);
+// A rider sits in the open: a shot at the machine hits the rider (sim/commands/shoot_*.cpp, render/effects).
+constexpr bool two_wheeler(VehicleType t) { return t == VehicleType::MOTO || t == VehicleType::BICYCLE; }
 // What kind of place sends people out on foot (traffic.json people_kind_m, zone_kinds).
 enum class PlaceKind : uint8_t { HOME = 0, SHOP, WORK, CIVIC, COUNT };
 constexpr int PLACE_KINDS = int(PlaceKind::COUNT);
