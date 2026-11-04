@@ -13,7 +13,7 @@ namespace city {
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) X(conflict_samples) X(conflict_clear_m) \
-	X(signal_green_s) X(signal_all_red_s) X(amber_min_s) X(amber_max_s) X(amber_decel) X(stage_opposite_dot) \
+	X(signal_green_s) X(signal_all_red_s) X(amber_min_s) X(amber_max_s) X(stage_opposite_dot) \
 	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
 	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \

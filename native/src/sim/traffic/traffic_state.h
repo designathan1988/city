@@ -103,6 +103,8 @@ struct Vehicle {
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
+	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
+	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
 	int ri = 0;
@@ -196,7 +198,7 @@ struct TrafficState {
 	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
-	int red_entries = 0, red_from_stop = 0; // onto a connector on red (probe): all, and from a standstill (a violation)
+	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;

@@ -64,9 +64,25 @@ void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
 bool may_enter(const CityState &s, int vehicle, int conn, float dist_to_line);
+int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
 int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
+
+// light_rule.cpp: the one rule of the lights (as in Roadcraft 4.0), for admission, commitments and
+// the stops ahead. `v` can stop comfortably (its class's b) within `stop_m`; the light of approach `ds` holds it with
+// its stop `stop_m` metres ahead (red always; amber when it can stop comfortably, a decision held until green).
+bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m);
+bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m);
+// Where a vehicle stops for the lights down its route: the first stop line within its horizon whose light holds it.
+struct LightStop {
+	float gap = NO_LEADER; // metres to where it stops
+	bool here = false; // that stop is on the lane it is on: it does not cross its junction now
+	int amber_hold = -1; // its amber decision from now on (Vehicle::amber_hold)
+};
+// The walk starts at route step `ri` on lane `lane`, whose start is `start` metres ahead (negative: it is on it); the
+// last step's junction is never crossed.
+LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start);
 
 // junction_admission.cpp (anti-gridlock)
 bool is_splice(const CityState &s, int node); // a road joint: no junction to block
@@ -99,8 +115,8 @@ void spawn_vehicles(CityState &s, float dt);
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
 // What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
-// ahead, walkers on its exit crosswalk, or neither holds it back (it is moving off).
-enum class BoxHold : uint8_t { LEADER = 0, WALKERS, STARTING, COUNT };
+// ahead, walkers on its exit crosswalk, a light down the street, or none of them holds it back (it is moving off).
+enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
 BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);

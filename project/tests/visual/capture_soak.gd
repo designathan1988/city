@@ -13,11 +13,14 @@ static func report(minutes: int) -> void:
 	for m in minutes:
 		var box := []
 		var held_seconds := 0
+		var overlap_seconds := [0, 0]
 		var p: Dictionary
 		for second in SECONDS_PER_MINUTE:
 			CityStore.step_ticks(TICKS_PER_SECOND)
 			p = CityStore.query(&"traffic_probe", [0])
 			held_seconds += int(p.waiting)
+			for k in overlap_seconds.size():
+				overlap_seconds[k] += int(p.people_overlaps[k])
 			var now: Array = p.get("box_stops", [])
 			if box.is_empty():
 				box.resize(now.size())
@@ -32,8 +35,9 @@ static func report(minutes: int) -> void:
 			p.get("people_waiting", 0)])
 		print("  retidos em média no minuto: %.1f" % (float(held_seconds) / SECONDS_PER_MINUTE))
 		print("  na fila atrás de: ", p.get("queued_behind", []))
-		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []))
-		print("  parados no cruzamento, veículo-segundos no minuto (atrás de outro, por pedestres, partindo): ", box,
+		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []), ", em média no minuto: %.1f, %.1f" % [
+			float(overlap_seconds[0]) / SECONDS_PER_MINUTE, float(overlap_seconds[1]) / SECONDS_PER_MINUTE])
+		print("  parados no cruzamento, veículo-segundos no minuto (atrás de outro, por pedestres, por semáforo à frente, partindo): ", box,
 			", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
 	for line in CityStore.query(&"traffic_probe", [SOAK_JAMS]).jam_info:
 		print("  retido: ", line)

@@ -32,7 +32,6 @@
   "signal_all_red_s": 1.2,
   "amber_min_s": 3.2,
   "amber_max_s": 6,
-  "amber_decel": 3.5,
   "stage_opposite_dot": -0.75,
   "through_pair_dot": -0.8,
   "yield_look_s": 3,
