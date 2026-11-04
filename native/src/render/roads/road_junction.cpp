@@ -172,24 +172,17 @@ void kerbed_line(const RoadEmit &e, const std::vector<Vector3> &in, const std::v
 	}
 }
 
-// A plate from `centre` out to `ring`, each triangle in the colour of its first ring point: a junction wears each arm's asphalt
-// up to the bisectors between the arms.
+// A plate from `centre` out to `ring`, each ring point in its own colour and the centre in their mean: a junction wears each
+// arm's asphalt at its mouth, and the arms fade into one another across it.
 void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<Vector3> &ring, const std::vector<Color> &cols) {
 	const Vector2 pl(POOL_PLATE, 0);
-	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, c, Vector2(p.x, p.z), pl); };
-	Color now;
-	int c0 = -1, from = -1;
-	for (size_t i = 0; i < ring.size(); i++) {
-		const Color c = road_color(cols[i], RoadMat::PLATE);
-		if (c0 < 0 || c != now) {
-			now = c;
-			c0 = add(centre, c);
-			from = add(ring[i], c);
-		}
-		const int to = add(ring[(i + 1) % ring.size()], c);
-		e.mb.tri(c0, from, to, UP);
-		from = to;
-	}
+	Color mean(0, 0, 0);
+	for (const Color &c : cols) mean += c;
+	mean = mean / float(cols.size());
+	int c0 = e.mb.add(centre, UP, road_color(mean, RoadMat::PLATE), Vector2(centre.x, centre.z), pl);
+	std::vector<int> ids;
+	for (size_t i = 0; i < ring.size(); i++) ids.push_back(e.mb.add(ring[i], UP, road_color(cols[i], RoadMat::PLATE), Vector2(ring[i].x, ring[i].z), pl));
+	for (size_t i = 0; i < ids.size(); i++) e.mb.tri(c0, ids[i], ids[(i + 1) % ids.size()], UP);
 }
 
 void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
@@ -204,7 +197,7 @@ void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 		cols.push_back(e.L.carriage(*a.prof));
 		std::vector<Vector3> in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
 		ring.insert(ring.end(), in.begin(), in.end());
-		for (size_t j = 0; j < in.size(); j++) cols.push_back(e.L.carriage(*(2 * j < in.size() ? a.prof : b.prof)));
+		for (size_t j = 0; j < in.size(); j++) cols.push_back(e.L.carriage(*a.prof).lerp(e.L.carriage(*b.prof), float(j + 1) / float(in.size() + 1)));
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
 		std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
