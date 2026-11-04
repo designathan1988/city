@@ -1,6 +1,12 @@
 {
  "type": "object",
  "properties": {
+  "rain_mist": {
+   "type": "number"
+  },
+  "rain_mist_height_m": {
+   "type": "number"
+  },
   "_doc": {
    "type": "string"
   }

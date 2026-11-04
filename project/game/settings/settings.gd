@@ -42,6 +42,8 @@ func apply(world: CityWorld, viewport: Viewport) -> void:
 	world.daylight.shadow_least_m = p.shadow_distance
 	RenderingServer.directional_shadow_atlas_set_size(int(p.shadow_size), true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(p.shadow_filter) as RenderingServer.ShadowQuality)
+	world.daylight.shadow_side_px = p.shadow_size / DataTables.game("settings").cascades_a_side
+	world.daylight.shadow_filter_radius = DataTables.game("settings").filter_radius[int(p.shadow_filter)]
 	world.environment.ssao_enabled = p.occlusion
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if p.smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.msaa_3d = MSAA_MODES[int(p.msaa)]

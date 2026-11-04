@@ -21,6 +21,15 @@ const TREE_APART_M := 20.0
 const TREE_DAB_M := 4.0
 const TREE_DENSITY := 200.0
 const TREE_HEIGHT_M := 14.0
+const CASCADES := 4
+const BLADE_TILT := 8.0
+const BLADE_ZOOM := 6.0
+const POLE_WIDE := 0.008 # of the distance: a few pixels at any depth
+const POLE_TALL := 0.06
+const SLAB_SIDE := 0.05
+const SLAB_APART := 0.08
+const SLAB_LIFT := 0.012
+const SLAB_TILT := 12.0
 
 
 ## Unlit cards of the same radiance in both games: what the tone chain does to each grey.
@@ -77,6 +86,63 @@ static func weave(on: Node3D, at: Vector3) -> void:
 			RenderingServer.directional_soft_shadow_filter_set_quality(f as RenderingServer.ShadowQuality)
 			on.world.sun.shadow_blur = b
 			await on.shot("trama_%d_%d" % [f, roundi(b * BLUR_TENTHS)], at + Vector3(0, 20.0, 0), 45.0, 15.0, 6.0)
+
+
+## How far above the ground each cascade's shadow starts: a thin pole and a tilted slab in the middle of each cascade, seen from
+## one pose. The foot of the pole and the tip of its shadow are printed for the measure; the gap is the bias on the ground.
+static func blades(on: Node3D, at: Vector3) -> void:
+	await on.shot("lamina_vazia", at, 45.0, BLADE_TILT, BLADE_ZOOM)
+	var sun: DirectionalLight3D = on.world.sun
+	var cam: Camera3D = on.rig.camera
+	var splits: Array[float] = [0.0, sun.directional_shadow_split_1, sun.directional_shadow_split_2, sun.directional_shadow_split_3, 1.0]
+	var spots: Array[Vector3] = []
+	var sizes: Array[float] = []
+	for j in CASCADES:
+		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * sun.directional_shadow_max_distance
+		var spot := _ground_at_depth(cam, at.y, depth)
+		print("lamina_cascata ", j, " profundidade ", depth, " chao ", spot)
+		if spot == Vector3.INF:
+			continue
+		spot.y = CityStore.query(&"height_at", [spot.x, spot.z])
+		spots.append(spot)
+		sizes.append(depth)
+		_grey(on, Vector3(POLE_WIDE, POLE_TALL, POLE_WIDE) * depth, spot + Vector3.UP * POLE_TALL * depth * 0.5, 0.0)
+		_grey(on, Vector3(SLAB_SIDE, POLE_WIDE, SLAB_SIDE) * depth, spot + Vector3(SLAB_APART * depth, depth * SLAB_LIFT, 0.0), SLAB_TILT)
+	await on.shot("lamina", at, 45.0, BLADE_TILT, BLADE_ZOOM)
+	var to_sun: Vector3 = sun.global_basis.z
+	for j in spots.size():
+		var tall: float = POLE_TALL * sizes[j]
+		var tip: Vector3 = spots[j] - Vector3(to_sun.x, 0.0, to_sun.z) / to_sun.y * tall
+		print("lamina ", j, " pe ", cam.unproject_position(spots[j]), " ponta ", cam.unproject_position(tip), " alto_m ", tall, " laje ", cam.unproject_position(spots[j] + Vector3(SLAB_APART * sizes[j], sizes[j] * SLAB_LIFT, 0.0)))
+
+
+## The ground on the middle column of the picture at this depth along the view, by walking up the rows; INF past the horizon.
+static func _ground_at_depth(cam: Camera3D, ground_y: float, depth: float) -> Vector3:
+	var size := cam.get_viewport().get_visible_rect().size
+	var look: Vector3 = -cam.global_basis.z
+	for row in range(int(size.y) - 1, 0, -1):
+		var from: Vector3 = cam.project_ray_origin(Vector2(size.x * 0.5, row))
+		var way: Vector3 = cam.project_ray_normal(Vector2(size.x * 0.5, row))
+		if way.y >= 0.0:
+			break
+		var hit: Vector3 = from + way * ((ground_y - from.y) / way.y)
+		if (hit - cam.global_position).dot(look) >= depth:
+			return hit
+	return Vector3.INF
+
+
+static func _grey(on: Node3D, size: Vector3, spot: Vector3, tilt_deg: float) -> void:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(CUBE_ALBEDO, CUBE_ALBEDO, CUBE_ALBEDO).linear_to_srgb()
+	m.roughness = 1.0
+	var box := BoxMesh.new()
+	box.size = size
+	box.material = m
+	var node := MeshInstance3D.new()
+	node.mesh = box
+	node.position = spot
+	node.rotation_degrees.z = tilt_deg
+	on.add_child(node)
 
 
 ## An oak, a cypress and a palm planted side by side.

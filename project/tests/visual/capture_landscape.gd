@@ -143,6 +143,8 @@ func _measure_card(c: Vector3) -> bool:
 		await LandscapeCards.ramp(self, c)
 	elif only.has("cubo_a"):
 		await LandscapeCards.cube(self, c)
+	elif only.has("lamina"):
+		await LandscapeCards.blades(self, c)
 	elif only.has("trama_3_10"):
 		await LandscapeCards.weave(self, c)
 	elif only.has("solta_palma"):

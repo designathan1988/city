@@ -33,6 +33,7 @@ var _bounds := PackedVector4Array()
 var _puffs := PackedVector4Array()
 var _looks := PackedVector4Array()
 var _weather_view: WeatherView
+var _air := 0.0
 var _fog_field: Dictionary = {}
 var _canyon_field: Dictionary = {}
 
@@ -116,8 +117,11 @@ func _read() -> void:
 	clouds = land.clouds
 	_world.set_map_biome(land.biome)
 	_world.set_water_look(weather)
-	_mat.set_shader_parameter("mist", weather.mist)
-	_mat.set_shader_parameter("mist_height", weather.mist_height_m)
+	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
+	var rain: float = weather.get("rain", 0.0)
+	_air = maxf(weather.mist, rain * _d.rain_mist)
+	_mat.set_shader_parameter("mist", _air)
+	_mat.set_shader_parameter("mist_height", maxf(weather.mist_height_m, _d.rain_mist_height_m) if rain > 0.0 else weather.mist_height_m)
 	_mat.set_shader_parameter("fog_density", weather.fog_density)
 
 
@@ -168,7 +172,7 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud", _bounds)
 	_mat.set_shader_parameter("puff", _puffs)
 	_mat.set_shader_parameter("cloud_look", _looks)
-	_quad.visible = n > 0 or float(weather.get("mist", 0.0)) > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
 
 
 func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
