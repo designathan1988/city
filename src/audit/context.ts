@@ -24,6 +24,8 @@ export interface AuditOptions {
   readonly minConstantFiles: number;
   /** Numbers the target project allows bare (its rules.json magic_numbers.allowed_values); null: no target rules. */
   readonly allowedNumbers: readonly number[] | null;
+  /** Paths the target's number rule leaves out (its magic_numbers.exempt: math utilities, the data loader). */
+  readonly numberExempt: readonly string[];
 }
 
 export type Severity = 'high' | 'medium' | 'low';

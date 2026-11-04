@@ -83,7 +83,7 @@ describe('C++ graph', async () => {
   it('is audited by the same catalog, the engine\'s _process rooting the frame path', () => {
     const result = runAudit(ir, {
       hot: [], uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [],
-      maxScattering: 0.5, writerDirs: [], channels: [], stateRoot: null, minConstantFiles: 3, allowedNumbers: null,
+      maxScattering: 0.5, writerDirs: [], channels: [], stateRoot: null, numberExempt: [], minConstantFiles: 3, allowedNumbers: null,
     });
     assert.deepEqual(result.hot.roots, ['native/src/sim/fleet.cpp#Driver::_process']);
     const of = (rule: string) => result.findings.filter((f) => f.rule === rule).map((f) => `${f.severity} ${f.unit}`);
@@ -96,7 +96,7 @@ describe('C++ graph', async () => {
   it('owns state by the subsystem holding it under the state root, and leaves held values alone', () => {
     const options = {
       hot: [], uiDirs: [], stateDirs: [], simDirs: [], maxFileLines: undefined, maxFunctionLines: undefined, features: [],
-      maxScattering: 0.5, writerDirs: [], channels: [], minConstantFiles: 3, allowedNumbers: null,
+      maxScattering: 0.5, writerDirs: [], channels: [], numberExempt: [], minConstantFiles: 3, allowedNumbers: null,
     };
     const scattered = (stateRoot: string | null) => runAudit(ir, { ...options, stateRoot }).findings
       .filter((f) => f.rule === 'scattered-writes').map((f) => f.message).sort();

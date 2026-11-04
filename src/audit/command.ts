@@ -43,20 +43,21 @@ interface TargetRules {
   readonly file?: number;
   readonly fn?: number;
   readonly allowed: readonly number[] | null;
+  readonly exempt: readonly string[];
 }
 
 /** What the target project's gate rules (rules.json) say about sizes and bare numbers. */
 function targetRules(file: string | undefined, extension: string): TargetRules {
-  if (file === undefined) return { allowed: null };
+  if (file === undefined) return { allowed: null, exempt: [] };
   const rules = JSON.parse(fs.readFileSync(file, 'utf8')) as {
-    max_lines?: Record<string, number>; max_function_lines?: Record<string, number>; magic_numbers?: { allowed_values?: number[] };
+    max_lines?: Record<string, number>; max_function_lines?: Record<string, number>; magic_numbers?: { allowed_values?: number[]; exempt?: string[] };
   };
   const fileLimit = rules.max_lines?.[extension];
   const fnLimit = rules.max_function_lines?.[extension];
   const allowed = rules.magic_numbers?.allowed_values;
   if (fileLimit === undefined || fnLimit === undefined) throw new ArgsError(`${file} has no max_lines / max_function_lines for ${extension}`);
   if (!Array.isArray(allowed)) throw new ArgsError(`${file} has no magic_numbers.allowed_values`);
-  return { file: fileLimit, fn: fnLimit, allowed };
+  return { file: fileLimit, fn: fnLimit, allowed, exempt: rules.magic_numbers?.exempt ?? [] };
 }
 
 export function runAuditCommand(argv: readonly string[]): void {
@@ -82,6 +83,7 @@ export function runAuditCommand(argv: readonly string[]): void {
     stateRoot: flags.one('state-root') ?? null,
     minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? DEFAULT_MIN_CONSTANT_FILES,
     allowedNumbers: limits.allowed,
+    numberExempt: limits.exempt,
   };
   const result = runAudit(ir, options);
   const out = path.resolve(flags.require('out'));

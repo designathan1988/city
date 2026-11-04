@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { RULES } from '../src/audit/catalog.ts';
 import type { AuditOptions } from '../src/audit/context.ts';
+import { literalValue } from '../src/audit/architecture.ts';
 import { runAudit } from '../src/audit/run.ts';
 import { fixtureGraph } from './support.ts';
 
@@ -12,7 +13,7 @@ const ir = fixtureGraph();
 const base: AuditOptions = {
   hot: ['src/world.ts#World.tick'], uiDirs: ['src/ui'], stateDirs: ['src/world.ts'], simDirs: ['src/world.ts'],
   maxFileLines: 25, maxFunctionLines: 8, features: [{ name: 'tick', entry: 'src/world.ts#World.tick' }],
-  maxScattering: 0, writerDirs: [], channels: [], stateRoot: null, minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
+  maxScattering: 0, writerDirs: [], channels: [], stateRoot: null, numberExempt: [], minConstantFiles: 2, allowedNumbers: [0, 1, -1, 2, 0.5],
 };
 
 describe('audit', () => {
@@ -84,5 +85,10 @@ describe('audit', () => {
     const strict = runAudit(ir, { ...base, allowedNumbers: [0, 1, -1, 2, 0.5, 0.25, 0.125] });
     assert.ok(!strict.findings.some((f) => f.rule === 'duplicated-constant' && /^0\.(25|125) /.test(f.message)));
     assert.ok(!runAudit(ir, base).findings.some((f) => f.rule === 'duplicated-constant' && f.message.startsWith('13.9 ')));
+  });
+
+  it('reads literal values of both languages', () => {
+    assert.deepEqual(['0.f', '1.0F', '.5f', '-0.25', "1'000", '1_000', '0x1F', '0xffu', '10ULL', '0b101', '2e3f', 'x'].map(literalValue),
+      [0, 1, 0.5, -0.25, 1000, 1000, 31, 255, 10, 5, 2000, NaN]);
   });
 });

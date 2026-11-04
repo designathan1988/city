@@ -56,16 +56,33 @@ export function duplicatedCode(ctx: AuditContext): RuleOutcome {
   });
 }
 
+/**
+ * The value of a numeric literal of TypeScript or C++: digit separators (1_000, 1'000) and type suffixes (0.5f, 10u,
+ * 1ULL) removed; hex, binary and octal prefixes as written. NaN for anything else.
+ */
+export function literalValue(text: string): number {
+  const plain = text.replace(/['_]/g, '');
+  const sign = plain.startsWith('-') ? -1 : 1;
+  const body = plain.replace(/^-/, '');
+  if (/^0[xX]/.test(body)) return sign * Number(body.replace(/[uUlL]+$/, ''));
+  if (/^0[bBoO]/.test(body)) return sign * Number(body.replace(/[uUlLn]+$/, ''));
+  return sign * Number(body.replace(/(?<=[\d.])([fFlLuUn]+)$/, ''));
+}
+
 export function duplicatedConstants(ctx: AuditContext): RuleOutcome {
   if (ctx.options.allowedNumbers === null) return { skipped: 'needs --target-rules (its magic_numbers.allowed_values says which numbers may stand bare)' };
   const allowed = new Set(ctx.options.allowedNumbers);
+  // Grouped by value: 0.5, .5f and 0.50 are one constant.
   const byText = new Map<string, Map<string, number[]>>();
   for (const unit of ctx.ir.units) {
+    if (ctx.options.numberExempt.some((p) => unit.file.startsWith(p))) continue;
     for (const literal of unit.facts.numericLiterals) {
-      if (literal.context !== 'value' || allowed.has(Number(literal.text))) continue;
-      const files = byText.get(literal.text) ?? new Map<string, number[]>();
+      const value = literalValue(literal.text);
+      if (literal.context !== 'value' || Number.isNaN(value) || allowed.has(value)) continue;
+      const key = String(value);
+      const files = byText.get(key) ?? new Map<string, number[]>();
       files.set(unit.file, [...(files.get(unit.file) ?? []), literal.line]);
-      byText.set(literal.text, files);
+      byText.set(key, files);
     }
   }
   const findings: Finding[] = [];
