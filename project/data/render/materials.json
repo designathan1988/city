@@ -19,9 +19,9 @@
    "paver_w": 0.2,
    "paver_h": 0.1,
    "cobble_per_m": 4.2,
-   "pool_color": "#ffd3a5",
+   "pool_color": "#ffe2c4",
    "pool_along_m": 11.5,
-   "pool_gain": 0.234,
+   "pool_gain": 0.2115,
    "plate_glow": 0.03
   }
  },
@@ -275,6 +275,6 @@
  },
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",
-  "params": {"glow_color": "#ffd3a5", "pool_gain": 0.234, "beam_gain": 0.4, "beam_softness": 1.6, "beam_fade_near_m": 60, "beam_fade_far_m": 140, "haze": 0}
+  "params": {"glow_color": "#ffe2c4", "pool_gain": 0.2115, "beam_gain": 0.4, "beam_softness": 1.6, "beam_fade_near_m": 60, "beam_fade_far_m": 140, "haze": 0}
  }
 }

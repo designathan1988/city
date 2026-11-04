@@ -568,8 +568,8 @@
   "styles": {"type": "object"},
   "lamp_light": {
    "type": "object",
-   "properties": {"_doc": {"type": "string"}, "pool_along": {"type": "number"}, "pool_lift_m": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}, "beams": {"type": "boolean"}},
-   "required": ["_doc", "pool_along", "pool_lift_m", "beam_radius_m", "lamp_height_m", "lamp_reach_m", "column_height_m", "column_reach_m", "beams"],
+   "properties": {"_doc": {"type": "string"}, "pool_along": {"type": "number"}, "pool_sides": {"type": "integer"}, "pool_lift_m": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}, "beams": {"type": "boolean"}},
+   "required": ["_doc", "pool_along", "pool_sides", "pool_lift_m", "beam_radius_m", "lamp_height_m", "lamp_reach_m", "column_height_m", "column_reach_m", "beams"],
    "strict": true
   },
   "barriers": {

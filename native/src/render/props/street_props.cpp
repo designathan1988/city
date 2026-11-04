@@ -70,6 +70,19 @@ PoolBed pool_bed(const CityState &s, int seg, double v, float half, const Vector
 	return { std::max(lamp_row(s.roads, seg).across, d.pool_least_m), grade * along.dot(seg_frame(s, seg, v).fwd) };
 }
 
+// The pool's polygon round its disc, UV over the disc from -1 to 1: a fan from the middle, its flats touching the rim.
+void pool_disc(MeshBuilder &b, const Vector3 &middle, const Vector3 &a, const Vector3 &c, int sides) {
+	const Vector2 part(0, LIGHT_POOL);
+	const int hub = b.add(middle, UP, WHITE, Vector2(), part);
+	const float out = 1.f / std::cos(PI_F / float(sides));
+	const int first = int(b.v.size());
+	for (int i = 0; i < sides; i++) {
+		const float at = (float(i) + 0.5f) * TAU_F / float(sides), u = std::cos(at) * out, v = std::sin(at) * out;
+		b.add(middle + a * u + c * v, UP, WHITE, Vector2(u, v), part);
+	}
+	for (int i = 0; i < sides; i++) b.tri(hub, first + i, first + (i + 1) % sides, UP);
+}
+
 // A lamp's light, on segment `seg` at arc `v` (-1: off the streets): one long disc over the road and the footway (a road
 // luminaire's patch, not a spotlight's), added to whatever lies under it, so a junction or a corner is lit like the rest.
 void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &F, int seg, double v, const Vector3 &foot, const Vector3 &toward, float reach, float height) {
@@ -78,8 +91,7 @@ void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &
 	const PoolBed bed = pool_bed(s, seg, v, half, along);
 	const Vector3 middle = foot + toward * std::max(reach, bed.across - s.catalog.furniture.lamps.pool_back_m) + UP * F.pool_lift;
 	const Vector3 a = (along + UP * bed.rise) * half, c = toward * bed.across;
-	const Vector2 corners[4] = { Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1) };
-	inst.pools.quad(middle - a - c, middle + a - c, middle + a + c, middle - a + c, WHITE, UP, corners, Vector2(0, LIGHT_POOL));
+	pool_disc(inst.pools, middle, a, c, F.pool_sides);
 	if (F.beams) // lit air: rain and storm, and there is no weather yet
 		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
 }
@@ -283,7 +295,7 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	Dictionary w = t["wires"], l = t["lamp_light"];
 	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
 	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
-	pool_along = l["pool_along"]; pool_lift = l["pool_lift_m"]; beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
+	pool_along = l["pool_along"]; pool_lift = l["pool_lift_m"]; pool_sides = int(l["pool_sides"]); beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
 	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
 	return true;
 }

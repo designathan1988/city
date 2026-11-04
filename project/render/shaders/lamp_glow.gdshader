@@ -1,6 +1,7 @@
 // The light of a street lamp at night (Roadcraft scenery.ts pool and beam): a pool on the ground and a cone down from the
-// lens, added to what is behind. UV2.y 1 a pool, four corners in the chunk's own mesh with UV over the disc from -1 to 1
-// (street_props.cpp), 2 a beam, an instance of render/props/prop_kit.h light(). Nothing is drawn by day. The cone is the lit
+// lens, added to what is behind. UV2.y 1 a pool, a polygon in the chunk's own mesh with UV over the disc from -1 to 1
+// (street_props.cpp), 2 a beam, an instance of render/props/prop_kit.h light(). By day every vertex collapses, so no fragment
+// runs: blending in nothing would still pay for the whole area of every lamp. The cone is the lit
 // air of rain or storm: `haze`
 // (0 in clear weather, where its vertices collapse and it costs no fragment), drawn as Volumetric Light Beam draws one.
 shader_type spatial;
@@ -41,7 +42,7 @@ void vertex() {
 	v_to_eye = CAMERA_POSITION_WORLD - world;
 	v_fade = 1.0 - smoothstep(beam_fade_near_m, beam_fade_far_m, length(v_to_eye));
 	v_near = 1.0 - pool_handed_over(length(v_to_eye.xz), pool_far_m, pool_handover_m);
-	if (v_part > BEAM_PART && haze <= HAZE_SHOWN) {
+	if (night <= 0.0 || (v_part > BEAM_PART && haze <= HAZE_SHOWN)) {
 		VERTEX = vec3(0.0);
 	}
 }
