@@ -17,6 +17,11 @@ constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
 enum Bay : uint8_t { BAY_WALL, BAY_WINDOW, BAY_SASH, BAY_FRENCH, BAY_BAY_WINDOW, BAY_RIBBON, BAY_WIDE, BAY_BALCONY, BAY_DOOR,
 	BAY_DOUBLE_DOOR, BAY_GARAGE_DOOR, BAY_SHOPFRONT, BAY_LOADING_DOOR, BAY_PILLAR, BAY_LOGGIA, BAY_BRISE, BAY_SHUTTERED,
 	BAY_GOURMET, BAY_COUNT, BAY_NONE = 0xff };
+// A coherent facade, applied in one command (Build > Facade).
+enum FacadeKind : uint8_t { PATTERN_RESIDENTIAL, PATTERN_STOREFRONT, PATTERN_OFFICE, PATTERN_INDUSTRIAL, PATTERN_ARCADE, PATTERN_GALLERY,
+	PATTERN_ART_DECO, PATTERN_ART_DECO_CROWN, PATTERN_OBSERVATION, PATTERN_COUNT };
+// Where a component goes when a bay is clicked.
+enum FacadeScope : uint8_t { SCOPE_BAY, SCOPE_ROW, SCOPE_COLUMN, SCOPE_STOREY, SCOPE_SIDE, SCOPE_VOLUME };
 enum Roof : uint8_t { ROOF_FLAT, ROOF_TERRACE, ROOF_GABLE, ROOF_HIP, ROOF_SHED, ROOF_SAWTOOTH };
 enum Lines : uint8_t { LINES_EVERY, LINES_BASE, LINES_SLAB, LINES_NONE };
 enum Crown : uint8_t { CROWN_CORNICE, CROWN_DECO, CROWN_SLAB, CROWN_ATTIC, CROWN_NONE };
@@ -84,6 +89,7 @@ struct Volume {
 	int wall = -1, roof_paint = -1; // paint indices into Body::paints (-1 = the building's)
 	std::vector<uint8_t> fill; // per storey
 	std::unordered_map<uint32_t, uint8_t> bays; // (storey, side, bay) -> Bay override
+	std::unordered_map<uint32_t, uint8_t> side_fill; // (storey, side) -> Bay: a whole side of a storey, over `fill`
 	std::unordered_map<uint32_t, int> storey_paint; // (storey, side) -> paint index (ArtDeco stone base)
 	FaceGeometry faces[MAX_FACES];
 	std::vector<Relief> reliefs;
@@ -96,6 +102,16 @@ struct Volume {
 
 inline uint32_t bay_key(int storey, int side, int bay) { return (uint32_t(storey) << KEY_STOREY_SHIFT) | (uint32_t(side) << KEY_SIDE_SHIFT) | uint32_t(bay); }
 inline uint32_t side_key(int storey, int side) { return (uint32_t(storey) << KEY_SIDE_SHIFT) | uint32_t(side); }
+
+// What a side of a storey is filled with, and what one bay of it holds: its own override, else the side's, else the storey's.
+inline uint8_t fill_at(const Volume &v, int storey, int side) {
+	auto it = v.side_fill.find(side_key(storey, side));
+	return it != v.side_fill.end() ? it->second : v.fill[size_t(storey)];
+}
+inline uint8_t bay_at(const Volume &v, int storey, int side, int bay) {
+	auto it = v.bays.find(bay_key(storey, side, bay));
+	return it != v.bays.end() ? it->second : fill_at(v, storey, side);
+}
 
 // Lot elements laid as boxes: kind, centre, size (w along the lot x, d along the lot y), elevation and facing. The
 // facing of a car bay, a lorry dock, a bench or a lounger is the way its open end looks: 0 the street (-y), 1 +x,

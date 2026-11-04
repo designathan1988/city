@@ -22,7 +22,7 @@ FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float 
 	BayCtx c;
 	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
 	auto it = v.bays.find(bay_key(k, side, bays_of(v, side) / 2));
-	c.comp = it != v.bays.end() && it->second != BAY_DOOR && it->second != BAY_DOUBLE_DOOR ? it->second : v.fill[size_t(k)];
+	c.comp = it != v.bays.end() && it->second != BAY_DOOR && it->second != BAY_DOUBLE_DOOR ? it->second : fill_at(v, k, side);
 	Opening o = opening_of(*pl.data, c);
 	FarWindows w;
 	w.width = o.w / W; w.sill = o.h0 / H; w.head = o.h1 / H;

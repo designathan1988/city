@@ -104,6 +104,7 @@ void put_volume(ByteWriter &w, const Volume &v) {
 	}
 	w.put_vec(v.fill);
 	put_map(w, v.bays);
+	put_map(w, v.side_fill);
 	put_map(w, v.storey_paint);
 	for (const FaceGeometry &f : v.faces) put_face(w, f);
 	w.put<uint32_t>(uint32_t(v.reliefs.size()));
@@ -128,7 +129,7 @@ bool get_volume(ByteReader &r, Volume &v) {
 		p.y = r.get<float>();
 	}
 	r.get_vec(v.fill);
-	if (!get_map(r, v.bays) || !get_map(r, v.storey_paint)) return false;
+	if (!get_map(r, v.bays) || !get_map(r, v.side_fill) || !get_map(r, v.storey_paint)) return false;
 	for (FaceGeometry &f : v.faces) f = get_face(r);
 	n = r.get<uint32_t>();
 	if (!r.ok || n > MAX_ITEMS) return false;

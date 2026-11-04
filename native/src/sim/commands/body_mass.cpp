@@ -65,6 +65,7 @@ void set_count(Volume &v, int count) {
 	v.storeys = count;
 	v.fill.resize(size_t(count));
 	move_storeys(v.bays, KEY_STOREY_SHIFT, 0, count);
+	move_storeys(v.side_fill, KEY_SIDE_SHIFT, 0, count);
 	move_storeys(v.storey_paint, KEY_SIDE_SHIFT, 0, count);
 }
 
@@ -131,6 +132,12 @@ std::string op_insert_storey(Body &b, const Tuning &t, int vol, int at, bool abo
 		paints[e.first + (k >= place ? 1u << KEY_SIDE_SHIFT : 0u)] = e.second;
 	}
 	v.storey_paint = std::move(paints);
+	std::unordered_map<uint32_t, uint8_t> sides;
+	for (const auto &e : v.side_fill) {
+		int k = int(e.first >> KEY_SIDE_SHIFT);
+		sides[e.first + (k >= place ? 1u << KEY_SIDE_SHIFT : 0u)] = e.second;
+	}
+	v.side_fill = std::move(sides);
 	v.fill.insert(v.fill.begin() + place, copy);
 	v.storeys++;
 	std::vector<const Volume *> seen;
@@ -207,6 +214,7 @@ std::string op_split_at_floor(Body &b, const Tuning &t, int vol, int level) {
 	up.storeys = low.storeys - keep;
 	up.fill.assign(low.fill.begin() + keep, low.fill.end());
 	move_storeys(up.bays, KEY_STOREY_SHIFT, -keep, up.storeys);
+	move_storeys(up.side_fill, KEY_SIDE_SHIFT, -keep, up.storeys);
 	move_storeys(up.storey_paint, KEY_SIDE_SHIFT, -keep, up.storeys);
 	set_count(low, keep);
 	up.reliefs.clear();

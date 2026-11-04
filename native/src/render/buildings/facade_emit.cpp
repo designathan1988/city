@@ -26,10 +26,7 @@ float relief_push(const Volume &v, int side, int bay, int k) {
 	return 0;
 }
 
-uint8_t component(const Volume &v, int k, int side, int bay) {
-	auto it = v.bays.find(bay_key(k, side, bay));
-	return it != v.bays.end() ? it->second : v.fill[size_t(k)];
-}
+uint8_t component(const Volume &v, int k, int side, int bay) { return bay_at(v, k, side, bay); }
 
 
 void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float right_push, bool first, bool last) {

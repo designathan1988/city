@@ -23,6 +23,12 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityCore::body_split);
 	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityCore::body_remove_volume);
 	ClassDB::bind_method(D_METHOD("body_heights", "id", "ground_h", "storey_h"), &CityCore::body_heights);
+	ClassDB::bind_method(D_METHOD("body_bay", "id", "vol", "storey", "side", "bay"), &CityCore::body_bay);
+	ClassDB::bind_method(D_METHOD("body_set_bay", "id", "vol", "storey", "side", "bay", "what", "scope"), &CityCore::body_set_bay);
+	ClassDB::bind_method(D_METHOD("body_set_zone", "id", "vol", "side", "storey0", "storey1", "bay0", "bay1", "what"), &CityCore::body_set_zone);
+	ClassDB::bind_method(D_METHOD("body_set_pattern", "id", "vol", "storey", "side", "pattern"), &CityCore::body_set_pattern);
+	ClassDB::bind_method(D_METHOD("body_set_face", "id", "vol", "side", "patch"), &CityCore::body_set_face);
+	ClassDB::bind_method(D_METHOD("body_set_relief", "id", "vol", "region", "snap"), &CityCore::body_set_relief);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);

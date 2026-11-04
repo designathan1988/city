@@ -32,4 +32,12 @@ std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level)
 std::string op_remove_volume(b40::Body &b, const Tuning &t, int vol);
 std::string op_set_heights(b40::Body &b, const Tuning &t, float ground_h, float storey_h);
 
+// The facade. `what` a b40::Bay, `scope` a b40::FacadeScope. A pattern goes on the whole building (`vol` < 0), a volume, one
+// storey or one side of it (`storey`, `side` < 0 for all). Fields of `patch` left at their "not set" value stay as they are.
+std::string op_set_bay(b40::Body &b, int vol, int storey, int side, int bay, int what, int scope);
+std::string op_set_zone(b40::Body &b, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what);
+std::string op_set_pattern(b40::Body &b, int vol, int storey, int side, int pattern);
+std::string op_set_face(b40::Body &b, const Tuning &t, int vol, int side, const b40::FaceGeometry &patch);
+std::string op_set_relief(b40::Body &b, const Tuning &t, int vol, const b40::Relief &region, bool snap);
+
 } // namespace city

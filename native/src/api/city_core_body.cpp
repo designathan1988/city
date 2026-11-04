@@ -83,4 +83,50 @@ Dictionary CityCore::body_heights(int id, double ground_h, double storey_h) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_heights(b, t, float(ground_h), float(storey_h)); });
 }
 
+int CityCore::body_bay(int id, int vol, int storey, int side, int bay) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return b40::BAY_NONE;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	if (vol < 0 || vol >= int(body.volumes.size())) return b40::BAY_NONE;
+	const b40::Volume &v = body.volumes[size_t(vol)];
+	return storey >= 0 && storey < v.storeys ? b40::bay_at(v, storey, side, bay) : int(b40::BAY_NONE);
+}
+
+Dictionary CityCore::body_set_bay(int id, int vol, int storey, int side, int bay, int what, int scope) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_bay(b, vol, storey, side, bay, what, scope); });
+}
+
+Dictionary CityCore::body_set_zone(int id, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_zone(b, vol, side, storey0, storey1, bay0, bay1, what); });
+}
+
+Dictionary CityCore::body_set_pattern(int id, int vol, int storey, int side, int pattern) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_pattern(b, vol, storey, side, pattern); });
+}
+
+Dictionary CityCore::body_set_face(int id, int vol, int side, const Dictionary &patch) {
+	b40::FaceGeometry f;
+	f.window_w = float(patch.get("window_w", 0.0));
+	f.window_h = float(patch.get("window_h", 0.0));
+	f.bays = int(patch.get("bays", -1));
+	f.sill = float(patch.get("sill", -1.0));
+	f.pier_w = float(patch.get("pier_w", -1.0));
+	f.pier_d = float(patch.get("pier_d", -1.0));
+	f.pier_every = int(patch.get("pier_every", -1));
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_face(b, t, vol, side, f); });
+}
+
+Dictionary CityCore::body_set_relief(int id, int vol, const Dictionary &region, bool snap) {
+	b40::Relief r;
+	r.side = int(region.get("side", 0));
+	r.bay0 = int(region.get("bay0", 0));
+	r.bay1 = int(region.get("bay1", 0));
+	r.storey0 = int(region.get("storey0", 0));
+	r.storey1 = int(region.get("storey1", 0));
+	r.depth = float(region.get("depth", 0.0));
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_relief(b, t, vol, r, snap); });
+}
+
 } // namespace city

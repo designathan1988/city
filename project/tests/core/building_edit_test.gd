@@ -21,6 +21,15 @@ const RESIZE_M := 2.0
 const GROUND_H := 4.5
 const STOREY_H := 3.2
 const FAR_TOO_MANY := 100000
+const FACE := 0
+const BAY_WIDE := 6
+const BAY_BALCONY := 7
+const SCOPE_BAY := 0
+const SCOPE_ROW := 1
+const SCOPE_COLUMN := 2
+const PATTERN_OFFICE := 2
+const RELIEF_M := 0.5
+const FACE_BAYS := 7
 const SHOWN_CASES := 6
 
 var failures := 0
@@ -39,6 +48,7 @@ func _ready() -> void:
 	var made: int = _info(id).digest
 	_check(not _info(id).edited, "prédio gerado não é editado")
 	_mass_edits(id, made)
+	_facade_edits(id, made)
 	_refusals(_one_block_on_the_ground())
 	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
 	await _save_round_trip(id)
@@ -98,6 +108,24 @@ func _mass_edits(id: int, made: int) -> void:
 		return i.volumes.size() == blocks + 1 and i.volumes[0].storeys == 1)
 	_round(id, made, "alturas", &"body_heights", [id, GROUND_H, STOREY_H], func(i: Dictionary) -> bool:
 		return is_equal_approx(i.ground_h, GROUND_H) and is_equal_approx(i.storey_h, STOREY_H))
+
+
+func _facade_edits(id: int, made: int) -> void:
+	var at := func(storey: int, bay: int) -> int: return CityStore.query(&"body_bay", [id, 0, storey, FACE, bay])
+	_round(id, made, "vão", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_BAY], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == BAY_BALCONY)
+	_round(id, made, "linha", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_ROW], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == BAY_BALCONY and at.call(1, 1) == BAY_BALCONY)
+	_round(id, made, "coluna", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_COLUMN], func(_i: Dictionary) -> bool:
+		return at.call(0, 0) == BAY_BALCONY and at.call(2, 0) == BAY_BALCONY)
+	_round(id, made, "zona", &"body_set_zone", [id, 0, FACE, 1, 2, 0, 1, BAY_BALCONY], func(_i: Dictionary) -> bool:
+		return at.call(2, 1) == BAY_BALCONY)
+	_round(id, made, "padrão", &"body_set_pattern", [id, 0, -1, -1, PATTERN_OFFICE], func(_i: Dictionary) -> bool:
+		return at.call(1, 0) == BAY_WIDE)
+	_round(id, made, "relevo", &"body_set_relief", [id, 0, {"side": FACE, "bay1": 1, "storey1": 1, "depth": RELIEF_M}, true], func(i: Dictionary) -> bool:
+		return i.edited)
+	_round(id, made, "ritmo", &"body_set_face", [id, 0, FACE, {"bays": FACE_BAYS}], func(i: Dictionary) -> bool:
+		return i.edited)
 
 
 ## One edit: it does what it says, undo gives back the body from the seed, redo gives back the same bytes, and undo again

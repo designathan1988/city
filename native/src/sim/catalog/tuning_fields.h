@@ -21,6 +21,8 @@
 	X(roundabout, max_arc_deg) X(roundabout, disc_pad_m) \
 	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors) \
 	X(build, grid_m) X(build, module_m) X(build, wing_modules) X(build, min_side_m) X(build, max_side_m) X(build, min_storey_m) \
-	X(build, max_storey_m) X(build, max_ground_m) X(build, max_volumes) X(build, min_bearing)
+	X(build, max_storey_m) X(build, max_ground_m) X(build, max_volumes) X(build, min_bearing) \
+	X(build, least_opening) X(build, most_opening) X(build, max_projection_m) X(build, max_recess_m) X(build, relief_step_m) \
+	X(build, max_bays) X(build, max_pier_every)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;

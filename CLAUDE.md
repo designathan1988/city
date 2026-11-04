@@ -135,7 +135,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/citygen/road_gen.cpp` · `native/src/sim/citygen/road_gen.h` — linhas da malha e marcha sobre o terreno
 - `native/src/sim/citygen/road_gen_graph.cpp` — grafo planar das ruas geradas (cruzamentos, nós fundidos)
 - `native/src/sim/citygen/road_gen_tidy.cpp` — limpeza do grafo gerado (nós e braços degenerados)
-- `native/src/sim/commands/body_edit.cpp` · `native/src/sim/commands/body_mass.cpp` · `native/src/sim/commands/body_ops.h` — o único caminho de uma edição até o corpo (cópia, validação, diário) e o que um corpo precisa ser; aba Massa
+- `native/src/sim/commands/body_edit.cpp` · `native/src/sim/commands/body_facade.cpp` · `native/src/sim/commands/body_mass.cpp` · `native/src/sim/commands/body_ops.h` — o único caminho de uma edição até o corpo (cópia, validação, diário) e o que um corpo precisa ser; abas Fachada e Massa
 - `native/src/sim/commands/commands.h` — API de comandos do jogador
 - `native/src/sim/commands/edit_history.cpp` — pilhas de desfazer/refazer e limites
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)

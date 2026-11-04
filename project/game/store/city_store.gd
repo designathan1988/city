@@ -16,7 +16,8 @@ const COMMANDS := {
 	&"set_building": "set_building", &"set_overlay": "set_overlay", &"body_storeys": "body_storeys",
 	&"body_insert_storey": "body_insert_storey", &"body_resize": "body_resize", &"body_add_wing": "body_add_wing",
 	&"body_add_setback": "body_add_setback", &"body_split": "body_split", &"body_remove_volume": "body_remove_volume",
-	&"body_heights": "body_heights",
+	&"body_heights": "body_heights", &"body_set_bay": "body_set_bay", &"body_set_zone": "body_set_zone",
+	&"body_set_pattern": "body_set_pattern", &"body_set_face": "body_set_face", &"body_set_relief": "body_set_relief",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -24,7 +25,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"overlays": "overlays", &"save_status": "save_status", &"body_info": "body_info",
+	&"overlays": "overlays", &"save_status": "save_status", &"body_info": "body_info", &"body_bay": "body_bay",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every

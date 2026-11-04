@@ -80,7 +80,14 @@
   "max_storey_m": 9,
   "max_ground_m": 20,
   "max_volumes": 24,
-  "min_bearing": 0.3
+  "min_bearing": 0.3,
+  "least_opening": 0.15,
+  "most_opening": 0.95,
+  "max_projection_m": 2.4,
+  "max_recess_m": 4,
+  "relief_step_m": 0.05,
+  "max_bays": 64,
+  "max_pier_every": 16
  },
  "zone": {
   "side_offset_m": 14,

@@ -122,6 +122,7 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 	}
 	b.fn = uint8_t(fn);
 	b.floors = uint16_t(floors);
+	b.body = 0; // another use or height is another building, made again from the seed; undo brings the edited one back
 	j_edit_building(s, id, b);
 	float reach = std::max(b.w, b.d);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);

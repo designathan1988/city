@@ -40,6 +40,12 @@ public:
 	godot::Dictionary body_split(int id, int vol, int level);
 	godot::Dictionary body_remove_volume(int id, int vol);
 	godot::Dictionary body_heights(int id, double ground_h, double storey_h);
+	int body_bay(int id, int vol, int storey, int side, int bay) const;
+	godot::Dictionary body_set_bay(int id, int vol, int storey, int side, int bay, int what, int scope);
+	godot::Dictionary body_set_zone(int id, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what);
+	godot::Dictionary body_set_pattern(int id, int vol, int storey, int side, int pattern);
+	godot::Dictionary body_set_face(int id, int vol, int side, const godot::Dictionary &patch);
+	godot::Dictionary body_set_relief(int id, int vol, const godot::Dictionary &region, bool snap);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
