@@ -3,6 +3,7 @@
 // poses render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
 #include "sim/traffic/traffic_system.h"
 
+#include "core/laps.h"
 #include "core/units.h"
 #include "sim/traffic/lane_graph_internal.h"
 
@@ -165,15 +166,20 @@ void step(CityState &s, float dt) {
 	t.tick++;
 	update_lights(s);
 	check_window(s);
+	Laps lap;
 	step_parking_sources(s);
+	t.step_ms[0] += lap.lap();
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	spawn_vehicles(s, dt);
 	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
+	t.step_ms[1] += lap.lap();
 	step_lots(s, dt);
+	t.step_ms[2] += lap.lap();
 	step_pedestrians(s, dt);
+	t.step_ms[3] += lap.lap();
 }
 
 } // namespace traffic

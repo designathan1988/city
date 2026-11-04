@@ -227,7 +227,9 @@ float CityCore::amber_wanted(float kmh) const {
 
 namespace {
 // The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
-void park_probe(const ParkingState &p, Dictionary &d) {
+void park_probe(const TrafficState &t, Dictionary &d) {
+	const ParkingState &p = t.park;
+	d["step_ms"] = Array::make(t.step_ms[0], t.step_ms[1], t.step_ms[2], t.step_ms[3]);
 	d["parked_rows"] = int(p.rows.size()); // scenery cars standing in bays near the camera
 	d["lot_cars"] = int(p.cars.size());
 	d["lot_coming"] = p.coming;
@@ -247,7 +249,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	const TrafficState &t = state_->traffic;
 	Dictionary d;
 	d["vehicles"] = t.vehicle_count;
-	park_probe(t.park, d);
+	park_probe(t, d);
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
