@@ -1,7 +1,7 @@
 // Fixture: the program's root (the page's script). It plugs the feature in, keeps its values in state of its own and
 // uses shared code of its own.
 import { Ferry, type FerryHost } from './feature/ferry';
-import { clamp } from './shared/math';
+import { clamp, FULL, within } from './shared/math';
 import { rows } from './shared/table';
 import { t } from './shared/i18n';
 
@@ -70,3 +70,4 @@ store.set('mode', 'dock');
 /** Another object with a property of the same name, of any value: not the store's. */
 export const other = { mode: typed };
 export const storeKey = `ferry.${store.values.mode}`;
+export const inRange = within(3, FULL);

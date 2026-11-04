@@ -1,6 +1,7 @@
 // `converter feature`: the whole of a feature, cut from the program, into an output folder: boundary.json (its own
 // declarations, its slices of shared code, the shared declarations it uses, where the program plugs it in, the
-// external APIs and the resources it uses), feature.md (the same, readable) and source/ (its code, see sources.ts).
+// external APIs and the resources it uses), feature.md (the same, readable), source/ (its code, see sources.ts) and
+// interface/ (the shared code it uses, as declarations: interface.ts).
 import fs from 'node:fs';
 import path from 'node:path';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
@@ -11,6 +12,7 @@ import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { featureBoundary, type FeatureBoundary, type FeatureUse } from './boundary.ts';
 import { holdsFeature } from './holders.ts';
 import { htmlRoots } from './html.ts';
+import { writeInterface, type InterfaceOut } from './interface.ts';
 import { CallTargets, readJelly, runJelly } from './callgraph.ts';
 import { PointsTo } from './pointsto.ts';
 import { featureResources, type FeatureResource } from './resources.ts';
@@ -61,16 +63,18 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const pts = new PointsTo(ts, analysis.tokens, base);
   const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, pts, flags.one('postcss'));
   const sources = writeSources(ir, boundary, slices, resources, sourceRoot, path.join(out, 'source'));
+  const shared = writeInterface(ts, sp.checker, index, boundary, path.join(out, 'interface'));
   const { program: _program, ...written } = boundary;
   fs.writeFileSync(path.join(out, 'boundary.json'), JSON.stringify({ ...written, slices, resources }, null, 1), 'utf8');
-  fs.writeFileSync(path.join(out, 'feature.md'), renderFeature(index, boundary, slices, resources, sources), 'utf8');
+  fs.writeFileSync(path.join(out, 'feature.md'), renderFeature(index, boundary, slices, resources, sources, shared), 'utf8');
   const lines = sources.reduce((n, s) => n + s.lines, 0);
   console.log(`feature ${boundary.entries.join(', ')}: ${boundary.own.length} own declarations, ${slices.length} slices of shared code, ` +
-    `${resources.length} resources; ${lines} lines in ${sources.length} files; uses ${boundary.uses.length} shared, ${boundary.hooks.length} hooks, ` +
+    `${resources.length} resources; ${lines} lines in ${sources.length} files; uses ${boundary.uses.length} shared (interface: ${shared.length} files), ${boundary.hooks.length} hooks, ` +
     `${boundary.external.length} external APIs -> ${out}`);
 }
 
-function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly FeatureSlice[], resources: readonly FeatureResource[], sources: readonly SourceOut[]): string {
+function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly FeatureSlice[], resources: readonly FeatureResource[], sources: readonly SourceOut[],
+  shared: readonly InterfaceOut[]): string {
   const where = (id: string): string => {
     const u = index.units.get(id)!;
     return `\`${id}\` (${u.kind}, line ${u.start.line})`;
@@ -96,7 +100,8 @@ function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly Fe
     `- Code: ${sources.reduce((n, s) => n + s.lines, 0)} lines in ${sources.length} files (source/)`,
     `- Resources: ${resources.length} (${['entry', 'style', 'import'].map((k) => `${resources.filter((r) => r.kind === k).length} ${k}`).join(', ')}; ` +
       `${resources.filter((r) => r.owner === 'feature').length} only the feature uses)`,
-    `- Uses: ${b.uses.length} shared declarations; hooks: ${b.hooks.length}; external APIs: ${b.external.length}`,
+    `- Uses: ${b.uses.length} shared declarations (interface/: ${shared.reduce((n, x) => n + x.declarations, 0)} declarations in ${shared.length} files, the types they name included); ` +
+      `hooks: ${b.hooks.length}; external APIs: ${b.external.length}`,
     '',
     '## Code',
     '',

@@ -13,6 +13,7 @@ import { CallTargets, runJelly } from '../src/feature/callgraph.ts';
 import { PointsTo } from '../src/feature/pointsto.ts';
 import { holdsFeature } from '../src/feature/holders.ts';
 import { htmlRoots } from '../src/feature/html.ts';
+import { writeInterface } from '../src/feature/interface.ts';
 import { featureResources } from '../src/feature/resources.ts';
 import { sliceShared } from '../src/feature/slice.ts';
 import { writeSources } from '../src/feature/sources.ts';
@@ -55,7 +56,8 @@ describe('feature cut', () => {
 
   it('lists the shared code the feature uses and where the program plugs it in', () => {
     // main.ts#host: the program implements the feature interface; a call of it runs the program code.
-    assert.deepEqual(b.uses.map((u) => u.unit), ['src/main.ts#host', 'src/only/snap.ts#snap', 'src/shared/i18n.ts#t', 'src/shared/math.ts#clamp']);
+    assert.deepEqual([...new Set(b.uses.map((u) => u.unit))], ['src/main.ts#host', 'src/only/snap.ts#snap', 'src/shared/i18n.ts#t',
+      'src/shared/math.ts#clamp', 'src/shared/math.ts#FULL', 'src/shared/math.ts#within']);
     const hooks = b.hooks.map((h) => `${h.unit} <- ${h.kind}`);
     assert.ok(hooks.includes('src/feature/ferry.ts#Ferry <- construct'), hooks.join('\n'));
     assert.ok(hooks.includes('src/feature/ferry.ts#Ferry.sail <- call'), hooks.join('\n'));
@@ -132,6 +134,24 @@ describe('feature cut', () => {
     // Per object (another object's property of the same name is not this one's), and a store's set per call (one
     // key's value is not another's), through the copy the store makes of what it is given.
     assert.deepEqual(values.of(initializer('storeKey')), { top: false, exact: ['ferry.dock', 'ferry.harbour'], prefixes: [] });
+  });
+
+  it('writes the shared code it uses as declarations: signatures with their documentation, and the types they name', () => {
+    assert.ok(!b.uses.some((u) => u.unit === 'src/shared/math.ts#Range'), 'the feature does not name Range itself');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-interface-'));
+    try {
+      const written = writeInterface(ts, sp.checker, index, b, dir);
+      assert.deepEqual(written.map((w) => `${w.file} ${w.declarations}`), ['src/main.ts 1', 'src/only/snap.ts 1', 'src/shared/i18n.ts 1', 'src/shared/math.ts 4']);
+      const math = fs.readFileSync(path.join(dir, 'src/shared/math.ts'), 'utf8');
+      assert.match(math, /export function clamp\(v: number, lo: number, hi: number\): number;/);
+      assert.match(math, /\/\*\* Whether a value is inside a span\. \*\/\nexport function within\(v: number, r: Range\): boolean;/);
+      assert.match(math, /\/\*\* A span of values, from lo to hi\. \*\/\nexport interface Range \{\n {2}readonly lo: number;/, 'the type a signature names');
+      assert.match(math, /export const FULL: Range = \{ lo: 0, hi: 100 \};/);
+      assert.doesNotMatch(math, /return /, 'no body');
+      assert.doesNotMatch(math, /roundTo/, 'the feature own code is not its interface');
+    } finally {
+      removeTree(dir);
+    }
   });
 
   it('refuses a file that is not in the program', () => {

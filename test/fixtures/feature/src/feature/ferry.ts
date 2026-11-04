@@ -1,5 +1,5 @@
 // Fixture: the feature's entry file.
-import { clamp } from '../shared/math';
+import { clamp, FULL, within } from '../shared/math';
 import { plural, t } from '../shared/i18n';
 import { dockNear } from '../only/docks';
 import { snap } from '../only/snap';
@@ -32,5 +32,8 @@ export class Ferry {
   }
   announce(host: FerryHost): void {
     host.say('ferry.board');
+  }
+  docked(): boolean {
+    return within(this.at, FULL);
   }
 }

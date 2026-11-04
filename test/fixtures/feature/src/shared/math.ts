@@ -10,3 +10,17 @@ export function roundTo(v: number, step: number): number {
   }
   return snapTo(v);
 }
+
+/** A span of values, from lo to hi. */
+export interface Range {
+  readonly lo: number;
+  readonly hi: number;
+}
+
+/** The whole span a ferry sails. */
+export const FULL: Range = { lo: 0, hi: 100 };
+
+/** Whether a value is inside a span. */
+export function within(v: number, r: Range): boolean {
+  return v >= r.lo && v <= r.hi;
+}
