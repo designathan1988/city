@@ -113,12 +113,7 @@ static func _look(cap: Node, name: String, at: Vector3, along: Vector3, out: Vec
 	cap.set_hour(HOUR)
 	var lens: float = cap.camera.fov
 	cap.camera.fov = view[3]
-	var eye := at + along * view[0] + out * view[1] + Vector3.UP * view[2]
-	var mirrored := at + along * view[0] - out * view[1] + Vector3.UP * view[2]
-	if not CaptureParity.line_clear(eye, at) and CaptureParity.line_clear(mirrored, at):
-		print("transporte: ", name, " do outro lado da rua, a pose do 4.0 está tapada aqui") # no longer the pair of its photo
-		eye = mirrored
-	await cap._shot(name, eye, at)
+	await cap._shot(name, at + along * view[0] + out * view[1] + Vector3.UP * view[2], at)
 	cap.camera.fov = lens
 
 
