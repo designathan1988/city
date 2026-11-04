@@ -1,4 +1,5 @@
-// Parses `--name value` flags against a declared spec. Every path the converter touches comes from these flags:
+// Parses `--name value` and `--name=value` flags against a declared spec. The `=` form is the only way to pass a
+// value that itself starts with `--` (a browser flag). Every path the converter touches comes from these flags:
 // nothing is hard-coded, because the source and target projects move.
 
 export interface FlagSpec {
@@ -38,11 +39,14 @@ export function parseFlags(argv: readonly string[], specs: readonly FlagSpec[]):
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]!;
     if (!token.startsWith('--')) throw new ArgsError(`unexpected argument: ${token}`);
-    const name = token.slice(2);
+    const eq = token.indexOf('=');
+    const name = eq > 2 ? token.slice(2, eq) : token.slice(2);
     const spec = byName.get(name);
-    if (!spec) throw new ArgsError(`unknown flag: ${token}`);
-    const value = argv[++i];
-    if (value === undefined || value.startsWith('--')) throw new ArgsError(`flag ${token} needs a value`);
+    if (!spec) throw new ArgsError(`unknown flag: --${name}`);
+    const value = eq > 2 ? token.slice(eq + 1) : argv[++i];
+    if (value === undefined || (eq <= 2 && value.startsWith('--'))) {
+      throw new ArgsError(`flag --${name} needs a value (write --${name}=value for a value starting with --)`);
+    }
     const list = values.get(name) ?? [];
     if (list.length > 0 && !spec.repeatable) throw new ArgsError(`flag ${token} given twice`);
     list.push(value);
