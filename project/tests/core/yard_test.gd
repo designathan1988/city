@@ -15,7 +15,8 @@ const STREET_M := 300.0
 const PROFILE := 0
 const STEP_TICKS := 200
 const GROW_STEPS := 60
-const PLAN_STEPS := 30
+const PLAN_STEPS := 900 # the plans run one at a time on a worker, by the clock: the steps only bound the wait
+const PLANNED_DOCKS := 12
 const ROUND_STEPS := 120
 const CAMERA_UP_M := 30.0
 const NO_STOP := 1 # traffic::YardReach YARD_NO_STOP
@@ -67,10 +68,14 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		if CityStore.query(&"dock_count", []) > before:
 			break
 	print("  docas ", CityStore.query(&"dock_count", []) - before)
+	var s: Dictionary = CityStore.query(&"park_sample", [])
+	var had: int = s.docks_planned
 	for i in PLAN_STEPS:
+		if s.docks_planned >= had + PLANNED_DOCKS:
+			break
 		await get_tree().process_frame
 		CityStore.step_ticks(STEP_TICKS)
-	var s: Dictionary = CityStore.query(&"park_sample", [])
+		s = CityStore.query(&"park_sample", [])
 	_check(s.docks_planned > 0, "nenhuma doca planejada em %s" % at)
 	_check(s.docks_reached[NO_STOP] == 0, "%d docas sem lugar para o caminhão na própria faixa em %s" % [s.docks_reached[NO_STOP], at])
 	_check(s.docks_with_way >= s.docks_planned * WAY_SHARE, "%d de %d docas com caminho em %s" % [s.docks_with_way, s.docks_planned, at])
