@@ -71,3 +71,13 @@ Uma estrada ruim foi descrita como boa por uma sessão e por mim. Daqui em diant
 4. Foto em outro enquadramento, outra hora do dia ou outra resolução não vale como par, e a análise diz isso.
 5. Efeitos animados (explosão, fogo, fumaça) são fotografados em instantes definidos nos dois jogos, com o instante no nome da foto.
 6. Vista de dentro: o par é o mesmo prédio, o mesmo andar e a mesma câmera.
+
+## 10. Estilos regionais (ordem do usuário, 2026-11-04: o jogo é vendido na Steam)
+
+Nada pode ficar preso ao Brasil: norma, sinalização, marcação, veículo, placa, unidade, nome de rua, fachada, nada. O Brasil é um estilo entre vários, e o jogador escolhe.
+
+1. Existe um **estilo regional por cidade**, escolhido pelo jogador ao começar a cidade e gravado no save. Estilos de partida: `roadcraft` (o do 4.0, padrão), `brasil`, `eua` e `europa`. A lista cresce só por dados.
+2. Todo valor que muda com o estilo (marcação, largura de faixa, placa, semáforo, hidrante, caixa de correio, poste, paleta e placa do veículo, lado da mão, unidade de velocidade, fachada, nome de rua) vive em dados, numa seção `styles.<id>` da tabela do seu dono. O código lê só pelo dono único do estilo ativo. Nenhum `if` de país no código.
+3. Fonte primária por estilo e por constante, como no resto. Brasil: CTB, CONTRAN, MBST, NBR, DNIT. EUA: MUTCD (FHWA) e AASHTO Green Book. Europa: Convenção de Viena sobre Sinalização Rodoviária (1968) e as normas europeias aplicáveis (por exemplo EN 1436 para marcas horizontais). Valor de um estilo não vale para outro.
+4. Esta rodada: cada porte deixa pronta a estrutura `styles.<id>` do seu domínio, com `roadcraft` e `brasil` preenchidos pelo que já tem; `eua` e `europa` entram em seguida, por quem a coordenadora designar. Mão de direção é propriedade do estilo (começa só com mão direita, sem código que a suponha onde puder ser dado).
+5. Enquanto o mecanismo do estilo ativo não existe (id no `CityState`, bloco do save, leitura única, seletor na tela de nova cidade), o carregador do seu domínio lê o estilo `roadcraft`. O seletor liga depois, sem mudar o seu código.
