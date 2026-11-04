@@ -1,0 +1,17 @@
+{
+ "_doc": "The sound of a strike (game/audio/thunder.gd). sound_ms: the speed of sound in air at 20 °C, 343 m/s. Brown noise is a leaky random walk: step, keep and gain set its level; noise_s seconds kept, one buffer for every clap; a clap starts somewhere in the first start_share of it. A strike's delay is capped at max_delay_s; near_m the distance at which its nearness is 1/2; the low-pass runs from cutoff_low_hz, plus cutoff_span_hz by nearness squared (a near strike keeps its crack, far off only the low roll arrives); its level from far_gain to far_gain + near_gain by nearness, never under floor_db.",
+ "rate_hz": 22050,
+ "sound_ms": 343.0,
+ "noise_s": 9.6,
+ "step": 0.02,
+ "keep": 1.02,
+ "gain": 3.5,
+ "max_delay_s": 6.0,
+ "near_m": 500.0,
+ "cutoff_low_hz": 220.0,
+ "cutoff_span_hz": 1400.0,
+ "floor_db": -60.0,
+ "near_gain": 0.65,
+ "far_gain": 0.35,
+ "start_share": 0.5
+}

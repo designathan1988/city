@@ -11,7 +11,7 @@ var radius := 0.0
 
 func enter() -> void:
 	radius = params.get("radius", ctl.last_param(ToolController.Tool.ROUNDABOUT, "radius", _spec().default))
-	ctl.hint.emit(tr("hint.roundabout"), true)
+	ctl.hint.emit("", true)
 
 
 func _spec() -> Dictionary:
@@ -30,7 +30,7 @@ func hover(p: Vector3) -> void:
 	if pv.is_empty():
 		return
 	ctl.preview.show_disc(pv.centre, radius, pv.ok)
-	ctl.hint.emit(tr("hint.roundabout") if pv.ok else tr(pv.error), pv.ok)
+	ctl.hint.emit("" if pv.ok else tr(pv.error), pv.ok)
 
 
 func click(p: Vector3) -> void:

@@ -1,19 +1,21 @@
 ## GameFlow: the explicit state machine of the application. The only place that changes scenes or quits
 ## (gate FLUXO_CENTRAL). Every transition is validated. It holds the states the game
-## has: the play scene (project main scene) generates a city and plays it; a main menu (title screen) is not
-## built yet (CLAUDE.md Pendências), so there is no menu nor loading state to go to.
+## has: the play scene (project main scene) opens the last city or generates one, the title screen stands over it (MENU) until
+## the first choice, and the game plays on.
 extends Node
 
 signal state_changed(from: State, to: State)
 
-enum State { BOOT, PLAYING, QUITTING }
+enum State { BOOT, MENU, PLAYING, QUITTING }
 
 const TRANSITIONS := {
-	State.BOOT: [State.PLAYING, State.QUITTING],
+	State.BOOT: [State.MENU, State.PLAYING, State.QUITTING],
+	State.MENU: [State.PLAYING, State.QUITTING],
 	State.PLAYING: [State.QUITTING],
 	State.QUITTING: [],
 }
 const LOCALE := "pt_BR"
+const FALLBACK_LOCALE := "en"
 
 var state: State = State.BOOT
 ## Tests and captures drive the store directly (-- --no-flow): no menu flow, and their saves stay apart (SaveSlots).
@@ -22,13 +24,21 @@ var tests_drive := OS.get_cmdline_user_args().has("--no-flow")
 
 func _ready() -> void:
 	DataTables.load_translations()
-	TranslationServer.set_locale(LOCALE)
+	TranslationServer.set_locale(Settings.language if Settings.language != "" else _system_locale())
 	# closing the window is a request this machine answers (Godot "Handling quit requests"), so quitting has one path
 	get_tree().set_auto_accept_quit(false)
 
 
+## The player's own language where the game has it, English otherwise (the catalog's two columns).
+func _system_locale() -> String:
+	return LOCALE if OS.get_locale_language() == LOCALE.left(2) else FALLBACK_LOCALE
+
+
+## The city goes with the window (Roadcraft saveOnClose): the store writes what is unsaved first.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if state == State.PLAYING and not tests_drive:
+			CityStore.save_on_close()
 		quit()
 
 
@@ -40,6 +50,11 @@ func _to(next: State) -> bool:
 	state = next
 	state_changed.emit(prev, next)
 	return true
+
+
+## The title screen is up.
+func menu() -> void:
+	_to(State.MENU)
 
 
 ## The play scene has its city: the game is on.

@@ -7,6 +7,7 @@ signal changed(snapshot: Dictionary)
 signal command_failed(error_key: String)
 
 const SNAPSHOT_INTERVAL_S := 0.25
+const SAVE_WAIT_MS := 10
 ## Commands the UI/tools may send, with the CityCore method that executes each one.
 const COMMANDS := {
 	&"set_speed": "set_speed", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
@@ -21,7 +22,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"overlays": "overlays", &"save_status": "save_status",
+	&"overlays": "overlays", &"save_status": "save_status", &"traffic_metrics": "traffic_metrics",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
@@ -120,6 +121,7 @@ func load_game(slot: String) -> Dictionary:
 		_city_slot = slot if SaveSlots.is_city_slot(slot) else ""
 		if not _city_slot.is_empty():
 			SaveSlots.remember_last(_city_slot)
+		Session.read(slot, get_tree().get_first_node_in_group(&"camera_rig"))
 	refresh()
 	loaded.emit(slot, r)
 	return r
@@ -135,6 +137,21 @@ func load_last() -> Dictionary:
 
 func save_path(slot: String) -> String:
 	return SaveSlots.path(slot)
+
+
+## The window closes: what is unsaved is written, and the thread waited for (a city never lost to the close button).
+func save_on_close() -> void:
+	if not _autosave_due():
+		return
+	save_city()
+	while _save_pending and _core.save_status().get("busy", true):
+		OS.delay_msec(SAVE_WAIT_MS)
+	_settle_save()
+
+
+## A file the core could not read goes aside, never deleted (Roadcraft quarantineStored); the player starts afresh.
+func quarantine(slot: String) -> void:
+	SaveSlots.quarantine(slot)
 
 
 ## The saved cities and map copies, newest first: [{slot, modified (unix seconds), size (bytes)}].
@@ -155,6 +172,22 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 func query(name: StringName, args: Array = []) -> Variant:
 	assert(QUERIES.has(name), "consulta desconhecida: %s" % name)
 	return _core.callv(QUERIES[name], args)
+
+
+## The Simulation panel: shares of the city's own density of vehicles and people, and the demand.
+func set_levels(traffic: float, people: float, demand: float) -> void:
+	_core.set_levels(traffic, people, demand)
+	refresh()
+
+
+## The graphics tier's reach of the buildings' near level (Settings).
+func set_detail_scale(scale: float) -> void:
+	_core.set_detail_scale(scale)
+
+
+## The Effects panel: a simulation system's tick on or off, to measure it ("traffic", "pedestrians", "growth").
+func set_sim_switch(name: String, on: bool) -> void:
+	_core.set_sim_switch(name, on)
 
 
 ## Tests only: advance the simulation deterministically.
@@ -204,6 +237,7 @@ func _settle_save() -> void:
 func _finish_save(slot: String, result: Dictionary) -> void:
 	if result.get("ok", false) and slot == _city_slot:
 		SaveSlots.remember_last(slot)
+		Session.write(slot, get_tree().get_first_node_in_group(&"camera_rig"))
 	if result.get("ok", false) and not _export_to.is_empty():
 		if DirAccess.copy_absolute(save_path(slot), _export_to) != OK:
 			result = {"ok": false, "error": "save.writeFailed"}

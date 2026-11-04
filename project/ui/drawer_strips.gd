@@ -1,6 +1,5 @@
-## Strip parts of the drawers that are not the road catalogue (Roundabout, Draw, Relief):
-## icon cards that pick a tool parameter and labelled sliders ("<name>  <value>"). Texts are translated keys, sizes are
-## tokens; the values go back to the tool through the callbacks.
+## Strip parts of the drawers that are not the road catalogue (Draw, Relief): icon cards that pick a tool parameter. Texts are
+## translated keys, sizes are tokens; the values go back to the tool through the callbacks.
 class_name DrawerStrips
 extends RefCounted
 
@@ -23,25 +22,3 @@ static func light(strip: Node, picked: Variant) -> void:
 	for c in strip.get_children():
 		if c is Button and c.has_meta(&"pick"):
 			c.set_pressed_no_signal(c.get_meta(&"pick") == picked)
-
-
-## "<label>  [——o——]  <value><unit>": on_change(value) on every move.
-static func slider(parent: Control, label_key: String, lo: float, hi: float, step: float, value: float, unit: String,
-		on_change: Callable) -> HSlider:
-	var col := HudWidgets.vbox(parent)
-	var head := HudWidgets.hbox(col)
-	var name := HudWidgets.label(head, &"MutedLabel", TranslationServer.translate(label_key))
-	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var shown := HudWidgets.label(head, &"BodyLabel", "%d%s" % [int(value), unit])
-	var s := HSlider.new()
-	s.min_value = lo
-	s.max_value = hi
-	s.step = step
-	s.value = value
-	s.custom_minimum_size.x = HudWidgets.px("side_w")
-	s.focus_mode = Control.FOCUS_NONE
-	s.value_changed.connect(func(v: float) -> void:
-		shown.text = "%d%s" % [int(v), unit]
-		on_change.call(v))
-	col.add_child(s)
-	return s

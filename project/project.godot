@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 Settings="*res://game/settings/settings.gd"
 CityStore="*res://game/store/city_store.gd"
 GameFlow="*res://game/flow/game_flow.gd"
+Health="*res://game/health/health_log.gd"
 
 [display]
 

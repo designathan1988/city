@@ -33,10 +33,21 @@ static func theme() -> Theme:
 	if _theme == null:
 		_theme = Theme.new()
 		_theme.default_font_size = int(size("font_body"))
+		_theme.default_font = _font(SystemFont.new().font_weight)
 		_panels()
 		_buttons()
+		_slider()
 		_labels()
 	return _theme
+
+
+## The interface's face (the reference asks for Inter, then the system's sans; Godot's own font when none is there).
+static func _font(weight: int) -> SystemFont:
+	var f := SystemFont.new()
+	f.font_names = PackedStringArray(tokens().font_names)
+	f.font_weight = weight
+	f.fallbacks = [ThemeDB.fallback_font]
+	return f
 
 
 static func box(fill: String, radius: String, border := "", shadow := false) -> StyleBoxFlat:
@@ -70,10 +81,17 @@ static func _panels() -> void:
 	_panel(&"Dock", box("bg", "dock_radius", "line", true))
 	_panel(&"Seg", box("raise", "pill_radius", "line"))
 	var strong := box("bg_strong", "radius", "line", true)
-	strong.set_content_margin_all(size("pad"))
+	strong.set_content_margin_all(size("gap"))
 	_panel(&"Popover", strong)
 	_panel(&"CardArt", box("card_art", "card_radius"))
 	_panel(&"TabStrip", box("rc_strip", "card_radius"))
+	var card := box("bg_strong", "radius", "line", true)
+	card.set_content_margin_all(size("gap") * 2)
+	_panel(&"Card2", card)
+	_panel(&"Scrim", box("scrim", "border"))
+	_panel(&"Kbd", box("raise", "kbd_radius", "line"))
+	_panel(&"Tip", box("bg_strong", "kbd_radius", "line"))
+	_panel(&"RowBand", box("raise", "kbd_radius"))
 	_panel(&"Toast", box("bg_strong", "pill_radius", "line", true))
 	_panel(&"DangerToast", box("bg_strong", "pill_radius", "danger", true))
 	for axis in ["H", "V"]:
@@ -106,6 +124,24 @@ static func _button(name: StringName, boxes: Array, colours: Array, font: String
 		_theme.set_font_size(&"font_size", name, int(size(font)))
 
 
+## A box whose text keeps room at its sides (.v2-choice padding).
+static func _wide(sb: StyleBoxFlat) -> StyleBoxFlat:
+	sb.content_margin_left = size("card_radius")
+	sb.content_margin_right = size("card_radius")
+	return sb
+
+
+## The slider of the panels: a thin track, the part behind the knob in the accent colour.
+static func _slider() -> void:
+	var track := box("raise_2", "pill_radius")
+	track.content_margin_top = size("pad_s")
+	track.content_margin_bottom = size("pad_s")
+	var filled := box("accent", "pill_radius")
+	_theme.set_stylebox(&"slider", &"HSlider", track)
+	_theme.set_stylebox(&"grabber_area", &"HSlider", filled)
+	_theme.set_stylebox(&"grabber_area_highlight", &"HSlider", filled)
+
+
 static func _buttons() -> void:
 	var none := StyleBoxEmpty.new()
 	none.set_content_margin_all(size("pad_s"))
@@ -130,6 +166,15 @@ static func _buttons() -> void:
 		"font_tab")
 	_button(&"CompassButton", [box("bg", "pill_radius", "line", true), box("bg", "pill_radius", "accent_line", true),
 		box("bg", "pill_radius", "accent", true)], ["text", "text", "text"])
+	_button(&"Choice", [_wide(box("raise", "kbd_radius", "line")), _wide(box("raise_2", "kbd_radius", "accent_line")),
+		_wide(box("accent", "kbd_radius"))], ["text", "text", "accent_ink"], "font_tab")
+	_button(&"Primary", [box("accent", "card_radius"), box("accent", "card_radius", "text"), box("accent", "card_radius")],
+		["accent_ink", "accent_ink", "accent_ink"], "font_clock")
+	_button(&"Ghost", [box("raise", "card_radius", "line"), box("raise_2", "card_radius", "accent_line"),
+		box("raise_2", "card_radius", "accent")], ["text", "text", "text"])
+	_button(&"Chip", [_wide(box("raise", "pill_radius", "line")), _wide(box("raise_2", "pill_radius", "accent_line")),
+		_wide(box("accent", "pill_radius"))], ["text", "text", "accent_ink"], "font_tab")
+	_button(&"LinkBtn", [none, none, none], ["link", "accent", "accent"], "font_tab")
 	_button(&"Row", [none, box("raise_2", "card_radius"), box("raise_2", "card_radius")], ["text", "text", "accent"])
 	for name in [&"SegButton", &"DockButton", &"DockDanger", &"IconButton", &"Row", &"DrawerTab"]:
 		_theme.set_constant(&"icon_max_width", name, int(size("cat_icon")))
@@ -144,6 +189,15 @@ static func _label(name: StringName, font: String, colour: String) -> void:
 	_theme.set_color(&"font_color", name, color(colour))
 
 
+## The tooltip the engine draws for every `tooltip_text`: the interface's own look (shell.css .v2-tip).
+static func _tooltip() -> void:
+	var sb := box("bg_strong", "kbd_radius", "line")
+	sb.set_content_margin_all(size("pad"))
+	_theme.set_stylebox(&"panel", &"TooltipPanel", sb)
+	_theme.set_color(&"font_color", &"TooltipLabel", color("text"))
+	_theme.set_font_size(&"font_size", &"TooltipLabel", int(size("font_tab")))
+
+
 static func _labels() -> void:
 	_label(&"ClockLabel", "font_clock", "text")
 	_label(&"MoneyLabel", "font_money", "text")
@@ -154,5 +208,14 @@ static func _labels() -> void:
 	_label(&"CardLabel", "font_card", "muted")
 	_label(&"MetaLabel", "font_meta", "muted")
 	_label(&"DangerLabel", "font_body", "danger_ink")
+	_label(&"KbdLabel", "font_kbd", "text")
+	_label(&"HeadLabel", "font_h2", "text")
+	_label(&"TitleBig", "font_h1", "white")
+	var bold := _font(int(size("font_bold")))
+	_theme.set_font(&"font", &"TitleBig", bold)
+	_theme.set_font(&"font", &"HeadLabel", bold)
+	_theme.set_font(&"font", &"ClockLabel", bold)
+	_theme.set_font(&"font", &"MoneyLabel", bold)
+	_tooltip()
 	_variation(&"Glyph", &"TextureRect")
 

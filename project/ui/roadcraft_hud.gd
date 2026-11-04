@@ -1,32 +1,30 @@
-## The game's shell: top bar (sky, clock, money, counts | speed pill | layers, simulation,
-## camera, undo, redo, help, menu), the dock with the seven categories and their drawers, the hint bar, the inspector
-## and the compass. Styles come from ui/theme/theme_builder.gd, texts from data/i18n/strings.csv, buttons from
-## data/ui/drawers.json. The HUD only reads CityStore.snapshot and asks the ToolController for tools.
+## The game's shell: the top bar, the dock with the seven categories and their drawers, the tool's options at the bottom left, the
+## hint bar, the toast, the inspector, the compass, the popovers and the panels (F7, F9, Shift+F9). Styles come from
+## ui/theme/theme_builder.gd, texts from data/i18n/strings*.csv, buttons from data/ui/drawers.json. The HUD only reads
+## CityStore.snapshot and asks the ToolController for tools.
 class_name RoadcraftHud
 extends CanvasLayer
 
 signal category_pressed(id: String)
 
-const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
-const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
-
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
+@onready var world: CityWorld = get_tree().get_first_node_in_group(&"world")
 @onready var root: Control
+@onready var top_bar: HudTopBar
 @onready var drawer: HudDrawer
 @onready var popover: HudPopover
 @onready var inspector: InspectorPanel
 @onready var actions: HudActions
-@onready var _clock: Label
-@onready var _money: Label
-@onready var _stats: Label
+@onready var health: HealthPanel
+@onready var profiler: ProfilerHud
+@onready var effects: EffectsPanel
 @onready var _hint: Label
-@onready var _speed_buttons: Array[Button] = []
-@onready var _sky_buttons: Array[Button] = []
-@onready var _action_buttons: Dictionary = {}
-@onready var _history_buttons: Dictionary = {}
 @onready var _cat_buttons := {}
-@onready var _needle: Control
+@onready var _dialog: HudDialog
+@onready var _toast_left := 0.0
+@onready var _toast: PanelContainer
+@onready var _toast_label: Label
 
 
 func _ready() -> void:
@@ -35,11 +33,16 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
-	_build_top_bar()
+	top_bar = HudTopBar.new()
+	top_bar.world = world
+	root.add_child(top_bar)
 	_build_dock()
-	_build_compass()
+	root.add_child(HudCompass.new(rig))
 	_build_hint()
+	_build_toast()
+	var options := HudWidgets.panel(root, &"Surface")
 	drawer = HudDrawer.new()
+	drawer.options_panel = options
 	root.add_child(drawer)
 	drawer.tool_requested.connect(_on_tool_requested)
 	drawer.closed.connect(_on_drawer_closed)
@@ -49,59 +52,22 @@ func _ready() -> void:
 	add_child(actions)
 	popover.menu_action.connect(actions.menu)
 	popover.open_slot.connect(actions.load_slot)
+	popover.closed.connect(_on_popover_closed)
+	top_bar.popover_pressed.connect(open_popover)
+	top_bar.history_pressed.connect(actions.history)
 	inspector = InspectorPanel.new()
 	root.add_child(inspector)
-	CityStore.changed.connect(_on_changed)
+	health = HealthPanel.new()
+	root.add_child(health)
+	profiler = ProfilerHud.new()
+	root.add_child(profiler)
+	effects = EffectsPanel.new()
+	root.add_child(effects)
+	add_child(GameKeys.new(self))
 	if tools:
 		tools.hint.connect(show_hint)
 		tools.inspected.connect(func(info: Dictionary) -> void: inspector.show_info(info, info.get("at", Vector3.ZERO)))
-	_set_sky("day")
-
-
-func _build_top_bar() -> void:
-	var bar := HudWidgets.panel(root, &"Surface")
-	bar.anchor_right = 1.0
-	bar.offset_left = HudWidgets.px("margin")
-	bar.offset_top = HudWidgets.px("margin")
-	bar.offset_right = -HudWidgets.px("margin")
-	bar.custom_minimum_size.y = HudWidgets.px("hud_h")
-	var row := HudWidgets.hbox(bar, &"Gap")
-	var left := HudWidgets.hbox(row, &"Gap")
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sky := HudWidgets.hbox(HudWidgets.panel(left, &"Seg"))
-	for s in SKY:
-		var b := HudWidgets.button(&"SegButton", s[0], "", s[1], "seg_min_w", "seg_h")
-		b.toggle_mode = true
-		b.pressed.connect(_set_sky.bind(s[2]))
-		sky.add_child(b)
-		_sky_buttons.append(b)
-	_clock = HudWidgets.label(left, &"ClockLabel")
-	_money = HudWidgets.label(left, &"MoneyLabel")
-	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
-	_money.mouse_filter = Control.MOUSE_FILTER_PASS
-	_stats = HudWidgets.label(left, &"StatsLabel")
-	var pill := HudWidgets.hbox(HudWidgets.panel(row, &"Seg"))
-	for s in SPEEDS:
-		var b := HudWidgets.button(&"SegButton", "pause" if s[0] == "" else "", s[0], "sim.speed", "seg_min_w", "seg_h")
-		b.toggle_mode = true
-		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
-		pill.add_child(b)
-		_speed_buttons.append(b)
-	var right := HudWidgets.hbox(row, &"Pad")
-	right.alignment = BoxContainer.ALIGNMENT_END
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for a in DataTables.ui("drawers").actions:
-		var b := HudWidgets.button(&"IconButton", a.icon, "", a.tip_key, "icon_btn", "icon_btn")
-		right.add_child(b)
-		if a.has("popover"):
-			b.toggle_mode = true
-			b.pressed.connect(open_popover.bind(a.popover))
-			_action_buttons[a.popover] = b
-		elif a.has("action"):
-			b.pressed.connect(func() -> void: actions.history(a.action))
-			_history_buttons[a.action] = b
-		else:
-			HudWidgets.soon(b, a.tip_key)
+	top_bar.set_sky(world.sky_mode if world else "day")
 
 
 func _build_dock() -> void:
@@ -125,37 +91,13 @@ func _build_dock() -> void:
 		_cat_buttons[c.id] = b
 
 
-## Compass: a round button bottom-right whose needle turns with the camera; a click puts north up.
-func _build_compass() -> void:
-	var c := HudWidgets.button(&"CompassButton", "", "", "camera.north", "compass", "compass")
-	c.anchor_left = 1.0
-	c.anchor_right = 1.0
-	c.anchor_top = 1.0
-	c.anchor_bottom = 1.0
-	c.offset_left = -HudWidgets.px("compass") - HudWidgets.px("compass_margin")
-	c.offset_top = -HudWidgets.px("compass") - HudWidgets.px("compass_margin")
-	c.offset_right = -HudWidgets.px("compass_margin")
-	c.offset_bottom = -HudWidgets.px("compass_margin")
-	c.pressed.connect(func() -> void: if rig: rig.north())
-	root.add_child(c)
-	var needle := TextureRect.new()
-	needle.texture = HudWidgets.icon("compass_full")
-	needle.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	needle.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	needle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	needle.set_anchors_preset(Control.PRESET_FULL_RECT)
-	needle.pivot_offset = Vector2.ONE * HudWidgets.px("compass") * 0.5
-	c.add_child(needle)
-	_needle = needle
-
-
-## Hint bar above the drawer: the tool's instruction, the price while aiming, refusals.
+## Hint bar under the toast's place: the price while aiming and refusals (what a tool does is its drawer's note, as in the reference).
 func _build_hint() -> void:
 	var p := HudWidgets.panel(root, &"Toast")
 	p.anchor_left = 0.5
 	p.anchor_right = 0.5
 	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	p.offset_top = HudWidgets.px("toast_top")
+	p.offset_top = HudWidgets.px("toast_top") + HudWidgets.px("hud_h")
 	_hint = HudWidgets.label(p, &"BodyLabel")
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.hide()
@@ -172,6 +114,33 @@ func show_hint(text: String, ok: bool) -> void:
 	p.offset_right = p.size.x * 0.5
 
 
+func _build_toast() -> void:
+	_toast = HudWidgets.panel(root, &"Toast")
+	_toast.anchor_left = 0.5
+	_toast.anchor_right = 0.5
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.offset_top = HudWidgets.px("toast_top")
+	_toast_label = HudWidgets.label(_toast, &"BodyLabel")
+	_toast.hide()
+
+
+## The game's answers (saved, refused, undone): a toast that goes by itself, apart from the tool's hint.
+func flash(text: String, ok: bool) -> void:
+	_toast.theme_type_variation = &"Toast" if ok else &"DangerToast"
+	_toast_label.text = text
+	_toast.show()
+	_toast.reset_size()
+	_toast.offset_left = -_toast.size.x * 0.5
+	_toast.offset_right = _toast.size.x * 0.5
+	_toast_left = HudWidgets.px("toast_s")
+
+
+func _process(delta: float) -> void:
+	if _toast_left > 0.0:
+		_toast_left -= delta
+		_toast.visible = _toast_left > 0.0
+
+
 func open_category(id: String) -> void:
 	var open: String = "" if drawer.category.get("id", "") == id else id
 	for k in _cat_buttons:
@@ -185,11 +154,54 @@ func open_category(id: String) -> void:
 			drawer.open(c)
 
 
+## A tab of a category, the category opened if it is not (the tool's letters).
+func open_tab(cat: String, tab_id: String) -> void:
+	if drawer.category.get("id", "") != cat:
+		open_category(cat)
+	for t: Dictionary in drawer.category.tabs:
+		if t.id == tab_id and t.has("tool"):
+			drawer.select_tab(t)
+
+
+## The number row: the catalogue's road, the road tool in hand.
+func pick_road(index: int) -> void:
+	open_tab("roads", "draw")
+	drawer.catalog.pick_index(index)
+
+
 func open_popover(which: String) -> void:
-	var b: Button = _action_buttons.get(which, _action_buttons.menu)
+	var buttons := top_bar.action_buttons
+	var b: Button = buttons.get(which, buttons.menu)
 	var opened := popover.toggle(which, b.get_global_rect())
-	for k in _action_buttons:
-		_action_buttons[k].set_pressed_no_signal(opened and k == which)
+	for k in buttons:
+		buttons[k].set_pressed_no_signal(opened and k == which)
+
+
+func _on_popover_closed() -> void:
+	for k in top_bar.action_buttons:
+		top_bar.action_buttons[k].set_pressed_no_signal(false)
+
+
+## A modal dialog over the game: graphics, about.
+func open_dialog(d: HudDialog) -> void:
+	if is_instance_valid(_dialog):
+		_dialog.close()
+	_dialog = d
+	root.add_child(d)
+
+
+func toggle_effects() -> void:
+	effects.toggle()
+
+
+## Escape, one step back: the open panel, then the tool in hand; false: nothing to put down.
+func escape() -> bool:
+	if popover.close() or health.close() or effects.close():
+		return true
+	if drawer.category.is_empty():
+		return false
+	drawer.close()
+	return true
 
 
 func _on_tool_requested(tool: String, params: Dictionary) -> void:
@@ -203,40 +215,3 @@ func _on_drawer_closed() -> void:
 	if tools:
 		tools.set_tool(ToolController.Tool.NONE)
 	show_hint("", true)
-
-
-func _set_sky(mode: String) -> void:
-	for i in SKY.size():
-		_sky_buttons[i].set_pressed_no_signal(SKY[i][2] == mode)
-	var hour: float = DataTables.tuning("sim_day_light_hour") if mode == "day" else DataTables.tuning("sim_night_light_hour")
-	RenderingServer.global_shader_parameter_set(&"night", 0.0 if mode == "day" else 1.0)
-	print("ceu: ", mode, " ", hour)
-
-
-func _process(_delta: float) -> void:
-	if _needle and rig:
-		_needle.rotation = -rig.yaw
-
-
-func _on_changed(s: Dictionary) -> void:
-	if not s.get("ready", false):
-		return
-	var h: float = s.hour
-	var mph: float = CityStore.constants.minutes_per_hour
-	_clock.text = "%02d:%02d" % [int(h), int(fmod(h * mph, mph))]
-	_money.text = Formatters.format_money(s.money)
-	var parts := []
-	if s.vehicles > 0:
-		parts.append(tr("status.vehicles.other").format({"count": Formatters.format_int(s.vehicles)}))
-	if s.people > 0:
-		parts.append(tr("status.people.other").format({"count": Formatters.format_int(s.people)}))
-	_stats.text = " · ".join(parts)
-	_stats.tooltip_text = tr("ui.stats.tip").format({"residents": Formatters.format_int(s.residents),
-		"jobs": Formatters.format_int(s.jobs), "buildings": Formatters.format_int(s.buildings), "speed": "—"})
-	for i in SPEEDS.size():
-		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
-	for action in _history_buttons:
-		var b: Button = _history_buttons[action]
-		b.disabled = not s.get("can_" + action, false)
-		var label: String = s.get(action + "_label", "")
-		b.tooltip_text = tr("action." + action) + ("" if label.is_empty() else " · " + tr(label))

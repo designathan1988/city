@@ -11,7 +11,7 @@ var _a := Vector3.INF
 func enter() -> void:
 	fn = params.get("fn", 0)
 	zone = params.get("zone", 1)
-	ctl.hint.emit(tr("hint.lot"), true)
+	ctl.hint.emit("", true)
 
 
 func exit() -> void:
@@ -29,7 +29,7 @@ func drag(p: Vector3) -> void:
 	if pv.is_empty():
 		return
 	ctl.preview.show_ribbon(pv.points, pv.half_width, pv.ok)
-	ctl.hint.emit(tr("hint.lot") if pv.ok else refusal(pv), pv.ok)
+	ctl.hint.emit("" if pv.ok else refusal(pv), pv.ok)
 
 
 func release(p: Vector3) -> void:

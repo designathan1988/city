@@ -235,7 +235,7 @@ func _apply() -> void:
 	var profile: float = CameraProfile.profile_tilt(cfg, half)
 	pitch = clampf(profile + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, half),
 			deg_to_rad(cfg.max_tilt_deg))
-	camera.fov = CameraProfile.fov_deg(cfg, half)
+	CameraProfile.lens(camera, cfg, half)
 	distance = CameraProfile.view_distance(cfg, half)
 	_ground_y = _ground_height(focus.x, focus.z)
 	focus.y = _ground_y + CameraProfile.eye_lift(cfg, half)

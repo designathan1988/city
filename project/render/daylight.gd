@@ -9,6 +9,10 @@ var _sun: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
+var hour := 0.0
+## The Effects panel's switches: bloom and the ambient light drawn or not.
+var glow_on := true
+var ambient_on := true
 
 
 func _init(day: Dictionary, sun: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
@@ -22,8 +26,9 @@ func _c(key: String) -> Color:
 	return Color.html(_d[key])
 
 
-func set_hour(hour: float) -> void:
-	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
+func set_hour(at: float) -> void:
+	hour = at
+	var k: float = (at - _d.sunrise_h) / _d.day_span_h
 	var elev: float = _d.max_elev_deg * sin(PI * k)
 	var az: float = _d.az_start_deg + _d.az_span_deg * k
 	night = smoothstep(_d.night_from_deg, _d.night_to_deg, elev)
@@ -38,9 +43,9 @@ func set_hour(hour: float) -> void:
 		_sun.light_energy = _d.moon_energy * night
 	var hemi: float = _d.hemi_base + _d.hemi_day_k * day + _d.hemi_night_k * night
 	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), day)
-	_env.ambient_light_energy = hemi * _d.ambient_scale
+	_env.ambient_light_energy = hemi * _d.ambient_scale if ambient_on else 0.0
 	_set_sky(elev)
-	_env.glow_enabled = night > _d.glow_from_night
+	_env.glow_enabled = glow_on and night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
 	RenderingServer.global_shader_parameter_set(&"night", night)
 

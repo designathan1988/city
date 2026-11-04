@@ -1,0 +1,14 @@
+{
+ "type": "object",
+ "required": [
+  "rules",
+  "tools",
+  "tabs",
+  "digit_keys"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ }
+}

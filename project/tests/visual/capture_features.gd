@@ -76,7 +76,7 @@ func _undo_redo(a: Vector3, e: Vector3) -> void:
 	await ui.drawn()
 	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.can_redo, "Ctrl+Z desfez a via")
 	await ui.shot("feat_undo_2_desfeita")
-	await ui.press(hud._history_buttons.redo)
+	await ui.press(hud.top_bar._history_buttons.redo)
 	await ui.drawn()
 	_check(CityStore.snapshot.segments > s0, "Refazer pelo botão")
 	await ui.shot("feat_undo_3_refeita")

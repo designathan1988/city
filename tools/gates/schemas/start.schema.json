@@ -1,0 +1,11 @@
+{
+ "type": "object",
+ "required": [
+  "reveal_limit_s"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ }
+}

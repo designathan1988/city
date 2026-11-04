@@ -66,7 +66,7 @@ func _ready() -> void:
 			moves = arg.trim_prefix("--moves=").split(",")
 	var world := CityWorld.new()
 	add_child(world)
-	Settings.apply(world, get_viewport())
+	Settings.attach(world, get_viewport())
 	_knobs(world)
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	rig = CityCamera.new()

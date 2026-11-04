@@ -29,6 +29,15 @@ func menu(action: String) -> void:
 			_loaded(CityStore.load_last())
 		"open":
 			_hud().open_popover("files")
+		"new_large":
+			_hud().drawer.close()
+			CityStore.new_map(int(DataTables.ui("drawers").popovers.menu.large_map), randi_range(1, SEED_LIMIT), true)
+		"graphics":
+			_hud().open_dialog(GraphicsPanel.new())
+		"effects":
+			_hud().toggle_effects()
+		"about":
+			_hud().open_dialog(HudDialog.About.new())
 
 
 func load_slot(slot: String) -> void:
@@ -37,38 +46,25 @@ func load_slot(slot: String) -> void:
 
 func _loaded(r: Dictionary) -> void:
 	_hud().drawer.close()
-	_hud().show_hint(tr("save.loaded") if r.ok else tr(r.error), r.ok)
+	_hud().flash(tr("save.loaded") if r.ok else tr(r.error), r.ok)
 
 
 ## A save the store could not start (one is still being written, no whole city): said at once.
 func _refused(r: Dictionary) -> void:
 	if not r.get("ok", false):
-		_hud().show_hint(tr(r.get("error", "")), false)
+		_hud().flash(tr(r.get("error", "")), false)
 
 
 ## A save that ended (CityStore.saved): written, written by the autosave, or why not.
 func _on_saved(_slot: String, r: Dictionary) -> void:
 	if r.get("ok", false):
-		_hud().show_hint(tr("save.auto" if r.get("auto", false) else "save.done"), true)
+		_hud().flash(tr("save.auto" if r.get("auto", false) else "save.done"), true)
 	else:
-		_hud().show_hint(tr(r.get("error", "")), false)
+		_hud().flash(tr(r.get("error", "")), false)
 
 
 ## Undo / redo (top bar buttons, Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y): the core's history; the hint names the step.
 func history(action: String) -> void:
 	var label: String = CityStore.snapshot.get("undo_label" if action == "undo" else "redo_label", "")
 	if CityStore.dispatch(StringName(action)):
-		_hud().show_hint(tr("v2.do." + action) + " · " + tr(label), true)
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	var k := event as InputEventKey
-	if k == null or not k.pressed or k.echo or not k.ctrl_pressed:
-		return
-	match k.keycode:
-		KEY_Z: history("redo" if k.shift_pressed else "undo")
-		KEY_Y: history("redo")
-		KEY_S: menu("save")
-		KEY_O: _hud().open_popover("files")
-		_: return
-	get_viewport().set_input_as_handled()
+		_hud().flash(tr("v2.do." + action) + " · " + tr(label), true)

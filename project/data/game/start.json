@@ -1,0 +1,4 @@
+{
+ "_doc": "The title screen (ui/start_screen.gd). reveal_limit_s: the most it waits for the first view to be drawn before lifting the curtain: never a curtain for ever. The map 0 draws its first view in a few seconds; the limit only guards a machine that cannot.",
+ "reveal_limit_s": 90
+}

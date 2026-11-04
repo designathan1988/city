@@ -1,0 +1,10 @@
+{
+ "_doc": "The health log (game/health/health_log.gd) and the F9 monitor (ui/health_panel.gd). long_frame_ms: a frame over this is told as slow (50 ms: the long-task threshold of the W3C Long Tasks API; the game's own rule 'no frame over 50 ms'); status_window_s how far back the dot looks; kept entries in the ring, kept_saved of them written for the next session every save_every_s; rows on the panel.",
+ "long_frame_ms": 50,
+ "status_window_s": 30,
+ "kept": 256,
+ "kept_saved": 50,
+ "save_every_s": 5,
+ "rows": 7,
+ "refresh_s": 1
+}

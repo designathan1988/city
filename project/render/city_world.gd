@@ -24,11 +24,13 @@ var terrain: Node3D
 var sun: DirectionalLight3D
 var environment: Environment
 var daylight: Daylight
+var sky_mode := "day"
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
 
 
 func _ready() -> void:
+	add_to_group(&"world")
 	var palette: Dictionary = DataTables.render().palette
 	_build_environment(palette)
 	_build_terrain(palette)
@@ -162,6 +164,29 @@ func set_hour(hour: float) -> void:
 	daylight.set_hour(hour)
 
 
+## The sky of the top bar: always day, always night, or the residents' clock (follow_clock).
+func set_sky_mode(mode: String) -> void:
+	sky_mode = mode
+	if mode == "day":
+		set_hour(DataTables.tuning("sim_day_light_hour"))
+	elif mode == "night":
+		set_hour(DataTables.tuning("sim_night_light_hour"))
+
+
+## The city's clock: the light follows it in the cycle.
+func follow_clock(hour: float) -> void:
+	if sky_mode == "cycle" and absf(hour - daylight.hour) >= DataTables.game("daylight").clock_step_h:
+		set_hour(hour)
+
+
+## The Effects panel: bloom, the sky's reflection and the ambient light drawn or not.
+func set_light_switches(glow: bool, reflections: bool, ambient: bool) -> void:
+	daylight.glow_on = glow
+	daylight.ambient_on = ambient
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if reflections else Environment.REFLECTION_SOURCE_DISABLED
+	set_hour(daylight.hour)
+
+
 func _build_terrain(palette: Dictionary) -> void:
 	terrain = ClassDB.instantiate(&"Terrain3D")
 	terrain.name = "Terrain3D"
@@ -183,6 +208,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	terrain.collision_mode = 0 # disabled: picking uses the core's raycast
 	terrain.free_editor_textures = false
 	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
+	terrain.render_layers = int(CityStore.constants.render_layers.terrain)
 	add_child(terrain)
 	# Terrain3D rebuilds its material when it enters the tree and drops parameters set before that (the ground then
 	# sampled the shader's white default texture), so the look is applied once the terrain is in the scene.
@@ -208,4 +234,5 @@ func _build_water(palette: Dictionary) -> void:
 	water.material_override = mat
 	water.position.y = palette.water.sea_level_m
 	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	water.layers = int(CityStore.constants.render_layers.water)
 	add_child(water)

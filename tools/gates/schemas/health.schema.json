@@ -1,0 +1,17 @@
+{
+ "type": "object",
+ "required": [
+  "long_frame_ms",
+  "status_window_s",
+  "kept",
+  "kept_saved",
+  "save_every_s",
+  "rows",
+  "refresh_s"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ }
+}

@@ -1,0 +1,12 @@
+{
+ "_doc": "The Effects panel's Optimisations tab (game/settings/optimizations.gd): each option chosen alone, live, to measure what it gains and what it costs the picture. Its first value is the game as it draws (tier: the tier's own). field: the tier's field it sets (data/game/settings.json tiers); divide: the building reach is divided by the value. Three.js's own options have no counterpart here: the opaque sort and shader precision are the engine's, frustum culling is always on, shadow and relief passes every N frames do not exist in Godot's renderer.",
+ "options": [
+  {"id": "shadowMapSize", "field": "shadow_px", "choices": ["tier", 4096, 2048, 1024, 512]},
+  {"id": "msaa", "field": "msaa", "choices": ["tier", 3, 2, 1, 0]},
+  {"id": "aoResolution", "field": "ssao_half", "choices": ["tier", false, true]},
+  {"id": "anisotropy", "field": "anisotropy", "choices": ["tier", 4, 3, 2, 1, 0]},
+  {"id": "smaa", "field": "smaa", "choices": ["tier", false]},
+  {"id": "detailProps", "field": "detail_props", "choices": ["tier", false]},
+  {"id": "buildingLod", "field": "triangle_share", "choices": ["tier", 0.5, 0.25, 0.1]}
+ ]
+}

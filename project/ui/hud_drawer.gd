@@ -8,6 +8,9 @@ extends PanelContainer
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
+## The panel at the bottom left that holds the tool's options (the HUD makes it).
+@export var options_panel: PanelContainer
+@onready var _options: VBoxContainer
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
 @onready var _head: HBoxContainer
@@ -23,15 +26,25 @@ func _ready() -> void:
 	anchor_right = 0.5
 	anchor_top = 1.0
 	anchor_bottom = 1.0
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	offset_bottom = -(HudWidgets.px("margin") + HudWidgets.px("dock_h") + HudWidgets.px("drawer_gap"))
+	options_panel.custom_minimum_size.x = HudWidgets.px("opts_w")
+	options_panel.anchor_top = 1.0
+	options_panel.anchor_bottom = 1.0
+	options_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	options_panel.offset_left = HudWidgets.px("margin")
+	options_panel.offset_right = HudWidgets.px("margin") + HudWidgets.px("opts_w")
+	options_panel.offset_bottom = -HudWidgets.px("margin")
+	_options = HudWidgets.vbox(options_panel, &"Pad")
+	options_panel.hide()
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
 	_strip = HudWidgets.hbox(col, &"Pad")
 	for p in CityStore.query(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
+	catalog.minimum_size_changed.connect(_fit)
+	get_viewport().size_changed.connect(_fit)
 	catalog.profile_picked.connect(func(i: int) -> void:
 		var upgrading := tools != null and tools.tool == ToolController.Tool.UPGRADE
 		tool_requested.emit("UPGRADE" if upgrading else "ROAD", {"profile": i}))
@@ -58,6 +71,7 @@ func open(cat: Dictionary) -> void:
 
 func close() -> void:
 	hide()
+	options_panel.hide()
 	category = {}
 	closed.emit()
 
@@ -128,6 +142,7 @@ func _build_strip(tab: Dictionary) -> void:
 	if catalog.get_parent():
 		catalog.get_parent().remove_child(catalog)
 	HudWidgets.clear(_strip)
+	HudWidgets.clear(_options)
 	var kind: String = category.get("strip", "")
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
 		_strip.add_child(catalog)
@@ -136,7 +151,7 @@ func _build_strip(tab: Dictionary) -> void:
 			_strip.add_child(_zone_card(c))
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
-		DrawerStrips.slider(_strip, ring.label_key, DataTables.tuning("roundabout_radius_min_m"),
+		HudWidgets.range_row(_options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), " m",
 			_retool.bind("ROUNDABOUT", "radius"))
 	elif kind == "relief_cards" and tab.get("tool", "") == "TERRAIN":
@@ -147,16 +162,35 @@ func _build_strip(tab: Dictionary) -> void:
 	var note := HudWidgets.label(_strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = HudWidgets.px("side_w")
-	note.visible = note.text != ""
+	note.visible = note.text != "" and _strip.get_child_count() == 1 # a mode with nothing to pick says what it does
+	options_panel.visible = _options.get_child_count() > 0
+	options_panel.reset_size()
+	options_panel.offset_top = -options_panel.size.y - HudWidgets.px("margin")
+	_fit.call_deferred()
+
+
+## The room left by the options; the catalogue takes all it needs of it, the panel stands centred there, on its bottom edge.
+func _fit() -> void:
+	if not visible:
+		return
+	var margin := HudWidgets.px("margin")
+	var vw := get_viewport_rect().size.x
+	var left := margin + (HudWidgets.px("opts_w") + margin if options_panel.visible else 0.0)
+	var room := vw - margin - left
+	catalog.fit(room - HudWidgets.px("gap"))
+	var need := get_combined_minimum_size()
+	var width := minf(need.x, room)
+	offset_left = left + (room - width) * 0.5 - vw * 0.5
+	offset_right = offset_left + width
+	offset_top = offset_bottom - need.y
 
 
 func _relief_strip() -> void:
 	for c in category.cards:
 		_strip.add_child(DrawerStrips.card(c, "mode", _param("TERRAIN", "mode", 0), _retool.bind("TERRAIN", "mode")))
-	var col := HudWidgets.vbox(_strip)
 	for key in ["radius", "strength"]:
 		var spec: Dictionary = category.brush[key]
-		DrawerStrips.slider(col, spec.label_key, spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
+		HudWidgets.range_row(_options, tr(spec.label_key), spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
 			" m" if key == "radius" else "%", _retool.bind("TERRAIN", key))
 
 

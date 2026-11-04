@@ -17,7 +17,7 @@ var _last_plan: Dictionary = {}
 func enter() -> void:
 	profile = params.get("profile", 0)
 	curve = params.get("curve", false)
-	ctl.hint.emit(tr("ui.do.roadPoint"), true)
+	ctl.hint.emit("", true)
 
 
 func exit() -> void:
@@ -50,7 +50,7 @@ func hover(p: Vector3) -> void:
 func cancel() -> void:
 	step = Step.START
 	ctl.preview.clear()
-	ctl.hint.emit(tr("ui.do.roadPoint"), true)
+	ctl.hint.emit("", true)
 
 
 func key(keycode: Key) -> void:

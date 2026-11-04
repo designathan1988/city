@@ -11,6 +11,7 @@ signal profile_picked(index: int)
 @onready var _strips: Dictionary = {}
 @onready var _tabs_row: HBoxContainer
 @onready var _cards_row: HBoxContainer
+@onready var _scroll: ScrollContainer
 @onready var _tab_buttons: Dictionary = {}
 
 
@@ -34,12 +35,35 @@ func _ready() -> void:
 		b.pressed.connect(show_category.bind(t[0]))
 		_tabs_row.add_child(b)
 		_tab_buttons[t[0]] = b
-	var scroll := ScrollContainer.new()
+	_scroll = ScrollContainer.new()
+	var scroll := _scroll
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll.custom_minimum_size.x = HudWidgets.px("drawer_max_w")
+	scroll.gui_input.connect(_wheel)
 	add_child(scroll)
 	_cards_row = HudWidgets.hbox(scroll, &"Pad")
 	show_category(DataTables.ui("drawers").catalog_tabs[0][0])
+
+
+## The card at `index` of the open tab, as if pressed.
+func pick_index(index: int) -> void:
+	if index < _cards_row.get_child_count():
+		(_cards_row.get_child(index).get_meta(&"button") as Button).pressed.emit()
+
+
+## As wide as the drawer's room.
+func fit(width: float) -> void:
+	_scroll.custom_minimum_size.x = minf(width, _cards_row.get_combined_minimum_size().x)
+
+
+## A wheel over the cards scrolls them sideways.
+func _wheel(event: InputEvent) -> void:
+	var b := event as InputEventMouseButton
+	if b != null and b.pressed and (b.button_index == MOUSE_BUTTON_WHEEL_UP or b.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		var step := HudWidgets.px("rc_card_w") * (1.0 if b.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0)
+		_scroll.scroll_horizontal += int(step)
+		accept_event()
 
 
 func show_category(category: String) -> void:

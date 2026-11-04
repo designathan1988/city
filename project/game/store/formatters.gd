@@ -8,6 +8,11 @@ const GROUP := 3
 const PERCENT := 100.0
 
 
+## "<n> <noun>": the singular or the plural key by the count (<base>.one, <base>.other).
+static func count_label(base: String, count: int) -> String:
+	return TranslationServer.translate(base + (".one" if count == 1 else ".other")).format({"count": format_int(count)})
+
+
 static func format_int(v: float) -> String:
 	var n := int(round(absf(v)))
 	var digits := str(n)

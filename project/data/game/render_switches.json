@@ -1,0 +1,55 @@
+{
+ "_doc": "The Effects panel (F7, ui/effects_panel.gd; game/settings/render_switches.gd). Each item is an effect or layer switched on and off live, to measure what it costs: `layers` are the names of native/src/render/render_layers.h, hidden by the camera's cull mask (no instance touched); `effect` is one thing of the renderer. resolutions: the share of the 3D scale the panel offers. Switches of systems the game does not have yet (clouds, weather, particles, transit) come with the session that ports them.",
+ "resolutions": [1, 0.75, 0.5, 0.25],
+ "stats_every_s": 0.25,
+ "groups": [
+  {
+   "id": "post",
+   "items": [
+    {"key": "ambientOcclusion", "effect": "ssao"},
+    {"key": "bloom", "effect": "glow"},
+    {"key": "smaa", "effect": "smaa"}
+   ]
+  },
+  {
+   "id": "light",
+   "items": [
+    {"key": "shadows", "effect": "shadows"},
+    {"key": "environmentMap", "effect": "reflections"},
+    {"key": "ambient", "effect": "ambient"}
+   ]
+  },
+  {
+   "id": "layers",
+   "items": [
+    {"key": "terrain", "layers": ["terrain"]},
+    {"key": "water", "layers": ["water"]},
+    {"key": "roads", "layers": ["roads"]},
+    {"key": "buildings", "layers": ["building_masses", "building_facades", "building_shells", "building_parts", "building_details"]},
+    {"key": "vegetation", "layers": ["vegetation"]},
+    {"key": "furniture", "layers": ["furniture"]},
+    {"key": "people", "layers": ["people", "vehicles"]},
+    {"key": "signals", "layers": ["signals"]}
+   ]
+  },
+  {
+   "id": "buildings",
+   "items": [
+    {"key": "bMasses", "layers": ["building_masses"]},
+    {"key": "bFacadeLevel", "layers": ["building_facades"]},
+    {"key": "bDetail", "layers": ["building_shells"]},
+    {"key": "bParts", "layers": ["building_parts"]},
+    {"key": "bFacadeDetails", "layers": ["building_details"]},
+    {"key": "bShadows", "effect": "building_shadows"}
+   ]
+  },
+  {
+   "id": "cpu",
+   "items": [
+    {"key": "traffic", "sim": "traffic"},
+    {"key": "pedestrians", "sim": "pedestrians"},
+    {"key": "growth", "sim": "growth"}
+   ]
+  }
+ ]
+}
