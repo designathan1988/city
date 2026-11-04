@@ -40,15 +40,16 @@ describe('audit', () => {
     assert.deepEqual(found('nondeterminism-in-simulation'), ['high src/world.ts#World.tick']);
   });
 
-  it('weighs performance patterns by the hot path', () => {
-    assert.deepEqual(found('hot-allocation'), ['high src/world.ts#World.tick']);
+  it('weighs performance patterns by reachability from the loops, never claiming a measurement', () => {
+    assert.deepEqual(found('hot-allocation'), ['medium src/world.ts#World.tick']);
     assert.deepEqual(found('queue-shift'), ['low src/patterns.ts#drain']);
     assert.deepEqual(found('object-delete'), ['low src/patterns.ts#forget']);
     assert.deepEqual(found('holey-array'), ['low src/patterns.ts#sized']);
     assert.deepEqual(found('quadratic-proximity'), ['medium src/patterns.ts#nearest']);
     assert.deepEqual(found('worker-copy'), ['medium src/patterns.ts#send']);
     const hot = runAudit(ir, { ...base, hot: ['src/patterns.ts#drain'] });
-    assert.ok(hot.findings.some((f) => f.rule === 'queue-shift' && f.severity === 'high'));
+    assert.ok(hot.findings.some((f) => f.rule === 'queue-shift' && f.severity === 'medium' && f.message.includes('not measured')));
+    assert.ok(!hot.findings.some((f) => f.rule === 'hot-allocation' && f.severity === 'high'));
   });
 
   it('roots the hot path in repeating frame callbacks, not in one-off deferrals', () => {

@@ -9,7 +9,10 @@ export function renderAudit(result: AuditResult): string {
   const out: string[] = [
     '# Audit',
     '',
-    `Source: ${result.sourceRoot} (${result.graphUnits} units). Hot path: ${result.hot.units} units reachable from ${result.hot.roots.length} root(s).`,
+    `Source: ${result.sourceRoot} (${result.graphUnits} units). Reachable from frame or tick loops: ${result.hot.units} units from ${result.hot.roots.length} root(s).`,
+    '',
+    'Reachability is static: every path a loop can take, not what runs every frame. Performance findings in reachable code ' +
+      'are rated medium; which of them run every frame is measured by the trace stage, not inferred here.',
     '',
     '| Rule | High | Medium | Low | Status |',
     '|---|---|---|---|---|',
