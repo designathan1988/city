@@ -72,8 +72,8 @@ Opening opening_of(const Data &data, const BayCtx &c) {
 		o.w = c.W * c.geo->window_w;
 		o.h0 = std::min(c.geo->sill, c.H - MIN_SILL_ROOM);
 		o.h1 = o.h0 + c.H * c.geo->window_h;
-		o.w = std::max(MIN_W, std::min(o.w, c.W - W_MARGIN));
-		o.h1 = std::max(o.h0 + MIN_H, std::min(o.h1, c.H - HEAD_ROOM));
+		o.w = std::max(MIN_W, std::min({ o.w, c.W - W_MARGIN, d.w_max }));
+		o.h1 = std::max(o.h0 + MIN_H, std::min({ o.h1, c.H - HEAD_ROOM, d.head_max })); // the table's caps hold here too
 	}
 	if (o.w < NO_OPENING || o.h1 <= o.h0) return o;
 	o.has = true;
