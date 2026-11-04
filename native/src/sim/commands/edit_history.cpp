@@ -42,6 +42,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			net.nodes[op.id].ctl = uint8_t(fwd ? op.to : op.from);
 			s.log.net_node(op.id);
 			break;
+		case OpKind::NODE_SIGNAL:
+			net.nodes[op.id].signal = fwd ? op.signal_to : op.signal_from;
+			s.log.signal_nodes.push_back(op.id);
+			break;
 		case OpKind::ADD_SEG:
 			if (fwd) { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
 			else { mark_seg(s, op.id, true); net.remove_segment(op.id); }
@@ -66,6 +70,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ADD_MOD: if (fwd) s.terrain.put_modifier(op.id, op.mod); else s.terrain.remove_modifier(op.id); break;
 		case OpKind::MONEY: s.money += fwd ? op.money : -op.money; break;
+		case OpKind::TRANSIT:
+			s.transit = fwd ? *op.transit_after : *op.transit_before;
+			s.transit_revision++;
+			break;
 		case OpKind::NATURE: (*op.nature)(s, fwd); break;
 	}
 }

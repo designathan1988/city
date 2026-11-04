@@ -38,6 +38,18 @@ void CityCore::end_stroke() {
 	state_->history.end_group(*state_);
 }
 
+Dictionary CityCore::set_signal(int node, bool fixed, const PackedFloat32Array &greens, float offset) {
+	SignalSettings to;
+	to.fixed = fixed;
+	to.offset = offset;
+	for (int i = 0; i < greens.size(); i++) to.greens.push_back(greens[i]);
+	return run_edit(*state_, "cmd.place.signalTimes", [&](CityState &s) { return city::set_signal(s, node, to); });
+}
+
+Dictionary CityCore::green_wave(int node) {
+	return run_edit(*state_, "cmd.place.greenWave", [&](CityState &s) { return city::green_wave(s, node); });
+}
+
 Dictionary CityCore::split_road(const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.splitRoad", [&](CityState &s) { return split_road_at(s, p.x, p.z); });
 }

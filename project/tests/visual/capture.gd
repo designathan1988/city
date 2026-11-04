@@ -4,21 +4,19 @@
 extends Node3D
 
 const SETTLE_FRAMES := 4
+const JUMP_FRAMES := 30 # after a jump the world has not asked for the new view yet, and nothing pending does not mean all drawn
+const JUMP_M := 60.0
 const CHUNK_NEAR_BUILT := 1 # building_renderer.h chunk_flags
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
-## Simulated ticks run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s).
-const TRAFFIC_WARMUP_TICKS := 2400
+const TRAFFIC_WARMUP_TICKS := 2400 # run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s)
 ## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (CaptureSoak).
 const TRAFFIC_SAMPLE := 400
 const FASTEST_SPEED := 3
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
 ## Offsets in the vehicle frame: x to its left, y up, z ahead.
-const CAR_VIEW_FROM := Vector3(3, 2.5, 14)
-const CAR_HIGH_FROM := Vector3(0, 45, 50)
-const CAR_VIEW_AT := Vector3(0, 0.5, 0)
 ## Busiest lit junction for pedestrians (traffic_probe busy_crossing): oblique view and a closer one.
 const CROSSING_FROM := Vector3(-8, 42, 16)
 const CROSSING_NEAR_FROM := Vector3(-6, 22, 10)
@@ -36,6 +34,7 @@ const CIVIC_LOOK_UP_M := 4.0
 
 var world: CityWorld
 var camera: Camera3D
+var pairs := ""
 var out_dir := "user://captures"
 var map := 0
 var seed := 1
@@ -96,12 +95,13 @@ func _boot_world() -> bool:
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
 		return false
+	Settings.apply(world, get_viewport()) # as game/play.gd: the picture the player sees (MSAA, shadows, scale)
+	print("qualidade: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	add_child(RoadcraftHud.new())
 	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
-	var report: Dictionary = CityStore.new_map(map, seed, true)
+	var report: Dictionary = CityStore.new_map(map, seed, true, true)
 	print("cidade: ", report)
 	_memory("cidade gerada")
-	CityStore.dispatch(&"set_speed", [0])
 	camera.global_position = Vector3(0, 300, 300)
 	camera.look_at(Vector3.ZERO)
 	return true
@@ -114,24 +114,24 @@ func _wait_render() -> void:
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
+	if only.has("transporte"):
+		await CaptureTransit.shots(self)
+		return
 	var hour := DAY
+	await CaptureSignals.at_hour(self, hour)
+	if await CaptureTraffic.directed(self, probe, ground):
+		return
 	for v in CaptureViews.VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
 		var h: float = v[3] if v.size() > 3 else DAY
-		set_hour(h)
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
-			await _frames(_sky_frames())
+			await CaptureSignals.at_hour(self, h)
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
 		print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
-	var k := _nearest(probe.sample, ground)
-	var car: Vector3 = probe.sample[k]
-	var ahead: Vector3 = probe.sample_dir[k]
-	var left := Vector3(ahead.z, 0, -ahead.x)
-	await _shot("07_carro", car + ahead * CAR_VIEW_FROM.z + left * CAR_VIEW_FROM.x + Vector3.UP * CAR_VIEW_FROM.y, car + CAR_VIEW_AT)
-	await _shot("08_carro_alto", car + ahead * CAR_HIGH_FROM.z + Vector3.UP * CAR_HIGH_FROM.y, car)
+	await CaptureVehicles.car_shots(self, probe, ground)
 	await CaptureVehicles.shots(self, probe, ground)
 	await _person_shot(probe, ground)
 	if not only.has("none") or soak > 0:
@@ -151,6 +151,8 @@ func _parse_args() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
+		elif arg.begins_with("--pairs="):
+			pairs = arg.trim_prefix("--pairs=")
 		elif arg.begins_with("--map="):
 			map = int(arg.trim_prefix("--map="))
 		elif arg.begins_with("--only="):
@@ -172,10 +174,11 @@ func _sky_frames() -> int:
 
 
 func _shot(name: String, from: Vector3, at: Vector3) -> void:
+	var settle := JUMP_FRAMES if camera.global_position.distance_to(from) > JUMP_M else SETTLE_FRAMES
 	camera.global_position = from
 	camera.look_at(at)
 	camera.near = clampf(from.distance_to(at) * NEAR_PER_M, MIN_NEAR_M, MAX_NEAR_M)
-	await CaptureWait.until_drawn(self, SETTLE_FRAMES, name)
+	await CaptureWait.until_drawn(self, settle, name)
 	var img := get_viewport().get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)

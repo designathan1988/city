@@ -29,6 +29,10 @@ Color rgba8_to_color(uint32_t c) {
 			float(c & BYTE_MASK) / BYTE);
 }
 
+Color rgb8_to_color(uint32_t c) {
+	return rgba8_to_color((c << B_SHIFT) | BYTE_MASK);
+}
+
 int MeshBuilder::add(const Vector3 &p, const Vector3 &nn, const Color &col, const Vector2 &t, const Vector2 &t2) {
 	v.push_back(p);
 	n.push_back(nn);

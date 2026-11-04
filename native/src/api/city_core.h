@@ -31,7 +31,7 @@ public:
 	godot::PackedStringArray load_catalog(const godot::Dictionary &tables);
 	godot::PackedStringArray setup_render(const godot::Dictionary &render_tables, const godot::Dictionary &materials);
 	// A new map: map = entry of data/catalog/maps.json; with_city = false makes an empty map. Returns the report.
-	godot::Dictionary new_map(int map, int seed, bool with_city);
+	godot::Dictionary new_map(int map, int seed, bool with_city, bool paused = false);
 	void mark_saved();
 	void set_speed(int speed);
 	void set_day_hour(double hour);
@@ -93,6 +93,21 @@ public:
 	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
+	godot::Dictionary transit_stop(const godot::Vector3 &p);
+	godot::Dictionary transit_terminal(const godot::Vector3 &p);
+	godot::Dictionary transit_station(const godot::Vector3 &p, int mode);
+	godot::Dictionary transit_track(const godot::PackedVector3Array &points, int mode);
+	godot::Dictionary transit_line(const godot::PackedInt32Array &stops);
+	godot::Dictionary transit_remove(const godot::Vector3 &p);
+	godot::Dictionary transit_drop_line(int id);
+	godot::Dictionary transit_vehicles(int id, int vehicles);
+	godot::Dictionary transit_plan();
+	godot::Dictionary transit_run(); // what is running, for the tests
+	godot::Dictionary transit_footway(const godot::Vector3 &p, float reach); // for the captures
+	void transit_xray(bool on);
+	void transit_preview(const godot::PackedVector3Array &points, int mode);
+	int transit_pick(const godot::Vector3 &p, int mode, bool any);
+	godot::Vector3 transit_snap(const godot::Vector3 &p, int mode);
 	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
 
@@ -154,6 +169,14 @@ public:
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
+	godot::Dictionary set_signal(int node, bool fixed, const godot::PackedFloat32Array &greens, float offset);
+	godot::Dictionary green_wave(int node);
+	godot::Dictionary park_sample(); // where the capture looks at bays, lots, bicycles and docks
+	bool camera_clear(const godot::Vector3 &at, float radius, bool vehicles = true); // nothing of a lot at the camera's height, no street piece, parked car or, if asked, vehicle where a capture would stand
+	godot::Variant kerb_busy(); // where somebody is moving between a door and the footway now (null: nobody)
+	int dock_count(); // lorry docks of the whole map
+	godot::Dictionary lot_clearance(); // how far the cars in lots stay from what is solid along their ways
+	godot::Array vehicles_near(const godot::Vector3 &at, float radius); // where each stands on its lane
 	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;

@@ -1,8 +1,11 @@
 // The traffic step called by Simulation::step: applies the lane-graph changes the journal announced (only the segments
 // and nodes an edit touched), then runs the far model, demand, lane changes, motion and pedestrians, and computes the
 // poses render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/kerb_stops.h"
 
+#include "sim/traffic/lane_closures.h"
+
+#include "core/laps.h"
 #include "core/units.h"
 #include "sim/traffic/lane_graph_internal.h"
 
@@ -15,7 +18,6 @@ namespace traffic {
 namespace {
 
 constexpr float MIN_AXIS_M = 0.5f;
-constexpr int LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16; // AgentRecord::look: type in the low byte
 
 // Front (`front` metres along) and rear points of a vehicle on its lane or connector.
 void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f, Pose &r) {
@@ -29,7 +31,8 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 	lane_pose(s, v.ds, v.lane, front, f);
 	lane_pose(s, v.ds, v.lane, front - len, r);
 	const DirSeg &d = s.traffic.g.ds[v.ds];
-	float lx = d.sign * f.fz * v.lc_off, lz = -d.sign * f.fx * v.lc_off; // left of a -> b, as lane offsets
+	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
+	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
 	f.x += lx; f.z += lz;
 	r.x += lx; r.z += lz;
 }
@@ -40,6 +43,10 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
+	transit::bus_gone(s, id);
+	lot_car_forget(s, id);
+	lorry_gone(s, id);
+	kerb_forget(s, id);
 	if (v.conn >= 0) conn_del(s, v.conn, id);
 	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	meso_unlink(s, id);
@@ -71,6 +78,7 @@ void reset_traffic(CityState &s) {
 	t.cross_cars.assign(arms, 0);
 	t.g.version = s.roads.version;
 	s.log.clear_net();
+	transit::reset(s);
 }
 
 namespace {
@@ -96,26 +104,32 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	const int64_t before = t.stamp_ns[POSE_TRAIL - 1];
 	for (int i = 0; i + 1 < POSE_TRAIL; i++) t.stamp_ns[i] = t.stamp_ns[i + 1];
 	t.stamp_ns[POSE_TRAIL - 1] = stamp_ns;
+	Laps lap;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
 	f.seg_speed_share.assign(s.roads.segs.size(), 1.f);
-	std::vector<float> sum(s.roads.segs.size(), 0.f), lim(s.roads.segs.size(), 0.f);
-	std::vector<int> count(s.roads.segs.size(), 0);
+	std::vector<float> &sum = t.pub_sum, &lim = t.pub_lim;
+	std::vector<int> &count = t.pub_count;
+	sum.assign(s.roads.segs.size(), 0.f);
+	lim.assign(s.roads.segs.size(), 0.f);
+	count.assign(s.roads.segs.size(), 0);
 	for (Vehicle &v : s.traffic.vehicles) {
-		if (!v.alive || !v.micro) continue; // far vehicles are queues and events, not poses
-		float len = p.classes[int(v.type)].length;
-		Pose front, rear;
-		ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
-		V2 axis(front.x - rear.x, front.z - rear.z);
-		v.cur.x = (front.x + rear.x) * 0.5f;
-		v.cur.z = (front.z + rear.z) * 0.5f;
-		v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
-		V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
-		v.cur.fx = h.x;
-		v.cur.fz = h.y;
+		if (!v.alive || (!v.micro && !v.off)) continue; // far vehicles are queues and events, not poses
+		if (!v.off) {
+			float len = p.classes[int(v.type)].length;
+			Pose front, rear;
+			ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
+			V2 axis(front.x - rear.x, front.z - rear.z);
+			v.cur.x = (front.x + rear.x) * 0.5f;
+			v.cur.z = (front.z + rear.z) * 0.5f;
+			v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
+			V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
+			v.cur.fx = h.x;
+			v.cur.fz = h.y;
+		}
 		v.trail.push(v.cur, stamp_ns, before);
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
@@ -130,7 +144,8 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		AgentRecord rec;
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u);
+		const bool empty = v.off && lot_car_at_rest(s, int(&v - t.vehicles.data())); // nobody in a car standing in its bay
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT);
 		f.vehicles.push_back(rec);
 	}
 	for (Pedestrian &w : s.traffic.peds) {
@@ -148,9 +163,12 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
+	transit::publish(s, f, stamp_ns, before, cx, cz, p.publish_radius_m);
+	publish_parked(s, f);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
+	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
 void step(CityState &s, float dt) {
@@ -161,13 +179,22 @@ void step(CityState &s, float dt) {
 	t.tick++;
 	update_lights(s);
 	check_window(s);
+	Laps lap;
+	step_parking_sources(s);
+	t.step_ms[STAGE_BAYS] += lap.lap();
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	spawn_vehicles(s, dt);
 	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
+	step_kerb_stops(s, dt);
+	t.step_ms[STAGE_FLEET] += lap.lap();
+	step_lots(s, dt);
+	t.step_ms[STAGE_LOTS] += lap.lap();
+	transit::step(s, dt);
 	step_pedestrians(s, dt);
+	t.step_ms[STAGE_WALKERS] += lap.lap();
 }
 
 } // namespace traffic

@@ -79,6 +79,8 @@ func select_tab(tab: Dictionary) -> void:
 		params.profile = catalog.picked()
 	elif tab.tool == "ZONE":
 		params.zone = _zone()
+	elif tab.tool == "TRANSIT":
+		params = { "kind": tab.kind, "mode": tab.mode }
 	elif tools and ToolController.Tool.has(tab.tool):
 		params = tools.remembered.get(ToolController.Tool[tab.tool], {}).duplicate()
 	tool_requested.emit(tab.tool, params)
@@ -157,6 +159,8 @@ func _build_strip(tab: Dictionary) -> void:
 		LandStrips.build(self, _strip, tab.get("tool", ""))
 	elif tab.get("tool", "") == "BUILD":
 		BuilderStrip.fill(_strip, tab.id, tools)
+	elif tab.get("kind", "") == "line":
+		TransitStrip.build(_strip)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
 			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), retool.bind("LOT", "fn")))

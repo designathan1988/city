@@ -369,11 +369,13 @@
     "params": {
      "type": "object",
      "properties": {
+      "tint": { "type": "string" },
       "transmittance": { "type": "number" },
       "ior": { "type": "number" },
       "roughness": { "type": "number" }
      },
      "required": [
+      "tint",
       "transmittance",
       "ior",
       "roughness"
@@ -457,6 +459,9 @@
    ],
    "strict": true
   },
+  "transit": { "type": "object" },
+  "transit_glass": { "type": "object" },
+  "transit_xray": { "type": "object" },
   "building_card": { "type": "object", "required": ["shader", "params"], "properties": { "shader": { "type": "string" }, "params": { "type": "object", "required": ["thin_bar_m", "thin_behind", "roughness", "metalness"], "properties": { "thin_bar_m": { "type": "number" }, "thin_behind": { "type": "number" }, "roughness": { "type": "number" }, "metalness": { "type": "number" } }, "strict": true } }, "strict": true },
   "building_ghost": {
    "type": "object",
@@ -554,6 +559,7 @@
   }
  },
  "required": [
+  "transit", "transit_glass", "transit_xray",
   "_doc",
   "road",
   "building",

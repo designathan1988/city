@@ -1,7 +1,7 @@
 ## ToolController: the state machine of the tool in hand. Turns clicks on the map
 ## into ground points and hands them to the active tool; tools only dispatch store commands and report hints.
 ## Tool: NONE (camera) → ROAD | ZONE | DEMOLISH | INSPECT | UPGRADE | SPLIT | ROUNDABOUT | TERRAIN | LOT | MOVE | CONTROL | PAINT | TREES |
-## CLOUD | FOG | WEATHER | ELEMENTS | BUILD; set_tool() is
+## CLOUD | FOG | WEATHER | ELEMENTS | BUILD | TRANSIT; set_tool() is
 ## the only transition, Esc and a right click that stays a click (CityCamera.right_clicked) cancel; a right or middle
 ## drag is the camera's and never reaches the tool. A held left button sends drag() and, every frame, tick(); release()
 ## ends the stroke.
@@ -13,10 +13,11 @@ signal tool_changed(tool: Tool, params: Dictionary)
 signal hint(text: String, ok: bool)
 ## The text beside the road in hand (ui/preview_tag.gd): empty hides it.
 signal tagged(text: String, at: Vector3, ok: bool)
+signal plan_changed # the transport tool laid something the drawer lists
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 
-enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD }
+enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD, TRANSIT }
 
 const SCRIPTS := {
 	Tool.ROAD: preload("res://game/tools/road_tool.gd"),
@@ -30,6 +31,7 @@ const SCRIPTS := {
 	Tool.LOT: preload("res://game/tools/lot_tool.gd"),
 	Tool.MOVE: preload("res://game/tools/move_tool.gd"),
 	Tool.CONTROL: preload("res://game/tools/control_tool.gd"),
+	Tool.TRANSIT: preload("res://game/tools/transit_tool.gd"),
 	Tool.PAINT: preload("res://game/tools/paint_tool.gd"),
 	Tool.TREES: preload("res://game/tools/tree_tool.gd"),
 	Tool.ELEMENTS: preload("res://game/tools/element_tool.gd"),
@@ -40,6 +42,7 @@ const SCRIPTS := {
 }
 
 var rig: CityCamera
+var double_press := false # the press being handled ends a double click
 var preview: PreviewLine
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
@@ -114,6 +117,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_dragging = event.pressed
 		var p: Variant = ground_at(event.position)
 		if event.pressed and p != null:
+			double_press = event.double_click
 			click_world(p)
 			get_viewport().set_input_as_handled()
 		elif not event.pressed:

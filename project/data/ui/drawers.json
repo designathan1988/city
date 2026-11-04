@@ -269,43 +269,58 @@
     {
      "id": "stop",
      "icon": "tr_stop",
-     "label_key": "transit.tool.stop"
+     "label_key": "transit.tool.stop",
+     "tool": "TRANSIT",
+     "kind": "stop",
+     "mode": 0
     },
     {
      "id": "terminal",
      "icon": "tr_terminal",
-     "label_key": "transit.tool.terminal"
+     "label_key": "transit.tool.terminal",
+     "tool": "TRANSIT",
+     "kind": "terminal",
+     "mode": 0
     },
     {
      "id": "trainTrack",
      "icon": "tr_track",
      "label_key": "transit.tool.trainTrack",
-     "tool": "ROAD",
-     "profile": "doubleRailway",
-     "note_key": "ui.transit.help.trainTrack"
+     "tool": "TRANSIT",
+     "kind": "track",
+     "mode": 1
     },
     {
      "id": "trainStation",
      "icon": "tr_station",
-     "label_key": "transit.tool.trainStation"
+     "label_key": "transit.tool.trainStation",
+     "tool": "TRANSIT",
+     "kind": "station",
+     "mode": 1
     },
     {
      "id": "metroTrack",
      "icon": "tr_metro",
      "label_key": "transit.tool.metroTrack",
-     "tool": "ROAD",
-     "profile": "metroDouble",
-     "note_key": "ui.transit.help.metroTrack"
+     "tool": "TRANSIT",
+     "kind": "track",
+     "mode": 2
     },
     {
      "id": "metroStation",
      "icon": "tr_station",
-     "label_key": "transit.tool.metroStation"
+     "label_key": "transit.tool.metroStation",
+     "tool": "TRANSIT",
+     "kind": "station",
+     "mode": 2
     },
     {
      "id": "line",
      "icon": "tr_line",
-     "label_key": "transit.tool.line"
+     "label_key": "transit.tool.line",
+     "tool": "TRANSIT",
+     "kind": "line",
+     "mode": 0
     }
    ]
   },

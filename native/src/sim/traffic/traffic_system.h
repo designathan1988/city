@@ -22,6 +22,7 @@ void step(CityState &s, float dt); // applies the network changes, then advances
 void publish_poses(CityState &s, int64_t stamp_ns);
 float day_factor(const TrafficParams &p, float hour);
 void despawn_vehicle(CityState &s, int id, bool arrived);
+int new_vehicle(CityState &s, VehicleType type, uint8_t paint); // of that type, on no lane yet, counted in the fleet
 void reset_traffic(CityState &s); // full graph build and an empty fleet: a new map or a load
 
 // lane_graph.cpp / lane_geometry.cpp
@@ -29,6 +30,33 @@ void build_lane_graph(CityState &s); // into s.traffic.g
 void lane_pose(const CityState &s, int ds, int lane, float at, Pose &out);
 void conn_pose(const Conn &c, float at, Pose &out);
 void sidewalk_pose(const CityState &s, int seg, int side, float arc, float track_u, Pose &out);
+
+// parking_sources.cpp: the bays near the camera and the scenery cars in them (parking_state.h)
+void step_parking_sources(CityState &s);
+void forget_parking_seg(CityState &s, int seg); // an edit touched the street: its kerb is laid out again
+void forget_parking_lot(CityState &s, int id); // a building came or went: its bays, and the kerbs its gates keep bays off
+void refile_bay(CityState &s, int b, bool away); // the bay on the free or scenery list its state says; `away`: on none
+void remove_row(ParkingState &p, int b); // the scenery car of bay `b` is gone
+bool read_bay_way(CityState &s, int b); // the bay's way out through its gate and the lane it joins; false: it has none
+void add_row(ParkingState &p, int b); // a car stands in bay `b` now
+void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made again only when a row changed
+
+// parking_lanes.cpp
+void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
+bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out); // the lane a lot's gate opens onto, on the lot's kerb
+bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point
+
+// lot_traffic.cpp
+void step_lots(CityState &s, float dt);
+bool lot_car_at_rest(const CityState &s, int id); // standing in its bay and not sent out
+void lot_car_gone(CityState &s, int id); // its bay went: off the road it goes too, on the road it drives on
+void lot_car_forget(CityState &s, int id); // the vehicle left the scene: its bay is free
+void settle_parked(CityState &s); // the cars that parked become rows of their bays, their Vehicles let go
+void set_off_pose(CityState &s, Vehicle &v, const OffPose &q); // where a vehicle off the lanes stands
+
+// lot_demand.cpp
+void lot_depart(CityState &s, double target); // cars sent out of the bays while fewer drive than the demand asks
+bool lot_call(CityState &s); // a trip ending in a lot: a free bay drawn, the nearest passing car sent to it
 
 // lane_list.cpp: the per-lane/connector lists with a near vehicle, and the lane queries.
 void lane_add(CityState &s, int key, int id);
@@ -58,6 +86,9 @@ void materialize(CityState &s, int key);
 // junction_control.cpp
 void build_junctions(CityState &s);
 void build_junction(CityState &s, int n); // one node's control and stages (incremental rebuild)
+void replan_signal(CityState &s, int n); // its signal settings changed: the plan again, the stage running ending as it began
+// The fixed plans of a green wave along the main road through node `n` (green_wave.cpp): empty with under two signals on it.
+std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s, int n);
 // The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
 // read by build_junction and by the render's signal posts (which hold just the map lock, not the lane graph).
 Control control_of(const CityState &s, int n);
@@ -112,7 +143,7 @@ void step_governor(CityState &s, float dt);
 
 // routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
 // false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered.
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1);
+bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
 float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
 // The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
 bool retry_route(CityState &s, int id);
@@ -124,6 +155,9 @@ bool reconsider(CityState &s, int vehicle);
 
 // demand.cpp
 void spawn_vehicles(CityState &s, float dt);
+double fleet_target(const CityState &s); // how many vehicles the demand asks for now
+void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
+bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
@@ -133,6 +167,11 @@ enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
 BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);
+
+// cycling.cpp
+float cycle_shift(const CityState &s, const Vehicle &v, int ds, float front); // how far across a bicycle's body rides at `front`
+bool out_of_the_way(const CityState &s, const Vehicle &follower, const Vehicle &lead, int ds); // `lead` rides the band beside `follower`
+float top_speed(const CityState &s, const Vehicle &v, float limit); // the most `v` goes where the limit is `limit`
 
 // lane_change.cpp
 void change_lanes(CityState &s);

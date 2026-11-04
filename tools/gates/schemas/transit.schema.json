@@ -1,0 +1,392 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "radius_m": {
+   "type": "number"
+  },
+  "items_per_frame": {
+   "type": "number"
+  },
+  "run_m": {
+   "type": "number"
+  },
+  "default_line": {
+   "type": "string"
+  },
+  "car_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "car_up_m": {
+   "type": "number"
+  },
+  "parts": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "colour": {
+      "type": "string"
+     },
+     "roughness": {
+      "type": "number"
+     },
+     "metal": {
+      "type": "number"
+     },
+     "xray": {
+      "type": "number"
+     },
+     "glass": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "colour",
+     "roughness",
+     "metal"
+    ]
+   }
+  },
+  "track": {
+   "type": "object",
+   "properties": {
+    "gauge_m": {
+     "type": "number"
+    },
+    "piece_m": {
+     "type": "number"
+    },
+    "sleeper_step_m": {
+     "type": "number"
+    },
+    "ballast": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "over": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    },
+    "sleeper": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "long": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    },
+    "rail": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "over": {
+       "type": "number"
+      },
+      "paved_up": {
+       "type": "number"
+      },
+      "paved_high": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    }
+   },
+   "required": [
+    "gauge_m",
+    "piece_m",
+    "sleeper_step_m",
+    "ballast",
+    "sleeper",
+    "rail"
+   ]
+  },
+  "metro": {
+   "type": "object",
+   "properties": {
+    "rails_below_m": {
+     "type": "number"
+    },
+    "wide_m": {
+     "type": "number"
+    },
+    "high_m": {
+     "type": "number"
+    },
+    "floor_up_m": {
+     "type": "number"
+    },
+    "shell_m": {
+     "type": "number"
+    },
+    "side_gap_m": {
+     "type": "number"
+    },
+    "roof_wide_m": {
+     "type": "number"
+    },
+    "over_m": {
+     "type": "number"
+    },
+    "shaft_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "passage_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "entrance_step_m": {
+     "type": "number"
+    },
+    "entrance_reach_m": {
+     "type": "number"
+    },
+    "entrance_clear_m": {
+     "type": "number"
+    },
+    "entrance_turns": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "rails_below_m",
+    "wide_m",
+    "high_m",
+    "floor_up_m",
+    "shell_m",
+    "side_gap_m",
+    "roof_wide_m",
+    "over_m",
+    "shaft_m",
+    "passage_m",
+    "entrance_step_m",
+    "entrance_reach_m",
+    "entrance_clear_m",
+    "entrance_turns"
+   ]
+  },
+  "station": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "stop": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "terminal": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "entrance": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "below": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  }
+ },
+ "required": [
+  "_doc",
+  "radius_m",
+  "items_per_frame",
+  "run_m",
+  "default_line",
+  "car_m",
+  "car_up_m",
+  "parts",
+  "track",
+  "metro",
+  "station",
+  "stop",
+  "terminal",
+  "entrance",
+  "below"
+ ]
+}

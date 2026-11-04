@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/transit/transit_renderer.h"
 #include "render/atmosphere/fog_field.h"
 #include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
@@ -45,7 +46,13 @@ public:
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
-	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
+	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) {
+		agents_.update(f, cam, at);
+		transit_.update(f, cam, at);
+	}
+	int drawn_cars() const { return transit_.drawn_cars(); }
+	void transit_xray(bool on) { transit_.set_xray(on); }
+	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }
 	// What the agents of a fresh publication wear (`ticks_s` simulated seconds since the last one), and the window round the view.
 	void update_wear(const PoseFrame &f, bool fresh, float ticks_s, const godot::Vector3 &cam, float frame_s) {
 		if (fresh) wear_.wear(f, ticks_s);
@@ -95,6 +102,7 @@ private:
 	BuildingRenderer buildings_;
 	BodyStage stage_;
 	AgentRenderer agents_;
+	TransitRenderer transit_;
 	OverlayRenderer overlays_;
 	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;

@@ -137,6 +137,8 @@ void mark_all_lot_cells(CityState &s) {
 }
 
 void found_land(CityState &s, int map_index, uint32_t exact_seed) {
+	s.transit = TransitData(); // a new map has no public transport; a save reads its own after this
+	s.transit_revision++;
 	const Catalog &c = s.catalog;
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	s.map_index = map_index;

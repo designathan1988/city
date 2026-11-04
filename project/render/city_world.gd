@@ -17,9 +17,9 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/vegetation.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
 	"res://render/shaders/verge.gdshader",
+	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
-const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
 var terrain: Node3D
 var sun: DirectionalLight3D
@@ -61,8 +61,14 @@ func materials() -> Dictionary:
 			elif key == "verge":
 				_set_ground(m)
 			elif key == "prop":
-				_set_lens_radiance(m)
+				LampRadiance.lenses(m, environment)
+			elif key == "agent":
+				LampRadiance.vehicles(m, environment)
 			_materials[key] = m
+			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
+				var over: ShaderMaterial = m.duplicate()
+				over.render_priority = layer
+				_materials["%s_%d" % [key, layer]] = over
 		_materials["water"] = _water_mat # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
 
@@ -74,22 +80,6 @@ func _set_ground(m: ShaderMaterial) -> void:
 		if not key.begins_with("_"):
 			m.set_shader_parameter(key, _param(ground[key]))
 	m.set_shader_parameter("grass_mean", _grass_mean(ground))
-
-
-## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its
-## colour (render/tone_map.gd mirrors Godot's ACES).
-func _set_lens_radiance(m: ShaderMaterial) -> void:
-	if environment.tonemap_mode != Environment.TONE_MAPPER_ACES:
-		push_error("CityWorld: ToneMap só espelha o ACES; as lentes não mostrariam a sua cor")
-	var lit := PackedVector3Array()
-	lit.resize(LENSES)
-	var done := {}
-	for part: Dictionary in DataTables.render().streets.props.signal:
-		if part.has("lens") and not done.has(int(part.lens)):
-			done[int(part.lens)] = true
-			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
-					environment.tonemap_white)
-	m.set_shader_parameter("lit_radiance", lit)
 
 
 func _grass_mean(ground: Dictionary) -> float:

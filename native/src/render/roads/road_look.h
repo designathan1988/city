@@ -52,6 +52,7 @@ struct StreetLook {
 	// `gap[k]` apart below dash_kmh[k]. multi_lane_double: the norm's double line where a direction has more than one lane.
 	float centre_w = 0, lane_w = 0, fast_kmh = 0, fast_centre_w = 0, fast_lane_w = 0, exclusive_w = 0, double_w = 0;
 	bool multi_lane_double = false;
+	float parking_line_w = 0, parking_dash = 1, parking_gap = 1, no_parking_w = 0, no_parking_min = 0; // MER and LPP
 	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);

@@ -481,6 +481,26 @@ save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes."
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
+hint.transit.noStreet,Clique perto de uma rua com calçada.,Click near a street with a footway.
+hint.transit.taken,Já há uma parada aqui.,There is a stop here already.
+hint.transit.noStop,Clique numa parada.,Click a stop.
+hint.transit.noTrack,Clique num trilho.,Click a track.
+hint.transit.trackShort,O trilho precisa de dois pontos.,A track needs two points.
+hint.transit.trackOnRoad,O trilho cruza ruas, não corre por elas.,A track crosses streets, it does not run down them.
+hint.transit.lineShort,Uma linha precisa de duas paradas.,A line needs two stops.
+hint.transit.removed,Removido.,Removed.
+hint.transit.lineMade,Linha criada.,Line made.
+transit.stops,{n} paradas,{n} stops
+transit.mark.bus,B,B
+transit.mark.train,T,T
+transit.mark.metro,M,M
+cmd.transit.stop,Pôr parada,Place stop
+cmd.transit.terminal,Mudar terminal,Change terminal
+cmd.transit.station,Pôr estação,Place station
+cmd.transit.track,Assentar trilho,Lay track
+cmd.transit.line,Criar linha,Make line
+cmd.transit.remove,Remover transporte,Remove transit
+cmd.transit.vehicles,Mudar veículos da linha,Change line vehicles
 cmd.weather,Clima do mapa,Map weather
 cmd.cloud.add,Nuvem,Cloud
 cmd.cloud.edit,Editar nuvem,Edit cloud

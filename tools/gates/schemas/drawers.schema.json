@@ -89,9 +89,12 @@
           "CONTROL",
           "PAINT",
           "TREES",
-          "CLOUD"
+          "CLOUD",
+          "TRANSIT"
          ]
         },
+        "kind": { "type": "string" },
+        "mode": { "type": "integer" },
         "profile": {
          "type": "string"
         },

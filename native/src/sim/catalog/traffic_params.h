@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace city {
 
@@ -38,17 +39,29 @@ namespace city {
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
 	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
+	X(kerb_bay_pitch_m) X(kerb_corner_clear_m) X(kerb_crossing_clear_m) X(kerb_dead_end_m) X(kerb_gate_margin_m) X(kerb_gate_reach_m) \
+	X(kerb_parked_share) X(park_window_m) X(park_window_out_m) X(park_window_step_m) X(park_reads_per_step) X(park_kerb_reads) X(parker_look_s) \
+	X(parker_coming_min) X(parker_coming_s) X(parker_trip_s) X(parker_depart_per_look) X(parker_stay_min_s) X(parker_stay_max_s) X(parker_call_reach_m) \
+	X(parker_call_timeout_s) X(parker_lane_edge_m) X(parker_gap_behind_m) X(parker_gap_ahead_m) X(parker_join_ms) X(parker_ask_way_s) X(parker_stop_ms) \
+	X(parker_way_room_m) X(parker_way_wide_m) X(kerb_drop_share) X(kerb_pick_share) X(kerb_delivery_share) X(kerb_delivery_s) X(kerb_end_clear_m) X(kerb_plan_margin_m) X(kerb_stretch_m) X(kerb_stop_share) X(kerb_queue_m) X(kerb_door_along) X(kerb_door_out_m) X(kerb_door_clear_m) X(kerb_foot_clear_m) X(kerb_door_open_s) X(kerb_door_shut_s) X(kerb_seat_s) X(kerb_pace_ms) X(kerb_give_up_s) X(kerb_halt_s) X(kerb_find_reach_m) X(kerb_pick_fetch_m) X(parker_gate_margin_m) X(parker_gate_lead_m) X(parker_stop_slack_m) X(parker_past_gate_m) X(parker_give_up_s) X(gate_lane_reach_m) X(gate_lane_min_m) X(gate_lane_end_m) X(gate_stop_before_m) X(gate_join_past_m) \
+	X(gate_span_min_m) X(man_forward_ms) X(man_backward_ms) X(man_ramp_m) X(man_creep_ms) X(man_tangent) X(man_across_m) \
+	X(man_least_m) X(man_lead_m) X(man_disc_pad_m) X(man_disc_step_m) X(stay_work_h) X(stay_errand_h) \
+	X(lorry_most) X(lorry_radius_m) X(lorry_rear_m) X(lorry_margin_m) X(lorry_cell_m) X(lorry_street_reach_m) X(lorry_street_window_m) X(lorry_mouth_flare_m) X(lorry_gate_in_m) X(lorry_dock_gap_m) X(lorry_stop_before_m) X(lorry_join_past_m) X(lorry_pre_dock_m) X(lorry_pre_step_m) X(lorry_reach_m) X(lorry_turn_rad) X(lorry_settle_step_m) X(lorry_fit_margin_m) \
+	X(lorry_clear_h_m) X(lorry_call_reach_m) X(lorry_call_timeout_s) X(lorry_unload_min_s) X(lorry_unload_max_s) X(lorry_lane_half_m) X(lorry_closure_margin_m) X(lorry_clear_margin_m) X(lorry_join_ms) X(lorry_ask_way_s) X(lorry_walker_clear_m) X(lorry_look_m) X(lorry_forward_ms) X(lorry_backward_ms) X(lorry_ramp_m) X(lorry_creep_ms) X(lorry_stop_slack_m) X(lorry_plan_work) \
+	X(parker_look_ticks) X(bike_share) X(bike_speed_kmh) X(bike_edge_m) X(cycle_ease_m) X(cycle_clear_share) \
+	X(transit_pick_m) X(transit_stop_reach_m) X(transit_join_m) X(transit_along_road_m) X(transit_entrance_reach_m) X(transit_most_vehicles) X(transit_bus_vehicles) X(transit_rail_vehicles) X(bus_dwell_s) X(bus_terminal_s) X(bus_spacing_s) X(bus_approach_m) X(bus_at_stop_m) X(bus_stopped_ms) X(bus_detour) X(bus_pace) X(bus_away_margin_m) X(train_dwell_s) X(train_top_ms) X(metro_top_ms) X(train_accel) X(train_brake) X(train_gap_m) X(train_cars) X(metro_cars) X(train_car_m) X(crossing_stop_m) X(crossing_warn_m) X(crossing_keep_clear_m) X(train_clear_ahead_m) X(train_clear_time_s) X(train_clear_from_m) X(train_clear_step_m) X(train_clear_disc_m) X(train_car_disc_m) X(train_car_step_m) X(train_car_margin_m) X(train_idle_ms) X(train_walker_look_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
 
 #define CITY_TRAFFIC_DECLARE(name) float name = 0;
 
 // Vehicle classes (spec sim.md §5.1): car styles 0-5, then bus and truck.
-enum class VehicleType : uint8_t { SEDAN = 0, HATCH, SUV, VAN, PICKUP, MOTO, BUS, TRUCK, COUNT };
+enum class VehicleType : uint8_t { SEDAN = 0, HATCH, SUV, VAN, PICKUP, MOTO, BUS, TRUCK, BICYCLE, COUNT };
 constexpr int VEHICLE_TYPES = int(VehicleType::COUNT);
 constexpr int CAR_STYLES = 6;
 constexpr int BASE_ZONES = 5; // none, residential, commercial, industrial, mixed
 constexpr int EXTENSION_LANES = 5; // traffic.json signal_extension_s: approaches of 1 to 5 lanes
+constexpr int DAY_HOURS = 24; // entries of traffic.json hours_working, hours_purchasing
 constexpr int PAINTS = 16; // Roadcraft shared/vehiclePaints.ts
 
 // Driver archetype of a class (drivers.ts ARCH) plus the body length and half width the simulation uses.
@@ -56,13 +69,19 @@ struct VehicleClass {
 	float a = 0, b = 0, b_emergency = 0, headway = 0, min_gap = 0, speed_share = 0, length = 0, half_width = 0;
 };
 
+// The regional style read until a city carries its own (regras-sessoes.md, section 10): the one name of it.
+constexpr const char *REGIONAL_STYLE = "roadcraft";
+
 struct TrafficParams {
+	std::vector<uint32_t> line_colours; // RGB, one per new line in turn
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_DECLARE)
 	VehicleClass classes[VEHICLE_TYPES];
 	float signal_extension_s[EXTENSION_LANES] = {};
 	float style_share[CAR_STYLES] = {};
 	float zone_home[BASE_ZONES] = {}, zone_work[BASE_ZONES] = {}, zone_mid[BASE_ZONES] = {}, zone_truck[BASE_ZONES] = {};
 	float zone_walk[BASE_ZONES] = {};
+	float hours_working[DAY_HOURS] = {}, hours_purchasing[DAY_HOURS] = {};
+	int drive_side = 0; // the side of the road traffic keeps to, in the road's side numbers (0 right): the style's
 };
 
 } // namespace city

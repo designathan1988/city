@@ -14,6 +14,8 @@
 #include "sim/state/change_log.h"
 #include "sim/terrain/heightfield.h"
 #include "sim/traffic/traffic_state.h"
+#include "sim/transit/transit_data.h"
+#include "sim/transit/transit_sim.h"
 
 #include <atomic>
 #include <memory>
@@ -38,6 +40,9 @@ struct CityState {
 	LotCache lots;
 	BuildingStore buildings;
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
+	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
+	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it
+	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::unique_ptr<JobPool> jobs{ std::make_unique<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time

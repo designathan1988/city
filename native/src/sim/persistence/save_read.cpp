@@ -47,7 +47,7 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 	return r.ok;
 }
 
-bool read_roads(ByteReader &r, RoadNetwork &net) {
+bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	uint32_t nodes = r.get<uint32_t>();
 	if (!r.ok || nodes > MAX_RECORDS) return false;
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
@@ -55,6 +55,11 @@ bool read_roads(ByteReader &r, RoadNetwork &net) {
 		RoadNode n;
 		n.x = r.get<double>(); n.z = r.get<double>(); n.y = r.get<double>();
 		n.ctl = r.get<uint8_t>();
+		if (version >= SIGNAL_SAVE_VERSION) {
+			n.signal.fixed = r.get<uint8_t>() != 0;
+			n.signal.offset = r.get<float>();
+			r.get_vec(n.signal.greens);
+		}
 		n.plain = r.get<uint8_t>() != 0;
 		if (r.ok) net.put_node(int(i), n);
 	}
@@ -93,6 +98,48 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 		b.landmark = r.get<int16_t>();
 		b.built = r.get<double>();
 		if (r.ok) bs.put(int(i), b, false);
+	}
+	return r.ok;
+}
+
+bool read_transit(ByteReader &r, TransitData &t) {
+	t = TransitData();
+	t.next_id = r.get<int32_t>();
+	const uint32_t stops = r.get<uint32_t>();
+	for (uint32_t i = 0; i < stops && r.ok; i++) {
+		TransitStop q;
+		q.id = r.get<int32_t>();
+		q.mode = TransitMode(r.get<uint8_t>());
+		q.at.x = r.get<float>();
+		q.at.y = r.get<float>();
+		q.seg = r.get<int32_t>();
+		q.track = r.get<int32_t>();
+		const uint8_t flags = r.get<uint8_t>();
+		q.terminal = (flags & 1) != 0;
+		q.has_entrance = (flags & 2) != 0;
+		q.entrance.x = r.get<float>();
+		q.entrance.y = r.get<float>();
+		t.stops.push_back(q);
+	}
+	const uint32_t tracks = r.get<uint32_t>();
+	for (uint32_t i = 0; i < tracks && r.ok; i++) {
+		RailTrack k;
+		k.id = r.get<int32_t>();
+		k.mode = TransitMode(r.get<uint8_t>());
+		r.get_vec(k.points);
+		t.tracks.push_back(std::move(k));
+	}
+	const uint32_t lines = r.get<uint32_t>();
+	for (uint32_t i = 0; i < lines && r.ok; i++) {
+		TransitLine l;
+		l.id = r.get<int32_t>();
+		l.mode = TransitMode(r.get<uint8_t>());
+		r.get_vec(l.stops);
+		l.colour = r.get<uint32_t>();
+		l.vehicles = r.get<int32_t>();
+		l.name.resize(r.get<uint32_t>());
+		r.get_bytes(l.name.data(), l.name.size());
+		t.lines.push_back(std::move(l));
 	}
 	return r.ok;
 }
@@ -136,12 +183,16 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
-	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
 	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)
 	s.growth.grown = r.get<int32_t>();
+	s.transit = TransitData();
+	if (version >= TRANSIT_SAVE_VERSION && !read_transit(r, s.transit)) return false;
+	transit_normalize(s.transit);
+	s.transit_revision++;
 	uint32_t tag = r.get<uint32_t>();
 	if (tag == SAVE_BODIES) {
 		if (!read_edited_bodies(r, s.buildings)) return false;

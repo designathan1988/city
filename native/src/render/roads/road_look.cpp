@@ -88,6 +88,11 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.zebra_bar = float(st["zebra_bar_m"]);
 	L.zebra_edge = float(st["zebra_edge_m"]);
 	L.multi_lane_double = bool(st["multi_lane_double"]);
+	L.parking_line_w = float(m["mer_line_m"]);
+	L.parking_dash = float(m["mer_dash_m"]);
+	L.parking_gap = float(m["mer_gap_m"]);
+	L.no_parking_w = float(m["lpp_line_m"]);
+	L.no_parking_min = float(m["lpp_run_min_m"]);
 	auto floats = [&](const char *key, std::vector<float> &out) {
 		out.clear();
 		Array a = st[key];

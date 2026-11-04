@@ -23,7 +23,7 @@
  "sample_step_m": 3,
  "plate_blend_m": 2.26,
  "face_eps_m": 0.004,
- "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "style": "roadcraft",
+ "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "mer_line_m": 0.1, "mer_dash_m": 1, "mer_gap_m": 1, "lpp_line_m": 0.1, "lpp_run_min_m": 0.5, "style": "roadcraft",
   "styles": {
    "roadcraft": {"centre_m": 0.18, "divider_m": 0.15, "fast_kmh": 80, "fast_centre_m": 0.18, "fast_divider_m": 0.15, "exclusive_m": 0.268, "double_line_m": 0.14, "double_gap_m": 0.24, "dash_kmh": [60, 80], "dash_m": [3, 3, 4], "gap_m": [6, 9, 12], "zebra_period_m": 1.0, "zebra_bar_m": 0.5,
      "zebra_edge_m": 0.3, "multi_lane_double": false},
@@ -32,6 +32,7 @@
    "eua": {"_source": "a preencher: MUTCD (FHWA), parte 3, e AASHTO Green Book"},
    "europa": {"_source": "a preencher: Convenção de Viena sobre Sinalização Rodoviária (1968) e EN 1436"}
   }},
+ "gutter_width_m": 0.45,
  "dropped_kerb": {
   "flare_m": 1.5,
   "low_m": 0,

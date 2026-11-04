@@ -21,12 +21,21 @@ constexpr int SEG_FURNITURE_SHIFT = 1;
 
 // What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
+// What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
+// stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
+struct SignalSettings {
+	bool fixed = false;
+	float offset = 0;
+	std::vector<float> greens; // per stage; a stage's minimum green still stands under them
+	bool operator==(const SignalSettings &o) const { return fixed == o.fixed && offset == o.offset && greens == o.greens; }
+};
 
 struct RoadNode {
 	bool alive = false;
 	double x = 0, z = 0, y = 0;
 	std::vector<int> segs;
 	uint8_t ctl = CTL_AUTO; // NodeControl
+	SignalSettings signal;
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on
 	bool plain = false; // a dead end ends in a straight cut: every player road's, until set_road_end asks for a bulb
@@ -46,6 +55,7 @@ struct RoadSegment {
 };
 
 constexpr int ROAD_ARC_STEPS = 48;
+constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
 constexpr float ROAD_HASH_CELL = 64.f;
 
 class RoadNetwork {
@@ -74,6 +84,8 @@ public:
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// Height of segment s at arc length `at` from node a.
 	double seg_y(int s, double at) const;
+	// A node whose mouths get crosswalks, stop lines and dropped kerbs: three or more arms, no roundabout, no rails.
+	bool has_crosswalks(int node) const;
 	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).
 	void refresh_node(int n);
 	void mark_segment(int s); // its road chunks and lot cells

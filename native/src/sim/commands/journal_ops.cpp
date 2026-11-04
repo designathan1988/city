@@ -82,6 +82,18 @@ void j_set_plain(CityState &s, int n, bool plain) {
 	s.log.net_node(n);
 }
 
+void j_set_signal(CityState &s, int n, const SignalSettings &to) {
+	RoadNode &nd = s.roads.nodes[size_t(n)];
+	if (nd.signal == to) return;
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_SIGNAL, n);
+		op.signal_from = nd.signal;
+		op.signal_to = to;
+	}
+	nd.signal = to;
+	s.log.signal_nodes.push_back(n);
+}
+
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
 	int id = s.roads.add_segment(a, b, q, profile, zl, zr, flags);
 	s.log.net_seg(id);
@@ -177,6 +189,17 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 		s.history.open.bytes += pts.size() * sizeof(float);
 	}
 	return id;
+}
+
+void j_transit(CityState &s, TransitData next) {
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::TRANSIT, -1);
+		op.transit_before = std::make_shared<const TransitData>(s.transit);
+		op.transit_after = std::make_shared<const TransitData>(next);
+	}
+	s.transit = std::move(next);
+	s.transit_revision++;
+	s.touch();
 }
 
 void j_money(CityState &s, double delta) {

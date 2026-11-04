@@ -4,6 +4,7 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
+#include "sim/roads/road_network.h"
 #include "sim/nature/nature_state.h"
 #include "sim/roads/geometry.h"
 
@@ -106,6 +107,10 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 // Bulldoze at (x, z) (Roadcraft tool `bulldoze`): the building under the point, else the nearest segment within
 // road_pick_m (loose nodes go with it; refund road_refund_share of its value unless it was free).
 EditResult demolish_at(CityState &s, double x, double z);
+// A junction's signal: adaptive or fixed time, its greens and offset (clamped to the longest cycle); a green wave sets the
+// fixed plans of the signals along the main road through `node` in one step.
+EditResult set_signal(CityState &s, int node, const SignalSettings &to);
+EditResult green_wave(CityState &s, int node);
 // Zone brush (Roadcraft zoneTool.dab): paints `zone` on every road side whose frontage passes within `radius`;
 // buildings of another base zone facing a repainted side are knocked down.
 EditResult paint_zone(CityState &s, double x, double z, double radius, int zone);

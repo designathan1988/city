@@ -15,7 +15,8 @@ const COMMANDS := {
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
 	&"upgrade_road": "upgrade_road", &"road_variant": "road_variant", &"move_node": "move_node", &"set_node_control": "set_node_control",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
-	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_weather": "set_weather",
+	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_signal": "set_signal", &"green_wave": "green_wave",
+	&"set_weather": "set_weather",
 	&"add_cloud": "add_cloud", &"edit_cloud": "edit_cloud", &"remove_cloud": "remove_cloud",
 	&"scatter_clouds": "scatter_clouds", &"clear_clouds": "clear_clouds", &"fog_brush": "fog_brush",
 	&"clear_fog": "clear_fog", &"paint_brush": "paint_brush", &"clear_gullies": "clear_gullies",
@@ -30,6 +31,9 @@ const COMMANDS := {
 	&"body_add_gear": "body_add_gear", &"body_remove_gear": "body_remove_gear", &"body_turn_gear": "body_turn_gear",
 	&"body_add_part": "body_add_part", &"body_add_part_at": "body_add_part_at", &"body_remove_part": "body_remove_part",
 	&"body_turn_part": "body_turn_part", &"body_repeat_part": "body_repeat_part", &"place_model": "place_model",
+	&"transit_stop": "transit_stop", &"transit_terminal": "transit_terminal",
+	&"transit_station": "transit_station", &"transit_track": "transit_track", &"transit_line": "transit_line", &"transit_remove": "transit_remove",
+	&"transit_drop_line": "transit_drop_line", &"transit_vehicles": "transit_vehicles",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -40,9 +44,11 @@ const QUERIES := {
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"model_list": "model_list", &"model_bytes": "model_bytes", &"doc_body": "doc_body", &"building_bytes": "building_bytes", &"body_size": "body_size",
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
-	&"overlays": "overlays", &"save_status": "save_status", &"landscape": "landscape", &"cloud_at": "cloud_at",
+	&"overlays": "overlays", &"save_status": "save_status", &"park_sample": "park_sample", &"camera_clear": "camera_clear", &"kerb_busy": "kerb_busy", &"dock_count": "dock_count", &"lot_clearance": "lot_clearance", &"vehicles_near": "vehicles_near",
+	&"landscape": "landscape", &"cloud_at": "cloud_at",
 	&"sky_revision": "sky_revision", &"fog_field": "fog_field", &"effects_near": "effects_near",
 	&"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
+	&"transit_plan": "transit_plan", &"transit_footway": "transit_footway", &"transit_xray": "transit_xray", &"transit_preview": "transit_preview", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
@@ -81,8 +87,9 @@ func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
 
 
 ## A new map (entry of data/catalog/maps.json); with_city = false makes an empty map. Returns the core's report.
-func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
-	var report: Dictionary = _core.new_map(map, seed, with_city) # waits for a save in flight first
+## `paused`: the clock starts stopped, for a test or a capture that steps it: no tick slips in before it says so.
+func new_map(map: int, seed: int, with_city: bool, paused := false) -> Dictionary:
+	var report: Dictionary = _core.new_map(map, seed, with_city, paused) # waits for a save in flight first
 	_settle_save()
 	_city_slot = "" # a new city: its first save gives it a slot of its own
 	refresh()

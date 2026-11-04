@@ -4,7 +4,7 @@
 // phase or a gap in the traffic (ped_crossing.cpp) and go indoors at the destination; among the others and the street
 // furniture on every way as ped_crowd.cpp moves them (a stripe across each way, the pace the bodies ahead leave), at a
 // kerb in a place of its own (ped_kerb.cpp).
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/kerb_stops.h"
 
 #include <algorithm>
 #include <cmath>
@@ -212,6 +212,7 @@ void at_node(CityState &s, int id) {
 void walk(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
+	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
 	if (w.mode == PedMode::WAIT) {
 		w.wait += dt;
@@ -226,6 +227,7 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT && step_to_nearer_place(s, id)) begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
+	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
 	const float step = w.pace * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
@@ -248,6 +250,7 @@ void walk(CityState &s, int id, float dt) {
 }
 
 void pose(const CityState &s, Pedestrian &w) {
+	if (w.mode == PedMode::KERB) return;
 	if (w.mode == PedMode::SIDEWALK) {
 		sidewalk_pose(s, w.seg, w.side, w.s, w.u, w.cur);
 		if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }
@@ -261,6 +264,34 @@ void pose(const CityState &s, Pedestrian &w) {
 }
 
 } // namespace
+
+int ped_on_footway(CityState &s, int seg, int side, float arc) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	Pedestrian w;
+	w.alive = true;
+	w.seg = seg;
+	w.side = side;
+	w.dir = int(t.rng.next() & 1);
+	w.look = t.rng.next();
+	w.s = clampf(arc, arc_lo(g), arc_hi(g));
+	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max);
+	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
+	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
+	on_sidewalk(w);
+	sidewalk_pose(s, seg, side, w.s, w.u, w.cur);
+	std::vector<int> route;
+	if (crowded(t, p, w.cur) || !plan_trip(s, toward(s, w), route)) return -1;
+	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
+	w.mode = PedMode::KERB;
+	const int id = alloc(t);
+	t.peds[size_t(id)] = std::move(w);
+	t.ped_count++;
+	return id;
+}
+
+void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
 
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;
@@ -302,7 +333,7 @@ void step_pedestrians(CityState &s, float dt) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
-		if (dx * dx + dz * dz > out2) { // out of the walking window: gone, not lost
+		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB) { // out of the walking window: gone, not lost
 			despawn(t, id, false);
 			continue;
 		}

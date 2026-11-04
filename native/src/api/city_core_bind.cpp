@@ -10,7 +10,7 @@ namespace city {
 void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_catalog", "tables"), &CityCore::load_catalog);
 	ClassDB::bind_method(D_METHOD("setup_render", "render_tables", "materials"), &CityCore::setup_render);
-	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city"), &CityCore::new_map);
+	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city", "paused"), &CityCore::new_map, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("mark_saved"), &CityCore::mark_saved);
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);
@@ -32,6 +32,21 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
+	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityCore::transit_stop);
+	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityCore::transit_terminal);
+	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityCore::transit_station);
+	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityCore::transit_track);
+	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityCore::transit_line);
+	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityCore::transit_remove);
+	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityCore::transit_drop_line);
+	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
+	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
+	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
+	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityCore::transit_footway);
+	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityCore::transit_xray);
+	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityCore::transit_preview);
+	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
+	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("road_variant", "base", "lanes", "width", "parking"), &CityCore::road_variant);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
@@ -68,6 +83,14 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("film_grade", "grade"), &CityCore::film_grade);
 	ClassDB::bind_method(D_METHOD("film_graded", "grade", "colour"), &CityCore::film_graded);
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);
+	ClassDB::bind_method(D_METHOD("set_signal", "node", "fixed", "greens", "offset"), &CityCore::set_signal);
+	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
+	ClassDB::bind_method(D_METHOD("park_sample"), &CityCore::park_sample);
+	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityCore::camera_clear, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityCore::kerb_busy);
+	ClassDB::bind_method(D_METHOD("dock_count"), &CityCore::dock_count);
+	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityCore::lot_clearance);
+	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityCore::vehicles_near);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);

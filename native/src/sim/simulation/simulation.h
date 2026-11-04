@@ -14,7 +14,7 @@ enum class SimSpeed : int { PAUSED = 0, NORMAL = 1, FAST = 2, FASTEST = 3, STOPP
 
 class Simulation {
 public:
-	void start(CityState &s); // starts the tick thread (speed NORMAL)
+	void start(CityState &s, bool paused = false); // starts the tick thread, at NORMAL or, so that no tick runs before the caller says, PAUSED
 	void stop(); // joins the thread; safe to call twice
 	void set_speed(SimSpeed sp);
 	SimSpeed speed() const { return speed_.load(); }
@@ -27,7 +27,6 @@ private:
 	void run();
 	void tick(CityState &s, int steps, int64_t stamp_ns); // steps under the two locks, poses published once (at stamp_ns)
 	CityState *s_ = nullptr;
-	double owed_ = 0; // growth time deferred while map_mutex was busy
 	std::thread thread_;
 	std::atomic<SimSpeed> speed_{ SimSpeed::STOPPED };
 	std::atomic<bool> running_{ false };

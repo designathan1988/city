@@ -185,10 +185,24 @@
    "cloth_roughness": 1.0
   }
  },
+ "transit": {
+  "shader": "res://render/shaders/transit.gdshader",
+  "params": {}
+ },
+ "transit_glass": {
+  "shader": "res://render/shaders/transit_glass.gdshader",
+  "params": {}
+ },
+ "transit_xray": {
+  "shader": "res://render/shaders/transit_xray.gdshader",
+  "layers": 5,
+  "params": {}
+ },
  "agent_glass": {
-  "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass).",
+  "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass); tint the 4.0's cool grey-blue (#7896a2), no source behind it, at 40 % in linear light: this sun lights it more than the 4.0's, and at its own value the panes showed milky over a dark cabin (par-hatch-frente).",
   "shader": "res://render/shaders/agent_glass.gdshader",
   "params": {
+   "tint": "#4f626b",
    "transmittance": 0.7,
    "ior": 1.52,
    "roughness": 0.0

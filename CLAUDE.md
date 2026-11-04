@@ -73,7 +73,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD, TRANSIT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -93,12 +93,15 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
+- `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa; a regra do âmbar para os testes
+- `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
 - `native/src/api/city_core_models.cpp` · `native/src/api/models_loader.cpp` · `native/src/api/models_loader.h` — Construir › Modelos: catálogo, corpo em mãos como bytes, encaixe, colocar e desenhar à parte; models.json → catálogo
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
+- `native/src/api/city_core_transit.cpp` — transporte público como API de script
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
 
 **Núcleo — native/src/core**
@@ -155,7 +158,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/element_commands.cpp` — pincel de elementos com desfazer
 - `native/src/sim/commands/nature_commands.cpp` — clima, nuvens, neblina, pintura, árvores plantadas, bioma e relevo de volta ao original
 - `native/src/sim/commands/model_ops.h` · `native/src/sim/commands/model_body.cpp` · `native/src/sim/commands/model_place.cpp` · `native/src/sim/commands/place_snap.cpp` · `native/src/sim/commands/body_weld.cpp` — modelo feito corpo; colocar (recusas e fusão, um passo de desfazer); encaixe na rua, no vizinho e na grade; dois prédios feitos um
-- `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
+- `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
@@ -163,6 +166,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_rules.cpp` — o que uma edição de via não pode deixar: trecho apertado demais entre duas junções
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
+- `native/src/sim/commands/transit_commands.cpp` · `native/src/sim/commands/transit_commands.h` — comandos do transporte público
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
@@ -181,7 +185,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
 - `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` — via de classe com as faixas, a largura e as vagas das opções da ferramenta, um perfil a mais no catálogo
+- `native/src/sim/roads/parking_layout.cpp` · `native/src/sim/roads/parking_layout.h` — dono único das vagas da guia e da pintura delas (CTB art. 181 I, MBST vol. IV: MER e LPP), lido pelo tráfego e pelo render
 - `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` · `native/src/sim/roads/street_furniture_posts.cpp` · `native/src/sim/roads/street_furniture_internal.h` — dono único de onde fica o mobiliário da rua (hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render; postes e semáforos; zonas da calçada
+- `native/src/sim/transit/transit_ground.cpp` · `native/src/sim/transit/transit_ground.h` — onde o transporte encontra a rua: pista, superfície da rua, referencial de uma parada, prédio perto
+- `native/src/sim/transit/transit_data.cpp` · `native/src/sim/transit/transit_data.h` · `native/src/sim/transit/transit_sim.cpp` · `native/src/sim/transit/transit_sim.h` · `native/src/sim/transit/rail_run.cpp` · `native/src/sim/transit/rail_run.h` — transporte público: plano do jogador (paradas, trilhos, linhas, grafo de trilhos); ônibus de cada linha; trens numa volta, passagens de nível
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
 - `native/src/sim/simulation/simulation.cpp` · `native/src/sim/simulation/simulation.h` — thread do tick, velocidades e relógio
@@ -195,7 +202,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
-- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
+- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres, tempo fixo no relógio comum); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
+- `native/src/sim/traffic/cycling.cpp` · `native/src/sim/traffic/vehicle_speed.cpp` — bicicletas: no bordo da pista, ciclofaixa junto à faixa da guia e quem fica fora do caminho; velocidade de cada veículo (limite, conector, curva, deriva)
+- `native/src/sim/traffic/green_wave.cpp` — onda verde: ciclo comum e defasagens pelo tempo de viagem na via principal
+- `native/src/sim/traffic/lorry_traffic.cpp` · `native/src/sim/traffic/lane_closures.cpp` · `native/src/sim/traffic/lane_closures.h` · `native/src/sim/traffic/yard.cpp` · `native/src/sim/traffic/yard.h` · `native/src/sim/traffic/yard_input.cpp` — caminhões às docas: chamada, ré para a doca, descarga e volta à via, com a rua fechada enquanto passam; o pátio, planejado a partir de uma cópia em trabalho contado por tick, nunca por tempo
+- `native/src/sim/traffic/way_search.cpp` · `native/src/sim/traffic/way_field.cpp` · `native/src/sim/traffic/way_search.h` · `native/src/sim/traffic/reeds_shepp.cpp` · `native/src/sim/traffic/reeds_shepp.h` — A* híbrido (Dolgov 2008) sobre a grade e a clearance do pátio; curvas de Reeds-Shepp
+- `native/src/sim/traffic/kerb_stops.cpp` · `native/src/sim/traffic/kerb_stops.h` — recados na guia: quem desce, quem sobe, entrega do caminhão (porta, calçada, quem a pé vai ao carro)
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
@@ -206,6 +218,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: quem vê quem (listas por calçada e por cruzamento, as "walking areas" do SUMO) e os corpos remapeados no trecho de cada um
 - `native/src/sim/traffic/ped_furniture.cpp` · `native/src/sim/traffic/ped_kerb.cpp` · `native/src/sim/traffic/ped_stripes.cpp` · `native/src/sim/traffic/ped_stripes.h` — mobiliário como corpos nas calçadas; espera na guia; faixas do SUMO em calçada, esquina e faixa
 - `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
+- `native/src/sim/traffic/parking_state.h` · `native/src/sim/traffic/parking_sources.cpp` · `native/src/sim/traffic/parking_lanes.cpp` — vagas perto da câmera (guias e lotes, lidas por orçamento) e carros parados de cenário; ponto da via, faixa de uma portaria e quem está a pé perto de um ponto
+- `native/src/sim/traffic/lot_traffic.cpp` · `native/src/sim/traffic/lot_demand.cpp` · `native/src/sim/traffic/manoeuvre.cpp` · `native/src/sim/traffic/manoeuvre.h` — carros que entram e saem dos lotes pelas portarias, pelas horas de cada tipo de lugar; caminho fora da via (curvas de Hermite, ré e frente)
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/ped_state.h` — grafo de faixas, veículos, meso e pools; os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
@@ -218,6 +232,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/agents/agent_meshes.h` · `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — malhas dos agentes (agents.json) em dois níveis (perto: cabine e vidro transparente; longe: sem cabine, vidro opaco), paletas, lotação e ordem dos assentos por veículo e MultiMesh por quadro
 - `native/src/render/agents/car_body.cpp` · `native/src/render/agents/car_parts.cpp` · `native/src/render/agents/car_shape.cpp` · `native/src/render/agents/car_shape.h` — carroceria loftada do carro (faixas por região, normais suaves); pontas, peças e cabine; forma (linha do teto monótona, anel)
 - `native/src/render/agents/bus_body.cpp` · `native/src/render/agents/heavy_meshes.cpp` — ônibus de entrada baixa (deque atrás, lugar da cadeira de rodas) pela NBR 15570; caminhão (cabine, baú, chassi) pela ficha; moto; peças dos pesados (pneu pela designação, rodas duplas)
+- `native/src/render/agents/bicycle_mesh.cpp` — bicicleta urbana com ciclista (quadro de tubos, rodas, garfo, guidão)
 - `native/src/render/agents/people_asset.cpp` · `native/src/render/agents/people_asset.h` — pessoas cozidas (people.bin)
 - `native/src/render/agents/people_renderer.cpp` · `native/src/render/agents/people_renderer.h` — pedestres com esqueleto no shader e 2 níveis
 - `native/src/render/atmosphere/fog_field.cpp` · `native/src/render/atmosphere/fog_field.h` — janela da neblina pintada, escrita em job e lida pelo passe de atmosfera
@@ -273,6 +288,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores) e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — superfície dos lagos e rios acima do mar, por chunk
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
+- `native/src/render/transit/transit_parts.cpp` · `native/src/render/transit/transit_parts.h` · `native/src/render/transit/transit_renderer.cpp` · `native/src/render/transit/transit_renderer.h` — caixas do trilho, da estação, do abrigo e da entrada do metrô a partir de transit.json; malhas por item (só o que mudou, poucas por quadro), corte do metrô, prévia do trilho e vagões dos trens
 - `native/src/render/trees/linear_mips.cpp` · `native/src/render/trees/linear_mips.h` — mipmaps de uma imagem sRGB sobre fundo transparente, tirados na luz linear
 - `native/src/render/trees/leaf_atlas.cpp` · `native/src/render/trees/leaf_atlas.h` · `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` · `native/src/render/trees/tree_part.h` · `native/src/render/trees/tree_parts.cpp` · `native/src/render/trees/tree_parts.h` · `native/src/render/trees/tree_pictures.cpp` · `native/src/render/trees/tree_pictures.h` — folhas e espécies (corpo facetado, cartões, frondes); retratos de cada espécie por elevação para o nível distante
 - `native/src/render/trees/far_cards.cpp` · `native/src/render/trees/far_cards.h` · `native/src/render/trees/tree_look.cpp` · `native/src/render/trees/tree_place.cpp` · `native/src/render/trees/tree_place.h` · `native/src/render/trees/tree_renderer.cpp` · `native/src/render/trees/tree_renderer.h` — manchas de mato, parques e ruas; modelos perto por chunk, cartões longe numa malha por superchunk
@@ -305,42 +321,49 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/terrain_tool.gd` — Relevo
 - `project/game/tools/tool_base.gd` — base das ferramentas (recebe pontos do chão)
 - `project/game/tools/tool_controller.gd` — máquina de estados das ferramentas
+- `project/game/tools/transit_tool.gd` — parada, terminal, trilho, estação e linha
 - `project/game/tools/upgrade_tool.gd` — Melhorar
 - `project/game/tools/zone_tool.gd` — pincel de zona
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
+- `project/render/transit_overlay.gd` — o plano do transporte sobre o mapa com a ferramenta ligada
 - `project/render/sky_view.gd` · `project/render/thunder.gd` · `project/render/weather_view.gd` — céu desenhado: nuvens levadas pelo vento, globais do vento e tempo fechado; trovão; chuva e raios
 - `project/render/element_effects.gd` — emissores dos efeitos do pincel de elementos
 - `project/render/film_look.gd` · `project/render/shaders/vignette.gdshader` — aspecto da imagem depois do tom: tabela da gradação no Environment e vinheta sob a interface
 - `project/render/model_studio.gd` — as fotos da prateleira de modelos, uma por quadro
 - `project/render/selection_box.gd` — contorno do bloco escolhido no Construir
 - `project/render/surface_means.gd` — média de cada mapa de superfície e tons da via, enviados uma vez ao material
+- `project/render/lamp_radiance.gd` — o que uma lente ou farol aceso precisa irradiar para aparecer na sua cor pelo tone mapping
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_glass.gdshader` · `project/render/shaders/building_sheer.gdshader` · `project/render/shaders/building_card.gdshader` · `project/render/shaders/building_pane.gdshaderinc` · `project/render/shaders/building_far_window.gdshaderinc` · `project/render/shaders/building_sky_glass.gdshaderinc`
   — prédio, massas distantes/HLOD, peças de fachada instanciadas; ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa); hash; lâmpadas e grade filtrada de janelas; guarda-corpos de vidro meio vistos através; grades como uma face, as barras no fragmento; vidros do nível perto com luz própria e o que cada um desenha (vão com sol e céu exatos, cômodo por interior mapping, cortina, caixilho); janelas do nível médio; o céu no vidro
 - `project/render/shaders/wear.gdshaderinc` — o desgaste lido pelas vias: trilhas, buracos, rachaduras e manchas de pisada
-- `project/render/shaders/road.gdshader` · `project/render/shaders/road_detail.gdshaderinc` · `project/render/shaders/road_wear.gdshaderinc` · `project/render/shaders/water.gdshader` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; camada de detalhe de perto das vias; sujeira e desgaste da pista e da calçada; água (ondulação do espectro de vento, reflexo pelo
+- `project/render/shaders/transit_glass.gdshader` · `project/render/shaders/transit_xray.gdshader` — vidro do transporte; o metrô em corte, através do chão
+- `project/render/shaders/transit.gdshader` · `project/render/shaders/road.gdshader` · `project/render/shaders/road_detail.gdshaderinc` · `project/render/shaders/road_wear.gdshaderinc` · `project/render/shaders/water.gdshader` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; camada de detalhe de perto das vias; sujeira e desgaste da pista e da calçada; água (ondulação do espectro de vento, reflexo pelo
   modelo do renderizador); ruído de valor por hash inteiro do terreno, da água e das vias
 - `project/render/shaders/atmosphere.gdshader` · `project/render/shaders/cloud_field.gdshaderinc` · `project/render/shaders/ground_paint.gdshaderinc` · `project/render/shaders/lightning.gdshader` · `project/render/shaders/rain.gdshader` — passe de tela cheia (sombra das nuvens, névoa, neblina, nuvens) e forma da nuvem; chão pintado e ravinas pelo mapa de controle; raio e chuva
 - `project/render/shaders/verge.gdshader` · `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície
+- `project/tests/core/transit_test.gd` · `project/tests/core/transit_test.tscn` — paradas, linha, ônibus, trem, desfazer e save do transporte
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_part_cases.gd` · `project/tests/core/building_pick_cases.gd` · `project/tests/core/building_tool_test.gd` · `project/tests/core/building_tool_test.tscn` — edições do Construir pelo store e pela ferramenta: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` — opções da via de classe, Mover, Controle e regras de edição
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
+- `project/tests/core/yard_test.gd` · `project/tests/core/yard_test.tscn` — pátios de zona industrial em várias direções: docas com caminho, caminhão na própria faixa e um ciclo inteiro
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
-- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` · `project/tests/visual/capture_wait.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas; a espera de toda foto até a cidade estar desenhada, registrada, com aviso de foto incompleta
+- `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_lorry.gd` · `project/tests/visual/capture_parity.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` · `project/tests/visual/capture_traffic.gd` · `project/tests/visual/capture_wait.gd` — rebaixo da guia, caminhão na doca, par de uma foto do 4.0, memória, semáforos, tráfego (soak) e lado parado do tráfego das capturas; a espera de toda foto até a cidade estar desenhada, registrada, com aviso de foto incompleta
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_clock.gd` · `project/tests/visual/capture_clock.tscn` — a luz no jogo de verdade: botões sol, lua e relógio de play.tscn
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` · `project/tests/visual/landscape_cards.gd` — capturas da paisagem nos ângulos do 4.0; rampa de cinzas, cubo cinza e árvores plantadas, medidos sozinhos
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — vias de perto em chão livre (cruzamentos, T, ponta, curva) e a ferramenta em uso, nos ângulos das fotos do 4.0
+- `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — parada, estação e trilho nas capturas; a rua com o outro lado livre, onde valem as poses do 4.0
 - `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
@@ -351,8 +374,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_drawer.gd` — gavetas das categorias
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
-- `project/ui/inspector_panel.gd` — inspetor
+- `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
 - `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
+- `project/ui/transit_strip.gd` — linhas e seus veículos, na gaveta do transporte
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
 - `project/ui/junction_marks.gd` — marcas do controle de cada cruzamento na aba Controle
@@ -364,7 +388,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
@@ -386,15 +410,15 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Árvores: forma, tons e atlas seguem o 4.0 no mesmo quadro (`capture_landscape --only=arv_perto,...`), escolha de modelagem dita no _doc de `trees`; as matas seguem a mesma regra e a mesma malha do 4.0 (mesma árvore na mesma célula: `tree_place.cpp`), e passar a instância sem cor quando o `rs_util.h` da rua integrar. Paisagem: a luz é a do 4.0 no mesmo sol (16h, 29°), medida em discos pintados de albedo igual, e os mapas de chão entram sem ganho; a imagem passa pela gradação de filme (`film_grade.cpp`) e pela vinheta. Falta o `canyonLight` do 4.0 (escurecimento das ruas) e a luz do céu fora do terreno; pedras da costa, estratos da rocha, grama seca da ecologia e lembrar a escolha dos pincéis não foram portados.
 - Água: alvo de cor vem de uma foto antiga do 4.0 (o mapa 0 não tem lago).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
-- Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a
-  lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
+- Ocupantes, motociclista e ciclista: ainda de blocos. Desenho decidido: uma instância por ocupante no MultiMesh dos pedestres, pelve no ponto H do assento, até `cabin_radius_m`, fileiras de trás até 1/1,6 disso; faltam os clipes sentados e de pilotar em `people.bin`.
+- Transporte: ônibus param na faixa sem baia e sem embarque (o `kerb_stops` ainda não atende ônibus); sem cancelas desenhadas nas passagens (nem o 4.0 tem); edição de via reencontra as faixas de todas as paradas e passagens, não só as da área; paradas e trilhos procurados em lista, sem índice por célula; a prévia do trilho é opaca e refeita a cada movimento do ponteiro; passagem fecha a 160 m (valor do 4.0: 7 s a 22 m/s; 49 CFR 234.225 pede 20 s). Escolas com alunos não são simuladas. Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
   24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
   maior HLOD de superchunk 8,1 MiB).
 - Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lotes: árvores do lote (`b40::lot_trees`) esperam `render/trees/tree_place.cpp` (e o include do repasse `render/buildings/civic.h`);
-  estacionar espera `sim/traffic` ler `sim/buildings/lot_access`; sem lote de esquina, garagem em encosta e caminhão nas docas; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
+  sem lote de esquina e garagem em encosta; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
   Telhado, Interior, Cores), Paisagem (Rua, Pessoas e Aplainar mapa), paradas/estações/linhas,
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
@@ -403,8 +427,9 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Oclusão: o GTAO do 4.0 tira 12 níveis do meio-fio ao sol e o SSAO do Godot, 1 a 2 em qualquer ajuste (sem oclusão os dois dão 193): falta um passe equivalente; o preset padrão do jogo (`medium`) nem liga a oclusão, e o 4.0 abre em `high`.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);
   Quarteirões ainda não; demolir via deixa o corredor de terreno. Falta do porte de vias: Personalizar e Meus modelos, editor de perfil, teclas, regras por acesso, conectores, nomes de rua, legendas, os estilos `eua` e `europa` de pintura, vazios, e larguras de faixa e calçada, zebra de escada e nomes de rua por estilo (em `streets.json` `markings.styles` há `roadcraft`, o desenho do 4.0, e `brasil`, a norma; o carregador lê `markings.style`), linha contínua na aproximação de semáforo (MBST IV 4.2.1), comparar a geração com `streets.ts`/`plan.ts`; a prévia não avisa de trecho apertado; parada, preferência e minirrotatória rodam como cruzamento de prioridade; mover recusa um nó cujo outro lado já era fechado.
-- Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
+- Tráfego: o mapa 0 não tem indústria (zona industrial só perto de via expressa), logo nenhuma doca até o jogador pintar a zona (`yard_test` pinta); no pátio de 12 m o caminhão pode entrar ou sair de ré pela rua, e 1 doca em 137 fica sem caminho mesmo no grão fino; semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre, coordenação só por plano fixo (onda verde num sentido, verdes partindo do mínimo, sem fluxo medido); sem controle automático do cruzamento pelo fluxo medido (o 4.0: flowStats e controlAdvisor; aqui o semáforo vem da geometria do nó, control_of); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
+- Carros de lote: 115 de 175 raspam algo no caminho, mediana 8 cm (muro em 91), pior 83 cm (pilar, picape em lote pequeno): a curva de Hermite segue o centro e o canto da carroceria abre na curva dos acessos estreitos. Solução: o A* híbrido do pátio (way_search) também para os carros, no worker. Medir com `capture.tscn -- --only=trafego`.
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
   o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda

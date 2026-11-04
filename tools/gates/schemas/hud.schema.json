@@ -4,6 +4,9 @@
   "_doc": {
    "type": "string"
   },
+  "signal_step_s": {
+   "type": "number"
+  },
   "stats": {
    "type": "array",
    "items": {

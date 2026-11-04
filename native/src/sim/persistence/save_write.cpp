@@ -49,6 +49,9 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 		if (!n.alive) continue;
 		for (double v : { n.x, n.z, n.y }) w.put<double>(v);
 		w.put<uint8_t>(n.ctl);
+		w.put<uint8_t>(n.signal.fixed ? 1 : 0);
+		w.put<float>(n.signal.offset);
+		w.put_vec(n.signal.greens);
 		w.put<uint8_t>(n.plain ? 1 : 0);
 	}
 	w.put<uint32_t>(uint32_t(net.segs.size()));
@@ -81,6 +84,37 @@ void write_buildings(ByteWriter &w, const BuildingStore &bs) {
 		w.put<double>(b.built);
 	}
 }
+void write_transit(ByteWriter &w, const TransitData &t) {
+	w.put<int32_t>(t.next_id);
+	w.put<uint32_t>(uint32_t(t.stops.size()));
+	for (const TransitStop &q : t.stops) {
+		w.put<int32_t>(q.id);
+		w.put<uint8_t>(uint8_t(q.mode));
+		w.put<float>(q.at.x);
+		w.put<float>(q.at.y);
+		w.put<int32_t>(q.seg);
+		w.put<int32_t>(q.track);
+		w.put<uint8_t>(uint8_t(q.terminal) | uint8_t(q.has_entrance ? 2 : 0));
+		w.put<float>(q.entrance.x);
+		w.put<float>(q.entrance.y);
+	}
+	w.put<uint32_t>(uint32_t(t.tracks.size()));
+	for (const RailTrack &k : t.tracks) {
+		w.put<int32_t>(k.id);
+		w.put<uint8_t>(uint8_t(k.mode));
+		w.put_vec(k.points);
+	}
+	w.put<uint32_t>(uint32_t(t.lines.size()));
+	for (const TransitLine &l : t.lines) {
+		w.put<int32_t>(l.id);
+		w.put<uint8_t>(uint8_t(l.mode));
+		w.put_vec(l.stops);
+		w.put<uint32_t>(l.colour);
+		w.put<int32_t>(l.vehicles);
+		w.put<uint32_t>(uint32_t(l.name.size()));
+		w.put_bytes(l.name.data(), l.name.size());
+	}
+}
 } // namespace
 
 std::vector<uint8_t> encode_city(const CityState &s) {
@@ -100,6 +134,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	write_nature(w, s);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
+	write_transit(w, s.transit);
 	w.put<uint32_t>(SAVE_BODIES);
 	write_edited_bodies(w, s.buildings);
 	w.put<uint32_t>(SAVE_END);

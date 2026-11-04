@@ -8,6 +8,7 @@
 #include "sim/nature/ground_paint.h"
 #include "sim/roads/road_network.h"
 #include "sim/terrain/heightfield.h"
+#include "sim/transit/transit_data.h"
 
 #include <cstdint>
 #include <functional>
@@ -20,8 +21,8 @@ namespace city {
 
 struct CityState;
 
-enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY, NATURE };
+enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
+	MONEY, NATURE, TRANSIT };
 
 // A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
 using NatureEdit = std::function<void(CityState &, bool forward)>;
@@ -32,9 +33,11 @@ struct EditOp {
 	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
 	RoadNode node;
+	SignalSettings signal_from, signal_to; // NODE_SIGNAL
 	RoadSegment seg;
 	Building bld, bld_after;
 	TerrainModifier mod;
+	std::shared_ptr<const TransitData> transit_before, transit_after; // TRANSIT: the plan replaced whole
 	std::shared_ptr<const NatureEdit> nature; // NATURE
 };
 
@@ -99,6 +102,7 @@ int j_add_node(CityState &s, double x, double z, double y);
 void j_remove_node_if_orphan(CityState &s, int n);
 void j_set_plain(CityState &s, int n, bool plain);
 void j_set_control(CityState &s, int n, uint8_t ctl);
+void j_set_signal(CityState &s, int n, const SignalSettings &to);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);
@@ -108,6 +112,7 @@ void j_remove_building(CityState &s, int id);
 void j_edit_building(CityState &s, int id, const Building &after);
 int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, float max_run);
 void j_money(CityState &s, double delta);
+void j_transit(CityState &s, TransitData next); // the public transport plan replaced
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 // A landscape change already made, with what undoes and redoes it; `bytes` what it keeps.

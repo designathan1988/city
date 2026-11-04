@@ -23,11 +23,11 @@ double CityClock::hour() const {
 
 void CityClock::set_hour(double h) { day_shift.store(h * MINUTES_PER_HOUR - minutes.load()); }
 
-void Simulation::start(CityState &s) {
+void Simulation::start(CityState &s, bool paused) {
 	stop();
 	s_ = &s;
 	period_ns_ = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
-	speed_ = SimSpeed::NORMAL;
+	speed_ = paused ? SimSpeed::PAUSED : SimSpeed::NORMAL;
 	running_ = true;
 	thread_ = std::thread([this]() { run(); });
 }
@@ -56,18 +56,17 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	const double dt = 1.0 / s.catalog.tune.sim_tick_hz;
 	for (int k = 0; k < steps; k++) {
+		bool growing = false;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::step(s, float(dt));
+			growing = !s.growth.cells.empty();
 		}
-		{
-			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared
-			s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
-			if (map.owns_lock()) {
-				grow_step(s, owed_ + dt);
-				owed_ = 0;
-			} else owed_ += dt;
+		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
+		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows
+			std::unique_lock<std::shared_mutex> map(s.map_mutex);
+			grow_step(s, dt);
 		}
 	}
 	{

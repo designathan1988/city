@@ -27,6 +27,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = buildings_.init(ctx, errors) && ok;
 	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_sheer", errors), ctx.material("building_card", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
+	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
@@ -43,6 +44,7 @@ void RenderWorld::reset() {
 	buildings_.reset();
 	stage_.clear();
 	agents_.reset();
+	transit_.reset();
 	overlays_.reset();
 	road_stream_.clear();
 	props_stream_.clear();
@@ -127,6 +129,8 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			trees_.mark_dirty(k);
 			cover_.mark_dirty(k);
 		}
+		transit_.touch(road_keys_);
+		transit_.touch_terrain(s, terrain_rects_);
 		road_keys_.clear();
 		building_keys_.clear();
 		terrain_rects_.clear();
@@ -148,6 +152,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
+		transit_.sync(s);
 		// The buildings first: a chunk they leave for the next frame is a hole in the city, a tree a little later is not.
 		buildings_.update_view(cam, budget);
 		trees_.sync(s, cam, budget);

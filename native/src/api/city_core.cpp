@@ -77,7 +77,7 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 	return errors;
 }
 
-Dictionary CityCore::new_map(int map, int seed, bool with_city) {
+Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	Dictionary d;
 	d["ok"] = false;
 	if (!catalog_ok_) return d;
@@ -91,7 +91,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city) {
 		traffic::reset_traffic(*state_); // a new map: full lane graph and an empty fleet
 	}
 	need_full_rebuild_ = true;
-	sim_.start(*state_);
+	sim_.start(*state_, paused);
 	d["ok"] = true;
 	d["nodes"] = r.nodes;
 	d["segments"] = r.segments;

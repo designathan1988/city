@@ -14,6 +14,8 @@
 
 namespace city {
 
+constexpr int WAGON_MODEL = VEHICLE_TYPES, AGENT_MODELS = VEHICLE_TYPES + 1; // a model per type and the sedans' estate
+
 class AgentRenderer {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
@@ -38,19 +40,19 @@ private:
 	// Wheel roll angle of a vehicle slot: metres moved since the last frame over the wheel radius (render-side odometer).
 	float roll(int id, const Pose &p, float wheel_r);
 	bool build_meshes(const godot::Dictionary &t, godot::PackedStringArray &errors);
-	bool push_palettes(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	bool push_palettes(const godot::Dictionary &t, const std::vector<uint32_t> &lines, godot::PackedStringArray &errors);
 	// How the people aboard are drawn (agents.json occupants): skin, hair colour and cut, clothes (the pedestrians').
 	void push_looks(const godot::Dictionary &occupants, const godot::Array &clothes, int hair_n, godot::PackedStringArray &errors);
 	bool read_loads(const godot::Dictionary &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
 	godot::RID scenario_, material_, glass_;
-	OwnedMesh meshes_[VEHICLE_TYPES][LEVELS]; // the body surface, and the near level's glass surface
-	MultiMeshDraw draws_[VEHICLE_TYPES][LEVELS];
-	int body_tris_[VEHICLE_TYPES][LEVELS] = {}, glass_tris_[VEHICLE_TYPES][LEVELS] = {}, shown_[VEHICLE_TYPES][LEVELS] = {};
-	Load load_[VEHICLE_TYPES];
+	OwnedMesh meshes_[AGENT_MODELS][LEVELS]; // the body surface, and the near level's glass surface
+	MultiMeshDraw draws_[AGENT_MODELS][LEVELS];
+	int body_tris_[AGENT_MODELS][LEVELS] = {}, glass_tris_[AGENT_MODELS][LEVELS] = {}, shown_[AGENT_MODELS][LEVELS] = {};
+	Load load_[AGENT_MODELS];
 	int paints_ = 0;
-	float wheel_r_[VEHICLE_TYPES] = {};
+	float wheel_r_[AGENT_MODELS] = {};
 	struct Odometer {
 		float x = 0, z = 0, angle = 0;
 		bool seen = false;

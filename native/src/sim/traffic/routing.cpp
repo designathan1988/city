@@ -58,7 +58,7 @@ float junction_cost(const CityState &s, const Conn &c) {
 	return turn + (s.traffic.g.junctions[c.node].ctl == Control::SIGNAL ? tp.signal_cost_s : 0.f);
 }
 
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded, int banned_ds) {
+bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded, int banned_ds, bool by_bike) {
 	static thread_local AStarScratch sc;
 	const LaneGraph &g = s.traffic.g;
 	const TrafficParams &tp = s.catalog.traffic;
@@ -73,6 +73,7 @@ bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &
 			const Conn &c = g.conns[size_t(ci)];
 			if (c.to_ds == banned_ds) return;
 			const DirSeg &d = g.ds[size_t(c.to_ds)];
+			if (by_bike && !d.bikes) return;
 			relax(c.to_ds, (d.len / std::max(d.speed, 1.f) + tp.edge_extra_s) * load_factor(s, c.to_ds) + junction_cost(s, c));
 		});
 	};
@@ -94,13 +95,13 @@ bool detour(CityState &s, int id, int blocked, bool need_room) {
 		t.route_budget--;
 		const int j = std::min(v.route.len - 1, v.ri + 1 + rejoin);
 		const int at_j = route_at(t.route_pool, v.route, j);
-		if (j > v.ri + 1 && at_j != c.to_ds && find_route(s, c.to_ds, at_j, path, local)) {
+		if (j > v.ri + 1 && at_j != c.to_ds && find_route(s, c.to_ds, at_j, path, local, -1, v.type == VehicleType::BICYCLE)) {
 			splice(s, v, path, j);
 			found = true;
 			return;
 		}
 		const int goal = route_at(t.route_pool, v.route, v.route.len - 1);
-		if (!find_route(s, c.to_ds, goal, path)) return;
+		if (!find_route(s, c.to_ds, goal, path, -1, -1, v.type == VehicleType::BICYCLE)) return;
 		splice(s, v, path, v.route.len);
 		found = true;
 	});
@@ -115,7 +116,7 @@ bool reconsider(CityState &s, int id) {
 	t.route_budget--;
 	const int j = std::min(v.route.len - 1, v.ri + int(s.catalog.traffic.rejoin_ds));
 	std::vector<int> path;
-	if (!find_route(s, v.ds, route_at(t.route_pool, v.route, j), path, int(s.catalog.traffic.detour_max_expanded)) || path.size() < 2) return false;
+	if (!find_route(s, v.ds, route_at(t.route_pool, v.route, j), path, int(s.catalog.traffic.detour_max_expanded), -1, v.type == VehicleType::BICYCLE) || path.size() < 2) return false;
 	// only a detour this lane can reach, and only if it differs from the old route
 	if (!lane_reaches(s, v.ds, v.lane, path[1])) return false;
 	if (int(path.size()) == j - v.ri + 1) {
