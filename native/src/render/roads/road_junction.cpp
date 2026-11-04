@@ -172,33 +172,45 @@ void kerbed_line(const RoadEmit &e, const std::vector<Vector3> &in, const std::v
 	}
 }
 
-void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<Vector3> &ring, const Color &col) {
+// A plate from `centre` out to `ring`, each triangle in the colour of its first ring point: a junction wears each arm's asphalt
+// up to the bisectors between the arms.
+void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<Vector3> &ring, const std::vector<Color> &cols) {
 	const Vector2 pl(POOL_PLATE, 0);
-	Color c = road_color(col, RoadMat::PLATE);
-	int c0 = e.mb.add(centre, UP, c, Vector2(centre.x, centre.z), pl);
-	std::vector<int> ids;
-	for (const Vector3 &p : ring) ids.push_back(e.mb.add(p, UP, c, Vector2(p.x, p.z), pl));
-	for (size_t i = 0; i < ids.size(); i++) e.mb.tri(c0, ids[i], ids[(i + 1) % ids.size()], UP);
+	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, c, Vector2(p.x, p.z), pl); };
+	Color now;
+	int c0 = -1, from = -1;
+	for (size_t i = 0; i < ring.size(); i++) {
+		const Color c = road_color(cols[i], RoadMat::PLATE);
+		if (c0 < 0 || c != now) {
+			now = c;
+			c0 = add(centre, c);
+			from = add(ring[i], c);
+		}
+		const int to = add(ring[(i + 1) % ring.size()], c);
+		e.mb.tri(c0, from, to, UP);
+		from = to;
+	}
 }
 
 void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 	const RoadNode &nd = e.s.roads.nodes[n];
 	Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 	std::vector<Vector3> ring;
-	const Profile *best = ends[0].prof;
+	std::vector<Color> cols;
 	size_t k = ends.size();
 	for (size_t i = 0; i < k; i++) {
 		const End &a = ends[i], &b = ends[(i + 1) % k];
-		if (a.prof->priority > best->priority) best = a.prof;
 		ring.push_back(side(a, -a.arm.asph_right));
+		cols.push_back(e.L.carriage(*a.prof));
 		std::vector<Vector3> in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
 		ring.insert(ring.end(), in.begin(), in.end());
+		for (size_t j = 0; j < in.size(); j++) cols.push_back(e.L.carriage(*(2 * j < in.size() ? a.prof : b.prof)));
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
 		std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
 		kerbed_line(e, in, bk, out, ka > 0 || kb > 0, walk_color(e.L, a, 1));
 	}
-	fan(e, node, ring, e.L.carriage(*best));
+	fan(e, node, ring, cols);
 }
 
 struct EndFrame {
@@ -251,7 +263,7 @@ void bulb(const RoadEmit &e, int n, const End &en) {
 		return pts;
 	};
 	std::vector<Vector3> in = ring(BULB_R);
-	fan(e, node, in, L.carriage(*en.prof));
+	fan(e, node, in, std::vector<Color>(in.size(), L.carriage(*en.prof)));
 	kerbed_line(e, in, ring(BULB_R + kw), ring(BULB_R + BULB_WALK), kw > 0, walk_color(L, en, 1));
 }
 } // namespace

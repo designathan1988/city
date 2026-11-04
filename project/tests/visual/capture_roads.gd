@@ -156,7 +156,7 @@ func _lay() -> void:
 	_road(at(-200, 300), at(0, 300), "urbanStreet")
 	_road(at(0, 300), at(190, 360), "urbanStreet")
 	_road(at(480, -200), at(480, 200), "streetWithMedian")
-	_road(at(420, -60), at(540, -60), "urbanStreet")
+	_road(at(420, -60), at(540, -60), "localStreet")
 	_road(at(640, -200), at(640, 200), "highway6Lanes")
 
 

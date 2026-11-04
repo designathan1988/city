@@ -111,7 +111,8 @@ void emit_markings(const RoadEmit &e, int sid) {
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
-	lines(pt, p, v0 + (ca ? e.L.line_clear : 0), v1 - (cb ? e.L.line_clear : 0));
+	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
+	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
 	crossings(pt, p, v0, v1, ca, cb);
 }
 
