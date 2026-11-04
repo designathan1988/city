@@ -88,6 +88,7 @@ private:
 	struct Surface {
 		OwnedMesh mesh;
 		godot::AABB box;
+		int glass_at = -1; // the mesh surface the panes are, -1: none
 	};
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
@@ -133,6 +134,7 @@ private:
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
+	void put_near(MeshDraw &d, Surface &sf, bool shown) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
@@ -149,7 +151,7 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
-	godot::RID scenario_, material_, material_far_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_far_, material_parts_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;

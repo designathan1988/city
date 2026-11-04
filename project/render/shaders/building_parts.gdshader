@@ -11,7 +11,6 @@ uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotrop
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
 uniform float finish_m[13];
-uniform float finish_mean[13];
 uniform float finish_normal_k[13];
 uniform float finish_metal[13];
 uniform float wall_gain = 1.0;

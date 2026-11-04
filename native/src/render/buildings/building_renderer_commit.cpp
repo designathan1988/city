@@ -37,13 +37,26 @@ void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const 
 	d.visible(any && shown);
 }
 
+// The near level: the walls and the panes each with their material, on the mesh's surfaces, so no override on the instance.
+void BuildingRenderer::put_near(MeshDraw &d, Surface &sf, bool shown) const {
+	if (sf.mesh.valid()) {
+		RenderingServer *rs = RenderingServer::get_singleton();
+		if (sf.glass_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
+		if (sf.glass_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.glass_at, material_glass_);
+	}
+	put(d, sf, scenario_, RID(), true, shown);
+}
+
 BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass) {
 	Surface sf;
 	const bool any_glass = glass && glass->triangles() > 0;
 	if (shell.triangles() == 0 && !any_glass) return sf;
 	sf.mesh.rid = RenderingServer::get_singleton()->mesh_create();
 	shell.commit_to(sf.mesh.rid, with_uv2);
-	if (any_glass) glass->commit_to(sf.mesh.rid, with_uv2);
+	if (any_glass) {
+		sf.glass_at = shell.triangles() > 0 ? 1 : 0;
+		glass->commit_to(sf.mesh.rid, with_uv2);
+	}
 	Vector3 mn, mx, pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	shell.bounds(mn, mx);
 	if (any_glass) {
@@ -112,7 +125,7 @@ void BuildingRenderer::commit_one(Built &b) {
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, material_, true, ch.shown);
+			put_near(ch.near[size_t(i)], b.near[size_t(i)], ch.shown);
 			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown);
 		}
 		for (int band = 0; band < BAND_COUNT; band++)

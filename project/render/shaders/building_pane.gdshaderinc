@@ -1,6 +1,7 @@
-// A pane of the near level: the room behind the glass by interior mapping (van Dongen, "Interior Mapping", CGI 2008), with the
-// room's own size, floor and largest piece of furniture (native/src/render/buildings/pane_rooms.cpp), what hangs in the window,
-// the frame in front of the glass, and the lamp of the room at night. Each hit is an exact ray-plane or slab test.
+// A pane of the near level: the opening it stands for, the room behind the glass by interior mapping (van Dongen, "Interior
+// Mapping", CGI 2008), with the room's own size, floor and largest piece of furniture
+// (native/src/render/buildings/pane_rooms.cpp), what hangs in the window, the frame in front of the glass, and the lamp of the
+// room at night. Each hit is an exact ray-plane or slab test.
 // Needs v_room0..2 and v_trim: room0 = back, ahead, depth, floor kind; room1 = sill, head, piece + 1, piece height;
 // room2 = piece centre (signed), half width, near, far; trim = sRGB frame colour, frame thickness.
 const float ROOM_SPAN_M = 12.75; // a byte's 1.0, metres (shell.h ROOM_SPAN_M)
@@ -9,6 +10,8 @@ const float FRAME_SHARE = 0.045; // the border of the frame, of the pane's side 
 const float FRAME_OUT_M = 0.03; // the frame's middle in front of the glass
 const float TV_SHARE = 0.12; // the share of a home's lit rooms lit by a television alone
 const float TILE_M = 0.6, BOARD_M = 0.14, PLANK_M = 2.4, PANEL_GRID_M = 2.4;
+const float REVEAL_ALBEDO = 0.9; // the mean of the trim finishes' maps (render, stone, concrete)
+const float REVEAL_SHADE = 0.68, SILL_SHADE = 0.92, HEAD_SHADE = 0.544; // facade_bay.cpp: the sides, the sill, the head
 
 // The overlap of [a, b] with a pixel's footprint k round x, as a share of k.
 float pane_span(float x, float k, float a, float b) { return clamp((min(x + 0.5 * k, b) - max(x - 0.5 * k, a)) / k, 0.0, 1.0); }
@@ -16,7 +19,9 @@ float pane_span(float x, float k, float a, float b) { return clamp((min(x + 0.5 
 // The share of the pixel the frame covers and the face of it seen (pane axes, z towards the eye). Near, each bar is a box
 // hit by the eye's ray; its bars under ~2 pixels, their area box-filtered over the pixel instead, so they neither shimmer
 // nor vanish. `p` from the pane's middle, `ray` z into the wall.
-float pane_frame(vec2 p, vec3 ray, vec2 size, float thick, inout vec3 face) {
+// `hit`: how far along the ray back from the glass the bar was met, -1 when the frame was only filtered.
+float pane_frame(vec2 p, vec3 ray, vec2 size, float thick, inout vec3 face, out float hit) {
+	hit = -1.0;
 	vec2 hs = 0.5 * size, t = FRAME_SHARE * size;
 	vec4 bars[6];
 	bars[0] = vec4(-hs.x, hs.x, hs.y - t.y, hs.y);
@@ -49,7 +54,40 @@ float pane_frame(vec2 p, vec3 ray, vec2 size, float thick, inout vec3 face) {
 			face = hi == sz1 ? vec3(0.0, 0.0, 1.0) : hi == sx.y ? vec3(-sign(d.x), 0.0, 0.0) : vec3(0.0, -sign(d.y), 0.0);
 		}
 	}
+	hit = best;
 	return mix(filtered, best >= 0.0 ? 1.0 : 0.0, smoothstep(1.0, 2.0, thin));
+}
+
+// A pane on the wall's face, its glass `deep` behind it: where the eye's ray into the opening's box ends, each an exact
+// ray-plane hit (Quilez, box functions; van Dongen 2008). Back: the share of the pixel on a side, the sill or the head, the
+// edge filtered by the pixel, so a reveal under a pixel neither sparkles nor vanishes. `hit` the point met, `side` its outward
+// normal, both on pane axes with z into the wall, `o` its place on the glass. The frame stands in front of the glass, so a side
+// met behind the frame's front is the frame's. The depth stays the wall's: early depth is kept.
+float recess_meet(vec3 d, vec2 size, float deep, float thick, inout vec3 o, out vec3 hit, out vec3 side, out float shade) {
+	vec2 hs = 0.5 * size;
+	float t_glass = deep / d.z;
+	float tx = ((d.x > 0.0 ? hs.x : -hs.x) - o.x) / d.x, ty = ((d.y > 0.0 ? hs.y : -hs.y) - o.y) / d.y;
+	float t_side = min(tx, ty);
+	float t_front = thick > 0.0 ? max(deep - FRAME_OUT_M - 0.5 * thick, 0.0) / d.z : t_glass;
+	float gap = t_front - t_side;
+	float solid = clamp(gap / max(fwidth(gap), 1e-5) + 0.5, 0.0, 1.0);
+	bool on_side = solid > 0.5;
+	side = !on_side ? vec3(0.0, 0.0, -1.0) : tx < ty ? vec3(-sign(d.x), 0.0, 0.0) : vec3(0.0, d.y < 0.0 ? 1.0 : -1.0, 0.0);
+	shade = tx < ty ? REVEAL_SHADE : d.y < 0.0 ? SILL_SHADE : HEAD_SHADE;
+	hit = o + d * (on_side ? t_side : t_glass);
+	o = vec3(hit.xy, 0.0);
+	return solid;
+}
+
+// The share of the sky's hemisphere over `n` at `q` the opening lets through, cosine-weighted: Lambert's form factor of a
+// polygon, exact, four edges (Baum, Rushmeier and Winget, "Improving radiosity solutions through the use of analytically
+// determined form-factors", 1989).
+vec3 form_edge(vec3 a, vec3 b) { return acos(clamp(dot(a, b), -1.0, 1.0)) * normalize(cross(a, b) + 1e-9); }
+float opening_share(vec3 q, vec3 n, vec2 hs) {
+	vec3 c0 = normalize(vec3(-hs.x, -hs.y, 0.0) - q), c1 = normalize(vec3(hs.x, -hs.y, 0.0) - q);
+	vec3 c2 = normalize(vec3(hs.x, hs.y, 0.0) - q), c3 = normalize(vec3(-hs.x, hs.y, 0.0) - q);
+	vec3 e = form_edge(c0, c1) + form_edge(c1, c2) + form_edge(c2, c3) + form_edge(c3, c0);
+	return clamp(abs(dot(e, n)) / TAU, 0.0, 1.0);
 }
 
 vec3 room_floor(vec3 p, float kind) {
@@ -163,13 +201,10 @@ vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
 	return tint * lit * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6)));
 }
 
-// The sky's reflection on glass, as light leaving it (the compatibility renderer reflects little of the sky on its own).
-vec3 glass_reflection(vec3 V, vec3 n, float F) {
-	return uniform_linear(glass_sky) * mix(0.75, 1.15, clamp(-V.y + 0.2, 0.0, 1.0)) * (F + glass_sky_floor) * (1.0 - night);
-}
-
 // A pane: uv 0..1 over the glass, `size` metres, `slot` its room's seed, `bay` its own. Out: what the surface is.
-void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
+// `deep`: the opening behind the wall's face, 0 for a pane at its glass. Out too: `at` the point lit on pane axes, `open` the
+// share of the sky it sees.
+void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal, out vec3 at, out float open) {
 	vec3 t = normalize(vec3(n.z, 0.0, -n.x));
 	float lot = h01(bay * 7919u + slot * 31u + 1u);
 	vec3 ray = vec3(dot(V, t), V.y, max(dot(V, -n), 1e-4));
@@ -177,11 +212,25 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, ou
 	vec3 o = vec3((uv - 0.5) * size, 0.0);
 	float tiny = smoothstep(0.05, 0.3, max(fwidth(uv.x), fwidth(uv.y)));
 	float thick = v_trim.a * FRAME_SPAN_M;
+	float solid = 0.0, side_shade = 1.0;
+	vec3 side = vec3(0.0, 0.0, -1.0);
+	at = vec3(0.0);
+	if (deep > 0.0) solid = recess_meet(d, size, deep, thick, o, at, side, side_shade);
 	vec3 face = vec3(0.0, 0.0, 1.0);
-	float frame = thick > 0.0 ? pane_frame(o.xy, ray, size, thick, face) : 0.0;
+	float frame_hit = -1.0;
+	float frame = thick > 0.0 ? pane_frame(o.xy, ray, size, thick, face, frame_hit) * (1.0 - solid) : 0.0;
+	open = 1.0;
+	if (deep > 0.0) {
+		if (frame_hit >= 0.0 && frame > 0.5) {
+			at = vec3(o.xy - ray.xy * frame_hit, deep - ray.z * frame_hit);
+			side = vec3(face.xy, -face.z);
+		}
+		at += side * 1e-3; // off the surface a hair: a point on a side sees the opening's edge in that side's plane on the right side
+		open = opening_share(at, side, 0.5 * size);
+	}
 	vec3 seen = PANE_MEAN_SEEN;
 	float kind = v_room0.a * 255.0;
-	if (tiny < 1.0 && frame < 1.0) {
+	if (tiny < 1.0 && frame < 1.0 && solid < 1.0) {
 		vec3 lo = vec3(-v_room0.r, -v_room1.r, 0.0) * ROOM_SPAN_M, hi = vec3(v_room0.g, v_room1.g, v_room0.b) * ROOM_SPAN_M;
 		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind), o, d, size, lot);
 		seen = mix(room, PANE_MEAN_SEEN, tiny);
@@ -195,49 +244,10 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, ou
 	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
 	vec3 refl = glass_reflection(V, n, F);
 	vec3 trim = to_linear(v_trim.rgb);
-	albedo = mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * (dark ? 0.7 : 1.0)) * (1.0 - frame);
+	albedo = mix(mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
+	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open * (dark ? 0.7 : 1.0)) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
-	rough = mix(mix(0.12, 0.55, tiny), 0.55, frame);
-	metal = mix(0.0, 0.05, frame);
-}
-
-// The mid level's window grid: `code` = opening width, sill, head (shares of the bay and the storey) and flags (shell.h). The
-// wall, the frame, the glass and the roller shutter by the share of the pixel each covers; what a bay picks for itself fades to
-// the share of bays that pick it as a bay drops under a few pixels, so the facades neither sparkle nor flatten.
-const float FAR_ROOM_LEVEL = 0.68; // a far window's lamp: the mean of pane_lamp's level (0.3 + 0.85 x two uniform lots)
-const float FAR_FRAME_SHARE = 0.027; // the frame read round a pane: 8 cm of a 3 m bay or storey
-void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, inout vec3 albedo, out vec3 emit, out float glass) {
-	emit = vec3(0.0);
-	glass = 0.0;
-	int flags = int(code.a * 255.0 + 0.5);
-	if ((flags & 4) != 0) return;
-	bool curtain = (flags & 2) != 0;
-	vec2 foot = grid_footprint(uv), cell = floor(uv);
-	float sub = smoothstep(0.25, 0.5, max(foot.x, foot.y));
-	float a0 = 0.5 - 0.5 * code.r, a1 = 0.5 + 0.5 * code.r, f = FAR_FRAME_SHARE;
-	float hole = curtain ? 1.0 : pulse(uv.x, foot.x, a0, a1) * pulse(uv.y, foot.y, code.g, code.b);
-	float across = curtain ? pulse(uv.x, foot.x, 0.05, 0.95) : pulse(uv.x, foot.x, a0 + f, a1 - f);
-	float pan = across * (curtain ? pulse(uv.y, foot.y, 0.05, 0.95) : pulse(uv.y, foot.y, code.g + f, code.b - f));
-	uint h = pcg(seed * 977u + uint(cell.x + 512.0) * 131u + uint(cell.y + 512.0) * 7177u);
-	float dark = mix(h % 20u < 5u ? 1.0 : 0.0, 0.25, sub);
-	float solid_near = 0.0;
-	uint pick = h % 20u;
-	if (!curtain && pick >= 9u && pick < 13u) { // a roller shutter part way down in four bays of twenty
-		float down = (code.b - code.g) * (0.25 + float(pick - 9u) * 0.15);
-		solid_near = across * pulse(uv.y, foot.y, code.b - f - down, code.b - f);
-	}
-	float solid = curtain ? 0.0 : mix(solid_near, 0.2 * pan * 0.475, sub);
-	glass = max(pan - solid, 0.0);
-	float frame = max(hole - pan, 0.0);
-	vec3 trim = to_linear(v_trim.rgb), shutter = vec3(0.32, 0.36, 0.37);
-	float cosv = clamp(dot(-V, n), 0.0, 1.0);
-	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
-	albedo = albedo * (1.0 - frame - glass - solid) + trim * frame + mix(vec3(0.0075, 0.0096, 0.0115), vec3(0.0047, 0.0061, 0.0074), dark) * glass + shutter * solid;
-	float lot = float((h >> 8u) & 1023u) / 1024.0, office = (flags & 8) != 0 ? 1.0 : 0.0;
-	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
-	float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, far_sub);
-	vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), far_sub);
-	float through = 1.0 - (0.04 + 0.96 * pow(1.0 - cosv, 5.0)); // what the glass lets out at this angle (Schlick, F0 4 %)
-	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + PANE_MEAN_SEEN * room_daylight) * through * mix(1.0, 0.64, dark) + glass_reflection(V, n, F)) * glass;
+	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
+	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);
+	metal = mix(mix(0.0, 0.05, frame), 0.0, solid);
 }

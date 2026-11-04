@@ -22,7 +22,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
 	ok = buildings_.init(ctx, errors) && ok;
-	stage_.init(ctx.material("building", errors), ctx.material("building_ghost", errors));
+	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
