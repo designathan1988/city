@@ -28,6 +28,21 @@ const char *const OVERLAY_NAMES[int(Overlay::COUNT)] = { "zones", "congestion" }
 
 CityCore::CityCore() : state_(std::make_unique<CityState>()) {}
 
+namespace {
+
+// Below this the camera looks almost level: the line of sight reaches the ground too far off to mean anything.
+constexpr float LEVEL_VIEW = 0.05f;
+
+// Where the player is looking: the line of sight down to the ground. The windows of traffic and walkers stand there (the
+// 4.0's focus, the camera's target), not under an eye that from high up stands past the edge of the city it shows.
+Vector3 ground_seen(const Camera3D &cam) {
+	const Transform3D t = cam.get_global_transform();
+	const Vector3 ahead = -t.basis.get_column(2);
+	return ahead.y < -LEVEL_VIEW ? t.origin + ahead * (t.origin.y / -ahead.y) : t.origin;
+}
+
+} // namespace
+
 CityCore::~CityCore() {
 	join_save();
 	sim_.stop();
@@ -129,8 +144,9 @@ void CityCore::_process(double delta) {
 	Laps total, laps;
 	Camera3D *cam = get_viewport() ? get_viewport()->get_camera_3d() : nullptr;
 	if (cam) cam_ = cam->get_global_position();
-	state_->camera_x.store(cam_.x);
-	state_->camera_z.store(cam_.z);
+	const Vector3 look = cam ? ground_seen(*cam) : cam_;
+	state_->camera_x.store(look.x);
+	state_->camera_z.store(look.z);
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
