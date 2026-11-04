@@ -49,6 +49,8 @@ struct RoadBox {
 		add(double(g.maxx), double(g.maxz));
 	}
 };
+// How far from node `n` the junction wants the mouth of `seg`, before the road's length caps it (road_rules.cpp).
+double wanted_retreat(const RoadNetwork &net, int n, int seg);
 // The roads of the box whose two mouths overlap, and by how many metres (road_rules.cpp).
 std::map<int, double> squeezes_in(const CityState &s, const RoadBox &box);
 // Whether a road of the box overlaps more than `before` said.

@@ -4,6 +4,7 @@
 #include "sim/commands/road_edit.h"
 
 #include "core/math.h"
+#include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -12,6 +13,17 @@
 namespace city {
 
 namespace {
+constexpr size_t MIN_JUNCTION_ARMS = 3, JOINT_ARMS = 2;
+constexpr double STRAIGHT_JOIN_M = 0.05; // two pieces this close to their chords are straight
+constexpr double STRAIGHT_JOIN_COS = -0.999; // the arms of a joint leave it this close to opposite ways
+
+// The cosine between the way `first` arrives at its end and the opposite of the way `second` leaves: -1 in line.
+double dir_turn(const Quad &first, const Quad &second) {
+	const double ax = first.x1 - first.cx, az = first.z1 - first.cz, bx = second.cx - second.x0, bz = second.cz - second.z0;
+	const double l = std::hypot(ax, az) * std::hypot(bx, bz);
+	return l > 0 ? -(ax * bx + az * bz) / l : 0;
+}
+
 constexpr int ARC_STEPS = 64;
 constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 
@@ -71,6 +83,49 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 	return r;
 }
 
+// The curve through both ends of two pieces of one road: their end tangents meet at its control point.
+bool joined_quad(const Quad &first, const Quad &second, Quad &out) {
+	if (first.is_straight(STRAIGHT_JOIN_M) && second.is_straight(STRAIGHT_JOIN_M)) {
+		out = Quad::straight(first.x0, first.z0, second.x1, second.z1);
+		return true;
+	}
+	double u, v;
+	if (!line_line(first.x0, first.z0, first.cx - first.x0, first.cz - first.z0, second.x1, second.z1, second.cx - second.x1,
+				second.cz - second.z1, u, v)) return false;
+	out = { first.x0, first.z0, first.x0 + (first.cx - first.x0) * u, first.z0 + (first.cz - first.z0) * u, second.x1, second.z1 };
+	return true;
+}
+
+// A junction beside a place where a road was only cut in pieces (lay_pieces) has its mouth capped by the stub between them,
+// and the corner comes out square: the stub and the piece beyond it go back to being one road.
+void merge_stubs(CityState &s, int node, RoadBox &box) {
+	RoadNetwork &net = s.roads;
+	const std::vector<int> arms = net.nodes[size_t(node)].segs;
+	if (arms.size() < MIN_JUNCTION_ARMS) return;
+	for (int seg : arms) {
+		const RoadSegment g = net.segs[size_t(seg)];
+		if (wanted_retreat(net, node, seg) <= g.len * MOUTH_SHARE) continue;
+		const int far = g.a == node ? g.b : g.a;
+		const RoadNode &joint = net.nodes[size_t(far)];
+		if (joint.segs.size() != JOINT_ARMS) continue;
+		const RoadSegment o = net.segs[size_t(joint.segs[0] == seg ? joint.segs[1] : joint.segs[0])];
+		const int other = joint.segs[0] == seg ? joint.segs[1] : joint.segs[0];
+		const bool onward = g.b == far && o.a == far, back = g.a == far && o.b == far;
+		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || o.flags != g.flags) continue;
+		const RoadSegment &first = onward ? g : o, &second = onward ? o : g;
+		Quad q;
+		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) continue;
+		box.add(g);
+		box.add(o);
+		j_remove_segment(s, seg);
+		j_remove_segment(s, other);
+		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, g.flags);
+		j_remove_node_if_orphan(s, far);
+		conform_under(s, merged);
+		net.mark_segment(merged);
+	}
+}
+
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps) {
 	EditResult r;
 	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile);
@@ -102,8 +157,12 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
 		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
 	}
+	RoadBox box;
+	box.add(minx, minz);
+	box.add(maxx, maxz);
+	for (const Stop &stop : stops) merge_stubs(s, stop.node, box);
 	j_money(s, -plan.price);
-	finish_edit(s, minx, minz, maxx, maxz);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
 	r.money = s.unlimited_money ? 0 : plan.price;
 	r.segments = int(made.size());

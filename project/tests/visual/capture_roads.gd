@@ -86,6 +86,7 @@ func _run() -> void:
 	await _photo("pair_urban_top", at(0, -120), PAIR_TOP, PAIR_TOP_M)
 	await _photo("pair_urban_low", at(0, -120), PAIR_LOW, PAIR_LOW_M)
 	await _photo("bend_top", at(0, 300), [0.0, 62.0], PAIR_TOP_M)
+	await _photo("t_close", at(90, 100), [0.0, 90.0], CLOSE_M)
 	await _night()
 	if only.is_empty():
 		await _tool()
