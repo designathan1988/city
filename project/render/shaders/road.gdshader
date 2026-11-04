@@ -69,6 +69,7 @@ const float MEAN_FLOOR = 0.001;
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 #include "res://render/shaders/road_detail.gdshaderinc"
 #include "res://render/shaders/road_wear.gdshaderinc"
+#include "res://render/shaders/wear.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -131,6 +132,7 @@ void fragment() {
 			albedo *= lane_wear(min(COLOR.r, COLOR.g) * WEAR_SPAN_M, COLOR.b * WEAR_LANE_M, grain);
 		}
 		bend = (texture(asphalt_normal, uv / asphalt_m, near * detail_asphalt.z).xy - 0.5) * 2.0;
+		if (v_mat != M_PAINT) albedo = wear_asphalt(albedo, wear_at(v_world.xz).x, v_world.xz);
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
 		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m, near * detail_footway.z).rgb);
@@ -146,10 +148,12 @@ void fragment() {
 			albedo *= footway_wear(COLOR.r * WEAR_SPAN_M, (COLOR.r + COLOR.g) * WEAR_SPAN_M, grain);
 		}
 		bend = (texture(footway_normal, uv.yx / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
+		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
+		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
 		// on top laid over the ground as the map tiles, along a road it runs through the stone and the grime; on a face, along it
 		// and up it, or the ground's two axes would hold still up the whole height and draw stripes

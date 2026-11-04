@@ -286,7 +286,13 @@
   ],
   "schemas": {
     "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
+    "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
+    "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
+    "project/data/game/sky.json": "tools/gates/schemas/sky.schema.json",
+    "project/data/render/cover.json": "tools/gates/schemas/cover.schema.json",
+    "project/data/ui/land_panels.json": "tools/gates/schemas/land_panels.schema.json",
+    "project/data/ui/land_elements.json": "tools/gates/schemas/land_elements.schema.json",
     "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
     "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
     "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",
@@ -296,11 +302,13 @@
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
+    "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
     "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",
     "project/data/ui/toolbar.json": "tools/gates/schemas/toolbar.schema.json",
+    "project/data/ui/builder.json": "tools/gates/schemas/builder.schema.json",
     "project/data/ui/hud.json": "tools/gates/schemas/hud.schema.json",
     "project/data/ui/drawers.json": "tools/gates/schemas/drawers.schema.json",
     "project/data/game/camera.json": "tools/gates/schemas/camera.schema.json",
@@ -346,8 +354,12 @@
     "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START"
-    ],
+      "native/src/sim/terrain/heightfield.cpp:BANK_START", "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
+      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
+      "native/src/sim/buildings/b40/model.h:NO_BAY", "project/game/tools/building_tool.gd:NO_BAY",
+      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
+      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H", "native/src/render/atmosphere/fog_field.cpp:BUCKET_M"],
     "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
   },
   "clones": {

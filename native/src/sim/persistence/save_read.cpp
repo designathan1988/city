@@ -2,6 +2,7 @@
 // roads, buildings and growth go back under their ids; lots and node shapes are derived again.
 #include "sim/persistence/save_format.h"
 #include "sim/roads/road_variants.h"
+#include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
 #include "sim/citygen/city_gen.h"
@@ -98,7 +99,7 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 } // namespace
 
 namespace {
-constexpr uint32_t VARIANTS_VERSION = 2;
+constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 
 // Made again in the saved order, so each keeps the index the roads hold.
 bool read_variants(ByteReader &r, Catalog &c) {
@@ -136,11 +137,17 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
 	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)
 	s.growth.grown = r.get<int32_t>();
-	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
+	uint32_t tag = r.get<uint32_t>();
+	if (tag == SAVE_BODIES) {
+		if (!read_edited_bodies(r, s.buildings)) return false;
+		tag = r.get<uint32_t>();
+	}
+	if (!r.ok || tag != SAVE_END) return false;
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

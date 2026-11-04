@@ -16,6 +16,7 @@ void BuildingStore::init(ChangeLog *l) {
 }
 
 void BuildingStore::clear() {
+	designs.edited->clear();
 	items.clear();
 	free_ids.clear();
 	hash.clear();

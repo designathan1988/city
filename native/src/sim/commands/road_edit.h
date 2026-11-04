@@ -28,6 +28,10 @@ int clear_under(CityState &s, int seg);
 void conform_under(CityState &s, int seg);
 // The ground moved under the box: its roads, buildings and lots are drawn / derived again (brush.ts touchSamples).
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
+// The painted ground of a sample rectangle is drawn again, its trees and covers placed again.
+void mark_paint(CityState &s, const int rect[4]);
+// The plants of the box are placed again.
+void mark_nature(CityState &s, double minx, double minz, double maxx, double maxz);
 // The segment's street furniture is placed and drawn again (its zones changed, or its square's hydrant may move).
 void mark_furniture(CityState &s, int seg);
 // What a road keeps when it is laid again (moved): its zones and flags.

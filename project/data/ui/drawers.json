@@ -113,7 +113,7 @@
     {
      "id": "models",
      "icon": "models",
-     "label_key": "builder.category.models"
+     "label_key": "builder.category.models", "tool": "BUILD"
     },
     {
      "id": "draw",
@@ -125,22 +125,26 @@
     {
      "id": "mass",
      "icon": "mass",
-     "label_key": "builder.category.mass"
+     "label_key": "builder.category.mass",
+     "tool": "BUILD"
     },
     {
      "id": "facade",
      "icon": "face",
-     "label_key": "builder.category.facade"
+     "label_key": "builder.category.facade",
+     "tool": "BUILD"
     },
     {
      "id": "parts",
      "icon": "components",
-     "label_key": "builder.category.parts"
+     "label_key": "builder.category.parts",
+     "tool": "BUILD"
     },
     {
      "id": "roof",
      "icon": "roof",
-     "label_key": "builder.category.roof"
+     "label_key": "builder.category.roof",
+     "tool": "BUILD"
     },
     {
      "id": "interior",
@@ -150,7 +154,8 @@
     {
      "id": "paint",
      "icon": "paint",
-     "label_key": "builder.category.paint"
+     "label_key": "builder.category.paint",
+     "tool": "BUILD"
     }
    ],
    "strip": "build_cards",
@@ -227,17 +232,20 @@
     {
      "id": "ground",
      "icon": "paint",
-     "label_key": "v2.land.ground"
+     "label_key": "v2.land.ground",
+     "tool": "PAINT"
     },
     {
      "id": "nature",
      "icon": "ls_tree",
-     "label_key": "v2.land.nature"
+     "label_key": "v2.land.nature",
+     "tool": "TREES"
     },
     {
      "id": "sky",
      "icon": "cloud",
-     "label_key": "v2.land.sky"
+     "label_key": "v2.land.sky",
+     "tool": "CLOUD"
     },
     {
      "id": "street",
@@ -250,70 +258,7 @@
      "label_key": "tool.person"
     }
    ],
-   "strip": "relief_cards",
-   "cards": [
-    {
-     "label_key": "terrain.raise",
-     "mode": 0,
-     "icon": "raise"
-    },
-    {
-     "label_key": "terrain.lower",
-     "mode": 1,
-     "icon": "lower"
-    },
-    {
-     "label_key": "terrain.smooth",
-     "mode": 2,
-     "icon": "smooth"
-    },
-    {
-     "label_key": "terrain.flatten",
-     "mode": 3,
-     "icon": "flatten"
-    },
-    {
-     "label_key": "terrain.mesa",
-     "mode": 4,
-     "icon": "mesa"
-    },
-    {
-     "label_key": "terrain.canyon",
-     "mode": 5,
-     "icon": "canyon"
-    },
-    {
-     "label_key": "terrain.escarpment",
-     "mode": 6,
-     "icon": "escarpment"
-    },
-    {
-     "label_key": "terrain.sugarloaf",
-     "mode": 7,
-     "icon": "sugarloaf"
-    },
-    {
-     "label_key": "terrain.gully",
-     "mode": 8,
-     "icon": "gully"
-    }
-   ],
-   "brush": {
-    "radius": {
-     "label_key": "terrain.radius",
-     "min": 5,
-     "max": 400,
-     "step": 5,
-     "default": 60
-    },
-    "strength": {
-     "label_key": "terrain.strength",
-     "min": 1,
-     "max": 100,
-     "step": 1,
-     "default": 40
-    }
-   }
+   "strip": "land_panels"
   },
   {
    "id": "transit",

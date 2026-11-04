@@ -5,6 +5,8 @@
 class_name HudDrawer
 extends PanelContainer
 
+const PERCENT := 100.0
+
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
@@ -151,8 +153,10 @@ func _build_strip(tab: Dictionary) -> void:
 		DrawerStrips.slider(_strip, ring.label_key, DataTables.tuning("roundabout_radius_min_m"),
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), " m",
 			retool.bind("ROUNDABOUT", "radius"))
-	elif kind == "relief_cards" and tab.get("tool", "") == "TERRAIN":
-		_relief_strip()
+	elif kind == "land_panels":
+		LandStrips.build(self, _strip, tab.get("tool", ""))
+	elif tab.get("tool", "") == "BUILD":
+		BuilderStrip.fill(_strip, tab.id, tools)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
 			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), retool.bind("LOT", "fn")))
@@ -162,14 +166,70 @@ func _build_strip(tab: Dictionary) -> void:
 	note.visible = note.text != ""
 
 
-func _relief_strip() -> void:
-	for c in category.cards:
-		_strip.add_child(DrawerStrips.card(c, "mode", _param("TERRAIN", "mode", 0), retool.bind("TERRAIN", "mode")))
-	var col := HudWidgets.vbox(_strip)
-	for key in ["radius", "strength"]:
-		var spec: Dictionary = category.brush[key]
-		DrawerStrips.slider(col, spec.label_key, spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
-			" m" if key == "radius" else "%", retool.bind("TERRAIN", key))
+## The Landscape strips' hands (ui/land_strips.gd): the tool of the open panel and its remembered parameters.
+func land_param(tool_name: String, key: String, fallback: Variant) -> Variant:
+	return _param(tool_name, key, fallback)
+
+
+func land_slide(value: float, tool_name: String, key: String) -> void:
+	retool(value, tool_name, key)
+
+
+func land_pick(value: Variant, tool_name: String, key: String) -> void:
+	retool(value, tool_name, key)
+	_land_rebuild()
+
+
+## A card of the Sky tab: another tool in hand, its panel in the strip.
+func land_switch(tool_name: String) -> void:
+	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool_name], {}).duplicate() if tools else {}
+	tool_requested.emit(tool_name, params)
+	_land_rebuild()
+
+
+## What wipes the whole map asks first, and only when there is something to wipe (land_panels.json "confirm").
+func land_action(action: String) -> void:
+	var ask: Dictionary = DataTables.ui("land_panels").confirm.get(action, {})
+	if ask.is_empty():
+		_land_do(action)
+	elif _land_holds(ask):
+		var dialog := ConfirmationDialog.new()
+		dialog.dialog_text = tr(ask.key)
+		dialog.confirmed.connect(_land_do.bind(action))
+		dialog.visibility_changed.connect(func() -> void:
+			if not dialog.visible:
+				dialog.queue_free())
+		add_child(dialog)
+		dialog.popup_centered()
+
+
+## Whether the landscape holds what the action would wipe: any of the counts named, or always when none is.
+func _land_holds(ask: Dictionary) -> bool:
+	var counts: Array = ask.get("counts", [])
+	if counts.is_empty():
+		return true
+	var land: Dictionary = CityStore.query(&"landscape")
+	for key: String in counts:
+		var held: Variant = land[key]
+		if (held.size() if held is Array else int(held)) > 0:
+			return true
+	return false
+
+
+func _land_do(action: String) -> void:
+	if action == "scatter_clouds":
+		var s := BrushDefaults.of("CLOUD", tools.remembered.get(ToolController.Tool.CLOUD, {}) if tools else {})
+		var like := {"height": s.height, "size": s.size, "density": s.density / PERCENT}
+		var r: Dictionary = CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / PERCENT])
+		if r.get("error", "") != "" and tools:
+			tools.hint.emit(tr(r.error), false)
+	else:
+		CityStore.dispatch(StringName(action))
+
+
+func _land_rebuild() -> void:
+	HudWidgets.clear(_strip)
+	LandStrips.build(self, _strip, ToolController.Tool.find_key(tools.tool))
 
 
 func _zone_card(c: Dictionary) -> Button:

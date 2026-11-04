@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/catalog/furniture_types.h"
+#include "sim/catalog/nature_types.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
@@ -17,11 +18,13 @@ struct Tuning {
 	CITY_TUNING_FIELDS(CITY_TUNING_DECLARE)
 };
 
-// A map offered by the start screen: its size in 1 km tiles and whether the generated city is the medium town.
+// A map offered by the start screen: its size in 1 km tiles, whether its city is planned on flat ground, and that city's radius (0: it
+// fills the map).
 struct MapDef {
 	std::string id, name_key;
 	int tiles = 0;
 	bool medium = false;
+	double city_radius_m = 0;
 };
 
 // A zone id written on segment sides (Roadcraft src/roads/zones.ts).
@@ -49,13 +52,21 @@ struct IntRange {
 	int lo = 0, hi = 0;
 };
 
-// How many floors a grown building gets and which lots become civic buildings (data/catalog/growth.json).
+// The plan of a generated city (data/catalog/growth.json "plan", sim/citygen/city_plan.h).
+struct CityPlanDef {
+	double main_offset = 0, centre_turn = 0, second_from = 0, second_to = 0, second_pull = 0;
+	double density = 0, density_pull = 0, noise_cell_m = 0, noise_heat = 0, high_heat = 0, medium_heat = 0, commerce_heat = 0, main_commerce_heat = 0;
+	double industry_from = 0, industry_half_angle = 0;
+	double square_cell_m = 0, square_touch_m = 0, square_front_m = 0, square_area_low = 0, square_area_high = 0, square_walk_half_m = 0, square_plaza_m = 0;
+	double square_tree_grid_m = 0, square_tree_edge_m = 0, square_tree_low_m = 0, square_tree_high_m = 0;
+	std::vector<std::string> square_main_roads;
+	int centres = 0;
+};
+
+// Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
 struct GrowthDef {
-	int avenue_priority = 0;
-	IntRange low_res, low_other, high_res, high_res_avenue, high_other, high_other_avenue, res_avenue;
-	float res_split[2] = {};
-	IntRange res_bands[3], commercial, commercial_avenue, industrial, mixed, mixed_avenue;
-	float civic_min_area = 0, civic_chance = 0, square_min_area = 0;
+	CityPlanDef plan;
+	float civic_min_area = 0, civic_chance = 0;
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;
 	int organic_extra_floors = 0;
@@ -74,6 +85,7 @@ struct Catalog {
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
 	StreetFurnitureDef furniture; // data/catalog/street_furniture.json
+	NatureDef nature; // data/catalog/nature.json
 
 	bool ready() const { return !profiles.empty(); }
 	const Profile &profile(int id) const { return profiles[size_t(id) < profiles.size() ? size_t(id) : 0]; }

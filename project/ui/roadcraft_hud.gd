@@ -22,6 +22,8 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 @onready var _stats: Label
 @onready var _hint: Label
 @onready var _speed_buttons: Array[Button] = []
+signal sky_chosen(mode: String)
+
 @onready var _sky_buttons: Array[Button] = []
 @onready var _action_buttons: Dictionary = {}
 @onready var _history_buttons: Dictionary = {}
@@ -215,9 +217,7 @@ func _on_drawer_closed() -> void:
 func _set_sky(mode: String) -> void:
 	for i in SKY.size():
 		_sky_buttons[i].set_pressed_no_signal(SKY[i][2] == mode)
-	var hour: float = DataTables.tuning("sim_day_light_hour") if mode == "day" else DataTables.tuning("sim_night_light_hour")
-	RenderingServer.global_shader_parameter_set(&"night", 0.0 if mode == "day" else 1.0)
-	print("ceu: ", mode, " ", hour)
+	sky_chosen.emit(mode)
 
 
 func _process(_delta: float) -> void:
