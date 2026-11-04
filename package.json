@@ -1,0 +1,14 @@
+{
+  "name": "roadcraft-converter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Extracts a TypeScript game's features and converts them into the Godot project's architecture, with proof of equivalence",
+  "engines": {
+    "node": ">=23.6.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "node scripts/typecheck.ts"
+  }
+}
