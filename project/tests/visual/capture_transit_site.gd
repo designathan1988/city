@@ -14,6 +14,15 @@ const OPEN_TO_M := 60.0 # as far as the crossing's photo sees the train
 const OPEN_STEP_M := 7.0
 const TRAIN_TOP_M := 4.0
 
+## What the viewport's last frame drew, visible and in the shadows.
+static func drawn(viewport: RID) -> String:
+	var parts: Array[String] = []
+	for kind: int in [RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW]:
+		parts.append("%d triângulos, %d draw calls" % [RenderingServer.viewport_get_render_info(viewport, kind, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME),
+				RenderingServer.viewport_get_render_info(viewport, kind, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
+	return "visível %s; sombra %s" % parts
+
+
 ## A view from a place: {at, along, out}; view = [along, out, up, lens].
 static func eye_of(place: Dictionary, view: Array) -> Vector3:
 	var at: Vector3 = place.at

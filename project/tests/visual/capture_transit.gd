@@ -43,9 +43,11 @@ static func shots(cap: Node) -> void:
 	var site := CaptureTransitSite.street([STOP_NEAR, STOP_HIGH], [TERMINAL, ENTRANCE])
 	if site.is_empty():
 		return
+	await _counted(cap, "39_sem_transporte", site.place)
 	var bus := _lay_bus(site)
 	var rail := _lay_rail(bus)
 	var metro := _lay_metro(bus, site.others[1].at)
+	await _counted(cap, "39_com_o_plano", site.place)
 	print("transporte: paradas ", bus.size(), " trilho ", rail.has("road"), " metro ", metro.size())
 	var near: Vector3 = bus[1].at
 	cap.camera.global_position = near + Vector3.UP * STOP_REACH_M
@@ -62,8 +64,15 @@ static func shots(cap: Node) -> void:
 	CityStore.query(&"transit_xray", [true])
 	await _view(cap, "49_metro_corte", metro[0], CUT)
 	CityStore.query(&"transit_xray", [false])
+	await _counted(cap, "39_com_as_linhas", site.place)
 	await _tool_shots(cap, bus)
 	print("transporte: ", CityStore.query(&"transit_run"))
+
+
+## The same frame high over the street, and what it drew: counts, which no load on the machine changes.
+static func _counted(cap: Node, name: String, place: Dictionary) -> void:
+	await _view(cap, name, place, CUT)
+	print("transporte: quadro ", name, ": ", CaptureTransitSite.drawn(cap.get_viewport().get_viewport_rid()))
 
 
 ## The tool as the player has it: the plan over the map, a line and a run being laid, a double click ending the run, the lines in the drawer.
