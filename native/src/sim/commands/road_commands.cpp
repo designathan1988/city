@@ -65,7 +65,7 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 	const std::map<int, double> before = squeezes_in(s, box);
 	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
 	if (r.ok && squeezed_worse(s, before, box)) {
-		r.ok = false;
+		r = EditResult{};
 		r.error = "hint.rule.squeezed";
 	}
 	return r;
