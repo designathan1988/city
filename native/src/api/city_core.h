@@ -157,7 +157,7 @@ public:
 	godot::Dictionary set_signal(int node, bool fixed, const godot::PackedFloat32Array &greens, float offset);
 	godot::Dictionary green_wave(int node);
 	godot::Dictionary park_sample(); // where the capture looks at bays, lots, bicycles and docks
-	bool camera_clear(const godot::Vector3 &at, float radius); // no building, street piece or vehicle where a capture would stand
+	bool camera_clear(const godot::Vector3 &at, float radius, bool vehicles = true); // no building, street piece, parked car or, if asked, vehicle where a capture would stand
 	godot::Variant kerb_busy(); // where somebody is moving between a door and the footway now (null: nobody)
 	int dock_count(); // lorry docks of the whole map
 	godot::Dictionary lot_clearance(); // how far the cars in lots stay from what is solid along their ways

@@ -9,7 +9,7 @@ const MID_BLOCK_M := 25.0 # well clear of a junction's posts and of the cars que
 const STOPPED_MS := 0.5 # a moving vehicle is drawn behind where the sample has it
 const SIGHT_CLEAR_M := 2.5 # no other vehicle this near the line from the camera to the vehicle
 const SIGHT_STEP_M := 1.0
-const SIGHT_NEAR := 0.6 # of the distance to the vehicle: nearer than this the sight line is the vehicle itself
+const SIGHT_SPREAD := 0.35 # of the camera's distance: how far along the vehicle either way the sight lines end, about its ends
 const WINDOW_TICKS := 2 # the near model and the poses follow the camera only as the simulation steps
 const TRIES := 8 # vehicles tried when the one chosen no longer has the view once the window has followed the camera
 const DRAW_FRAMES := 30 # after the jump: the world first asks for the new view
@@ -75,15 +75,13 @@ static func _pick(probe: Dictionary, pair: Dictionary, tried: Array[Vector3], mi
 	return -1 if top > STOPPED_MS else _pick(probe, pair, tried, MID_BLOCK_M, INF)
 
 
-## Nothing along the whole line from the camera, metre by metre, up to where the vehicle itself begins.
+## Nothing between the camera and the vehicle, on the lines to its middle and to both its ends.
 static func _sees(probe: Dictionary, k: int, eye: Vector3, pair: Dictionary) -> bool:
 	var at: Vector3 = probe.sample[k]
-	var far := eye.distance_to(at)
-	var walked := SIGHT_STEP_M
-	while far - walked > float(pair.reach) * SIGHT_NEAR:
-		if not CityStore.query(&"camera_clear", [eye.lerp(at, walked / far), CAMERA_CLEAR_M]):
+	var along: Vector3 = probe.sample_dir[k] * float(pair.reach) * SIGHT_SPREAD
+	for end: Vector3 in [at, at + along, at - along]:
+		if not _line_clear(eye, end):
 			return false
-		walked += SIGHT_STEP_M
 	for j in probe.sample.size():
 		if j == k:
 			continue
@@ -91,6 +89,17 @@ static func _sees(probe: Dictionary, k: int, eye: Vector3, pair: Dictionary) -> 
 		var near := Geometry3D.get_closest_point_to_segment(other, eye, at)
 		if near.distance_to(other) < SIGHT_CLEAR_M:
 			return false
+	return true
+
+
+## Metre by metre: no wall, street piece or parked car. The vehicles are `_sees`'s, or the line would stop at the one it looks at.
+static func _line_clear(eye: Vector3, end: Vector3) -> bool:
+	var far := eye.distance_to(end)
+	var walked := SIGHT_STEP_M
+	while walked < far:
+		if not CityStore.query(&"camera_clear", [eye.lerp(end, walked / far), CAMERA_CLEAR_M, false]):
+			return false
+		walked += SIGHT_STEP_M
 	return true
 
 

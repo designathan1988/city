@@ -176,7 +176,7 @@ Variant CityCore::kerb_busy() {
 	return Variant();
 }
 
-bool CityCore::camera_clear(const Vector3 &at, float radius) {
+bool CityCore::camera_clear(const Vector3 &at, float radius, bool vehicles) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -184,7 +184,7 @@ bool CityCore::camera_clear(const Vector3 &at, float radius) {
 	s.buildings.query(at.x - radius, at.z - radius, at.x + radius, at.z + radius, [&](int) { clear = false; });
 	clear = clear && clear_of_furniture(s, at, radius);
 	for (const Vehicle &v : s.traffic.vehicles) {
-		if (!clear) break;
+		if (!clear || !vehicles) break;
 		if (!v.alive || !v.micro) continue;
 		const float reach = s.catalog.traffic.classes[int(v.type)].length * 0.5f + radius;
 		const float dx = v.cur.x - at.x, dz = v.cur.z - at.z;
