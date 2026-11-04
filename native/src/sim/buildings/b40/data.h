@@ -5,6 +5,9 @@
 #pragma once
 
 #include "sim/buildings/b40/types.h"
+#include "sim/buildings/b40/body_table.h"
+#include "sim/buildings/b40/model.h"
+#include "sim/buildings/interior/tables.h"
 
 #include <string>
 #include <unordered_map>
@@ -53,7 +56,10 @@ struct LotRules {
 };
 
 struct Data {
+	ModelTable models; // the Build > Models catalogue (data/render/models.json)
+	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	LotRules lots;
+	InteriorTables interior;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
 	float era[STYLE_COUNT][3] = {};

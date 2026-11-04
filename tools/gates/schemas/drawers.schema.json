@@ -14,7 +14,7 @@
      "icon": {"type": "string"},
      "label_key": {"type": "string"},
      "tip_key": {"type": "string"},
-     "strip": {"type": "string", "enum": ["road_catalog", "zone_cards", "relief_cards", "build_cards"]},
+     "strip": {"type": "string", "enum": ["road_catalog", "zone_cards", "land_panels", "build_cards"]},
      "danger": {"type": "boolean"},
      "no_drawer": {"type": "boolean"},
      "tabs": {
@@ -26,7 +26,10 @@
         "id": {"type": "string"},
         "icon": {"type": "string"},
         "label_key": {"type": "string"},
-        "tool": {"type": "string", "enum": ["ROAD", "ZONE", "DEMOLISH", "INSPECT", "UPGRADE", "SPLIT", "ROUNDABOUT", "TERRAIN", "LOT", "POLE", "BARRIER", "STREETSCAPE"]},
+        "tool": {
+         "type": "string",
+         "enum": ["ROAD", "ZONE", "DEMOLISH", "INSPECT", "UPGRADE", "SPLIT", "ROUNDABOUT", "TERRAIN", "BUILD", "LOT", "PAINT", "TREES", "CLOUD", "POLE", "BARRIER", "STREETSCAPE"]
+        },
         "profile": {"type": "string"},
         "note_key": {"type": "string"}
        },
@@ -82,10 +85,7 @@
    "minItems": 7,
    "maxItems": 7
   },
-  "catalog_tabs": {
-   "type": "array",
-   "items": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
-  },
+  "catalog_tabs": {"type": "array", "items": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}},
   "fn_keys": {"type": "array", "items": {"type": "string"}},
   "zone_radius": {"type": "number", "minimum": 10, "maximum": 200},
   "actions": {

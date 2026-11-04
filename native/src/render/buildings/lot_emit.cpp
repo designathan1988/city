@@ -141,6 +141,7 @@ void LotEmit::prop(const LotElement &e) {
 			shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, FIN_METAL, SKIP_E1_NEG);
 			break;
 		default:
+			if (emit_built_part(shell, pl, e, g, lin, f)) break;
 			if (!emit_lot_prop(shell, parts, pl, e, g, lin)) shell.box(pl.lot, x0, x1, y0, y1, g, g + e.h, lin, f, SKIP_E2_NEG);
 			break;
 	}

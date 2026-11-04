@@ -100,7 +100,7 @@ static func _field(cap: Node, under: Node = null) -> LineEdit:
 
 ## The sheet as the plates read it: every cell painted holds the ink of its words and its figure, once for each type.
 static func _check_ink(cap: Node) -> void:
-	var sheet: SignSheet = cap.world._sign_sheet
+	var sheet: SignSheet = _sheet(cap)
 	var images: Array[Image] = []
 	for i in sheet.layers.get_layers():
 		images.append(sheet.layers.get_layer_data(i))
@@ -124,7 +124,7 @@ static func _check_ink(cap: Node) -> void:
 
 ## More names than any sheet holds: each one painted, none left blank (the sheet grows a layer when it fills).
 static func many_names(cap: Node, road: Vector3) -> void:
-	var sheet: SignSheet = cap.world._sign_sheet
+	var sheet: SignSheet = _sheet(cap)
 	var had: int = CityStore.query(&"street_counts").sign_cells
 	for i in NAMES_TRIED:
 		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
@@ -170,3 +170,11 @@ static func _eye(cap: Node, name: String, from: Vector3, at: Vector3) -> void:
 
 static func _floor(cap: Node, p: Vector3) -> float:
 	return cap.ui.ground(p.x, p.z).y
+
+
+## The sheet of the signs, a child of the world.
+static func _sheet(cap: Node) -> SignSheet:
+	for child in cap.world.get_children():
+		if child is SignSheet:
+			return child
+	return null

@@ -12,21 +12,23 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float QUANT = 63.f, Q_STRIDE = 64.f, FLAG_STRIDE = 262144.f, PARAPET_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
+constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
 constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
-constexpr int FLAG_SHOP = 1, FLAG_CURTAIN = 2, FLAG_BLANK = 4;
+constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
 
-float window_code(const Placed &pl, const Volume &v, int k, int side, float W, float H) {
+FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float W, float H) {
 	BayCtx c;
 	c.W = W; c.H = H; c.level = v.base + k; c.geo = &v.faces[side];
 	auto it = v.bays.find(bay_key(k, side, bays_of(v, side) / 2));
-	c.comp = it != v.bays.end() && it->second != BAY_DOOR && it->second != BAY_DOUBLE_DOOR ? it->second : v.fill[size_t(k)];
+	c.comp = it != v.bays.end() && it->second != BAY_DOOR && it->second != BAY_DOUBLE_DOOR ? it->second : fill_at(v, k, side);
 	Opening o = opening_of(*pl.data, c);
-	int flags = (c.comp == BAY_SHOPFRONT ? FLAG_SHOP : 0) | (pl.b->wall_of(v).finish == FIN_GLASS ? FLAG_CURTAIN : 0) | (o.has ? 0 : FLAG_BLANK);
-	auto q = [](float x) { return std::round(std::clamp(x, 0.f, 1.f) * QUANT); };
-	return q(o.w / W) + Q_STRIDE * q(o.h0 / H) + Q_STRIDE * Q_STRIDE * q(o.h1 / H) + FLAG_STRIDE * float(flags);
+	FarWindows w;
+	w.width = o.w / W; w.sill = o.h0 / H; w.head = o.h1 / H;
+	w.flags = (o.has ? 0 : WINDOW_FLAG_BLANK) | (pl.b->use == USE_COMMERCIAL ? WINDOW_FLAG_OFFICE : 0) | (pane_dark(c.comp) << WINDOW_DARK_SHIFT);
+	w.trim = trim_lin(pl);
+	return w;
 }
 
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
@@ -48,9 +50,10 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 				float H = b.level_h(level);
 				Vector3 p[4] = { sd.f.at(0, za, 0), sd.f.at(sd.length, za, 0), sd.f.at(sd.length, zb, 0), sd.f.at(0, zb, 0) };
 				float kb = float(k1 - k);
-				Vector2 cell[4] = { Vector2(0, 0), Vector2(float(n), 0), Vector2(float(n), kb), Vector2(0, kb) };
+				float c0 = pl.lean ? float(pl.id % CELL_OFFSETS) : 0;
+				Vector2 cell[4] = { Vector2(c0, 0), Vector2(c0 + float(n), 0), Vector2(c0 + float(n), kb), Vector2(c0, kb) };
 				s.grime_floor = pl.lot.o.y + z0;
-				s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, window_code(pl, v, k, sd.side, W, H));
+				s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, windows_of(pl, v, k, sd.side, W, H));
 			}
 			k = k1;
 		}

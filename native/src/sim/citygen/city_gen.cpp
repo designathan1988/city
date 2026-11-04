@@ -4,6 +4,7 @@
 #include "sim/buildings/growth.h"
 #include "sim/street/street_names.h"
 #include "sim/citygen/road_gen.h"
+#include "sim/citygen/squares.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
@@ -152,6 +153,8 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.clock.minutes.store(0);
 	s.clock.day_shift = c.tune.sim_day_start_min;
 	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune);
+	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
+	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }
@@ -179,13 +182,14 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	CityGenReport rep;
 	if (with_city) {
-		GeneratedRoads r = generate_roads(s.seed, s.map_half, medium, gen, gen_profiles(c));
+		GeneratedRoads r = generate_roads(s.seed, s.map_half, map.city_radius_m, gen, gen_profiles(c), c.growth.plan);
 		insert_roads(s, r);
 		follow_ground(s);
 		conform_terrain(s);
 		mark_all_lot_cells(s);
 		s.lots.process_dirty(s);
 		rep.lots = int(s.lots.total());
+		rep.squares = plan_squares(s, seed);
 		rep.buildings = fill_all(s);
 		name_streets(s);
 		rep.nodes = r.node_count();

@@ -115,7 +115,7 @@ void PropRenderer::commit_one(BuiltMesh &b) {
 }
 
 void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, key * 4 + 1, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	submit_job(s, pool, JobKey{ JobLane::PROPS, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 }
 
 void PropRenderer::drop_chunk(int64_t key) {

@@ -83,7 +83,7 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 			continue;
 		}
 		const Dictionary p = plates[PLATE_KEYS[k]];
-		plate[k] = { float(p["w_m"]), float(p["h_m"]), float(p["z_m"]), float(p["turn"]), int(p["outline_points"]) };
+		plate[k] = { float(p["w_m"]), float(p["h_m"]), float(p["z_m"]), float(p["rotation"]), int(p["outline_points"]) };
 	}
 	return errors.is_empty();
 }

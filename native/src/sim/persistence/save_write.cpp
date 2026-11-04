@@ -2,6 +2,7 @@
 // their ids, building records and the growth queue.
 #include "sim/persistence/save_format.h"
 #include "sim/persistence/save_street.h"
+#include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
 #include "sim/state/city_state.h"
@@ -82,13 +83,16 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	w.put<double>(s.money);
 	w.put<uint8_t>(s.unlimited_money ? 1 : 0);
 	w.put<double>(s.clock.minutes.load());
-	w.put<double>(s.clock.day_shift);
+	w.put<double>(s.clock.day_shift.load());
 	write_terrain(w, s.terrain);
 	write_roads(w, s.roads);
 	write_buildings(w, s.buildings);
+	write_nature(w, s);
 	write_street(w, s);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
+	w.put<uint32_t>(SAVE_BODIES);
+	write_edited_bodies(w, s.buildings);
 	w.put<uint32_t>(SAVE_END);
 	return std::move(w.buf);
 }

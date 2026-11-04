@@ -39,6 +39,10 @@ func current() -> Dictionary:
 func apply(world: CityWorld, viewport: Viewport) -> void:
 	var p := current()
 	world.sun.shadow_enabled = p.shadows
-	world.sun.directional_shadow_max_distance = p.shadow_distance
+	world.daylight.shadow_least_m = p.shadow_distance
+	RenderingServer.directional_shadow_atlas_set_size(int(p.shadow_size), true)
+	RenderingServer.directional_soft_shadow_filter_set_quality(int(p.shadow_filter) as RenderingServer.ShadowQuality)
+	world.environment.ssao_enabled = p.occlusion
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if p.smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.msaa_3d = MSAA_MODES[int(p.msaa)]
 	viewport.scaling_3d_scale = p.render_scale

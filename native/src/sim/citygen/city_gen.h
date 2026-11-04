@@ -12,6 +12,7 @@ struct CityState;
 struct CityGenReport {
 	int nodes = 0, segments = 0, lots = 0, buildings = 0;
 	double seconds = 0;
+	int squares = 0;
 };
 
 // map_index: entry of data/catalog/maps.json; with_city = false makes an empty map.

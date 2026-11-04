@@ -1,7 +1,6 @@
 {
  "type": "object",
  "properties": {
-  "styles": {"type": "object"},
   "_doc": {"type": "string"},
   "surface_colors": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
   "strip_colors": {
@@ -354,6 +353,7 @@
    "type": "object",
    "properties": {
     "_doc": {"type": "string"},
+    "pictures": {"type": "object"},
     "atlas": {
      "type": "object",
      "properties": {
@@ -378,9 +378,10 @@
       "rachis_tone": {"type": "number"},
       "frond_tone_min": {"type": "number"},
       "seed": {"type": "integer"},
-      "_doc": {"type": "string"}
+      "_doc": {"type": "string"},
+      "near_leaves": {"type": "number"}
      },
-     "required": ["px", "leaves", "leaf_len_px", "leaf_wid_px", "spread", "squash", "heart_bias", "leaf_tone_min", "lit_lift", "rim", "rim_share", "leaflets", "leaflet_px", "leaflet_reach", "leaflet_vary", "leaflet_rise", "leaflet_tilt", "rachis_px", "rachis_tone", "frond_tone_min", "seed"],
+     "required": ["px", "leaves", "leaf_len_px", "leaf_wid_px", "spread", "squash", "heart_bias", "leaf_tone_min", "lit_lift", "rim", "rim_share", "leaflets", "leaflet_px", "leaflet_reach", "leaflet_vary", "leaflet_rise", "leaflet_tilt", "rachis_px", "rachis_tone", "frond_tone_min", "seed", "near_leaves"],
      "strict": true
     },
     "species": {
@@ -392,13 +393,29 @@
       "properties": {
        "name": {"type": "string"},
        "seed": {"type": "integer"},
-       "trunk": {"type": "object", "properties": {"top": {"type": "number"}, "r0": {"type": "number"}, "r1": {"type": "number"}, "facets": {"type": "integer"}, "color": {"type": "string", "pattern_prefix": "#"}, "lean": {"type": "number"}, "rings": {"type": "integer"}}, "required": ["top", "r0", "r1", "facets", "color", "lean", "rings"], "strict": true},
+       "trunk": {
+        "type": "object",
+        "properties": {"top": {"type": "number"}, "r0": {"type": "number"}, "r1": {"type": "number"}, "facets": {"type": "integer"}, "lean": {"type": "number"}, "rings": {"type": "integer"}, "dark": {"type": "string"}, "lit": {"type": "string"}, "flare": {"type": "number"}, "flare_h": {"type": "number"}},
+        "required": ["top", "r0", "r1", "facets", "lean", "rings", "dark", "lit", "flare", "flare_h"],
+        "strict": true
+       },
        "limbs": {"type": "object", "properties": {"count": {"type": "integer"}, "reach": {"type": "number"}, "rise": {"type": "number"}, "r": {"type": "number"}}, "required": ["count", "reach", "rise", "r"], "strict": true},
        "crowns": {
         "type": "array",
         "items": {
          "type": "object",
-         "properties": {"center": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "radius": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "rough": {"type": "number"}, "seed": {"type": "integer"}, "subdiv": {"type": "integer"}, "cards": {"type": "integer"}, "card": {"type": "number"}, "taper": {"type": "number"}},
+         "properties": {
+          "center": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+          "radius": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+          "rough": {"type": "number"},
+          "seed": {"type": "integer"},
+          "subdiv": {"type": "integer"},
+          "cards": {"type": "integer"},
+          "card": {"type": "number"},
+          "taper": {"type": "number"},
+          "dark": {"type": "string"},
+          "lit": {"type": "string"}
+         },
          "required": ["center", "radius", "rough", "seed", "subdiv", "cards", "card", "taper"],
          "strict": true
         }
@@ -410,7 +427,6 @@
        "heart_shade": {"type": "number"},
        "heart_shrink": {"type": "number"},
        "crown_reach": {"type": "number"},
-       "far_width": {"type": "number"},
        "cards_cast": {"type": "boolean"},
        "bloom": {"type": "object", "properties": {"dark": {"type": "string", "pattern_prefix": "#"}, "lit": {"type": "string", "pattern_prefix": "#"}, "above": {"type": "number"}}, "required": ["dark", "lit", "above"], "strict": true},
        "fronds": {
@@ -420,19 +436,23 @@
          "young": {"type": "integer"},
          "segments": {"type": "integer"},
          "length": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-         "rise": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-         "droop": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-         "young_length": {"type": "number"},
-         "young_rise": {"type": "number"},
-         "young_droop": {"type": "number"},
+         "lift": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+         "droop_rad": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+         "spin": {"type": "number"},
+         "young_length": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+         "young_lift": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+         "young_droop_rad": {"type": "number"},
+         "young_turn": {"type": "number"},
          "width": {"type": "number"},
-         "fold": {"type": "number"}
+         "fold": {"type": "number"},
+         "young_fold": {"type": "number"}
         },
-        "required": ["count", "young", "segments", "length", "rise", "droop", "young_length", "young_rise", "young_droop", "width", "fold"],
+        "required": ["count", "young", "segments", "length", "lift", "droop_rad", "spin", "young_length", "young_lift", "young_droop_rad", "young_turn", "width", "fold", "young_fold"],
         "strict": true
-       }
+       },
+       "cone": {"type": "object", "properties": {"base": {"type": "number"}, "height": {"type": "number"}, "core": {"type": "number"}, "crown": {"type": "number"}, "card": {"type": "number"}, "taper": {"type": "number"}, "cards": {"type": "integer"}}}
       },
-      "required": ["name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade", "heart_shrink", "crown_reach", "far_width", "cards_cast"],
+      "required": ["name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade", "heart_shrink", "crown_reach", "cards_cast"],
       "strict": true
      }
     },
@@ -441,23 +461,12 @@
      "properties": {
       "near_m": {"type": "number"},
       "fade_m": {"type": "number"},
-      "pop_m": {"type": "integer"},
       "far_m": {"type": "number"},
-      "far_cell_m": {"type": "number"},
-      "far_spread": {"type": "number"},
-      "far_jitter": {"type": "number"},
       "far_shadows": {"type": "integer"},
       "grid_m": {"type": "number"},
       "jitter": {"type": "number"},
-      "mass_m": {"type": "number"},
-      "octaves": {"type": "integer"},
-      "wood_inner_share": {"type": "number"},
-      "wood_edge_share": {"type": "number"},
-      "open_per_ha": {"type": "number"},
       "slope_grade": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
       "slope_gain": {"type": "number"},
-      "riparian_m": {"type": "number"},
-      "riparian_gain": {"type": "number"},
       "crowd_tall": {"type": "number"},
       "crowd_narrow": {"type": "number"},
       "edge_lean": {"type": "number"},
@@ -472,40 +481,52 @@
       "park_max": {"type": "integer"},
       "park_height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
       "street_height_m": {"type": "number"},
+      "eco_gain": {"type": "number"},
+      "eco_mean": {"type": "number"},
+      "forest_gain": {"type": "number"},
+      "planted_models": {"type": "array", "items": {"type": "string"}},
       "bands": {
        "type": "object",
        "properties": {
-        "inner": {"type": "object", "properties": {"crown_cover": {"type": "number"}, "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["crown_cover", "height_m", "mix"], "strict": true},
-        "edge": {"type": "object", "properties": {"crown_cover": {"type": "number"}, "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["crown_cover", "height_m", "mix"], "strict": true},
-        "open": {"type": "object", "properties": {"height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["height_m", "mix"], "strict": true}
+        "inner": {"type": "object", "properties": {"from": {"type": "number"}, "keep": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "size_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["from", "keep", "size_m", "mix"], "strict": true},
+        "edge": {"type": "object", "properties": {"from": {"type": "number"}, "keep": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "size_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["from", "keep", "size_m", "mix"], "strict": true},
+        "open": {
+         "type": "object",
+         "properties": {"from": {"type": "number"}, "keep": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "size_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}, "lone": {"type": "number"}},
+         "required": ["from", "keep", "size_m", "mix", "lone"],
+         "strict": true
+        }
        },
        "required": ["inner", "edge", "open"],
        "strict": true
       },
       "park_mix": {"type": "object", "additional": {"type": "number"}},
       "street_mix": {"type": "object", "additional": {"type": "number"}},
-      "_doc": {"type": "string"}
+      "_doc": {"type": "string"},
+      "open_tall": {"type": "number"},
+      "open_wide": {"type": "number"},
+      "slope_probe_m": {"type": "number"},
+      "mass_from": {"type": "number"},
+      "mass_span": {"type": "number"},
+      "mass_gain": {"type": "number"},
+      "density_floor": {"type": "number"},
+      "woods_per_ha": {"type": "number"},
+      "crowd_reach_m": {"type": "number"},
+      "crowd_full": {"type": "number"},
+      "lean_rise": {"type": "number"},
+      "patch_m": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+      "patch_weight": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+      "lattice_span_m": {"type": "number"}
      },
      "required": [
       "near_m",
       "fade_m",
-      "pop_m",
       "far_m",
-      "far_cell_m",
-      "far_spread",
-      "far_jitter",
       "far_shadows",
       "grid_m",
       "jitter",
-      "mass_m",
-      "octaves",
-      "wood_inner_share",
-      "wood_edge_share",
-      "open_per_ha",
       "slope_grade",
       "slope_gain",
-      "riparian_m",
-      "riparian_gain",
       "crowd_tall",
       "crowd_narrow",
       "edge_lean",
@@ -522,15 +543,29 @@
       "street_height_m",
       "bands",
       "park_mix",
-      "street_mix"
+      "street_mix",
+      "slope_probe_m",
+      "mass_from",
+      "mass_span",
+      "mass_gain",
+      "density_floor",
+      "woods_per_ha",
+      "crowd_reach_m",
+      "crowd_full",
+      "lean_rise",
+      "patch_m",
+      "patch_weight",
+      "lattice_span_m"
      ],
      "strict": true
     },
     "_species_doc": {"type": "string"}
    },
-   "required": ["_doc", "atlas", "species", "placement"],
+   "required": ["_doc", "pictures", "atlas", "species", "placement"],
    "strict": true
   },
+  "wear": {"type": "object"},
+  "styles": {"type": "object"},
   "lamp_light": {
    "type": "object",
    "properties": {"_doc": {"type": "string"}, "pool_along": {"type": "number"}, "pool_lift_m": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}, "beams": {"type": "boolean"}},
@@ -569,36 +604,7 @@
     "guard_beam_m": {"type": "number"},
     "beam_section": {"type": "array"}
    },
-   "required": [
-    "_doc",
-    "piece_m",
-    "sink_m",
-    "coping_m",
-    "coping_over",
-    "hedge_lap",
-    "rail_m",
-    "rail_thick_m",
-    "rail_levels",
-    "fence_step_m",
-    "fence_post_m",
-    "guard_step_m",
-    "guard_post_m",
-    "beam_thick_m",
-    "beam_foot_m",
-    "lap_m",
-    "railing_step_m",
-    "railing_post_m",
-    "bar_m",
-    "bar_low_m",
-    "bar_thin_m",
-    "bar_step_m",
-    "bar_top_m",
-    "bar_foot_m",
-    "finishes",
-    "piece_min_m",
-    "guard_beam_m",
-    "beam_section"
-   ],
+   "required": ["_doc", "piece_m", "sink_m", "coping_m", "coping_over", "hedge_lap", "rail_m", "rail_thick_m", "rail_levels", "fence_step_m", "fence_post_m", "guard_step_m", "guard_post_m", "beam_thick_m", "beam_foot_m", "lap_m", "railing_step_m", "railing_post_m", "bar_m", "bar_low_m", "bar_thin_m", "bar_step_m", "bar_top_m", "bar_foot_m", "finishes", "piece_min_m", "guard_beam_m", "beam_section"],
    "strict": true
   },
   "signs": {

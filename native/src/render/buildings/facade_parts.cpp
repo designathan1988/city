@@ -14,7 +14,7 @@ constexpr float CANOPY_RISE = 0.3f, CANOPY_ROOM = 0.48f, BRACKET_W = 0.06f, BRAC
 constexpr float LEAF_MAX = 2.5f, LEAF_GAP = 0.04f, LIGHT_INSET = 0.5f, LIGHT_SHARE = 0.5f, LIGHT_AT = 0.62f, FAN_MIN = 0.4f;
 constexpr float FAN_GAP = 0.12f, TRANSOM_T = 0.08f, DD_PAD = 1.f, DD_T = 0.14f, DD_OUT = 1.1f, DD_FASCIA = 0.24f, DD_ROOM = 0.49f;
 constexpr float AWNING_TRIM = 0.2f, AWNING_H = 0.75f, AWNING_UP = 0.45f;
-constexpr float LOGGIA_PANE = 0.02f, LOGGIA_FRAME = 1.35f, GLASS_RAIL_IN = -0.02f, CAP_H = 0.05f, CAP_T = 0.06f;
+constexpr float LOGGIA_PANE = 0.02f, GLASS_RAIL_IN = -0.02f, CAP_H = 0.05f, CAP_T = 0.06f;
 constexpr float BRISE_OUT = 0.6f, SURROUND = 0.14f, SURROUND_T = 0.06f, SURROUND_OUT = -0.03f, LOUVRE_T = 0.04f, LOUVRE_OUT = -0.05f;
 constexpr float LOUVRE_SPREAD = 0.75f, SHUT_SILL_PAST = 0.38f, SHUT_SILL_T = 0.08f, SHUT_SILL_OUT = 0.1f;
 constexpr float G_SLAB_T = 0.24f, G_OUT = 1.6f, G_BEAM_H = 0.18f, G_BEAM_T = 0.16f, G_BEAM_DROP = 0.2f, G_BEAM_OUT = 1.54f;
@@ -32,7 +32,6 @@ struct Ctx {
 	float am, hm, w, h;
 	Lin paint(const char *n) const { return paint_lin(pl.data->color(n)); }
 	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz, pl.look }; }
-	void frame(float d) const { part_frame(parts, at(am, hm, o.depth - FRAME_IN, w, h, d), c.trim, c.trim_fin); }
 	void sill(float past, float t, float out) const {
 		part_box(shell, at(am, o.h0 - t / 2, (o.depth - out) / 2, w + past, t, o.depth + out), paint("sill"), FIN_CONCRETE);
 	}
@@ -57,7 +56,7 @@ struct Ctx {
 	// A glass guard standing on the floor at `floor`: the pane up to its cap, the cap's top at the guard height.
 	void glass_guard(float a, float floor, float depth, float width) const {
 		const float pane = pl.look->guard_h_m - CAP_H;
-		part_box(shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
+		part_box(shell.sheer ? *shell.sheer : shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
 		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, c.trim_fin);
 	}
 	void door();
@@ -83,8 +82,7 @@ void Ctx::double_door() {
 	door_back(o.h0, fanlight ? o.h0 + leaf + FAN_GAP : o.h1);
 	if (fanlight) { // glass over the leaves (a double door's fanlight: the opening's only glass)
 		float fan = h - leaf - FAN_GAP, fy = o.h0 + leaf + FAN_GAP + fan / 2;
-		shell.pane(c.f, o.a0, o.a1, fy - fan / 2, o.h1, -o.depth, c.hash, false);
-		part_frame(parts, at(am, fy, o.depth - FRAME_IN, w, fan, FRAME_THIN), c.trim, c.trim_fin);
+		shell.pane(c.f, o.a0, o.a1, fy - fan / 2, o.h1, -o.depth, pane_look(pl, c, o.a0, o.a1, fy - fan / 2, o.h1, false, FRAME_THIN));
 		part_box(parts, at(am, o.h0 + leaf + FAN_GAP / 2, o.depth - FRAME_IN, w, FAN_GAP, TRANSOM_T), c.trim, c.trim_fin);
 	}
 	if (c.level == 0) { canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM); lamp(); }
@@ -122,17 +120,14 @@ void Ctx::shuttered() {
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
 	Ctx x{ shell, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0 };
 	switch (c.comp) {
-		case BAY_WINDOW: case BAY_SASH: x.frame(FRAME_D); x.sill(SILL_PAST, SILL_T, SILL_OUT); break;
-		case BAY_WIDE: x.frame(FRAME_THIN); break;
+		case BAY_WINDOW: case BAY_SASH: x.sill(SILL_PAST, SILL_T, SILL_OUT); break;
 		case BAY_BALCONY:
-			x.frame(FRAME_D);
 			part_box(shell, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
-			part_railing(parts, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
+			part_railing(shell, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
 			break;
 		case BAY_DOOR: x.door(); break;
 		case BAY_DOUBLE_DOOR: x.double_door(); break;
 		case BAY_SHOPFRONT: {
-			x.frame(FRAME_THIN);
 			uint32_t aw = pl.data->shop_awnings[size_t(pl.b->palette) % pl.data->shop_awnings.size()];
 			part_awning(shell, x.at(c.W / 2, o.h1 + AWNING_UP, 0, c.W - AWNING_TRIM, AWNING_H, BAL_OUT), lin_of(aw), FIN_PLASTER);
 			break;
@@ -141,17 +136,14 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 			part_box(parts, x.at(x.am, x.hm, o.depth - FRAME_IN, x.w, x.h, FRAME_IN), x.paint("shutter"), FIN_METAL);
 			break;
 		case BAY_LOGGIA:
-			part_frame(parts, x.at(x.am, x.hm, LOGGIA_FRAME, x.w, x.h, FRAME_D), c.trim, c.trim_fin);
 			x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w);
 			break;
 		case BAY_BRISE:
-			x.frame(FRAME_THIN);
 			part_brise(shell, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, c.trim_fin);
 			break;
-		case BAY_SHUTTERED: x.frame(FRAME_D); x.shuttered(); break;
-		case BAY_GOURMET: x.frame(FRAME_THIN); x.gourmet(); break;
+		case BAY_SHUTTERED: x.shuttered(); break;
+		case BAY_GOURMET: x.gourmet(); break;
 		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON:
-			x.frame(FRAME_D);
 			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, c.trim_fin);
 			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);
 			break;

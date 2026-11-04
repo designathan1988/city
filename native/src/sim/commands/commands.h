@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/catalog/furniture_types.h"
+#include "sim/nature/nature_state.h"
 #include "sim/roads/geometry.h"
 #include "sim/street/street_works.h"
 
@@ -45,7 +46,7 @@ struct EditResult {
 	bool ok = false;
 	std::string error;
 	double money = 0;
-	int segments = 0, buildings_removed = 0, zoned_sides = 0;
+	int segments = 0, buildings_removed = 0, zoned_sides = 0, placed = -1;
 	std::string note; // strings.csv key of what happened instead of the plain result
 };
 
@@ -75,7 +76,13 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 
 // --- Landscape and Build drawers (land_commands.cpp)
 // One dab of the Relief brush (mode = BrushMode) held for dt seconds; level and landforms use the stroke's first height.
-EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode);
+// `hardness` 0..1 squeezes the falloff of raise and lower into the rim. A landform lays its rock under the dab; a river
+// fills its bed with water and takes the trees standing there.
+EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode, double hardness);
+// The relief back to the land the map started with, the rivers drawn gone with it.
+EditResult clear_relief(CityState &s);
+// The water the river brush laid goes (clear_relief; also undone).
+void unflood(CityState &s);
 // The lot a rectangle with corners a and b makes (aligned to the nearest road, facing it); "" or the refusal key.
 std::string lot_frame(const CityState &s, double ax, double az, double bx, double bz, Building &b);
 // A building on the lot rectangle with corners a and b (aligned to the nearest road, facing it); fn = BuildingFn.
@@ -127,6 +134,31 @@ struct PoleRunPlan {
 };
 PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps);
 EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps);
+// --- Landscape drawer (nature_commands.cpp): the sky, the painted ground, the planted trees, the map's biome
+constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
+EditResult set_weather(CityState &s, const Weather &next);
+EditResult add_cloud(CityState &s, const PlacedCloud &c);
+EditResult edit_cloud(CityState &s, int id, const PlacedCloud &c);
+EditResult remove_cloud(CityState &s, int id);
+// Up to `count` clouds over the sky, each like `like` varied by `variation` (0..1).
+EditResult scatter_sky(CityState &s, int count, const PlacedCloud &like, float variation);
+EditResult clear_clouds(CityState &s);
+EditResult fog_dab(CityState &s, const FogDab &dab);
+EditResult clear_fog(CityState &s);
+EditResult paint_dab(CityState &s, const PaintDab &dab);
+EditResult clear_gullies(CityState &s);
+EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, int kind, const TreeBrush &brush);
+EditResult clear_trees(CityState &s);
+// One dab of the element brush: its density per ElementDef::area_m2, size and spacing in metres, the rest shares.
+struct ElementBrush {
+	float density = 0, size = 0, variation = 0, spacing = 0, strength = 0, intensity = 0;
+};
+EditResult element_dab(CityState &s, double x, double z, double radius, int kind, const ElementBrush &b, bool erase);
+EditResult clear_elements(CityState &s);
+// The map's ecosystem: a Biome, or Biome::NONE.
+EditResult set_biome(CityState &s, int region);
+// Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
+bool cut_trees_at(CityState &s, float x, float z, float radius);
 
 // Value of one segment (R$): length x price per metre x structure factor (ground).
 double segment_value(const CityState &s, int seg);

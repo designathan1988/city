@@ -27,7 +27,7 @@ inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, con
 	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
 }
 
-// Appends one instance of a MultiMesh without colour.
+// The same without the colour, for a material that reads only INSTANCE_CUSTOM.
 inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
 		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
 	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
@@ -140,15 +140,15 @@ struct OwnedMesh {
 	}
 };
 
-// A MultiMesh of `buf` (MultiMesh layout, MM_STRIDE floats per instance) filled on the calling thread, as a mesh bake
+// A MultiMesh of `buf` (MultiMesh layout, MM_PLAIN_STRIDE floats per instance) filled on the calling thread, as a mesh bake
 // (chunk_jobs.h): its own box, so the RenderingServer never walks the instances to bound it. None when `buf` is empty.
 inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat32Array &buf, const godot::AABB &bounds) {
 	OwnedMesh m;
-	const int count = int(buf.size() / MM_STRIDE);
+	const int count = int(buf.size() / MM_PLAIN_STRIDE);
 	if (count == 0) return m;
 	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 	m.rid = rs->multimesh_create();
-	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
+	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, false, true);
 	rs->multimesh_set_mesh(m.rid, mesh);
 	rs->multimesh_set_custom_aabb(m.rid, bounds);
 	rs->multimesh_set_buffer(m.rid, buf);

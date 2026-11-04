@@ -10,20 +10,45 @@ static func first_piece(table: Dictionary) -> Dictionary:
 	return _item_params(table, table.items[0], func(_t: String, _k: String, fallback: Variant) -> Variant: return fallback)
 
 
+## The tab in `strip`: the tool held read from `tools`, a card putting its tool in hand through `requested`, and the strip again
+## when what it offers follows what is in hand.
+static func show(strip: Control, tools: ToolController, requested: Signal) -> void:
+	HudWidgets.clear(strip)
+	var in_hand: String = ToolController.Tool.find_key(tools.tool) if tools else ""
+	var last := func(tool: String, key: String, fallback: Variant) -> Variant:
+		var held: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}) if tools else {}
+		return held.duplicate() if key.is_empty() else held.get(key, fallback)
+	var use := func(tool: String, params: Dictionary, rebuild: bool) -> void:
+		requested.emit(tool, params)
+		if rebuild:
+			show(strip, tools, requested)
+	build(strip, DataTables.ui("drawers").street, in_hand, use, last)
+
+
+## What a new road is laid with (Roadcraft roadFurniture): complete, basic or none.
+static func furniture_row(strip: Control, sets: Array) -> void:
+	var col := HudWidgets.vbox(strip)
+	var held: int = CityStore.query(&"road_furniture")
+	for c: Dictionary in sets:
+		col.add_child(DrawerStrips.card(c, "level", held, func(level: int) -> void:
+			CityStore.dispatch(&"set_road_furniture", [level])
+			DrawerStrips.light(col, level)))
+
+
 ## Fills `strip`. `in_hand` names the tool held; `use(tool, params, rebuild)` puts one in hand; `last(tool, key, fallback)`
 ## reads what a tool was last used with (key "": all of it).
 static func build(strip: Control, table: Dictionary, in_hand: String, use: Callable, last: Callable) -> void:
 	var body := HudWidgets.vbox(strip)
 	var cards := HudWidgets.hbox(body)
 	_cards(cards, table.items, table.item_columns, last.call("STREETSCAPE", "kind", null) if in_hand == "STREETSCAPE" else null,
-		func(c: Dictionary) -> void: use.call("STREETSCAPE", _item_params(table, c, last)))
+		func(c: Dictionary) -> void: use.call("STREETSCAPE", _item_params(table, c, last), true))
 	cards.add_child(VSeparator.new())
 	_cards(cards, table.barriers, table.barrier_columns, last.call("BARRIER", "kind", null) if in_hand == "BARRIER" else null,
-		func(c: Dictionary) -> void: use.call("BARRIER", _barrier_params(table, c)))
+		func(c: Dictionary) -> void: use.call("BARRIER", _barrier_params(table, c), true))
 	cards.add_child(VSeparator.new())
 	var lamps: Variant = last.call("POLE", "lamps", table.default_lamps)
 	_cards(cards, table.poles, 1, last.call("POLE", "mode", null) if in_hand == "POLE" else null,
-		func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, c.kind, lamps)))
+		func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, c.kind, lamps), true))
 	if in_hand == "POLE" and last.call("POLE", "mode", "") == "build":
 		_lamp_row(HudWidgets.hbox(body), table, lamps, use)
 	elif in_hand == "STREETSCAPE":
@@ -37,7 +62,7 @@ static func _lamp_row(row: Control, table: Dictionary, lamps: Variant, use: Call
 		var b := HudWidgets.button(&"DrawerTab", c.icon, TranslationServer.translate(c.label_key), "pole.lamps", "", "tab_h")
 		b.toggle_mode = true
 		b.set_pressed_no_signal(c.kind == lamps)
-		b.pressed.connect(func() -> void: use.call("POLE", _pole_params(table, "build", c.kind)))
+		b.pressed.connect(func() -> void: use.call("POLE", _pole_params(table, "build", c.kind), true))
 		row.add_child(b)
 
 
@@ -57,7 +82,7 @@ static func _item_options(body: Control, table: Dictionary, use: Callable, last:
 		kinds.item_selected.connect(func(i: int) -> void:
 			var held: Dictionary = last.call("STREETSCAPE", "", {})
 			held.sign = kinds.get_item_id(i)
-			use.call("STREETSCAPE", held))
+			use.call("STREETSCAPE", held, true))
 		var hint: String = table.signs[kinds.get_item_index(sign)].get("text_hint", "")
 		if not hint.is_empty():
 			_words_row(body, table, "text", hint, use, last)

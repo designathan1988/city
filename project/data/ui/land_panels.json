@@ -1,0 +1,688 @@
+{
+ "confirm": {
+  "clear_relief": { "key": "confirm.clearTerrain" },
+  "clear_gullies": { "key": "confirm.clearGullies" },
+  "clear_fog": { "key": "confirm.clearFog", "counts": ["fog_dabs"] },
+  "clear_trees": { "key": "confirm.clearTrees", "counts": ["planted", "clearings"] },
+  "clear_elements": { "key": "confirm.clearElements", "counts": ["elements"] },
+  "clear_clouds": { "key": "confirm.clearClouds", "counts": ["clouds"] }
+ },
+ "_doc": "The panels of the Landscape drawer (ui/land_strips.gd, game/tools/*), by tool: groups of cards that pick a parameter (key, default, cards), sliders of the brush (key) or of the map weather (weather, scale), whole-map actions (a CityStore command), when: only under that mode. Ranges are the tool's reach, compared with the Landscape drawer of the Roadcraft 4.0 as the player sees it.",
+ "TERRAIN": {
+  "groups": [
+   {
+    "key": "mode",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "terrain.raise",
+      "value": 0,
+      "icon": "raise"
+     },
+     {
+      "label_key": "terrain.lower",
+      "value": 1,
+      "icon": "lower"
+     },
+     {
+      "label_key": "terrain.smooth",
+      "value": 2,
+      "icon": "smooth"
+     },
+     {
+      "label_key": "terrain.flatten",
+      "value": 3,
+      "icon": "flatten"
+     },
+     {
+      "label_key": "terrain.river",
+      "value": 8,
+      "icon": "river"
+     },
+     {
+      "label_key": "terrain.gully",
+      "value": -1,
+      "icon": "gully"
+     },
+     {
+      "label_key": "terrain.mesa",
+      "value": 4,
+      "icon": "mesa"
+     },
+     {
+      "label_key": "terrain.canyon",
+      "value": 5,
+      "icon": "canyon"
+     },
+     {
+      "label_key": "terrain.escarpment",
+      "value": 6,
+      "icon": "escarpment"
+     },
+     {
+      "label_key": "terrain.sugarloaf",
+      "value": 7,
+      "icon": "sugarloaf"
+     }
+    ]
+   }
+  ],
+  "sliders": [
+   {
+    "key": "radius",
+    "label_key": "terrain.radius",
+    "min": 5,
+    "max": 400,
+    "step": 5,
+    "default": 60,
+    "unit": " m"
+   },
+   {
+    "key": "strength",
+    "label_key": "terrain.strength",
+    "min": 1,
+    "max": 100,
+    "step": 1,
+    "default": 40,
+    "unit": "%"
+   },
+   {
+    "key": "hardness",
+    "label_key": "terrain.hardness",
+    "min": 0,
+    "max": 95,
+    "step": 5,
+    "default": 0,
+    "unit": "%"
+   },
+   {
+    "weather": "waves",
+    "label_key": "water.waves",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%",
+    "when": 8
+   },
+   {
+    "weather": "foam",
+    "label_key": "water.foam",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%",
+    "when": 8
+   },
+   {
+    "weather": "current",
+    "label_key": "water.current",
+    "min": 0,
+    "max": 4,
+    "step": 0.1,
+    "unit": " m/s",
+    "when": 8
+   },
+   {
+    "weather": "gully_auto",
+    "label_key": "gully.auto",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%",
+    "when": -1
+   }
+  ],
+  "actions": [
+   {
+    "label_key": "terrain.clear",
+    "icon": "flatten",
+    "action": "clear_relief"
+   },
+   {
+    "label_key": "gully.clear",
+    "icon": "trash",
+    "action": "clear_gullies",
+    "when": -1
+   }
+  ]
+ },
+ "PAINT": {
+  "groups": [
+   {
+    "key": "kind",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "paint.kind.sand",
+      "value": 0,
+      "swatch": "paint_sand"
+     },
+     {
+      "label_key": "paint.kind.soil",
+      "value": 1,
+      "swatch": "paint_soil"
+     },
+     {
+      "label_key": "paint.kind.meadow",
+      "value": 2,
+      "swatch": "paint_meadow"
+     },
+     {
+      "label_key": "paint.kind.snow",
+      "value": 3,
+      "swatch": "paint_snow"
+     },
+     {
+      "label_key": "paint.kind.gravel",
+      "value": 4,
+      "swatch": "paint_gravel"
+     },
+     {
+      "label_key": "paint.kind.asphalt",
+      "value": 5,
+      "swatch": "paint_asphalt"
+     },
+     {
+      "label_key": "paint.kind.concrete",
+      "value": 6,
+      "swatch": "paint_concrete"
+     },
+     {
+      "label_key": "paint.kind.grass",
+      "value": 7,
+      "swatch": "paint_grass"
+     },
+     {
+      "label_key": "paint.kind.forest",
+      "value": 8,
+      "swatch": "paint_forest"
+     },
+     {
+      "label_key": "paint.kind.scrub",
+      "value": 9,
+      "swatch": "paint_scrub"
+     },
+     {
+      "label_key": "paint.kind.flowers",
+      "value": 10,
+      "swatch": "paint_flowers"
+     },
+     {
+      "label_key": "paint.kind.rocks",
+      "value": 11,
+      "swatch": "paint_rocks"
+     },
+     {
+      "label_key": "paint.kind.granite",
+      "value": 12,
+      "swatch": "paint_granite"
+     },
+     {
+      "label_key": "paint.kind.sandstone",
+      "value": 13,
+      "swatch": "paint_sandstone"
+     },
+     {
+      "label_key": "paint.kind.basalt",
+      "value": 14,
+      "swatch": "paint_basalt"
+     }
+    ]
+   },
+   {
+    "key": "kind",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "paint.kind.cerrado",
+      "value": 15,
+      "swatch": "paint_cerrado"
+     },
+     {
+      "label_key": "paint.kind.atlantic",
+      "value": 16,
+      "swatch": "paint_atlantic"
+     },
+     {
+      "label_key": "paint.kind.amazon",
+      "value": 17,
+      "swatch": "paint_amazon"
+     },
+     {
+      "label_key": "paint.kind.caatinga",
+      "value": 18,
+      "swatch": "paint_caatinga"
+     },
+     {
+      "label_key": "paint.kind.pampa",
+      "value": 19,
+      "swatch": "paint_pampa"
+     },
+     {
+      "label_key": "paint.kind.pantanal",
+      "value": 20,
+      "swatch": "paint_pantanal"
+     }
+    ]
+   }
+  ],
+  "sliders": [
+   {
+    "key": "radius",
+    "label_key": "terrain.radius",
+    "min": 5,
+    "max": 400,
+    "step": 5,
+    "default": 60,
+    "unit": " m"
+   },
+   {
+    "key": "strength",
+    "label_key": "terrain.strength",
+    "min": 1,
+    "max": 100,
+    "step": 1,
+    "default": 40,
+    "unit": "%"
+   },
+   {
+    "key": "hardness",
+    "label_key": "terrain.hardness",
+    "min": 0,
+    "max": 95,
+    "step": 5,
+    "default": 0,
+    "unit": "%"
+   }
+  ],
+  "biomes": true
+ },
+ "TREES": {
+  "switch": [
+   { "label_key": "terrain.trees", "tool": "TREES", "icon": "ls_tree" },
+   { "label_key": "terrain.elements", "tool": "ELEMENTS", "icon": "el_stones" }
+  ],
+  "groups": [
+   {
+    "key": "kind",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "tree.kind.mixed",
+      "value": 0,
+      "icon": "tk_mixed"
+     },
+     {
+      "label_key": "tree.kind.oak",
+      "value": 1,
+      "icon": "tk_oak"
+     },
+     {
+      "label_key": "tree.kind.cypress",
+      "value": 2,
+      "icon": "tk_cypress"
+     },
+     {
+      "label_key": "tree.kind.palm",
+      "value": 3,
+      "icon": "tk_palm"
+     }
+    ]
+   },
+   {
+    "key": "mode",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "tree.mode.plant",
+      "value": 0,
+      "icon": "brush"
+     },
+     {
+      "label_key": "tree.mode.one",
+      "value": 1,
+      "icon": "plus"
+     },
+     {
+      "label_key": "tree.mode.cut",
+      "value": 2,
+      "icon": "eraser"
+     }
+    ]
+   }
+  ],
+  "sliders": [
+   {
+    "key": "radius",
+    "label_key": "terrain.radius",
+    "min": 5,
+    "max": 400,
+    "step": 5,
+    "default": 60,
+    "unit": " m"
+   },
+   {
+    "key": "density",
+    "label_key": "tree.density",
+    "min": 10,
+    "max": 600,
+    "step": 10,
+    "default": 120,
+    "unit": "/ha"
+   },
+   {
+    "key": "height",
+    "label_key": "tree.height",
+    "min": 3,
+    "max": 30,
+    "step": 1,
+    "default": 12,
+    "unit": " m"
+   },
+   {
+    "key": "variation",
+    "label_key": "tree.variation",
+    "min": 0,
+    "max": 80,
+    "step": 5,
+    "default": 35,
+    "unit": "%"
+   },
+   {
+    "key": "spacing",
+    "label_key": "tree.spacing",
+    "min": 2,
+    "max": 30,
+    "step": 1,
+    "default": 6,
+    "unit": " m"
+   }
+  ],
+  "actions": [
+   {
+    "label_key": "tree.clear",
+    "icon": "trash",
+    "action": "clear_trees"
+   }
+  ]
+ },
+ "CLOUD": {
+  "switch": [
+   {
+    "label_key": "terrain.cloud",
+    "tool": "CLOUD",
+    "icon": "cloud"
+   },
+   {
+    "label_key": "terrain.fog",
+    "tool": "FOG",
+    "icon": "fog"
+   },
+   {
+    "label_key": "terrain.weather",
+    "tool": "WEATHER",
+    "icon": "cloud"
+   }
+  ],
+  "groups": [
+   {
+    "key": "mode",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "cloud.add",
+      "value": 0,
+      "icon": "plus"
+     },
+     {
+      "label_key": "cloud.move",
+      "value": 1,
+      "icon": "move"
+     },
+     {
+      "label_key": "cloud.edit",
+      "value": 2,
+      "icon": "draw"
+     },
+     {
+      "label_key": "cloud.remove",
+      "value": 3,
+      "icon": "eraser"
+     }
+    ]
+   }
+  ],
+  "sliders": [
+   {
+    "key": "size",
+    "label_key": "cloud.size",
+    "min": 30,
+    "max": 600,
+    "step": 10,
+    "default": 150,
+    "unit": " m"
+   },
+   {
+    "key": "height",
+    "label_key": "cloud.height",
+    "min": 40,
+    "max": 900,
+    "step": 10,
+    "default": 180,
+    "unit": " m"
+   },
+   {
+    "key": "density",
+    "label_key": "cloud.density",
+    "min": 10,
+    "max": 100,
+    "step": 5,
+    "default": 80,
+    "unit": "%"
+   },
+   {
+    "key": "count",
+    "label_key": "cloud.count",
+    "min": 1,
+    "max": 24,
+    "step": 1,
+    "default": 8
+   },
+   {
+    "key": "variation",
+    "label_key": "cloud.variation",
+    "min": 0,
+    "max": 80,
+    "step": 5,
+    "default": 40,
+    "unit": "%"
+   }
+  ],
+  "actions": [
+   {
+    "label_key": "cloud.scatter",
+    "icon": "scatter",
+    "action": "scatter_clouds"
+   },
+   {
+    "label_key": "cloud.clear",
+    "icon": "trash",
+    "action": "clear_clouds"
+   }
+  ]
+ },
+ "FOG": {
+  "switch": [
+   {
+    "label_key": "terrain.cloud",
+    "tool": "CLOUD",
+    "icon": "cloud"
+   },
+   {
+    "label_key": "terrain.fog",
+    "tool": "FOG",
+    "icon": "fog"
+   },
+   {
+    "label_key": "terrain.weather",
+    "tool": "WEATHER",
+    "icon": "cloud"
+   }
+  ],
+  "groups": [
+   {
+    "key": "erase",
+    "default": 0,
+    "cards": [
+     {
+      "label_key": "fog.lay",
+      "value": 0,
+      "icon": "brush"
+     },
+     {
+      "label_key": "fog.erase",
+      "value": 1,
+      "icon": "eraser"
+     }
+    ]
+   }
+  ],
+  "sliders": [
+   {
+    "key": "radius",
+    "label_key": "terrain.radius",
+    "min": 5,
+    "max": 400,
+    "step": 5,
+    "default": 60,
+    "unit": " m"
+   },
+   {
+    "key": "strength",
+    "label_key": "fog.strength",
+    "min": 5,
+    "max": 100,
+    "step": 5,
+    "default": 40,
+    "unit": "%"
+   },
+   {
+    "key": "height",
+    "label_key": "fog.height",
+    "min": 2,
+    "max": 150,
+    "step": 2,
+    "default": 24,
+    "unit": " m"
+   },
+   {
+    "key": "speed",
+    "label_key": "fog.speed",
+    "min": 0,
+    "max": 24,
+    "step": 0.5,
+    "default": 6,
+    "unit": " m/s"
+   },
+   {
+    "weather": "fog_density",
+    "label_key": "fog.mapDensity",
+    "min": 0,
+    "max": 200,
+    "step": 10,
+    "scale": 100,
+    "unit": "%"
+   },
+   {
+    "weather": "mist",
+    "label_key": "atmo.fog",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%"
+   },
+   {
+    "weather": "mist_height_m",
+    "label_key": "atmo.fogHeight",
+    "min": 5,
+    "max": 200,
+    "step": 5,
+    "unit": " m"
+   }
+  ],
+  "actions": [
+   {
+    "label_key": "fog.clear",
+    "icon": "trash",
+    "action": "clear_fog"
+   }
+  ]
+ },
+ "WEATHER": {
+  "switch": [
+   {
+    "label_key": "terrain.cloud",
+    "tool": "CLOUD",
+    "icon": "cloud"
+   },
+   {
+    "label_key": "terrain.fog",
+    "tool": "FOG",
+    "icon": "fog"
+   },
+   {
+    "label_key": "terrain.weather",
+    "tool": "WEATHER",
+    "icon": "cloud"
+   }
+  ],
+  "sliders": [
+   {
+    "weather": "rain",
+    "label_key": "weather.rain",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%"
+   },
+   {
+    "weather": "wind",
+    "label_key": "weather.wind",
+    "min": 0,
+    "max": 30,
+    "step": 1,
+    "unit": " m/s"
+   },
+   {
+    "weather": "wind_direction",
+    "label_key": "weather.windDirection",
+    "min": 0,
+    "max": 355,
+    "step": 5,
+    "unit": "°"
+   },
+   {
+    "weather": "lightning",
+    "label_key": "weather.lightning",
+    "min": 0,
+    "max": 30,
+    "step": 1,
+    "unit": "/min"
+   },
+   {
+    "weather": "thunder",
+    "label_key": "weather.thunder",
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "scale": 100,
+    "unit": "%"
+   }
+  ]
+ }
+}

@@ -22,10 +22,10 @@ constexpr float LOT_GROUND_PAD_M = 4.f; // ground copied past a lot's corners (p
 constexpr int CHUNKS_PER_SUPER_AXIS = int(SUPERCHUNK / CHUNK);
 // The far mesh's COLOR.a: surface kind in the low bits (SurfaceKind < 8), the chunk in the superchunk above them;
 // the layout building_far.gdshader decodes (KIND_BITS, KIND_MASK).
-constexpr int FAR_KIND_BITS = 3, FAR_KIND_MASK = (1 << FAR_KIND_BITS) - 1;
+constexpr int FAR_KIND_BITS = 3, FAR_KIND_MASK = (1 << FAR_KIND_BITS) - 1, FAR_OFFICE_BIT = 128;
 constexpr float BYTE_MAX = 255.f;
 static_assert(b40::SK_COUNT <= (1 << FAR_KIND_BITS), "surface kinds must fit the far mesh's kind bits");
-static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << FAR_KIND_BITS <= int(BYTE_MAX) + 1, "chunk index must fit COLOR.a");
+static_assert(CHUNKS_PER_SUPER_AXIS * CHUNKS_PER_SUPER_AXIS << FAR_KIND_BITS <= FAR_OFFICE_BIT, "chunk index must fit COLOR.a under the office bit");
 
 int sub_index(const Building &b, int64_t key) {
 	int bx = int(std::floor(b.x / SUBCHUNK)) - key_x(key) * CHUNK_SUBDIVISIONS;
@@ -43,7 +43,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 		const float x0 = float(key_x(chunk_keys[k])) * CHUNK, z0 = float(key_y(chunk_keys[k])) * CHUNK;
 		s.buildings.query(x0, z0, x0 + CHUNK - b40::EPS, z0 + CHUNK - b40::EPS, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
-			if (b.floors == 0 && !b40::is_open_lot(b.fn)) return;
+			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
 			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
 			minx = std::min(minx, b.x - r);
@@ -63,6 +63,14 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	if (!near && !mid) return out;
 	std::array<b40::Shell, SUB_COUNT> &near_shells = out.near_shell, &parts_shells = out.parts_shell, &mid_shells = out.mid_shell;
 	std::array<b40::Shell, SUB_COUNT> mid_parts;
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
+		near_shells[i].glass = &out.near_glass[i];
+		near_shells[i].sheer = &out.near_sheer[i];
+		near_shells[i].cards = &out.near_cards[i];
+		mid_shells[i].cards = &out.mid_cards[i];
+		mid_shells[i].glass = &out.mid_glass[i];
+	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
 	for (b40::Shell &p : mid_parts) p.instanced = true;
 	for (const Building &rec : in.records) {
@@ -79,6 +87,11 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+	}
+	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
+		near_shells[i].glass = mid_shells[i].glass = nullptr;
+		near_shells[i].sheer = nullptr;
+		near_shells[i].cards = mid_shells[i].cards = nullptr;
 	}
 	if (near) {
 		auto band_of = [this](float thick) {
@@ -105,6 +118,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
+	far.far_tones = &look_.finish_far;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
@@ -117,7 +131,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);
 		for (size_t v = first; v < far.col.size(); v++) {
 			const int kind = int(std::lround(far.col[v].a * BYTE_MAX)) & FAR_KIND_MASK;
-			far.col[v].a = float(kind | (chunk << FAR_KIND_BITS)) / BYTE_MAX;
+			far.col[v].a = float(kind | (chunk << FAR_KIND_BITS) | (pl.b->use == b40::USE_COMMERCIAL ? FAR_OFFICE_BIT : 0)) / BYTE_MAX;
 		}
 	}
 	return out;

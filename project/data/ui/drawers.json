@@ -46,14 +46,14 @@
    "label_key": "v2.dock.build",
    "tip_key": "ui.cat.build",
    "tabs": [
-    {"id": "models", "icon": "models", "label_key": "builder.category.models"},
+    {"id": "models", "icon": "models", "label_key": "builder.category.models", "tool": "BUILD"},
     {"id": "draw", "icon": "draw", "label_key": "builder.category.draw", "tool": "LOT", "note_key": "hint.lot"},
-    {"id": "mass", "icon": "mass", "label_key": "builder.category.mass"},
-    {"id": "facade", "icon": "face", "label_key": "builder.category.facade"},
-    {"id": "parts", "icon": "components", "label_key": "builder.category.parts"},
-    {"id": "roof", "icon": "roof", "label_key": "builder.category.roof"},
+    {"id": "mass", "icon": "mass", "label_key": "builder.category.mass", "tool": "BUILD"},
+    {"id": "facade", "icon": "face", "label_key": "builder.category.facade", "tool": "BUILD"},
+    {"id": "parts", "icon": "components", "label_key": "builder.category.parts", "tool": "BUILD"},
+    {"id": "roof", "icon": "roof", "label_key": "builder.category.roof", "tool": "BUILD"},
     {"id": "interior", "icon": "interiorView", "label_key": "builder.category.interior"},
-    {"id": "paint", "icon": "paint", "label_key": "builder.category.paint"}
+    {"id": "paint", "icon": "paint", "label_key": "builder.category.paint", "tool": "BUILD"}
    ],
    "strip": "build_cards",
    "cards": [
@@ -77,28 +77,13 @@
    "tip_key": "ui.cat.landscape",
    "tabs": [
     {"id": "relief", "icon": "terrain", "label_key": "v2.land.relief", "tool": "TERRAIN"},
-    {"id": "ground", "icon": "paint", "label_key": "v2.land.ground"},
-    {"id": "nature", "icon": "ls_tree", "label_key": "v2.land.nature"},
-    {"id": "sky", "icon": "cloud", "label_key": "v2.land.sky"},
+    {"id": "ground", "icon": "paint", "label_key": "v2.land.ground", "tool": "PAINT"},
+    {"id": "nature", "icon": "ls_tree", "label_key": "v2.land.nature", "tool": "TREES"},
+    {"id": "sky", "icon": "cloud", "label_key": "v2.land.sky", "tool": "CLOUD"},
     {"id": "street", "icon": "ls_bench", "label_key": "v2.land.street", "tool": "STREETSCAPE"},
     {"id": "people", "icon": "people", "label_key": "tool.person"}
    ],
-   "strip": "relief_cards",
-   "cards": [
-    {"label_key": "terrain.raise", "mode": 0, "icon": "raise"},
-    {"label_key": "terrain.lower", "mode": 1, "icon": "lower"},
-    {"label_key": "terrain.smooth", "mode": 2, "icon": "smooth"},
-    {"label_key": "terrain.flatten", "mode": 3, "icon": "flatten"},
-    {"label_key": "terrain.mesa", "mode": 4, "icon": "mesa"},
-    {"label_key": "terrain.canyon", "mode": 5, "icon": "canyon"},
-    {"label_key": "terrain.escarpment", "mode": 6, "icon": "escarpment"},
-    {"label_key": "terrain.sugarloaf", "mode": 7, "icon": "sugarloaf"},
-    {"label_key": "terrain.gully", "mode": 8, "icon": "gully"}
-   ],
-   "brush": {
-    "radius": {"label_key": "terrain.radius", "min": 5, "max": 400, "step": 5, "default": 60},
-    "strength": {"label_key": "terrain.strength", "min": 1, "max": 100, "step": 1, "default": 40}
-   }
+   "strip": "land_panels"
   },
   {
    "id": "transit",
@@ -108,9 +93,23 @@
    "tabs": [
     {"id": "stop", "icon": "tr_stop", "label_key": "transit.tool.stop"},
     {"id": "terminal", "icon": "tr_terminal", "label_key": "transit.tool.terminal"},
-    {"id": "trainTrack", "icon": "tr_track", "label_key": "transit.tool.trainTrack", "tool": "ROAD", "profile": "doubleRailway", "note_key": "ui.transit.help.trainTrack"},
+    {
+     "id": "trainTrack",
+     "icon": "tr_track",
+     "label_key": "transit.tool.trainTrack",
+     "tool": "ROAD",
+     "profile": "doubleRailway",
+     "note_key": "ui.transit.help.trainTrack"
+    },
     {"id": "trainStation", "icon": "tr_station", "label_key": "transit.tool.trainStation"},
-    {"id": "metroTrack", "icon": "tr_metro", "label_key": "transit.tool.metroTrack", "tool": "ROAD", "profile": "metroDouble", "note_key": "ui.transit.help.metroTrack"},
+    {
+     "id": "metroTrack",
+     "icon": "tr_metro",
+     "label_key": "transit.tool.metroTrack",
+     "tool": "ROAD",
+     "profile": "metroDouble",
+     "note_key": "ui.transit.help.metroTrack"
+    },
     {"id": "metroStation", "icon": "tr_station", "label_key": "transit.tool.metroStation"},
     {"id": "line", "icon": "tr_line", "label_key": "transit.tool.line"}
    ]
@@ -132,9 +131,7 @@
    "icon": "info",
    "label_key": "v2.dock.info",
    "tip_key": "ui.cat.info",
-   "tabs": [
-    {"id": "inspect", "icon": "info", "label_key": "ui.toolName.inspect", "tool": "INSPECT", "note_key": "hint.tool.inspect"}
-   ],
+   "tabs": [{"id": "inspect", "icon": "info", "label_key": "ui.toolName.inspect", "tool": "INSPECT", "note_key": "hint.tool.inspect"}],
    "no_drawer": true
   }
  ],
@@ -224,8 +221,14 @@
   "help": {
    "title_key": "builder.help",
    "groups": [
-    {"title_key": "help.section.tool", "rows": [["help.key.click", "ui.do.roadPoint"], ["ui.key.v", "roadKeys.alignment"], ["help.key.esc", "ui.do.cancel"]]},
-    {"title_key": "help.section.camera", "rows": [["help.key.panDrag", "help.do.pan"], ["help.key.wheel", "help.do.zoom"], ["help.key.qe", "ui.do.turn"]]}
+    {
+     "title_key": "help.section.tool",
+     "rows": [["help.key.click", "ui.do.roadPoint"], ["ui.key.v", "roadKeys.alignment"], ["help.key.esc", "ui.do.cancel"]]
+    },
+    {
+     "title_key": "help.section.camera",
+     "rows": [["help.key.panDrag", "help.do.pan"], ["help.key.wheel", "help.do.zoom"], ["help.key.qe", "ui.do.turn"]]
+    }
    ]
   },
   "files": {"title_key": "action.openMap", "empty_key": "save.none"}
@@ -234,10 +237,12 @@
   "_doc": "The Street tab of the Landscape drawer, as the Roadcraft 4.0 lays it out (photo reference/rua/23-aba-rua). kind: sim/street/street_works.h ItemKind and BarrierKind; row_m: the spacing of a dragged row; reach_m, pole_reach_m: how far from the pointer a piece is caught at the least; pick_px: the same in pixels, for a far camera; placing_ring_m: the size of the placing ring; double_click_m: two clicks farther apart than this are two points.",
   "item_columns": 6,
   "barrier_columns": 3,
-  "reach_m": 1.5, "pick_px": 26,
+  "reach_m": 1.5,
+  "pick_px": 26,
   "pole_reach_m": 6,
   "placing_ring_m": 0.6,
-  "double_click_ms": 450, "double_click_m": 1.5,
+  "double_click_ms": 450,
+  "double_click_m": 1.5,
   "text_max": 40,
   "sign_kind": 10,
   "default_lamps": 1,

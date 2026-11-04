@@ -28,7 +28,7 @@ JobPool::~JobPool() {
 		if (t.joinable()) t.join();
 }
 
-void JobPool::submit(int64_t key, float priority, std::function<void()> work) {
+void JobPool::submit(JobKey key, float priority, std::function<void()> work) {
 	{
 		std::lock_guard<std::mutex> lk(m_);
 		latest_[key] = ++seq_;
@@ -99,6 +99,7 @@ void JobPool::loop() {
 				q_.pop();
 				auto it = latest_.find(item.key);
 				if (it == latest_.end() || it->second != item.seq) { // superseded while queued
+					replaced_++;
 					if (idle()) idle_cv_.notify_all();
 					continue;
 				}
