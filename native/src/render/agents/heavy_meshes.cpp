@@ -67,6 +67,18 @@ void cab(MeshBuilder &mb, const Lorry &k, const AgentTrim &trim) {
 	}
 }
 
+// The wind deflector on the cab roof, a wedge up to the box: its slope from short of the cab front to a flat top at the back.
+void deflector(MeshBuilder &mb, const Lorry &k, const Vector4 &d) {
+	const float x = k.hw - d.w, y0 = k.cab_top, y1 = k.H - d.y, zb = k.cab_back, zt = k.cab_back + d.z, zf = k.hl - d.x;
+	const Vector2 paint = agent_tag(AgentTag::PAINT);
+	mb.quad(Vector3(-x, y1, zb), Vector3(x, y1, zb), Vector3(x, y1, zt), Vector3(-x, y1, zt), AGENT_WHITE, Vector3(0, 1, 0), nullptr, paint);
+	mb.quad(Vector3(-x, y1, zt), Vector3(x, y1, zt), Vector3(x, y0, zf), Vector3(-x, y0, zf), AGENT_WHITE, Vector3(0, zf - zt, y1 - y0), nullptr, paint);
+	mb.quad(Vector3(-x, y0, zb), Vector3(x, y0, zb), Vector3(x, y1, zb), Vector3(-x, y1, zb), AGENT_WHITE, Vector3(0, 0, -1), nullptr, paint);
+	for (int side : { -1, 1 })
+		mb.quad(Vector3(side * x, y0, zb), Vector3(side * x, y0, zf), Vector3(side * x, y1, zt), Vector3(side * x, y1, zb), AGENT_WHITE, Vector3(side, 0, 0),
+				nullptr, paint);
+}
+
 int cab_inside(MeshBuilder &mb, const Lorry &k, const Dictionary &in, const CabinLook &l) {
 	Cabin c;
 	c.floor = k.floor;
@@ -159,6 +171,8 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 	const Lorry k = read_lorry(d);
 	const int passengers = look ? cab_inside(mb, k, d["interior"], *look) : 0;
 	cab(mb, k, trim);
+	Array dm = d["deflector_m"]; // short of the cab front, under the box top, flat top depth, in from each side
+	deflector(mb, k, Vector4(float(dm[0]), float(dm[1]), float(dm[2]), float(dm[3])));
 	running_gear(mb, k, trim);
 	heavy_mirrors(mb, k.hw, k.hl - MIRROR_Z_BACK, k.belt, trim);
 	heavy_lamps(mb, k.W, k.L, k.box_bottom, trim);

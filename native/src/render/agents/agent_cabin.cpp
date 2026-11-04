@@ -25,6 +25,7 @@ constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
 bool load_style(const Dictionary &d, SeatStyle &s) {
 	s.hip_m = d["hip_m"]; s.cushion_m = d["cushion_m"]; s.width_m = d["cushion_w_m"]; s.depth_m = d["cushion_d_m"]; s.back_h_m = d["back_h_m"];
 	s.back_d_m = d["back_d_m"]; s.base_share = d["base_share"];
+	s.headrest = agent_v3(d["headrest_m"]); s.handle = agent_v2(d["handle_m"]); s.handle_colour = agent_hex(d["handle"]);
 	Array w = d["wheel"];
 	if (w.size() == WHEEL_KEYS) { s.wheel_fwd_m = w[0]; s.wheel_up_m = w[1]; s.wheel_tilt = w[2]; s.wheel_r_m = w[3]; s.column_m = w[4]; }
 	return s.hip_m > 0 && s.width_m > 0 && w.size() == WHEEL_KEYS;
@@ -58,8 +59,15 @@ void seat_shell(MeshBuilder &mb, const Seat &s, const CabinLook &l, const CabinP
 		agent_box(mb, Vector3(s.x - hw * st.base_share, s.floor, s.z - hd * st.base_share), Vector3(s.x + hw * st.base_share, low, s.z + hd * st.base_share), p.seat,
 				AgentTag::FIXED);
 	agent_box(mb, Vector3(s.x - hw, low, s.z - hd), Vector3(s.x + hw, hip, s.z + hd), p.seat, AgentTag::FIXED);
-	const float back = s.z - l.person.torso.z * 0.5f;
-	agent_box(mb, Vector3(s.x - hw, low, back - st.back_d_m), Vector3(s.x + hw, hip + st.back_h_m, back), p.seat, AgentTag::FIXED);
+	const float back = s.z - l.person.torso.z * 0.5f, top = hip + st.back_h_m;
+	agent_box(mb, Vector3(s.x - hw, low, back - st.back_d_m), Vector3(s.x + hw, top, back), p.seat, AgentTag::FIXED);
+	const Vector3 &h = st.headrest;
+	if (h.y > 0)
+		agent_box(mb, Vector3(s.x - h.x * 0.5f, top + h.z, back - st.back_d_m), Vector3(s.x + h.x * 0.5f, top + h.z + h.y, back), p.seat, AgentTag::FIXED);
+	const float grip = hw * st.handle.x, t = st.handle.y;
+	if (t > 0)
+		agent_box(mb, Vector3(s.x - grip, top, back - st.back_d_m * 0.5f - t * 0.5f), Vector3(s.x + grip, top + t, back - st.back_d_m * 0.5f + t * 0.5f),
+				st.handle_colour, AgentTag::FIXED);
 }
 
 // A point on the driver's steering wheel: `a` radians round the rim from its top, or the hub and the column's end.

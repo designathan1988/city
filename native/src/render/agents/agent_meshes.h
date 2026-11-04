@@ -35,11 +35,15 @@ struct Person {
 	float shin_w = 0, head_r = 0, neck_m = 0, hair_drop = 0, hair_back_m = 0;
 };
 // A kind of seat (agents.json "cabin.seats"): hip point over its floor, cushion, backrest, the base under the cushion as
-// a share of it and, for a driver, the steering wheel from the hip point: forward, up, tilt back from upright, radius and
-// its column's length into the dashboard.
+// a share of it, a headrest over the backrest [w, h, gap] and a grab handle on top of it [share of the width, thick]
+// (none when zero) and, for a driver, the steering wheel from the hip point: forward, up, tilt back from upright, radius
+// and its column's length into the dashboard.
 struct SeatStyle {
 	float hip_m = 0, cushion_m = 0, width_m = 0, depth_m = 0, back_h_m = 0, back_d_m = 0, base_share = 0;
 	float wheel_fwd_m = 0, wheel_up_m = 0, wheel_tilt = 0, wheel_r_m = 0, column_m = 0;
+	godot::Vector3 headrest;
+	godot::Vector2 handle;
+	godot::Color handle_colour;
 };
 // Colours of one kind of cabin (agents.json "cars_cabin" / "bus.interior" / "truck.interior").
 struct CabinPaint {

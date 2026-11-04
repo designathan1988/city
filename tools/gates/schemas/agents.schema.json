@@ -120,9 +120,12 @@
         "back_h_m": {"type": "number"},
         "back_d_m": {"type": "number"},
         "base_share": {"type": "number"},
-        "wheel": {"type": "array", "items": {"type": "number"}}
+        "wheel": {"type": "array", "items": {"type": "number"}},
+        "headrest_m": {"type": "array", "items": {"type": "number"}},
+        "handle_m": {"type": "array", "items": {"type": "number"}},
+        "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       },
       "cab": {
@@ -135,9 +138,12 @@
         "back_h_m": {"type": "number"},
         "back_d_m": {"type": "number"},
         "base_share": {"type": "number"},
-        "wheel": {"type": "array", "items": {"type": "number"}}
+        "wheel": {"type": "array", "items": {"type": "number"}},
+        "headrest_m": {"type": "array", "items": {"type": "number"}},
+        "handle_m": {"type": "array", "items": {"type": "number"}},
+        "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       },
       "chair": {
@@ -150,9 +156,12 @@
         "back_h_m": {"type": "number"},
         "back_d_m": {"type": "number"},
         "base_share": {"type": "number"},
-        "wheel": {"type": "array", "items": {"type": "number"}}
+        "wheel": {"type": "array", "items": {"type": "number"}},
+        "headrest_m": {"type": "array", "items": {"type": "number"}},
+        "handle_m": {"type": "array", "items": {"type": "number"}},
+        "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       }
      },
@@ -301,6 +310,7 @@
     "axles": {"type": "array", "items": {"type": "number"}},
     "cab_floor": {"type": "number"},
     "wall_m": {"type": "number"},
+    "deflector_m": {"type": "array", "items": {"type": "number"}},
     "interior": {
      "type": "object",
      "properties": {
@@ -318,7 +328,7 @@
      "strict": true
     }
    },
-   "required": ["_doc", "length", "width", "height", "wheel", "wheel_w", "wheel_inset_m", "cab_share", "cab_bottom", "belt", "cab_top", "box_bottom", "axles", "cab_floor", "wall_m", "interior"],
+   "required": ["_doc", "length", "width", "height", "wheel", "wheel_w", "wheel_inset_m", "cab_share", "cab_bottom", "belt", "cab_top", "box_bottom", "axles", "cab_floor", "wall_m", "deflector_m", "interior"],
    "strict": true
   },
   "wheel_jump_m": {"type": "integer"},
