@@ -5,6 +5,7 @@ documentos nem memórias (o hook `tools/gates/hook_pre_write.py` bloqueia). Atua
 mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando o mapa diverge do disco.
 
 ## Processo de trabalho (inegociável, toda tarefa, nesta ordem; trabalho direto, sem agentes)
+A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda tarefa.
 1. **Análise:** ler o código envolvido, reproduzir e medir (sonda `render_cost`, `tests/perf/camera_pan`, capturas, CPU,
    GPU, memória) até achar a causa raiz. Corrigir a causa, nunca o efeito. Medir é desta etapa.
 2. **Pesquisa** na documentação oficial (Godot, godot-cpp, Terrain3D) até entender o que fazer e o método; nunca confiar
@@ -18,11 +19,12 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
    o estado anterior): nenhuma perda de qualidade visual; todo problema achado é corrigido.
 6. Nunca esperar às cegas um processo lançado (tempo-limite e acompanhamento); parar só processos próprios, pelo PID.
 7. Commit por tema e push regular em `origin/master`.
-- **Referência — intransponível:** `C:\Users\Jonathan\Documents\Projects\roadcraft-4.0-main` (Roadcraft 4.0) é a referência
+- **Referência — sempre acessível:** `C:\Users\Jonathan\Documents\Projects\roadcraft-4.0-main` (Roadcraft 4.0) é a referência
   de visual e de comportamento de tudo (gráficos, prédios, tráfego, semáforos, pedestres, carros, postes e fios): o jogo
-  deve ter todos os gráficos e funcionalidades dele. **Nunca copiar nem traduzir o código dele** (não é otimizado nem tem
-  desempenho; foi abandonado por isso): estudar como ele parece e se comporta, achar a nossa causa e implementar na
-  arquitetura atual, otimizado e do jeito certo.
+  deve ter todos os gráficos e funcionalidades dele. A pasta pode ser lida, aberta, rodada e estudada a qualquer momento.
+  O código dele é referência de comportamento, não de implementação: não se porta o código; portam-se as funcionalidades,
+  cujo rastreamento passa pelo conversor (`converter/scripts/port.ts extract`) e cuja conversão é feita na arquitetura
+  atual, otimizada; nada de colar código não otimizado sem a arquitetura e os gates.
 
 ## Regras de arquitetura (verificadas automaticamente)
 - **Fonte única da verdade:** `CityState` (`native/src/sim/state/city_state.h`). Só `sim/commands` muda o
