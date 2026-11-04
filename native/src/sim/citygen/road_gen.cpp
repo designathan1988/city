@@ -10,7 +10,7 @@ namespace city {
 namespace {
 constexpr double BLOCK_ALONG = 120, BLOCK_ACROSS = 72, GRID_SPAN = 1.7, CENTRE_SHARE = 0.85;
 constexpr int AVENUE_EVERY = 4, POINTS_ALONG = 4, POINTS_ACROSS = 2;
-constexpr double MEDIUM_R = 1100, EDGE_PAD = 60, INSIDE_MARGIN = 380, LAND_CLEAR = 1.2, MAX_WET = 320;
+constexpr double EDGE_PAD = 60, INSIDE_MARGIN = 380, LAND_CLEAR = 1.2, MAX_WET = 320;
 constexpr double MAX_LOCAL_GRADE = 0.11, MAX_ART_GRADE = 0.08;
 enum Level { AVENUE = 0, COLLECTOR = 1, LOCAL = 2 };
 
@@ -85,14 +85,14 @@ bool road_gen::land(TerrainGen &t, double x, double z) {
 	return h > TerrainGen::OCEAN_Y + LAND_CLEAR && t.water_level_at(x, z) < h - LAND_CLEAR;
 }
 
-GeneratedRoads generate_roads(uint32_t seed, double map_half, bool medium, TerrainGen &terrain, const GenProfiles &prof) {
-	double R = medium ? MEDIUM_R : map_half - EDGE_PAD;
+GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, TerrainGen &terrain, const GenProfiles &prof, const CityPlanDef &plan) {
+	double R = radius > 0 ? radius : map_half - EDGE_PAD;
 	std::vector<road_gen::Piece> pieces;
 	for (const Line &l : block_lines(R)) {
 		int profile = l.level == AVENUE ? prof.avenue : l.level == COLLECTOR ? prof.collector : prof.local;
 		march(l, profile, map_half, terrain, pieces);
 	}
-	GeneratedRoads g = road_gen::build_graph(pieces, R * CENTRE_SHARE, seed, terrain, prof);
+	GeneratedRoads g = road_gen::build_graph(pieces, R * CENTRE_SHARE, seed, terrain, prof, plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan));
 	return road_gen::without_spurs(road_gen::dry_crossings(g, terrain));
 }
 

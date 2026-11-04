@@ -3,6 +3,7 @@
 // and filling every free lot at once for a generated city.
 #pragma once
 
+#include "sim/buildings/building_store.h"
 #include "sim/catalog/catalog.h"
 
 namespace city {
@@ -16,16 +17,16 @@ struct MapCell {
 };
 MapCell map_cell_of(const CityState &s, double x, double z);
 
-int floors_for(const GrowthDef &g, int zone_id, const Profile &street, uint32_t seed);
+// The storeys of a record's body: what its `floors` must say.
+int body_floors(const b40::Data &data, const Building &rec);
 int civic_for(const GrowthDef &g, int cell_id, int base_zone, bool biggest, float area);
 int base_zone(int zone_id);
 int zone_density(int zone_id);
 
 // Is a building standing on the lot (any record within 0.8 of the two half sizes)?
 bool lot_occupied(const CityState &s, const Lot &l);
-// Record for lot i of a cell's lot list (organic: capped by the neighbours' height).
-struct Building;
-Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i, bool organic);
+// Record for lot i of a cell's lot list: a middling block answers its neighbours' height, and the body says the storeys.
+Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i);
 // A building on every free lot (generated city); returns how many were added.
 int fill_all(CityState &s);
 // City minutes before `now` a generated building was built: spread over one tenth of the decay span.

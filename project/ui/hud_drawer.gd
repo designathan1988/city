@@ -143,6 +143,8 @@ func _build_strip(tab: Dictionary) -> void:
 			_retool.bind("ROUNDABOUT", "radius"))
 	elif kind == "land_panels":
 		LandStrips.build(self, _strip, tab.get("tool", ""))
+	elif tab.get("tool", "") == "BUILD":
+		BuilderStrip.fill(_strip, tab.id, tools)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
 			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), _retool.bind("LOT", "fn")))

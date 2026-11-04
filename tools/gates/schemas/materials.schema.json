@@ -140,9 +140,6 @@
         "type": "number"
        }
       },
-      "day_inside": {
-       "type": "number"
-      },
       "glass_reflect": {
        "type": "number"
       },
@@ -168,20 +165,17 @@
       "wall_gain": {
        "type": "number"
       },
-      "lit_min": {
-       "type": "number"
-      },
-      "lit_max": {
-       "type": "number"
-      },
-      "room_depth_m": {
-       "type": "number"
-      },
       "lamp_glow": {
        "type": "number"
       },
       "window_glow": {
        "type": "number"
+      },
+      "furniture_tone": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       }
       }
      },
      "required": [
@@ -190,18 +184,15 @@
       "finish_rough",
       "finish_m",
       "finish_mean",
-      "day_inside",
       "glass_reflect",
       "glass_sky",
       "glass_sky_floor",
       "finish_normal_k",
       "finish_metal",
       "wall_gain",
-      "lit_min",
-      "lit_max",
-      "room_depth_m",
       "lamp_glow",
-      "window_glow"
+      "window_glow",
+      "furniture_tone"
      ],
      "strict": true
     }
@@ -230,12 +221,16 @@
       },
       "wall_gain": {
        "type": "number"
+      },
+      "window_glow": {
+       "type": "number"
       }
      },
      "required": [
       "glass_sky",
       "glass_floor",
-      "wall_gain"
+      "wall_gain",
+      "window_glow"
      ],
      "strict": true
     }
@@ -632,6 +627,40 @@
    ],
    "strict": true
   },
+  "building_ghost": {
+   "type": "object",
+   "required": [
+    "shader",
+    "params"
+   ],
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "required": [
+      "tint",
+      "glow",
+      "opacity"
+     ],
+     "properties": {
+      "tint": {
+       "type": "string"
+      },
+      "glow": {
+       "type": "string"
+      },
+      "opacity": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 1
+      }
+     }
+    }
+   },
+   "strict": true
+  },
   "cover_plant": {
    "type": "object"
   },
@@ -652,6 +681,7 @@
   "agent_glass",
   "vegetation",
   "vegetation_cards",
+  "building_ghost",
   "cover_plant",
   "cover_rock"
  ],

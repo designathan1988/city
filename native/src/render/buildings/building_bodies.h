@@ -4,6 +4,7 @@
 #pragma once
 
 #include "render/buildings/facade.h"
+#include "render/buildings/pane_rooms.h"
 #include "sim/buildings/building_store.h"
 #include "sim/terrain/height_patch.h"
 
@@ -18,10 +19,14 @@ public:
 	// Fills `pl` for the record (pl.b points into the cache: valid until the next body() call that evicts). `ground`
 	// is the job's copy of the terrain under its lots (pl.ground samples it: it must outlive pl).
 	void place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl);
-	void clear() { cache_.clear(); }
+	void clear() {
+		rooms_.clear();
+		cache_.clear();
+	}
 
 private:
 	std::unordered_map<uint64_t, std::unique_ptr<b40::Body>> cache_;
+	std::unordered_map<uint64_t, std::unique_ptr<b40::PaneRooms>> rooms_; // of the bodies above, by the same key
 };
 
 } // namespace city

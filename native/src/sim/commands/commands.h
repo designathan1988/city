@@ -44,7 +44,7 @@ struct EditResult {
 	bool ok = false;
 	std::string error;
 	double money = 0;
-	int segments = 0, buildings_removed = 0, zoned_sides = 0;
+	int segments = 0, buildings_removed = 0, zoned_sides = 0, placed = -1;
 };
 
 // Snaps (x, z) to the nearest node within `radius`, else to a segment within 0.8 radius (its end node when the hit is

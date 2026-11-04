@@ -116,6 +116,18 @@
   "low_horizon": {
    "type": "string",
    "pattern_prefix": "#"
+  },
+  "awake_by_hour": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "room_daylight": {
+   "type": "number"
+  },
+  "outside_all_night": {
+   "type": "number"
   }
  },
  "additional": {

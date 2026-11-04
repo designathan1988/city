@@ -24,18 +24,22 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
+	stage_.init(ctx.material("building", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
+	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }
 
 void RenderWorld::reset() {
+	wear_.reset();
 	roads_.reset();
 	props_.reset();
 	trees_.reset();
 	cover_.reset();
 	water_.reset();
 	buildings_.reset();
+	stage_.clear();
 	agents_.reset();
 	overlays_.reset();
 	road_stream_.clear();

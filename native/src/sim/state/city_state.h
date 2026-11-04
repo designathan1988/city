@@ -24,8 +24,9 @@ namespace city {
 
 struct CityClock {
 	std::atomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
-	double day_shift = 0; // added to minutes for the time of day (starts at the day start)
+	std::atomic<double> day_shift{ 0 }; // added to minutes for the time of day (starts at the day start)
 	double hour() const;
+	void set_hour(double hour); // the time of day moves; `minutes`, the city's age, does not
 };
 
 struct CityState {

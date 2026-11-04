@@ -12,10 +12,13 @@
 
 namespace city::b40 {
 
+struct PaneRooms;
+
 struct Placed {
 	const Data *data = nullptr;
 	const BuildingLook *look = nullptr; // sizes of the thin drawn pieces (fence bars, part frames, air handlers)
 	const Body *b = nullptr;
+	PaneRooms *rooms = nullptr; // the rooms behind its panes
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
 	float shade = 1; // a building's own shade on its walls
@@ -50,10 +53,14 @@ uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);
 // Emitters. `parts` takes the small repeated pieces (frames, railings, louvres, AC units...) drawn only near.
 void emit_facades(Shell &shell, Shell &parts, const Placed &pl);
 void emit_roofs(Shell &shell, Shell &parts, const Placed &pl);
+// What the player set on a block's roof (roof_gear.cpp).
+void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float roof_z);
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl);
 // The lot's furniture and ground marks (lot_props.cpp); false for a kind it does not draw. `g`: ground over the floor.
+// A part only the player sets (lot_parts.cpp); false when `e` is not one.
+bool emit_built_part(Shell &shell, const Placed &pl, const LotElement &e, float g, const Lin &lin, int8_t fin);
 bool emit_lot_prop(Shell &shell, Shell &parts, const Placed &pl, const LotElement &e, float g, const Lin &lin);
 // A used roof terrace (roof_terrace.cpp) on volume `vol` whose deck is at height z.
 void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float z);

@@ -111,7 +111,7 @@
     {
      "id": "models",
      "icon": "models",
-     "label_key": "builder.category.models"
+     "label_key": "builder.category.models", "tool": "BUILD"
     },
     {
      "id": "draw",
@@ -123,22 +123,26 @@
     {
      "id": "mass",
      "icon": "mass",
-     "label_key": "builder.category.mass"
+     "label_key": "builder.category.mass",
+     "tool": "BUILD"
     },
     {
      "id": "facade",
      "icon": "face",
-     "label_key": "builder.category.facade"
+     "label_key": "builder.category.facade",
+     "tool": "BUILD"
     },
     {
      "id": "parts",
      "icon": "components",
-     "label_key": "builder.category.parts"
+     "label_key": "builder.category.parts",
+     "tool": "BUILD"
     },
     {
      "id": "roof",
      "icon": "roof",
-     "label_key": "builder.category.roof"
+     "label_key": "builder.category.roof",
+     "tool": "BUILD"
     },
     {
      "id": "interior",
@@ -148,7 +152,8 @@
     {
      "id": "paint",
      "icon": "paint",
-     "label_key": "builder.category.paint"
+     "label_key": "builder.category.paint",
+     "tool": "BUILD"
     }
    ],
    "strip": "build_cards",

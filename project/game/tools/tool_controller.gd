@@ -1,7 +1,7 @@
 ## ToolController: the state machine of the tool in hand. Turns clicks on the map
 ## into ground points and hands them to the active tool; tools only dispatch store commands and report hints.
 ## Tool: NONE (camera) → ROAD | ZONE | DEMOLISH | INSPECT | UPGRADE | SPLIT | ROUNDABOUT | TERRAIN | LOT | PAINT | TREES |
-## CLOUD | FOG | WEATHER | ELEMENTS; set_tool() is
+## CLOUD | FOG | WEATHER | ELEMENTS | BUILD; set_tool() is
 ## the only transition, Esc and a right click that stays a click (CityCamera.right_clicked) cancel; a right or middle
 ## drag is the camera's and never reaches the tool. A held left button sends drag() and, every frame, tick(); release()
 ## ends the stroke.
@@ -14,7 +14,7 @@ signal hint(text: String, ok: bool)
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 
-enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS }
+enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD }
 
 const SCRIPTS := {
 	Tool.ROAD: preload("res://game/tools/road_tool.gd"),
@@ -32,6 +32,7 @@ const SCRIPTS := {
 	Tool.CLOUD: preload("res://game/tools/cloud_tool.gd"),
 	Tool.FOG: preload("res://game/tools/fog_tool.gd"),
 	Tool.WEATHER: preload("res://game/tools/weather_tool.gd"),
+	Tool.BUILD: preload("res://game/tools/building_tool.gd"),
 }
 
 var rig: CityCamera

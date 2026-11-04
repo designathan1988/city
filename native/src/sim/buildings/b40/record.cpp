@@ -15,6 +15,10 @@ LotFrame lot_frame(const Building &rec) {
 }
 
 void record_body(const Data &data, const Building &rec, Body &b) {
+	if (BodyRef edited = rec.body ? data.edited->get(rec.body) : nullptr) {
+		b = *edited;
+		return;
+	}
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
 	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed);

@@ -116,6 +116,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 	for (size_t i = 0; i < b.volumes.size(); i++) {
 		const Volume &v = b.volumes[i];
 		float eaves = b.level_z(v.top());
+		emit_roof_gear(shell, pl, v, eaves);
 		bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
 		if (pl.coarse) {
 			if (!roof_flat(v.roof)) continue;

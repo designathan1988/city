@@ -32,6 +32,47 @@ public:
 	godot::Dictionary new_map(int map, int seed, bool with_city);
 	void mark_saved();
 	void set_speed(int speed);
+	void set_day_hour(double hour);
+	godot::Dictionary body_info(int id) const;
+	godot::Dictionary body_pick(const godot::Vector3 &origin, const godot::Vector3 &dir) const;
+	// Build > Models (city_core_models.cpp): a body in hand travels as bytes.
+	godot::Array model_list() const;
+	godot::PackedByteArray model_bytes(const godot::String &id) const;
+	godot::Dictionary building_bytes(int id) const;
+	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
+	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
+	godot::String place_check(const godot::PackedByteArray &bytes, double x, double z, double rot) const;
+	godot::Dictionary place_model(const godot::PackedByteArray &bytes, double x, double z, double rot, int fn, int zone);
+	int stage_show(const godot::PackedByteArray &bytes, const godot::RID &scenario, bool ghost);
+	void stage_move(int handle, const godot::Transform3D &at);
+	void stage_free(int handle);
+	int stage_triangles(int handle) const;
+	godot::PackedVector3Array body_outline(int id, int vol) const;
+	godot::Dictionary body_storeys(int id, int vol, int count);
+	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
+	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);
+	godot::Dictionary body_add_wing(int id, int vol, int side, double depth, double length);
+	godot::Dictionary body_add_setback(int id, int vol, double inset, int storeys);
+	godot::Dictionary body_split(int id, int vol, int level);
+	godot::Dictionary body_remove_volume(int id, int vol);
+	godot::Dictionary body_heights(int id, double ground_h, double storey_h);
+	int body_bay(int id, int vol, int storey, int side, int bay) const;
+	godot::Dictionary body_set_bay(int id, int vol, int storey, int side, int bay, int what, int scope);
+	godot::Dictionary body_set_zone(int id, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what);
+	godot::Dictionary body_set_pattern(int id, int vol, int storey, int side, int pattern);
+	godot::Dictionary body_set_face(int id, int vol, int side, const godot::Dictionary &patch);
+	godot::Dictionary body_set_relief(int id, int vol, const godot::Dictionary &region, bool snap);
+	godot::Dictionary body_set_roof(int id, int vol, int roof);
+	godot::Dictionary body_roof_shape(int id, int vol, double pitch, int ridge, int fall);
+	godot::Dictionary body_paint(int id, int scope, int vol, int side, int storey, int finish, const godot::String &colour);
+	godot::Dictionary body_add_gear(int id, int vol, const godot::Vector3 &at, const godot::Dictionary &spec);
+	godot::Dictionary body_remove_gear(int id, int vol, int gear);
+	godot::Dictionary body_turn_gear(int id, int vol, int gear);
+	godot::Dictionary body_add_part(int id, int vol, int storey, int side, int bay, const godot::Dictionary &spec);
+	godot::Dictionary body_add_part_at(int id, const godot::Vector3 &at, const godot::Dictionary &spec);
+	godot::Dictionary body_remove_part(int id, int part);
+	godot::Dictionary body_turn_part(int id, int part);
+	godot::Dictionary body_repeat_part(int id, int part, double spacing);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
@@ -113,6 +154,9 @@ public:
 
 protected:
 	static void _bind_methods();
+	static void bind_models();
+	static void bind_bodies();
+	static void bind_nature();
 
 private:
 	godot::Object *terrain3d() const;
@@ -132,6 +176,7 @@ private:
 	RenderWorld render_;
 	godot::NodePath terrain_path_;
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;
+	int64_t wear_stamp_ns_ = 0; // the last publication the wear field took
 	godot::Vector3 cam_;
 	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
 	struct PoseStats {
