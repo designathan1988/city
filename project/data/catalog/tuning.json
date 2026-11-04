@@ -90,7 +90,11 @@
   "max_pier_every": 16,
   "min_pitch_deg": 5,
   "max_pitch_deg": 60,
-  "pick_step_m": 32
+  "pick_step_m": 32,
+  "max_parts": 128,
+  "dial_share": 0.9,
+  "step_run_m": 0.3,
+  "ramp_run_per_rise": 12
  },
  "zone": {
   "side_offset_m": 14,

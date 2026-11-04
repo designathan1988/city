@@ -12,6 +12,7 @@ namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
 constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
+constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
 
 // The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
 enum Bay : uint8_t { BAY_WALL, BAY_WINDOW, BAY_SASH, BAY_FRENCH, BAY_BAY_WINDOW, BAY_RIBBON, BAY_WIDE, BAY_BALCONY, BAY_DOOR,
@@ -120,7 +121,8 @@ inline uint8_t bay_at(const Volume &v, int storey, int side, int bay) {
 // 2 away from the street (+y), 3 -x. A car gate is wide enough for a car; a person's gate is not.
 enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE,
 	EL_GATE, EL_CAR_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_AC, EL_SURFACE, EL_STALL, EL_DOCK, EL_DRAIN,
-	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE };
+	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE, EL_STAIR, EL_RAMP,
+	EL_ROCKS, EL_PARKING, EL_CLOCK };
 enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
 struct LotElement {
 	Element kind = EL_PAVEMENT;

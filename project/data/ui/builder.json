@@ -431,6 +431,256 @@
      ]
     }
    ]
+  },
+  "parts": {
+   "sections": [
+    {
+     "title_key": "builder.section.structure",
+     "tools": [
+      {
+       "id": "stair",
+       "do": "part",
+       "value": 32,
+       "fit_kind": 7,
+       "size": [
+        1.2,
+        3,
+        1
+       ]
+      },
+      {
+       "id": "ramp",
+       "do": "part",
+       "value": 33,
+       "fit_kind": 7,
+       "size": [
+        1.5,
+        6,
+        0.5
+       ]
+      },
+      {
+       "id": "pillar",
+       "do": "part",
+       "value": 2,
+       "fit_kind": 3,
+       "size": [
+        0.4,
+        0.4,
+        3
+       ],
+       "standoff_m": 0.6
+      },
+      {
+       "id": "canopy",
+       "do": "part",
+       "value": 3,
+       "fit_kind": 2,
+       "size": [
+        2.4,
+        1.2,
+        0.15
+       ],
+       "rise_m": 2.5,
+       "drop_m": 0.6
+      },
+      {
+       "id": "wall",
+       "do": "part",
+       "value": 5,
+       "fit_kind": 1,
+       "size": [
+        4,
+        0.25,
+        1.8
+       ],
+       "standoff_m": 3
+      },
+      {
+       "id": "slab",
+       "do": "part",
+       "value": 1,
+       "fit_kind": 4,
+       "size": [
+        4,
+        4,
+        0.25
+       ]
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.runs",
+     "tools": [
+      {
+       "id": "fence",
+       "do": "part",
+       "value": 6,
+       "fit_kind": 1,
+       "size": [
+        2,
+        0.12,
+        1.1
+       ],
+       "standoff_m": 3
+      },
+      {
+       "id": "railing",
+       "do": "part",
+       "value": 7,
+       "fit_kind": 1,
+       "size": [
+        2,
+        0.12,
+        1.05
+       ],
+       "standoff_m": 3
+      },
+      {
+       "id": "pavement",
+       "do": "part",
+       "value": 0,
+       "fit_kind": 1,
+       "size": [
+        4,
+        3,
+        0.12
+       ],
+       "standoff_m": 1.5
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.greenery",
+     "tools": [
+      {
+       "id": "shrub",
+       "do": "part",
+       "value": 22,
+       "fit_kind": 0,
+       "size": [
+        1.4,
+        1.4,
+        1.2
+       ],
+       "standoff_m": 1.2
+      },
+      {
+       "id": "hedge",
+       "do": "part",
+       "value": 8,
+       "fit_kind": 1,
+       "size": [
+        3,
+        0.7,
+        1.2
+       ],
+       "standoff_m": 3
+      },
+      {
+       "id": "flowers",
+       "do": "part",
+       "value": 23,
+       "fit_kind": 0,
+       "size": [
+        1.4,
+        1.4,
+        0.4
+       ],
+       "standoff_m": 1.2
+      },
+      {
+       "id": "rocks",
+       "do": "part",
+       "value": 34,
+       "fit_kind": 0,
+       "size": [
+        1.6,
+        1.6,
+        0.7
+       ],
+       "standoff_m": 2
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.furniture",
+     "tools": [
+      {
+       "id": "bench",
+       "do": "part",
+       "value": 12,
+       "fit_kind": 0,
+       "size": [
+        1.6,
+        0.5,
+        0.45
+       ],
+       "standoff_m": 1.4
+      },
+      {
+       "id": "planter",
+       "do": "part",
+       "value": 11,
+       "fit_kind": 0,
+       "size": [
+        1,
+        1,
+        0.5
+       ],
+       "standoff_m": 1.1
+      },
+      {
+       "id": "parking",
+       "do": "part",
+       "value": 35,
+       "fit_kind": 1,
+       "size": [
+        6,
+        5,
+        0.12
+       ],
+       "standoff_m": 2.5
+      },
+      {
+       "id": "ac",
+       "do": "part",
+       "value": 16,
+       "fit_kind": 6,
+       "size": [
+        0.8,
+        0.35,
+        0.6
+       ],
+       "rise_m": 1.1
+      },
+      {
+       "id": "awning",
+       "do": "part",
+       "value": 4,
+       "fit_kind": 2,
+       "size": [
+        3,
+        1.2,
+        0.12
+       ],
+       "rise_m": 2.4,
+       "drop_m": 0.5
+      },
+      {
+       "id": "clock",
+       "do": "part",
+       "value": 36,
+       "fit_kind": 5,
+       "size": [
+        3,
+        0.25,
+        3
+       ]
+      }
+     ]
+    }
+   ]
   }
  }
 }

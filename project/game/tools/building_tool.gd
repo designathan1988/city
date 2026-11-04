@@ -10,6 +10,8 @@ const NO_BAY := -1
 var picked := {}
 ## The component a click puts in the wall, NO_BAY for none.
 var armed := NO_BAY
+## The part a click sets (a spec of data/ui/builder.json), {} for none.
+var part := {}
 var scope := 0
 var paint_scope := 0
 
@@ -26,26 +28,34 @@ func exit() -> void:
 	_box.queue_free()
 
 
-func click(_p: Vector3) -> void:
+func click(p: Vector3) -> void:
 	var cam: Camera3D = ctl.rig.camera
 	var screen := ctl.get_viewport().get_mouse_position()
+	var had := picked
 	pick(cam.project_ray_origin(screen), cam.project_ray_normal(screen))
+	if not part.is_empty() and picked.is_empty() and not had.is_empty():
+		picked = had
+		_report(CityStore.dispatch(&"body_add_part_at", [had.id, p, part]))
+		_show()
 
 
 ## What the ray hits becomes the pick; with a component in hand and a wall hit, the component goes there.
 func pick(origin: Vector3, dir: Vector3) -> void:
 	var hit: Dictionary = CityStore.query(&"body_pick", [origin, dir])
-	if armed != NO_BAY and not hit.is_empty() and hit.side >= 0:
-		picked = hit
+	picked = hit
+	if hit.is_empty() or hit.side < 0:
+		pass
+	elif armed != NO_BAY:
 		_report(CityStore.dispatch(&"body_set_bay", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, armed, scope]))
-	else:
-		picked = hit
+	elif not part.is_empty():
+		_report(CityStore.dispatch(&"body_add_part", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, part]))
 	_show()
 
 
 func cancel() -> void:
-	if armed != NO_BAY:
+	if armed != NO_BAY or not part.is_empty():
 		armed = NO_BAY
+		part = {}
 	else:
 		picked = {}
 	_show()
@@ -57,6 +67,10 @@ func act(spec: Dictionary) -> void:
 	match spec.do:
 		"arm":
 			armed = NO_BAY if armed == value else value
+			part = {}
+		"part":
+			part = {} if part == spec else spec
+			armed = NO_BAY
 		"scope":
 			scope = value
 		"paint_scope":

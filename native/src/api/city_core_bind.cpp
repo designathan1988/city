@@ -34,6 +34,11 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_set_roof", "id", "vol", "roof"), &CityCore::body_set_roof);
 	ClassDB::bind_method(D_METHOD("body_roof_shape", "id", "vol", "pitch", "ridge", "fall"), &CityCore::body_roof_shape);
 	ClassDB::bind_method(D_METHOD("body_paint", "id", "scope", "vol", "side", "storey", "finish", "colour"), &CityCore::body_paint);
+	ClassDB::bind_method(D_METHOD("body_add_part", "id", "vol", "storey", "side", "bay", "spec"), &CityCore::body_add_part);
+	ClassDB::bind_method(D_METHOD("body_add_part_at", "id", "at", "spec"), &CityCore::body_add_part_at);
+	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityCore::body_remove_part);
+	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityCore::body_turn_part);
+	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityCore::body_repeat_part);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);

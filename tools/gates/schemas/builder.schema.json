@@ -39,6 +39,24 @@
            },
            "value": {
             "type": "number"
+           },
+           "size": {
+            "type": "array",
+            "items": {
+             "type": "number"
+            }
+           },
+           "fit_kind": {
+            "type": "number"
+           },
+           "standoff_m": {
+            "type": "number"
+           },
+           "rise_m": {
+            "type": "number"
+           },
+           "drop_m": {
+            "type": "number"
            }
           },
           "required": [

@@ -135,7 +135,8 @@
     {
      "id": "parts",
      "icon": "components",
-     "label_key": "builder.category.parts"
+     "label_key": "builder.category.parts",
+     "tool": "BUILD"
     },
     {
      "id": "roof",
