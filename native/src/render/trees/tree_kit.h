@@ -3,7 +3,7 @@
 // between a dark and a lit one by how much it faces the sky) under leaf cards that face the camera, palm fronds as
 // strips, and one far card for every species. The vertex layout below is the contract with
 // render/shaders/vegetation.gdshaderinc:
-//   UV2.x  part (TreePart): body, leaf card, frond strip or far card;
+//   UV2.x  part (TreePart): body, leaf card or frond strip (far cards are render/trees/far_cards.h's own mesh);
 //   UV2.y  a card's half size, in model units (0 for the rest);
 //   UV     a card's corner (0..1) inside its region of the leaf atlas, or a frond's atlas coordinate;
 //   COLOR  rgb the sRGB tone, a the card's roll as a share of a turn (1 for the rest).
@@ -21,6 +21,8 @@
 namespace city {
 
 enum class TreePart : int { BODY = 0, CARD = 1, FROND = 2, FAR = 3 };
+// A far card stands at this share of its tree's height and reaches this share of it up and down.
+constexpr float FAR_CARD_CENTRE = 0.6f, FAR_CARD_HALF_TALL = 0.32f;
 
 struct TreeSpecies {
 	godot::String name;
@@ -38,12 +40,10 @@ public:
 	int count() const { return int(species_.size()); }
 	const TreeSpecies &species(int i) const { return species_[size_t(i)]; }
 	int find(const godot::String &name) const; // -1 when absent
-	const godot::Ref<godot::ArrayMesh> &far_card() const { return far_card_; }
 	const LeafAtlas &atlas() const { return atlas_; }
 
 private:
 	std::vector<TreeSpecies> species_;
-	godot::Ref<godot::ArrayMesh> far_card_;
 	LeafAtlas atlas_;
 };
 

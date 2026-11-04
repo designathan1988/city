@@ -1,6 +1,6 @@
 // Builds the tree species (see tree_kit.h) from streets.json "trees": the leaf atlas once, then for every species its
 // body (trunk tube in rings that follow its lean, limbs, crown hearts), its cards (leaf cards or palm fronds) and the
-// mean crown tone its far card is tinted with; one far card shared by every species.
+// mean crown tone its far card is tinted with.
 #include "render/trees/tree_kit.h"
 
 #include "core/color.h"
@@ -18,9 +18,6 @@ namespace city {
 
 namespace {
 constexpr float HALF_F = 0.5f;
-// The far card stands at this share of the tree's height and reaches half a unit either way across (its instance
-// basis scales it to the tree's width) and `FAR_HALF_TALL` of the height up and down.
-constexpr float FAR_CENTRE = 0.6f, FAR_HALF_TALL = 0.32f;
 
 Vector3 vec3(const Variant &v) {
 	Array a = v;
@@ -106,15 +103,6 @@ TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
 	sp.sway = d["sway"]; sp.flutter = d["flutter"]; sp.cards_cast = d["cards_cast"];
 	return sp;
 }
-
-Ref<ArrayMesh> far_card_mesh() {
-	MeshBuilder mb;
-	const Vector2 corner[4] = { Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1) };
-	const Vector2 tag(float(int(TreePart::FAR)), FAR_HALF_TALL);
-	for (const Vector2 &c : corner) mb.add(Vector3(0, FAR_CENTRE, 0), Vector3(0, 1, 0), Color(1, 1, 1, 0), c, tag);
-	for (int k : { 0, 1, 2, 0, 2, 3 }) mb.idx.push_back(k);
-	return mb.commit();
-}
 } // namespace
 
 bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
@@ -126,7 +114,6 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
 	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], errors));
-	far_card_ = far_card_mesh();
 	return errors.is_empty();
 }
 

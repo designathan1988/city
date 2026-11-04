@@ -12,14 +12,6 @@ const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float cover_per_mip = 0.25;
 
-void vertex() {
-	float fade;
-	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR.a, INSTANCE_CUSTOM, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, fade);
-	v_tint = INSTANCE_CUSTOM.rgb;
-	v_fade = fade;
-	v_part = UV2.x;
-}
-
 void fragment() {
 	if (v_fade < 1.0 && dither(FRAGCOORD.xy) > v_fade) {
 		discard;

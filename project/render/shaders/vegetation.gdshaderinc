@@ -88,34 +88,49 @@ float dither(vec2 frag) {
 }
 
 // Places one vertex of a tree (see the header): `vertex` and `normal` come in model space and leave in view space;
-// `fade` is how much of the tree this level draws (0: none, its vertices collapsed). `view` is the pass's (the light's
-// in the shadow pass), `main_inv` the main camera's, for the distance the levels switch at.
-void tree_vertex(inout vec3 vertex, inout vec3 normal, vec2 uv, vec2 uv2, float roll, vec4 custom, mat4 model, mat4 view, mat4 main_inv,
-		float t, out float fade) {
-	float part = uv2.x;
-	bool card = part > PART_CARD - 0.5 && part < PART_CARD + 0.5;
-	bool far = part > PART_FAR - 0.5;
-	vec3 root = model[3].xyz;
+// `fade` is how much of the tree this level draws (0: none, its vertices collapsed); `tint` and `part` go on to the
+// fragment. `view` is the pass's (the light's in the shadow pass), `main_inv` the main camera's, for the distance the
+// levels switch at. Two sources: a MultiMesh instance (near models: `inst`, the instance's custom data, is its tint and
+// species), or a far-card mesh (render/trees/far_cards.h: CUSTOM0 is the card's width, the tree's height, the species
+// and the card's half height; COLOR.a the card centre's height; the corner is the vertex's index modulo 4).
+void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, vec4 color, vec4 inst, vec4 custom0, int vertex_id,
+		mat4 model, mat4 view, mat4 main_inv, float t, out float fade, out vec3 tint, out float part) {
+	bool far = custom0.w > 0.0;
+	part = far ? PART_FAR : uv2.x;
+	tint = far ? vec3(1.0) : inst.rgb;
+	vec3 root = (model * vec4(far ? vertex : vec3(0.0), 1.0)).xyz;
 	fade = tree_fade(root, distance(root, main_inv[3].xyz), far);
 	if (fade <= 0.0) {
 		vertex = vec3(0.0);
 		return;
 	}
-	float sx = length(model[0].xyz), sy = length(model[1].xyz);
-	vec3 wp = (model * vec4(vertex, 1.0)).xyz;
-	wp = keep_length(wp, root, wind_offset(vertex, root, sy, int(custom.a + 0.5), part > 0.5, t));
+	bool card = part > PART_CARD - 0.5 && part < PART_CARD + 0.5;
+	float sx = far ? custom0.x : length(model[0].xyz), sy = far ? custom0.y : length(model[1].xyz);
+	int sp = int((far ? custom0.z : inst.a) + 0.5);
+	vec3 local = far ? vec3(0.0, color.a, 0.0) : vertex;
+	vec3 wp = far ? root + vec3(0.0, color.a * sy, 0.0) : (model * vec4(vertex, 1.0)).xyz;
+	wp = keep_length(wp, root, wind_offset(local, root, sy, sp, part > 0.5, t));
 	vec3 vp = (view * vec4(wp, 1.0)).xyz;
-	if (card || far) {
-		vec2 corner = uv - vec2(0.5);
-		if (card) {
-			float a = roll * TAU;
-			corner = mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * corner * (2.0 * uv2.y * sx);
-		} else {
-			corner *= vec2(sx, 2.0 * uv2.y * sy);
-		}
-		vp.xy += corner;
+	if (far) {
+		int k = vertex_id % 4;
+		uv = vec2(float(k == 1 || k == 2), float(k >= 2));
+		vp.xy += (uv - vec2(0.5)) * vec2(sx, 2.0 * custom0.w * sy);
+	} else if (card) {
+		float a = color.a * TAU;
+		vp.xy += mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * (uv - vec2(0.5)) * (2.0 * uv2.y * sx);
 	}
 	vec3 n = far ? normalize(vec3(0.0, 1.0, 0.0) + normalize(main_inv[3].xyz - root)) : normalize(mat3(model) * normal);
 	normal = normalize((view * vec4(n, 0.0)).xyz);
 	vertex = vp;
+}
+
+// The vertex stage both vegetation shaders share.
+void vertex() {
+	float fade, part;
+	vec3 tint;
+	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR, INSTANCE_CUSTOM, CUSTOM0, VERTEX_ID, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, fade, tint,
+			part);
+	v_tint = tint;
+	v_fade = fade;
+	v_part = part;
 }

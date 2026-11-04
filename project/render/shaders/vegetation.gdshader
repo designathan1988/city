@@ -5,14 +5,6 @@ render_mode skip_vertex_transform, cull_back;
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 
-void vertex() {
-	float fade;
-	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR.a, INSTANCE_CUSTOM, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, fade);
-	v_tint = INSTANCE_CUSTOM.rgb;
-	v_fade = fade;
-	v_part = UV2.x;
-}
-
 void fragment() {
 	if (v_fade < 1.0 && dither(FRAGCOORD.xy) > v_fade) {
 		discard;

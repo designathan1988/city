@@ -119,16 +119,11 @@ TreeRenderer::Built TreeRenderer::build_near(const CityState &s, int64_t key) co
 TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) const {
 	Built out;
 	out.key = key;
-	out.bufs.resize(1);
 	std::vector<FarCard> cards;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
-		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
-			cards.clear();
+		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
 			place_far(s, *look_, *furniture_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
-			for (const FarCard &f : cards)
-				mm_push(out.bufs[0], Vector3(f.width, 0, 0), Vector3(0, f.height, 0), Vector3(0, 0, f.width), f.p, Color(1, 1, 1, 1), f.tone.r, f.tone.g,
-						f.tone.b, float(f.species));
-		}
+	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, FAR_CARD_HALF_TALL);
 	return out;
 }
 
@@ -149,10 +144,20 @@ void TreeRenderer::commit_near(Built &b) {
 	}
 }
 
+void TreeRenderer::FarDraw::free() {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	if (inst.is_valid()) rs->free_rid(inst);
+	if (mesh.is_valid()) rs->free_rid(mesh);
+	inst = mesh = RID();
+}
+
 void TreeRenderer::commit_far(Built &b) {
-	MultiMeshDraw &d = far_[b.key];
-	d.set(scenario_, kit_.far_card()->get_rid(), card_material_, b.bufs[0], box_of(b.key, SUPERCHUNK), trees_.far_shadows != 0);
-	d.range(0, trees_.far_m + SUPERCHUNK * DIAGONAL * HALF);
+	FarDraw &d = far_[b.key];
+	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0);
+	if (!d.inst.is_valid()) return;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));
+	rs->instance_geometry_set_visibility_range(d.inst, 0, trees_.far_m + SUPERCHUNK * DIAGONAL * HALF, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 
 void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool far) {
