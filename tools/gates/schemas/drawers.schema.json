@@ -78,9 +78,11 @@
           "SPLIT",
           "ROUNDABOUT",
           "TERRAIN",
-          "LOT"
+          "LOT", "TRANSIT"
          ]
         },
+        "kind": { "type": "string" },
+        "mode": { "type": "integer" },
         "profile": {
          "type": "string"
         },
