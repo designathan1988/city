@@ -269,6 +269,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
+- `project/tests/core/lens_color_test.gd` · `project/tests/core/lens_color_test.tscn` — cor da lente acesa na tela, nos dois renderizadores
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
