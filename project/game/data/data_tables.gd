@@ -18,7 +18,6 @@ const CATALOG_FRAGMENTS := {
 	],
 }
 const RENDER_TABLES := {
-	"models": "res://data/render/models.json",
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
 	"buildings": "res://data/render/buildings.json",

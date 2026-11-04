@@ -292,7 +292,6 @@
     "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
-    "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
@@ -341,9 +340,6 @@
       "project/game/",
       "project/ui/",
       "project/render/"
-    ],
-    "data_copy_ignore_files": [
-      "project/data/render/models.json"
     ],
     "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
