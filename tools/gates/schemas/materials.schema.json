@@ -544,15 +544,6 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": {
-       "type": "number"
-      },
-      "wind_dir_z": {
-       "type": "number"
-      },
-      "wind_speed_ms": {
-       "type": "number"
-      },
       "sway_per_ms2": {
        "type": "number"
       },
@@ -570,9 +561,6 @@
       }
      },
      "required": [
-      "wind_dir_x",
-      "wind_dir_z",
-      "wind_speed_ms",
       "sway_per_ms2",
       "gust_m",
       "turbulence",
@@ -597,15 +585,6 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": {
-       "type": "number"
-      },
-      "wind_dir_z": {
-       "type": "number"
-      },
-      "wind_speed_ms": {
-       "type": "number"
-      },
       "sway_per_ms2": {
        "type": "number"
       },
@@ -626,9 +605,6 @@
       }
      },
      "required": [
-      "wind_dir_x",
-      "wind_dir_z",
-      "wind_speed_ms",
       "sway_per_ms2",
       "gust_m",
       "turbulence",

@@ -32,6 +32,7 @@ float h01(uint32_t h, Stream s) { return hash_float(h + s); }
 
 struct Lists {
 	std::vector<int> segs, lots;
+	EcologyField eco;
 };
 
 Lists lists(const CityState &s, int64_t key) {
@@ -39,6 +40,7 @@ Lists lists(const CityState &s, int64_t key) {
 	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int sid) { l.segs.push_back(sid); });
 	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int id) { l.lots.push_back(id); });
+	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
 	return l;
 }
 
@@ -66,8 +68,10 @@ float grade_at(const Heightfield &hf, float x, float z) {
 }
 
 // The woods field at (x, z): the patches, raised on steep ground and along water.
-float field(const CityState &s, const TreeLook &T, float x, float z) {
+float field(const CityState &s, const TreeLook &T, const Lists &l, float x, float z) {
 	float f = fbm(x / T.mass_m, z / T.mass_m, FIELD_SEED ^ s.seed, T.octaves);
+	if (l.eco.side > 0) f += T.eco_gain * (wood_share(l.eco.near(x, z), s.catalog.nature.ecology) - T.eco_mean);
+	f += T.forest_gain * s.nature.ground.cover_at(CoverKind::FOREST, x, z);
 	f += T.slope_gain * smoothstep(T.slope_from, T.slope_to, grade_at(s.terrain, x, z));
 	if (T.water_gain > 0)
 		for (int k = 0; k < WATER_DIRS; k++) {
@@ -110,20 +114,21 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Lists
 			uint32_t h = cell_hash(ix, iz, WILD_SALT ^ s.seed);
 			if (h01(h, KEEP) >= most) continue;
 			float x = (ix + 0.5f + (h01(h, POS_X) - 0.5f) * T.jitter) * T.grid_m, z = (iz + 0.5f + (h01(h, POS_Z) - 0.5f) * T.jitter) * T.grid_m;
-			float f = field(s, T, x, z);
+			float f = field(s, T, l, x, z);
 			WoodBand b = band_of(T, f);
 			const BandLook &B = T.band[size_t(b)];
 			if ((open_only && b != WoodBand::OPEN) || h01(h, KEEP) >= B.keep) continue;
 			float y;
-			if (!ground_ok(s, T, x, z, T.grid_m, y)) continue;
+			if (!ground_ok(s, T, x, z, T.grid_m, y) || s.nature.planted.cleared(x, z)) continue;
 			int sp = B.mix.pick(h01(h, SPECIES));
+			if (l.eco.side > 0 && h01(h, TINT) < l.eco.near(x, z).palm) sp = T.planted_species.back();
 			float c = b == WoodBand::OPEN ? 0.f : depth_of(T, f);
 			float height = (B.h0 + (B.h1 - B.h0) * h01(h, HEIGHT)) * (1.f + T.crowd_tall * c);
 			float width = height * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary) * (1.f - T.crowd_narrow * c);
 			if (near_road(s, l, x, z, kit.species(sp).crown_reach * width + T.road_margin) || in_lot(s, l, T.lot_margin, x, z)) continue;
 			TreeInstance t{ Vector3(x, y, z), height, width, TAU_F * h01(h, YAW), 0, 0, sp, tint_of(T, h01(h, TINT)) };
 			if (b == WoodBand::EDGE) { // lean to the open side: down the field's slope
-				float gx = field(s, T, x + T.grid_m, z) - field(s, T, x - T.grid_m, z), gz = field(s, T, x, z + T.grid_m) - field(s, T, x, z - T.grid_m);
+				float gx = field(s, T, l, x + T.grid_m, z) - field(s, T, l, x - T.grid_m, z), gz = field(s, T, l, x, z + T.grid_m) - field(s, T, l, x, z - T.grid_m);
 				float g = std::sqrt(gx * gx + gz * gz), k = T.edge_lean * (1.f - c);
 				if (g > 0) { t.lean_x = -gx / g * k; t.lean_z = -gz / g * k; }
 			}
@@ -161,9 +166,19 @@ void street(const CityState &s, const StreetLook &L, const TreeLook &T, int64_t 
 	}
 }
 
-FarCard far_of(const TreeInstance &t, const TreeKit &kit) {
-	const TreeSpecies &sp = kit.species(t.species);
-	return { t.p, t.height, t.width * sp.far_width, sp.far_tone.srgb_to_linear() * t.tint, t.species };
+FarCard far_of(const TreeInstance &t) { return { t.p, t.height, t.width, t.tint, t.species }; }
+
+// The trees the player planted in the chunk, by the model each one's seed grows as.
+void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<TreeInstance> &out) {
+	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
+	const PlantedTrees &p = s.nature.planted;
+	const TreeBrushDef &d = s.catalog.nature.trees;
+	p.for_trees(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
+		const PlantedTree &t = p.trees[size_t(id)];
+		if (!s.terrain.in_bounds(t.x, t.z) || s.terrain.is_water(t.x, t.z, 0.f)) return;
+		Vector3 at(t.x, s.terrain.height_at(t.x, t.z), t.z);
+		out.push_back({ at, t.height, t.height, t.yaw, 0, 0, T.planted_species[size_t(tree_slot(t.seed, d))], tint_of(T, t.seed) });
+	});
 }
 } // namespace
 
@@ -172,6 +187,7 @@ void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, con
 	Lists l = lists(s, key);
 	street(s, L, T, key, out);
 	parks(s, T, l, key, out);
+	planted(s, T, key, out);
 	wild(s, T, kit, l, key, false, out);
 }
 
@@ -181,8 +197,9 @@ void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const
 	std::vector<TreeInstance> lone;
 	street(s, L, T, key, lone);
 	parks(s, T, l, key, lone);
+	planted(s, T, key, lone);
 	wild(s, T, kit, l, key, true, lone);
-	for (const TreeInstance &t : lone) out.push_back(far_of(t, kit));
+	for (const TreeInstance &t : lone) out.push_back(far_of(t));
 	int n = int(CHUNK / T.far_cell_m), cx = key_x(key), cz = key_y(key);
 	float half = T.far_cell_m * 0.5f;
 	for (int j = 0; j < n; j++)
@@ -190,16 +207,15 @@ void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const
 			int ix = cx * n + i, iz = cz * n + j;
 			uint32_t h = cell_hash(ix, iz, FAR_SALT ^ s.seed);
 			float x = (ix + 0.5f + (h01(h, POS_X) - 0.5f) * T.far_jitter) * T.far_cell_m, z = (iz + 0.5f + (h01(h, POS_Z) - 0.5f) * T.far_jitter) * T.far_cell_m;
-			float f = field(s, T, x, z);
+			float f = field(s, T, l, x, z);
 			WoodBand b = band_of(T, f);
 			if (b == WoodBand::OPEN) continue;
 			float y;
-			if (!ground_ok(s, T, x, z, half, y) || near_road(s, l, x, z, half + T.road_margin) || in_lot(s, l, T.lot_margin + half, x, z)) continue;
+			if (!ground_ok(s, T, x, z, half, y) || s.nature.planted.cleared(x, z) || near_road(s, l, x, z, half + T.road_margin) || in_lot(s, l, T.lot_margin + half, x, z)) continue;
 			const BandLook &B = T.band[size_t(b)];
 			int sp = B.mix.pick(h01(h, SPECIES));
 			float height = (B.h0 + (B.h1 - B.h0) * h01(h, HEIGHT)) * (1.f + T.crowd_tall * depth_of(T, f));
-			out.push_back({ Vector3(x, y, z), height, T.far_cell_m * T.far_spread * std::sqrt(B.cover) * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary),
-					kit.species(sp).far_tone.srgb_to_linear() * tint_of(T, h01(h, TINT)), sp });
+			out.push_back({ Vector3(x, y, z), height, height * T.far_spread * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary), tint_of(T, h01(h, TINT)), sp });
 		}
 }
 

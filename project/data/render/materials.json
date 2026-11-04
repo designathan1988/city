@@ -182,9 +182,6 @@
  "vegetation": {
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
@@ -195,9 +192,6 @@
  "vegetation_cards": {
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,

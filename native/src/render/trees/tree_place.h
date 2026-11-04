@@ -40,6 +40,8 @@ struct TreeLook {
 	float crowd_tall = 0, crowd_narrow = 0, edge_lean = 0, width_vary = 0, tint_vary = 0;
 	float min_y = 0, max_grade = 0, road_margin = 0, lot_margin = 0;
 	float park_m2_per_tree = 1, park_edge = 0, park_h0 = 0, park_h1 = 0, street_height_m = 1;
+	float eco_gain = 0, eco_mean = 0, forest_gain = 0; // how the ecosystem and painted forest raise the woods' field
+	std::vector<int> planted_species; // the species of each model slot of a planted tree (sim/nature/planted_trees.h)
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;

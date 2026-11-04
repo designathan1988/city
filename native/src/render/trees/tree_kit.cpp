@@ -69,7 +69,7 @@ void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Colo
 	}
 }
 
-TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
+TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
 		"heart_shrink", "crown_reach", "far_width", "cards_cast" };
@@ -97,6 +97,7 @@ TreeSpecies make_species(const Dictionary &d, PackedStringArray &errors) {
 	if (d.has("fronds")) tree_fronds(cards, top, fronds_of(d["fronds"]), sh.leaf, r);
 	sp.far_tone = crowns.is_empty() ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
 	sp.far_tone.a = 1;
+	pictures.draw(row, body, cards, sp.far_tone);
 	sp.body = body.commit();
 	if (!cards.empty()) sp.cards = cards.commit();
 	sp.crown_reach = d["crown_reach"]; sp.far_width = d["far_width"];
@@ -113,7 +114,9 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	}
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
-	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], errors));
+	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.image(), errors)) return false;
+	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, pictures_, errors));
+	pictures_.finish();
 	return errors.is_empty();
 }
 

@@ -26,6 +26,22 @@ anti_aliasing/quality/msaa_3d=0
 
 [shader_globals]
 
+wind_x={
+"type": "float",
+"value": 0.86
+}
+wind_z={
+"type": "float",
+"value": -0.5
+}
+wind_ms={
+"type": "float",
+"value": 3.0
+}
+rain_wet={
+"type": "float",
+"value": 0.0
+}
 night={
 "type": "float",
 "value": 0.0

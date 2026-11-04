@@ -85,8 +85,10 @@ void card(MeshBuilder &mb, const Vector3 &c, const Vector3 &n, const Color &tone
 		int i = mb.add(c, lifted, with_alpha(tone, roll), corner[k], tag);
 		if (k == 0) base = i;
 	}
-	// The corners coincide here, so the winding is the shader's to make (the cards are drawn two-sided).
-	for (int k : { 0, 1, 2, 0, 2, 3 }) mb.idx.push_back(base + k);
+	// The corners coincide here and the vertex shader spreads them anticlockwise in the view's plane: wound the other way
+	// round the card faces the eye (Godot's front faces are clockwise), as a two-sided material turns a back face's normal
+	// over before the fragment runs (DO_SIDE_CHECK), and the sunlit side of the crown would go dark.
+	for (int k : { 0, 2, 1, 0, 3, 2 }) mb.idx.push_back(base + k);
 }
 } // namespace
 
