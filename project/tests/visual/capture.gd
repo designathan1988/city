@@ -129,12 +129,14 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 			await _frames(_sky_frames())
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
+		print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
 	var k := _nearest(probe.sample, ground)
 	var car: Vector3 = probe.sample[k]
 	var ahead: Vector3 = probe.sample_dir[k]
 	var left := Vector3(ahead.z, 0, -ahead.x)
 	await _shot("07_carro", car + ahead * CAR_VIEW_FROM.z + left * CAR_VIEW_FROM.x + Vector3.UP * CAR_VIEW_FROM.y, car + CAR_VIEW_AT)
 	await _shot("08_carro_alto", car + ahead * CAR_HIGH_FROM.z + Vector3.UP * CAR_HIGH_FROM.y, car)
+	await CaptureVehicles.shots(self, probe, ground)
 	await _person_shot(probe, ground)
 	if not only.has("none") or soak > 0:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)

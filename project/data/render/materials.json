@@ -136,24 +136,31 @@
   }
  },
  "agent": {
+  "_doc": "Vehicles. Lamp colours: head_glow a halogen headlamp bulb, a black body at 3200 K (Philips H4 standard bulb); tail_glow the corner of UNECE R48 §2.30 red (y <= 0.335, z <= 0.008: x 0.657, y 0.335); sign_glow the middle of R48 amber (0.398 <= y <= 0.429 on z = 0.007), each from CIE 1931 (Wyman, Sloan & Shirley 2013 fit) to sRGB, out-of-gamut parts clipped, the brightest channel at 1. brake_ratio: a stop lamp at least 5 times its rear position lamp (UNECE R7 §6.2.4.2). Roughness (physicallybased.info): paint 0 (Car Paint: clear topcoat), lens 0 for lamps, signs and the far level's glass (Plastic (PC), Glass), skin 0.5 (Skin I-VI), helmet 0 (Plastic (PC) shell), trim 0.7 (Tire) for every unpainted part, cloth 1 (a matte textile: the database has none). head_power, tail_power, sign_power: how bright the lit lamps draw, set on the night photo (05_transito at 10_noite): a lamp's brightest channel at the top of the display range without bleeding into its body.",
   "shader": "res://render/shaders/agents.gdshader",
   "params": {
-   "head_glow": "#fff1c8",
-   "tail_glow": "#ff0d08",
+   "head_glow": "#ffbf7a",
+   "tail_glow": "#ff0000",
    "head_power": 4.0,
    "tail_power": 1.5,
-   "brake_power": 2.5
+   "brake_ratio": 5.0,
+   "sign_glow": "#ff7400",
+   "sign_power": 2.0,
+   "paint_roughness": 0.0,
+   "lens_roughness": 0.0,
+   "skin_roughness": 0.5,
+   "helmet_roughness": 0.0,
+   "trim_roughness": 0.7,
+   "cloth_roughness": 1.0
   }
  },
  "agent_glass": {
+  "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass).",
   "shader": "res://render/shaders/agent_glass.gdshader",
   "params": {
-   "tint": "#1a2430",
-   "opacity": 0.35,
-   "edge_opacity": 0.9,
-   "edge_power": 3.0,
-   "roughness": 0.05,
-   "specular": 0.8
+   "transmittance": 0.7,
+   "ior": 1.52,
+   "roughness": 0.0
   }
  },
  "people": {

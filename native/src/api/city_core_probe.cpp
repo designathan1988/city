@@ -14,6 +14,8 @@ using namespace godot;
 
 namespace city {
 
+Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }
+
 Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
@@ -201,7 +203,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
-	Array poses, dirs, held, jams, jam_info, behind, box;
+	Array poses, dirs, types, held, jams, jam_info, behind, box;
 	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
 	held.resize(int(Hold::COUNT));
@@ -233,6 +235,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 		if (poses.size() < sample) {
 			poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
 			dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
+			types.push_back(int(v.type));
 		}
 	}
 	d["signals"] = signals;
@@ -247,6 +250,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["held_by"] = held; // waiting vehicles by Hold: queued, wrong lane, red, exit room, conflict busy, yield, connector, free, crosswalk
 	d["sample"] = poses;
 	d["sample_dir"] = dirs;
+	d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
 	Array walkers, walker_dirs; // pedestrians, for close looks in the visual captures
 	for (const Pedestrian &w : t.peds)
 		if (w.alive && walkers.size() < sample) {
