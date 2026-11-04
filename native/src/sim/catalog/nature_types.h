@@ -57,6 +57,8 @@ struct PaintDef {
 	int max_tiles = 0; // tiles of the map a save may hold
 	float strength_scale = 0, min_strength = 0, land_rim = 0, rock_reach = 0;
 	std::vector<int> landform_rock; // kind index of mesa, canyon, escarpment, sugarloaf
+	int river_sand = -1; // the kind a river lays on its banks
+	float river_sand_reach = 1; // how far past the dab, as a share of its radius
 	std::vector<PaintKindDef> kinds;
 };
 
@@ -104,6 +106,13 @@ struct EcologyDef {
 	int default_biome = 0;
 };
 
+// The element brush: how many a map keeps, how many a dab lays, the area its density is per, how small one may be and how
+// many kinds there are (nature.json "elements").
+struct ElementDef {
+	int max_items = 0, max_per_dab = 0, kinds = 0;
+	float area_m2 = 1, least_size_m = 0;
+};
+
 struct NatureDef {
 	WeatherDef weather;
 	CloudDef clouds;
@@ -111,6 +120,7 @@ struct NatureDef {
 	PaintDef paint;
 	TreeBrushDef trees;
 	EcologyDef ecology;
+	ElementDef elements;
 };
 
 } // namespace city

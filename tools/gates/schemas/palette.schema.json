@@ -235,6 +235,12 @@
     },
     "grass_blades_normal": {
      "type": "string"
+    },
+    "biome_dry": {
+     "type": "array"
+    },
+    "straw_share": {
+     "type": "number"
     }
    },
    "required": [

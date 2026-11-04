@@ -6,12 +6,13 @@
   "fade_m": { "type": "number" },
   "pop_m": { "type": "number" },
   "tuft_share": { "type": "number" },
+  "elements": { "type": "object" },
   "rocks": { "type": "object" },
   "scrub": { "type": "object" },
   "cactus": { "type": "object" },
   "tufts": { "type": "object" },
   "flowers": { "type": "object" }
  },
- "required": ["_doc", "reach_m", "fade_m", "pop_m", "tuft_share", "rocks", "scrub", "cactus", "tufts", "flowers"],
+ "required": ["_doc", "reach_m", "fade_m", "pop_m", "tuft_share", "elements", "rocks", "scrub", "cactus", "tufts", "flowers"],
  "strict": true
 }

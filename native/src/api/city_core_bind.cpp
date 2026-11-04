@@ -48,6 +48,9 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_gullies"), &CityCore::clear_gullies);
 	ClassDB::bind_method(D_METHOD("tree_brush", "position", "radius", "mode", "kind", "brush"), &CityCore::tree_brush);
 	ClassDB::bind_method(D_METHOD("clear_trees"), &CityCore::clear_trees);
+	ClassDB::bind_method(D_METHOD("element_brush", "position", "radius", "kind", "brush", "erase"), &CityCore::element_brush);
+	ClassDB::bind_method(D_METHOD("clear_elements"), &CityCore::clear_elements);
+	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach", "first_effect"), &CityCore::effects_near);
 	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityCore::set_biome);
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityCore::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityCore::landscape);

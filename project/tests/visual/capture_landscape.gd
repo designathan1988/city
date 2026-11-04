@@ -11,6 +11,7 @@ const SHOT_FRAMES := 30
 const CITY_FREE_X := 2600.0
 const CLEAR_DABS := 11
 const NIGHT_HOUR := 22.0
+const ELEMENT_KINDS := 18
 const TREE_CUT := 2
 const RIVER_DABS := 60
 const RIVER_STEP_M := 8.0 # the dabs of a stroke (brush_tool.gd): a share of the radius apart
@@ -102,6 +103,13 @@ func _run() -> void:
 	CityStore.dispatch(&"end_stroke")
 	await _shot("chao_pintado", d, 0.0, 50.0, 700.0)
 	await _shot("cobertura", d + Vector3(-60.0, 0, 0), 0.0, 18.0, 170.0)
+	var e := d + Vector3(0, 0, -300.0)
+	CityStore.dispatch(&"begin_stroke", ["cmd.place.element"])
+	for k in ELEMENT_KINDS:
+		var at := e + Vector3((k % 6) * 22.0 - 55.0, 0, (k / 6) * 22.0 - 22.0)
+		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
+	CityStore.dispatch(&"end_stroke")
+	await _shot("elementos", e, 0.0, 22.0, 70.0)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in 12:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 30.0 - 150.0, 0, 260.0), 40.0, 0, i % 4, {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}])

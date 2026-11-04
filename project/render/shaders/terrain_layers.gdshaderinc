@@ -95,3 +95,16 @@ vec2 grass_tilt(vec2 xz, float per_pixel) {
 	vec2 blade_n = texture(grass_blades_normal, xz / detail_m).xy * 2.0 - 1.0;
 	return mix(near_n, wide_n, 0.42) * grass_bump + blade_n * blade_bump * blade_weight(per_pixel);
 }
+
+uniform float biome_dry[7];
+uniform float straw_share;
+
+// The dry season over the grass: the map's own texture with its hue turned to straw, patch by patch, each patch green or
+// gold with its edge broken by the tufts (a share of each everywhere is only an olive wash).
+vec3 straw_over(vec3 c, vec3 map_colour, vec2 xz, int biome) {
+	float luma = dot(map_colour, vec3(0.3, 0.6, 0.1));
+	float patchy = vnoise(xz / 37.0 + 7.0) * 0.6 + vnoise(xz / 13.0 + 3.0) * 0.4;
+	float golden = clamp(biome_dry[biome] * (0.35 + 0.9 * patchy), 0.0, 1.0);
+	float mask = smoothstep(0.35, 0.8, golden + (clamp((luma - 0.17) / 0.2, 0.0, 1.0) - 0.5) * 0.3) * straw_share;
+	return mix(c, dot(c, vec3(0.3, 0.6, 0.1)) * vec3(1.32, 1.04, 0.46) * 1.05, mask);
+}

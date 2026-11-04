@@ -4,6 +4,7 @@
 #pragma once
 
 #include "sim/nature/ecology.h"
+#include "sim/nature/elements.h"
 #include "sim/nature/ground_paint.h"
 #include "sim/nature/planted_trees.h"
 #include "sim/nature/sky.h"
@@ -34,6 +35,7 @@ struct NatureState {
 	std::vector<FogDab> fog;
 	GroundPaint ground;
 	PlantedTrees planted;
+	Elements elements;
 	NatureSettings nature;
 	uint64_t sky_revision = 0; // weather, clouds or fog changed: the render reads them again
 	uint64_t fog_revision = 0;

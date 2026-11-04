@@ -69,6 +69,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 		}
 	w.put_vec(index);
 	w.put_vec(level);
+	w.put_vec(n.elements.all());
 }
 
 bool read_nature(ByteReader &r, CityState &s) {
@@ -99,6 +100,10 @@ bool read_nature(ByteReader &r, CityState &s) {
 	if (!r.ok || index.size() != level.size()) return false;
 	for (size_t i = 0; i < index.size(); i++)
 		if (index[i] < s.terrain.water.size()) s.terrain.water[index[i]] = level[i];
+	std::vector<ElementItem> elements;
+	r.get_vec(elements, size_t(s.catalog.nature.elements.max_items));
+	if (!r.ok) return false;
+	for (const ElementItem &e : elements) n.elements.add(e);
 	n.sky_revision++;
 	n.fog_revision++;
 	return true;

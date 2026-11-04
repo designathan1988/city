@@ -38,6 +38,7 @@ void NatureState::reset(const Weather &w, int region, uint32_t seed) {
 	ground.clear();
 	planted.clear();
 	nature = { region, seed };
+	elements.clear();
 	sky_revision++;
 	fog_revision++;
 }

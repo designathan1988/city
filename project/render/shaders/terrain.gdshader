@@ -221,6 +221,7 @@ void fragment() {
 	if (biome_cover > 0.0) tint = mix(tint, biome_tint[(cw.x + cw.y > cw.z + cw.w ? (cw.x > cw.y ? p00.biome : p10.biome) : (cw.z > cw.w ? p01.biome : p11.biome))], biome_cover);
 	vec3 c = g * mix(1.0, macro, 0.35) * grass_tint * tint * mix(0.9, 1.08, n);
 	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
+	c = straw_over(c, g, v_vertex.xz, map_biome);
 	float per_pixel = max(fwidth(v_vertex.x), fwidth(v_vertex.z));
 	c *= grass_grain(v_vertex.xz, per_pixel) * grass_speckle(v_vertex.xz, per_pixel);
 	float wander = (n - 0.5) * 0.08;

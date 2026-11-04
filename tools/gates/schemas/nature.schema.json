@@ -41,6 +41,9 @@
   },
   "ecology": {
    "type": "object"
+  },
+  "elements": {
+   "type": "object"
   }
  },
  "required": [
@@ -49,7 +52,8 @@
   "fog",
   "paint",
   "trees",
-  "ecology"
+  "ecology",
+  "elements"
  ],
  "strict": true
 }

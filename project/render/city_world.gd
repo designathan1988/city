@@ -179,6 +179,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	we.environment = environment
 	add_child(we)
 	daylight = Daylight.new(day, sun, environment, sky_mat)
+	add_child(ElementEffects.new())
 	daylight.set_hour(day.day_hour)
 
 

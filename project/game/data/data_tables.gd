@@ -32,6 +32,7 @@ const RENDER_TABLES := {
 const UI := {
 	"tokens": "res://data/ui/tokens.json",
 	"land_panels": "res://data/ui/land_panels.json",
+	"land_elements": "res://data/ui/land_elements.json",
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
@@ -93,7 +94,10 @@ static func render() -> Dictionary:
 
 
 static func ui(name: String) -> Dictionary:
-	return _read(UI[name])
+	var table: Dictionary = _read(UI[name])
+	if name == "land_panels" and not table.has("ELEMENTS"):
+		table.merge(_read(UI.land_elements)) # one panel, kept apart for the size of the file
+	return table
 
 
 static func game(name: String) -> Dictionary:

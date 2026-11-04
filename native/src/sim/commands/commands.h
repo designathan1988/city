@@ -104,6 +104,12 @@ EditResult paint_dab(CityState &s, const PaintDab &dab);
 EditResult clear_gullies(CityState &s);
 EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, int kind, const TreeBrush &brush);
 EditResult clear_trees(CityState &s);
+// One dab of the element brush: its density per ElementDef::area_m2, size and spacing in metres, the rest shares.
+struct ElementBrush {
+	float density = 0, size = 0, variation = 0, spacing = 0, strength = 0, intensity = 0;
+};
+EditResult element_dab(CityState &s, double x, double z, double radius, int kind, const ElementBrush &b, bool erase);
+EditResult clear_elements(CityState &s);
 // The map's ecosystem: a Biome, or Biome::NONE.
 EditResult set_biome(CityState &s, int region);
 // Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.

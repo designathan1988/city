@@ -1,13 +1,15 @@
 // The ground cover streamed round the camera: every 256 m chunk within CoverKit::reach_m draws each variant of each kind
 // as a MultiMesh. A plant stands on a lattice of its kind's spacing, kept by its density there: what the player painted
 // (sim/nature/ground_paint.h), the biome's cactus (sim/nature/ecology.h), never on roads, lots or water. An unpainted
-// map outside the thorn scrub places nothing. Chunks are built by jobs and rebuilt when their
+// map outside the thorn scrub places nothing. The elements the player laid (sim/nature/elements.h) are drawn here too, a
+// MultiMesh per model. Chunks are built by jobs and rebuilt when their
 // roads, lots or nature change.
 #pragma once
 
 #include "core/job_pool.h"
 #include "render/chunk_queue.h"
 #include "render/cover/cover_kit.h"
+#include "render/cover/element_models.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
@@ -39,10 +41,12 @@ private:
 	};
 	Built build(const CityState &s, int64_t key) const;
 	void place(const CityState &s, int64_t key, Built &out) const;
+	void place_elements(const CityState &s, int64_t key, Built &out) const;
 	void commit_one(Built &b);
 	void submit(const CityState &s, int64_t key, float priority);
 	godot::RID scenario_, plant_material_, rock_material_;
 	CoverKit kit_;
+	ElementModels models_;
 	int draws_ = 0;
 	std::array<int, COVER_PIECES> first_{}; // each kind's first draw
 	std::unordered_map<int64_t, std::vector<MultiMeshDraw>> chunks_;

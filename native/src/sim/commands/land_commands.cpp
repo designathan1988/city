@@ -38,6 +38,14 @@ void lay_river(CityState &s, const BrushDab &d) {
 	std::vector<uint32_t> index;
 	std::vector<float> before;
 	float level = s.terrain.river_level(d.h0);
+	const PaintDef &paint = s.catalog.nature.paint;
+	PaintDab bank;
+	bank.x = d.x;
+	bank.z = d.z;
+	bank.radius = d.radius * paint.river_sand_reach;
+	bank.strength = 1;
+	bank.kind = paint.river_sand;
+	paint_dab(s, bank); // the banks of the river are sand, as far as its water wets them
 	s.terrain.flood(d.x, d.z, d.radius, level, index, before);
 	cut_trees_at(s, d.x, d.z, d.radius);
 	if (index.empty()) return;

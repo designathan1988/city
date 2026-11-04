@@ -70,7 +70,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -137,6 +137,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
+- `native/src/sim/commands/element_commands.cpp` — pincel de elementos com desfazer
 - `native/src/sim/commands/nature_commands.cpp` — clima, nuvens, neblina, pintura, árvores plantadas, bioma e relevo de volta ao original
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
@@ -145,6 +146,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
+- `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
 - `native/src/sim/nature/ecology.cpp` · `native/src/sim/nature/ecology.h` — o que cresce onde por bioma (fitofisionomias), calculado por chunk onde é lido
 - `native/src/sim/nature/ground_paint.cpp` · `native/src/sim/nature/ground_paint.h` — chão pintado em ladrilhos: superfície, bioma, coberturas e ravinas
 - `native/src/sim/nature/nature_state.cpp` · `native/src/sim/nature/nature_state.h` — estado da paisagem no CityState e neblina num ponto
@@ -238,7 +240,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
-- `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores): malhas de cover.json; colocação pela tinta e pela ecologia e MultiMesh por chunk
+- `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores) e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — superfície dos lagos e rios acima do mar, por chunk
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
 - `native/src/render/trees/leaf_atlas.cpp` · `native/src/render/trees/leaf_atlas.h` · `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` · `native/src/render/trees/tree_parts.cpp` · `native/src/render/trees/tree_parts.h` · `native/src/render/trees/tree_pictures.cpp` · `native/src/render/trees/tree_pictures.h` — folhas e espécies (corpo facetado, cartões, frondes); retratos de cada espécie por elevação para o nível distante
@@ -257,6 +259,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
 - `project/game/tools/brush_defaults.gd` · `project/game/tools/brush_tool.gd` — valores de um pincel da Paisagem (land_panels.json); traço com dabs espaçados
+- `project/game/tools/element_tool.gd` — pincel de elementos
 - `project/game/tools/cloud_tool.gd` · `project/game/tools/fog_tool.gd` · `project/game/tools/paint_tool.gd` · `project/game/tools/tree_tool.gd` · `project/game/tools/weather_tool.gd` — Céu (nuvens, neblina, clima), Solo e Natureza
 - `project/game/tools/demolish_tool.gd` — demolir
 - `project/game/tools/inspect_tool.gd` — inspecionar
@@ -272,6 +275,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/sky_view.gd` · `project/render/thunder.gd` · `project/render/weather_view.gd` — céu desenhado: nuvens levadas pelo vento, globais do vento e tempo fechado; trovão; chuva e raios
+- `project/render/element_effects.gd` — emissores dos efeitos do pincel de elementos
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc`
@@ -307,7 +311,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
-- `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
+- `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**

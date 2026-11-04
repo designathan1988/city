@@ -53,7 +53,7 @@ bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	plant_material_ = ctx.material("cover_plant", errors);
 	rock_material_ = ctx.material("cover_rock", errors);
 	Dictionary t = ctx.table("cover", errors);
-	if (!errors.is_empty() || !kit_.build(t, errors)) return false;
+	if (!errors.is_empty() || !kit_.build(t, errors) || !models_.load(t.get("elements", Dictionary()), errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;
@@ -107,17 +107,31 @@ void CoverRenderer::place(const CityState &s, int64_t key, Built &out) const {
 	}
 }
 
+void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) const {
+	const std::vector<ElementItem> *items = s.nature.elements.in_chunk(key);
+	if (!items) return;
+	for (const ElementItem &e : *items) {
+		if (e.kind >= models_.kinds()) continue; // an effect: render/element_effects.gd
+		int n = models_.variants(e.kind), at = models_.first(e.kind) + std::min(n - 1, int(e.seed * float(n)));
+		const ElementModel &m = models_.all()[size_t(at)];
+		float k = e.size * m.fit, c = std::cos(e.yaw) * k, sn = std::sin(e.yaw) * k;
+		Vector3 foot(e.x, s.terrain.height_at(e.x, e.z) - m.foot * k, e.z);
+		mm_push(out.bufs[size_t(draws_ + at)], Vector3(c, 0, -sn), Vector3(0, k, 0), Vector3(sn, 0, c), foot, Color(1, 1, 1, 1), 1, 1, 1, 0);
+	}
+}
+
 CoverRenderer::Built CoverRenderer::build(const CityState &s, int64_t key) const {
 	Built out;
 	out.key = key;
-	out.bufs.resize(size_t(draws_));
+	out.bufs.resize(size_t(draws_) + models_.all().size());
 	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) place(s, key, out);
+	place_elements(s, key, out);
 	return out;
 }
 
 void CoverRenderer::commit_one(Built &b) {
 	std::vector<MultiMeshDraw> &ch = chunks_[b.key];
-	ch.resize(size_t(draws_));
+	ch.resize(size_t(draws_) + models_.all().size());
 	AABB box(Vector3(key_x(b.key) * CHUNK, COVER_MIN_Y, key_y(b.key) * CHUNK), Vector3(CHUNK, COVER_SPAN_Y, CHUNK));
 	float end = kit_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int p = 0; p < COVER_PIECES; p++) {
@@ -127,6 +141,11 @@ void CoverRenderer::commit_one(Built &b) {
 			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts);
 			ch[at].range(0, end);
 		}
+	}
+	for (size_t i = 0; i < models_.all().size(); i++) {
+		size_t at = size_t(draws_) + i;
+		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false);
+		ch[at].range(0, end);
 	}
 }
 

@@ -108,6 +108,39 @@ Dictionary CityCore::tree_brush(const Vector3 &p, float radius, int mode, int ki
 	});
 }
 
+Dictionary CityCore::element_brush(const Vector3 &p, float radius, int kind, const Dictionary &brush, bool erase) {
+	return run_edit(*state_, "cmd.place.element", [&](CityState &s) {
+		ElementBrush b;
+		b.density = float(double(brush.get("density", 0.0)));
+		b.size = float(double(brush.get("size", 0.0)));
+		b.variation = float(double(brush.get("variation", 0.0)));
+		b.spacing = float(double(brush.get("spacing", 0.0)));
+		b.strength = float(double(brush.get("strength", 0.0)));
+		b.intensity = float(double(brush.get("intensity", 0.0)));
+		return element_dab(s, p.x, p.z, radius, kind, b, erase);
+	});
+}
+
+Dictionary CityCore::clear_elements() {
+	return run_edit(*state_, "cmd.elements.clear", [](CityState &s) { return city::clear_elements(s); });
+}
+
+// The effects standing within `reach`, for render/element_effects.gd: kind, place, spread and how much each gives off.
+Array CityCore::effects_near(const Vector3 &p, float reach, int first_effect) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Array out;
+	state_->nature.elements.for_near(p.x, p.z, reach, [&](const ElementItem &e) {
+		if (e.kind < first_effect) return;
+		Dictionary d;
+		d["kind"] = e.kind - first_effect;
+		d["position"] = Vector3(e.x, state_->terrain.height_at(e.x, e.z), e.z);
+		d["size"] = e.size;
+		d["intensity"] = e.intensity;
+		out.push_back(d);
+	});
+	return out;
+}
+
 Dictionary CityCore::clear_trees() {
 	return run_edit(*state_, "cmd.trees.clear", [](CityState &s) { return city::clear_trees(s); });
 }
@@ -137,6 +170,7 @@ Dictionary CityCore::landscape() const {
 	d["planted"] = n.planted.live_trees();
 	d["clearings"] = n.planted.live_clearings();
 	d["paint_tiles"] = int64_t(n.ground.all().size());
+	d["elements"] = int64_t(n.elements.count());
 	return d;
 }
 

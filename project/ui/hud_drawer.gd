@@ -173,7 +173,36 @@ func land_switch(tool_name: String) -> void:
 	_land_rebuild()
 
 
+## What wipes the whole map asks first, and only when there is something to wipe (land_panels.json "confirm").
 func land_action(action: String) -> void:
+	var ask: Dictionary = DataTables.ui("land_panels").confirm.get(action, {})
+	if ask.is_empty():
+		_land_do(action)
+	elif _land_holds(ask):
+		var dialog := ConfirmationDialog.new()
+		dialog.dialog_text = tr(ask.key)
+		dialog.confirmed.connect(_land_do.bind(action))
+		dialog.visibility_changed.connect(func() -> void:
+			if not dialog.visible:
+				dialog.queue_free())
+		add_child(dialog)
+		dialog.popup_centered()
+
+
+## Whether the landscape holds what the action would wipe: any of the counts named, or always when none is.
+func _land_holds(ask: Dictionary) -> bool:
+	var counts: Array = ask.get("counts", [])
+	if counts.is_empty():
+		return true
+	var land: Dictionary = CityStore.query(&"landscape")
+	for key: String in counts:
+		var held: Variant = land[key]
+		if (held.size() if held is Array else int(held)) > 0:
+			return true
+	return false
+
+
+func _land_do(action: String) -> void:
 	if action == "scatter_clouds":
 		var s := BrushDefaults.of("CLOUD", tools.remembered.get(ToolController.Tool.CLOUD, {}) if tools else {})
 		var like := {"height": s.height, "size": s.size, "density": s.density / PERCENT}

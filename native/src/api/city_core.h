@@ -58,6 +58,9 @@ public:
 	godot::Dictionary clear_gullies();
 	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
 	godot::Dictionary clear_trees();
+	godot::Dictionary element_brush(const godot::Vector3 &p, float radius, int kind, const godot::Dictionary &brush, bool erase);
+	godot::Dictionary clear_elements();
+	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary clear_relief();
 	godot::Dictionary landscape() const;

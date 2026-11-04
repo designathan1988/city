@@ -96,6 +96,11 @@ void load_paint(const Dictionary &t, PaintDef &p, PackedStringArray &e) {
 		if (found < 0) e.push_back("nature.paint.landform_rock: tipo desconhecido");
 		p.landform_rock.push_back(found);
 	}
+	std::string sand = text(t.get("river_sand", ""));
+	for (const PaintKindDef &k : p.kinds)
+		if (k.id == sand) p.river_sand = int(&k - p.kinds.data());
+	if (p.river_sand < 0) e.push_back("nature.paint.river_sand: tipo desconhecido");
+	p.river_sand_reach = r.num(t, "river_sand_reach");
 }
 
 void load_trees(const Dictionary &t, TreeBrushDef &b, PackedStringArray &e) {
@@ -154,6 +159,12 @@ bool load_nature(const Dictionary &t, NatureDef &n, PackedStringArray &errors) {
 	load_paint(r.dict(t, "paint"), n.paint, errors);
 	load_trees(r.dict(t, "trees"), n.trees, errors);
 	load_ecology(r.dict(t, "ecology"), n.paint, n.ecology, errors);
+	Dictionary el = r.dict(t, "elements");
+	n.elements.max_items = r.integer(el, "max_items");
+	n.elements.max_per_dab = r.integer(el, "max_per_dab");
+	n.elements.kinds = int(r.arr(el, "kinds").size());
+	n.elements.area_m2 = r.num(el, "area_m2");
+	n.elements.least_size_m = r.num(el, "least_size_m");
 	return errors.is_empty();
 }
 

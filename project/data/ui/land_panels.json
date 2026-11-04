@@ -1,4 +1,12 @@
 {
+ "confirm": {
+  "clear_relief": { "key": "confirm.clearTerrain" },
+  "clear_gullies": { "key": "confirm.clearGullies" },
+  "clear_fog": { "key": "confirm.clearFog", "counts": ["fog_dabs"] },
+  "clear_trees": { "key": "confirm.clearTrees", "counts": ["planted", "clearings"] },
+  "clear_elements": { "key": "confirm.clearElements", "counts": ["elements"] },
+  "clear_clouds": { "key": "confirm.clearClouds", "counts": ["clouds"] }
+ },
  "_doc": "The panels of the Landscape drawer (ui/land_strips.gd, game/tools/*), by tool: groups of cards that pick a parameter (key, default, cards), sliders of the brush (key) or of the map weather (weather, scale), whole-map actions (a CityStore command), when: only under that mode. Ranges are the tool's reach, compared with the Landscape drawer of the Roadcraft 4.0 as the player sees it.",
  "TERRAIN": {
   "groups": [
@@ -293,6 +301,10 @@
   "biomes": true
  },
  "TREES": {
+  "switch": [
+   { "label_key": "terrain.trees", "tool": "TREES", "icon": "ls_tree" },
+   { "label_key": "terrain.elements", "tool": "ELEMENTS", "icon": "el_stones" }
+  ],
   "groups": [
    {
     "key": "kind",
