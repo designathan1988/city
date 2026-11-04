@@ -37,6 +37,14 @@ PartSpec part_spec(const Dictionary &d) {
 	return s;
 }
 
+// A point of the map in the frame of a building's lot.
+V2 lot_point(const CityState &s, int id, const Vector3 &at) {
+	if (id < 0 || id >= int(s.buildings.items.size())) return V2(0, 0);
+	b40::LotFrame f = b40::lot_frame(s.buildings.items[id]);
+	V2 rel = V2(at.x, at.z) - f.o;
+	return V2(rel.x * f.e0.x + rel.y * f.e0.y, rel.x * f.e1.x + rel.y * f.e1.y);
+}
+
 template <typename F>
 Dictionary edit(CityState &state, int id, F &&op) {
 	return run_edit(state, EDIT_LABEL, [&](CityState &s) {
@@ -73,6 +81,7 @@ Dictionary CityCore::body_info(int id) const {
 		Array bays;
 		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
 		e["bays"] = bays;
+		e["gear"] = int(v.gear.size());
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
@@ -201,6 +210,20 @@ Dictionary CityCore::body_roof_shape(int id, int vol, double pitch, int ridge, i
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_roof_shape(b, t, vol, float(pitch), ridge, fall); });
 }
 
+Dictionary CityCore::body_add_gear(int id, int vol, const Vector3 &at, const Dictionary &spec) {
+	PartSpec s = part_spec(spec);
+	V2 local = lot_point(*state_, id, at);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_gear(b, t, vol, s.kind, local.x, local.y, s.w, s.d, s.h); });
+}
+
+Dictionary CityCore::body_remove_gear(int id, int vol, int gear) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_gear(b, vol, gear); });
+}
+
+Dictionary CityCore::body_turn_gear(int id, int vol, int gear) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_turn_gear(b, t, vol, gear); });
+}
+
 Dictionary CityCore::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part(b, t, vol, storey, side, bay, s); });
@@ -208,14 +231,8 @@ Dictionary CityCore::body_add_part(int id, int vol, int storey, int side, int ba
 
 Dictionary CityCore::body_add_part_at(int id, const Vector3 &at, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
-	float x = 0, y = 0;
-	if (id >= 0 && id < int(state_->buildings.items.size())) {
-		b40::LotFrame f = b40::lot_frame(state_->buildings.items[id]);
-		V2 rel = V2(at.x, at.z) - f.o;
-		x = rel.x * f.e0.x + rel.y * f.e0.y;
-		y = rel.x * f.e1.x + rel.y * f.e1.y;
-	}
-	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, x, y, b40::FACE_STREET, s); });
+	V2 local = lot_point(*state_, id, at);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s); });
 }
 
 Dictionary CityCore::body_remove_part(int id, int part) {

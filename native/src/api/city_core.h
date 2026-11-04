@@ -51,6 +51,9 @@ public:
 	godot::Dictionary body_set_roof(int id, int vol, int roof);
 	godot::Dictionary body_roof_shape(int id, int vol, double pitch, int ridge, int fall);
 	godot::Dictionary body_paint(int id, int scope, int vol, int side, int storey, int finish, const godot::String &colour);
+	godot::Dictionary body_add_gear(int id, int vol, const godot::Vector3 &at, const godot::Dictionary &spec);
+	godot::Dictionary body_remove_gear(int id, int vol, int gear);
+	godot::Dictionary body_turn_gear(int id, int vol, int gear);
 	godot::Dictionary body_add_part(int id, int vol, int storey, int side, int bay, const godot::Dictionary &spec);
 	godot::Dictionary body_add_part_at(int id, const godot::Vector3 &at, const godot::Dictionary &spec);
 	godot::Dictionary body_remove_part(int id, int part);

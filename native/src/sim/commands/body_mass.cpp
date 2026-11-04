@@ -202,6 +202,9 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 	up.d = v.d - 2 * iy;
 	std::fill(up.fill.begin(), up.fill.end(), next_fill(v));
 	v.roof = ROOF_TERRACE;
+	// What stood where the new block stands goes: nothing is left inside it.
+	const Ring plan = ring_of(up);
+	v.gear.erase(std::remove_if(v.gear.begin(), v.gear.end(), [&](const RoofPart &p) { return contains_point(plan, { p.x, p.y }); }), v.gear.end());
 	b.volumes.push_back(std::move(up));
 	return "";
 }
@@ -234,6 +237,7 @@ std::string op_split_at_floor(Body &b, const Tuning &t, int vol, int level) {
 	}
 	low.reliefs = std::move(below);
 	low.roof = ROOF_TERRACE;
+	low.gear.clear(); // the roof it stood on is now the upper block's
 	low.pitch = -1;
 	low.ridge = low.fall = -1;
 	b.volumes.push_back(std::move(up));

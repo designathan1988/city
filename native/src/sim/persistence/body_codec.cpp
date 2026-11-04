@@ -112,6 +112,11 @@ void put_volume(ByteWriter &w, const Volume &v) {
 		for (int x : { r.side, r.bay0, r.bay1, r.storey0, r.storey1 }) w.put<int32_t>(x);
 		w.put<float>(r.depth);
 	}
+	w.put<uint32_t>(uint32_t(v.gear.size()));
+	for (const RoofPart &p : v.gear) {
+		w.put<uint8_t>(p.kind);
+		for (float x : { p.x, p.y, p.w, p.d, p.h, p.turn }) w.put<float>(x);
+	}
 }
 
 bool get_volume(ByteReader &r, Volume &v) {
@@ -137,6 +142,13 @@ bool get_volume(ByteReader &r, Volume &v) {
 	for (Relief &e : v.reliefs) {
 		for (int *x : { &e.side, &e.bay0, &e.bay1, &e.storey0, &e.storey1 }) *x = r.get<int32_t>();
 		e.depth = r.get<float>();
+	}
+	n = r.get<uint32_t>();
+	if (!r.ok || n > MAX_ITEMS) return false;
+	v.gear.resize(n);
+	for (RoofPart &p : v.gear) {
+		p.kind = r.get<uint8_t>();
+		for (float *x : { &p.x, &p.y, &p.w, &p.d, &p.h, &p.turn }) *x = r.get<float>();
 	}
 	return r.ok;
 }

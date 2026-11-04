@@ -6,39 +6,17 @@
     {
      "title_key": "builder.section.floors",
      "tools": [
-      {
-       "id": "storey",
-       "do": "storeys",
-       "value": 1
-      },
-      {
-       "id": "storeyDown",
-       "do": "storeys",
-       "value": -1
-      },
-      {
-       "id": "split",
-       "do": "split"
-      },
-      {
-       "id": "setback",
-       "do": "setback"
-      }
+      {"id": "storey", "do": "storeys", "value": 1},
+      {"id": "storeyDown", "do": "storeys", "value": -1},
+      {"id": "split", "do": "split"},
+      {"id": "setback", "do": "setback"}
      ]
     },
     {
      "title_key": "builder.section.volumes",
      "tools": [
-      {
-       "id": "wing",
-       "do": "wing"
-      },
-      {
-       "id": "removeBlock",
-       "do": "remove",
-       "icon": "cut",
-       "label_key": "builder.tool.cut"
-      }
+      {"id": "wing", "do": "wing"},
+      {"id": "removeBlock", "do": "remove", "icon": "cut", "label_key": "builder.tool.cut"}
      ]
     }
    ]
@@ -48,201 +26,55 @@
     {
      "title_key": "builder.section.scope",
      "tools": [
-      {
-       "id": "bay",
-       "do": "scope",
-       "value": 0,
-       "icon": "window",
-       "label_key": "creator.dock.scope.bay"
-      },
-      {
-       "id": "row",
-       "do": "scope",
-       "value": 1,
-       "icon": "window",
-       "label_key": "creator.dock.scope.row"
-      },
-      {
-       "id": "column",
-       "do": "scope",
-       "value": 2,
-       "icon": "window",
-       "label_key": "creator.dock.scope.column"
-      },
-      {
-       "id": "storey",
-       "do": "scope",
-       "value": 3,
-       "icon": "window",
-       "label_key": "creator.dock.scope.storey"
-      },
-      {
-       "id": "side",
-       "do": "scope",
-       "value": 4,
-       "icon": "window",
-       "label_key": "creator.dock.scope.side"
-      },
-      {
-       "id": "volume",
-       "do": "scope",
-       "value": 5,
-       "icon": "window",
-       "label_key": "creator.dock.scope.volume"
-      }
+      {"id": "bay", "do": "scope", "value": 0, "icon": "window", "label_key": "creator.dock.scope.bay"},
+      {"id": "row", "do": "scope", "value": 1, "icon": "window", "label_key": "creator.dock.scope.row"},
+      {"id": "column", "do": "scope", "value": 2, "icon": "window", "label_key": "creator.dock.scope.column"},
+      {"id": "storey", "do": "scope", "value": 3, "icon": "window", "label_key": "creator.dock.scope.storey"},
+      {"id": "side", "do": "scope", "value": 4, "icon": "window", "label_key": "creator.dock.scope.side"},
+      {"id": "volume", "do": "scope", "value": 5, "icon": "window", "label_key": "creator.dock.scope.volume"}
      ]
     },
     {
      "title_key": "builder.section.pattern",
      "tools": [
-      {
-       "id": "residential",
-       "do": "pattern",
-       "value": 0,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.residential"
-      },
-      {
-       "id": "storefront",
-       "do": "pattern",
-       "value": 1,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.storefront"
-      },
-      {
-       "id": "office",
-       "do": "pattern",
-       "value": 2,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.office"
-      },
-      {
-       "id": "industrial",
-       "do": "pattern",
-       "value": 3,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.industrial"
-      },
-      {
-       "id": "arcade",
-       "do": "pattern",
-       "value": 4,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.arcade"
-      },
-      {
-       "id": "gallery",
-       "do": "pattern",
-       "value": 5,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.gallery"
-      },
-      {
-       "id": "artDeco",
-       "do": "pattern",
-       "value": 6,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.artDeco"
-      },
-      {
-       "id": "artDecoCrown",
-       "do": "pattern",
-       "value": 7,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.artDecoCrown"
-      },
-      {
-       "id": "observation",
-       "do": "pattern",
-       "value": 8,
-       "icon": "wideWindow",
-       "label_key": "creator.pattern.observation"
-      }
+      {"id": "residential", "do": "pattern", "value": 0, "icon": "wideWindow", "label_key": "creator.pattern.residential"},
+      {"id": "storefront", "do": "pattern", "value": 1, "icon": "wideWindow", "label_key": "creator.pattern.storefront"},
+      {"id": "office", "do": "pattern", "value": 2, "icon": "wideWindow", "label_key": "creator.pattern.office"},
+      {"id": "industrial", "do": "pattern", "value": 3, "icon": "wideWindow", "label_key": "creator.pattern.industrial"},
+      {"id": "arcade", "do": "pattern", "value": 4, "icon": "wideWindow", "label_key": "creator.pattern.arcade"},
+      {"id": "gallery", "do": "pattern", "value": 5, "icon": "wideWindow", "label_key": "creator.pattern.gallery"},
+      {"id": "artDeco", "do": "pattern", "value": 6, "icon": "wideWindow", "label_key": "creator.pattern.artDeco"},
+      {"id": "artDecoCrown", "do": "pattern", "value": 7, "icon": "wideWindow", "label_key": "creator.pattern.artDecoCrown"},
+      {"id": "observation", "do": "pattern", "value": 8, "icon": "wideWindow", "label_key": "creator.pattern.observation"}
      ]
     },
     {
      "title_key": "builder.section.windows",
      "tools": [
-      {
-       "id": "window",
-       "do": "arm",
-       "value": 1
-      },
-      {
-       "id": "sashWindow",
-       "do": "arm",
-       "value": 2
-      },
-      {
-       "id": "frenchWindow",
-       "do": "arm",
-       "value": 3
-      },
-      {
-       "id": "bayWindow",
-       "do": "arm",
-       "value": 4
-      },
-      {
-       "id": "ribbon",
-       "do": "arm",
-       "value": 5
-      },
-      {
-       "id": "wideWindow",
-       "do": "arm",
-       "value": 6
-      }
+      {"id": "window", "do": "arm", "value": 1},
+      {"id": "sashWindow", "do": "arm", "value": 2},
+      {"id": "frenchWindow", "do": "arm", "value": 3},
+      {"id": "bayWindow", "do": "arm", "value": 4},
+      {"id": "ribbon", "do": "arm", "value": 5},
+      {"id": "wideWindow", "do": "arm", "value": 6}
      ]
     },
     {
      "title_key": "builder.section.doors",
      "tools": [
-      {
-       "id": "door",
-       "do": "arm",
-       "value": 8
-      },
-      {
-       "id": "doubleDoor",
-       "do": "arm",
-       "value": 9
-      },
-      {
-       "id": "garageDoor",
-       "do": "arm",
-       "value": 10
-      },
-      {
-       "id": "loadingDoor",
-       "do": "arm",
-       "value": 12
-      }
+      {"id": "door", "do": "arm", "value": 8},
+      {"id": "doubleDoor", "do": "arm", "value": 9},
+      {"id": "garageDoor", "do": "arm", "value": 10},
+      {"id": "loadingDoor", "do": "arm", "value": 12}
      ]
     },
     {
      "title_key": "builder.section.bays",
      "tools": [
-      {
-       "id": "balcony",
-       "do": "arm",
-       "value": 7
-      },
-      {
-       "id": "shopfront",
-       "do": "arm",
-       "value": 11
-      },
-      {
-       "id": "pillarBay",
-       "do": "arm",
-       "value": 13
-      },
-      {
-       "id": "wallBay",
-       "do": "arm",
-       "value": 0
-      }
+      {"id": "balcony", "do": "arm", "value": 7},
+      {"id": "shopfront", "do": "arm", "value": 11},
+      {"id": "pillarBay", "do": "arm", "value": 13},
+      {"id": "wallBay", "do": "arm", "value": 0}
      ]
     }
    ]
@@ -252,36 +84,24 @@
     {
      "title_key": "builder.category.roof",
      "tools": [
-      {
-       "id": "roofFlat",
-       "do": "roof",
-       "value": 0
-      },
-      {
-       "id": "roofTerrace",
-       "do": "roof",
-       "value": 1
-      },
-      {
-       "id": "roofGable",
-       "do": "roof",
-       "value": 2
-      },
-      {
-       "id": "roofHip",
-       "do": "roof",
-       "value": 3
-      },
-      {
-       "id": "roofShed",
-       "do": "roof",
-       "value": 4
-      },
-      {
-       "id": "roofSawtooth",
-       "do": "roof",
-       "value": 5
-      }
+      {"id": "roofFlat", "do": "roof", "value": 0},
+      {"id": "roofTerrace", "do": "roof", "value": 1},
+      {"id": "roofGable", "do": "roof", "value": 2},
+      {"id": "roofHip", "do": "roof", "value": 3},
+      {"id": "roofShed", "do": "roof", "value": 4},
+      {"id": "roofSawtooth", "do": "roof", "value": 5}
+     ]
+    },
+    {
+     "title_key": "builder.section.roofGear",
+     "tools": [
+      {"id": "solar", "do": "gear", "value": 0, "size": [3, 2, 0.3]},
+      {"id": "skylight", "do": "gear", "value": 1, "size": [2, 1.5, 0.3]},
+      {"id": "vent", "do": "gear", "value": 2, "size": [1, 1, 1]},
+      {"id": "chimney", "do": "gear", "value": 3, "size": [1, 1, 2.25]},
+      {"id": "waterTank", "do": "gear", "value": 4, "size": [2.2, 2.2, 1.6]},
+      {"id": "spire", "do": "gear", "value": 5, "size": [1.5, 1.5, 11.7]},
+      {"id": "lantern", "do": "gear", "value": 6, "size": [4, 4, 19.4]}
      ]
     }
    ]
@@ -291,143 +111,28 @@
     {
      "title_key": "builder.section.scope",
      "tools": [
-      {
-       "id": "wall",
-       "do": "paint_scope",
-       "value": 3,
-       "icon": "paint",
-       "label_key": "builder.tool.wall"
-      },
-      {
-       "id": "roof",
-       "do": "paint_scope",
-       "value": 4,
-       "icon": "roofFlat",
-       "label_key": "builder.category.roof"
-      },
-      {
-       "id": "side",
-       "do": "paint_scope",
-       "value": 5,
-       "icon": "paint",
-       "label_key": "creator.dock.scope.side"
-      },
-      {
-       "id": "storey",
-       "do": "paint_scope",
-       "value": 6,
-       "icon": "paint",
-       "label_key": "creator.dock.scope.storey"
-      }
+      {"id": "wall", "do": "paint_scope", "value": 3, "icon": "paint", "label_key": "builder.tool.wall"},
+      {"id": "roof", "do": "paint_scope", "value": 4, "icon": "roofFlat", "label_key": "builder.category.roof"},
+      {"id": "side", "do": "paint_scope", "value": 5, "icon": "paint", "label_key": "creator.dock.scope.side"},
+      {"id": "storey", "do": "paint_scope", "value": 6, "icon": "paint", "label_key": "creator.dock.scope.storey"}
      ]
     },
     {
      "title_key": "builder.field.material",
      "tools": [
-      {
-       "id": "plaster",
-       "do": "finish",
-       "value": 0,
-       "icon": "paint",
-       "label_key": "building.finish.plaster",
-       "rgb": "#e6e0d4"
-      },
-      {
-       "id": "stucco",
-       "do": "finish",
-       "value": 1,
-       "icon": "paint",
-       "label_key": "building.finish.stucco",
-       "rgb": "#dcd4c4"
-      },
-      {
-       "id": "ceramic",
-       "do": "finish",
-       "value": 2,
-       "icon": "paint",
-       "label_key": "building.finish.ceramic",
-       "rgb": "#cfd6da"
-      },
-      {
-       "id": "brick",
-       "do": "finish",
-       "value": 3,
-       "icon": "paint",
-       "label_key": "building.finish.brick",
-       "rgb": "#a4563f"
-      },
-      {
-       "id": "stone",
-       "do": "finish",
-       "value": 4,
-       "icon": "paint",
-       "label_key": "building.finish.stone",
-       "rgb": "#b7b2a6"
-      },
-      {
-       "id": "concrete",
-       "do": "finish",
-       "value": 5,
-       "icon": "paint",
-       "label_key": "building.finish.concrete",
-       "rgb": "#b4b4b0"
-      },
-      {
-       "id": "wood",
-       "do": "finish",
-       "value": 6,
-       "icon": "paint",
-       "label_key": "building.finish.wood",
-       "rgb": "#9c6b43"
-      },
-      {
-       "id": "metal",
-       "do": "finish",
-       "value": 7,
-       "icon": "paint",
-       "label_key": "building.finish.metal",
-       "rgb": "#9aa3a8"
-      },
-      {
-       "id": "glass",
-       "do": "finish",
-       "value": 8,
-       "icon": "paint",
-       "label_key": "building.finish.glass",
-       "rgb": "#9db6c2"
-      },
-      {
-       "id": "tile",
-       "do": "finish",
-       "value": 9,
-       "icon": "paint",
-       "label_key": "building.finish.tile",
-       "rgb": "#bd6a52"
-      },
-      {
-       "id": "slate",
-       "do": "finish",
-       "value": 10,
-       "icon": "paint",
-       "label_key": "building.finish.slate",
-       "rgb": "#585b5f"
-      },
-      {
-       "id": "panel",
-       "do": "finish",
-       "value": 11,
-       "icon": "paint",
-       "label_key": "building.finish.panel",
-       "rgb": "#8f9ba5"
-      },
-      {
-       "id": "roofing",
-       "do": "finish",
-       "value": 12,
-       "icon": "paint",
-       "label_key": "building.finish.roofing",
-       "rgb": "#7b4a37"
-      }
+      {"id": "plaster", "do": "finish", "value": 0, "icon": "paint", "label_key": "building.finish.plaster", "rgb": "#e6e0d4"},
+      {"id": "stucco", "do": "finish", "value": 1, "icon": "paint", "label_key": "building.finish.stucco", "rgb": "#dcd4c4"},
+      {"id": "ceramic", "do": "finish", "value": 2, "icon": "paint", "label_key": "building.finish.ceramic", "rgb": "#cfd6da"},
+      {"id": "brick", "do": "finish", "value": 3, "icon": "paint", "label_key": "building.finish.brick", "rgb": "#a4563f"},
+      {"id": "stone", "do": "finish", "value": 4, "icon": "paint", "label_key": "building.finish.stone", "rgb": "#b7b2a6"},
+      {"id": "concrete", "do": "finish", "value": 5, "icon": "paint", "label_key": "building.finish.concrete", "rgb": "#b4b4b0"},
+      {"id": "wood", "do": "finish", "value": 6, "icon": "paint", "label_key": "building.finish.wood", "rgb": "#9c6b43"},
+      {"id": "metal", "do": "finish", "value": 7, "icon": "paint", "label_key": "building.finish.metal", "rgb": "#9aa3a8"},
+      {"id": "glass", "do": "finish", "value": 8, "icon": "paint", "label_key": "building.finish.glass", "rgb": "#9db6c2"},
+      {"id": "tile", "do": "finish", "value": 9, "icon": "paint", "label_key": "building.finish.tile", "rgb": "#bd6a52"},
+      {"id": "slate", "do": "finish", "value": 10, "icon": "paint", "label_key": "building.finish.slate", "rgb": "#585b5f"},
+      {"id": "panel", "do": "finish", "value": 11, "icon": "paint", "label_key": "building.finish.panel", "rgb": "#8f9ba5"},
+      {"id": "roofing", "do": "finish", "value": 12, "icon": "paint", "label_key": "building.finish.roofing", "rgb": "#7b4a37"}
      ]
     }
    ]
@@ -437,247 +142,40 @@
     {
      "title_key": "builder.section.structure",
      "tools": [
-      {
-       "id": "stair",
-       "do": "part",
-       "value": 32,
-       "fit_kind": 7,
-       "size": [
-        1.2,
-        3,
-        1
-       ]
-      },
-      {
-       "id": "ramp",
-       "do": "part",
-       "value": 33,
-       "fit_kind": 7,
-       "size": [
-        1.5,
-        6,
-        0.5
-       ]
-      },
-      {
-       "id": "pillar",
-       "do": "part",
-       "value": 2,
-       "fit_kind": 3,
-       "size": [
-        0.4,
-        0.4,
-        3
-       ],
-       "standoff_m": 0.6
-      },
-      {
-       "id": "canopy",
-       "do": "part",
-       "value": 3,
-       "fit_kind": 2,
-       "size": [
-        2.4,
-        1.2,
-        0.15
-       ],
-       "rise_m": 2.5,
-       "drop_m": 0.6
-      },
-      {
-       "id": "wall",
-       "do": "part",
-       "value": 5,
-       "fit_kind": 1,
-       "size": [
-        4,
-        0.25,
-        1.8
-       ],
-       "standoff_m": 3
-      },
-      {
-       "id": "slab",
-       "do": "part",
-       "value": 1,
-       "fit_kind": 4,
-       "size": [
-        4,
-        4,
-        0.25
-       ]
-      }
+      {"id": "stair", "do": "part", "value": 32, "fit_kind": 7, "size": [1.2, 3, 1]},
+      {"id": "ramp", "do": "part", "value": 33, "fit_kind": 7, "size": [1.5, 6, 0.5]},
+      {"id": "pillar", "do": "part", "value": 2, "fit_kind": 3, "size": [0.4, 0.4, 3], "standoff_m": 0.6},
+      {"id": "canopy", "do": "part", "value": 3, "fit_kind": 2, "size": [2.4, 1.2, 0.15], "rise_m": 2.5, "drop_m": 0.6},
+      {"id": "wall", "do": "part", "value": 5, "fit_kind": 1, "size": [4, 0.25, 1.8], "standoff_m": 3},
+      {"id": "slab", "do": "part", "value": 1, "fit_kind": 4, "size": [4, 4, 0.25]}
      ]
     },
     {
      "title_key": "builder.section.runs",
      "tools": [
-      {
-       "id": "fence",
-       "do": "part",
-       "value": 6,
-       "fit_kind": 1,
-       "size": [
-        2,
-        0.12,
-        1.1
-       ],
-       "standoff_m": 3
-      },
-      {
-       "id": "railing",
-       "do": "part",
-       "value": 7,
-       "fit_kind": 1,
-       "size": [
-        2,
-        0.12,
-        1.05
-       ],
-       "standoff_m": 3
-      },
-      {
-       "id": "pavement",
-       "do": "part",
-       "value": 0,
-       "fit_kind": 1,
-       "size": [
-        4,
-        3,
-        0.12
-       ],
-       "standoff_m": 1.5
-      }
+      {"id": "fence", "do": "part", "value": 6, "fit_kind": 1, "size": [2, 0.12, 1.1], "standoff_m": 3},
+      {"id": "railing", "do": "part", "value": 7, "fit_kind": 1, "size": [2, 0.12, 1.05], "standoff_m": 3},
+      {"id": "pavement", "do": "part", "value": 0, "fit_kind": 1, "size": [4, 3, 0.12], "standoff_m": 1.5}
      ]
     },
     {
      "title_key": "builder.section.greenery",
      "tools": [
-      {
-       "id": "shrub",
-       "do": "part",
-       "value": 22,
-       "fit_kind": 0,
-       "size": [
-        1.4,
-        1.4,
-        1.2
-       ],
-       "standoff_m": 1.2
-      },
-      {
-       "id": "hedge",
-       "do": "part",
-       "value": 8,
-       "fit_kind": 1,
-       "size": [
-        3,
-        0.7,
-        1.2
-       ],
-       "standoff_m": 3
-      },
-      {
-       "id": "flowers",
-       "do": "part",
-       "value": 23,
-       "fit_kind": 0,
-       "size": [
-        1.4,
-        1.4,
-        0.4
-       ],
-       "standoff_m": 1.2
-      },
-      {
-       "id": "rocks",
-       "do": "part",
-       "value": 34,
-       "fit_kind": 0,
-       "size": [
-        1.6,
-        1.6,
-        0.7
-       ],
-       "standoff_m": 2
-      }
+      {"id": "shrub", "do": "part", "value": 22, "fit_kind": 0, "size": [1.4, 1.4, 1.2], "standoff_m": 1.2},
+      {"id": "hedge", "do": "part", "value": 8, "fit_kind": 1, "size": [3, 0.7, 1.2], "standoff_m": 3},
+      {"id": "flowers", "do": "part", "value": 23, "fit_kind": 0, "size": [1.4, 1.4, 0.4], "standoff_m": 1.2},
+      {"id": "rocks", "do": "part", "value": 34, "fit_kind": 0, "size": [1.6, 1.6, 0.7], "standoff_m": 2}
      ]
     },
     {
      "title_key": "builder.section.furniture",
      "tools": [
-      {
-       "id": "bench",
-       "do": "part",
-       "value": 12,
-       "fit_kind": 0,
-       "size": [
-        1.6,
-        0.5,
-        0.45
-       ],
-       "standoff_m": 1.4
-      },
-      {
-       "id": "planter",
-       "do": "part",
-       "value": 11,
-       "fit_kind": 0,
-       "size": [
-        1,
-        1,
-        0.5
-       ],
-       "standoff_m": 1.1
-      },
-      {
-       "id": "parking",
-       "do": "part",
-       "value": 35,
-       "fit_kind": 1,
-       "size": [
-        6,
-        5,
-        0.12
-       ],
-       "standoff_m": 2.5
-      },
-      {
-       "id": "ac",
-       "do": "part",
-       "value": 16,
-       "fit_kind": 6,
-       "size": [
-        0.8,
-        0.35,
-        0.6
-       ],
-       "rise_m": 1.1
-      },
-      {
-       "id": "awning",
-       "do": "part",
-       "value": 4,
-       "fit_kind": 2,
-       "size": [
-        3,
-        1.2,
-        0.12
-       ],
-       "rise_m": 2.4,
-       "drop_m": 0.5
-      },
-      {
-       "id": "clock",
-       "do": "part",
-       "value": 36,
-       "fit_kind": 5,
-       "size": [
-        3,
-        0.25,
-        3
-       ]
-      }
+      {"id": "bench", "do": "part", "value": 12, "fit_kind": 0, "size": [1.6, 0.5, 0.45], "standoff_m": 1.4},
+      {"id": "planter", "do": "part", "value": 11, "fit_kind": 0, "size": [1, 1, 0.5], "standoff_m": 1.1},
+      {"id": "parking", "do": "part", "value": 35, "fit_kind": 1, "size": [6, 5, 0.12], "standoff_m": 2.5},
+      {"id": "ac", "do": "part", "value": 16, "fit_kind": 6, "size": [0.8, 0.35, 0.6], "rise_m": 1.1},
+      {"id": "awning", "do": "part", "value": 4, "fit_kind": 2, "size": [3, 1.2, 0.12], "rise_m": 2.4, "drop_m": 0.5},
+      {"id": "clock", "do": "part", "value": 36, "fit_kind": 5, "size": [3, 0.25, 3]}
      ]
     }
    ]

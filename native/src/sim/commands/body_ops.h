@@ -54,6 +54,10 @@ std::string op_set_relief(b40::Body &b, const Tuning &t, int vol, const b40::Rel
 std::string op_set_roof(b40::Body &b, int vol, int roof);
 std::string op_roof_shape(b40::Body &b, const Tuning &t, int vol, float pitch, int ridge, int fall);
 std::string op_paint(b40::Body &b, int scope, int vol, int side, int storey, int finish, uint32_t rgb);
+// What stands on a roof, at (x, y) of the plan; `gear` an index into the block's. It must fit the roof, corners and all.
+std::string op_add_gear(b40::Body &b, const Tuning &t, int vol, int kind, float x, float y, float w, float d, float h);
+std::string op_remove_gear(b40::Body &b, int vol, int gear);
+std::string op_turn_gear(b40::Body &b, const Tuning &t, int vol, int gear);
 
 // The parts. `part` an index into the elements; a free part stands at (x, y) of the lot frame, facing a b40::Facing.
 std::string op_add_part(b40::Body &b, const Tuning &t, int vol, int storey, int side, int bay, const PartSpec &s);

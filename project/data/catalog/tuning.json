@@ -94,7 +94,9 @@
   "max_parts": 128,
   "dial_share": 0.9,
   "step_run_m": 0.3,
-  "ramp_run_per_rise": 12
+  "ramp_run_per_rise": 12,
+  "max_gear": 32,
+  "gear_turn_deg": 15
  },
  "zone": {
   "side_offset_m": 14,

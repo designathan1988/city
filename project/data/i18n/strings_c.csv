@@ -485,4 +485,5 @@ building.problem.size,Dimensões fora dos limites,Size out of bounds
 building.problem.support,Um volume ficaria sem apoio,A block would have nothing under it
 building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on the ground
 building.problem.outline,Isto ainda não vale para esta planta,This does not work on this plan yet
+building.problem.roofPart,Isto não cabe neste telhado,This does not fit on this roof
 building.problem.lastVolume,O último volume no chão não sai: demolir tira o prédio,The last block on the ground stays: demolish takes the building

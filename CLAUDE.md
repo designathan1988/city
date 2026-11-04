@@ -117,7 +117,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/buildings/b40/lot_layout.h` · `native/src/sim/buildings/b40/lot_space.cpp` · `native/src/sim/buildings/b40/lot_ground.cpp` · `native/src/sim/buildings/b40/lot_boundary.cpp` — o lote: zonas, portas, caminhos reservados e regra de encaixe; chão e caminhos do carro e da porta; divisa fechada por construção e portões
 - `native/src/sim/buildings/b40/lot_cars.cpp` · `native/src/sim/buildings/b40/lot_front.cpp` · `native/src/sim/buildings/b40/lot_back.cpp` · `native/src/sim/buildings/b40/lot_yard.cpp` — vaga de toda casa (garagem,
   cobertura, vaga de frente), acessos e becos; frente; estacionamento, serviço, pátio e docas; quintal e pátios livres
-- `native/src/sim/buildings/b40/body_table.h` · `native/src/sim/buildings/b40/plan_area.cpp` · `native/src/sim/buildings/b40/plan_area.h` — as versões do corpo que o jogador editou, cada uma inteira e imutável; áreas exatas de plantas (orelhas e corte convexo)
+- `native/src/sim/buildings/b40/body_table.h` · `native/src/sim/buildings/b40/plan_area.cpp` · `native/src/sim/buildings/b40/plan_area.h` · `native/src/sim/buildings/b40/roof_shape.h` — as versões do corpo que o jogador editou, cada uma inteira e imutável; áreas exatas de plantas (orelhas e corte convexo); forma do telhado (dono único)
 - `native/src/sim/buildings/b40/civic.cpp` · `native/src/sim/buildings/b40/civic.h` · `native/src/sim/buildings/b40/civic_services.cpp` · `native/src/sim/buildings/b40/open_lots.cpp`
   — corpos cívicos (escola, igreja, hospital; posto, mercado, prefeitura, polícia, bombeiros) e lotes abertos (praça, parque, quadra, vazio)
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
@@ -213,6 +213,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
+- `native/src/render/buildings/roof_gear.cpp` — o que o jogador põe no telhado: painéis, claraboias, chaminés, caixas, pináculo e lanterna
 - `native/src/render/buildings/roof_pitched.cpp` — telhados inclinados e dente de serra
 - `native/src/render/buildings/roof_plant.cpp` — equipamentos de cobertura
 - `native/src/render/buildings/roof_terrace.cpp` — terraços usados
@@ -320,7 +321,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
-- Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e as abas Massa, Fachada, Telhado e Cores existem por comando, com seleção por raio; falta a interface do Construir e as outras abas. O raio ainda toma o telhado inclinado pelo beiral: um clique na cumeeira passa por cima. Árvore como peça espera o render de árvores ler `lot_trees`; a peça não tem fantasma sob o ponteiro.
+- Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e as abas Massa, Fachada, Telhado e Cores existem por comando, com seleção por raio; falta a interface do Construir e as outras abas. Bandeiras no pináculo e na lanterna ainda não. Árvore como peça espera o render de árvores ler `lot_trees`; a peça não tem fantasma sob o ponteiro.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.
 - Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).

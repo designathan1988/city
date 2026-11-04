@@ -6,6 +6,7 @@
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/buildings/b40/roof_shape.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -18,6 +19,7 @@ using namespace b40;
 
 namespace {
 constexpr float GRAZING = 1e-6f;
+constexpr int ROOF_STEPS = 16; // a slope is walked in this many heights: a click lands within a sixteenth of the ridge
 
 // The ray in a lot's frame: x along the front, y away from the street, z over the building's floor.
 struct LocalRay {
@@ -63,8 +65,18 @@ void hit_sides(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyH
 
 void hit_top(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit &best) {
 	if (r.dz > -GRAZING) return;
-	float top = b.level_z(v.top()), t = (top - r.oz) / r.dz;
-	if (t <= 0 || t >= best.t || !contains_point(ring_of(v), { r.ox + r.dx * t, r.oy + r.dy * t })) return;
+	// Down from the ridge's height to the eaves, the first point under the roof's surface: a pitched roof is hit on its slope.
+	float eaves = b.level_z(v.top()), rise = roof_rise(v), t = -1;
+	const Ring ring = ring_of(v);
+	for (int i = 0; i <= ROOF_STEPS; i++) {
+		float z = eaves + rise * (1 - float(i) / float(ROOF_STEPS)), at = (z - r.oz) / r.dz, x = r.ox + r.dx * at, y = r.oy + r.dy * at;
+		if (at <= 0 || !contains_point(ring, { x, y })) continue;
+		if (z <= eaves + roof_height_at(v, x, y) + EPS) {
+			t = at;
+			break;
+		}
+	}
+	if (t <= 0 || t >= best.t) return;
 	best.volume = vol;
 	best.side = -1;
 	best.storey = v.storeys - 1;

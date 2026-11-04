@@ -33,7 +33,7 @@ func click(p: Vector3) -> void:
 	var screen := ctl.get_viewport().get_mouse_position()
 	var had := picked
 	pick(cam.project_ray_origin(screen), cam.project_ray_normal(screen))
-	if not part.is_empty() and picked.is_empty() and not had.is_empty():
+	if not part.is_empty() and part.do == "part" and picked.is_empty() and not had.is_empty():
 		picked = had
 		_report(CityStore.dispatch(&"body_add_part_at", [had.id, p, part]))
 		_show()
@@ -43,11 +43,13 @@ func click(p: Vector3) -> void:
 func pick(origin: Vector3, dir: Vector3) -> void:
 	var hit: Dictionary = CityStore.query(&"body_pick", [origin, dir])
 	picked = hit
-	if hit.is_empty() or hit.side < 0:
+	if not hit.is_empty() and hit.side < 0 and not part.is_empty() and part.do == "gear":
+		_report(CityStore.dispatch(&"body_add_gear", [hit.id, hit.volume, hit.point, part]))
+	elif hit.is_empty() or hit.side < 0:
 		pass
 	elif armed != NO_BAY:
 		_report(CityStore.dispatch(&"body_set_bay", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, armed, scope]))
-	elif not part.is_empty():
+	elif not part.is_empty() and part.do == "part":
 		_report(CityStore.dispatch(&"body_add_part", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, part]))
 	_show()
 
@@ -68,7 +70,7 @@ func act(spec: Dictionary) -> void:
 		"arm":
 			armed = NO_BAY if armed == value else value
 			part = {}
-		"part":
+		"part", "gear":
 			part = {} if part == spec else spec
 			armed = NO_BAY
 		"scope":

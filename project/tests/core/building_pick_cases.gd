@@ -5,6 +5,8 @@ const HEIGHT_M := 40.0
 const SKY_M := 3000.0
 const WALL_M := 2.0
 const OFF_M := 1.0
+const ROOF_FLAT := 0
+const ROOF_GABLE := 2
 
 
 static func run(id: int, check: Callable) -> void:
@@ -22,6 +24,19 @@ static func run(id: int, check: Callable) -> void:
 	check.call(not wall.is_empty() and wall.id == id and wall.side == 0, "raio de frente acerta a fachada de %d: %s" % [id, wall])
 	var bay: int = wall.get("bay", -1)
 	check.call(bay == v.bays[0] / 2, "o meio da fachada é o vão do meio: %d de %d" % [bay, v.bays[0]])
+	_pitched(id, middle + Vector3.UP * (height + HEIGHT_M), check)
+
+
+## On the same block a ray stops at the eaves of a flat roof and higher, on the slope, of a gable.
+static func _pitched(id: int, over: Vector3, check: Callable) -> void:
+	CityStore.dispatch(&"body_set_roof", [id, 0, ROOF_FLAT])
+	var flat: Dictionary = CityStore.query(&"body_pick", [over, Vector3.DOWN])
+	CityStore.dispatch(&"body_set_roof", [id, 0, ROOF_GABLE])
+	var slope: Dictionary = CityStore.query(&"body_pick", [over, Vector3.DOWN])
+	var rise: float = slope.point.y - flat.point.y
+	check.call(slope.id == id and rise > 1.0, "raio acerta a água do telhado, %.2f m sobre o beiral" % rise)
+	CityStore.dispatch(&"undo")
+	CityStore.dispatch(&"undo")
 
 
 ## A point of the lot's frame on the map: the origin is the middle of the street front (b40::lot_frame).

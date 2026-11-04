@@ -82,6 +82,13 @@ struct Point2 {
 	float x = 0, y = 0;
 };
 
+// What the player sets on a roof, at a point of the plan; `turn` in radians, `h` what stands up from the roof.
+enum RoofGear : uint8_t { GEAR_SOLAR, GEAR_SKYLIGHT, GEAR_VENT, GEAR_CHIMNEY, GEAR_TANK, GEAR_SPIRE, GEAR_LANTERN, GEAR_COUNT };
+struct RoofPart {
+	uint8_t kind = GEAR_VENT;
+	float x = 0, y = 0, w = 1, d = 1, h = 1, turn = 0;
+};
+
 struct Volume {
 	float x = 0, y = 0, w = 0, d = 0;
 	int base = 0, storeys = 1;
@@ -96,6 +103,7 @@ struct Volume {
 	std::unordered_map<uint32_t, int> storey_paint; // (storey, side) -> paint index (ArtDeco stone base)
 	FaceGeometry faces[MAX_FACES];
 	std::vector<Relief> reliefs;
+	std::vector<RoofPart> gear;
 	Lines lines = LINES_NONE;
 	Crown crown = CROWN_NONE;
 	bool keep = false; // not composed (shop back store, works hall)

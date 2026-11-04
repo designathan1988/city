@@ -84,7 +84,7 @@
   "tanks": ["#4a7fb8", "#8d9399", "#dcdedb", "#c9b48a"],
   "warehouse_walls": ["#b9bec2", "#9aa4ab", "#c7c2b8", "#8f9aa0", "#d0d3d4", "#7f8b7a"]
  },
- "colors": {
+ "colors": { "gear_metal": ["metal", "#677b79"], "gear_panel": ["glass", "#153e4c"], "gear_glazing": ["glass", "#6098a6"], "gear_masonry": ["brick", "#876755"], "gear_cap": ["concrete", "#aaa99d"], "gear_base": ["plaster", "#d1ccbe"], "lantern_stone": ["stone", "#c9c6bd"], "lantern_render": ["plaster", "#e4e1d8"], "lantern_glass": ["glass", "#7fa8b8"], "lantern_frame": ["plaster", "#f0eee8"], "lantern_dome": ["metal", "#cbb99a"], "lantern_mast": ["metal", "#8e9396"], "lantern_beacon": ["plaster", "#e0301e"],
   "office_roof": ["concrete", "#8a8a86"], "membrane": ["roofing", "#74716a"], "terrace": ["stone", "#b0a595"],
   "plinth": ["stone", "#7f786d"], "veranda_floor": ["ceramic", "#b5654a"], "machine_glass": ["concrete", "#a7a49c"],
   "machine_top": ["concrete", "#6c6a64"], "coping_metal": ["metal", "#b9bcbd"], "pane": ["glass", "#2b3034"],

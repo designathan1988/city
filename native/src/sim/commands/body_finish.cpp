@@ -1,5 +1,8 @@
 // The Roof and Paint tabs' edits: a roof's kind and shape, and what a building, a block, a side or a floor is finished in (body_ops.h).
+#include "sim/buildings/b40/plan_area.h"
 #include "sim/commands/body_ops.h"
+
+#include "core/units.h"
 
 #include <algorithm>
 #include <cmath>
@@ -11,6 +14,7 @@ using namespace b40;
 namespace {
 constexpr const char *NO_TARGET = "tool.failed";
 constexpr int RIDGE_ALONG_Y = 1;
+constexpr const char *NO_FIT = "building.problem.roofPart";
 
 Volume *volume_at(Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()) ? &b.volumes[size_t(vol)] : nullptr; }
 
@@ -22,6 +26,18 @@ int paint_of(Body &b, int finish, uint32_t rgb) {
 }
 
 void clear_floor_paints(Volume &v) { v.storey_paint.clear(); }
+
+// Every corner of the part on the block's plan.
+bool fits(const Volume &v, const RoofPart &p) {
+	const Ring ring = ring_of(v);
+	float c = std::cos(p.turn), s = std::sin(p.turn);
+	for (float sx : { -1.f, 1.f })
+		for (float sy : { -1.f, 1.f }) {
+			float dx = sx * p.w / 2, dy = sy * p.d / 2;
+			if (!contains_point(ring, { p.x + dx * c - dy * s, p.y + dx * s + dy * c })) return false;
+		}
+	return true;
+}
 
 void clear_side_paints(Volume &v, int side) {
 	for (int k = 0; k < v.storeys; k++) v.storey_paint.erase(side_key(k, side));
@@ -41,6 +57,39 @@ std::string op_roof_shape(Body &b, const Tuning &t, int vol, float pitch, int ri
 	v->pitch = pitch < 0 ? -1 : std::clamp(std::round(pitch), float(t.build_min_pitch_deg), float(t.build_max_pitch_deg));
 	v->ridge = ridge;
 	v->fall = fall;
+	return "";
+}
+
+std::string op_add_gear(Body &b, const Tuning &t, int vol, int kind, float x, float y, float w, float d, float h) {
+	Volume *v = volume_at(b, vol);
+	if (!v || kind < 0 || kind >= GEAR_COUNT) return NO_TARGET;
+	if (int(v->gear.size()) >= int(t.build_max_gear)) return "building.problem.size";
+	RoofPart p;
+	p.kind = uint8_t(kind);
+	p.x = x;
+	p.y = y;
+	p.w = w;
+	p.d = d;
+	p.h = h;
+	if (!fits(*v, p)) return NO_FIT;
+	v->gear.push_back(p);
+	return "";
+}
+
+std::string op_remove_gear(Body &b, int vol, int gear) {
+	Volume *v = volume_at(b, vol);
+	if (!v || gear < 0 || gear >= int(v->gear.size())) return NO_TARGET;
+	v->gear.erase(v->gear.begin() + gear);
+	return "";
+}
+
+std::string op_turn_gear(Body &b, const Tuning &t, int vol, int gear) {
+	Volume *v = volume_at(b, vol);
+	if (!v || gear < 0 || gear >= int(v->gear.size())) return NO_TARGET;
+	RoofPart p = v->gear[size_t(gear)];
+	p.turn += float(t.build_gear_turn_deg) * float(DEG_TO_RAD);
+	if (!fits(*v, p)) return NO_FIT;
+	v->gear[size_t(gear)] = p;
 	return "";
 }
 

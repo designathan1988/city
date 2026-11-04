@@ -53,6 +53,8 @@ uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);
 // Emitters. `parts` takes the small repeated pieces (frames, railings, louvres, AC units...) drawn only near.
 void emit_facades(Shell &shell, Shell &parts, const Placed &pl);
 void emit_roofs(Shell &shell, Shell &parts, const Placed &pl);
+// What the player set on a block's roof (roof_gear.cpp).
+void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float roof_z);
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl);
