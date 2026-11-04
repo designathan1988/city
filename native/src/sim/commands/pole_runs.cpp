@@ -3,6 +3,7 @@
 // stand evenly between them, off the crosswalks' landings, and a pole already standing there is used. The preview and the
 // command read the same plan.
 #include "sim/commands/commands.h"
+#include "sim/commands/street_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/state/city_state.h"

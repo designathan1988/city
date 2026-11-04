@@ -3,6 +3,7 @@
 #include "sim/commands/edit_journal.h"
 
 #include "sim/commands/road_edit.h"
+#include "sim/commands/street_journal.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -62,38 +63,7 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ADD_MOD: if (fwd) s.terrain.put_modifier(op.id, op.mod); else s.terrain.remove_modifier(op.id); break;
 		case OpKind::MONEY: s.money += fwd ? op.money : -op.money; break;
-		case OpKind::ADD_ITEM: case OpKind::REM_ITEM:
-			if (fwd == (op.kind == OpKind::ADD_ITEM)) s.street.put_item(op.id, op.item); else s.street.remove_item(op.id);
-			mark_street(s, op.item.x, op.item.z);
-			break;
-		case OpKind::ADD_POLE: case OpKind::REM_POLE:
-			if (fwd == (op.kind == OpKind::ADD_POLE)) s.street.put_pole(op.id, op.pole); else s.street.remove_pole(op.id);
-			mark_street(s, op.pole.x, op.pole.z);
-			break;
-		case OpKind::ADD_SPAN: case OpKind::REM_SPAN: {
-			if (fwd == (op.kind == OpKind::ADD_SPAN)) s.street.put_span(op.id, op.span); else s.street.remove_span(op.id);
-			const UtilityPole &pa = s.street.poles.items[size_t(op.span.a)], &pb = s.street.poles.items[size_t(op.span.b)];
-			mark_street(s, pa.x, pa.z);
-			mark_street(s, pb.x, pb.z);
-			break;
-		}
-		case OpKind::ADD_BARRIER: case OpKind::REM_BARRIER:
-			if (fwd == (op.kind == OpKind::ADD_BARRIER)) s.street.put_barrier(op.id, op.barrier); else s.street.remove_barrier(op.id);
-			for (size_t i = 0; i + 1 < op.barrier.pts.size(); i += 2) mark_street(s, op.barrier.pts[i], op.barrier.pts[i + 1]);
-			break;
-		case OpKind::ADD_CUT: case OpKind::REM_CUT:
-			if (fwd == (op.kind == OpKind::ADD_CUT)) s.street.put_cut(op.id, op.cut); else s.street.remove_cut(op.id);
-			mark_street(s, op.cut.x, op.cut.z);
-			break;
-		case OpKind::NODE_CTL:
-			net.nodes[size_t(op.id)].ctl = uint8_t(fwd ? op.to : op.from);
-			s.log.net_node(op.id);
-			break;
-		case OpKind::SEG_FLAGS:
-			net.segs[size_t(op.id)].flags = uint16_t(fwd ? op.to : op.from);
-			mark_seg(s, op.id, false);
-			mark_furniture(s, op.id);
-			break;
+		default: exec_street(s, op, fwd); break;
 	}
 }
 

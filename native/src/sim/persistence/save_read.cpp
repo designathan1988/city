@@ -1,6 +1,7 @@
 // Reading a city (save_format.h): the land is regenerated from the saved seed, then the sculpted tiles, modifiers,
 // roads, buildings and growth go back under their ids; lots and node shapes are derived again.
 #include "sim/persistence/save_format.h"
+#include "sim/persistence/save_street.h"
 
 #include "core/bytes.h"
 #include "sim/citygen/city_gen.h"
@@ -94,65 +95,6 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 	}
 	return r.ok;
 }
-
-bool read_street(ByteReader &r, StreetWorks &k) {
-	uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
-	for (uint32_t i = 0; i < count && r.ok; i++) {
-		if (!r.get<uint8_t>()) continue;
-		StreetItem it;
-		it.kind = ItemKind(r.get<uint8_t>());
-		it.sign = SignType(r.get<uint8_t>());
-		it.x = r.get<float>();
-		it.z = r.get<float>();
-		std::vector<uint8_t> text;
-		r.get_vec(text);
-		it.text.assign(text.begin(), text.end());
-		if (int(it.kind) >= ITEM_KINDS || int(it.sign) >= SIGN_TYPES) return false;
-		if (r.ok) k.put_item(int(i), it);
-	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
-	for (uint32_t i = 0; i < count && r.ok; i++) {
-		if (!r.get<uint8_t>()) continue;
-		UtilityPole p;
-		p.x = r.get<float>();
-		p.z = r.get<float>();
-		p.lamp = r.get<uint8_t>() != 0;
-		if (r.ok) k.put_pole(int(i), p);
-	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
-	for (uint32_t i = 0; i < count && r.ok; i++) {
-		if (!r.get<uint8_t>()) continue;
-		UtilitySpan s;
-		s.a = r.get<int32_t>();
-		s.b = r.get<int32_t>();
-		const int poles = int(k.poles.items.size());
-		if (s.a < 0 || s.b < 0 || s.a >= poles || s.b >= poles || !k.poles.items[size_t(s.a)].alive || !k.poles.items[size_t(s.b)].alive) return false;
-		if (r.ok) k.put_span(int(i), s);
-	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
-	for (uint32_t i = 0; i < count && r.ok; i++) {
-		if (!r.get<uint8_t>()) continue;
-		Barrier b;
-		b.kind = BarrierKind(r.get<uint8_t>());
-		r.get_vec(b.pts);
-		if (int(b.kind) >= BARRIER_KINDS) return false;
-		if (r.ok) k.put_barrier(int(i), b);
-	}
-	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
-	for (uint32_t i = 0; i < count && r.ok; i++) {
-		if (!r.get<uint8_t>()) continue;
-		StreetCut c;
-		c.x = r.get<float>();
-		c.z = r.get<float>();
-		if (r.ok) k.put_cut(int(i), c);
-	}
-	return r.ok;
-}
 } // namespace
 
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
@@ -171,7 +113,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
-	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings) || !read_street(r, s.street)) return false;
+	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings) || !read_street(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)

@@ -19,11 +19,11 @@
    "paver_w": 0.2,
    "paver_h": 0.1,
    "cobble_per_m": 4.2,
-   "pool_color": "#ffdaac",
+   "pool_color": "#ffd3a5",
    "pool_along_m": 11.5,
    "pool_across_m": 8.0,
    "pool_gain": 0.32,
-   "plate_glow": 0.3
+   "plate_glow": 0.03
   }
  },
  "building": {
@@ -268,7 +268,7 @@
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",
   "params": {
-   "glow_color": "#ffe2c4",
+   "glow_color": "#ffd3a5",
    "pool_gain": 0.32,
    "beam_gain": 0.4,
    "beam_softness": 1.6,
