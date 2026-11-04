@@ -87,6 +87,15 @@ func _ground(x: float, z: float) -> Vector3:
 
 ## The 4.0's view (`__roadcraft.setView`, render/isoViewport.ts): bearing and tilt in degrees and its zoom, pixels a metre at
 ## 1080 lines, so a pair stands in the same frame: its bearing runs from +X towards +Z, ours from +Z towards +X.
+## The painted elements from three distances, and two pictures a step apart for the shimmer of the far ground.
+func _element_shots(e: Vector3) -> void:
+	await shot("elementos", e, 90.0, 22.0, 24.0)
+	await shot("elementos_perto", e, 90.0, 12.0, 90.0)
+	await shot("elementos_longe", e, 90.0, 30.0, 6.0)
+	await shot("cint_a", e + Vector3(0, 0, 500.0), 45.0, 8.0, 5.0)
+	await shot("cint_b", e + Vector3(CINT_STEP_M, 0, 500.0), 45.0, 8.0, 5.0)
+
+
 func shot(name: String, at: Vector3, azimuth: float, tilt: float, zoom: float) -> void:
 	if not only.is_empty() and not only.has(name):
 		return
@@ -201,11 +210,7 @@ func _run() -> void:
 		var at := e + Vector3((k % 6) * 22.0 - 55.0, 0, (k / 6) * 22.0 - 22.0)
 		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
 	CityStore.dispatch(&"end_stroke")
-	await shot("elementos", e, 90.0, 22.0, 24.0)
-	await shot("elementos_perto", e, 90.0, 12.0, 90.0)
-	await shot("elementos_longe", e, 90.0, 30.0, 6.0)
-	await shot("cint_a", e + Vector3(0, 0, 500.0), 45.0, 8.0, 5.0)
-	await shot("cint_b", e + Vector3(CINT_STEP_M, 0, 500.0), 45.0, 8.0, 5.0)
+	await _element_shots(e)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in 12:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 30.0 - 150.0, 0, 260.0), 40.0, 0, i % 4, {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}])
