@@ -1,12 +1,7 @@
 // Helpers shared by building.gdshader and building_parts.gdshader: hash, noise, finish sampling and weathering.
 // Included after the uniforms and varyings they use.
 
-uint pcg(uint v) {
-	uint s = v * 747796405u + 2891336453u;
-	uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
-	return (w >> 22u) ^ w;
-}
-float h01(uint v) { return float(pcg(v)) / 4294967295.0; }
+#include "res://render/shaders/building_hash.gdshaderinc"
 
 float vnoise(vec2 p) {
 	vec2 i = floor(p), f = fract(p);

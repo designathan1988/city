@@ -112,6 +112,10 @@ void SideEmit::storey(const Side &sd, int k, float z) {
 		c.comp = component(v, k, sd.side, i);
 		c.plain = cl || cm || cr;
 		c.hash = bay_hash(vol, level, sd.side, i, plan_at(am).x, plan_at(am).y);
+		c.vol = vol;
+		c.plan_at = Point2{ sd.p0.x + dir.x * a0, sd.p0.y + dir.y * a0 };
+		c.plan_along = dir;
+		c.plan_out = sd.n;
 		c.open_left = i > 0 && component(v, k, sd.side, i - 1) == BAY_GOURMET;
 		c.open_right = i + 1 < n && component(v, k, sd.side, i + 1) == BAY_GOURMET;
 		emit_bay(shell, parts, pl, c);

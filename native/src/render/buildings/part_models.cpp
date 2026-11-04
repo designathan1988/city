@@ -1,5 +1,5 @@
 // The facade part models, built straight into a mesh in the bay frame: unit models
-// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Frame bars, railings with balusters, panelled
+// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
 
@@ -12,7 +12,6 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float MULLION = 0.036f, TRANSOM_Y = 0.18f;
 constexpr float RAIL_TOP_Y = 0.97f, RAIL_TOP_H = 0.06f, RAIL_TOP_T = 0.05f, RAIL_BOT_Y = 0.12f, RAIL_BOT_H = 0.04f;
 constexpr float BALUSTER = 0.015f, BALUSTER_H = 0.94f;
 constexpr int BALUSTERS_FRONT = 11, BALUSTERS_SIDE = 3;
@@ -38,21 +37,6 @@ void unit_box(Shell &s, const Part &p, float x0, float x1, float y0, float y1, f
 } // namespace
 
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s, p, -HALF, HALF, -HALF, HALF, -HALF, HALF, lin, fin); }
-
-// Frame ring: front faces of the four bars, mullion and transom, and the ring's inner faces (no hidden backs).
-void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
-	Basis m = centred(p);
-	float bx = p.look->part_frame_bar_m * p.sx, by = p.look->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
-	if (2 * by > p.sy) by = p.sy / 4;
-	s.rect(m, -hx, -hx + bx, -hy, hy, hz, lin, fin);
-	s.rect(m, hx - bx, hx, -hy, hy, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, -hy, -hy + by, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, hy - by, hy, hz, lin, fin);
-	float mw = MULLION * p.sx / 2, ty = TRANSOM_Y * p.sy;
-	s.rect(m, -mw, mw, -hy + by, hy - by, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, ty - mw, ty + mw, hz, lin, fin);
-	s.box(m, -hx + bx, hx - bx, -hy + by, hy - by, -hz, hz, lin, fin, SKIP_E2_NEG | SKIP_E2_POS);
-}
 
 // Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
 // are single front faces (a thin box seen from the street shows only its front).

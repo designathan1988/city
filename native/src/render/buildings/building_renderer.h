@@ -96,6 +96,7 @@ private:
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
 		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
+		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<Surface, SUB_COUNT> near, parts, mid;
 		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
@@ -129,7 +130,7 @@ private:
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);

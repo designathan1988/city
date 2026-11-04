@@ -43,6 +43,18 @@ func set_hour(hour: float) -> void:
 	_env.glow_enabled = night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
 	RenderingServer.global_shader_parameter_set(&"night", night)
+	var awake := _awake_share(hour)
+	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
+	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
+	RenderingServer.global_shader_parameter_set(&"room_daylight", (1.0 - night) * _d.room_daylight)
+
+
+## The share of people awake at a clock time, between the survey's hourly figures: the rooms lit at night.
+func _awake_share(hour: float) -> float:
+	var table: Array = _d.awake_by_hour
+	var h := fposmod(hour, float(table.size()))
+	var i := int(h)
+	return lerpf(table[i], table[(i + 1) % table.size()], h - float(i))
 
 
 ## Points the light from the direction (elevation, azimuth) in degrees: sunrise at +X, noon toward -Z.
