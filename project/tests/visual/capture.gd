@@ -4,6 +4,8 @@
 extends Node3D
 
 const SETTLE_FRAMES := 4
+const JUMP_FRAMES := 30 # after a jump the world has not asked for the new view yet, and nothing pending does not mean all drawn
+const JUMP_M := 60.0
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
@@ -172,10 +174,11 @@ func _sky_frames() -> int:
 
 
 func _shot(name: String, from: Vector3, at: Vector3) -> void:
+	var settle := JUMP_FRAMES if camera.global_position.distance_to(from) > JUMP_M else SETTLE_FRAMES
 	camera.global_position = from
 	camera.look_at(at)
 	camera.near = clampf(from.distance_to(at) * NEAR_PER_M, MIN_NEAR_M, MAX_NEAR_M)
-	await CaptureWait.until_drawn(self, SETTLE_FRAMES, name)
+	await CaptureWait.until_drawn(self, settle, name)
 	var img := get_viewport().get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
