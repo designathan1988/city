@@ -36,7 +36,7 @@ namespace city {
 	X(ped_jam_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
-	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m)
+	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
 
 #define CITY_TRAFFIC_DECLARE(name) float name = 0;
 

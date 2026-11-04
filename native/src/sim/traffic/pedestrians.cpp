@@ -17,7 +17,6 @@ namespace {
 constexpr int PICK_TRIES = 12, DEST_TRIES = 12;
 constexpr float SCALE_MIN = 0.9f, SCALE_MAX = 1.1f, MIN_LEG_M = 0.05f;
 constexpr float CROSS_RETRY_S = 0.2f; // a walker waiting at the kerb tries the crosswalk 5 times a second
-constexpr float PED_FAR_EDGE_M = 1.2f; // this many ped_window_m away it is gone (not counted lost)
 
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 float arc_lo(const RoadSegment &g) { return float(g.retreat_a); }
@@ -282,7 +281,7 @@ void step_pedestrians(CityState &s, float dt) {
 	int spawns = t.ped_count < p.fill_share * target ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
 	spawns = std::min(spawns, int(p.ped_routes_per_step));
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
-	const float out = p.ped_window_m * PED_FAR_EDGE_M, out2 = out * out;
+	const float out = p.ped_window_m * p.ped_despawn_window_share, out2 = out * out; // beyond it: gone, not lost
 	t.ped_waiting = 0;
 	crowd_step(s, dt);
 	for (int id = 0; id < int(t.peds.size()); id++) {
