@@ -32,9 +32,9 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
+	CityStore.new_map(TOWN_MAP, SEED, true, true)
 	CityStore.step_ticks(WARM_TICKS)
+	_mark("aquecido")
 	var sites := _arg("--sites=", SITES)
 	var sample: Array = CityStore.query(&"traffic_probe", [SAMPLE]).sample
 	for i in sites:
@@ -79,7 +79,8 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 	_check(s.docks_planned > 0, "nenhuma doca planejada em %s" % at)
 	_check(s.docks_reached[NO_STOP] == 0, "%d docas sem lugar para o caminhão na própria faixa em %s" % [s.docks_reached[NO_STOP], at])
 	_check(s.docks_with_way >= s.docks_planned * WAY_SHARE, "%d de %d docas com caminho em %s" % [s.docks_with_way, s.docks_planned, at])
-	print("  pátios ", s.yards, " portões ", s.yard_gates, " planejadas ", s.docks_planned, " com caminho ", s.docks_with_way, " parou em ", s.docks_reached, " chamadas ", s.lorry_calls, " pior plano ", s.yard_slowest_ms, " ms")
+	_mark("planejado")
+	print("  pátios ", s.yards, " portões ", s.yard_gates, " planejadas ", s.docks_planned, " com caminho ", s.docks_with_way, " parou em ", s.docks_reached, " chamadas ", s.lorry_calls, " pior plano ", s.yard_slowest_ms, " ms, pior tick ", s.yard_tick_ms, " ms")
 
 
 ## A lorry called, backed onto its dock, unloaded and gone: the camera stays over the last works.
@@ -91,8 +92,15 @@ func _round() -> void:
 		await get_tree().process_frame
 		CityStore.step_ticks(STEP_TICKS)
 		s = CityStore.query(&"park_sample", [])
+	_mark("fim")
 	print("caminhões (chamados, encostados, saíram) ", s.lorries_sent, " ", s.lorries_docked, " ", s.lorries_left)
 	_check(s.lorries_left > 0, "nenhum caminhão fez o ciclo")
+
+
+## Where the traffic stands, as one number: two runs of the same map and seed print the same ones.
+func _mark(what: String) -> void:
+	var p: Dictionary = CityStore.query(&"traffic_probe", [SAMPLE])
+	print("marca ", what, " ", str(p.sample).hash(), " veículos ", p.vehicles, " prédios ", CityStore.snapshot.get("buildings"))
 
 
 func _arg(prefix: String, fallback: int) -> int:

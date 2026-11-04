@@ -10,7 +10,7 @@ namespace city {
 void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("load_catalog", "tables"), &CityCore::load_catalog);
 	ClassDB::bind_method(D_METHOD("setup_render", "render_tables", "materials"), &CityCore::setup_render);
-	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city"), &CityCore::new_map);
+	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city", "paused"), &CityCore::new_map, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("mark_saved"), &CityCore::mark_saved);
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);

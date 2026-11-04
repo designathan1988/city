@@ -9,7 +9,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double HALF = 0.5;
+constexpr double HALF = 0.5, ROOT_TWO = 1.41421356237309505;
 const float NO_ROOM = -std::numeric_limits<float>::infinity();
 } // namespace
 
@@ -95,24 +95,72 @@ void transform_row(const std::vector<double> &in, int n, std::vector<double> &ou
 }
 } // namespace
 
-void fill_clearance(Field &f) {
+void Holonomic::begin(const Field &f, const AxlePose &goal, double body_half, double size) {
+	cell = size;
+	half = body_half;
+	nx = int(std::ceil(f.nx * f.cell / cell));
+	nz = int(std::ceil(f.nz * f.cell / cell));
+	dist.assign(size_t(nx) * nz, std::numeric_limits<double>::infinity());
+	const int gi = int(std::floor((goal.x - f.x0) / cell)), gj = int(std::floor((goal.z - f.z0) / cell));
+	if (gi < 0 || gj < 0 || gi >= nx || gj >= nz) return;
+	dist[size_t(gj) * nx + gi] = 0;
+	open.push({ 0, gj * nx + gi });
+}
+
+void Holonomic::advance(const Field &f, int &work) {
+	while (!open.empty() && work > 0) {
+		const auto [d, c] = open.top();
+		open.pop();
+		work--;
+		if (d > dist[size_t(c)]) continue;
+		const int i = c % nx, j = c / nx;
+		for (int dj = -1; dj <= 1; dj++)
+			for (int di = -1; di <= 1; di++) {
+				const int a = i + di, b = j + dj;
+				if ((!di && !dj) || a < 0 || b < 0 || a >= nx || b >= nz) continue;
+				if (f.clear_at(f.x0 + (a + HALF) * cell, f.z0 + (b + HALF) * cell) < half) continue;
+				const double nd = d + (di && dj ? ROOT_TWO : 1) * cell;
+				if (nd < dist[size_t(b) * nx + a]) {
+					dist[size_t(b) * nx + a] = nd;
+					open.push({ nd, b * nx + a });
+				}
+			}
+	}
+}
+
+ClearanceFill::ClearanceFill(Field &f) : f_(f) {
 	const size_t n = size_t(std::max(f.nx, f.nz)), cells = size_t(f.nx) * f.nz;
 	const double inf = std::numeric_limits<double>::infinity();
-	std::vector<double> sq(cells), in(n), out(n), edge(n + 1);
-	std::vector<int> v(n);
-	for (size_t i = 0; i < sq.size(); i++) sq[i] = f.blocked[i] ? 0 : inf;
-	for (int i = 0; i < f.nx; i++) {
-		for (int j = 0; j < f.nz; j++) in[size_t(j)] = sq[size_t(j) * f.nx + i];
-		transform_row(in, f.nz, out, v, edge);
-		for (int j = 0; j < f.nz; j++) sq[size_t(j) * f.nx + i] = out[size_t(j)];
+	sq_.resize(cells);
+	in_.resize(n);
+	out_.resize(n);
+	edge_.resize(n + 1);
+	v_.resize(n);
+	for (size_t i = 0; i < cells; i++) sq_[i] = f.blocked[i] ? 0 : inf;
+	f.clear.resize(cells);
+}
+
+// The columns, then the rows, then the root of a row at a time.
+bool ClearanceFill::advance(int &work) {
+	const int nx = f_.nx, nz = f_.nz;
+	while (work > 0) {
+		if (stage_ == 0) {
+			if (line_ == nx) { stage_ = 1; line_ = 0; continue; }
+			for (int j = 0; j < nz; j++) in_[size_t(j)] = sq_[size_t(j) * nx + line_];
+			transform_row(in_, nz, out_, v_, edge_);
+			for (int j = 0; j < nz; j++) sq_[size_t(j) * nx + line_] = out_[size_t(j)];
+			work -= 1 + nz / CELLS_PER_WORK;
+		} else {
+			if (line_ == nz) return true;
+			double *row = sq_.data() + size_t(line_) * nx;
+			for (int i = 0; i < nx; i++) in_[size_t(i)] = row[i];
+			transform_row(in_, nx, out_, v_, edge_);
+			for (int i = 0; i < nx; i++) f_.clear[size_t(line_) * nx + i] = float(std::sqrt(out_[size_t(i)]) * f_.cell);
+			work -= 1 + nx / CELLS_PER_WORK;
+		}
+		line_++;
 	}
-	for (int j = 0; j < f.nz; j++) {
-		for (int i = 0; i < f.nx; i++) in[size_t(i)] = sq[size_t(j) * f.nx + i];
-		transform_row(in, f.nx, out, v, edge);
-		for (int i = 0; i < f.nx; i++) sq[size_t(j) * f.nx + i] = out[size_t(i)];
-	}
-	f.clear.resize(sq.size());
-	for (size_t i = 0; i < sq.size(); i++) f.clear[i] = float(std::sqrt(sq[i]) * f.cell);
+	return false;
 }
 
 } // namespace traffic

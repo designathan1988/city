@@ -290,7 +290,7 @@
   "lorry_ramp_m": 1.5,
   "lorry_creep_ms": 0.25,
   "lorry_stop_slack_m": 2.5,
-  "lorry_plan_wait_ticks": 100,
+  "lorry_plan_work": 4000,
   "parker_look_ticks": 5,
   "gate_lane_reach_m": 45,
   "gate_lane_min_m": 10,

@@ -29,7 +29,7 @@ public:
 	godot::PackedStringArray load_catalog(const godot::Dictionary &tables);
 	godot::PackedStringArray setup_render(const godot::Dictionary &render_tables, const godot::Dictionary &materials);
 	// A new map: map = entry of data/catalog/maps.json; with_city = false makes an empty map. Returns the report.
-	godot::Dictionary new_map(int map, int seed, bool with_city);
+	godot::Dictionary new_map(int map, int seed, bool with_city, bool paused = false);
 	void mark_saved();
 	void set_speed(int speed);
 	void set_day_hour(double hour);

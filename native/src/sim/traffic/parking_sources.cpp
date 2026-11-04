@@ -258,6 +258,7 @@ void forget_parking_seg(CityState &s, int seg) {
 void forget_parking_lot(CityState &s, int id) {
 	ParkingState &p = s.traffic.park;
 	p.yards.erase(id);
+	if (p.planner_building == id) p.planner.reset();
 	auto it = p.lots.find(id);
 	if (it != p.lots.end()) {
 		drop_source(s, it->second, true);

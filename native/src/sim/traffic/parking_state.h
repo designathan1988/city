@@ -89,12 +89,6 @@ struct Lorry {
 	float t = 0, stay = 0, waited = 0;
 };
 
-// A yard's plan on its way: a worker fills `job`, and it is read from `ready_tick` on.
-struct YardEntry {
-	std::shared_ptr<traffic::YardJob> job;
-	uint64_t ready_tick = 0;
-};
-
 struct ParkingState {
 	std::vector<Bay> bays;
 	std::vector<int> free_bays;
@@ -112,7 +106,10 @@ struct ParkingState {
 	int coming = 0, moving = 0; // cars on their way, and driving in or out of a bay now
 	int called = 0, parked_in = 0, left_by = 0; // probes: cars sent in, parked, driven out
 	std::vector<Lorry> lorries; // Vehicle::lorry is its index here
-	std::unordered_map<int, YardEntry> yards; // by building
+	std::unordered_map<int, std::shared_ptr<const traffic::YardPlan>> yards; // by building, the ones planned
+	std::shared_ptr<traffic::YardPlanner> planner; // the yard being planned, a little each tick
+	int planner_building = -1;
+	double plan_ms = 0, plan_slowest_ms = 0, plan_tick_ms = 0; // probes, never read by the simulation: this plan so far, the worst plan, the worst tick
 	float lorry_clock = 0;
 	int lorries_sent = 0, lorries_docked = 0, lorries_left = 0; // probes
 	int lorry_calls[LORRY_CALLS] = {};

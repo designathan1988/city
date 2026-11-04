@@ -5,19 +5,16 @@
 
 #include "sim/traffic/lane_closures.h"
 
-#include "core/job_pool.h"
 #include "core/laps.h"
 #include "sim/traffic/yard.h"
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 
 namespace city {
 namespace traffic {
 
 namespace {
-constexpr float JOB_PRIORITY = std::numeric_limits<float>::max(); // behind everything the player sees: a chunk's priority is its distance in metres
 constexpr float LOOK_S = 2.f; // a look for a dock with no lorry
 
 // The world's body of a lorry whose rear axle stands at `p`.
@@ -191,32 +188,35 @@ void step_one(CityState &s, int index, float dt) {
 	}
 }
 
-// The way to a yard's plan: asked of a worker the first time, read once it is done and its wait over (the same tick every run, so a
-// soak stays the same run).
-std::shared_ptr<YardJob> yard_of(CityState &s, int building) {
+// A yard's plan, with the docks done so far while it is being worked out; none while another is: the first asked for starts.
+const YardPlan *yard_of(CityState &s, int building) {
 	ParkingState &pk = s.traffic.park;
 	const auto hit = pk.yards.find(building);
-	if (hit != pk.yards.end()) {
-		const bool ready = s.traffic.tick >= hit->second.ready_tick && hit->second.job->done.load();
-		return ready ? hit->second.job : nullptr;
-	}
-	for (const auto &y : pk.yards)
-		if (!y.second.job->done.load()) return nullptr; // one at a time: a tight yard takes seconds, and a worker it holds draws nothing
-	auto in = std::make_shared<YardInput>();
-	auto job = std::make_shared<YardJob>();
-	const uint64_t wait = uint64_t(s.catalog.traffic.lorry_plan_wait_ticks);
-	pk.yards[building] = { job, s.traffic.tick + wait };
-	if (!yard_input(s, building, *in)) {
-		job->done.store(true);
-		return nullptr;
-	}
-	s.jobs->submit(JobKey{ JobLane::YARDS, building }, JOB_PRIORITY, [in, job] {
-		Laps took;
-		plan_yard(*in, job->plan);
-		job->plan.planned_ms = took.lap();
-		job->done.store(true);
-	});
+	if (hit != pk.yards.end()) return hit->second.get();
+	if (pk.planner) return pk.planner_building == building ? &pk.planner->plan : nullptr;
+	YardInput in;
+	if (yard_input(s, building, in)) {
+		pk.planner = std::make_shared<YardPlanner>(std::move(in));
+		pk.planner_building = building;
+		pk.plan_ms = 0;
+	} else pk.yards[building] = std::make_shared<YardPlan>();
 	return nullptr;
+}
+
+// The plan on its way gets its share of this tick: the work is counted, so the same map is planned on the same tick; the clock only
+// feeds the probes.
+void plan_yard(CityState &s) {
+	ParkingState &pk = s.traffic.park;
+	if (!pk.planner) return;
+	Laps took;
+	const bool done = pk.planner->advance(int(s.catalog.traffic.lorry_plan_work));
+	const double ms = took.lap();
+	pk.plan_ms += ms;
+	pk.plan_tick_ms = std::max(pk.plan_tick_ms, ms);
+	if (!done) return;
+	pk.plan_slowest_ms = std::max(pk.plan_slowest_ms, pk.plan_ms);
+	pk.yards[pk.planner_building] = std::make_shared<YardPlan>(std::move(pk.planner->plan));
+	pk.planner.reset();
 }
 
 // The nearest passing truck a gate can take, -1 for none.
@@ -250,12 +250,13 @@ void call(CityState &s) {
 	if (docks.empty()) { pk.lorry_calls[CALL_NO_DOCK]++; return; }
 	const int b = docks[size_t(t.rng.next() % uint32_t(docks.size()))];
 	Bay &bay = pk.bays[size_t(b)];
-	const std::shared_ptr<YardJob> job = yard_of(s, bay.source);
-	if (!job) { pk.lorry_calls[CALL_PLANNING]++; return; }
+	const YardPlan *plan = yard_of(s, bay.source);
+	if (!plan) { pk.lorry_calls[CALL_PLANNING]++; return; }
 	const DockWays *ways = nullptr;
-	for (const DockWays &w : job->plan.docks) ways = w.bay == b ? &w : ways;
+	for (const DockWays &w : plan->docks) ways = w.bay == b ? &w : ways;
+	if (!ways && pk.planner && pk.planner_building == bay.source) { pk.lorry_calls[CALL_PLANNING]++; return; }
 	if (!ways || ways->gate < 0) { pk.lorry_calls[CALL_NO_WAY]++; return; }
-	const YardGate &gate = job->plan.gates[size_t(ways->gate)];
+	const YardGate &gate = plan->gates[size_t(ways->gate)];
 	const int id = passing_truck(s, gate);
 	if (id < 0) { pk.lorry_calls[CALL_NO_TRUCK]++; return; }
 	Vehicle &v = t.vehicles[size_t(id)];
@@ -292,6 +293,7 @@ void lorry_gone(CityState &s, int id) {
 void step_lorries(CityState &s, float dt) {
 	ParkingState &pk = s.traffic.park;
 	for (int i = int(pk.lorries.size()) - 1; i >= 0; i--) step_one(s, i, dt);
+	plan_yard(s);
 	pk.lorry_clock += dt;
 	if (pk.lorry_clock < LOOK_S) return;
 	pk.lorry_clock = 0;

@@ -125,16 +125,13 @@ Dictionary CityCore::park_sample() {
 	for (int n : pk.lorry_calls) calls.push_back(n);
 	d["lorry_calls"] = calls; // no dock, planning, no way, no truck, no route, sent
 	int trucks = 0, ways = 0, planned = 0, gates = 0;
-	double slowest = 0;
 	Array reached;
 	reached.resize(traffic::YARD_REACHES);
 	reached.fill(0);
 	for (int id : s.traffic.micro_list) trucks += s.traffic.vehicles[size_t(id)].type == VehicleType::TRUCK ? 1 : 0;
 	for (const auto &y : pk.yards) {
-		if (!y.second.job->done.load()) continue;
-		gates += int(y.second.job->plan.gates.size());
-		slowest = std::max(slowest, y.second.job->plan.planned_ms);
-		for (const traffic::DockWays &w : y.second.job->plan.docks) {
+		gates += int(y.second->gates.size());
+		for (const traffic::DockWays &w : y.second->docks) {
 			planned++;
 			ways += w.gate >= 0 ? 1 : 0;
 			reached[w.reached] = int(reached[w.reached]) + 1;
@@ -146,7 +143,8 @@ Dictionary CityCore::park_sample() {
 	d["docks_reached"] = reached; // traffic::YardReach
 	d["yards"] = int(pk.yards.size());
 	d["yard_gates"] = gates;
-	d["yard_slowest_ms"] = slowest;
+	d["yard_slowest_ms"] = pk.plan_slowest_ms;
+	d["yard_tick_ms"] = pk.plan_tick_ms;
 	for (const Lorry &l : pk.lorries)
 		if (l.phase != LorryPhase::COMING) d["lorry"] = Vector3(s.traffic.vehicles[size_t(l.id)].cur.x, s.traffic.vehicles[size_t(l.id)].cur.y, s.traffic.vehicles[size_t(l.id)].cur.z);
 	return d;

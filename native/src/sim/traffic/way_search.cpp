@@ -5,10 +5,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <functional>
 #include <limits>
 #include <queue>
-#include <unordered_map>
 
 namespace city {
 namespace traffic {
@@ -33,7 +33,8 @@ constexpr double SHOT_STEP = 0.25;
 constexpr double DISC_STEP = 1, DISC_SPREAD = 1.9; // two discs this far apart, in chord lengths, still cover the side between them
 constexpr double QUARTER_STEP = 0.25; // a corner of the body is tested in squares about this wide: 5 cm past the flank at most
 constexpr double CURVATURES[] = { -1, -0.5, 0, 0.5, 1 }; // shares of the tightest
-constexpr double NO_CURVE = 1e-9, HALF = 0.5;
+constexpr double NO_CURVE = 1e-9, HALF = 0.5, FIT_SQUARE = 0.5;
+constexpr int EXPANDED_WORK = 8, SHOT_WORK = 8; // a pose expanded, a Reeds-Shepp shot: units of work, measured against a grid's cells
 
 double wrap(double a) {
 	double r = std::fmod(a, TWO_PI);
@@ -101,43 +102,6 @@ bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, d
 	return true;
 }
 
-// The rear axle's shortest distance to the goal from every search cell.
-struct Holonomic {
-	int nx = 0, nz = 0;
-	std::vector<double> dist;
-};
-
-Holonomic holonomic(const Field &f, const AxlePose &goal, double half, double cell) {
-	Holonomic h;
-	h.nx = int(std::ceil(f.nx * f.cell / cell));
-	h.nz = int(std::ceil(f.nz * f.cell / cell));
-	h.dist.assign(size_t(h.nx) * h.nz, std::numeric_limits<double>::infinity());
-	const int gi = int(std::floor((goal.x - f.x0) / cell)), gj = int(std::floor((goal.z - f.z0) / cell));
-	if (gi < 0 || gj < 0 || gi >= h.nx || gj >= h.nz) return h;
-	using Item = std::pair<double, int>;
-	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
-	h.dist[size_t(gj) * h.nx + gi] = 0;
-	open.push({ 0, gj * h.nx + gi });
-	while (!open.empty()) {
-		const auto [d, c] = open.top();
-		open.pop();
-		if (d > h.dist[size_t(c)]) continue;
-		const int i = c % h.nx, j = c / h.nx;
-		for (int dj = -1; dj <= 1; dj++)
-			for (int di = -1; di <= 1; di++) {
-				const int a = i + di, b = j + dj;
-				if ((!di && !dj) || a < 0 || b < 0 || a >= h.nx || b >= h.nz) continue;
-				if (f.clear_at(f.x0 + (a + HALF) * cell, f.z0 + (b + HALF) * cell) < half) continue;
-				const double nd = d + (di && dj ? ROOT_TWO : 1) * cell;
-				if (nd < h.dist[size_t(b) * h.nx + a]) {
-					h.dist[size_t(b) * h.nx + a] = nd;
-					open.push({ nd, b * h.nx + a });
-				}
-			}
-	}
-	return h;
-}
-
 struct Node {
 	AxlePose pose;
 	double g = 0, kappa = 0;
@@ -145,40 +109,75 @@ struct Node {
 	bool closed = false;
 };
 
-class Search {
+// The node standing for each place and heading: a page of headings for each place touched, in blocks that never move. A search runs
+// on the simulation's tick, so nothing here grows by copying all it holds (a hash table rehashing took 78 ms of one tick).
+class PoseTable {
 public:
-	Search(const Field &f, const Steered &b, const WayGoal &goal, const Grain &grain) : f_(f), b_(b), goal_(goal), grain_(grain), discs_(discs_of(b)), h_(holonomic(f, goal.pose, b.width * HALF, grain.cell)) {}
-	bool run(const AxlePose &start, std::vector<AxlePose> &way);
+	void begin(size_t places, int headings) {
+		page_of_.assign(places, -1);
+		headings_ = headings;
+	}
+	int &at(size_t place, int heading) {
+		int &page = page_of_[place];
+		if (page < 0) {
+			page = pages_++;
+			if (size_t(page / BLOCK_PAGES) == blocks_.size()) {
+				const size_t ints = size_t(BLOCK_PAGES) * headings_;
+				blocks_.push_back(std::make_unique<int[]>(ints));
+				std::fill_n(blocks_.back().get(), ints, -1);
+			}
+		}
+		return blocks_[size_t(page / BLOCK_PAGES)][size_t(page % BLOCK_PAGES) * headings_ + heading];
+	}
+
+private:
+	static constexpr int BLOCK_PAGES = 256;
+	std::vector<int> page_of_;
+	std::vector<std::unique_ptr<int[]>> blocks_;
+	int headings_ = 0, pages_ = 0;
+};
+
+} // namespace
+
+class WaySearch::Run {
+public:
+	Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, const Grain &grain);
+	bool advance(int &work);
+	bool found = false;
+	std::vector<AxlePose> way;
 
 private:
 	using Item = std::pair<double, int>;
 	const Field &f_;
 	const Steered &b_;
-	const WayGoal &goal_;
+	const WayGoal goal_;
 	const Grain &grain_;
+	const AxlePose start_;
 	Discs discs_;
 	Holonomic h_;
-	std::vector<Node> nodes_;
-	std::unordered_map<int64_t, int> by_key_;
+	std::deque<Node> nodes_;
+	PoseTable table_;
 	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open_;
-	int64_t key_of(const AxlePose &p) const;
+	int expanded_ = 0;
+	bool over_ = false, begun_ = false;
+	int &slot_of(const AxlePose &p);
 	double h_at(const AxlePose &p) const;
 	void push(const Node &n);
 	void expand(int id);
 	bool arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const;
 	bool shot(const AxlePose &from, std::vector<AxlePose> &out) const;
-	void trace(int id, std::vector<AxlePose> &way) const;
+	void trace(int id);
+	void close_on(int id, int &work);
 };
 
-int64_t Search::key_of(const AxlePose &p) const {
-	const int nx = int(std::ceil(f_.nx * f_.cell / grain_.cell));
-	const int64_t i = int64_t(std::floor((p.x - f_.x0) / grain_.cell)), j = int64_t(std::floor((p.z - f_.z0) / grain_.cell));
+int &WaySearch::Run::slot_of(const AxlePose &p) {
+	const int i = int(std::floor((p.x - f_.x0) / grain_.cell)), j = int(std::floor((p.z - f_.z0) / grain_.cell));
 	int k = int(std::lround(wrap(p.angle) / TWO_PI * grain_.headings)) % grain_.headings;
 	if (k < 0) k += grain_.headings;
-	return (j * nx + i) * grain_.headings + k;
+	return table_.at(size_t(j) * h_.nx + i, k);
 }
 
-double Search::h_at(const AxlePose &p) const {
+double WaySearch::Run::h_at(const AxlePose &p) const {
 	const int i = int(std::floor((p.x - f_.x0) / grain_.cell)), j = int(std::floor((p.z - f_.z0) / grain_.cell));
 	if (i < 0 || j < 0 || i >= h_.nx || j >= h_.nz) return std::numeric_limits<double>::infinity();
 	const double far = std::hypot(goal_.pose.x - p.x, goal_.pose.z - p.z);
@@ -187,24 +186,22 @@ double Search::h_at(const AxlePose &p) const {
 	return best;
 }
 
-void Search::push(const Node &n) {
-	const int64_t key = key_of(n.pose);
-	const auto hit = by_key_.find(key);
-	if (hit != by_key_.end()) {
-		Node &old = nodes_[size_t(hit->second)];
+void WaySearch::Run::push(const Node &n) {
+	int &slot = slot_of(n.pose);
+	if (slot >= 0) {
+		Node &old = nodes_[size_t(slot)];
 		if (old.closed || old.g <= n.g) return;
 		old = n;
-		open_.push({ n.g + H_WEIGHT * h_at(n.pose), hit->second });
+		open_.push({ n.g + H_WEIGHT * h_at(n.pose), slot });
 		return;
 	}
-	const int id = int(nodes_.size());
+	slot = int(nodes_.size());
 	nodes_.push_back(n);
-	by_key_[key] = id;
-	open_.push({ n.g + H_WEIGHT * h_at(n.pose), id });
+	open_.push({ n.g + H_WEIGHT * h_at(n.pose), slot });
 }
 
 // The exact arc of the rear axle over a step, `to` its end; false when the body meets something on the way.
-bool Search::arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const {
+bool WaySearch::Run::arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const {
 	double x = from.x, z = from.z, a = from.angle;
 	const double ds = grain_.step / SUBSTEPS * dir;
 	for (int k = 0; k < SUBSTEPS; k++) {
@@ -223,7 +220,7 @@ bool Search::arc(const AxlePose &from, double kappa, double dir, AxlePose &to) c
 	return true;
 }
 
-void Search::expand(int id) {
+void WaySearch::Run::expand(int id) {
 	const Node n = nodes_[size_t(id)];
 	for (double dir : { 1.0, -1.0 })
 		for (double share : CURVATURES) {
@@ -236,7 +233,7 @@ void Search::expand(int id) {
 		}
 }
 
-bool Search::shot(const AxlePose &from, std::vector<AxlePose> &out) const {
+bool WaySearch::Run::shot(const AxlePose &from, std::vector<AxlePose> &out) const {
 	RsPath path;
 	if (!reeds_shepp(from, goal_.pose, b_.radius, path)) return false;
 	bool last_back = false;
@@ -249,58 +246,90 @@ bool Search::shot(const AxlePose &from, std::vector<AxlePose> &out) const {
 	return true;
 }
 
-void Search::trace(int id, std::vector<AxlePose> &way) const {
+void WaySearch::Run::trace(int id) {
 	for (int at = id; at >= 0; at = nodes_[size_t(at)].parent) way.push_back(nodes_[size_t(at)].pose);
 	std::reverse(way.begin(), way.end());
 	if (way.size() > 1) way[0].reverse = way[1].reverse; // the start is driven the way of the first step
 }
 
-bool Search::run(const AxlePose &start, std::vector<AxlePose> &way) {
-	push({ start, 0, 0, -1, false });
-	for (int expanded = 0; !open_.empty() && expanded < grain_.most;) {
+WaySearch::Run::Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, const Grain &grain) :
+		f_(f), b_(b), goal_(goal), grain_(grain), start_(start), discs_(discs_of(b)) {
+	over_ = !body_clear(f, b, start) || !body_clear(f, b, goal.pose);
+	if (over_) return;
+	h_.begin(f, goal.pose, b.width * HALF, grain.cell);
+	table_.begin(size_t(h_.nx) * h_.nz, grain.headings);
+	std::vector<Item> room;
+	room.reserve(size_t(grain.most));
+	open_ = std::priority_queue<Item, std::vector<Item>, std::greater<Item>>(std::greater<Item>(), std::move(room));
+}
+
+// A pose taken off the queue: at the goal, or a shot from it that lands, ends the search.
+void WaySearch::Run::close_on(int id, int &work) {
+	nodes_[size_t(id)].closed = true;
+	expanded_++;
+	work -= EXPANDED_WORK;
+	const AxlePose p = nodes_[size_t(id)].pose;
+	const double far = std::hypot(p.x - goal_.pose.x, p.z - goal_.pose.z);
+	if (far <= goal_.reach && std::fabs(wrap(p.angle - goal_.pose.angle)) <= goal_.turn && (nodes_[size_t(id)].parent < 0 || p.reverse == goal_.reversing)) {
+		trace(id);
+		found = over_ = true;
+		return;
+	}
+	if (far <= SHOT_NEAR || (far <= SHOT_REACH && expanded_ % SHOT_EVERY == 0)) {
+		work -= SHOT_WORK;
+		std::vector<AxlePose> tail;
+		if (shot(p, tail)) {
+			trace(id);
+			way.insert(way.end(), tail.begin(), tail.end());
+			found = over_ = true;
+			return;
+		}
+	}
+	expand(id);
+}
+
+bool WaySearch::Run::advance(int &work) {
+	if (!over_ && !begun_) {
+		h_.advance(f_, work);
+		if (!h_.open.empty()) return false;
+		begun_ = true;
+		push({ start_, 0, 0, -1, false });
+	}
+	while (!over_ && work > 0) {
+		if (open_.empty() || expanded_ >= grain_.most) { over_ = true; break; }
 		const int id = open_.top().second;
 		open_.pop();
-		if (nodes_[size_t(id)].closed) continue;
-		nodes_[size_t(id)].closed = true;
-		expanded++;
-		const AxlePose p = nodes_[size_t(id)].pose;
-		const double far = std::hypot(p.x - goal_.pose.x, p.z - goal_.pose.z);
-		if (far <= goal_.reach && std::fabs(wrap(p.angle - goal_.pose.angle)) <= goal_.turn && (nodes_[size_t(id)].parent < 0 || p.reverse == goal_.reversing)) {
-			trace(id, way);
-			return true;
-		}
-		if (far <= SHOT_NEAR || (far <= SHOT_REACH && expanded % SHOT_EVERY == 0)) {
-			std::vector<AxlePose> tail;
-			if (shot(p, tail)) {
-				trace(id, way);
-				way.insert(way.end(), tail.begin(), tail.end());
-				return true;
-			}
-		}
-		expand(id);
+		if (!nodes_[size_t(id)].closed) close_on(id, work);
 	}
-	return false;
+	return over_;
 }
-} // namespace
 
 bool body_clear(const Field &f, const Steered &b, const AxlePose &p) {
 	return discs_clear(f, discs_of(b), p.x, p.z, std::cos(p.angle), std::sin(p.angle));
 }
 
+// In squares: one the clearance says is free costs a look; only those near something solid are read cell by cell.
 bool body_fits(const Field &f, const Steered &b, const AxlePose &p, double margin) {
-	const double c = std::cos(p.angle), s = std::sin(p.angle), step = f.cell * HALF;
+	const double c = std::cos(p.angle), s = std::sin(p.angle), step = f.cell * HALF, slack = f.cell * ROOT_HALF;
 	const double back = b.length * HALF - b.rear + margin, front = b.length * HALF + b.rear + margin, hw = b.width * HALF + margin;
-	for (double u = -back; u <= front; u += step)
-		for (double v = -hw; v <= hw; v += step)
-			if (f.solid_at(p.x + c * u - s * v, p.z + s * u + c * v)) return false;
+	const int nu = int(std::ceil((back + front) / FIT_SQUARE)), nv = int(std::ceil(2 * hw / FIT_SQUARE));
+	const double du = (back + front) / nu, dv = 2 * hw / nv, room = std::hypot(du, dv) * HALF + slack;
+	for (int a = 0; a < nu; a++)
+		for (int d = 0; d < nv; d++) {
+			const double u0 = -back + a * du, v0 = -hw + d * dv, cu = u0 + du * HALF, cv = v0 + dv * HALF;
+			if (f.clear_at(p.x + c * cu - s * cv, p.z + s * cu + c * cv) >= room) continue;
+			for (double u = u0; u <= u0 + du; u += step)
+				for (double v = v0; v <= v0 + dv; v += step)
+					if (f.solid_at(p.x + c * u - s * v, p.z + s * u + c * v)) return false;
+		}
 	return true;
 }
 
-bool find_way(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::vector<AxlePose> &way, bool fine) {
-	if (!body_clear(f, b, start) || !body_clear(f, b, goal.pose)) return false;
-	Search search(f, b, goal, GRAINS[fine ? 1 : 0]);
-	return search.run(start, way);
-}
+WaySearch::WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, bool fine) : run_(std::make_unique<Run>(f, b, start, goal, GRAINS[fine ? 1 : 0])) {}
+WaySearch::~WaySearch() = default;
+bool WaySearch::advance(int &work) { return run_->advance(work); }
+bool WaySearch::found() const { return run_->found; }
+const std::vector<AxlePose> &WaySearch::way() const { return run_->way; }
 
 } // namespace traffic
 } // namespace city

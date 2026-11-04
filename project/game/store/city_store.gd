@@ -84,8 +84,9 @@ func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
 
 
 ## A new map (entry of data/catalog/maps.json); with_city = false makes an empty map. Returns the core's report.
-func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
-	var report: Dictionary = _core.new_map(map, seed, with_city) # waits for a save in flight first
+## `paused`: the clock starts stopped, for a test or a capture that steps it: no tick slips in before it says so.
+func new_map(map: int, seed: int, with_city: bool, paused := false) -> Dictionary:
+	var report: Dictionary = _core.new_map(map, seed, with_city, paused) # waits for a save in flight first
 	_settle_save()
 	_city_slot = "" # a new city: its first save gives it a slot of its own
 	refresh()

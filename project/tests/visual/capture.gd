@@ -99,10 +99,9 @@ func _boot_world() -> bool:
 	print("qualidade: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	add_child(RoadcraftHud.new())
 	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
-	var report: Dictionary = CityStore.new_map(map, seed, true)
+	var report: Dictionary = CityStore.new_map(map, seed, true, true)
 	print("cidade: ", report)
 	_memory("cidade gerada")
-	CityStore.dispatch(&"set_speed", [0])
 	camera.global_position = Vector3(0, 300, 300)
 	camera.look_at(Vector3.ZERO)
 	return true
