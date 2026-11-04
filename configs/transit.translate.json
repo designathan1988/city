@@ -10,7 +10,9 @@
     "member": "transit",
     "root": "native/src/sim/state/city_state.h",
     "rootHeader": "sim/transit/transit_types.h",
-    "empty": "emptyTransit"
+    "empty": "emptyTransit",
+    "anchor": "TrafficState traffic;",
+    "memberLine": "TransitState transit; // public transport: stops, tracks, lines and the rail network (sim/transit)"
   },
   "units": [
     "hasTransit", "addStop", "removeStop", "setTerminal", "addTrack", "removeTrack", "addLine", "removeLine",
@@ -65,6 +67,10 @@
   },
   "literals": {
     "20": { "name": "MAX_LINE_VEHICLES", "comment": "Most vehicles a line may run (the 4.0's setLineVehicles and normalizeTransit clamp to 1..20)" }
+  },
+  "registry": {
+    "doc": "CLAUDE.md",
+    "mapLine": "- `native/src/sim/transit/**` — transporte público (paradas, trilhos, linhas) e a rede ferroviária, traduzido do Roadcraft 4.0 (src/world/transit.ts) pelo conversor"
   },
   "layer": {
     "rules": "tools/gates/rules.json",

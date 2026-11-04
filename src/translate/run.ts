@@ -27,6 +27,8 @@ export interface TranslationResult {
   readonly structs: readonly CppStruct[];
   readonly enums: readonly CppEnum[];
   readonly state: string;
+  /** The source files the translation read (the feature's file and the modules it imports), relative to the root. */
+  readonly sourcesRead: readonly string[];
 }
 
 export interface ApiFunction {
@@ -98,7 +100,20 @@ export function translate(input: TranslateInput): TranslationResult {
     .map((f) => ({ source: f.source, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
   return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
-    enums: [...types.enums.values()], state: spec.state.target };
+    enums: [...types.enums.values()], state: spec.state.target, sourcesRead: sourcesRead(ts, sp.checker, file, input.sourceRoot) };
+}
+
+/** The feature's file and every module it imports (what the translation read), relative to the source root. */
+function sourcesRead(ts: typeof TS, checker: TS.TypeChecker, file: TS.SourceFile, root: string): string[] {
+  const relative = (f: string): string => path.relative(root, f).split(path.sep).join('/');
+  const out = new Set([relative(file.fileName)]);
+  for (const st of file.statements) {
+    if (!ts.isImportDeclaration(st)) continue;
+    const module = checker.getSymbolAtLocation(st.moduleSpecifier);
+    const decl = module?.valueDeclaration ?? module?.declarations?.[0];
+    if (decl) out.add(relative(decl.getSourceFile().fileName));
+  }
+  return [...out].sort();
 }
 
 /** The state's defaults are the empty state's values (`emptyTransit()` starts nextId at 1). */

@@ -51,7 +51,12 @@ export interface TranslationSpec {
     readonly source: string; readonly target: string; readonly member: string; readonly root: string; readonly rootHeader: string;
     /** The source function that makes the empty state: its values are the C++ defaults. */
     readonly empty?: string;
+    /** The line of the state manager the member goes after, and the member's line (with its comment). */
+    readonly anchor?: string;
+    readonly memberLine?: string;
   };
+  /** Where the target registers a new subsystem: its instructions file with the map, and the map's line for it. */
+  readonly registry?: { readonly doc: string; readonly mapLine: string };
   /** Declarations of the source file to translate, by name (types follow from what they use). */
   readonly units: readonly string[];
   readonly pending: readonly Pending[];

@@ -7,6 +7,7 @@ import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
 import { BASELINE_FLAGS, SANDBOX_FLAGS, runBaselineCommand, runSandboxCommand } from './sandbox/command.ts';
 import { TRANSLATE_FLAGS, runTranslateCommand } from './translate/command.ts';
 import { DIFFERENTIAL_FLAGS, runDifferentialCommand } from './translate/differential-command.ts';
+import { PACKAGE_FLAGS, runPackageCommand } from './translate/package-command.ts';
 
 const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promise<void>; help: string }> = {
   graph: { run: runGraph, help: usage('graph', GRAPH_FLAGS) },
@@ -14,6 +15,7 @@ const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promis
   classify: { run: runClassifyCommand, help: usage('classify', CLASSIFY_FLAGS) },
   translate: { run: runTranslateCommand, help: usage('translate', TRANSLATE_FLAGS) },
   differential: { run: runDifferentialCommand, help: usage('differential', DIFFERENTIAL_FLAGS) },
+  package: { run: runPackageCommand, help: usage('package', PACKAGE_FLAGS) },
   audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
   sandbox: { run: runSandboxCommand, help: usage('sandbox', SANDBOX_FLAGS) },
   baseline: { run: runBaselineCommand, help: usage('baseline', BASELINE_FLAGS) },
