@@ -226,7 +226,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/props/prop_kit.cpp` · `native/src/render/props/prop_kit.h` — malhas do mobiliário a partir dos dados
 - `native/src/render/props/prop_renderer.cpp` · `native/src/render/props/prop_renderer.h` · `native/src/render/props/signal_lamps.cpp` · `native/src/render/props/signal_lamps.h`
   — chunks do mobiliário; lentes dos semáforos, cada uma desenhada uma vez (um MultiMesh por chunk, acesa ou apagada pelo estado publicado)
-- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes e cruzetas, fios e luz como instâncias por chunk, semáforos (um por acesso), árvores
+- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes e cruzetas e os fios como instâncias sem cor por chunk (uma por vão, com todos os fios na malha: o motor guarda 3 cópias de cada instância na CPU), poças de luz na malha do chunk, semáforos (um por acesso), árvores
 - `native/src/render/props/barrier_boxes.cpp` · `native/src/render/props/barrier_boxes.h` · `native/src/render/props/street_signs.cpp` · `native/src/render/props/street_signs.h` · `native/src/render/props/sign_atlas.cpp` · `native/src/render/props/sign_atlas.h` — caixas das barreiras; placas em pé (das regras, colocadas e nomes de rua); folha de células das placas
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro

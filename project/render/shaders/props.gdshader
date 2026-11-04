@@ -32,17 +32,23 @@ varying vec3 v_local;
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 
-// A wire's vertex: VERTEX.x is t along its chord (the instance's x axis), y and z its ring. It hangs in a parabola of depth
+// A wire's vertex: VERTEX.x is t along the span's chord (the instance's x axis), y and z its ring, UV its place: metres up the
+// poles and along the arms, whose headings are INSTANCE_CUSTOM.z (t = 0) and .w (t = 1). The arm between them is horizontal,
+// and the chord may climb, so the offset goes into the instance's axes by parts. The wire hangs in a parabola of depth
 // INSTANCE_CUSTOM.x, swings across in the wind by its phase INSTANCE_CUSTOM.y, and keeps wire_min_px on the screen.
-vec3 wire_vertex(vec3 v, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase, float time) {
+vec3 wire_vertex(vec3 v, vec2 place, vec2 headings, mat4 model, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase, float time) {
 	float t = v.x, u = t * 2.0 - 1.0;
-	float depth = max(-(model_view * vec4(t, 0.0, 0.0, 1.0)).z, 0.01);
+	vec3 chord = model[0].xyz;
+	vec2 arm = mix(vec2(cos(headings.x), sin(headings.x)), vec2(cos(headings.y), sin(headings.y)), t) * place.y;
+	float ahead = dot(arm, chord.xz) / dot(chord.xz, chord.xz);
+	vec3 hung = vec3(t + ahead, place.x - ahead * chord.y, dot(arm, model[2].xz));
+	float depth = max(-(model_view * vec4(hung, 1.0)).z, 0.01);
 	float pixel = depth / (projection[1][1] * viewport.y * 0.5);
 	float radius = max(length(v.yz), 1e-4);
 	float keep = max(1.0, wire_min_px * pixel * 0.5 / radius);
 	vec2 ring = v.yz * keep;
 	float swing = 4.0 * t * (1.0 - t) * wire_sway_m * (0.55 + 0.45 * sin(time * 1.9 + phase)) * 0.5;
-	return vec3(t, ring.x - sag * (1.0 - u * u), ring.y + swing);
+	return hung + vec3(0.0, ring.x - sag * (1.0 - u * u), ring.y + swing);
 }
 
 void vertex() {
@@ -53,7 +59,7 @@ void vertex() {
 	v_finish = INSTANCE_CUSTOM.ba;
 	v_local = VERTEX;
 	if (abs(v_tag - 4.0) < 0.5) {
-		VERTEX = wire_vertex(VERTEX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME);
+		VERTEX = wire_vertex(VERTEX, UV, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME);
 	} else if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - 3.0) > 0.5) {
 		if ((int(INSTANCE_CUSTOM.a + 0.5) & int(UV2.y + 0.5)) == 0) {
 			VERTEX = vec3(0.0); // a part this pole does not have

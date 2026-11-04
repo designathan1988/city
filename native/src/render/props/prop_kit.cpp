@@ -17,7 +17,7 @@ namespace {
 constexpr float HORIZONTAL_EPS = 1e-6f;
 constexpr int LIGHT_SIDES = 18, BEAM_SEGMENTS = 4; // Volumetric Light Beam: 18 sides, at least 3 segments for a smooth fall
 constexpr float BEAM_LENS = 0.075f; // the cut apex over the radius at the ground: the lens, some 0.28 m of 3.7
-constexpr float LIGHT_POOL_PART = 1.f, LIGHT_BEAM_PART = 2.f;
+constexpr float LIGHT_BEAM_PART = 2.f;
 const Color WHITE(1, 1, 1, 1);
 
 Vector3 vec3(const Variant &v) {
@@ -93,28 +93,31 @@ MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &
 	return b;
 }
 
-// A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side.
-void wire_mesh(MeshBuilder &b, float radius, int chords, int sides) {
+// A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side. UV is the
+// wire's place in the span, which props.gdshader hangs from the poles.
+void wire_tube(MeshBuilder &b, const Vector2 &place, const Color &colour, float radius, int chords, int sides) {
 	const Vector2 t2(float(int(PropTag::WIRE)), 0);
+	const Vector2 uvs[4] = { place, place, place, place };
 	for (int s = 0; s < chords; s++) {
 		const float t0 = float(s) / chords, t1 = float(s + 1) / chords;
 		for (int k = 0; k < sides; k++) {
 			const float a0 = TAU_F * k / sides, a1 = TAU_F * (k + 1) / sides;
 			const Vector3 r0(0, std::cos(a0) * radius, std::sin(a0) * radius), r1(0, std::cos(a1) * radius, std::sin(a1) * radius);
-			b.quad(Vector3(t0, 0, 0) + r0, Vector3(t1, 0, 0) + r0, Vector3(t1, 0, 0) + r1, Vector3(t0, 0, 0) + r1, WHITE, (r0 + r1).normalized(), nullptr, t2);
+			b.quad(Vector3(t0, 0, 0) + r0, Vector3(t1, 0, 0) + r0, Vector3(t1, 0, 0) + r1, Vector3(t0, 0, 0) + r1, colour, (r0 + r1).normalized(), uvs, t2);
 		}
 	}
 }
 
+// Every wire of a span: each course (y_m, up the pole) at each offset along the arm (z_m).
+void wire_mesh(MeshBuilder &b, const Dictionary &wires, int chords, int sides) {
+	const Array ys = wires["y_m"], zs = wires["z_m"];
+	const Color colour = rgba8_to_color(parse_hex_color(String(wires["color"]).utf8().get_data()));
+	for (int i = 0; i < ys.size(); i++)
+		for (int k = 0; k < zs.size(); k++) wire_tube(b, Vector2(float(ys[i]), float(zs[k])), colour, float(wires["radius_m"]), chords, sides);
+}
+
 void light_mesh(MeshBuilder &b) {
 	const Vector3 up(0, 1, 0);
-	const int centre = b.add(Vector3(), up, WHITE, Vector2(), Vector2(0, LIGHT_POOL_PART));
-	std::vector<int> rim;
-	for (int i = 0; i < LIGHT_SIDES; i++) {
-		const float a = TAU_F * i / LIGHT_SIDES;
-		rim.push_back(b.add(Vector3(std::cos(a), 0, std::sin(a)), up, WHITE, Vector2(1, 0), Vector2(0, LIGHT_POOL_PART)));
-	}
-	for (int i = 0; i < LIGHT_SIDES; i++) b.tri(centre, rim[size_t(i)], rim[size_t((i + 1) % LIGHT_SIDES)], up);
 	// The beam: a unit cone cut at the lens, in rings so the fall along it stays smooth; apex up, foot on the ground.
 	std::vector<int> ring(size_t(LIGHT_SIDES) * size_t(BEAM_SEGMENTS + 1));
 	for (int s = 0; s <= BEAM_SEGMENTS; s++) {
@@ -148,8 +151,8 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, PackedStri
 	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
 	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
 	pole_ = parts(props, "pole", errors);
-	wire_mesh(wire_near_, float(wires["radius_m"]), int(wires["near_chords"]), int(wires["near_sides"]));
-	wire_mesh(wire_far_, float(wires["radius_m"]), int(wires["far_chords"]), int(wires["far_sides"]));
+	wire_mesh(wire_near_, wires, int(wires["near_chords"]), int(wires["near_sides"]));
+	wire_mesh(wire_far_, wires, int(wires["far_chords"]), int(wires["far_sides"]));
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
 	light_mesh(light_);
 	if (!props.has("signal")) return false;

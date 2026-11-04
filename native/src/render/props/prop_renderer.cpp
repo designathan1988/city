@@ -18,6 +18,7 @@ void PropRenderer::Draws::free() {
 	wires_far.free();
 	boxes.free();
 	light.free();
+	pools.free();
 	count = 0;
 }
 
@@ -42,6 +43,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	wire_far_mesh_ = kit_.wire(false).bake();
 	box_mesh_ = kit_.unit_box().bake();
 	light_mesh_ = kit_.light().bake();
+	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
 	return true;
 }
@@ -68,19 +70,22 @@ void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 	place_signs(s, *look_, signs_, atlas_, key, mb);
 	for (const PropPlace &p : props) PropKit::append(mb, kit_.mesh(p.kind), p.basis, p.origin);
 	for (const SignalHead &h : inst.heads) PropKit::append(mb, kit_.mesh(PropKind::SIGNAL), h.basis, h.origin);
+	inst.pool_mesh = inst.pools.bake();
 	std::lock_guard<std::mutex> lk(placed_mutex_);
 	placed_[key] = std::move(inst);
 }
 
-void PropRenderer::show(Draws &d, const StreetInstances &inst, const AABB &box) {
+void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
-	d.count = int((inst.poles.size() + inst.wires.size() + inst.boxes.size() + inst.light.size()) / MM_STRIDE);
+	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + inst.boxes.size() / MM_STRIDE);
 	instances_ += d.count;
-	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true);
-	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true);
-	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false);
+	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, false);
+	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, false);
+	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, false);
 	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true);
-	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false);
+	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false, false);
+	d.pools.adopt(scenario_, glow_material_, false, inst.pool_mesh.release());
+	if (d.pools.inst.is_valid()) RenderingServer::get_singleton()->instance_set_custom_aabb(d.pools.inst, box);
 	d.wires_near.range(NEVER_END, furniture_.wire.near_end);
 	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
 }
@@ -132,6 +137,7 @@ void PropRenderer::drop_chunk(int64_t key) {
 void PropRenderer::set_pole_preview(const CityState &s, const std::vector<Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing) {
 	StreetInstances inst;
 	place_pole_preview(s, *look_, furniture_, at, lamp, standing, inst);
+	inst.pool_mesh = inst.pools.bake();
 	Vector3 lo, hi;
 	for (size_t i = 0; i < at.size(); i++) {
 		lo = i == 0 ? at[i] : Vector3(std::min(lo.x, at[i].x), std::min(lo.y, at[i].y), std::min(lo.z, at[i].z));

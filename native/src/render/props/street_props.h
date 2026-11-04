@@ -15,9 +15,7 @@
 namespace city {
 
 struct WireLook {
-	std::vector<float> y, z; // the courses' heights and the offsets across the arm: every course at every offset
-	float radius = 0, sag = 0, max_sag = 0, min_span = 0, max_span = 0, near_end = 0, far_end = 0;
-	godot::Color color;
+	float sag = 0, max_sag = 0, min_span = 0, max_span = 0, near_end = 0, far_end = 0;
 };
 
 // How the furniture looks beyond its meshes (data/render/streets.json "wires" and "lamp_light").
@@ -44,6 +42,9 @@ struct TreeSpot {
 // What a chunk draws as instances, each list one MultiMesh (rs_util.h layout).
 struct StreetInstances {
 	godot::PackedFloat32Array poles, wires, boxes, light;
+	// The lamps' pools: every one has its own shape, so nothing repeats, and four corners cost less than an instance.
+	MeshBuilder pools;
+	OwnedMesh pool_mesh; // `pools` baked (a job's work; the main thread only shows it)
 	std::vector<SignalHead> heads;
 };
 

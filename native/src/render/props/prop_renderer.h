@@ -1,7 +1,7 @@
 // Street furniture chunks: every small prop and plate of a 256 m chunk (render/props/street_props.h, street_signs.h) merged
 // into one mesh drawn with the "prop" material (data/render/materials.json), and its poles, wires, barrier boxes and lamp
-// light as one MultiMesh each. Rebuilt with the road chunks and when the player places something there. The chunk's signal
-// posts go with its mesh to SignalLamps, which lights their lenses.
+// beams as one MultiMesh each, its lamp pools as a mesh. Rebuilt with the road chunks and when the player places something
+// there. The chunk's signal posts go with its mesh to SignalLamps, which lights their lenses.
 #pragma once
 
 #include "core/job_pool.h"
@@ -41,12 +41,13 @@ private:
 	// What a chunk draws as instances.
 	struct Draws {
 		MultiMeshDraw poles, wires_near, wires_far, boxes, light;
+		MeshDraw pools;
 		int count = 0;
 		void free();
 	};
 	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
 	void commit_one(BuiltMesh &b) override;
-	void show(Draws &d, const StreetInstances &inst, const godot::AABB &box);
+	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	godot::RID scenario_, material_, glow_material_;
 	const StreetLook *look_ = nullptr;
 	FurnitureLook furniture_;

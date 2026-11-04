@@ -26,7 +26,7 @@ constexpr uint32_t PROP_KINDS = furniture_bit(FurnitureKind::LAMP) | furniture_b
 		furniture_bit(FurnitureKind::PHONE) | furniture_bit(FurnitureKind::DRAIN) | furniture_bit(FurnitureKind::TREE);
 constexpr int CAN_PERIOD = 5, CAN_PHASE = 3; // a transformer on one pole in five
 constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swing out of step
-constexpr int LIGHT_POOL = 1, LIGHT_BEAM = 2; // parts of the lamp light mesh
+constexpr float LIGHT_POOL = 1.f; // the part of the lamp's light it is (lamp_glow.gdshader)
 constexpr int JOINT_ARMS = 2; // a street going on through a node
 const Vector3 UP(0, 1, 0);
 const Color WHITE(1, 1, 1, 1);
@@ -38,23 +38,21 @@ Vector3 world_of(const CityState &s, const StreetLook &L, const FurnitureSpot &p
 }
 
 void push_part(PackedFloat32Array &buf, const Basis &b, const Vector3 &o, int mask) {
-	mm_push(buf, b.get_column(0), b.get_column(1), b.get_column(2), o, WHITE, 0, 0, 0, float(mask));
+	mm_push_plain(buf, b.get_column(0), b.get_column(1), b.get_column(2), o, 0, 0, 0, float(mask));
 }
 
-// One wire between two points: x along its chord, y up, z across (props.gdshader bends it from t = 0 to 1).
-void push_wire(PackedFloat32Array &buf, const WireLook &w, const Vector3 &a, const Vector3 &b, float phase) {
+// The way an arm points, as the span's instance carries it.
+float heading(const Vector3 &arm) { return std::atan2(arm.z, arm.x); }
+
+// A span between two arms (each end its pole's place and the arm the span hangs from): one instance, because the renderer
+// keeps three copies of every instance's floats on the CPU, and its mesh holds every wire (prop_kit.cpp wire_mesh). x along
+// the chord, y up, z across; props.gdshader hangs each wire from the two arms and bends it from t = 0 to 1.
+void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const Vector3 &arm_a, const Vector3 &b, const Vector3 &arm_b, float phase) {
 	const Vector3 d = b - a;
 	const float span = Vector2(d.x, d.z).length();
-	const Vector3 across = Vector3(-d.z, 0, d.x).normalized();
-	mm_push(buf, d, UP, across, a, w.color, std::min(w.max_sag, span * w.sag), phase, 0, 0);
-}
-
-// Every wire of a span between two arms (each end its pole's place and the arm the span hangs from).
-void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const Vector3 &arm_a, const Vector3 &b, const Vector3 &arm_b, float phase) {
-	const float span = Vector2(b.x - a.x, b.z - a.z).length();
 	if (span < w.min_span || span > w.max_span) return;
-	for (float y : w.y)
-		for (float z : w.z) push_wire(inst.wires, w, a + UP * y + arm_a * z, b + UP * y + arm_b * z, phase);
+	const Vector3 across = Vector3(-d.z, 0, d.x).normalized();
+	mm_push_plain(inst.wires, d, UP, across, a, std::min(w.max_sag, span * w.sag), phase, heading(arm_a), heading(arm_b));
 }
 
 // What a lamp's pool lies on: how far it reaches across (the street's width, sim/roads lamp_row) and the rise per metre
@@ -79,9 +77,11 @@ void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &
 	const float half = height * F.pool_along;
 	const PoolBed bed = pool_bed(s, seg, v, half, along);
 	const Vector3 middle = foot + toward * std::max(reach, bed.across - s.catalog.furniture.lamps.pool_back_m) + UP * F.pool_lift;
-	mm_push(inst.light, (along + UP * bed.rise) * half, UP * height, toward * bed.across, middle, WHITE, 0, 0, 0, float(LIGHT_POOL));
+	const Vector3 a = (along + UP * bed.rise) * half, c = toward * bed.across;
+	const Vector2 corners[4] = { Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1) };
+	inst.pools.quad(middle - a - c, middle + a - c, middle + a + c, middle - a + c, WHITE, UP, corners, Vector2(0, LIGHT_POOL));
 	if (F.beams) // lit air: rain and storm, and there is no weather yet
-		mm_push(inst.light, Vector3(F.beam_radius, 0, 0), UP * height, Vector3(0, 0, F.beam_radius), head, WHITE, 0, 0, 0, float(LIGHT_BEAM));
+		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
 }
 
 struct PoleFrame {
@@ -281,12 +281,8 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 		return false;
 	}
 	Dictionary w = t["wires"], l = t["lamp_light"];
-	Array ys = w["y_m"], zs = w["z_m"];
-	for (int k = 0; k < ys.size(); k++) wire.y.push_back(ys[k]);
-	for (int k = 0; k < zs.size(); k++) wire.z.push_back(zs[k]);
-	wire.radius = w["radius_m"]; wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
+	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
 	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
-	wire.color = rgba8_to_color(parse_hex_color(String(w["color"]).utf8().get_data()));
 	pool_along = l["pool_along"]; pool_lift = l["pool_lift_m"]; beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
 	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
 	return true;

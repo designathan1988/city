@@ -40,6 +40,8 @@ public:
 	const MeshBuilder &unit_box() const { return box_; }
 	// The pool of light (a disc of radius 1 at y = 0) and the beam (a cone from there to its apex at y = 1): lamp_glow.gdshader.
 	const MeshBuilder &light() const { return light_; }
+	// The renderer has baked the five above: their vertices need not stay on the CPU.
+	void drop_baked() { pole_ = wire_near_ = wire_far_ = box_ = light_ = MeshBuilder(); }
 	// Copies `src` into `dst`, every vertex moved by basis then origin.
 	static void append(MeshBuilder &dst, const MeshBuilder &src, const godot::Basis &b, const godot::Vector3 &o);
 	// Basis whose +z is `face` (horizontal) and +y up.
