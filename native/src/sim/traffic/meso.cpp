@@ -228,6 +228,7 @@ void advance(CityState &s, int id) {
 		schedule(t, id, std::max(t.time + double(MIN_WAIT_S), next_green(s, ds, t.time)));
 		return;
 	}
+	signal_call_far(s, ds);
 	const Conn &c = g.conns[size_t(ci)];
 	const int to = c.to_ds;
 	if (to < 0 || to >= int(g.ds.size()) || !g.ds[size_t(to)].ok) { despawn_vehicle(s, id, false); return; }

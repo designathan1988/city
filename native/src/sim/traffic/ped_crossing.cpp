@@ -78,18 +78,6 @@ void store(CityState &s, int key, int kind, bool value) {
 	(kind == 0 ? s.traffic.cross_walk[size_t(key)] : s.traffic.cross_cars[size_t(key)]) = value ? 1 : 0;
 }
 
-int green_stage(const CityState &s, int node) {
-	const Junction &j = s.traffic.g.junctions[node];
-	if (j.ctl != Control::SIGNAL || j.cycle <= 0) return -1;
-	float x = float(std::fmod(s.traffic.time + j.offset, double(j.cycle)));
-	for (size_t k = 0; k < j.green.size(); k++) {
-		if (x < j.green[k]) return int(k);
-		x -= j.green[k] + j.amber[k] + s.catalog.traffic.signal_all_red_s;
-		if (x < 0) return -1;
-	}
-	return -1;
-}
-
 bool walk_ok(CityState &s, int node, int arm_seg) {
 	const int key = cache_key(s, node, arm_seg, 0);
 	bool cached_ok = false;
@@ -97,9 +85,8 @@ bool walk_ok(CityState &s, int node, int arm_seg) {
 	const Junction &j = s.traffic.g.junctions[size_t(node)];
 	bool ok = true;
 	if (j.ctl == Control::SIGNAL) {
-		const int stage = green_stage(s, node);
 		const DirSeg &d = s.traffic.g.ds[size_t(in_ds(s, arm_seg, node))];
-		ok = stage >= 0 && (!d.ok || d.stage != stage);
+		ok = walk_signal(s, node, arm_seg, d.ok ? d.stage : -1);
 	}
 	store(s, key, 0, ok);
 	return ok;

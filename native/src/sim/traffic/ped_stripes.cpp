@@ -4,7 +4,8 @@
 // the walker is shut; ahead, each stripe's room is the gap to the nearest body across it. The walker takes the stripe
 // with the most room (aside costs, off its own side costs, the stripes left to the oncoming are not its own), moves
 // toward it at a share of its pace without ever stepping sideways into furniture, and keeps its gap behind the body
-// ahead. Held up past ped_jam_s it squeezes past walkers (never furniture) at ped_jam_share of its pace (SUMO's jamtime).
+// ahead. Held up past its jamtime (by the way: sidewalk, zebra, a single stripe) it squeezes past walkers (never
+// furniture) at ped_jam_share of its pace (SUMO's jamtime).
 #include "sim/traffic/ped_stripes.h"
 
 #include <algorithm>
@@ -132,6 +133,7 @@ void line_frame(const CityState &s, const Pedestrian &w, WayFrame &f) {
 	f.u = w.u;
 	if (to.cross >= 0) { // over a zebra: its own right half, measured from its line
 		const float zh = s.catalog.furniture.crossing.half();
+		f.zebra = true;
 		f.lo = -zh + p.ped_body_m - w.line_off;
 		f.hi = std::max(f.lo, -p.ped_body_m - w.line_off);
 		f.keep = clampf(0.f, f.lo, f.hi);
@@ -157,18 +159,23 @@ StripeRules::StripeRules(const TrafficParams &p, float step) {
 	aside_share = p.ped_lateral_share;
 	lateral_cost = p.ped_lateral_cost;
 	keep_cost = p.ped_keep_right_cost;
+	stripe = p.ped_stripe_m;
 	inv_stripe = 1.f / p.ped_stripe_m;
 	gain = p.ped_stripe_gain_m;
 	hold = p.ped_stripe_hold_s;
 	jam_s = p.ped_jam_s;
+	jam_crossing_s = p.ped_jam_crossing_s;
+	jam_narrow_s = p.ped_jam_narrow_s;
 	jam_share = p.ped_jam_share;
 	moving = p.ped_moving_ms;
 	settled_keeps = p.ped_lateral_cost >= p.ped_keep_right_cost;
 }
 
 StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayFrame &f, const Body *b, int n) {
+	// how long it stands held up before it squeezes past: SUMO's jamtime by the way (one stripe only: narrow)
+	const float jam_after = f.hi - f.lo < r.stripe ? r.jam_narrow_s : (f.zebra ? r.jam_crossing_s : r.jam_s);
 	// nobody about, on the stripe it aims at (inside its room, not one left to the oncoming), not held up: it walks on
-	if (n == 0 && r.settled_keeps && w.u_goal == f.u && f.u >= f.lo && f.u <= f.hi && f.u <= f.reserve_from && w.jam < r.jam_s) {
+	if (n == 0 && r.settled_keeps && w.u_goal == f.u && f.u >= f.lo && f.u <= f.hi && f.u <= f.reserve_from && w.jam < jam_after) {
 		StripeChoice out;
 		out.u = out.u_goal = f.u;
 		out.held = w.held + r.dt;
@@ -204,12 +211,12 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 		out.u_goal = cand[best];
 		out.held = 0;
 	}
-	// the gap behind the body ahead in its own span; held up past ped_jam_s it squeezes past the walkers until clear
+	// the gap behind the body ahead in its own span; held up past its jamtime it squeezes past the walkers until clear
 	// (where it is was scored already, as a candidate or as the stripe aimed at, unless it stands outside its room)
 	const bool scored = here || f.u == cand[AIMED];
 	const float lead = !scored && n > 0 ? room_at(b, n, f.u, r.look, false) : here ? here_room : f.u == cand[AIMED] ? aimed_room : r.look;
 	float want = std::clamp((lead - r.gap) * r.inv_headway, 0.f, w.speed);
-	if (w.jam >= r.jam_s) {
+	if (w.jam >= jam_after) {
 		const float squeeze = room_at(b, n, f.u, r.look, true);
 		out.jam = want > r.moving ? 0.f : w.jam;
 		want = std::clamp((squeeze - r.gap) * r.inv_headway, 0.f, w.speed * r.jam_share);

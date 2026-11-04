@@ -97,12 +97,14 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	}
 	if (ci < 0 || t.g.conns[ci].from_lane != v.lane || dist >= p.look_ahead_m) return false;
 	if (v.pass == ci) {
-		// a commitment is taken back while the nose is still behind the line (Roadcraft 4.0 revokes a stale grant): the
-		// light went against it and it can still stop comfortably, a light past the junction stops it before it, or it
+		// a commitment is taken back while the nose is still behind the line: the light went against it and it can still
+		// stop (at an amber by the amber's rule, at a red comfortably), a light past the junction stops it before it, or it
 		// stands and its exit filled meanwhile; else it goes once the box is clear, never into a junction it cannot leave
 		// nor against the light (a jammed junction's release lets its one vehicle in whatever its exit)
-		const bool can_stop = stop_is_comfortable(s, v, line - p.stop_margin_m);
-		const bool stale = held || (can_stop && light_for(s, v.ds) != Light::GREEN) ||
+		const Light light = light_for(s, v.ds);
+		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, line - p.stop_margin_m, ci) || v.amber_hold == v.ds
+				: stop_is_comfortable(s, v, line - p.stop_margin_m);
+		const bool stale = held || (can_stop && light != Light::GREEN) ||
 				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci);
 		release(s, id, ci);
@@ -161,10 +163,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 				if (detour(s, id, -1, false)) ci = pick_connector(s, v);
 				if (ci < 0) continue;
 			}
-			if (t.g.conns[ci].turn != Turn::STRAIGHT) {
-				float vt = p.turn_speed_kmh / KMH_PER_MS, b = p.classes[int(v.type)].b;
-				v0 = std::min(v0, std::sqrt(vt * vt + 2 * b * std::max(0.f, dist - p.stop_margin_m)));
-			}
+			v0 = std::min(v0, turn_limit(s, v, t.g.conns[ci], dist));
 			const LightStop lights = lights_ahead(s, v, v.ri, v.lane, -v.s);
 			v.amber_hold = lights.amber_hold;
 			l.take(lights.gap, 0.f);
@@ -184,8 +183,10 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			}
 		}
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, v0, l.gap, l.v), l, dt);
+		const float was = v.s;
 		integrate(s, v, acc, dt, v.s);
 		v.s = std::min(v.s, L);
+		signal_call(s, ds, was, v.s);
 		// over the stop line on red (probe): from a standstill there, the gate let it run the red
 		if (through && line_was > 0 && L - v.s - t.g.ds[ds].stop_back <= 0 && light_for(s, ds) == Light::RED) {
 			t.red_entries++;
@@ -292,6 +293,13 @@ BoxHold box_hold(const CityState &s, int id) {
 
 float conn_speed(const CityState &s, const Conn &c) {
 	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;
+}
+
+float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist) {
+	if (c.turn == Turn::STRAIGHT) return NO_LEADER;
+	const TrafficParams &p = s.catalog.traffic;
+	const float vt = p.turn_speed_kmh / KMH_PER_MS, b = p.classes[int(v.type)].b;
+	return std::sqrt(vt * vt + 2 * b * std::max(0.f, dist - p.stop_margin_m));
 }
 
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {

@@ -1,6 +1,6 @@
-// Junction control (Roadcraft roads/control.ts effectiveControl + signalStages, sim/signals.ts timed cycle,
-// sim/traffic/junctions.ts gate rules): which approaches may enter a connector now. A blocked entry acts as a
-// stopped obstacle at the stop line (see vehicle_motion.cpp).
+// Junction control: the control a node gets (signals, priority or none), its signal stages (opposite approaches
+// together, the intergreens and greens of signal_timing.cpp) and the gate rules: which approaches may enter a
+// connector now. A blocked entry acts as a stopped obstacle at the stop line (see vehicle_motion.cpp).
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/roads/junction.h"
@@ -16,8 +16,7 @@ constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's de
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr uint8_t CTL_SIGNAL = 1, CTL_PRIORITY = 2; // RoadNode::ctl (roads/control.ts Ctl)
-constexpr float ITE_REACTION_S = 1.f, ITE_SPEED_PAD = 3.13f, ITE_DECEL = 3.05f; // iteAmber(limit)
-constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000;
+constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
 constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
@@ -88,18 +87,41 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 		if (best >= 0) stage[best] = count;
 		count++;
 	}
-	j.green.assign(count, tp.signal_green_s);
-	j.amber.assign(count, tp.amber_min_s);
+	j.green.assign(count, tp.signal_safety_green_s);
+	j.amber.assign(count, 0.f);
+	j.all_red.assign(count, 0.f);
+	j.approaches.assign(count, {});
+	const bool walkers = crosswalk_node(s, n);
 	for (size_t i = 0; i < arms.size(); i++) {
 		if (arms[i].in < 0) continue;
 		DirSeg &d = s.traffic.g.ds[arms[i].in];
 		d.stage = stage[i];
-		float amber = ITE_REACTION_S + (d.speed + ITE_SPEED_PAD) / (2 * ITE_DECEL);
-		j.amber[stage[i]] = clampf(std::max(j.amber[stage[i]], amber), tp.amber_min_s, tp.amber_max_s);
+		j.approaches[stage[i]].push_back(arms[i].in);
+		float amber = 0, all_red = 0;
+		intergreen(s, n, arms[i].in, walkers, amber, all_red);
+		j.amber[stage[i]] = std::max(j.amber[stage[i]], amber);
+		j.all_red[stage[i]] = std::max(j.all_red[stage[i]], all_red);
+		j.green[stage[i]] = std::max(j.green[stage[i]], detection(s, arms[i].in));
 	}
-	j.cycle = 0;
-	for (int k = 0; k < count; k++) j.cycle += j.green[k] + j.amber[k] + tp.signal_all_red_s;
-	j.offset = float((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.cycle;
+	// MBST vol. V 5.14: a stage's green lets the walkers it lets cross have their own safety green and still clear
+	for (size_t i = 0; walkers && i < arms.size(); i++)
+		for (int k = 0; k < count; k++) {
+			if (arms[i].in >= 0 && stage[i] == k) continue; // its own traffic runs: nobody crosses it now
+			const float need = tp.ped_safety_green_s + ped_clearance(s, arms[i].seg) + tp.ped_all_red_s;
+			j.green[k] = std::max(j.green[k], need - j.amber[k] - j.all_red[k]);
+		}
+	// MBST vol. V 7.3.3 and 5.9: the longest cycle less the intergreens, in equal shares (no fixed plan's flows to weigh)
+	float lost = 0;
+	for (int k = 0; k < count; k++) lost += j.amber[k] + j.all_red[k];
+	j.green_max.assign(count, 0.f);
+	j.cycle = lost;
+	for (int k = 0; k < count; k++) {
+		j.green_max[k] = std::max(j.green[k], (tp.signal_cycle_max_s - lost) / float(count));
+		j.cycle += j.green[k];
+	}
+	j.run = 0;
+	j.run_green = -1;
+	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
 }
 
 int movement(Turn t) {
@@ -143,7 +165,7 @@ void build_junction(CityState &s, int n) {
 	std::vector<Arm> arms = arms_of(s, n);
 	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
 	for (const Arm &a : arms)
-		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; }
+		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
 	if (crosswalk_node(s, n))
 		for (const Arm &a : arms)
@@ -183,54 +205,6 @@ void build_junctions(CityState &s) {
 		if (s.roads.nodes[n].alive) build_junction(s, n);
 }
 
-namespace {
-Light compute_light(const CityState &s, int ds) {
-	const LaneGraph &g = s.traffic.g;
-	const DirSeg &d = g.ds[ds];
-	const Junction &j = g.junctions[d.to];
-	if (j.ctl != Control::SIGNAL || d.stage < 0 || j.cycle <= 0) return Light::GREEN;
-	float x = float(std::fmod(s.traffic.time + j.offset, double(j.cycle)));
-	for (size_t k = 0; k < j.green.size(); k++) {
-		bool mine = int(k) == d.stage;
-		if (x < j.green[k]) return mine ? Light::GREEN : Light::RED;
-		x -= j.green[k];
-		if (x < j.amber[k]) return mine ? Light::AMBER : Light::RED;
-		x -= j.amber[k] + s.catalog.traffic.signal_all_red_s;
-		if (x < 0) return Light::RED;
-	}
-	return Light::RED;
-}
-} // namespace
-
-void update_lights(CityState &s) {
-	TrafficState &t = s.traffic;
-	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
-	for (int ds = 0; ds < int(t.g.ds.size()); ds++)
-		if (t.g.ds[ds].ok) t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));
-}
-
-Light light_for(const CityState &s, int ds) {
-	const TrafficState &t = s.traffic;
-	if (ds >= 0 && size_t(ds) < t.light_now.size()) return Light(t.light_now[size_t(ds)]);
-	return compute_light(s, ds);
-}
-
-double next_green(const CityState &s, int ds, double now) {
-	const TrafficState &t = s.traffic;
-	if (ds < 0 || ds >= int(t.g.ds.size())) return now;
-	const DirSeg &d = t.g.ds[size_t(ds)];
-	if (d.to < 0 || d.to >= int(t.g.junctions.size())) return now;
-	const Junction &j = t.g.junctions[size_t(d.to)];
-	if (j.ctl != Control::SIGNAL || d.stage < 0 || d.stage >= int(j.green.size()) || j.cycle <= 0) return now;
-	double x = std::fmod(now + j.offset, double(j.cycle));
-	if (x < 0) x += double(j.cycle);
-	double start = 0;
-	for (int k = 0; k < d.stage && k < int(j.green.size()); k++) start += j.green[k] + j.amber[k] + s.catalog.traffic.signal_all_red_s;
-	if (x >= start && x < start + j.green[d.stage]) return now;
-	if (x < start) return now + (start - x);
-	return now + double(j.cycle) - (x - start);
-}
-
 bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &tp = s.catalog.traffic;
@@ -239,7 +213,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
 	if (is_splice(s, c.node)) return true;
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
-	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m)) return false;
+	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (!has_exit(s, c, vid)) return false;
 	const float top = conn_speed(s, c) * me.vf;
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
