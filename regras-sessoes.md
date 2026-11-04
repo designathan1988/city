@@ -71,6 +71,7 @@ Uma estrada ruim foi descrita como boa por uma sessão e por mim. Daqui em diant
 4. Foto em outro enquadramento, outra hora do dia ou outra resolução não vale como par, e a análise diz isso.
 5. Efeitos animados (explosão, fogo, fumaça) são fotografados em instantes definidos nos dois jogos, com o instante no nome da foto.
 6. Vista de dentro: o par é o mesmo prédio, o mesmo andar e a mesma câmera.
+7. Câmera do par (achado das Portes 1 e 2, 2026-11-04, conferido em `src/render/isoViewport.ts` do 4.0): a câmera em perspectiva do 4.0 é uma `PerspectiveCamera` de `PERSPECTIVE_FOV = 35` graus; o alvo é `(x, 0, -y)`, ou seja, o `y` do mapa do 4.0 é `-z` no jogo; a inclinação vem de um perfil que depende do zoom (`tiltNow`, `profileTilt`) e há um puxão que afasta o olho de um prédio (`PULL_*`, o Deoccluder do Cinemachine). Por isso a pose de um par sai do `viewCamera` do 4.0 (alvo, zoom, azimute e elevação), como em `ports/build/evidence/resposta-par.md`, e não da lente, da altura ou do sentido do eixo do jogo. Par com a câmera do jogo no lugar da do 4.0 não é par (item 4).
 
 ## 10. Estilos regionais (ordem do usuário, 2026-11-04: o jogo é vendido na Steam)
 
