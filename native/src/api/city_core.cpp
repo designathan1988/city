@@ -147,9 +147,45 @@ void CityCore::_process(double delta) {
 	process_ms_ = total.lap();
 }
 
+void CityCore::set_levels(float traffic, float people, float demand) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	l.traffic = traffic;
+	l.people = people;
+	l.demand = demand;
+}
+
+void CityCore::set_sim_switch(const String &name, bool on) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	if (name == "traffic") l.vehicles_on = on;
+	else if (name == "pedestrians") l.people_on = on;
+	else if (name == "growth") l.growth_on = on;
+	else if (name == "crowd") l.crowd_on = on;
+}
+
+void CityCore::set_detail_scale(float scale) { render_.set_detail_scale(scale); }
+void CityCore::set_vegetation(float share) { render_.set_vegetation(share); }
+void CityCore::set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { render_.set_agent_detail(cabin_m, cabin_cap, people_floor); }
+void CityCore::set_population(float share) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	state_->traffic.levels.population = share;
+}
+
+void CityCore::set_upload_every(int frames) { render_.set_upload_every(frames); }
+
+void CityCore::set_lots_drawn(bool on) {
+	render_.set_lots_drawn(on);
+	need_full_rebuild_ = true;
+}
+
 void CityCore::set_overlay(const String &name, bool on) {
 	for (int i = 0; i < int(Overlay::COUNT); i++)
 		if (name == OVERLAY_NAMES[i]) render_.set_overlay(Overlay(i), on);
+}
+
+void CityCore::show_every_zone(bool on) {
+	render_.show_every_zone(on);
 }
 
 Dictionary CityCore::overlays() const {

@@ -3,6 +3,8 @@
 #pragma once
 
 #include "render/render_world.h"
+#include "sim/buildings/b40/record.h"
+#include "sim/roads/junction.h"
 #include "sim/simulation/simulation.h"
 
 #include <godot_cpp/classes/node3d.hpp>
@@ -13,8 +15,16 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 
 namespace city {
+
+// A building's volume on its lot: the lot's frame, the rectangle there and the height of its top over the ground (clear_reach).
+struct Solid {
+	b40::LotFrame f;
+	float x0, y0, x1, y1, top;
+};
 
 class CityCore : public godot::Node3D {
 	GDCLASS(CityCore, godot::Node3D)
@@ -30,6 +40,15 @@ public:
 	godot::Dictionary new_map(int map, int seed, bool with_city);
 	void mark_saved();
 	void set_speed(int speed);
+	void set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
+	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth"
+	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
+	void set_vegetation(float share); // the tier's share of the wild trees
+	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor); // the tier's reach and cap of the cabins, the people's nearest level
+	void set_population(float share); // the Optimisations tab: the share of the fleet and the walkers allowed
+	void set_upload_every(int frames); // the Optimisations tab: mesh uploads only every N frames
+	void set_lots_drawn(bool on); // the Effects panel: buildings without their lots (a full redraw)
+	godot::Dictionary traffic_metrics(); // the Simulation panel: mean speed, vehicles standing
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
@@ -50,6 +69,10 @@ public:
 	void begin_stroke(const godot::String &label); // a held brush: every dab until end_stroke is one undo step
 	void end_stroke();
 	godot::Dictionary split_road(const godot::Vector3 &p);
+	godot::Array recent_edits(int count); // the F9 World tab and the F8 marks: the latest undo steps, newest first
+	godot::Dictionary reverse_road(int seg); // the inspector: the one-way runs the other way
+	godot::Dictionary duplicate_road(int seg); // a copy alongside (Ctrl+D)
+	godot::Dictionary set_marking_style(int style, bool undoable); // Menu > Paint; false: a city coming back from its session
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
@@ -70,6 +93,11 @@ public:
 	godot::Dictionary raycast(const godot::Vector3 &origin, const godot::Vector3 &dir);
 	float height_at(float x, float z); // terrain height without a ray march (camera, ground queries)
 	godot::Dictionary inspect(const godot::Vector3 &p);
+	godot::PackedVector3Array segment_path(int seg); // the road's line in the world, for what the Information tool draws
+	godot::Dictionary segment_traffic(int seg); // the Inspect tool's live numbers (city_core_inspect.cpp)
+	godot::Dictionary node_traffic(int node);
+	godot::Array impossible_nodes(); // the top bar's warning: nodes whose legs meet too sharply
+	float clear_reach(const godot::Vector3 &from, const godot::Vector3 &to, int samples); // the camera's line of sight
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
@@ -78,6 +106,7 @@ public:
 	float amber_wanted(float kmh) const;
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
+	void show_every_zone(bool on);
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
@@ -88,6 +117,10 @@ protected:
 	static void _bind_methods();
 
 private:
+	std::unordered_map<int, std::vector<Solid>> solids_; // clear_reach: each building asked, until the city changes
+	uint64_t solids_revision_ = 0;
+	std::vector<SharpNode> impossible_; // impossible_nodes, kept for this version of the network
+	int impossible_version_ = -1;
 	godot::Object *terrain3d() const;
 	void join_save(); // waits for a save in flight before the state changes or is destroyed
 	std::thread save_thread_;
