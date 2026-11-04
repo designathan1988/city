@@ -9,6 +9,7 @@
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
 #include "render/overlays/overlay_renderer.h"
+#include "render/wear/wear_field.h"
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
@@ -33,13 +34,22 @@ public:
 
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset(); // frees every instance (new city / load)
+	void shutdown() { wear_.free(); } // the core is going: what lives as long as the render does
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
+	// What the agents of a fresh publication wear (`ticks_s` simulated seconds since the last one), and the window round the view.
+	void update_wear(const PoseFrame &f, bool fresh, float ticks_s, const godot::Vector3 &cam, float frame_s) {
+		if (fresh) wear_.wear(f, ticks_s);
+		wear_.follow(cam.x, cam.z);
+		wear_.upload(frame_s);
+	}
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }
+	int64_t worn_cells() const { return wear_.worn_cells(); }
+	int64_t wear_publications() const { return wear_.publications(); }
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
@@ -61,6 +71,7 @@ private:
 	BuildingRenderer buildings_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;
+	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).

@@ -24,10 +24,12 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
+	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }
 
 void RenderWorld::reset() {
+	wear_.reset();
 	roads_.reset();
 	props_.reset();
 	trees_.reset();

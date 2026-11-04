@@ -105,6 +105,7 @@ private:
 	RenderWorld render_;
 	godot::NodePath terrain_path_;
 	bool catalog_ok_ = false, render_ok_ = false, need_full_rebuild_ = false;
+	int64_t wear_stamp_ns_ = 0; // the last publication the wear field took
 	godot::Vector3 cam_;
 	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
 	struct PoseStats {

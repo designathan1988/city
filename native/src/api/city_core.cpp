@@ -32,6 +32,7 @@ CityCore::~CityCore() {
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
+	render_.shutdown();
 }
 
 Object *CityCore::terrain3d() const {
@@ -132,6 +133,10 @@ void CityCore::_process(double delta) {
 	const PoseSample at = poses.sample(now - int64_t(state_->catalog.tune.render_pose_delay_ticks * double(poses.period_ns)));
 	note_pose(poses, fresh, at);
 	render_.update_agents(poses, cam_, at); // no map lock: the frame is the published snapshot
+	const int64_t published = poses.stamp_ns[POSE_TRAIL - 1];
+	const double ticks = fresh && poses.period_ns > 0 && wear_stamp_ns_ > 0 ? double(published - wear_stamp_ns_) / double(poses.period_ns) : 0;
+	if (fresh) wear_stamp_ns_ = published;
+	render_.update_wear(poses, fresh, float(ticks / state_->catalog.tune.sim_tick_hz), cam_, float(delta));
 	render_.update_signals(poses);
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
