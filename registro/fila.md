@@ -14,7 +14,7 @@ Estados: em porte, na fila da sessão, entregue, verificada, integrada.
 | porte-2-predios | marcos | na fila da sessão | `lots/*.json`; estádio a conferir: `stadium` não aparece em `src/` |
 | porte-3-paisagem | landscape | em porte | `clouds`, `detailRecipes.ts` |
 | porte-3-paisagem | economy | na fila da sessão | |
-| porte-4-interface | interface | em porte | `start-menu`, `camera`, gráficos e qualidade |
+| porte-4-interface | interface | devolvida 13:05 (pesquisa, plano, cobertura, commits) | `start-menu`, `camera`, gráficos e qualidade |
 | porte-4-interface | demolition | na fila da sessão | `bulldozer`, `destruction` |
 | porte-5-transito | traffic | em porte | ciclistas |
 | porte-5-transito | transit | na fila da sessão | |
