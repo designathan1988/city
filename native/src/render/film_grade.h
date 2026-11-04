@@ -1,5 +1,5 @@
-// The film grade of the picture on screen as a lookup table: a slight S of contrast, vibrance and warm highlights over
-// cool shadows, all of them a function of one pixel's colour, so Environment.adjustment_color_correction draws them in
+// The film grade of the picture on screen as a lookup table: a slight S of contrast, vibrance and warm highlights
+// (the 4.0 tints nothing below a luma of 0.15), all of them a function of one pixel's colour, so Environment.adjustment_color_correction draws them in
 // the tonemap pass itself, at no extra pass. The numbers come from data/game/daylight.json "grade".
 #pragma once
 

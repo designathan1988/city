@@ -28,8 +28,8 @@
  ],
  "water": {
   "_doc": "Water (render/shaders/water.gdshader). Ripples: the peak of the fetch-limited JONSWAP spectrum (Hasselmann et al. 1973, Dtsch. Hydrogr. Z. Suppl. A8 no. 12), f_p = 3.5 (g / U) (g X / U^2)^-0.33 with g = 9.80665 m/s2, the breeze U = 3 m/s (wind_speed_ms of the vegetation material) and X = fetch_m = 400 m, the width of a lake of the map (terrain_gen.cpp: a basin of radius 170 m, wobbling by 38 %, is 210 to 470 m across): peak_hz = 1.5399 Hz, wavelength g / (2 pi f_p^2) = 0.6582 m, wave_scale its inverse, 1.5193 cells a metre; the detail layer at twice the frequency, a quarter of the wavelength (detail_ratio 4), equal in slope by the f^-5 equilibrium range (Phillips 1958, J. Fluid Mech. 4(4)). slope_sigma 0.1355: rms of the Cox & Munk 1954 (J. Opt. Soc. Am. 44(11)) clean-surface mean square slope 0.003 + 0.00512 U = 0.01836. ripple_strength 0.1764: slope_sigma over the rms slope of the two noise layers as the shader sums them, 0.7680 (measured over 8 000 000 samples of lattice_noise.gdshaderinc). specular_f0 0.357: Godot's F0 = 0.16 SPECULAR^2 (F0() in servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl) for water's F0 ((1.333 - 1) / (1.333 + 1))^2 = 0.0204. shallow and deep: the 75th and 35th percentiles of the river of ports/landscape/reference/41-rio.png, [119.0, 138.0, 156.0] and [103.0, 123.0, 137.0]. absorb_per_m: the shallow colour gives way to the deep over the depth seen through (Beer-Lambert), paws_m and paws_rough the gust patches that roughen the surface: modelling choices. Those are screen colours; the albedos here are what shows as them in our render: the river of capture_landscape.tscn at noon, screen (186, 210, 219) from the mean of the albedos #5783a6 and #5e788f, gives the linear gain of the light on the water through the inverse of ACES (render/tone_map.gd), (2.27, 1.98, 1.57), and each target is divided by it.",
-  "shallow": "#3b4a5e",
-  "deep": "#354353",
+  "shallow": "#5783a6",
+  "deep": "#5e788f",
   "sea_level_m": 0.0,
   "wave_scale": 1.5193,
   "peak_hz": 1.5399,

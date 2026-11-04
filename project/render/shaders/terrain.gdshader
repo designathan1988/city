@@ -246,7 +246,7 @@ void fragment() {
 		if (p11.surface > 0 && cw.w * p11.amount > 0.0) { sum += surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.w * p11.amount; weights += cw.w * p11.amount; }
 		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
 	}
-	c *= gully_shade * (1.0 - 0.3 * rain_wet);
+	c *= gully_shade;
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	ALBEDO = c;
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);

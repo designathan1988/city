@@ -15,6 +15,7 @@ var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
+var _dark := 0.0
 var _flash := 0.0
 
 
@@ -80,13 +81,14 @@ func set_hour(hour: float) -> void:
 	var az: float = _d.az_start_deg + _d.az_span_deg * clampf(k, 0.0, 1.0)
 	var light := clampf((height + _d.light_from) / _d.light_span, 0.0, 1.0)
 	var clear: float = 1.0 - _overcast * _d.overcast_sun
+	_dark = 1.0 - light
 	night = smoothstep(_d.night_from_deg, _d.night_to_deg, elev)
 	if height > -_d.light_from:
 		var aim: float = maxf(height, _d.low_height) * _d.max_elev_deg
 		_aim(_sun, aim, az)
 		_sun.light_color = _c("sun_day").lerp(_c("sun_low"), minf(1.0, maxf(0.0, 1.0 - _d.warm_k * height)))
 		_sun.light_energy = _d.sun_energy * lerpf(_d.sun_low_share, 1.0, minf(1.0, height * _d.sun_rise_k + _d.sun_rise_from)) * light * clear
-		_set_fill(aim, az, light * clear)
+		_set_fill(aim, az, light * (1.0 - _overcast * _d.overcast_fill))
 	else:
 		_aim(_sun, _d.moon_elev_deg, az + _d.moon_offset_deg)
 		_sun.light_color = _c("moon")
@@ -105,6 +107,8 @@ func set_hour(hour: float) -> void:
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
+	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
+	_env.fog_light_color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
 	var down: float = maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
 	var depth: float = clampf(camera.global_position.y / down + _d.shadow_reach_m, shadow_least_m, _d.shadow_depth_max_m)
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
@@ -152,6 +156,4 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
 	_sky.set_shader_parameter("sun_color", sun_col)
 	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))
-	var fog := horizon.lerp(_c("low_horizon"), _d.low_sky * light * _d.fog_low_share)
-	_env.fog_light_color = fog
 	_env.fog_density = _d.fog_density

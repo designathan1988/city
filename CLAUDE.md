@@ -296,6 +296,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
+- `project/tests/visual/capture_clock.gd` · `project/tests/visual/capture_clock.tscn` — a luz no jogo de verdade: botões sol, lua e relógio de play.tscn
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` — capturas da paisagem nos ângulos do 4.0
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques

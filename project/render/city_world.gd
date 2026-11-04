@@ -169,6 +169,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.ssao_light_affect = day.occlusion.light_affect
 	environment.fog_enabled = true
 	environment.fog_sky_affect = 0.0
+	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	FilmLook.grade(environment, day.grade)

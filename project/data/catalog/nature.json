@@ -80,8 +80,12 @@
   "kind_count": [6, 2, 2, 2]
  },
  "elements": { "max_items": 60000, "max_per_dab": 400, "area_m2": 100, "least_size_m": 0.03, "kinds": ["stones", "pebbles", "gravel", "leaves", "grass", "tallGrass", "scrub", "fern", "clover", "flowers", "mushrooms", "smoke", "fire", "steam", "dust", "soot", "sparks", "spray"] },
+ "styles": {
+  "_doc": "What the regional style of a city changes in the landscape: the flora of its climate. Sun, sky and light are physical and do not change. Until the style lives in the CityState the loader reads roadcraft.",
+  "roadcraft": { "default_biome": "cerrado" },
+  "brasil": { "default_biome": "cerrado" }
+ },
  "ecology": {
-  "default_biome": "cerrado",
   "site_grid_m": 16,
   "mean_cells": 8,
   "patch_m": 92,

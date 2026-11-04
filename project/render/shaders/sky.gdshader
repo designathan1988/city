@@ -24,7 +24,8 @@ void sky() {
 	// The sun's side of the horizon is warmer and brighter.
 	vec3 sunward = mix(low_horizon, low_horizon * vec3(1.12, 1.04, 0.92), pow(sd, 3.0) * 0.5) * (1.0 - 0.85 * dark);
 	vec3 low_col = mix(sunward, low_zenith * (1.0 - 0.7 * dark), smoothstep(0.0, 0.5, up));
-	col = mix(col, low_col, low * (1.0 - smoothstep(low_from_m, low_to_m, POSITION.y)));
+	// The reflections read the plain day sky: only the eye at street level sees the deep band.
+	if (!AT_CUBEMAP_PASS) col = mix(col, low_col, low * (1.0 - smoothstep(low_from_m, low_to_m, POSITION.y)));
 	col = mix(ground, col, smoothstep(-0.12, 0.02, h));
 	float glow = (pow(sd, 7.0) * 0.28 + pow(sd, 120.0) * 0.9 * sun_disc) * smoothstep(-0.05, 0.05, h);
 	COLOR = (col + sun_color * glow) * gain;

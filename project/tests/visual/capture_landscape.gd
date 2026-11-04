@@ -103,7 +103,6 @@ func _ramp(at: Vector3) -> void:
 		var v := minf(1.0, k * RAMP_LEVELS / BYTE_TOP)
 		var m := StandardMaterial3D.new()
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.disable_fog = true
 		m.no_depth_test = true
 		var l: float = Color(v, v, v).srgb_to_linear().r * day.sky_gain
 		m.albedo_color = Color(l, l, l).linear_to_srgb()
