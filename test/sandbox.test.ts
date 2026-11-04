@@ -203,4 +203,15 @@ describe('workspace and pack', () => {
     assert.equal(git(result.sandbox, ['show', 'convert/transit:notes.txt']), 'stops and lines\n');
     assert.equal(fingerprint(game), gameBefore, 'the game is exactly as it was');
   });
+
+  it('applies a package that commits a file the base verification writes, recording what it left', () => {
+    // As a Godot import writes a .uid the game lacks: the port commits it, and the base's verification writes it too.
+    const writes: SandboxConfig = { ...config, verify: [...config.verify, { name: 'import', run: node("require('fs').writeFileSync('made.uid', 'uid')") }] };
+    commit('made.uid', 'uid', 'Commit the UID the game lacks');
+    pack('package-made');
+    const result = runSandbox({ packageDir: path.join(out, 'package-made'), config: writes, sandboxDir: path.join(out, 'sandbox-made') });
+    assert.equal(result.ok, true, JSON.stringify(result.steps));
+    assert.match(fs.readFileSync(path.join(out, 'package-made', 'evidence', 'before', 'leftovers.log'), 'utf8'), /\?\? made\.uid/);
+    assert.equal(fingerprint(game), gameBefore);
+  });
 });

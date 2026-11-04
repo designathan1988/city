@@ -148,6 +148,12 @@ export function runSandbox(input: SandboxInput): SandboxResult {
   let ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results) &&
     runPhase('before', input.config.verify, input.config, evidence('before'), results);
   if (ok) {
+    // The base's verification leaves outputs of its own in the clone (a Godot import writes a .uid the game may
+    // lack). They are recorded and the clone goes back to the base, so the package is applied to the base exactly;
+    // ignored files (builds, the import cache) stay.
+    fs.writeFileSync(path.join(packageDir, EVIDENCE, 'before', 'leftovers.log'), git(sandbox, ['status', '--porcelain']), 'utf8');
+    git(sandbox, ['reset', '--quiet', '--hard']);
+    git(sandbox, ['clean', '--quiet', '-d', '--force']);
     git(sandbox, ['checkout', '--quiet', '-b', branch]);
     const patches = manifest.patches.map((p) => path.join(packageDir, PATCHES, p));
     const identity = ['-c', `user.name=${manifest.author.name}`, '-c', `user.email=${manifest.author.email}`];
