@@ -422,7 +422,7 @@
   "column_reach_m": 2.1
  },
  "barriers": {
-  "_doc": "The barriers drawn (render/props/barrier_boxes.cpp): each run cut into pieces of at most piece_m that step with the ground, sunk sink_m so a slope never shows under them. guard_step_m: NBR 6971 through DER-PR ES-OC 07/18, posts every 2.00 m. The other measures carry no norm and follow the Roadcraft 4.0 look.",
+  "_doc": "The barriers drawn (render/props/barrier_boxes.cpp): each run cut into pieces of at most piece_m that step with the ground, sunk sink_m so a slope never shows under them. guard_step_m: NBR 6971 through DER-PR ES-OC 07/18, posts every 2.00 m. The other measures carry no norm and follow the Roadcraft 4.0 look, and so do finishes: colour, metalness and roughness of each material.",
   "piece_m": 4,
   "sink_m": 0.15,
   "coping_m": 0.06,
@@ -446,13 +446,7 @@
   "bar_step_m": 0.14,
   "bar_top_m": 0.95,
   "bar_foot_m": 0.12,
-  "wall_color": "#d8d0bf",
-  "coping_color": "#b9b2a4",
-  "hedge_color": "#3d6532",
-  "fence_color": "#4b5153",
-  "beam_color": "#b4bcbf",
-  "guard_post_color": "#9aa3a6",
-  "railing_color": "#2e3a34",
+  "finishes": {"wall": {"color": "#d8d0bf", "metal": 0, "rough": 0.92}, "coping": {"color": "#b9b2a4", "metal": 0, "rough": 0.85}, "hedge": {"color": "#3d6532", "metal": 0, "rough": 1}, "fence": {"color": "#4b5153", "metal": 0.5, "rough": 0.55}, "beam": {"color": "#b4bcbf", "metal": 0.8, "rough": 0.32}, "guard_post": {"color": "#9aa3a6", "metal": 0.75, "rough": 0.4}, "railing": {"color": "#2e3a34", "metal": 0.45, "rough": 0.5}},
   "piece_min_m": 0.01,
   "guard_beam_m": 0.3
  },

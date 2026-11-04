@@ -24,6 +24,7 @@ varying flat float v_tag;
 varying flat vec3 v_tint;
 varying flat float v_lit;
 varying flat vec3 v_light;
+varying flat vec2 v_finish; // a barrier's metalness and roughness, INSTANCE_CUSTOM.b and .a (barrier_boxes.cpp)
 varying vec3 v_local;
 
 #include "res://render/shaders/color_space.gdshaderinc"
@@ -47,6 +48,7 @@ void vertex() {
 	v_tint = INSTANCE_CUSTOM.rgb;
 	v_lit = 0.0;
 	v_light = vec3(0.0);
+	v_finish = INSTANCE_CUSTOM.ba;
 	v_local = VERTEX;
 	if (abs(v_tag - 4.0) < 0.5) {
 		VERTEX = wire_vertex(VERTEX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME);
@@ -76,6 +78,10 @@ void fragment() {
 	}
 	ALBEDO = linear_out(c);
 	ROUGHNESS = roughness;
+	if (abs(v_tag - 7.0) < 0.5) {
+		METALLIC = v_finish.x;
+		ROUGHNESS = v_finish.y;
+	}
 	if (abs(v_tag - 3.0) < 0.5) {
 		ALBEDO = linear_out(c * (1.0 - v_lit));
 		ROUGHNESS = lens_roughness;

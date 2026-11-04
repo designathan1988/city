@@ -21,10 +21,10 @@ struct Piece {
 };
 
 // A box along (dx, dz), its foot at height y.
-void box(PackedFloat32Array &buf, int64_t key, const Piece &p, float y, float length, float width, float height, const Color &col) {
+void box(PackedFloat32Array &buf, int64_t key, const Piece &p, float y, float length, float width, float height, const BarrierFinish &f) {
 	if (chunk_of(p.x, p.z) != key) return;
 	const Vector3 along(p.dx, 0, p.dz), across(-p.dz, 0, p.dx);
-	mm_push(buf, along * length, UP * height, across * width, Vector3(p.x, y + height * 0.5f, p.z), col, 0, 0, 0, 0);
+	mm_push(buf, along * length, UP * height, across * width, Vector3(p.x, y + height * 0.5f, p.z), f.color, 0, 0, f.metal, f.rough);
 }
 
 struct Run {
@@ -68,7 +68,7 @@ void posts(const Run &r, BarrierKind kind, float ax, float az, float bx, float b
 	const bool guard = kind == BarrierKind::GUARDRAIL, fence = kind == BarrierKind::FENCE;
 	const float step = guard ? B.guard_step_m : fence ? B.fence_step_m : B.rail_step_m;
 	const float size = guard ? B.guard_post_m : fence ? B.fence_post_m : B.rail_post_m;
-	const Color &col = guard ? B.guard_post : fence ? B.fence : B.railing;
+	const BarrierFinish &col = guard ? B.guard_post : fence ? B.fence : B.railing;
 	const int n = std::max(1, int(std::lround(len / step)));
 	for (int k = first ? 0 : 1; k <= n; k++) {
 		const float t = float(k) / n;
@@ -102,7 +102,10 @@ void place_run(const Run &r, const Barrier &b) {
 	}
 }
 
-Color colour(const Dictionary &d, const char *key) { return rgba8_to_color(parse_hex_color(String(d[key]).utf8().get_data())); }
+BarrierFinish finish(const Dictionary &d, const char *key) {
+	const Dictionary f = d[key];
+	return { rgba8_to_color(parse_hex_color(String(f["color"]).utf8().get_data())), f["metal"], f["rough"] };
+}
 } // namespace
 
 bool BarrierLook::load(const Dictionary &t, PackedStringArray &errors) {
@@ -118,8 +121,9 @@ bool BarrierLook::load(const Dictionary &t, PackedStringArray &errors) {
 	bar_step_m = b["bar_step_m"]; bar_top_m = b["bar_top_m"]; bar_foot_m = b["bar_foot_m"];
 	const Array levels = b["rail_levels"];
 	for (int k = 0; k < levels.size(); k++) rail_levels.push_back(levels[k]);
-	wall = colour(b, "wall_color"); coping = colour(b, "coping_color"); hedge = colour(b, "hedge_color"); fence = colour(b, "fence_color");
-	beam = colour(b, "beam_color"); guard_post = colour(b, "guard_post_color"); railing = colour(b, "railing_color");
+	const Dictionary looks = b["finishes"];
+	wall = finish(looks, "wall"); coping = finish(looks, "coping"); hedge = finish(looks, "hedge"); fence = finish(looks, "fence");
+	beam = finish(looks, "beam"); guard_post = finish(looks, "guard_post"); railing = finish(looks, "railing");
 	return true;
 }
 

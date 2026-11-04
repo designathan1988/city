@@ -150,7 +150,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, PackedStri
 	pole_ = parts(props, "pole", errors);
 	wire_mesh(wire_near_, float(wires["radius_m"]), int(wires["near_chords"]), int(wires["near_sides"]));
 	wire_mesh(wire_far_, float(wires["radius_m"]), int(wires["far_chords"]), int(wires["far_sides"]));
-	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(), true);
+	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
 	light_mesh(light_);
 	if (!props.has("signal")) return false;
 	const float dim = float(props.get("lens_dim", 0.f));
