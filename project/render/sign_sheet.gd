@@ -164,7 +164,7 @@ class _Paper:
 		var high := -Vector2.INF
 		var n := int(shape.outline_points)
 		for k in n:
-			var q := Vector2.from_angle((shape.turn + float(k) / n) * TAU)
+			var q := Vector2.from_angle((shape.rotation + float(k) / n) * TAU)
 			ring.append(q)
 			low = low.min(q)
 			high = high.max(q)
