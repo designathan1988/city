@@ -166,11 +166,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
 
 **Render (só lê) — native/src/render**
-- `native/src/render/agents/agent_meshes.h` — malhas dos agentes montadas uma vez a partir de agents.json
-- `native/src/render/agents/agent_cabin.cpp` · `native/src/render/agents/agent_parts.cpp` — cabine do carro (forro, bancos, ocupantes) e vidro à parte; peças comuns: cores, caixas marcadas, rodas e corpos arqueados
-- `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — meshes, paletas e MultiMesh por quadro
+- `native/src/render/agents/agent_cabin.cpp` · `native/src/render/agents/agent_parts.cpp` — cabine de qualquer veículo (forro com vãos de porta, painel, fileiras de bancos nos estilos carro/cabine/poltrona, volante, pessoas com a ordem de ocupação) e vidro à parte; peças comuns: cores, caixas e barras marcadas, painéis de vidro, rodas e casco oco com arcos
+- `native/src/render/agents/agent_meshes.h` · `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — malhas dos agentes (agents.json) em dois níveis (perto: cabine e vidro transparente; longe: sem cabine, vidro opaco), paletas, lotação e ordem dos assentos por veículo e MultiMesh por quadro
 - `native/src/render/agents/car_body.cpp` — carroceria loftada do carro de passeio
-- `native/src/render/agents/heavy_meshes.cpp` — ônibus, caminhão e moto
+- `native/src/render/agents/bus_body.cpp` · `native/src/render/agents/heavy_meshes.cpp` — ônibus de piso baixo com salão; caminhão com cabine, moto e peças dos pesados
 - `native/src/render/agents/people_asset.cpp` · `native/src/render/agents/people_asset.h` — pessoas cozidas (people.bin)
 - `native/src/render/agents/people_renderer.cpp` · `native/src/render/agents/people_renderer.h` — pedestres com esqueleto no shader e 2 níveis
 - `native/src/render/buildings/b40_data.cpp` · `native/src/render/buildings/b40_data.h` — buildings.json → tabelas do gerador 4.0
@@ -258,7 +257,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` — prévias das ferramentas
-- `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos carros, veículos e ocupantes, pedestres cozidos, mobiliário e árvores
+- `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário e árvores
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc`
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
 - `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` — vias, meios-fios e pintura; água (ondas, Fresnel,
@@ -306,7 +305,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
-- Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos).
+- Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a
+  lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;

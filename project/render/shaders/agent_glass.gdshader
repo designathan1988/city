@@ -1,5 +1,6 @@
-// A car's glass (native/src/render/agents: the glass surface of its mesh, over its cabin and the people in it): tinted,
-// glossy and see-through, more so looked at square than at a grazing angle (Fresnel), as the Roadcraft 4.0 car glass.
+// A vehicle's glass near the camera (native/src/render/agents: the glass surface of a car's, bus's or truck's near mesh,
+// over its cabin and the people in it): tinted, glossy and see-through, more so looked at square than at a grazing angle
+// (Fresnel), as the Roadcraft 4.0 vehicle glass.
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
 

@@ -1,7 +1,10 @@
-// Shared pieces of the agent meshes: colours from agents.json, tagged boxes, wheels and arched lower bodies.
+// Shared pieces of the agent meshes: colours from agents.json, tagged boxes and bars, glass panes, wheels and the hollow
+// lower bodies of the heavy vehicles (walls with wheel arches and doorways over a floor pan).
 #include "render/agents/agent_meshes.h"
 
 #include "core/color.h"
+
+#include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -12,9 +15,21 @@ namespace city {
 
 namespace {
 constexpr float HUB_SHARE = 0.62f, HUB_PROUD_M = 0.01f, RIM_SHARE = 0.5f, SPOKE_SHADE = 0.45f;
+constexpr float PAN_GAP_M = 0.02f; // the floor pan's top under the cabin floor
+constexpr float ALONG_X = 0.01f;   // a bar this close to X (its square off X) takes Y for its width
 } // namespace
 
 Color agent_hex(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).utf8().get_data())); }
+
+Vector3 agent_v3(const Variant &v) {
+	Array a = v;
+	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
+}
+
+Vector2 agent_v2(const Variant &v) {
+	Array a = v;
+	return a.size() == 2 ? Vector2(float(a[0]), float(a[1])) : Vector2();
+}
 
 AgentTrim read_trim(const Dictionary &t) {
 	AgentTrim r;
@@ -30,17 +45,41 @@ AgentTrim read_trim(const Dictionary &t) {
 	r.truck_box = agent_hex(t["truck_box"]);
 	r.chrome = agent_hex(t["chrome"]);
 	r.roof = agent_hex(t["roof"]);
-	r.rider = agent_hex(t["rider"]);
-	r.rider_legs = agent_hex(t["rider_legs"]);
-	r.shoes = agent_hex(t["shoes"]);
-	r.interior = agent_hex(t["interior"]);
-	r.seat = agent_hex(t["seat"]);
 	return r;
+}
+
+CabinPaint read_cabin_paint(const Dictionary &d) {
+	CabinPaint p;
+	p.lining = agent_hex(d["lining"]);
+	p.floor = agent_hex(d["floor"]);
+	p.seat = agent_hex(d["seat"]);
+	p.dash = agent_hex(d["dash"]);
+	return p;
 }
 
 void agent_box(MeshBuilder &mb, const Vector3 &mn, const Vector3 &mx, const Color &c, AgentTag tag, Limb limb) {
 	Vector3 lo(std::min(mn.x, mx.x), std::min(mn.y, mx.y), std::min(mn.z, mx.z)), hi(std::max(mn.x, mx.x), std::max(mn.y, mx.y), std::max(mn.z, mx.z));
 	mb.box(lo, hi, c, agent_tag(tag, limb), true);
+}
+
+void agent_strut(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float w, float thick, const Color &c, AgentTag tag, Limb limb) {
+	const Vector3 d = (b - a).normalized();
+	Vector3 u = Vector3(1, 0, 0) - d * d.x; // X square to the bar
+	if (u.length_squared() < ALONG_X) u = Vector3(0, 1, 0) - d * d.y;
+	u = u.normalized() * (w * 0.5f);
+	const Vector3 v = d.cross(u).normalized() * (thick * 0.5f);
+	const Vector2 t2 = agent_tag(tag, limb);
+	const Vector3 ring[4] = { u + v, u - v, -u - v, -u + v };
+	for (int i = 0; i < 4; i++) {
+		const Vector3 &p = ring[i], &q = ring[(i + 1) % 4];
+		mb.quad(a + p, b + p, b + q, a + q, c, p + q, nullptr, t2);
+	}
+	mb.quad(a + ring[0], a + ring[1], a + ring[2], a + ring[3], c, -d, nullptr, t2);
+	mb.quad(b + ring[0], b + ring[1], b + ring[2], b + ring[3], c, d, nullptr, t2);
+}
+
+void agent_pane(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Vector3 &out, const AgentTrim &trim) {
+	mb.quad(a, b, c, d, trim.glass, out, nullptr, agent_tag(AgentTag::GLASS));
 }
 
 void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides, int side, const AgentTrim &trim) {
@@ -66,18 +105,41 @@ void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides,
 	}
 }
 
-void agent_arched_box(MeshBuilder &mb, float hw, float y0, float y1, float len, const std::vector<float> &axles, float arch_r, float arch_top,
-		const Color &c, AgentTag tag) {
+void agent_arched_box(MeshBuilder &mb, float x0, float x1, float y0, float y1, float z0, float z1, const std::vector<float> &axles, float arch_r,
+		float arch_top, const Color &c, AgentTag tag) {
 	std::vector<float> zs = axles;
 	std::sort(zs.begin(), zs.end());
-	float z = -len * 0.5f;
+	float z = z0;
 	for (float a : zs) {
-		float lo = std::max(z, a - arch_r), hi = std::min(len * 0.5f, a + arch_r);
-		if (lo > z) agent_box(mb, Vector3(-hw, y0, z), Vector3(hw, y1, lo), c, tag);
-		if (arch_top < y1 && hi > lo) agent_box(mb, Vector3(-hw, arch_top, lo), Vector3(hw, y1, hi), c, tag);
+		float lo = clampf(a - arch_r, z, z1), hi = clampf(a + arch_r, z, z1);
+		if (lo > z) agent_box(mb, Vector3(x0, y0, z), Vector3(x1, y1, lo), c, tag);
+		if (arch_top < y1 && hi > lo) agent_box(mb, Vector3(x0, arch_top, lo), Vector3(x1, y1, hi), c, tag);
 		z = std::max(z, hi);
 	}
-	if (z < len * 0.5f) agent_box(mb, Vector3(-hw, y0, z), Vector3(hw, y1, len * 0.5f), c, tag);
+	if (z < z1) agent_box(mb, Vector3(x0, y0, z), Vector3(x1, y1, z1), c, tag);
+}
+
+std::vector<Vector2> spans_between(float z0, float z1, const std::vector<Vector2> &gaps) {
+	std::vector<Vector2> g = gaps, out;
+	std::sort(g.begin(), g.end(), [](const Vector2 &a, const Vector2 &b) { return a.x < b.x; });
+	float z = z0;
+	for (const Vector2 &s : g) {
+		if (s.x > z) out.push_back(Vector2(z, std::min(s.x, z1)));
+		z = std::max(z, s.y);
+		if (z >= z1) break;
+	}
+	if (z < z1) out.push_back(Vector2(z, z1));
+	return out;
+}
+
+void agent_tub(MeshBuilder &mb, const Tub &t, const AgentTrim &trim) {
+	for (int side : { -1, 1 }) {
+		const float xa = side * (t.half_w - t.wall), xb = side * t.half_w;
+		const std::vector<Vector2> spans = side < 0 ? spans_between(t.z0, t.z1, t.doors) : std::vector<Vector2>{ Vector2(t.z0, t.z1) };
+		for (const Vector2 &s : spans)
+			agent_arched_box(mb, std::min(xa, xb), std::max(xa, xb), t.y0, t.y1, s.x, s.y, t.axles, t.arch_r, t.arch_top, AGENT_WHITE, AgentTag::PAINT);
+	}
+	agent_box(mb, Vector3(-t.pan_half_w, t.y0, t.z0), Vector3(t.pan_half_w, t.floor - PAN_GAP_M, t.z1), trim.under, AgentTag::FIXED);
 }
 
 } // namespace city

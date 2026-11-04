@@ -1,7 +1,8 @@
 // Lofted passenger-car body (Roadcraft render/carBody.ts, reduced): stations along the length, each a half ring from
 // the floor to the roof crown shaped by the style's roof line, belt line, plan radii and wheel arches; bands are
 // painted, glazed (windscreen, side and rear windows) or dark underneath. Lamps, grille, plates, four wheels and the
-// cabin behind the glass (agent_cabin.cpp), between the windscreen and rear screen bases, under the belt and roof lines.
+// cabin behind the glass (agent_cabin.cpp), between the windscreen and rear screen bases, under the belt and roof lines:
+// rows of two seats, the driver's on the left.
 #include "render/agents/agent_meshes.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -166,23 +167,39 @@ void details(MeshBuilder &mb, const Style &s, float lamp_y, float tail_y, const 
 }
 
 // The inside of the body: from the floor over the sill to the lowest belt line and under the roof between the screens.
-Cabin cabin_of(const Style &s) {
+Cabin cabin_of(const Style &s, const Dictionary &inside) {
 	Cabin c;
 	c.floor = s.clear + s.sill;
-	c.belt = std::min(s.belt[0], s.belt[1]) * s.H;
+	c.side_top = c.front_top = c.back_top = std::min(s.belt[0], s.belt[1]) * s.H;
 	c.z_front = std::max(s.screen[0], s.screen[1]) * s.L;
 	c.z_back = std::min(s.rear[0], s.rear[1]) * s.L;
 	// under the roof between the screens' top edges (at their bases the line is the bonnet's and the boot's)
 	c.roof = std::min(top_at(s, std::min(s.screen[0], s.screen[1])), top_at(s, std::max(s.rear[0], s.rear[1]))) - s.glass_top;
 	c.half_w = std::min(half_w(s, c.z_front / s.L), half_w(s, c.z_back / s.L));
+	c.dash_d = float(inside["dash_d_m"]);
+	c.dash_h = float(inside["dash_h_m"]);
+	c.dash_w = 2 * c.half_w;
+	c.paint = read_cabin_paint(inside);
 	return c;
+}
+
+// Rows of two seats from the windscreen base back, as many as fit before the rear screen; the driver on the left (+X).
+int cabin(MeshBuilder &mb, const Style &s, const Dictionary &inside, const CabinLook &l) {
+	const Cabin c = cabin_of(s, inside);
+	const float x = c.half_w * 2 * float(inside["seat_spread"]), pitch = float(inside["row_pitch_m"]);
+	const float z_first = c.z_front - float(inside["front_hip_m"]);
+	const float room = c.z_back + float(inside["back_clear_m"]) + l.person.torso.z * 0.5f + l.car.back_d_m; // a backrest still fits
+	std::vector<Seat> seats;
+	seat_rows(seats, z_first, std::max(z_first - (int(inside["rows"]) - 1) * pitch, room), pitch, { x, -x }, c.floor, l.car);
+	if (!seats.empty()) seats[0].driver = true;
+	return agent_cabin(mb, c, seats, l);
 }
 
 } // namespace
 
-void build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const CabinLook &cabin, const AgentTrim &trim) {
+int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const Dictionary &inside, const CabinLook *look, const AgentTrim &trim) {
 	Style s = read_style(car, body);
-	agent_cabin(mb, cabin_of(s), cabin, trim);
+	const int passengers = look ? cabin(mb, s, inside, *look) : 0;
 	std::vector<float> xs = stations(s, int(body["stations"]), float(body["station_eps_m"]));
 	loft(mb, s, xs, trim);
 	cap(mb, s, xs.back(), 1.f, trim);
@@ -193,6 +210,7 @@ void build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, c
 	for (int k : { -1, 1 })
 		for (int side : { -1, 1 })
 			agent_wheel(mb, Vector3(side * (s.W * 0.5f - inset), s.r, k * s.axle * s.L), s.r, ww, sides, side, trim);
+	return passengers;
 }
 
 } // namespace city

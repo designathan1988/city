@@ -1,9 +1,11 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
-// 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: buses and trucks; a car's is agent_glass.gdshader), 5 skin, 6 clothes,
-// 7 hair of the occupants. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z); UV2.y =
-// 2 + k the occupant of seat k, there or not by the vehicle's seed (the instance colour's alpha, COLOR.a here) and
-// seat_fill, dressed from the people's palettes by it. INSTANCE_CUSTOM = (paint r, g, b, wheel roll angle + 8 when
-// braking); the Compatibility renderer stores instance custom data as half floats.
+// 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader), 5 skin,
+// 6 shirt, 7 hair, 8 helmet, 9 trousers of the people aboard. UV2.y = 1 marks wheel vertices: they turn about X round
+// their hub (UV = hub y, z); UV2.y = 2 a person's: UV = (their seat's place in the order the seats fill, -1 the driver,
+// always there; the vehicle's passenger seats m). INSTANCE_CUSTOM = (paint index, wheel roll angle + 8 when braking,
+// passengers p, order = stride * m + first): seat j is taken when (stride * j + first) mod m < p, so exactly p seats,
+// spread by the stride. Dressed from the people's palettes by the vehicle's seed (the instance colour's alpha, COLOR.a
+// here). The Compatibility renderer stores instance custom data as half floats: whole numbers below 2048 exactly.
 shader_type spatial;
 
 global uniform float night;
@@ -15,14 +17,17 @@ uniform float brake_power;
 
 const float BRAKE_FLAG = 8.0;
 const float SEAT_LIMB = 2.0;
-// palette sizes: agent_renderer.cpp CLOTHES_MAX, HAIR_MAX, SKIN_MAX
+// palette sizes: agent_renderer.cpp CLOTHES_MAX, HAIR_MAX, SKIN_MAX, HELMET_MAX, PAINT_MAX
 uniform vec4 clothes[16] : source_color;
 uniform vec4 hair[8] : source_color;
 uniform vec4 skin[8] : source_color;
+uniform vec4 helmet[8] : source_color;
+// the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours
+uniform vec3 paints[16];
 uniform int clothes_n = 1;
 uniform int hair_n = 1;
 uniform int skin_n = 1;
-uniform vec4 seat_fill = vec4(1.0);
+uniform int helmet_n = 1;
 
 varying flat float v_tag;
 varying flat vec4 v_custom;
@@ -34,16 +39,23 @@ float pick(float seed, float seat, float what) {
 	return fract(sin(dot(vec3(seed * 251.0, seat, what), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
+// Whether the person of passenger seat `j` of `m` is aboard: `custom` is the vehicle's INSTANCE_CUSTOM.
+bool aboard(int j, int m, vec4 custom) {
+	int order = int(custom.a + 0.5);
+	int stride = order / m;
+	return (stride * j + order - stride * m) % m < int(custom.b + 0.5);
+}
+
 void vertex() {
 	v_tag = UV2.x;
 	v_custom = INSTANCE_CUSTOM;
 	v_seed = COLOR.a;
-	v_seat = UV2.y - SEAT_LIMB;
+	v_seat = 0.0;
 	if (UV2.y > SEAT_LIMB - 0.5) {
-		int k = int(v_seat + 0.5);
-		if (pick(v_seed, v_seat, 0.0) >= seat_fill[k]) VERTEX = vec3(0.0); // an empty seat: its occupant folds away
+		v_seat = UV.x + 1.0; // the driver 0, passengers from 1
+		if (UV.x > -0.5 && !aboard(int(UV.x + 0.5), int(UV.y + 0.5), INSTANCE_CUSTOM)) VERTEX = vec3(0.0); // an empty seat: its person folds away
 	} else if (UV2.y > 0.5) {
-		float a = INSTANCE_CUSTOM.a - (INSTANCE_CUSTOM.a >= BRAKE_FLAG ? BRAKE_FLAG : 0.0);
+		float a = INSTANCE_CUSTOM.g - (INSTANCE_CUSTOM.g >= BRAKE_FLAG ? BRAKE_FLAG : 0.0);
 		vec2 d = VERTEX.yz - UV;
 		vec2 nd = NORMAL.yz;
 		float c = cos(a), s = sin(a);
@@ -59,14 +71,14 @@ void fragment() {
 	float metal = 0.0;
 	vec3 emit = vec3(0.0);
 	if (tag == 1) {
-		c = v_custom.rgb;
+		c = paints[int(v_custom.r + 0.5)];
 		rough = 0.28;
 		metal = 0.3;
 	} else if (tag == 2) {
 		emit = head_glow * night * head_power;
 		rough = 0.2;
 	} else if (tag == 3) {
-		emit = tail_glow * max(night * tail_power, (v_custom.a >= BRAKE_FLAG ? 1.0 : 0.0) * brake_power);
+		emit = tail_glow * max(night * tail_power, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_power);
 		rough = 0.3;
 	} else if (tag == 4) {
 		rough = 0.05;
@@ -80,6 +92,13 @@ void fragment() {
 	} else if (tag == 7) {
 		c = hair[int(pick(v_seed, v_seat, 3.0) * float(hair_n))].rgb;
 		rough = 0.8;
+	} else if (tag == 8) {
+		c = helmet[int(pick(v_seed, v_seat, 4.0) * float(helmet_n))].rgb;
+		rough = 0.25;
+		metal = 0.2;
+	} else if (tag == 9) {
+		c = clothes[int(pick(v_seed, v_seat, 5.0) * float(clothes_n))].rgb;
+		rough = 0.9;
 	}
 	ALBEDO = c;
 	ROUGHNESS = rough;

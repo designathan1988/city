@@ -1,594 +1,340 @@
 {
  "type": "object",
  "properties": {
-  "_doc": {
-   "type": "string"
-  },
-  "vehicle_radius_m": {
-   "type": "integer"
-  },
-  "people_radius_m": {
-   "type": "integer"
-  },
-  "paints": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   }
-  },
+  "_doc": {"type": "string"},
+  "vehicle_radius_m": {"type": "integer"},
+  "cabin_radius_m": {"type": "integer"},
+  "people_radius_m": {"type": "integer"},
+  "paints": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
   "trim": {
    "type": "object",
    "properties": {
-    "tyre": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "hub": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "under": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "blackout": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "grille": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "plate": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "glass": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "headlamp": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "tail": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "truck_box": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "chrome": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "roof": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "rider": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "rider_legs": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "shoes": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "interior": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "seat": {
-     "type": "string",
-     "pattern_prefix": "#"
-    }
+    "tyre": {"type": "string", "pattern_prefix": "#"},
+    "hub": {"type": "string", "pattern_prefix": "#"},
+    "under": {"type": "string", "pattern_prefix": "#"},
+    "blackout": {"type": "string", "pattern_prefix": "#"},
+    "grille": {"type": "string", "pattern_prefix": "#"},
+    "plate": {"type": "string", "pattern_prefix": "#"},
+    "glass": {"type": "string", "pattern_prefix": "#"},
+    "headlamp": {"type": "string", "pattern_prefix": "#"},
+    "tail": {"type": "string", "pattern_prefix": "#"},
+    "truck_box": {"type": "string", "pattern_prefix": "#"},
+    "chrome": {"type": "string", "pattern_prefix": "#"},
+    "roof": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": [
-    "tyre",
-    "hub",
-    "under",
-    "blackout",
-    "grille",
-    "plate",
-    "glass",
-    "headlamp",
-    "tail",
-    "truck_box",
-    "chrome",
-    "roof",
-    "rider",
-    "rider_legs",
-    "shoes",
-    "interior",
-    "seat"
-   ],
+   "required": ["tyre", "hub", "under", "blackout", "grille", "plate", "glass", "headlamp", "tail", "truck_box", "chrome", "roof"],
    "strict": true
   },
-  "cars": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "id": {
-      "type": "string"
-     },
-     "length": {
-      "type": "number"
-     },
-     "width": {
-      "type": "number"
-     },
-     "height": {
-      "type": "number"
-     },
-     "wheel": {
-      "type": "number"
-     },
-     "clearance": {
-      "type": "number"
-     },
-     "top": {
-      "type": "array",
-      "items": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       },
-       "minItems": 0
-      },
-      "minItems": 0
-     },
-     "screen": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      },
-      "minItems": 0
-     },
-     "rear": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      },
-      "minItems": 0
-     },
-     "side_glass": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      },
-      "minItems": 0
-     },
-     "belt": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      },
-      "minItems": 0
-     },
-     "nose_r": {
-      "type": "number"
-     },
-     "tail_r": {
-      "type": "number"
-     }
-    },
-    "required": [
-     "id",
-     "length",
-     "width",
-     "height",
-     "wheel",
-     "clearance",
-     "top",
-     "screen",
-     "rear",
-     "side_glass",
-     "belt",
-     "nose_r",
-     "tail_r"
-    ],
-    "strict": true
-   }
-  },
+  "cars": {"type": "array", "items": {
+   "type": "object",
+   "properties": {
+    "id": {"type": "string"},
+    "length": {"type": "number"},
+    "width": {"type": "number"},
+    "height": {"type": "number"},
+    "wheel": {"type": "number"},
+    "clearance": {"type": "number"},
+    "top": {"type": "array", "items": {"type": "array", "items": {"type": "number"}, "minItems": 0}, "minItems": 0},
+    "screen": {"type": "array", "items": {"type": "number"}, "minItems": 0},
+    "rear": {"type": "array", "items": {"type": "number"}, "minItems": 0},
+    "side_glass": {"type": "array", "items": {"type": "number"}, "minItems": 0},
+    "belt": {"type": "array", "items": {"type": "number"}, "minItems": 0},
+    "nose_r": {"type": "number"},
+    "tail_r": {"type": "number"}
+   },
+   "required": ["id", "length", "width", "height", "wheel", "clearance", "top", "screen", "rear", "side_glass", "belt", "nose_r", "tail_r"],
+   "strict": true
+  }},
   "car_body": {
    "type": "object",
    "properties": {
-    "stations": {
-     "type": "integer"
-    },
-    "station_eps_m": {
-     "type": "number"
-    },
-    "sill_m": {
-     "type": "number"
-    },
-    "tumble": {
-     "type": "number"
-    },
-    "glass_top_m": {
-     "type": "number"
-    },
-    "crown_m": {
-     "type": "number"
-    },
-    "lamp_y": {
-     "type": "number"
-    },
-    "tail_y": {
-     "type": "number"
-    },
-    "wheel_inset_m": {
-     "type": "number"
-    },
-    "wheel_w": {
-     "type": "number"
-    },
-    "axle": {
-     "type": "number"
-    },
-    "wheel_sides": {
-     "type": "integer"
-    }
+    "stations": {"type": "integer"},
+    "station_eps_m": {"type": "number"},
+    "sill_m": {"type": "number"},
+    "tumble": {"type": "number"},
+    "glass_top_m": {"type": "number"},
+    "crown_m": {"type": "number"},
+    "lamp_y": {"type": "number"},
+    "tail_y": {"type": "number"},
+    "wheel_inset_m": {"type": "number"},
+    "wheel_w": {"type": "number"},
+    "axle": {"type": "number"},
+    "wheel_sides": {"type": "integer"}
    },
-   "required": [
-    "stations",
-    "station_eps_m",
-    "sill_m",
-    "tumble",
-    "glass_top_m",
-    "crown_m",
-    "lamp_y",
-    "tail_y",
-    "wheel_inset_m",
-    "wheel_w",
-    "axle",
-    "wheel_sides"
-   ],
+   "required": ["stations", "station_eps_m", "sill_m", "tumble", "glass_top_m", "crown_m", "lamp_y", "tail_y", "wheel_inset_m", "wheel_w", "axle", "wheel_sides"],
    "strict": true
   },
-  "moto": {
+  "cars_cabin": {
    "type": "object",
    "properties": {
-    "length": {
-     "type": "number"
-    },
-    "wheel": {
-     "type": "number"
-    },
-    "wheel_w": {
-     "type": "number"
-    },
-    "axle_z": {
-     "type": "number"
-    },
-    "body": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "rider_seat_y": {
-     "type": "number"
-    },
-    "helmet_r": {
-     "type": "number"
-    }
+    "_doc": {"type": "string"},
+    "seat_spread": {"type": "number"},
+    "front_hip_m": {"type": "number"},
+    "row_pitch_m": {"type": "number"},
+    "back_clear_m": {"type": "number"},
+    "rows": {"type": "integer"},
+    "dash_d_m": {"type": "number"},
+    "dash_h_m": {"type": "number"},
+    "lining": {"type": "string", "pattern_prefix": "#"},
+    "floor": {"type": "string", "pattern_prefix": "#"},
+    "seat": {"type": "string", "pattern_prefix": "#"},
+    "dash": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": [
-    "length",
-    "wheel",
-    "wheel_w",
-    "axle_z",
-    "body",
-    "rider_seat_y",
-    "helmet_r"
-   ],
-   "strict": true
-  },
-  "bus": {
-   "type": "object",
-   "properties": {
-    "length": {
-     "type": "number"
-    },
-    "width": {
-     "type": "number"
-    },
-    "height": {
-     "type": "number"
-    },
-    "wheel": {
-     "type": "number"
-    },
-    "wheel_w": {
-     "type": "number"
-    },
-    "clearance": {
-     "type": "number"
-    },
-    "sill": {
-     "type": "number"
-    },
-    "cant": {
-     "type": "number"
-    },
-    "axles": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "pillar_m": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "length",
-    "width",
-    "height",
-    "wheel",
-    "wheel_w",
-    "clearance",
-    "sill",
-    "cant",
-    "axles",
-    "pillar_m"
-   ],
-   "strict": true
-  },
-  "truck": {
-   "type": "object",
-   "properties": {
-    "length": {
-     "type": "number"
-    },
-    "width": {
-     "type": "number"
-    },
-    "height": {
-     "type": "number"
-    },
-    "wheel": {
-     "type": "number"
-    },
-    "wheel_w": {
-     "type": "number"
-    },
-    "cab_share": {
-     "type": "number"
-    },
-    "cab_bottom": {
-     "type": "number"
-    },
-    "belt": {
-     "type": "number"
-    },
-    "cab_top": {
-     "type": "number"
-    },
-    "box_bottom": {
-     "type": "number"
-    },
-    "axles": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    }
-   },
-   "required": [
-    "length",
-    "width",
-    "height",
-    "wheel",
-    "wheel_w",
-    "cab_share",
-    "cab_bottom",
-    "belt",
-    "cab_top",
-    "box_bottom",
-    "axles"
-   ],
-   "strict": true
-  },
-  "wheel_jump_m": {
-   "type": "integer"
-  },
-  "people": {
-   "type": "object",
-   "properties": {
-    "asset": {
-     "type": "string"
-    },
-    "lod_m": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "clothes": {
-     "type": "array",
-     "items": {
-      "type": "string",
-      "pattern_prefix": "#"
-     }
-    },
-    "hair": {
-     "type": "array",
-     "items": {
-      "type": "string",
-      "pattern_prefix": "#"
-     }
-    },
-    "grey": {
-     "type": "array",
-     "items": {
-      "type": "string",
-      "pattern_prefix": "#"
-     }
-    }
-   },
-   "required": [
-    "asset",
-    "lod_m",
-    "clothes",
-    "hair",
-    "grey"
-   ],
+   "required": ["_doc", "seat_spread", "front_hip_m", "row_pitch_m", "back_clear_m", "rows", "dash_d_m", "dash_h_m", "lining", "floor", "seat", "dash"],
    "strict": true
   },
   "cabin": {
    "type": "object",
    "properties": {
-    "_doc": {
-     "type": "string"
+    "_doc": {"type": "string"},
+    "lining_inset_m": {"type": "number"},
+    "liner_drop_m": {"type": "number"},
+    "steering_rim_m": {"type": "number"},
+    "person": {
+     "type": "object",
+     "properties": {
+      "torso_m": {"type": "array", "items": {"type": "number"}},
+      "arm_m": {"type": "array", "items": {"type": "number"}},
+      "thigh_m": {"type": "array", "items": {"type": "number"}},
+      "foot_m": {"type": "array", "items": {"type": "number"}},
+      "shin_w_m": {"type": "number"},
+      "head_r_m": {"type": "number"},
+      "neck_m": {"type": "number"},
+      "hair_drop": {"type": "number"},
+      "hair_back_m": {"type": "number"},
+      "shoes": {"type": "string", "pattern_prefix": "#"}
+     },
+     "required": ["torso_m", "arm_m", "thigh_m", "foot_m", "shin_w_m", "head_r_m", "neck_m", "hair_drop", "hair_back_m", "shoes"],
+     "strict": true
     },
-    "seat_spread": {
-     "type": "number"
-    },
-    "front_hip_m": {
-     "type": "number"
-    },
-    "row_pitch_m": {
-     "type": "number"
-    },
-    "back_clear_m": {
-     "type": "number"
-    },
-    "hip_m": {
-     "type": "number"
-    },
-    "lining_inset_m": {
-     "type": "number"
-    },
-    "liner_drop_m": {
-     "type": "number"
-    },
-    "cushion_m": {
-     "type": "number"
-    },
-    "cushion_width_m": {
-     "type": "number"
-    },
-    "cushion_depth_m": {
-     "type": "number"
-    },
-    "back_h_m": {
-     "type": "number"
-    },
-    "back_d_m": {
-     "type": "number"
-    },
-    "dash_d_m": {
-     "type": "number"
-    },
-    "dash_h_m": {
-     "type": "number"
-    },
-    "head_r_m": {
-     "type": "number"
-    },
-    "neck_m": {
-     "type": "number"
-    },
-    "hair_drop": {
-     "type": "number"
-    },
-    "hair_back_m": {
-     "type": "number"
-    },
-    "torso_m": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "arm_m": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "rows": {
-     "type": "integer"
+    "seats": {
+     "type": "object",
+     "properties": {
+      "car": {
+       "type": "object",
+       "properties": {
+        "hip_m": {"type": "number"},
+        "cushion_m": {"type": "number"},
+        "cushion_w_m": {"type": "number"},
+        "cushion_d_m": {"type": "number"},
+        "back_h_m": {"type": "number"},
+        "back_d_m": {"type": "number"},
+        "base_share": {"type": "number"},
+        "wheel": {"type": "array", "items": {"type": "number"}}
+       },
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "strict": true
+      },
+      "cab": {
+       "type": "object",
+       "properties": {
+        "hip_m": {"type": "number"},
+        "cushion_m": {"type": "number"},
+        "cushion_w_m": {"type": "number"},
+        "cushion_d_m": {"type": "number"},
+        "back_h_m": {"type": "number"},
+        "back_d_m": {"type": "number"},
+        "base_share": {"type": "number"},
+        "wheel": {"type": "array", "items": {"type": "number"}}
+       },
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "strict": true
+      },
+      "chair": {
+       "type": "object",
+       "properties": {
+        "hip_m": {"type": "number"},
+        "cushion_m": {"type": "number"},
+        "cushion_w_m": {"type": "number"},
+        "cushion_d_m": {"type": "number"},
+        "back_h_m": {"type": "number"},
+        "back_d_m": {"type": "number"},
+        "base_share": {"type": "number"},
+        "wheel": {"type": "array", "items": {"type": "number"}}
+       },
+       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel"],
+       "strict": true
+      }
+     },
+     "required": ["car", "cab", "chair"],
+     "strict": true
     }
    },
-   "required": [
-    "_doc",
-    "seat_spread",
-    "front_hip_m",
-    "row_pitch_m",
-    "back_clear_m",
-    "hip_m",
-    "lining_inset_m",
-    "liner_drop_m",
-    "cushion_m",
-    "cushion_width_m",
-    "cushion_depth_m",
-    "back_h_m",
-    "back_d_m",
-    "dash_d_m",
-    "dash_h_m",
-    "head_r_m",
-    "neck_m",
-    "hair_drop",
-    "hair_back_m",
-    "torso_m",
-    "arm_m",
-    "rows"
-   ],
+   "required": ["_doc", "lining_inset_m", "liner_drop_m", "steering_rim_m", "person", "seats"],
    "strict": true
   },
   "occupants": {
    "type": "object",
    "properties": {
-    "_doc": {
-     "type": "string"
-    },
-    "skin": {
-     "type": "array",
-     "items": {
-      "type": "string",
-      "pattern_prefix": "#"
-     }
-    },
-    "seat_fill": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
+    "_doc": {"type": "string"},
+    "skin": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+    "helmet": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+    "load": {
+     "type": "object",
+     "properties": {
+      "car": {
+       "type": "object",
+       "properties": {
+        "bands": {"type": "array", "items": {"type": "number"}},
+        "shuffle": {"type": "boolean"}
+       },
+       "required": ["bands", "shuffle"],
+       "strict": true
+      },
+      "bus": {
+       "type": "object",
+       "properties": {
+        "bands": {"type": "array", "items": {"type": "number"}},
+        "shuffle": {"type": "boolean"}
+       },
+       "required": ["bands", "shuffle"],
+       "strict": true
+      },
+      "truck": {
+       "type": "object",
+       "properties": {
+        "bands": {"type": "array", "items": {"type": "number"}},
+        "shuffle": {"type": "boolean"}
+       },
+       "required": ["bands", "shuffle"],
+       "strict": true
+      }
+     },
+     "required": ["car", "bus", "truck"],
+     "strict": true
     }
    },
-   "required": [
-    "_doc",
-    "skin",
-    "seat_fill"
-   ],
+   "required": ["_doc", "skin", "helmet", "load"],
+   "strict": true
+  },
+  "moto": {
+   "type": "object",
+   "properties": {
+    "_doc": {"type": "string"},
+    "length": {"type": "number"},
+    "wheel": {"type": "number"},
+    "wheel_w": {"type": "number"},
+    "axle_z": {"type": "number"},
+    "body": {"type": "array", "items": {"type": "number"}},
+    "helmet_r": {"type": "number"},
+    "rider": {
+     "type": "object",
+     "properties": {
+      "hip": {"type": "array", "items": {"type": "number"}},
+      "shoulders": {"type": "array", "items": {"type": "number"}},
+      "knee": {"type": "array", "items": {"type": "number"}},
+      "ankle": {"type": "array", "items": {"type": "number"}},
+      "hand": {"type": "array", "items": {"type": "number"}}
+     },
+     "required": ["hip", "shoulders", "knee", "ankle", "hand"],
+     "strict": true
+    }
+   },
+   "required": ["_doc", "length", "wheel", "wheel_w", "axle_z", "body", "helmet_r", "rider"],
+   "strict": true
+  },
+  "bus": {
+   "type": "object",
+   "properties": {
+    "_doc": {"type": "string"},
+    "length": {"type": "number"},
+    "width": {"type": "number"},
+    "height": {"type": "number"},
+    "wheel": {"type": "number"},
+    "wheel_w": {"type": "number"},
+    "wheel_inset_m": {"type": "number"},
+    "clearance": {"type": "number"},
+    "sill": {"type": "number"},
+    "cant": {"type": "number"},
+    "axles": {"type": "array", "items": {"type": "number"}},
+    "pillar_m": {"type": "number"},
+    "floor": {"type": "number"},
+    "wall_m": {"type": "number"},
+    "doors": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
+    "screen": {"type": "array", "items": {"type": "number"}},
+    "rear_window": {"type": "array", "items": {"type": "number"}},
+    "interior": {
+     "type": "object",
+     "properties": {
+      "lining": {"type": "string", "pattern_prefix": "#"},
+      "floor": {"type": "string", "pattern_prefix": "#"},
+      "seat": {"type": "string", "pattern_prefix": "#"},
+      "dash": {"type": "string", "pattern_prefix": "#"},
+      "pole": {"type": "string", "pattern_prefix": "#"},
+      "driver_m": {"type": "array", "items": {"type": "number"}},
+      "partition_m": {"type": "array", "items": {"type": "number"}},
+      "dash_m": {"type": "array", "items": {"type": "number"}},
+      "rows_m": {"type": "array", "items": {"type": "number"}},
+      "chair_place_m": {"type": "number"},
+      "wall_gap_m": {"type": "number"},
+      "door_clear_m": {"type": "array", "items": {"type": "number"}},
+      "reach_m": {"type": "array", "items": {"type": "number"}},
+      "sit_room_m": {"type": "array", "items": {"type": "number"}},
+      "housing_pad_m": {"type": "number"},
+      "back_row_m": {"type": "array", "items": {"type": "number"}},
+      "back_row_seats": {"type": "integer"},
+      "pole_m": {"type": "array", "items": {"type": "number"}},
+      "pole_rows": {"type": "integer"}
+     },
+     "required": ["lining", "floor", "seat", "dash", "pole", "driver_m", "partition_m", "dash_m", "rows_m", "chair_place_m", "wall_gap_m", "door_clear_m", "reach_m", "sit_room_m", "housing_pad_m", "back_row_m", "back_row_seats", "pole_m", "pole_rows"],
+     "strict": true
+    }
+   },
+   "required": ["_doc", "length", "width", "height", "wheel", "wheel_w", "wheel_inset_m", "clearance", "sill", "cant", "axles", "pillar_m", "floor", "wall_m", "doors", "screen", "rear_window", "interior"],
+   "strict": true
+  },
+  "truck": {
+   "type": "object",
+   "properties": {
+    "_doc": {"type": "string"},
+    "length": {"type": "number"},
+    "width": {"type": "number"},
+    "height": {"type": "number"},
+    "wheel": {"type": "number"},
+    "wheel_w": {"type": "number"},
+    "wheel_inset_m": {"type": "number"},
+    "cab_share": {"type": "number"},
+    "cab_bottom": {"type": "number"},
+    "belt": {"type": "number"},
+    "cab_top": {"type": "number"},
+    "box_bottom": {"type": "number"},
+    "axles": {"type": "array", "items": {"type": "number"}},
+    "cab_floor": {"type": "number"},
+    "wall_m": {"type": "number"},
+    "interior": {
+     "type": "object",
+     "properties": {
+      "lining": {"type": "string", "pattern_prefix": "#"},
+      "floor": {"type": "string", "pattern_prefix": "#"},
+      "seat": {"type": "string", "pattern_prefix": "#"},
+      "dash": {"type": "string", "pattern_prefix": "#"},
+      "seat_from_back_m": {"type": "number"},
+      "seat_from_side_m": {"type": "number"},
+      "dash_m": {"type": "array", "items": {"type": "number"}},
+      "console_m": {"type": "array", "items": {"type": "number"}},
+      "console_ahead_m": {"type": "number"}
+     },
+     "required": ["lining", "floor", "seat", "dash", "seat_from_back_m", "seat_from_side_m", "dash_m", "console_m", "console_ahead_m"],
+     "strict": true
+    }
+   },
+   "required": ["_doc", "length", "width", "height", "wheel", "wheel_w", "wheel_inset_m", "cab_share", "cab_bottom", "belt", "cab_top", "box_bottom", "axles", "cab_floor", "wall_m", "interior"],
+   "strict": true
+  },
+  "wheel_jump_m": {"type": "integer"},
+  "people": {
+   "type": "object",
+   "properties": {
+    "asset": {"type": "string"},
+    "lod_m": {"type": "array", "items": {"type": "integer"}},
+    "clothes": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+    "hair": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+    "grey": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}}
+   },
+   "required": ["asset", "lod_m", "clothes", "hair", "grey"],
    "strict": true
   }
  },
- "required": [
-  "_doc",
-  "vehicle_radius_m",
-  "people_radius_m",
-  "paints",
-  "trim",
-  "cars",
-  "car_body",
-  "moto",
-  "bus",
-  "truck",
-  "wheel_jump_m",
-  "people",
-  "cabin",
-  "occupants"
- ],
+ "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "paints", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
  "strict": true
 }
