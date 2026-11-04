@@ -19,8 +19,6 @@ constexpr float LOUVRE_T = 0.09f, SLAT_FILL = 0.67f, SLAT_SHADE = 0.85f;
 constexpr int SLATS = 9;
 constexpr int BRISE_FINS = 6;
 constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
-constexpr float AC_LID = 0.06f, AC_FAN_R = 0.19f, AC_FAN_X = -0.09f, AC_GRILLE = 0.6f, BRACKET = 0.04f;
-constexpr int AC_SIDES = 6;
 constexpr float HALF = 0.5f, FACE_OUT = 0.005f;
 constexpr uint32_t BRASS = 0xb08d57, LAMP_WARM = 0xffefcf;
 
@@ -91,20 +89,6 @@ void part_awning(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	s.quad(a, b, c, d, up, lin, fin);
 	s.quad(a, b, c, d, -up, lin * HALF, fin);
 	s.box(m, -HALF * p.sx, HALF * p.sx, -drop - VALANCE_H * p.sy, -drop, p.sz - VALANCE_T, p.sz, lin, fin, SKIP_NONE);
-}
-
-void part_ac(Shell &s, const Part &p, const Lin &lin, const Lin &dark) {
-	part_box(s, p, lin, FIN_METAL);
-	Basis m = centred(p);
-	float fz = p.sz / 2 + FACE_OUT;
-	Vector3 c = m.at(AC_FAN_X, 0, fz);
-	float r = AC_FAN_R;
-	for (int i = 0; i < AC_SIDES; i++) {
-		float a0 = TAU_F * float(i) / AC_SIDES, a1 = TAU_F * float(i + 1) / AC_SIDES;
-		s.tri(c, c + m.e0 * (r * std::cos(a0)) + m.e1 * (r * std::sin(a0)), c + m.e0 * (r * std::cos(a1)) + m.e1 * (r * std::sin(a1)), m.e2, dark, FIN_METAL);
-	}
-	s.box(m, -p.sx / 2, p.sx / 2, p.sy / 2, p.sy / 2 + AC_LID * p.sy, -p.sz / 2, p.sz / 2, lin, FIN_METAL, SKIP_E2_NEG);
-	s.box(m, p.sx * (HALF - AC_GRILLE * HALF), p.sx * (HALF - BRACKET), -p.sy / 2 - BRACKET, -p.sy / 2, -p.sz / 2 - BRACKET, p.sz / 2, dark, FIN_METAL);
 }
 
 void part_lamp(Shell &s, const Part &p) {

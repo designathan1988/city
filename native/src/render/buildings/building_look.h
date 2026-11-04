@@ -3,6 +3,7 @@
 // The generator's own tables (styles, palettes, openings) are the simulation's (sim/buildings/b40/data.h).
 #pragma once
 
+#include "render/buildings/bay_props.h"
 #include "sim/buildings/b40/paint.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -30,6 +31,7 @@ struct BuildingLook {
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
+	BayPropLook bay; // bay_props.json
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };

@@ -25,6 +25,7 @@ const RENDER_TABLES := {
 	"streets": "res://data/render/streets.json",
 	"cover": "res://data/render/cover.json",
 	"buildings": "res://data/render/buildings.json",
+	"bay_props": "res://data/render/bay_props.json",
 	"interiors": "res://data/render/interiors.json",
 	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",

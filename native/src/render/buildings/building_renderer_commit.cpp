@@ -95,6 +95,17 @@ PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstanc
 	return buf;
 }
 
+PackedFloat32Array BuildingRenderer::bake_props(const std::vector<b40::PropInstance> &props) {
+	PackedFloat32Array buf;
+	for (const b40::PropInstance &inst : props) {
+		const Color c = unpack(inst.color);
+		const float *bs = inst.basis;
+		const Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]), z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]);
+		mm_push_plain(buf, x, y, z, Vector3(inst.origin[0], inst.origin[1], inst.origin[2]), c.r, c.g, c.b, 0);
+	}
+	return buf;
+}
+
 int64_t BuildingRenderer::Built::bytes() const {
 	int64_t n = 0;
 	for (int i = 0; i < SUB_COUNT; i++)
@@ -132,9 +143,9 @@ void BuildingRenderer::Built::bake() {
 		mid_cards[size_t(i)] = b40::Shell();
 		mid_glass[size_t(i)] = b40::Shell();
 	}
-	for (int b = 0; b < BAND_COUNT; b++) {
+	for (int b = 0; b < BAND_DRAWS; b++) {
 		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_PLAIN_STRIDE);
-		band_mm[size_t(b)] = bake_multimesh(unit_box, bands[size_t(b)], chunk_box(key));
+		band_mm[size_t(b)] = bake_multimesh(band_mesh[size_t(b)], bands[size_t(b)], chunk_box(key));
 		bands[size_t(b)] = PackedFloat32Array();
 	}
 	baked = true;
@@ -157,12 +168,14 @@ void BuildingRenderer::commit_one(Built &b) {
 			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown);
 			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown);
 		}
-		for (int band = 0; band < BAND_COUNT; band++)
-			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
-					chunk_box(b.key));
+		for (int band = 0; band < BAND_DRAWS; band++) {
+			const bool prop = band >= BAND_COUNT;
+			ch.bands[size_t(band)].adopt(scenario_, prop ? material_props_ : material_parts_, prop && band - BAND_COUNT < b40::BAY_PROP_SHADOWED,
+					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], chunk_box(b.key));
+		}
 		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
-		ch.instances = 0;
-		for (int count : b.band_count) ch.instances += count;
+		ch.instances = ch.props = 0;
+		for (int band = 0; band < BAND_DRAWS; band++) (band < BAND_COUNT ? ch.instances : ch.props) += b.band_count[size_t(band)];
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
 	}

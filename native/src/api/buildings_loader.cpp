@@ -170,7 +170,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	d.bricks = paints(at(pal, "bricks"), errors); d.hard = paints(at(pal, "hard"), errors);
 	d.roof_tiles = paints(at(pal, "roof_tiles"), errors); d.flat_roofs = paints(at(pal, "flat_roofs"), errors);
 	d.works_roofs = paints(at(pal, "works_roofs"), errors); d.lot_walls = paints(at(pal, "lot_walls"), errors);
-	d.awnings = hexes(at(pal, "awnings")); d.shop_awnings = hexes(at(pal, "shop_awnings")); d.ac_cases = hexes(at(pal, "ac_cases"));
+	d.awnings = hexes(at(pal, "awnings")); d.shop_awnings = hexes(at(pal, "shop_awnings"));
 	d.tanks = hexes(at(pal, "tanks")); d.warehouse_walls = hexes(at(pal, "warehouse_walls"));
 	Dictionary cols = at(t, "colors");
 	Array keys = cols.keys();
@@ -186,9 +186,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	}
 	if (!lot_rules(at(t, "lots"), d.lots, errors)) return false;
 	Dictionary props = at(t, "props");
-	Array ac = at(props, "ac_chance"), lit = at(props, "lit_share");
-	for (int i = 0; i < 3; i++) d.ac_chance[i] = float(ac[i]);
-	d.dish_chance = float(at(props, "dish_chance"));
+	Array lit = at(props, "lit_share");
 	d.lit_share[0] = float(lit[0]); d.lit_share[1] = float(lit[1]);
 	return errors.is_empty();
 }

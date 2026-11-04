@@ -112,6 +112,12 @@
    "metalness": 0.55
   }
  },
+ "building_props": {
+  "shader": "res://render/shaders/building_props.gdshader",
+  "params": {
+   "roughness": 0.75
+  }
+ },
  "building_ghost": {
   "shader": "res://render/shaders/building_ghost.gdshader",
   "params": {

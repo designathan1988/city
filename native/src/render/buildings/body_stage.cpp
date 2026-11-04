@@ -11,6 +11,25 @@ using namespace godot;
 
 namespace city {
 
+namespace {
+constexpr int AXIS_FLOATS = 3, ALPHA_BITS = 8;
+
+// A piece of the bays in the body's own mesh: its tones over its colour, no finish.
+void append_prop(b40::Shell &s, const MeshBuilder &model, const b40::PropInstance &p) {
+	auto axis = [&p](int i) { const float *a = p.basis + i * AXIS_FLOATS; return Vector3(a[0], a[1], a[2]); };
+	const Vector3 x = axis(0), y = axis(1), z = axis(2);
+	const Vector3 o(p.origin[0], p.origin[1], p.origin[2]);
+	const b40::Lin colour = b40::lin_of(p.color >> ALPHA_BITS);
+	auto at = [&](int i) { const Vector3 &v = model.v[i]; return o + x * v.x + y * v.y + z * v.z; };
+	for (int64_t i = 0; i + 2 < model.idx.size(); i += 3) {
+		const int a = model.idx[i], b = model.idx[i + 1], c = model.idx[i + 2];
+		const Vector3 &n = model.n[a];
+		const Color t = model.c[a];
+		s.tri(at(a), at(b), at(c), x * n.x + y * n.y + z * n.z, b40::Lin{ colour.r * t.r, colour.g * t.g, colour.b * t.b }, b40::FIN_NONE);
+	}
+}
+} // namespace
+
 int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const RID &scenario, bool ghost) {
 	b40::PaneRooms rooms(data, body, b40::purpose_of(body, 0, 0));
 	b40::Placed pl;
@@ -29,6 +48,7 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	b40::emit_facades(shell, shell, pl);
 	b40::emit_roofs(shell, shell, pl);
 	b40::emit_lot(shell, shell, pl);
+	for (const b40::PropInstance &p : shell.props) append_prop(shell, look.bay.models[p.kind], p);
 	shell.glass = nullptr;
 	shell.sheer = nullptr;
 	shell.cards = nullptr;

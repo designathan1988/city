@@ -101,12 +101,21 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			return std::min(band, BAND_COUNT - 1);
 		};
 		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
+		std::array<std::vector<b40::PropInstance>, b40::BAY_PROPS> props;
 		for (b40::Shell &p : parts_shells) {
 			for (const b40::BoxInstance &inst : p.boxes) boxes[size_t(band_of(inst.thick))].push_back(inst);
+			for (const b40::PropInstance &inst : p.props) props[inst.kind].push_back(inst);
 			p.boxes = {}; // in the bands now
+			p.props = {};
 		}
-		for (int b = 0; b < BAND_COUNT; b++) out.bands[size_t(b)] = bake_band(boxes[size_t(b)]);
-		out.unit_box = unit_box_->get_rid();
+		for (int b = 0; b < BAND_COUNT; b++) {
+			out.bands[size_t(b)] = bake_band(boxes[size_t(b)]);
+			out.band_mesh[size_t(b)] = unit_box_->get_rid();
+		}
+		for (int k = 0; k < b40::BAY_PROPS; k++) {
+			out.bands[size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
+			out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
+		}
 		out.has_near = true;
 	}
 	out.has_mid = mid;

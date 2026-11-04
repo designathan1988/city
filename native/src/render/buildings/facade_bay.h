@@ -51,7 +51,6 @@ void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_awning(Shell &s, const Part &p, const Lin &lin, int8_t fin);
-void part_ac(Shell &s, const Part &p, const Lin &lin, const Lin &dark);
 void part_lamp(Shell &s, const Part &p);
 
 } // namespace city::b40
