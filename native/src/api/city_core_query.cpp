@@ -135,7 +135,7 @@ Dictionary CityCore::snapshot() {
 	d["growth_cells"] = int(s.growth.cells.size());
 	d["residents"] = snap_residents_;
 	d["jobs"] = snap_jobs_;
-	d["vehicles"] = s.traffic.vehicle_count;
+	d["vehicles"] = s.traffic.vehicle_count + s.traffic.park.moving;
 	d["people"] = s.traffic.ped_count;
 	d["trips_arrived"] = s.traffic.arrived;
 	d["trips_lost"] = s.traffic.lost;

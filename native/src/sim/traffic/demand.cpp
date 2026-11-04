@@ -202,10 +202,12 @@ void spawn_vehicles(CityState &s, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	const double target = fleet_target(s);
 	int attempts = 0;
-	if (t.vehicle_count < p.fill_share * target) {
+	// a car driving in or out of a bay is a car driving: the demand counts it (it just is not on a lane)
+	const double driving = double(t.vehicle_count) + double(t.park.moving);
+	if (driving < p.fill_share * target) {
 		attempts = int(p.spawn_fill_attempts);
 	} else {
-		t.spawn_credit += float(std::max(0.0, target - t.vehicle_count)) * dt / p.fleet_tau_s;
+		t.spawn_credit += float(std::max(0.0, target - driving)) * dt / p.fleet_tau_s;
 		attempts = std::min(int(t.spawn_credit), int(p.spawn_attempts_per_step));
 		t.spawn_credit -= float(attempts);
 	}

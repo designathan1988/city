@@ -229,7 +229,9 @@ namespace {
 // The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
 void park_probe(const TrafficState &t, Dictionary &d) {
 	const ParkingState &p = t.park;
-	d["step_ms"] = Array::make(t.step_ms[0], t.step_ms[1], t.step_ms[2], t.step_ms[3]);
+	Array ms;
+	for (double x : t.step_ms) ms.push_back(x);
+	d["step_ms"] = ms;
 	d["red_last"] = Array::make(t.red_last[0], t.red_last[1], t.red_last[2], t.red_last[3]);
 	d["parked_rows"] = int(p.rows.size()); // scenery cars standing in bays near the camera
 	d["lot_cars"] = int(p.cars.size());
@@ -249,7 +251,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TrafficState &t = state_->traffic;
 	Dictionary d;
-	d["vehicles"] = t.vehicle_count;
+	d["vehicles"] = t.vehicle_count + t.park.moving; // driving: on the lanes or in and out of the bays
 	park_probe(t, d);
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;

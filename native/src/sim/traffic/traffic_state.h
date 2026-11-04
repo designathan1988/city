@@ -20,7 +20,7 @@ constexpr int CONN_STEPS = 8; // arc-length table of a connector curve
 constexpr int NODE_ARMS_MAX = 8; // arms a node may have in the crosswalk answer cache
 constexpr int CROSS_CACHE_KINDS = 2; // walk_ok and cars_on_crossing are cached apart
 constexpr uint32_t STAMP_NONE = 0xFFFFFFFFu; // crosswalk cache: no step answered yet
-constexpr int TIMED_STAGES = 4;
+enum StepStage { STAGE_BAYS = 0, STAGE_FLEET, STAGE_LOTS, STAGE_WALKERS, STAGE_LOT_OUT, STAGE_LOT_IN, STAGE_PUBLISH, TIMED_STAGES };
 constexpr uint64_t TRAFFIC_SEED = 12345; // Roadcraft traffic.ts: Rng(12345)
 
 enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
@@ -191,8 +191,10 @@ struct TrafficState {
 	uint64_t tick = 0;
 	float spawn_credit = 0;
 	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
-	// changes, motion), the lots, the walkers.
+	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
 	double step_ms[TIMED_STAGES] = {};
+	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
+	std::vector<int> pub_count;
 	ParkingState park;
 	std::unordered_map<int64_t, std::vector<int>> walker_cells; // who stands where, filed when something off the lanes asks
 	uint64_t walkers_filed = ~0ull; // the tick they were filed in

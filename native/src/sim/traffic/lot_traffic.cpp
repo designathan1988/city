@@ -4,6 +4,8 @@
 // with `off` set: on no lane list, out of the fleet count, its pose the manoeuvre's.
 #include "sim/traffic/traffic_system.h"
 
+#include "core/laps.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -44,6 +46,8 @@ void untrack(CityState &s, LotCar &car) {
 bool may_go(CityState &s, LotCar &car, float dt) {
 	if (car.reserved) return true;
 	const TrafficParams &p = s.catalog.traffic;
+	const uint64_t every = uint64_t(p.parker_look_ticks); // it looks every so often, all together: the walkers are filed once for them
+	if (s.traffic.tick % every != 0) return false;
 	const VehicleClass &c = p.classes[int(s.traffic.vehicles[size_t(car.id)].type)];
 	const float reach = std::max(0.f, c.length * 0.5f - c.half_width), r = c.half_width + p.man_disc_pad_m;
 	bool clear = true;
@@ -57,7 +61,7 @@ bool may_go(CityState &s, LotCar &car, float dt) {
 		car.reserved = true;
 		return true;
 	}
-	car.waited += dt;
+	car.waited += dt * float(every);
 	return false;
 }
 
@@ -178,7 +182,8 @@ void leaving(CityState &s, LotCar &car, float dt) {
 void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 	v.cur.x = q.x;
 	v.cur.z = q.z;
-	v.cur.y = s.terrain.height_at(q.x, q.z) + s.catalog.traffic.body_lift_m;
+	// the ground under it read every few ticks (it moves a metre or so between two looks; the render interpolates)
+	if (v.cur.y == 0 || s.traffic.tick % uint64_t(s.catalog.traffic.parker_look_ticks) == 0) v.cur.y = s.terrain.height_at(q.x, q.z) + s.catalog.traffic.body_lift_m;
 	v.cur.fx = std::cos(q.angle);
 	v.cur.fz = std::sin(q.angle);
 }
@@ -243,13 +248,16 @@ void step_lots(CityState &s, float dt) {
 	pk.clock += dt;
 	if (pk.clock < p.parker_look_s) return;
 	pk.clock = 0;
+	Laps lap;
 	settle_parked(s);
 	const double target = fleet_target(s);
 	lot_depart(s, target);
+	t.step_ms[STAGE_LOT_OUT] += lap.lap();
 	// trips ending in a lot at the rate a trip ends; as many on their way as that brings in while a called car drives there
 	const float most = std::max(p.parker_coming_min, std::ceil(float(target) * p.parker_coming_s / p.parker_trip_s));
 	pk.owed = std::min(most, pk.owed + float(target) / p.parker_trip_s * p.parker_look_s);
 	while (pk.owed >= 1 && float(pk.coming) < most && lot_call(s)) pk.owed -= 1;
+	t.step_ms[STAGE_LOT_IN] += lap.lap();
 }
 
 } // namespace traffic

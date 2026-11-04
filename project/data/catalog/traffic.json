@@ -188,6 +188,7 @@
   "cycle_clear_share": 0.8,
   "parker_past_gate_m": 8,
   "parker_give_up_s": 25,
+  "parker_look_ticks": 5,
   "gate_lane_reach_m": 45,
   "gate_lane_min_m": 10,
   "gate_lane_end_m": 1.5,

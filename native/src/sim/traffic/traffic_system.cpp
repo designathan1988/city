@@ -98,14 +98,18 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	const int64_t before = t.stamp_ns[POSE_TRAIL - 1];
 	for (int i = 0; i + 1 < POSE_TRAIL; i++) t.stamp_ns[i] = t.stamp_ns[i + 1];
 	t.stamp_ns[POSE_TRAIL - 1] = stamp_ns;
+	Laps lap;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
 	f.seg_speed_share.assign(s.roads.segs.size(), 1.f);
-	std::vector<float> sum(s.roads.segs.size(), 0.f), lim(s.roads.segs.size(), 0.f);
-	std::vector<int> count(s.roads.segs.size(), 0);
+	std::vector<float> &sum = t.pub_sum, &lim = t.pub_lim;
+	std::vector<int> &count = t.pub_count;
+	sum.assign(s.roads.segs.size(), 0.f);
+	lim.assign(s.roads.segs.size(), 0.f);
+	count.assign(s.roads.segs.size(), 0);
 	for (Vehicle &v : s.traffic.vehicles) {
 		if (!v.alive || (!v.micro && !v.off)) continue; // far vehicles are queues and events, not poses
 		if (!v.off) {
@@ -157,6 +161,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
+	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
 void step(CityState &s, float dt) {
@@ -169,18 +174,18 @@ void step(CityState &s, float dt) {
 	check_window(s);
 	Laps lap;
 	step_parking_sources(s);
-	t.step_ms[0] += lap.lap();
+	t.step_ms[STAGE_BAYS] += lap.lap();
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	spawn_vehicles(s, dt);
 	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
-	t.step_ms[1] += lap.lap();
+	t.step_ms[STAGE_FLEET] += lap.lap();
 	step_lots(s, dt);
-	t.step_ms[2] += lap.lap();
+	t.step_ms[STAGE_LOTS] += lap.lap();
 	step_pedestrians(s, dt);
-	t.step_ms[3] += lap.lap();
+	t.step_ms[STAGE_WALKERS] += lap.lap();
 }
 
 } // namespace traffic
