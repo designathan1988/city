@@ -38,6 +38,10 @@ const GAME := {
 	"daylight": "res://data/game/daylight.json",
 	"saves": "res://data/game/saves.json",
 }
+## The regional style a city's tables read (regras-sessoes.md, section 10): this one until a city carries its own. The tables that
+## keep what changes with it under `styles.<id>`, laid over the table when it is read.
+const REGIONAL_STYLE := "roadcraft"
+const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
 const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
@@ -55,8 +59,23 @@ static func _read(path: String) -> Variant:
 	if parsed == null:
 		push_error("JSON inválido: %s" % path)
 		parsed = {}
-	_cache[path] = parsed
-	return parsed
+	_cache[path] = styled(parsed, REGIONAL_STYLE) if path in STYLED else parsed
+	return _cache[path]
+
+
+## `table` as style `id` draws it: what the style holds laid over the table, block by block.
+static func styled(table: Dictionary, id: String) -> Dictionary:
+	var out: Dictionary = table.duplicate(true)
+	_lay(out, table.styles[id])
+	return out
+
+
+static func _lay(under: Dictionary, over: Dictionary) -> void:
+	for key: String in over:
+		if over[key] is Dictionary and under.get(key) is Dictionary:
+			_lay(under[key], over[key])
+		else:
+			under[key] = over[key]
 
 
 static func _group(paths: Dictionary) -> Dictionary:

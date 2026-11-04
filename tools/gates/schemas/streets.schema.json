@@ -1,6 +1,7 @@
 {
  "type": "object",
  "properties": {
+  "styles": {"type": "object"},
   "_doc": {"type": "string"},
   "surface_colors": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
   "strip_colors": {
@@ -324,7 +325,7 @@
      }
     }
    },
-   "required": ["_doc", "lens_dim", "signal", "pole", "hydrant", "bin", "bench", "postbox", "phone", "drain", "tree_pit", "meadow"],
+   "required": ["_doc", "lens_dim", "signal", "hydrant", "bin", "bench", "postbox", "phone", "drain", "tree_pit", "meadow"],
    "strict": true
   },
   "wires": {
@@ -346,7 +347,7 @@
     "color": {"type": "string"},
     "tube_end_m": {"type": "number"}
    },
-   "required": ["_doc", "y_m", "z_m", "radius_m", "sag", "max_sag_m", "min_span_m", "max_span_m", "near_chords", "near_sides", "far_chords", "far_sides", "tube_end_m", "far_end_m", "color"],
+   "required": ["_doc", "z_m", "radius_m", "sag", "max_sag_m", "min_span_m", "max_span_m", "near_chords", "near_sides", "far_chords", "far_sides", "tube_end_m", "far_end_m", "color"],
    "strict": true
   },
   "trees": {
@@ -617,10 +618,10 @@
     "plate_cell_px": {"type": "number"},
     "square_rows": {"type": "number"}
    },
-   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "plates", "drawings", "sheet_w_px", "sheet_h_px", "plate_cell_px", "square_rows"],
+   "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "sheet_w_px", "sheet_h_px", "plate_cell_px", "square_rows"],
    "strict": true
   }
  },
- "required": ["_doc", "surface_colors", "strip_colors", "paving_colors", "median_colors", "heights", "sample_step_m", "face_eps_m", "markings", "gutter_width_m", "dropped_kerb", "junction", "props", "wires", "trees", "lamp_light", "barriers", "signs"],
+ "required": ["_doc", "styles", "surface_colors", "strip_colors", "paving_colors", "median_colors", "heights", "sample_step_m", "face_eps_m", "markings", "gutter_width_m", "dropped_kerb", "junction", "props", "wires", "trees", "lamp_light", "barriers", "signs"],
  "strict": true
 }

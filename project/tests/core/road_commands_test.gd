@@ -11,6 +11,7 @@ const OUT_M := 260.0
 const GROW_TICKS := 1200
 const ZONE_RADIUS := 60.0
 const ZONE_RES := 1
+const FILLED_STYLES := ["roadcraft", "brasil"] # regras-sessoes.md, section 10
 
 var failures := 0
 
@@ -20,6 +21,7 @@ func _ready() -> void:
 	add_child(world)
 	var errors := CityStore.boot(world.terrain, world.materials())
 	_check(errors.is_empty(), "boot %s" % [errors])
+	_styles()
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	var s0 := CityStore.snapshot.duplicate()
@@ -49,6 +51,17 @@ func _ready() -> void:
 	_check(d.ok, "demoliu")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The styles filled so far hold what the loaders ask of the one the game boots with: a shape for every drawing, a crossing in order.
+func _styles() -> void:
+	for id: String in FILLED_STYLES:
+		var signs: Dictionary = DataTables.styled(DataTables.render().streets, id).signs
+		_check(signs.plates.size() == signs.drawings.size(), "estilo %s: uma figura por placa" % id)
+		for d: Dictionary in signs.drawings:
+			_check(signs.plates.has(d.plate), "estilo %s: placa %s" % [id, d.plate])
+		var c: Dictionary = DataTables.styled(DataTables.catalog().street_furniture, id).crossing
+		_check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "estilo %s: faixa antes da retenção" % id)
 
 
 func _check(ok: bool, what: String) -> void:

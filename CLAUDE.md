@@ -247,7 +247,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
-- `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
+- `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings e põe `styles.<id>` sobre as tabelas da rua (estilo regional)
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
 - `project/game/settings/settings.gd` — qualidade gráfica persistida em user://settings.cfg e limite de quadros (menor fora de foco)
@@ -341,7 +341,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
-- Mobiliário da rua: o cone de luz só aparece com `haze` (chuva e tempestade do 4.0), que espera o clima; bancos, lixeiras e placas ainda no mesh do chunk; Pare sem parada obrigatória (o tráfego trata como preferência); o poste de semáforo não balança no vento; a linha derivada não cruza a rua.
+- Mobiliário da rua: estilos `eua` e `europa` vazios, e hidrante, caixa de correio, semáforo e luminária ainda iguais em todo estilo; o poste do estilo `roadcraft` tem 8,4 m, e o 4.0, 8,5; o cone de luz só aparece com `haze` (chuva e tempestade do 4.0), que espera o clima; bancos, lixeiras e placas ainda no mesh do chunk; Pare sem parada obrigatória (o tráfego trata como preferência); o poste de semáforo não balança no vento; a linha derivada não cruza a rua.
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
   o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

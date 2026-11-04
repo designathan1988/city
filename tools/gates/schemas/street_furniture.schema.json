@@ -68,6 +68,9 @@
    ],
    "strict": true
   },
+  "styles": {
+   "type": "object"
+  },
   "signals": {
    "type": "object",
    "properties": {
@@ -387,7 +390,6 @@
    },
    "required": [
     "_doc",
-    "height_m",
     "kerb_inset_m",
     "min_spacing_m",
     "max_spacing_m",
@@ -570,8 +572,7 @@
     "stop_past_line_m",
     "name_past_mouth_m",
     "speed_round_kmh",
-    "far_share",
-    "plate_kerb_m"
+    "far_share"
    ],
    "strict": true
   },
@@ -616,11 +617,9 @@
   "_doc",
   "sidewalk",
   "lamps",
-  "signals",
-  "hydrants",
   "furniture",
   "trees",
-  "crossing",
+  "styles",
   "footprints",
   "poles",
   "barriers",

@@ -95,25 +95,6 @@
    {"shape": "box", "min": [-0.785, 0.4, -0.24], "max": [-0.735, 0.44, 0.22], "color": "#262b2a"},
    {"shape": "box", "min": [0.735, 0.4, -0.24], "max": [0.785, 0.44, 0.22], "color": "#262b2a"}
   ],
-  "pole": [
-   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 8, "color": "#4e3b2a", "wood": true, "part": 1},
-   {"shape": "frustum", "base": [0, 10.18, 0], "radius": 0.13, "top_radius": 0.045, "height": 0.08, "segments": 8, "color": "#8c9590", "part": 1},
-   {"shape": "box", "min": [-0.05, 9.6, -1.0], "max": [0.05, 9.7, 1.0], "color": "#3a2c20", "wood": true, "part": 2},
-   {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, 0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-   {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, -0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
-   {"shape": "frustum", "base": [0, 9.7, -0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
-   {"shape": "frustum", "base": [0, 9.7, 0], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
-   {"shape": "frustum", "base": [0, 9.7, 0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
-   {"shape": "cylinder", "base": [0, 7.58, -0.46], "radius": 0.28, "height": 0.95, "segments": 10, "color": "#8c9590", "part": 4},
-   {"shape": "beam", "from": [0, 7.080000000000001, 0], "to": [0, 7.300000000000001, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
-   {"shape": "box", "min": [-0.13, 7.160000000000001, 1.35], "max": [0.13, 7.300000000000001, 1.85], "color": "#a9b0ad", "part": 8},
-   {"shape": "box", "min": [-0.1, 7.15, 1.4], "max": [0.1, 7.160000000000001, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
-   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
-   {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
-   {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
-   {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
-   {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
-  ],
   "postbox": [
    {"shape": "box", "min": [-0.15, 0, -0.12], "max": [0.15, 0.25, 0.12], "color": "#12304f"},
    {"shape": "box", "min": [-0.22, 0.25, -0.17], "max": [0.22, 0.97, 0.17], "color": "#1f4f8a"},
@@ -150,7 +131,6 @@
  },
  "wires": {
   "_doc": "The wires of a span: every course (y_m, under the arm) at every offset across it (z_m, the insulators): nine, as the Roadcraft 4.0 strings them. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom, as the 4.0 draws it. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube up to tube_end_m, far_chords and far_sides the coarse one up to far_end_m, where a wire is under a pixel at the 1600 x 900 view. Sag and these distances have no norm behind them: measured against the 4.0 in play.",
-  "y_m": [9.65, 9.2, 8.75],
   "z_m": [-0.8, 0, 0.8],
   "radius_m": 0.035,
   "sag": 0.018,
@@ -451,7 +431,7 @@
   "guard_beam_m": 0.3
  },
  "signs": {
-  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px, square_rows: the sheet of pictures, 16 plates and 32 name plates, sized by what a city uses (the generated map 5, every type once 14; the Roadcraft 4.0 small city 26 street names); a 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
+  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px, square_rows: the sheet of pictures, 16 plates and 32 name plates, sized by what a city uses (the generated map 5, every type once 14; the Roadcraft 4.0 small city 26 street names); a 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; turn the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
   "sheet_w_px": 1024,
   "sheet_h_px": 512,
   "plate_cell_px": 128,
@@ -462,20 +442,92 @@
   "back_color": "#7d8589",
   "face_out_m": 0.06,
   "blade_half_m": 0.005,
-  "plates": {
-   "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "turn": 0.0625, "outline_points": 8},
-   "yield": {"w_m": 0.9, "h_m": 0.78, "z_m": 2.49, "turn": 0.75, "outline_points": 3},
-   "speed": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
-   "noParking": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
-   "noEntry": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
-   "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
-   "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
-   "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "turn": 0.0, "outline_points": 0},
-   "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "turn": 0.0, "outline_points": 0},
-   "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.4, "turn": 0.0, "outline_points": 0}
-  },
   "word_bold": 0.5,
-   "word_least_px": 10,
-   "drawings": [{"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74}, {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72}, {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6}, {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16}, {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]}, {"plate": "pedestrian", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}}, {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56}, {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]}, {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92}, {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}]
+   "word_least_px": 10
+ },
+ "styles": {
+  "_doc": "What changes with a city's regional style (regras-sessoes.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. The drawings are the Roadcraft 4.0 look in both for now.",
+  "roadcraft": {
+   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts POLE_HEIGHT, 8.5 m, here 8.4). The look of this style, not a norm.",
+   "props": {
+    "pole": [
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.4, "segments": 8, "color": "#4e3b2a", "wood": true, "part": 1},
+     {"shape": "frustum", "base": [0, 8.38, 0], "radius": 0.13, "top_radius": 0.045, "height": 0.08, "segments": 8, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 7.800000000000001, -1.0], "max": [0.05, 7.9, 1.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "beam", "from": [0, 7.300000000000001, 0], "to": [0, 7.82, 0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "beam", "from": [0, 7.300000000000001, 0], "to": [0, 7.82, -0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, -0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, 0], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, 0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "cylinder", "base": [0, 5.780000000000001, -0.46], "radius": 0.28, "height": 0.95, "segments": 10, "color": "#8c9590", "part": 4},
+     {"shape": "beam", "from": [0, 7.080000000000001, 0], "to": [0, 7.300000000000001, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 7.160000000000001, 1.35], "max": [0.13, 7.300000000000001, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.1, 7.15, 1.4], "max": [0.1, 7.160000000000001, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
+     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
+     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
+     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
+     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
+    ]
+   },
+   "wires": {"y_m": [7.85, 7.4, 6.95]},
+   "signs": {
+    "plates": {
+     "stop": {"w_m": 0.75, "h_m": 0.75, "z_m": 2.2, "turn": 0.0625, "outline_points": 8},
+     "yield": {"w_m": 0.8, "h_m": 0.7, "z_m": 2.2, "turn": 0.75, "outline_points": 3},
+     "speed": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
+     "noParking": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
+     "noEntry": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 24},
+     "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "turn": 0.0, "outline_points": 4},
+     "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "turn": 0.0, "outline_points": 4},
+     "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "turn": 0.0, "outline_points": 0},
+     "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "turn": 0.0, "outline_points": 0},
+     "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.2, "turn": 0.0, "outline_points": 0}
+    },
+     "drawings": [{"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74}, {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72}, {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6}, {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16}, {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]}, {"plate": "pedestrian", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}}, {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56}, {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]}, {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92}, {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}]
+   }
+  },
+  "brasil": {
+   "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
+   "props": {
+    "pole": [
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 8, "color": "#4e3b2a", "wood": true, "part": 1},
+     {"shape": "frustum", "base": [0, 10.18, 0], "radius": 0.13, "top_radius": 0.045, "height": 0.08, "segments": 8, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 9.6, -1.0], "max": [0.05, 9.7, 1.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, 0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, -0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, -0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, 0], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, 0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "cylinder", "base": [0, 7.58, -0.46], "radius": 0.28, "height": 0.95, "segments": 10, "color": "#8c9590", "part": 4},
+     {"shape": "beam", "from": [0, 7.080000000000001, 0], "to": [0, 7.300000000000001, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 7.160000000000001, 1.35], "max": [0.13, 7.300000000000001, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.1, 7.15, 1.4], "max": [0.1, 7.160000000000001, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
+     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
+     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
+     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
+     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
+    ]
+   },
+   "wires": {"y_m": [9.65, 9.2, 8.75]},
+   "signs": {
+    "plates": {
+     "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "turn": 0.0625, "outline_points": 8},
+     "yield": {"w_m": 0.9, "h_m": 0.78, "z_m": 2.49, "turn": 0.75, "outline_points": 3},
+     "speed": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+     "noParking": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+     "noEntry": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "turn": 0.0, "outline_points": 24},
+     "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
+     "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "turn": 0.0, "outline_points": 4},
+     "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "turn": 0.0, "outline_points": 0},
+     "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "turn": 0.0, "outline_points": 0},
+     "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.4, "turn": 0.0, "outline_points": 0}
+    },
+     "drawings": [{"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74}, {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72}, {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6}, {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16}, {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]}, {"plate": "pedestrian", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}}, {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56}, {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]}, {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92}, {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}]
+   }
+  },
+  "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},
+  "europa": {"_doc": "To fill from the Vienna Convention on Road Signs and Signals (1968) and the European norms."}
  }
 }

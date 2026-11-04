@@ -16,14 +16,6 @@
   "twin_stagger": 0.5,
   "pole_lit_every": 2
  },
- "signals": {
-  "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
-  "kerb_m": 0.8
- },
- "hydrants": {
-  "_doc": "Corpo de Bombeiros do Paraná NPT 034 (urban hydrants), 5.1.2.2 a) and 5.2.4: each covers a radius of at most reach_m, preferably at street corners. The town is cut into squares reach_m / √2 wide (any point of one is within reach_m of any other), each holding one hydrant at the corner of its node nearest the square's centre.",
-  "reach_m": 300
- },
  "furniture": {
   "_doc": "Bins and benches. Prefeitura de São Paulo, Programa Passeio Livre: small and medium furniture 5 m from the corner's axis. Anchieta (ES) Lei 1.215/2017 on litter bins: at least 50 m apart, preferably at the corners, so one bin at each corner of a full-furniture street outside industrial zones whose block is at least bin_spacing_m long. A bench stands in the middle of residential blocks.",
   "corner_clear_m": 5,
@@ -40,16 +32,8 @@
   "kerb_clear_m": 0.1,
   "pit_m": 0.6
  },
- "crossing": {
-  "_doc": "CONTRAN MBST vol. IV (Res. 973/2022): 5.4, a zebra crossing (FTP-1) at least 1.00 m from the crossing street's kerb line and 3.00 m wide, 4.00 m recommended; 5.1, the stop line (LRE) 0.30 to 0.60 m wide, at least 1.60 m before the crosswalk. Vehicles stop with their front at the line; walkers cross along the zebra's middle and keep to its right half.",
-  "zebra_from_m": 1.0,
-  "zebra_to_m": 5.0,
-  "stop_from_m": 6.6,
-  "stop_to_m": 7.0
- },
  "poles": {
-  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: a 12 m pole, the urban medium voltage minimum, set 1.8 m deep, stands 10.2 m clear (Neoenergia DIS-NOR-012 rev. 08, 6.8.2.2 and table 30). max_spacing_m: the same norm, 6.6.31.9: spans of 30 to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, read from the Roadcraft 4.0 tool in play, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
-  "height_m": 10.2,
+  "_doc": "The utility poles the player strings (Street tab) and the planner of a run. height_m: by style. max_spacing_m: the same norm, 6.6.31.9: spans of 30 to 40 m. kerb_inset_m: sidewalk.kerb_clear_m plus the radius of the mast. The rest are behaviour of the tool, read from the Roadcraft 4.0 tool in play, with no norm: how near a pointer catches the line, how close two poles may stand, how far a run looks for its way (route_margin), what crossing a street costs over its width, and which bend counts as a corner (a pole with its own arm per line).",
   "kerb_inset_m": 0.68,
   "min_spacing_m": 15,
   "max_spacing_m": 40,
@@ -99,9 +83,8 @@
   }
  },
  "signs": {
-  "_doc": "The signs the rules put up and how far a placed plate governs an approach, as the Roadcraft 4.0 places them (no norm): the rule's plate a metre past the stop line, the speed plate 14 m past the mouth of a stretch of at least 60 m, a name plate 1.5 m past the mouth. approach_reach_m: how far back from a mouth a placed Stop or Give Way is still the rule of that approach. plate_kerb_m: the post from the kerb, CONTRAN MBST vol. I (2022) 3.11: a plate edge at least 0.30 m off the carriageway on a straight, with the 0.45 m half of the widest plate, R-2. far_share: no plate past this share of a short segment. The drawings and sizes of the plates are data/render/streets.json signs.",
+  "_doc": "The signs the rules put up and how far a placed plate governs an approach, as the Roadcraft 4.0 places them (no norm): the rule's plate a metre past the stop line, the speed plate 14 m past the mouth of a stretch of at least 60 m, a name plate 1.5 m past the mouth. approach_reach_m: how far back from a mouth a placed Stop or Give Way is still the rule of that approach. plate_kerb_m: the post from the kerb, by style. far_share: no plate past this share of a short segment. The drawings and sizes of the plates are data/render/streets.json signs.",
   "approach_reach_m": 25,
-  "plate_kerb_m": 0.75,
   "speed_past_mouth_m": 14,
   "speed_min_length_m": 60,
   "stop_past_line_m": 1,
@@ -172,5 +155,50 @@
    0.3,
    0.3
   ]
+ },
+ "styles": {
+  "_doc": "What changes with a city's regional style (regras-sessoes.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. signals and hydrants: the same in both for now, nothing of the Roadcraft 4.0 was measured to tell them apart.",
+  "roadcraft": {
+   "_doc": "What the Roadcraft 4.0 draws. height_m: the mesh in props.pole of the render table, 8.4 m where the 4.0 has 8.5 (POLE_HEIGHT). plate_kerb_m: carried from brasil, the 4.0's was not measured.",
+   "signals": {
+    "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
+    "kerb_m": 0.8
+   },
+   "hydrants": {
+    "_doc": "Corpo de Bombeiros do Paraná NPT 034 (urban hydrants), 5.1.2.2 a) and 5.2.4: each covers a radius of at most reach_m, preferably at street corners. The town is cut into squares reach_m / √2 wide (any point of one is within reach_m of any other), each holding one hydrant at the corner of its node nearest the square's centre.",
+    "reach_m": 300
+   },
+   "crossing": {
+    "_doc": "As the Roadcraft 4.0 draws it (src/world/approach.ts): the zebra 1.2 m past the mouth and 3 m deep, the stop line 0.64 m behind it and 0.4 m wide. Not a norm: the look of this style.",
+    "zebra_from_m": 1.2,
+    "zebra_to_m": 4.2,
+    "stop_from_m": 4.84,
+    "stop_to_m": 5.24
+   },
+   "poles": {"height_m": 8.4},
+   "signs": {"plate_kerb_m": 0.75}
+  },
+  "brasil": {
+   "_doc": "height_m: a 12 m pole, the urban medium voltage minimum, set 1.8 m deep, stands 10.2 m clear (Neoenergia DIS-NOR-012 rev. 08, 6.8.2.2 and table 30). plate_kerb_m: CONTRAN MBST vol. I (2022) 3.11: a plate edge at least 0.30 m off the carriageway on a straight, with the 0.45 m half of the widest plate, R-2.",
+   "signals": {
+    "_doc": "CONTRAN MBST vol. V (Res. 483/2014), 9.1.1: one pattern, here 'after the crossing street'; table 10.4: a head on an arm over the road at 5.50 m stands at least 13 m past the stop line, which the far side of the junction gives. The post stands on the far arm, at the right of the traffic going straight on, just clear of that arm's crosswalk (9.2.3 c: never in front of the dropped kerb); 9.1.5: columns usually 0.80 m from the kerb (never under 0.30 m). An approach with no straight continuation (the stem of a T) keeps its post on its own corner, the exception 9.1.1 allows.",
+    "kerb_m": 0.8
+   },
+   "hydrants": {
+    "_doc": "Corpo de Bombeiros do Paraná NPT 034 (urban hydrants), 5.1.2.2 a) and 5.2.4: each covers a radius of at most reach_m, preferably at street corners. The town is cut into squares reach_m / √2 wide (any point of one is within reach_m of any other), each holding one hydrant at the corner of its node nearest the square's centre.",
+    "reach_m": 300
+   },
+   "crossing": {
+    "_doc": "CONTRAN MBST vol. IV (Res. 973/2022): 5.4, a zebra crossing (FTP-1) at least 1.00 m from the crossing street's kerb line and 3.00 m wide, 4.00 m recommended; 5.1, the stop line (LRE) 0.30 to 0.60 m wide, at least 1.60 m before the crosswalk. Vehicles stop with their front at the line; walkers cross along the zebra's middle and keep to its right half.",
+    "zebra_from_m": 1.0,
+    "zebra_to_m": 5.0,
+    "stop_from_m": 6.6,
+    "stop_to_m": 7.0
+   },
+   "poles": {"height_m": 10.2},
+   "signs": {"plate_kerb_m": 0.75}
+  },
+  "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},
+  "europa": {"_doc": "To fill from the Vienna Convention on Road Signs and Signals (1968) and the European norms."}
  }
 }
