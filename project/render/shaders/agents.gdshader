@@ -11,6 +11,8 @@
 // instance custom data as half floats: whole numbers below 2048 exactly.
 shader_type spatial;
 
+#include "res://render/shaders/color_space.gdshaderinc"
+
 global uniform float night;
 uniform vec3 head_glow : source_color;
 uniform vec3 tail_glow : source_color;
@@ -49,27 +51,6 @@ uniform vec3 paints[16];
 uniform int paint_n = 1;
 const int CUT_LONG = 1;
 const int CUT_SHAVED = 2;
-
-// The colours in the data are sRGB (IEC 61966-2-1). Vertex colours and the paints arrive as those numbers on both
-// renderers; Forward+ takes ALBEDO linear while Compatibility (OUTPUT_IS_SRGB) decodes ALBEDO itself. A source_color
-// uniform arrives linear on Forward+ and as set (sRGB) on Compatibility, which also decodes EMISSION from sRGB.
-vec3 to_linear(vec3 c) {
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
-}
-
-vec3 to_srgb(vec3 c) {
-	return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
-}
-
-vec3 albedo_of(vec3 srgb) {
-	return OUTPUT_IS_SRGB ? srgb : to_linear(srgb);
-}
-
-// A glow: its uniform colour in linear times its power, handed over as each renderer takes EMISSION.
-vec3 glow_of(vec3 colour, float power) {
-	vec3 e = (OUTPUT_IS_SRGB ? to_linear(colour) : colour) * power;
-	return OUTPUT_IS_SRGB ? to_srgb(e) : e;
-}
 
 varying flat float v_tag;
 varying flat vec4 v_custom;
@@ -154,29 +135,29 @@ void vertex() {
 
 void fragment() {
 	int tag = int(v_tag + 0.5);
-	vec3 c = albedo_of(COLOR.rgb);
+	vec3 c = srgb_to_linear(COLOR.rgb); // COLOR is sRGB on both renderers; everything below in linear
 	float rough = trim_roughness;
 	vec3 emit = vec3(0.0);
 	if (tag == 1) {
-		c = albedo_of(paints[int(v_custom.r + 0.5)]);
+		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 	} else if (tag == 2) {
-		emit = glow_of(head_glow, night * head_power);
+		emit = source_linear(head_glow) * night * head_power;
 		rough = lens_roughness;
 	} else if (tag == 3) {
-		emit = glow_of(tail_glow, tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio));
+		emit = source_linear(tail_glow) * tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio);
 		rough = lens_roughness;
 	} else if (tag == 4) {
 		rough = lens_roughness;
 	} else if (tag == 11) {
-		emit = glow_of(sign_glow, sign_power);
+		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
 	} else if (tag >= 5) { // a person's part, its colour drawn in vertex()
-		c = tag == 8 ? albedo_of(v_look) : v_look; // a helmet in a paint (sRGB numbers); the rest from colour uniforms
+		c = tag == 8 ? srgb_to_linear(v_look) : source_linear(v_look); // a helmet in a paint (sRGB numbers); the rest from colour uniforms
 		rough = tag == 8 ? helmet_roughness : (tag == 5 ? skin_roughness : cloth_roughness);
 	}
-	ALBEDO = c;
+	ALBEDO = linear_out(c);
 	ROUGHNESS = rough;
 	METALLIC = 0.0;
-	EMISSION = emit;
+	EMISSION = linear_out(emit);
 }
