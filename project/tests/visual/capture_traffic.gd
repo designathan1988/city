@@ -15,6 +15,20 @@ const BAND_BEHIND := 9.0 # along the lane, behind the bicycle and over the road:
 const BAND_UP := 4.5
 
 
+## A capture of its own instead of the tour (--only=doca, paridade or trafego): whether there was one. `cap`: the capture scene.
+static func directed(cap: Node, probe: Dictionary, ground: Vector3) -> bool:
+	if cap.only.has("doca"):
+		await CaptureLorry.shots(cap)
+	elif cap.only.has("paridade"):
+		await CaptureParity.shots(cap, cap.pairs)
+	elif cap.only.has("trafego"):
+		await CaptureVehicles.car_shots(cap, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
+		await shots(cap)
+	else:
+		return false
+	return true
+
+
 ## `cap` is the capture scene (its _shot and _frames).
 static func shots(cap: Node) -> void:
 	var sample: Dictionary = CityStore.query(&"park_sample", [])

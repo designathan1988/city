@@ -508,6 +508,9 @@
     "params": {
      "type": "object",
      "properties": {
+      "tint": {
+        "type": "string"
+      },
       "transmittance": {
        "type": "number"
       },
@@ -519,6 +522,7 @@
       }
      },
      "required": [
+      "tint",
       "transmittance",
       "ior",
       "roughness"

@@ -16,7 +16,13 @@ namespace city {
 namespace {
 
 constexpr float SHOULDER_DROP = 0.06f; // arms hang from this far under the top of the torso
-constexpr int RIM_SIDES = 8;           // segments of a steering wheel's rim
+constexpr int RIM_SIDES = 16;          // segments of a steering wheel's rim
+constexpr float SPOKE_ANGLES[3] = { 1.82f, -1.82f, 3.14159f }; // its spokes from the rim's top, radians
+constexpr float SPOKE_W_M = 0.04f, SPOKE_T_M = 0.018f, BOSS_W_M = 0.13f, BOSS_L_M = 0.05f;
+constexpr float SEAT_NOSE_M = 0.04f, SEAT_NOSE_DROP_M = 0.05f, SEAT_LIP_M = 0.03f, SEAT_CREASE_M = 0.05f, SEAT_LAP_M = 0.06f; // a cushion's front, a backrest's foot
+constexpr float BACK_TOP_ROUND_M = 0.02f, BACK_TOP_IN_M = 0.01f;
+constexpr float REST_DEPTH_M = 0.1f, HEADREST_ROD_M = 0.015f, HEADREST_ROD_SHARE = 0.25f;
+constexpr float DASH_LIP_M = 0.02f, DASH_FOOT_M = 0.12f, DASH_WAIST = 0.5f;
 constexpr float HANDS = 1.05f;         // the hands on the rim at ten to two: radians from its top
 constexpr float ROW_EPS_M = 0.01f;
 constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
@@ -24,6 +30,7 @@ constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
 bool load_style(const Dictionary &d, SeatStyle &s) {
 	s.hip_m = d["hip_m"]; s.cushion_m = d["cushion_m"]; s.width_m = d["cushion_w_m"]; s.depth_m = d["cushion_d_m"]; s.back_h_m = d["back_h_m"];
 	s.back_d_m = d["back_d_m"]; s.base_share = d["base_share"];
+	s.recline = d["recline"];
 	s.headrest = agent_v3(d["headrest_m"]); s.handle = agent_v2(d["handle_m"]); s.handle_colour = agent_hex(d["handle"]);
 	Array w = d["wheel"];
 	if (w.size() == WHEEL_KEYS) { s.wheel_fwd_m = w[0]; s.wheel_up_m = w[1]; s.wheel_tilt = w[2]; s.wheel_r_m = w[3]; s.column_m = w[4]; }
@@ -50,12 +57,41 @@ void lining(MeshBuilder &mb, const Cabin &c, const CabinLook &l) {
 	const float hw = c.half_w, z0 = c.z_back, z1 = c.z_front;
 	wall(mb, Vector3(-hw, y0, z0), Vector3(hw, y0, z0), Vector3(hw, y0, z1), Vector3(-hw, y0, z1), Vector3(0, 1, 0), c.paint.floor);
 	wall(mb, Vector3(-w, yr, z0), Vector3(w, yr, z0), Vector3(w, yr, z1), Vector3(-w, yr, z1), Vector3(0, -1, 0), col);
-	if (c.dash_d > 0) // from the shell back by its depth, over the front wall
-		agent_box(mb, Vector3(std::max(-w, w - c.dash_w), c.front_top - c.dash_h, z1 - c.dash_d), Vector3(w, c.front_top, z1), c.paint.dash, AgentTag::FIXED);
+	if (c.dash_d > 0) { // from the shell back by its depth, over the front wall: its top, the lip over the driver's knees, the foot well
+		const float top = c.front_top, low = top - c.dash_h, rear = z1 - c.dash_d;
+		agent_extrude(mb, { Vector2(z1, top), Vector2(rear + DASH_LIP_M, top), Vector2(rear, top - DASH_LIP_M), Vector2(rear + DASH_LIP_M, top - c.dash_h * DASH_WAIST),
+							  Vector2(rear + DASH_FOOT_M, low), Vector2(z1, low) },
+				std::max(-w, w - c.dash_w), w, c.paint.dash, AgentTag::FIXED);
+		if (c.console.x > 0) agent_box(mb, Vector3(-c.console.x * 0.5f, y0, c.console_back), Vector3(c.console.x * 0.5f, y0 + c.console.y, rear + DASH_FOOT_M), c.paint.dash, AgentTag::FIXED);
+	}
+}
+
+// A car's or a cab's seat: the cushion's side profile and the backrest's leaning back from it, run across; the headrest on its rods.
+void reclined_seat(MeshBuilder &mb, const Seat &s, const CabinLook &l, const CabinPaint &p) {
+	const SeatStyle &st = *s.style;
+	const float hip = s.floor + st.hip_m, hw = st.width_m * 0.5f, zf = s.z + st.depth_m * 0.5f, low = hip - st.cushion_m;
+	const float back = s.z - l.person.torso.z * 0.5f, sn = std::sin(st.recline), cs = std::cos(st.recline), foot = back - st.back_d_m * cs;
+	const float top_z = back - st.back_h_m * sn, top_y = hip + st.back_h_m * cs;
+	agent_extrude(mb, { Vector2(zf - SEAT_NOSE_M, hip - SEAT_LIP_M), Vector2(zf, hip - SEAT_NOSE_DROP_M), Vector2(zf - SEAT_NOSE_M, low), Vector2(foot, low), Vector2(back, hip), Vector2(back + SEAT_LAP_M, hip) },
+			s.x - hw, s.x + hw, p.seat, AgentTag::FIXED);
+	agent_extrude(mb, { Vector2(foot, low), Vector2(foot - st.back_h_m * sn, top_y - BACK_TOP_ROUND_M), Vector2(top_z + BACK_TOP_IN_M, top_y), Vector2(back, hip + SEAT_CREASE_M), Vector2(back, hip) },
+			s.x - hw, s.x + hw, p.seat, AgentTag::FIXED);
+	if (st.base_share > 0) agent_box(mb, Vector3(s.x - hw * st.base_share, s.floor, zf - st.depth_m), Vector3(s.x + hw * st.base_share, low, zf - SEAT_NOSE_M), p.seat, AgentTag::FIXED);
+	const Vector3 &h = st.headrest;
+	if (h.y <= 0) return;
+	const float gap = h.z, hy = top_y + gap * cs, hz = top_z - gap * sn - st.back_d_m * cs * 0.5f, rod = h.x * HEADREST_ROD_SHARE;
+	agent_box(mb, Vector3(s.x - h.x * 0.5f, hy + rod * 0, hz - REST_DEPTH_M * 0.5f), Vector3(s.x + h.x * 0.5f, hy + h.y, hz + REST_DEPTH_M * 0.5f), p.seat, AgentTag::FIXED);
+	for (int side : { -1, 1 })
+		agent_box(mb, Vector3(s.x + side * rod - HEADREST_ROD_M * 0.5f, top_y - BACK_TOP_ROUND_M, hz - HEADREST_ROD_M * 0.5f), Vector3(s.x + side * rod + HEADREST_ROD_M * 0.5f, hy, hz + HEADREST_ROD_M * 0.5f),
+				p.dash, AgentTag::FIXED);
 }
 
 void seat_shell(MeshBuilder &mb, const Seat &s, const CabinLook &l, const CabinPaint &p) {
 	const SeatStyle &st = *s.style;
+	if (st.recline > 0) {
+		reclined_seat(mb, s, l, p);
+		return;
+	}
 	const float hip = s.floor + st.hip_m, hw = st.width_m * 0.5f, hd = st.depth_m * 0.5f, low = hip - st.cushion_m;
 	if (st.base_share > 0)
 		agent_box(mb, Vector3(s.x - hw * st.base_share, s.floor, s.z - hd * st.base_share), Vector3(s.x + hw * st.base_share, low, s.z + hd * st.base_share), p.seat,
@@ -96,7 +132,9 @@ Wheel wheel_of(const Seat &s, const CabinLook &l) {
 void steering(MeshBuilder &mb, const Wheel &w, const CabinLook &l, const CabinPaint &p) {
 	for (int i = 0; i < RIM_SIDES; i++)
 		agent_strut(mb, w.rim(TAU_F * i / RIM_SIDES), w.rim(TAU_F * (i + 1) / RIM_SIDES), l.rim_m, l.rim_m, p.dash, AgentTag::FIXED);
+	for (float a : SPOKE_ANGLES) agent_strut(mb, w.hub, w.rim(a), SPOKE_W_M, SPOKE_T_M, p.dash, AgentTag::FIXED);
 	agent_strut(mb, w.hub, w.column, l.rim_m, l.rim_m, p.dash, AgentTag::FIXED);
+	agent_strut(mb, w.hub, w.hub + (w.column - w.hub).normalized() * BOSS_L_M, BOSS_W_M, BOSS_W_M, p.dash, AgentTag::FIXED);
 }
 
 // Somebody sitting in `s` facing +Z: thighs level on the cushion, shins straight down to the floor.
@@ -104,7 +142,7 @@ Figure seated(const Person &p, const Seat &s) {
 	const float hip = s.floor + s.style->hip_m, kx = s.x + p.thigh.x * 0.5f, kz = s.z + p.thigh.z;
 	Figure f;
 	f.hip = Vector3(s.x, hip, s.z);
-	f.shoulders = Vector3(s.x, hip + p.torso.y, s.z);
+	f.shoulders = Vector3(s.x, hip + p.torso.y * std::cos(s.style->recline), s.z - p.torso.y * std::sin(s.style->recline));
 	f.knee = Vector3(kx, hip + p.thigh.y * 0.5f, kz);
 	f.ankle = Vector3(kx, s.floor + p.foot.y, kz);
 	return f;

@@ -50,6 +50,8 @@ func materials() -> Dictionary:
 				_set_means(m, table[key].params)
 			elif key == "prop":
 				_set_lens_radiance(m)
+			elif key == "agent":
+				_set_lamp_radiance(m)
 			_materials[key] = m
 	return _materials
 
@@ -78,6 +80,13 @@ func _set_lens_radiance(m: ShaderMaterial) -> void:
 			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
 					environment.tonemap_white)
 	m.set_shader_parameter("lit_radiance", lit)
+
+
+## A vehicle's lamps burning by day (data/render/agents.json trim): shown as their colour, like the signal lenses.
+func _set_lamp_radiance(m: ShaderMaterial) -> void:
+	var trim: Dictionary = DataTables.render().agents.trim
+	for name: String in ["head_lit", "tail_lit"]:
+		m.set_shader_parameter(name, ToneMap.radiance(Color.html(trim[name]), environment.tonemap_exposure, environment.tonemap_white))
 
 
 func _mean_color(tex: Texture2D) -> Color:

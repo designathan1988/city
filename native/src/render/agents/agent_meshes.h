@@ -17,14 +17,14 @@
 
 namespace city {
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN };
+enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN, ROOF, GLOSS };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.
 enum class Limb : int { NONE = 0, WHEEL = 1, SEAT = 2 };
 constexpr float DRIVER_ORDER = -1.f; // UV.x of the driver's parts: always there
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {
-	godot::Color tyre, hub, under, blackout, grille, plate, glass, headlamp, tail, truck_box, chrome, roof;
+	godot::Color tyre, hub, under, blackout, grille, plate, glass, headlamp, tail, truck_box, chrome, roof, indicator, mirror;
 };
 
 // A person sitting (agents.json "cabin.person"): torso, arm, thigh and foot as [w, h, d] (the thigh's d from the hip to
@@ -42,6 +42,7 @@ struct Person {
 struct SeatStyle {
 	float hip_m = 0, cushion_m = 0, width_m = 0, depth_m = 0, back_h_m = 0, back_d_m = 0, base_share = 0;
 	float wheel_fwd_m = 0, wheel_up_m = 0, wheel_tilt = 0, wheel_r_m = 0, column_m = 0;
+	float recline = 0; // the backrest's lean from upright, radians; 0 a square seat
 	godot::Vector3 headrest;
 	godot::Vector2 handle;
 	godot::Color handle_colour;
@@ -74,6 +75,8 @@ struct Seat {
 struct Cabin {
 	float floor = 0, roof = 0, half_w = 0, z_front = 0, z_back = 0, side_top = 0, front_top = 0, back_top = 0;
 	float dash_d = 0, dash_h = 0, dash_w = 0; // the dashboard from the driver's side wall (+X) inwards
+	godot::Vector2 console; // between the front seats from the dashboard back: wide, high (zero: none)
+	float console_back = 0; // the z it ends at
 	std::vector<godot::Vector2> doors;
 	CabinPaint paint;
 };
@@ -105,6 +108,10 @@ void agent_pane(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &
 		const AgentTrim &trim);
 // A wheel turning about X: tyre tread, sidewall and hubcap on the outer face (`side` = +1 left, -1 right).
 void agent_wheel(MeshBuilder &mb, const godot::Vector3 &centre, float r, float width, int sides, int side, const AgentTrim &trim);
+// The same near: a tyre with a rounded shoulder, its rim sunk in it and five spokes.
+void agent_wheel_near(MeshBuilder &mb, const godot::Vector3 &centre, float r, float width, int sides, int side, const AgentTrim &trim);
+// A convex side profile (z, y) run across from x0 to x1, with its two ends.
+void agent_extrude(MeshBuilder &mb, const std::vector<godot::Vector2> &profile, float x0, float x1, const godot::Color &c, AgentTag tag);
 // A slab from x0 to x1 and y0 to y1 over [z0, z1], raised to arch_top over each axle (wheel-arch cut-outs).
 void agent_arched_box(MeshBuilder &mb, float x0, float x1, float y0, float y1, float z0, float z1, const std::vector<float> &axles_z, float arch_r,
 		float arch_top, const godot::Color &c, AgentTag tag);

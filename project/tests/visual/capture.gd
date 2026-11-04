@@ -48,6 +48,7 @@ const CIVIC_LOOK_UP_M := 4.0
 
 var world: CityWorld
 var camera: Camera3D
+var pairs := ""
 var out_dir := "user://captures"
 var map := 0
 var seed := 1
@@ -117,12 +118,7 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	var hour := DAY
 	await CaptureSignals.at_hour(self, hour)
-	if only.has("doca"):
-		await CaptureLorry.shots(self)
-		return
-	if only.has("trafego"):
-		await CaptureVehicles.car_shots(self, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
-		await CaptureTraffic.shots(self)
+	if await CaptureTraffic.directed(self, probe, ground):
 		return
 	for v in VIEWS:
 		if not only.is_empty() and not only.has(v[0]):
@@ -154,6 +150,8 @@ func _parse_args() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
+		elif arg.begins_with("--pairs="):
+			pairs = arg.trim_prefix("--pairs=")
 		elif arg.begins_with("--map="):
 			map = int(arg.trim_prefix("--map="))
 		elif arg.begins_with("--only="):
