@@ -35,7 +35,6 @@ group_uniforms;
 group_uniforms ground;
 uniform sampler2D grass_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float grass_m = 14.0; // metres per repeat of the grass map
-uniform vec3 grass_tint : source_color = vec3(1.0);
 uniform vec3 rock : source_color;
 uniform vec3 sand : source_color;
 uniform float water_level = 0.0;
@@ -50,14 +49,12 @@ uniform float rock_m = 23.2;
 uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)
 uniform float dirt_to; // ... and where it has replaced the grass
 uniform float map_half = 5120.0;
-uniform sampler2D grass_detail : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable; // data, not colour: mean 0.5, doubled in the shader
 uniform float detail_m = 1.6; // metres one tile of the grain covers
-uniform float detail_near_px = 0.018; // metres a pixel under which the grain is whole, and over which it is gone
-uniform float detail_far_px = 0.064;
+uniform float detail_near_px; // metres a pixel under which the grain is whole, and over which it is gone
+uniform float detail_far_px;
 uniform float detail_albedo = 0.9;
-uniform float land_gain;
 global uniform float night;
-uniform float night_ground;
 group_uniforms;
 
 // Varyings & Types
@@ -219,8 +216,7 @@ void fragment() {
 	vec3 tint = biome_tint[map_biome];
 	float biome_cover = dot(cw, vec4(p00.biome_amount, p10.biome_amount, p01.biome_amount, p11.biome_amount));
 	if (biome_cover > 0.0) tint = mix(tint, biome_tint[(cw.x + cw.y > cw.z + cw.w ? (cw.x > cw.y ? p00.biome : p10.biome) : (cw.z > cw.w ? p01.biome : p11.biome))], biome_cover);
-	vec3 c = g * mix(1.0, macro, 0.35) * grass_tint * tint * mix(0.9, 1.08, n);
-	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
+	vec3 c = g * mix(1.0, macro, 0.35) * tint * mix(0.9, 1.08, n);
 	c = straw_over(c, g, v_vertex.xz, map_biome);
 	float per_pixel = max(fwidth(v_vertex.x), fwidth(v_vertex.z));
 	c *= grass_grain(v_vertex.xz, per_pixel) * grass_speckle(v_vertex.xz, per_pixel);
@@ -231,11 +227,11 @@ void fragment() {
 	vec2 tilt = grass_tilt(v_vertex.xz, per_pixel) * (1.0 - max(dirt_w, rock_w));
 	NORMAL = mat3(VIEW_MATRIX) * normalize(w_normal + vec3(tilt.x, 0.0, tilt.y));
 	if (dirt_w > 0.0) {
-		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal) * land_gain, dirt_w);
+		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
 	}
 	c = mix(c, sand, 1.0 - smoothstep(water_level + sand_band * 0.5, water_level + sand_band, v_vertex.y));
 	if (rock_w > 0.0) {
-		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal) * land_gain, rock, 0.25), rock_w);
+		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
 	}
 	float painted = dot(cw, vec4(p00.amount, p10.amount, p01.amount, p11.amount));
 	if (painted > 0.004) {
@@ -248,9 +244,9 @@ void fragment() {
 		if (p10.surface > 0 && cw.y * p10.amount > 0.0) { sum += surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.y * p10.amount; weights += cw.y * p10.amount; }
 		if (p01.surface > 0 && cw.z * p01.amount > 0.0) { sum += surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.z * p01.amount; weights += cw.z * p01.amount; }
 		if (p11.surface > 0 && cw.w * p11.amount > 0.0) { sum += surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.w * p11.amount; weights += cw.w * p11.amount; }
-		if (weights > 0.0) c = mix(c, sum / weights * land_gain, clamp(weights, 0.0, 1.0));
+		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
 	}
-	c *= gully_shade * (1.0 - 0.3 * rain_wet) * mix(1.0, night_ground, night);
+	c *= gully_shade * (1.0 - 0.3 * rain_wet);
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	ALBEDO = c;
 	ROUGHNESS = mix(0.95, 0.6, rain_wet);

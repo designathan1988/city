@@ -36,9 +36,6 @@ vec3 grass(vec2 p, float detail) {
 	return mix(g, texture(grass_map, r).rgb, k * detail);
 }
 
-uniform float detail_wide_near_px; // the wider reach of the blades, at a share of their strength
-uniform float detail_wide_far_px;
-uniform float detail_wide;
 uniform float grain_per_m;
 uniform float grain_repeat;
 uniform float grain_low;
@@ -53,7 +50,7 @@ const float DETAIL_TURN_S = 0.8415;
 const float DETAIL_SECOND = 0.4137;
 
 float blade_weight(float per_pixel) {
-	return max(1.0 - smoothstep(detail_near_px, detail_far_px, per_pixel), (1.0 - smoothstep(detail_wide_near_px, detail_wide_far_px, per_pixel)) * detail_wide);
+	return 1.0 - smoothstep(detail_near_px, detail_far_px, per_pixel);
 }
 
 vec3 grass_grain(vec2 xz, float per_pixel) {

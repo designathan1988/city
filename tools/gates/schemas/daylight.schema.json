@@ -4,6 +4,38 @@
   "_doc": {
    "type": "string"
   },
+  "grade": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "contrast": { "type": "number" },
+    "vibrance": { "type": "number" },
+    "tone_from": { "type": "number" },
+    "tone_to": { "type": "number" },
+    "warm_levels": { "type": "array", "items": { "type": "number" } },
+    "lut_side": { "type": "integer" }
+   }
+  },
+  "vignette": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "floor_share": { "type": "number" },
+    "from_r2": { "type": "number" },
+    "to_r2": { "type": "number" },
+    "span": { "type": "number" }
+   }
+  },
+  "low_height": { "type": "number" },
+  "sun_low_share": { "type": "number" },
+  "sun_rise_k": { "type": "number" },
+  "sun_rise_from": { "type": "number" },
+  "fill": { "type": "string", "pattern_prefix": "#" },
+  "fill_energy": { "type": "number" },
+  "fill_key_share": { "type": "number" },
+  "fill_elev_deg": { "type": "number" },
+  "fill_turn_deg": { "type": "number" },
+  "clock_step_h": { "type": "number" },
   "overcast_sun": { "type": "number" },
   "overcast_ambient": { "type": "number" },
   "overcast_sky": { "type": "number" },

@@ -443,8 +443,8 @@
      {"center": [0,  0.68,  0], "radius": [0.27,  0.22,  0.27], "rough": 0.22, "seed": 11, "subdiv": 1, "cards": 48, "card": 0.3, "taper": 0.0},
      {"center": [0.1,  0.74,  0.06], "radius": [0.17,  0.15,  0.17], "rough": 0.2, "seed": 17, "subdiv": 1, "cards": 22, "card": 0.26, "taper": 0.0}
     ],
-    "dark": "#1e3d29",
-    "lit": "#558d59",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -461,8 +461,8 @@
     "crowns": [
      {"center": [0,  0.68,  0], "radius": [0.16,  0.3,  0.16], "rough": 0.2, "seed": 23, "subdiv": 1, "cards": 44, "card": 0.26, "taper": 0.0}
     ],
-    "dark": "#1c382b",
-    "lit": "#4c7d56",
+    "dark": "#3f614f",
+    "lit": "#9fc190",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -479,8 +479,8 @@
     "crowns": [
      {"center": [0,  0.56,  0], "radius": [0.14,  0.42,  0.14], "rough": 0.12, "seed": 37, "subdiv": 1, "cards": 70, "card": 0.2, "taper": 0.6}
     ],
-    "dark": "#1d3d2f",
-    "lit": "#51825d",
+    "dark": "#416955",
+    "lit": "#a9c99b",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -497,8 +497,8 @@
     "crowns": [
      {"center": [0,  0.82,  0], "radius": [0.03,  0.045,  0.03], "rough": 0.0, "seed": 41, "subdiv": 1, "cards": 0, "card": 0.0, "taper": 0.0}
     ],
-    "dark": "#2f5924",
-    "lit": "#658f40",
+    "dark": "#629543",
+    "lit": "#cfdc6d",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -516,8 +516,8 @@
     "crowns": [
      {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 43, "subdiv": 1, "cards": 54, "card": 0.31, "taper": 0.0}
     ],
-    "dark": "#1e3d29",
-    "lit": "#558d59",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -525,7 +525,7 @@
     "crown_reach": 0.32,
     "far_width": 0.66,
     "cards_cast": false,
-    "bloom": {"dark": "#9a7a24", "lit": "#d8b53c", "above": 0.6}
+    "bloom": {"dark": "#ffc943", "lit": "#ffff67", "above": 0.6}
    },
    {
     "name": "ipe_pink",
@@ -535,8 +535,8 @@
     "crowns": [
      {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 47, "subdiv": 1, "cards": 54, "card": 0.31, "taper": 0.0}
     ],
-    "dark": "#1e3d29",
-    "lit": "#558d59",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -544,7 +544,7 @@
     "crown_reach": 0.32,
     "far_width": 0.66,
     "cards_cast": false,
-    "bloom": {"dark": "#8e4e6c", "lit": "#d48aac", "above": 0.6}
+    "bloom": {"dark": "#ff83b8", "lit": "#ffd4ff", "above": 0.6}
    },
    {
     "name": "shrub",
@@ -554,8 +554,8 @@
     "crowns": [
      {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 53, "subdiv": 1, "cards": 20, "card": 0.55, "taper": 0.0}
     ],
-    "dark": "#244128",
-    "lit": "#56864b",
+    "dark": "#4e6f4a",
+    "lit": "#b3ce7f",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -572,8 +572,8 @@
     "crowns": [
      {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 59, "subdiv": 1, "cards": 20, "card": 0.55, "taper": 0.0}
     ],
-    "dark": "#244128",
-    "lit": "#56864b",
+    "dark": "#4e6f4a",
+    "lit": "#b3ce7f",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -581,7 +581,7 @@
     "crown_reach": 0.6,
     "far_width": 1.2,
     "cards_cast": false,
-    "bloom": {"dark": "#a85a7a", "lit": "#e8b0c8", "above": 0.62}
+    "bloom": {"dark": "#ff96d0", "lit": "#ffffff", "above": 0.62}
    }
   ],
   "placement": {

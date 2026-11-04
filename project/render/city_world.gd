@@ -32,6 +32,11 @@ var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
 
 
+var sky_mode: String:
+	get:
+		return daylight.mode
+
+
 func _ready() -> void:
 	var palette: Dictionary = DataTables.render().palette
 	_build_environment(palette)
@@ -137,18 +142,11 @@ func set_water_look(weather: Dictionary) -> void:
 
 func _build_environment(_palette: Dictionary) -> void:
 	var day: Dictionary = DataTables.game("daylight")
-	sun = DirectionalLight3D.new()
-	sun.shadow_enabled = true
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_max_distance = day.shadow_max_distance_m
-	sun.directional_shadow_split_1 = day.shadow_split_1
-	sun.directional_shadow_split_2 = day.shadow_split_2
-	sun.directional_shadow_split_3 = day.shadow_split_3
-	sun.directional_shadow_blend_splits = true
-	sun.directional_shadow_fade_start = day.shadow_fade_start
-	sun.shadow_normal_bias = day.shadow_normal_bias
-	sun.shadow_bias = day.shadow_bias
+	sun = Daylight.make_sun(day)
 	add_child(sun)
+	var fill := DirectionalLight3D.new()
+	fill.shadow_enabled = false
+	add_child(fill)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
 	var sky := Sky.new()
@@ -172,20 +170,33 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.fog_sky_affect = 0.0
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	environment.adjustment_enabled = day.contrast != 1.0 or day.saturation != 1.0
-	environment.adjustment_contrast = day.contrast
-	environment.adjustment_saturation = day.saturation
+	FilmLook.grade(environment, day.grade)
 	var we := WorldEnvironment.new()
 	we.environment = environment
 	add_child(we)
-	daylight = Daylight.new(day, sun, environment, sky_mat)
+	FilmLook.vignette(self, day.vignette)
+	daylight = Daylight.new(day, sun, fill, environment, sky_mat)
 	add_child(ElementEffects.new())
 	daylight.set_hour(day.day_hour)
 
 
-## Pins the light to an hour of the day (Roadcraft "always day" 16:00, "always night" 22:00).
+## Pins the light to an hour of the day (tests and captures; the sky mode owns it in play).
 func set_hour(hour: float) -> void:
 	daylight.set_hour(hour)
+
+
+## "day", "night" or "cycle" (render/daylight.gd): the top bar's sun, moon and clock.
+func set_sky_mode(mode: String) -> void:
+	daylight.set_mode(mode)
+
+
+func follow_clock(hour: float) -> void:
+	daylight.follow_clock(hour)
+
+
+func _process(_delta: float) -> void:
+	if daylight.mode == "cycle" and CityStore.ready_to_read():
+		daylight.follow_clock(CityStore.snapshot.hour)
 
 
 func _build_terrain(palette: Dictionary) -> void:

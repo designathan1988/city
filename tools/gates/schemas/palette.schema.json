@@ -116,10 +116,6 @@
     "grass_map": {
      "type": "string"
     },
-    "grass_tint": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
     "rock": {
      "type": "string",
      "pattern_prefix": "#"
@@ -218,12 +214,6 @@
     "grain_share": {
      "type": "number"
     },
-    "land_gain": {
-     "type": "number"
-    },
-    "night_ground": {
-     "type": "number"
-    },
     "grass_bump": {
      "type": "number"
     },
@@ -245,7 +235,6 @@
    },
    "required": [
     "grass_map",
-    "grass_tint",
     "rock",
     "sand",
     "land_map",

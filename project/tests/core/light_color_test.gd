@@ -119,7 +119,8 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "luz da via (placa de cruzamento)")
 
 
-func _compare(img: Image, at: Vector3, want: Color, what: String) -> void:
+func _compare(img: Image, at: Vector3, wanted: Color, what: String) -> void:
+	var want: Color = CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := img.get_pixelv(Vector2i(cam.unproject_position(at).round()))
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
 	_check(off <= TOLERANCE, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false),

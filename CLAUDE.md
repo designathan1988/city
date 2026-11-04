@@ -67,6 +67,9 @@ catálogo ao `CityCore` (rejeita chave ausente) → `Simulation` roda em thread 
 (`HeightPatch`); a conversão da malha entra em `render.upload_budget_mb` por quadro (o envio à GPU roda na próxima chamada do
 thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Poses por `PoseBuffer`; o save grava em thread própria.
 
+## Luz e relógio
+`Daylight` é o dono do sol, do preenchimento, do ambiente e do céu. `CityWorld.set_sky_mode("day"|"night"|"cycle")`: dia e noite fixam as horas de `daylight.json` (16h e 22h, como a barra do 4.0), `cycle` segue a hora do snapshot passo a passo (`clock_step_h`). Testes e capturas usam `set_hour` e movem relógio e céu juntos, nunca um só. Par de foto com o 4.0: mesma hora (o modo dia do 4.0 é 16h, não o relógio), mesma câmera (`capture_landscape.gd` `_shot` recebe azimute, inclinação e zoom do `setView`) e 1920x1080.
+
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
@@ -230,6 +233,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/props/prop_renderer.cpp` · `native/src/render/props/prop_renderer.h` · `native/src/render/props/signal_lamps.cpp` · `native/src/render/props/signal_lamps.h`
   — chunks do mobiliário; lentes dos semáforos, cada uma desenhada uma vez (um MultiMesh por chunk, acesa ou apagada pelo estado publicado)
 - `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes, fios, semáforos (um por acesso), árvores
+- `native/src/render/film_grade.cpp` · `native/src/render/film_grade.h` — gradação de filme da imagem na tela como tabela 3D (contraste em S, vibrance, viragem de cor)
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
@@ -276,6 +280,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/daylight.gd` — dia/noite
 - `project/render/sky_view.gd` · `project/render/thunder.gd` · `project/render/weather_view.gd` — céu desenhado: nuvens levadas pelo vento, globais do vento e tempo fechado; trovão; chuva e raios
 - `project/render/element_effects.gd` — emissores dos efeitos do pincel de elementos
+- `project/render/film_look.gd` · `project/render/shaders/vignette.gdshader` — aspecto da imagem depois do tom: tabela da gradação no Environment e vinheta sob a interface
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc`
@@ -327,7 +332,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
-- Árvores: copa, cartões, atlas e colocação são escolha de modelagem, dita no _doc de `trees`. Paisagem: a luz do dia dá ao chão cerca de quatro vezes a do 4.0; os mapas de chão e os tons de grama, copa e água são escalados por isso (`land_gain`, `grass_tint`, `_species_doc`), e prédios e vias foram calibrados nessa luz. Na nuvem falta a anisotropia (Henyey-Greenstein); pedras da costa, estratos da rocha, grama seca da ecologia e lembrar a escolha dos pincéis não foram portados.
+- Árvores: copa, cartões, atlas e colocação são escolha de modelagem, dita no _doc de `trees`. Paisagem: a luz é a do 4.0 no mesmo sol (16h, 29°), medida em discos pintados de albedo igual, e os mapas de chão entram sem ganho; a imagem passa pela gradação de filme (`film_grade.cpp`) e pela vinheta. Na nuvem falta a anisotropia (Henyey-Greenstein); pedras da costa, estratos da rocha, grama seca da ecologia e lembrar a escolha dos pincéis não foram portados.
 - Água: alvo de cor vem de uma foto antiga do 4.0 (o mapa 0 não tem lago). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a

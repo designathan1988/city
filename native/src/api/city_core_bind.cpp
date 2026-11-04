@@ -71,6 +71,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
 	ClassDB::bind_method(D_METHOD("list_buildings"), &CityCore::list_buildings);
 	ClassDB::bind_method(D_METHOD("city_bounds"), &CityCore::city_bounds);
+	ClassDB::bind_method(D_METHOD("film_grade", "grade"), &CityCore::film_grade);
+	ClassDB::bind_method(D_METHOD("film_graded", "grade", "colour"), &CityCore::film_graded);
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);

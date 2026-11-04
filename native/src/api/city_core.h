@@ -5,8 +5,10 @@
 #include "render/render_world.h"
 #include "sim/simulation/simulation.h"
 
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/node_path.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 #include <atomic>
 #include <memory>
@@ -100,6 +102,8 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
+	godot::TypedArray<godot::Image> film_grade(const godot::Dictionary &grade) const; // slices of the screen's lookup table
+	godot::Color film_graded(const godot::Dictionary &grade, const godot::Color &colour) const; // a display colour through it
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
