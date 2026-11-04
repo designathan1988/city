@@ -156,8 +156,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/lane_graph_internal.h` — superfície interna do grafo de faixas
 - `native/src/sim/traffic/lane_list.cpp` — listas por faixa/conector e lista micro de veículos
 - `native/src/sim/traffic/meso.cpp` — modelo meso distante (uma fila por faixa)
-- `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: faixas da calçada (desvio, distância) e lugares de espera na guia
-- `native/src/sim/traffic/ped_furniture.cpp` — mobiliário da rua como corpos parados nas calçadas (cache por segmento, sonda)
+- `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: quem vê quem (listas por calçada e por cruzamento, as "walking areas" do SUMO) e os corpos remapeados no trecho de cada um
+- `native/src/sim/traffic/ped_furniture.cpp` · `native/src/sim/traffic/ped_kerb.cpp` · `native/src/sim/traffic/ped_stripes.cpp` · `native/src/sim/traffic/ped_stripes.h`
+  — mobiliário como corpos parados nas calçadas (cache, sonda); espera na guia (metade direita da faixa, fila que avança); referencial de cada trecho (calçada, esquina, faixa) e faixas do SUMO (desvio sem entrar no mobiliário, travado espreme-se)
 - `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
@@ -324,7 +325,6 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
-- Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; ainda não desviam do mobiliário (sonda `people_in_furniture`).
-- Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
-  (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
+- Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
+  o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

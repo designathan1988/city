@@ -56,7 +56,7 @@ Waypoint kerb_point(const CityState &s, const Arm &a, int side) {
 	float u = side == 0 ? -(p.asph_right + tp.kerb_stand_m) : p.asph_left + tp.kerb_stand_m;
 	Pose o;
 	sidewalk_pose(s, a.seg, 0, arc, u - p.walk_right, o);
-	return Waypoint{ o.x, o.y, o.z, -1 };
+	return Waypoint{ o.x, o.y, o.z, -1, side };
 }
 
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }

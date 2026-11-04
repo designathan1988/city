@@ -129,13 +129,18 @@ void change_lanes(CityState &s);
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
 
-// ped_crowd.cpp: walkers among walkers (stripes of the sidewalk, places to wait along a kerb)
-void crowd_step(CityState &s, float dt); // the sidewalk walkers' stripes and paces, from those around them
+// ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
+void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
 float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle
 void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way, its own pace
+void onto_line(Pedestrian &w); // onto a new line round a corner or over a zebra: from where it stands
+void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+
+// ped_kerb.cpp: places to wait at the kerb of a crosswalk
 void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
 void free_kerb_place(TrafficState &t, int id);
-void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+// A waiting walker with a free place nearer the kerb: turned back toward its kerb (ways[wi]) to take it; true.
+bool step_to_nearer_place(CityState &s, int id);
 
 // ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
 // The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
