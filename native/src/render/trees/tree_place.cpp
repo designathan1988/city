@@ -62,9 +62,7 @@ bool in_lot(const CityState &s, const Lists &l, float margin, float x, float z) 
 }
 
 float grade_at(const Heightfield &hf, float x, float z) {
-	return (std::fabs(hf.height_at(x + GRADE_PROBE, z) - hf.height_at(x - GRADE_PROBE, z)) +
-				   std::fabs(hf.height_at(x, z + GRADE_PROBE) - hf.height_at(x, z - GRADE_PROBE))) /
-			(4 * GRADE_PROBE);
+	return std::hypot(hf.height_at(x + GRADE_PROBE, z) - hf.height_at(x - GRADE_PROBE, z), hf.height_at(x, z + GRADE_PROBE) - hf.height_at(x, z - GRADE_PROBE)) / (2 * GRADE_PROBE);
 }
 
 // The woods field at (x, z): the patches, raised on steep ground and along water.

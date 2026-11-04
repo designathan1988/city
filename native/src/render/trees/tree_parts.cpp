@@ -25,9 +25,10 @@ enum IcoVertex : int { V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11 };
 constexpr int ICO[ICO_FACES][3] = { { V0, V11, V5 }, { V0, V5, V1 }, { V0, V1, V7 }, { V0, V7, V10 }, { V0, V10, V11 }, { V1, V5, V9 }, { V5, V11, V4 },
 	{ V11, V10, V2 }, { V10, V7, V6 }, { V7, V1, V8 }, { V3, V9, V4 }, { V3, V4, V2 }, { V3, V2, V6 }, { V3, V6, V8 }, { V3, V8, V9 }, { V4, V9, V5 },
 	{ V2, V4, V11 }, { V6, V2, V10 }, { V8, V6, V7 }, { V9, V8, V1 } };
-// A face's light: this much when it faces sideways, plus this much more facing straight up (flat, toon shading).
-constexpr float FACE_BASE = 0.42f, FACE_UP = 0.45f;
-constexpr float NOISE_FREQ = 1.1f;
+// A face's light between the dark and lit tones: hemisphere lighting, a point on the equator takes half from the sky
+// (Rost, OpenGL Shading Language, 3rd ed., 12.1).
+constexpr float FACE_BASE = 0.5f, FACE_UP = 0.5f;
+constexpr float NOISE_FREQ = 1.f; // one noise cell across a crown radius
 // A card's size varies by this share either way; it stands this share of its size out of the heart (min, span).
 constexpr float CARD_VARY = 0.25f, CARD_OUT_MIN = 0.1f, CARD_OUT_SPAN = 0.2f;
 // A card's tone: from this share of the lit tone low in the crown to all of it at the top, varied by this share.
