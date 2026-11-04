@@ -1,6 +1,7 @@
 // A railing as one face: its bars drawn by the fragment, each at least a pixel wide and its colour mixed with what stands behind it by
 // the share of the pixel a bar really covers, so a railing holds at any distance and neither shimmers nor vanishes. UV over the
-// piece, UV2.x what it draws (shell.h CardKind), COLOR its tint. Seen from both sides.
+// piece, UV2.x what it draws (shell.h CardKind), COLOR its tint. Seen from both sides. It casts no shadow: its bars are under a
+// shadow texel, and the one-pixel rule in that pass would draw them a texel wide, stripes on what stands beside.
 shader_type spatial;
 render_mode cull_disabled;
 
@@ -17,6 +18,7 @@ varying vec3 v_world;
 
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (IN_SHADOW_PASS) VERTEX = vec3(0.0); // every corner on one point: nothing is drawn
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"

@@ -20,8 +20,6 @@ constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 const float DIAGONAL = std::sqrt(2.f);
-// Job keys: lane 2 of the shared key * 4 + lane scheme; far superchunk keys are moved clear of every chunk key (and of
-// the buildings' and the zones' offsets, 1 << 20 and 1 << 19) before they take the lane.
 
 AABB box_of(int64_t key, float size) { return AABB(Vector3(key_x(key) * size, AABB_MIN_Y, key_y(key) * size), Vector3(size, AABB_H, size)); }
 

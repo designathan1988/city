@@ -15,7 +15,7 @@ struct BayCtx {
 	int level = 0;
 	uint32_t hash = 0;
 	Lin wall, trim, mould;
-	int8_t wall_fin = FIN_PLASTER, trim_fin = FIN_PLASTER;
+	int8_t wall_fin = FIN_PLASTER, trim_fin = FIN_PLASTER, mould_fin = FIN_PLASTER;
 	const FaceGeometry *geo = nullptr;
 	bool open_left = false, open_right = false; // the neighbouring bay is also a gourmet balcony
 	Use use = USE_RESIDENTIAL;

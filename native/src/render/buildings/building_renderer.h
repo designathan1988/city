@@ -54,6 +54,7 @@ public:
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
+	godot::Dictionary building_cost() const; // triangles and bytes of every level's surfaces, whole city as it stands (tests)
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	// What the view asked of the last frame and what the frame's budget left unasked.
 	struct ViewNeed {
@@ -73,9 +74,20 @@ private:
 	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5;
+	// What the meshes hold, surface by surface (building_cost).
+	enum SurfaceKind { HELD_NEAR_WALLS, HELD_NEAR_PANES, HELD_NEAR_GUARDS, HELD_NEAR_CARDS, HELD_NEAR_PIECES, HELD_MID_WALLS, HELD_MID_PANES, HELD_MID_CARDS, HELD_KINDS };
+	struct Held {
+		int64_t triangles = 0, bytes = 0;
+		void add(const b40::Shell &shell, bool with_uv2) {
+			triangles += shell.triangles();
+			bytes += shell.bytes(with_uv2);
+		}
+	};
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MultiMeshDraw, BAND_COUNT> bands;
+		std::array<Held, HELD_KINDS> held;
+		int64_t instances = 0; // the instanced parts of its bands
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
@@ -86,6 +98,7 @@ private:
 	};
 	struct Super {
 		MeshDraw far;
+		Held held;
 		bool dirty = false;
 		bool built = false; // the far mesh of the current content is committed
 		bool has_content = false; // and holds buildings
@@ -122,6 +135,7 @@ private:
 		godot::RID unit_box; // the parts' box mesh
 		OccluderWalls walls;
 		bool has_near = false, has_mid = false, baked = false;
+		std::array<Held, HELD_KINDS> held;
 		int64_t bytes() const;
 		void bake();
 	};
@@ -132,6 +146,7 @@ private:
 		uint64_t seq = 0;
 		b40::Shell far_shell;
 		Surface far;
+		Held held;
 		bool baked = false;
 		int64_t bytes() const { return far_shell.bytes(false); }
 		void bake();
