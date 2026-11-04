@@ -23,7 +23,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"overlays": "overlays", &"save_status": "save_status", &"transit_plan": "transit_plan", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
+	&"overlays": "overlays", &"save_status": "save_status", &"transit_plan": "transit_plan", &"transit_footway": "transit_footway", &"transit_xray": "transit_xray", &"transit_preview": "transit_preview", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
@@ -157,6 +157,11 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 func query(name: StringName, args: Array = []) -> Variant:
 	assert(QUERIES.has(name), "consulta desconhecida: %s" % name)
 	return _core.callv(QUERIES[name], args)
+
+
+## Tests only: the clock at an hour.
+func set_clock_hour(hour: float) -> void:
+	_core.set_clock_hour(hour)
 
 
 ## Tests only: advance the simulation deterministically.

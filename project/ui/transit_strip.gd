@@ -1,31 +1,58 @@
-## The strip of the Make a line tab: each line with its vehicles, fewer, more, and a way to remove it.
+## The strip of the Make a line tab: each line with its colour, its mode and stops, its vehicles, fewer, more, and a way to remove it.
 class_name TransitStrip
 extends RefCounted
 
+const MODE_KEYS := ["transit.mode.bus", "transit.mode.train", "transit.mode.metro"]
+const RGB_BITS := 8
+
 
 static func build(parent: Control) -> void:
-	HudWidgets.clear(parent)
+	_fill(HudWidgets.vbox(parent))
+
+
+## The list again, and again when the plan changes, for as long as it shows.
+static func _fill(list: Control) -> void:
+	if not is_instance_valid(list) or not list.is_inside_tree():
+		return
+	HudWidgets.clear(list)
+	var tools: ToolController = list.get_tree().get_first_node_in_group(&"tools")
+	if tools:
+		tools.plan_changed.connect(_fill.bind(list), CONNECT_ONE_SHOT)
 	var plan: Dictionary = CityStore.query(&"transit_plan")
+	if plan.get("lines", []).is_empty():
+		HudWidgets.label(list, &"MutedLabel", TranslationServer.translate("transit.noLines"))
 	for line: Dictionary in plan.get("lines", []):
-		var row := HudWidgets.hbox(parent)
-		HudWidgets.label(row, &"MutedLabel", "%s  %d" % [line.name, line.vehicles])
-		_button(row, "-", _change.bind(parent, line.id, line.vehicles - 1))
-		_button(row, "+", _change.bind(parent, line.id, line.vehicles + 1))
-		_button(row, "x", _drop.bind(parent, line.id))
+		var row := HudWidgets.hbox(list)
+		var swatch := ColorRect.new()
+		swatch.color = Color.hex((int(line.colour) << RGB_BITS) | 0xff)
+		swatch.custom_minimum_size = Vector2.ONE * HudWidgets.px("transit_swatch")
+		row.add_child(swatch)
+		HudWidgets.label(row, &"", line.name)
+		var stops := TranslationServer.translate("transit.stops").replace("{n}", str(line.stops.size()))
+		HudWidgets.label(row, &"MutedLabel", "%s · %s" % [TranslationServer.translate(MODE_KEYS[int(line.mode)]), stops])
+		_button(row, "minus", "transit.fewer", _change.bind(list, line.id, line.vehicles - 1))
+		HudWidgets.label(row, &"", str(line.vehicles))
+		_button(row, "plus", "transit.more", _change.bind(list, line.id, line.vehicles + 1))
+		_button(row, "demolish", "transit.remove", _drop.bind(list, line.id))
 
 
-static func _button(row: Control, text: String, action: Callable) -> void:
-	var b := Button.new()
-	b.text = text
+static func _button(row: Control, icon: String, tip: String, action: Callable) -> void:
+	var b := HudWidgets.button(&"", icon, "", tip, "transit_button", "transit_button")
 	b.pressed.connect(action)
 	row.add_child(b)
 
 
+static func _changed(parent: Control) -> void:
+	var tools: ToolController = parent.get_tree().get_first_node_in_group(&"tools")
+	if tools:
+		tools.plan_changed.emit()
+
+
 static func _change(parent: Control, id: int, vehicles: int) -> void:
 	CityStore.dispatch(&"transit_vehicles", [id, vehicles])
-	build(parent)
+	_changed(parent)
 
 
 static func _drop(parent: Control, id: int) -> void:
 	CityStore.dispatch(&"transit_drop_line", [id])
-	build(parent)
+	_changed(parent)

@@ -488,6 +488,12 @@ hint.transit.noTrack,Clique num trilho.,Click a track.
 hint.transit.trackShort,O trilho precisa de dois pontos.,A track needs two points.
 hint.transit.trackOnRoad,O trilho cruza ruas, não corre por elas.,A track crosses streets, it does not run down them.
 hint.transit.lineShort,Uma linha precisa de duas paradas.,A line needs two stops.
+hint.transit.removed,Removido.,Removed.
+hint.transit.lineMade,Linha criada.,Line made.
+transit.stops,{n} paradas,{n} stops
+transit.mark.bus,B,B
+transit.mark.train,T,T
+transit.mark.metro,M,M
 cmd.transit.stop,Pôr parada,Place stop
 cmd.transit.terminal,Mudar terminal,Change terminal
 cmd.transit.station,Pôr estação,Place station

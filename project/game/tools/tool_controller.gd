@@ -10,6 +10,7 @@ extends Node
 signal tool_changed(tool: Tool, params: Dictionary)
 ## A line for the hint bar: text already translated, ok = false draws it as a refusal.
 signal hint(text: String, ok: bool)
+signal plan_changed # the transport tool laid something the drawer lists
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 
@@ -29,6 +30,7 @@ const SCRIPTS := {
 }
 
 var rig: CityCamera
+var double_press := false # the press being handled ends a double click
 var preview: PreviewLine
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
@@ -96,6 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_dragging = event.pressed
 		var p: Variant = ground_at(event.position)
 		if event.pressed and p != null:
+			double_press = event.double_click
 			click_world(p)
 			get_viewport().set_input_as_handled()
 		elif not event.pressed:
