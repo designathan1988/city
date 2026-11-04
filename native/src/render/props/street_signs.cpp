@@ -17,16 +17,22 @@ const char *const PLATE_KEYS[SIGN_TYPES] = { "stop", "yield", "speed", "noParkin
 const Vector3 UP(0, 1, 0);
 const Vector2 TAG_FIXED(float(int(PropTag::FIXED)), 0), TAG_PLATE(float(int(PropTag::PLATE)), 0);
 
-// The outline of a plate in its own plane, unit square coordinates in -0.5 .. 0.5.
+// The outline of a plate in its own plane, filling the unit square -0.5 .. 0.5: w_m and h_m are the plate's real measures
+// (across the flats of an octagon, the side of a triangle). project/render/sign_sheet.gd paints the same polygon.
 void outline(const PlateLook &p, std::vector<Vector2> &out) {
 	if (p.points == 0) {
 		out = { Vector2(-0.5f, -0.5f), Vector2(0.5f, -0.5f), Vector2(0.5f, 0.5f), Vector2(-0.5f, 0.5f) };
 		return;
 	}
+	Vector2 low(INFINITY, INFINITY), high(-INFINITY, -INFINITY);
 	for (int k = 0; k < p.points; k++) {
 		const float a = (p.turn + float(k) / float(p.points)) * TAU_F;
-		out.push_back(Vector2(std::cos(a), std::sin(a)) * 0.5f);
+		out.push_back(Vector2(std::cos(a), std::sin(a)));
+		low = low.min(out.back());
+		high = high.max(out.back());
 	}
+	const Vector2 across = high - low, middle = (low + high) * 0.5f;
+	for (Vector2 &q : out) q = (q - middle) / across;
 }
 
 // A plate fanned round its centre at `at`: `side` its width direction, its face looking along `face`.

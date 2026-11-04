@@ -622,6 +622,8 @@
     "blade_half_m": {"type": "number"},
     "plates": {"type": "object"},
     "drawings": {"type": "array", "items": {"type": "object"}},
+    "word_bold": {"type": "number"},
+    "word_least_px": {"type": "number"},
     "sheet_w_px": {"type": "number"},
     "sheet_h_px": {"type": "number"},
     "plate_cell_px": {"type": "number"},

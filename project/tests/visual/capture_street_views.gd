@@ -8,6 +8,9 @@ const RULE_GAP := 2.0
 const FIRST_STREET_FACED := 7 # direction, street and information look at the street; the others at the traffic
 const FACE_M := 3.2
 const FACE_ROAD_M := 1.6
+const SHEET_FRAMES := 4 # a cell asked for is painted on the next frames
+const INK_NEAR := 0.3 # how near the ink a pixel of the sheet reads as ink
+const INK_LEAST := 0.01 # of a cell, however short its word
 
 
 ## At a person's height along the street, from both ends and from above, by day and by night; the HUD off.
@@ -27,6 +30,9 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 
 
 ## Each sign of the dropdown on the footway across the street, with its words where it carries them.
+	await CaptureStreetPairs.run(cap, a, dir)
+
+
 static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	await cap._pick("streetscape.sign")
@@ -64,7 +70,8 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 			if i >= RULE_PLATES:
 				walked += cap.SIGN_GAP_M
 	await cap.ui.shot("rua_07_placa_opcoes")
-	cap.world._sign_sheet.get_texture().get_image().save_png("%s/rua_23_folha.png" % cap.out_dir)
+	await cap.ui.frames(SHEET_FRAMES)
+	_check_ink(cap)
 
 
 static func _option(cap: Node, under: Node = null) -> OptionButton:
@@ -85,6 +92,27 @@ static func _field(cap: Node, under: Node = null) -> LineEdit:
 		if inside:
 			return inside
 	return null
+
+
+## The sheet as the plates read it: every cell painted holds the ink of its words and its figure, once for each type.
+static func _check_ink(cap: Node) -> void:
+	var sheet: SignSheet = cap.world._sign_sheet
+	var image := sheet.get_texture().get_image()
+	image.save_png("%s/rua_23_folha.png" % cap.out_dir)
+	var look: Dictionary = DataTables.render().streets.signs
+	for c: Array in sheet.drawn:
+		var p: Dictionary = look.drawings[c[0]]
+		if not p.has("ink"):
+			continue
+		var ink := Color(p.ink)
+		var r: Rect2 = c[2]
+		var found := 0
+		for y in range(int(r.position.y), int(r.end.y)):
+			for x in range(int(r.position.x), int(r.end.x)):
+				var seen := image.get_pixel(x, y)
+				if absf(seen.r - ink.r) + absf(seen.g - ink.g) + absf(seen.b - ink.b) < INK_NEAR:
+					found += 1
+		cap._check(found > r.get_area() * INK_LEAST, "tinta na placa %d \"%s\": %d" % [c[0], c[1], found])
 
 
 ## Close to each piece and barrier, from the road's side at a person's height, looking at it.
