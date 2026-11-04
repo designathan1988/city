@@ -2,11 +2,15 @@
 // stroke is one undo step) and a building drawn as a lot rectangle (Roadcraft lotEdit.ts lot "rect", the Build
 // drawer's Draw tab) with the function chosen in the strip: civic buildings, parks and squares.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "core/random.h"
+#include "sim/buildings/b40/record.h"
 #include "sim/buildings/growth.h"
+#include "sim/commands/body_ops.h"
 #include "sim/state/city_state.h"
+#include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,7 +25,42 @@ constexpr double SEED_GRID_M = 4;
 constexpr double HALF = 0.5; // the drawn lot's seed comes from its corner rounded to this grid
 } // namespace
 
-EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode) {
+// The rock a landform stands on, under the whole dab and a little past it, so it reaches the foot of its cliff.
+void landform_rock(CityState &s, double x, double z, double radius, BrushMode mode) {
+	const PaintDef &def = s.catalog.nature.paint;
+	size_t i = size_t(int(mode) - int(BrushMode::MESA));
+	if (mode < BrushMode::MESA || mode > BrushMode::SUGARLOAF || i >= def.landform_rock.size()) return;
+	PaintDab rock;
+	rock.x = float(x); rock.z = float(z); rock.radius = float(radius) * def.rock_reach; rock.strength = 1.f; rock.kind = def.landform_rock[i];
+	paint_dab(s, rock);
+}
+
+// The water of a river dab, and what undoes it.
+void lay_river(CityState &s, const BrushDab &d) {
+	std::vector<uint32_t> index;
+	std::vector<float> before;
+	float level = s.terrain.river_level(d.h0);
+	const PaintDef &paint = s.catalog.nature.paint;
+	PaintDab bank;
+	bank.x = d.x;
+	bank.z = d.z;
+	bank.radius = d.radius * paint.river_sand_reach;
+	bank.strength = 1;
+	bank.kind = paint.river_sand;
+	paint_dab(s, bank); // the banks of the river are sand, as far as its water wets them
+	s.terrain.flood(d.x, d.z, d.radius, level, index, before);
+	cut_trees_at(s, d.x, d.z, d.radius);
+	if (index.empty()) return;
+	double x0 = d.x - d.radius, z0 = d.z - d.radius, x1 = d.x + d.radius, z1 = d.z + d.radius;
+	auto mark = [x0, z0, x1, z1](CityState &st) { for_chunks(x0, z0, x1, z1, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
+	mark(s);
+	j_nature(s, index.size() * (sizeof(uint32_t) + sizeof(float)), [index, before, level, mark](CityState &st, bool fwd) {
+		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? level : before[i];
+		mark(st);
+	});
+}
+
+EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode, double hardness) {
 	EditResult r;
 	if (mode < 0 || mode >= int(BrushMode::COUNT) || radius <= 0 || !s.terrain.in_bounds(float(x), float(z))) {
 		r.error = "tool.failed";
@@ -36,15 +75,45 @@ EditResult terrain_dab(CityState &s, double x, double z, double radius, double s
 	d.x = float(x); d.z = float(z); d.radius = float(radius); d.strength = float(strength); d.dt = float(dt);
 	d.h0 = h.stroke_h0;
 	d.mode = BrushMode(mode);
+	d.hardness = float(hardness);
 	j_terrain_touch(s, s.terrain.brush_rect(d.x, d.z, d.radius));
 	if (!s.terrain.brush(d)) {
 		r.ok = true;
 		return r;
 	}
+	landform_rock(s, x, z, radius, d.mode);
+	if (d.mode == BrushMode::RIVER) lay_river(s, d);
 	mark_ground(s, x - radius, z - radius, x + radius, z + radius);
 	finish_edit(s, x - radius, z - radius, x + radius, z + radius);
 	r.ok = true;
 	return r;
+}
+
+void unflood(CityState &s) {
+	Heightfield &t = s.terrain;
+	if (t.water.empty()) return;
+	TerrainGen gen(s.seed, s.map_half, s.catalog.tune.world_water_spacing_m);
+	std::vector<uint32_t> index;
+	std::vector<float> before, after;
+	for (int gz = 0; gz < t.water_n; gz++)
+		for (int gx = 0; gx < t.water_n; gx++) {
+			size_t i = size_t(gz) * t.water_n + gx;
+			if (t.water[i] == TerrainGen::NO_WATER) continue;
+			float was = gen.flat() ? TerrainGen::NO_WATER : gen.water_at_sample(gx, gz);
+			if (was == t.water[i]) continue;
+			index.push_back(uint32_t(i));
+			before.push_back(t.water[i]);
+			after.push_back(was);
+			t.water[i] = was;
+		}
+	if (index.empty()) return;
+	float h = s.map_half;
+	auto mark = [h](CityState &st) { for_chunks(-h, -h, h, h, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
+	mark(s);
+	j_nature(s, index.size() * (sizeof(uint32_t) + 2 * sizeof(float)), [index, before, after, mark](CityState &st, bool fwd) {
+		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? after[i] : before[i];
+		mark(st);
+	});
 }
 
 std::string lot_frame(const CityState &s, double ax, double az, double bx, double bz, Building &b) {
@@ -79,7 +148,6 @@ std::string lot_frame(const CityState &s, double ax, double az, double bx, doubl
 
 EditResult place_building(CityState &s, double ax, double az, double bx, double bz, int fn, int zone) {
 	EditResult r;
-	const GrowthDef &g = s.catalog.growth;
 	if (fn < 0 || fn >= FN_COUNT || zone < 1 || zone >= ZONE_CODES) {
 		r.error = "tool.failed";
 		return r;
@@ -98,8 +166,7 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 	b.fn = uint8_t(fn);
 	b.seed = hash_combine(uint32_t(int32_t(std::lround(ax / SEED_GRID_M))), uint32_t(int32_t(std::lround(az / SEED_GRID_M))) ^ LOT_SALT);
 	b.style = uint16_t(b.seed & BUILDING_AUTO_STYLE_MASK);
-	bool open_space = fn == FN_PARK || fn == FN_SQUARE;
-	b.floors = uint16_t(open_space ? 0 : floors_for(g, zone, s.catalog.profile(b.profile), b.seed));
+	b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	b.built = s.clock.minutes.load();
 	j_add_building(s, b);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
@@ -120,8 +187,30 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 		r.ok = true;
 		return r;
 	}
+	const bool other_use = b.fn != fn;
 	b.fn = uint8_t(fn);
-	b.floors = uint16_t(floors);
+	if (other_use) {
+		b.body = 0; // another use is another building, made again from the seed; undo brings the edited one back
+		b.floors = 0;
+		b.floors = uint16_t(body_floors(s.buildings.designs, b));
+	}
+	if (floors != b.floors && floors > 0) {
+		// Another height is the body's: its tallest block grows or shrinks by the difference.
+		b40::Body body;
+		b40::record_body(s.buildings.designs, b, body);
+		int tallest = -1;
+		for (size_t i = 0; i < body.volumes.size(); i++)
+			if (tallest < 0 || body.volumes[i].top() > body.volumes[size_t(tallest)].top()) tallest = int(i);
+		if (tallest < 0) {
+			r.error = "tool.failed";
+			return r;
+		}
+		const b40::Volume &v = body.volumes[size_t(tallest)];
+		r.error = op_set_storeys(body, s.catalog.tune, tallest, std::max(1, floors - v.base));
+		if (!r.error.empty()) return r;
+		b.body = s.buildings.designs.edited->add(std::move(body));
+		b.floors = uint16_t(body_floors(s.buildings.designs, b));
+	}
 	j_edit_building(s, id, b);
 	float reach = std::max(b.w, b.d);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);

@@ -18,7 +18,7 @@ constexpr uint32_t ERRAND_SALT = 0x2545F491u, ERRAND_SPAN = 0xFFFFFFu;
 constexpr float STOPPED_MS = 0.1f; // standing still, for a stop
 constexpr float NEAR_STOP_M = 1.f, PAST_STOP_M = 2.f; // pulled up at it; gone past it
 constexpr int RIGHT_SIDE = 0;
-constexpr float FACING_M = 0.05f; // shorter than this a move has no direction
+constexpr float MOVED_MIN_M = 0.05f; // shorter than this a move has no direction
 
 bool is_car(const Vehicle &v) { return v.type <= VehicleType::PICKUP; }
 
@@ -36,7 +36,7 @@ bool hail_walker(CityState &s, int ped, const V2 &door, float reach) {
 
 void place_at(CityState &s, int ped, const V2 &at, const V2 &facing) {
 	Pedestrian &w = s.traffic.peds[size_t(ped)];
-	const V2 f = facing.len() > FACING_M ? facing.norm() : V2(w.cur.fx, w.cur.fz);
+	const V2 f = facing.len() > MOVED_MIN_M ? facing.norm() : V2(w.cur.fx, w.cur.fz);
 	w.walked += (V2(w.cur.x, w.cur.z) - at).len();
 	w.cur.x = at.x;
 	w.cur.z = at.y;
@@ -143,7 +143,7 @@ void plan(CityState &s, int id) {
 	float at = earliest + (latest - earliest) * p.kerb_stop_share;
 	int ped = -1;
 	if (v.errand == Errand::PICK) {
-		ped = hailable(s, d, arc_of(d, earliest), arc_of(d, std::min(latest, earliest + p.kerb_pick_reach_m)));
+		ped = hailable(s, d, arc_of(d, earliest), arc_of(d, std::min(latest, earliest + p.kerb_find_reach_m)));
 		if (ped < 0) return;
 		const float along = (t.peds[size_t(ped)].s - d.at0) * d.sign + p.classes[int(v.type)].length * p.kerb_door_along;
 		at = std::clamp(along, earliest, latest);

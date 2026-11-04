@@ -210,7 +210,7 @@
   "kerb_pace_ms": 1.1,
   "kerb_give_up_s": 25,
   "kerb_halt_s": 0.4,
-  "kerb_pick_reach_m": 40,
+  "kerb_find_reach_m": 40,
   "kerb_pick_fetch_m": 30,
   "parker_gate_margin_m": 0.3,
   "parker_gate_lead_m": 1,

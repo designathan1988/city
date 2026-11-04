@@ -23,27 +23,12 @@ constexpr double HILLS_BASE = 18, HILLS_AMP = 30, HILLS_SCALE = 2600, BUMPS_AMP 
 constexpr double EDGE_START = 0.82, EDGE_RAMP = 0.18, RANGE_BASE = 90, RANGE_AMP = 70, RANGE_SCALE = 700;
 constexpr int BANK_PROBES = 8, SMOOTH_PASSES = 4, DESCEND_STEPS = 200, LAKE_KEY = 512, LAKE_ROW = 1024;
 constexpr int64_t SAMPLE_ROW = 65536;
-constexpr int HASH_SHIFT_A = 13, HASH_SHIFT_B = 16;
 constexpr int BASIN_LATTICE = 7, BASIN_ROW = 11;
 constexpr uint32_t BASIN_SALT = 13U, BUMPS_SALT = 7U, RANGE_SALT = 99U;
 constexpr double OPEN_SHARE = 0.75, BASIN_NOISE_STEP = 0.01, RIVER_END_EPS = 1.001;
-constexpr double HASH_UNIT = 2147483648.0;
 constexpr int N4[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
 constexpr int N8[8][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } };
 
-// 4.0's value-noise hash (different from core/seeded.h hash2): result in [-1, 1).
-double vhash(int32_t x, int32_t y) {
-	uint32_t h = uint32_t(x) * 374761393U ^ uint32_t(y) * 668265263U;
-	h = (h ^ (h >> HASH_SHIFT_A)) * 1274126177U;
-	return (h ^ (h >> HASH_SHIFT_B)) / HASH_UNIT - 1;
-}
-double value_noise(double x, double y) {
-	double x0 = std::floor(x), y0 = std::floor(y), fx = x - x0, fy = y - y0;
-	double sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-	int32_t ix = js_int(x0), iy = js_int(y0);
-	double a = vhash(ix, iy), b = vhash(ix + 1, iy), c = vhash(ix, iy + 1), d = vhash(ix + 1, iy + 1);
-	return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
-}
 double influence(double u) { return u * u * (3 - 2 * u); }
 double bed_profile(double d, double reach) { return influence(std::min(1.0, (1 - d / reach) / RIVER_BED_FLOOR)); }
 } // namespace
@@ -55,7 +40,7 @@ TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing) : s
 double TerrainGen::course_z() const { return half_ - CANAL_FROM_EDGE; }
 
 bool TerrainGen::basin_of(int i, int j, double &x, double &z) const {
-	auto r = [&](int k) { return 0.5 + 0.5 * vhash(int32_t(uint32_t(i * BASIN_LATTICE + k) + seed_ * BASIN_SALT), j * BASIN_ROW - k); };
+	auto r = [&](int k) { return 0.5 + 0.5 * value_hash(int32_t(uint32_t(i * BASIN_LATTICE + k) + seed_ * BASIN_SALT), j * BASIN_ROW - k); };
 	if (r(3) > LAKE_CHANCE) return false;
 	x = (i + 0.25 + 0.5 * r(1)) * LAKE_GRID;
 	z = (j + 0.25 + 0.5 * r(2)) * LAKE_GRID;

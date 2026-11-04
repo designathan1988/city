@@ -17,7 +17,6 @@ enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_C
 	FN_SUPERMARKET, FN_CITY_HALL, FN_POLICE, FN_FIRE_STATION, FN_MALL, FN_SPORTS_COURT, FN_COUNT = FN_COUNT_VALUE };
 
 struct Building {
-	bool alive = false;
 	float x = 0, z = 0, w = 0, d = 0, rot = 0; // lot centre, frontage, depth; local +z faces the street
 	uint8_t zone = 0; // base zone (1..4) or a density zone (5..8)
 	uint8_t fn = 0; // BuildingFn
@@ -26,6 +25,8 @@ struct Building {
 	uint16_t style = 0; // 0..127 automatic, 128 + arch = chosen
 	uint16_t profile = 0; // profile of the street it faces
 	int16_t landmark = -1; // catalogue project (data/catalog/landmarks) or -1
+	bool alive = false; // here, not first: with `body` the record stays at 48 bytes
+	uint32_t body = 0; // the version the player edited (b40::BodyTable), 0 = made from the seed
 	double built = 0; // city minute it was built (decay and renovation)
 };
 

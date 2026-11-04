@@ -1,6 +1,7 @@
 // Reading a city (save_format.h): the land is regenerated from the saved seed, then the sculpted tiles, modifiers,
 // roads, buildings and growth go back under their ids; lots and node shapes are derived again.
 #include "sim/persistence/save_format.h"
+#include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
 #include "sim/citygen/city_gen.h"
@@ -118,12 +119,17 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
-	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
+	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads, version) || !read_buildings(r, s.buildings) || !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)
 	s.growth.grown = r.get<int32_t>();
-	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
+	uint32_t tag = r.get<uint32_t>();
+	if (tag == SAVE_BODIES) {
+		if (!read_edited_bodies(r, s.buildings)) return false;
+		tag = r.get<uint32_t>();
+	}
+	if (!r.ok || tag != SAVE_END) return false;
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

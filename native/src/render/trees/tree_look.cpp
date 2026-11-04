@@ -1,10 +1,9 @@
-// streets.json "trees.placement" → TreeLook (see tree_place.h). The bands' cover becomes a chance per candidate cell
-// (cover × cell area ÷ the mean crown's area), and the woods field's thresholds are the quantiles of the field that
-// leave the asked land shares above them: the noise is stationary, so one sample of it, taken once, sets them.
+// streets.json "trees.placement" → TreeLook (see tree_place.h). The chances of the bands scale to `woods_per_ha`: the patches
+// are stationary, so one sample of them, taken once, gives the land's mean chance.
 #include "render/trees/tree_place.h"
 
 #include "core/math.h"
-#include "core/random.h"
+#include "core/seeded.h"
 
 #include <godot_cpp/variant/array.hpp>
 
@@ -17,34 +16,37 @@ namespace city {
 
 namespace {
 constexpr float HA_M2 = 10000.f;
-// The calibration sample: a square of CAL_SIDE² points CAL_STEP mass lengths apart (far beyond the field's correlation,
-// so the points are close to independent), with its own seed: the field's distribution does not depend on the seed.
-constexpr int CAL_SIDE = 160;
-constexpr float CAL_STEP = 0.73f;
-constexpr uint32_t CAL_SEED = 0x7a11u;
+constexpr float THRESHOLD_GAP = 1e-6f; // a land with no chance at all keeps the scale finite
+// The sample of the patches: a square of CAL_SIDE² points CAL_STEP_M apart, past the largest patch's correlation.
+constexpr int CAL_SIDE = 200;
+constexpr float CAL_STEP_M = 97.f;
+// The noise streams of the patches, one by scale (Roadcraft's numbers: the woods stand where they stand there).
+constexpr uint32_t PATCH_SALTS[WOOD_PATCHES] = { 7, 9, 11 };
 const char *const BAND_KEYS[WOOD_BANDS] = { "inner", "edge", "open" };
 
 float at(const Variant &v, int i) {
 	Array a = v;
 	return a.size() > i ? float(a[i]) : 0.f;
 }
-
-// The field value above which `share` of the land lies.
-float quantile_above(std::vector<float> &sorted, float share) {
-	size_t i = size_t(std::clamp((1.f - share) * float(sorted.size() - 1), 0.f, float(sorted.size() - 1)));
-	return sorted[i];
-}
-
-// The mix's mean crown radius over its mean height, the species weighted by their share.
-float mean_reach(const SpeciesMix &m, const TreeKit &kit) {
-	float sum = 0, prev = 0;
-	for (size_t i = 0; i < m.species.size(); i++) {
-		sum += (m.weight[i] - prev) * kit.species(m.species[i]).crown_reach;
-		prev = m.weight[i];
-	}
-	return sum;
-}
 } // namespace
+
+float TreeLook::density_of(double x, double y) const {
+	double patch = 0;
+	for (int k = 0; k < WOOD_PATCHES; k++) patch += patch_weight[size_t(k)] * woods_noise(x, y, patch_m[size_t(k)], PATCH_SALTS[k]);
+	return clampf((float(patch) - mass_from) / mass_span, 0.f, 1.f) * mass_gain - density_floor;
+}
+
+WoodBand TreeLook::band_at(float d) const {
+	return d > band[size_t(WoodBand::INNER)].from ? WoodBand::INNER : d > band[size_t(WoodBand::EDGE)].from ? WoodBand::EDGE : WoodBand::OPEN;
+}
+
+float TreeLook::keep_at(float d, WoodBand b) const {
+	const BandLook &B = band[size_t(b)];
+	if (b == WoodBand::OPEN && d <= B.from) return B.lone * scale;
+	float top = b == WoodBand::OPEN ? B.from : band[size_t(b) - 1].from;
+	float t = top > B.from ? clampf((d - B.from) / (top - B.from), 0.f, 1.f) : 0.f;
+	return (B.keep0 + (B.keep1 - B.keep0) * t) * scale;
+}
 
 int SpeciesMix::pick(float r) const {
 	for (size_t i = 0; i < weight.size(); i++)
@@ -79,39 +81,43 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 		return false;
 	}
 	Dictionary p = t["placement"], bands = p.get("bands", Dictionary());
-	near_m = p["near_m"]; fade_m = p["fade_m"]; pop_m = p["pop_m"]; far_m = p["far_m"]; far_cell_m = p["far_cell_m"]; far_spread = p["far_spread"]; far_jitter = p["far_jitter"];
-	far_shadows = p["far_shadows"]; grid_m = p["grid_m"]; jitter = p["jitter"]; mass_m = p["mass_m"]; octaves = p["octaves"];
-	inner_share = p["wood_inner_share"]; edge_share = p["wood_edge_share"]; open_per_ha = p["open_per_ha"];
-	slope_from = at(p["slope_grade"], 0); slope_to = at(p["slope_grade"], 1); slope_gain = p["slope_gain"];
-	water_m = p["riparian_m"]; water_gain = p["riparian_gain"];
-	crowd_tall = p["crowd_tall"]; crowd_narrow = p["crowd_narrow"]; edge_lean = p["edge_lean"]; width_vary = p["width_vary"];
+	near_m = p["near_m"]; fade_m = p["fade_m"]; far_m = p["far_m"];
+	far_shadows = p["far_shadows"]; grid_m = p["grid_m"]; jitter = p["jitter"]; plate_m = p["lattice_span_m"];
+	for (int k = 0; k < WOOD_PATCHES; k++) { patch_m[size_t(k)] = at(p["patch_m"], k); patch_weight[size_t(k)] = at(p["patch_weight"], k); }
+	mass_from = p["mass_from"]; mass_span = p["mass_span"]; mass_gain = p["mass_gain"]; density_floor = p["density_floor"];
+	slope_from = at(p["slope_grade"], 0); slope_to = at(p["slope_grade"], 1); slope_gain = p["slope_gain"]; slope_probe_m = p["slope_probe_m"];
+	woods_per_ha = p["woods_per_ha"]; crowd_reach_m = p["crowd_reach_m"]; crowd_full = p["crowd_full"];
+	crowd_tall = p["crowd_tall"]; crowd_narrow = p["crowd_narrow"]; edge_lean = p["edge_lean"]; lean_rise = p["lean_rise"]; width_vary = p["width_vary"];
+	open_tall = p["open_tall"]; open_wide = p["open_wide"];
 	tint_vary = p["tint_vary"]; min_y = p["min_y_m"]; max_grade = p["max_grade"]; road_margin = p["road_margin_m"]; lot_margin = p["lot_margin_m"];
 	park_m2_per_tree = p["park_m2_per_tree"]; park_edge = p["park_edge_m"]; park_max = p["park_max"];
 	park_h0 = at(p["park_height_m"], 0); park_h1 = at(p["park_height_m"], 1); street_height_m = p["street_height_m"];
+	eco_gain = p["eco_gain"]; eco_mean = p["eco_mean"]; forest_gain = p["forest_gain"];
+	for (const Variant &name : Array(p["planted_models"])) planted_species.push_back(std::max(kit.find(String(name)), 0));
 	park.load(p["park_mix"], kit, "park_mix", errors);
 	street.load(p["street_mix"], kit, "street_mix", errors);
 	for (int b = 0; b < WOOD_BANDS; b++) {
 		Dictionary d = bands.get(BAND_KEYS[b], Dictionary());
 		BandLook &L = band[size_t(b)];
-		L.h0 = at(d["height_m"], 0);
-		L.h1 = at(d["height_m"], 1);
+		L.from = d["from"];
+		L.keep0 = at(d["keep"], 0);
+		L.keep1 = at(d["keep"], 1);
+		L.lone = d.get("lone", 0.f);
+		L.h0 = at(d["size_m"], 0);
+		L.h1 = at(d["size_m"], 1);
 		L.mix.load(d.get("mix", Dictionary()), kit, String("bands.") + BAND_KEYS[b], errors);
-		if (b == int(WoodBand::OPEN)) {
-			L.keep = open_per_ha * grid_m * grid_m / HA_M2;
-			continue;
-		}
-		L.cover = d["crown_cover"];
-		float crown = mean_reach(L.mix, kit) * 0.5f * (L.h0 + L.h1);
-		L.keep = std::min(1.f, L.cover * grid_m * grid_m / std::max(PI_F * crown * crown, grid_m));
+		most = std::max(most, std::max(L.keep0, L.keep1));
 	}
-	std::vector<float> f;
-	f.reserve(size_t(CAL_SIDE) * CAL_SIDE);
+	double sum = 0;
 	for (int j = 0; j < CAL_SIDE; j++)
-		for (int i = 0; i < CAL_SIDE; i++) f.push_back(fbm(i * CAL_STEP, j * CAL_STEP, CAL_SEED, octaves));
-	std::sort(f.begin(), f.end());
-	t_inner = quantile_above(f, inner_share);
-	t_edge = quantile_above(f, inner_share + edge_share);
-	return errors.is_empty() && grid_m > 0 && mass_m > 0 && far_cell_m > 0;
+		for (int i = 0; i < CAL_SIDE; i++) {
+			float d = density_of(i * CAL_STEP_M, j * CAL_STEP_M) + eco_gain * eco_mean;
+			sum += keep_at(d, band_at(d));
+		}
+	float cell = grid_m * grid_m, planned = float(sum) / float(CAL_SIDE * CAL_SIDE);
+	scale = std::min(1.f, woods_per_ha * cell / HA_M2 / std::max(planned, THRESHOLD_GAP));
+	most *= scale;
+	return errors.is_empty() && grid_m > 0 && mass_span > 0 && slope_to > slope_from && crowd_full > 0;
 }
 
 } // namespace city

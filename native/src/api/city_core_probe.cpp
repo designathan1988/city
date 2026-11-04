@@ -22,6 +22,8 @@ Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
 	d["process"] = process_ms_;
+	d["worn_cells"] = render_.worn_cells();
+	d["wear_publications"] = render_.wear_publications();
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;
 	d["stream"] = c.stream;
