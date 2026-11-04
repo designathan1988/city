@@ -88,7 +88,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < lods; l++) {
 			size_t k = size_t(v * lods + l);
-			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(l)]->get_rid(), material_, bufs_[k], box, true);
+			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(l)]->get_rid(), material_, bufs_[k], box, true, LAYER_PEOPLE);
 		}
 	return drawn;
 }

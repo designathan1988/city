@@ -133,14 +133,21 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 // left to the far mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
 	for (int i = 0; i < SUB_COUNT; i++) {
-		range(ch.near[size_t(i)], 0, near_end_);
-		range(ch.parts[size_t(i)], 0, parts_end_);
-		range(ch.mid[size_t(i)], near_end_, 0);
+		range(ch.near[size_t(i)], 0, near_end_ * detail_scale_);
+		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
+		range(ch.mid[size_t(i)], near_end_ * detail_scale_, 0);
 	}
-	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
+	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)] * detail_scale_);
 }
 
-float BuildingRenderer::near_reach() const { return near_end_ + CHUNK * REACH_PAD; }
+float BuildingRenderer::near_reach() const { return near_end_ * detail_scale_ + CHUNK * REACH_PAD; }
+
+// The graphics tier's reach of the near level and its parts: the ranges of the chunks in place change now, the stream
+// follows at the next sync (near_reach).
+void BuildingRenderer::set_detail_scale(float scale) {
+	detail_scale_ = scale;
+	for (auto &[key, ch] : chunks_) ranges(ch);
+}
 
 // The far mesh of a superchunk the camera left; it is meshed again (dirty) once the camera comes back within reach.
 void BuildingRenderer::drop_far(int64_t key, Super &sp) {

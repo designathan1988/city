@@ -147,6 +147,24 @@ void CityCore::_process(double delta) {
 	process_ms_ = total.lap();
 }
 
+void CityCore::set_levels(float traffic, float people, float demand) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	l.traffic = traffic;
+	l.people = people;
+	l.demand = demand;
+}
+
+void CityCore::set_sim_switch(const String &name, bool on) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	if (name == "traffic") l.vehicles_on = on;
+	else if (name == "pedestrians") l.people_on = on;
+	else if (name == "growth") l.growth_on = on;
+}
+
+void CityCore::set_detail_scale(float scale) { render_.set_detail_scale(scale); }
+
 void CityCore::set_overlay(const String &name, bool on) {
 	for (int i = 0; i < int(Overlay::COUNT); i++)
 		if (name == OVERLAY_NAMES[i]) render_.set_overlay(Overlay(i), on);

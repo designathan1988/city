@@ -30,6 +30,10 @@ public:
 	godot::Dictionary new_map(int map, int seed, bool with_city);
 	void mark_saved();
 	void set_speed(int speed);
+	void set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
+	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth"
+	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
+	godot::Dictionary traffic_metrics(); // the Simulation panel: mean speed, vehicles standing
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }

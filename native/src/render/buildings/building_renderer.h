@@ -38,6 +38,7 @@ namespace city {
 
 class BuildingRenderer {
 public:
+	void set_detail_scale(float scale); // the graphics tier's share of the near level's reach
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
@@ -130,7 +131,8 @@ private:
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
+			RenderLayer layer);
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
@@ -152,6 +154,7 @@ private:
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_COUNT> band_end_{};
+	float detail_scale_ = 1; // the graphics tier's share of the near reach (set_detail_scale)
 	mutable std::mutex queue_mutex_;
 	Results<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job

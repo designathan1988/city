@@ -119,10 +119,10 @@ void TreeRenderer::commit_near(Built &b) {
 	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int i = 0; i < n; i++) {
 		const TreeSpecies &sp = kit_.species(i);
-		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, true);
+		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
 		if (sp.cards.is_null()) continue;
-		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast);
+		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(0, end);
 	}
 }
@@ -136,7 +136,7 @@ void TreeRenderer::FarDraw::free() {
 
 void TreeRenderer::commit_far(Built &b) {
 	FarDraw &d = far_[b.key];
-	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0);
+	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));

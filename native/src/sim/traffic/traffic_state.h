@@ -89,6 +89,13 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 	}
 }
 
+// What the Simulation panel sets (Roadcraft SimWorld trafficIntensity, pedestrianIntensity, demandMultiplier): shares of
+// the city's own density, 1 = as the catalog says; and the Effects panel's switches, what each system costs the tick.
+struct TrafficLevels {
+	float traffic = 1, people = 1, demand = 1;
+	bool vehicles_on = true, people_on = true, growth_on = true;
+};
+
 struct Vehicle {
 	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
@@ -116,6 +123,7 @@ struct Vehicle {
 
 struct TrafficState {
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last pose publications (publish_poses)
+	TrafficLevels levels;
 	LaneGraph g;
 	std::vector<Vehicle> vehicles;
 	std::vector<int> free_vehicles;

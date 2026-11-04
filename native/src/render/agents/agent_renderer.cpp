@@ -270,7 +270,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			const int n = int(buf.size() / MM_STRIDE);
 			const int room = n > d.capacity || n + 2 * ROOM_STEP < d.capacity ? (n + ROOM_STEP - 1) / ROOM_STEP * ROOM_STEP : d.capacity;
 			buf.resize(int64_t(room) * MM_STRIDE);
-			d.set(scenario_, meshes_[i][level].rid, RID(), buf, box, true);
+			d.set(scenario_, meshes_[i][level].rid, RID(), buf, box, true, LAYER_VEHICLES);
 			if (d.mm.is_valid()) rs->multimesh_set_visible_instances(d.mm, n);
 			shown_[i][level] = n;
 		}

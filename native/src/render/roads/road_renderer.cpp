@@ -55,7 +55,7 @@ void RoadRenderer::commit_one(BuiltMesh &b) {
 	float x0 = key_x(b.key) * CHUNK, z0 = key_y(b.key) * CHUNK;
 	Chunk &c = chunks_[b.key];
 	const bool any = b.mesh.valid();
-	c.surface.adopt(scenario_, material_, false, b.mesh.release());
+	c.surface.adopt(scenario_, material_, false, b.mesh.release(), LAYER_ROADS);
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
 	c.surface.visible(any);
 }

@@ -291,7 +291,7 @@ void step_pedestrians(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	// the crowd follows the sidewalk metres inside ped_window_m, so it has a natural ceiling
-	const double target = t.ped_metres * p.people_per_lane_m * p.people_share;
+	const double target = t.ped_metres * p.people_per_lane_m * p.people_share * t.levels.people;
 	int spawns = t.ped_count < p.fill_share * target ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
 	spawns = std::min(spawns, int(p.ped_routes_per_step));
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();

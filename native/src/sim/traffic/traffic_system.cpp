@@ -163,11 +163,13 @@ void step(CityState &s, float dt) {
 	check_window(s);
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
-	spawn_vehicles(s, dt);
-	meso_process(s);
-	change_lanes(s);
-	step_vehicles(s, dt);
-	step_pedestrians(s, dt);
+	if (t.levels.vehicles_on) {
+		spawn_vehicles(s, dt);
+		meso_process(s);
+		change_lanes(s);
+		step_vehicles(s, dt);
+	}
+	if (t.levels.people_on) step_pedestrians(s, dt);
 }
 
 } // namespace traffic

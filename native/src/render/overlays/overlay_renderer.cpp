@@ -105,7 +105,7 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key) {
 }
 
 void OverlayRenderer::upload(MeshDraw &d, Ribbon &r, bool on) {
-	d.reset(scenario_, material_, false);
+	d.reset(scenario_, material_, false, LAYER_OVERLAYS);
 	if (!r.v.is_empty()) {
 		Array arrays;
 		arrays.resize(RenderingServer::ARRAY_MAX);

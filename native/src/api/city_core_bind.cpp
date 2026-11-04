@@ -13,6 +13,10 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city"), &CityCore::new_map);
 	ClassDB::bind_method(D_METHOD("mark_saved"), &CityCore::mark_saved);
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
+	ClassDB::bind_method(D_METHOD("set_levels", "traffic", "people", "demand"), &CityCore::set_levels);
+	ClassDB::bind_method(D_METHOD("set_sim_switch", "name", "on"), &CityCore::set_sim_switch);
+	ClassDB::bind_method(D_METHOD("set_detail_scale", "scale"), &CityCore::set_detail_scale);
+	ClassDB::bind_method(D_METHOD("traffic_metrics"), &CityCore::traffic_metrics);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);

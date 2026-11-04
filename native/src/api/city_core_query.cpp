@@ -1,6 +1,8 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
 
+#include "render/render_layers.h"
+
 #include "core/math.h"
 #include "core/units.h"
 #include "sim/buildings/lot_access.h"
@@ -92,6 +94,9 @@ Dictionary CityCore::constants() const {
 	d["minutes_per_day"] = MINUTES_PER_DAY;
 	d["minutes_per_hour"] = MINUTES_PER_HOUR;
 	d["zone_codes"] = ZONE_CODES;
+	Dictionary layers;
+	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
+	d["render_layers"] = layers;
 	return d;
 }
 
@@ -139,6 +144,9 @@ Dictionary CityCore::snapshot() {
 	d["people"] = s.traffic.ped_count;
 	d["trips_arrived"] = s.traffic.arrived;
 	d["trips_lost"] = s.traffic.lost;
+	d["traffic_level"] = s.traffic.levels.traffic;
+	d["people_level"] = s.traffic.levels.people;
+	d["demand"] = s.traffic.levels.demand;
 	d["speed"] = int(sim_.speed());
 	d["unsaved"] = s.has_unsaved_work();
 	d["edited"] = s.edited;
@@ -189,6 +197,12 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 		d["floors"] = int(b.floors);
 		d["zone"] = int(b.zone);
 		d["fn"] = int(b.fn);
+		const OccupancyDef &o = s.catalog.occupancy;
+		const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
+		int residents, jobs;
+		BuildingStore::occupancy(b, o.floor_share, per, residents, jobs);
+		d["residents"] = residents;
+		d["jobs"] = jobs;
 		return d;
 	}
 	double t, dist;
@@ -196,7 +210,13 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 	if (seg >= 0) {
 		d["kind"] = "road";
 		d["id"] = seg;
-		d["profile"] = String(s.catalog.profile(s.roads.segs[seg].profile).name_key.c_str());
+		const Profile &p = s.catalog.profile(s.roads.segs[seg].profile);
+		d["profile"] = String(p.name_key.c_str());
+		d["lanes"] = int(p.fwd.size() + p.back.size());
+		d["one_way"] = p.one_way;
+		d["speed_kmh"] = p.speed;
+		d["width_m"] = p.right + p.left;
+		d["cost_per_m"] = p.cost_per_m;
 	}
 	return d;
 }

@@ -44,6 +44,7 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Dictionary agent_cost() const { return agents_.cost(); }
+	void set_detail_scale(float scale) { buildings_.set_detail_scale(scale); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
