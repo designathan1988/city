@@ -2,6 +2,8 @@
 // drives the scalar section, so a field added to sim/catalog/traffic_params.h is automatically required here.
 #include "api/catalog_loader.h"
 
+#include "core/color.h"
+
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
@@ -13,7 +15,7 @@ namespace city {
 
 namespace {
 
-constexpr int CLASS_FIELDS = 8;
+constexpr int CLASS_FIELDS = 8, LINE_ALPHA_BITS = 8; // RGBA8 to RGB
 static_assert(sizeof(VehicleClass) == sizeof(float) * CLASS_FIELDS, "traffic.json classes rows map onto VehicleClass");
 
 bool numbers(const Dictionary &t, const char *key, float *out, int count, PackedStringArray &errors) {
@@ -39,6 +41,7 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	else p.name = float(double(params[#name]));
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_LOAD)
 #undef CITY_TRAFFIC_LOAD
+	for (const Variant &c : Array(t.get("line_colours", Array()))) p.line_colours.push_back(parse_hex_color(String(c).utf8().get_data()) >> LINE_ALPHA_BITS);
 	Array classes = t.has("classes") ? Array(t["classes"]) : Array();
 	if (classes.size() != VEHICLE_TYPES) errors.push_back("traffic.classes: esperado uma linha por tipo de veiculo");
 	for (int i = 0; i < classes.size() && i < VEHICLE_TYPES; i++) {

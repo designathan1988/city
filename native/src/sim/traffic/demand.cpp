@@ -115,21 +115,14 @@ bool spawn_one(CityState &s, int &routes) {
 	routes++;
 	std::vector<int> route;
 	if (!find_route(s, from, to, route) || route.size() < 2) return false;
-	const int id = alloc_vehicle(t);
+	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
 	Vehicle &v = t.vehicles[size_t(id)];
-	v = Vehicle();
-	v.alive = true;
-	v.type = type;
-	v.paint = uint8_t(t.rng.next() % PAINTS);
 	v.ds = from;
 	v.lane = lane;
 	v.s = at;
-	v.vf = vc.speed_share * (VF_BASE + VF_SPAN * t.rng.f());
-	v.drift = t.rng.range(0.f, TAU_F);
 	v.v = d.speed * v.vf * START_SPEED_SHARE;
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
-	t.vehicle_count++;
 	// micro only close to the camera; farther out the trip starts in the far model (and is drawn if its lane is in
 	// the window, which cannot happen for a segment beyond micro_spawn_m < meso_window_m, but the rule stays explicit)
 	const V2 mid = mid_of(s, from);
@@ -153,6 +146,20 @@ float day_factor(const TrafficParams &p, float h) {
 			p.day_midday_amp * g(p.day_midday_h, p.day_midday_w);
 	if (h < p.day_night_to_h || h > p.day_night_from_h) f -= p.day_night_cut;
 	return std::max(0.f, f);
+}
+
+int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
+	TrafficState &t = s.traffic;
+	const int id = alloc_vehicle(t);
+	Vehicle &v = t.vehicles[size_t(id)];
+	v = Vehicle();
+	v.alive = true;
+	v.type = type;
+	v.paint = paint;
+	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + VF_SPAN * t.rng.f());
+	v.drift = t.rng.range(0.f, TAU_F);
+	t.vehicle_count++;
+	return id;
 }
 
 void spawn_vehicles(CityState &s, float dt) {

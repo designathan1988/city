@@ -7,8 +7,10 @@
 #include "sim/buildings/building_store.h"
 #include "sim/roads/road_network.h"
 #include "sim/terrain/heightfield.h"
+#include "sim/transit/transit_data.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +20,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY };
+	MONEY, TRANSIT };
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
@@ -29,6 +31,7 @@ struct EditOp {
 	RoadSegment seg;
 	Building bld, bld_after;
 	TerrainModifier mod;
+	std::shared_ptr<const TransitData> transit_before, transit_after; // TRANSIT: the plan replaced whole
 };
 
 // One undoable step. Terrain samples are kept apart: their values before (while open, by index) and after.
@@ -91,6 +94,7 @@ void j_remove_building(CityState &s, int id);
 void j_edit_building(CityState &s, int id, const Building &after);
 int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, float max_run);
 void j_money(CityState &s, double delta);
+void j_transit(CityState &s, TransitData next); // the public transport plan replaced
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 

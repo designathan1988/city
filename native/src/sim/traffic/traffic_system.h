@@ -22,6 +22,7 @@ void step(CityState &s, float dt); // applies the network changes, then advances
 void publish_poses(CityState &s, int64_t stamp_ns);
 float day_factor(const TrafficParams &p, float hour);
 void despawn_vehicle(CityState &s, int id, bool arrived);
+int new_vehicle(CityState &s, VehicleType type, uint8_t paint); // of that type, on no lane yet, counted in the fleet
 void reset_traffic(CityState &s); // full graph build and an empty fleet: a new map or a load
 
 // lane_graph.cpp / lane_geometry.cpp

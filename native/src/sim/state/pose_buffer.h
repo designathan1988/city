@@ -63,6 +63,7 @@ struct PoseSample {
 
 struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
+	std::vector<AgentRecord> trains; // each car near the camera: look its RGB, id 1 when it is the metro's
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }

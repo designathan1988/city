@@ -24,6 +24,18 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
+	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityCore::transit_stop);
+	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityCore::transit_terminal);
+	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityCore::transit_station);
+	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityCore::transit_track);
+	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityCore::transit_line);
+	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityCore::transit_remove);
+	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityCore::transit_drop_line);
+	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
+	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
+	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
+	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
+	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);
 	ClassDB::bind_method(D_METHOD("undo"), &CityCore::undo);
 	ClassDB::bind_method(D_METHOD("redo"), &CityCore::redo);

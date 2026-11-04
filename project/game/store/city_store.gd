@@ -13,7 +13,9 @@ const COMMANDS := {
 	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
-	&"set_building": "set_building", &"set_overlay": "set_overlay",
+	&"set_building": "set_building", &"set_overlay": "set_overlay", &"transit_stop": "transit_stop", &"transit_terminal": "transit_terminal",
+	&"transit_station": "transit_station", &"transit_track": "transit_track", &"transit_line": "transit_line", &"transit_remove": "transit_remove",
+	&"transit_drop_line": "transit_drop_line", &"transit_vehicles": "transit_vehicles",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -21,7 +23,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"overlays": "overlays", &"save_status": "save_status",
+	&"overlays": "overlays", &"save_status": "save_status", &"transit_plan": "transit_plan", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every

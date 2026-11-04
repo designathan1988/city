@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 namespace city {
 
@@ -37,7 +38,7 @@ namespace city {
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
 	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
-	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
+	X(claim_hold_s) X(claim_brake) X(publish_radius_m) X(transit_pick_m) X(transit_stop_reach_m) X(transit_join_m) X(transit_along_road_m) X(transit_entrance_reach_m) X(transit_most_vehicles) X(transit_bus_vehicles) X(transit_rail_vehicles) X(bus_dwell_s) X(bus_terminal_s) X(bus_spacing_s) X(bus_approach_m) X(bus_at_stop_m) X(bus_stopped_ms) X(bus_detour) X(bus_pace) X(bus_away_margin_m) X(train_dwell_s) X(train_top_ms) X(metro_top_ms) X(train_accel) X(train_brake) X(train_gap_m) X(train_cars) X(metro_cars) X(train_car_m) X(crossing_stop_m) X(crossing_warn_m) X(crossing_keep_clear_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
 
@@ -57,6 +58,7 @@ struct VehicleClass {
 };
 
 struct TrafficParams {
+	std::vector<uint32_t> line_colours; // RGB, one per new line in turn
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_DECLARE)
 	VehicleClass classes[VEHICLE_TYPES];
 	float signal_extension_s[EXTENSION_LANES] = {};

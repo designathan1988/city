@@ -164,6 +164,17 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 	return id;
 }
 
+void j_transit(CityState &s, TransitData next) {
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::TRANSIT, -1);
+		op.transit_before = std::make_shared<const TransitData>(s.transit);
+		op.transit_after = std::make_shared<const TransitData>(next);
+	}
+	s.transit = std::move(next);
+	s.transit_revision++;
+	s.touch();
+}
+
 void j_money(CityState &s, double delta) {
 	if (s.unlimited_money || delta == 0) return;
 	s.money += delta;

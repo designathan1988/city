@@ -3,6 +3,8 @@
  "properties": {
   "_doc": { "type": "string" },
   "_classes_doc": { "type": "string" },
+  "_transit_doc": { "type": "string" },
+  "line_colours": { "type": "array", "items": { "type": "string" } },
   "_zones_doc": { "type": "string" },
   "params": { "type": "object", "additional": { "type": "number" } },
   "classes": { "type": "array", "minItems": 1, "items": { "type": "array", "items": { "type": "number" } } },

@@ -62,6 +62,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ADD_MOD: if (fwd) s.terrain.put_modifier(op.id, op.mod); else s.terrain.remove_modifier(op.id); break;
 		case OpKind::MONEY: s.money += fwd ? op.money : -op.money; break;
+		case OpKind::TRANSIT:
+			s.transit = fwd ? *op.transit_after : *op.transit_before;
+			s.transit_revision++;
+			break;
 	}
 }
 

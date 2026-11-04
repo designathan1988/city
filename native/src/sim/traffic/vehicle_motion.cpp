@@ -13,7 +13,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-
 constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f, SAFE_PAD_M = 0.3f;
 constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, DRIFT_RATE = 0.1f, LC_DECAY = 1.f;
 constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
@@ -140,6 +139,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			l.take(o.s - body(s, o) - v.s, o.v);
 		}
 		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
+		if (const float hold = transit::hold_ahead(s, v, ds, through); hold >= 0) l.take(hold, 0.f);
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
 		if (!through) {
 			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }

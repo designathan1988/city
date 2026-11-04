@@ -42,6 +42,18 @@ public:
 	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
+	godot::Dictionary transit_stop(const godot::Vector3 &p);
+	godot::Dictionary transit_terminal(const godot::Vector3 &p);
+	godot::Dictionary transit_station(const godot::Vector3 &p, int mode);
+	godot::Dictionary transit_track(const godot::PackedVector3Array &points, int mode);
+	godot::Dictionary transit_line(const godot::PackedInt32Array &stops);
+	godot::Dictionary transit_remove(const godot::Vector3 &p);
+	godot::Dictionary transit_drop_line(int id);
+	godot::Dictionary transit_vehicles(int id, int vehicles);
+	godot::Dictionary transit_plan();
+	godot::Dictionary transit_run(); // what is running, for the tests
+	int transit_pick(const godot::Vector3 &p, int mode, bool any);
+	godot::Vector3 transit_snap(const godot::Vector3 &p, int mode);
 	godot::Array road_profiles() const;
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)

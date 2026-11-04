@@ -1,0 +1,155 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "radius_m": {
+   "type": "number"
+  },
+  "gauge_m": {
+   "type": "number"
+  },
+  "sleeper_step_m": {
+   "type": "number"
+  },
+  "lay_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "sleeper_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "rail_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "ballast": {
+   "type": "string"
+  },
+  "sleeper": {
+   "type": "string"
+  },
+  "rail": {
+   "type": "string"
+  },
+  "platform_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "platform_off_m": {
+   "type": "number"
+  },
+  "platform_roof_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "platform_roof_up_m": {
+   "type": "number"
+  },
+  "platform": {
+   "type": "string"
+  },
+  "platform_roof": {
+   "type": "string"
+  },
+  "shelter_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "shelter_post_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "shelter_wall": {
+   "type": "string"
+  },
+  "shelter_roof": {
+   "type": "string"
+  },
+  "terminal_roof": {
+   "type": "string"
+  },
+  "entrance_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "entrance": {
+   "type": "string"
+  },
+  "car_m": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "car_floor_m": {
+   "type": "number"
+  },
+  "car_window_low": {
+   "type": "number"
+  },
+  "car_window_high": {
+   "type": "number"
+  },
+  "car_window_proud_m": {
+   "type": "number"
+  },
+  "car_window": {
+   "type": "string"
+  },
+  "car_under": {
+   "type": "string"
+  }
+ },
+ "required": [
+  "_doc",
+  "radius_m",
+  "gauge_m",
+  "sleeper_step_m",
+  "lay_m",
+  "sleeper_m",
+  "rail_m",
+  "ballast",
+  "sleeper",
+  "rail",
+  "platform_m",
+  "platform_off_m",
+  "platform_roof_m",
+  "platform_roof_up_m",
+  "platform",
+  "platform_roof",
+  "shelter_m",
+  "shelter_post_m",
+  "shelter_wall",
+  "shelter_roof",
+  "terminal_roof",
+  "entrance_m",
+  "entrance",
+  "car_m",
+  "car_floor_m",
+  "car_window_low",
+  "car_window_high",
+  "car_window_proud_m",
+  "car_window",
+  "car_under"
+ ],
+ "strict": true
+}

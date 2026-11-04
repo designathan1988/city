@@ -97,6 +97,10 @@
     "native/src/core": [
       "core/"
     ],
+    "native/src/sim/transit": [
+      "core/",
+      "sim/"
+    ],
     "native/src/sim/catalog": [
       "core/",
       "sim/catalog/"
@@ -295,6 +299,7 @@
     "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
+    "project/data/render/transit.json": "tools/gates/schemas/transit.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
@@ -344,7 +349,7 @@
       "project/render/"
     ],
     "data_copy_allow": [
-      "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE", "native/src/sim/lots/lot_cache.cpp:LOT_LOOK", "native/src/sim/roads/road_network.cpp:LOT_LOOK_M", "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
       "native/src/sim/terrain/heightfield.cpp:BANK_START"
     ],

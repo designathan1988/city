@@ -94,13 +94,56 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 	}
 	return r.ok;
 }
+
+bool read_transit(ByteReader &r, TransitData &t) {
+	t = TransitData();
+	t.next_id = r.get<int32_t>();
+	const uint32_t stops = r.get<uint32_t>();
+	for (uint32_t i = 0; i < stops && r.ok; i++) {
+		TransitStop q;
+		q.id = r.get<int32_t>();
+		q.mode = TransitMode(r.get<uint8_t>());
+		q.at.x = r.get<float>();
+		q.at.y = r.get<float>();
+		q.seg = r.get<int32_t>();
+		q.track = r.get<int32_t>();
+		const uint8_t flags = r.get<uint8_t>();
+		q.terminal = (flags & 1) != 0;
+		q.has_entrance = (flags & 2) != 0;
+		q.entrance.x = r.get<float>();
+		q.entrance.y = r.get<float>();
+		t.stops.push_back(q);
+	}
+	const uint32_t tracks = r.get<uint32_t>();
+	for (uint32_t i = 0; i < tracks && r.ok; i++) {
+		RailTrack k;
+		k.id = r.get<int32_t>();
+		k.mode = TransitMode(r.get<uint8_t>());
+		r.get_vec(k.points);
+		t.tracks.push_back(std::move(k));
+	}
+	const uint32_t lines = r.get<uint32_t>();
+	for (uint32_t i = 0; i < lines && r.ok; i++) {
+		TransitLine l;
+		l.id = r.get<int32_t>();
+		l.mode = TransitMode(r.get<uint8_t>());
+		r.get_vec(l.stops);
+		l.colour = r.get<uint32_t>();
+		l.vehicles = r.get<int32_t>();
+		l.name.resize(r.get<uint32_t>());
+		r.get_bytes(l.name.data(), l.name.size());
+		t.lines.push_back(std::move(l));
+	}
+	return r.ok;
+}
 } // namespace
 
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
-	if (r.get<uint32_t>() != SAVE_VERSION) {
+	const uint32_t version = r.get<uint32_t>();
+	if (version > SAVE_VERSION || version < SAVE_OLDEST) {
 		error = "save.file.newer";
 		return false;
 	}
@@ -117,6 +160,9 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)
 	s.growth.grown = r.get<int32_t>();
+	s.transit = TransitData();
+	if (version >= SAVE_VERSION && !read_transit(r, s.transit)) return false;
+	s.transit_revision++;
 	if (!r.ok || r.get<uint32_t>() != SAVE_END) return false;
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);

@@ -40,6 +40,7 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
+	transit::bus_gone(s, id);
 	if (v.conn >= 0) conn_del(s, v.conn, id);
 	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	meso_unlink(s, id);
@@ -71,6 +72,7 @@ void reset_traffic(CityState &s) {
 	t.cross_cars.assign(arms, 0);
 	t.g.version = s.roads.version;
 	s.log.clear_net();
+	transit::reset(s);
 }
 
 namespace {
@@ -148,6 +150,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
+	transit::publish(s, f, stamp_ns, before, cx, cz, p.publish_radius_m);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
@@ -167,6 +170,7 @@ void step(CityState &s, float dt) {
 	meso_process(s);
 	change_lanes(s);
 	step_vehicles(s, dt);
+	transit::step(s, dt);
 	step_pedestrians(s, dt);
 }
 

@@ -106,6 +106,8 @@ struct Vehicle {
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
+	int bus = -1; // its place in TransitRun::buses
+	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
