@@ -186,7 +186,7 @@ func _map_layers() -> void:
 	await _frames(SETTLE)
 	await _shot("layer_grid")
 	Settings.set_layer("grid", false)
-	for style in 4:
+	for style in DataTables.render().streets.markings.styles.size():
 		CityStore.dispatch(&"set_marking_style", [style, false])
 		await _frames(FRAMES / 2)
 		await _shot("paint_%d" % style)

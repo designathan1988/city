@@ -24,13 +24,14 @@
  "plate_blend_m": 2.26,
  "face_eps_m": 0.004,
 	"markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "mer_line_m": 0.1, "mer_dash_m": 1, "mer_gap_m": 1, "lpp_line_m": 0.1, "lpp_run_min_m": 0.5,
-  "_doc": "styles: the regional paint standards of Menu > Paint (the order of the choices, the 4.0's ids), each with its dashes by speed and whether every line is white; a style's widths are base's unless it gives its own (br: CONTRAN MBST vol. IV). us and eu take the widths of base until their sources are read (MUTCD part 3; Vienna Convention 1968, EN 1436).",
+  "_doc": "styles: the regional paint standards of Menu > Paint (the order of the choices, the 4.0's ids), each with its dashes by speed and whether every line is white; a style's widths are base's unless it gives its own. br is the 4.0's drawing (markingStyle.ts 'br': dashes 3, 3, 4 m with gaps 6, 9, 12 m by speed, the style every new city of the 4.0 starts with, main.ts) and is the game's default: where the standard and the 4.0 differ in looks the 4.0 is drawn and the standard is a second table. br_norm is that second table, CONTRAN MBST vol. IV section 4.1 (dashes 2/4, 3/6 and 3/9 m, line widths of 0.10 m and 0.15 m from 80 km/h, double line on a road with more than one lane a direction, zebra of 0.35 m bars every 0.9 m); it comes last so the indexes of the other styles do not move. us and eu take the widths of base until their sources are read (MUTCD part 3; Vienna Convention 1968, EN 1436).",
   "base": {"centre_m": 0.18, "divider_m": 0.15, "fast_kmh": 80, "fast_centre_m": 0.18, "fast_divider_m": 0.15, "exclusive_m": 0.268, "double_line_m": 0.14, "double_gap_m": 0.24, "zebra_period_m": 1.0, "zebra_bar_m": 0.5, "zebra_edge_m": 0.3, "multi_lane_double": false},
   "styles": [
-   {"id": "br", "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "all_white": false, "centre_m": 0.1, "divider_m": 0.1, "fast_centre_m": 0.15, "fast_divider_m": 0.15, "exclusive_m": 0.25, "double_line_m": 0.1, "double_gap_m": 0.1, "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "multi_lane_double": true},
+   {"id": "br", "dash_kmh": [60, 80], "dash_m": [3, 3, 4], "gap_m": [6, 9, 12], "all_white": false},
    {"id": "us", "dash_kmh": [], "dash_m": [3.05], "gap_m": [9.14], "all_white": false},
    {"id": "eu", "dash_kmh": [], "dash_m": [3], "gap_m": [9], "all_white": true},
-   {"id": "classic", "dash_kmh": [], "dash_m": [3.2], "gap_m": [3.2], "all_white": false}
+   {"id": "classic", "dash_kmh": [], "dash_m": [3.2], "gap_m": [3.2], "all_white": false},
+   {"id": "br_norm", "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "all_white": false, "centre_m": 0.1, "divider_m": 0.1, "fast_centre_m": 0.15, "fast_divider_m": 0.15, "exclusive_m": 0.25, "double_line_m": 0.1, "double_gap_m": 0.1, "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "multi_lane_double": true}
   ]},
  "dropped_kerb": {
   "flare_m": 1.5,
