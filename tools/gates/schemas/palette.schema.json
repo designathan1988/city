@@ -46,9 +46,13 @@
     "rock_m": { "type": "number" },
     "land_layers": { "type": "number" },
     "dirt_layer": { "type": "number" },
-    "rock_layer": { "type": "number" }
+    "rock_layer": { "type": "number" },
+    "_slope_doc": { "type": "string" },
+    "dirt_from": { "type": "number" },
+    "dirt_to": { "type": "number" },
+    "rock_slope": { "type": "number" }
    },
-   "required": ["grass_map", "grass_tint", "rock", "sand", "land_map", "grass_m", "dirt_m", "rock_m", "land_layers", "dirt_layer", "rock_layer"],
+   "required": ["grass_map", "grass_tint", "rock", "sand", "land_map", "grass_m", "dirt_m", "rock_m", "land_layers", "dirt_layer", "rock_layer", "dirt_from", "dirt_to", "rock_slope"],
    "strict": true
   }
  },

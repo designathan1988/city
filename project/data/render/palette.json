@@ -56,6 +56,10 @@
   "rock_m": 23.2,
   "land_layers": 9.0,
   "dirt_layer": 8.0,
-  "rock_layer": 2.0
+  "rock_layer": 2.0,
+  "_slope_doc": "Slope bands as 1 - normal.y: loose soil shows from 28 to 35 deg (natural talus repose angle about 33-35 deg, Francou & Mante 1990, Permafrost and Periglacial Processes; 28.0-33.4 deg measured on Earth talus), bare rock from 40 deg, steeper than any loose debris rests.",
+  "dirt_from": 0.117,
+  "dirt_to": 0.181,
+  "rock_slope": 0.234
  }
 }

@@ -40,7 +40,7 @@ uniform vec3 rock : source_color;
 uniform vec3 sand : source_color;
 uniform float water_level = 0.0;
 uniform float sand_band = 2.0;
-uniform float rock_slope = 0.45;
+uniform float rock_slope; // 1 - normal.y; data/render/palette.json terrain (angle of repose)
 uniform float patch_scale;
 uniform sampler2D land_map : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float land_layers = 9.0; // terrain-land.map: square layers stacked vertically
@@ -48,7 +48,8 @@ uniform float dirt_layer = 8.0;
 uniform float rock_layer = 2.0;
 uniform float dirt_m = 13.6;
 uniform float rock_m = 23.2;
-uniform vec2 dirt_slope = vec2(0.11, 0.26); // 1 - normal.y: Roadcraft dirt 27..42 degrees
+uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)
+uniform float dirt_to; // ... and where it has replaced the grass
 uniform float map_half = 5120.0;
 group_uniforms;
 
@@ -176,7 +177,7 @@ void vertex() {
 	TANGENT = normalize((MODELVIEW_MATRIX * vec4(TANGENT, 0.0)).xyz);
 }
 ////////////////////////
-// Fragment: Roadcraft grass map in world space, sand at the shore, rock on steep slopes
+// Fragment: grass map in world space, sand at the shore, soil and rock on slopes steeper than loose debris rests
 ////////////////////////
 
 // Integer hash (pcg, as building.gdshader): exact on every GPU, unlike fract(sin(...)).
@@ -240,7 +241,7 @@ void fragment() {
 	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
 	float wander = (n - 0.5) * 0.08;
 	vec3 dirt = land(dirt_layer, v_vertex.xz / dirt_m);
-	c = mix(c, dirt, smoothstep(dirt_slope.x, dirt_slope.y, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope)));
+	c = mix(c, dirt, smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope)));
 	c = mix(c, sand, 1.0 - smoothstep(water_level + sand_band * 0.5, water_level + sand_band, v_vertex.y));
 	vec3 stone = mix(land(rock_layer, v_vertex.xz / rock_m), rock, 0.25);
 	c = mix(c, stone, smoothstep(rock_slope, rock_slope + 0.1, slope + wander));

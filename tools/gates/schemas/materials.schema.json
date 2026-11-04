@@ -522,13 +522,11 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       },
-       "minItems": 2,
-       "maxItems": 2
+      "wind_dir_x": {
+       "type": "number"
+      },
+      "wind_dir_z": {
+       "type": "number"
       },
       "wind_speed_ms": {
        "type": "number"
@@ -556,7 +554,8 @@
       }
      },
      "required": [
-      "wind_dir",
+      "wind_dir_x",
+      "wind_dir_z",
       "wind_speed_ms",
       "wind_ref_ms",
       "gust_m",
@@ -584,13 +583,11 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir": {
-       "type": "array",
-       "items": {
-        "type": "number"
-       },
-       "minItems": 2,
-       "maxItems": 2
+      "wind_dir_x": {
+       "type": "number"
+      },
+      "wind_dir_z": {
+       "type": "number"
       },
       "wind_speed_ms": {
        "type": "number"
@@ -621,7 +618,8 @@
       }
      },
      "required": [
-      "wind_dir",
+      "wind_dir_x",
+      "wind_dir_z",
       "wind_speed_ms",
       "wind_ref_ms",
       "gust_m",

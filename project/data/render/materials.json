@@ -176,7 +176,8 @@
  "vegetation": {
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "wind_dir": [0.8,  -0.6],
+   "wind_dir_x": 0.8,
+   "wind_dir_z": -0.6,
    "wind_speed_ms": 3.0,
    "wind_ref_ms": 3.0,
    "gust_m": 40.0,
@@ -190,7 +191,8 @@
  "vegetation_cards": {
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "wind_dir": [0.8,  -0.6],
+   "wind_dir_x": 0.8,
+   "wind_dir_z": -0.6,
    "wind_speed_ms": 3.0,
    "wind_ref_ms": 3.0,
    "gust_m": 40.0,

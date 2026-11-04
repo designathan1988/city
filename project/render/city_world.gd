@@ -168,7 +168,8 @@ func _build_terrain(palette: Dictionary) -> void:
 	# Terrain3D rebuilds its material when it enters the tree and drops parameters set before that (the ground then
 	# sampled the shader's white default texture), so the look is applied once the terrain is in the scene.
 	for key in palette.terrain:
-		mat.set_shader_param(key, _param(palette.terrain[key]))
+		if not key.begins_with("_"):
+			mat.set_shader_param(key, _param(palette.terrain[key]))
 
 
 func _build_water(palette: Dictionary) -> void:

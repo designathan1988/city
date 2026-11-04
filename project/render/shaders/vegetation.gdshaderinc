@@ -18,7 +18,8 @@ uniform float fade_m = 30.0;
 uniform float pop_m = 3.0;
 uniform float sway[16];
 uniform float flutter[16];
-uniform vec2 wind_dir = vec2(0.8, -0.6);
+uniform float wind_dir_x = 0.8; // the way the wind blows, x and z of a unit vector
+uniform float wind_dir_z = -0.6;
 uniform float wind_speed_ms = 3.0;
 uniform float wind_ref_ms = 3.0;
 uniform float gust_m = 40.0;
@@ -54,6 +55,7 @@ float tree_fade(vec3 root, float d, bool far) {
 // metres tall, of species `sp`; `leafy` adds the leaves' flutter.
 vec3 wind_offset(vec3 local, vec3 root, float height, int sp, bool leafy, float t) {
 	float strength = wind_speed_ms / max(wind_ref_ms, 0.01);
+	vec2 wind_dir = normalize(vec2(wind_dir_x, wind_dir_z));
 	vec3 dir = vec3(wind_dir.x, 0.0, wind_dir.y);
 	float h = clamp(local.y, 0.0, 1.4);
 	float front = dot(root.xz, wind_dir) / gust_m - t / gust_period_s;
