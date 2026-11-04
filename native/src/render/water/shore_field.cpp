@@ -94,7 +94,7 @@ void ShoreField::sync(const CityState &s) {
 	uint64_t rev = revision_;
 	if (rev == seen_) return;
 	busy_ = true;
-	s.jobs->submit(int64_t(-1), 0.f, [this, &s, rev]() { work(s, rev); });
+	s.jobs->submit(JOB_SHORE_LEVELS, 0.f, [this, &s, rev]() { work(s, rev); });
 }
 
 Dictionary ShoreField::view() const {

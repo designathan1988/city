@@ -137,7 +137,7 @@ void CanyonField::sync(const CityState &s, float cam_x, float cam_z) {
 	if (rev == seen_ && !moved) return;
 	busy_ = true;
 	float ox = std::floor((cam_x - FIELD_SPAN * 0.5f) / CELL_M) * CELL_M, oz = std::floor((cam_z - FIELD_SPAN * 0.5f) / CELL_M) * CELL_M;
-	s.jobs->submit(int64_t(-1), 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
+	s.jobs->submit(JOB_CANYON_WINDOW, 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
 }
 
 Dictionary CanyonField::view() const {

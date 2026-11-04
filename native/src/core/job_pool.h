@@ -16,6 +16,12 @@
 
 namespace city {
 
+// The jobs that stand for a whole field and not for a chunk. Each has a key of its own: a job replaced in the queue never
+// runs, and the field that waits for it would wait for ever.
+constexpr int64_t JOB_FOG_WINDOW = INT64_MIN;
+constexpr int64_t JOB_CANYON_WINDOW = INT64_MIN + 1;
+constexpr int64_t JOB_SHORE_LEVELS = INT64_MIN + 2;
+
 class JobPool {
 public:
 	explicit JobPool(unsigned threads = 0);
