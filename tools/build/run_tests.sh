@@ -6,8 +6,8 @@
 set -uo pipefail
 GODOT="$1"; PROJECT="$2"; LOGS="$3"; shift 3
 TEST_TIMEOUT_S="${TEST_TIMEOUT_S:-600}"
-TESTS=(tests/core/road_commands_test tests/core/save_undo_test tests/core/camera_input_test tests/e2e/e2e tests/core/prop_light_test)
-BOTH_RENDERERS=(tests/core/prop_light_test) # what the screen shows: also on Forward+, the game's renderer
+TESTS=(tests/core/road_commands_test tests/core/save_undo_test tests/core/camera_input_test tests/e2e/e2e tests/core/light_color_test)
+BOTH_RENDERERS=(tests/core/light_color_test) # what the screen shows: also on Forward+, the game's renderer
 mkdir -p "$LOGS"
 failed=0
 run_one() { # <test> <rendering method>

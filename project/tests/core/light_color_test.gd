@@ -1,14 +1,19 @@
-## The lights of the street furniture as the screen shows them, through the game's own Environment and "prop" material
+## The lights of the street as the screen shows them, through the game's own Environment and "prop" and "road" materials
 ## (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
 ## - by day, each signal lens lit must show the lens colour of data/render/streets.json props.signal (render/tone_map.gd
 ##   mirrors Godot's ACES by hand; this checks the mirror against the engine);
-## - by night, with the ambient and the moon off so only the part's own light is left, a part that glows at night
+## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light
+##   is left, a part that glows at night
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
 ##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
-##   saturate and hide an error).
+##   saturate and hide an error);
+## - by night likewise, a black road surface under the even light of a junction plate must show pool_floor x pool_color x
+##   plate_glow x pool_gain x night (road.gdshader: the albedo is nil, only the light's floor is left), with plate_glow
+##   raised on a copy of the material so the light stays mid range: at the game's own it is nearly black, where
+##   Compatibility itself is measured two steps off the blue (and its glow two more), on any material.
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
-## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/prop_light_test.tscn -- --no-flow
+## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
 extends Node3D
 
 const LENSES := 5 # prop_kit.h Lens::COUNT
@@ -19,7 +24,12 @@ const SIDE_M := 1.0 # each part: a square this wide, facing the camera
 const PITCH_M := 1.5
 const VIEW_M := 9.0 # orthographic camera's height
 const CAMERA_Z := 5.0
-const GLOW_AT := Vector3(0, -2.0, 0)
+const GLOW_AT := Vector3(-1.0, -2.0, 0)
+const ROAD_AT := Vector3(1.0, -2.0, 0)
+const ROAD_CONCRETE := 5 # road.gdshader M_CONCRETE: no map, albedo = the strip colour (black here)
+const ROAD_IDS := 16.0 # road.gdshader: the material id is COLOR.a * 16
+const ROAD_PLATE := Vector2(-1000.0, 0.0) # road.gdshader UV2 of a junction plate, lit evenly
+const ROAD_PLATE_GLOW := 3.0 # the plate's light shows e9d8b0, mid range
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
 const BYTE := 255.0
@@ -41,7 +51,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.make_current()
 	await _lenses(material)
-	await _glow(material)
+	await _night(material, world.materials()["road"])
 	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -74,16 +84,25 @@ func _lenses(material: ShaderMaterial) -> void:
 		n.queue_free()
 
 
-func _glow(material: ShaderMaterial) -> void:
+func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
 	world.environment.ambient_light_energy = 0.0
 	world.sun.light_energy = 0.0
+	world.environment.glow_enabled = false
+	road = road.duplicate()
+	road.set_shader_parameter("plate_glow", ROAD_PLATE_GLOW)
 	var node := MeshInstance3D.new()
 	node.mesh = _square(Vector2(GLOW_TAG, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
 	node.material_override = material
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.position = GLOW_AT
 	add_child(node)
+	var plate := MeshInstance3D.new()
+	plate.mesh = _square(ROAD_PLATE, Color(0, 0, 0, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
+	plate.material_override = road
+	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	plate.position = ROAD_AT
+	add_child(plate)
 	await _frames(FRAMES)
 	var night: float = world.daylight.night # what daylight.gd published to the shaders
 	var g: Color = Color(material.get_shader_parameter("glow_color")).srgb_to_linear()
@@ -92,7 +111,12 @@ func _glow(material: ShaderMaterial) -> void:
 	var radiance := Vector3(g.r * c.r, g.g * c.g, g.b * c.b) * k
 	var shown := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
-	_compare(get_viewport().get_texture().get_image(), GLOW_AT, want, "brilho noturno (night %.2f)" % night)
+	var img := get_viewport().get_texture().get_image()
+	_compare(img, GLOW_AT, want, "brilho noturno (night %.2f)" % night)
+	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
+	var lit: float = float(road.get_shader_parameter("pool_floor")) * float(road.get_shader_parameter("plate_glow")) 			* float(road.get_shader_parameter("pool_gain")) * night
+	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "luz da via (placa de cruzamento)")
 
 
 func _compare(img: Image, at: Vector3, want: Color, what: String) -> void:
