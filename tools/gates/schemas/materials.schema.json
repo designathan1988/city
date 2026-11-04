@@ -432,6 +432,15 @@
    ],
    "strict": true
   },
+  "people_blob": {
+   "type": "object",
+   "properties": {
+    "shader": {"type": "string"},
+    "params": {"type": "object", "properties": {"opacity": {"type": "number"}}, "required": ["opacity"], "strict": true}
+   },
+   "required": ["shader", "params"],
+   "strict": true
+  },
   "people": {
    "type": "object",
    "properties": {
@@ -655,6 +664,7 @@
   "prop",
   "agent",
   "people",
+  "people_blob",
   "overlay",
   "agent_glass",
   "vegetation",

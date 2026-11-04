@@ -366,11 +366,12 @@
    "properties": {
     "asset": {"type": "string"},
     "lod_m": {"type": "array", "items": {"type": "number"}},
+    "blob": {"type": "object", "properties": {"_doc": {"type": "string"}, "from_m": {"type": "number"}, "radius_m": {"type": "number"}, "lift_m": {"type": "number"}}, "required": ["_doc", "from_m", "radius_m", "lift_m"], "strict": true},
     "clothes": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
     "hair": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
     "grey": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}}
    },
-   "required": ["asset", "lod_m", "clothes", "hair", "grey"],
+   "required": ["asset", "lod_m", "blob", "clothes", "hair", "grey"],
    "strict": true
   }
  },

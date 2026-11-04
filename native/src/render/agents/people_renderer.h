@@ -1,6 +1,7 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
 // level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
-// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle. Material "people"
+// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle. Past blob_from_m
+// a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
 // (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
@@ -48,10 +49,15 @@ public:
 private:
 	PeopleAsset asset_;
 	godot::RID scenario_, material_;
-	std::vector<MultiMeshDraw> draws_; // variation * lods + level
+	std::vector<MultiMeshDraw> draws_; // variation * (lods + 1) + level; the last, the far mesh casting no shadow
 	std::vector<godot::PackedFloat32Array> bufs_;
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age
+	OwnedMesh blob_mesh_;
+	MultiMeshDraw blob_;
+	godot::PackedFloat32Array blob_buf_;
+	godot::RID blob_material_;
+	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 };
 
 } // namespace city
