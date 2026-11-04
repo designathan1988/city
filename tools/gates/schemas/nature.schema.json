@@ -1,0 +1,59 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "weather": {
+   "type": "object",
+   "additional": {
+    "type": "object",
+    "properties": {
+     "min": {
+      "type": "number"
+     },
+     "max": {
+      "type": "number"
+     },
+     "default": {
+      "type": "number"
+     }
+    },
+    "required": [
+     "min",
+     "max",
+     "default"
+    ],
+    "strict": true
+   }
+  },
+  "clouds": {
+   "type": "object"
+  },
+  "fog": {
+   "type": "object"
+  },
+  "paint": {
+   "type": "object"
+  },
+  "trees": {
+   "type": "object"
+  },
+  "ecology": {
+   "type": "object"
+  },
+  "elements": {
+   "type": "object"
+  }
+ },
+ "required": [
+  "weather",
+  "clouds",
+  "fog",
+  "paint",
+  "trees",
+  "ecology",
+  "elements"
+ ],
+ "strict": true
+}

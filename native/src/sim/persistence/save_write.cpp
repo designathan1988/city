@@ -96,6 +96,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	write_variants(w, s.catalog.variants);
 	write_roads(w, s.roads);
 	write_buildings(w, s.buildings);
+	write_nature(w, s);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
 	w.put<uint32_t>(SAVE_END);

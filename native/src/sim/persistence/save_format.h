@@ -9,6 +9,8 @@
 namespace city {
 
 struct CityState;
+struct ByteWriter;
+struct ByteReader;
 
 constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
@@ -19,5 +21,9 @@ std::vector<uint8_t> encode_city(const CityState &s);
 // Replaces the city with the saved one. On failure `error` is a strings.csv key and the state is left as a fresh map
 // of the saved seed (the caller starts a new map when it was not even that).
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error);
+
+// The landscape part of the file (save_nature.cpp).
+void write_nature(ByteWriter &w, const CityState &s);
+bool read_nature(ByteReader &r, CityState &s);
 
 } // namespace city

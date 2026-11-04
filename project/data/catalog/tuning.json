@@ -35,7 +35,13 @@
   "max_height_m": 400,
   "embankment_ratio": 1.8,
   "min_run_m": 7,
-  "road_sink_m": 0.06
+  "road_sink_m": 0.06,
+  "rough_reach_min": 0.78,
+  "min_hard_rim": 0.08,
+  "min_hard_wall_m": 8,
+  "river_depth_m": 2.5,
+  "river_freeboard_m": 1,
+  "river_floor_share": 0.72
  },
  "road": {
   "min_len_m": 8,

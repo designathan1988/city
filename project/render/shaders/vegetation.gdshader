@@ -11,4 +11,5 @@ void fragment() {
 	}
 	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint;
 	ROUGHNESS = roughness;
+	SPECULAR = leaf_specular;
 }

@@ -135,7 +135,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
-	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings) || !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)

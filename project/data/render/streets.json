@@ -410,8 +410,9 @@
  },
  "trees": {
   "_doc": "Trees (native/src/render/trees): the models are one unit tall and scaled to their height. Each key's origin is in the _doc of its block: atlas (_doc), species (_species_doc), placement (_doc). What has no published or measured value says so, as a modelling choice. The wind lives in materials.json (vegetation). The street trees stand where data/catalog/street_furniture.json places them.",
-  "_species_doc": "Species models, all keys a share of the tree's height unless said. dark, lit, color and bloom tones: medians measured on the visual-target photos and held as sRGB (green tones scaled until our crowns on screen match the reference crowns' median (33, 72, 43)). shade_bottom 0.43: linear luminance of the lower third over the upper third of a crown, median of 8 crowns measured on registro/vegetacao-terreno/14_lago_perto.jpg (0.27-0.91). jitter 0: no measurement separates a face's random tone from the leaf cards over it, so faces differ only by their normal. palm (Syagrus romanzoffiana, Carvalho, Especies Arboreas Brasileiras vol. 2, Embrapa 2006): arched pinnate leaves up to 5 m long give fronds length 0.38-0.46 of a tree of about 11 m; fronds count 10 is the low end of the 10-25 leaves a crown of field guides; trunk rings 5 are tube sections for the lean; segments 6 keeps the sagitta of a 5 m arc bent 90 degrees under a pixel at 30 m. Modelling choices, no published or measured value, compared by eye with the visual-target photos: trunk top, r0, r1, facets and lean; limbs count, reach, rise and r; crowns center, radius, rough, subdiv, cards, card and taper; heart_shade and heart_shrink; crown_reach; far_width; bloom above; fronds young, rise, droop, young_length, young_rise, young_droop, width and fold. seed: the random stream, no meaning.",
-  "atlas": {
+  "_species_doc": "Species models, all keys a share of the tree's height unless said. dark, lit, color and bloom tones: medians measured on the visual-target photos and held as sRGB (the green tones scaled in linear, through the inverse of ACES (render/tone_map.gd), until our crowns on screen show the median of the 4.0's crowns photographed in ports/landscape/reference-minha/07.jpg, (48, 85, 52), the same as ports/landscape/reference/12-matas_meio.png, (47, 80, 50)). shade_bottom 0.43: linear luminance of the lower third over the upper third of a crown, median of 8 crowns measured on registro/vegetacao-terreno/14_lago_perto.jpg (0.27-0.91). jitter 0: no measurement separates a face's random tone from the leaf cards over it, so faces differ only by their normal. palm (Syagrus romanzoffiana, Carvalho, Especies Arboreas Brasileiras vol. 2, Embrapa 2006): arched pinnate leaves up to 5 m long give fronds length 0.38-0.46 of a tree of about 11 m; fronds count 10 is the low end of the 10-25 leaves a crown of field guides; trunk rings 5 are tube sections for the lean; segments 6 keeps the sagitta of a 5 m arc bent 90 degrees under a pixel at 30 m. Modelling choices, no published or measured value, compared by eye with the visual-target photos: trunk top, r0, r1, facets and lean; limbs count, reach, rise and r; crowns center, radius, rough, subdiv, cards, card and taper; heart_shade and heart_shrink; crown_reach; far_width; bloom above; fronds young, rise, droop, young_length, young_rise, young_droop, width and fold. seed: the random stream, no meaning.",
+  "pictures": { "_doc": "picture_shade 0.42: the light a crown keeps from its own shadow and its neighbours, which a picture cannot cast: the woods on the horizon of ports/landscape/reference/18-horizonte.png against ours, through the inverse of ACES. The far level (render/trees/tree_pictures.cpp): frames of each species drawn from these elevations of the view; picture_share the frame side over the tree height, so the widest crown fits; frame_px the size at which a tree is never magnified at the near level switch (245 m at 900 px and 55 degrees: about 40 px).", "picture_px": 128, "picture_share": 1.7, "picture_shade": 0.42, "elevations_deg": [5, 30, 55, 80] },
+   "atlas": {
    "_doc": "Leaf atlas, drawn once at start (leaf_atlas.cpp). Modelling choices of a procedural texture, compared by eye with the leaf masses of the visual-target photos (registro/vegetacao-terreno/08_parque_dia.jpg); no published or measured value: px (texture side), leaves (leaves per tuft), leaf_len_px and leaf_wid_px (leaf size), spread and squash (tuft shape), heart_bias (leaves toward the tuft's middle), leaf_tone_min, lit_lift, rim and rim_share (leaf tones), leaflets, leaflet_px, leaflet_reach, leaflet_vary, leaflet_rise and leaflet_tilt (frond leaflets), rachis_px, rachis_tone and frond_tone_min (frond midrib and tone), seed (the random stream, no meaning).",
    "px": 256,
    "leaves": 540,
@@ -442,11 +443,11 @@
     "trunk": {"top": 0.45, "r0": 0.035, "r1": 0.022, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 3, "reach": 0.14, "rise": 0.14, "r": 0.014},
     "crowns": [
-     {"center": [0,  0.68,  0], "radius": [0.27,  0.22,  0.27], "rough": 0.22, "seed": 11, "subdiv": 1, "cards": 34, "card": 0.2, "taper": 0.0},
-     {"center": [0.1,  0.74,  0.06], "radius": [0.17,  0.15,  0.17], "rough": 0.2, "seed": 17, "subdiv": 1, "cards": 14, "card": 0.17, "taper": 0.0}
+     {"center": [0,  0.68,  0], "radius": [0.27,  0.22,  0.27], "rough": 0.22, "seed": 11, "subdiv": 1, "cards": 48, "card": 0.3, "taper": 0.0},
+     {"center": [0.1,  0.74,  0.06], "radius": [0.17,  0.15,  0.17], "rough": 0.2, "seed": 17, "subdiv": 1, "cards": 22, "card": 0.26, "taper": 0.0}
     ],
-    "dark": "#1d541d",
-    "lit": "#51bc42",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -461,10 +462,10 @@
     "trunk": {"top": 0.45, "r0": 0.03, "r1": 0.02, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 2, "reach": 0.09, "rise": 0.15, "r": 0.011},
     "crowns": [
-     {"center": [0,  0.68,  0], "radius": [0.16,  0.3,  0.16], "rough": 0.2, "seed": 23, "subdiv": 1, "cards": 30, "card": 0.17, "taper": 0.0}
+     {"center": [0,  0.68,  0], "radius": [0.16,  0.3,  0.16], "rough": 0.2, "seed": 23, "subdiv": 1, "cards": 44, "card": 0.26, "taper": 0.0}
     ],
-    "dark": "#1a4d1e",
-    "lit": "#49a73f",
+    "dark": "#3f614f",
+    "lit": "#9fc190",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -479,10 +480,10 @@
     "trunk": {"top": 0.18, "r0": 0.026, "r1": 0.018, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 0, "reach": 0.0, "rise": 0.0, "r": 0.0},
     "crowns": [
-     {"center": [0,  0.56,  0], "radius": [0.14,  0.42,  0.14], "rough": 0.12, "seed": 37, "subdiv": 1, "cards": 46, "card": 0.14, "taper": 0.6}
+     {"center": [0,  0.56,  0], "radius": [0.14,  0.42,  0.14], "rough": 0.12, "seed": 37, "subdiv": 1, "cards": 70, "card": 0.2, "taper": 0.6}
     ],
-    "dark": "#1c5421",
-    "lit": "#4dae45",
+    "dark": "#416955",
+    "lit": "#a9c99b",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -499,8 +500,8 @@
     "crowns": [
      {"center": [0,  0.82,  0], "radius": [0.03,  0.045,  0.03], "rough": 0.0, "seed": 41, "subdiv": 1, "cards": 0, "card": 0.0, "taper": 0.0}
     ],
-    "dark": "#3f7a2c",
-    "lit": "#82c04c",
+    "dark": "#629543",
+    "lit": "#cfdc6d",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -516,10 +517,10 @@
     "trunk": {"top": 0.46, "r0": 0.034, "r1": 0.022, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 4, "reach": 0.18, "rise": 0.12, "r": 0.013},
     "crowns": [
-     {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 43, "subdiv": 1, "cards": 40, "card": 0.21, "taper": 0.0}
+     {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 43, "subdiv": 1, "cards": 54, "card": 0.31, "taper": 0.0}
     ],
-    "dark": "#1d541d",
-    "lit": "#51bc42",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -527,7 +528,7 @@
     "crown_reach": 0.32,
     "far_width": 0.66,
     "cards_cast": false,
-    "bloom": {"dark": "#9a7a24", "lit": "#d8b53c", "above": 0.6}
+    "bloom": {"dark": "#ffc943", "lit": "#ffff67", "above": 0.6}
    },
    {
     "name": "ipe_pink",
@@ -535,10 +536,10 @@
     "trunk": {"top": 0.46, "r0": 0.034, "r1": 0.022, "facets": 6, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 4, "reach": 0.18, "rise": 0.12, "r": 0.013},
     "crowns": [
-     {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 47, "subdiv": 1, "cards": 40, "card": 0.21, "taper": 0.0}
+     {"center": [0,  0.68,  0], "radius": [0.3,  0.17,  0.3], "rough": 0.2, "seed": 47, "subdiv": 1, "cards": 54, "card": 0.31, "taper": 0.0}
     ],
-    "dark": "#1d541d",
-    "lit": "#51bc42",
+    "dark": "#43694b",
+    "lit": "#b1d895",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -546,7 +547,7 @@
     "crown_reach": 0.32,
     "far_width": 0.66,
     "cards_cast": false,
-    "bloom": {"dark": "#8e4e6c", "lit": "#d48aac", "above": 0.6}
+    "bloom": {"dark": "#ff83b8", "lit": "#ffd4ff", "above": 0.6}
    },
    {
     "name": "shrub",
@@ -554,10 +555,10 @@
     "trunk": {"top": 0.12, "r0": 0.03, "r1": 0.02, "facets": 5, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 0, "reach": 0.0, "rise": 0.0, "r": 0.0},
     "crowns": [
-     {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 53, "subdiv": 1, "cards": 16, "card": 0.38, "taper": 0.0}
+     {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 53, "subdiv": 1, "cards": 20, "card": 0.55, "taper": 0.0}
     ],
-    "dark": "#22581b",
-    "lit": "#52b337",
+    "dark": "#4e6f4a",
+    "lit": "#b3ce7f",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -572,10 +573,10 @@
     "trunk": {"top": 0.12, "r0": 0.03, "r1": 0.02, "facets": 5, "color": "#574330", "lean": 0.0, "rings": 1},
     "limbs": {"count": 0, "reach": 0.0, "rise": 0.0, "r": 0.0},
     "crowns": [
-     {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 59, "subdiv": 1, "cards": 16, "card": 0.38, "taper": 0.0}
+     {"center": [0,  0.5,  0], "radius": [0.62,  0.45,  0.55], "rough": 0.2, "seed": 59, "subdiv": 1, "cards": 20, "card": 0.55, "taper": 0.0}
     ],
-    "dark": "#22581b",
-    "lit": "#52b337",
+    "dark": "#4e6f4a",
+    "lit": "#b3ce7f",
     "jitter": 0.0,
     "shade_bottom": 0.43,
     "heart_shade": 0.55,
@@ -583,17 +584,21 @@
     "crown_reach": 0.6,
     "far_width": 1.2,
     "cards_cast": false,
-    "bloom": {"dark": "#a85a7a", "lit": "#e8b0c8", "above": 0.62}
+    "bloom": {"dark": "#ff96d0", "lit": "#ffffff", "above": 0.62}
    }
   ],
   "placement": {
+    "eco_gain": 0.3,
+    "eco_mean": 0.12,
+    "forest_gain": 1.2,
+    "planted_models": ["broadleaf", "broadleaf_tall", "conifer", "conifer", "palm", "palm"],
    "_doc": "Where trees grow (tree_place.cpp, tree_look.cpp). Woods: bands inner and edge by a field of patches mass_m 180 (patches of 100-250 m measured on the visual-target photos), octaves 3 of fractal noise, thresholds set from wood_inner_share and wood_edge_share (crown cover of the open land measured 0.10-0.12 on the far reference view). inner: crown_cover 0.7 and height_m 8-15 (cerradao, cover 50-90 %, Ribeiro & Walter 1998, Cerrado: ambiente e flora, Embrapa; SP Resolucao SMA 64/2009 art. 2 XI: over 8 m). edge: crown_cover 0.5 and height_m 3-6 (cerrado stricto sensu, SMA 64/2009 art. 2 XII: crowns on about 50 % of the ground, 3-6 m). open: height_m 3-8, lone trees within the 10 m the same item rarely passes, open_per_ha 0.5 measured on the visual-target photos. slope_grade 0.2-1.0 (true gradient): from forte ondulado, 20 %, to the 45 degrees of Lei 12.651/2012 art. 4 V; max_grade 0.75: no trees on escarpado relief, over 75 % (Embrapa, Sumula da X Reuniao Tecnica de Levantamento de Solos, 1979); riparian_m 30: art. 4 I a of the same law. jitter 1.0: a candidate anywhere in its cell of grid_m (jittered sampling, Cook 1986, ACM TOG 5(1)). tint_vary 0.15: spread of the median crown luminance over 8 crowns measured on 14_lago_perto.jpg, CV 0.088 times sqrt 3 for a uniform draw. near_m 245: a 12 m tree then spans 42-70 px of 900 at the camera's 55-35 degrees of fov. Sizing and modelling choices, no published or measured value: fade_m, pop_m, far_m, far_cell_m, far_spread, far_jitter, far_shadows, grid_m, slope_gain, riparian_gain, crowd_tall, crowd_narrow, edge_lean, width_vary, min_y_m, road_margin_m, lot_margin_m, park_m2_per_tree, park_edge_m, park_max, park_height_m, street_height_m, and the species shares of mix, park_mix and street_mix (broadleaf, broadleaf_tall, conifer, palm, ipe_yellow, ipe_pink, shrub).",
    "near_m": 245,
    "fade_m": 30,
    "pop_m": 3,
    "far_m": 6000,
-   "far_cell_m": 16,
-   "far_spread": 1.6,
+   "far_cell_m": 10,
+   "far_spread": 0.9,
    "far_jitter": 0.7,
    "far_shadows": 1,
    "grid_m": 6,
@@ -624,7 +629,7 @@
    "bands": {
     "inner": {"crown_cover": 0.7, "height_m": [8,  15], "mix": {"broadleaf_tall": 0.5, "broadleaf": 0.45, "palm": 0.05}},
     "edge": {"crown_cover": 0.5, "height_m": [3,  6], "mix": {"broadleaf": 0.6, "broadleaf_tall": 0.3, "palm": 0.1}},
-    "open": {"height_m": [3,  8], "mix": {"broadleaf": 0.6, "ipe_yellow": 0.15, "palm": 0.15, "shrub": 0.1}}
+    "open": {"height_m": [3,  8], "mix": {"broadleaf": 0.75, "palm": 0.15, "shrub": 0.1}}
    },
    "park_mix": {
     "broadleaf": 0.45,

@@ -27,12 +27,12 @@ struct TerrainModifier {
 
 // Roadcraft world/brush.ts BrushMode (the Relief cards and the landforms).
 // The order is the Relief cards' "mode" in data/ui/drawers.json.
-enum class BrushMode : int { RAISE = 0, LOWER, SMOOTH, FLATTEN, MESA, CANYON, ESCARPMENT, SUGARLOAF, GULLY, COUNT };
+enum class BrushMode : int { RAISE = 0, LOWER, SMOOTH, FLATTEN, MESA, CANYON, ESCARPMENT, SUGARLOAF, RIVER, COUNT };
 
 // One dab of a stroke (BrushStroke.dab): radius in metres, strength 0..1 (m/s to raise or lower, share/s to smooth or
 // level), dt seconds held, h0 = the height under the stroke's first dab (level and landforms).
 struct BrushDab {
-	float x = 0, z = 0, radius = 0, strength = 0, dt = 0, h0 = 0;
+	float x = 0, z = 0, radius = 0, strength = 0, dt = 0, h0 = 0, hardness = 0;
 	BrushMode mode = BrushMode::RAISE;
 };
 
@@ -82,11 +82,19 @@ public:
 	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
 	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers
-	bool is_water(float x, float z, float clearance) const { return water_at(x, z) > base_height_at(x, z) - clearance; }
+	// Water stands here: a water sample over the ground, or the ground under the sea.
+	bool is_water(float x, float z, float clearance) const {
+		float h = base_height_at(x, z) - clearance;
+		return water_at(x, z) > h || water_level > h;
+	}
 	bool raycast(const V2 &o2, float oy, const V2 &d2, float dy, float max_dist, float &hx, float &hy, float &hz) const;
 	SampleRect brush_rect(float cx, float cz, float radius) const;
 	// Applies one dab to the base heights (the caller records the rectangle for undo first); true when any changed.
 	bool brush(const BrushDab &d);
+	// The level a river drawn from ground `h0` stands at.
+	float river_level(float h0) const { return h0 - tune->terrain_river_freeboard_m; }
+	// Fills with `level` the water samples of the circle whose ground lies under it; `index`, `before` get what changed.
+	void flood(float x, float z, float radius, float level, std::vector<uint32_t> &index, std::vector<float> &before);
 	// Writes base samples back (undo / redo / load) and recomposes around them.
 	void write_samples(const std::vector<uint32_t> &idx, const std::vector<uint16_t> &values);
 	int add_modifier(const std::vector<float> &pts, float flat, float max_run);
@@ -100,6 +108,7 @@ public:
 
 private:
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
+	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
 };
 

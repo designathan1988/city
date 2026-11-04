@@ -106,13 +106,23 @@ void conform_under(CityState &s, int seg) {
 }
 
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz) {
-	for (int j = int(std::floor(minz / CHUNK)); j <= int(std::floor(maxz / CHUNK)); j++)
-		for (int i = int(std::floor(minx / CHUNK)); i <= int(std::floor(maxx / CHUNK)); i++) {
-			int64_t k = cell_key(i, j);
-			s.log.road_chunks.push_back(k);
-			s.log.building_chunks.push_back(k);
-			s.log.lot_cells.push_back(k);
-		}
+	for_chunks(minx, minz, maxx, maxz, [&](int64_t k) {
+		s.log.road_chunks.push_back(k);
+		s.log.building_chunks.push_back(k);
+		s.log.lot_cells.push_back(k);
+		s.log.nature_chunks.push_back(k);
+		s.log.water_chunks.push_back(k);
+	});
+}
+
+void mark_nature(CityState &s, double minx, double minz, double maxx, double maxz) {
+	for_chunks(minx, minz, maxx, maxz, [&](int64_t k) { s.log.nature_chunks.push_back(k); });
+}
+
+void mark_paint(CityState &s, const int rect[4]) {
+	s.log.paint_rects.insert(s.log.paint_rects.end(), rect, rect + 4);
+	const Heightfield &t = s.terrain;
+	mark_nature(s, t.x_of(rect[0]), t.x_of(rect[1]), t.x_of(rect[2]), t.x_of(rect[3]));
 }
 
 void mark_furniture(CityState &s, int seg) {

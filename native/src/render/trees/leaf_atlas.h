@@ -17,6 +17,7 @@ class LeafAtlas {
 public:
 	bool build(const godot::Dictionary &atlas, godot::PackedStringArray &errors);
 	godot::RID texture() const { return texture_.is_valid() ? texture_->get_rid() : godot::RID(); }
+	godot::Ref<godot::Image> image() const { return texture_->get_image(); } // for the tree pictures, once
 
 private:
 	godot::Ref<godot::ImageTexture> texture_;

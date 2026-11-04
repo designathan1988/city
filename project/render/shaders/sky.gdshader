@@ -16,11 +16,13 @@ void sky() {
 	vec3 dir = normalize(EYEDIR);
 	float h = dir.y;
 	float up = clamp(h, 0.0, 1.0);
+	float sd = LIGHT0_ENABLED ? clamp(dot(dir, LIGHT0_DIRECTION), 0.0, 1.0) : 0.0;
 	vec3 col = mix(horizon, zenith, pow(up, 0.62));
-	vec3 low_col = mix(low_horizon, low_zenith, smoothstep(0.0, 0.5, up));
+	// The sun's side of the horizon is warmer and brighter.
+	vec3 sunward = mix(low_horizon, low_horizon * vec3(1.12, 1.04, 0.92), pow(sd, 3.0) * 0.5);
+	vec3 low_col = mix(sunward, low_zenith, smoothstep(0.0, 0.5, up));
 	col = mix(col, low_col, low);
 	col = mix(ground, col, smoothstep(-0.12, 0.02, h));
-	float sd = LIGHT0_ENABLED ? clamp(dot(dir, LIGHT0_DIRECTION), 0.0, 1.0) : 0.0;
 	float glow = (pow(sd, 7.0) * 0.28 + pow(sd, 120.0) * 0.9 * sun_disc) * smoothstep(-0.05, 0.05, h);
 	COLOR = (col + sun_color * glow) * gain;
 }
