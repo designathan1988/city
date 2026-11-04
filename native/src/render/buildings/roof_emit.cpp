@@ -1,8 +1,8 @@
-// Roofs of a placed body (4.0 roofMesh.ts :485-541, roofPlan.ts): flat slabs (membrane or FLAT_ROOFS pick), terrace
+// Roofs of a placed body: flat slabs (membrane or FLAT_ROOFS pick), terrace
 // floors, parapets cut per bay (outer wall face, inner face, coping and lip; attic crowns 1.5 m), terrace railings,
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/b40_gen.h"
+#include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
 using namespace godot;
@@ -13,7 +13,7 @@ namespace {
 constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
 constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
-constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_H = 1.f, RAIL_IN = 0.12f;
+constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
 constexpr float RAIL_POST = 0.05f, RAIL_TOP = 0.05f, RAIL_MID = 0.45f, RAIL_EVERY = 1.5f, MACHINE_H = 3.f, MACHINE_IN = 0.3f;
 constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t GOLDEN = 2654435761u;
@@ -63,9 +63,10 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 		if (terrace) {
 			Basis rf{ sd.f.at(a0, 0, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
 			Lin rail = paint_lin(pl.data->color("roof_railing"));
-			parts.box(rf, 0, W, RAIL_H - RAIL_TOP, RAIL_H, -RAIL_TOP, 0, rail, FIN_METAL);
+			const float guard = pl.look->guard_h_m;
+			parts.box(rf, 0, W, guard - RAIL_TOP, guard, -RAIL_TOP, 0, rail, FIN_METAL);
 			parts.box(rf, 0, W, RAIL_MID - RAIL_POST / 2, RAIL_MID + RAIL_POST / 2, -RAIL_POST, 0, rail, FIN_METAL);
-			for (float a = 0; a < W; a += RAIL_EVERY) parts.box(rf, a, a + RAIL_POST, 0, RAIL_H, -RAIL_POST, 0, rail, FIN_METAL);
+			for (float a = 0; a < W; a += RAIL_EVERY) parts.box(rf, a, a + RAIL_POST, 0, guard, -RAIL_POST, 0, rail, FIN_METAL);
 			continue;
 		}
 		shell.grime_floor = -FAR_AWAY;

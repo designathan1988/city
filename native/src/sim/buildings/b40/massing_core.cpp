@@ -1,6 +1,6 @@
-// The common massing steps (jobs/b40/massing.ts: block, roofShape, roofOf, otherSkin, finish) and the body of a record
-// (jobs/building40.ts building40): kind from use and floors, plan, massing, lot furnishing, shift to the lot frame.
-#include "render/buildings/massing.h"
+// The common massing steps (a block, a roof's shape and paint, a second skin, the finish) and the body of a record:
+// kind from use and floors, plan, massing, the lot laid round it, shift to the lot frame.
+#include "sim/buildings/b40/massing.h"
 
 #include "core/units.h"
 
@@ -146,7 +146,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.kind = kind_of(zone, floors);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
-	b.plan = plan_lot(b.kind, W, D, r);
+	b.plan = plan_lot(data.lots, b.kind, W, D, r);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;
 	env.D = b.plan.y1 - b.plan.y0;
@@ -159,7 +159,7 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	for (Core &c : b.cores) { c.x += dx; c.y += dy; }
 	b.entrance_x += dx;
-	furnish_lot(data, b, r);
+	lay_out_lot(data, b, r);
 }
 
 } // namespace city::b40

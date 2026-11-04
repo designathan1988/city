@@ -1,6 +1,6 @@
-// One bay of one storey (4.0 facadeEmit.ts emitBay + meshCore.ts openingOf): the opening of its component, the wall
+// One bay of one storey: the opening of its component, the wall
 // round it with reveals, sill and head, the pane, and its parts (frames, sills, doors, balconies, railings, shutters,
-// louvres, brises, awnings, AC units) placed with the 4.0 `put` convention: a along the bay, h above the storey
+// louvres, brises, awnings, AC units) placed in the bay frame: a along the bay, h above the storey
 // floor, depth INTO the wall (negative = out in front), sizes (along, up, out).
 #pragma once
 
@@ -36,7 +36,7 @@ void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Openi
 struct Part {
 	const Basis *f;
 	float a, h, depth, sx, sy, sz;
-	const Data *data = nullptr; // part model sizes (buildings.json "parts")
+	const BuildingLook *look = nullptr; // part model sizes (buildings.json "parts")
 };
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin);

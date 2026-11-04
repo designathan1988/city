@@ -1,6 +1,6 @@
-// Flats, residential towers, shops and offices made to measure (jobs/b40/massing.ts flats/shop/office/setbacks/
-// towerShape): podiums, setbacks, crowns, twins, ells, U and L courts, pairs, the lift core and the shop dress.
-#include "render/buildings/massing.h"
+// Flats, residential towers, shops and offices made to measure: podiums, setbacks, crowns, twins, ells, U and L
+// courts, pairs, the lift core and the shop dress.
+#include "sim/buildings/b40/massing.h"
 
 #include "core/math.h"
 
@@ -11,6 +11,12 @@ namespace city::b40 {
 namespace {
 constexpr int PALETTES = 7, SHOP_FUNCTIONS = 8, ROUND_SIDES = 16;
 constexpr float HALF = 0.5f;
+// Floor-to-floor heights (m). Every one leaves the 2.50 m clear of a room or a workplace (Sao Paulo COE, Decreto
+// 57.776/2017 Anexo I 5.A.6) over a floor slab of at least 0.08 m (ABNT NBR 6118:2014 13.2.4.1). The city they make
+// (map 0: flats 3.25 m and offices 3.73 m of wall per storey, the tall ground floor included) stays under the CTBUH
+// database's height to the architectural top per floor (residential 3.42 m over 9,957 buildings, office 4.39 m over
+// 7,344; skyscrapercenter.com height calculator), which adds crowns and plant floors these walls leave out.
+// Shop storeys: the same minimum; their spread has no primary source yet.
 constexpr float FLATS_GROUND_LO = 3.8f, FLATS_GROUND_HI = 4.5f, FLATS_STOREY_LO = 2.9f, FLATS_STOREY_HI = 3.1f;
 constexpr float TALL_SHARE = 0.125f, SHOP_GROUND = 0.25f, HIP_SHARE = 0.4f, TERRACE_SHARE = 0.3f, BAR_LO = 12.f, BAR_HI = 15.f;
 constexpr float FACADE_SETBACK_LO = 0.5f, INSET_HI = 1.2f, TOWER_MIN = 8.f, TOWER_MAX_D = 22.f, OFFICE_MAX_D = 24.f;

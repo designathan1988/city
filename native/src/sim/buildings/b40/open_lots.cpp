@@ -1,10 +1,10 @@
-// Open lots as lot elements (Roadcraft civic.ts Square/Park/SportsCourt and openLot, lot frame: x from the lot's middle,
+// Open lots as lot elements (lot frame: x from the lot's middle,
 // y from the street). Park: a lawn behind a clipped hedge, a cross of paths with a ring walk, a fountain on a paved
 // round-point, a sand playground (swings, climbing frame, see-saw) and benches, lamps and bins along the paths.
 // Square: paving with lawn borders, a fountain, benches facing it, a bandstand on big squares and lamps on the axes.
 // Sports court: a fenced, painted court on a lawn with goals. Trees are stood by the tree renderer where
 // open_lot_tree_ok allows (the same layout numbers).
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/civic.h"
 
 #include "sim/buildings/building_store.h"
 

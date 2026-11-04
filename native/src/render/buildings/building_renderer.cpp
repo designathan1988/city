@@ -67,7 +67,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_parts_ = ctx.material("building_parts", errors);
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;
-	if (!data_.load(t, errors)) return false;
+	if (!look_.load(t, errors)) return false;
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();
@@ -100,14 +100,14 @@ void BuildingRenderer::reset() {
 void BuildingRenderer::set_ranges(const CityState &s) {
 	state_ = &s;
 	float detail = s.catalog.tune.render_building_detail_end_m;
-	parts_end_ = detail * data_.parts_share;
-	near_end_ = detail * data_.near_share;
+	parts_end_ = detail * look_.parts_share;
+	near_end_ = detail * look_.near_share;
 	mid_end_ = s.catalog.tune.render_building_mid_end_m;
 	far_end_ = s.catalog.tune.render_building_far_end_m;
-	float fov = data_.far_fov_deg > 0 ? data_.far_fov_deg : VIEW_ANGLE_FALLBACK;
+	float fov = look_.far_fov_deg > 0 ? look_.far_fov_deg : VIEW_ANGLE_FALLBACK;
 	float half_tan = std::tan(fov * PI_F / float(DEG_PER_TURN));
 	for (int i = 0; i < BAND_COUNT; i++) {
-		const b40::PartBand &pb = data_.part_bands[size_t(std::min(i, int(data_.part_bands.size()) - 1))];
+		const b40::PartBand &pb = look_.part_bands[size_t(std::min(i, int(look_.part_bands.size()) - 1))];
 		float px = std::max(pb.px_min, MIN_SCREEN_PX);
 		band_end_[size_t(i)] = std::min(pb.thick_max * PROJECTION_HEIGHT / (2 * half_tan * px), far_end_);
 	}
@@ -125,7 +125,7 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 	for (int l = 0; l < LEVELS; l++) ch.stale[l] = ch.built[l];
 	Super &sp = supers_[super_of(ch.centre)];
 	if (fresh) sp.chunks++;
-	if (!sp.dirty) sp.due = now_s() + data_.far_rebuild_delay_s; // later changes ride on the same request
+	if (!sp.dirty) sp.due = now_s() + look_.far_rebuild_delay_s; // later changes ride on the same request
 	sp.dirty = true;
 }
 
@@ -279,7 +279,7 @@ int BuildingRenderer::pending() const {
 // longer needs, and the far mesh's mask of the chunks drawn in detail (never a hole: a chunk leaves the far mesh only
 // once its mid level is up, and shows itself whatever the distance while no far mesh stands in).
 void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, float eye, std::vector<Want> &want) {
-	const float leave = mid_end_ * (1 + data_.far_hysteresis), mid_reach = mid_end_ + CHUNK * REACH_PAD;
+	const float leave = mid_end_ * (1 + look_.far_hysteresis), mid_reach = mid_end_ + CHUNK * REACH_PAD;
 	const bool far_missing = !sp.built || !sp.has_content;
 	const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
 	int mask = 0;
@@ -321,7 +321,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 		if (ground > far_end_ * DROP_K && sp.far.inst.is_valid()) drop_far(key, sp);
 		visit_super(key, sp, cam, eye, want);
 		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
-		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + data_.far_rebuild_interval_s);
+		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);
 		if (sp.dirty && due && ground <= far_end_) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
 			if (!super_requested_.count(key)) want_super.push_back({ ground, key, 0 });

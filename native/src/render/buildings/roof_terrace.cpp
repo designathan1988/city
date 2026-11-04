@@ -1,4 +1,4 @@
-// Used roof terraces (4.0 roofMesh.ts :132-176, roofPlan.ts :61-83): on a terrace with nothing built on it, at least
+// Used roof terraces: on a terrace with nothing built on it, at least
 // 4 x 4 m: a timber deck, plant pots along both long edges, tables with parasols and stools, loungers, a pergola and a
 // water tank, each kept or dropped by its own seed(k) of the building id and volume. Lot frame, z over the floor.
 #include "render/buildings/facade.h"
