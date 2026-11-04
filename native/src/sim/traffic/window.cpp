@@ -17,6 +17,7 @@ constexpr float MESO_VIEW_STEP = 64.f; // the camera moving this far is enough t
 constexpr double WINDOW_EVERY_S = 1.0;
 constexpr float MAT_TAIL_PAD_M = 2.f, MAT_END_PAD_M = 0.5f;
 constexpr float MAT_SPEED_SHARE = 0.7f;
+constexpr float FURNITURE_KEEP_WINDOWS = 2.f; // walkers live within 1.2 windows: their furniture is kept within 2
 
 float mid_dist2(const CityState &s, int seg, float cx, float cz) {
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -36,6 +37,7 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 		t.ped_metres += double(len) * ((p.has_walk_right ? 1 : 0) + (p.has_walk_left ? 1 : 0));
 		t.ped_segs.push_back(seg);
 	});
+	prune_furniture(s, cx, cz, w * FURNITURE_KEEP_WINDOWS); // the walkers' street furniture far behind the camera
 }
 
 } // namespace

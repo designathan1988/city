@@ -188,6 +188,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_zones(r.dict(tables, "zones"), c, errors);
 	load_growth(r.dict(tables, "growth"), c.growth, errors);
 	load_traffic_params(r.dict(tables, "traffic"), c.traffic, errors);
+	load_street_furniture(r.dict(tables, "street_furniture"), c.furniture, errors);
 	if (c.maps.empty()) errors.push_back("maps: nenhum mapa");
 	if (!errors.is_empty()) return false;
 	out = std::move(c);

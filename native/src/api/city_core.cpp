@@ -50,10 +50,15 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 		errors.push_back("CityCore fora da arvore");
 		return errors;
 	}
+	if (!catalog_ok_) { // the render draws the simulation's street furniture and crosswalks from the catalog
+		errors.push_back("render antes do catalogo");
+		return errors;
+	}
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
 	materials_ = materials;
 	ctx.tables = tables;
+	ctx.catalog = &state_->catalog;
 	Array names = materials.keys();
 	for (int i = 0; i < names.size(); i++) {
 		Ref<Material> m = materials[names[i]];

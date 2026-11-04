@@ -147,7 +147,7 @@ void build_junction(CityState &s, int n) {
 	j.degree = int(arms.size());
 	if (crosswalk_node(s, n))
 		for (const Arm &a : arms)
-			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.traffic.stop_back_m, g.ds[a.in].len * STOP_SETBACK_SHARE);
+			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
 	j.ctl = control_of(s, n);
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 	if (j.ctl != Control::PRIORITY) return;

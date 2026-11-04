@@ -5,6 +5,7 @@
 
 #include "render/mesh_builder.h"
 #include "render/roads/road_look.h"
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 namespace city {

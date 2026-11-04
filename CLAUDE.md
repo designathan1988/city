@@ -31,7 +31,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 - **Um dono por definição:** valores ajustáveis vivem só em `project/data/**` (tabelas JSON com schema).
   Nomes do tuning: X-macro `CITY_TUNING_FIELDS`; valores: `data/catalog/tuning.json` (`gate_tuning.py` exige
   as mesmas chaves e que todas sejam lidas). Regras com dono único estão em `tools/gates/owners.json`
-  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, dinheiro, estado do jogo);
+  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, estado do jogo);
   reimplementar o padrão em outro arquivo gera `DONO_UNICO`.
 - **Sem números mágicos** em `native/src`, `project/game`, `project/ui` (`NUMERO_MAGICO`): dê nome
   (constante no dono) ou mova para dados. Valor distintivo de um dado redigitado no código → `VALOR_DUPLICADO`;
@@ -79,7 +79,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
 
 **API GDExtension — native/src/api**
-- `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` — Dictionary → Catalog estrito; a X-macro do tuning dita as chaves
+- `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
@@ -103,7 +103,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 **Núcleo — native/src/sim**
 - `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação e consultas espaciais
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
-- `native/src/sim/catalog/catalog.h` — tipos do catálogo (sem valores)
+- `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
@@ -134,6 +134,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
+- `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` — dono único de onde fica o mobiliário da rua (postes, semáforos, hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
 - `native/src/sim/simulation/simulation.cpp` · `native/src/sim/simulation/simulation.h` — thread do tick, velocidades e relógio
@@ -156,8 +157,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/lane_list.cpp` — listas por faixa/conector e lista micro de veículos
 - `native/src/sim/traffic/meso.cpp` — modelo meso distante (uma fila por faixa)
 - `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: faixas da calçada (desvio, distância) e lugares de espera na guia
-- `native/src/sim/traffic/ped_routes.cpp` — rotas a pé e caminho de esquina
-- `native/src/sim/traffic/pedestrians.cpp` — pedestres com destino
+- `native/src/sim/traffic/ped_furniture.cpp` — mobiliário da rua como corpos parados nas calçadas (cache por segmento, sonda)
+- `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
 - `native/src/sim/traffic/traffic_state.h` — grafo de faixas, veículos, pedestres, meso e pools
@@ -216,12 +217,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/props/prop_kit.cpp` · `native/src/render/props/prop_kit.h` — malhas do mobiliário a partir dos dados
 - `native/src/render/props/prop_renderer.cpp` · `native/src/render/props/prop_renderer.h` · `native/src/render/props/signal_lamps.cpp` · `native/src/render/props/signal_lamps.h`
   — chunks do mobiliário; lentes dos semáforos, cada uma desenhada uma vez (um MultiMesh por chunk, acesa ou apagada pelo estado publicado)
-- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — colocação de postes, semáforos (um por acesso), árvores e mobiliário
+- `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes, fios, semáforos (um por acesso), árvores
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
 - `native/src/render/roads/road_junction.cpp` — placas de nó, beco sem saída e balão
-- `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook e fileiras de postes
+- `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
 - `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
@@ -284,7 +285,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
@@ -323,8 +324,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
-- Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; não desviam de árvores, postes e mobiliário da calçada
-  (a colocação deles é do render: precisa passar para a simulação, dono único, para os dois lerem).
+- Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; ainda não desviam do mobiliário (sonda `people_in_furniture`).
 - Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
   (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

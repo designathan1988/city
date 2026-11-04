@@ -18,7 +18,7 @@ struct TreeLook {
 	bool load(const godot::Dictionary &trees, godot::PackedStringArray &errors);
 };
 
-void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeSpot> &out);
 
 } // namespace city

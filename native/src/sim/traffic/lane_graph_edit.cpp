@@ -1,6 +1,7 @@
 // Incremental lane graph (Roadcraft lanes.ts dirtyNodes/rebuildNode/clearNode): a road edit marks the segments and
 // nodes it touched in the ChangeLog; traffic::step drains them here, rebuilding only those, and keeps the fleet and the
-// walkers on the streets that are still there.
+// walkers on the streets that are still there. The walkers' street furniture of those segments and of every segment of
+// those nodes (their mouths, lamp stations and signal posts move) is built again when next met.
 #include "sim/traffic/lane_graph_internal.h"
 
 #include "sim/traffic/traffic_system.h"
@@ -166,6 +167,12 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
+	for (int seg : removed) forget_furniture(s, seg);
+	for (int seg : changed) forget_furniture(s, seg);
+	for (int n : nodes) {
+		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
+		for (int seg : s.roads.nodes[size_t(n)].segs) forget_furniture(s, seg);
+	}
 	for (int n : nodes) clear_node(s, n);
 	for (int seg : changed) build_dir(s, seg);
 	for (int n : nodes) {

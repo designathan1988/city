@@ -172,6 +172,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t); // walkers inside another's body: walking, waiting
+	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
 	d["reroutes"] = t.reroutes;
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;

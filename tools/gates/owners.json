@@ -40,6 +40,14 @@
       "scope": ["native/src/", "project/render/"]
     },
     {
+      "id": "street_furniture",
+      "owner": "native/src/sim/roads/street_furniture.cpp",
+      "symbol": "segment_furniture",
+      "forbidden_elsewhere": ["\b(hydrant_first|hydrant_step|bin_first|bench_min_span|tree_first|tree_step|tree_clear|lamp_clear|signal_back|signal_in)_m\b", "\bzebra_(from|to)_m\b"],
+      "allow": ["native/src/sim/catalog/furniture_types.h", "native/src/api/furniture_loader.cpp", "native/src/render/roads/road_markings.cpp"],
+      "scope": ["native/src/"]
+    },
+    {
       "id": "money_format",
       "owner": "project/game/store/formatters.gd",
       "symbol": "format_money",

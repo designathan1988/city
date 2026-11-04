@@ -1,6 +1,9 @@
 // What every streamed renderer receives at startup: the scenario, the render data tables (project/data/render/*.json,
-// read by DataTables) and the materials made from data/render/materials.json by render/city_world.gd, by name.
+// read by DataTables), the materials made from data/render/materials.json by render/city_world.gd, by name, and the
+// simulation's catalog (loaded before the render: what the render draws where the simulation owns it).
 #pragma once
+
+#include "sim/catalog/catalog.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -17,6 +20,7 @@ struct RenderContext {
 	godot::RID scenario;
 	godot::Dictionary tables; // file stem -> parsed JSON (e.g. "palette", "models", "streets", "buildings")
 	std::unordered_map<std::string, godot::RID> materials;
+	const Catalog *catalog = nullptr;
 
 	// The material of that name, or an error when data/render/materials.json does not define it.
 	godot::RID material(const char *name, godot::PackedStringArray &errors) const {

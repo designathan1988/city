@@ -261,7 +261,8 @@ void emit_segment(const RoadEmit &e, int sid) {
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
 	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb);
 	std::vector<Piece> ps = pieces_of(e.L, p);
-	Ctx c{ e, sm, lamp_row(p, e.L.lamp), float(v0 + e.L.lamp.first) };
+	const LampDef &lamps = e.s.catalog.furniture.lamps;
+	Ctx c{ e, sm, lamp_row(p, lamps), float(lamp_origin(g, lamps)) };
 	for (size_t i = 0; i < ps.size(); i++) {
 		tops(c, ps[i]);
 		if (i + 1 < ps.size()) steps(c, ps[i], ps[i + 1]);

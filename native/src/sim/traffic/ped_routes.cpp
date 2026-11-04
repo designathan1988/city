@@ -1,8 +1,8 @@
 // Where walkers go (Roadcraft peds.ts spawnRoute/planCorner, routing.ts walking A*): a route of nodes over streets
 // with a sidewalk (cost length / pace + a fixed extra, heuristic straight distance / pace), and the way round each
 // node: from the corner it stands on, round the corners and over the crosswalks of the arms in between (the
-// rotation with the fewest crossings) to the start of the next sidewalk. Crosswalks lie `cross_at_m` past the
-// junction setback, from kerb to kerb.
+// rotation with the fewest crossings) to the start of the next sidewalk. A crosswalk is the middle line of the painted
+// zebra past the junction setback (catalog street_furniture.json "crossing"), from kerb to kerb.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/astar.h"
@@ -51,7 +51,8 @@ Waypoint kerb_point(const CityState &s, const Arm &a, int side) {
 	const RoadSegment &g = s.roads.segs[a.seg];
 	const Profile &p = s.roads.profile_of(a.seg);
 	const TrafficParams &tp = s.catalog.traffic;
-	float arc = a.at_a ? float(g.retreat_a) + tp.cross_at_m : float(g.len - g.retreat_b) - tp.cross_at_m;
+	const float at = s.catalog.furniture.crossing.middle();
+	float arc = a.at_a ? float(g.retreat_a) + at : float(g.len - g.retreat_b) - at;
 	float u = side == 0 ? -(p.asph_right + tp.kerb_stand_m) : p.asph_left + tp.kerb_stand_m;
 	Pose o;
 	sidewalk_pose(s, a.seg, 0, arc, u - p.walk_right, o);

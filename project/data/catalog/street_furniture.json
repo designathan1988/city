@@ -1,0 +1,53 @@
+{
+ "_doc": "Street furniture and crosswalks: the one owner of where every lamp, signal post, hydrant, bin, bench and street tree stands and where the crosswalk and stop line lie (native/src/sim/roads/street_furniture.cpp). The walkers keep off each piece's footprint; the render draws, lights and wires them from these places (how they look is data/render/streets.json). Lamps: first_m past the mouth, then every step_m, none within end_clear_m of the far mouth; the pole inset_m from the outer edge of the right sidewalk (else the left), the head reach_m toward the carriageway; a second row on the left sidewalk when the median is at least median_min_m wide. The night light pools follow the same stations.",
+ "lamps": {
+  "first_m": 8,
+  "step_m": 32,
+  "end_clear_m": 2,
+  "inset_m": 0.5,
+  "reach_m": 1.9,
+  "median_min_m": 1.2
+ },
+ "furniture": {
+  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges). Signal posts: signal_back_m past the crosswalk (crossing zebra_to_m), at most signal_max_share of the segment, signal_in_m from the kerb (Roadcraft 4.0: crosswalk + 2 m, kerb + 0.9 m). A hydrant, bin, bench or tree that would leave a walker no way past the pieces beside it is not placed (lamps and signal posts always are).",
+  "min_walk_m": 1.8,
+  "kerb_u_m": 0.45,
+  "wall_u_m": 0.55,
+  "end_clear_m": 2,
+  "lamp_clear_m": 3.5,
+  "hydrant_first_m": 9,
+  "hydrant_step_m": 90,
+  "hydrant_min_span_m": 20,
+  "bin_first_m": 3.2,
+  "bin_min_span_m": 24,
+  "bench_min_span_m": 70,
+  "bench_min_walk_m": 2.3,
+  "bin_after_bench_m": 2.2,
+  "signal_back_m": 2.0,
+  "signal_in_m": 0.9,
+  "signal_max_share": 0.45,
+  "tree_first_m": 10,
+  "tree_step_m": 12,
+  "tree_min_walk_m": 2.4,
+  "tree_kerb_u_m": 0.9,
+  "tree_clear_m": 4
+ },
+ "crossing": {
+  "_doc": "Where a crosswalk lies at a junction mouth, metres from the mouth (the arm's setback): the painted zebra (walkers cross its middle line and keep to its right half), the stop line, how far behind that line vehicles stop (stop_clear_m) and how far past the zebra a leaving vehicle's rear has cleared it (zebra_clear_m).",
+  "zebra_from_m": 0.7,
+  "zebra_to_m": 3.6,
+  "stop_from_m": 3.95,
+  "stop_to_m": 4.35,
+  "stop_clear_m": 0.1,
+  "zebra_clear_m": 0.6
+ },
+ "footprints": {
+  "_doc": "Ground each kind covers at walking height, [x_m, z_m] in its own frame (x along the sidewalk and z toward the road for the kerbside pieces; a signal post's z faces the arriving traffic): the pole, trunk or body; arms, heads and crowns are overhead.",
+  "signal_post": [0.24, 0.24],
+  "lamp_post": [0.3, 0.3],
+  "fire_hydrant": [0.56, 0.3],
+  "litter_bin": [0.58, 0.58],
+  "street_bench": [1.7, 0.5],
+  "street_tree": [0.4, 0.4]
+ }
+}

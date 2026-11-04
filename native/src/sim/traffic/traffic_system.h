@@ -3,6 +3,7 @@
 // in its own .cpp; Simulation::tick calls step() once per tick holding map_mutex shared and traffic_mutex.
 #pragma once
 
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 namespace city {
@@ -135,6 +136,15 @@ void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way
 void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
 void free_kerb_place(TrafficState &t, int id);
 void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+
+// ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
+// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
+const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
+bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
+void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
+void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
+int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

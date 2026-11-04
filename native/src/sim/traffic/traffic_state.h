@@ -121,6 +121,17 @@ constexpr int MAX_WAYS = 12; // two per arm crossed (at most 3 at a 6-arm node) 
 
 enum class PedMode : uint8_t { SIDEWALK = 0, WAY = 1, WAIT = 2 };
 
+// A piece of street furniture as a body standing on a sidewalk: its footprint along the segment's arc (s0..s1) and
+// across from the sidewalk's middle (u0..u1), and in the world (centre, the arc's direction there, half sizes).
+struct StreetObstacle {
+	float s0 = 0, s1 = 0, u0 = 0, u1 = 0;
+	float x = 0, z = 0, fx = 1, fz = 0, half_along = 0, half_across = 0;
+};
+struct SidewalkFurniture {
+	std::vector<StreetObstacle> side[2]; // right (0) and left (1) sidewalk, by s0
+	float longest = 0; // the longest footprint along the arc (a search by s0 starts this far back)
+};
+
 // A walker with a destination (Roadcraft peds.ts): a route of nodes over streets with sidewalks; along a sidewalk on
 // its own track, round each corner and over the crosswalks (waiting at the kerb for the walk phase or a gap).
 struct Pedestrian {
@@ -163,6 +174,9 @@ struct TrafficState {
 	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
 	std::vector<std::vector<int>> crowd; // per sidewalk (seg * 2 + side): its walkers by arc, rebuilt every step
 	std::vector<int> crowd_keys; // the sidewalks of `crowd` with walkers this step
+	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
+	// dropped when an edit touches the segment or a node of it, and far from the camera.
+	std::unordered_map<int, SidewalkFurniture> furniture;
 	// Far (meso) model, Roadcraft traffic/meso.ts: one queue per lane in order of entry and one event per vehicle at
 	// the end of its lane; lane_last_exit spaces the queues; micro_list holds the near vehicles only.
 	std::vector<int> meso_head, meso_tail;

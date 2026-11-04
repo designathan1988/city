@@ -1,0 +1,246 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "lamps": {
+   "type": "object",
+   "properties": {
+    "first_m": {
+     "type": "number"
+    },
+    "step_m": {
+     "type": "number"
+    },
+    "end_clear_m": {
+     "type": "number"
+    },
+    "inset_m": {
+     "type": "number"
+    },
+    "reach_m": {
+     "type": "number"
+    },
+    "median_min_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "first_m",
+    "step_m",
+    "end_clear_m",
+    "inset_m",
+    "reach_m",
+    "median_min_m"
+   ],
+   "strict": true
+  },
+  "furniture": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "min_walk_m": {
+     "type": "number"
+    },
+    "kerb_u_m": {
+     "type": "number"
+    },
+    "wall_u_m": {
+     "type": "number"
+    },
+    "end_clear_m": {
+     "type": "number"
+    },
+    "lamp_clear_m": {
+     "type": "number"
+    },
+    "hydrant_first_m": {
+     "type": "number"
+    },
+    "hydrant_step_m": {
+     "type": "number"
+    },
+    "hydrant_min_span_m": {
+     "type": "number"
+    },
+    "bin_first_m": {
+     "type": "number"
+    },
+    "bin_min_span_m": {
+     "type": "number"
+    },
+    "bench_min_span_m": {
+     "type": "number"
+    },
+    "bench_min_walk_m": {
+     "type": "number"
+    },
+    "bin_after_bench_m": {
+     "type": "number"
+    },
+    "signal_back_m": {
+     "type": "number"
+    },
+    "signal_in_m": {
+     "type": "number"
+    },
+    "signal_max_share": {
+     "type": "number"
+    },
+    "tree_first_m": {
+     "type": "number"
+    },
+    "tree_step_m": {
+     "type": "number"
+    },
+    "tree_min_walk_m": {
+     "type": "number"
+    },
+    "tree_kerb_u_m": {
+     "type": "number"
+    },
+    "tree_clear_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "min_walk_m",
+    "kerb_u_m",
+    "wall_u_m",
+    "end_clear_m",
+    "lamp_clear_m",
+    "hydrant_first_m",
+    "hydrant_step_m",
+    "hydrant_min_span_m",
+    "bin_first_m",
+    "bin_min_span_m",
+    "bench_min_span_m",
+    "bench_min_walk_m",
+    "bin_after_bench_m",
+    "signal_back_m",
+    "signal_in_m",
+    "signal_max_share",
+    "tree_first_m",
+    "tree_step_m",
+    "tree_min_walk_m",
+    "tree_kerb_u_m",
+    "tree_clear_m"
+   ],
+   "strict": true
+  },
+  "crossing": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "zebra_from_m": {
+     "type": "number"
+    },
+    "zebra_to_m": {
+     "type": "number"
+    },
+    "stop_from_m": {
+     "type": "number"
+    },
+    "stop_to_m": {
+     "type": "number"
+    },
+    "stop_clear_m": {
+     "type": "number"
+    },
+    "zebra_clear_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "zebra_from_m",
+    "zebra_to_m",
+    "stop_from_m",
+    "stop_to_m",
+    "stop_clear_m",
+    "zebra_clear_m"
+   ],
+   "strict": true
+  },
+  "footprints": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "signal_post": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "lamp_post": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "fire_hydrant": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "litter_bin": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "street_bench": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "street_tree": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    }
+   },
+   "required": [
+    "_doc",
+    "signal_post",
+    "lamp_post",
+    "fire_hydrant",
+    "litter_bin",
+    "street_bench",
+    "street_tree"
+   ],
+   "strict": true
+  }
+ },
+ "required": [
+  "_doc",
+  "lamps",
+  "furniture",
+  "crossing",
+  "footprints"
+ ],
+ "strict": true
+}
