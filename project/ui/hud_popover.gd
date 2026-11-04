@@ -138,7 +138,7 @@ func _build_menu(col: Control, spec: Dictionary) -> void:
 
 func _seg_quality(col: Control, r: Dictionary) -> void:
 	var items := []
-	for p: String in GraphicsPanel.PRESETS:
+	for p: String in DataTables.game("settings").presets:
 		items.append([p, tr("quality." + p)])
 	var row := HudWidgets.option_row(col, tr(r.label_key))
 	var box := HFlowContainer.new()
