@@ -16,6 +16,8 @@ export const WORKSPACE_EVIDENCE = 'evidence';
 /** A feature names a branch and a folder: lower case, digits and dashes. */
 const FEATURE_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const SHORT_SHA = 12;
+/** Godot's `override.cfg` (project root, same format as project.godot) overrides any project setting; it stays out of git. */
+const OVERRIDE_CFG = 'project/override.cfg';
 
 export interface WorkspaceRecord {
   readonly version: number;
@@ -43,6 +45,30 @@ export interface CreateWorkspaceInput {
   readonly config: SandboxConfig;
 }
 
+/**
+ * Gives the clone its own Godot user folder (`user://`). The engine names that folder after the project, so every clone
+ * and the game itself shared one: the player's settings.cfg, the saves and the ~107 MiB Vulkan pipeline cache the engine
+ * reads whole into static memory, rewritten by whichever session ran the game last, which moved the others' photos
+ * and memory numbers. `application/config/use_custom_user_dir` and `custom_user_dir_name`, set in the clone's own
+ * override.cfg (Godot docs: File paths in Godot projects, ProjectSettings), name a folder after the feature.
+ */
+export function isolateUserData(workspace: string, feature: string): void {
+  fs.writeFileSync(
+    path.join(workspace, OVERRIDE_CFG),
+    `[application]
+
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Roadcraft-${feature}"
+`,
+    'utf8',
+  );
+  const info = path.join(workspace, '.git', 'info');
+  fs.mkdirSync(info, { recursive: true });
+  fs.appendFileSync(path.join(info, 'exclude'), `
+/${OVERRIDE_CFG}
+`, 'utf8');
+}
+
 /** Clones the game (isolated) into `<port>/workspace` on `convert/<feature>` and runs the configuration's setup there. */
 export function createWorkspace(input: CreateWorkspaceInput): WorkspaceRun & { readonly record: WorkspaceRecord; readonly gameChanged: boolean } {
   if (!FEATURE_NAME.test(input.feature)) throw new Error(`feature "${input.feature}": use lower case letters, digits and dashes (it names a branch)`);
@@ -55,6 +81,7 @@ export function createWorkspace(input: CreateWorkspaceInput): WorkspaceRun & { r
   prepare(game, base, workspace, input.config);
   const branch = `convert/${input.feature}`;
   git(workspace, ['checkout', '--quiet', '-b', branch]);
+  isolateUserData(workspace, input.feature);
   const record: WorkspaceRecord = { version: WORKSPACE_VERSION, feature: input.feature, game, base, branch, workspace: normalizePath(workspace) };
   fs.writeFileSync(path.join(portDir, WORKSPACE_RECORD), JSON.stringify(record, null, 2) + '\n', 'utf8');
   const steps: StepResult[] = [];
