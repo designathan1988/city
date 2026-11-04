@@ -182,28 +182,32 @@
  "vegetation": {
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
    "sway_hz": 0.25,
-   "roughness": 0.85
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "bark_ridges": 9.0,
+   "bark_run_m": 1.1,
+   "bark_deep": 0.55,
+   "bark_far_m": 60.0
   }
  },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
  "vegetation_cards": {
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
    "sway_hz": 0.25,
-   "roughness": 0.85,
-   "cover_per_mip": 0.25
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "cover_per_mip": 0.25,
+   "leaf_near_m": 22.0,
+   "leaf_far_m": 70.0
   }
  }
 }

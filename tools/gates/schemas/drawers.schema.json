@@ -38,7 +38,7 @@
       "enum": [
        "road_catalog",
        "zone_cards",
-       "relief_cards",
+       "land_panels",
        "build_cards"
       ]
      },
@@ -78,7 +78,10 @@
           "SPLIT",
           "ROUNDABOUT",
           "TERRAIN",
-          "LOT"
+          "LOT",
+          "PAINT",
+          "TREES",
+          "CLOUD"
          ]
         },
         "profile": {

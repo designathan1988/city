@@ -112,7 +112,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
-	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings) || !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)

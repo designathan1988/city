@@ -95,8 +95,8 @@ Dictionary CityCore::segment_at(const Vector3 &p) {
 	return d;
 }
 
-Dictionary CityCore::terrain_brush(const Vector3 &p, float radius, float strength, float dt, int mode) {
-	return run_edit(*state_, "cmd.place.terrainBrush", [&](CityState &s) { return terrain_dab(s, p.x, p.z, radius, strength, dt, mode); });
+Dictionary CityCore::terrain_brush(const Vector3 &p, float radius, float strength, float dt, int mode, float hardness) {
+	return run_edit(*state_, "cmd.place.terrainBrush", [&](CityState &s) { return terrain_dab(s, p.x, p.z, radius, strength, dt, mode, hardness); });
 }
 
 Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, int zone) {

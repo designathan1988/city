@@ -182,4 +182,19 @@ void j_terrain_touch(CityState &s, const SampleRect &r) {
 	e.grow(t.x_of(r.x0), t.x_of(r.z0), t.x_of(r.x1), t.x_of(r.z1));
 }
 
+void j_nature(CityState &s, size_t bytes, NatureEdit edit) {
+	if (!s.history.recording) return;
+	record(s, OpKind::NATURE, -1).nature = std::make_shared<const NatureEdit>(std::move(edit));
+	s.history.open.bytes += bytes;
+}
+
+void j_paint_touch(CityState &s, const std::vector<int> &tiles) {
+	if (!s.history.recording) return;
+	for (int key : tiles) {
+		if (s.history.open.paint_open.count(key)) continue;
+		const PaintTile *t = s.nature.ground.tile(key);
+		s.history.open.paint_open[key] = t ? std::make_shared<const PaintTile>(*t) : nullptr;
+	}
+}
+
 } // namespace city

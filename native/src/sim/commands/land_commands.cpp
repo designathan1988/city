@@ -2,11 +2,13 @@
 // stroke is one undo step) and a building drawn as a lot rectangle (Roadcraft lotEdit.ts lot "rect", the Build
 // drawer's Draw tab) with the function chosen in the strip: civic buildings, parks and squares.
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
 
 #include "core/random.h"
 #include "sim/buildings/growth.h"
 #include "sim/state/city_state.h"
+#include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,7 +23,42 @@ constexpr double SEED_GRID_M = 4;
 constexpr double HALF = 0.5; // the drawn lot's seed comes from its corner rounded to this grid
 } // namespace
 
-EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode) {
+// The rock a landform stands on, under the whole dab and a little past it, so it reaches the foot of its cliff.
+void landform_rock(CityState &s, double x, double z, double radius, BrushMode mode) {
+	const PaintDef &def = s.catalog.nature.paint;
+	size_t i = size_t(int(mode) - int(BrushMode::MESA));
+	if (mode < BrushMode::MESA || mode > BrushMode::SUGARLOAF || i >= def.landform_rock.size()) return;
+	PaintDab rock;
+	rock.x = float(x); rock.z = float(z); rock.radius = float(radius) * def.rock_reach; rock.strength = 1.f; rock.kind = def.landform_rock[i];
+	paint_dab(s, rock);
+}
+
+// The water of a river dab, and what undoes it.
+void lay_river(CityState &s, const BrushDab &d) {
+	std::vector<uint32_t> index;
+	std::vector<float> before;
+	float level = s.terrain.river_level(d.h0);
+	const PaintDef &paint = s.catalog.nature.paint;
+	PaintDab bank;
+	bank.x = d.x;
+	bank.z = d.z;
+	bank.radius = d.radius * paint.river_sand_reach;
+	bank.strength = 1;
+	bank.kind = paint.river_sand;
+	paint_dab(s, bank); // the banks of the river are sand, as far as its water wets them
+	s.terrain.flood(d.x, d.z, d.radius, level, index, before);
+	cut_trees_at(s, d.x, d.z, d.radius);
+	if (index.empty()) return;
+	double x0 = d.x - d.radius, z0 = d.z - d.radius, x1 = d.x + d.radius, z1 = d.z + d.radius;
+	auto mark = [x0, z0, x1, z1](CityState &st) { for_chunks(x0, z0, x1, z1, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
+	mark(s);
+	j_nature(s, index.size() * (sizeof(uint32_t) + sizeof(float)), [index, before, level, mark](CityState &st, bool fwd) {
+		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? level : before[i];
+		mark(st);
+	});
+}
+
+EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode, double hardness) {
 	EditResult r;
 	if (mode < 0 || mode >= int(BrushMode::COUNT) || radius <= 0 || !s.terrain.in_bounds(float(x), float(z))) {
 		r.error = "tool.failed";
@@ -36,15 +73,45 @@ EditResult terrain_dab(CityState &s, double x, double z, double radius, double s
 	d.x = float(x); d.z = float(z); d.radius = float(radius); d.strength = float(strength); d.dt = float(dt);
 	d.h0 = h.stroke_h0;
 	d.mode = BrushMode(mode);
+	d.hardness = float(hardness);
 	j_terrain_touch(s, s.terrain.brush_rect(d.x, d.z, d.radius));
 	if (!s.terrain.brush(d)) {
 		r.ok = true;
 		return r;
 	}
+	landform_rock(s, x, z, radius, d.mode);
+	if (d.mode == BrushMode::RIVER) lay_river(s, d);
 	mark_ground(s, x - radius, z - radius, x + radius, z + radius);
 	finish_edit(s, x - radius, z - radius, x + radius, z + radius);
 	r.ok = true;
 	return r;
+}
+
+void unflood(CityState &s) {
+	Heightfield &t = s.terrain;
+	if (t.water.empty()) return;
+	TerrainGen gen(s.seed, s.map_half, s.catalog.tune.world_water_spacing_m);
+	std::vector<uint32_t> index;
+	std::vector<float> before, after;
+	for (int gz = 0; gz < t.water_n; gz++)
+		for (int gx = 0; gx < t.water_n; gx++) {
+			size_t i = size_t(gz) * t.water_n + gx;
+			if (t.water[i] == TerrainGen::NO_WATER) continue;
+			float was = gen.flat() ? TerrainGen::NO_WATER : gen.water_at_sample(gx, gz);
+			if (was == t.water[i]) continue;
+			index.push_back(uint32_t(i));
+			before.push_back(t.water[i]);
+			after.push_back(was);
+			t.water[i] = was;
+		}
+	if (index.empty()) return;
+	float h = s.map_half;
+	auto mark = [h](CityState &st) { for_chunks(-h, -h, h, h, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
+	mark(s);
+	j_nature(s, index.size() * (sizeof(uint32_t) + 2 * sizeof(float)), [index, before, after, mark](CityState &st, bool fwd) {
+		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? after[i] : before[i];
+		mark(st);
+	});
 }
 
 std::string lot_frame(const CityState &s, double ax, double az, double bx, double bz, Building &b) {
