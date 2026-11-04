@@ -22,7 +22,7 @@ constexpr int ID_OFF = 7;
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
 	for (const Volume &o : b.volumes) {
-		if (&o == &v || o.base > v.top() - 1 || o.top() < v.top()) continue;
+		if (&o == &v || o.base > v.top() || o.top() < v.top()) continue; // the storey under the roof, or a block standing on it
 		if (p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
 	}
 	return false;
@@ -113,11 +113,14 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 		const Volume &v = b.volumes[i];
 		float eaves = b.level_z(v.top());
 		emit_roof_gear(shell, pl, v, eaves);
-		bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
+		const bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE;
 		if (pl.coarse) {
 			if (!roof_flat(v.roof)) continue;
 			RoofEmit re{ shell, parts, pl, v, eaves };
-			for (const Side &sd : sides_of(pl, v, 0)) re.crown_bands(sd, on_top ? CROWN_NONE : v.crown);
+			for (const Side &sd : sides_of(pl, v, 0)) {
+				re.crown_bands(sd, v.crown);
+				if (terrace) re.edge(sd, true, v.crown);
+			}
 			if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
 			continue;
 		}
@@ -128,10 +131,9 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 		shell.grime_floor = -FAR_AWAY;
 		top_face(shell, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
 		RoofEmit re{ shell, parts, pl, v, eaves };
-		Crown crown = on_top ? CROWN_NONE : v.crown;
 		for (const Side &sd : sides_of(pl, v, 0)) {
-			if (!on_top) re.edge(sd, terrace, crown);
-			re.crown_bands(sd, crown);
+			re.edge(sd, terrace, v.crown); // bay by bay, only where the roof really ends: a setback's ledge has its own
+			re.crown_bands(sd, v.crown);
 		}
 		re.machine_rooms();
 		if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
