@@ -27,6 +27,12 @@ struct BlastParams {
 	float knock_min_s = 0, knock_span_s = 0, panic_s = 0, panic_gain = 0, torn_kpa = 0, sever_chance = 0, maim_chance = 0;
 	float hold_growth_s = 0, fire_min_s = 0, fire_span_s = 0, wear_gain = 0;
 	int fire_max = 0;
+	// The pistol (shot): health of a walker and what each part costs, how a wound goes on.
+	float walker_hp = 0, damage_head = 0, damage_torso = 0, damage_limb = 0, sever_hits_hp = 0, sever_hp_cost = 0;
+	float body_reach_m = 0, body_height_m = 0, head_above_m = 0, torso_above_m = 0, arm_aside_m = 0, grave_hp = 0;
+	float bleed_limb = 0, bleed_leg = 0, bleed_hurt = 0, shot_knock_min_s = 0, shot_knock_span_s = 0, two_wheeler_rider_m = 0;
+	int open_hits = 0, vehicle_shots_to_burst = 0, burst_force = 0;
+	float glass_above = 0;
 	float crater_k_earth = 0, crater_k_hard = 0, crater_ratio = 0, pass_width_m = 0, crater_min_m = 0;
 };
 

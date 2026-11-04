@@ -31,15 +31,16 @@ constexpr float THROW_SPEED = 5.f, THROW_LIFT = 3.f, THROW_SCATTER = 4.f, THROWN
 constexpr float SPLINTER_PUSH_MIN = 0.8f, SPLINTER_STEP_MIN = 1.f, SPLINTER_STEP_SPAN = 2.5f, SPLINTER_BASE_M = 0.5f;
 constexpr float SPARK_PUFFS = 18.f, SPARK_SPREAD = 0.3f, SPARK_SIZE = 0.12f, SPARK_LIFE = 0.8f;
 constexpr float WRECK_L = 4.4f, WRECK_H = 1.4f, WRECK_W = 1.8f, CAR_BURN_S = 40.f, CAR_THROW_SPEED = 9.f, WRECK_LIFT = 3.f;
-constexpr float TWO_WHEELER_BURN_S = 10.f; // a moped or a bike burns less
-constexpr float TWO_WHEELER_L = 0.45f, TWO_WHEELER_H = 0.7f, TWO_WHEELER_W = 0.3f; // its box as shares of a car's
+constexpr float MOPED_BURN_S = 10.f; // a moped or a bike burns less
+constexpr float TRUNK_BURN_S = 10.f; // a thrown trunk smoulders as long
+constexpr float MOPED_L = 0.45f, MOPED_H = 0.7f, MOPED_W = 0.3f; // its box as shares of a car's
 constexpr float ROLL_R = 0.32f, ROLL_W = 0.22f;
 constexpr float FIRE_PUFFS_CAR = 40.f, FIRE_PUFFS_BIKE = 15.f, FIRE_SPREAD_CAR = 1.2f, FIRE_SPREAD_BIKE = 0.6f, FIRE_SIZE = 1.4f, FIRE_LIFE = 1.f;
 constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f, BLOOD_LIFE_S = 0.8f;
 constexpr float ORGAN_MIN_M = 0.04f, ORGAN_SPAN_M = 0.07f, ORGAN_SPEED = 3.f, ORGAN_FLAT_MIN = 0.6f, ORGAN_THIN = 0.7f, ORGAN_THIN_SPAN = 0.6f;
 constexpr float ORGAN_ROUND = 0.7f; // the share of organs drawn as short cylinders
 constexpr int ORGANS_MIN = 4, ORGANS_SPAN = 4;
-constexpr float BODY_HEIGHT_M = 0.5f; // blood sprays from the chest of someone falling
+constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
 constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
 constexpr int TORN_POOLS = 3;
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
@@ -70,7 +71,7 @@ void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 		case GoneKind::BIN: piece(at + Vector3(0, BIN_H * TRUNK_HALF, 0), Vector3(BIN_L, BIN_H, BIN_L), push, METAL); break;
 		default: { // a tree: a charred stump, the trunk thrown, splinters and the crown in clumps of leaves
 			piece(at + Vector3(0, TRUNK_H * TRUNK_STUMP_SHARE, 0), Vector3(TRUNK_R, TRUNK_H * TRUNK_HALF, TRUNK_R), Vector3(), CHAR, true);
-			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, WOOD, true, TWO_WHEELER_BURN_S);
+			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, WOOD, true, TRUNK_BURN_S);
 			for (int k = 0; k < SPLINTERS; k++)
 				piece(at + Vector3(0, TRUNK_H * TRUNK_HALF, 0), Vector3(SPLINTER_R, SPLINTER_LEN_MIN + rng_.f() * SPLINTER_LEN_SPAN, SPLINTER_R), push + scatter(rng_, THROW_SCATTER), WOOD);
 			for (int k = 0; k < CROWN_LEAVES; k++)
@@ -84,11 +85,11 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 	const bool two_wheeler = (e.u & VEHICLE_TYPE_MASK) == VEHICLE_MOTO;
 	PieceSpec shell;
 	shell.at = Vector3(e.x, e.y + WRECK_H * TRUNK_HALF, e.z);
-	shell.size = two_wheeler ? Vector3(WRECK_L * TWO_WHEELER_L, WRECK_H * TWO_WHEELER_H, WRECK_W * TWO_WHEELER_W) : Vector3(WRECK_L, WRECK_H, WRECK_W);
+	shell.size = two_wheeler ? Vector3(WRECK_L * MOPED_L, WRECK_H * MOPED_H, WRECK_W * MOPED_W) : Vector3(WRECK_L, WRECK_H, WRECK_W);
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
 	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 	shell.tint = PAINT_GREY;
-	shell.burn_s = two_wheeler ? TWO_WHEELER_BURN_S : CAR_BURN_S;
+	shell.burn_s = two_wheeler ? MOPED_BURN_S : CAR_BURN_S;
 	debris_.add(shell);
 	for (int k = 0; k < 2; k++) { // two wheels thrown clear
 		PieceSpec w;
@@ -105,7 +106,7 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	const uint32_t kind = e.v & CAS_KIND_MASK;
 	if (kind == CAS_KNOCKED) return; // knocked down: the body falls (the ragdoll, effect_ragdoll.cpp)
-	puffs_.burst(e.x, e.y + BODY_HEIGHT_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
+	puffs_.burst(e.x, e.y + CHEST_RISE_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
 	const bool torn = kind == CAS_TORN;
 	for (int k = 0; k < (torn ? TORN_POOLS : 1); k++) { // the pool the body leaves, spreading
 		Mark m;
@@ -123,7 +124,7 @@ void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	const int organs = ORGANS_MIN + int(rng_.f() * float(ORGANS_SPAN));
 	for (int k = 0; k < organs; k++) { // a body torn apart: what was inside, thrown over the street
 		const float s0 = ORGAN_MIN_M + rng_.f() * ORGAN_SPAN_M, a = rng_.f() * TAU_F;
-		piece(Vector3(e.x, e.y + BODY_HEIGHT_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
+		piece(Vector3(e.x, e.y + CHEST_RISE_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
 				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), FLESH, rng_.f() < ORGAN_ROUND);
 	}
 }
@@ -132,7 +133,7 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 	switch (e.kind) {
 		case DamageEvent::BLAST: blast(e, s); break;
 		case DamageEvent::BUILDING_HIT: building_hit(e); break;
-		case DamageEvent::BUILDING_DOWN: building_down(e); break;
+		case DamageEvent::BUILDING_DOWN: building_down(e, s); break;
 		case DamageEvent::FURNITURE: furniture(e, s); break;
 		case DamageEvent::VEHICLE_BLOWN: vehicle(e, s); break;
 		case DamageEvent::CASUALTY: casualty(e, s); break;

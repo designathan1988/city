@@ -38,7 +38,9 @@ private:
 	void apply(const DamageEvent &e, const CityState &s);
 	void blast(const DamageEvent &e, const CityState &s);
 	void building_hit(const DamageEvent &e);
-	void building_down(const DamageEvent &e);
+	void building_down(const DamageEvent &e, const CityState &s);
+	void pile(const Ruin &r, bool falling); // the heap a building left (effect_ruins.cpp)
+	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	void furniture(const DamageEvent &e, const CityState &s);
 	void vehicle(const DamageEvent &e, const CityState &s);
 	void casualty(const DamageEvent &e, const CityState &s);
@@ -54,7 +56,7 @@ private:
 	Debris debris_;
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
-	std::vector<DamageEvent> events_;
+	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	std::vector<Geyser> geysers_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
@@ -62,8 +64,8 @@ private:
 	double now_ = 0;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
-	size_t craters_seen_ = ~size_t(0), played_ = 0;
-	int city_serial_ = -1;
+	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), played_ = 0;
+	float ground_here_ = 0; // the ground under the heap being laid
 };
 
 } // namespace city

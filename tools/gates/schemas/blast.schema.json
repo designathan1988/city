@@ -17,7 +17,8 @@
   "people",
   "strike",
   "duration_curves",
-  "structure"
+  "structure",
+  "shot"
  ],
  "properties": {
   "_doc": {
@@ -316,6 +317,102 @@
    ],
    "properties": {
     "response_ms": {
+     "type": "number"
+    }
+   }
+  },
+  "shot": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "walker_hp",
+    "damage_head",
+    "damage_torso",
+    "damage_limb",
+    "sever_hits_hp",
+    "sever_hp_cost",
+    "body_reach_m",
+    "body_height_m",
+    "head_above_m",
+    "torso_above_m",
+    "arm_aside_m",
+    "grave_hp",
+    "bleed_limb",
+    "bleed_leg",
+    "bleed_hurt",
+    "knock_min_s",
+    "knock_span_s",
+    "glass_above",
+    "two_wheeler_rider_m",
+    "open_hits",
+    "vehicle_shots_to_burst",
+    "burst_force"
+   ],
+   "properties": {
+    "walker_hp": {
+     "type": "number"
+    },
+    "damage_head": {
+     "type": "number"
+    },
+    "damage_torso": {
+     "type": "number"
+    },
+    "damage_limb": {
+     "type": "number"
+    },
+    "sever_hits_hp": {
+     "type": "number"
+    },
+    "sever_hp_cost": {
+     "type": "number"
+    },
+    "body_reach_m": {
+     "type": "number"
+    },
+    "body_height_m": {
+     "type": "number"
+    },
+    "head_above_m": {
+     "type": "number"
+    },
+    "torso_above_m": {
+     "type": "number"
+    },
+    "arm_aside_m": {
+     "type": "number"
+    },
+    "grave_hp": {
+     "type": "number"
+    },
+    "bleed_limb": {
+     "type": "number"
+    },
+    "bleed_leg": {
+     "type": "number"
+    },
+    "bleed_hurt": {
+     "type": "number"
+    },
+    "knock_min_s": {
+     "type": "number"
+    },
+    "knock_span_s": {
+     "type": "number"
+    },
+    "glass_above": {
+     "type": "number"
+    },
+    "two_wheeler_rider_m": {
+     "type": "number"
+    },
+    "open_hits": {
+     "type": "number"
+    },
+    "vehicle_shots_to_burst": {
+     "type": "number"
+    },
+    "burst_force": {
      "type": "number"
     }
    }

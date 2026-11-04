@@ -68,18 +68,22 @@ func _house() -> Vector3:
 
 func _road() -> Vector3:
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
-	var x: float = (bounds.min.x + bounds.max.x) * 0.5
-	var z: float = bounds.min.z
-	while z < bounds.max.z:
-		var anchor: Dictionary = CityStore.query(&"snap_road", [Vector3(x, 0, z), 0])
-		if anchor.get("seg", -1) >= 0:
-			return anchor.position
-		z += SCAN_STEP_M
+	var x: float = bounds.min.x
+	while x < bounds.max.x:
+		var z: float = bounds.min.z
+		while z < bounds.max.z:
+			var anchor: Dictionary = CityStore.query(&"snap_road", [Vector3(x, 0, z), 0])
+			if anchor.get("seg", -1) >= 0:
+				return anchor.position
+			z += SCAN_STEP_M
+		x += SCAN_STEP_M
 	return Vector3.INF
 
 
 func _blow(label: String, at: Vector3, force: int, dist: float) -> void:
 	_check(at != Vector3.INF, "%s: ponto achado" % label)
+	if at == Vector3.INF:
+		return
 	rig.jump(at, VIEW_YAW, VIEW_PITCH, dist)
 	await ui.drawn()
 	await ui.shot("%s_0_antes" % label)

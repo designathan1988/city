@@ -36,10 +36,7 @@ void vertex() {
 	v_seed = seed;
 	v_age = age;
 	v_alpha = 0.0;
-	if (age < 0.0 || age > 1.0) {
-		POSITION = vec4(2.0, 2.0, 2.0, 1.0);
-		return;
-	}
+	bool dead = age < 0.0 || age > 1.0;
 	float size = length(MODEL_MATRIX[0].xyz);
 	vec3 p = vec3(0.0);
 	float rise = kind < 0.5 ? 2.4 : kind < 1.5 ? 1.0 : kind < 2.5 ? 3.5 : 1.8;
@@ -69,9 +66,9 @@ void vertex() {
 	vec3 world = MODEL_MATRIX[3].xyz + p * STEP_M;
 	vec4 mv = VIEW_MATRIX * vec4(world, 1.0);
 	mv.xy += VERTEX.xy * s;
-	POSITION = PROJECTION_MATRIX * mv;
+	POSITION = dead ? vec4(2.0, 2.0, 2.0, 1.0) : PROJECTION_MATRIX * mv;
 	float peak = kind > 8.5 ? 1.0 : kind > 7.5 ? 0.55 : kind < 0.5 ? 0.16 : kind < 1.5 ? 0.45 : kind < 2.5 ? 0.5 : kind < 3.5 ? 0.42 : kind < 4.5 ? 0.95 : kind < 5.5 ? 0.8 : 1.0;
-	v_alpha = peak * smoothstep(0.0, 0.06, age) * (1.0 - age) * (1.0 - age * 0.3);
+	v_alpha = dead ? 0.0 : peak * smoothstep(0.0, 0.06, age) * (1.0 - age) * (1.0 - age * 0.3);
 }
 
 void fragment() {
