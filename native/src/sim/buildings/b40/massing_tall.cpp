@@ -178,7 +178,8 @@ void shop(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	if (pair) {
 		float split = snap(w * mixr(r, PAIR_LO, PAIR_HI));
 		add_block(b, { 0, 0, split, main_d, 0, storeys, roof });
-		add_block(b, { split, 0, w - split, main_d, 0, std::max(1, storeys + choose(r, { -1, 1 })), roof });
+		int other = std::max(1, storeys + choose(r, { -1, 1 }));
+		add_block(b, { split, 0, w - split, main_d, 0, env.cap > 0 ? std::min(other, env.cap) : other, roof });
 	} else add_block(b, { 0, 0, w, main_d, 0, storeys, roof });
 	if (d - main_d >= STORE_MIN) {
 		int store = add_block(b, { 0, main_d, w, d - main_d, 0, 1, ROOF_FLAT, BAY_WALL, BAY_WALL });
