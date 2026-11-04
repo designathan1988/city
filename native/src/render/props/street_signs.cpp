@@ -15,7 +15,7 @@ namespace city {
 namespace {
 const char *const PLATE_KEYS[SIGN_TYPES] = { "stop", "yield", "speed", "noParking", "noEntry", "pedestrian", "school", "direction", "street", "info" };
 const Vector3 UP(0, 1, 0);
-const Vector2 TAG_FIXED(float(int(PropTag::FIXED)), 0), TAG_PLATE(float(int(PropTag::PLATE)), 0);
+const Vector2 TAG_FIXED(float(int(PropTag::FIXED)), 0), TAG_PLATE(float(int(PropTag::PLATE)), 0), TAG_POST(float(int(PropTag::SIGN_POST)), 0);
 
 // The outline of a plate in its own plane, filling the unit square -0.5 .. 0.5: w_m and h_m are the plate's real measures
 // (across the flats of an octagon, the side of a triangle). project/render/sign_sheet.gd paints the same polygon.
@@ -53,7 +53,7 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 	const PlateLook &p = K.plate[int(s.type)];
 	const Vector3 foot(s.x, s.y + L.h_sidewalk, s.z), face(s.face_x, 0, s.face_z), side(s.face_z, 0, -s.face_x);
 	const bool blades = s.type == SignType::STREET; // a street's name stands on top of its post, read from both sides
-	mb.cylinder(foot, K.post_radius, blades ? p.z - p.h * 0.5f : p.z + p.h * 0.5f, K.post_sides, K.post, true, TAG_FIXED);
+	mb.cylinder(foot, K.post_radius, blades ? p.z - p.h * 0.5f : p.z + p.h * 0.5f, K.post_sides, K.post, true, TAG_POST);
 	const Rect2 cell = atlas.cell(s.type, s.text);
 	const Vector3 centre = foot + UP * p.z;
 	if (blades) {

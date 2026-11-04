@@ -168,7 +168,9 @@
       "lens_ior": {"type": "number"},
       "wire_min_px": {"type": "number"},
       "wire_sway_m": {"type": "number"},
-      "wood_grain": {"type": "number"}
+      "wood_grain": {"type": "number"},
+      "post_metal": {"type": "number"},
+      "post_roughness": {"type": "number"}
      },
      "required": ["glow_color", "glow_gain", "roughness", "lens_roughness", "lens_ior", "wire_min_px", "wire_sway_m", "wood_grain"],
      "strict": true

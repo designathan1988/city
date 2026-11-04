@@ -18,6 +18,8 @@ uniform float lens_ior = 1.5;
 uniform float wire_min_px = 0.7; // a wire never narrower than this on the screen
 uniform float wire_sway_m = 0.35; // how far a wire swings at mid-span in a full gust
 uniform float wood_grain = 0.5;
+uniform float post_metal = 0.6; // a sign post, galvanised
+uniform float post_roughness = 0.45;
 uniform sampler2D sign_atlas : source_color, filter_linear;
 
 varying flat float v_tag;
@@ -81,6 +83,10 @@ void fragment() {
 	if (abs(v_tag - 7.0) < 0.5) {
 		METALLIC = v_finish.x;
 		ROUGHNESS = v_finish.y;
+	}
+	if (abs(v_tag - 8.0) < 0.5) {
+		METALLIC = post_metal;
+		ROUGHNESS = post_roughness;
 	}
 	if (abs(v_tag - 3.0) < 0.5) {
 		ALBEDO = linear_out(c * (1.0 - v_lit));

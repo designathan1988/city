@@ -42,19 +42,21 @@ class _Paper:
 	var look: Dictionary
 	var cells: Array = []
 	var painted := false
-	var font: Font # for one batch: its big glyphs are worth nothing once the sheet holds what they painted
+	var font := FontVariation.new()
+	var _face: FontFile # its own and only one: a copy of a font costs 3 MiB, and the cache of the shared one would stay
 
 	func begin(batch: Array) -> void:
 		cells = batch
-		var bold := FontVariation.new()
-		bold.base_font = ThemeDB.fallback_font.duplicate()
-		bold.variation_embolden = look.word_bold
-		font = bold
+		if _face == null:
+			_face = ThemeDB.fallback_font.duplicate()
+			font.base_font = _face
+			font.variation_embolden = look.word_bold
 		queue_redraw()
 
+	## The sheet holds the picture now: the big glyphs need not stay. The entry stays, or the next batch finds no font.
 	func end() -> void:
-		font = null
 		cells = []
+		_face.clear_size_cache(0)
 
 	func _draw() -> void:
 		for c: Array in cells:
