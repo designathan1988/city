@@ -1,5 +1,4 @@
-// The save file of a city (Roadcraft app/saveFlow.ts + jobs/storage.ts, one file instead of tiles): what the player
-// made is written, what the seed regenerates is not. Height tiles are written only when the player sculpted them
+// The save file of a city, one file per city: what the player made is written, what the seed regenerates is not. Height tiles are written only when the player sculpted them
 // (Heightfield::tile_dirty); lots, trees, traffic and the render are derived again on load. Little endian.
 #pragma once
 

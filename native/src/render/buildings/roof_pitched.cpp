@@ -1,4 +1,4 @@
-// Pitched roofs (4.0 roofMesh.ts :543-680, geometry.ts): gable and hip with 0.45 m eaves all round, a 0.18 m roof
+// Pitched roofs: gable and hip with 0.45 m eaves all round, a 0.18 m roof
 // body (fascia trim x 0.92, soffit trim x 0.7), ridge cap (roof x 0.85), gable triangles in the wall paint; shed roofs
 // with their tall back wall and triangular end walls; sawtooth (north-light) roofs of glazed teeth. Built in a ridge frame: u along the ridge, s across, z up.
 #include "render/buildings/facade.h"

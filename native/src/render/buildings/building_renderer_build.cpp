@@ -5,7 +5,7 @@
 // meshes when the frame's upload budget admits it (Built::bake, building_renderer_commit.cpp; chunk_jobs.h).
 #include "render/buildings/building_renderer.h"
 
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/civic.h"
 #include "render/buildings/facade.h"
 
 #include <algorithm>
@@ -67,7 +67,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (b40::Shell &p : mid_parts) p.instanced = true;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
-		bodies.place(data_, in.ground, rec, pl);
+		bodies.place(designs(), look_, in.ground, rec, pl);
 		int sub = sub_index(rec, key);
 		if (near) {
 			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
@@ -83,7 +83,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	if (near) {
 		auto band_of = [this](float thick) {
 			int band = 0;
-			while (band + 1 < BAND_COUNT && thick > data_.part_bands[size_t(std::min(band, int(data_.part_bands.size()) - 1))].thick_max)
+			while (band + 1 < BAND_COUNT && thick > look_.part_bands[size_t(std::min(band, int(look_.part_bands.size()) - 1))].thick_max)
 				band++;
 			return std::min(band, BAND_COUNT - 1);
 		};
@@ -108,7 +108,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
-		bodies.place(data_, in.ground, rec, pl);
+		bodies.place(designs(), look_, in.ground, rec, pl);
 		pl.lean = true;
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);

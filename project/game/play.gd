@@ -1,5 +1,5 @@
-## Play scene: the world, the camera rig and the Roadcraft shell (ui/roadcraft_hud.gd). A new city is
-## generated from a random seed on entry (Roadcraft's default boot: the medium town).
+## Play scene: the world, the camera rig and the game's shell (ui/roadcraft_hud.gd). A new city is
+## generated from a random seed on entry.
 extends Node3D
 
 const TOWN_MAP := 0

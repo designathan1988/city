@@ -1,9 +1,9 @@
-// Civic bodies (Roadcraft jobs/buildingGen/civic.ts, drawn with the 4.0 facade grammar): a plaza in front, the
+// Civic bodies (drawn with the facade grammar of facade_compose.cpp): a plaza in front, the
 // building in an envelope set back from the street, then the function's own massing. School: an L of classrooms (2-3
 // storeys x 3.6 m, cream, blue-grey hip roof) round a lawn court with a sports court. Church: a nave 9 m high under a
 // steep clay gable with a 20 m bell tower, hip spire and gold cross in front. Hospital / clinic: a white ribbon-window
 // block (5-9 / 2 storeys) on a glazed podium, blue band, red cross panel and an entrance canopy.
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/civic.h"
 
 #include "core/math.h"
 #include "core/units.h"
@@ -199,7 +199,7 @@ void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D,
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	b.entrance_x += dx;
-	furnish_lot(data, b, r);
+	lay_out_lot(data, b, r);
 }
 
 } // namespace city::b40

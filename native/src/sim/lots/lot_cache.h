@@ -1,5 +1,5 @@
 // Proposed lots per 256 m cell, re-derived from the streets whenever the ChangeLog lists the cell in lot_cells
-// (Roadcraft growth.processDirty): lots are never saved, buildings are.
+// (only the dirty cells): lots are never saved, buildings are.
 #pragma once
 
 #include "sim/citygen/lot_gen.h"

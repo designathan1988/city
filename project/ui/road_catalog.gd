@@ -1,4 +1,4 @@
-## The road catalogue in the Roads drawer (Roadcraft roadCatalog.ts, specs ui.md §8.1): category tabs with counts and a
+## The road catalogue in the Roads drawer: category tabs with counts and a
 ## row of cards (picture, name, "{width} m · {price}/m"); a click picks the profile to draw with. Width and price per
 ## metre are the core's derived numbers (query road_profiles); the strips for the picture come from the catalogue.
 class_name RoadCatalog

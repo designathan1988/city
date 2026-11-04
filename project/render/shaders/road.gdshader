@@ -1,4 +1,4 @@
-// Roads (Roadcraft render/roads.ts): the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
+// Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
 // corners) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
 // lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour. Everything in linear

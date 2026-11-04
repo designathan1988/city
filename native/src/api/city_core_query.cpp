@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/buildings/lot_access.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -20,6 +21,68 @@ constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
+constexpr float HALF = 0.5f;
+
+// The size of a body for the city statistics: storeys of its highest volume, the top of its walls (m), its footprint
+// and its floor area (m2, every volume's outline x its storeys), its ground and upper storey heights and its style.
+Dictionary body_probe(const b40::Body &body) {
+	int top = 0;
+	float footprint = 0, floor_area = 0;
+	for (const b40::Volume &v : body.volumes) {
+		top = std::max(top, v.top());
+		float share = 1; // the outline's area as a share of its rectangle (shoelace)
+		if (!v.outline.empty()) {
+			float twice = 0;
+			for (size_t i = 0; i < v.outline.size(); i++) {
+				const b40::Point2 &a = v.outline[i], &b = v.outline[(i + 1) % v.outline.size()];
+				twice += a.x * b.y - b.x * a.y;
+			}
+			share = std::fabs(twice) * HALF;
+		}
+		const float area = v.w * v.d * share;
+		footprint += v.base == 0 ? area : 0;
+		floor_area += area * float(v.storeys);
+	}
+	Dictionary d;
+	d["storeys"] = top;
+	d["wall_top"] = body.level_z(top);
+	d["footprint"] = footprint;
+	d["floor_area"] = floor_area;
+	d["ground_h"] = body.ground_h;
+	d["storey_h"] = body.storey_h;
+	d["style"] = int(body.style);
+	return d;
+}
+
+// What the lot of a record holds and how its traffic reaches it (tests: every house parks, every bay is reachable).
+Dictionary lot_probe(const CityState &s, const Building &rec) {
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	LotAccess acc;
+	lot_access(s.buildings.designs, body, b40::lot_frame(rec), car_half_width(s.catalog.traffic), lorry_half_width(s.catalog.traffic), acc);
+	int trees = 0, car_gates = 0, docks = 0, garages = 0;
+	for (const b40::LotElement &e : body.elements) trees += e.kind == b40::EL_TREE ? 1 : 0;
+	for (const LotGate &g : acc.gates) car_gates += g.car ? 1 : 0;
+	for (const LotBay &b : acc.bays) docks += b.dock ? 1 : 0;
+	for (const b40::Volume &v : body.volumes) {
+		auto it = v.bays.find(b40::bay_key(0, 0, 0));
+		garages += v.keep && it != v.bays.end() && it->second == b40::BAY_GARAGE_DOOR ? 1 : 0;
+	}
+	Dictionary d;
+	d["kind"] = int(body.kind);
+	d["elements"] = int(body.elements.size());
+	d["trees"] = trees;
+	d["gates"] = int(acc.gates.size());
+	d["car_gates"] = car_gates;
+	d["bays"] = int(acc.bays.size()) - docks;
+	d["docks"] = docks;
+	d["reached"] = acc.reached();
+	d["garages"] = garages;
+	const b40::LotPlan &p = body.plan;
+	d["plan"] = Array::make(int(p.front), p.front_depth, int(p.left.use), p.left.width, int(p.right.use), p.right.width, int(p.back), p.back_depth, p.rows);
+	d["body"] = body_probe(body);
+	return d;
+}
 } // namespace
 
 Dictionary CityCore::constants() const {
@@ -151,6 +214,7 @@ Dictionary CityCore::probe_building(int id) {
 	d["floors"] = int(b.floors);
 	d["zone"] = int(b.zone);
 	d["fn"] = int(b.fn);
+	d["lot"] = lot_probe(s, b);
 	return d;
 }
 

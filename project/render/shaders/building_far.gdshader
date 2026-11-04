@@ -25,9 +25,7 @@ const float WIN_W = 0.45;
 const float WIN_SILL = 0.35;
 const float WIN_HEAD = 0.80;
 
-vec3 to_linear(vec3 c) {
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
-}
+#include "res://render/shaders/building_colour.gdshaderinc"
 
 void vertex() {
 	int chunk = int(COLOR.a * 255.0 + 0.5) >> KIND_BITS;
@@ -41,8 +39,8 @@ void vertex() {
 void fragment() {
 	int kind = int(COLOR.a * 255.0 + 0.5) & KIND_MASK;
 	vec3 n = normalize(v_wn);
-	vec3 albedo = OUTPUT_IS_SRGB ? COLOR.rgb : to_linear(COLOR.rgb);
-	vec3 glass = mix(vec3(0.05, 0.06, 0.07), glass_sky, glass_floor) * (1.0 - 0.92 * night);
+	vec3 albedo = to_linear(COLOR.rgb);
+	vec3 glass = mix(vec3(0.05, 0.06, 0.07), uniform_linear(glass_sky), glass_floor) * (1.0 - 0.92 * night);
 	vec3 emit = vec3(0.0);
 	float rough = 0.9, metal = 0.0;
 	if (kind == 1 || kind == 2) {
@@ -57,8 +55,8 @@ void fragment() {
 	}
 	albedo *= wall_gain;
 	if (kind == 4) emit = albedo * night;
-	ALBEDO = albedo;
-	EMISSION = emit;
+	ALBEDO = surface_out(albedo);
+	EMISSION = surface_out(emit);
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

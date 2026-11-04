@@ -1,4 +1,4 @@
-## Split (Roadcraft roadTool mode "split", tab Dividir): a new node on the road where it is clicked (not within
+## Split (tab Dividir): a new node on the road where it is clicked (not within
 ## edit_split_min_m of its ends). The marker shows where the cut falls.
 extends ToolBase
 

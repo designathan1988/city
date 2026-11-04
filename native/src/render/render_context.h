@@ -18,7 +18,7 @@ namespace city {
 
 struct RenderContext {
 	godot::RID scenario;
-	godot::Dictionary tables; // file stem -> parsed JSON (e.g. "palette", "models", "streets", "buildings")
+	godot::Dictionary tables; // file stem -> parsed JSON (e.g. "palette", "streets", "buildings")
 	std::unordered_map<std::string, godot::RID> materials;
 	const Catalog *catalog = nullptr;
 

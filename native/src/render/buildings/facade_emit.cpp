@@ -1,8 +1,8 @@
-// The walls of a placed body (4.0 buildingMesh.ts emitChunk + facadeEmit.ts): every closed volume, side, storey and
+// The walls of a placed body: every closed volume, side, storey and
 // bay; covered stretches cut out; reliefs pushed with their cheeks and caps; pilasters; storey bands; the plinth and
 // the entrance steps. Openings and parts per bay are facade_bay.cpp's.
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/b40_gen.h"
+#include "sim/buildings/b40/gen.h"
 
 #include <cmath>
 

@@ -1,4 +1,4 @@
-// The facade part models (4.0 r40/render/buildings/kit.ts), built straight into a mesh in the bay frame: unit models
+// The facade part models, built straight into a mesh in the bay frame: unit models
 // scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Frame bars, railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
@@ -42,7 +42,7 @@ void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s,
 // Frame ring: front faces of the four bars, mullion and transom, and the ring's inner faces (no hidden backs).
 void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	float bx = p.data->part_frame_bar_m * p.sx, by = p.data->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
+	float bx = p.look->part_frame_bar_m * p.sx, by = p.look->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
 	if (2 * by > p.sy) by = p.sy / 4;
 	s.rect(m, -hx, -hx + bx, -hy, hy, hz, lin, fin);
 	s.rect(m, hx - bx, hx, -hy, hy, hz, lin, fin);
@@ -55,7 +55,7 @@ void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 }
 
 // Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
-// are single front faces (4.0 kit.ts draws them as thin boxes).
+// are single front faces (a thin box seen from the street shows only its front).
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	float hx = p.sx / 2, z1 = p.sz, top0 = (RAIL_TOP_Y - RAIL_TOP_H / 2) * p.sy, top1 = (RAIL_TOP_Y + RAIL_TOP_H / 2) * p.sy;
@@ -78,14 +78,14 @@ void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 
 void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	// the front faces of the 4.0 leaf and panel boxes (kit.ts doorGeometry): the handle starts on the leaf's face
+	// the front faces of the leaf and its panel: the handle starts on the leaf's face
 	const float leaf_z = (LEAF_Z + LEAF_D / 2) * p.sz, panel_z = (PANEL_Z + PANEL_D / 2) * p.sz;
 	s.rect(m, -p.sx / 2, p.sx / 2, -p.sy / 2, p.sy / 2, leaf_z, lin, fin);
 	for (float x : { -PANEL_X, PANEL_X }) {
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 	}
-	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.data->part_handle_h_m / 2, HANDLE_Y + p.data->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
+	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.look->part_handle_h_m / 2, HANDLE_Y + p.look->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
 }
 
 // Louvred leaf: stiles, rails and nine slats as front faces, slats tilted out at the bottom.
@@ -108,7 +108,7 @@ void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	for (int i = 0; i < BRISE_FINS; i++) {
 		float x = -HALF + (float(i) + HALF) / float(BRISE_FINS);
-		unit_box(s, p, x - p.data->part_brise_fin_m / 2, x + p.data->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
+		unit_box(s, p, x - p.look->part_brise_fin_m / 2, x + p.look->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
 	}
 }
 

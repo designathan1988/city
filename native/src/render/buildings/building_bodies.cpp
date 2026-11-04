@@ -1,11 +1,9 @@
-// Body cache and world placement of the building records (jobs/building40.ts building40 / volumes40,
-// r40/world/buildings/foundation.ts floorHeight): lot frame at the middle of the lot front, +y away from the street;
+// Body cache and world placement of the building records: lot frame at the middle of the lot front, +y away from the
+// street;
 // floor = highest ground under the ground volumes (corners and a 1.5 m grid) + 0.15 m plinth.
 #include "render/buildings/building_bodies.h"
 
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/record.h"
 
 #include <cmath>
 
@@ -34,17 +32,14 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	if (it != cache_.end()) return *it->second;
 	if (cache_.size() >= CACHE_MAX) cache_.clear();
 	auto b = std::make_unique<b40::Body>();
-	if (b40::is_open_lot(rec.fn)) b40::open_lot_body(data, *b, rec.fn, rec.w, rec.d);
-	else if (b40::is_civic(rec.fn)) b40::civic_body(data, *b, rec.fn, rec.floors, rec.w, rec.d, rec.seed);
-	else b40::make_body(data, *b, rec.zone, rec.floors, rec.w, rec.d, rec.seed);
+	b40::record_body(data, rec, *b);
 	return *(cache_[k] = std::move(b));
 }
 
-void BuildingBodies::place(const b40::Data &data, const HeightPatch &ground, const Building &rec, b40::Placed &pl) {
+void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl) {
 	const b40::Body &b = body(data, rec);
-	float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
-	Vector3 o(rec.x + rec.d / 2 * sn, 0, rec.z + rec.d / 2 * cs);
-	Vector3 e0(cs, 0, -sn), e1(-sn, 0, -cs), e2(0, 1, 0);
+	const b40::LotFrame f = b40::lot_frame(rec);
+	Vector3 o(f.o.x, 0, f.o.y), e0(f.e0.x, 0, f.e0.y), e1(f.e1.x, 0, f.e1.y), e2(0, 1, 0);
 	auto ground_at = [&](float x, float y) {
 		Vector3 p = o + e0 * x + e1 * y;
 		return ground.height_at(p.x, p.z);
@@ -64,6 +59,7 @@ void BuildingBodies::place(const b40::Data &data, const HeightPatch &ground, con
 	if (hi < lo) { sample(0, rec.d / 2); }
 	float floor = hi + PLINTH_MIN;
 	pl.data = &data;
+	pl.look = &look;
 	pl.b = &b;
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;

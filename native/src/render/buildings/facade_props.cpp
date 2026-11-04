@@ -1,5 +1,5 @@
-// Facade props of the upper storeys (4.0 r40/render/buildings/facadeProps.ts, condensed): split AC condensers under
-// windows, satellite dishes, plant pots and a chair on balconies. Random stream = mulberry32(bay hash), as in 4.0.
+// Facade props of the upper storeys: split AC condensers under
+// windows, satellite dishes, plant pots and a chair on balconies. Random stream = mulberry32 (Tommy Ettinger's 32-bit generator) seeded by the bay's hash.
 #include "render/buildings/facade_bay.h"
 
 #include "core/seeded.h"

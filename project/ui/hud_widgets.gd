@@ -28,7 +28,7 @@ static func button(variation: StringName, icon_name: String, text: String, tip_k
 	return b
 
 
-## Disabled "being built" button (specs ui.md §1.4 .soon): tooltip "<name> · em construção".
+## Disabled "being built" button: tooltip "<name> · em construção".
 static func soon(b: Button, name_key: String) -> void:
 	b.disabled = true
 	b.tooltip_text = "%s · %s" % [TranslationServer.translate(name_key), TranslationServer.translate("ui.soon")]

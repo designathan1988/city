@@ -1,4 +1,5 @@
-// The Roadcraft "4.0" building body: the vocabulary codes (bays, roofs, dress, finishes) in the 4.0 order and the
+// The building body: the vocabulary codes (bays, roofs, dress, finishes), in the order the lists of
+// data/render/buildings.json name them, and the
 // plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores).
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
@@ -12,7 +13,7 @@ namespace city::b40 {
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
 constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
 
-// BAY_COMPONENTS, 4.0 order.
+// The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
 enum Bay : uint8_t { BAY_WALL, BAY_WINDOW, BAY_SASH, BAY_FRENCH, BAY_BAY_WINDOW, BAY_RIBBON, BAY_WIDE, BAY_BALCONY, BAY_DOOR,
 	BAY_DOUBLE_DOOR, BAY_GARAGE_DOOR, BAY_SHOPFRONT, BAY_LOADING_DOOR, BAY_PILLAR, BAY_LOGGIA, BAY_BRISE, BAY_SHUTTERED,
 	BAY_GOURMET, BAY_COUNT, BAY_NONE = 0xff };
@@ -22,7 +23,7 @@ enum Crown : uint8_t { CROWN_CORNICE, CROWN_DECO, CROWN_SLAB, CROWN_ATTIC, CROWN
 enum Ground : uint8_t { GROUND_SHOP, GROUND_LOBBY, GROUND_HOUSE, GROUND_WORKS };
 enum Kind : uint8_t { KIND_HOUSE, KIND_FLATS, KIND_TOWER, KIND_SHOP, KIND_OFFICE, KIND_WORKS, KIND_COUNT };
 enum Use : uint8_t { USE_RESIDENTIAL, USE_COMMERCIAL, USE_INDUSTRIAL };
-// Styles, 4.0 architecture.ts order (indices into buildings.json "styles").
+// Architectural styles, in the order of buildings.json "styles" (their indices there).
 enum Style : uint8_t { STYLE_COLONIAL, STYLE_ART_DECO, STYLE_MODERNIST, STYLE_CONTEMPORARY, STYLE_BRICK, STYLE_TROPICAL,
 	STYLE_GLASS, STYLE_INDUSTRIAL, STYLE_COLONIAL_HOUSE, STYLE_BUNGALOW, STYLE_MODERN_HOUSE, STYLE_SOBRADO, STYLE_COUNT };
 // Finishes in the COOKED texture-array layer order (project/assets/surfaces/building-finishes.*.png).
@@ -35,13 +36,14 @@ struct Paint {
 	uint32_t rgb = 0;
 };
 
-// Lot plan (4.0 world/growth/lotPlan.ts).
+// The plan of a lot: what its front, each side and its back are used for, and the building's envelope.
 enum FrontUse : uint8_t { FRONT_STREET, FRONT_GARDEN, FRONT_CARPAD, FRONT_FORECOURT, FRONT_PLAZA, FRONT_APRON };
 enum SideUse : uint8_t { SIDE_ATTACHED, SIDE_PATH, SIDE_DRIVE, SIDE_DRIVE_PATH, SIDE_GARDEN };
 enum BackUse : uint8_t { BACK_NONE, BACK_YARD, BACK_PARKING, BACK_SERVICE, BACK_COURTYARD, BACK_LOADING };
 struct SidePlan {
 	SideUse use = SIDE_ATTACHED;
 	float width = 0;
+	float walk = 0; // SIDE_DRIVE_PATH: the footpath along the drive, on the building's side
 };
 struct LotPlan {
 	Kind kind = KIND_HOUSE;
@@ -55,7 +57,7 @@ struct LotPlan {
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0; // building envelope, x from the lot's left edge
 };
 
-// The composed geometry of one face (4.0 facadeGeometry): bay count, opening shares, sill, piers.
+// The composed geometry of one face: bay count, opening shares, sill, piers.
 struct FaceGeometry {
 	int bays = -1;
 	float window_w = 0, window_h = 0, sill = 0;
@@ -95,9 +97,13 @@ struct Volume {
 inline uint32_t bay_key(int storey, int side, int bay) { return (uint32_t(storey) << KEY_STOREY_SHIFT) | (uint32_t(side) << KEY_SIDE_SHIFT) | uint32_t(bay); }
 inline uint32_t side_key(int storey, int side) { return (uint32_t(storey) << KEY_SIDE_SHIFT) | uint32_t(side); }
 
-// Lot elements laid as boxes (4.0 element table): kind, centre, facing (0..3, 1/3 swap w and d), size, elevation.
+// Lot elements laid as boxes: kind, centre, size (w along the lot x, d along the lot y), elevation and facing. The
+// facing of a car bay, a lorry dock, a bench or a lounger is the way its open end looks: 0 the street (-y), 1 +x,
+// 2 away from the street (+y), 3 -x. A car gate is wide enough for a car; a person's gate is not.
 enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE,
-	EL_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_PARKING, EL_AC, EL_TREE_PIT, EL_SURFACE };
+	EL_GATE, EL_CAR_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_AC, EL_SURFACE, EL_STALL, EL_DOCK, EL_DRAIN,
+	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE };
+enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
 struct LotElement {
 	Element kind = EL_PAVEMENT;
 	float x = 0, y = 0, w = 1, d = 1, z = 0, h = 1;

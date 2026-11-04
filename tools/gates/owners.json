@@ -10,7 +10,7 @@
     },
     {
       "id": "floor_height",
-      "owner": "native/src/render/buildings/b40_types.h",
+      "owner": "native/src/sim/buildings/b40/types.h",
       "symbol": "level_h",
       "forbidden_elsewhere": ["\\.floor_h\\b"],
       "allow": ["native/src/sim/catalog/", "native/src/api/catalog_loader.cpp"],
@@ -33,7 +33,7 @@
     },
     {
       "id": "facade_rules",
-      "owner": "native/src/render/buildings/facade_compose.cpp",
+      "owner": "native/src/sim/buildings/b40/facade_compose.cpp",
       "symbol": "compose_facades",
       "forbidden_elsewhere": ["\\bbay_count\\b|round\\(\\s*\\w*len\\w*\\s*/\\s*\\w*bay"],
       "allow": ["project/render/shaders/building.gdshader"],

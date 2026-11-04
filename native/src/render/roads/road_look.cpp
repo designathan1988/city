@@ -73,8 +73,20 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.yellow = hexc(m["yellow"]);
 	L.paint_lift = float(m["lift_m"]);
 	L.line_clear = float(m["line_clear_m"]);
-	L.dash_period = float(m["dash_period_m"]);
-	L.dash_duty = float(m["dash_duty"]);
+	L.line_w = float(m["line_m"]);
+	L.line_fast_w = float(m["line_fast_m"]);
+	L.line_fast_kmh = float(m["line_fast_kmh"]);
+	L.exclusive_w = float(m["exclusive_line_m"]);
+	auto floats = [&](const char *key, std::vector<float> &out) {
+		out.clear();
+		Array a = m[key];
+		for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
+	};
+	floats("dash_kmh", L.dash_kmh);
+	floats("dash_m", L.dash);
+	floats("gap_m", L.gap);
+	if (L.dash.empty() || L.dash.size() != L.gap.size() || L.dash.size() != L.dash_kmh.size() + 1)
+		errors.push_back("streets.json markings: dash_m e gap_m com uma faixa a mais que dash_kmh");
 	L.zebra_period = float(m["zebra_period_m"]);
 	L.zebra_bar = float(m["zebra_bar_m"]);
 	L.double_gap = float(m["double_gap_m"]);

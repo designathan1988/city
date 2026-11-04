@@ -1,8 +1,8 @@
-// The 4.0 facade grammar (jobs/b40/facades.ts + massing.ts dressBuilding): style by kind/era/street character, wall
+// The facade grammar: style by kind/era/street character, wall
 // and trim paints, bay counts on the style module, storey fills with the symmetric rhythm, and the dress (stone base,
 // entrance canopy or recess, projecting reliefs, corner piers).
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/paint.h"
 
 #include <cmath>
 
