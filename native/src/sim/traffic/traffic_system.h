@@ -147,6 +147,8 @@ bool step_to_nearer_place(CityState &s, int id);
 void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
 bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
+// The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.
+float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
 int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)

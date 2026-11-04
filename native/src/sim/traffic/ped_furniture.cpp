@@ -13,6 +13,9 @@ namespace traffic {
 
 namespace {
 
+// A body touching a piece (its centre a body radius off it, to the rounding of the sum) stands beside it, not in it.
+constexpr float TOUCH_EPS_M = 1e-3f;
+
 // Distance from (x, z) to a footprint (0 inside it).
 float distance_to(const StreetObstacle &o, float x, float z) {
 	const float rx = x - o.x, rz = z - o.z;
@@ -72,6 +75,21 @@ bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach
 	return false;
 }
 
+float clear_arc(CityState &s, int seg, int side, float at, float u) {
+	const float body = s.catalog.traffic.ped_body_m;
+	const std::vector<StreetObstacle> &pieces = sidewalk_furniture(s, seg).side[size_t(side)];
+	for (bool moved = true; moved;) { // past one piece it may stand in the next: again until none covers it
+		moved = false;
+		for (const StreetObstacle &o : pieces) {
+			if (o.s0 - body >= at) break; // by s0: none further on reaches back to it
+			if (o.s1 + body <= at || u <= o.u0 - body || u >= o.u1 + body) continue;
+			at = o.s1 + body;
+			moved = true;
+		}
+	}
+	return at;
+}
+
 void forget_furniture(CityState &s, int seg) { s.traffic.furniture.erase(seg); }
 
 void prune_furniture(CityState &s, float cx, float cz, float radius) {
@@ -101,7 +119,7 @@ int walkers_in_furniture(const CityState &s) {
 		auto check = [&](int seg) {
 			if (hit || seg < 0 || !s.roads.segs[size_t(seg)].alive) return;
 			for (const auto &side : of(seg).side)
-				for (const StreetObstacle &o : side) hit = hit || distance_to(o, w.cur.x, w.cur.z) < body;
+				for (const StreetObstacle &o : side) hit = hit || distance_to(o, w.cur.x, w.cur.z) < body - TOUCH_EPS_M;
 		};
 		check(w.seg);
 		if (w.mode != PedMode::SIDEWALK && w.way_node >= 0)

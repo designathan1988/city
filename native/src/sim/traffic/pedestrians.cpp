@@ -66,6 +66,17 @@ int alloc(TrafficState &t) {
 	return int(t.peds.size()) - 1;
 }
 
+// Whether a walker standing at `at` would be closer to another than the room walkers keep (two bodies and the gap):
+// against every walker, those born this step too (a few are born a step).
+bool crowded(const TrafficState &t, const TrafficParams &p, const Pose &at) {
+	const float room = 2 * p.ped_body_m + p.ped_gap_m;
+	for (const Pedestrian &o : t.peds) {
+		const float dx = o.cur.x - at.x, dz = o.cur.z - at.z;
+		if (o.alive && dx * dx + dz * dz < room * room) return true;
+	}
+	return false;
+}
+
 bool spawn_one(CityState &s) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
@@ -77,9 +88,6 @@ bool spawn_one(CityState &s) {
 	w.alive = true;
 	w.seg = seg;
 	w.dir = int(t.rng.next() & 1);
-	std::vector<int> route;
-	if (!plan_trip(s, toward(s, w), route)) return false;
-	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
 	w.look = t.rng.next();
 	w.side = has_side(pf, 0) && (!has_side(pf, 1) || (t.rng.next() & 1)) ? 0 : 1;
 	w.s = t.rng.range(arc_lo(g), arc_hi(g));
@@ -88,7 +96,13 @@ bool spawn_one(CityState &s) {
 	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
 	w.walked = t.rng.range(0.f, w.speed);
 	on_sidewalk(w);
+	w.s = clear_arc(s, seg, w.side, w.s, w.u); // born clear of the street furniture and of the others
+	if (w.s > arc_hi(g)) return false;
 	sidewalk_pose(s, seg, w.side, w.s, w.u, w.cur);
+	if (crowded(t, p, w.cur)) return false;
+	std::vector<int> route; // planned last: a walker that is not born takes no room in the route pool
+	if (!plan_trip(s, toward(s, w), route)) return false;
+	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
 	int id = alloc(t);
 	t.peds[id] = std::move(w);
 	t.ped_count++;

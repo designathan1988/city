@@ -45,8 +45,8 @@ static func report(minutes: int) -> void:
 		print("  na fila atrás de: ", p.get("queued_behind", []), ", núcleo %.0f ms no minuto (%.3f ms/passo)" % [spent, spent / ticks])
 		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []), ", em média no minuto: %.1f, %.1f" % [
 			float(overlap_seconds[0]) / SECONDS_PER_MINUTE, float(overlap_seconds[1]) / SECONDS_PER_MINUTE],
-			"; dentro do mobiliário da calçada: %d, em média no minuto: %.1f" % [p.get("people_in_furniture", 0),
-			float(furniture_seconds) / SECONDS_PER_MINUTE])
+			"; dentro do mobiliário da calçada: %d, pedestre-segundos no minuto: %d" % [p.get("people_in_furniture", 0),
+			furniture_seconds])
 		print("  parados no cruzamento, veículo-segundos no minuto (atrás de outro, por pedestres, por semáforo à frente, partindo): ", box,
 			", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
 	var last: Dictionary = CityStore.query(&"traffic_probe", [SOAK_JAMS])
