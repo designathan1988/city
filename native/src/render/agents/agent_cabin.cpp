@@ -35,21 +35,24 @@ void wall(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c,
 	mb.quad(a, b, c, d, col, in, nullptr, agent_tag(AgentTag::FIXED));
 }
 
+// The walls stand lining_inset_m in from the shell on every side (never in the plane of a panel's inner face, which
+// would fight it for the depth); the floor and the liner run out to the shell, under and over the gap.
 void lining(MeshBuilder &mb, const Cabin &c, const CabinLook &l) {
-	const float w = c.half_w - l.lining_inset_m, zf = c.z_front, zb = c.z_back, y0 = c.floor, yr = c.roof - l.liner_drop_m;
-	const Color &in = c.paint.lining;
+	const float in = l.lining_inset_m, w = c.half_w - in, zf = c.z_front - in, zb = c.z_back + in, y0 = c.floor, yr = c.roof - l.liner_drop_m;
+	const Color &col = c.paint.lining;
 	for (int side : { -1, 1 }) {
 		const float x = side * w;
 		const std::vector<Vector2> spans = side < 0 ? spans_between(zb, zf, c.doors) : std::vector<Vector2>{ Vector2(zb, zf) };
 		for (const Vector2 &s : spans)
-			wall(mb, Vector3(x, y0, s.x), Vector3(x, y0, s.y), Vector3(x, c.side_top, s.y), Vector3(x, c.side_top, s.x), Vector3(-side, 0, 0), in);
+			wall(mb, Vector3(x, y0, s.x), Vector3(x, y0, s.y), Vector3(x, c.side_top, s.y), Vector3(x, c.side_top, s.x), Vector3(-side, 0, 0), col);
 	}
-	wall(mb, Vector3(-w, y0, zb), Vector3(w, y0, zb), Vector3(w, c.back_top, zb), Vector3(-w, c.back_top, zb), Vector3(0, 0, 1), in);
-	wall(mb, Vector3(-w, y0, zf), Vector3(w, y0, zf), Vector3(w, c.front_top, zf), Vector3(-w, c.front_top, zf), Vector3(0, 0, -1), in);
-	wall(mb, Vector3(-c.half_w, y0, zb), Vector3(c.half_w, y0, zb), Vector3(c.half_w, y0, zf), Vector3(-c.half_w, y0, zf), Vector3(0, 1, 0), c.paint.floor);
-	wall(mb, Vector3(-w, yr, zb), Vector3(w, yr, zb), Vector3(w, yr, zf), Vector3(-w, yr, zf), Vector3(0, -1, 0), in);
-	if (c.dash_d > 0)
-		agent_box(mb, Vector3(std::max(-w, w - c.dash_w), c.front_top - c.dash_h, zf - c.dash_d), Vector3(w, c.front_top, zf), c.paint.dash, AgentTag::FIXED);
+	wall(mb, Vector3(-w, y0, zb), Vector3(w, y0, zb), Vector3(w, c.back_top, zb), Vector3(-w, c.back_top, zb), Vector3(0, 0, 1), col);
+	wall(mb, Vector3(-w, y0, zf), Vector3(w, y0, zf), Vector3(w, c.front_top, zf), Vector3(-w, c.front_top, zf), Vector3(0, 0, -1), col);
+	const float hw = c.half_w, z0 = c.z_back, z1 = c.z_front;
+	wall(mb, Vector3(-hw, y0, z0), Vector3(hw, y0, z0), Vector3(hw, y0, z1), Vector3(-hw, y0, z1), Vector3(0, 1, 0), c.paint.floor);
+	wall(mb, Vector3(-w, yr, z0), Vector3(w, yr, z0), Vector3(w, yr, z1), Vector3(-w, yr, z1), Vector3(0, -1, 0), col);
+	if (c.dash_d > 0) // from the shell back by its depth, over the front wall
+		agent_box(mb, Vector3(std::max(-w, w - c.dash_w), c.front_top - c.dash_h, z1 - c.dash_d), Vector3(w, c.front_top, z1), c.paint.dash, AgentTag::FIXED);
 }
 
 void seat_shell(MeshBuilder &mb, const Seat &s, const CabinLook &l, const CabinPaint &p) {

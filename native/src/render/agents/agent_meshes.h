@@ -68,8 +68,9 @@ struct Seat {
 	const SeatStyle *style = nullptr;
 	bool driver = false;
 };
-// The inside of one body: floor and roof (under it the liner), the lining's half width and ends (z), the tops of its side,
-// front and back walls (the glass starts there), the dashboard and the doorways on the kerb side (-X; z spans, no wall).
+// The inside of one body: floor and roof (under it the liner), the shell's inner half width and ends (z; the lining stands
+// lining_inset_m in from them), the tops of its side, front and back walls (the glass starts there), the dashboard and
+// the doorways on the kerb side (-X; z spans, no wall).
 struct Cabin {
 	float floor = 0, roof = 0, half_w = 0, z_front = 0, z_back = 0, side_top = 0, front_top = 0, back_top = 0;
 	float dash_d = 0, dash_h = 0, dash_w = 0; // the dashboard from the driver's side wall (+X) inwards
