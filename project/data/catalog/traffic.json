@@ -182,6 +182,10 @@
   "parker_ask_way_s": 3,
   "parker_stop_ms": 0.12,
   "parker_stop_slack_m": 2.5,
+  "bike_share": 0.04,
+  "bike_speed_kmh": 20,
+  "cycle_ease_m": 8,
+  "cycle_clear_share": 0.8,
   "parker_past_gate_m": 8,
   "parker_give_up_s": 25,
   "gate_lane_reach_m": 45,
@@ -213,7 +217,7 @@
   "ped_window_m": 600,
   "ped_despawn_window_share": 1.2
  },
- "_classes_doc": "[a, b, b_emergency, headway T, min gap s0, share of the speed limit, length, half width] per type: sedan, hatch, suv, van, pickup, moto, bus, truck (drivers.ts ARCH, traffic/state.ts).",
+ "_classes_doc": "[a, b, b_emergency, headway T, min gap s0, share of the speed limit, length, half width] per type: sedan, hatch, suv, van, pickup, moto, bus, truck (drivers.ts ARCH, traffic/state.ts), bicycle (SUMO vehicle type defaults, vClass bicycle: accel 1.2, decel 3, emergencyDecel 7, tau 1, minGap 0.5, length 1.6, width 0.65; bike_speed_kmh its desiredMaxSpeed 20 km/h).",
  "classes": [
   [2.4, 2.9, 6.0, 1.2, 2.0, 1.00, 4.4, 0.9],
   [2.9, 3.2, 6.5, 1.0, 1.8, 1.08, 3.9, 0.9],
@@ -222,7 +226,8 @@
   [2.1, 2.7, 5.6, 1.3, 2.1, 0.96, 5.3, 0.9],
   [3.6, 3.6, 7.0, 0.8, 1.2, 1.12, 2.1, 0.4],
   [1.9, 2.9, 4.2, 1.6, 2.4, 0.80, 12.0, 1.27],
-  [1.8, 2.8, 4.4, 1.7, 2.6, 0.82, 9.5, 1.25]
+  [1.8, 2.8, 4.4, 1.7, 2.6, 0.82, 9.5, 1.25],
+  [1.2, 3.0, 7.0, 1.0, 0.5, 1.00, 1.6, 0.325]
  ],
  "signal_extension_s": [4.1, 1.8, 1.0, 0.6, 0.4],
  "style_share": [0.3, 0.3, 0.17, 0.08, 0.07, 0.08],

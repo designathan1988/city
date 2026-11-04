@@ -141,7 +141,10 @@ int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictio
 int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 // heavy_meshes.cpp
 int build_truck(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
+// Whoever rides a two-wheeler astride (agents.json rider joints), in a helmet of these radii.
+void agent_rider(MeshBuilder &mb, const Person &rider, const godot::Dictionary &pose, const godot::Vector3 &helmet);
 int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Person &rider, const AgentTrim &trim);
+int build_bicycle(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Person &rider, const AgentTrim &trim);
 // A tyre from its designation [section width mm, aspect ratio %, rim diameter inches] (ISO 4000-1, ETRTO): its radius
 // (half the rim's diameter plus the sidewall, width times aspect) and width, metres.
 godot::Vector2 agent_tyre(const godot::Variant &designation);

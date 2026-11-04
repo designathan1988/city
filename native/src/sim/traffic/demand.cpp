@@ -55,6 +55,7 @@ V2 mid_of(const CityState &s, int ds) {
 
 VehicleType draw_type(CityState &s) {
 	const TrafficParams &p = s.catalog.traffic;
+	if (s.traffic.rng.f() < p.bike_share) return VehicleType::BICYCLE;
 	float r = s.traffic.rng.f();
 	if (r >= p.car_share) return r < p.car_share + p.bus_share ? VehicleType::BUS : VehicleType::TRUCK;
 	float x = s.traffic.rng.f(), acc = 0;
@@ -82,9 +83,10 @@ bool spawn_one(CityState &s, int &routes) {
 	const TrafficParams &p = s.catalog.traffic;
 	VehicleType type = draw_type(s);
 	bool truck = type == VehicleType::TRUCK;
+	const bool bike = type == VehicleType::BICYCLE;
 	float hour = float(s.clock.hour());
 	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
-	if (from < 0) return false;
+	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
 	V2 a = mid_of(s, from);
 	int to = -1;
 	for (int k = 0; k < DEST_TRIES && to < 0; k++) {
@@ -97,14 +99,14 @@ bool spawn_one(CityState &s, int &routes) {
 	// Room first: a spawn that cannot fit must not pay for a route search.
 	const VehicleClass &vc = p.classes[int(type)];
 	const DirSeg &d = t.g.ds[from];
-	int lane = int(t.rng.next() % uint32_t(d.lanes));
+	int lane = bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); // a bicycle keeps to the edge of the carriageway
 	float at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
 	const int key = from * MAX_LANES + lane;
 	if (at < vc.length + p.mouth_clear_m || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	routes++;
 	std::vector<int> route;
-	if (!find_route(s, from, to, route) || route.size() < 2) return false;
+	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;
 	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
 	Vehicle &v = t.vehicles[size_t(id)];
 	v.ds = from;
@@ -171,7 +173,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 		const float d = (mid_of(s, c) - a).len();
 		if (d <= p.trip_min_m || d >= p.trip_max_m || t.rng.f() >= std::exp(-d / p.trip_decay_m)) continue;
 		std::vector<int> route;
-		if (!find_route(s, from_ds, c, route) || route.size() < 2) return false;
+		if (!find_route(s, from_ds, c, route, -1, -1, v.type == VehicleType::BICYCLE) || route.size() < 2) return false;
 		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 		v.ri = 0;
 		v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(c)].len;

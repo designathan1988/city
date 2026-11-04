@@ -14,7 +14,7 @@ namespace traffic {
 namespace {
 
 constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f, SAFE_PAD_M = 0.3f;
-constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, DRIFT_RATE = 0.1f, LC_DECAY = 1.f;
+constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, LC_DECAY = 1.f;
 constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
 
 struct Lead {
@@ -133,9 +133,11 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		Vehicle &v = t.vehicles[id];
 		Lead l;
 		float v0 = desired_speed(s, v, ds);
-		const bool head = k + 1 == int(list.size());
+		int ahead = k + 1; // the first of those ahead it follows: a bicycle in its band is beside it
+		while (ahead < int(list.size()) && out_of_the_way(s, v, t.vehicles[list[size_t(ahead)]], ds)) ahead++;
+		const bool head = ahead == int(list.size());
 		if (!head) {
-			const Vehicle &o = t.vehicles[list[k + 1]];
+			const Vehicle &o = t.vehicles[list[size_t(ahead)]];
 			l.take(o.s - body(s, o) - v.s, o.v);
 		}
 		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
@@ -193,6 +195,8 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			t.red_from_stop += v.stood ? 1 : 0;
 		}
 	}
+	// past a bicycle in its band: the list stays sorted by s
+	if (t.g.ds[ds].cycle_shift != 0) std::stable_sort(list.begin(), list.end(), [&](int a, int b) { return t.vehicles[size_t(a)].s < t.vehicles[size_t(b)].s; });
 }
 
 void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
@@ -249,12 +253,13 @@ void step_connector(CityState &s, int ci, float dt) {
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
 		Lead l, walkers;
-		connector_leads(s, ci, k, vt * v.vf, l, walkers);
+		const float top = top_speed(s, v, vt);
+		connector_leads(s, ci, k, top, l, walkers);
 		l.take(walkers.gap, walkers.v);
 		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
-		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, vt * v.vf, l.gap, l.v), l, dt);
+		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, top, l.gap, l.v), l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
 	while (!list.empty() && t.vehicles[size_t(list.front())].cs >= c.len) {
@@ -280,7 +285,7 @@ BoxHold box_hold(const CityState &s, int id) {
 	if (k >= on.size()) return BoxHold::STARTING;
 	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
 	const Conn &c = t.g.conns[size_t(v.conn)];
-	const float top = conn_speed(s, c) * v.vf;
+	const float top = top_speed(s, v, conn_speed(s, c));
 	Lead car, walkers;
 	connector_leads(s, v.conn, k, top, car, walkers);
 	const float light = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs).gap;
@@ -289,17 +294,6 @@ BoxHold box_hold(const CityState &s, int id) {
 		idm_accel(vc, v.v, top, light, 0.f) };
 	const int most = int(std::min_element(by, by + int(BoxHold::STARTING)) - by);
 	return by[most] > MOVING_OFF_SHARE * idm_accel(vc, v.v, top, NO_LEADER, 0.f) ? BoxHold::STARTING : BoxHold(most);
-}
-
-float conn_speed(const CityState &s, const Conn &c) {
-	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;
-}
-
-float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist) {
-	if (c.turn == Turn::STRAIGHT) return NO_LEADER;
-	const TrafficParams &p = s.catalog.traffic;
-	const float vt = p.turn_speed_kmh / KMH_PER_MS, b = p.classes[int(v.type)].b;
-	return std::sqrt(vt * vt + 2 * b * std::max(0.f, dist - p.stop_margin_m));
 }
 
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {
@@ -316,12 +310,6 @@ float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {
 	float z = s_star / std::max(gap, MIN_GAP);
 	if (v <= v0) return z >= 1 ? c.a * (1 - z * z) : (free > 0 ? free * (1 - std::pow(z, 2 * c.a / free)) : free);
 	return z >= 1 ? free + c.a * (1 - z * z) : free;
-}
-
-float desired_speed(const CityState &s, const Vehicle &v, int ds) {
-	const DirSeg &d = s.traffic.g.ds[ds];
-	float drift = s.catalog.traffic.speed_drift * std::sin(v.drift + float(s.traffic.time) * DRIFT_RATE);
-	return d.speed * v.vf * (1 + drift);
 }
 
 void step_vehicles(CityState &s, float dt) {

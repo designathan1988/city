@@ -204,7 +204,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
 	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (!has_exit(s, c, vid)) return false;
-	const float top = conn_speed(s, c) * me.vf;
+	const float top = top_speed(s, me, conn_speed(s, c));
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through

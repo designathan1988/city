@@ -96,6 +96,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			int seats = 0;
 			if (i < CAR_MODELS) seats = build_car(mb, d = cars[i], body, inside, l, trim);
 			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, look.person, trim);
+			else if (i == int(VehicleType::BICYCLE)) seats = build_bicycle(mb, d = t["bicycle"], sides, look.person, trim);
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
 			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
@@ -202,7 +203,7 @@ void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &orde
 }
 
 Dictionary AgentRenderer::cost() const {
-	static const char *const NAMES[VEHICLE_TYPES] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck" };
+	static const char *const NAMES[VEHICLE_TYPES] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck", "bicycle" };
 	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body" };
 	Dictionary out;
 	int draws = 0, tris = 0;

@@ -137,6 +137,18 @@ void find_conflicts(LaneGraph &g, const std::vector<int> &ids, int samples) {
 
 } // namespace
 
+// How far across a bike strip lies from lane 0 at `lane_u`, on the kerb side of direction `dir` (0: none there).
+static float bike_strip_shift(const Profile &p, float lane_u, int dir) {
+	float best = 0;
+	for (const StripEdge &e : p.edges) {
+		if (e.strip.kind != StripKind::BIKE) continue;
+		const float shift = (e.u0 + e.u1) * 0.5f - lane_u;
+		const bool kerb_side = dir == 0 ? shift < 0 : shift > 0;
+		if (kerb_side && (best == 0 || std::fabs(shift) < std::fabs(best))) best = shift;
+	}
+	return best;
+}
+
 void build_dir(CityState &s, int seg) {
 	LaneGraph &g = s.traffic.g;
 	const RoadNetwork &net = s.roads;
@@ -158,6 +170,8 @@ void build_dir(CityState &s, int seg) {
 		d.to = dir == 0 ? sg.b : sg.a;
 		d.lanes = std::min(int(lanes.size()), MAX_LANES);
 		for (int k = 0; k < d.lanes; k++) d.u[k] = lanes[k].u;
+		d.bikes = p.walk_left > 0 || p.walk_right > 0;
+		d.cycle_shift = bike_strip_shift(p, d.u[0], dir);
 		d.len = len;
 		d.speed = p.speed / KMH_PER_MS;
 		d.at0 = float(dir == 0 ? sg.retreat_a : sg.len - sg.retreat_b);

@@ -29,7 +29,8 @@ void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f,
 	lane_pose(s, v.ds, v.lane, front, f);
 	lane_pose(s, v.ds, v.lane, front - len, r);
 	const DirSeg &d = s.traffic.g.ds[v.ds];
-	float lx = d.sign * f.fz * v.lc_off, lz = -d.sign * f.fx * v.lc_off; // left of a -> b, as lane offsets
+	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
+	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
 	f.x += lx; f.z += lz;
 	r.x += lx; r.z += lz;
 }

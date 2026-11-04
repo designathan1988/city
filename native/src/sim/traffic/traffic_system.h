@@ -137,7 +137,7 @@ void step_governor(CityState &s, float dt);
 
 // routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
 // false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered.
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1);
+bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
 float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
 // The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
 bool retry_route(CityState &s, int id);
@@ -162,6 +162,11 @@ enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
 BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);
+
+// cycling.cpp
+float cycle_shift(const CityState &s, const Vehicle &v, int ds, float front); // how far across a bicycle's body rides at `front`
+bool out_of_the_way(const CityState &s, const Vehicle &follower, const Vehicle &lead, int ds); // `lead` rides the band beside `follower`
+float top_speed(const CityState &s, const Vehicle &v, float limit); // the most `v` goes where the limit is `limit`
 
 // lane_change.cpp
 void change_lanes(CityState &s);

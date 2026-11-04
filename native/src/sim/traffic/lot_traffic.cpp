@@ -107,6 +107,7 @@ void give_up(CityState &s, LotCar &car) {
 	Vehicle &v = s.traffic.vehicles[size_t(id)];
 	v.stop_at = -1;
 	untrack(s, car);
+	if (v.pass >= 0) release(s, id, v.pass);
 	if (v.ds < 0 || !new_trip(s, id, v.ds)) v.goal_s = 0; // on a connector, or nowhere to go: its trip ends on the lane it reaches
 }
 

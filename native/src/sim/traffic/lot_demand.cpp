@@ -64,7 +64,8 @@ int passing_car(const CityState &s, const Bay &bay) {
 	float best_d = p.parker_call_reach_m;
 	for (int id : t.micro_list) {
 		const Vehicle &v = t.vehicles[size_t(id)];
-		if (v.type >= VehicleType::MOTO || v.car >= 0 || v.ds < 0 || v.conn >= 0) continue;
+		// a commitment to a connector holds the junction for it: a new route would leave that holder behind for good
+		if (v.type >= VehicleType::MOTO || v.car >= 0 || v.ds < 0 || v.conn >= 0 || v.pass >= 0) continue;
 		if (p.classes[int(v.type)].length * 0.5f > bay.room) continue;
 		if (v.ds == bay.lane.ds && v.s > bay.lane.entry - p.parker_past_gate_m) continue; // past the gate: round the block
 		const float d = (V2(v.cur.x, v.cur.z) - bay.lane.p).len();

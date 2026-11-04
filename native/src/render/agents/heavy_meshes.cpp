@@ -181,6 +181,20 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 	return passengers;
 }
 
+void agent_rider(MeshBuilder &mb, const Person &rider, const Dictionary &pose, const Vector3 &helmet) {
+	Figure f;
+	f.hip = agent_v3(pose["hip"]);
+	f.shoulders = agent_v3(pose["shoulders"]);
+	f.knee = agent_v3(pose["knee"]);
+	f.ankle = agent_v3(pose["ankle"]);
+	f.hand = agent_v3(pose["hand"]);
+	f.holds = true;
+	f.helmet = helmet;
+	const int64_t from = mb.v.size();
+	agent_person(mb, rider, f);
+	seat_order(mb, from, DRIVER_ORDER);
+}
+
 int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
 	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
 	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
@@ -195,19 +209,7 @@ int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &ri
 			AgentTag::FIXED);
 	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, nose), Vector3(lamp_w, by1, nose + MOTO_LAMP_D), trim.headlamp, AgentTag::HEAD);
 	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, tail - MOTO_LAMP_D), Vector3(lamp_w, by1, tail), trim.tail, AgentTag::TAIL);
-	// the rider astride (agents.json moto.rider): on the saddle, leaning to the grips, feet by the engine, in a helmet
-	const Dictionary pose = d["rider"];
-	Figure f;
-	f.hip = agent_v3(pose["hip"]);
-	f.shoulders = agent_v3(pose["shoulders"]);
-	f.knee = agent_v3(pose["knee"]);
-	f.ankle = agent_v3(pose["ankle"]);
-	f.hand = agent_v3(pose["hand"]);
-	f.holds = true;
-	f.helmet = Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG);
-	const int64_t from = mb.v.size();
-	agent_person(mb, rider, f);
-	seat_order(mb, from, DRIVER_ORDER);
+	agent_rider(mb, rider, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 
