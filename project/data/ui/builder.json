@@ -1,0 +1,436 @@
+{
+ "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
+ "tabs": {
+  "mass": {
+   "sections": [
+    {
+     "title_key": "builder.section.floors",
+     "tools": [
+      {
+       "id": "storey",
+       "do": "storeys",
+       "value": 1
+      },
+      {
+       "id": "storeyDown",
+       "do": "storeys",
+       "value": -1
+      },
+      {
+       "id": "split",
+       "do": "split"
+      },
+      {
+       "id": "setback",
+       "do": "setback"
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.volumes",
+     "tools": [
+      {
+       "id": "wing",
+       "do": "wing"
+      },
+      {
+       "id": "removeBlock",
+       "do": "remove",
+       "icon": "cut",
+       "label_key": "builder.tool.cut"
+      }
+     ]
+    }
+   ]
+  },
+  "facade": {
+   "sections": [
+    {
+     "title_key": "builder.section.scope",
+     "tools": [
+      {
+       "id": "bay",
+       "do": "scope",
+       "value": 0,
+       "icon": "window",
+       "label_key": "creator.dock.scope.bay"
+      },
+      {
+       "id": "row",
+       "do": "scope",
+       "value": 1,
+       "icon": "window",
+       "label_key": "creator.dock.scope.row"
+      },
+      {
+       "id": "column",
+       "do": "scope",
+       "value": 2,
+       "icon": "window",
+       "label_key": "creator.dock.scope.column"
+      },
+      {
+       "id": "storey",
+       "do": "scope",
+       "value": 3,
+       "icon": "window",
+       "label_key": "creator.dock.scope.storey"
+      },
+      {
+       "id": "side",
+       "do": "scope",
+       "value": 4,
+       "icon": "window",
+       "label_key": "creator.dock.scope.side"
+      },
+      {
+       "id": "volume",
+       "do": "scope",
+       "value": 5,
+       "icon": "window",
+       "label_key": "creator.dock.scope.volume"
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.pattern",
+     "tools": [
+      {
+       "id": "residential",
+       "do": "pattern",
+       "value": 0,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.residential"
+      },
+      {
+       "id": "storefront",
+       "do": "pattern",
+       "value": 1,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.storefront"
+      },
+      {
+       "id": "office",
+       "do": "pattern",
+       "value": 2,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.office"
+      },
+      {
+       "id": "industrial",
+       "do": "pattern",
+       "value": 3,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.industrial"
+      },
+      {
+       "id": "arcade",
+       "do": "pattern",
+       "value": 4,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.arcade"
+      },
+      {
+       "id": "gallery",
+       "do": "pattern",
+       "value": 5,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.gallery"
+      },
+      {
+       "id": "artDeco",
+       "do": "pattern",
+       "value": 6,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.artDeco"
+      },
+      {
+       "id": "artDecoCrown",
+       "do": "pattern",
+       "value": 7,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.artDecoCrown"
+      },
+      {
+       "id": "observation",
+       "do": "pattern",
+       "value": 8,
+       "icon": "wideWindow",
+       "label_key": "creator.pattern.observation"
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.windows",
+     "tools": [
+      {
+       "id": "window",
+       "do": "arm",
+       "value": 1
+      },
+      {
+       "id": "sashWindow",
+       "do": "arm",
+       "value": 2
+      },
+      {
+       "id": "frenchWindow",
+       "do": "arm",
+       "value": 3
+      },
+      {
+       "id": "bayWindow",
+       "do": "arm",
+       "value": 4
+      },
+      {
+       "id": "ribbon",
+       "do": "arm",
+       "value": 5
+      },
+      {
+       "id": "wideWindow",
+       "do": "arm",
+       "value": 6
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.doors",
+     "tools": [
+      {
+       "id": "door",
+       "do": "arm",
+       "value": 8
+      },
+      {
+       "id": "doubleDoor",
+       "do": "arm",
+       "value": 9
+      },
+      {
+       "id": "garageDoor",
+       "do": "arm",
+       "value": 10
+      },
+      {
+       "id": "loadingDoor",
+       "do": "arm",
+       "value": 12
+      }
+     ]
+    },
+    {
+     "title_key": "builder.section.bays",
+     "tools": [
+      {
+       "id": "balcony",
+       "do": "arm",
+       "value": 7
+      },
+      {
+       "id": "shopfront",
+       "do": "arm",
+       "value": 11
+      },
+      {
+       "id": "pillarBay",
+       "do": "arm",
+       "value": 13
+      },
+      {
+       "id": "wallBay",
+       "do": "arm",
+       "value": 0
+      }
+     ]
+    }
+   ]
+  },
+  "roof": {
+   "sections": [
+    {
+     "title_key": "builder.category.roof",
+     "tools": [
+      {
+       "id": "roofFlat",
+       "do": "roof",
+       "value": 0
+      },
+      {
+       "id": "roofTerrace",
+       "do": "roof",
+       "value": 1
+      },
+      {
+       "id": "roofGable",
+       "do": "roof",
+       "value": 2
+      },
+      {
+       "id": "roofHip",
+       "do": "roof",
+       "value": 3
+      },
+      {
+       "id": "roofShed",
+       "do": "roof",
+       "value": 4
+      },
+      {
+       "id": "roofSawtooth",
+       "do": "roof",
+       "value": 5
+      }
+     ]
+    }
+   ]
+  },
+  "paint": {
+   "sections": [
+    {
+     "title_key": "builder.section.scope",
+     "tools": [
+      {
+       "id": "wall",
+       "do": "paint_scope",
+       "value": 3,
+       "icon": "paint",
+       "label_key": "builder.tool.wall"
+      },
+      {
+       "id": "roof",
+       "do": "paint_scope",
+       "value": 4,
+       "icon": "roofFlat",
+       "label_key": "builder.category.roof"
+      },
+      {
+       "id": "side",
+       "do": "paint_scope",
+       "value": 5,
+       "icon": "paint",
+       "label_key": "creator.dock.scope.side"
+      },
+      {
+       "id": "storey",
+       "do": "paint_scope",
+       "value": 6,
+       "icon": "paint",
+       "label_key": "creator.dock.scope.storey"
+      }
+     ]
+    },
+    {
+     "title_key": "builder.field.material",
+     "tools": [
+      {
+       "id": "plaster",
+       "do": "finish",
+       "value": 0,
+       "icon": "paint",
+       "label_key": "building.finish.plaster",
+       "rgb": "#e6e0d4"
+      },
+      {
+       "id": "stucco",
+       "do": "finish",
+       "value": 1,
+       "icon": "paint",
+       "label_key": "building.finish.stucco",
+       "rgb": "#dcd4c4"
+      },
+      {
+       "id": "ceramic",
+       "do": "finish",
+       "value": 2,
+       "icon": "paint",
+       "label_key": "building.finish.ceramic",
+       "rgb": "#cfd6da"
+      },
+      {
+       "id": "brick",
+       "do": "finish",
+       "value": 3,
+       "icon": "paint",
+       "label_key": "building.finish.brick",
+       "rgb": "#a4563f"
+      },
+      {
+       "id": "stone",
+       "do": "finish",
+       "value": 4,
+       "icon": "paint",
+       "label_key": "building.finish.stone",
+       "rgb": "#b7b2a6"
+      },
+      {
+       "id": "concrete",
+       "do": "finish",
+       "value": 5,
+       "icon": "paint",
+       "label_key": "building.finish.concrete",
+       "rgb": "#b4b4b0"
+      },
+      {
+       "id": "wood",
+       "do": "finish",
+       "value": 6,
+       "icon": "paint",
+       "label_key": "building.finish.wood",
+       "rgb": "#9c6b43"
+      },
+      {
+       "id": "metal",
+       "do": "finish",
+       "value": 7,
+       "icon": "paint",
+       "label_key": "building.finish.metal",
+       "rgb": "#9aa3a8"
+      },
+      {
+       "id": "glass",
+       "do": "finish",
+       "value": 8,
+       "icon": "paint",
+       "label_key": "building.finish.glass",
+       "rgb": "#9db6c2"
+      },
+      {
+       "id": "tile",
+       "do": "finish",
+       "value": 9,
+       "icon": "paint",
+       "label_key": "building.finish.tile",
+       "rgb": "#bd6a52"
+      },
+      {
+       "id": "slate",
+       "do": "finish",
+       "value": 10,
+       "icon": "paint",
+       "label_key": "building.finish.slate",
+       "rgb": "#585b5f"
+      },
+      {
+       "id": "panel",
+       "do": "finish",
+       "value": 11,
+       "icon": "paint",
+       "label_key": "building.finish.panel",
+       "rgb": "#8f9ba5"
+      },
+      {
+       "id": "roofing",
+       "do": "finish",
+       "value": 12,
+       "icon": "paint",
+       "label_key": "building.finish.roofing",
+       "rgb": "#7b4a37"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

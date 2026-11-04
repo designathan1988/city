@@ -302,6 +302,7 @@
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
     "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",
     "project/data/ui/toolbar.json": "tools/gates/schemas/toolbar.schema.json",
+    "project/data/ui/builder.json": "tools/gates/schemas/builder.schema.json",
     "project/data/ui/hud.json": "tools/gates/schemas/hud.schema.json",
     "project/data/ui/drawers.json": "tools/gates/schemas/drawers.schema.json",
     "project/data/game/camera.json": "tools/gates/schemas/camera.schema.json",

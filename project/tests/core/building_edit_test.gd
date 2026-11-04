@@ -37,7 +37,7 @@ const ROOF_HIP := 3
 const ROOF_PITCH := 30.0
 const PAINT_SCOPES := [0, 1, 2, 3, 4, 5, 6]
 const FINISH_BRICK := 3
-const PAINT_RGB := 0xa04030
+const PAINT_RGB := "#a04030"
 const SHOWN_CASES := 6
 
 var failures := 0

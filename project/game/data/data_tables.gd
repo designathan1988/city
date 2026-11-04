@@ -32,6 +32,7 @@ const UI := {
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
+	"builder": "res://data/ui/builder.json",
 }
 const GAME := {
 	"camera": "res://data/game/camera.json",
@@ -43,6 +44,8 @@ const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
 	"res://data/i18n/strings_c.csv",
+	"res://data/i18n/strings_d.csv",
+	"res://data/i18n/strings_e.csv",
 ]
 
 static var _cache: Dictionary = {}

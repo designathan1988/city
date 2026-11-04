@@ -123,12 +123,14 @@
     {
      "id": "mass",
      "icon": "mass",
-     "label_key": "builder.category.mass"
+     "label_key": "builder.category.mass",
+     "tool": "BUILD"
     },
     {
      "id": "facade",
      "icon": "face",
-     "label_key": "builder.category.facade"
+     "label_key": "builder.category.facade",
+     "tool": "BUILD"
     },
     {
      "id": "parts",
@@ -138,7 +140,8 @@
     {
      "id": "roof",
      "icon": "roof",
-     "label_key": "builder.category.roof"
+     "label_key": "builder.category.roof",
+     "tool": "BUILD"
     },
     {
      "id": "interior",
@@ -148,7 +151,8 @@
     {
      "id": "paint",
      "icon": "paint",
-     "label_key": "builder.category.paint"
+     "label_key": "builder.category.paint",
+     "tool": "BUILD"
     }
    ],
    "strip": "build_cards",

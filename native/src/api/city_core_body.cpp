@@ -1,7 +1,9 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
 #include "api/city_core.h"
 #include "api/edit_result.h"
+#include "core/color.h"
 #include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/plan_area.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/commands/body_pick.h"
 #include "sim/commands/body_ops.h"
@@ -15,6 +17,7 @@ namespace city {
 
 namespace {
 constexpr const char *EDIT_LABEL = "cmd.place.editBuilding";
+constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
 constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
 
 template <typename F>
@@ -71,6 +74,26 @@ Dictionary CityCore::body_pick(const Vector3 &origin, const Vector3 &dir) const 
 	d["bay"] = hit.bay;
 	d["point"] = origin + n * hit.t;
 	return d;
+}
+
+PackedVector3Array CityCore::body_outline(int id, int vol) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	PackedVector3Array out;
+	const CityState &s = *state_;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return out;
+	const Building &rec = s.buildings.items[id];
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	if (vol < 0 || vol >= int(body.volumes.size())) return out;
+	const b40::Volume &v = body.volumes[size_t(vol)];
+	b40::LotFrame f = b40::lot_frame(rec);
+	float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });
+	for (int level : { v.base, v.top() })
+		for (const b40::Point2 &p : b40::ring_of(v)) {
+			V2 at = f.at(p.x, p.y);
+			out.push_back(Vector3(at.x, floor + body.level_z(level), at.y));
+		}
+	return out;
 }
 
 Dictionary CityCore::body_storeys(int id, int vol, int count) {
@@ -159,8 +182,9 @@ Dictionary CityCore::body_roof_shape(int id, int vol, double pitch, int ridge, i
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_roof_shape(b, t, vol, float(pitch), ridge, fall); });
 }
 
-Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, int rgb) {
-	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, uint32_t(rgb)); });
+Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, const String &colour) {
+	uint32_t rgb = parse_hex_color(colour.utf8().get_data()) >> ALPHA_BITS;
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, rgb); });
 }
 
 } // namespace city

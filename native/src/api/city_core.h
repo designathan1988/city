@@ -33,6 +33,7 @@ public:
 	void set_day_hour(double hour);
 	godot::Dictionary body_info(int id) const;
 	godot::Dictionary body_pick(const godot::Vector3 &origin, const godot::Vector3 &dir) const;
+	godot::PackedVector3Array body_outline(int id, int vol) const;
 	godot::Dictionary body_storeys(int id, int vol, int count);
 	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
 	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);
@@ -49,7 +50,7 @@ public:
 	godot::Dictionary body_set_relief(int id, int vol, const godot::Dictionary &region, bool snap);
 	godot::Dictionary body_set_roof(int id, int vol, int roof);
 	godot::Dictionary body_roof_shape(int id, int vol, double pitch, int ridge, int fall);
-	godot::Dictionary body_paint(int id, int scope, int vol, int side, int storey, int finish, int rgb);
+	godot::Dictionary body_paint(int id, int scope, int vol, int side, int storey, int finish, const godot::String &colour);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
