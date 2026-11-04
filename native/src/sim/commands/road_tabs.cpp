@@ -146,7 +146,9 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 			Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
 			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags);
 		}
+		const std::vector<CarriedPiece> kit = street_kit_of(s, sg);
 		j_set_profile(s, sg, profile);
+		carry_street_kit(s, sg, kit);
 		r.buildings_removed += settle_under(s, sg);
 		const RoadSegment &g = s.roads.segs[sg];
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));

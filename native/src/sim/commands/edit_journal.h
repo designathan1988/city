@@ -6,6 +6,7 @@
 
 #include "sim/buildings/building_store.h"
 #include "sim/roads/road_network.h"
+#include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
 
 #include <cstdint>
@@ -18,7 +19,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY };
+	MONEY, ADD_ITEM, REM_ITEM, ADD_POLE, REM_POLE, ADD_SPAN, REM_SPAN, ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, NODE_CTL, SEG_FLAGS };
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
@@ -29,6 +30,11 @@ struct EditOp {
 	RoadSegment seg;
 	Building bld, bld_after;
 	TerrainModifier mod;
+	StreetItem item;
+	UtilityPole pole;
+	UtilitySpan span;
+	Barrier barrier;
+	StreetCut cut;
 };
 
 // One undoable step. Terrain samples are kept apart: their values before (while open, by index) and after.
@@ -91,6 +97,17 @@ void j_remove_building(CityState &s, int id);
 void j_edit_building(CityState &s, int id, const Building &after);
 int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, float max_run);
 void j_money(CityState &s, double delta);
+int j_add_item(CityState &s, const StreetItem &r);
+void j_remove_item(CityState &s, int id);
+int j_add_pole(CityState &s, const UtilityPole &r);
+void j_remove_pole(CityState &s, int id); // and its spans
+int j_add_span(CityState &s, int a, int b);
+void j_remove_span(CityState &s, int id);
+int j_add_barrier(CityState &s, const Barrier &r);
+void j_remove_barrier(CityState &s, int id);
+int j_add_cut(CityState &s, float x, float z);
+void j_set_ctl(CityState &s, int n, uint8_t ctl);
+void j_set_flags(CityState &s, int seg, uint16_t flags);
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 

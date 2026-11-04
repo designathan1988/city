@@ -50,7 +50,7 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
 		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
-		out.push_back(j_add_segment(s, prev, next, sub, profile, 0, 0, 0));
+		out.push_back(j_add_segment(s, prev, next, sub, profile, 0, 0, s.new_road_flags));
 		prev = next;
 	}
 }
@@ -101,6 +101,10 @@ EditResult demolish_at(CityState &s, double x, double z) {
 	EditResult r;
 	int hit = -1;
 	float reach = s.catalog.tune.road_pick_m;
+	if (remove_street_at(s, x, z, s.catalog.furniture.items.demolish_reach_m)) {
+		r.ok = true;
+		return r;
+	}
 	s.buildings.query(float(x) - reach, float(z) - reach, float(x) + reach, float(z) + reach, [&](int id) {
 		const Building &b = s.buildings.items[id];
 		double c = std::cos(b.rot), sn = std::sin(b.rot), dx = x - b.x, dz = z - b.z;
@@ -122,6 +126,7 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.error = "help.tool.bulldoze";
 		return r;
 	}
+	remove_street_kit(s, seg);
 	RoadSegment g = net.segs[seg];
 	double refund = (g.flags & SEG_FREE) ? 0 : segment_value(s, seg) * s.catalog.tune.economy_refund_share;
 	j_remove_segment(s, seg);

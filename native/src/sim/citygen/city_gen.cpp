@@ -140,6 +140,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.map_half = float(map.tiles * c.tune.world_tile_m / 2);
 	s.seed = exact_seed;
 	s.roads.init(&s.catalog, &s.log);
+	s.street.clear();
 	s.buildings.init(&s.log);
 	s.lots.clear();
 	s.growth.clear();

@@ -6,6 +6,7 @@
 #include "sim/state/city_state.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace city {
 
@@ -168,6 +169,144 @@ void j_money(CityState &s, double delta) {
 	if (s.unlimited_money || delta == 0) return;
 	s.money += delta;
 	if (s.history.recording) record(s, OpKind::MONEY, -1).money = delta;
+}
+
+int j_add_item(CityState &s, const StreetItem &r) {
+	int id = s.street.add_item(r);
+	mark_street(s, r.x, r.z);
+	if (s.history.recording) {
+		record(s, OpKind::ADD_ITEM, id).item = s.street.items.items[size_t(id)];
+		grow_point(s, r.x, r.z, 0);
+	}
+	return id;
+}
+
+void j_remove_item(CityState &s, int id) {
+	const StreetItem r = s.street.items.items[size_t(id)];
+	if (s.history.recording) {
+		record(s, OpKind::REM_ITEM, id).item = r;
+		grow_point(s, r.x, r.z, 0);
+	}
+	s.street.remove_item(id);
+	mark_street(s, r.x, r.z);
+}
+
+int j_add_pole(CityState &s, const UtilityPole &r) {
+	int id = s.street.add_pole(r);
+	mark_street(s, r.x, r.z);
+	if (s.history.recording) {
+		record(s, OpKind::ADD_POLE, id).pole = s.street.poles.items[size_t(id)];
+		grow_point(s, r.x, r.z, 0);
+	}
+	return id;
+}
+
+void j_remove_pole(CityState &s, int id) {
+	const std::vector<int> spans = s.street.poles.items[size_t(id)].spans;
+	for (int span : spans) j_remove_span(s, span);
+	const UtilityPole r = s.street.poles.items[size_t(id)];
+	if (s.history.recording) {
+		record(s, OpKind::REM_POLE, id).pole = r;
+		grow_point(s, r.x, r.z, 0);
+	}
+	s.street.remove_pole(id);
+	mark_street(s, r.x, r.z);
+}
+
+int j_add_span(CityState &s, int a, int b) {
+	UtilitySpan r;
+	r.a = a;
+	r.b = b;
+	int id = s.street.add_span(r);
+	const UtilityPole &pa = s.street.poles.items[size_t(a)], &pb = s.street.poles.items[size_t(b)];
+	mark_street(s, pa.x, pa.z);
+	mark_street(s, pb.x, pb.z);
+	if (s.history.recording) record(s, OpKind::ADD_SPAN, id).span = s.street.spans.items[size_t(id)];
+	return id;
+}
+
+void j_remove_span(CityState &s, int id) {
+	const UtilitySpan r = s.street.spans.items[size_t(id)];
+	if (s.history.recording) record(s, OpKind::REM_SPAN, id).span = r;
+	const UtilityPole &pa = s.street.poles.items[size_t(r.a)], &pb = s.street.poles.items[size_t(r.b)];
+	mark_street(s, pa.x, pa.z);
+	mark_street(s, pb.x, pb.z);
+	s.street.remove_span(id);
+}
+
+namespace {
+void mark_barrier(CityState &s, const Barrier &b) {
+	for (size_t i = 0; i + 3 < b.pts.size(); i += 2) {
+		const double dx = b.pts[i + 2] - b.pts[i], dz = b.pts[i + 3] - b.pts[i + 1];
+		const int steps = int(std::ceil(std::hypot(dx, dz) / CHUNK)) + 1;
+		for (int k = 0; k <= steps; k++) mark_street(s, b.pts[i] + dx * k / steps, b.pts[i + 1] + dz * k / steps);
+	}
+}
+} // namespace
+
+int j_add_barrier(CityState &s, const Barrier &r) {
+	int id = s.street.add_barrier(r);
+	mark_barrier(s, r);
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::ADD_BARRIER, id);
+		op.barrier = s.street.barriers.items[size_t(id)];
+		s.history.open.bytes += r.pts.size() * sizeof(float);
+		grow_point(s, r.pts[0], r.pts[1], 0);
+	}
+	return id;
+}
+
+void j_remove_barrier(CityState &s, int id) {
+	const Barrier r = s.street.barriers.items[size_t(id)];
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::REM_BARRIER, id);
+		op.barrier = r;
+		s.history.open.bytes += r.pts.size() * sizeof(float);
+		grow_point(s, r.pts[0], r.pts[1], 0);
+	}
+	s.street.remove_barrier(id);
+	mark_barrier(s, r);
+}
+
+int j_add_cut(CityState &s, float x, float z) {
+	StreetCut r;
+	r.x = x;
+	r.z = z;
+	int id = s.street.add_cut(r);
+	mark_street(s, x, z);
+	if (s.history.recording) {
+		record(s, OpKind::ADD_CUT, id).cut = s.street.cuts.items[size_t(id)];
+		grow_point(s, x, z, 0);
+	}
+	return id;
+}
+
+void j_set_ctl(CityState &s, int n, uint8_t ctl) {
+	RoadNode &nd = s.roads.nodes[size_t(n)];
+	if (nd.ctl == ctl) return;
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_CTL, n);
+		op.from = nd.ctl;
+		op.to = ctl;
+		grow_point(s, nd.x, nd.z, 0);
+	}
+	nd.ctl = ctl;
+	s.log.net_node(n);
+}
+
+void j_set_flags(CityState &s, int seg, uint16_t flags) {
+	RoadSegment &g = s.roads.segs[size_t(seg)];
+	if (g.flags == flags) return;
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::SEG_FLAGS, seg);
+		op.from = g.flags;
+		op.to = flags;
+		grow_seg(s, g);
+	}
+	g.flags = flags;
+	s.log.net_node(g.a);
+	s.log.net_node(g.b);
+	mark_furniture(s, seg);
 }
 
 void j_terrain_touch(CityState &s, const SampleRect &r) {

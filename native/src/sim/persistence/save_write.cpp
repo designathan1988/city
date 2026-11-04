@@ -70,6 +70,49 @@ void write_buildings(ByteWriter &w, const BuildingStore &bs) {
 		w.put<double>(b.built);
 	}
 }
+
+void write_street(ByteWriter &w, const StreetWorks &k) {
+	w.put<uint32_t>(uint32_t(k.items.items.size()));
+	for (const StreetItem &i : k.items.items) {
+		w.put<uint8_t>(i.alive ? 1 : 0);
+		if (!i.alive) continue;
+		w.put<uint8_t>(uint8_t(i.kind));
+		w.put<uint8_t>(uint8_t(i.sign));
+		w.put<float>(i.x);
+		w.put<float>(i.z);
+		std::vector<uint8_t> text(i.text.begin(), i.text.end());
+		w.put_vec(text);
+	}
+	w.put<uint32_t>(uint32_t(k.poles.items.size()));
+	for (const UtilityPole &p : k.poles.items) {
+		w.put<uint8_t>(p.alive ? 1 : 0);
+		if (!p.alive) continue;
+		w.put<float>(p.x);
+		w.put<float>(p.z);
+		w.put<uint8_t>(p.lamp ? 1 : 0);
+	}
+	w.put<uint32_t>(uint32_t(k.spans.items.size()));
+	for (const UtilitySpan &p : k.spans.items) {
+		w.put<uint8_t>(p.alive ? 1 : 0);
+		if (!p.alive) continue;
+		w.put<int32_t>(p.a);
+		w.put<int32_t>(p.b);
+	}
+	w.put<uint32_t>(uint32_t(k.barriers.items.size()));
+	for (const Barrier &b : k.barriers.items) {
+		w.put<uint8_t>(b.alive ? 1 : 0);
+		if (!b.alive) continue;
+		w.put<uint8_t>(uint8_t(b.kind));
+		w.put_vec(b.pts);
+	}
+	w.put<uint32_t>(uint32_t(k.cuts.items.size()));
+	for (const StreetCut &c : k.cuts.items) {
+		w.put<uint8_t>(c.alive ? 1 : 0);
+		if (!c.alive) continue;
+		w.put<float>(c.x);
+		w.put<float>(c.z);
+	}
+}
 } // namespace
 
 std::vector<uint8_t> encode_city(const CityState &s) {
@@ -85,6 +128,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	write_terrain(w, s.terrain);
 	write_roads(w, s.roads);
 	write_buildings(w, s.buildings);
+	write_street(w, s.street);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
 	w.put<uint32_t>(SAVE_END);

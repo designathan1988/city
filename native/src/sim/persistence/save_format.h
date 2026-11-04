@@ -12,7 +12,7 @@ struct CityState;
 
 constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
-constexpr uint32_t SAVE_VERSION = 1;
+constexpr uint32_t SAVE_VERSION = 2; // 2: the street records (sim/street)
 
 // The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).
 std::vector<uint8_t> encode_city(const CityState &s);

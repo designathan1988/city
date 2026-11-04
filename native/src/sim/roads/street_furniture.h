@@ -19,6 +19,8 @@ struct FurnitureSpot {
 	int node = -1, approach = -1; // a signal post: the junction, and the arm whose arriving traffic it shows
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
 	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
+	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
+	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;
 	float u = 0;
 	float face_left = 0, face_fwd = 0; // the piece's +z in the segment frame (toward the road or the arriving traffic)
@@ -42,6 +44,12 @@ struct LampRow {
 	}
 };
 LampRow lamp_row(const RoadNetwork &net, int sid);
+
+// The side has a sidewalk; the u `from_kerb` metres in from its kerb.
+bool sidewalk_on(const Profile &p, int side);
+float sidewalk_u(const Profile &p, int side, float from_kerb);
+// Where a piece of kind `k` stands on `side`, its face kerb_clear_m from the kerb; false when it would leave no free width.
+bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, FurnitureKind k, float &u);
 
 constexpr uint32_t furniture_bit(FurnitureKind k) { return 1u << uint32_t(k); }
 constexpr uint32_t FURNITURE_ALL = (1u << FURNITURE_KINDS) - 1u;

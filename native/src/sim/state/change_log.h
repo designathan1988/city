@@ -15,6 +15,7 @@ namespace city {
 struct ChangeLog {
 	std::mutex mutex; // consumers under the shared map lock (see above)
 	std::vector<int64_t> road_chunks; // CHUNK keys whose road meshes and street props must be rebuilt
+	std::vector<int64_t> prop_chunks; // CHUNK keys whose street props alone must be rebuilt (what the player placed)
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
@@ -45,6 +46,7 @@ struct ChangeLog {
 	}
 	void clear_render() {
 		road_chunks.clear();
+		prop_chunks.clear();
 		building_chunks.clear();
 		terrain_rects.clear();
 	}

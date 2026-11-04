@@ -26,6 +26,8 @@ void conform_under(CityState &s, int seg);
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
 // The segment's street furniture is placed and drawn again (its zones changed, or its square's hydrant may move).
 void mark_furniture(CityState &s, int seg);
+// What the player built at (x, z) changed: the chunk of its props and the walkers' bodies on the segments round it.
+void mark_street(CityState &s, double x, double z);
 // Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
 // of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
 // the revision.

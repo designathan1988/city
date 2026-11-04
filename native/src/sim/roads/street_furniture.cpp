@@ -99,10 +99,13 @@ void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	for (int k = 0; k < row.stations; k++) {
 		const double v = row.origin + row.spacing * k;
-		c.all.push_back(spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f));
+		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
+		main_pole.station = k;
+		c.all.push_back(main_pole);
 		if (!row.twin) continue;
 		FurnitureSpot s = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u2, toward_road(1 - row.side), 0.f);
 		s.row = 1;
+		s.station = k;
 		c.all.push_back(s);
 	}
 }
@@ -222,6 +225,26 @@ FurnitureSpot furniture::spot(const RoadNetwork &net, FurnitureKind k, int sid, 
 	s.half_v = (along_traffic ? f.z_m : f.x_m) * 0.5f;
 	s.half_u = (along_traffic ? f.x_m : f.z_m) * 0.5f;
 	return s;
+}
+
+bool sidewalk_on(const Profile &p, int side) { return !p.edges.empty() && walk_on(p, side); }
+
+float sidewalk_u(const Profile &p, int side, float from_kerb) { return kerb_in(p, side, from_kerb); }
+
+bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, FurnitureKind k, float &u) {
+	const StreetFurnitureDef &d = defs(net);
+	if (!sidewalk_on(p, side)) return false;
+	if (k == FurnitureKind::DRAIN) {
+		u = kerb_in(p, side, 0);
+		return true;
+	}
+	if (k == FurnitureKind::TREE) {
+		u = kerb_in(p, side, d.trees.kerb_clear_m + d.trees.pit_m * 0.5f);
+		return fits_walk(net, p, side, d.trees.kerb_clear_m + d.trees.pit_m);
+	}
+	const float across = d.footprint[int(k)].z_m;
+	u = kerb_in(p, side, d.sidewalk.kerb_clear_m + across * 0.5f);
+	return k == FurnitureKind::COLUMN || k == FurnitureKind::SIGN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
 }
 
 void hydrant_square(const RoadNetwork &net, double x, double z, double &x0, double &z0, double &x1, double &z1) {

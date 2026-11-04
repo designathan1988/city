@@ -15,6 +15,7 @@ constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is sti
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
 constexpr double CONFORM_STEP_M = 16; // terrain corridor points along a curved segment
+constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
 constexpr float NODE_REFRESH_PAD_M = 60; // nodes this far past the edit may change shape (bulbs see their neighbours)
 
 bool still_there(const CityState &s, int seg, double x, double z) {
@@ -120,6 +121,12 @@ void mark_furniture(CityState &s, int seg) {
 	s.log.furniture_segs.push_back(seg);
 	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
 		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) s.log.road_chunks.push_back(cell_key(i, j));
+}
+
+void mark_street(CityState &s, double x, double z) {
+	s.log.prop_chunks.push_back(chunk_of(float(x), float(z)));
+	const double r = STREET_MARK_PAD_M;
+	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) { s.log.furniture_segs.push_back(seg); });
 }
 
 void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz) {

@@ -177,7 +177,23 @@ void build_junction(CityState &s, int n) {
 	for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
 	for (size_t k = 0; k < order.size(); k++)
-		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
+		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 && !plate_rule(s.roads, arms[order[k]].seg, n) ? RANK_MAIN : RANK_YIELD;
+}
+
+int plate_rule(const RoadNetwork &net, int seg, int n) {
+	const RoadSegment &g = net.segs[size_t(seg)];
+	return g.a == n ? (g.flags & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT : (g.flags & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT;
+}
+
+int approach_rule(const CityState &s, int n, int seg) {
+	if (control_of(s, n) != Control::PRIORITY) return RULE_NONE;
+	const int plate = plate_rule(s.roads, seg, n);
+	if (plate) return plate;
+	std::vector<Arm> arms = arms_of(s, n);
+	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
+	for (size_t k = 0; k < arms.size(); k++)
+		if (arms[k].seg == seg) return k < 2 ? RULE_NONE : RULE_YIELD;
+	return RULE_NONE;
 }
 
 Control control_of(const CityState &s, int n) {

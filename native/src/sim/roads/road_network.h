@@ -16,8 +16,12 @@ namespace city {
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
 	SEG_FREE = 0x80, // built by the generator: worth nothing when demolished
+	SEG_RULE_A_MASK = 0x0300, // bits 8-9, 10-11: the plate the player put on its a and b approach (SegRule)
+	SEG_RULE_B_MASK = 0x0C00,
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
+constexpr int SEG_RULE_A_SHIFT = 8, SEG_RULE_B_SHIFT = 10;
+enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
 
 struct RoadNode {
 	bool alive = false;

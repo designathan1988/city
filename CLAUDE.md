@@ -140,6 +140,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
+- `native/src/sim/commands/street_snap.cpp` · `native/src/sim/commands/street_commands.cpp` · `native/src/sim/commands/pole_runs.cpp` — aba Rua: encaixe e recusas; itens, fileiras, barreiras, remoção e kit que acompanha a via; plano e construção da linha de postes
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/persistence/save_format.h` — formato do save da cidade
@@ -150,6 +151,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
 - `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` · `native/src/sim/roads/street_furniture_posts.cpp` · `native/src/sim/roads/street_furniture_internal.h` — dono único de onde fica o mobiliário da rua (hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render; postes e semáforos; zonas da calçada
+- `native/src/sim/street/street_works.cpp` · `native/src/sim/street/street_works.h` — o que o jogador constrói na rua: itens, postes, vãos, barreiras e cortes de peças do kit, com índice por lugar
+- `native/src/sim/street/footway.cpp` · `native/src/sim/street/footway.h` — o que há sob um ponto: calçada, canteiro, leito e área de travessia, lido do perfil
+- `native/src/sim/street/pole_arms.cpp` · `native/src/sim/street/pole_arms.h` · `native/src/sim/street/pole_routes.cpp` · `native/src/sim/street/pole_routes.h` — cruzetas pela deflexão da linha; linhas de guia atrás do meio-fio e o caminho mais barato por elas
+- `native/src/sim/street/street_spots.cpp` · `native/src/sim/street/street_spots.h` — o que o jogador pôs como peças do segmento, placas colocadas e nomes de rua
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
 - `native/src/sim/simulation/simulation.cpp` · `native/src/sim/simulation/simulation.h` — thread do tick, velocidades e relógio
@@ -176,6 +181,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/ped_routes.cpp` · `native/src/sim/traffic/pedestrians.cpp` — rotas a pé e caminho de esquina; pedestres com destino
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
+- `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/ped_state.h` — grafo de faixas, veículos, meso e pools; os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
 - `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
