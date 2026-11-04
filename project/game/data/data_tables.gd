@@ -32,6 +32,7 @@ const RENDER_TABLES := {
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
 	"effects": "res://data/render/effects.json",
+	"ragdoll": "res://data/render/ragdoll.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",

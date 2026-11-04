@@ -25,15 +25,17 @@ constexpr float LIGHT_ATTEN = 2.f;
 constexpr float GEYSER_LIFT_M = 0.4f, JET_SPREAD_M = 0.1f, JET_LIFE_S = 4.2f;
 } // namespace
 
-bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
+bool EffectWorld::init(const RenderContext &ctx, const PeopleAsset &people, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
+	if (!params_.load(ctx.table("effects", errors), errors)) return false;
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors);
 	if (!errors.is_empty()) return false;
 	puffs_.init(scenario_, puffs, params_.pool);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
 	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
+	const Dictionary agents = ctx.table("agents", errors);
+	if (!ragdolls_.init(ctx, people, agents.get("people", Dictionary()), params_.gravity, errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	light_ = rs->omni_light_create();
 	rs->light_set_shadow(light_, false);
@@ -48,6 +50,7 @@ void EffectWorld::reset() {
 	puffs_.reset();
 	marks_.reset();
 	debris_.reset();
+	ragdolls_.reset();
 	geysers_.clear();
 	sources_.clear();
 	fire_carry_.clear();
@@ -67,6 +70,7 @@ void EffectWorld::release() {
 	puffs_.release();
 	marks_.release();
 	debris_.release();
+	ragdolls_.release();
 }
 
 void EffectWorld::flash(float radius) {
@@ -146,6 +150,8 @@ void EffectWorld::sync(CityState &s) {
 	step_geysers(dt);
 	step_sources(dt);
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
+	ragdolls_.step(dt, s);
+	ragdolls_.draw();
 	shake_ *= std::exp(-params_.shake_decay * dt);
 	if (shake_ < SHAKE_FLOOR) shake_ = 0;
 	light_update(dt);

@@ -38,12 +38,16 @@ inline void push_agent(godot::PackedFloat32Array &buf, const Pose &p, float scal
 	mm_push(buf, x, y, z, godot::Vector3(p.x, p.y, p.z), godot::Color(1, 1, 1, seed), c0, c1, c2, c3);
 }
 
+// What every material that draws a cooked person shares (people.gdshader, ragdoll.gdshader): the clothes, hair and grey tints.
+void set_people_palette(const godot::RID &material, const godot::Dictionary &people);
+
 class PeopleRenderer {
 public:
 	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
 	void reset();
 	// Returns how many people were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
+	const PeopleAsset &asset() const { return asset_; }
 
 private:
 	PeopleAsset asset_;

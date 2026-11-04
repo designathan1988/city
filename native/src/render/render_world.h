@@ -57,6 +57,9 @@ public:
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int effect_pieces() const { return effects_.pieces(); }
+	int fallen_people() const { return effects_.fallen(); }
+	godot::Dictionary ragdoll_cost() const { return effects_.ragdoll_cost(); }
+	godot::Dictionary ragdoll_probe(int variation, float speed_ms, float up_ms, float drop_m, float seconds, int substeps) { return effects_.ragdoll_probe(variation, speed_ms, up_ms, drop_m, seconds, substeps); }
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int64_t worn_cells() const { return wear_.worn_cells(); }

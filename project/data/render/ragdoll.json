@@ -1,0 +1,51 @@
+{
+ "_doc": "The body that falls (native/src/sim/physics, render/effects/ragdoll_*): the cooked person (people.bin) as 16 rigid bodies joined by 15 limited ball joints, solved by XPBD. SKELETON: the parents come from the MPFB2 game_engine rig, repo makehumancommunity/mpfb2, commit afb9f530a7c2741dedb8df0ebae2e0b183caec21, file src/mpfb/data/rigs/standard/rig.game_engine.json (53 bones with parent; copy at roadcraft-4.0 public/models/people/skeleton-game-engine.json): pelvis > spine_01 > spine_02 > spine_03 > neck_01 > head; spine_03 > clavicle_l/r > upperarm > lowerarm > hand; pelvis > thigh > calf > foot. All 20 bones the mesh uses exist in that file. THE INDEX -> NAME MAP of the 23 cooked bones (people.bin keeps only the count; the 4.0's people.json that listed the names is not on disk) is an inference from the skin weights: 1 pelvis, 2 spine_01, 3 spine_02, 4 spine_03, 5 neck_01, 6 head, 7-10 clavicle/upperarm/lowerarm/hand of the left side, 11-14 of the right, 15-17 thigh/calf/foot left, 19-21 right; 0 Root, 18 ball_l and 22 ball_r have no vertex. It is checked by ports/demolition/evidence/rig_check.py (32 variations: the assignment by distance alone reproduces the map in all, no left/right error, every chain in order, the pelvis is the one bone sharing most vertices with both thighs); the pair pelvis/spine_01 is the thinnest (0.72 % of the height) and stays a modelling choice. BODIES follow the segments of the sources below: bones the sources do not separate share a body (spine_02, spine_03 and both clavicles are the thorax; neck_01 and head are head and neck). MASSES: Dempster (1955) as adapted by Winter (2009), Biomechanics and Motor Control of Human Movement 4th ed., segment table (checked in BMClab/BMC data/BSP_DempsterWinter.txt): hand 0.006, forearm 0.016, upper arm 0.028, foot 0.0145, leg 0.0465, thigh 0.100, head and neck 0.081, thorax 0.216, abdomen 0.139, pelvis 0.142 (the 16 sum to 1); only the ratios matter to the motion (gravity does not depend on mass, the blow gives velocities), so the total is 1 and the inertia of each body is the second moment of its skin vertices at the same unit. JOINT LIMITS, degrees: NASA OCHMO-HB-004 Rev. A (Dec 2023) Appendix A Table 5 Unsuited Range of Motion: ankle dorsiflexion 25 plantar 50; knee flexion 125 extension 0; hip flexion 165 extension 15 abduction 65 adduction 20 rotation 35 each way; torso (whole spine) flexion 45 extension 15 lean 40 each side rotation 30 each way; shoulder flexion 145 extension 70 abduction 165 adduction 45 lateral rotation 46 medial 91 (the 1979 study row); neck (1979 study) flexion 34 extension 65 bend right 35 left 29 rotation right 73 left 72; elbow flexion 130 extension 0; wrist extension 90 flexion 60 as printed, radial deviation 30 ulnar 25, supination 80 pronation 80. Choices of modelling, not measurements: the torso total is split in two equal joints (pelvis > abdomen, abdomen > thorax); the clavicle is part of the thorax and the whole shoulder range acts at thorax > upperarm (the table's shoulder is the arm on the trunk); head and neck are one body with the neck's range; a motion with no row in the table has a zero range (ankle inversion, knee and elbow twist and sideways bend); the forearm twist of the wrist row acts at lowerarm > hand. Hip: 165 degrees is the table's live-person angle and the bodies do not collide with each other, so a thigh can pass through the belly near the limit. Wrist: extension larger than flexion is as printed; the palm turn of the bind pose is not known. HOW A LIMIT READS: per joint the child's anatomical zero is its neutral pose (bind: the standing mesh is the zero; hanging: the bone points straight down, the zero of the shoulder and the hip, while the mesh is in an A pose, the arm at about 42 degrees from the vertical in the rig file and 49 in the mesh; collinear: the child continues its parent, the zero of elbow, knee and wrist); ey is the neutral bone direction, ex = ey x f with f the forward axis (ref forward) or the up axis (ref up, the ankle), ez = ex x ey; flex is the swing about ex, positive toward ez (forward, or up at the ankle), lateral is the swing about ez, positive toward -ex (to the left of the person for a limb that points down, to the right for one that points up), twist is the turn about ey, positive to the person's left when ey is up and inward when it points down; the right side of every limb is the mirror of the left (lateral and twist negated and swapped). A joint's pivot is the mean of the vertices weighted by both bodies' weights (every pair shares vertices in all 32 variations); the rest offset between the anatomical zero and the bind pose is measured on each variation's own pivots. FRICTION: one Coulomb coefficient, 0.60, the human body on dry asphalt measured 0.59-0.62 (Kim, Lee and Lee 2010, field measurements of the friction of the human body on pavement; Searle 1983, SAE 831622, uses 0.66 for the throw of a pedestrian). SOLVER (XPBD, Macklin, Mueller and Chentanez 2016; Mueller, Macklin, Chentanez, Jeschke and Kim 2020, Computer Graphics Forum 39(8)): substeps is the number of small steps of a frame, the paper's way; joint_iterations is how many times the limits and joints are solved in each (the free fall shows the pose and the solver exact when nothing touches, the arms open at the ground's hits, where one pass cannot keep up with a chain of light parts); min_gyration_m keeps a thin body (a hand) from having a zero inertia in the numerics; contact_points_per_body is how many skin vertices of each body test the ground; slope_span_m is the span over which the ground's slope is read at a contact (a quarter metre: wider than the 1 cm steps of the height field, narrower than a body part); limbs names, for each part a blow can take (CasLimb), the body at its root: a lost part and everything below it is not drawn, a part torn off at this blow leaves its joint; rest_speed_ms and rest_after_s are the numerical tolerance under which a body is taken as at rest and frozen (0.05 m/s is 0.8 mm a frame at 60 frames/s); max_people is the most bodies alive (the oldest goes first); span_m is the range in metres the pose texture encodes in 16-bit fixed point (about 3 mm a step).",
+ "solver": {
+  "substeps": 10,
+  "joint_iterations": 6,
+  "contact_points_per_body": 8,
+  "min_gyration_m": 0.03,
+  "friction": 0.6,
+  "slope_span_m": 0.25,
+  "rest_speed_ms": 0.05,
+  "rest_after_s": 0.5,
+  "max_people": 24,
+  "span_m": 100
+ },
+ "limbs": { "head": "head", "arm_l": "upperarm_l", "arm_r": "upperarm_r", "leg_l": "thigh_l", "leg_r": "thigh_r" },
+ "bodies": [
+  { "name": "pelvis", "bones": [1], "mass": 0.142, "parent": "" },
+  { "name": "abdomen", "bones": [2], "mass": 0.139, "parent": "pelvis" },
+  { "name": "thorax", "bones": [3, 4, 7, 11], "mass": 0.216, "parent": "abdomen" },
+  { "name": "head", "bones": [5, 6], "mass": 0.081, "parent": "thorax" },
+  { "name": "upperarm_l", "bones": [8], "mass": 0.028, "parent": "thorax" },
+  { "name": "lowerarm_l", "bones": [9], "mass": 0.016, "parent": "upperarm_l" },
+  { "name": "hand_l", "bones": [10], "mass": 0.006, "parent": "lowerarm_l" },
+  { "name": "upperarm_r", "bones": [12], "mass": 0.028, "parent": "thorax" },
+  { "name": "lowerarm_r", "bones": [13], "mass": 0.016, "parent": "upperarm_r" },
+  { "name": "hand_r", "bones": [14], "mass": 0.006, "parent": "lowerarm_r" },
+  { "name": "thigh_l", "bones": [15], "mass": 0.1, "parent": "pelvis" },
+  { "name": "calf_l", "bones": [16], "mass": 0.0465, "parent": "thigh_l" },
+  { "name": "foot_l", "bones": [17], "mass": 0.0145, "parent": "calf_l" },
+  { "name": "thigh_r", "bones": [19], "mass": 0.1, "parent": "pelvis" },
+  { "name": "calf_r", "bones": [20], "mass": 0.0465, "parent": "thigh_r" },
+  { "name": "foot_r", "bones": [21], "mass": 0.0145, "parent": "calf_r" }
+ ],
+ "joints": [
+  { "child": "abdomen", "neutral": "bind", "ref": "forward", "distal": "thorax", "flex": [-7.5, 22.5], "lateral": [-20, 20], "twist": [-15, 15] },
+  { "child": "thorax", "neutral": "bind", "ref": "forward", "distal": "head", "flex": [-7.5, 22.5], "lateral": [-20, 20], "twist": [-15, 15] },
+  { "child": "head", "neutral": "bind", "ref": "forward", "distal": "farthest", "flex": [-65, 34], "lateral": [-29, 35], "twist": [-73, 72] },
+  { "child": "upperarm_l", "neutral": "hanging", "ref": "forward", "distal": "lowerarm_l", "flex": [-70, 145], "lateral": [-45, 165], "twist": [-46, 91] },
+  { "child": "lowerarm_l", "neutral": "collinear", "ref": "forward", "distal": "hand_l", "flex": [0, 130], "lateral": [0, 0], "twist": [0, 0] },
+  { "child": "hand_l", "neutral": "collinear", "ref": "forward", "distal": "farthest", "flex": [-90, 60], "lateral": [-25, 30], "twist": [-80, 80] },
+  { "child": "upperarm_r", "neutral": "hanging", "ref": "forward", "distal": "lowerarm_r", "mirror_of": "upperarm_l" },
+  { "child": "lowerarm_r", "neutral": "collinear", "ref": "forward", "distal": "hand_r", "mirror_of": "lowerarm_l" },
+  { "child": "hand_r", "neutral": "collinear", "ref": "forward", "distal": "farthest", "mirror_of": "hand_l" },
+  { "child": "thigh_l", "neutral": "hanging", "ref": "forward", "distal": "calf_l", "flex": [-15, 165], "lateral": [-20, 65], "twist": [-35, 35] },
+  { "child": "calf_l", "neutral": "collinear", "ref": "forward", "distal": "foot_l", "flex": [-125, 0], "lateral": [0, 0], "twist": [0, 0] },
+  { "child": "foot_l", "neutral": "bind", "ref": "up", "distal": "farthest", "flex": [-50, 25], "lateral": [0, 0], "twist": [0, 0] },
+  { "child": "thigh_r", "neutral": "hanging", "ref": "forward", "distal": "calf_r", "mirror_of": "thigh_l" },
+  { "child": "calf_r", "neutral": "collinear", "ref": "forward", "distal": "foot_r", "mirror_of": "calf_l" },
+  { "child": "foot_r", "neutral": "bind", "ref": "up", "distal": "farthest", "mirror_of": "foot_l" }
+ ]
+}

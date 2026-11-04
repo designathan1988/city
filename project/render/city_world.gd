@@ -53,10 +53,11 @@ func materials() -> Dictionary:
 			if key.begins_with("_"):
 				continue
 			var m := EffectMaterials.make(key, table[key], environment)
-			for name in table[key].params:
-				m.set_shader_parameter(name, _param(table[key].params[name]))
+			var params := EffectMaterials.params(table, key)
+			for name in params:
+				m.set_shader_parameter(name, _param(params[name]))
 			if key == "road":
-				_set_means(m, table[key].params)
+				_set_means(m, params)
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m

@@ -5,7 +5,17 @@ class_name EffectMaterials
 extends RefCounted
 
 ## Kept as text so the orphan gate sees the shaders the native effects load by name from materials.json.
-const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader"]
+const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader", "res://render/shaders/ragdoll.gdshader"]
+
+
+## The parameters of a material: its own over those of the material it borrows from (`params_from`: the falling bodies wear the walkers' look).
+static func params(table: Dictionary, key: String) -> Dictionary:
+	var row: Dictionary = table[key]
+	var out := {}
+	if row.has("params_from"):
+		out.merge(table[row.params_from].params)
+	out.merge(row.params, true)
+	return out
 
 
 ## `row`: the material's row of data/render/materials.json; render_priority orders the transparent layers (the higher is drawn over).

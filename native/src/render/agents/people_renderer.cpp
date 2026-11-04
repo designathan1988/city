@@ -1,7 +1,5 @@
-// Fills one instance buffer per (variation, level) every frame. Look hash bits (Roadcraft looks.ts): variation 24..31,
-// top tinted unless bits 0..1 are 0 (colour 4..7), bottom unless bits 2..3 are 0 (colour 9..12), grey hair for seniors
-// unless bits 14..15 are 0 (grey 16..17), hair 18..20, skin 21..23. The Compatibility renderer keeps instance custom
-// data as half floats (exact integers to 2048), so the codes are packed small: INSTANCE_CUSTOM = (palette row,
+// Fills one instance buffer per (variation, level) every frame. The look hash is decoded by PeopleAsset::look. The Compatibility
+// renderer keeps instance custom data as half floats (exact integers to 2048), so the codes are packed small: INSTANCE_CUSTOM = (palette row,
 // frames + 64 * top, bottom + 17 * hair + 256 * skin, walk phase); top / bottom 0 = the texture colour, k + 1 = clothes
 // k; hair 0..7 = hairs, 8..11 = greys.
 #include "render/agents/people_renderer.h"
@@ -21,8 +19,6 @@ namespace city {
 
 namespace {
 constexpr float AABB_HALF_H = 500.f;
-constexpr uint32_t VARIATION_SHIFT = 24, TWO_BITS = 3, TOP_SHIFT = 4, BOTTOM_TEST = 2, BOTTOM_SHIFT = 9, GREY_TEST = 14, GREY_SHIFT = 16;
-constexpr uint32_t HAIR_SHIFT = 18, SKIN_SHIFT = 21, CLOTHES = 16, HAIRS = 8, GREYS = 4, SKINS = 8;
 constexpr float FRAMES_BASE = 64.f, HAIR_BASE = 17.f, SKIN_BASE = 256.f;
 
 PackedColorArray hex_list(const Array &a) {
@@ -31,6 +27,13 @@ PackedColorArray hex_list(const Array &a) {
 	return out;
 }
 } // namespace
+
+void set_people_palette(const RID &material, const Dictionary &people) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->material_set_param(material, "clothes", hex_list(people["clothes"]));
+	rs->material_set_param(material, "hairs", hex_list(people["hair"]));
+	rs->material_set_param(material, "greys", hex_list(people["grey"]));
+}
 
 bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, PackedStringArray &errors) {
 	reset();
@@ -43,11 +46,8 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 		errors.push_back("agents.json people.lod_m: um limite por nível do arquivo de pessoas");
 		return false;
 	}
-	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(material_, "palette", asset_.palette->get_rid());
-	rs->material_set_param(material_, "clothes", hex_list(people["clothes"]));
-	rs->material_set_param(material_, "hairs", hex_list(people["hair"]));
-	rs->material_set_param(material_, "greys", hex_list(people["grey"]));
+	RenderingServer::get_singleton()->material_set_param(material_, "palette", asset_.palette->get_rid());
+	set_people_palette(material_, people);
 	size_t n = asset_.variations.size() * size_t(asset_.lods);
 	draws_.assign(n, MultiMeshDraw());
 	bufs_.assign(n, PackedFloat32Array());
@@ -71,17 +71,12 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		float dist = std::sqrt(d2 + dy * dy);
 		int lod = 0;
 		while (lod < lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
-		int v = int((rec.look >> VARIATION_SHIFT) % uint32_t(nv));
+		const PersonLook look = asset_.look(rec.look);
+		const int v = look.variation;
 		const PersonVariation &pv = asset_.variations[size_t(v)];
-		uint32_t h = rec.look;
-		float top = (h & TWO_BITS) ? float((h >> TOP_SHIFT) % CLOTHES + 1) : 0.f;
-		float bottom = ((h >> BOTTOM_TEST) & TWO_BITS) ? float((h >> BOTTOM_SHIFT) % CLOTHES + 1) : 0.f;
-		bool grey = pv.senior && ((h >> GREY_TEST) & TWO_BITS);
-		float hair = grey ? float(HAIRS + (h >> GREY_SHIFT) % GREYS) : float((h >> HAIR_SHIFT) % HAIRS);
-		float skin = float((h >> SKIN_SHIFT) % SKINS);
 		float phase = rec.walked / pv.walk_advance;
-		push_agent(bufs_[size_t(v * lods + lod)], p, 1.f, float(pv.palette_row), float(pv.frames) + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin,
-				phase - std::floor(phase));
+		push_agent(bufs_[size_t(v * lods + lod)], p, 1.f, float(pv.palette_row), float(pv.frames) + FRAMES_BASE * look.top,
+				look.bottom + HAIR_BASE * look.hair + SKIN_BASE * look.skin, phase - std::floor(phase));
 		drawn++;
 	}
 	AABB box(Vector3(cam.x - radius, cam.y - AABB_HALF_H, cam.z - radius), Vector3(radius * 2, AABB_HALF_H * 2, radius * 2));

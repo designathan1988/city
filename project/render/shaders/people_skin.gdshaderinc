@@ -4,6 +4,15 @@
 // mixed), a falling body from its bone-matrix texture (one pose: a = b, t = 0).
 
 const int LAST_BONE = 22; // 23 bones (people.json "bones")
+const float FIXED_BYTE = 255.0;
+
+// One value of a texture of 16-bit fixed point over [-span, span]: its high bytes in texel 2x, its low bytes in texel 2x + 1 of the row
+// (the Compatibility renderer does not sample float textures reliably; people_asset.cpp and ragdoll_world.cpp write them).
+vec4 fixed_point_row(sampler2D tex, int texel, int row, float span) {
+	vec4 hi = texelFetch(tex, ivec2(texel * 2, row), 0);
+	vec4 lo = texelFetch(tex, ivec2(texel * 2 + 1, row), 0);
+	return (hi * 256.0 + lo) * FIXED_BYTE / 65535.0 * 2.0 * span - span;
+}
 
 struct BonePose {
 	vec4 row_x;

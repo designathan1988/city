@@ -29,6 +29,10 @@ constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.1, 1.0]
 constexpr int TEXELS_PER_VALUE = 2;
 constexpr uint32_t FIXED_MAX = 65535;
+// Look hash bits (Roadcraft looks.ts): variation 24..31, top tinted unless bits 0..1 are 0 (colour 4..7), bottom unless bits 2..3 are 0
+// (colour 9..12), grey hair for seniors unless bits 14..15 are 0 (grey 16..17), hair 18..20, skin 21..23.
+constexpr uint32_t VARIATION_SHIFT = 24, TWO_BITS = 3, TOP_SHIFT = 4, BOTTOM_TEST = 2, BOTTOM_SHIFT = 9, GREY_TEST = 14, GREY_SHIFT = 16;
+constexpr uint32_t HAIR_SHIFT = 18, SKIN_SHIFT = 21, CLOTHES = 16, HAIRS = 8, GREYS = 4, SKINS = 8;
 
 // Float textures are not sampled reliably in the Compatibility renderer (Godot may fall back to 8 bits and clamp), so
 // each palette value goes out as 16-bit fixed point over [-PALETTE_SPAN, PALETTE_SPAN]: texel 2x holds the high
@@ -123,6 +127,7 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 		return false;
 	}
 	lods = int(lod_count);
+	this->bones = int(bones);
 	variations.assign(count, PersonVariation());
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
 	for (uint32_t v = 0; v < count; v++) {
@@ -153,6 +158,17 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8,
 			fixed_point(texels)));
 	return true;
+}
+
+PersonLook PeopleAsset::look(uint32_t h) const {
+	PersonLook l;
+	l.variation = int((h >> VARIATION_SHIFT) % uint32_t(variations.size()));
+	const bool grey = variations[size_t(l.variation)].senior && ((h >> GREY_TEST) & TWO_BITS);
+	l.top = (h & TWO_BITS) ? float((h >> TOP_SHIFT) % CLOTHES + 1) : 0.f;
+	l.bottom = ((h >> BOTTOM_TEST) & TWO_BITS) ? float((h >> BOTTOM_SHIFT) % CLOTHES + 1) : 0.f;
+	l.hair = grey ? float(HAIRS + (h >> GREY_SHIFT) % GREYS) : float((h >> HAIR_SHIFT) % HAIRS);
+	l.skin = float((h >> SKIN_SHIFT) % SKINS);
+	return l;
 }
 
 } // namespace city

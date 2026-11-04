@@ -27,7 +27,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_sheer", errors), ctx.material("building_card", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
-	ok = effects_.init(ctx, errors) && ok;
+	ok = effects_.init(ctx, agents_.people_asset(), errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }

@@ -12,14 +12,11 @@ shader_type spatial;
 uniform sampler2D palette : filter_nearest, repeat_disable;
 
 const int TEXELS = 3;
-const float BYTE = 255.0;
 const float BODY_SPAN = 2.0; // people_asset.cpp PALETTE_SPAN
 
-// One palette row value: 16-bit fixed point over [-BODY_SPAN, BODY_SPAN], high bytes in texel 2x, low bytes in 2x + 1.
+// One palette row value: 16-bit fixed point over [-BODY_SPAN, BODY_SPAN].
 vec4 palette_row(int texel, int row) {
-	vec4 hi = texelFetch(palette, ivec2(texel * 2, row), 0);
-	vec4 lo = texelFetch(palette, ivec2(texel * 2 + 1, row), 0);
-	return (hi * 256.0 + lo) * BYTE / 65535.0 * 2.0 * BODY_SPAN - BODY_SPAN;
+	return fixed_point_row(palette, texel, row, BODY_SPAN);
 }
 
 BonePose walk_pose(int bone, int row) {

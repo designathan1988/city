@@ -167,6 +167,9 @@ public:
 	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
+	godot::Dictionary ragdoll_cost() const { return render_.ragdoll_cost(); } // the falling bodies of the last step: counts and microseconds
+	godot::Dictionary ragdoll_probe(int variation, float speed_ms, float up_ms, float drop_m, float seconds, int substeps) { return render_.ragdoll_probe(variation, speed_ms, up_ms, drop_m, seconds, substeps); } // the solver's measures on one thrown person
+	int fallen_people() const { return render_.fallen_people(); }
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:

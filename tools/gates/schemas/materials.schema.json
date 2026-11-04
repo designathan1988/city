@@ -280,6 +280,21 @@
    ],
    "strict": true
   },
+  "ragdoll": {
+   "type": "object",
+   "properties": {
+    "shader": { "type": "string" },
+    "params_from": { "type": "string" },
+    "params": {
+     "type": "object",
+     "properties": { "char_color": { "type": "string", "pattern_prefix": "#" } },
+     "required": ["char_color"],
+     "strict": true
+    }
+   },
+   "required": ["shader", "params_from", "params"],
+   "strict": true
+  },
   "people": {
    "type": "object",
    "properties": {
@@ -536,6 +551,7 @@
   "prop",
   "agent",
   "people",
+  "ragdoll",
   "overlay",
   "agent_glass",
   "vegetation",

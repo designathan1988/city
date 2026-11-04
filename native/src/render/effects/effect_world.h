@@ -8,6 +8,7 @@
 #include "render/effects/effect_params.h"
 #include "render/effects/marks.h"
 #include "render/effects/puffs.h"
+#include "render/effects/ragdoll_world.h"
 #include "render/render_context.h"
 #include "sim/state/city_state.h"
 
@@ -19,15 +20,18 @@ namespace city {
 
 class EffectWorld {
 public:
-	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const PeopleAsset &people, godot::PackedStringArray &errors);
 	void reset(); // a new city or a load: every effect gone
 	void release();
 	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects.
 	void sync(CityState &s);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
-	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || flash_left_ > 0; }
+	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ragdolls_.moving() || flash_left_ > 0; }
 	int pieces() const { return debris_.count(); }
+	int fallen() const { return ragdolls_.count(); }
+	godot::Dictionary ragdoll_cost() const { return ragdolls_.cost(); }
+	godot::Dictionary ragdoll_probe(int variation, float speed_ms, float up_ms, float drop_m, float seconds, int substeps) { return ragdolls_.probe(variation, speed_ms, up_ms, drop_m, seconds, substeps); }
 	size_t events_played() const { return played_; }
 
 private:
@@ -43,8 +47,7 @@ private:
 	void pile(const Ruin &r, bool falling); // the heap a building left (effect_ruins.cpp)
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	void furniture(const DamageEvent &e, const CityState &s);
-	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
-	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
+	void body(const DamageEvent &e, const CityState &s); // someone struck, falling (effect_bodies.cpp)
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
 	void wound(const DamageEvent &e);
 	void vehicle_hit(const DamageEvent &e);
@@ -61,6 +64,7 @@ private:
 	Puffs puffs_;
 	Marks marks_;
 	Debris debris_;
+	RagdollWorld ragdolls_;
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
@@ -70,7 +74,6 @@ private:
 	};
 	std::vector<Source> sources_;
 	std::vector<Geyser> geysers_;
-	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	std::chrono::steady_clock::time_point last_;
 	bool started_ = false;

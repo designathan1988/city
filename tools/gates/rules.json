@@ -101,6 +101,10 @@
       "core/",
       "sim/catalog/"
     ],
+    "native/src/sim/physics": [
+      "core/",
+      "sim/physics/"
+    ],
     "native/src/sim/state": [
       "core/",
       "sim/"
@@ -308,6 +312,7 @@
     "project/data/catalog/blast.json": "tools/gates/schemas/blast.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/effects.json": "tools/gates/schemas/effects.schema.json",
+    "project/data/render/ragdoll.json": "tools/gates/schemas/ragdoll.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",

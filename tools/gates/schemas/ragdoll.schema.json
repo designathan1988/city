@@ -1,0 +1,184 @@
+{
+ "type": "object",
+ "strict": true,
+ "required": [
+  "_doc",
+  "solver",
+  "bodies",
+  "joints",
+  "limbs"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "solver": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "substeps",
+    "contact_points_per_body",
+    "min_gyration_m",
+    "friction",
+    "rest_speed_ms",
+    "rest_after_s",
+    "max_people",
+    "span_m",
+    "slope_span_m",
+    "joint_iterations"
+   ],
+   "properties": {
+    "substeps": {
+     "type": "number"
+    },
+    "contact_points_per_body": {
+     "type": "number"
+    },
+    "min_gyration_m": {
+     "type": "number"
+    },
+    "friction": {
+     "type": "number"
+    },
+    "rest_speed_ms": {
+     "type": "number"
+    },
+    "rest_after_s": {
+     "type": "number"
+    },
+    "max_people": {
+     "type": "number"
+    },
+    "span_m": {
+     "type": "number"
+    },
+    "slope_span_m": {
+     "type": "number"
+    },
+    "joint_iterations": {
+     "type": "number"
+    }
+   }
+  },
+  "bodies": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "name",
+     "bones",
+     "mass",
+     "parent"
+    ],
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "bones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "number"
+      }
+     },
+     "mass": {
+      "type": "number"
+     },
+     "parent": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "joints": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": [
+     "child",
+     "neutral",
+     "ref",
+     "distal"
+    ],
+    "properties": {
+     "child": {
+      "type": "string"
+     },
+     "neutral": {
+      "type": "string",
+      "enum": [
+       "bind",
+       "hanging",
+       "collinear"
+      ]
+     },
+     "ref": {
+      "type": "string",
+      "enum": [
+       "forward",
+       "up"
+      ]
+     },
+     "distal": {
+      "type": "string"
+     },
+     "mirror_of": {
+      "type": "string"
+     },
+     "flex": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+       "type": "number"
+      }
+     },
+     "lateral": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+       "type": "number"
+      }
+     },
+     "twist": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "limbs": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "head",
+    "arm_l",
+    "arm_r",
+    "leg_l",
+    "leg_r"
+   ],
+   "properties": {
+    "head": {
+     "type": "string"
+    },
+    "arm_l": {
+     "type": "string"
+    },
+    "arm_r": {
+     "type": "string"
+    },
+    "leg_l": {
+     "type": "string"
+    },
+    "leg_r": {
+     "type": "string"
+    }
+   }
+  }
+ }
+}

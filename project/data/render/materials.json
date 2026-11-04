@@ -189,6 +189,7 @@
    "eye_color": "#1c1611"
   }
  },
+ "ragdoll": {"shader": "res://render/shaders/ragdoll.gdshader", "params_from": "people", "params": {"char_color": "#0D0B0A"}},
  "overlay": {
   "shader": "res://render/shaders/overlay.gdshader",
   "params": {
