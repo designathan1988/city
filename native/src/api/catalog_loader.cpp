@@ -149,23 +149,6 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	d.main_commerce_heat = r.num(p, "main_commerce_heat");
 	d.industry_from = r.num(p, "industry_from");
 	d.industry_half_angle = r.num(p, "industry_half_angle");
-	g.avenue_priority = r.integer(t, "avenue_priority");
-	Dictionary f = r.dict(t, "floors");
-	g.low_res = r.range(f, "low_residential");
-	g.low_other = r.range(f, "low_other");
-	g.high_res = r.range(f, "high_residential");
-	g.high_res_avenue = r.range(f, "high_residential_avenue");
-	g.high_other = r.range(f, "high_other");
-	g.high_other_avenue = r.range(f, "high_other_avenue");
-	g.res_avenue = r.range(f, "residential_avenue");
-	Array split = r.arr(f, "residential_split"), bands = r.arr(f, "residential_bands");
-	for (int i = 0; i < 2 && i < split.size(); i++) g.res_split[i] = float(double(split[i]));
-	for (int i = 0; i < 3 && i < bands.size(); i++) { Array b = bands[i]; g.res_bands[i] = { int(b[0]), int(b[1]) }; }
-	g.commercial = r.range(f, "commercial");
-	g.commercial_avenue = r.range(f, "commercial_avenue");
-	g.industrial = r.range(f, "industrial");
-	g.mixed = r.range(f, "mixed");
-	g.mixed_avenue = r.range(f, "mixed_avenue");
 	Dictionary cv = r.dict(t, "civic");
 	g.civic_min_area = r.num(cv, "min_area");
 	g.civic_chance = r.num(cv, "chance");

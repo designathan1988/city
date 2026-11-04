@@ -4,119 +4,6 @@
   "_doc": {
    "type": "string"
   },
-  "avenue_priority": {
-   "type": "integer"
-  },
-  "floors": {
-   "type": "object",
-   "properties": {
-    "low_residential": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "low_other": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "high_residential": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "high_residential_avenue": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "high_other": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "high_other_avenue": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "residential_avenue": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "residential_split": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "residential_bands": {
-     "type": "array",
-     "items": {
-      "type": "array",
-      "items": {
-       "type": "integer"
-      },
-      "minItems": 0
-     }
-    },
-    "commercial": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "commercial_avenue": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "industrial": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "mixed": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    },
-    "mixed_avenue": {
-     "type": "array",
-     "items": {
-      "type": "integer"
-     }
-    }
-   },
-   "required": [
-    "low_residential",
-    "low_other",
-    "high_residential",
-    "high_residential_avenue",
-    "high_other",
-    "high_other_avenue",
-    "residential_avenue",
-    "residential_split",
-    "residential_bands",
-    "commercial",
-    "commercial_avenue",
-    "industrial",
-    "mixed",
-    "mixed_avenue"
-   ],
-   "strict": true
-  },
   "civic": {
    "type": "object",
    "properties": {
@@ -169,8 +56,6 @@
  },
  "required": [
   "_doc",
-  "avenue_priority",
-  "floors",
   "civic",
   "square_min_area",
   "organic_reach_m",

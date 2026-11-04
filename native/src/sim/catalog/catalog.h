@@ -57,13 +57,9 @@ struct CityPlanDef {
 	int centres = 0;
 };
 
-// How many floors a grown building gets and which lots become civic buildings (data/catalog/growth.json).
+// Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
 struct GrowthDef {
 	CityPlanDef plan;
-	int avenue_priority = 0;
-	IntRange low_res, low_other, high_res, high_res_avenue, high_other, high_other_avenue, res_avenue;
-	float res_split[2] = {};
-	IntRange res_bands[3], commercial, commercial_avenue, industrial, mixed, mixed_avenue;
 	float civic_min_area = 0, civic_chance = 0, square_min_area = 0;
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;

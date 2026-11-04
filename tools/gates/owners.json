@@ -4,7 +4,7 @@
     {
       "id": "building_height",
       "owner": "native/src/sim/simulation/growth.cpp",
-      "symbol": "floors_for",
+      "symbol": "body_floors",
       "forbidden_elsewhere": ["floors\\s*\\*", "\\*\\s*\\w*floors\\b", "floor_h\\s*\\*", "\\*\\s*floor_h\\b"],
       "scope": ["native/src/", "project/game/", "project/ui/", "project/render/"]
     },

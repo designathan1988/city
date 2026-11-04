@@ -2,6 +2,7 @@
 #include "sim/buildings/growth.h"
 
 #include "core/seeded.h"
+#include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
 #include "sim/state/city_state.h"
 
@@ -19,8 +20,6 @@ constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_S
 constexpr double DECAY_TENTHS = 10;
 constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
 constexpr uint32_t HASH_SHIFT_15 = 15, HASH_SHIFT_13 = 13, HASH_SHIFT_16 = 16;
-
-int draw(Mulberry32 &r, const IntRange &x) { return r.irange_excl(x.lo, x.hi); }
 
 int biggest(const std::vector<Lot> &l) {
 	size_t b = 0;
@@ -42,23 +41,12 @@ MapCell map_cell_of(const CityState &s, double x, double z) {
 	return c;
 }
 
-int floors_for(const GrowthDef &g, int zone_id, const Profile &street, uint32_t seed) {
-	Mulberry32 r(seed);
-	bool avenue = street.priority >= g.avenue_priority;
-	int zone = base_zone(zone_id), dens = zone_density(zone_id);
-	if (dens == 0) return draw(r, zone == 1 ? g.low_res : g.low_other);
-	if (dens == 2) return draw(r, zone == 1 ? (avenue ? g.high_res_avenue : g.high_res) : (avenue ? g.high_other_avenue : g.high_other));
-	switch (zone) {
-		case 1: {
-			if (avenue) return draw(r, g.res_avenue);
-			double x = r.next();
-			return draw(r, x < g.res_split[0] ? g.res_bands[0] : x < g.res_split[1] ? g.res_bands[1] : g.res_bands[2]);
-		}
-		case 2: return draw(r, avenue ? g.commercial_avenue : g.commercial);
-		case 3: return draw(r, g.industrial);
-		case 4: return draw(r, avenue ? g.mixed_avenue : g.mixed);
-		default: return 1;
-	}
+int body_floors(const b40::Data &data, const Building &rec) {
+	b40::Body body;
+	b40::record_body(data, rec, body);
+	int top = 0;
+	for (const b40::Volume &v : body.volumes) top = std::max(top, v.top());
+	return top;
 }
 
 int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float area) {
@@ -122,7 +110,7 @@ static bool neighbourhood_has_square(const CityState &s, double x, double z) {
 	return found;
 }
 
-Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i, bool organic) {
+Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
@@ -131,24 +119,21 @@ Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i
 	int fn = square_here ? int(FN_SQUARE) : civic_for(g, cell.id, base_zone(l.zone), big, float(l.w * l.d));
 	if (fn == FN_SQUARE && !square_here) fn = FN_NONE;
 	if (fn == FN_SQUARE && neighbourhood_has_square(s, l.x, l.z)) fn = FN_NONE;
-	int floors = floors_for(g, l.zone, s.catalog.profile(l.profile), l.seed);
-	if (organic) {
-		int tallest = -1;
-		float reach = g.organic_reach_m;
-		s.buildings.query(float(l.x) - reach, float(l.z) - reach, float(l.x) + reach, float(l.z) + reach, [&](int id) {
-			const Building &b = s.buildings.items[id];
-			if (std::hypot(b.x - float(l.x), b.z - float(l.z)) <= reach + std::max(b.w, b.d) / 2) tallest = std::max(tallest, int(b.floors));
-		});
-		if (tallest >= 0) floors = std::min(floors, std::max(1, tallest) + g.organic_extra_floors);
-	}
+	int tallest = -1;
+	const float reach = g.organic_reach_m;
+	s.buildings.query(float(l.x) - reach, float(l.z) - reach, float(l.x) + reach, float(l.z) + reach, [&](int id) {
+		const Building &o = s.buildings.items[id];
+		if (std::hypot(o.x - float(l.x), o.z - float(l.z)) <= reach + std::max(o.w, o.d) / 2) tallest = std::max(tallest, int(o.floors));
+	});
 	Building b;
 	b.x = float(l.x); b.z = float(l.z); b.w = float(l.w); b.d = float(l.d); b.rot = float(l.rot);
-	b.zone = uint8_t(base_zone(l.zone));
+	b.zone = uint8_t(l.zone);
 	b.fn = uint8_t(fn);
-	b.floors = uint16_t(floors);
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
+	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
+	b.floors = uint16_t(body_floors(s.buildings.designs, b)); // the body is the height: a record never says another
 	return b;
 }
 
@@ -161,7 +146,7 @@ int fill_all(CityState &s) {
 		const std::vector<Lot> &lots = s.lots.by_cell[key];
 		for (int i = 0; i < int(lots.size()); i++) {
 			if (lot_occupied(s, lots[i])) continue;
-			Building b = record_for(s, lots, i, false);
+			Building b = record_for(s, lots, i);
 			b.built = s.clock.minutes.load() - generated_age(s.catalog.growth, b.seed);
 			s.buildings.add(b);
 			n++;
