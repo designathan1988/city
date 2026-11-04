@@ -19,11 +19,21 @@ enum SegFlag : uint16_t {
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
 
+// What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
+// stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
+struct SignalSettings {
+	bool fixed = false;
+	float offset = 0;
+	std::vector<float> greens; // per stage; a stage's minimum green still stands under them
+	bool operator==(const SignalSettings &o) const { return fixed == o.fixed && offset == o.offset && greens == o.greens; }
+};
+
 struct RoadNode {
 	bool alive = false;
 	double x = 0, z = 0, y = 0;
 	std::vector<int> segs;
 	uint8_t ctl = 0; // junction control (roads/control.ts), 0 = automatic
+	SignalSettings signal;
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on
 	bool plain = false; // a dead end that never gets a bulb (roundabout approaches waiting to be extended)

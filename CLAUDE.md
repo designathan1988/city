@@ -136,7 +136,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
-- `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
+- `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
@@ -165,8 +165,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
-- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
+- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres, tempo fixo no relógio comum); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
 - `native/src/sim/traffic/cycling.cpp` · `native/src/sim/traffic/vehicle_speed.cpp` — bicicletas: no bordo da pista, ciclofaixa junto à faixa da guia e quem fica fora do caminho; velocidade de cada veículo (limite, conector, curva, deriva)
+- `native/src/sim/traffic/green_wave.cpp` — onda verde: ciclo comum e defasagens pelo tempo de viagem na via principal
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
@@ -285,7 +286,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_drawer.gd` — gavetas das categorias
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
-- `project/ui/inspector_panel.gd` — inspetor
+- `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
@@ -330,7 +331,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
-- Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
+- Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre, coordenação só por plano fixo (onda verde num sentido, verdes partindo do mínimo, sem fluxo medido); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar

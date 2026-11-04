@@ -108,6 +108,14 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 		j.green_max[k] = std::max(j.green[k], (tp.signal_cycle_max_s - lost) / float(count));
 		j.cycle += j.green[k];
 	}
+	j.least = j.green;
+	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
+	j.fixed = set.fixed;
+	j.offset = set.offset;
+	for (int k = 0; set.fixed && k < count; k++) {
+		if (size_t(k) < set.greens.size()) { j.cycle += std::max(0.f, set.greens[size_t(k)] - j.green[size_t(k)]); j.green[size_t(k)] = std::max(j.green[size_t(k)], set.greens[size_t(k)]); }
+		j.green_max[size_t(k)] = j.green[size_t(k)];
+	}
 	j.run = 0;
 	j.run_green = -1;
 	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
@@ -167,6 +175,21 @@ void build_junction(CityState &s, int n) {
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
 	for (size_t k = 0; k < order.size(); k++)
 		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
+}
+
+void replan_signal(CityState &s, int n) {
+	LaneGraph &g = s.traffic.g;
+	if (n < 0 || n >= int(g.junctions.size()) || n >= int(s.roads.nodes.size()) || !s.roads.nodes[size_t(n)].alive) return;
+	const Junction was = g.junctions[size_t(n)];
+	build_junction(s, n);
+	Junction &j = g.junctions[size_t(n)];
+	if (j.ctl != Control::SIGNAL || was.ctl != Control::SIGNAL || was.green.empty() || j.green.size() != was.green.size()) return;
+	// no jump from one green to another: the stage running keeps at least its minimum green (walkers started on it) and its intergreen
+	const size_t k = size_t(was.run);
+	j.run = was.run;
+	j.run_start = was.run_start;
+	j.run_green = was.run_green >= 0 ? was.run_green : float(std::max(s.traffic.time - was.run_start, double(was.green[k])));
+	j.settle = j.run_start + double(j.run_green) + j.amber[k] + j.all_red[k];
 }
 
 Control control_of(const CityState &s, int n) {

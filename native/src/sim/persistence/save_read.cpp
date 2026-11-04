@@ -45,7 +45,7 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 	return r.ok;
 }
 
-bool read_roads(ByteReader &r, RoadNetwork &net) {
+bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	uint32_t nodes = r.get<uint32_t>();
 	if (!r.ok || nodes > MAX_RECORDS) return false;
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
@@ -53,6 +53,11 @@ bool read_roads(ByteReader &r, RoadNetwork &net) {
 		RoadNode n;
 		n.x = r.get<double>(); n.z = r.get<double>(); n.y = r.get<double>();
 		n.ctl = r.get<uint8_t>();
+		if (version >= SIGNAL_SAVE_VERSION) {
+			n.signal.fixed = r.get<uint8_t>() != 0;
+			n.signal.offset = r.get<float>();
+			r.get_vec(n.signal.greens);
+		}
 		n.plain = r.get<uint8_t>() != 0;
 		if (r.ok) net.put_node(int(i), n);
 	}
@@ -100,7 +105,8 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
-	if (r.get<uint32_t>() != SAVE_VERSION) {
+	const uint32_t version = r.get<uint32_t>();
+	if (version < SAVE_OLDEST || version > SAVE_VERSION) {
 		error = "save.file.newer";
 		return false;
 	}
@@ -112,7 +118,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
-	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)

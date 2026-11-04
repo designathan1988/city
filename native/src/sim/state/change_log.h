@@ -27,6 +27,8 @@ struct ChangeLog {
 	std::vector<int> furniture_segs;
 	// Buildings that came or went: their bays, and the kerbs their car gates keep bays off, are laid out again by the traffic.
 	std::vector<int> lots_changed;
+	// Junctions whose signal settings changed: only their plan is made again, the lanes and connectors stay.
+	std::vector<int> signal_nodes;
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -45,6 +47,7 @@ struct ChangeLog {
 		net_segs_changed.clear();
 		furniture_segs.clear();
 		lots_changed.clear();
+		signal_nodes.clear();
 	}
 	void clear_render() {
 		road_chunks.clear();

@@ -66,11 +66,15 @@ struct Junction {
 	Control ctl = Control::NONE;
 	// per stage, seconds: minimum and maximum green, then the intergreen (amber, all-red); its approaches
 	std::vector<float> green, green_max, amber, all_red;
+	std::vector<float> least; // the minimum greens, under any fixed plan
 	std::vector<std::vector<int>> approaches;
 	float cycle = 0; // with the minimum greens
 	int run = 0; // the stage running, since `run_start` (its green); its green once ended (-1 while the green lasts)
 	double run_start = 0;
 	float run_green = -1;
+	bool fixed = false; // fixed time: the stage follows the clock (`offset`), not the detectors
+	float offset = 0;
+	double settle = 0; // a new plan takes over only then: the stage running ends its intergreen first
 	int degree = 0; // arms with lanes
 };
 

@@ -5,6 +5,9 @@
 ## Run: godot --headless --path project res://tests/core/save_undo_test.tscn -- --no-flow
 extends Node3D
 
+const SIGNAL_TICKS := 20
+const SIGNAL_OFFSET := 7.0
+const PANEL_BUTTONS := 2 # the mode and the green wave
 const TOWN_MAP := 0
 const SEED := 1
 const OTHER_SEED := 7
@@ -39,9 +42,52 @@ func _ready() -> void:
 	var a := Vector3(b.max.x - 1.0, 0, (b.min.z + b.max.z) * 0.5)
 	var e := a + Vector3(OUT_M, 0, 0)
 	_undo_cases(a, e)
+	_signal_cases()
 	await _save_round_trip(a, e)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## A signal: fixed time takes hold on the next step, undo and redo bring the plan back, a wave sets its neighbours.
+func _signal_cases() -> void:
+	CityStore.step_ticks(SIGNAL_TICKS)
+	var at: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
+	var was: Dictionary = CityStore.query(&"inspect", [at])
+	_check(was.get("kind", "") == "junction", "semáforo inspecionado %s" % [was])
+	if was.get("kind", "") != "junction":
+		return
+	var r: Dictionary = CityStore.dispatch(&"set_signal", [was.id, true, was.greens, SIGNAL_OFFSET])
+	var fixed_plan: Dictionary = CityStore.query(&"inspect", [at])
+	_check(r.ok and fixed_plan.fixed and fixed_plan.offset == SIGNAL_OFFSET, "tempo fixo %s" % [fixed_plan])
+	CityStore.step_ticks(SIGNAL_TICKS)
+	_check(CityStore.dispatch(&"undo") and not CityStore.query(&"inspect", [at]).fixed, "tempo fixo desfeito")
+	_check(CityStore.dispatch(&"redo") and CityStore.query(&"inspect", [at]).fixed, "tempo fixo refeito")
+	CityStore.step_ticks(SIGNAL_TICKS)
+	_check(CityStore.dispatch(&"undo"), "volta ao adaptativo")
+	CityStore.step_ticks(SIGNAL_TICKS)
+	_signal_panel(at, was)
+	var wave: Dictionary = CityStore.dispatch(&"green_wave", [was.id])
+	var after: Dictionary = CityStore.query(&"inspect", [at])
+	print("onda verde: ", wave, " ", after)
+	_check(wave.ok == after.fixed, "onda verde deixa o semáforo em tempo fixo, ou diz que não há outro %s" % [wave])
+	if wave.ok:
+		_check(CityStore.dispatch(&"undo") and not CityStore.query(&"inspect", [at]).fixed, "onda verde desfeita num passo")
+		CityStore.step_ticks(SIGNAL_TICKS)
+
+
+## The panel as the player meets it: drawn from what `inspect` reports, its first button taking the signal to fixed time.
+func _signal_panel(at: Vector3, info: Dictionary) -> void:
+	var col := VBoxContainer.new()
+	add_child(col)
+	var redrawn := []
+	JunctionPanel.fill(col, info, func() -> void: redrawn.append(true))
+	var buttons := col.find_children("*", "Button", true, false)
+	_check(buttons.size() >= PANEL_BUTTONS, "painel do semáforo com %d botões" % buttons.size())
+	(buttons[0] as Button).pressed.emit()
+	_check(not redrawn.is_empty() and CityStore.query(&"inspect", [at]).fixed, "botão do painel passa a tempo fixo")
+	_check(CityStore.dispatch(&"undo"), "painel desfeito")
+	CityStore.step_ticks(SIGNAL_TICKS)
+	col.queue_free()
 
 
 func _undo_cases(a: Vector3, e: Vector3) -> void:
@@ -99,6 +145,11 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	saved.minutes = CityStore.snapshot.minutes
 	var heights := [_height(sculpted), _height(a), _height((a + e) * 0.5)]
 	var probes := _probes()
+	var signal_at: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
+	var plan: Dictionary = CityStore.query(&"inspect", [signal_at])
+	if plan.get("kind", "") == "junction":
+		CityStore.dispatch(&"set_signal", [plan.id, true, plan.greens, SIGNAL_OFFSET])
+		plan = CityStore.query(&"inspect", [signal_at])
 	var w := await _save(SLOT)
 	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
@@ -111,6 +162,8 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(got == saved, "mesmos números %s == %s" % [got, saved])
 	_check([_height(sculpted), _height(a), _height((a + e) * 0.5)] == heights, "mesmas alturas %s" % [heights])
 	_check(_probes() == probes, "mesmos prédios (%d sondados)" % probes.size())
+	CityStore.step_ticks(SIGNAL_TICKS)
+	_check(CityStore.query(&"inspect", [signal_at]) == plan, "mesmo semáforo %s" % [plan])
 	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico")
 	DirAccess.remove_absolute(CityStore.save_path(SLOT))
 

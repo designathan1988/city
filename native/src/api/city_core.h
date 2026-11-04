@@ -73,6 +73,8 @@ public:
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
+	godot::Dictionary set_signal(int node, bool fixed, const godot::PackedFloat32Array &greens, float offset);
+	godot::Dictionary green_wave(int node);
 	godot::Dictionary park_sample(); // where the capture looks at bays, lots, bicycles and docks
 	bool camera_clear(const godot::Vector3 &at, float radius); // no building or vehicle where a capture would stand
 	void set_clock_hour(double hour); // tests only, like step_ticks

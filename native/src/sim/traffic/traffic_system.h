@@ -85,6 +85,9 @@ void materialize(CityState &s, int key);
 // junction_control.cpp
 void build_junctions(CityState &s);
 void build_junction(CityState &s, int n); // one node's control and stages (incremental rebuild)
+void replan_signal(CityState &s, int n); // its signal settings changed: the plan again, the stage running ending as it began
+// The fixed plans of a green wave along the main road through node `n` (green_wave.cpp): empty with under two signals on it.
+std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s, int n);
 // The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
 // read by build_junction and by the render's signal posts (which hold just the map lock, not the lane graph).
 Control control_of(const CityState &s, int n);
