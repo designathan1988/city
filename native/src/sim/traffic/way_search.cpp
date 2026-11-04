@@ -160,8 +160,9 @@ private:
 	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open_;
 	int expanded_ = 0;
 	bool over_ = false, begun_ = false;
-	int &slot_of(const AxlePose &p);
-	double h_at(const AxlePose &p) const;
+	bool place_of(const AxlePose &p, size_t &place) const;
+	int &slot_of(size_t place, const AxlePose &p);
+	double h_at(size_t place, const AxlePose &p) const;
 	void push(const Node &n);
 	void expand(int id);
 	bool arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const;
@@ -170,34 +171,41 @@ private:
 	void close_on(int id, int &work);
 };
 
-int &WaySearch::Run::slot_of(const AxlePose &p) {
+// The cell of the rear axle, false off the grid: the body answers for its middle, so in the open the axle can stand past the edge.
+bool WaySearch::Run::place_of(const AxlePose &p, size_t &place) const {
 	const int i = int(std::floor((p.x - f_.x0) / grain_.cell)), j = int(std::floor((p.z - f_.z0) / grain_.cell));
-	int k = int(std::lround(wrap(p.angle) / TWO_PI * grain_.headings)) % grain_.headings;
-	if (k < 0) k += grain_.headings;
-	return table_.at(size_t(j) * h_.nx + i, k);
+	if (i < 0 || j < 0 || i >= h_.nx || j >= h_.nz) return false;
+	place = size_t(j) * h_.nx + i;
+	return true;
 }
 
-double WaySearch::Run::h_at(const AxlePose &p) const {
-	const int i = int(std::floor((p.x - f_.x0) / grain_.cell)), j = int(std::floor((p.z - f_.z0) / grain_.cell));
-	if (i < 0 || j < 0 || i >= h_.nx || j >= h_.nz) return std::numeric_limits<double>::infinity();
+int &WaySearch::Run::slot_of(size_t place, const AxlePose &p) {
+	int k = int(std::lround(wrap(p.angle) / TWO_PI * grain_.headings)) % grain_.headings;
+	if (k < 0) k += grain_.headings;
+	return table_.at(place, k);
+}
+
+double WaySearch::Run::h_at(size_t place, const AxlePose &p) const {
 	const double far = std::hypot(goal_.pose.x - p.x, goal_.pose.z - p.z);
-	double best = std::max(h_.dist[size_t(j) * h_.nx + i], far);
+	double best = std::max(h_.dist[place], far);
 	if (far <= SHOT_REACH) best = std::max(best, reeds_shepp_length(p, goal_.pose, b_.radius));
 	return best;
 }
 
 void WaySearch::Run::push(const Node &n) {
-	int &slot = slot_of(n.pose);
+	size_t place = 0;
+	if (!place_of(n.pose, place)) return;
+	int &slot = slot_of(place, n.pose);
 	if (slot >= 0) {
 		Node &old = nodes_[size_t(slot)];
 		if (old.closed || old.g <= n.g) return;
 		old = n;
-		open_.push({ n.g + H_WEIGHT * h_at(n.pose), slot });
+		open_.push({ n.g + H_WEIGHT * h_at(place, n.pose), slot });
 		return;
 	}
 	slot = int(nodes_.size());
 	nodes_.push_back(n);
-	open_.push({ n.g + H_WEIGHT * h_at(n.pose), slot });
+	open_.push({ n.g + H_WEIGHT * h_at(place, n.pose), slot });
 }
 
 // The exact arc of the rear axle over a step, `to` its end; false when the body meets something on the way.
