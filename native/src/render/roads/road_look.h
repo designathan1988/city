@@ -37,9 +37,15 @@ struct StreetLook {
 	godot::Color white, yellow;
 	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
 	// Longitudinal lines by the road's speed: `line_w` below line_fast_kmh, `line_fast_w` from it; an exclusive lane's
-	// line `exclusive_w`; dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond.
+	// line `exclusive_w`.
 	float line_w = 0, line_fast_w = 0, line_fast_kmh = 0, exclusive_w = 0;
-	std::vector<float> dash_kmh, dash, gap;
+	// The regional standards (Menu > Paint): dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond;
+	// whether every line is white.
+	struct PaintStyle {
+		std::vector<float> dash_kmh, dash, gap;
+		bool all_white = false;
+	};
+	std::vector<PaintStyle> styles;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };

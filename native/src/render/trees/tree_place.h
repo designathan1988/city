@@ -11,6 +11,7 @@
 #include "render/trees/tree_kit.h"
 
 #include <array>
+#include <atomic>
 #include <vector>
 
 namespace city {
@@ -44,6 +45,7 @@ struct TreeLook {
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;
 	float t_inner = 0, t_edge = 0; // field thresholds, calibrated by load()
+	std::atomic<float> share{ 1.f }; // the graphics tier's share of the woods and lone trees; jobs read it
 	bool load(const godot::Dictionary &trees, const TreeKit &kit, godot::PackedStringArray &errors);
 };
 

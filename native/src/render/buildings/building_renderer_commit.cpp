@@ -30,9 +30,9 @@ Color unpack(uint32_t c) {
 
 // The job's surface to the draw: the instance shows the new mesh (or is emptied when the shell was empty), drawn when
 // `shown`.
-void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown) {
+void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown, RenderLayer layer) {
 	const bool any = sf.mesh.valid();
-	d.adopt(scenario, material, shadows, sf.mesh.release());
+	d.adopt(scenario, material, shadows, sf.mesh.release(), layer);
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, sf.box);
 	d.visible(any && shown);
 }
@@ -101,17 +101,18 @@ void BuildingRenderer::commit_one(Built &b) {
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, material_, true, ch.shown);
-			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown);
+			put(ch.near[size_t(i)], b.near[size_t(i)], scenario_, material_, true, ch.shown, LAYER_BUILDING_SHELLS);
+			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown, LAYER_BUILDING_PARTS);
 		}
 		for (int band = 0; band < BAND_COUNT; band++)
 			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
-					chunk_box(b.key));
+					chunk_box(b.key), LAYER_BUILDING_DETAILS);
+		ch.occluder.set(scenario_, b.walls);
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
 	}
 	if (b.has_mid) {
-		for (int i = 0; i < SUB_COUNT; i++) put(ch.mid[size_t(i)], b.mid[size_t(i)], scenario_, material_, true, ch.shown);
+		for (int i = 0; i < SUB_COUNT; i++) put(ch.mid[size_t(i)], b.mid[size_t(i)], scenario_, material_, true, ch.shown, LAYER_BUILDING_FACADES);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
 	}
@@ -122,7 +123,7 @@ void BuildingRenderer::commit_one(Built &b) {
 void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
-	put(sp.far, b.far, scenario_, material_far_, false, true);
+	put(sp.far, b.far, scenario_, material_far_, false, true, LAYER_BUILDING_MASSES);
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);

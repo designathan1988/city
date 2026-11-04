@@ -113,7 +113,7 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Lists
 			float f = field(s, T, x, z);
 			WoodBand b = band_of(T, f);
 			const BandLook &B = T.band[size_t(b)];
-			if ((open_only && b != WoodBand::OPEN) || h01(h, KEEP) >= B.keep) continue;
+			if ((open_only && b != WoodBand::OPEN) || h01(h, KEEP) >= B.keep * T.share.load(std::memory_order_relaxed)) continue;
 			float y;
 			if (!ground_ok(s, T, x, z, T.grid_m, y)) continue;
 			int sp = B.mix.pick(h01(h, SPECIES));
@@ -192,7 +192,7 @@ void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const
 			float x = (ix + 0.5f + (h01(h, POS_X) - 0.5f) * T.far_jitter) * T.far_cell_m, z = (iz + 0.5f + (h01(h, POS_Z) - 0.5f) * T.far_jitter) * T.far_cell_m;
 			float f = field(s, T, x, z);
 			WoodBand b = band_of(T, f);
-			if (b == WoodBand::OPEN) continue;
+			if (b == WoodBand::OPEN || h01(h, KEEP) >= T.share.load(std::memory_order_relaxed)) continue;
 			float y;
 			if (!ground_ok(s, T, x, z, half, y) || near_road(s, l, x, z, half + T.road_margin) || in_lot(s, l, T.lot_margin + half, x, z)) continue;
 			const BandLook &B = T.band[size_t(b)];

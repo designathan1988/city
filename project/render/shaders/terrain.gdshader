@@ -33,6 +33,8 @@ group_uniforms;
 
 // Public uniforms
 group_uniforms ground;
+uniform float grid_m = 10.0; // the zoning grid (world/lots.ts: the 10 m cell)
+uniform float grid_alpha = 0.35;
 uniform sampler2D grass_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float grass_m = 14.0; // metres per repeat of the grass map
 uniform vec3 grass_tint : source_color = vec3(1.0);
@@ -55,6 +57,7 @@ group_uniforms;
 
 // Varyings & Types
 // Some are required for editor functions
+global uniform float map_grid;
 varying vec3 v_vertex;
 varying float v_vertex_xz_dist;
 varying vec3 v_camera_pos;
@@ -214,6 +217,10 @@ void fragment() {
 		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
 	}
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
+	if (map_grid > 0.5) { // the Layers popover: the zoning grid over the ground, one line a cell, as wide as a pixel of it
+		vec2 cell = abs(fract(v_vertex.xz / grid_m - 0.5) - 0.5) / fwidth(v_vertex.xz / grid_m);
+		c = mix(c, vec3(1.0), (1.0 - clamp(min(cell.x, cell.y), 0.0, 1.0)) * grid_alpha);
+	}
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 }

@@ -14,6 +14,9 @@
 // indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
 
+#include "render/buildings/occluders.h"
+#include <atomic>
+
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
@@ -38,6 +41,8 @@ namespace city {
 
 class BuildingRenderer {
 public:
+	void set_detail_scale(float scale); // the graphics tier's share of the near level's reach
+	void set_lots_drawn(bool on) { lots_drawn_.store(on); } // the Effects panel; the caller redraws everything
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
@@ -69,6 +74,7 @@ private:
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
 		godot::Vector3 centre;
+		ChunkOccluder occluder; // the near level's walls (occluders.h)
 	};
 	struct Super {
 		MeshDraw far;
@@ -101,6 +107,7 @@ private:
 		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_COUNT> band_count{};
 		godot::RID unit_box; // the parts' box mesh
+		OccluderWalls walls;
 		bool has_near = false, has_mid = false, baked = false;
 		int64_t bytes() const;
 		void bake();
@@ -130,7 +137,8 @@ private:
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
+			RenderLayer layer);
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
@@ -152,6 +160,8 @@ private:
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_COUNT> band_end_{};
+	float detail_scale_ = 1; // the graphics tier's share of the near reach (set_detail_scale)
+	std::atomic<bool> lots_drawn_{ true }; // read by the mesh jobs
 	mutable std::mutex queue_mutex_;
 	Results<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job

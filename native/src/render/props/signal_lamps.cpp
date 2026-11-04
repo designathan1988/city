@@ -60,7 +60,7 @@ void SignalLamps::write(Chunk &c) const {
 				on ? float(code >> WALKER_SHIFT) : NONE_LIT, 0, 0);
 		if (on) c.lit += LIT_PER_POST;
 	}
-	c.draw.set(scenario_, lenses_.rid, material_, buf, c.box, false);
+	c.draw.set(scenario_, lenses_.rid, material_, buf, c.box, false, LAYER_SIGNALS);
 }
 
 void SignalLamps::set_chunk(int64_t key, std::vector<SignalHead> &&heads) {

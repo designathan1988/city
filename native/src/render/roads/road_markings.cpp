@@ -45,11 +45,12 @@ struct Painter {
 void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	const StreetLook &L = pt.e.L;
 	const float plain_w = p.speed < L.line_fast_kmh ? L.line_w : L.line_fast_w;
+	const StreetLook::PaintStyle &style = L.styles[size_t(pt.e.s.marking_style.load())];
 	size_t band = 0; // the dash pattern of the road's speed
-	while (band < L.dash_kmh.size() && p.speed >= L.dash_kmh[band]) band++;
-	const double dash = L.dash[band], period = dash + L.gap[band];
+	while (band < style.dash_kmh.size() && p.speed >= style.dash_kmh[band]) band++;
+	const double dash = style.dash[band], period = dash + style.gap[band];
 	for (const MarkLine &m : p.lines) {
-		Color c = m.color == LineColor::YELLOW ? L.yellow : L.white;
+		Color c = m.color == LineColor::YELLOW && !style.all_white ? L.yellow : L.white;
 		const float w = m.exclusive ? L.exclusive_w : plain_w, hw = w / 2;
 		auto line = [&](float u) {
 			if (m.kind != LineKind::DASHED) {

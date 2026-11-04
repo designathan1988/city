@@ -44,6 +44,8 @@ public:
 	void reset();
 	// Returns how many people were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
+	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
+	int shown(int level) const; // people drawn at this level on the last frame
 
 private:
 	PeopleAsset asset_;
@@ -51,6 +53,7 @@ private:
 	std::vector<MultiMeshDraw> draws_; // variation * lods + level
 	std::vector<godot::PackedFloat32Array> bufs_;
 	std::vector<float> lod_m_; // camera distance where each level ends
+	int floor_ = 0;
 };
 
 } // namespace city
