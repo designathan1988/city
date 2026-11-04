@@ -22,5 +22,5 @@ static func shots(cap: Node, cross: Vector3, hours: Array) -> void:
 
 
 static func _hour(cap: Node, hour: float) -> void:
-	cap.world.set_hour(hour)
+	cap.set_hour(hour)
 	await cap._frames(cap._sky_frames()) # the sky's radiance follows a new hour over several frames

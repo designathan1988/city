@@ -10,8 +10,8 @@ global uniform float night;
 // by CityWorld from data/render/materials.json display_colors): index = 4 * (0 paving, 1 earth) + (0 centre, 1 mid, 2 rim, 3 lip).
 uniform vec3 crater_rad[8];
 uniform vec3 soot_color : source_color = vec3(0.078, 0.067, 0.055);
-uniform vec3 blood_deep : source_color = vec3(0.376, 0.024, 0.035);
-uniform vec3 blood_thin : source_color = vec3(0.52, 0.047, 0.063);
+uniform vec3 blood_deep : source_color; // data/render/materials.json marks.params
+uniform vec3 blood_thin : source_color;
 uniform vec3 ring_color = vec3(1.0, 0.945, 0.816);
 uniform float night_dim = 0.4;
 uniform float now = 0.0; // the effects clock, seconds

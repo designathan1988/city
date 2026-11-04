@@ -11,6 +11,9 @@ const OTHER_SEED := 11
 const WARM_TICKS := 900
 const LIMIT := 40
 const HEAD_AIM_M := 1.7
+const ALONE_M := 6.0
+const LEVEL_STANDOFF_M := 4.0 # a level round, from the side: it crosses the walker at the height it was aimed at
+const LIE_AIM_M := 0.15 # a walker knocked down by the first round lies on the ground: the next is aimed at the body, not at where the chest was
 const TRUNK_AIM_M := 1.2
 const STANDOFF := Vector3(0.0, 6.0, 12.0)
 const SKY := Vector3(0.0, 1.0, 0.0)
@@ -51,6 +54,12 @@ func _shoot(at: Vector3) -> Dictionary:
 	return CityStore.dispatch(&"shoot", [origin, (at - origin).normalized()])
 
 
+## A round at `at` along the ground, from LEVEL_STANDOFF_M to the east: the part struck is the one at that height.
+func _shoot_level(at: Vector3) -> Dictionary:
+	var origin := at + Vector3(LEVEL_STANDOFF_M, 0, 0)
+	return CityStore.dispatch(&"shoot", [origin, Vector3.LEFT])
+
+
 func _walker_of(id: int) -> Dictionary:
 	for w in CityStore.query(&"shot_targets", [LIMIT * 4]).walkers:
 		if w.id == id:
@@ -58,31 +67,38 @@ func _walker_of(id: int) -> Dictionary:
 	return {}
 
 
+## The walkers with nobody else within ALONE_M: a round that passes close to another walker may hit that one instead.
+func _alone(all: Array) -> Array:
+	return all.filter(func(w: Dictionary) -> bool: return all.all(func(o: Dictionary) -> bool: return o.id == w.id or o.position.distance_to(w.position) > ALONE_M))
+
+
 func _walkers() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [LIMIT])
-	_check(found.walkers.size() >= 3, "há pedestres para o tiro (%d)" % found.walkers.size())
-	if found.walkers.size() < 3:
+	var walkers := _alone(found.walkers)
+	_check(walkers.size() >= 3, "há pedestres sozinhos para o tiro (%d de %d)" % [walkers.size(), found.walkers.size()])
+	if walkers.size() < 3:
 		return
-	var hp_full: float = found.walkers[0].hp
+	var hp_full: float = walkers[0].hp
 	_check(hp_full > 0.0, "o pedestre nasce com vida (%.0f)" % hp_full)
-	var trunk: Dictionary = found.walkers[0]
+	var trunk: Dictionary = walkers[0]
 	var r := _shoot(trunk.position + Vector3(0, TRUNK_AIM_M * trunk.scale, 0))
 	_check(r.get("hit", 0) == 1 and not r.killed, "tiro no tronco acerta e não mata %s" % [r])
 	var after := _walker_of(trunk.id)
 	_check(not after.is_empty() and after.hp < hp_full, "a vida caiu (%.0f -> %.0f)" % [hp_full, after.get("hp", -1.0)])
-	var head: Dictionary = found.walkers[1]
+	var head: Dictionary = walkers[1]
 	var kill := _shoot(head.position + Vector3(0, HEAD_AIM_M * head.scale, 0))
 	_check(kill.get("hit", 0) == 1 and kill.killed, "tiro na cabeça mata %s" % [kill])
 	_check(_walker_of(head.id).is_empty(), "quem morreu saiu da calçada")
 	var sky: Dictionary = CityStore.dispatch(&"shoot", [SKY_ORIGIN, SKY])
 	_check(sky.get("hit", 1) == 0, "tiro para o céu não acerta nada")
-	var hurt: Dictionary = found.walkers[2]
+	var hurt: Dictionary = walkers[2]
+	var rounds := []
 	for k in 2:
 		var w := _walker_of(hurt.id)
 		if not w.is_empty():
-			_shoot(w.position + Vector3(0, TRUNK_AIM_M * w.scale, 0))
+			rounds.append([w.hp, w.fallen, _shoot_level(w.position + Vector3(0, (LIE_AIM_M if w.fallen else TRUNK_AIM_M * w.scale), 0))])
 	var wounded := _walker_of(hurt.id)
-	_check(wounded.is_empty() or wounded.hp < hp_full * 0.5, "dois tiros no tronco ferem de gravidade")
+	_check(wounded.is_empty() or wounded.hp < hp_full * 0.5, "dois tiros no tronco ferem de gravidade %s -> %s" % [rounds, wounded])
 	if not wounded.is_empty() and wounded.hp > 0.0 and wounded.bleed > 0.0:
 		CityStore.step_ticks(BLEED_SOON_TICKS)
 		var soon := _walker_of(hurt.id)

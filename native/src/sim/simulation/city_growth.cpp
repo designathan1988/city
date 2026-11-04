@@ -64,7 +64,7 @@ void grow_step(CityState &s, double dt) {
 			return;
 		}
 		const std::vector<Lot> &lots = *s.lots.lots_of(p.key);
-		Building b = record_for(s, lots, p.lot, true);
+		Building b = record_for(s, lots, p.lot);
 		b.built = s.clock.minutes.load();
 		s.buildings.add(b);
 		g.last_x = b.x;

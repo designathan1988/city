@@ -1,10 +1,10 @@
 // Where trees grow (data/render/streets.json "trees.placement"): street trees where the simulation stands them (read through render/props/
-// street_props.h), groves in the park and square lots, and the woods of the open land. The woods follow a field of
-// patches (fractal value noise) whose thresholds are set from the land share the data asks to be inner wood and wood
-// edge (measured cover), raised on steep slopes and along water (the Forest Code's permanent protection areas); inside
-// a wood the trees stand denser, taller and narrower, at its edge lower and leaning to the open side, out in the
-// open few and short. Nothing grows on roads, lots, water or cliffs. Near the camera every tree is its model; far
-// away the woods are drawn as one card per cell of `far_cell_m` and the lone trees as one card each.
+// street_props.h), groves in the park and square lots, and the woods of the open land. The woods follow a density: patches of
+// smooth noise at three scales, raised on steep ground, by the ecosystem and by painted forest. It cuts the land into
+// bands (inner wood, its edge, the open land with its scattered and lone trees), each with its chance per cell of a lattice
+// and its sizes; one scale over all the chances holds the land to `woods_per_ha`. A tree among many stands taller and narrower,
+// one at a wood's edge leans to the open side. Nothing grows on roads, lots, water or cliffs. Near the camera every tree is
+// its model; far away the same trees are one card each.
 #pragma once
 
 #include "render/props/street_props.h"
@@ -18,6 +18,16 @@ namespace city {
 enum class WoodBand : int { INNER = 0, EDGE = 1, OPEN = 2, COUNT = 3 };
 constexpr int WOOD_BANDS = int(WoodBand::COUNT);
 
+// What a chunk's plants keep clear of and read, gathered once: its roads and lots, with a margin, and its ecosystem (none
+// on a map with neither a biome nor paint).
+struct ChunkGround {
+	std::vector<int> segs, lots;
+	EcologyField eco;
+};
+ChunkGround chunk_ground(const CityState &s, int64_t key);
+bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
+bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
+
 struct SpeciesMix {
 	std::vector<int> species;
 	std::vector<float> weight; // cumulative, ending at 1
@@ -26,24 +36,34 @@ struct SpeciesMix {
 };
 
 struct BandLook {
-	float cover = 0; // share of the ground under crowns
-	float h0 = 0, h1 = 0; // height range, metres
-	float keep = 0; // chance a candidate cell holds a tree (from the cover, the grid and the mean crown)
+	float from = 0; // density above which the land is of this band
+	float keep0 = 0, keep1 = 0; // chance a cell holds a tree, at the band's lower density and at the next band's
+	float lone = 0; // the open band's chance below `from`
+	float h0 = 0, h1 = 0; // size range, metres
 	SpeciesMix mix;
 };
 
+constexpr int WOOD_PATCHES = 3;
+
 struct TreeLook {
-	float near_m = 0, fade_m = 0, pop_m = 0, far_m = 0, far_cell_m = 1, far_spread = 1, far_jitter = 0, grid_m = 1, jitter = 0, mass_m = 1;
-	int octaves = 1;
-	float inner_share = 0, edge_share = 0, open_per_ha = 0;
-	float slope_from = 0, slope_to = 1, slope_gain = 0, water_m = 0, water_gain = 0;
-	float crowd_tall = 0, crowd_narrow = 0, edge_lean = 0, width_vary = 0, tint_vary = 0;
+	float near_m = 0, fade_m = 0, far_m = 0, grid_m = 1, jitter = 0, plate_m = 1;
+	std::array<float, WOOD_PATCHES> patch_m{}, patch_weight{};
+	float mass_from = 0, mass_span = 1, mass_gain = 0, density_floor = 0;
+	float slope_from = 0, slope_to = 1, slope_gain = 0, slope_probe_m = 1;
+	float woods_per_ha = 0, crowd_reach_m = 0, crowd_full = 1;
+	float crowd_tall = 0, crowd_narrow = 0, edge_lean = 0, lean_rise = 0, width_vary = 0, tint_vary = 0;
+	float open_tall = 1, open_wide = 1; // a tree standing alone against its size
 	float min_y = 0, max_grade = 0, road_margin = 0, lot_margin = 0;
 	float park_m2_per_tree = 1, park_edge = 0, park_h0 = 0, park_h1 = 0, street_height_m = 1;
+	float eco_gain = 0, eco_mean = 0, forest_gain = 0; // how the ecosystem and painted forest raise the density
+	std::vector<int> planted_species; // the species of each model slot of a planted tree (sim/nature/planted_trees.h)
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;
-	float t_inner = 0, t_edge = 0; // field thresholds, calibrated by load()
+	float scale = 1, most = 1; // worked out by load(): the chances' scale and the highest chance
+	float density_of(double x, double y) const; // the patches' share of the density, on the map's own axes
+	WoodBand band_at(float density) const;
+	float keep_at(float density, WoodBand b) const; // the chance of a cell, scaled
 	bool load(const godot::Dictionary &trees, const TreeKit &kit, godot::PackedStringArray &errors);
 };
 
@@ -56,7 +76,7 @@ struct TreeInstance {
 	godot::Color tint;
 };
 
-// One far card: a lone tree, or the trees of a cell of a wood.
+// One far card: a tree.
 struct FarCard {
 	godot::Vector3 p;
 	float height = 1, width = 1;
@@ -67,7 +87,7 @@ struct FarCard {
 // The trees of 256 m chunk `key`, near models.
 void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeInstance> &out);
-// The far cards of chunk `key`: its woods by cell, its lone, park and street trees one by one.
+// The far cards of chunk `key`: the same trees, one card each.
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<FarCard> &out);
 

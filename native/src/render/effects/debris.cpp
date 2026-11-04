@@ -16,13 +16,13 @@ constexpr float WORLD_HALF_M = 200000.f;
 constexpr float WORLD_UP_M = 20000.f;
 constexpr float INERTIA_NUM = 12.f; // inverse inertia per unit mass of a box: 12 / (a2 + b2 + c2)
 constexpr float INERTIA_MIN = 1e-4f;
-constexpr float SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
+constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
 constexpr float TINT_MIN = 0.85f, TINT_SPAN = 0.3f; // each piece's shade varies a little
 constexpr float CYL_SIDES = 9.f;
 constexpr float FLAME_OVER_M = 0.3f; // flames rise from a burning piece
 constexpr float SMOKE_OVER_M = 1.0f;
 constexpr float SMOKE_SPREAD_M = 0.4f;
-constexpr float CORE_SHARE = 0.4f; // the flame's size follows the piece's, to this share
+constexpr float FLAME_FOLLOW_SHARE = 0.4f; // the flame's size follows the piece's, to this share
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
@@ -58,7 +58,7 @@ void Debris::add(const PieceSpec &s) {
 	Piece b;
 	b.p = s.at;
 	b.v = s.velocity;
-	b.w = s.random_spin ? Vector3((rng_.f() - 0.5f) * SPIN_RANGE, (rng_.f() - 0.5f) * SPIN_RANGE, (rng_.f() - 0.5f) * SPIN_RANGE) : s.spin;
+	b.w = s.random_spin ? Vector3((rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE) : s.spin;
 	if (!s.random_spin && s.spin == Vector3()) b.w = Vector3();
 	b.size = s.size;
 	b.q = s.turn;
@@ -98,7 +98,7 @@ void Debris::burn(Piece &p, double, float dt, Puffs &puffs) {
 	const float big = std::max(p.size.x, p.size.z) * 0.5f;
 	while (p.carry >= 1.f) {
 		p.carry -= 1.f;
-		puffs.burst(p.p.x, p.p.y + FLAME_OVER_M, p.p.z, 1, params_.flame_kind, big, params_.flame_size + big * CORE_SHARE, params_.flame_life);
+		puffs.burst(p.p.x, p.p.y + FLAME_OVER_M, p.p.z, 1, params_.flame_kind, big, params_.flame_size + big * FLAME_FOLLOW_SHARE, params_.flame_life);
 		if (rng_.f() < params_.column_chance)
 			puffs.burst(p.p.x, p.p.y + SMOKE_OVER_M, p.p.z, 1, params_.smoke_kind, SMOKE_SPREAD_M, params_.smoke_size, params_.smoke_life);
 	}

@@ -25,5 +25,7 @@ bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, go
 
 // data/catalog/blast.json (api/blast_loader.cpp).
 bool load_blast_params(const godot::Dictionary &t, BlastParams &p, godot::PackedStringArray &errors);
+// data/catalog/nature.json (api/nature_loader.cpp).
+bool load_nature(const godot::Dictionary &t, NatureDef &n, godot::PackedStringArray &errors);
 
 } // namespace city

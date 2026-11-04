@@ -18,10 +18,9 @@ constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30, RANK_EXPRESSWAY = 3, RANK_AVENU
 constexpr double NO_ROOM = 1e300;
 constexpr int GROUND_PROBES = 5;
 constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
-constexpr double D_COM_HIGH = 0.08, D_COM = 0.16, D_COM_AV = 0.35, D_MIX = 0.32, D_MIX_AV = 0.7;
-constexpr double D_CITY = 1.05, D_LOW = 0.75, IND_NEAR = 800, IND_NOISE = 0.05, OUTSKIRT_RES = 0.5;
-constexpr uint32_t ZONE_RNG_MUL = 31, ZONE_RNG_ADD = 7, NOISE_N = 313, NOISE_M = 919, NOISE_IND = 77;
-constexpr double DISTRICT_SCALE_N = 650, NOISE_M_SCALE = 1400, NOISE_IND_SCALE = 900;
+constexpr double SIDE_PROBE_M = 20; // about half a lot's depth, off the street's middle
+constexpr uint32_t NOISE_N = 313, NOISE_M = 919;
+constexpr double DISTRICT_SCALE_N = 650, NOISE_M_SCALE = 1400;
 constexpr double AVENUE_SHARE_N = 0.45, URBAN_N = 0.1, BIKE_N = 0.25, COBBLE_D = 0.9, COBBLE_M = 0.2, URBAN_LOCAL_N = 0.3;
 constexpr double BUS_OFFSET = 0.5, BUS_M = 0.15, BOULEVARD_M = -0.3, AV4_N = 0.35;
 
@@ -41,8 +40,8 @@ struct EdgeMap {
 
 class GraphBuilder {
 public:
-	GraphBuilder(const std::vector<road_gen::Piece> &p, uint32_t seed, TerrainGen &t, const GenProfiles &prof) :
-			pieces_(p), seed_(seed), terrain_(t), prof_(prof) {}
+	GraphBuilder(const std::vector<road_gen::Piece> &p, uint32_t seed, TerrainGen &t, const GenProfiles &prof, const CityPlan &plan) :
+			pieces_(p), seed_(seed), terrain_(t), prof_(prof), plan_(plan) {}
 
 	GeneratedRoads build(double centre_r) {
 		bucket_pieces();
@@ -63,6 +62,7 @@ private:
 	uint32_t seed_;
 	TerrainGen &terrain_;
 	const GenProfiles &prof_;
+	const CityPlan &plan_;
 	std::unordered_map<int64_t, std::vector<int>> buckets_;
 	std::vector<int64_t> bucket_order_;
 	std::vector<uint8_t> dead_;
@@ -131,7 +131,10 @@ private:
 					if (std::fabs(den) < PARALLEL_DEN) continue;
 					double wx = Q.x0 - P.x0, wz = Q.z0 - P.z0;
 					double u = (wx * dz2 - wz * dx2) / den, v = (wx * dz1 - wz * dx1) / den;
-					if (u > CROSS_EPS && u < 1 - CROSS_EPS && v > CROSS_EPS && v < 1 - CROSS_EPS) { cuts_[s].push_back(u); cuts_[t].push_back(v); }
+					// A street ending on another is a junction too (a T): the one it meets is cut there, or the outer ring meets nothing and goes.
+					if (u < -CROSS_EPS || u > 1 + CROSS_EPS || v < -CROSS_EPS || v > 1 + CROSS_EPS) continue;
+					if (u > CROSS_EPS && u < 1 - CROSS_EPS) cuts_[s].push_back(u);
+					if (v > CROSS_EPS && v < 1 - CROSS_EPS) cuts_[t].push_back(v);
 				}
 		}
 	}
@@ -249,25 +252,11 @@ private:
 		}
 	}
 
-	std::vector<int> exp_nodes_;
-
-	double near_expressway(double x, double z) const {
-		double best = NO_ROOM;
-		for (int id : exp_nodes_) best = std::min(best, std::fabs(nx_[id] - x) + std::fabs(nz_[id] - z));
-		return best;
-	}
-
-	int zone_of(int profile, double d, double mx, double mz, Mulberry32 &zr) const {
+	// What the land beside a street is for, a lot's depth off its middle (+1 the street's left, -1 its right).
+	int zone_beside(int profile, double mx, double mz, double dx, double dz, double side) const {
 		if (profile == prof_.expressway) return ZONE_NONE;
-		bool avenue = profile != prof_.local;
-		if (d < D_COM_HIGH && avenue) return ZONE_COM_HIGH;
-		if (d < D_COM || (avenue && d < D_COM_AV)) return ZONE_COM;
-		if (d < D_MIX || (avenue && d < D_MIX_AV)) return ZONE_MIXED;
-		if (d < D_CITY) {
-			bool ind = near_expressway(mx, mz) < IND_NEAR && fbm2(mx / NOISE_IND_SCALE, mz / NOISE_IND_SCALE, seed_ + NOISE_IND, 2) > IND_NOISE;
-			return ind ? ZONE_IND : d > D_LOW ? ZONE_RES_LOW : ZONE_RES;
-		}
-		return zr.next() < OUTSKIRT_RES ? ZONE_RES : ZONE_NONE;
+		const double length = std::max(std::hypot(dx, dz), 1.0), off = side * SIDE_PROBE_M / length;
+		return zone_at(plan_, mx + dz * off, mz - dx * off, profile != prof_.local);
 	}
 
 	int variant(int p, int zone, double d, double x, double z) const {
@@ -288,27 +277,25 @@ private:
 	}
 
 	void zone_and_split(double centre_r) {
-		Mulberry32 zr(seed_ * ZONE_RNG_MUL + ZONE_RNG_ADD);
-		for (const auto &e : edges_.items)
-			if (e.second == prof_.expressway) exp_nodes_.push_back(int(e.first / PAIR));
 		for (const auto &e : edges_.items) {
 			int a = int(e.first / PAIR), b = int(e.first % PAIR), profile = e.second;
 			double mx = (nx_[a] + nx_[b]) / 2, mz = (nz_[a] + nz_[b]) / 2;
-			double d = std::hypot(mx, mz) / centre_r;
-			int zone = zone_of(profile, d, mx, mz, zr);
-			double L = std::hypot(nx_[b] - nx_[a], nz_[b] - nz_[a]);
-			int count = int(std::ceil(L / GEN_SEG_LEN)), pv = variant(profile, zone, d, mx, mz);
+			double d = std::hypot(mx, mz) / centre_r, dx = nx_[b] - nx_[a], dz = nz_[b] - nz_[a];
+			double L = std::hypot(dx, dz);
+			int count = int(std::ceil(L / GEN_SEG_LEN)), pv = variant(profile, zone_beside(profile, mx, mz, dx, dz, 1), d, mx, mz);
 			int from = a;
 			for (int k = 1; k <= count; k++) {
 				int to = b;
+				const double mid = (double(k) - 0.5) / count;
 				if (k < count) {
 					double t = double(k) / count;
 					to = int(nx_.size());
-					nx_.push_back(nx_[a] + (nx_[b] - nx_[a]) * t);
-					nz_.push_back(nz_[a] + (nz_[b] - nz_[a]) * t);
+					nx_.push_back(nx_[a] + dx * t);
+					nz_.push_back(nz_[a] + dz * t);
 					ny_.push_back(ny_[a] + (ny_[b] - ny_[a]) * t);
 				}
-				segs_.insert(segs_.end(), { from, to, pv, zone, zone });
+				const double px = nx_[a] + dx * mid, pz = nz_[a] + dz * mid;
+				segs_.insert(segs_.end(), { from, to, pv, zone_beside(profile, px, pz, dx, dz, 1), zone_beside(profile, px, pz, dx, dz, -1) });
 				strength_.push_back(rank(profile));
 				from = to;
 			}
@@ -334,8 +321,8 @@ private:
 };
 } // namespace
 
-GeneratedRoads road_gen::build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof) {
-	return GraphBuilder(pieces, seed, terrain, prof).build(centre_r);
+GeneratedRoads road_gen::build_graph(const std::vector<Piece> &pieces, double centre_r, uint32_t seed, TerrainGen &terrain, const GenProfiles &prof, const CityPlan &plan) {
+	return GraphBuilder(pieces, seed, terrain, prof, plan).build(centre_r);
 }
 
 } // namespace city

@@ -6,10 +6,13 @@
 
 #include "sim/buildings/building_store.h"
 #include "sim/demolition/damage_state.h"
+#include "sim/nature/ground_paint.h"
 #include "sim/roads/road_network.h"
 #include "sim/terrain/heightfield.h"
 
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,7 +22,10 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
+	MONEY, NATURE, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
+
+// A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
+using NatureEdit = std::function<void(CityState &, bool forward)>;
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
@@ -35,6 +41,13 @@ struct EditOp {
 	Gone gone; // DMG_GONE
 	Hurt hurt; // DMG_HURT: the building's damage after (hurt_before: before; 0 means none)
 	float hurt_before = 0;
+	std::shared_ptr<const NatureEdit> nature; // NATURE
+};
+
+// A tile of painted ground before and after an entry (null: it did not exist).
+struct PaintEdit {
+	int key = 0;
+	std::shared_ptr<const PaintTile> before, after;
 };
 
 // One undoable step. Terrain samples are kept apart: their values before (while open, by index) and after.
@@ -44,10 +57,12 @@ struct EditEntry {
 	std::unordered_map<uint32_t, uint16_t> terrain_open;
 	std::vector<uint32_t> terrain_idx;
 	std::vector<uint16_t> terrain_before, terrain_after;
+	std::unordered_map<int, std::shared_ptr<const PaintTile>> paint_open; // tiles as they were (while open)
+	std::vector<PaintEdit> paint;
 	double minx = 0, minz = 0, maxx = 0, maxz = 0;
 	bool has_box = false;
 	size_t bytes = 0;
-	bool empty() const { return ops.empty() && terrain_idx.empty() && terrain_open.empty(); }
+	bool empty() const { return ops.empty() && terrain_idx.empty() && terrain_open.empty() && paint.empty() && paint_open.empty(); }
 	void grow(double x0, double z0, double x1, double z1);
 };
 
@@ -77,6 +92,7 @@ private:
 	size_t begin_ops = 0; // ops the open entry had when the current command began (its rollback stops there)
 	void push(CityState &s);
 	void close_terrain(const CityState &s);
+	void close_paint(const CityState &s);
 	void trim();
 };
 
@@ -107,5 +123,9 @@ void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount);
 void apply_damage_op(CityState &s, const EditOp &op, bool forward);
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
+// A landscape change already made, with what undoes and redoes it; `bytes` what it keeps.
+void j_nature(CityState &s, size_t bytes, NatureEdit edit);
+// Keeps the painted tiles as they are now (before a dab changes them).
+void j_paint_touch(CityState &s, const std::vector<int> &tiles);
 
 } // namespace city

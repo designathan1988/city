@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
@@ -13,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <iterator>
 
 using namespace godot;
 
@@ -25,6 +27,7 @@ constexpr uint32_t H1 = 0x27d4eb2d, H2 = 0x165667b1, H3 = 0x3c6ef372, H4 = 0x85e
 constexpr int SH1 = 15, SH2 = 13;
 constexpr double U32 = 4294967296.0;
 constexpr uint32_t SEED_BYTE = 0xff;
+constexpr float HALF_STEP = 0.5f;
 constexpr int BYTE_BITS = 8, CORNERS = 8, FACES = 6, QUAD_INDICES = 6, BIT_A = 1, BIT_B = 2, BIT_C = 4;
 // Box faces as corner quads (corner bit 1 = a1, 2 = b1, 4 = c1), in the order -e2, +e2, -e0, +e0, -e1, +e1.
 constexpr int BOX_QUADS[FACES][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 } };
@@ -37,6 +40,18 @@ float lattice(int32_t i, int32_t j, int32_t k) {
 }
 float smooth(float t) { return t * t * (3 - 2 * t); }
 float gamma(float v) { return std::pow(std::clamp(v, 0.f, 1.f), GAMMA_INV); }
+// Four shares (0..1) as the RGBA8 of a vertex.
+uint32_t pack(float r, float g, float b, float a) {
+	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
+	return byte(r) | byte(g) << BYTE_BITS | byte(b) << (2 * BYTE_BITS) | byte(a) << (3 * BYTE_BITS);
+}
+uint32_t trim_code(const Lin &trim, float frame) { return pack(gamma(trim.r), gamma(trim.g), gamma(trim.b), frame / FRAME_SPAN_M); }
+// A box left open at both ends of an axis (a window frame's ring round its glass) is a tube: a unit-cube instance would
+// close it and plug what it surrounds, so it stays faces. Any other skip only saves faces nobody sees.
+bool tube(uint8_t skip) {
+	constexpr uint8_t PAIRS[] = { SKIP_E0_NEG | SKIP_E0_POS, SKIP_E1_NEG | SKIP_E1_POS, SKIP_E2_NEG | SKIP_E2_POS };
+	return std::any_of(std::begin(PAIRS), std::end(PAIRS), [skip](uint8_t pair) { return (skip & pair) == pair; });
+}
 } // namespace
 
 // Trilinear value noise in map axes (x, north = -z, up), metres / 12.
@@ -56,6 +71,8 @@ int Shell::vert(const Vector3 &p, const Vector3 &n, const Color &c, const Vector
 	col.push_back(c);
 	uv.push_back(t);
 	uv2.push_back(t2);
+	if (rooms)
+		for (std::vector<uint32_t> &c : custom) c.push_back(0);
 	return int(pos.size()) - 1;
 }
 
@@ -104,7 +121,7 @@ void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c
 
 void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
 	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
-	if (instanced) {
+	if (instanced && !tube(skip)) {
 		float m0 = a1 - a0, m1 = b1 - b0, m2 = c1 - c0;
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
 		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
@@ -132,29 +149,58 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	}
 }
 
-void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c, uint32_t seed, bool dark) {
+void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look) {
+	if (glass) {
+		glass->pane(f, a0, a1, b0, b1, c, look);
+		return;
+	}
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	Vector3 n = f.e2;
-	Color code(float(seed & SEED_BYTE) / BYTE, float((seed >> BYTE_BITS) & SEED_BYTE) / BYTE, float((seed >> (2 * BYTE_BITS)) & SEED_BYTE) / BYTE,
-			float(dark ? SK_PANE_DARK : SK_PANE) / BYTE);
+	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
+			float(look.dark ? SK_PANE_DARK : SK_PANE) / BYTE);
 	Vector2 size(a1 - a0, b1 - b0);
 	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
 	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);
 	bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
 	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
 	idx.insert(idx.end(), t, t + QUAD_INDICES);
+	if (!rooms) return;
+	const PaneRoom &r = look.room;
+	const float k = 1 / ROOM_SPAN_M;
+	const uint32_t code0 = pack(r.back * k, r.ahead * k, r.depth * k, float(r.floor) / BYTE);
+	const uint32_t code1 = pack(r.sill * k, r.head * k, float(r.piece + 1) / BYTE, r.piece_h * k);
+	const uint32_t code2 = pack(r.piece_at * k * HALF_STEP + HALF_STEP, r.piece_half * k, r.piece_near * k, r.piece_far * k);
+	const uint32_t code3 = trim_code(look.trim, look.frame);
+	for (int i : { i0, i1, i2, i3 }) {
+		custom[0][size_t(i)] = code0;
+		custom[1][size_t(i)] = code1;
+		custom[2][size_t(i)] = code2;
+		custom[3][size_t(i)] = code3;
+	}
 }
 
-void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, float code) {
+void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w) {
+	if (glass) {
+		glass->grime_floor = grime_floor;
+		glass->shade = shade;
+		glass->tone = tone;
+		glass->far_wall(p, out, cell, lin, fin, seed, w);
+		return;
+	}
 	float fin_seed = float(fin + 1) + float(seed & SEED_BYTE) / (BYTE + 1);
 	Vector3 n = (p[1] - p[0]).cross(p[3] - p[0]).normalized();
 	if (n.dot(out) < 0) n = -n;
 	int base = int(pos.size());
-	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], lin, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, code));
+	for (int i = 0; i < 4; i++) vert(p[i], n, shaded(p[i], lin, false, SK_FAR_WALL), cell[i], Vector2(fin_seed, 0));
 	bool flip = (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0;
 	const int i1 = base + 1, i2 = base + 2, i3 = base + 3;
 	const int t[QUAD_INDICES] = { base, flip ? i2 : i1, flip ? i1 : i2, base, flip ? i3 : i2, flip ? i2 : i3 };
 	idx.insert(idx.end(), t, t + QUAD_INDICES);
+	if (!rooms) return;
+	for (int i = base; i <= i3; i++) {
+		custom[0][size_t(i)] = pack(w.width, w.sill, w.head, float(w.flags) / BYTE);
+		custom[3][size_t(i)] = trim_code(w.trim, 0);
+	}
 }
 
 void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
@@ -168,7 +214,8 @@ void Shell::bounds(Vector3 &mn, Vector3 &mx) const {
 
 int64_t Shell::bytes(bool with_uv2) const {
 	return int64_t((pos.size() + nrm.size()) * sizeof(Vector3) + col.size() * sizeof(Color) +
-			(uv.size() + (with_uv2 ? uv2.size() : 0)) * sizeof(Vector2) + idx.size() * sizeof(int32_t));
+			(uv.size() + (with_uv2 ? uv2.size() : 0)) * sizeof(Vector2) + idx.size() * sizeof(int32_t) +
+			(rooms ? pos.size() * CUSTOM_ARRAYS * sizeof(uint32_t) : 0));
 }
 
 void Shell::commit_to(const RID &mesh, bool with_uv2) const {
@@ -193,8 +240,21 @@ void Shell::commit_to(const RID &mesh, bool with_uv2) const {
 		copy(pu2, uv2);
 		arr[RenderingServer::ARRAY_TEX_UV2] = pu2;
 	}
+	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+	if (rooms) {
+		constexpr int ARRAYS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_CUSTOM0, RenderingServer::ARRAY_CUSTOM1, RenderingServer::ARRAY_CUSTOM2, RenderingServer::ARRAY_CUSTOM3 };
+		constexpr uint64_t SHIFTS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM1_SHIFT,
+			RenderingServer::ARRAY_FORMAT_CUSTOM2_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM3_SHIFT };
+		for (int i = 0; i < CUSTOM_ARRAYS; i++) {
+			PackedByteArray bytes;
+			bytes.resize(int64_t(custom[i].size() * sizeof(uint32_t)));
+			std::memcpy(bytes.ptrw(), custom[i].data(), custom[i].size() * sizeof(uint32_t));
+			arr[ARRAYS[i]] = bytes;
+			format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << SHIFTS[i];
+		}
+	}
 	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, arr, Array(), Dictionary(),
-			RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES);
+			RenderingServer::ArrayFormat(format));
 }
 
 } // namespace city::b40
