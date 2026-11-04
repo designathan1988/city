@@ -24,6 +24,7 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 	part_frame_bar_m = float(at(parts, "frame_bar_m"));
 	part_handle_h_m = float(at(parts, "handle_h_m"));
 	part_brise_fin_m = float(at(parts, "brise_fin_m"));
+	guard_h_m = float(at(parts, "guard_h_m"));
 	fence_bar_m = float(at(at(t, "lot"), "fence_bar_m"));
 	air_handler_per_area = float(at(at(t, "roof"), "air_handler_per_area"));
 	Array bands = at(lod, "part_bands");

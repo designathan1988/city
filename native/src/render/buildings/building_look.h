@@ -20,6 +20,7 @@ struct PartBand {
 struct BuildingLook {
 	float parts_share = 0, near_share = 0; // of render.building_detail_end_m
 	float part_frame_bar_m = 0, part_handle_h_m = 0, part_brise_fin_m = 0; // part_models.cpp
+	float guard_h_m = 0; // top of every guard above its floor (facade_parts.cpp, roof_emit.cpp)
 	float fence_bar_m = 0; // lot_emit.cpp
 	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)

@@ -8,18 +8,18 @@ namespace city::b40 {
 
 namespace {
 constexpr float FRAME_D = 0.06f, FRAME_THIN = 0.05f, FRAME_IN = 0.03f, SILL_PAST = 0.14f, SILL_T = 0.06f, SILL_OUT = 0.07f;
-constexpr float BAL_EDGE = 0.3f, BAL_SLAB = 0.18f, BAL_OUT = 1.3f, RAIL_H = 1.05f;
+constexpr float BAL_EDGE = 0.3f, BAL_SLAB = 0.18f, BAL_OUT = 1.3f;
 constexpr float CANOPY_PAD = 0.7f, CANOPY_T = 0.12f, CANOPY_OUT = 0.9f, FASCIA_H = 0.2f, FASCIA_T = 0.05f, FASCIA_DROP = 0.04f;
 constexpr float CANOPY_RISE = 0.3f, CANOPY_ROOM = 0.48f, BRACKET_W = 0.06f, BRACKET_H = 0.3f, BRACKET_D = 0.5f, BRACKET_OFF = 0.2f;
 constexpr float LEAF_MAX = 2.5f, LEAF_GAP = 0.04f, LIGHT_INSET = 0.5f, LIGHT_SHARE = 0.5f, LIGHT_AT = 0.62f, FAN_MIN = 0.4f;
 constexpr float FAN_GAP = 0.12f, TRANSOM_T = 0.08f, DD_PAD = 1.f, DD_T = 0.14f, DD_OUT = 1.1f, DD_FASCIA = 0.24f, DD_ROOM = 0.49f;
 constexpr float AWNING_TRIM = 0.2f, AWNING_H = 0.75f, AWNING_UP = 0.45f;
-constexpr float LOGGIA_PANE = 0.02f, LOGGIA_FRAME = 1.35f, GLASS_RAIL_IN = -0.02f, CAP_H = 0.05f, CAP_T = 0.06f, CAP_AT = 1.06f;
+constexpr float LOGGIA_PANE = 0.02f, LOGGIA_FRAME = 1.35f, GLASS_RAIL_IN = -0.02f, CAP_H = 0.05f, CAP_T = 0.06f;
 constexpr float BRISE_OUT = 0.6f, SURROUND = 0.14f, SURROUND_T = 0.06f, SURROUND_OUT = -0.03f, LOUVRE_T = 0.04f, LOUVRE_OUT = -0.05f;
 constexpr float LOUVRE_SPREAD = 0.75f, SHUT_SILL_PAST = 0.38f, SHUT_SILL_T = 0.08f, SHUT_SILL_OUT = 0.1f;
 constexpr float G_SLAB_T = 0.24f, G_OUT = 1.6f, G_BEAM_H = 0.18f, G_BEAM_T = 0.16f, G_BEAM_DROP = 0.2f, G_BEAM_OUT = 1.54f;
 constexpr float G_SHADE = 0.92f, G_END = 0.103f, G_RAIL_OUT = 1.56f, G_WALL_T = 0.2f, G_WALL_D = 1.661f, G_WALL_DROP = 0.307f;
-constexpr float GARDEN_WALL_U = 0.8195f, G_POST_H = 1.1f, G_POST_D = 1.4f, G_POST_OUT = 0.9f, TRANSOM_MIN = 2.2f, TRANSOM_AT = 0.72f;
+constexpr float GARDEN_WALL_U = 0.8195f, G_POST_D = 1.4f, G_POST_OUT = 0.9f, TRANSOM_MIN = 2.2f, TRANSOM_AT = 0.72f;
 constexpr float WINDOW_SILL_MIN = 0.3f, LAMP_W = 0.16f, LAMP_H = 0.26f, LAMP_D = 0.12f, LAMP_OFF = 0.4f, LAMP_DROP = 0.25f;
 constexpr float LAMP_OUT = -0.06f, LAMP_ROOM = 0.13f, HALF = 0.5f, SHUTTER_CHROMA = 0.06f, SHUTTER_MAX = 0.75f;
 constexpr uint32_t SHUTTER_BROWN = 0x7a5538, SHUTTER_BLUE = 0x557392;
@@ -53,6 +53,12 @@ struct Ctx {
 	void door_back(float y0, float y1) const {
 		const Paint &p = pl.data->color("door");
 		shell.rect(c.f, o.a0, o.a1, y0, y1, -(o.depth + FRAME_IN + FRAME_D / 2), paint_lin(p), p.finish);
+	}
+	// A glass guard standing on the floor at `floor`: the pane up to its cap, the cap's top at the guard height.
+	void glass_guard(float a, float floor, float depth, float width) const {
+		const float pane = pl.look->guard_h_m - CAP_H;
+		part_box(shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
+		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, c.trim_fin);
 	}
 	void door();
 	void double_door();
@@ -89,11 +95,10 @@ void Ctx::gourmet() {
 	part_box(shell, at(c.W / 2, -G_SLAB_T / 2, -G_OUT / 2, c.W, G_SLAB_T, G_OUT), slab, c.wall_fin);
 	part_box(shell, at(c.W / 2, -G_BEAM_DROP, -G_BEAM_OUT, c.W, G_BEAM_H, G_BEAM_T), slab, c.wall_fin);
 	float r0 = c.open_left ? 0 : G_END, r1 = c.open_right ? c.W : c.W - G_END;
-	part_box(shell, at((r0 + r1) / 2, RAIL_H / 2, G_RAIL_OUT, r1 - r0, RAIL_H, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
-	part_box(parts, at((r0 + r1) / 2, CAP_AT, G_RAIL_OUT, r1 - r0, CAP_H, CAP_T), c.trim, c.trim_fin);
+	glass_guard((r0 + r1) / 2, 0, G_RAIL_OUT, r1 - r0);
 	if (!c.open_left) part_box(shell, at(G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
 	if (!c.open_right) part_box(shell, at(c.W - G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
-	else part_box(parts, at(c.W, G_POST_H / 2, -G_POST_OUT, FRAME_D, G_POST_H, G_POST_D), c.trim, c.trim_fin);
+	else part_box(parts, at(c.W, pl.look->guard_h_m / 2, -G_POST_OUT, FRAME_D, pl.look->guard_h_m, G_POST_D), c.trim, c.trim_fin);
 }
 
 void Ctx::shuttered() {
@@ -122,7 +127,7 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 		case BAY_BALCONY:
 			x.frame(FRAME_D);
 			part_box(shell, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
-			part_railing(parts, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, RAIL_H, BAL_OUT), c.trim, c.trim_fin);
+			part_railing(parts, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
 			break;
 		case BAY_DOOR: x.door(); break;
 		case BAY_DOUBLE_DOOR: x.double_door(); break;
@@ -137,8 +142,7 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 			break;
 		case BAY_LOGGIA:
 			part_frame(parts, x.at(x.am, x.hm, LOGGIA_FRAME, x.w, x.h, FRAME_D), c.trim, c.trim_fin);
-			part_box(shell, x.at(x.am, o.h0 + RAIL_H / 2, GLASS_RAIL_IN, x.w, RAIL_H, LOGGIA_PANE), x.paint("glass_rail"), FIN_GLASS);
-			part_box(parts, x.at(x.am, o.h0 + CAP_AT, GLASS_RAIL_IN, x.w, CAP_H, CAP_T), c.trim, c.trim_fin);
+			x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w);
 			break;
 		case BAY_BRISE:
 			x.frame(FRAME_THIN);
