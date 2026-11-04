@@ -59,9 +59,9 @@ void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	float hx = p.sx / 2, z1 = p.sz, top0 = (RAIL_TOP_Y - RAIL_TOP_H / 2) * p.sy, top1 = (RAIL_TOP_Y + RAIL_TOP_H / 2) * p.sy;
-	s.box(m, -hx, hx, top0, top1, z1 - RAIL_TOP_T, z1, lin, fin, SKIP_E0_NEG | SKIP_E0_POS);
-	s.box(m, -hx, -hx + RAIL_TOP_T, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E2_NEG | SKIP_E2_POS | SKIP_E0_POS);
-	s.box(m, hx - RAIL_TOP_T, hx, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E2_NEG | SKIP_E2_POS | SKIP_E0_NEG);
+	s.box(m, -hx, hx, top0, top1, z1 - RAIL_TOP_T, z1, lin, fin);
+	s.box(m, -hx, -hx + RAIL_TOP_T, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E0_POS);
+	s.box(m, hx - RAIL_TOP_T, hx, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E0_NEG);
 	s.rect(m, -hx, hx, (RAIL_BOT_Y - RAIL_BOT_H / 2) * p.sy, (RAIL_BOT_Y + RAIL_BOT_H / 2) * p.sy, z1, lin, fin);
 	float y0 = (HALF - BALUSTER_H / 2) * p.sy, y1 = top0;
 	for (int i = 0; i < BALUSTERS_FRONT; i++) {

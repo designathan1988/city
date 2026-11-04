@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <iterator>
 
 using namespace godot;
 
@@ -37,6 +38,12 @@ float lattice(int32_t i, int32_t j, int32_t k) {
 }
 float smooth(float t) { return t * t * (3 - 2 * t); }
 float gamma(float v) { return std::pow(std::clamp(v, 0.f, 1.f), GAMMA_INV); }
+// A box left open at both ends of an axis (a window frame's ring round its glass) is a tube: a unit-cube instance would
+// close it and plug what it surrounds, so it stays faces. Any other skip only saves faces nobody sees.
+bool tube(uint8_t skip) {
+	constexpr uint8_t PAIRS[] = { SKIP_E0_NEG | SKIP_E0_POS, SKIP_E1_NEG | SKIP_E1_POS, SKIP_E2_NEG | SKIP_E2_POS };
+	return std::any_of(std::begin(PAIRS), std::end(PAIRS), [skip](uint8_t pair) { return (skip & pair) == pair; });
+}
 } // namespace
 
 // Trilinear value noise in map axes (x, north = -z, up), metres / 12.
@@ -104,7 +111,7 @@ void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c
 
 void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
 	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
-	if (instanced) {
+	if (instanced && !tube(skip)) {
 		float m0 = a1 - a0, m1 = b1 - b0, m2 = c1 - c0;
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });
 		Vector3 centre = f.at((a0 + a1) * 0.5f, (b0 + b1) * 0.5f, (c0 + c1) * 0.5f);
