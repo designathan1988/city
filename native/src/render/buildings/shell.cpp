@@ -158,22 +158,36 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	}
 }
 
+void Shell::card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind) {
+	if (cards) {
+		cards->card(f, a0, a1, b0, b1, c, lin, kind);
+		return;
+	}
+	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
+	sheet(f, a0, a1, b0, b1, c, shaded(f.at(a0, b0, c), lin, false, SK_SHELL), Vector2(float(kind), 0));
+}
+
+// A quad with UV 0..1 over it, the same colour and UV2 at its corners. Back: its first vertex.
+int Shell::sheet(const Basis &f, float a0, float a1, float b0, float b1, float c, const Color &code, const Vector2 &t2) {
+	const Vector3 n = f.e2;
+	const int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), t2), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), t2);
+	const int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), t2), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), t2);
+	const bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
+	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
+	idx.insert(idx.end(), t, t + QUAD_INDICES);
+	return i0;
+}
+
 void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look) {
 	if (glass) {
 		glass->pane(f, a0, a1, b0, b1, c, look);
 		return;
 	}
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
-	Vector3 n = f.e2;
 	const int recess = std::min(int(std::lround(look.recess / PANE_RECESS_STEP_M)), PANE_RECESS_MAX);
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
 			float((look.dark ? SK_PANE_DARK : SK_PANE) | (recess << PANE_KIND_BITS)) / BYTE);
-	Vector2 size(a1 - a0, b1 - b0);
-	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
-	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);
-	bool flip = (pos[size_t(i1)] - pos[size_t(i0)]).cross(pos[size_t(i2)] - pos[size_t(i0)]).dot(n) > 0;
-	const int t[QUAD_INDICES] = { i0, flip ? i2 : i1, flip ? i1 : i2, i0, flip ? i3 : i2, flip ? i2 : i3 };
-	idx.insert(idx.end(), t, t + QUAD_INDICES);
+	const int i0 = sheet(f, a0, a1, b0, b1, c, code, Vector2(a1 - a0, b1 - b0)), i1 = i0 + 1, i2 = i0 + 2, i3 = i0 + 3;
 	if (!rooms) return;
 	const PaneRoom &r = look.room;
 	const float k = 1 / ROOM_SPAN_M;

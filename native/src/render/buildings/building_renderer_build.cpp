@@ -67,6 +67,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
 		near_shells[i].glass = &out.near_glass[i];
 		near_shells[i].sheer = &out.near_sheer[i];
+		near_shells[i].cards = &out.near_cards[i];
+		mid_shells[i].cards = &out.mid_cards[i];
 		mid_shells[i].glass = &out.mid_glass[i];
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
@@ -89,6 +91,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
 		near_shells[i].glass = mid_shells[i].glass = nullptr;
 		near_shells[i].sheer = nullptr;
+		near_shells[i].cards = mid_shells[i].cards = nullptr;
 	}
 	if (near) {
 		auto band_of = [this](float thick) {
