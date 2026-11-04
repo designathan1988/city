@@ -1,5 +1,5 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info).",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc): wind_speed_ms 3 = Beaufort 2, light breeze 1.6-3.3 m/s (WMO); sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). wind_dir_x and wind_dir_z: a unit vector; the map has no geographic north, so no climate record applies to the way the wind blows. vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2021, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.85: modelling choice for matte leaves, no published value.",
  "road": {
   "shader": "res://render/shaders/road.gdshader",
   "params": {
@@ -177,6 +177,33 @@
   "shader": "res://render/shaders/overlay.gdshader",
   "params": {
    "opacity": 0.6
+  }
+ },
+ "vegetation": {
+  "shader": "res://render/shaders/vegetation.gdshader",
+  "params": {
+   "wind_dir_x": 0.8,
+   "wind_dir_z": -0.6,
+   "wind_speed_ms": 3.0,
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
+   "roughness": 0.85
+  }
+ },
+ "vegetation_cards": {
+  "shader": "res://render/shaders/vegetation_cards.gdshader",
+  "params": {
+   "wind_dir_x": 0.8,
+   "wind_dir_z": -0.6,
+   "wind_speed_ms": 3.0,
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
+   "roughness": 0.85,
+   "cover_per_mip": 0.25
   }
  }
 }

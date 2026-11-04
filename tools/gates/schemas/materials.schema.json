@@ -534,6 +534,116 @@
     "params"
    ],
    "strict": true
+  },
+  "vegetation": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "wind_dir_x": {
+       "type": "number"
+      },
+      "wind_dir_z": {
+       "type": "number"
+      },
+      "wind_speed_ms": {
+       "type": "number"
+      },
+      "sway_per_ms2": {
+       "type": "number"
+      },
+      "gust_m": {
+       "type": "number"
+      },
+      "turbulence": {
+       "type": "number"
+      },
+      "sway_hz": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "wind_dir_x",
+      "wind_dir_z",
+      "wind_speed_ms",
+      "sway_per_ms2",
+      "gust_m",
+      "turbulence",
+      "sway_hz",
+      "roughness"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "vegetation_cards": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "wind_dir_x": {
+       "type": "number"
+      },
+      "wind_dir_z": {
+       "type": "number"
+      },
+      "wind_speed_ms": {
+       "type": "number"
+      },
+      "sway_per_ms2": {
+       "type": "number"
+      },
+      "gust_m": {
+       "type": "number"
+      },
+      "turbulence": {
+       "type": "number"
+      },
+      "sway_hz": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      },
+      "cover_per_mip": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "wind_dir_x",
+      "wind_dir_z",
+      "wind_speed_ms",
+      "sway_per_ms2",
+      "gust_m",
+      "turbulence",
+      "sway_hz",
+      "roughness",
+      "cover_per_mip"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -546,7 +656,9 @@
   "agent",
   "people",
   "overlay",
-  "agent_glass"
+  "agent_glass",
+  "vegetation",
+  "vegetation_cards"
  ],
  "strict": true
 }

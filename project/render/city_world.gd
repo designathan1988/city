@@ -15,7 +15,8 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
-	"res://render/shaders/agent_glass.gdshader",
+	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
+	"res://render/shaders/vegetation_cards.gdshader",
 ]
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
@@ -186,7 +187,8 @@ func _build_terrain(palette: Dictionary) -> void:
 	# Terrain3D rebuilds its material when it enters the tree and drops parameters set before that (the ground then
 	# sampled the shader's white default texture), so the look is applied once the terrain is in the scene.
 	for key in palette.terrain:
-		mat.set_shader_param(key, _param(palette.terrain[key]))
+		if not key.begins_with("_"):
+			mat.set_shader_param(key, _param(palette.terrain[key]))
 
 
 func _build_water(palette: Dictionary) -> void:
@@ -195,8 +197,12 @@ func _build_water(palette: Dictionary) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load(WATER_SHADER)
 	for key in palette.water:
-		if key != "sea_level_m":
+		if key != "sea_level_m" and not key.begins_with("_"):
 			mat.set_shader_parameter(key, _param(palette.water[key]))
+	# The ripples move the way the wind blows: the vegetation material holds the wind (its single owner).
+	var wind: Dictionary = DataTables.render().materials.vegetation.params
+	mat.set_shader_parameter("wind_x", wind.wind_dir_x)
+	mat.set_shader_parameter("wind_z", wind.wind_dir_z)
 	var water := MeshInstance3D.new()
 	water.mesh = plane
 	water.material_override = mat

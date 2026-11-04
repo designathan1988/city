@@ -1,10 +1,16 @@
-// Low-poly trees (Roadcraft render/treeMeshes.ts, without leaf cards): a tapered trunk and one or two crown masses,
-// icospheres displaced by value noise and flat shaded per triangle between a dark and a lit tone with a darker heart,
-// built once per species and level of detail from data/render/streets.json "trees". Crowns carry PropTag::TINT so
-// each instance can shift their colour.
+// Low-poly trees, one unit tall (an instance's scale is its height in metres), built once per species from
+// data/render/streets.json "trees": a faceted body (tapered trunk, limbs and a shaded crown heart, each face one tone
+// between a dark and a lit one by how much it faces the sky) under leaf cards that face the camera, palm fronds as
+// strips, and one far card for every species. The vertex layout below is the contract with
+// render/shaders/vegetation.gdshaderinc:
+//   UV2.x  part (TreePart): body, leaf card or frond strip (far cards are render/trees/far_cards.h's own mesh);
+//   UV2.y  a card's half size, in model units (0 for the rest);
+//   UV     a card's corner (0..1) inside its region of the leaf atlas, or a frond's atlas coordinate;
+//   COLOR  rgb the sRGB tone, a the card's roll as a share of a turn (1 for the rest).
 #pragma once
 
 #include "render/mesh_builder.h"
+#include "render/trees/leaf_atlas.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -14,11 +20,17 @@
 
 namespace city {
 
-constexpr int TREE_LODS = 2;
+enum class TreePart : int { BODY = 0, CARD = 1, FROND = 2, FAR = 3 };
+// A far card stands at this share of its tree's height and reaches this share of it up and down.
+constexpr float FAR_CARD_CENTRE = 0.6f, FAR_CARD_HALF_TALL = 0.32f;
 
 struct TreeSpecies {
-	godot::Ref<godot::ArrayMesh> mesh[TREE_LODS];
-	float crown_r = 0; // crown reach at scale 1 (keeps wild trees off the roads)
+	godot::String name;
+	godot::Ref<godot::ArrayMesh> body, cards; // cards empty when the species has none
+	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
+	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
+	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
+	float far_width = 1; // the far card's width over the tree's height
 };
 
 class TreeKit {
@@ -26,9 +38,12 @@ public:
 	bool build(const godot::Dictionary &trees, godot::PackedStringArray &errors);
 	int count() const { return int(species_.size()); }
 	const TreeSpecies &species(int i) const { return species_[size_t(i)]; }
+	int find(const godot::String &name) const; // -1 when absent
+	const LeafAtlas &atlas() const { return atlas_; }
 
 private:
 	std::vector<TreeSpecies> species_;
+	LeafAtlas atlas_;
 };
 
 } // namespace city
