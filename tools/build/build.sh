@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build, test and package commands (documented in CLAUDE.md > Comandos). Usage: tools/build/build.sh <target>. Game ships for Windows only.
-# Env: GODOT (Godot 4.7 binary), MINGW (llvm-mingw root, Windows cross-build), OUT (package folder).
+# Env: GODOT (Godot 4.7 binary), MINGW (llvm-mingw root, Windows cross-build), OUT (package folder). The Windows build uses
+# Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 GODOT="${GODOT:-godot}"
@@ -16,7 +17,7 @@ core_windows() { # template_release ships in the export; template_debug is what 
 	local dir target
 	for target in template_release template_debug; do
 		dir="$ROOT/native/build-win"; [ "$target" = template_debug ] && dir="$dir-debug"
-		cmake -S "$ROOT/native" -B "$dir" -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
+		cmake -S "$ROOT/native" -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
 			-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake"
 		cmake --build "$dir" --target citycore -j "$JOBS"
 	done
