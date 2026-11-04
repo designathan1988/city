@@ -46,6 +46,9 @@ public:
 	godot::Dictionary body_set_pattern(int id, int vol, int storey, int side, int pattern);
 	godot::Dictionary body_set_face(int id, int vol, int side, const godot::Dictionary &patch);
 	godot::Dictionary body_set_relief(int id, int vol, const godot::Dictionary &region, bool snap);
+	godot::Dictionary body_set_roof(int id, int vol, int roof);
+	godot::Dictionary body_roof_shape(int id, int vol, double pitch, int ridge, int fall);
+	godot::Dictionary body_paint(int id, int scope, int vol, int side, int storey, int finish, int rgb);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }

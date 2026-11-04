@@ -129,4 +129,16 @@ Dictionary CityCore::body_set_relief(int id, int vol, const Dictionary &region, 
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_relief(b, t, vol, r, snap); });
 }
 
+Dictionary CityCore::body_set_roof(int id, int vol, int roof) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_roof(b, vol, roof); });
+}
+
+Dictionary CityCore::body_roof_shape(int id, int vol, double pitch, int ridge, int fall) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_roof_shape(b, t, vol, float(pitch), ridge, fall); });
+}
+
+Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, int rgb) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, uint32_t(rgb)); });
+}
+
 } // namespace city

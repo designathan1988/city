@@ -30,6 +30,12 @@ const SCOPE_COLUMN := 2
 const PATTERN_OFFICE := 2
 const RELIEF_M := 0.5
 const FACE_BAYS := 7
+const ROOF_GABLE := 2
+const ROOF_HIP := 3
+const ROOF_PITCH := 30.0
+const PAINT_SCOPES := [0, 1, 2, 3, 4, 5, 6]
+const FINISH_BRICK := 3
+const PAINT_RGB := 0xa04030
 const SHOWN_CASES := 6
 
 var failures := 0
@@ -49,6 +55,7 @@ func _ready() -> void:
 	_check(not _info(id).edited, "prédio gerado não é editado")
 	_mass_edits(id, made)
 	_facade_edits(id, made)
+	_finish_edits(id, made)
 	_refusals(_one_block_on_the_ground())
 	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
 	await _save_round_trip(id)
@@ -126,6 +133,16 @@ func _facade_edits(id: int, made: int) -> void:
 		return i.edited)
 	_round(id, made, "ritmo", &"body_set_face", [id, 0, FACE, {"bays": FACE_BAYS}], func(i: Dictionary) -> bool:
 		return i.edited)
+
+
+func _finish_edits(id: int, made: int) -> void:
+	var was: int = _info(id).volumes[0].roof
+	var other := ROOF_GABLE if was != ROOF_GABLE else ROOF_HIP
+	_round(id, made, "telhado", &"body_set_roof", [id, 0, other], func(i: Dictionary) -> bool: return i.volumes[0].roof == other)
+	_round(id, made, "forma do telhado", &"body_roof_shape", [id, 0, ROOF_PITCH, 1, -1], func(i: Dictionary) -> bool: return i.edited)
+	for scope: int in PAINT_SCOPES:
+		_round(id, made, "tinta %d" % scope, &"body_paint", [id, scope, 0, FACE, 1, FINISH_BRICK, PAINT_RGB], func(i: Dictionary) -> bool:
+			return i.edited)
 
 
 ## One edit: it does what it says, undo gives back the body from the seed, redo gives back the same bytes, and undo again

@@ -18,6 +18,7 @@ const COMMANDS := {
 	&"body_add_setback": "body_add_setback", &"body_split": "body_split", &"body_remove_volume": "body_remove_volume",
 	&"body_heights": "body_heights", &"body_set_bay": "body_set_bay", &"body_set_zone": "body_set_zone",
 	&"body_set_pattern": "body_set_pattern", &"body_set_face": "body_set_face", &"body_set_relief": "body_set_relief",
+	&"body_set_roof": "body_set_roof", &"body_roof_shape": "body_roof_shape", &"body_paint": "body_paint",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",

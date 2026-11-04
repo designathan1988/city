@@ -87,7 +87,9 @@
   "max_recess_m": 4,
   "relief_step_m": 0.05,
   "max_bays": 64,
-  "max_pier_every": 16
+  "max_pier_every": 16,
+  "min_pitch_deg": 5,
+  "max_pitch_deg": 60
  },
  "zone": {
   "side_offset_m": 14,

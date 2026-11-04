@@ -40,4 +40,10 @@ std::string op_set_pattern(b40::Body &b, int vol, int storey, int side, int patt
 std::string op_set_face(b40::Body &b, const Tuning &t, int vol, int side, const b40::FaceGeometry &patch);
 std::string op_set_relief(b40::Body &b, const Tuning &t, int vol, const b40::Relief &region, bool snap);
 
+// The roof, and what things are finished in. `pitch` < 0 goes back to the roof kind's own, `ridge` and `fall` -1 likewise;
+// `scope` a b40::PaintScope, `finish` a b40::Finish, `rgb` 0xRRGGBB.
+std::string op_set_roof(b40::Body &b, int vol, int roof);
+std::string op_roof_shape(b40::Body &b, const Tuning &t, int vol, float pitch, int ridge, int fall);
+std::string op_paint(b40::Body &b, int scope, int vol, int side, int storey, int finish, uint32_t rgb);
+
 } // namespace city
