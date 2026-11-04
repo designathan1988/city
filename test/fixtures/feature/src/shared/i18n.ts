@@ -9,6 +9,7 @@ export const EN: Record<string, string> = {
   'ferry.trip.one': 'one trip',
   'ferry.trip.other': 'trips',
   'ferry.board': 'Boarding',
+  'ferry.harbour': 'Harbour',
 };
 
 /** Not looked up by anyone: a key equal to one the feature looks up elsewhere is not its entry. */

@@ -2,10 +2,10 @@
 // variables, imports, the values of another object, `?:` and `??`), and a call (of whatever function it runs: the call
 // graph says) of a function that looks up with its parameter (`t(key)` reads `EN[key]`), or that hands a key made from
 // its parameter to one (`plural(key)` calls `t(`${key}.one`)`), to a fixpoint. The keys a lookup is given are the strings its key expression can be (a literal, a
-// template expanded by its parts' types, a union of literal types). An object's entry is used when a lookup into it is
+// template or a value made in the program: values.ts). An object's entry is used when a lookup into it is
 // given its key: an object nothing looks up is used by no one, whatever its keys spell.
 import type * as TS from 'typescript';
-import { stringsOf } from './strings.ts';
+import type { StringValues } from './values.ts';
 
 export interface KeyLookup {
   /** The objects looked up. */
@@ -29,7 +29,7 @@ interface LookupFunction {
 const MAX_ROUNDS = 16;
 
 export function keyLookups(ts: typeof TS, checker: TS.TypeChecker, files: readonly TS.SourceFile[],
-  targetsOf: (call: TS.CallExpression) => readonly TS.SignatureDeclaration[]): KeyLookup[] {
+  targetsOf: (call: TS.CallExpression) => readonly TS.SignatureDeclaration[], values: StringValues): KeyLookup[] {
   const strip = (e: TS.Expression): TS.Expression => {
     while (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isNonNullExpression(e) || ts.isTypeAssertionExpression(e)) e = e.expression;
     return e;
@@ -67,15 +67,10 @@ export function keyLookups(ts: typeof TS, checker: TS.TypeChecker, files: readon
     return [];
   };
 
-  /** The strings a key expression can be. */
-  const keysOf = (e: TS.Expression): { exact: string[]; prefixes: string[] } => {
-    const found = stringsOf(ts, checker, strip(e));
-    if (found.length === 0) {
-      const t = checker.getTypeAtLocation(e);
-      const parts = t.isUnion() ? t.types : [t];
-      if (parts.every((p) => p.isStringLiteral())) found.push(...parts.map((p) => (p as TS.StringLiteralType).value));
-    }
-    return { exact: found.filter((s) => !s.endsWith('*')), prefixes: found.filter((s) => s.endsWith('*')).map((s) => s.slice(0, -1)) };
+  /** The strings a key expression can be, by the flow of values (values.ts); a key of any value names none in particular. */
+  const keysOf = (e: TS.Expression): { exact: readonly string[]; prefixes: readonly string[] } => {
+    const v = values.of(e);
+    return v.top ? { exact: [], prefixes: [] } : v;
   };
 
   /** How an argument is made from a parameter of the function it is written in: which parameter, and the shapes. */
@@ -159,16 +154,33 @@ export function keyLookups(ts: typeof TS, checker: TS.TypeChecker, files: readon
     }
   }
 
-  // Every lookup given keys: an access with a key of its own, a call of a lookup function with one.
+  // Every lookup given keys: an access with a key of its own, a call of a lookup function with one. A key made from
+  // the parameter of the function it is written in is its callers' key: when every call of the function gives that
+  // parameter a known value, the lookup is theirs (the calls are lookups, with the key made as the shapes say), not
+  // the function's. When nothing in the program calls it, or a call gives a value of any string, the lookup is where
+  // it is written, with the values the parameter can hold.
+  const callers = new Map<TS.SignatureDeclaration, TS.CallExpression[]>();
+  for (const [c, fns] of callees) for (const f of fns) (callers.get(f) ?? callers.set(f, []).get(f)!).push(c);
+  const fromParameter = (e: TS.Expression, at: TS.Node): boolean => {
+    const fn = enclosing(at);
+    const shapes = fn ? shapesOf(e, fn) : [];
+    const by = fn ? callers.get(fn) ?? [] : [];
+    if (shapes.length === 0 || by.length === 0) return false;
+    return shapes.every(({ index }) => by.every((c) => {
+      const arg = c.arguments[index];
+      return arg !== undefined && !values.of(arg).top;
+    }));
+  };
   const out: KeyLookup[] = [];
   for (const [a, objects] of objectsAt) {
+    if (fromParameter(a.argumentExpression, a)) continue;
     const keys = keysOf(a.argumentExpression);
     if (keys.exact.length + keys.prefixes.length > 0) out.push({ objects, ...keys, at: a });
   }
   for (const c of calls) {
     for (const [j, entry] of lookupsOf(c)) {
       const arg = c.arguments[j];
-      if (!arg) continue;
+      if (!arg || fromParameter(arg, c)) continue;
       const keys = keysOf(arg);
       const shapes = [...entry.shapes.values()];
       const exact = keys.exact.flatMap((k) => shapes.map(([b, a]) => b + k + a));

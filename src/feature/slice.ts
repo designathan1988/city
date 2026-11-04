@@ -6,7 +6,6 @@
 import type * as TS from 'typescript';
 import type { UnitRecord } from '../graph/ir.ts';
 import type { FeatureBoundary } from './boundary.ts';
-import { stringsOf } from './strings.ts';
 import type { UnitIndex } from './units.ts';
 
 export interface FeatureSlice {
@@ -17,8 +16,6 @@ export interface FeatureSlice {
   readonly end: number;
   /** The lines of the declaration that are the feature's, or the headers around them (1-based, ascending). */
   readonly lines: readonly number[];
-  /** The strings the slice's code can produce (see strings.ts). */
-  readonly strings: readonly string[];
 }
 
 export function sliceShared(ts: typeof TS, checker: TS.TypeChecker, index: UnitIndex, b: FeatureBoundary): FeatureSlice[] {
@@ -125,18 +122,12 @@ function sliceOf(ts: typeof TS, checker: TS.TypeChecker, root: TS.Node, unit: Un
   }
 
   const lines = new Set<number>([lineOf(root.getStart(sf)), lineOf(root.end)]);
-  const strings = new Set<string>();
   for (const st of kept) {
     for (let l = lineOf(st.getStart(sf)); l <= lineOf(st.end); l++) lines.add(l);
     for (let p = st.parent; p && p !== root; p = p.parent) {
       lines.add(lineOf(p.getStart(sf)));
       lines.add(lineOf(p.end));
     }
-    const visit = (n: TS.Node): void => {
-      for (const s of stringsOf(ts, checker, n)) strings.add(s);
-      ts.forEachChild(n, visit);
-    };
-    visit(st);
   }
-  return { unit: unit.id, file: unit.file, start: unit.start.line, end: unit.end.line, lines: [...lines].sort((a, c) => a - c), strings: [...strings].sort() };
+  return { unit: unit.id, file: unit.file, start: unit.start.line, end: unit.end.line, lines: [...lines].sort((a, c) => a - c) };
 }

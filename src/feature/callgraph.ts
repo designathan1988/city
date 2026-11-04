@@ -17,15 +17,37 @@ export interface JellyCallGraph {
   readonly call2fun: readonly (readonly [number, number])[];
 }
 
-/** Runs Jelly (the package directory given) on the program's roots; its files are relative to `base`. */
-export function runJelly(jellyDir: string, base: string, roots: readonly string[], out: string): JellyCallGraph {
+/** What Jelly wrote of a program: its call graph and its points-to sets (a file), both relative to `base`. */
+export interface JellyAnalysis {
+  readonly callGraph: JellyCallGraph;
+  readonly tokens: string;
+  readonly base: string;
+}
+
+export const CALL_GRAPH_FILE = 'callgraph.json';
+export const TOKENS_FILE = 'tokens.json';
+
+/**
+ * Runs Jelly (the package directory given) on the program's roots, in `base` (its paths are then relative to it), into
+ * `dir`. Only calls the program writes are edges: a callback the platform or a package calls is not given that call's
+ * arguments, so its parameters are what comes from outside.
+ */
+export function runJelly(jellyDir: string, base: string, roots: readonly string[], dir: string): JellyAnalysis {
   const main = path.join(path.resolve(jellyDir), 'lib', 'main.js');
   if (!fs.existsSync(main)) throw new Error(`no Jelly at ${jellyDir} (expected lib/main.js of the @cs-au-dk/jelly package)`);
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  const run = spawnSync(process.execPath, ['--max-old-space-size=8192', main, '-b', base, '-j', out, '--no-tty', '--no-print-progress', ...roots],
-    { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  if (run.status !== 0 || !fs.existsSync(out)) throw new Error(`Jelly failed (exit ${run.status}):\n${(run.stderr || run.stdout).slice(-4000)}`);
-  return JSON.parse(fs.readFileSync(out, 'utf8')) as JellyCallGraph;
+  fs.mkdirSync(dir, { recursive: true });
+  const cg = path.resolve(dir, CALL_GRAPH_FILE);
+  const tokens = path.resolve(dir, TOKENS_FILE);
+  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', main, '-b', '.', '-j', cg, '--tokens-json', tokens, '--no-tty',
+    '--no-print-progress', '--no-callgraph-native', '--no-callgraph-external', ...roots.map((r) => path.relative(base, r))],
+  { cwd: base, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  if (run.status !== 0 || !fs.existsSync(cg) || !fs.existsSync(tokens)) throw new Error(`Jelly failed (exit ${run.status}):\n${(run.stderr || run.stdout).slice(-4000)}`);
+  return readJelly(dir, base);
+}
+
+/** What Jelly wrote in `dir` (by `runJelly`, run in `base`). */
+export function readJelly(dir: string, base: string): JellyAnalysis {
+  return { callGraph: JSON.parse(fs.readFileSync(path.join(dir, CALL_GRAPH_FILE), 'utf8')) as JellyCallGraph, tokens: path.join(dir, TOKENS_FILE), base };
 }
 
 export class CallTargets {
@@ -53,7 +75,7 @@ export class CallTargets {
   }
 
   /** The functions of the program a call runs (none: a call of the platform, of a package, or one Jelly saw no target of). */
-  of(call: TS.CallExpression): TS.SignatureDeclaration[] {
+  of(call: TS.CallExpression | TS.NewExpression): TS.SignatureDeclaration[] {
     const sf = call.getSourceFile();
     const at = (pos: number): string => {
       const lc = sf.getLineAndCharacterOfPosition(pos);

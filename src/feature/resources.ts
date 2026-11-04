@@ -8,10 +8,12 @@ import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
 import type { FeatureBoundary } from './boundary.ts';
 import type { CallTargets } from './callgraph.ts';
+import type { PointsTo } from './pointsto.ts';
 import { htmlStyleSheets } from './html.ts';
 import { keyLookups, keyText, type KeyLookup } from './lookups.ts';
 import type { FeatureSlice } from './slice.ts';
-import { matches, splitStrings, stringsOf } from './strings.ts';
+import { matches } from './strings.ts';
+import { StringValues } from './values.ts';
 import type { UnitIndex } from './units.ts';
 
 export interface FeatureResource {
@@ -51,7 +53,7 @@ export function loadPostCss(sourceRoot: string, postcssDir: string | undefined):
 }
 
 export function featureResources(ts: typeof TS, checker: TS.TypeChecker, index: UnitIndex, sourceRoot: string,
-  b: FeatureBoundary, slices: readonly FeatureSlice[], calls: CallTargets, postcssDir: string | undefined): FeatureResource[] {
+  b: FeatureBoundary, slices: readonly FeatureSlice[], calls: CallTargets, pts: PointsTo, postcssDir: string | undefined): FeatureResource[] {
   const own = new Set(b.own);
   const files = [...index.byFile.keys()].sort();
   const sliceLines = new Map<string, Set<number>>();
@@ -66,8 +68,10 @@ export function featureResources(ts: typeof TS, checker: TS.TypeChecker, index: 
 
   // The strings the feature's code can produce, and the ones the rest of the program can (what it runs, not dead code).
   // Keys being defined (an object's property names) and module specifiers are not strings code looks things up by.
-  const featureFound = new Set<string>();
-  const programFound = new Set<string>();
+  const sources = files.map((f) => index.sourceFile(f)).filter((sf): sf is TS.SourceFile => sf !== undefined);
+  const values = new StringValues(ts, checker, sources, calls, pts);
+  const feature = { exact: new Set<string>(), prefixes: new Set<string>() };
+  const program = { exact: new Set<string>(), prefixes: new Set<string>() };
   const isProgramCode = (n: TS.Node, file: string): boolean => !isFeatureCode(n, file) && b.program.has(index.unitAt(n)?.id ?? '');
   for (const file of files) {
     const sf = index.sourceFile(file);
@@ -75,23 +79,24 @@ export function featureResources(ts: typeof TS, checker: TS.TypeChecker, index: 
     const visit = (n: TS.Node): void => {
       const p = n.parent;
       const defining = p !== undefined && ((ts.isPropertyAssignment(p) && p.name === n) || ((ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === n));
-      const strings = defining ? [] : stringsOf(ts, checker, n);
-      if (strings.length > 0) {
-        const into = isFeatureCode(n, file) ? featureFound : isProgramCode(n, file) ? programFound : null;
-        if (into) for (const x of strings) into.add(x);
+      if (!defining && (ts.isStringLiteralLike(n) || ts.isTemplateExpression(n))) {
+        const into = isFeatureCode(n, file) ? feature : isProgramCode(n, file) ? program : null;
+        const v = into ? values.of(n) : null;
+        if (into && v && !v.top) {
+          for (const x of v.exact) into.exact.add(x);
+          for (const x of v.prefixes) into.prefixes.add(x);
+        }
       }
       ts.forEachChild(n, visit);
     };
     visit(sf);
   }
-  const feature = splitStrings(featureFound);
-  const program = splitStrings(programFound);
   const out: FeatureResource[] = [];
 
   // Entries of the program's objects the feature looks up by key (lookups.ts): the entry is the feature's when only its
   // code looks it up, shared when the rest of the program does too.
   const lookedUp = new Map<TS.ObjectLiteralExpression, { feature: KeyLookup[]; program: KeyLookup[] }>();
-  for (const l of keyLookups(ts, checker, files.map((f) => index.sourceFile(f)).filter((sf): sf is TS.SourceFile => sf !== undefined), (c) => calls.of(c))) {
+  for (const l of keyLookups(ts, checker, sources, (c) => calls.of(c), values)) {
     const file = index.relative(l.at.getSourceFile());
     const side = isFeatureCode(l.at, file) ? 'feature' : isProgramCode(l.at, file) ? 'program' : null;
     if (side) for (const o of l.objects) (lookedUp.get(o) ?? lookedUp.set(o, { feature: [], program: [] }).get(o)!)[side].push(l);
@@ -130,9 +135,9 @@ export function featureResources(ts: typeof TS, checker: TS.TypeChecker, index: 
   // Style rules for elements of the feature: a selector whose every class the feature names. The rule is the feature's
   // when one of those classes only the feature names; shared when the rest of the program names them all.
   const isClass = (s: string): boolean => /^-?[_a-zA-Z][\w-]*$/.test(s);
-  const classesOf = (found: { exact: Set<string>; prefixes: string[] }): { exact: Set<string>; prefixes: string[] } => ({
+  const classesOf = (found: { exact: Set<string>; prefixes: Set<string> }): { exact: Set<string>; prefixes: string[] } => ({
     exact: new Set([...found.exact].flatMap((x) => x.split(/\s+/)).filter(isClass)),
-    prefixes: found.prefixes.map((x) => x.split(/\s+/).pop()!).filter((x) => x !== '' && isClass(x)),
+    prefixes: [...found.prefixes].map((x) => x.split(/\s+/).pop()!).filter((x) => x !== '' && isClass(x)),
   });
   const featureClasses = classesOf(feature);
   const programClasses = classesOf(program);

@@ -10,12 +10,14 @@ import { describe, it } from 'node:test';
 import { removeTree } from '../src/common/files.ts';
 import { featureBoundary } from '../src/feature/boundary.ts';
 import { CallTargets, runJelly } from '../src/feature/callgraph.ts';
+import { PointsTo } from '../src/feature/pointsto.ts';
 import { holdsFeature } from '../src/feature/holders.ts';
 import { htmlRoots } from '../src/feature/html.ts';
 import { featureResources } from '../src/feature/resources.ts';
 import { sliceShared } from '../src/feature/slice.ts';
 import { writeSources } from '../src/feature/sources.ts';
 import { UnitIndex } from '../src/feature/units.ts';
+import { StringValues } from '../src/feature/values.ts';
 import { buildGraph } from '../src/graph/build.ts';
 import { loadTypeScript, openProgram } from '../src/graph/typescript.ts';
 import { jellyDir, postcssDir, typescriptDir } from './support.ts';
@@ -32,10 +34,11 @@ describe('feature cut', () => {
   const b = featureBoundary(ir, ['src/feature/ferry.ts'], roots, holds);
   const slices = sliceShared(ts, sp.checker, index, b);
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-jelly-'));
-  const cg = runJelly(jellyDir(), path.join(root, 'src'), roots.map((r) => path.join(root, r)), path.join(work, 'callgraph.json'));
+  const jelly = runJelly(jellyDir(), path.join(root, 'src'), roots.map((r) => path.join(root, r)), work);
+  const calls = new CallTargets(ts, jelly.callGraph, jelly.base, (file) => sp.sourceFile(file));
+  const pts = new PointsTo(ts, jelly.tokens, jelly.base);
   removeTree(work);
-  const calls = new CallTargets(ts, cg, path.join(root, 'src'), (file) => sp.sourceFile(file));
-  const resources = featureResources(ts, sp.checker, index, root, b, slices, calls, postcssDir());
+  const resources = featureResources(ts, sp.checker, index, root, b, slices, calls, pts, postcssDir());
 
   it('starts the program from the scripts its pages load', () => {
     assert.deepEqual(roots, ['src/main.ts']);
@@ -108,6 +111,27 @@ describe('feature cut', () => {
     } finally {
       removeTree(dir);
     }
+  });
+
+  it('reads the strings a value can be by the flow of values, not by its type', () => {
+    const values = new StringValues(ts, sp.checker, [...index.byFile.keys()].map((f) => index.sourceFile(f)!), calls, pts);
+    const main = index.sourceFile('src/main.ts')!;
+    const initializer = (name: string): import('typescript').Expression => {
+      let found: import('typescript').Expression | undefined;
+      const visit = (n: import('typescript').Node): void => {
+        if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name) found = n.initializer;
+        ts.forEachChild(n, visit);
+      };
+      visit(main);
+      return found!;
+    };
+    // A string-typed property whose only value is written in an object literal, through a function call.
+    const panelKey = (initializer('panelText') as import('typescript').CallExpression).arguments[0]!;
+    assert.deepEqual(values.of(panelKey), { top: false, exact: ['ferry.harbour'], prefixes: [] });
+    assert.deepEqual(values.of(initializer('fromOutside')), { top: false, exact: [], prefixes: ['ferry.'] }, 'what comes from outside is any string');
+    // Per object (another object's property of the same name is not this one's), and a store's set per call (one
+    // key's value is not another's), through the copy the store makes of what it is given.
+    assert.deepEqual(values.of(initializer('storeKey')), { top: false, exact: ['ferry.dock', 'ferry.harbour'], prefixes: [] });
   });
 
   it('refuses a file that is not in the program', () => {

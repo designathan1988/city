@@ -11,7 +11,8 @@ import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { featureBoundary, type FeatureBoundary, type FeatureUse } from './boundary.ts';
 import { holdsFeature } from './holders.ts';
 import { htmlRoots } from './html.ts';
-import { CallTargets, runJelly, type JellyCallGraph } from './callgraph.ts';
+import { CallTargets, readJelly, runJelly } from './callgraph.ts';
+import { PointsTo } from './pointsto.ts';
 import { featureResources, type FeatureResource } from './resources.ts';
 import { sliceShared, type FeatureSlice } from './slice.ts';
 import { writeSources, type SourceOut } from './sources.ts';
@@ -27,7 +28,7 @@ export const FEATURE_FLAGS: readonly FlagSpec[] = [
   { name: 'include', repeatable: true, help: 'directory holding the project\'s own code, relative to the source root (default: src)' },
   { name: 'graph', help: 'the whole program\'s graph (`converter graph` with no entry), to reuse instead of building it' },
   { name: 'jelly', help: 'the @cs-au-dk/jelly package directory, whose call graph says what each call runs (default: $CONVERTER_JELLY)' },
-  { name: 'callgraph', help: 'a call graph Jelly made of the program\'s roots, to reuse instead of running Jelly' },
+  { name: 'analysis', help: 'a directory where Jelly left its call graph and points-to sets of the program (run in the code directory), to reuse' },
   { name: 'out', required: true, help: 'output folder' },
 ];
 
@@ -52,13 +53,13 @@ export function runFeatureCommand(argv: readonly string[]): void {
   fs.mkdirSync(out, { recursive: true });
   // What each call runs: Jelly's call graph of the program's roots (its paths are relative to the project's own code).
   const base = path.join(sourceRoot, flags.all('include')[0] ?? 'src');
-  const reuse = flags.one('callgraph');
+  const reuse = flags.one('analysis');
   const jelly = flags.one('jelly') ?? process.env['CONVERTER_JELLY'];
-  if (!reuse && !jelly) throw new ArgsError('give --jelly (or set CONVERTER_JELLY) or --callgraph: the call graph says what each call runs');
-  const cg = reuse ? JSON.parse(fs.readFileSync(reuse, 'utf8')) as JellyCallGraph
-    : runJelly(jelly!, base, roots.map((r) => path.join(sourceRoot, r)), path.join(out, 'callgraph.json'));
-  const calls = new CallTargets(ts, cg, base, (file) => sp.sourceFile(file));
-  const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, flags.one('postcss'));
+  if (!reuse && !jelly) throw new ArgsError('give --jelly (or set CONVERTER_JELLY) or --analysis: Jelly says what each call runs and what each value is');
+  const analysis = reuse ? readJelly(reuse, base) : runJelly(jelly!, base, roots.map((r) => path.join(sourceRoot, r)), path.join(out, 'jelly'));
+  const calls = new CallTargets(ts, analysis.callGraph, base, (file) => sp.sourceFile(file));
+  const pts = new PointsTo(ts, analysis.tokens, base);
+  const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, pts, flags.one('postcss'));
   const sources = writeSources(ir, boundary, slices, resources, sourceRoot, path.join(out, 'source'));
   const { program: _program, ...written } = boundary;
   fs.writeFileSync(path.join(out, 'boundary.json'), JSON.stringify({ ...written, slices, resources }, null, 1), 'utf8');
