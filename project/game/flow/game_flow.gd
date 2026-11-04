@@ -38,8 +38,10 @@ func _system_locale() -> String:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if state == State.PLAYING and not tests_drive:
-			CityStore.save_on_close()
+			CityStore.saves.save_on_close()
 		quit()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and state == State.PLAYING and not tests_drive:
+		CityStore.saves.save_on_hide()
 
 
 func _to(next: State) -> bool:

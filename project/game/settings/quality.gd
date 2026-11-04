@@ -12,6 +12,10 @@ const BASE_DPI := 96.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const SSAO_QUALITY := RenderingServer.ENV_SSAO_QUALITY_MEDIUM
+const COMPATIBILITY := "gl_compatibility"
+const FALLBACK_AA := 1 # where SMAA does not exist the same tier asks for this entry of MSAA_MODES
+## pedestrian_detail 0: the people's nearest level is this one (their far level).
+const PEOPLE_FAR := 1
 
 
 ## The tier the GPU's name gives: the first rule that matches, else gpu_default.
@@ -44,17 +48,38 @@ static func cap_scale(pixel_ratio: float) -> float:
 	return minf(1.0, pixel_ratio / ratio)
 
 
+## SMAA: Forward+ and Mobile only (Godot docs, 3D antialiasing).
+static func has_smaa() -> bool:
+	return RenderingServer.get_current_rendering_method() != COMPATIBILITY
+
+
+## The cabin level's reach: where a vehicle stands at occupant_zoom, drawn out by the error the tier accepts (a fixed shape's error on
+## the screen falls with the distance).
+static func cabin_reach(q: Dictionary, height_px: float) -> float:
+	var cfg: Dictionary = DataTables.game("camera")
+	return CameraProfile.metres_at(cfg, q.occupant_zoom, height_px) * 0.5 / q.vehicle_error_px
+
+
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
 	world.sun.shadow_enabled = q.shadows
 	world.sun.directional_shadow_max_distance = q.shadow_distance_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
-	viewport.msaa_3d = MSAA_MODES[int(q.msaa)]
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if q.smaa else Viewport.SCREEN_SPACE_AA_DISABLED
+	var smaa: bool = q.smaa and has_smaa()
+	viewport.msaa_3d = MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.environment.ssao_enabled = q.ssao
 	var ao: Dictionary = DataTables.game("settings").ssao
 	RenderingServer.environment_set_ssao_quality(SSAO_QUALITY, q.ssao_half, ao.adaptive_target, int(ao.blur_passes),
 			ao.fadeout_from_m, ao.fadeout_to_m)
-	CityStore.set_detail_scale(sqrt(float(q.triangle_share)))
+	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
+	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
+	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),
+			0 if q.pedestrian_detail > 0 else PEOPLE_FAR])
+	CityStore.dispatch(&"set_population", [float(q.population)])
+	CityStore.dispatch(&"set_upload_every", [int(q.upload_every)])
+	CityStore.set_sim_switch("crowd", q.crowd)
+	world.set_water_plain(q.water_plain)
+	world.set_terrain_lod(int(q.terrain_lod))

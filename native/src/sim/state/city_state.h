@@ -52,6 +52,7 @@ struct CityState {
 	// else keeps a dirty flag for the save prompt. `edited`: the player changed this city since it was made or opened
 	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
+	std::atomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
 	uint64_t edit_revision = 0; // commands and undo/redo only: the snapshot's expensive counts follow this
 	bool edited = false;
 	void touch() { revision++; }

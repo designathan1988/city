@@ -18,6 +18,7 @@ const PERCENT := 100.0
 ## Value labels of the Simulation metrics and the Camera readouts, by name (rebuilt with the popover).
 @onready var _metrics: Dictionary = {}
 @onready var _since := 0.0
+@onready var _under := Rect2()
 
 
 func _ready() -> void:
@@ -32,6 +33,7 @@ func toggle(which: String, under: Rect2) -> bool:
 		close()
 		return false
 	set_meta(&"kind", which)
+	_under = under
 	HudWidgets.clear(self)
 	_metrics.clear()
 	var spec: Dictionary = DataTables.ui("drawers").popovers[which]
@@ -45,6 +47,13 @@ func toggle(which: String, under: Rect2) -> bool:
 	position = Vector2(minf(under.end.x, vw - HudWidgets.px("margin")) - size.x, under.end.y + HudWidgets.px("pad"))
 	_on_changed(CityStore.snapshot)
 	return true
+
+
+## The language changed: the open popover, drawn again where it stands.
+func relabel() -> void:
+	if visible:
+		hide()
+		toggle(get_meta(&"kind", ""), _under)
 
 
 func close() -> bool:
@@ -71,13 +80,12 @@ func _row(parent: Control, r: Dictionary) -> Button:
 	return b
 
 
-## Switch rows: the overlay the core draws for each; the popover stays open.
+## Switch rows: what shows over the map, kept across sessions (Settings); the popover stays open.
 func _build_layers(col: Control, spec: Dictionary) -> void:
-	var on: Dictionary = CityStore.query(&"overlays")
 	for r in spec.rows:
 		var b := _row(col, r)
 		var sw := HudSwitch.new()
-		sw.on = on.get(r.get("action", ""), false)
+		sw.on = Settings.layer_on(r.action) if r.has("action") else false
 		b.add_child(sw)
 		if r.has("action"):
 			b.toggle_mode = true
@@ -85,12 +93,18 @@ func _build_layers(col: Control, spec: Dictionary) -> void:
 			b.toggled.connect(func(v: bool) -> void:
 				sw.on = v
 				sw.queue_redraw()
-				CityStore.dispatch(&"set_overlay", [r.action, v]))
+				Settings.set_layer(r.action, v))
 
 
-## The saved cities, newest first (CityStore.list_saves); a click opens one.
+## The saved cities, newest first (CityStore.saves.list_saves); a click opens one.
 func _build_files(col: Control, spec: Dictionary) -> void:
-	var saves := CityStore.list_saves()
+	var saves := CityStore.saves.list_saves()
+	var other := HudWidgets.button(&"Row", "m_open", tr("ui.menu.openFile"), "", "pop_w", "row_h")
+	other.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	other.pressed.connect(func() -> void:
+		close()
+		menu_action.emit("open_file"))
+	col.add_child(other)
 	if saves.is_empty():
 		HudWidgets.label(col, &"MutedLabel", tr(spec.empty_key))
 	for f in saves:
@@ -130,6 +144,16 @@ func _seg_quality(col: Control, r: Dictionary) -> void:
 	HudWidgets.choices(box, items, Settings.preset, Settings.set_preset)
 
 
+func _seg_paint(col: Control, r: Dictionary) -> void:
+	var row := HudWidgets.option_row(col, tr(r.label_key))
+	var items := []
+	var styles: Array = DataTables.render().streets.markings.styles
+	for i in styles.size():
+		items.append([i, tr("paint." + styles[i].id)])
+	HudWidgets.choices(row, items, int(CityStore.snapshot.get("marking_style", 0)), func(v: int) -> void:
+		CityStore.dispatch(&"set_marking_style", [v, true]))
+
+
 func _seg_language(col: Control, r: Dictionary) -> void:
 	var row := HudWidgets.option_row(col, tr(r.label_key))
 	HudWidgets.choices(row, StartScreen.LANGUAGES, TranslationServer.get_locale(), Settings.set_language)
@@ -150,6 +174,7 @@ func _build_camera(col: Control, spec: Dictionary) -> void:
 	var grid := PopBodies.grid(col)
 	for key: String in ["camera.zoom", "camera.centre"]:
 		_metrics[key] = PopBodies.metric(grid, tr(key))
+	_read_camera()
 
 
 func _camera(action: String) -> void:
@@ -181,9 +206,13 @@ func _process(delta: float) -> void:
 	_since += delta
 	if _since >= CityStore.SNAPSHOT_INTERVAL_S:
 		_since = 0.0
-		var start: float = DataTables.game("camera").start_view_half
-		_metrics["camera.zoom"].text = "%d %%" % int(round(start / rig.half * PERCENT))
-		_metrics["camera.centre"].text = "X %d · Y %d" % [int(rig.focus.x), int(rig.focus.z)]
+		_read_camera()
+
+
+func _read_camera() -> void:
+	var start: float = DataTables.game("camera").start_view_half
+	_metrics["camera.zoom"].text = "%d %%" % int(round(start / rig.half * PERCENT))
+	_metrics["camera.centre"].text = "X %d · Y %d" % [int(rig.focus.x), int(rig.focus.z)]
 
 
 func _on_changed(s: Dictionary) -> void:

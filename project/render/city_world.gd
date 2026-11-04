@@ -4,9 +4,7 @@ class_name CityWorld
 extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
-const WATER_SHADER := "res://render/shaders/water.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
-const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
@@ -29,12 +27,20 @@ var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
 
 
+var marks: ChangeMarks # F8
+var water: CityWater
+var _mesh_size := 0
+
+
 func _ready() -> void:
 	add_to_group(&"world")
 	var palette: Dictionary = DataTables.render().palette
 	_build_environment(palette)
 	_build_terrain(palette)
-	_build_water(palette)
+	water = CityWater.new(palette)
+	add_child(water)
+	marks = ChangeMarks.new()
+	add_child(marks)
 
 
 ## The materials of data/render/materials.json, by name (textures loaded from their res:// paths).
@@ -47,7 +53,7 @@ func materials() -> Dictionary:
 			var m := ShaderMaterial.new()
 			m.shader = load(table[key].shader)
 			for name in table[key].params:
-				m.set_shader_parameter(name, _param(table[key].params[name]))
+				m.set_shader_parameter(name, shader_value(table[key].params[name]))
 			if key == "road":
 				_set_means(m, table[key].params)
 			elif key == "prop":
@@ -62,7 +68,7 @@ func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
 	for name in params:
 		if not name.ends_with("_map"):
 			continue
-		var col := _mean_color(_param(params[name]))
+		var col := _mean_color(shader_value(params[name]))
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
 
 
@@ -102,7 +108,7 @@ func _mean_color(tex: Texture2D) -> Color:
 	return Color(sum.x / n, sum.y / n, sum.z / n)
 
 
-func _param(v: Variant) -> Variant:
+static func shader_value(v: Variant) -> Variant:
 	if v is String and v.begins_with("res://"):
 		return load(v)
 	if v is String and v.begins_with("#"):
@@ -180,6 +186,18 @@ func follow_clock(hour: float) -> void:
 
 
 ## The Effects panel: bloom, the sky's reflection and the ambient light drawn or not.
+## The Optimisations tab: the water's own material, or one plain colour to see what its shading costs.
+func set_water_plain(plain: bool) -> void:
+	water.set_plain(plain)
+
+
+## The Optimisations tab: the terrain's nearest meshes divided (Terrain3D mesh_size: lod0 has 4 mesh_size + 2 quads a side).
+func set_terrain_lod(divide: int) -> void:
+	var size: int = _mesh_size / maxi(1, divide)
+	if terrain.get("mesh_size") != size:
+		terrain.set("mesh_size", size)
+
+
 func set_light_switches(glow: bool, reflections: bool, ambient: bool) -> void:
 	daylight.glow_on = glow
 	daylight.ambient_on = ambient
@@ -210,29 +228,9 @@ func _build_terrain(palette: Dictionary) -> void:
 	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
 	terrain.render_layers = int(CityStore.constants.render_layers.terrain)
 	add_child(terrain)
+	_mesh_size = terrain.get("mesh_size")
 	# Terrain3D rebuilds its material when it enters the tree and drops parameters set before that (the ground then
 	# sampled the shader's white default texture), so the look is applied once the terrain is in the scene.
 	for key in palette.terrain:
 		if not key.begins_with("_"):
-			mat.set_shader_param(key, _param(palette.terrain[key]))
-
-
-func _build_water(palette: Dictionary) -> void:
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(WATER_EXTENT_M, WATER_EXTENT_M)
-	var mat := ShaderMaterial.new()
-	mat.shader = load(WATER_SHADER)
-	for key in palette.water:
-		if key != "sea_level_m" and not key.begins_with("_"):
-			mat.set_shader_parameter(key, _param(palette.water[key]))
-	# The ripples move the way the wind blows: the vegetation material holds the wind (its single owner).
-	var wind: Dictionary = DataTables.render().materials.vegetation.params
-	mat.set_shader_parameter("wind_x", wind.wind_dir_x)
-	mat.set_shader_parameter("wind_z", wind.wind_dir_z)
-	var water := MeshInstance3D.new()
-	water.mesh = plane
-	water.material_override = mat
-	water.position.y = palette.water.sea_level_m
-	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	water.layers = int(CityStore.constants.render_layers.water)
-	add_child(water)
+			mat.set_shader_param(key, shader_value(palette.terrain[key]))

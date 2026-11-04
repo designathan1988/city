@@ -92,8 +92,8 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 // What the Simulation panel sets (Roadcraft SimWorld trafficIntensity, pedestrianIntensity, demandMultiplier): shares of
 // the city's own density, 1 = as the catalog says; and the Effects panel's switches, what each system costs the tick.
 struct TrafficLevels {
-	float traffic = 1, people = 1, demand = 1;
-	bool vehicles_on = true, people_on = true, growth_on = true;
+	float traffic = 1, people = 1, demand = 1, population = 1; // population: the Optimisations tab's cap on both
+	bool vehicles_on = true, people_on = true, growth_on = true, crowd_on = true;
 };
 
 struct Vehicle {
@@ -134,6 +134,7 @@ struct TrafficState {
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
+	std::vector<uint32_t> seg_volume; // per segment: vehicles that entered it since the city opened (the Inspect tool)
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
@@ -197,5 +198,12 @@ inline int route_at(const std::vector<int> &pool, const RouteRef &r, int k) {
 }
 void route_set(std::vector<int> &pool, RouteRef &r, size_t &waste, const int *src, int n);
 void route_compact(TrafficState &t);
+
+// A vehicle enters the directed segment: it counts on that road's volume.
+inline void count_entry(TrafficState &t, int ds) {
+	const size_t seg = size_t(ds) / 2;
+	if (seg >= t.seg_volume.size()) t.seg_volume.resize(seg + 1, 0);
+	t.seg_volume[seg]++;
+}
 
 } // namespace city

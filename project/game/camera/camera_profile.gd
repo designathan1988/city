@@ -38,6 +38,11 @@ static func fov_deg(cfg: Dictionary, half: float) -> float:
 
 
 ## The camera's distance from the point it looks at, for the view to be `half` tall there.
+## Where a thing stands to be drawn at `zoom` pixels a metre on a screen `height_px` tall, through the close lens.
+static func metres_at(cfg: Dictionary, zoom: float, height_px: float) -> float:
+	return height_px / (2.0 * tan(deg_to_rad(cfg.near_fov_deg) * 0.5) * zoom)
+
+
 ## The lens at this zoom: the angle of a perspective camera, the ground in view of an orthographic one (the Camera popover).
 static func lens(camera: Camera3D, cfg: Dictionary, half: float) -> void:
 	camera.fov = fov_deg(cfg, half)

@@ -51,7 +51,7 @@
    "ring": {
     "label_key": "v2.roundabout.radius",
     "step": 2,
-    "default": 22
+    "default": 40
    }
   },
   {
@@ -89,11 +89,6 @@
      "label_key": "zone.industrial",
      "zone": 3,
      "swatch": "zone_ind"
-    },
-    {
-     "label_key": "zone.mixed",
-     "zone": 4,
-     "swatch": "zone_mix"
     },
     {
      "label_key": "zone.remove",
@@ -482,7 +477,8 @@
    "rows": [
     {
      "icon": "grid",
-     "label_key": "v2.layer.grid"
+     "label_key": "v2.layer.grid",
+     "action": "grid"
     },
     {
      "icon": "zones",
@@ -557,6 +553,10 @@
     {
      "seg": "language",
      "label_key": "menu.language"
+    },
+    {
+     "seg": "paint",
+     "label_key": "menu.paint"
     },
     {
      "rule": true

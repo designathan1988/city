@@ -16,6 +16,11 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_levels", "traffic", "people", "demand"), &CityCore::set_levels);
 	ClassDB::bind_method(D_METHOD("set_sim_switch", "name", "on"), &CityCore::set_sim_switch);
 	ClassDB::bind_method(D_METHOD("set_detail_scale", "scale"), &CityCore::set_detail_scale);
+	ClassDB::bind_method(D_METHOD("set_vegetation", "share"), &CityCore::set_vegetation);
+	ClassDB::bind_method(D_METHOD("set_agent_detail", "cabin_m", "cabin_cap", "people_floor"), &CityCore::set_agent_detail);
+	ClassDB::bind_method(D_METHOD("set_population", "share"), &CityCore::set_population);
+	ClassDB::bind_method(D_METHOD("set_upload_every", "frames"), &CityCore::set_upload_every);
+	ClassDB::bind_method(D_METHOD("set_lots_drawn", "on"), &CityCore::set_lots_drawn);
 	ClassDB::bind_method(D_METHOD("traffic_metrics"), &CityCore::traffic_metrics);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
@@ -51,6 +56,14 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
+	ClassDB::bind_method(D_METHOD("segment_traffic", "segment"), &CityCore::segment_traffic);
+	ClassDB::bind_method(D_METHOD("node_traffic", "node"), &CityCore::node_traffic);
+	ClassDB::bind_method(D_METHOD("impossible_nodes"), &CityCore::impossible_nodes);
+	ClassDB::bind_method(D_METHOD("clear_reach", "from", "to", "samples"), &CityCore::clear_reach);
+	ClassDB::bind_method(D_METHOD("recent_edits", "count"), &CityCore::recent_edits);
+	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
+	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
+	ClassDB::bind_method(D_METHOD("set_marking_style", "style", "undoable"), &CityCore::set_marking_style);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
 	ClassDB::bind_method(D_METHOD("list_buildings"), &CityCore::list_buildings);
 	ClassDB::bind_method(D_METHOD("city_bounds"), &CityCore::city_bounds);

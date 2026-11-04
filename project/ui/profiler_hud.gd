@@ -4,7 +4,6 @@ class_name ProfilerHud
 extends PanelContainer
 
 const MIB := 1048576.0
-const SYNC_PARTS := ["lock", "stream", "levels", "flush", "roads", "props", "buildings", "trees", "agents"]
 
 @onready var _text: Label
 @onready var _since := 0.0
@@ -26,6 +25,14 @@ func toggle() -> void:
 	visible = not visible
 	if visible:
 		_refresh()
+		_place()
+
+
+## Stands by the bottom right corner at the size of its text: the anchors alone leave it no width, past the screen's edge.
+func _place() -> void:
+	var need := get_combined_minimum_size()
+	offset_left = offset_right - need.x
+	offset_top = offset_bottom - need.y
 
 
 func _process(delta: float) -> void:
@@ -43,7 +50,7 @@ func _refresh() -> void:
 		Performance.get_monitor(Performance.TIME_PROCESS) * ProfilerHud.ms_per_s(),
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))]]
-	for k: String in SYNC_PARTS:
+	for k: String in Health.COST_PARTS:
 		lines.append("  %-10s %6.2f ms" % [k, float(cost.get(k, 0.0))])
 	lines.append("video %d MiB · texture %d MiB · static %d MiB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / MIB])

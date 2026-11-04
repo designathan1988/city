@@ -8,6 +8,9 @@ const SEED := 7
 const FRAMES := 240
 const SETTLE := 8
 const VIEW := [45.0, 52.0, 2300.0] # yaw, pitch (degrees), distance: the whole town under the bar
+const LONG_FRAME_MS := 80.0
+const TIP_WAIT_S := 1.2
+const STREET_M := 120.0
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -65,16 +68,85 @@ func _run() -> void:
 	hud.toggle_effects()
 	await _shot("effects")
 	hud.effects.close()
-	hud.health.toggle()
-	await _shot("health")
-	hud.health.close()
+	await _health()
 	hud.profiler.toggle()
 	await _shot("profiler")
 	hud.profiler.toggle()
 	hud.flash(tr("save.done"), true)
 	await _shot("toast")
+	await _tip()
+	await _inspector()
+	await _map_layers()
+	hud.actions.menu("new_city")
+	await _shot("dialog_confirm")
+	hud._dialog.close()
 	print("fotos: ", shots)
 	GameFlow.quit_now()
+
+
+## The monitor with what really happened: an engine warning through the Logger, a long frame, an edit; each tab.
+func _health() -> void:
+	push_warning("foto: aviso do motor pelo Logger")
+	await _frames(SETTLE)
+	Health._slow_frame(LONG_FRAME_MS)
+	var road: Dictionary = CityStore.query(&"segment_at", [Vector3.ZERO])
+	CityStore.dispatch(&"demolish", [road.get("point", Vector3.ZERO)])
+	hud.health.toggle()
+	await _shot("health")
+	for tab: String in ["world", "state"]:
+		hud.health._select(tab)
+		await _shot("health_" + tab)
+	hud.health._select("health")
+	hud.health.close()
+	CityStore.dispatch(&"undo")
+
+
+## The mouse tip of the Layers button, its own element (the toast above is not one).
+func _tip() -> void:
+	var b: Button = hud.top_bar.action_buttons.layers
+	var at := b.get_global_rect().get_center()
+	get_viewport().warp_mouse(at)
+	var move := InputEventMouseMotion.new()
+	move.position = at
+	move.global_position = at
+	Input.parse_input_event(move)
+	await get_tree().create_timer(TIP_WAIT_S).timeout
+	await _shot("tip")
+
+
+## A click on a road and on a junction, the panel the player gets, close enough to see them.
+func _inspector() -> void:
+	var seg: int = 0
+	var info := {}
+	while info.get("kind", "") != "road" and seg < CityStore.snapshot.segments:
+		var t: Dictionary = CityStore.query(&"segment_traffic", [seg])
+		seg += 1
+		if not t.is_empty() and int(t.vehicles) > 0:
+			info = {"kind": "road"}
+	var spot: Vector3 = rig.focus
+	rig.jump(spot, VIEW[0], VIEW[1], STREET_M)
+	await _frames(SETTLE)
+	var road: Dictionary = CityStore.query(&"inspect", [spot])
+	road["at"] = spot
+	hud.tools.inspected.emit(road)
+	await _shot("inspect_road")
+	hud.inspector.close()
+	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
+
+
+func _map_layers() -> void:
+	Settings.set_layer("grid", true)
+	rig.jump(rig.focus, VIEW[0], VIEW[1], STREET_M)
+	await _frames(SETTLE)
+	await _shot("layer_grid")
+	Settings.set_layer("grid", false)
+	for style in 4:
+		CityStore.dispatch(&"set_marking_style", [style, false])
+		await _frames(FRAMES / 2)
+		await _shot("paint_%d" % style)
+	CityStore.dispatch(&"set_marking_style", [0, false])
+	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
+	await _frames(FRAMES / 2)
 
 
 func _frames(n: int) -> void:

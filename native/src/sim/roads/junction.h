@@ -9,6 +9,15 @@
 
 namespace city {
 
+class RoadNetwork;
+
+// A node whose legs meet too sharply (Roadcraft Network.impossible, legAngles.ts): its node and the smallest gap, radians.
+struct SharpNode {
+	int node = -1;
+	float gap = 0;
+};
+std::vector<SharpNode> nodes_too_sharp(const RoadNetwork &net, float min_gap);
+
 constexpr double BULB_R = 10, BULB_WALK = 2.5; // turning bulb: asphalt radius and footway width
 constexpr double KERB_RADIUS_MAX = 7.2; // largest kerb return radius
 

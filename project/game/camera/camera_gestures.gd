@@ -8,6 +8,7 @@ extends RefCounted
 
 const MS_PER_S := 1000.0
 const US_PER_MS := 1000.0
+const TWIST_SIGN := -1.0 # the map turns with the fingers
 
 var rig: CityCamera
 var cfg: Dictionary
@@ -17,6 +18,8 @@ var rad_per_px := 0.0
 var drag := {}
 ## The drag's recent course: Vector3(x, y, time ms).
 var samples: Array[Vector3] = []
+var _fingers := {} # touch index -> where it is
+var _pinch := {} # the last spread between two fingers
 ## The coast after a drag let go: kind, velocity (px/s or ground m/s), pointer speed px/s, pivot and its height.
 var coast := {}
 
@@ -123,6 +126,37 @@ func _hand_speed() -> Vector2:
 	if absf(den) < CityCamera.PARALLEL:
 		return Vector2.ZERO
 	return (stp * n - sp * st) / den
+
+
+## Two fingers: their spread zooms about the point between them and their turn turns the map with them. True when the event was theirs.
+func touch(event: InputEvent) -> bool:
+	var t := event as InputEventScreenTouch
+	var d := event as InputEventScreenDrag
+	if t != null:
+		if t.pressed:
+			_fingers[t.index] = t.position
+		else:
+			_fingers.erase(t.index)
+		_pinch = {}
+		return _fingers.size() >= 2
+	if d == null or not _fingers.has(d.index):
+		return false
+	_fingers[d.index] = d.position
+	if _fingers.size() != 2:
+		return false
+	pinch()
+	return true
+
+
+func pinch() -> void:
+	var at: Array = _fingers.values()
+	var span: Vector2 = at[1] - at[0]
+	var mid: Vector2 = (at[0] + at[1]) * 0.5
+	if not _pinch.is_empty() and span.length() > 0.0:
+		rig.zoom_at(mid, span.length() / _pinch.span.length(), rig.height_under(mid))
+		if span.length() >= cfg.pinch_min_spread_px:
+			rig.orbit(_pinch.span.angle_to(span) * TWIST_SIGN, 0.0)
+	_pinch = {"span": span}
 
 
 ## A drag let go: the camera keeps the hand's speed and slows down (`coast_decay_s`).

@@ -107,6 +107,7 @@ void BuildingRenderer::commit_one(Built &b) {
 		for (int band = 0; band < BAND_COUNT; band++)
 			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
 					chunk_box(b.key), LAYER_BUILDING_DETAILS);
+		ch.occluder.set(scenario_, b.walls);
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
 	}

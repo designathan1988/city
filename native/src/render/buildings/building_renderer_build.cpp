@@ -72,13 +72,14 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		if (near) {
 			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
 		}
 		pl.coarse = true;
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
-		b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+		if (lots_drawn_.load()) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
 	if (near) {
 		auto band_of = [this](float thick) {

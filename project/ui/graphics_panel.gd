@@ -34,7 +34,8 @@ func fill() -> void:
 		shadows.append([int(s), tr("gfx.shadows.%d" % int(s))])
 	_row("gfx.shadows", shadows, int(now.shadow_px) if now.shadows else 0, _keep.bind("shadows"))
 	_row("gfx.ao", _on_off(), now.ssao, _keep.bind("ssao"))
-	_row("gfx.aa", _on_off(), now.smaa, _keep.bind("smaa"))
+	if QualityTier.has_smaa():
+		_row("gfx.aa", _on_off(), now.smaa, _keep.bind("smaa"))
 	_row("gfx.dynamicResolution", _on_off(), Settings.dynamic_resolution, Settings.set_dynamic_resolution, "gfx.dynamicResolution.note")
 	var fps := []
 	for f: float in t.fps_choices:

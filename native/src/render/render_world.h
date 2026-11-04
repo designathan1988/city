@@ -5,6 +5,8 @@
 // follows the view and not the size of the map.
 #pragma once
 
+#include <algorithm>
+
 #include "render/agents/agent_renderer.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
@@ -43,8 +45,16 @@ public:
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
-	godot::Dictionary agent_cost() const { return agents_.cost(); }
+	godot::Dictionary agent_cost() const {
+		godot::Dictionary d = agents_.cost();
+		d["trees_near"] = trees_.near_trees();
+		return d;
+	}
 	void set_detail_scale(float scale) { buildings_.set_detail_scale(scale); }
+	void set_vegetation(float share) { trees_.set_share(share); }
+	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { agents_.set_detail(cabin_m, cabin_cap, people_floor); }
+	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
+	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
@@ -69,6 +79,7 @@ private:
 	std::vector<int> terrain_rects_;
 	Cost cost_;
 	void drain_log(CityState &s);
+	int upload_every_ = 1, upload_frame_ = 0; // the Optimisations tab: uploads only every N frames
 };
 
 } // namespace city

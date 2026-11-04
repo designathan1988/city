@@ -70,7 +70,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → MENU (tela inicial) → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool` (de mãos vazias é INSPECT): NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -89,6 +89,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
+- `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar, o aviso da barra e a câmera perguntam: tráfego ao vivo de via e cruzamento, nós impossíveis e a linha de visão livre de prédios
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
@@ -136,6 +137,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
+- `native/src/sim/commands/road_copies.cpp` — inverter mão única, duplicar via e a pintura do mapa
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
@@ -201,6 +203,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/facade_props.cpp` — AC, antenas e vasos dos andares altos
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
 - `native/src/render/buildings/lot_emit.cpp` · `native/src/render/buildings/lot_props.cpp` — chão, muros, cercas e portões do lote; peças (vagas, docas, ralos, arbustos, flores, piscina, móveis, galpões, varal)
+- `native/src/render/buildings/occluders.cpp` · `native/src/render/buildings/occluders.h` — as paredes que certamente existem, por chunk do nível perto, para a oclusão do motor
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
@@ -236,6 +239,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 **Godot — project/**
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
+- `project/game/camera/camera_pull.gd` — o olho nunca dentro nem atrás de prédio, com os tempos do Deoccluder
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
@@ -247,6 +251,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
 - `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
+- `project/game/store/city_saves.gd` — a cidade no disco: salvar, abrir, autosave, ao perder o foco e ao fechar, arquivo de fora
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última, quarentena e pasta dos testes
 - `project/game/store/session.gd` — o que a cidade traz além do mapa: câmera, velocidade e níveis da simulação
@@ -262,6 +267,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/upgrade_tool.gd` — Melhorar
 - `project/game/tools/zone_tool.gd` — pincel de zona
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
+- `project/render/city_water.gd` · `project/render/change_marks.gd` — o plano da água; F8, as últimas edições marcadas no mapa
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
@@ -273,8 +279,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
+- `project/tests/perf/tier_gpu.gd` · `project/tests/perf/tier_gpu.tscn` — o que cada nível gráfico custa à GPU nas três vistas: tempo medido em amostras e contagens
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/shell_test.gd` · `project/tests/core/shell_test.tscn` — níveis gráficos, governador, chaves de render, painéis e Esc
+- `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
@@ -289,6 +297,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves e otimizações); monitor F9; perfil Shift+F9
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
+- `project/ui/inspector_rows.gd` — os números ao vivo do inspetor, como linhas
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — a casca: dock, dica, aviso e quem abre cada painel

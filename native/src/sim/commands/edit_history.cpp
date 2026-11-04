@@ -46,6 +46,11 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			if (fwd) { mark_seg(s, op.id, true); net.remove_segment(op.id); }
 			else { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
 			break;
+		case OpKind::MARKING:
+			s.marking_style.store(fwd ? op.to : op.from);
+			for (int seg = 0; seg < int(net.segs.size()); seg++)
+				if (net.segs[size_t(seg)].alive) net.mark_segment(seg);
+			break;
 		case OpKind::PROFILE:
 			net.set_profile(op.id, fwd ? op.to : op.from);
 			mark_seg(s, op.id, false);

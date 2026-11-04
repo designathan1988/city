@@ -12,6 +12,7 @@ const TABS := ["health", "world", "state"]
 @onready var _picked := -1
 @onready var _since := 0.0
 @onready var _seen := -1
+@onready var _copy_button: Button
 
 
 func _ready() -> void:
@@ -22,13 +23,16 @@ func _ready() -> void:
 	for id: String in TABS:
 		var b := HudWidgets.button(&"Chip", "", tr("health.tab." + id), "", "", "opt_row_h")
 		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_CLICK
 		b.pressed.connect(_select.bind(id))
+		b.gui_input.connect(_tab_key)
 		head.add_child(b)
 		_tabs[id] = b
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(gap)
-	var copy := HudWidgets.button(&"Ghost", "", tr("health.copy"), "", "", "opt_row_h")
+	_copy_button = HudWidgets.button(&"Ghost", "", tr("health.copy"), "", "", "opt_row_h")
+	var copy := _copy_button
 	copy.pressed.connect(_copy)
 	head.add_child(copy)
 	_body = HudWidgets.vbox(col)
@@ -48,6 +52,32 @@ func close() -> bool:
 		return false
 	hide()
 	return true
+
+
+## Arrows, Home and End move along the tabs that has the focus (WAI-ARIA tabs).
+func _tab_key(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k == null or not k.pressed:
+		return
+	var at := TABS.find(_tab)
+	match k.keycode:
+		KEY_LEFT: at = posmod(at - 1, TABS.size())
+		KEY_RIGHT: at = posmod(at + 1, TABS.size())
+		KEY_HOME: at = 0
+		KEY_END: at = TABS.size() - 1
+		_: return
+	_select(TABS[at])
+	_tabs[TABS[at]].grab_focus()
+	accept_event()
+
+
+## The language changed.
+func relabel() -> void:
+	for id: String in TABS:
+		_tabs[id].text = tr("health.tab." + id)
+	_copy_button.text = tr("health.copy")
+	if visible:
+		_render()
 
 
 func _select(id: String) -> void:
@@ -93,9 +123,11 @@ func _render_health() -> void:
 
 func _world_lines() -> Array:
 	var s := CityStore.snapshot
-	return [tr("health.world.undo").format({"label": tr(s.get("undo_label", ""))}),
-		"%s %s" % [Formatters.format_int(s.get("segments", 0)), tr("status.roads.other")],
+	var lines := ["%s %s" % [Formatters.format_int(s.get("segments", 0)), tr("status.roads.other")],
 		"%s %s" % [Formatters.format_int(s.get("buildings", 0)), tr("fx.buildings")]]
+	for e: Dictionary in CityStore.query(&"recent_edits", [int(DataTables.game("health").rows)]):
+		lines.append(tr("health.world.undo").format({"label": tr(e.label)}))
+	return lines
 
 
 func _state_lines() -> Array:

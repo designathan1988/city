@@ -7,6 +7,8 @@ shader_type spatial;
 render_mode cull_back;
 
 global uniform float night;
+global uniform float building_glass; // the Effects panel: 0 leaves the panes out
+global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 uniform sampler2DArray finish_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray finish_normal : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray finish_rough : filter_linear_mipmap, repeat_enable;
@@ -49,7 +51,7 @@ void window(vec2 f, vec2 size, uint seed, bool dark, vec3 n, vec3 V, out vec3 al
 	vec3 room = iz <= min(ix, iy) ? back : ix < iy ? back * 0.78 : (d.y < 0.0 ? mix(vec3(0.24, 0.17, 0.11), vec3(0.32, 0.30, 0.28), rnd2) : vec3(0.86, 0.85, 0.82));
 	room *= 1.0 - 0.45 * hz;
 	if (rnd2 >= 0.7 && iz <= min(ix, iy)) room *= 0.55;
-	float lit = rnd < mix(lit_min, lit_max, sty) ? 1.0 : 0.0;
+	float lit = rnd < mix(lit_min, lit_max, sty) ? building_night_windows : 0.0;
 	vec3 lamp = rnd2 >= 0.75 ? vec3(0.85, 0.92, 1.0) : vec3(1.0, 0.84, 0.58);
 	float cover = 0.0;
 	vec3 fabric = vec3(0.0);
@@ -88,7 +90,7 @@ void far_window(vec2 uv, float code, uint seed, vec3 n, vec3 V, vec3 wall, inout
 	vec3 ga, ge;
 	window(vec2((f.x - 0.5) / max(ww, 0.05) + 0.5, (f.y - wl) / max(wh - wl, 0.05)), vec2(3.0, 2.6), cs, h01(cs) < 0.2, n, V, ga, ge);
 	float lit_avg = mix(lit_min, lit_max, h01(seed + 3u));
-	vec3 avg_e = mix(vec3(0.07, 0.065, 0.06), vec3(1.0, 0.88, 0.64) * lit_avg * 0.42, night);
+	vec3 avg_e = mix(vec3(0.07, 0.065, 0.06), vec3(1.0, 0.88, 0.64) * lit_avg * 0.42 * building_night_windows, night);
 	float m = in_x * in_y;
 	float frame = curtain ? 0.0 : m * (step(abs(f.x - 0.5), ww * 0.5 - 0.04) < 0.5 || f.y < wl + 0.03 || f.y > wh - 0.03 ? 1.0 : 0.0);
 	glass = mix(share, m * (1.0 - frame), detail);
@@ -104,6 +106,7 @@ void fragment() {
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = 0.86, metal = 0.0;
 	if (kind == 1 || kind == 2) {
+		if (building_glass < 0.5) discard;
 		uint seed = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u) | (uint(COLOR.b * 255.0 + 0.5) << 16u);
 		window(UV, max(UV2, vec2(0.3)), seed, kind == 2, n, V, albedo, emit);
 		rough = 0.12;

@@ -1,4 +1,5 @@
 {
- "_doc": "Save files (game/store/city_store.gd, Roadcraft game.ts:756): autosave every autosave_s seconds of real time while the city has unsaved work.",
- "autosave_s": 120
+ "_doc": "Save files (game/store/city_store.gd, Roadcraft game.ts:756): autosave every autosave_s seconds of real time while the city has unsaved work; a save that fails says so at most once every failed_hint_s (Roadcraft persistence.ts onSaveFailed).",
+ "autosave_s": 120,
+ "failed_hint_s": 60
 }

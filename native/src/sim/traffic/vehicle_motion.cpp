@@ -263,7 +263,7 @@ void step_connector(CityState &s, int ci, float dt) {
 		Vehicle &v = t.vehicles[size_t(id)];
 		v.conn = -1;
 		v.ri++;
-		v.ds = c.to_ds;
+		count_entry(t, v.ds = c.to_ds);
 		v.lane = c.to_lane;
 		v.s = v.cs - c.len;
 		lane_add(s, v.ds * MAX_LANES + v.lane, id);

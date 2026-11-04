@@ -16,6 +16,10 @@
     "help.do.pick"
    ],
    [
+    "help.key.pageUpDown",
+    "camera.tiltUp"
+   ],
+   [
     "help.key.esc",
     "help.do.close"
    ]

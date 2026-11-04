@@ -205,6 +205,8 @@ Dictionary AgentRenderer::cost() const {
 	static const char *const NAMES[VEHICLE_TYPES] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck" };
 	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body" };
 	Dictionary out;
+	out["cabins"] = cabins_drawn();
+	out["people_near"] = people_.shown(0);
 	int draws = 0, tris = 0;
 	for (int i = 0; i < VEHICLE_TYPES; i++)
 		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
@@ -243,7 +245,9 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
 	PackedFloat32Array bufs[VEHICLE_TYPES][LEVELS];
-	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_r_ * cabin_r_;
+	const float reach = cabin_reach_ > 0 ? cabin_reach_ : cabin_r_;
+	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_limit2_ > 0 ? std::min(cabin_limit2_, reach * reach) : reach * reach;
+	near_d2_.clear();
 	drawn_vehicles_ = 0;
 	for (const AgentRecord &rec : f.vehicles) {
 		Pose p = record_pose(rec, at);
@@ -255,9 +259,17 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		if (flat2 > r2) continue;
 		float passengers, order;
 		riders(type, rec.id, passengers, order);
-		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		const float d2 = flat2 + dy * dy;
+		if (cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
+		const int level = d2 >= near2 ? BODY_LEVEL : CABIN_LEVEL;
 		push_agent(bufs[type][level], p, 1.f, float(paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
+	}
+	if (cabin_cap_ > 0 && int(near_d2_.size()) > cabin_cap_) { // the next frame's limit: the nearest cabin_cap_ keep theirs
+		std::nth_element(near_d2_.begin(), near_d2_.begin() + cabin_cap_, near_d2_.end());
+		cabin_limit2_ = near_d2_[size_t(cabin_cap_)];
+	} else {
+		cabin_limit2_ = 0;
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
@@ -274,6 +286,12 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			if (d.mm.is_valid()) rs->multimesh_set_visible_instances(d.mm, n);
 			shown_[i][level] = n;
 		}
+}
+
+int AgentRenderer::cabins_drawn() const {
+	int n = 0;
+	for (int i = 0; i < VEHICLE_TYPES; i++) n += shown_[i][CABIN_LEVEL];
+	return n;
 }
 
 } // namespace city

@@ -55,6 +55,7 @@ func _ready() -> void:
 	popover.closed.connect(_on_popover_closed)
 	top_bar.popover_pressed.connect(open_popover)
 	top_bar.history_pressed.connect(actions.history)
+	top_bar.impossible_pressed.connect(actions.show_impossible)
 	inspector = InspectorPanel.new()
 	root.add_child(inspector)
 	health = HealthPanel.new()
@@ -66,8 +67,28 @@ func _ready() -> void:
 	add_child(GameKeys.new(self))
 	if tools:
 		tools.hint.connect(show_hint)
-		tools.inspected.connect(func(info: Dictionary) -> void: inspector.show_info(info, info.get("at", Vector3.ZERO)))
+		tools.inspected.connect(_on_inspector)
+		tools.set_tool(ToolController.Tool.INSPECT) # with nothing in hand a click asks what is there, as in the reference
 	top_bar.set_sky(world.sky_mode if world else "day")
+
+
+func _on_inspector(info: Dictionary) -> void:
+	inspector.show_info(info, info.get("at", Vector3.ZERO))
+
+
+## The language changed: every text of the shell in the new one; what was open stays open.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSLATION_CHANGED or root == null or not is_node_ready():
+		return
+	for c: Dictionary in DataTables.ui("drawers").categories:
+		var b: Button = _cat_buttons[c.id]
+		b.text = tr(c.label_key)
+		HudWidgets.tip_for(b, tr(c.tip_key))
+	top_bar.relabel()
+	drawer.relabel()
+	popover.relabel()
+	health.relabel()
+	effects.relabel()
 
 
 func _build_dock() -> void:
@@ -198,6 +219,12 @@ func toggle_effects() -> void:
 func escape() -> bool:
 	if popover.close() or health.close() or effects.close():
 		return true
+	if rig and rig.gestures.active():
+		rig.gestures.cancel()
+		return true
+	if inspector.visible:
+		inspector.close()
+		return true
 	if drawer.category.is_empty():
 		return false
 	drawer.close()
@@ -213,5 +240,5 @@ func _on_drawer_closed() -> void:
 	for k in _cat_buttons:
 		_cat_buttons[k].set_pressed_no_signal(false)
 	if tools:
-		tools.set_tool(ToolController.Tool.NONE)
+		tools.set_tool(ToolController.Tool.INSPECT)
 	show_hint("", true)

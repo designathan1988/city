@@ -8,6 +8,9 @@ extends PanelContainer
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
+const DENSITY_MEDIUM := 1
+const DENSITIES := [[0, "zone.low"], [1, "zone.medium"], [2, "zone.high"]]
+
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
 @onready var _options: VBoxContainer
@@ -18,6 +21,8 @@ signal closed
 @onready var _tabs: Dictionary = {}
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var _profile_ids: Dictionary = {}
+@onready var _tab: Dictionary = {}
+@onready var _density := DENSITY_MEDIUM
 
 
 func _ready() -> void:
@@ -77,6 +82,7 @@ func close() -> void:
 
 
 func select_tab(tab: Dictionary) -> void:
+	_tab = tab
 	for id in _tabs:
 		_tabs[id].set_pressed_no_signal(id == tab.id)
 	_build_strip(tab)
@@ -111,11 +117,44 @@ func _zone() -> int:
 	return tools.last_param(ToolController.Tool.ZONE, "zone", first) if tools else first
 
 
+func _density_row() -> void:
+	var items := []
+	for d: Array in DENSITIES:
+		items.append([d[0], tr(d[1])])
+	var row := HudWidgets.option_row(_options, tr("v2.zone.density"))
+	HudWidgets.choices(row, items, _density, func(v: int) -> void:
+		_density = v
+		pick_zone(DrawerStrips.use_of(_zone())))
+
+
+## The Relief brush by key: `key` a step up or down, the sliders drawn again.
+func step_brush(key: String, dir: int) -> void:
+	var spec: Dictionary = category.brush[key]
+	_retool(clampf(_param("TERRAIN", key, spec.default) + spec.step * dir, spec.min, spec.max), "TERRAIN", key)
+	_build_strip(_tab)
+
+
+## The Relief brush's operation by the number row; false: no such operation.
+func pick_relief(index: int) -> bool:
+	if index >= category.cards.size():
+		return false
+	_retool(category.cards[index].mode, "TERRAIN", "mode")
+	return true
+
+
+## The language changed: what the drawer shows, in the new one.
+func relabel() -> void:
+	catalog.relabel()
+	if not category.is_empty() and visible:
+		_build_head()
+		_build_strip(_tab)
+
+
 func pick_zone(zone: int) -> void:
 	for c in _strip.get_children():
 		if c is Button:
-			c.set_pressed_no_signal(c.get_meta(&"zone", -1) == zone)
-	tool_requested.emit("ZONE", {"zone": zone})
+			c.set_pressed_no_signal(c.get_meta(&"zone", -1) == DrawerStrips.use_of(zone))
+	tool_requested.emit("ZONE", {"zone": DrawerStrips.zone_at(DrawerStrips.use_of(zone), _density)})
 
 
 func _build_head() -> void:
@@ -149,6 +188,7 @@ func _build_strip(tab: Dictionary) -> void:
 	elif kind == "zone_cards" and tab.tool == "ZONE":
 		for c in category.cards:
 			_strip.add_child(_zone_card(c))
+		_density_row()
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
 		HudWidgets.range_row(_options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
@@ -199,7 +239,7 @@ func _zone_card(c: Dictionary) -> Button:
 	var b := HudWidgets.button(variation, c.get("icon", ""), tr(c.label_key), "", "card_w", "card_h")
 	b.toggle_mode = true
 	b.set_meta(&"zone", c.zone)
-	b.set_pressed_no_signal(c.zone == _zone())
+	b.set_pressed_no_signal(c.zone == DrawerStrips.use_of(_zone()))
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if c.has("swatch"):

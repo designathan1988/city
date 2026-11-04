@@ -170,6 +170,8 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
+	for (int seg : removed)
+		if (size_t(seg) < t.seg_volume.size()) t.seg_volume[size_t(seg)] = 0;
 	for (int seg : removed) forget_furniture(s, seg);
 	for (int seg : changed) forget_furniture(s, seg);
 	for (int n : nodes) {

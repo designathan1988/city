@@ -14,11 +14,12 @@
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \
-	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
+	X(render, occluder_min_storeys) X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
 	X(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) X(render, upload_budget_mb) X(render, pose_delay_ticks) \
 	X(history, max_entries) X(history, max_mb) \
 	X(roundabout, radius_min_m) X(roundabout, radius_max_m) X(roundabout, approach_m) X(roundabout, entry_merge_m) \
 	X(roundabout, max_arc_deg) X(roundabout, disc_pad_m) \
-	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors)
+	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors) X(edit, duplicate_min_m) X(edit, duplicate_gap_m) \
+	X(inspect, lane_vehicle_m) X(inspect, min_leg_deg)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;

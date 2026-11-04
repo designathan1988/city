@@ -21,7 +21,6 @@ namespace city {
 namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
-constexpr float INSPECT_RADIUS_M = 30.f;
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
 
@@ -113,6 +112,7 @@ Dictionary CityCore::snapshot() {
 	d["minutes"] = s.clock.minutes.load();
 	d["buildings"] = s.buildings.count;
 	d["segments"] = s.roads.alive_segments();
+	d["marking_style"] = s.marking_style.load();
 	if (s.edit_revision != snap_edit_revision_) {
 		int nodes = 0;
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
@@ -176,48 +176,6 @@ if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	if (!state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz)) return d;
 	d["hit"] = true;
 	d["position"] = Vector3(hx, hy, hz);
-	return d;
-}
-
-Dictionary CityCore::inspect(const Vector3 &p) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const CityState &s = *state_;
-	Dictionary d;
-	int best = -1;
-	float bd = INSPECT_RADIUS_M;
-	s.buildings.query(p.x - INSPECT_RADIUS_M, p.z - INSPECT_RADIUS_M, p.x + INSPECT_RADIUS_M, p.z + INSPECT_RADIUS_M, [&](int id) {
-		const Building &b = s.buildings.items[id];
-		float dd = std::hypot(b.x - p.x, b.z - p.z);
-		if (dd < bd) { bd = dd; best = id; }
-	});
-	if (best >= 0) {
-		const Building &b = s.buildings.items[best];
-		d["kind"] = "building";
-		d["id"] = best;
-		d["floors"] = int(b.floors);
-		d["zone"] = int(b.zone);
-		d["fn"] = int(b.fn);
-		const OccupancyDef &o = s.catalog.occupancy;
-		const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
-		int residents, jobs;
-		BuildingStore::occupancy(b, o.floor_share, per, residents, jobs);
-		d["residents"] = residents;
-		d["jobs"] = jobs;
-		return d;
-	}
-	double t, dist;
-	int seg = s.roads.find_segment_near(p.x, p.z, INSPECT_RADIUS_M, t, dist);
-	if (seg >= 0) {
-		d["kind"] = "road";
-		d["id"] = seg;
-		const Profile &p = s.catalog.profile(s.roads.segs[seg].profile);
-		d["profile"] = String(p.name_key.c_str());
-		d["lanes"] = int(p.fwd.size() + p.back.size());
-		d["one_way"] = p.one_way;
-		d["speed_kmh"] = p.speed;
-		d["width_m"] = p.right + p.left;
-		d["cost_per_m"] = p.cost_per_m;
-	}
 	return d;
 }
 

@@ -14,7 +14,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var scrim := HudWidgets.panel(self, &"Scrim")
-	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
@@ -57,6 +57,30 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if k != null and k.pressed and k.keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
 		close()
+
+
+## A question before something that cannot wait for undo: yes runs `on_yes`, no or Escape only close.
+class Confirm:
+	extends HudDialog
+	var _text: String
+	var _on_yes: Callable
+
+	func _init(text: String, on_yes: Callable) -> void:
+		_text = text
+		_on_yes = on_yes
+
+	func fill() -> void:
+		var q := HudWidgets.label(column, &"BodyLabel", _text)
+		q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var row := HudWidgets.hbox(column, &"Pad")
+		var yes := HudWidgets.button(&"Primary", "", tr("ui.confirm.yes"), "", "cat_w", "opt_row_h")
+		yes.pressed.connect(func() -> void:
+			close()
+			_on_yes.call())
+		row.add_child(yes)
+		var no := HudWidgets.button(&"Ghost", "", tr("ui.confirm.no"), "", "cat_w", "opt_row_h")
+		no.pressed.connect(close)
+		row.add_child(no)
 
 
 ## The About dialog: the build stamp (game/flow/build_stamp.gd).

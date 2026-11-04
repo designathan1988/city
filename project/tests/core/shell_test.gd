@@ -37,7 +37,7 @@ func _ready() -> void:
 	_panels(hud)
 	await _session(rig)
 	print("FALHAS: ", failures)
-	GameFlow.quit_now()
+	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _gpu_tiers() -> void:
@@ -90,7 +90,8 @@ func _resolution() -> void:
 
 func _options(world: CityWorld, rig: CityCamera) -> void:
 	Settings.set_preset("ultra")
-	_check(world.environment.ssao_enabled and get_viewport().screen_space_aa == Viewport.SCREEN_SPACE_AA_SMAA, "ultra liga oclusão e SMAA")
+	var aa := Viewport.SCREEN_SPACE_AA_SMAA if QualityTier.has_smaa() else Viewport.SCREEN_SPACE_AA_DISABLED
+	_check(world.environment.ssao_enabled and get_viewport().screen_space_aa == aa, "ultra liga oclusão e SMAA onde ele existe")
 	Settings.set_preset("low")
 	_check(not world.sun.shadow_enabled and not world.environment.ssao_enabled, "baixa tira sombra e oclusão")
 	var names: Dictionary = CityStore.constants.render_layers
@@ -123,18 +124,21 @@ func _levels() -> void:
 func _session(rig: CityCamera) -> void:
 	CityStore.set_levels(2.0, 0.5, 1.55)
 	rig.jump(Vector3(100, 0, 50), 30.0, 50.0, 800.0)
-	CityStore.save_city()
+	CityStore.saves.save_city()
 	await CityStore.saved
-	var slot := CityStore.city_slot()
+	var slot := CityStore.saves.city_slot()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	rig.jump(Vector3.ZERO, 0.0, 50.0, 400.0)
-	_check(CityStore.load_game(slot).get("ok", false), "abriu a cidade salva")
+	_check(CityStore.saves.load_game(slot).get("ok", false), "abriu a cidade salva")
 	_check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "os níveis voltaram com a cidade")
 	_check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "a vista voltou com a cidade (%s)" % rig.focus)
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	_check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "save ilegível vai para a quarentena")
-	_check(FileAccess.file_exists("%s/%s/%s.%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR, slot, SaveSlots.EXT]), "guardado, nunca apagado")
-	DirAccess.remove_absolute("%s/%s/%s.%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR, slot, SaveSlots.EXT])
+	var aside := "%s/%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR]
+	var kept := Array(DirAccess.get_files_at(aside)).filter(func(f: String) -> bool: return f.begins_with(slot))
+	_check(kept.size() == 1, "guardado, nunca apagado")
+	for f: String in kept:
+		DirAccess.remove_absolute("%s/%s" % [aside, f])
 	DirAccess.remove_absolute(Session.path(slot))
 
 

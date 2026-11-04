@@ -18,9 +18,9 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_curtain = HudWidgets.panel(self, &"Surface")
-	_curtain.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var scrim := HudWidgets.panel(self, &"Scrim")
-	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)

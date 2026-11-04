@@ -36,9 +36,9 @@ func _open_last() -> bool:
 	var slot := SaveSlots.last()
 	if slot.is_empty() or GameFlow.tests_drive:
 		return false
-	if CityStore.load_game(slot).get("ok", false):
+	if CityStore.saves.load_game(slot).get("ok", false):
 		return true
-	CityStore.quarantine(slot)
+	CityStore.saves.quarantine(slot)
 	return false
 
 
@@ -57,7 +57,7 @@ func _title(hud: RoadcraftHud, saved: bool) -> void:
 func _on_title(action: String, hud: RoadcraftHud) -> void:
 	GameFlow.playing()
 	match action:
-		"new": hud.actions.menu("new_city")
+		"new": hud.actions.new_city("new_city")
 		"open": hud.open_popover("files")
 		"graphics", "about": hud.actions.menu(action)
 

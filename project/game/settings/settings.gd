@@ -22,6 +22,7 @@ var fullscreen := false
 var language := ""
 var switches: RenderSwitches
 var optimizations: Dictionary = {} # the Effects panel: option id -> value over the tier
+var layers: Dictionary = {} # what shows over the map: layer -> on
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -44,6 +45,7 @@ func _ready() -> void:
 	language = cfg.get_value(SECTION, "language", "")
 	switches = RenderSwitches.new(cfg.get_value(SECTION, "switches", {}))
 	optimizations = cfg.get_value(SECTION, "optimizations", {})
+	layers = cfg.get_value(SECTION, "layers", t.layers.duplicate())
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
 	level = hardware if preset == "auto" else preset
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
@@ -72,17 +74,38 @@ func _save() -> void:
 	cfg.set_value(SECTION, "language", language)
 	cfg.set_value(SECTION, "switches", switches.saved())
 	cfg.set_value(SECTION, "optimizations", optimizations)
+	cfg.set_value(SECTION, "layers", layers)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
 
 
 ## The tier in force, with the choices kept over it.
 func current() -> Dictionary:
-	var q := QualityTier.merged(DataTables.game("settings").tiers[level], kept)
-	for o: Dictionary in DataTables.game("optimizations").options:
+	var table: Dictionary = DataTables.game("optimizations")
+	var q: Dictionary = table.defaults.duplicate()
+	q.merge(QualityTier.merged(DataTables.game("settings").tiers[level], kept), true)
+	for o: Dictionary in table.options:
 		if optimizations.has(o.id):
-			q[o.field] = optimizations[o.id]
+			q[o.field] = q[o.field] * optimizations[o.id] if o.get("scale", false) else optimizations[o.id]
 	return q
+
+
+func layer_on(name: String) -> bool:
+	return layers.get(name, false)
+
+
+## A row of the Layers popover: the grid is the ground's, the others the core's overlays.
+func set_layer(name: String, on: bool) -> void:
+	layers[name] = on
+	_show_layer(name)
+	_save()
+
+
+func _show_layer(name: String) -> void:
+	if name == "grid":
+		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
+	else:
+		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
 
 
 ## The play scene's world and viewport: from now on every choice reaches them.
@@ -92,6 +115,8 @@ func attach(world: CityWorld, viewport: Viewport) -> void:
 	RenderingServer.viewport_set_measure_render_time(viewport.get_viewport_rid(), true)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	set_fullscreen(fullscreen)
+	for name: String in layers:
+		_show_layer(name)
 	apply_now()
 
 
@@ -169,8 +194,22 @@ func _budget_ms() -> float:
 	return MS_PER_S / fps
 
 
+## The detail cut-off: the camera crossing the tier's zoom, in either direction, redraws the mask; nothing else happens per frame.
+func _follow_zoom() -> void:
+	var rig := _viewport.get_camera_3d().get_parent() as CityCamera if _viewport.get_camera_3d() != null else null
+	if rig == null:
+		return
+	var far: bool = rig.px_per_m() < current().detail_cutoff_zoom
+	if far != switches.far:
+		switches.far = far
+		switches.apply(_world, _viewport, current())
+
+
 func _process(delta: float) -> void:
-	if _world == null or GameFlow.tests_drive:
+	if _world == null:
+		return
+	_follow_zoom()
+	if GameFlow.tests_drive:
 		return
 	var gpu := RenderingServer.viewport_get_measured_render_time_gpu(_viewport.get_viewport_rid())
 	var budget := _budget_ms()

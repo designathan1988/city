@@ -58,5 +58,13 @@
  "tilt_step_deg": 10,
  "compass_click_slop_px": 4,
  "compass_turn_px_per_rad": 83.3,
- "compass_tilt_px_per_rad": 166.7
+ "compass_tilt_px_per_rad": 166.7,
+ "pull_samples": 48,
+ "pull_wait_s": 0.35,
+ "pull_in_s": 0.12,
+ "pull_hold_s": 0.4,
+ "pull_out_s": 0.6,
+ "pull_full_half": 60,
+ "pull_none_half": 240,
+ "pinch_min_spread_px": 40
 }

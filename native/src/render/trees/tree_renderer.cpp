@@ -80,6 +80,19 @@ void TreeRenderer::reset() {
 	pending_ = 0;
 }
 
+int TreeRenderer::near_trees() const {
+	int n = 0;
+	for (const auto &[key, ch] : near_) n += ch.trees;
+	return n;
+}
+
+void TreeRenderer::set_share(float share) {
+	if (trees_.share.load() == share) return;
+	trees_.share.store(share);
+	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].dirty.insert(key);
+	for (const auto &[key, sp] : far_) tier_[TIER_FAR].dirty.insert(key);
+}
+
 void TreeRenderer::mark_dirty(int64_t key) {
 	tier_[TIER_NEAR].dirty.insert(key);
 	tier_[TIER_FAR].dirty.insert(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
@@ -115,6 +128,8 @@ void TreeRenderer::commit_near(Built &b) {
 	int n = kit_.count();
 	ch.body.resize(size_t(n));
 	ch.cards.resize(size_t(n));
+	ch.trees = 0;
+	for (const PackedFloat32Array &buf : b.bufs) ch.trees += int(buf.size() / MM_STRIDE);
 	AABB box = box_of(b.key, CHUNK);
 	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int i = 0; i < n; i++) {

@@ -112,6 +112,8 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	await ui.drawn()
 	_check(CityStore.snapshot.segments > s0, "Rotatória construída (%d -> %d)" % [s0, CityStore.snapshot.segments])
 	tools.preview.clear()
+	rig.jump(ring, 20.0, 50.0, 260.0)
+	await ui.drawn()
 	await ui.shot("feat_roundabout_2_construida")
 
 
@@ -132,9 +134,16 @@ func _relief(e: Vector3) -> void:
 	_check(h1 > h0 + 5.0, "relevo: chapada subiu %.1f -> %.1f m" % [h0, h1])
 	await ui.hover(hill + Vector3(-140, 0, 0))
 	await ui.shot("feat_terrain_1_chapada")
-	await ui.key(KEY_Z, true)
+	await ui.key(KEY_Z, true) # the raised hill beside it
 	await ui.drawn()
+	await ui.key(KEY_Z, true) # the mesa: two strokes, two undo steps
+	await ui.drawn()
+	var back := ui.ground(hill.x, hill.z).y
+	var drawn: float = hud.world.terrain.data.get_height(Vector3(hill.x, 0.0, hill.z))
+	_check(absf(back - h0) < 0.1, "relevo desfeito no núcleo: %.1f m (era %.1f)" % [back, h0])
+	_check(absf(drawn - h0) < 0.5, "relevo desfeito no Terrain3D: %.1f m (era %.1f)" % [drawn, h0])
 	await ui.shot("feat_terrain_2_desfeito")
+	await ui.key(KEY_Z, true, true)
 	await ui.key(KEY_Z, true, true)
 	await ui.drawn()
 
@@ -186,14 +195,14 @@ func _save_open() -> void:
 	await ui.frames(3)
 	var save_row := _row_with(tr("ui.menu.save"))
 	await ui.press(save_row)
-	while CityStore.save_busy(): # the save is written on the core's thread
+	while CityStore.saves.save_busy(): # the save is written on the core's thread
 		await ui.frames(1)
-	var slot := CityStore.city_slot() # the city's own slot (SaveSlots), given by this first save
-	_check(not slot.is_empty() and FileAccess.file_exists(CityStore.save_path(slot)) and not CityStore.snapshot.unsaved,
+	var slot := CityStore.saves.city_slot() # the city's own slot (SaveSlots), given by this first save
+	_check(not slot.is_empty() and FileAccess.file_exists(CityStore.saves.save_path(slot)) and not CityStore.snapshot.unsaved,
 		"Salvar gravou a cidade em %s" % slot)
 	var segs: int = CityStore.snapshot.segments
 	CityStore.new_map(TOWN_MAP, SEED + 1, false)
-	_check(CityStore.city_slot().is_empty(), "o mapa novo não herdou o slot da cidade salva")
+	_check(CityStore.saves.city_slot().is_empty(), "o mapa novo não herdou o slot da cidade salva")
 	await ui.drawn()
 	hud.open_popover("menu")
 	await ui.frames(3)
@@ -202,9 +211,9 @@ func _save_open() -> void:
 	await ui.shot("feat_save_1_abrir")
 	await ui.press(_row_with(slot + "  ·")) # the row of exactly that slot (hud_popover: "<slot>  ·  <date>")
 	await ui.drawn()
-	_check(CityStore.snapshot.segments == segs and CityStore.city_slot() == slot, "abriu a cidade salva (%d vias)" % segs)
+	_check(CityStore.snapshot.segments == segs and CityStore.saves.city_slot() == slot, "abriu a cidade salva (%d vias)" % segs)
 	await ui.shot("feat_save_2_aberto")
-	DirAccess.remove_absolute(CityStore.save_path(slot)) # the next run saves to the same name again
+	DirAccess.remove_absolute(CityStore.saves.save_path(slot)) # the next run saves to the same name again
 
 
 func _row_with(text: String) -> Button:

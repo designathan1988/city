@@ -181,6 +181,7 @@ void BuildingRenderer::drop_chunk(int64_t key) {
 }
 
 void BuildingRenderer::drop(Chunk &ch, Level level) {
+	if (level == LEVEL_NEAR) ch.occluder.clear();
 	for (int i = 0; i < SUB_COUNT; i++) {
 		if (level == LEVEL_NEAR) {
 			ch.near[size_t(i)].free();

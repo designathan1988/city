@@ -5,6 +5,7 @@ extends PanelContainer
 
 signal popover_pressed(which: String)
 signal history_pressed(action: String)
+signal impossible_pressed
 
 const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
 const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
@@ -17,6 +18,8 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 @onready var _speed_buttons: Array[Button] = []
 @onready var _sky_buttons: Array[Button] = []
 @onready var _history_buttons: Dictionary = {}
+@onready var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
+@onready var _warn: Button
 
 
 func _ready() -> void:
@@ -36,9 +39,13 @@ func _ready() -> void:
 		b.pressed.connect(set_sky.bind(s[2]))
 		sky.add_child(b)
 		_sky_buttons.append(b)
+		_tipped.append([b, s[1]])
 	_clock = HudWidgets.label(left, &"ClockLabel")
 	_money = HudWidgets.label(left, &"MoneyLabel")
-	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
+	_warn = HudWidgets.button(&"Chip", "warn", "", "", "", "seg_h")
+	_warn.pressed.connect(func() -> void: impossible_pressed.emit())
+	_warn.hide()
+	left.add_child(_warn)
 	_money.mouse_filter = Control.MOUSE_FILTER_PASS
 	_stats = HudWidgets.label(left, &"StatsLabel")
 	_stats.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -49,12 +56,14 @@ func _ready() -> void:
 		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
 		pill.add_child(b)
 		_speed_buttons.append(b)
+		_tipped.append([b, "sim.speed"])
 	var right := HudWidgets.hbox(row, &"Pad")
 	right.alignment = BoxContainer.ALIGNMENT_END
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for a in DataTables.ui("drawers").actions:
 		var b := HudWidgets.button(&"IconButton", a.icon, "", a.tip_key, "icon_btn", "icon_btn")
 		right.add_child(b)
+		_tipped.append([b, a.tip_key])
 		if a.has("popover"):
 			b.toggle_mode = true
 			b.pressed.connect(func() -> void: popover_pressed.emit(a.popover))
@@ -65,6 +74,15 @@ func _ready() -> void:
 		else:
 			HudWidgets.soon(b, a.tip_key)
 	CityStore.changed.connect(_on_changed)
+	relabel()
+
+
+## The texts that do not follow the numbers, in the language now.
+func relabel() -> void:
+	for t: Array in _tipped:
+		HudWidgets.tip_for(t[0], tr(t[1]))
+	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
+	_on_changed(CityStore.snapshot)
 
 
 func set_sky(mode: String) -> void:
@@ -72,6 +90,14 @@ func set_sky(mode: String) -> void:
 		_sky_buttons[i].set_pressed_no_signal(SKY[i][2] == mode)
 	if world:
 		world.set_sky_mode(mode)
+
+
+## Nodes that cannot be built: a warning with their count, hidden with none (the core keeps the list until the network changes).
+func _sync_impossible() -> void:
+	var n: int = CityStore.query(&"impossible_nodes").size()
+	_warn.visible = n > 0
+	_warn.text = str(n)
+	_warn.tooltip_text = Formatters.count_label("status.impossible", n)
 
 
 func _on_changed(s: Dictionary) -> void:
@@ -86,6 +112,7 @@ func _on_changed(s: Dictionary) -> void:
 	_stats.text = "%s · %s" % [Formatters.count_label("status.vehicles", s.vehicles), Formatters.count_label("status.people", s.people)]
 	_stats.tooltip_text = tr("ui.stats.tip").format({"residents": Formatters.format_int(s.residents),
 		"jobs": Formatters.format_int(s.jobs), "buildings": Formatters.format_int(s.buildings), "speed": "—"})
+	_sync_impossible()
 	for i in SPEEDS.size():
 		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
 	for action in _history_buttons:

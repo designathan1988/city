@@ -6,6 +6,8 @@ extends Node
 
 const KEPT_PATH := "user://health.json"
 const STATUS_ORDER := ["ok", "slow", "broken"]
+## The sections of the core's frame, as render_cost names them.
+const COST_PARTS := ["lock", "stream", "levels", "flush", "roads", "props", "buildings", "trees", "agents"]
 
 var entries: Array[Dictionary] = []
 var changes := 0
@@ -93,11 +95,32 @@ func _process(delta: float) -> void:
 		record(p.kind, p.severity, p.message, p.detail)
 	var ms := delta * MS_PER_S
 	if ms >= _cfg.long_frame_ms and GameFlow.state == GameFlow.State.PLAYING:
-		record("slow-frame", "slow", TranslationServer.translate("health.msg.slowFrameOutside"), "", int(ms))
+		_slow_frame(ms)
 	_since_save += delta
 	if _since_save >= _cfg.save_every_s:
 		_since_save = 0.0
 		_save()
+
+
+## A long frame, under the name of the section of the core that took most of it, the others over step_min_ms in the detail. With no
+## section to blame the time went outside the game's loop.
+func _slow_frame(ms: float) -> void:
+	var cost: Dictionary = CityStore.query(&"render_cost")
+	var top := ""
+	var most := 0.0
+	var steps := PackedStringArray()
+	for part: String in COST_PARTS:
+		var took := float(cost.get(part, 0.0))
+		if took > most:
+			top = part
+			most = took
+		if took >= _cfg.step_min_ms:
+			steps.append("%s %d ms" % [part, int(took)])
+	if top == "" or most < _cfg.step_min_ms:
+		record("slow-frame", "slow", TranslationServer.translate("health.msg.slowFrameOutside"), "", int(ms))
+		return
+	var message := TranslationServer.translate("health.msg.slowFrame").format({"what": top})
+	record("slow-frame", "slow", message, TranslationServer.translate("health.msg.steps").format({"list": " · ".join(steps)}), int(ms))
 
 
 func _save() -> void:

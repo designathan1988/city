@@ -18,7 +18,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY };
+	MONEY, MARKING };
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
@@ -85,6 +85,7 @@ void j_set_plain(CityState &s, int n, bool plain);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);
+void j_set_marking(CityState &s, int style);
 void j_set_zone(CityState &s, int seg, int side, int zone);
 int j_add_building(CityState &s, const Building &b);
 void j_remove_building(CityState &s, int id);

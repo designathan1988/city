@@ -74,7 +74,20 @@ static func _panel(name: StringName, sb: StyleBox) -> void:
 	_theme.set_stylebox(&"panel", name, sb)
 
 
+## A band from the panel's colour to nothing, `from_left` or the other way: over the end of a row with more in it.
+static func fade(from_left: bool) -> GradientTexture1D:
+	var solid := color("bg_solid")
+	var g := Gradient.new()
+	g.set_color(0, solid if from_left else Color(solid, 0.0))
+	g.set_color(1, Color(solid, 0.0) if from_left else solid)
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	return tex
+
+
 static func _panels() -> void:
+	_theme.set_type_variation(&"ScrollInset", &"MarginContainer")
+	_theme.set_constant(&"margin_right", &"ScrollInset", int(size("pad")))
 	var surface := box("bg", "radius", "line", true)
 	surface.set_content_margin_all(size("pad"))
 	_panel(&"Surface", surface)

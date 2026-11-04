@@ -22,3 +22,19 @@ static func light(strip: Node, picked: Variant) -> void:
 	for c in strip.get_children():
 		if c is Button and c.has_meta(&"pick"):
 			c.set_pressed_no_signal(c.get_meta(&"pick") == picked)
+
+
+## The zone of this use at this density; a use with one density has only that.
+static func zone_at(use: int, density: int) -> int:
+	for z: Dictionary in DataTables.catalog().zones.zones:
+		if int(z.base) == use and int(z.density) == density:
+			return int(z.code)
+	return use
+
+
+## The zone's base use, whatever density it was painted with.
+static func use_of(zone: int) -> int:
+	for z: Dictionary in DataTables.catalog().zones.zones:
+		if int(z.code) == zone:
+			return int(z.base)
+	return zone
