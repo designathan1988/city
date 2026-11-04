@@ -4,11 +4,13 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/roads/geometry.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -86,8 +88,8 @@ constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long coun
 constexpr float BOX_STOP_MS = 0.5f; // traffic_probe: a vehicle on a connector slower than this stands in the junction
 constexpr float BODIES_TOUCH_M = 0.45f; // traffic_probe: two walkers' centres closer than this overlap (two body radii)
 
-// Ground position of the signalled node with the most pedestrians at its kerbs or on its crosswalks (captures).
-Vector3 busy_crossing(const CityState &s) {
+// The signalled node with the most pedestrians at its kerbs or on its crosswalks (captures), -1 if none.
+int busy_node(const CityState &s) {
 	const TrafficState &t = s.traffic;
 	std::vector<int> count(t.g.junctions.size(), 0);
 	for (const Pedestrian &w : t.peds)
@@ -95,9 +97,38 @@ Vector3 busy_crossing(const CityState &s) {
 	int best = -1;
 	for (int n = 0; n < int(count.size()); n++)
 		if (t.g.junctions[n].ctl == Control::SIGNAL && (best < 0 || count[n] > count[best])) best = n;
-	if (best < 0) return Vector3();
-	const RoadNode &node = s.roads.nodes[best];
+	return best;
+}
+
+Vector3 node_ground(const CityState &s, int n) {
+	if (n < 0) return Vector3();
+	const RoadNode &node = s.roads.nodes[n];
 	return Vector3(float(node.x), float(node.y), float(node.z));
+}
+
+// The mouth of node n's first arm (captures): the kerb line on the arm's left (u = asph_left), level with the middle of
+// its crosswalk (catalog street_furniture.json crossing), the unit vector along the arm away from the node and the one
+// across it toward that kerb. Empty when there is no node.
+Array crossing_kerb(const CityState &s, int n) {
+	Array out;
+	if (n < 0 || s.roads.nodes[n].segs.empty()) return out;
+	const int sid = s.roads.nodes[n].segs[0];
+	const RoadSegment &g = s.roads.segs[sid];
+	const CrossingDef &x = s.catalog.furniture.crossing;
+	const bool at_a = g.a == n;
+	const double mid = (x.zebra_from_m + x.zebra_to_m) / 2, at = at_a ? g.retreat_a + mid : g.len - g.retreat_b - mid;
+	double t = t_at_length(g.table, at), px, pz, dx, dz;
+	g.q.at(t, px, pz);
+	g.q.deriv(t, dx, dz);
+	double l = std::hypot(dx, dz);
+	if (l == 0) l = 1;
+	const double away = at_a ? 1.0 : -1.0;
+	const Vector3 left(float(dz / l), 0, float(-dx / l));
+	const float u = s.catalog.profile(g.profile).asph_left;
+	out.push_back(Vector3(float(px), float(s.roads.seg_y(sid, at)), float(pz)) + left * u);
+	out.push_back(Vector3(float(away * dx / l), 0, float(away * dz / l)));
+	out.push_back(left);
+	return out;
 }
 
 // Walkers whose body overlaps another's (centres closer than BODIES_TOUCH_M): [walking, waiting at a kerb].
@@ -236,7 +267,9 @@ Dictionary CityCore::traffic_probe(int sample) {
 		}
 	}
 	d["signals"] = signals;
-	d["busy_crossing"] = busy_crossing(*state_); // the lit junction with the most people waiting or crossing
+	const int busy = busy_node(*state_);
+	d["busy_crossing"] = node_ground(*state_, busy); // the lit junction with the most people waiting or crossing
+	d["crossing_kerb"] = crossing_kerb(*state_, busy); // a dropped kerb of it: [kerb point, along the arm, across]
 	d["moving"] = moving;
 	d["waiting"] = waiting; // held more than WAITING_S
 	d["on_connectors"] = on_connectors;

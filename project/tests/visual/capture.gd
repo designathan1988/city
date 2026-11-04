@@ -21,6 +21,12 @@ const CAR_VIEW_AT := Vector3(0, 0.5, 0)
 ## Busiest lit junction for pedestrians (traffic_probe busy_crossing): oblique view and a closer one.
 const CROSSING_FROM := Vector3(-8, 42, 16)
 const CROSSING_NEAR_FROM := Vector3(-6, 22, 10)
+## Its dropped kerb (traffic_probe crossing_kerb) seen low along the kerb and from the carriageway in front. Offsets in
+## the kerb's frame: x across toward the footway, y up, z along the arm away from the junction.
+const KERB_ALONG_FROM := Vector3(-1.2, 1.0, 9)
+const KERB_ALONG_AT := Vector3(0, 0.1, -1.5)
+const KERB_FRONT_FROM := Vector3(-5, 1.6, 0)
+const KERB_FRONT_AT := Vector3(1, 0, 0)
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
@@ -140,6 +146,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 		await _shot("15_travessia", cross + CROSSING_FROM, cross)
 		await _shot("16_travessia_perto", cross + CROSSING_NEAR_FROM, cross)
+		await _kerb_shots(CityStore.query(&"traffic_probe", [0]).get("crossing_kerb", []))
 		await CaptureSignals.shots(self, cross, [DAY, NIGHT])
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
@@ -183,6 +190,18 @@ func _shot(name: String, from: Vector3, at: Vector3) -> void:
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
 	print("captura: ", path)
+
+
+## Two shots of the busy crossing's dropped kerb (traffic_probe crossing_kerb: [kerb point, along the arm, across]).
+func _kerb_shots(kerb: Array) -> void:
+	if kerb.is_empty():
+		return
+	var at: Vector3 = kerb[0]
+	var along: Vector3 = kerb[1]
+	var across: Vector3 = kerb[2]
+	var place := func(o: Vector3) -> Vector3: return at + across * o.x + Vector3.UP * o.y + along * o.z
+	await _shot("20_rebaixo", place.call(KERB_ALONG_FROM), place.call(KERB_ALONG_AT))
+	await _shot("20_rebaixo_frente", place.call(KERB_FRONT_FROM), place.call(KERB_FRONT_AT))
 
 
 ## Close look at the pedestrian nearest to `ground`, from ahead of it and a little to its side.
