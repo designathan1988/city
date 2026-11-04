@@ -51,11 +51,11 @@ Regras do processo:
 - Gates OK, DLLs de debug e de release compiladas, testes passando, capturas feitas; fotos de antes e depois comparadas; o mapa e as pendências do `CLAUDE.md` em dia.
 - Commits regulares, por tema, no seu branch `convert/<feature>`, cada um compilando sozinho; nenhum arquivo que só mudou o fim de linha (`git diff --ignore-cr-at-eol --stat`); sem push. A coordenadora verifica, empacota (`pack`), prova (`sandbox`) e integra.
 
-## 7. Paralelismo sem conflito
+## 7. Paralelismo
 
-- A coordenadora escolhe o lote de funcionalidades paralelas pelos `boundary.json` dos rastreamentos: duas filhas nunca têm o mesmo dono (`CityState`, o mesmo subsistema de `sim/` ou `render/`, o mesmo arquivo de `data/**`).
-- Arquivos compartilhados por natureza (`native/src/api/*`, `project/tests/**`, `tools/gates/**`, `CLAUDE.md`, `agents.json`, `materials.json`): cada filha edita só as próprias funções, linhas ou blocos; a coordenadora resolve os conflitos na integração.
-- Se a funcionalidade precisa de uma capacidade de outro dono que ainda não existe, a filha a escreve no dono certo, por inteiro, e diz no relatório que aquele dono mudou; a coordenadora confere a sobreposição antes de integrar.
+- Cada filha trabalha no seu clone, um ambiente separado: duas filhas podem mexer nos mesmos arquivos e nos mesmos donos ao mesmo tempo. O único limite é a carga da máquina (seção 5).
+- A coordenadora resolve os conflitos na integração.
+- Se a funcionalidade precisa de uma capacidade de outro dono que ainda não existe, a filha a escreve no dono certo, por inteiro, e diz no relatório que aquele dono mudou.
 
 ## 8. Entrega da filha
 

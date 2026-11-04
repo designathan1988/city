@@ -1,6 +1,6 @@
 # Fila do porte
 
-Base: `src/` do 4.0, Pendências de `fonte/CLAUDE.md` e `converter/out/features/`. Ordem por dependência; no máximo 3 filhas ao mesmo tempo, sem dois donos iguais. As filhas são sessões do app, uma por clone (o `claude -p` lançado do app responde "Not logged in").
+Base: `src/` do 4.0, Pendências de `fonte/CLAUDE.md` e `converter/out/features/`. Ordem por dependência; no máximo 3 filhas ao mesmo tempo, cada uma no seu clone; os lotes são só ordem, e conflito se resolve na integração. As filhas são sessões do app, uma por clone (o `claude -p` lançado do app responde "Not logged in").
 
 Estados: rastreada, em porte, entregue, verificada, integrada.
 
