@@ -4,6 +4,8 @@
 // down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
 #include "sim/traffic/traffic_system.h"
 
+#include "core/units.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -14,7 +16,6 @@ namespace {
 
 constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f, SAFE_PAD_M = 0.3f;
 constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, DRIFT_RATE = 0.1f, LC_DECAY = 1.f;
-constexpr float KMH_PER_MS = 3.6f;
 constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
 
 struct Lead {

@@ -2,6 +2,7 @@
 // (Shift, or a click on a junction) the roads inside the circle are cut and their ends become the ring's entries.
 // The ring is arcs of at most max_arc_deg between entry nodes, one-way anticlockwise with the ring profile; the ground
 // under it is a flat disc at the centre's height.
+#include "core/units.h"
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
 
@@ -17,7 +18,6 @@ namespace {
 constexpr int REFUSE_SAMPLES = 16, WATER_SAMPLES = 48, CROSS_SAMPLES = 32, BISECT_STEPS = 24, EMPTY_RING_NODES = 6;
 constexpr int VACANT_ARMS = 4;
 constexpr double WATER_CLEAR_M = 0.3, HALF = 0.5;
-constexpr float DEG = float(PI_D / 180);
 
 struct Hit {
 	int seg = -1;
@@ -105,7 +105,7 @@ void Builder::vacant() {
 // point lies on the bisector at radius / cos(span / 2).
 std::vector<int> Builder::ring_segments() {
 	std::sort(entries.begin(), entries.end(), [](const Entry &a, const Entry &b) { return a.angle < b.angle; });
-	double max_arc = s.catalog.tune.roundabout_max_arc_deg * DEG;
+	double max_arc = s.catalog.tune.roundabout_max_arc_deg * DEG_TO_RAD;
 	std::vector<Entry> filled;
 	auto add = [&](double a) { filled.push_back({ a, j_add_node(s, cx + std::cos(a) * radius, cz - std::sin(a) * radius, y) }); };
 	if (entries.empty())
