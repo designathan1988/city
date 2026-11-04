@@ -81,7 +81,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	w.put<double>(s.money);
 	w.put<uint8_t>(s.unlimited_money ? 1 : 0);
 	w.put<double>(s.clock.minutes.load());
-	w.put<double>(s.clock.day_shift);
+	w.put<double>(s.clock.day_shift.load());
 	write_terrain(w, s.terrain);
 	write_roads(w, s.roads);
 	write_buildings(w, s.buildings);

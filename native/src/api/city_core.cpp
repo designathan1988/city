@@ -110,6 +110,8 @@ void CityCore::set_speed(int speed) {
 
 int CityCore::get_speed() const { return int(sim_.speed()); }
 
+void CityCore::set_day_hour(double hour) { state_->clock.set_hour(hour); }
+
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
 	if (!render_ok_ || !state_->ready) {

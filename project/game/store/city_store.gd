@@ -9,7 +9,7 @@ signal command_failed(error_key: String)
 const SNAPSHOT_INTERVAL_S := 0.25
 ## Commands the UI/tools may send, with the CityCore method that executes each one.
 const COMMANDS := {
-	&"set_speed": "set_speed", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
+	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
 	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",

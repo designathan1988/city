@@ -30,6 +30,7 @@ public:
 	godot::Dictionary new_map(int map, int seed, bool with_city);
 	void mark_saved();
 	void set_speed(int speed);
+	void set_day_hour(double hour);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }

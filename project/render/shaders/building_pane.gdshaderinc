@@ -184,10 +184,11 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, ou
 	if (tiny < 1.0 && frame < 1.0) {
 		vec3 lo = vec3(-v_room0.r, -v_room1.r, 0.0) * ROOM_SPAN_M, hi = vec3(v_room0.g, v_room1.g, v_room0.b) * ROOM_SPAN_M;
 		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind), o, d, size, lot);
-		float cosv = clamp(ray.z / max(length(ray), 1e-4), 0.0, 1.0);
-		room *= 1.0 - (0.04 + 0.96 * pow(1.0 - cosv, 5.0)); // less of the room as the glass turns to a mirror (Schlick, F0 4 %)
 		seen = mix(room, PANE_MEAN_SEEN, tiny);
 	}
+	// Less of the room as the glass turns to a mirror (Schlick, F0 4 %): at every size, or a pane seen edge-on burns as a bright sliver.
+	float seen_cos = clamp(ray.z / max(length(ray), 1e-4), 0.0, 1.0);
+	seen *= 1.0 - (0.04 + 0.96 * pow(1.0 - seen_cos, 5.0));
 	float office = kind > 0.5 && kind < 1.5 ? 1.0 : 0.0, glass_k = dark ? 0.64 : 1.0;
 	float cosv = clamp(dot(-V, n), 0.0, 1.0);
 	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
@@ -237,5 +238,6 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, inout vec3 albedo
 	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 	float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, far_sub);
 	vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), far_sub);
-	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + PANE_MEAN_SEEN * room_daylight) * mix(1.0, 0.64, dark) + glass_reflection(V, n, F)) * glass;
+	float through = 1.0 - (0.04 + 0.96 * pow(1.0 - cosv, 5.0)); // what the glass lets out at this angle (Schlick, F0 4 %)
+	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + PANE_MEAN_SEEN * room_daylight) * through * mix(1.0, 0.64, dark) + glass_reflection(V, n, F)) * glass;
 }

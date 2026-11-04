@@ -78,6 +78,12 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 
+## The shot's hour: the light and the clock the top bar shows.
+func set_hour(hour: float) -> void:
+	world.set_hour(hour)
+	CityStore.dispatch(&"set_day_hour", [hour])
+
+
 func _boot_world() -> bool:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
@@ -91,6 +97,7 @@ func _boot_world() -> bool:
 		push_error("boot: %s" % errors)
 		return false
 	add_child(RoadcraftHud.new())
+	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
 	var report: Dictionary = CityStore.new_map(map, seed, true)
 	print("cidade: ", report)
 	_memory("cidade gerada")
@@ -116,7 +123,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		if not only.is_empty() and not only.has(v[0]):
 			continue
 		var h: float = v[3] if v.size() > 3 else DAY
-		world.set_hour(h)
+		set_hour(h)
 		if h != hour: # the sky's radiance (ambient and reflections) follows a new hour over several frames
 			hour = h
 			await _frames(_sky_frames())
