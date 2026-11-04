@@ -1,9 +1,11 @@
-// Syntactic facts of one unit that the classifier and the performance rules decide on: allocations inside loops
-// (per-tick garbage in the source, forbidden in the target's tick), numeric literals (candidates for named constants
-// or data keys), decision and loop counts, awaits, integer bit operations (JS int32 semantics the C++ must keep).
+// Syntactic facts of one unit that the audit and the conversion rules decide on: allocations inside loops, numeric
+// literals (candidates for named constants or data keys), decisions, loops, awaits, integer bit operations (JS int32
+// semantics the C++ must keep), methodology patterns, winnowing fingerprints and the ranges of nested units (code
+// that is not this unit's own).
 import type * as TS from 'typescript';
-import type { AllocationSite, NumericLiteral } from './ir.ts';
-import type { UnitRef } from './units.ts';
+import { tokenHash, winnow } from './fingerprint.ts';
+import type { AllocationSite, NumericLiteral, PatternSite, Range } from './ir.ts';
+import { startsUnit, type UnitRef } from './units.ts';
 import type { TypeScriptApi } from './typescript.ts';
 
 export interface SyntaxFacts {
@@ -15,6 +17,9 @@ export interface SyntaxFacts {
   readonly awaits: number;
   readonly bitOperations: number;
   readonly nondeterminism: string[];
+  readonly patterns: PatternSite[];
+  readonly fingerprints: [number, number][];
+  readonly nested: Range[];
 }
 
 /** Array methods whose function argument runs once per element: its body is a loop body. */
@@ -25,6 +30,13 @@ const ITERATION_METHODS = new Set([
 /** Calls that return a fresh array or string. */
 const COPYING_METHODS = new Set(['slice', 'map', 'filter', 'concat', 'flat', 'flatMap', 'toSorted', 'toReversed', 'split', 'join']);
 const TRIVIAL_NUMBERS = new Set(['0', '1', '-1', '2', '0.5']);
+/** WebGL calls that stall the calling thread until the GPU answers (MDN, WebGL best practices). */
+const SYNC_GPU_CALLS = new Set([
+  'readPixels', 'getError', 'getBufferSubData', 'checkFramebufferStatus', 'getParameter', 'getProgramParameter',
+  'getShaderParameter', 'getProgramInfoLog', 'getShaderInfoLog',
+]);
+/** Distance computations: inside a nested loop they are an all-pairs proximity search. */
+const DISTANCE_CALL = /(^|\.)(hypot|sqrt|distanceTo|distanceToSquared|distanceSq|distance)$/;
 
 function isLoop(ts: TypeScriptApi, n: TS.Node): boolean {
   return ts.isForStatement(n) || ts.isForOfStatement(n) || ts.isForInStatement(n) || ts.isWhileStatement(n) ||
@@ -70,19 +82,19 @@ function isDecision(ts: TypeScriptApi, n: TS.Node): boolean {
     n.questionDotToken !== undefined;
 }
 
-const BIT_OPERATORS = new Set<number>();
-
 function isBitOperation(ts: TypeScriptApi, n: TS.Node): boolean {
-  if (BIT_OPERATORS.size === 0) {
-    for (const k of [
-      ts.SyntaxKind.BarToken, ts.SyntaxKind.AmpersandToken, ts.SyntaxKind.CaretToken, ts.SyntaxKind.LessThanLessThanToken,
-      ts.SyntaxKind.GreaterThanGreaterThanToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ts.SyntaxKind.BarEqualsToken,
-      ts.SyntaxKind.AmpersandEqualsToken, ts.SyntaxKind.CaretEqualsToken, ts.SyntaxKind.LessThanLessThanEqualsToken,
-      ts.SyntaxKind.GreaterThanGreaterThanEqualsToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
-    ]) BIT_OPERATORS.add(k);
-  }
-  if (ts.isBinaryExpression(n)) return BIT_OPERATORS.has(n.operatorToken.kind);
-  return ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.TildeToken;
+  const k = ts.SyntaxKind;
+  if (ts.isPrefixUnaryExpression(n)) return n.operator === k.TildeToken;
+  if (!ts.isBinaryExpression(n)) return false;
+  const op = n.operatorToken.kind;
+  return op === k.BarToken || op === k.AmpersandToken || op === k.CaretToken || op === k.LessThanLessThanToken ||
+    op === k.GreaterThanGreaterThanToken || op === k.GreaterThanGreaterThanGreaterThanToken || op === k.BarEqualsToken ||
+    op === k.AmpersandEqualsToken || op === k.CaretEqualsToken || op === k.LessThanLessThanEqualsToken ||
+    op === k.GreaterThanGreaterThanEqualsToken || op === k.GreaterThanGreaterThanGreaterThanEqualsToken;
+}
+
+function calledName(ts: TypeScriptApi, n: TS.CallExpression): string | null {
+  return ts.isPropertyAccessExpression(n.expression) ? n.expression.name.text : ts.isIdentifier(n.expression) ? n.expression.text : null;
 }
 
 /** The nodes a unit owns: a class head owns its name and heritage only (fields and methods are units). */
@@ -93,33 +105,82 @@ function ownedRoots(ts: TypeScriptApi, ref: UnitRef): TS.Node[] {
 
 export function syntaxFacts(ts: TypeScriptApi, ref: UnitRef): SyntaxFacts {
   const sf = ref.node.getSourceFile();
-  const line = (n: TS.Node): number => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+  const root = ref.node;
+  const position = (pos: number): { line: number; column: number } => {
+    const lc = sf.getLineAndCharacterOfPosition(pos);
+    return { line: lc.line + 1, column: lc.character + 1 };
+  };
+  const line = (n: TS.Node): number => position(n.getStart(sf)).line;
   const facts = {
     loopAllocations: [] as AllocationSite[], numericLiterals: [] as NumericLiteral[], stringLiterals: 0, decisions: 0,
-    loops: 0, awaits: 0, bitOperations: 0, nondeterminism: [] as string[],
+    loops: 0, awaits: 0, bitOperations: 0, nondeterminism: [] as string[], patterns: [] as PatternSite[], nested: [] as Range[],
+  };
+  const isOwnNested = (n: TS.Node): boolean => n !== root && startsUnit(ts, n);
+  const containsDistance = (n: TS.Node): boolean => {
+    let found = false;
+    const scan = (m: TS.Node): void => {
+      if (found || isOwnNested(m)) return;
+      if (ts.isCallExpression(m) && DISTANCE_CALL.test(m.expression.getText())) found = true;
+      else ts.forEachChild(m, scan);
+    };
+    ts.forEachChild(n, scan);
+    return found;
   };
   const visit = (n: TS.Node, loopDepth: number): void => {
+    if (isOwnNested(n)) {
+      facts.nested.push({ start: position(n.getStart(sf)), end: position(n.end) });
+      return;
+    }
     let depth = loopDepth;
-    if (isLoop(ts, n)) { facts.loops++; depth++; }
+    if (isLoop(ts, n)) {
+      facts.loops++;
+      if (loopDepth > 0 && containsDistance(n)) facts.patterns.push({ id: 'quadratic-proximity', line: line(n), detail: 'distance computed in a nested loop' });
+      depth++;
+    }
     if (isIterationCallback(ts, n)) { facts.loops++; depth++; }
     if (isDecision(ts, n)) facts.decisions++;
     if (isBitOperation(ts, n)) facts.bitOperations++;
     if (ts.isAwaitExpression(n) || (ts.isForOfStatement(n) && n.awaitModifier)) facts.awaits++;
     if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) facts.stringLiterals++;
-    if (ts.isNewExpression(n) && n.expression.getText() === 'Date' && (n.arguments?.length ?? 0) === 0) {
-      facts.nondeterminism.push('es:new Date()');
+    if (ts.isDeleteExpression(n)) facts.patterns.push({ id: 'object-delete', line: line(n), detail: n.getText().slice(0, 80) });
+    if ((ts.isNewExpression(n) || ts.isCallExpression(n)) && n.expression.getText() === 'Array' && n.arguments?.length === 1) {
+      facts.patterns.push({ id: 'holey-array', line: line(n), detail: n.getText().slice(0, 80) });
+    }
+    if (ts.isNewExpression(n) && n.expression.getText() === 'Date' && (n.arguments?.length ?? 0) === 0) facts.nondeterminism.push('es:new Date()');
+    if (ts.isCallExpression(n)) {
+      const name = calledName(ts, n);
+      if (name === 'shift' && n.arguments.length === 0 && loopDepth > 0) facts.patterns.push({ id: 'queue-shift', line: line(n), detail: n.getText().slice(0, 80) });
+      if (name !== null && SYNC_GPU_CALLS.has(name) && ts.isPropertyAccessExpression(n.expression)) facts.patterns.push({ id: 'sync-gpu-readback', line: line(n), detail: name });
+      if (name === 'postMessage' && n.arguments.length === 1) facts.patterns.push({ id: 'worker-copy', line: line(n), detail: n.getText().slice(0, 80) });
     }
     if (loopDepth > 0) {
       const what = allocationOf(ts, n);
       if (what) facts.loopAllocations.push({ line: line(n), what });
     }
     if (ts.isNumericLiteral(n)) {
-      const negative = n.parent && ts.isPrefixUnaryExpression(n.parent) && n.parent.operator === ts.SyntaxKind.MinusToken;
+      const negative = n.parent !== undefined && ts.isPrefixUnaryExpression(n.parent) && n.parent.operator === ts.SyntaxKind.MinusToken;
       const text = (negative ? '-' : '') + n.text;
       facts.numericLiterals.push({ text, line: line(n), context: literalContext(ts, negative ? n.parent : n), trivial: TRIVIAL_NUMBERS.has(text) });
     }
     ts.forEachChild(n, (child) => visit(child, depth));
   };
-  for (const root of ownedRoots(ts, ref)) visit(root, 0);
-  return facts;
+  const hashes: number[] = [];
+  const tokenLines: number[] = [];
+  const tokens = (n: TS.Node): void => {
+    if (isOwnNested(n) || (n.kind >= ts.SyntaxKind.FirstJSDocNode && n.kind <= ts.SyntaxKind.LastJSDocNode)) return;
+    const children = n.getChildren(sf);
+    if (children.length === 0) {
+      if (n.kind !== ts.SyntaxKind.EndOfFileToken) {
+        hashes.push(tokenHash(n.getText(sf)));
+        tokenLines.push(line(n));
+      }
+      return;
+    }
+    for (const child of children) tokens(child);
+  };
+  for (const owned of ownedRoots(ts, ref)) {
+    visit(owned, 0);
+    tokens(owned);
+  }
+  return { ...facts, fingerprints: winnow(hashes, tokenLines) };
 }

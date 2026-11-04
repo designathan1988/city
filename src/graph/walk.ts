@@ -8,10 +8,10 @@ import type * as TS from 'typescript';
 import { normalizePath } from '../common/paths.ts';
 import type { ModuleLoad } from './ir.ts';
 import { containerName, declarationName, externalKey, isNondeterministic, moduleOf } from './origin.ts';
-import { referenceKinds } from './references.ts';
+import { isModuleLevelVariable, referenceKinds } from './references.ts';
 import type { Registry } from './registry.ts';
 import type { SourceProgram } from './typescript.ts';
-import { statementUnits, unitOf, type UnitRef } from './units.ts';
+import { startsUnit, statementUnits, unitKey, unitOf, type UnitRef } from './units.ts';
 
 interface Targets {
   readonly implementations: UnitRef[];
@@ -25,11 +25,14 @@ export class Walker {
   readonly #registry: Registry;
   readonly #inScope: (file: string) => boolean;
   readonly #targets = new Map<TS.Declaration, Targets>();
+  /** Whole-scope mode registers every unit met; entry mode only what is used. */
+  readonly #wholeScope: boolean;
 
-  constructor(sp: SourceProgram, registry: Registry, inScope: (file: string) => boolean) {
+  constructor(sp: SourceProgram, registry: Registry, inScope: (file: string) => boolean, wholeScope: boolean) {
     this.#sp = sp;
     this.#registry = registry;
     this.#inScope = inScope;
+    this.#wholeScope = wholeScope;
   }
 
   walk(key: string): void {
@@ -37,7 +40,12 @@ export class Walker {
     const unit = this.#registry.units.get(key)!;
     const root = unit.ref.node;
     const visit = (n: TS.Node): void => {
-      if (ts.isIdentifier(n) || ts.isPrivateIdentifier(n)) this.#identifier(key, root, n);
+      // A nested unit or class member inside this unit is a unit of its own: its code is not this unit's.
+      if (n !== root && startsUnit(ts, n)) {
+        if (this.#wholeScope) this.#registry.add({ node: n, head: false }, null, null);
+        return;
+      }
+      if (ts.isIdentifier(n) || ts.isPrivateIdentifier(n)) this.#identifier(key, n);
       if (this.#isWorkerConstruction(n) || (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword)) {
         const specifier = this.#firstString(n);
         if (specifier !== null) this.#loadModule(key, root.getSourceFile().fileName, specifier, ts.isCallExpression(n) ? 'dynamicImport' : 'worker');
@@ -59,7 +67,7 @@ export class Walker {
     visit(root);
   }
 
-  #identifier(key: string, root: TS.Node, n: TS.Identifier | TS.PrivateIdentifier): void {
+  #identifier(key: string, n: TS.Identifier | TS.PrivateIdentifier): void {
     const { ts, checker } = this.#sp;
     let symbol = checker.getSymbolAtLocation(n);
     if (n.parent && ts.isShorthandPropertyAssignment(n.parent) && n.parent.name === n) {
@@ -76,21 +84,32 @@ export class Walker {
         return;
       }
     }
-    const sf = root.getSourceFile();
     let externalDone = false;
-    for (const d of declarations) {
-      const dsf = d.getSourceFile();
-      if (!this.#inScope(dsf.fileName)) {
+    for (const declaration of declarations) {
+      const d = this.#valueDeclaration(declaration);
+      if (!this.#inScope(d.getSourceFile().fileName)) {
         if (!externalDone) this.#external(key, n, d, symbol.name);
         externalDone = true;
         continue;
       }
-      if (dsf === sf && d.getStart(dsf) >= root.getStart(sf) && d.end <= root.end) continue; // local to the unit
       const target = unitOf(ts, d);
-      if (!target) continue;
-      for (const kind of referenceKinds(ts, n, d)) this.#registry.add(target, key, kind);
+      if (!target || unitKey(target) === key) continue; // code local to this unit
+      // A variable or parameter of an enclosing unit, used here: closure state the enclosing unit owns.
+      const captured = (ts.isVariableDeclaration(d) || ts.isParameter(d)) && !isModuleLevelVariable(ts, d) &&
+        target.node !== d.parent?.parent;
+      for (const kind of referenceKinds(ts, n, d, captured)) this.#registry.add(target, key, kind);
       this.#followDynamicDispatch(key, d);
     }
+  }
+
+  /** `{ add }` and `{ add: add }` stand for the function `add` itself, not for the object literal's member. */
+  #valueDeclaration(d: TS.Declaration): TS.Declaration {
+    const { ts, checker } = this.#sp;
+    let symbol: TS.Symbol | undefined;
+    if (ts.isShorthandPropertyAssignment(d)) symbol = checker.getShorthandAssignmentValueSymbol(d);
+    else if (ts.isPropertyAssignment(d) && ts.isIdentifier(d.initializer)) symbol = checker.getSymbolAtLocation(d.initializer);
+    if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+    return symbol?.declarations?.[0] ?? d;
   }
 
   #followDynamicDispatch(key: string, d: TS.Declaration): void {

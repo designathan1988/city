@@ -57,6 +57,13 @@ function stateAccess(ts: TypeScriptApi, expr: TS.Node): EdgeKind[] {
   return ['read'];
 }
 
+export function isModuleLevelVariable(ts: TypeScriptApi, decl: TS.Declaration): boolean {
+  if (!ts.isVariableDeclaration(decl)) return false;
+  const statement = decl.parent?.parent;
+  return statement !== undefined && ts.isVariableStatement(statement) && statement.parent !== undefined &&
+    (ts.isSourceFile(statement.parent) || ts.isModuleBlock(statement.parent));
+}
+
 /** Declarations whose value is state: fields, module-level variables and members of object literals. */
 function isStateDeclaration(ts: TypeScriptApi, decl: TS.Declaration): boolean {
   if (ts.isPropertyDeclaration(decl) || ts.isPropertySignature(decl) || ts.isPropertyAssignment(decl) ||
@@ -64,12 +71,7 @@ function isStateDeclaration(ts: TypeScriptApi, decl: TS.Declaration): boolean {
     return true;
   }
   if (ts.isParameter(decl)) return ts.getCombinedModifierFlags(decl) !== ts.ModifierFlags.None; // parameter property
-  if (ts.isVariableDeclaration(decl)) {
-    const statement = decl.parent?.parent;
-    return statement !== undefined && ts.isVariableStatement(statement) && statement.parent !== undefined &&
-      (ts.isSourceFile(statement.parent) || ts.isModuleBlock(statement.parent));
-  }
-  return false;
+  return isModuleLevelVariable(ts, decl);
 }
 
 function heritage(ts: TypeScriptApi, id: TS.Node): EdgeKind | null {
@@ -92,7 +94,13 @@ function inTypePosition(ts: TypeScriptApi, id: TS.Node): boolean {
   return false;
 }
 
-export function referenceKinds(ts: TypeScriptApi, id: TS.Identifier | TS.PrivateIdentifier, decl: TS.Declaration): EdgeKind[] {
+/** `captured`: a variable or parameter of an enclosing unit (a factory's closure state) used from a nested unit. */
+export function referenceKinds(
+  ts: TypeScriptApi,
+  id: TS.Identifier | TS.PrivateIdentifier,
+  decl: TS.Declaration,
+  captured = false,
+): EdgeKind[] {
   const inherited = heritage(ts, id);
   if (inherited) return [inherited];
   if (inTypePosition(ts, id)) return ['typeRef'];
@@ -107,7 +115,7 @@ export function referenceKinds(ts: TypeScriptApi, id: TS.Identifier | TS.Private
   if (user && ts.isDecorator(user)) return ['call'];
   // Reading a getter or assigning a setter runs it.
   if (ts.isGetAccessorDeclaration(decl) || ts.isSetAccessorDeclaration(decl)) return ['call'];
-  if (isStateDeclaration(ts, decl)) return stateAccess(ts, expr);
+  if (captured || isStateDeclaration(ts, decl)) return stateAccess(ts, expr);
   return ['reference'];
 }
 

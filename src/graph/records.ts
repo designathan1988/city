@@ -66,6 +66,7 @@ export function unitRecord(sp: SourceProgram, registry: Registry, unit: Unit, re
     exported: hasModifier(sp, owner, ts.SyntaxKind.ExportKeyword),
     signature: signatureOf(sp, unit),
     parent: unit.parentKey ? registry.units.get(unit.parentKey)!.id : null,
+    nested: syntax.nested,
     facts: {
       external: externalUses(registry, unit.key),
       nondeterminism,
@@ -79,6 +80,8 @@ export function unitRecord(sp: SourceProgram, registry: Registry, unit: Unit, re
       isStatic: hasModifier(sp, n, ts.SyntaxKind.StaticKeyword),
       callable: isCallable(sp, unit),
       mutableModuleState: isMutableModuleVariable(ts, n),
+      patterns: syntax.patterns,
+      fingerprints: syntax.fingerprints,
     },
   };
 }

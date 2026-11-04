@@ -3,7 +3,7 @@
 import type * as TS from 'typescript';
 import { normalizePath, relativePath } from '../common/paths.ts';
 import type { EdgeKind } from './ir.ts';
-import { headOf, kindOf, nameOf, unitKey, type UnitRef } from './units.ts';
+import { kindOf, nameOf, ownerOf, unitKey, type UnitRef } from './units.ts';
 import type { TypeScriptApi } from './typescript.ts';
 
 export interface Unit {
@@ -33,18 +33,18 @@ export class Registry {
     this.#root = root;
   }
 
-  /** Registers the unit (and its class head) if new; records the edge from `from` when given. Returns its key. */
+  /** Registers the unit (and its owner) if new; records the edge from `from` when given. Returns its key. */
   add(ref: UnitRef, from: string | null, kind: EdgeKind | null): string {
     const key = unitKey(ref);
     if (from !== null && kind !== null && from !== key) this.edge(from, key, kind);
     if (this.units.has(key)) return key;
-    const head = headOf(this.#ts, ref);
-    const parentKey = head ? unitKey(head) : null;
+    const owner = ownerOf(this.#ts, ref);
+    const parentKey = owner ? unitKey(owner) : null;
     const file = normalizePath(ref.node.getSourceFile().fileName);
     const name = nameOf(this.#ts, ref);
     this.units.set(key, { key, id: this.#uniqueId(ref, file, name), ref, file, name, kind: kindOf(this.#ts, ref), parentKey });
     this.queue.push(key);
-    if (head) this.add(head, null, null);
+    if (owner) this.add(owner, null, null);
     return key;
   }
 

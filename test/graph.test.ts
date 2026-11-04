@@ -92,6 +92,55 @@ describe('graph from an entry', () => {
   });
 });
 
+describe('factories', () => {
+  const ir = graph(['src/main.ts:start']);
+
+  it('makes each inner function a unit, so one use does not pull the whole factory', () => {
+    const ids = new Set(ir.units.map((u) => u.id));
+    assert.ok(ids.has('src/factory.ts#createCounter.add'));
+    assert.ok(!ids.has('src/factory.ts#createCounter.unused'), 'an inner function nobody uses stays out');
+    assert.deepEqual(kinds(ir, 'src/main.ts#start', 'src/factory.ts#createCounter.add'), ['call']);
+    assert.equal(unit(ir, 'src/factory.ts#createCounter.add').parent, 'src/factory.ts#createCounter');
+  });
+
+  it('turns captured closure state into reads and writes of the factory', () => {
+    assert.deepEqual(kinds(ir, 'src/factory.ts#createCounter.add', 'src/factory.ts#createCounter'), ['read', 'write']);
+  });
+
+  it('keeps nested code out of the factory\'s own facts and marks its ranges', () => {
+    const factory = unit(ir, 'src/factory.ts#createCounter');
+    assert.equal(factory.nested.length, 4); // add, reset, unused, read()
+    assert.equal(factory.facts.numericLiterals.some((l) => l.text === '99'), false);
+  });
+
+  it('names the methods of the returned object after their factory', () => {
+    const whole = graph([]);
+    assert.ok(whole.units.some((u) => u.id === 'src/factory.ts#createCounter.read' && u.kind === 'method'));
+    assert.ok(whole.units.some((u) => u.id === 'src/factory.ts#createCounter.unused'));
+  });
+});
+
+describe('patterns and fingerprints', () => {
+  const ir = graph([]);
+  const patterns = (id: string): string[] => unit(ir, id).facts.patterns.map((p) => p.id);
+
+  it('finds each methodology pattern where it is', () => {
+    assert.deepEqual(patterns('src/patterns.ts#drain'), ['queue-shift']);
+    assert.deepEqual(patterns('src/patterns.ts#forget'), ['object-delete']);
+    assert.deepEqual(patterns('src/patterns.ts#sized'), ['holey-array']);
+    assert.deepEqual(patterns('src/patterns.ts#nearest'), ['quadratic-proximity']);
+    assert.deepEqual(patterns('src/patterns.ts#send'), ['worker-copy']);
+  });
+
+  it('gives identical code identical fingerprints and different code none in common', () => {
+    const a = new Set(unit(ir, 'src/dupA.ts#blendA').facts.fingerprints.map(([h]) => h));
+    const b = unit(ir, 'src/dupB.ts#blendB').facts.fingerprints.map(([h]) => h);
+    assert.ok(a.size > 0 && b.some((h) => a.has(h)), 'the duplicated body shares fingerprints');
+    const other = unit(ir, 'src/patterns.ts#nearest').facts.fingerprints.map(([h]) => h);
+    assert.ok(!other.some((h) => a.has(h)));
+  });
+});
+
 describe('graph of the whole scope', () => {
   it('holds every declaration and is byte-identical across runs', () => {
     const first = graph([]);

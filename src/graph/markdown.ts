@@ -46,13 +46,20 @@ function code(ir: GraphIR): string[] {
   for (const [file, units] of [...byFile].sort(([a], [b]) => a.localeCompare(b))) {
     const lines = fs.readFileSync(path.join(ir.sourceRoot, file), 'utf8').split(/\r?\n/);
     out.push(`### ${file}`, '', '```ts');
-    let printedUpTo = 0;
     for (const unit of [...units].sort((a, b) => a.start.line - b.start.line)) {
-      if (unit.start.line <= printedUpTo && unit.kind !== 'class') continue; // nested in a unit already printed
       // A class head prints its declaration line(s) only; its members are units of their own.
       const last = unit.kind === 'class' ? Math.max(unit.start.line, (firstMemberLine.get(unit.id) ?? unit.end.line) - 1) : unit.end.line;
-      out.push(`// line ${unit.start.line}`, ...lines.slice(unit.start.line - 1, last), '');
-      if (unit.kind !== 'class') printedUpTo = Math.max(printedUpTo, last);
+      out.push(`// line ${unit.start.line}`);
+      for (let n = unit.start.line; n <= last; n++) {
+        // Nested units are printed as units of their own (when used); here they are only marked.
+        const nested = unit.nested.find((r) => n >= r.start.line && n <= r.end.line);
+        if (nested) {
+          if (n === nested.start.line) out.push(`  // ... nested unit at line ${n}: ${lines[n - 1]!.trim().slice(0, 60)}`);
+          continue;
+        }
+        out.push(lines[n - 1]!);
+      }
+      out.push('');
     }
     out.push('```', '');
   }

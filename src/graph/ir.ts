@@ -1,7 +1,7 @@
 // The intermediate representation every later stage reads: the source's declarations ("units"), the typed edges
 // between them, the external APIs they touch and the per-unit facts the classifier and the rule catalog decide on.
 
-export const IR_VERSION = 1;
+export const IR_VERSION = 2;
 
 export type UnitKind =
   | 'class'
@@ -55,6 +55,18 @@ export interface AllocationSite {
   readonly what: string;
 }
 
+export interface Range {
+  readonly start: Position;
+  readonly end: Position;
+}
+
+/** A methodology pattern found in the code; the audit catalog says why it is wrong and what to use instead. */
+export interface PatternSite {
+  readonly id: 'queue-shift' | 'object-delete' | 'holey-array' | 'quadratic-proximity' | 'sync-gpu-readback' | 'worker-copy';
+  readonly line: number;
+  readonly detail: string;
+}
+
 export interface NumericLiteral {
   readonly text: string;
   readonly line: number;
@@ -75,6 +87,9 @@ export interface UnitFacts {
   readonly isStatic: boolean;
   readonly callable: boolean;
   readonly mutableModuleState: boolean;
+  readonly patterns: PatternSite[];
+  /** Winnowing fingerprints of the unit's own tokens: [hash, line]. */
+  readonly fingerprints: [number, number][];
 }
 
 export interface UnitRecord {
@@ -87,7 +102,10 @@ export interface UnitRecord {
   readonly lines: number;
   readonly exported: boolean;
   readonly signature: string;
+  /** The class head of a member, or the enclosing function of a nested unit. */
   readonly parent: string | null;
+  /** Ranges inside this unit that belong to nested units (used or not), so its own code can be told apart. */
+  readonly nested: Range[];
   readonly facts: UnitFacts;
 }
 
@@ -121,6 +139,7 @@ export interface GraphIR {
   readonly entries: readonly string[];
   readonly include: readonly string[];
   readonly exclude: readonly string[];
+  readonly files: { readonly path: string; readonly lines: number }[];
   readonly units: UnitRecord[];
   readonly edges: EdgeRecord[];
   readonly moduleLoads: ModuleLoad[];

@@ -35,7 +35,7 @@ export function buildGraph(options: GraphOptions): GraphIR {
     return include.some((d) => isInside(d, normal)) && !exclude.some((d) => isInside(d, normal));
   };
   const registry = new Registry(ts, root);
-  const walker = new Walker(sp, registry, inScope);
+  const walker = new Walker(sp, registry, inScope, options.entries.length === 0);
   if (options.entries.length > 0) {
     for (const entry of options.entries) addEntry(sp, registry, root, entry);
   } else {
@@ -48,8 +48,10 @@ export function buildGraph(options: GraphOptions): GraphIR {
   const units = [...registry.units.values()]
     .map((unit) => unitRecord(sp, registry, unit, relativePath(root, unit.file)))
     .sort((a, b) => a.id.localeCompare(b.id));
-  const files = new Set([...registry.units.values()].map((unit) => unit.file));
-  const lines = [...files].reduce((sum, file) => sum + (sp.sourceFile(file)?.getLineStarts().length ?? 0), 0);
+  const files = [...new Set([...registry.units.values()].map((unit) => unit.file))]
+    .map((file) => ({ path: relativePath(root, file), lines: sp.sourceFile(file)?.getLineStarts().length ?? 0 }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+  const lines = files.reduce((sum, file) => sum + file.lines, 0);
   const edges = edgeRecords(registry);
   return {
     version: IR_VERSION,
@@ -59,6 +61,7 @@ export function buildGraph(options: GraphOptions): GraphIR {
     entries: [...options.entries],
     include: include.map((d) => relativePath(root, d)),
     exclude: exclude.map((d) => relativePath(root, d)),
+    files,
     units,
     edges,
     moduleLoads: [...walker.moduleLoads].sort((a, b) => a.from.localeCompare(b.from) || a.specifier.localeCompare(b.specifier)),
@@ -66,7 +69,7 @@ export function buildGraph(options: GraphOptions): GraphIR {
     unresolvedModules: walker.unresolvedModules
       .map((u) => ({ from: registry.units.get(u.from)!.id, specifier: u.specifier }))
       .sort((a, b) => a.from.localeCompare(b.from) || a.specifier.localeCompare(b.specifier)),
-    stats: { files: files.size, units: units.length, edges: edges.length, lines, milliseconds: Math.round(performance.now() - started) },
+    stats: { files: files.length, units: units.length, edges: edges.length, lines, milliseconds: Math.round(performance.now() - started) },
   };
 }
 
