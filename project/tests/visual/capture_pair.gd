@@ -8,7 +8,6 @@ const SEED := 7
 const DAY_HOUR := 16.0
 const RIGHT_ANGLE := 90.0
 const PAIR_LINES := 900.0 # the 4.0's zoom is pixels a metre, on the lines of its photos
-const ZONE_OF := {"residential": 1, "commercial": 2, "industrial": 3}
 
 var out_dir := "user://captures"
 var views_file := ""
@@ -64,7 +63,7 @@ func _lay_buildings() -> void:
 			continue
 		var turn: float = doc.get("rotation", 0.0)
 		var front: Vector2 = Vector2(made.front).rotated(turn) + Vector2(doc.x, doc.y)
-		var done: Dictionary = CityStore.dispatch(&"place_model", [made.bytes, front.x, -front.y, turn, made.function, ZONE_OF[doc.use]])
+		var done: Dictionary = CityStore.dispatch(&"place_model", [made.bytes, front.x, -front.y, turn, made.function, made.zone])
 		if done.get("ok", false):
 			placed += 1
 		else:

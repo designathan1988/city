@@ -99,6 +99,11 @@ static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
 
 
+## A project of data/lots: {name, use, density, savedAt, body}, read when asked.
+static func lot(name: String) -> Dictionary:
+	return _read("res://data/lots/%s.json" % name)
+
+
 static func ui(name: String) -> Dictionary:
 	var table: Dictionary = _read(UI[name])
 	if name == "land_panels" and not table.has("ELEMENTS"):

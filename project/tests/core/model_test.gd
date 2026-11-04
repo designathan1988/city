@@ -4,6 +4,7 @@
 ## Run: godot --path project res://tests/core/model_test.tscn -- --no-flow
 extends Node3D
 
+const SIZE_REFUSED := "building.problem.size"
 const TOWN_MAP := 0
 const SEED := 1
 const SNAP_ROAD := 2
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_snap_and_refuse(road)
 	_place_undo_redo(tools.active, road)
 	_weld(road)
+	_lots()
 	_library()
 	await _picture(tools)
 	print("FALHAS: ", failures)
@@ -121,6 +123,18 @@ func _weld(road: Vector3) -> void:
 	var again: Dictionary = CityStore.query(&"body_info", [r.get("placed", -1)])
 	_check(again.is_empty() or again.get("digest", 0) != info.digest, "desfazer separa os dois")
 	_check(house.size() > 0, "a casa segue no catálogo")
+
+
+## Every project of data/lots reads into a body the core would place, with a name on the shelf.
+func _lots() -> void:
+	var lots := ModelLibrary.lots()
+	_check(lots.size() == DataTables.ui("builder").lots.size(), "todos os lotes viram corpo (%d)" % lots.size())
+	var named := 0
+	for lot: Dictionary in lots:
+		named += 1 if tr("builder.lot.%s" % lot.name) != "builder.lot.%s" % lot.name else 0
+		var why: String = CityStore.query(&"place_check", [lot.bytes, 0.0, 0.0, 0.0])
+		_check(why != SIZE_REFUSED, "lote %s cabe nas regras" % lot.name)
+	_check(named == lots.size(), "todos os lotes têm nome")
 
 
 func _library() -> void:

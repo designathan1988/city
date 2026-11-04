@@ -1,8 +1,9 @@
-// A name in a data table or a document and what it stands for; the functions of a building, as models.json and the documents write
-// them. A home's function is its kind's business: FN_NONE.
+// A name in a data table or a document and what it stands for; the functions and uses of a building, as models.json and the documents
+// write them. A home's function is its kind's business: FN_NONE.
 #pragma once
 
 #include "sim/buildings/building_store.h"
+#include "sim/citygen/road_gen.h"
 
 namespace city {
 
@@ -19,5 +20,7 @@ constexpr Named FUNCTION_NAMES[] = { { "house", FN_NONE }, { "townhouse", FN_NON
 	{ "cemetery", FN_CEMETERY }, { "busStation", FN_BUS_STATION }, { "shop", FN_SHOP }, { "bank", FN_BANK }, { "pharmacy", FN_PHARMACY }, { "bakery", FN_BAKERY },
 	{ "restaurant", FN_RESTAURANT }, { "snackBar", FN_SNACK_BAR }, { "bar", FN_BAR }, { "nightclub", FN_NIGHTCLUB }, { "cinema", FN_CINEMA }, { "hotel", FN_HOTEL },
 	{ "gym", FN_GYM }, { "club", FN_CLUB }, { "office", FN_OFFICE }, { "factory", FN_FACTORY }, { "warehouse", FN_WAREHOUSE }, { "playground", FN_PLAYGROUND } };
+
+constexpr Named USE_NAMES[] = { { "residential", ZONE_RES }, { "commercial", ZONE_COM }, { "industrial", ZONE_IND }, { "mixed", ZONE_MIXED } };
 
 } // namespace city

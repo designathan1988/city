@@ -1,0 +1,1 @@
+{"type":"object","required":["name","use","density","savedAt","body"],"additionalProperties":false,"properties":{"name":{"type":"string"},"use":{"enum":["residential","commercial","industrial","mixed"]},"density":{"enum":["low","medium","high"]},"savedAt":{"type":"string"},"body":{"type":"object","required":["use","volumes","materials"]}}}

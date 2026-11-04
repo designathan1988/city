@@ -34,7 +34,7 @@ constexpr Named DOC_ROOFS[] = { { "flat", ROOF_FLAT }, { "terrace", ROOF_TERRACE
 	{ "sawtooth", ROOF_SAWTOOTH } };
 constexpr Named DOC_LINES[] = { { "every", LINES_EVERY }, { "base", LINES_BASE }, { "slab", LINES_SLAB }, { "none", LINES_NONE } };
 constexpr Named DOC_CROWNS[] = { { "cornice", CROWN_CORNICE }, { "deco", CROWN_DECO }, { "slab", CROWN_SLAB }, { "attic", CROWN_ATTIC }, { "none", CROWN_NONE } };
-constexpr Named DOC_USES[] = { { "residential", USE_RESIDENTIAL }, { "commercial", USE_COMMERCIAL }, { "industrial", USE_INDUSTRIAL } };
+constexpr Named DOC_USES[] = { { "residential", USE_RESIDENTIAL }, { "commercial", USE_COMMERCIAL }, { "industrial", USE_INDUSTRIAL }, { "mixed", USE_RESIDENTIAL } }; // homes over shops: a body holds no mixed
 constexpr Named DOC_ELEMENTS[] = { { "pavement", EL_PAVEMENT }, { "slab", EL_SLAB }, { "pillar", EL_PILLAR }, { "canopy", EL_CANOPY }, { "awning", EL_AWNING },
 	{ "wall", EL_WALL }, { "fence", EL_FENCE }, { "railing", EL_RAILING }, { "hedge", EL_HEDGE }, { "gate", EL_GATE }, { "carGate", EL_CAR_GATE },
 	{ "planter", EL_PLANTER }, { "bench", EL_BENCH }, { "bollard", EL_BOLLARD }, { "lamp", EL_LAMP }, { "bin", EL_BIN }, { "ac", EL_AC },
@@ -223,12 +223,13 @@ void Reader::building(const Dictionary &doc) {
 }
 } // namespace
 
-bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &front_x, float &front_y, int &function, PackedStringArray &errors) {
+bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &front_x, float &front_y, int &function, int &zone, PackedStringArray &errors) {
 	out = Body{};
 	const int before = int(errors.size());
 	Reader reader(data, out, errors);
 	reader.building(doc);
 	function = doc.has("function") ? reader.named(FUNCTION_NAMES, doc["function"], "função") : int(FN_NONE);
+	zone = reader.named(USE_NAMES, doc.get("use", "residential"), "uso");
 	if (int(errors.size()) != before || out.volumes.empty()) return false;
 	const V2 front = fit_plan(out);
 	front_x = front.x;

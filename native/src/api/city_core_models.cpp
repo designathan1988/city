@@ -54,12 +54,13 @@ Dictionary CityCore::doc_body(const Dictionary &doc) const {
 	Dictionary out;
 	b40::Body b;
 	float front_x = 0, front_y = 0;
-	int function = 0;
+	int function = 0, zone = 0;
 	PackedStringArray errors;
-	if (body_from_doc(doc, state_->buildings.designs, b, front_x, front_y, function, errors)) {
+	if (body_from_doc(doc, state_->buildings.designs, b, front_x, front_y, function, zone, errors)) {
 		out["bytes"] = bytes_of(b);
 		out["front"] = Vector2(front_x, front_y);
 		out["function"] = function;
+		out["zone"] = zone;
 	}
 	out["errors"] = errors;
 	return out;

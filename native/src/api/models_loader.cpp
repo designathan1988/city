@@ -25,7 +25,6 @@ using namespace b40;
 
 namespace {
 constexpr float RING_TOLERANCE_M = 0.01f;
-constexpr int ZONE_RESIDENTIAL = 1, ZONE_COMMERCIAL = 2, ZONE_INDUSTRIAL = 3, ZONE_MIXED = 4;
 constexpr int SPEC_W = 1, SPEC_D = 2, SPEC_H = 3, RECT_WIDTH = 2, RECT_DEPTH = 3;
 
 constexpr Named ROOF_NAMES[] = { { "flat", ROOF_FLAT }, { "terrace", ROOF_TERRACE }, { "gable", ROOF_GABLE }, { "hip", ROOF_HIP }, { "shed", ROOF_SHED },
@@ -34,7 +33,6 @@ constexpr Named PATTERN_NAMES[] = { { "office", PATTERN_OFFICE }, { "gallery", P
 constexpr Named ELEMENT_NAMES[] = { { "tree", EL_TREE }, { "bench", EL_BENCH }, { "planter", EL_PLANTER }, { "flowers", EL_FLOWERS }, { "rocks", EL_ROCKS }, { "fence", EL_FENCE },
 	{ "wall", EL_WALL }, { "pavement", EL_PAVEMENT }, { "slab", EL_SLAB }, { "pillar", EL_PILLAR }, { "canopy", EL_CANOPY }, { "parking", EL_PARKING },
 	{ "railing", EL_RAILING }, { "clock", EL_CLOCK }, { "awning", EL_AWNING } };
-constexpr Named USE_NAMES[] = { { "residential", ZONE_RESIDENTIAL }, { "commercial", ZONE_COMMERCIAL }, { "industrial", ZONE_INDUSTRIAL }, { "mixed", ZONE_MIXED } };
 
 Variant at(const Dictionary &d, const Variant &k) { return d.get(k, Variant()); }
 std::string str(const Variant &v) { return std::string(String(v).utf8().get_data()); }
@@ -213,7 +211,7 @@ bool load_models(const Dictionary &table, Data &d, PackedStringArray &errors) {
 		m.id = str(at(s, "id"));
 		m.group = str(at(s, "group"));
 		m.zone = named(USE_NAMES, at(s, "use"), "uso", errors);
-		m.use = m.zone == ZONE_RESIDENTIAL ? USE_RESIDENTIAL : m.zone == ZONE_INDUSTRIAL ? USE_INDUSTRIAL : USE_COMMERCIAL;
+		m.use = m.zone == ZONE_RES ? USE_RESIDENTIAL : m.zone == ZONE_IND ? USE_INDUSTRIAL : USE_COMMERCIAL;
 		m.kind = kind_named(str(at(s, "kind")), errors);
 		if (s.has("function")) m.function = named(FUNCTION_NAMES, at(s, "function"), "função", errors);
 		m.palette = int(at(s, "scheme"));

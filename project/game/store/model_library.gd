@@ -7,6 +7,8 @@ const MODELS_DIR := "user://models"
 const TEST_MODELS_DIR := "user://models_tests"
 const EXT := "modelo"
 
+static var _lots: Array[Dictionary] = []
+
 
 static func dir() -> String:
 	return TEST_MODELS_DIR if GameFlow.tests_drive else MODELS_DIR
@@ -14,6 +16,18 @@ static func dir() -> String:
 
 static func path(key: String) -> String:
 	return "%s/%s.%s" % [dir(), key, EXT]
+
+
+## The projects of data/lots made into bodies, once: {key, name, bytes, function, zone}. One the core refuses is an error, not a card.
+static func lots() -> Array[Dictionary]:
+	if _lots.is_empty():
+		for lot_name: String in DataTables.ui("builder").lots:
+			var made: Dictionary = CityStore.query(&"doc_body", [DataTables.lot(lot_name).body])
+			if made.has("bytes"):
+				_lots.append({"key": "lot:%s" % lot_name, "name": lot_name, "bytes": made.bytes, "function": made.function, "zone": made.zone})
+			else:
+				push_error("lote %s: %s" % [lot_name, made.errors])
+	return _lots
 
 
 ## Every model saved, by name: {key, name, bytes, function, zone}.

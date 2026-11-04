@@ -6,6 +6,7 @@ extends VBoxContainer
 
 const ALL := "all"
 const MINE := "mine"
+const LOTS := "lots"
 const STUDIO_NAME := &"ModelStudio"
 const KEY_META := &"model_key"
 
@@ -64,6 +65,8 @@ func _entries() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for m: Dictionary in CityStore.query(&"model_list"):
 		out.append({"key": m.id, "label": tr("model.%s" % m.id), "group": m.group, "function": m.function, "zone": m.zone})
+	for m in ModelLibrary.lots():
+		out.append({"key": m.key, "label": tr("builder.lot.%s" % m.name), "group": LOTS, "function": m.function, "zone": m.zone, "bytes": m.bytes})
 	for m in ModelLibrary.list():
 		out.append({"key": m.key, "label": m.name, "group": MINE, "function": m.function, "zone": m.zone, "bytes": m.bytes})
 	return out

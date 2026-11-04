@@ -10,7 +10,7 @@
 namespace city {
 
 // `front`: where the body's lot front lay in the document's frame, once the body is fitted to its own plan (model_ops.h fit_plan).
-// `function`: the record's (BuildingFn), which the body does not hold.
-bool body_from_doc(const godot::Dictionary &doc, const b40::Data &data, b40::Body &out, float &front_x, float &front_y, int &function, godot::PackedStringArray &errors);
+// `function`, `zone`: the record's (BuildingFn, the zone of its use), which the body does not hold.
+bool body_from_doc(const godot::Dictionary &doc, const b40::Data &data, b40::Body &out, float &front_x, float &front_y, int &function, int &zone, godot::PackedStringArray &errors);
 
 } // namespace city
