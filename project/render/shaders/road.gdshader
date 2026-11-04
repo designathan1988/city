@@ -1,6 +1,6 @@
 // Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
-// corners) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
+// corners, (across, along) on a kerb's top, the run along it on any face) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
 // lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
 // on both renderers (color_space.gdshaderinc).
 shader_type spatial;
@@ -8,12 +8,13 @@ shader_type spatial;
 global uniform float night;
 
 uniform sampler2D asphalt_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D footway_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D footway_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D footway_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D kerb_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D kerb_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D verge_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D verge_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D verge_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 // Mean colour of each map, computed once in project/render/city_world.gd (one read instead of a smallest-mip fetch per
 // pixel; the strip colour stays the mean albedo).
 uniform vec3 mean_asphalt : source_color = vec3(1.0);
@@ -109,6 +110,7 @@ void fragment() {
 	}
 	float pix = max(max(fwidth(v_world.x), fwidth(v_world.z)), 0.001);
 	vec2 uv = UV;
+	vec2 frame = uv; // what the normal map's axes run along
 	vec3 albedo = base;
 	vec2 bend = vec2(0.0);
 	vec2 fine = vec2(0.0);
@@ -155,9 +157,10 @@ void fragment() {
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
-		// on top laid over the ground as the map tiles, along a road it runs through the stone and the grime; on a face, along it
-		// and up it, or the ground's two axes would hold still up the whole height and draw stripes
-		vec2 kq = up ? v_world.xz : uv;
+		// on top across and along the road, so the stone and its grime pass by along it; on a face along it and at its height in
+		// the world: the Roadcraft's skirt, whose rows are whichever the road's altitude falls on
+		vec2 kq = up ? uv : vec2(uv.x, v_world.y);
+		frame = kq;
 		vec3 t = source_linear(texture(kerb_map, kq / kerb_m, near * detail_kerb.z).rgb);
 		vec2 duv = kq / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
@@ -165,10 +168,12 @@ void fragment() {
 			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_kerb.y;
 		}
 		albedo = t * base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
+		bend = (texture(kerb_normal, kq / kerb_m, near * detail_kerb.z).xy - 0.5) * 2.0;
 		bend_scale = normal_kerb;
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {
 		vec2 gq = v_world.xz / verge_m;
+		frame = v_world.xz;
 		vec3 t = source_linear(texture(verge_map, gq, near * detail_verge.z).rgb);
 		vec2 duv = v_world.xz / grass_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
@@ -189,12 +194,8 @@ void fragment() {
 	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
-	if (up) {
-		float fade = 1.0 - smoothstep(0.02, 0.5, pix);
-		bend = bend * bend_scale * fade + fine;
-		vec3 n = normalize(nw + vec3(-bend.x, 0.0, -bend.y));
-		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
-	}
+	float fade = 1.0 - smoothstep(0.02, 0.5, pix);
+	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
 	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
 	EMISSION = linear_out((albedo + vec3(pool_floor)) * source_linear(pool_color) * pools * night * pool_gain);
 }

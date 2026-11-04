@@ -22,6 +22,19 @@ float detail_weight(float pix) {
 	return 1.0 - smoothstep(detail_near_m, detail_far_m, pix);
 }
 
+// A normal map's bend laid on a surface along the axes of its coordinates `st`, read from how they run across the screen
+// (Schueler, "Normal Mapping Without Precomputed Tangents"), so a road bends the same whichever way it runs and a kerb's face
+// bends as its top. The sign of the screen's own area keeps it right on a renderer whose y runs down.
+vec3 bent_normal(vec3 n, vec3 p, vec2 st, vec2 bend) {
+	vec3 q0 = dFdx(p), q1 = dFdy(p);
+	vec2 s0 = dFdx(st), s1 = dFdy(st);
+	vec3 a = cross(q1, n), b = cross(n, q0);
+	vec3 t = a * s0.x + b * s1.x, u = a * s0.y + b * s1.y;
+	float len = max(dot(t, t), dot(u, u));
+	float k = len > 0.0 ? inversesqrt(len) * sign(dot(cross(q0, q1), n)) : 0.0;
+	return normalize(n + (t * bend.x + u * bend.y) * k);
+}
+
 vec3 detail_albedo(sampler2D map, vec2 uv, vec2 dx, vec2 dy) {
 	vec3 a = textureGrad(map, uv, dx, dy).rgb * 2.0;
 	vec3 b = textureGrad(map, DETAIL_TURN * uv * DETAIL_SECOND + DETAIL_SHIFT, DETAIL_TURN * dx * DETAIL_SECOND, DETAIL_TURN * dy * DETAIL_SECOND).rgb * 2.0;

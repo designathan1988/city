@@ -9,6 +9,7 @@
    "footway_map": "res://assets/surfaces/footway.map.png",
    "footway_normal": "res://assets/surfaces/footway.normal.png",
    "kerb_map": "res://assets/surfaces/kerb.map.png",
+   "kerb_normal": "res://assets/surfaces/kerb.normal.png",
    "verge_map": "res://assets/surfaces/verge.map.png",
    "verge_normal": "res://assets/surfaces/verge.normal.png",
    "asphalt_m": 10.4,

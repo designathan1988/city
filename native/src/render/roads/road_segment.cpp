@@ -103,7 +103,7 @@ void tops(const Ctx &c, const Piece &pc) {
 void wall(const Ctx &c, size_t k, float u, float lo0, float hi0, float lo1, float hi1, float side, const Color &col) {
 	const Vector3 p[4] = { c.at_u(k, u, lo0), c.at_u(k + 1, u, lo1), c.at_u(k + 1, u, hi1), c.at_u(k, u, hi0) };
 	float va = c.sm[k].at, vb = c.sm[k + 1].at;
-	const Vector2 uv[4] = { Vector2(lo0, va), Vector2(lo1, vb), Vector2(hi1, vb), Vector2(hi0, va) };
+	const Vector2 uv[4] = { Vector2(va, lo0), Vector2(vb, lo1), Vector2(vb, hi1), Vector2(va, hi0) }; // a face: the run along it first
 	const Vector2 uv2[4] = { c.pool(u, va), c.pool(u, vb), c.pool(u, vb), c.pool(u, va) };
 	emit_quad(c.e.mb, p, uv, uv2, road_color(col, RoadMat::SKIRT), c.sm[k].f.left * side);
 }
