@@ -8,13 +8,11 @@ const BUILD_FRAMES := 400
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
-## Simulated ticks run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s).
-const TRAFFIC_WARMUP_TICKS := 2400
+const TRAFFIC_WARMUP_TICKS := 2400 # run before shooting so traffic and pedestrians fill the streets (20 ticks = 1 s)
 ## --soak=N: instead of the warm-up, N simulated minutes, one traffic_probe report per minute (CaptureSoak).
 const TRAFFIC_SAMPLE := 400
 const JAM_SHOTS := 1
-## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
-## Offsets in the vehicle frame: x to its left, y up, z ahead.
+## Close view of the nearest vehicle: camera and look-at offsets in its frame (x to its left, y up, z ahead).
 const CAR_VIEW_FROM := Vector3(3, 2.5, 14)
 const CAR_HIGH_FROM := Vector3(0, 45, 50)
 const CAR_VIEW_AT := Vector3(0, 0.5, 0)
