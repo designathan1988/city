@@ -130,6 +130,29 @@ void track_piece(const CityState &s, const TransitLook &look, bool metro, const 
 		transit_box(m, look, rail, on(mid + n * (float(k) * look.gauge * HALF), y + (paved ? look.rail_paved_up : look.rail.up)), d,
 				Vector3(piece + look.rail.over, paved ? look.rail_paved_high : look.rail.high, look.rail.wide));
 }
+
+// What a train track has under a point: 0 open ground, 1 a footway, 2 a carriageway.
+int under_track(const CityState &s, const TransitLook &look, const V2 &p) {
+	float y = 0;
+	bool road = false;
+	return transit_paved(s, p, look.kerb, y, road) ? (road ? 2 : 1) : 0;
+}
+
+// A train track's piece cut where what is under it changes, to a sleeper's step: whole, its bed would run on over the footway at the
+// height of the ground beyond, with the rails left in the air.
+void track_cut(const CityState &s, const TransitLook &look, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
+	const float step = look.sleeper_step, end = d0 + piece;
+	float from = d0;
+	int was = under_track(s, look, a + d * (d0 + step * HALF));
+	for (float at = d0 + step; at < end; at += step) {
+		const int now = under_track(s, look, a + d * (at + step * HALF));
+		if (now == was) continue;
+		track_piece(s, look, false, a, d, from, at - from, m);
+		from = at;
+		was = now;
+	}
+	track_piece(s, look, false, a, d, from, end - from, m);
+}
 } // namespace
 
 bool TransitLook::read(const Dictionary &t, PackedStringArray &errors) {
@@ -212,7 +235,8 @@ void transit_track_parts(const CityState &s, const TransitLook &look, const Rail
 		for (int k = 0; k < pieces; k++, walked += piece) {
 			const size_t stretch = size_t(walked / look.run);
 			if (out.size() <= stretch) out.resize(stretch + 1);
-			track_piece(s, look, metro, a, d, float(k) * piece, piece, out[stretch]);
+			if (metro) track_piece(s, look, true, a, d, float(k) * piece, piece, out[stretch]);
+			else track_cut(s, look, a, d, float(k) * piece, piece, out[stretch]);
 		}
 	}
 }
