@@ -110,7 +110,7 @@ func set_hour(hour: float) -> void:
 		_sun.light_energy = _d.sun_energy * lerpf(_d.sun_low_share, 1.0, minf(1.0, height * _d.sun_rise_k + _d.sun_rise_from)) * light * clear
 		_set_fill(aim, az, light * (1.0 - _overcast * _d.overcast_fill))
 	else:
-		_aim(_sun, _d.moon_elev_deg, az + _d.moon_offset_deg)
+		_aim(_sun, _d.moon_elev_deg, _d.moon_az_deg)
 		_sun.light_color = _c("moon")
 		_sun.light_energy = _d.moon_energy * night
 		_fill.visible = false

@@ -21,6 +21,8 @@ namespace city {
 namespace {
 constexpr int RGBA = 4, ALPHA = 3;
 constexpr float BYTE = 255.f;
+// A frond's outline up its length: where the sine starts, how much of it the frond runs, and how full its shoulders stand.
+constexpr float FROND_FOOT = 0.06f, FROND_RUN = 0.95f, FROND_ARCH = 0.7f;
 constexpr int REGIONS = 3; // the far tuft, the near tuft, the frond
 constexpr float HALF_F = 0.5f;
 constexpr int TUFT_WIDE = 0, TUFT_CLOSE = 1, FROND_CELL = 2; // the regions, left to right
@@ -92,10 +94,10 @@ void cluster(Canvas &cv, const Look &L, Rng &r, int at, int leaves, float grow) 
 // Right region: a frond with its base at the bottom row and its tip at the top, leaflets longest a third of the way up.
 void frond(Canvas &cv, const Look &L, Rng &r) {
 	float S = float(L.px), mid = S * (FROND_CELL + HALF_F);
-	for (int side = -1; side <= 1; side += REGIONS)
+	for (int side : { -1, 1 })
 		for (int j = 0; j < L.leaflets; j++) {
 			float t = (j + HALF_F) / L.leaflets, y = S * (1.f - t);
-			float reach = L.leaflet_reach * S * std::sin(PI_F * std::clamp(t, 0.f, 1.f)) * r.range(L.leaflet_vary, 1.f);
+			float reach = L.leaflet_reach * S * std::pow(std::sin(PI_F * std::min(1.f, FROND_FOOT + t * FROND_RUN)), FROND_ARCH) * r.range(L.leaflet_vary, 1.f);
 			float ang = side < 0 ? PI_F + L.leaflet_tilt : -L.leaflet_tilt;
 			cv.lens(L, mid + side * reach * HALF_F, y - reach * L.leaflet_rise, reach, L.leaflet_w, ang, r.range(L.frond_shade_min, 1.f));
 		}

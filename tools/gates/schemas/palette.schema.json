@@ -35,7 +35,23 @@
      "type": "string",
      "pattern_prefix": "#"
     },
+    "mid": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
     "deep": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "foam_tint": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "gravel": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "silt": {
      "type": "string",
      "pattern_prefix": "#"
     },
@@ -63,7 +79,40 @@
     "fetch_m": {
      "type": "number"
     },
-    "absorb_per_m": {
+    "tint_depth_m": {
+     "type": "number"
+    },
+    "slick_share": {
+     "type": "number"
+    },
+    "foam_m": {
+     "type": "number"
+    },
+    "rim_m": {
+     "type": "number"
+    },
+    "bed_from_m": {
+     "type": "number"
+    },
+    "silt_m": {
+     "type": "number"
+    },
+    "bed_cover": {
+     "type": "number"
+    },
+    "bed_wet": {
+     "type": "number"
+    },
+    "bed_seen_m": {
+     "type": "number"
+    },
+    "bed_hidden_m": {
+     "type": "number"
+    },
+    "sheet_least": {
+     "type": "number"
+    },
+    "sheet_most": {
      "type": "number"
     },
     "paws_m": {

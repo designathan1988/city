@@ -53,13 +53,27 @@ static func cube(on: Node3D, at: Vector3) -> void:
 	await on.shot("cubo_b", Vector3(at.x, 0.0, at.z), 225.0, 35.0, 3.0)
 
 
-## An oak, a cypress and a palm planted at the same spot as in the 4.0's run, from close up to the woods.
-static func trees(on: Node3D, at: Vector3) -> void:
+## An oak, a cypress and a palm planted side by side.
+static func plant(at: Vector3) -> void:
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in TREE_KINDS:
 		var brush := {"density": TREE_DENSITY, "height": TREE_HEIGHT_M, "variation": 0.0, "spacing": TREE_DAB_M}
 		CityStore.dispatch(&"tree_brush", [at + Vector3((i - 1) * TREE_APART_M, 0, 0), TREE_DAB_M, 0, i + 1, brush])
 	CityStore.dispatch(&"end_stroke")
+
+
+## The same three on bare ground, from the distance of the 4.0's run: each shows whole.
+static func alone(on: Node3D, at: Vector3) -> void:
+	plant(at)
+	await on.shot("solta_palma", at + Vector3(TREE_APART_M, 0, 0), 45.0, 12.0, 25.0)
+	await on.shot("solta_cipreste", at, 45.0, 12.0, 25.0)
+	await on.shot("solta_carvalho", at - Vector3(TREE_APART_M, 0, 0), 45.0, 12.0, 25.0)
+	await on.shot("solta_palma_perto", at + Vector3(TREE_APART_M, 0, 0), 45.0, 8.0, 60.0)
+
+
+## An oak, a cypress and a palm planted at the same spot as in the 4.0's run, from close up to the woods.
+static func trees(on: Node3D, at: Vector3) -> void:
+	plant(at)
 	await on.shot("arv_perto", at, 45.0, 12.0, 25.0)
 	await on.shot("arv_copa", at + Vector3(-TREE_APART_M, 0, 0), 45.0, 8.0, 50.0)
 	await on.shot("arv_media", at, 45.0, 30.0, 8.0)

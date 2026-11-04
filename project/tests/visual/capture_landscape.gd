@@ -11,6 +11,7 @@ const SHOT_FRAMES := 30
 const FIELD_AT := Vector2(3000.0, 0.0) # the 4.0 runs' setView x and -y: the same ground in both games
 const PAINT_AT := Vector2(4500.0, -1500.0)
 const RIVER_AT := Vector2(3000.0, 2250.0)
+const BARE_AT := Vector2(3160.0, -720.0)
 const VIEW_LINES := 1080.0
 const SHOT_SIZE := Vector2i(1920, 1080) # a window with a title bar loses 19 lines on a 1080-line screen
 const CITY_ZOOM := 0.8695652 # the view the 4.0 opens on
@@ -137,6 +138,8 @@ func _measure_card(c: Vector3) -> bool:
 		await LandscapeCards.ramp(self, c)
 	elif only.has("cubo_a"):
 		await LandscapeCards.cube(self, c)
+	elif only.has("solta_palma"):
+		await LandscapeCards.alone(self, _ground(BARE_AT.x, BARE_AT.y))
 	elif only.has("arv_perto"):
 		await LandscapeCards.trees(self, c)
 	else:
@@ -197,7 +200,7 @@ func _run() -> void:
 	var r := _ground(RIVER_AT.x, RIVER_AT.y)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
 	for i in RIVER_DABS:
-		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])
+		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])
 	CityStore.dispatch(&"end_stroke")
 	await shot("rio", r, 30.0, 24.0, 3.0)
 	await _city_light(c)

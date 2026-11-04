@@ -60,7 +60,7 @@ struct TreeLook {
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;
-	float scale = 1, most = 1, crowd_per_keep = 0; // worked out by load(): the chances' scale, the highest chance, a chance as a tree's crowd
+	float scale = 1, most = 1; // worked out by load(): the chances' scale and the highest chance
 	float density_of(double x, double y) const; // the patches' share of the density, on the map's own axes
 	WoodBand band_at(float density) const;
 	float keep_at(float density, WoodBand b) const; // the chance of a cell, scaled

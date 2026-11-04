@@ -13,15 +13,30 @@ shader_type spatial;
 render_mode cull_disabled;
 
 uniform vec3 shallow : source_color;
+uniform vec3 mid : source_color;
 uniform vec3 deep : source_color;
+uniform vec3 foam_tint : source_color;
+uniform vec3 gravel : source_color; // the bed under the shallows...
+uniform vec3 silt : source_color; // ...and going to silt as it deepens
+uniform float bed_from_m; // the depth the bed has taken over the ground by
+uniform float silt_m; // the depth it is all silt by
+uniform float bed_cover; // how much of the ground the bed hides
+uniform float bed_wet; // what the wet leaves of the bed's light
 uniform float wave_scale; // cells a metre: one over the peak wavelength
 uniform float peak_hz; // the peak's frequency: cells a second the main layer drifts
 uniform float detail_ratio; // the detail layer's wavelength ratio (frequency ratio squared)
 uniform float ripple_strength;
 uniform float slope_sigma; // rms slope the ripples stand for, as a roughness when unresolved
 uniform float specular_f0;
-uniform float fetch_m; // the width of a water body: shallow and deep colours mix in patches this wide
-uniform float absorb_per_m; // how fast the deep colour takes over with the depth seen through
+uniform float fetch_m; // the width of a water body: slow swings of tone this wide
+uniform float slick_share; // how far those swings reach either side of the tone
+uniform float tint_depth_m; // the depth over which the water's tone goes from shallow to deep
+uniform float foam_m; // how far from the shore the foam reaches, in depth
+uniform float rim_m; // the depth over which the sheet fades in at its very edge
+uniform float bed_seen_m; // the bed shows whole above this depth...
+uniform float bed_hidden_m; // ...and the water's own tone has taken over below this one
+uniform float sheet_least; // the sheet's cover at those two depths
+uniform float sheet_most;
 uniform float paws_m; // the gust patches that roughen the surface: how wide, and how rough
 uniform float paws_rough;
 global uniform float wind_x;
@@ -63,12 +78,21 @@ void fragment() {
 	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, depth);
 #endif
 	vec4 under = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
-	float below = length(under.xyz / under.w) - length(VERTEX);
-	vec3 c = mix(source_linear(shallow), source_linear(deep), max(vnoise(world.xz / fetch_m), 1.0 - exp(-max(below, 0.0) * absorb_per_m)));
-	float edge = (1.0 - smoothstep(0.0, 1.6, below)) * foam;
-	float froth = smoothstep(0.35, 0.8, vnoise(world.xz * 0.9 + current * TIME * 0.3) + edge * 0.6);
-	c = mix(c, vec3(0.9, 0.93, 0.95), froth * edge);
-	ALBEDO = linear_out(c);
+	float below = max(world.y - (INV_VIEW_MATRIX * vec4(under.xyz / under.w, 1.0)).y, 0.0); // straight down to the bed
+	float tint = 1.0 - exp(-below / tint_depth_m);
+	vec3 c = tint < 0.5 ? mix(source_linear(shallow), source_linear(mid), tint * 2.0) : mix(source_linear(mid), source_linear(deep), tint * 2.0 - 1.0);
+	c *= 1.0 + slick_share * (vnoise(world.xz / fetch_m) * 2.0 - 1.0);
+	float edge = (1.0 - smoothstep(0.0, foam_m, below)) * foam;
+	float froth = smoothstep(0.35, 0.8, vnoise(world.xz * 0.9 + current * TIME * 0.3) + edge * 0.6) * edge;
+	c = mix(c, source_linear(foam_tint), froth);
+	// The bed, drawn here as a layer under the sheet: the ground shader knows the sea's level, not the water over each place.
+	float grain = mix(0.62, 1.3, vnoise(world.xz * 2.65)) * mix(0.85, 1.12, vnoise(world.xz * 1.05 + 0.4));
+	vec3 bed = mix(source_linear(gravel) * grain, source_linear(silt), smoothstep(bed_from_m, silt_m, below)) * bed_wet;
+	float bed_a = bed_cover * smoothstep(0.0, bed_from_m, below);
+	float sheet = max(mix(sheet_least, sheet_most, smoothstep(bed_seen_m, bed_hidden_m, below)), froth);
+	float cover = sheet + (1.0 - sheet) * bed_a;
+	ALBEDO = linear_out((c * sheet + bed * bed_a * (1.0 - sheet)) / max(cover, 0.001));
+	ALPHA = cover * smoothstep(0.0, rim_m, below);
 	float paws = vnoise((world.xz - normalize(vec2(wind_x, wind_z)) * current * TIME) / paws_m) * vnoise(world.xz / (paws_m * 3.1) + 7.0);
 	ROUGHNESS = sqrt(slope_sigma * sqrt(1.0 - fine * fine)) + paws * paws_rough * rough;
 	SPECULAR = specular_f0;

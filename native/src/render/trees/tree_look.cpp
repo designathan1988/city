@@ -22,8 +22,6 @@ constexpr int CAL_SIDE = 200;
 constexpr float CAL_STEP_M = 97.f;
 // The noise streams of the patches, one by scale (Roadcraft's numbers: the woods stand where they stand there).
 constexpr uint32_t PATCH_SALTS[WOOD_PATCHES] = { 7, 9, 11 };
-// A neighbour weighs 1 at the tree and 0 at the reach: over the disc, a third of its area.
-constexpr float CONE_SHARE = 1.f / 3.f;
 const char *const BAND_KEYS[WOOD_BANDS] = { "inner", "edge", "open" };
 
 float at(const Variant &v, int i) {
@@ -119,7 +117,6 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	float cell = grid_m * grid_m, planned = float(sum) / float(CAL_SIDE * CAL_SIDE);
 	scale = std::min(1.f, woods_per_ha * cell / HA_M2 / std::max(planned, THRESHOLD_GAP));
 	most *= scale;
-	crowd_per_keep = PI_F * crowd_reach_m * crowd_reach_m * CONE_SHARE / (cell * crowd_full);
 	return errors.is_empty() && grid_m > 0 && mass_span > 0 && slope_to > slope_from && crowd_full > 0;
 }
 
