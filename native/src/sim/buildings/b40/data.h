@@ -32,7 +32,28 @@ struct OpeningDef {
 	float w_in = 0, w_max = 0, sill = 0, head_in = 0, head_max = 0, depth = 0;
 };
 
+// One way of closing a lot's front: a wall, fence, hedge or railing this high, standing on a base wall (fences).
+struct BoundaryStyle {
+	Element kind = EL_WALL;
+	float h = 0, base = 0;
+};
+
+// The lot layout's rules (buildings.json "lots"; the sources are in its _doc). Metres.
+struct LotRules {
+	float stall_w = 0, stall_d = 0, aisle = 0, stall_line = 0; // a car bay, the lane in front of it, its painted line
+	float drive_lane = 0, car_clear_h = 0; // least clear width of a car's way, least headroom over a car
+	float person_gate[2] = {}, party_wall[2] = {}; // house, other lot
+	float front_low = 0; // the side walls beside the front garden
+	float pool_w = 0, pool_d = 0, pool_depth = 0, pool_share = 0, terrace = 0;
+	float garage_back_share = 0, garage_closed_share = 0, yard_life_depth = 0;
+	float lorry_w = 0, lorry_l = 0, dock_margin = 0; // the widest and the single-unit lorry; room round it in a dock
+	int max_elements = 0;
+	std::vector<BoundaryStyle> boundary[KIND_COUNT];
+	float row_depth(int rows) const { return rows <= 0 ? 0 : float(rows) * stall_d + aisle; }
+};
+
 struct Data {
+	LotRules lots;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
 	float era[STYLE_COUNT][3] = {};

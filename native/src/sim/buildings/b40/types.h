@@ -42,6 +42,7 @@ enum BackUse : uint8_t { BACK_NONE, BACK_YARD, BACK_PARKING, BACK_SERVICE, BACK_
 struct SidePlan {
 	SideUse use = SIDE_ATTACHED;
 	float width = 0;
+	float walk = 0; // SIDE_DRIVE_PATH: the footpath along the drive, on the building's side
 };
 struct LotPlan {
 	Kind kind = KIND_HOUSE;
@@ -95,9 +96,13 @@ struct Volume {
 inline uint32_t bay_key(int storey, int side, int bay) { return (uint32_t(storey) << KEY_STOREY_SHIFT) | (uint32_t(side) << KEY_SIDE_SHIFT) | uint32_t(bay); }
 inline uint32_t side_key(int storey, int side) { return (uint32_t(storey) << KEY_SIDE_SHIFT) | uint32_t(side); }
 
-// Lot elements laid as boxes (4.0 element table): kind, centre, facing (0..3, 1/3 swap w and d), size, elevation.
+// Lot elements laid as boxes: kind, centre, size (w along the lot x, d along the lot y), elevation and facing. The
+// facing of a car bay, a lorry dock, a bench or a lounger is the way its open end looks: 0 the street (-y), 1 +x,
+// 2 away from the street (+y), 3 -x. A car gate is wide enough for a car; a person's gate is not.
 enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE,
-	EL_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_PARKING, EL_AC, EL_TREE_PIT, EL_SURFACE };
+	EL_GATE, EL_CAR_GATE, EL_PLANTER, EL_BENCH, EL_BOLLARD, EL_LAMP, EL_BIN, EL_AC, EL_SURFACE, EL_STALL, EL_DOCK, EL_DRAIN,
+	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE };
+enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
 struct LotElement {
 	Element kind = EL_PAVEMENT;
 	float x = 0, y = 0, w = 1, d = 1, z = 0, h = 1;

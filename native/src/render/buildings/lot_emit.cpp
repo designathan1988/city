@@ -122,6 +122,12 @@ void LotEmit::prop(const LotElement &e) {
 			parts.box(pl.lot, x0, x1, y0, y1, g + e.h - BOLLARD_BAND, g + e.h - BOLLARD_BAND + BOLLARD_BAND_H, lin_of(BAND_LIGHT), FIN_NONE);
 			break;
 		case EL_LAMP: {
+			if (e.z > 0) { // on a wall: the lamp's head and its lit glass under it
+				shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, FIN_METAL);
+				shell.quad(pl.lot.at(x0, y0, e.z - GRILLE_T), pl.lot.at(x1, y0, e.z - GRILLE_T), pl.lot.at(x1, y1, e.z - GRILLE_T), pl.lot.at(x0, y1, e.z - GRILLE_T),
+						-pl.lot.e2, lin_of(LAMP_WARM), FIN_NONE, SK_LAMP);
+				break;
+			}
 			parts.box(pl.lot, e.x - LAMP_POST / 2, e.x + LAMP_POST / 2, e.y - LAMP_POST / 2, e.y + LAMP_POST / 2, g, g + e.h, lin, FIN_METAL);
 			shell.box(pl.lot, e.x - LAMP_HEAD / 2, e.x + LAMP_HEAD / 2, e.y - LAMP_HEAD / 2, e.y + LAMP_HEAD / 2, g + e.h, g + e.h + LAMP_HEAD_H, lin, FIN_METAL);
 			Basis down{ pl.lot.o, pl.lot.e0, pl.lot.e1, -pl.lot.e2 };
@@ -131,11 +137,12 @@ void LotEmit::prop(const LotElement &e) {
 			(void)down;
 			break;
 		}
-		case EL_PARKING: shell.rect(pl.lot, x0, x1, y0, y1, g + LOT_RAISE + e.h - HALF * e.h, lin, f); break;
 		case EL_AC:
 			shell.box(pl.lot, x0, x1, y0, y1, e.z, e.z + e.h, lin, FIN_METAL, SKIP_E1_NEG);
 			break;
-		default: shell.box(pl.lot, x0, x1, y0, y1, g, g + e.h, lin, f, SKIP_E2_NEG); break;
+		default:
+			if (!emit_lot_prop(shell, parts, pl, e, g, lin)) shell.box(pl.lot, x0, x1, y0, y1, g, g + e.h, lin, f, SKIP_E2_NEG);
+			break;
 	}
 }
 
@@ -176,7 +183,7 @@ void LotEmit::element(const LotElement &e) {
 				else fence(e, px0, px1, py0, py1, e.kind == EL_RAILING);
 			}
 			break;
-		case EL_GATE: gate(e); break;
+		case EL_GATE: case EL_CAR_GATE: gate(e); break;
 		case EL_CANOPY: case EL_AWNING: case EL_SLAB: case EL_PILLAR: case EL_PAVEMENT: hung(e); break;
 		default: prop(e); break;
 	}

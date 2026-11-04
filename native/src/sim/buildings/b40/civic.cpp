@@ -198,7 +198,7 @@ void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D,
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	b.entrance_x += dx;
-	furnish_lot(data, b, r);
+	lay_out_lot(data, b, r);
 }
 
 } // namespace city::b40

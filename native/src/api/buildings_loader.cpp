@@ -103,6 +103,42 @@ StyleDef style_of(const Dictionary &d, PackedStringArray &errors) {
 	s.module = float(at(d, "module"));
 	return s;
 }
+
+const char *const BOUNDARY_NAMES[] = { "wall", "fence", "railing", "hedge" };
+const Element BOUNDARY_KINDS[] = { EL_WALL, EL_FENCE, EL_RAILING, EL_HEDGE };
+
+void pair_of(const Variant &v, float (&out)[2]) {
+	Array a = v;
+	out[0] = float(a[0]);
+	out[1] = float(a[1]);
+}
+
+bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
+	l.stall_w = float(at(d, "stall_w")); l.stall_d = float(at(d, "stall_d")); l.aisle = float(at(d, "aisle"));
+	l.stall_line = float(at(d, "stall_line")); l.drive_lane = float(at(d, "drive_lane")); l.car_clear_h = float(at(d, "car_clear_h"));
+	pair_of(at(d, "person_gate"), l.person_gate);
+	pair_of(at(d, "party_wall"), l.party_wall);
+	l.front_low = float(at(d, "front_low"));
+	Array pool = at(d, "pool");
+	enum { POOL_W, POOL_D, POOL_DEPTH };
+	l.pool_w = float(pool[POOL_W]); l.pool_d = float(pool[POOL_D]); l.pool_depth = float(pool[POOL_DEPTH]);
+	l.pool_share = float(at(d, "pool_share")); l.terrace = float(at(d, "terrace"));
+	l.garage_back_share = float(at(d, "garage_back_share")); l.garage_closed_share = float(at(d, "garage_closed_share"));
+	l.yard_life_depth = float(at(d, "yard_life_depth")); l.max_elements = int(at(d, "max_elements"));
+	l.lorry_w = float(at(d, "lorry_w")); l.lorry_l = float(at(d, "lorry_l")); l.dock_margin = float(at(d, "dock_margin"));
+	Dictionary b = at(d, "boundary");
+	for (int k = 0; k < KIND_COUNT; k++) {
+		Array styles = at(b, KIND_NAMES[k]);
+		for (int i = 0; i < styles.size(); i++) {
+			Array row = styles[i];
+			enum { KIND, HEIGHT, BASE };
+			int kind = index_of(BOUNDARY_NAMES, str(row[KIND]), "divisa", errors);
+			l.boundary[k].push_back(BoundaryStyle{ BOUNDARY_KINDS[kind], float(row[HEIGHT]), float(row[BASE]) });
+		}
+		if (l.boundary[k].empty()) errors.push_back(String("buildings.json: lots.boundary sem estilo para ") + KIND_NAMES[k]);
+	}
+	return errors.is_empty();
+}
 } // namespace
 
 bool load_buildings(const Dictionary &t, Data &d, PackedStringArray &errors) {
@@ -139,6 +175,7 @@ bool load_buildings(const Dictionary &t, Data &d, PackedStringArray &errors) {
 		enum { W_IN, W_MAX, SILL, HEAD_IN, HEAD_MAX, DEPTH };
 		o = OpeningDef{ true, float(r[W_IN]), float(r[W_MAX]), float(r[SILL]), float(r[HEAD_IN]), float(r[HEAD_MAX]), float(r[DEPTH]) };
 	}
+	if (!lot_rules(at(t, "lots"), d.lots, errors)) return false;
 	Dictionary props = at(t, "props");
 	Array ac = at(props, "ac_chance"), lit = at(props, "lit_share");
 	for (int i = 0; i < 3; i++) d.ac_chance[i] = float(ac[i]);

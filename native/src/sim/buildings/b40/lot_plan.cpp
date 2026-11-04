@@ -7,7 +7,6 @@ namespace city::b40 {
 
 namespace {
 constexpr float DRIVE = 3.5f, HOUSE_DRIVE = 3.f, FOOTPATH = 1.2f, ALLEY = 1.1f, WIDE_PATH = 1.5f, TRUCK_LANE = 6.f;
-constexpr float STALL = 5.f, AISLE = 6.f;
 constexpr float NARROW_W = 10.5f, DEEP_HOUSE = 22.f, CARPAD = 5.5f, MID_HOUSE = 14.f, SMALL_GARDEN = 3.f;
 constexpr float GARDEN_LO = 3.5f, GARDEN_HI = 5.5f, SIDE_GARDEN_W = 16.f, SIDE_GARDEN_LO = 3.f, SIDE_GARDEN_HI = 4.f;
 constexpr float SIDE_PATH_W = 13.f, HOUSE_MIN = 8.f, HOUSE_MAX = 15.f, YARD_LO = 8.f, YARD_HI = 12.f, YARD_MIN = 4.f;
@@ -27,12 +26,12 @@ void sides(LotPlan &p, bool flip, SidePlan a, SidePlan b) {
 	p.left = flip ? b : a;
 	p.right = flip ? a : b;
 }
-int rows_within(float D, float front, float min_b) {
+// Rows of car bays a back yard holds after the front and the least building, each row with its share of the aisle.
+int rows_within(const LotRules &l, float D, float front, float min_b) {
 	float spare = D - front - min_b;
-	if (spare >= STALL * 2 + AISLE) return 2;
-	return spare >= STALL + AISLE ? 1 : 0;
+	if (spare >= l.row_depth(2)) return 2;
+	return spare >= l.row_depth(1) ? 1 : 0;
 }
-float parking_depth(int rows) { return rows == 2 ? STALL * 2 + AISLE : STALL + AISLE; }
 
 void plan_house(LotPlan &p, Xoshiro128 &r, bool flip) {
 	bool narrow = p.W < NARROW_W;
@@ -57,7 +56,7 @@ void plan_house(LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (yard >= YARD_MIN) { p.back = BACK_YARD; p.back_depth = half_down(yard); }
 }
 
-void plan_flats(LotPlan &p, Xoshiro128 &r, bool flip) {
+void plan_flats(const LotRules &l, LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (p.kind == KIND_TOWER) {
 		bool plaza = p.D >= TOWER_PLAZA_D;
 		p.front = plaza ? FRONT_PLAZA : FRONT_STREET;
@@ -66,11 +65,11 @@ void plan_flats(LotPlan &p, Xoshiro128 &r, bool flip) {
 		p.front = FRONT_GARDEN;
 		p.front_depth = half_down(gap(r, FLATS_GARDEN_LO, FLATS_GARDEN_HI));
 	}
-	int stalls = p.W >= PARKING_W ? rows_within(p.D, p.front_depth, MIN_BLOCK) : 0;
+	int stalls = p.W >= PARKING_W ? rows_within(l, p.D, p.front_depth, MIN_BLOCK) : 0;
 	if (stalls > 0) {
 		SidePlan b = r.f() < ATTACHED_SHARE ? SidePlan{} : SidePlan{ SIDE_PATH, WIDE_PATH };
-		sides(p, flip, { SIDE_DRIVE_PATH, DRIVE + FOOTPATH }, b);
-		p.back = BACK_PARKING; p.back_depth = parking_depth(stalls); p.rows = stalls;
+		sides(p, flip, { SIDE_DRIVE_PATH, DRIVE + FOOTPATH, FOOTPATH }, b);
+		p.back = BACK_PARKING; p.back_depth = l.row_depth(stalls); p.rows = stalls;
 		return;
 	}
 	sides(p, flip, p.W >= APARTMENT_W ? SidePlan{ SIDE_PATH, WIDE_PATH } : SidePlan{}, SidePlan{});
@@ -78,32 +77,32 @@ void plan_flats(LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (spare >= COURT_SPARE) { p.back = BACK_COURTYARD; p.back_depth = half_down(std::min(spare, COURT_MAX)); }
 }
 
-void plan_shop(LotPlan &p, Xoshiro128 &r, bool flip) {
+void plan_shop(const LotRules &l, LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (p.D >= SHOP_COURT_D && r.f() < SHOP_COURT) { p.front = FRONT_FORECOURT; p.front_depth = half_down(gap(r, SHOP_COURT_LO, SHOP_COURT_HI)); }
-	int stalls = p.W >= SHOP_PARK_W && r.f() < SHOP_PARK ? std::min(1, rows_within(p.D, p.front_depth, MIN_BLOCK)) : 0;
+	int stalls = p.W >= SHOP_PARK_W && r.f() < SHOP_PARK ? std::min(1, rows_within(l, p.D, p.front_depth, MIN_BLOCK)) : 0;
 	if (stalls > 0) {
 		sides(p, flip, { SIDE_DRIVE, DRIVE }, SidePlan{});
-		p.back = BACK_PARKING; p.back_depth = STALL + AISLE; p.rows = stalls;
+		p.back = BACK_PARKING; p.back_depth = l.row_depth(1); p.rows = stalls;
 	} else if (p.D - p.front_depth >= SHOP_SERVICE) {
 		p.back = BACK_SERVICE; p.back_depth = half_down(gap(r, SERVICE_LO, SERVICE_HI));
 	}
 }
 
-void plan_office(LotPlan &p, Xoshiro128 &r, bool flip) {
+void plan_office(const LotRules &l, LotPlan &p, Xoshiro128 &r, bool flip) {
 	if (p.D >= OFFICE_PLAZA_D) { p.front = FRONT_PLAZA; p.front_depth = half_down(gap(r, PLAZA_LO, PLAZA_HI)); }
 	else { p.front = FRONT_FORECOURT; p.front_depth = p.D >= WORKPLACE_MIN ? OFFICE_COURT : 0; }
 	if (p.front_depth == 0) p.front = FRONT_STREET;
-	int stalls = p.W >= OFFICE_PARK_W ? rows_within(p.D, p.front_depth, WORKPLACE_MIN) : 0;
+	int stalls = p.W >= OFFICE_PARK_W ? rows_within(l, p.D, p.front_depth, WORKPLACE_MIN) : 0;
 	if (stalls > 0) {
-		sides(p, flip, { SIDE_DRIVE_PATH, DRIVE + FOOTPATH }, SidePlan{});
-		p.back = BACK_PARKING; p.back_depth = parking_depth(stalls); p.rows = stalls;
+		sides(p, flip, { SIDE_DRIVE_PATH, DRIVE + FOOTPATH, FOOTPATH }, SidePlan{});
+		p.back = BACK_PARKING; p.back_depth = l.row_depth(stalls); p.rows = stalls;
 	} else if (p.D - p.front_depth >= OFFICE_SERVICE) {
 		p.back = BACK_SERVICE; p.back_depth = OFFICE_SERVICE_D;
 	}
 }
 
-void plan_industry(LotPlan &p, bool flip) {
-	if (p.D >= APRON_D) { p.front = FRONT_APRON; p.front_depth = p.D >= APRON_DEEP ? STALL + AISLE : APRON; }
+void plan_industry(const LotRules &l, LotPlan &p, bool flip) {
+	if (p.D >= APRON_D) { p.front = FRONT_APRON; p.front_depth = p.D >= APRON_DEEP ? l.row_depth(1) : APRON; }
 	if (p.W < WORKS_W || p.D < WORKS_D) return;
 	sides(p, flip, { SIDE_DRIVE, TRUCK_LANE }, p.W >= WORKS_PATH_W ? SidePlan{ SIDE_PATH, WIDE_PATH } : SidePlan{});
 	float spare = p.D - p.front_depth;
@@ -125,17 +124,17 @@ void settle(LotPlan &p) {
 }
 } // namespace
 
-LotPlan plan_lot(Kind kind, float W, float D, Xoshiro128 &r) {
+LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r) {
 	LotPlan p;
 	p.kind = kind; p.W = W; p.D = D;
 	bool flip = r.f() < HALF;
 	switch (kind) {
 		case KIND_HOUSE: plan_house(p, r, flip); break;
 		case KIND_FLATS:
-		case KIND_TOWER: plan_flats(p, r, flip); break;
-		case KIND_SHOP: plan_shop(p, r, flip); break;
-		case KIND_OFFICE: plan_office(p, r, flip); break;
-		default: plan_industry(p, flip); break;
+		case KIND_TOWER: plan_flats(l, p, r, flip); break;
+		case KIND_SHOP: plan_shop(l, p, r, flip); break;
+		case KIND_OFFICE: plan_office(l, p, r, flip); break;
+		default: plan_industry(l, p, flip); break;
 	}
 	settle(p);
 	p.x0 = p.left.width; p.y0 = p.front_depth; p.x1 = W - p.right.width; p.y1 = D - p.back_depth;
