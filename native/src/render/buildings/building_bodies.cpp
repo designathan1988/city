@@ -30,7 +30,7 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	uint64_t k = key_of(rec);
 	auto it = cache_.find(k);
 	if (it != cache_.end()) return *it->second;
-	if (cache_.size() >= CACHE_MAX) cache_.clear();
+	if (cache_.size() >= CACHE_MAX) clear();
 	auto b = std::make_unique<b40::Body>();
 	b40::record_body(data, rec, *b);
 	return *(cache_[k] = std::move(b));
@@ -61,6 +61,9 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	pl.data = &data;
 	pl.look = &look;
 	pl.b = &b;
+	std::unique_ptr<b40::PaneRooms> &rooms = rooms_[key_of(rec)];
+	if (!rooms) rooms = std::make_unique<b40::PaneRooms>(data, b, b40::purpose_of(b, rec.fn, rec.seed));
+	pl.rooms = rooms.get();
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;
 	pl.shade = SHADE_BASE + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * SHADE_SPAN;

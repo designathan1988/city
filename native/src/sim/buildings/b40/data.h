@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/buildings/b40/types.h"
+#include "sim/buildings/interior/tables.h"
 
 #include <string>
 #include <unordered_map>
@@ -54,6 +55,7 @@ struct LotRules {
 
 struct Data {
 	LotRules lots;
+	InteriorTables interior;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];
 	float era[STYLE_COUNT][3] = {};

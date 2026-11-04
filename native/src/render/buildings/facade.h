@@ -12,10 +12,13 @@
 
 namespace city::b40 {
 
+struct PaneRooms;
+
 struct Placed {
 	const Data *data = nullptr;
 	const BuildingLook *look = nullptr; // sizes of the thin drawn pieces (fence bars, part frames, air handlers)
 	const Body *b = nullptr;
+	PaneRooms *rooms = nullptr; // the rooms behind its panes
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
 	float shade = 1; // a building's own shade on its walls

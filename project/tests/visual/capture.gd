@@ -41,6 +41,8 @@ const VIEWS := [
 	["12_encosta", Vector3(3750, 70, 300), Vector3(4400, 0, 80), DAY],
 	["17_horizonte", Vector3(-1500, 140, 1500), Vector3(600, 0, -600), DAY],
 	["18_alto", Vector3(0, 2600, 2600), Vector3(0, 0, 0), DAY],
+	["21_noite_bairro", Vector3(-260, 260, 260), Vector3(40, 0, -40), NIGHT],
+	["21_noite_cidade", Vector3(-900, 700, 900), Vector3(0, 0, 0), NIGHT],
 ]
 
 ## Functions shot by _civic_tour (sim/buildings/building_store.h BuildingFn) and the view offset per lot size.
