@@ -147,8 +147,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
-- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, semáforos e preferência; regra
-  única do semáforo para os veículos (âmbar: para se ainda para com conforto, mantido até o verde) e a parada que cada um vê pela rota
+- `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/light_rule.cpp` — controle de cruzamento, semáforos e preferência; regra única do semáforo para os veículos (âmbar: para se ainda para com conforto, mantido até o verde) e a parada que cada um vê pela rota
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
