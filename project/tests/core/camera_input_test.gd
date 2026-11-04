@@ -13,6 +13,7 @@ const STEPS := 8
 const STILL_S := 0.15
 const SETTLE_S := 1.2
 const EPS := 1e-3
+const OPEN_M := 600.0 # past the city: nothing for the eye to be pulled clear of
 
 var failures := 0
 var rig: CityCamera
@@ -79,8 +80,10 @@ func _pan_tests() -> void:
 		_check(err < _tol(), "%s: e fica sob o cursor ao soltar (erro %.2f px)" % [what, err])
 
 
+## On open ground: among the buildings the eye is pulled up its line of sight (CameraPull), which moves the picture on purpose.
 func _zoom_test() -> void:
-	_home()
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	rig.jump(b.min - Vector3(OPEN_M, 0.0, OPEN_M), 35.0, 45.0, 700.0)
 	await _frames(1)
 	var at := _screen() * Vector2(0.25, 0.3)
 	var g0: Variant = rig.ground_at(at)
@@ -91,6 +94,7 @@ func _zoom_test() -> void:
 	await get_tree().create_timer(SETTLE_S).timeout
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
+	_check(rig.pull.shown < EPS, "roda: longe dos prédios o olho não é puxado (%.3f)" % rig.pull.shown)
 	_check(err < _tol(), "roda: o ponto sob o cursor fica sob o cursor (erro %.2f px)" % err)
 	_check(absf(rig.half - want) < want * 0.01, "roda: 3 entalhes aproximam (meia altura %.1f -> %.1f)" % [half0, rig.half])
 

@@ -5,20 +5,28 @@
 class_name HudDrawer
 extends PanelContainer
 
-const PERCENT := 100.0
+const FITS := &"fits_drawer" # what scrolls inside the room the drawer has: fit(width)
 
 signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
+const DENSITY_FIRST := 0
+const FORCE_STEP := 1.0 # the bomb's force goes up by whole steps (data/catalog/blast.json strength_min..max)
+
+## The panel at the bottom left that holds the tool's options (the HUD makes it).
+@export var options_panel: PanelContainer
+@onready var options: VBoxContainer
+## The road tool's options: its rows stand in the options panel while the road tool is in hand.
+@onready var road_options := RoadOptions.new()
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
-## The road tool's options, a panel of its own beside the drawer (the HUD makes it).
-@onready var options: RoadOptions
 @onready var _head: HBoxContainer
-@onready var _strip: Container
+@onready var strip: Container
 @onready var _tabs: Dictionary = {}
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var _profile_ids: Dictionary = {}
+@onready var _tab: Dictionary = {}
+@onready var density := DENSITY_FIRST
 
 
 func _ready() -> void:
@@ -27,26 +35,41 @@ func _ready() -> void:
 	anchor_right = 0.5
 	anchor_top = 1.0
 	anchor_bottom = 1.0
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	offset_bottom = -(HudWidgets.px("margin") + HudWidgets.px("dock_h") + HudWidgets.px("drawer_gap"))
+	options_panel.custom_minimum_size.x = HudWidgets.px("opts_w")
+	options_panel.anchor_top = 1.0
+	options_panel.anchor_bottom = 1.0
+	options_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	options_panel.offset_left = HudWidgets.px("margin")
+	options_panel.offset_right = HudWidgets.px("margin") + HudWidgets.px("opts_w")
+	options_panel.offset_bottom = -HudWidgets.px("margin")
+	options = HudWidgets.vbox(options_panel, &"Pad")
+	options_panel.hide()
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
-	_strip = HudWidgets.hbox(col, &"Pad")
+	strip = HudWidgets.hbox(col, &"Pad")
 	for p in CityStore.query(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
+	catalog.minimum_size_changed.connect(_fit)
+	get_viewport().size_changed.connect(_fit)
+	road_options.alignment_picked.connect(func(a: int) -> void: retool(a, "ROAD", "alignment"))
+	road_options.option_picked.connect(func(key: String, value: Variant) -> void: retool(value, "ROAD", key))
+	road_options.road_picked.connect(pick_road)
 	catalog.profile_picked.connect(func(i: int) -> void:
 		var upgrading := tools != null and tools.tool == ToolController.Tool.UPGRADE
 		retool(i, "UPGRADE" if upgrading else "ROAD", "profile"))
 	hide()
 
 
-## The catalogue leaves the tree while another strip shows (_build_strip); a node out of the tree is not freed with
-## it, so the drawer frees it then (else it outlived the game: an orphan node at exit).
+## The catalogue and the road options leave the tree while another strip shows (_build_strip); a node out of the tree is not
+## freed with it, so the drawer frees them then (else they outlived the game: orphan nodes at exit).
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE and is_instance_valid(catalog) and catalog.get_parent() == null:
-		catalog.free()
+	if what == NOTIFICATION_PREDELETE:
+		for kept: Control in [catalog, road_options]:
+			if is_instance_valid(kept) and kept.get_parent() == null:
+				kept.free()
 
 
 func open(cat: Dictionary) -> void:
@@ -62,12 +85,13 @@ func open(cat: Dictionary) -> void:
 
 func close() -> void:
 	hide()
-	options.hide()
+	options_panel.hide()
 	category = {}
 	closed.emit()
 
 
 func select_tab(tab: Dictionary) -> void:
+	_tab = tab
 	for id in _tabs:
 		_tabs[id].set_pressed_no_signal(id == tab.id)
 	_build_strip(tab)
@@ -78,7 +102,7 @@ func select_tab(tab: Dictionary) -> void:
 		params = tools.remembered.get(ToolController.Tool[tab.tool], {}).duplicate() if tools else {}
 		params.profile = catalog.picked()
 	elif tab.tool == "ZONE":
-		params.zone = _zone()
+		params.zone = zone()
 	elif tab.tool == "TRANSIT":
 		params = { "kind": tab.kind, "mode": tab.mode }
 	elif tools and ToolController.Tool.has(tab.tool):
@@ -92,7 +116,7 @@ func retool(value: Variant, tool: String, key: String) -> void:
 	params[key] = value
 	tool_requested.emit(tool, params)
 	if key not in ["radius", "strength", "lanes", "width", "parking"]:
-		DrawerStrips.light(_strip, value)
+		DrawerStrips.light(strip, value)
 
 
 ## A road of the catalogue by id, as if its card were clicked.
@@ -100,21 +124,26 @@ func pick_road(id: String) -> void:
 	catalog.pick(_profile_ids.get(id, 0))
 
 
-func _param(tool: String, key: String, fallback: Variant) -> Variant:
+func param(tool: String, key: String, fallback: Variant) -> Variant:
 	return tools.last_param(ToolController.Tool[tool], key, fallback) if tools else fallback
 
 
 ## The zone the brush last painted (ToolController remembers it), else the first card's.
-func _zone() -> int:
+func zone() -> int:
 	var first: int = category.cards[0].zone if category.has("cards") else 0
 	return tools.last_param(ToolController.Tool.ZONE, "zone", first) if tools else first
 
 
-func pick_zone(zone: int) -> void:
-	for c in _strip.get_children():
-		if c is Button:
-			c.set_pressed_no_signal(c.get_meta(&"zone", -1) == zone)
-	tool_requested.emit("ZONE", {"zone": zone})
+## The language changed: what the drawer shows, in the new one.
+func relabel() -> void:
+	catalog.relabel()
+	if not category.is_empty() and visible:
+		_build_head()
+		_build_strip(_tab)
+
+
+func pick_zone(use: int) -> void:
+	ZoneStrip.pick(self, use)
 
 
 func _build_head() -> void:
@@ -138,113 +167,68 @@ func _build_head() -> void:
 
 
 func _build_strip(tab: Dictionary) -> void:
-	if catalog.get_parent():
-		catalog.get_parent().remove_child(catalog)
-	HudWidgets.clear(_strip)
+	for kept: Control in [catalog, road_options]:
+		if kept.get_parent():
+			kept.get_parent().remove_child(kept)
+	HudWidgets.clear(strip)
+	HudWidgets.clear(options)
 	var kind: String = category.get("strip", "")
-	options.hide()
 	if tab.get("tool", "") == "ROAD":
-		options.open()
+		options.add_child(road_options)
+		road_options.refresh()
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
-		_strip.add_child(catalog)
+		strip.add_child(catalog)
 	elif kind == "zone_cards" and tab.tool == "ZONE":
-		for c in category.cards:
-			_strip.add_child(_zone_card(c))
+		ZoneStrip.build(self)
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
-		DrawerStrips.slider(_strip, ring.label_key, DataTables.tuning("roundabout_radius_min_m"),
-			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), " m",
+		HudWidgets.range_row(options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
+			DataTables.tuning("roundabout_radius_max_m"), ring.step, param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
 			retool.bind("ROUNDABOUT", "radius"))
+	elif tab.get("tool", "") == "STRIKE":
+		var blast: Dictionary = DataTables.catalog().blast
+		HudWidgets.range_row(options, tr("strike.force"), blast.strength_min, blast.strength_max, FORCE_STEP,
+			param("STRIKE", "strength", blast.strength_min), Formatters.format_int, retool.bind("STRIKE", "strength"))
 	elif kind == "land_panels":
-		LandStrips.build(self, _strip, tab.get("tool", ""))
+		LandStrips.build(self, strip, tab.get("tool", ""))
 	elif tab.get("tool", "") == "BUILD":
-		BuilderStrip.fill(_strip, tab.id, tools)
+		BuilderStrip.fill(strip, tab.id, tools)
 	elif tab.get("kind", "") == "line":
-		TransitStrip.build(_strip)
+		TransitStrip.build(strip)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
-			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), retool.bind("LOT", "fn")))
-	var note := HudWidgets.label(_strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
+			strip.add_child(DrawerStrips.card(c, "fn", param("LOT", "fn", 0), retool.bind("LOT", "fn")))
+	_note(tab)
+	settle()
+
+
+func _note(tab: Dictionary) -> void:
+	var note := HudWidgets.label(strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.custom_minimum_size.x = HudWidgets.px("side_w")
-	note.visible = note.text != ""
+	note.custom_minimum_size.x = HudWidgets.px("note_w")
+	note.visible = note.text != "" and strip.get_child_count() == 1 # a mode with nothing to pick says what it does
 
 
-## The Landscape strips' hands (ui/land_strips.gd): the tool of the open panel and its remembered parameters.
-func land_param(tool_name: String, key: String, fallback: Variant) -> Variant:
-	return _param(tool_name, key, fallback)
+## The panels again after their content changed.
+func settle() -> void:
+	options_panel.visible = options.get_child_count() > 0
+	options_panel.reset_size()
+	options_panel.offset_top = -options_panel.size.y - HudWidgets.px("margin")
+	_fit.call_deferred()
 
 
-func land_slide(value: float, tool_name: String, key: String) -> void:
-	retool(value, tool_name, key)
-
-
-func land_pick(value: Variant, tool_name: String, key: String) -> void:
-	retool(value, tool_name, key)
-	_land_rebuild()
-
-
-## A card of the Sky tab: another tool in hand, its panel in the strip.
-func land_switch(tool_name: String) -> void:
-	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool_name], {}).duplicate() if tools else {}
-	tool_requested.emit(tool_name, params)
-	_land_rebuild()
-
-
-## What wipes the whole map asks first, and only when there is something to wipe (land_panels.json "confirm").
-func land_action(action: String) -> void:
-	var ask: Dictionary = DataTables.ui("land_panels").confirm.get(action, {})
-	if ask.is_empty():
-		_land_do(action)
-	elif _land_holds(ask):
-		var dialog := ConfirmationDialog.new()
-		dialog.dialog_text = tr(ask.key)
-		dialog.confirmed.connect(_land_do.bind(action))
-		dialog.visibility_changed.connect(func() -> void:
-			if not dialog.visible:
-				dialog.queue_free())
-		add_child(dialog)
-		dialog.popup_centered()
-
-
-## Whether the landscape holds what the action would wipe: any of the counts named, or always when none is.
-func _land_holds(ask: Dictionary) -> bool:
-	var counts: Array = ask.get("counts", [])
-	if counts.is_empty():
-		return true
-	var land: Dictionary = CityStore.query(&"landscape")
-	for key: String in counts:
-		var held: Variant = land[key]
-		if (held.size() if held is Array else int(held)) > 0:
-			return true
-	return false
-
-
-func _land_do(action: String) -> void:
-	if action == "scatter_clouds":
-		var s := BrushDefaults.of("CLOUD", tools.remembered.get(ToolController.Tool.CLOUD, {}) if tools else {})
-		var like := {"height": s.height, "size": s.size, "density": s.density / PERCENT}
-		var r: Dictionary = CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / PERCENT])
-		if r.get("error", "") != "" and tools:
-			tools.hint.emit(tr(r.error), false)
-	else:
-		CityStore.dispatch(StringName(action))
-
-
-func _land_rebuild() -> void:
-	HudWidgets.clear(_strip)
-	LandStrips.build(self, _strip, ToolController.Tool.find_key(tools.tool))
-
-
-func _zone_card(c: Dictionary) -> Button:
-	var variation := &"SwatchCard" if c.has("swatch") else &"Card"
-	var b := HudWidgets.button(variation, c.get("icon", ""), tr(c.label_key), "", "card_w", "card_h")
-	b.toggle_mode = true
-	b.set_meta(&"zone", c.zone)
-	b.set_pressed_no_signal(c.zone == _zone())
-	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	if c.has("swatch"):
-		b.icon = ThemeBuilder.swatch(c.swatch, int(HudWidgets.px("card_glyph")))
-	b.pressed.connect(pick_zone.bind(c.zone))
-	return b
+## The room left by the options; the catalogue takes all it needs of it, the panel stands centred there, on its bottom edge.
+func _fit() -> void:
+	if not visible:
+		return
+	var margin := HudWidgets.px("margin")
+	var vw := get_viewport_rect().size.x
+	var left := margin + (HudWidgets.px("opts_w") + margin if options_panel.visible else 0.0)
+	var room := vw - margin - left
+	catalog.fit(room - HudWidgets.px("gap"))
+	get_tree().call_group(FITS, &"fit", room - HudWidgets.px("gap"))
+	var need := get_combined_minimum_size()
+	var width := minf(need.x, room)
+	offset_left = left + (room - width) * 0.5 - vw * 0.5
+	offset_right = offset_left + width
+	offset_top = offset_bottom - need.y

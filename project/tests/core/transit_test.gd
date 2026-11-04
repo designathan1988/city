@@ -131,11 +131,11 @@ func _undo_and_save() -> void:
 	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size() - 1, "desfazer tira a linha")
 	CityStore.dispatch(&"redo", [])
 	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size(), "refazer devolve a linha")
-	CityStore.save_game(SLOT)
+	CityStore.saves.save_game(SLOT)
 	await CityStore.saved
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	_check(CityStore.query(&"transit_plan").lines.is_empty(), "mapa novo sem linhas")
-	CityStore.load_game(SLOT)
+	CityStore.saves.load_game(SLOT)
 	await CityStore.loaded
 	var after: Dictionary = CityStore.query(&"transit_plan")
 	_check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "plano volta do arquivo")

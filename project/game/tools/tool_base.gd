@@ -52,6 +52,15 @@ func key(_keycode: Key) -> void:
 
 
 ## The refusal text for a command result: "Não dá para construir aqui: {why}." / money / other keys as they are.
+## The road under the point, or {} with the preview cleared.
+func road_under(p: Vector3) -> Dictionary:
+	var seg: Dictionary = CityStore.query(&"segment_at", [p])
+	if seg.get("seg", -1) < 0:
+		ctl.preview.clear()
+		return {}
+	return seg
+
+
 func refusal(result: Dictionary, price: float = 0.0) -> String:
 	var why: String = result.get("error", "")
 	if why == "ui.insp.noMoney":

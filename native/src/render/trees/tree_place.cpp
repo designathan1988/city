@@ -115,7 +115,7 @@ bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, cons
 	if (roll >= T.most) return false; // above the highest chance: its density is never read
 	float d = density(s, T, l, px.corner + (i + 0.5f) * T.grid_m, -(py.corner + (j + 0.5f) * T.grid_m));
 	WoodBand b = T.band_at(d);
-	if (roll >= T.keep_at(d, b)) return false;
+	if (roll >= T.keep_at(d, b) * T.share.load(std::memory_order_relaxed)) return false;
 	w.x = px.corner + (i + 0.5f + (float(woods_hash(gi, gj, WOOD_X)) - 0.5f) * T.jitter) * T.grid_m;
 	w.z = -(py.corner + (j + 0.5f + (float(woods_hash(gi, gj, WOOD_Z)) - 0.5f) * T.jitter) * T.grid_m);
 	if (!ground_ok(s, T, w.x, w.z, T.grid_m, w.y) || s.nature.planted.cleared(w.x, w.z)) return false;

@@ -8,7 +8,7 @@ const LANE_TONES := 8 # slots of road_look.h TONE_SLOTS
 const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdshader tones by their mean; the grass is its map
 
 
-## `load_param` turns a value of the material table into what the shader takes (CityWorld._param).
+## `load_param` turns a value of the material table into what the shader takes (CityWorld.shader_value).
 static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -> void:
 	for name in MEAN_MAPS:
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), mean_color(load_param.call(params[name])))

@@ -15,6 +15,8 @@ const SUV := 2 # traffic.json classes: b 2,8 and b_emergency 5,8 m/s²
 const NO_TURN := 1000.0 # m/s: no limit at the line
 const TURN_MS := 6.11 # turn_speed_kmh in m/s
 const AMBER_EPS_S := 0.01
+const HIGH_EYE := Vector3(1000, 1830, 1000) # past the walkers' window from the city's edge, looking at its middle
+const HIGH_TICKS := 600
 
 var failures := 0
 
@@ -51,6 +53,12 @@ func _ready() -> void:
 	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "lentes dos semáforos acesas")
 	_check(int(probe.red_entries) == 0, "ninguém entrou no vermelho (%d)" % probe.red_entries)
 	_check_amber_rule()
+	# from high up the eye stands past the city's edge: the walkers stay where the camera looks
+	cam.look_at_from_position(HIGH_EYE, Vector3.ZERO)
+	await _frames(5)
+	CityStore.step_ticks(HIGH_TICKS)
+	var far: Dictionary = CityStore.query(&"traffic_probe", [0])
+	_check(int(far.people) > 0, "do alto, os pedestres ficam onde a câmera olha (%d)" % far.people)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 

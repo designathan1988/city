@@ -74,5 +74,8 @@
  "thunder_low_hz": 220.0,
  "thunder_crack_hz": 1400.0,
  "thunder_late_s": 6.0,
+ "thunder_far_gain": 0.35,
+ "thunder_near_gain": 0.65,
+ "thunder_start_share": 0.5,
  "sound_ms": 343.0
 }

@@ -1,0 +1,147 @@
+{
+ "_doc": "The game's keys (game/flow/game_keys.gd), each rule a key name of Godot's OS.find_keycode_from_string with what it does; ctrl and shift when they must be held. First rule first. tools: the letter of each tool and the dock category it opens; tabs: the letters that open a tab of a category; digit_keys: the number row picks a road of the catalogue, the road tool in hand. Keys the camera holds (W A S D, arrows, Q E) stay with game/camera/camera_motion.gd.",
+ "rules": [
+  {
+   "key": "D",
+   "ctrl": true,
+   "action": "duplicate"
+  },
+  {
+   "key": "F8",
+   "action": "changes"
+  },
+  {
+   "key": "Backspace",
+   "action": "delete"
+  },
+  {
+   "key": "F9",
+   "shift": true,
+   "action": "profiler"
+  },
+  {
+   "key": "F9",
+   "action": "health"
+  },
+  {
+   "key": "F7",
+   "action": "effects"
+  },
+  {
+   "key": "S",
+   "ctrl": true,
+   "action": "save"
+  },
+  {
+   "key": "O",
+   "ctrl": true,
+   "action": "open"
+  },
+  {
+   "key": "Z",
+   "ctrl": true,
+   "shift": true,
+   "action": "redo"
+  },
+  {
+   "key": "Z",
+   "ctrl": true,
+   "action": "undo"
+  },
+  {
+   "key": "Y",
+   "ctrl": true,
+   "action": "redo"
+  },
+  {
+   "key": "Space",
+   "action": "pause"
+  },
+  {
+   "key": "Home",
+   "action": "home"
+  },
+  {
+   "key": "Delete",
+   "action": "delete"
+  },
+  {
+   "key": "Escape",
+   "action": "escape"
+  }
+ ],
+ "tools": {
+  "1": "roads",
+  "Z": "zones",
+  "H": "build",
+  "T": "landscape",
+  "O": "transit",
+  "B": "demolish",
+  "I": "info"
+ },
+ "tabs": {
+  "U": [
+   "roads",
+   "upgrade"
+  ],
+  "X": [
+   "roads",
+   "split"
+  ],
+  "C": [
+   "roads",
+   "control"
+  ],
+  "M": [
+   "roads",
+   "move"
+  ],
+  "P": [
+   "landscape",
+   "street"
+  ],
+  "G": [
+   "landscape",
+   "street"
+  ],
+  "F": [
+   "landscape",
+   "street"
+  ]
+ },
+ "digit_keys": "23456789",
+ "terrain": {
+  "[": [
+   "radius",
+   -1
+  ],
+  "]": [
+   "radius",
+   1
+  ],
+  "{": [
+   "strength",
+   -1
+  ],
+  "}": [
+   "strength",
+   1
+  ],
+  "-": [
+   "strength",
+   -1
+  ],
+  "_": [
+   "strength",
+   -1
+  ],
+  "=": [
+   "strength",
+   1
+  ],
+  "+": [
+   "strength",
+   1
+  ]
+ }
+}

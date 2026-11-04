@@ -11,7 +11,7 @@ namespace city::b40 {
 namespace {
 constexpr float MIN_AREA2 = 1e-10f; // squared cross product of a piece worth drawing
 constexpr float AXIS_PARALLEL = 0.5f;
-constexpr size_t TRIANGLE = 3;
+constexpr size_t MIN_POLY_VERTS = 3; // fewer points enclose no area
 using Poly = std::vector<Vector3>;
 
 // The part of `in` on one side of the vertical plane (p - o).dot(n) = c: `low` keeps <= c, otherwise >= c (Sutherland-Hodgman).
@@ -28,7 +28,7 @@ Poly half(const Poly &in, const Vector3 &o, const Vector3 &n, float c, bool low)
 }
 
 bool drawable(const Poly &p) {
-	if (p.size() < TRIANGLE) return false;
+	if (p.size() < MIN_POLY_VERTS) return false;
 	Vector3 area;
 	for (size_t i = 1; i + 1 < p.size(); i++) area += (p[i] - p[0]).cross(p[i + 1] - p[0]);
 	return area.length_squared() > MIN_AREA2;

@@ -18,13 +18,12 @@
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) \
 	X(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
-	X(terrain, river_freeboard_m) X(terrain, river_floor_share) X(terrain, shore_reach_m) \
-	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
-	X(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) X(render, upload_budget_mb) X(render, pose_delay_ticks) \
+	X(terrain, river_freeboard_m) X(terrain, river_floor_share) X(terrain, shore_reach_m) \n	X(render, occluder_min_storeys) X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \n	X(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) X(render, upload_budget_mb) X(render, pose_delay_ticks) \
 	X(history, max_entries) X(history, max_mb) \
 	X(roundabout, radius_min_m) X(roundabout, radius_max_m) X(roundabout, approach_m) X(roundabout, entry_merge_m) \
 	X(roundabout, max_arc_deg) X(roundabout, disc_pad_m) \
-	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors) \
+	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors) X(edit, duplicate_min_m) X(edit, duplicate_gap_m) \
+	X(inspect, lane_vehicle_m) X(inspect, min_leg_deg) \
 	X(build, grid_m) X(build, module_m) X(build, wing_modules) X(build, min_side_m) X(build, max_side_m) X(build, min_storey_m) \
 	X(build, max_storey_m) X(build, max_ground_m) X(build, max_volumes) X(build, min_bearing) \
 	X(build, least_opening) X(build, most_opening) X(build, max_projection_m) X(build, max_recess_m) X(build, relief_step_m) \

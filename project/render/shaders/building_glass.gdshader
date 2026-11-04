@@ -8,6 +8,8 @@ render_mode cull_back;
 global uniform float night;
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
+global uniform float building_glass; // the Effects panel: 0 leaves the panes out
+global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 uniform float window_glow = 1.5;
 uniform float glass_reflect = 0.08;
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
@@ -35,6 +37,7 @@ varying vec3 v_axis_y;
 varying vec3 v_axis_z;
 
 void vertex() {
+	if (building_glass < 0.5) VERTEX = vec3(0.0); // triangles of no area: nothing to shade, and no discard to cost the depth pass
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	v_room0 = CUSTOM0;

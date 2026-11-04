@@ -57,13 +57,15 @@ struct CityState {
 	uint32_t seed = 0;
 	int map_index = 0; // entry of data/catalog/maps.json chosen at creation
 	float map_half = 0; // metres from the middle to each edge
-	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // set by the api each frame (micro window)
+	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
 	bool ready = false;
+	std::string style; // the regional style's id, as the new-city screen chose it (the save block and the single reader come with the mechanism)
 	// Owner of "unsaved changes" (tools/gates/owners.json): every change to the map calls touch() (commands, undo/redo,
 	// a building that grew); the clock running is not one. Saving stores the revision. Nothing
 	// else keeps a dirty flag for the save prompt. `edited`: the player changed this city since it was made or opened
 	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
+	std::atomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
 	uint64_t edit_revision = 0; // commands and undo/redo only: the snapshot's expensive counts follow this
 	bool edited = false;
 	void touch() { revision++; }

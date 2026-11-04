@@ -49,16 +49,16 @@ bool write_atomic(const std::string &target, const std::vector<uint8_t> &bytes, 
 } // namespace
 
 void CityCore::join_save() {
-	if (save_thread_.joinable()) save_thread_.join();
+	if (save_.thread.joinable()) save_.thread.join();
 }
 
 Dictionary CityCore::save_status() {
 	Dictionary d;
-	const int state = save_state_.load();
+	const int state = save_.state.load();
 	d["busy"] = state == 1;
 	d["ok"] = state == 2;
-	d["error"] = state == 3 ? String(save_error_.c_str()) : String(); // written before the state turns 3
-	d["bytes"] = save_bytes_.load();
+	d["error"] = state == 3 ? String(save_.error.c_str()) : String(); // written before the state turns 3
+	d["bytes"] = save_.bytes.load();
 	return d;
 }
 
@@ -72,10 +72,10 @@ Dictionary CityCore::save_city(const String &path) {
 		if (!state_->ready) return d;
 	}
 	const std::string target = utf8(path);
-	save_bytes_.store(0);
-	save_error_.clear(); // no save thread runs now (joined above)
-	save_state_.store(1);
-	save_thread_ = std::thread([this, target]() {
+	save_.bytes.store(0);
+	save_.error.clear(); // no save thread runs now (joined above)
+	save_.state.store(1);
+	save_.thread = std::thread([this, target]() {
 		std::vector<uint8_t> bytes;
 		uint64_t revision = 0;
 		{
@@ -83,16 +83,16 @@ Dictionary CityCore::save_city(const String &path) {
 			bytes = encode_city(*state_);
 			revision = state_->revision; // the revision this file holds
 		}
-		save_bytes_.store(int64_t(bytes.size()));
+		save_.bytes.store(int64_t(bytes.size()));
 		std::string error;
 		const bool ok = write_atomic(target, bytes, error);
 		if (ok) {
 			std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 			state_->saved_revision = revision;
-			save_state_.store(2);
+			save_.state.store(2);
 		} else {
-			save_error_ = error;
-			save_state_.store(3);
+			save_.error = error;
+			save_.state.store(3);
 		}
 	});
 	d["ok"] = true;

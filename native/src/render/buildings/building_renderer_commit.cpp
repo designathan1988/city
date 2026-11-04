@@ -32,16 +32,16 @@ Color unpack(uint32_t c) {
 
 // The job's surface to the draw: the instance shows the new mesh (or is emptied when the shell was empty), drawn when
 // `shown`.
-void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown) {
+void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const RID &material, bool shadows, bool shown, RenderLayer layer) {
 	const bool any = sf.mesh.valid();
-	d.adopt(scenario, material, shadows, sf.mesh.release());
+	d.adopt(scenario, material, shadows, sf.mesh.release(), layer);
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, sf.box);
 	d.visible(any && shown);
 }
 
 // A chunk's level: its walls, panes or far walls, glass guards and railings each with their material, on the mesh's surfaces, so no
 // override on the instance.
-void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown) const {
+void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown, RenderLayer layer) const {
 	if (sf.mesh.valid()) {
 		RenderingServer *rs = RenderingServer::get_singleton();
 		if (sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
@@ -49,7 +49,7 @@ void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, boo
 		if (sf.sheer_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.sheer_at, material_sheer_);
 		if (sf.card_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.card_at, material_card_);
 	}
-	put(d, sf, scenario_, RID(), true, shown);
+	put(d, sf, scenario_, RID(), true, shown, layer);
 }
 
 BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer, const b40::Shell *cards) {
@@ -165,14 +165,15 @@ void BuildingRenderer::commit_one(Built &b) {
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown);
-			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown);
+			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown, LAYER_BUILDING_SHELLS);
+			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown, LAYER_BUILDING_PARTS);
 		}
 		for (int band = 0; band < BAND_DRAWS; band++) {
 			const bool prop = band >= BAND_COUNT;
 			ch.bands[size_t(band)].adopt(scenario_, prop ? material_props_ : material_parts_, prop && band - BAND_COUNT < b40::BAY_PROP_SHADOWED,
-					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], chunk_box(b.key));
+					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], chunk_box(b.key), LAYER_BUILDING_DETAILS);
 		}
+		ch.occluder.set(scenario_, b.walls);
 		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
 		ch.instances = ch.props = 0;
 		for (int band = 0; band < BAND_DRAWS; band++) (band < BAND_COUNT ? ch.instances : ch.props) += b.band_count[size_t(band)];
@@ -181,7 +182,7 @@ void BuildingRenderer::commit_one(Built &b) {
 		ch.cut = b.cut;
 	}
 	if (b.has_mid) {
-		for (int i = 0; i < SUB_COUNT; i++) put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown);
+		for (int i = 0; i < SUB_COUNT; i++) put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
@@ -194,7 +195,7 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
 	sp.held = b.held;
-	put(sp.far, b.far, scenario_, material_far_, true, true); // casts: past the mid level it is the only thing that can
+	put(sp.far, b.far, scenario_, material_far_, true, true, LAYER_BUILDING_MASSES); // casts: past the mid level it is the only thing that can
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);

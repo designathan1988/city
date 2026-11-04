@@ -23,7 +23,9 @@ struct Grain {
 	double step = 0;
 	int most = 0;
 };
-constexpr Grain GRAINS[] = { { 0.5, 72, 0.8, 80000 }, { 0.25, 144, 0.4, 1500000 } };
+constexpr int COARSE_HEADINGS = 72; // a heading every 5 degrees
+constexpr int FINE_HEADINGS = 144; // every 2.5
+constexpr Grain GRAINS[] = { { 0.5, COARSE_HEADINGS, 0.8, 80000 }, { 0.25, FINE_HEADINGS, 0.4, 1500000 } };
 constexpr int SUBSTEPS = 2; // poses tested along a step
 constexpr double REVERSE_COST = 1.6, SWITCH_COST = 15, STEER_COST = 0.6, STEER_CHANGE_COST = 2; // per metre; a stop and a start; the wheel
 constexpr double H_WEIGHT = 1.4; // a little over one finds a way sooner, a little longer than the shortest

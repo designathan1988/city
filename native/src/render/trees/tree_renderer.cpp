@@ -78,6 +78,19 @@ void TreeRenderer::reset() {
 	pending_ = 0;
 }
 
+int TreeRenderer::near_trees() const {
+	int n = 0;
+	for (const auto &[key, ch] : near_) n += ch.trees;
+	return n;
+}
+
+void TreeRenderer::set_share(float share) {
+	if (trees_.share.load() == share) return;
+	trees_.share.store(share);
+	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].dirty.insert(key);
+	for (const auto &[key, sp] : far_) tier_[TIER_FAR].dirty.insert(key);
+}
+
 void TreeRenderer::mark_dirty(int64_t key) {
 	tier_[TIER_NEAR].dirty.insert(key);
 	tier_[TIER_FAR].dirty.insert(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
@@ -113,14 +126,16 @@ void TreeRenderer::commit_near(Built &b) {
 	int n = kit_.count();
 	ch.body.resize(size_t(n));
 	ch.cards.resize(size_t(n));
+	ch.trees = 0;
+	for (const PackedFloat32Array &buf : b.bufs) ch.trees += int(buf.size() / MM_STRIDE);
 	AABB box = box_of(b.key, CHUNK);
 	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int i = 0; i < n; i++) {
 		const TreeSpecies &sp = kit_.species(i);
-		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, true);
+		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
 		if (sp.cards.is_null()) continue;
-		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast);
+		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(0, end);
 	}
 }
@@ -134,7 +149,7 @@ void TreeRenderer::FarDraw::free() {
 
 void TreeRenderer::commit_far(Built &b) {
 	FarDraw &d = far_[b.key];
-	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0);
+	swap_base(d.inst, d.mesh, b.far.release(), scenario_, card_material_, trees_.far_shadows != 0, LAYER_VEGETATION);
 	if (!d.inst.is_valid()) return;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->instance_set_custom_aabb(d.inst, box_of(b.key, SUPERCHUNK));

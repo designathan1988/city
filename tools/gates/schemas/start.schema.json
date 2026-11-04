@@ -1,0 +1,53 @@
+{
+ "type": "object",
+ "required": [
+  "reveal_limit_s",
+  "default_style",
+  "styles",
+  "units",
+  "sizes",
+  "seed_max"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "default_style": {
+   "type": "string"
+  },
+  "styles": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "name_key",
+     "speed_unit",
+     "length_unit",
+     "currency"
+    ]
+   }
+  },
+  "units": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "label",
+     "m",
+     "s"
+    ]
+   }
+  },
+  "sizes": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "minItems": 1
+  },
+  "seed_max": {
+   "type": "integer",
+   "minimum": 1
+  }
+ }
+}

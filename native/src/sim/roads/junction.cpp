@@ -3,6 +3,9 @@
 #include "core/units.h"
 #include "sim/roads/junction.h"
 
+#include "core/math.h"
+#include "sim/roads/road_network.h"
+
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -92,6 +95,25 @@ Corner corner_fillet(const Arm &a, const Arm &b) {
 	if (bl == 0) bl = 1;
 	double k = r / std::sin(psi / 2);
 	return { CornerMode::FILLET, s + run, t + run, r, xx + bx / bl * k, xz + bz / bl * k };
+}
+
+std::vector<SharpNode> nodes_too_sharp(const RoadNetwork &net, float min_gap) {
+	std::vector<SharpNode> out;
+	std::vector<float> legs;
+	for (int n = 0; n < int(net.nodes.size()); n++) {
+		const RoadNode &node = net.nodes[size_t(n)];
+		if (!node.alive || node.segs.size() < 2) continue;
+		legs.clear();
+		for (int sg : node.segs) { // each leg leaves towards its curve's control point
+			const RoadSegment &g = net.segs[size_t(sg)];
+			legs.push_back(float(std::atan2(g.q.cz - node.z, g.q.cx - node.x)));
+		}
+		std::sort(legs.begin(), legs.end());
+		float gap = legs.front() + TAU_F - legs.back();
+		for (size_t i = 1; i < legs.size(); i++) gap = std::min(gap, legs[i] - legs[i - 1]);
+		if (gap < min_gap) out.push_back({ n, gap });
+	}
+	return out;
 }
 
 } // namespace city

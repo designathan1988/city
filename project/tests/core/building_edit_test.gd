@@ -217,15 +217,15 @@ func _save_round_trip(id: int) -> void:
 	var edited: int = _info(id).digest
 	var outcome := {}
 	CityStore.saved.connect(func(_s: String, r: Dictionary) -> void: outcome.merge(r), CONNECT_ONE_SHOT)
-	CityStore.save_game(SLOT)
-	while CityStore.save_busy():
+	CityStore.saves.save_game(SLOT)
+	while CityStore.saves.save_busy():
 		await get_tree().process_frame
 	_check(outcome.get("ok", false), "salvou %s" % outcome)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
-	var r: Dictionary = CityStore.load_game(SLOT)
+	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(r.ok, "abriu %s" % r)
 	_check(_info(id).edited and _info(id).digest == edited, "o corpo editado voltou igual")
-	DirAccess.remove_absolute(CityStore.save_path(SLOT))
+	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 
 func _check(ok: bool, what: String) -> void:

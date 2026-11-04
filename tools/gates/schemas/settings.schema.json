@@ -1,11 +1,23 @@
 {
  "type": "object",
+ "required": [
+  "default",
+  "levels",
+  "tiers",
+  "frame_cap",
+  "governor",
+  "dynamic_resolution",
+  "gpu_rules",
+  "gpu_default",
+  "ssao",
+  "shadow_choices",
+  "fps_choices",
+  "presets",
+  "tests_preset"
+ ],
  "properties": {
   "_doc": {
    "type": "string"
-  },
-  "cascades_a_side": {
-   "type": "number"
   },
   "filter_radius": {
    "type": "array"
@@ -13,67 +25,64 @@
   "default": {
    "type": "string"
   },
-  "frame_cap": {
-   "type": "object",
-   "properties": {
-    "max_fps": {
-     "type": "integer",
-     "minimum": 0
-    },
-    "background_fps": {
-     "type": "integer",
-     "minimum": 0
-    }
-   },
-   "required": [
-    "max_fps",
-    "background_fps"
-   ],
-   "strict": true
+  "gpu_default": {
+   "type": "string"
   },
   "presets": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "minItems": 1
+  },
+  "tests_preset": {
+   "type": "string"
+  },
+  "tiers": {
    "type": "object",
    "additional": {
     "type": "object",
     "properties": {
-     "label_key": {
-      "type": "string"
+     "pixel_ratio": {
+      "type": "number"
      },
      "shadows": {
       "type": "boolean"
      },
+     "shadow_px": {
+      "type": "integer"
+     },
+     "shadow_filter": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+     },
+     "shadow_least_m": {
+      "type": "number"
+     },
      "msaa": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 2
+      "maximum": 3
      },
-     "render_scale": {
-      "type": "number"
+     "smaa": {
+      "type": "boolean"
      },
-     "shadow_size": { "type": "integer" },
-     "shadow_filter": { "type": "integer" },
-     "occlusion": { "type": "boolean" },
-     "smaa": { "type": "boolean" },
-     "shadow_distance": {
-      "type": "number"
+     "ssao": {
+      "type": "boolean"
      }
     },
     "required": [
-     "label_key",
+     "pixel_ratio",
      "shadows",
+     "shadow_px",
+     "shadow_filter",
+     "shadow_least_m",
      "msaa",
-     "render_scale",
-     "shadow_distance"
-    ],
-    "strict": true
+     "smaa",
+     "ssao"
+    ]
    }
   }
- },
- "required": [
-  "_doc",
-  "default",
-  "frame_cap",
-  "presets"
- ],
- "strict": true
+ }
 }

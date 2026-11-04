@@ -11,7 +11,11 @@ signal profile_picked(index: int)
 @onready var _strips: Dictionary = {}
 @onready var _tabs_row: HBoxContainer
 @onready var _cards_row: HBoxContainer
+@onready var _scroll: ScrollContainer
 @onready var _tab_buttons: Dictionary = {}
+@onready var _counts: Dictionary = {}
+@onready var _open := ""
+@onready var _fades: Array[TextureRect] = []
 
 
 func _ready() -> void:
@@ -25,25 +29,86 @@ func _ready() -> void:
 	var strip := HudWidgets.panel(self, &"TabStrip")
 	strip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_tabs_row = HudWidgets.hbox(strip)
-	var counts := {}
 	for p in _profiles:
-		counts[p.category] = counts.get(p.category, 0) + 1
+		_counts[p.category] = _counts.get(p.category, 0) + 1
 	for t in DataTables.ui("drawers").catalog_tabs:
-		var count: int = counts.get(t[0], 0)
+		var count: int = _counts.get(t[0], 0)
 		var b := HudWidgets.button(&"RcTab", "", "%s %d" % [tr(t[1]), count], "", "", "tab_h")
 		b.toggle_mode = true
 		b.pressed.connect(show_category.bind(t[0]))
 		_tabs_row.add_child(b)
 		_tab_buttons[t[0]] = b
-	var scroll := ScrollContainer.new()
+	_scroll = ScrollContainer.new()
+	var scroll := _scroll
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll.custom_minimum_size.x = HudWidgets.px("drawer_max_w")
+	scroll.gui_input.connect(_wheel)
 	add_child(scroll)
 	_cards_row = HudWidgets.hbox(scroll, &"Pad")
+	for side: float in [0.0, 1.0]:
+		_fades.append(_fade(side))
+	scroll.get_h_scroll_bar().value_changed.connect(_fade_edges.unbind(1))
+	scroll.get_h_scroll_bar().changed.connect(_fade_edges)
+	scroll.resized.connect(_fade_edges)
 	show_category(DataTables.ui("drawers").catalog_tabs[0][0])
 
 
+## A band over one end of the row of cards, the panel's colour fading into them.
+func _fade(side: float) -> TextureRect:
+	var band := TextureRect.new()
+	band.texture = ThemeBuilder.fade(side == 0.0)
+	band.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.top_level = true
+	band.hide()
+	add_child(band)
+	return band
+
+
+## The row fades out at the side with more in it, and only there.
+func _fade_edges() -> void:
+	var bar := _scroll.get_h_scroll_bar()
+	var box := _scroll.get_global_rect()
+	var w := HudWidgets.px("rc_fade_w")
+	_fades[0].visible = bar.value > 1.0
+	_fades[1].visible = bar.value < bar.max_value - bar.page - 1.0
+	_fades[0].global_position = box.position
+	_fades[1].global_position = box.position + Vector2(box.size.x - w, 0.0)
+	for f in _fades:
+		f.size = Vector2(w, box.size.y)
+
+
+## The language changed: the tabs and the cards, in the new one.
+func relabel() -> void:
+	for t in DataTables.ui("drawers").catalog_tabs:
+		_tab_buttons[t[0]].text = "%s %d" % [tr(t[1]), _counts.get(t[0], 0)]
+	if _open != "":
+		show_category(_open)
+
+
+## The card at `index` of the open tab, as if pressed.
+func pick_index(index: int) -> void:
+	if index < _cards_row.get_child_count():
+		(_cards_row.get_child(index).get_meta(&"button") as Button).pressed.emit()
+
+
+## As wide as the drawer's room.
+func fit(width: float) -> void:
+	_scroll.custom_minimum_size.x = minf(width, _cards_row.get_combined_minimum_size().x)
+
+
+## A wheel over the cards scrolls them sideways.
+func _wheel(event: InputEvent) -> void:
+	var b := event as InputEventMouseButton
+	if b != null and b.pressed and (b.button_index == MOUSE_BUTTON_WHEEL_UP or b.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		var step := HudWidgets.px("rc_card_w") * (1.0 if b.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0)
+		_scroll.scroll_horizontal += int(step)
+		accept_event()
+
+
 func show_category(category: String) -> void:
+	_open = category
 	for k in _tab_buttons:
 		_tab_buttons[k].set_pressed_no_signal(k == category)
 	HudWidgets.clear(_cards_row)

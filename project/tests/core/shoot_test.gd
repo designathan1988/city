@@ -172,19 +172,19 @@ func _save_marks() -> void:
 	_check(w.get("ok", false), "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	_check(CityStore.query(&"damage_probe").craters == 0, "mapa novo não herda as marcas")
-	var r: Dictionary = CityStore.load_game(SLOT)
+	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(r.ok, "abriu %s" % r)
 	var got: Dictionary = CityStore.query(&"damage_probe")
 	for key in ["craters", "ruins", "gone", "hurt", "strikes"]:
 		_check(got[key] == marks[key], "%s volta igual (%d)" % [key, marks[key]])
-	DirAccess.remove_absolute(CityStore.save_path(SLOT))
+	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 
 func _save() -> Dictionary:
 	var outcome := {}
 	CityStore.saved.connect(func(_s: String, r: Dictionary) -> void: outcome.merge(r), CONNECT_ONE_SHOT)
-	CityStore.save_game(SLOT)
-	while CityStore.save_busy():
+	CityStore.saves.save_game(SLOT)
+	while CityStore.saves.save_busy():
 		await get_tree().process_frame
 	return outcome
 

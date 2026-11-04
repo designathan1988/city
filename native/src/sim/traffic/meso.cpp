@@ -256,7 +256,7 @@ void advance(CityState &s, int id) {
 	meso_unlink(s, id);
 	v.wait = 0;
 	v.held = 0;
-	v.ds = to;
+	count_entry(s.traffic, v.ds = to);
 	v.lane = to_lane;
 	v.ri++;
 	if (near) { // enters the window: becomes micro at the start of the lane

@@ -13,6 +13,7 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace godot;
@@ -122,7 +123,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);
-		int lod = 0;
+		int lod = std::min(floor_, lods - 1);
 		while (lod < lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
 		const std::vector<int> &bodies = by_age_[rec.age < PED_AGES ? rec.age : int(PedAge::ADULT)];
 		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
@@ -148,10 +149,16 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
 			size_t k = size_t(v * levels + l);
-			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))]->get_rid(), material_, bufs_[k], box, l < lods);
+			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))]->get_rid(), material_, bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false);
 	return drawn;
+}
+
+int PeopleRenderer::shown(int level) const {
+	int n = 0;
+	for (size_t v = 0; v < asset_.variations.size(); v++) n += int(bufs_[v * size_t(asset_.lods) + size_t(level)].size() / MM_STRIDE);
+	return n;
 }
 
 } // namespace city

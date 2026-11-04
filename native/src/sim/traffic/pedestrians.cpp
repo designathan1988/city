@@ -277,7 +277,7 @@ void step_pedestrians(CityState &s, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	// the crowd follows the sidewalk metres inside ped_window_m, so it has a natural ceiling
 	const PeopleNow now = people_now(p, float(s.clock.hour()));
-	const double target = people_wanted(s, now);
+	const double target = people_wanted(s, now) * t.levels.people * t.levels.population;
 	const bool filling = t.ped_count < p.fill_share * target; // a street just opened: the crowd is on it already
 	int spawns = filling ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
 	spawns = std::min(spawns, int(p.ped_routes_per_step));

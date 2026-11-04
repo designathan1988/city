@@ -28,6 +28,21 @@ const char *const OVERLAY_NAMES[int(Overlay::COUNT)] = { "zones", "congestion" }
 
 CityCore::CityCore() : state_(std::make_unique<CityState>()) {}
 
+namespace {
+
+// Below this the camera looks almost level: the line of sight reaches the ground too far off to mean anything.
+constexpr float LEVEL_VIEW = 0.05f;
+
+// Where the player is looking: the line of sight down to the ground. The windows of traffic and walkers stand there (the
+// 4.0's focus, the camera's target), not under an eye that from high up stands past the edge of the city it shows.
+Vector3 ground_seen(const Camera3D &cam) {
+	const Transform3D t = cam.get_global_transform();
+	const Vector3 ahead = -t.basis.get_column(2);
+	return ahead.y < -LEVEL_VIEW ? t.origin + ahead * (t.origin.y / -ahead.y) : t.origin;
+}
+
+} // namespace
+
 CityCore::~CityCore() {
 	join_save();
 	sim_.stop();
@@ -130,8 +145,9 @@ void CityCore::_process(double delta) {
 	Laps total, laps;
 	Camera3D *cam = get_viewport() ? get_viewport()->get_camera_3d() : nullptr;
 	if (cam) cam_ = cam->get_global_position();
-	state_->camera_x.store(cam_.x);
-	state_->camera_z.store(cam_.z);
+	const Vector3 look = cam ? ground_seen(*cam) : cam_;
+	state_->camera_x.store(look.x);
+	state_->camera_z.store(look.z);
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -160,9 +176,45 @@ void CityCore::_process(double delta) {
 	process_ms_ = total.lap();
 }
 
+void CityCore::set_levels(float traffic, float people, float demand) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	l.traffic = traffic;
+	l.people = people;
+	l.demand = demand;
+}
+
+void CityCore::set_sim_switch(const String &name, bool on) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	TrafficLevels &l = state_->traffic.levels;
+	if (name == "traffic") l.vehicles_on = on;
+	else if (name == "pedestrians") l.people_on = on;
+	else if (name == "growth") l.growth_on = on;
+	else if (name == "crowd") l.crowd_on = on;
+}
+
+void CityCore::set_detail_scale(float scale) { render_.set_detail_scale(scale); }
+void CityCore::set_vegetation(float share) { render_.set_vegetation(share); }
+void CityCore::set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { render_.set_agent_detail(cabin_m, cabin_cap, people_floor); }
+void CityCore::set_population(float share) {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	state_->traffic.levels.population = share;
+}
+
+void CityCore::set_upload_every(int frames) { render_.set_upload_every(frames); }
+
+void CityCore::set_lots_drawn(bool on) {
+	render_.set_lots_drawn(on);
+	need_full_rebuild_ = true;
+}
+
 void CityCore::set_overlay(const String &name, bool on) {
 	for (int i = 0; i < int(Overlay::COUNT); i++)
 		if (name == OVERLAY_NAMES[i]) render_.set_overlay(Overlay(i), on);
+}
+
+void CityCore::show_every_zone(bool on) {
+	render_.show_every_zone(on);
 }
 
 Dictionary CityCore::overlays() const {

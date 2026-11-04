@@ -195,7 +195,7 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
 	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
 	float level = 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4);
-	float lit = step(fract(lot * 5.31), 0.64) * awake * level;
+	float lit = step(fract(lot * 5.31), 0.64) * awake * level * building_night_windows;
 	vec3 tint = room_lamp(fract(lot * 17.31), office);
 	tint = mix(tint, tv_light(TIME, lot), (1.0 - office) * step(1.0 - TV_SHARE, fract(lot * 3.71)));
 	return tint * lit * (vec3(0.35) + 1.3 * clamp(seen / 0.55, vec3(0.0), vec3(1.6)));

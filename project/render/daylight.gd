@@ -4,7 +4,6 @@
 class_name Daylight
 extends RefCounted
 
-const RIGHT_ANGLE := 90.0
 const BIAS_PERCENT := 100.0 # the engine reads the bias in hundredths
 const HALF := 0.5
 const MARGIN_TEXELS := 2.0
@@ -28,6 +27,9 @@ var _hour := 0.0
 var _overcast := 0.0
 var _dark := 0.0
 var _flash := 0.0
+## The Effects panel's switches: bloom and the ambient light drawn or not.
+var glow_on := true
+var ambient_on := true
 
 
 func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, top: DirectionalLight3D, under: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
@@ -40,51 +42,13 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_sky = sky
 
 
-## A light without shadows.
-static func make_plain() -> DirectionalLight3D:
-	var light := DirectionalLight3D.new()
-	light.shadow_enabled = false
-	return light
-
-
-## What the sky adds to what faces it, and to nothing else: walls take the flat ambient, the ground and the roofs this
-## as well, so a shaded wall and a shaded street do not get the same light (the 4.0's hemisphere light and sky map).
-static func make_top() -> DirectionalLight3D:
-	var top := make_plain()
-	top.light_specular = 0.0
-	top.rotation_degrees = Vector3(-RIGHT_ANGLE, 0.0, 0.0)
-	return top
-
-
-## What the ground does not give back to what faces it: the same lobe as the sky's, taken away, so a flat ambient and the two
-## make a hemisphere, the sky over and the ground under (a soffit, the underside of a crown).
-static func make_under() -> DirectionalLight3D:
-	var under := make_plain()
-	under.light_specular = 0.0
-	under.light_negative = true
-	under.rotation_degrees = Vector3(RIGHT_ANGLE, 0.0, 0.0)
-	return under
-
-
-## The sun with its shadows: four cascades, blended where they meet.
-static func make_sun(day: Dictionary) -> DirectionalLight3D:
-	var sun := DirectionalLight3D.new()
-	sun.shadow_enabled = true
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_max_distance = day.shadow_max_distance_m
-	sun.directional_shadow_split_1 = day.shadow_split_1
-	sun.directional_shadow_split_2 = day.shadow_split_2
-	sun.directional_shadow_split_3 = day.shadow_split_3
-	sun.directional_shadow_blend_splits = true
-	sun.directional_shadow_fade_start = day.shadow_fade_start
-	sun.shadow_normal_bias = day.shadow_normal_bias
-	sun.shadow_blur = day.shadow_blur
-	sun.directional_shadow_pancake_size = day.shadow_pancake_m
-	return sun
-
-
 func _c(key: String) -> Color:
 	return Color.html(_d[key])
+
+
+## The same hour again, after a switch changed what the light draws.
+func relight() -> void:
+	set_hour(_hour)
 
 
 ## How overcast it is (0..1, rain and storm) and how bright a bolt's flash is now: the light follows at once.
@@ -137,9 +101,9 @@ func set_hour(hour: float) -> void:
 	var hemi: float = _d.hemi_day_k * light + _d.hemi_night_k * night
 	_env.ambient_light_color = _c("hemi_night").lerp(_c("hemi_day"), light)
 	var sky: float = _d.ambient_scale * (1.0 + _flash * _d.flash_ambient) * (1.0 - _overcast * _d.overcast_ambient)
-	_env.ambient_light_energy = hemi * sky
+	_env.ambient_light_energy = hemi * sky if ambient_on else 0.0
 	_top.light_color = _c("sky_top")
-	_top.light_energy = _d.sky_top_energy * light * sky
+	_top.light_energy = _d.sky_top_energy * light * sky if ambient_on else 0.0
 	_top.visible = _top.light_energy > 0.0
 	_under.light_color = _c("ground_under")
 	_under.light_energy = _d.ground_under_k * _env.ambient_light_energy
@@ -148,7 +112,7 @@ func set_hour(hour: float) -> void:
 	var fill: float = _fill.light_energy * maxf(_fill.basis.z.y, 0.0) if _fill.visible else 0.0
 	direct_share = direct / maxf(direct + fill + _env.ambient_light_energy + _top.light_energy, LEAST_LIGHT)
 	_set_sky(elev)
-	_env.glow_enabled = night > _d.glow_from_night
+	_env.glow_enabled = glow_on and night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
 	RenderingServer.global_shader_parameter_set(&"night", night)
 	var awake := _awake_share(hour)

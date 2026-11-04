@@ -74,35 +74,42 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.white = hexc(m["white"]);
 	L.yellow = hexc(m["yellow"]);
 	L.paint_lift = float(m["lift_m"]);
-	Dictionary styles = sub(m, "styles", errors);
-	Dictionary st = sub(styles, String(m["style"]).utf8().get_data(), errors);
-	L.centre_w = float(st["centre_m"]);
-	L.lane_w = float(st["divider_m"]);
-	L.fast_kmh = float(st["fast_kmh"]);
-	L.fast_centre_w = float(st["fast_centre_m"]);
-	L.fast_lane_w = float(st["fast_divider_m"]);
-	L.exclusive_w = float(st["exclusive_m"]);
-	L.double_w = float(st["double_line_m"]);
-	L.double_gap = float(st["double_gap_m"]);
-	L.zebra_period = float(st["zebra_period_m"]);
-	L.zebra_bar = float(st["zebra_bar_m"]);
-	L.zebra_edge = float(st["zebra_edge_m"]);
-	L.multi_lane_double = bool(st["multi_lane_double"]);
+	Dictionary base = sub(m, "base", errors);
+	Array styles = m["styles"];
+	L.styles.clear();
+	for (int k = 0; k < styles.size(); k++) {
+		Dictionary d = styles[k];
+		StreetLook::PaintStyle st;
+		auto num = [&](const char *key) { return float(d.has(key) ? d[key] : base[key]); }; // a style's own width, else the base's
+		st.centre_w = num("centre_m");
+		st.lane_w = num("divider_m");
+		st.fast_kmh = num("fast_kmh");
+		st.fast_centre_w = num("fast_centre_m");
+		st.fast_lane_w = num("fast_divider_m");
+		st.exclusive_w = num("exclusive_m");
+		st.double_w = num("double_line_m");
+		st.double_gap = num("double_gap_m");
+		st.zebra_period = num("zebra_period_m");
+		st.zebra_bar = num("zebra_bar_m");
+		st.zebra_edge = num("zebra_edge_m");
+		st.multi_lane_double = bool(d.has("multi_lane_double") ? d["multi_lane_double"] : base["multi_lane_double"]);
+		st.all_white = bool(d["all_white"]);
+		auto floats = [&](const char *key, std::vector<float> &out) {
+			Array a = d[key];
+			for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
+		};
+		floats("dash_kmh", st.dash_kmh);
+		floats("dash_m", st.dash);
+		floats("gap_m", st.gap);
+		if (st.dash.empty() || st.dash.size() != st.gap.size() || st.dash.size() != st.dash_kmh.size() + 1)
+			errors.push_back("streets.json markings.styles: dash_m e gap_m com uma faixa a mais que dash_kmh");
+		L.styles.push_back(st);
+	}
 	L.parking_line_w = float(m["mer_line_m"]);
 	L.parking_dash = float(m["mer_dash_m"]);
 	L.parking_gap = float(m["mer_gap_m"]);
 	L.no_parking_w = float(m["lpp_line_m"]);
 	L.no_parking_min = float(m["lpp_run_min_m"]);
-	auto floats = [&](const char *key, std::vector<float> &out) {
-		out.clear();
-		Array a = st[key];
-		for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
-	};
-	floats("dash_kmh", L.dash_kmh);
-	floats("dash_m", L.dash);
-	floats("gap_m", L.gap);
-	if (L.dash.empty() || L.dash.size() != L.gap.size() || L.dash.size() != L.dash_kmh.size() + 1)
-		errors.push_back("streets.json markings: dash_m e gap_m com uma faixa a mais que dash_kmh");
 }
 } // namespace
 

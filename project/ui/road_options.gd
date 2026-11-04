@@ -1,8 +1,8 @@
-## The road tool's options, beside the catalogue (Roadcraft ui/v2/shell.ts renderRoads): a row per choice, each a label
-## and its toggles. Alignment is the tool's own parameter; snapping is the player's setting (Settings.road_snap). The
-## rows and their icons come from data/ui/drawers.json "road_options".
+## The road tool's options (Roadcraft ui/v2/shell.ts renderRoads): a row per choice, each a label and its toggles, standing in the
+## drawer's options panel while the road tool is in hand (hud_drawer.gd). Alignment is the tool's own parameter; snapping is the
+## player's setting (Settings.road_snap). The rows and their icons come from data/ui/drawers.json "road_options".
 class_name RoadOptions
-extends PanelContainer
+extends VBoxContainer
 
 signal alignment_picked(alignment: int)
 ## A choice of the class road's: "lanes", "width" or "parking".
@@ -11,31 +11,19 @@ signal option_picked(key: String, value: Variant)
 signal road_picked(id: String)
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-@onready var _rows: VBoxContainer
 
 
 func _ready() -> void:
-	theme_type_variation = &"Surface"
-	anchor_top = 1.0
-	anchor_bottom = 1.0
-	grow_vertical = Control.GROW_DIRECTION_BEGIN
-	offset_left = HudWidgets.px("margin")
-	offset_bottom = -HudWidgets.px("margin")
-	_rows = HudWidgets.vbox(self, &"Pad")
-	hide()
+	theme_type_variation = &"VPad"
 	if tools:
 		tools.tool_changed.connect(func(_tool: int, _params: Dictionary) -> void:
-			if visible:
+			if is_inside_tree():
 				refresh())
 
 
-func open() -> void:
-	refresh()
-	show()
-
-
+## The rows again from the tool's parameters and the player's settings.
 func refresh() -> void:
-	HudWidgets.clear(_rows)
+	HudWidgets.clear(self)
 	var spec: Dictionary = DataTables.ui("drawers").road_options
 	var picked: int = tools.last_param(ToolController.Tool.ROAD, "alignment", 0) if tools else 0
 	var row := _row(spec.trace.label_key)
@@ -101,7 +89,7 @@ func _step(row: Control, icon: String, width: float, step: float, own: float) ->
 
 
 func _row(label_key: String) -> HBoxContainer:
-	var row := HudWidgets.hbox(_rows, &"Pad")
+	var row := HudWidgets.hbox(self, &"Pad")
 	var name := HudWidgets.label(row, &"MutedLabel", tr(label_key))
 	name.custom_minimum_size.x = HudWidgets.px("option_label_w")
 	return row

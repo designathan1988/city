@@ -18,6 +18,7 @@
   "water_spacing_m": 8
  },
  "render": {
+  "occluder_min_storeys": 2,
   "road_end_m": 2200,
   "props_end_m": 900,
   "building_detail_end_m": 700,
@@ -90,7 +91,13 @@
  "edit": {
   "split_min_m": 4,
   "street_cos": 0.8192,
-  "max_floors": 60
+  "max_floors": 60,
+  "duplicate_min_m": 8.8,
+  "duplicate_gap_m": 4.8
+ },
+ "inspect": {
+  "lane_vehicle_m": 12,
+  "min_leg_deg": 25
  },
  "build": {
   "grid_m": 0.5,

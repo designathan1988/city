@@ -10,7 +10,7 @@ namespace {
 constexpr float CDF_SCALE = 0.70710678f; // 1 / sqrt(2): erfc argument of the normal cdf
 constexpr int RANGE_BISECTIONS = 40; // 2^-40 of the search window: far below a millimetre
 constexpr float RANGE_LIMIT_M = 20000.f; // no scaled range is searched beyond this
-constexpr float RANGE_START_M = 0.05f;
+constexpr float NEAREST_RANGE_M = 0.05f;
 constexpr float MIN_KG = 1e-6f; // a charge of nothing still has a scaled distance
 constexpr float PA_PER_KPA = 1000.f;
 constexpr float QUANTILE_LIMIT = 8.f; // the standard normal's quantile is searched within +-8
@@ -81,8 +81,8 @@ Airblast airblast(const BlastParams &p, float kg, float r) {
 float felt_pressure(const BlastParams &p, const Airblast &a) { return a.pressure_kpa * std::min(1.f, a.duration_ms / p.response_ms); }
 
 float range_at_pressure(const BlastParams &p, float kg, float kpa) {
-	if (airblast(p, kg, RANGE_START_M).pressure_kpa < kpa) return 0.f;
-	float lo = RANGE_START_M, hi = RANGE_LIMIT_M;
+	if (airblast(p, kg, NEAREST_RANGE_M).pressure_kpa < kpa) return 0.f;
+	float lo = NEAREST_RANGE_M, hi = RANGE_LIMIT_M;
 	for (int i = 0; i < RANGE_BISECTIONS; i++) {
 		const float mid = 0.5f * (lo + hi);
 		(airblast(p, kg, mid).pressure_kpa >= kpa ? lo : hi) = mid;

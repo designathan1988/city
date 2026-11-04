@@ -48,7 +48,7 @@ void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 void PropRenderer::commit_one(BuiltMesh &b) {
 	MeshDraw &d = chunks_[b.key];
 	const bool any = b.mesh.valid();
-	d.adopt(scenario_, material_, true, b.mesh.release());
+	d.adopt(scenario_, material_, true, b.mesh.release(), LAYER_FURNITURE);
 	float x0 = key_x(b.key) * CHUNK, z0 = key_y(b.key) * CHUNK;
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
 	d.visible(any);

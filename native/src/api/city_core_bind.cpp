@@ -13,6 +13,15 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("new_map", "map", "seed", "with_city", "paused"), &CityCore::new_map, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("mark_saved"), &CityCore::mark_saved);
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
+	ClassDB::bind_method(D_METHOD("set_levels", "traffic", "people", "demand"), &CityCore::set_levels);
+	ClassDB::bind_method(D_METHOD("set_sim_switch", "name", "on"), &CityCore::set_sim_switch);
+	ClassDB::bind_method(D_METHOD("set_detail_scale", "scale"), &CityCore::set_detail_scale);
+	ClassDB::bind_method(D_METHOD("set_vegetation", "share"), &CityCore::set_vegetation);
+	ClassDB::bind_method(D_METHOD("set_agent_detail", "cabin_m", "cabin_cap", "people_floor"), &CityCore::set_agent_detail);
+	ClassDB::bind_method(D_METHOD("set_population", "share"), &CityCore::set_population);
+	ClassDB::bind_method(D_METHOD("set_upload_every", "frames"), &CityCore::set_upload_every);
+	ClassDB::bind_method(D_METHOD("set_lots_drawn", "on"), &CityCore::set_lots_drawn);
+	ClassDB::bind_method(D_METHOD("traffic_metrics"), &CityCore::traffic_metrics);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);
 	bind_models();
 	bind_bodies();
@@ -25,7 +34,12 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "terrain_path"), "set_terrain_path", "get_terrain_path");
 	ClassDB::bind_method(D_METHOD("step_ticks", "ticks"), &CityCore::step_ticks);
+	bind_edits();
+	bind_queries();
+}
 
+// The player's commands and previews: roads, zones, undo, the drawers' edits, the buildings drawn and the save.
+void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid"), &CityCore::road_start);
 	ClassDB::bind_method(D_METHOD("road_end", "start", "position", "px", "on", "angles", "grid"), &CityCore::road_end);
 	ClassDB::bind_method(D_METHOD("road_pieces", "start", "end", "alignment", "has_control", "control", "samples", "profile", "px"), &CityCore::road_pieces);
@@ -59,12 +73,24 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("save_city", "path"), &CityCore::save_city);
 	ClassDB::bind_method(D_METHOD("save_status"), &CityCore::save_status);
 	ClassDB::bind_method(D_METHOD("load_city", "path"), &CityCore::load_city);
+}
 
+// What the UI and the tests read: the snapshot, the ground and its inspector, the traffic, the layers and the render's costs.
+void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("snapshot"), &CityCore::snapshot);
 	ClassDB::bind_method(D_METHOD("constants"), &CityCore::constants);
 	ClassDB::bind_method(D_METHOD("raycast", "origin", "direction"), &CityCore::raycast);
 	ClassDB::bind_method(D_METHOD("height_at", "x", "z"), &CityCore::height_at);
 	ClassDB::bind_method(D_METHOD("inspect", "position"), &CityCore::inspect);
+	ClassDB::bind_method(D_METHOD("segment_traffic", "segment"), &CityCore::segment_traffic);
+	ClassDB::bind_method(D_METHOD("node_traffic", "node"), &CityCore::node_traffic);
+	ClassDB::bind_method(D_METHOD("impossible_nodes"), &CityCore::impossible_nodes);
+	ClassDB::bind_method(D_METHOD("clear_reach", "from", "to", "samples"), &CityCore::clear_reach);
+	ClassDB::bind_method(D_METHOD("recent_edits", "count"), &CityCore::recent_edits);
+	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
+	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
+	ClassDB::bind_method(D_METHOD("set_marking_style", "style", "undoable"), &CityCore::set_marking_style);
+	ClassDB::bind_method(D_METHOD("segment_path", "segment"), &CityCore::segment_path);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
 	ClassDB::bind_method(D_METHOD("list_buildings"), &CityCore::list_buildings);
 	ClassDB::bind_method(D_METHOD("city_bounds"), &CityCore::city_bounds);
@@ -74,6 +100,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_signal", "node", "fixed", "greens", "offset"), &CityCore::set_signal);
 	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
+	ClassDB::bind_method(D_METHOD("show_every_zone", "on"), &CityCore::show_every_zone);
+	ClassDB::bind_method(D_METHOD("set_style", "id"), &CityCore::set_style);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("set_interior", "on", "target", "level", "dir"), &CityCore::set_interior);
 	ClassDB::bind_method(D_METHOD("interior"), &CityCore::interior);

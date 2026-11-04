@@ -45,6 +45,7 @@ A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda
   `tr("CHAVE")` com `data/i18n/strings*.csv`; botões, estatísticas e opções da HUD vêm de `data/ui/*.json`.
 - **Fluxo:** troca de tela, pausa e saída só por `GameFlow`. JSON de dados só é lido por `DataTables`.
 - **Testes conferem o que o jogador vê:** HUD, buffer de instâncias enviado à GPU, sondas do núcleo.
+- **Testes e capturas (`--no-flow`) rodam nos dados:** não leem nem gravam `settings.cfg`, nem leem `health.json`; abrem no nível `tests_preset` (nunca `auto`, para não depender da placa de vídeo; outro nível é pedido pelo nome, `--preset=`); saves ficam em `user://saves_tests`. O `user://` é um só para todo clone com o mesmo nome de projeto; para isolar um clone, `project/override.cfg` com `application/config/use_custom_user_dir=true` e `custom_user_dir_name`.
 - **Pendências** vão para a seção abaixo, nunca para comentários TODO/FIXME (`SEM_MARCADORES_SOLTOS`).
 
 ## Comandos
@@ -71,9 +72,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 `Daylight` é o dono do sol, do preenchimento, do ambiente, da luz de cima e do céu, e encaixa as cascatas na vista (`_fit_cascades`). O ambiente é chapado e a luz de cima, sem sombra, só chega no que olha para o céu: medidos num cubo cinza nos dois jogos (`capture_landscape --only=cubo_a,cubo_b`). `CityWorld.set_sky_mode("day"|"night"|"cycle")`: dia e noite fixam as horas de `daylight.json` (16h e 22h, como a barra do 4.0), `cycle` segue a hora do snapshot passo a passo (`clock_step_h`). Testes e capturas usam `set_hour` e movem relógio e céu juntos, nunca um só. Par de foto com o 4.0: mesma hora (o modo dia do 4.0 é 16h, não o relógio), mesma câmera (`capture_landscape.gd` `_shot` recebe azimute, inclinação e zoom do `setView`) e 1920x1080.
 
 ## Máquinas de estado
-- `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
+- `GameFlow.State`: BOOT → MENU (tela inicial) → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD, TRANSIT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool` (de mãos vazias é INSPECT): NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, STRIKE, SHOOT, BUILD, TRANSIT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool`: um arrasto desenha a via, um clique segura o começo (encadeia) e, no alinhamento CURVE, o clique no fim deixa a curva seguindo o ponteiro até o próximo clique (`Alignment`: STRAIGHT, CURVE, FREE).
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -89,7 +90,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/blast_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera)
 - `native/src/api/city_core_strike.cpp` — a bomba como API de script (`strike`, um passo de desfazer) e as sondas `damage_probe` (o que os golpes deixaram no mapa) e `blast_probe` (números do modelo)
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
-- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
+- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses)
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
@@ -100,6 +101,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
+- `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar, o aviso da barra e a câmera perguntam: tráfego ao vivo de via e cruzamento, nós impossíveis e a linha de visão livre de prédios
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
@@ -173,6 +175,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar); `interior_focus`, dono único de onde o corpo fica (centro dos volumes, lado maior, andares: as fotos miram aí)
 - `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/demolish_box.cpp` — demolir na caixa: prédios, entulho e vias com o meio dentro do retângulo, num passo de desfazer
+- `native/src/sim/commands/road_copies.cpp` — inverter mão única, duplicar via e a pintura do mapa
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
@@ -244,7 +247,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/ped_wounds.cpp` — quanto do passo próprio guarda um pedestre ferido (leve, na perna, grave)
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
-- `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/ped_state.h` — grafo de faixas, veículos, meso e pools; os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
+- `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/lane_graph_types.h` · `native/src/sim/traffic/ped_state.h` — veículos, meso e pools; o vocabulário do grafo de faixas (faixas dirigidas, conectores, controle do cruzamento); os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
 - `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
@@ -261,7 +264,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/body_stage.cpp` · `native/src/render/buildings/body_stage.h` — um corpo desenhado à parte da cidade: o fantasma sob o ponteiro e as fotos dos modelos
 - `native/src/render/buildings/building_bodies.cpp` · `native/src/render/buildings/building_bodies.h` · `native/src/render/buildings/building_look.cpp` · `native/src/render/buildings/building_look.h`
   — cache de corpos e colocação no mundo; buildings.json → frações dos níveis, bandas de peças e medidas das peças finas
-- `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` — streaming dos níveis near/mid/far por chunk e superchunk
+- `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` · `native/src/render/buildings/building_renderer_reach.cpp` — streaming dos níveis near/mid/far por chunk e superchunk; o alcance de cada nível (dados, nível gráfico) e as faixas de visibilidade dos chunks
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
 - `native/src/render/buildings/building_renderer_probe.cpp` — o que os testes leem dos níveis: o que a vista ainda pede, como está um chunk e o que cada superfície guarda (`building_cost`)
@@ -273,6 +276,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/facade_props.cpp` · `native/src/render/buildings/bay_props.cpp` · `native/src/render/buildings/bay_props.h` — o que pende do vão e fica na sacada, vão a vão por uma semente: condensador, antena, vasos com planta, cadeira, mesa, varal, espreguiçadeira e bicicleta; bay_props.json → um modelo de cada, desenhado por instância
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
 - `native/src/render/buildings/lot_emit.cpp` · `native/src/render/buildings/lot_parts.cpp` · `native/src/render/buildings/lot_props.cpp` — chão, muros, cercas e portões do lote; peças postas pelo jogador (escada, rampa, pedras, vaga, relógio); peças (vagas, docas, ralos, arbustos, flores, piscina, móveis, galpões, varal)
+- `native/src/render/buildings/occluders.cpp` · `native/src/render/buildings/occluders.h` — as paredes que certamente existem, por chunk do nível perto, para a oclusão do motor
 - `native/src/render/buildings/pane_rooms.cpp` · `native/src/render/buildings/pane_rooms.h` — o que cada vidro desenha: semente do cômodo, cômodo atrás dele pela planta do andar, maior móvel visto e caixilho
 - `native/src/render/buildings/interior_emit.cpp` · `native/src/render/buildings/interior_emit.h` — o interior de um prédio cortado (dono único do desenho): piso do andar visto, poço do elevador com a cabine, paredes da planta que descem a 0,9 m do lado da câmera, móveis
 - `native/src/render/buildings/interior_cut.cpp` — as paredes externas do andar visto: descem a um rodapé do lado da câmera, as outras ganham a face interna de reboco
@@ -303,6 +307,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/props/prop_renderer.cpp` · `native/src/render/props/prop_renderer.h` · `native/src/render/props/signal_lamps.cpp` · `native/src/render/props/signal_lamps.h`
   — chunks do mobiliário; lentes dos semáforos, cada uma desenhada uma vez (um MultiMesh por chunk, acesa ou apagada pelo estado publicado)
 - `native/src/render/props/street_props.cpp` · `native/src/render/props/street_props.h` — o mobiliário posto pela simulação no mundo: postes, fios, semáforos (um por acesso), árvores
+- `native/src/render/render_layers.h` — o bit de cada renderizador: o painel de efeitos e os níveis gráficos escondem uma camada pela máscara da câmera
 - `native/src/render/film_grade.cpp` · `native/src/render/film_grade.h` — gradação de filme da imagem na tela como tabela 3D (contraste em S, vibrance, viragem de cor)
 - `native/src/render/region_table.h` — o estilo regional de uma tabela (`styles.<id>`), lido num lugar só
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
@@ -329,41 +334,36 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 **Godot — project/**
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
+- `project/game/camera/camera_pull.gd` — o olho nunca dentro nem atrás de prédio, com os tempos do Deoccluder
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/camera_shake.gd` — o tremor da câmera pelo relógio dos efeitos (a bomba), desfeito quando passa
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
 - `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos e as luzes; como no 4.0 a câmera fica onde o jogador pôs; relê o núcleo só quando a revisão muda
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
+- `project/game/flow/game_keys.gd` · `project/game/flow/build_stamp.gd` — as teclas do jogo (regras nos dados); o carimbo da versão
+- `project/game/health/health_log.gd` — registro de saúde: erros do motor (Logger), quadros longos, sessão anterior
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
-- `project/game/settings/settings.gd` — qualidade gráfica persistida em user://settings.cfg e limite de quadros (menor fora de foco)
+- `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
+- `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
 - `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore (tabelas lidas pelo store)
+- `project/game/store/city_saves.gd` — a cidade no disco: salvar, abrir, autosave, ao perder o foco e ao fechar, arquivo de fora
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/model_library.gd` — os modelos do jogador: um arquivo cada, valem para toda cidade
-- `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
+- `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última, quarentena e pasta dos testes
+- `project/game/store/session.gd` — o que a cidade traz além do mapa: câmera, velocidade e níveis da simulação
 - `project/game/tools/brush_defaults.gd` · `project/game/tools/brush_tool.gd` — valores de um pincel da Paisagem (land_panels.json); traço com dabs espaçados
-- `project/game/tools/element_tool.gd` — pincel de elementos
-- `project/game/tools/cloud_tool.gd` · `project/game/tools/fog_tool.gd` · `project/game/tools/paint_tool.gd` · `project/game/tools/tree_tool.gd` · `project/game/tools/weather_tool.gd` — Céu (nuvens, neblina, clima), Solo e Natureza
-- `project/game/tools/building_tool.gd` — Construir: o clique escolhe bloco, face e vão; as ferramentas da gaveta agem na escolha
-- `project/game/tools/demolish_tool.gd` — demolir
-- `project/game/tools/strike_tool.gd` · `project/game/tools/shoot_tool.gd` — bomba (um clique, força do parâmetro `strength`) e pistola (um tiro pelo raio da câmera); a aba Demolir da interface chama `set_tool(STRIKE|SHOOT, ...)`
-- `project/game/tools/inspect_tool.gd` — inspecionar
-- `project/game/tools/lot_tool.gd` — Construir › Desenhar
-- `project/game/tools/road_tool.gd` — via reta/curva com prévia
-- `project/game/tools/control_tool.gd` — Controle
-- `project/game/tools/move_tool.gd` — Mover
-- `project/game/tools/roundabout_tool.gd` — rotatória
-- `project/game/tools/split_tool.gd` — Dividir
-- `project/game/tools/terrain_tool.gd` — Relevo
-- `project/game/tools/tool_base.gd` — base das ferramentas (recebe pontos do chão)
-- `project/game/tools/tool_controller.gd` — máquina de estados das ferramentas
-- `project/game/tools/transit_tool.gd` — parada, terminal, trilho, estação e linha
-- `project/game/tools/upgrade_tool.gd` — Melhorar
-- `project/game/tools/zone_tool.gd` — pincel de zona
+- `project/game/tools/element_tool.gd` · `project/game/tools/cloud_tool.gd` · `project/game/tools/fog_tool.gd` · `project/game/tools/paint_tool.gd` · `project/game/tools/tree_tool.gd` · `project/game/tools/weather_tool.gd` — pincel de elementos; Céu (nuvens, neblina, clima), Solo e Natureza
+- `project/game/tools/building_tool.gd` · `project/game/tools/lot_tool.gd` — Construir: o clique escolhe bloco, face e vão e as ferramentas da gaveta agem na escolha; Construir › Desenhar
+- `project/game/tools/demolish_tool.gd` · `project/game/tools/strike_tool.gd` · `project/game/tools/shoot_tool.gd` — demolir; bomba (um clique, força do parâmetro `strength`, o controle da aba Bomba) e pistola (um tiro pelo raio da câmera); a aba Demolir chama `set_tool(STRIKE|SHOOT, ...)`
+- `project/game/tools/road_tool.gd` · `project/game/tools/roundabout_tool.gd` · `project/game/tools/split_tool.gd` · `project/game/tools/upgrade_tool.gd` · `project/game/tools/control_tool.gd` · `project/game/tools/move_tool.gd` — via reta/curva com prévia; rotatória; Dividir; Melhorar; Controle; Mover
+- `project/game/tools/inspect_tool.gd` · `project/game/tools/terrain_tool.gd` · `project/game/tools/zone_tool.gd` · `project/game/tools/transit_tool.gd` — inspecionar; Relevo; pincel de zona; parada, terminal, trilho, estação e linha
+- `project/game/tools/tool_base.gd` · `project/game/tools/tool_controller.gd` — base das ferramentas (recebe pontos do chão); máquina de estados das ferramentas
 - `project/render/effect_materials.gd` — o que os materiais dos efeitos da bomba pedem ao tone mapping do Environment: exposição e branco do inverso do ACES nas fumaças, cores da cratera como radiância
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
-- `project/render/daylight.gd` — dia/noite
+- `project/render/city_water.gd` · `project/render/change_marks.gd` — o plano da água; F8, as últimas edições marcadas no mapa
+- `project/render/daylight.gd` · `project/render/daylight_rig.gd` — dia/noite; as luzes do dia feitas uma vez (sol com sombras, luzes planas do céu e do chão)
 - `project/render/transit_overlay.gd` — o plano do transporte sobre o mapa com a ferramenta ligada
 - `project/render/sky_view.gd` · `project/render/thunder.gd` · `project/render/weather_view.gd` — céu desenhado: nuvens levadas pelo vento, globais do vento e tempo fechado; trovão; chuva e raios
 - `project/render/shore_view.gd` — entrega ao terreno os níveis da água ao lado da terra
@@ -396,6 +396,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/people_test.gd` · `project/tests/core/people_test.tscn` — quem anda a pé: portas, idades, pares, criança acompanhada e gente por hora
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` — opções da via de classe, Mover, Controle e regras de edição
+- `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa
+- `project/tests/perf/tier_gpu.gd` · `project/tests/perf/tier_gpu.tscn` — o que cada nível gráfico custa à GPU nas três vistas: tempo medido em amostras e contagens
+- `project/tests/core/shell_test.gd` · `project/tests/core/shell_test.tscn` — níveis gráficos, governador, chaves de render, painéis e Esc
+- `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
@@ -417,31 +421,33 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_people.gd` — pessoas nas capturas: o casal, a família, a criança, o idoso, quem sai de uma porta, quem entra e quem espera na guia, como as fotos do 4.0, e uma multidão por baixo das sombras reais
 - `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele, e uma vista com `inside` corta um deles por dentro
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
-- `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
+- `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` · `project/tests/visual/capture_shell.gd` · `project/tests/visual/capture_shell.tscn` — capturas da interface por cliques; a casca inteira nas vistas das fotos do 4.0
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas
 - `project/ui/hud_actions.gd` — menu, desfazer/refazer e atalhos
-- `project/ui/hud_drawer.gd` — gavetas das categorias
-- `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
-- `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
+- `project/ui/hud_drawer.gd` · `project/ui/zone_strip.gd` — gavetas das categorias; a aba Zonas (cartões de uso e a densidade)
+- `project/ui/hud_popover.gd` · `project/ui/pop_bodies.gd` · `project/ui/hud_switch.gd` — camadas, câmera e menu; corpos da simulação e da ajuda; o interruptor das camadas
+- `project/ui/hud_top_bar.gd` · `project/ui/compass.gd` · `project/ui/start_screen.gd` · `project/ui/hud_dialog.gd` · `project/ui/graphics_panel.gd` — barra de cima; bússola (clique e arrasto); tela inicial e cortina; diálogo modal e Sobre; opções gráficas
+- `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves e otimizações); monitor F9; perfil Shift+F9
+- `project/ui/hud_tip.gd` · `project/ui/hud_widgets.gd` — a dica própria (centrada sob o controle, só se o nome não está na tela); fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
-- `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
+- `project/ui/inspector_rows.gd` · `project/ui/selection_overlay.gd` — os números ao vivo do inspetor, como linhas; a faixa da via e o anel do cruzamento que a ferramenta Informação marca sobre o mapa
+- `project/ui/land_hands.gd` — as mãos da gaveta Paisagem: cartões que redesenham o painel, ações do mapa inteiro e o Relevo pelas teclas
+- `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json: cartões na gaveta; pincel, sliders e o que age no mapa inteiro no painel de opções
 - `project/ui/transit_strip.gd` — linhas e seus veículos, na gaveta do transporte
 - `project/ui/interior_bar.gd` — a barra do andar da camada Interior (canto de cima à direita): o botão que a fecha, andar abaixo, nome do andar, andar acima; só aparece com um prédio aberto
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
-- `project/ui/junction_marks.gd` — marcas do controle de cada cruzamento na aba Controle
-- `project/ui/preview_tag.gd` — etiqueta de comprimento, preço e recusa junto do fim da via em mão
-- `project/ui/road_swatch.gd` — figura do perfil visto de cima
-- `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
-- `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
+- `project/ui/junction_marks.gd` · `project/ui/preview_tag.gd` · `project/ui/road_swatch.gd` — marcas do controle de cada cruzamento na aba Controle; etiqueta de comprimento, preço e recusa junto do fim da via em mão; figura do perfil visto de cima
+- `project/ui/roadcraft_hud.gd` · `project/ui/hud_messages.gd` — a casca: dock e quem abre cada painel; a dica da ferramenta e o aviso que passa sozinho
+- `project/ui/theme/theme_builder.gd` · `project/ui/theme/theme_text.gd` · `project/ui/theme/theme_art.gd` — único dono dos estilos (tokens → Theme): caixas e botões; textos e pesos; desenhos (botão do controle deslizante, amostra de zona, vinheta)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/blast.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
-- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
-- `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` — textos (partes do mesmo catálogo)
+- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` · `project/data/game/render_switches.json` · `project/data/game/optimizations.json` · `project/data/game/health.json` · `project/data/game/start.json` — câmera, dia/noite, saves, qualidade e céu desenhado
+- `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` · `project/data/i18n/strings_ui.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/effects.json` · `project/data/render/streets.json` — tabelas do render
-- `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
+- `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` · `project/data/ui/keys.json` · `project/data/ui/help.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
@@ -472,12 +478,13 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
   24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
   maior HLOD de superchunk 8,1 MiB).
-- Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lotes: árvores do lote (`b40::lot_trees`) esperam `render/trees/tree_place.cpp` (e o include do repasse `render/buildings/civic.h`);
+- Interface: o painel de efeitos só traz as chaves do que já existe (nuvens, clima, partículas e transporte vêm com as sessões donas); o laboratório de objetos do 4.0 não tem par.
+- Lotes: árvores do lote (`b40::lot_trees`) esperam `render/trees/tree_place.cpp` (e o include do repasse `render/buildings/civic.h`);
   sem lote de esquina e garagem em encosta; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
-- Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
-  Telhado, Interior, Cores), Paisagem (Rua, Pessoas e Aplainar mapa), paradas/estações/linhas,
-  pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
-  gerada que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
+- Estilo regional: o seletor da tela inicial, `CityState::style` e as unidades dos formatadores existem, com um só estilo (`roadcraft`); o bloco no save (hoje vai no arquivo da sessão) e a leitura única pelo render e pela simulação esperam o mecanismo. O catálogo de vias ainda escreve "m" no texto de `strings`.
+- Interface "em construção" (abas sem ferramenta, desenhadas assim): Quarteirões (Zonas), Interior (Construir) e Rua (Paisagem). Salvar é
+  um arquivo por cidade (sem as gerações do Roadcraft; o arquivo que não abre vai para a quarentena); o autosave não grava cidade gerada
+  que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Oclusão: o GTAO do 4.0 tira 12 níveis do meio-fio ao sol e o SSAO do Godot, 1 a 2 em qualquer ajuste (sem oclusão os dois dão 193): falta um passe equivalente; o preset padrão do jogo (`medium`) nem liga a oclusão, e o 4.0 abre em `high`.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);

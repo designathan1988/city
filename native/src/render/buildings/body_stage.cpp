@@ -75,7 +75,7 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 		if (sheer.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, sheer_);
 		if (cards.triangles() > 0) rs->mesh_surface_set_material(mesh, surface, card_);
 	}
-	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh);
+	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh, LAYER_BASE);
 	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());

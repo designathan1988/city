@@ -11,7 +11,3 @@ func click(_p: Vector3) -> void:
 		ctl.hint.emit(tr("hint.shoot.miss"), false)
 		return
 	ctl.hint.emit(tr("hint.shoot.killed") if r.get("killed", false) else tr("hint.shoot.hit"), true)
-
-
-func enter() -> void:
-	ctl.hint.emit(tr("help.tool.shoot"), true)

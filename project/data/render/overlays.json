@@ -1,10 +1,17 @@
 {
- "_doc": "Map layers (Layers popover, Roadcraft hud.ts:508-522) drawn by native/src/render/overlays: zone colours beside the zoned road sides and the congestion map over the carriageways.",
+ "_doc": "Map layers (Layers popover, Roadcraft hud.ts:508-522) drawn by native/src/render/overlays: zone colours beside the zoned road sides and the congestion map over the carriageways. zone_alpha and zone_alpha_tool: a built lot under the Zoning tool and a zone with another tool (Roadcraft lotTool.ts fillAlpha); the tool shows every zoned side, the other tools only the player's.",
  "zone_depth_m": 28,
  "lift_m": 0.35,
  "sample_m": 8,
  "refresh_s": 1,
- "congestion": ["#3fbf6a", "#f2c14e", "#e2564b"],
+ "congestion": [
+  "#3fbf6a",
+  "#f2c14e",
+  "#e2564b"
+ ],
  "free_share": 0.7,
- "jam_share": 0.25
+ "jam_share": 0.25,
+ "zone_alpha": 0.25,
+ "zone_alpha_tool": 0.22,
+ "congestion_alpha": 0.6
 }

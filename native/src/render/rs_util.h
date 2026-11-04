@@ -1,6 +1,8 @@
 // RenderingServer helpers: instances drawn without scene nodes (lighter for thousands of chunks).
 #pragma once
 
+#include "render/render_layers.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -34,14 +36,15 @@ inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &
 	for (int i = 0; i < MM_PLAIN_STRIDE; i++) w[i] = v[i];
 }
 
-// `inst` (made on first use in `scenario`, with `material` when valid, casting shadows or not) shows `next` in place of
-// `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
+// `inst` (made on first use in `scenario`, on render `layer`, with `material` when valid, casting shadows or not) shows
+// `next` in place of `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
 inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &next, const godot::RID &scenario,
-		const godot::RID &material, bool shadows) {
+		const godot::RID &material, bool shadows, RenderLayer layer) {
 	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 	if (!inst.is_valid()) {
 		if (!next.is_valid()) return;
 		inst = rs->instance_create2(next, scenario);
+		rs->instance_set_layer_mask(inst, layer);
 		rs->instance_geometry_set_cast_shadows_setting(inst,
 				shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
 		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
@@ -60,12 +63,13 @@ struct MultiMeshDraw {
 	int capacity = -1;
 
 	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
-			const godot::AABB &bounds, bool shadows) {
+			const godot::AABB &bounds, bool shadows, RenderLayer layer) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		int count = int(buf.size() / MM_STRIDE);
 		if (!mm.is_valid()) {
 			mm = rs->multimesh_create();
 			inst = rs->instance_create2(mm, scenario);
+			rs->instance_set_layer_mask(inst, layer);
 			rs->instance_geometry_set_cast_shadows_setting(inst,
 					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
 		}
@@ -82,8 +86,8 @@ struct MultiMeshDraw {
 	}
 	// Shows `next` (a MultiMesh of `count` instances a job filled, bake_multimesh, now owned here): swap_base.
 	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count,
-			const godot::AABB &bounds) {
-		swap_base(inst, mm, next, scenario, material, shadows);
+			const godot::AABB &bounds, RenderLayer layer) {
+		swap_base(inst, mm, next, scenario, material, shadows, layer);
 		capacity = mm.is_valid() ? count : 0;
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(inst, bounds);
 	}
@@ -155,14 +159,15 @@ inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat
 struct MeshDraw {
 	godot::RID mesh, inst;
 	// Shows `next` (a mesh a job made, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next) {
-		swap_base(inst, mesh, next, scenario, material, shadows);
+	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, RenderLayer layer) {
+		swap_base(inst, mesh, next, scenario, material, shadows, layer);
 	}
-	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows) {
+	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows, RenderLayer layer) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (!mesh.is_valid()) {
 			mesh = rs->mesh_create();
 			inst = rs->instance_create2(mesh, scenario);
+			rs->instance_set_layer_mask(inst, layer);
 			rs->instance_geometry_set_cast_shadows_setting(inst,
 					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
 		}

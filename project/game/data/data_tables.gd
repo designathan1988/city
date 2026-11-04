@@ -43,6 +43,8 @@ const UI := {
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
+	"keys": "res://data/ui/keys.json",
+	"help": "res://data/ui/help.json",
 	"builder": "res://data/ui/builder.json",
 }
 const GAME := {
@@ -52,11 +54,16 @@ const GAME := {
 	"sky": "res://data/game/sky.json",
 	"saves": "res://data/game/saves.json",
 	"interior": "res://data/game/interior.json",
+	"render_switches": "res://data/game/render_switches.json",
+	"optimizations": "res://data/game/optimizations.json",
+	"health": "res://data/game/health.json",
+	"start": "res://data/game/start.json",
 }
 const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
 	"res://data/i18n/strings_c.csv",
+	"res://data/i18n/strings_ui.csv",
 	"res://data/i18n/strings_d.csv",
 	"res://data/i18n/strings_e.csv",
 ]
@@ -98,6 +105,11 @@ static func catalog() -> Dictionary:
 			list.append_array(_read(path).get("profiles", []))
 		out[key]["profiles"] = list
 	return out
+
+
+## The maps of the catalogue, in the order the core numbers them.
+static func maps() -> Array:
+	return _read(CATALOG.maps).maps
 
 
 static func render() -> Dictionary:

@@ -46,15 +46,16 @@ struct Painter {
 
 void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	const StreetLook &L = pt.e.L;
-	const bool fast = p.speed >= L.fast_kmh;
+	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
+	const bool fast = p.speed >= st.fast_kmh;
 	const bool many = std::max(p.lanes_fwd(), p.lanes_back()) > 1;
 	size_t band = 0; // the dash pattern of the road's speed
-	while (band < L.dash_kmh.size() && p.speed >= L.dash_kmh[band]) band++;
-	const double dash = L.dash[band], period = dash + L.gap[band];
+	while (band < st.dash_kmh.size() && p.speed >= st.dash_kmh[band]) band++;
+	const double dash = st.dash[band], period = dash + st.gap[band];
 	for (const MarkLine &m : p.lines) {
-		Color c = m.color == LineColor::YELLOW ? L.yellow : L.white;
-		const float w = m.exclusive ? L.exclusive_w : m.centre ? (fast ? L.fast_centre_w : L.centre_w) : (fast ? L.fast_lane_w : L.lane_w);
-		const LineKind kind = m.centre && m.kind == LineKind::SOLID && L.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
+		Color c = m.color == LineColor::YELLOW && !st.all_white ? L.yellow : L.white;
+		const float w = m.exclusive ? st.exclusive_w : m.centre ? (fast ? st.fast_centre_w : st.centre_w) : (fast ? st.fast_lane_w : st.lane_w);
+		const LineKind kind = m.centre && m.kind == LineKind::SOLID && st.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
 		auto line = [&](float u, float hw) {
 			if (kind != LineKind::DASHED) {
 				if (l1 > l0) pt.rect(u - hw, u + hw, l0, l1, c);
@@ -66,14 +67,15 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 			}
 		};
 		if (kind == LineKind::DOUBLE) { // two lines double_gap apart
-			line(m.u - (L.double_w + L.double_gap) / 2, L.double_w / 2);
-			line(m.u + (L.double_w + L.double_gap) / 2, L.double_w / 2);
+			line(m.u - (st.double_w + st.double_gap) / 2, st.double_w / 2);
+			line(m.u + (st.double_w + st.double_gap) / 2, st.double_w / 2);
 		} else line(m.u, w / 2);
 	}
 }
 
 void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb) {
 	const StreetLook &L = pt.e.L;
+	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const CrossingDef &x = pt.e.s.catalog.furniture.crossing;
 	float ar = -p.asph_right, al = p.asph_left, isle0 = 0, isle1 = 0;
 	const bool island = island_span(p, isle0, isle1); // without one both are the centre line
@@ -83,19 +85,19 @@ void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool c
 		double za = from(x.zebra_from_m), zb = from(x.zebra_to_m);
 		// as many bars as fit across each stretch of carriageway, clear of its kerbs, the pattern centred on it
 		auto across = [&](float from, float to) {
-			const float wide = to - from, gap = L.zebra_period - L.zebra_bar;
-			if (wide < L.zebra_bar) return;
-			const int bars = int(std::floor((wide + gap) / L.zebra_period));
-			const float first = from + (wide - (bars * L.zebra_period - gap)) / 2;
+			const float wide = to - from, gap = st.zebra_period - st.zebra_bar;
+			if (wide < st.zebra_bar) return;
+			const int bars = int(std::floor((wide + gap) / st.zebra_period));
+			const float first = from + (wide - (bars * st.zebra_period - gap)) / 2;
 			for (int k = 0; k < bars; k++) {
-				const float u = first + k * L.zebra_period;
-				pt.rect(u, u + L.zebra_bar, std::min(za, zb), std::max(za, zb), L.white);
+				const float u = first + k * st.zebra_period;
+				pt.rect(u, u + st.zebra_bar, std::min(za, zb), std::max(za, zb), L.white);
 			}
 		};
 		if (island) {
-			across(ar + L.zebra_edge, isle0 - L.zebra_edge);
-			across(isle1 + L.zebra_edge, al - L.zebra_edge);
-		} else across(ar + L.zebra_edge, al - L.zebra_edge);
+			across(ar + st.zebra_edge, isle0 - st.zebra_edge);
+			across(isle1 + st.zebra_edge, al - st.zebra_edge);
+		} else across(ar + st.zebra_edge, al - st.zebra_edge);
 		// stop line on the approach half (end a: traffic arrives on the +u side; one-way roads arrive only at b)
 		if (end == 0 && p.one_way) continue;
 		float su0 = p.one_way ? ar : (end == 0 ? isle1 : ar), su1 = p.one_way ? al : (end == 0 ? al : isle0);

@@ -156,7 +156,7 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	_check(_counts() != saved, "mapa novo é outro")
-	var r: Dictionary = CityStore.load_game(SLOT)
+	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	var got := _counts()
 	got.grown = CityStore.snapshot.grown
 	got.minutes = CityStore.snapshot.minutes
@@ -168,15 +168,15 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(CityStore.query(&"inspect", [signal_at]) == plan, "mesmo semáforo %s" % [plan])
 	_check(_landscape() == landscape, "mesma paisagem %s == %s" % [_landscape(), landscape])
 	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico")
-	DirAccess.remove_absolute(CityStore.save_path(SLOT))
+	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 
 ## Saves on the core's thread like the game does and returns the outcome `saved` carried.
 func _save(slot: String) -> Dictionary:
 	var outcome := {}
 	CityStore.saved.connect(func(_s: String, r: Dictionary) -> void: outcome.merge(r), CONNECT_ONE_SHOT)
-	CityStore.save_game(slot)
-	while CityStore.save_busy():
+	CityStore.saves.save_game(slot)
+	while CityStore.saves.save_busy():
 		await get_tree().process_frame
 	return outcome
 

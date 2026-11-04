@@ -7,6 +7,7 @@ shader_type spatial;
 render_mode cull_back;
 
 global uniform float night;
+global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
 global uniform float outside_on; // the share of outside lights lit at this hour

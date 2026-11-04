@@ -23,7 +23,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
+	MONEY, MARKING, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
 
 // A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
 using NatureEdit = std::function<void(CityState &, bool forward)>;
@@ -32,6 +32,7 @@ struct EditOp {
 	OpKind kind = OpKind::MONEY;
 	int id = -1;
 	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL
+	bool player = false; // ZONE: the side was the player's before
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
 	RoadNode node;
 	SignalSettings signal_from, signal_to; // NODE_SIGNAL
@@ -112,6 +113,7 @@ void j_set_signal(CityState &s, int n, const SignalSettings &to);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);
+void j_set_marking(CityState &s, int style);
 void j_set_zone(CityState &s, int seg, int side, int zone);
 int j_add_building(CityState &s, const Building &b);
 void j_remove_building(CityState &s, int id);

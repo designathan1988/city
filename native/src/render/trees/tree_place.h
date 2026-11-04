@@ -11,6 +11,7 @@
 #include "render/trees/tree_kit.h"
 
 #include <array>
+#include <atomic>
 #include <vector>
 
 namespace city {
@@ -60,6 +61,7 @@ struct TreeLook {
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;
+	std::atomic<float> share{ 1.f }; // the graphics tier's share of the woods and lone trees; jobs read it
 	float scale = 1, most = 1; // worked out by load(): the chances' scale and the highest chance
 	float density_of(double x, double y) const; // the patches' share of the density, on the map's own axes
 	WoodBand band_at(float density) const;

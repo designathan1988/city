@@ -49,16 +49,18 @@ void OverlayRenderer::strip(Ribbon &out, const CityState &s, int seg, float u0, 
 
 OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int64_t key) const {
 	Ribbon r;
+	const bool every = every_zone_.load();
 	each_owned_segment(s, key, [&](int sg) {
 		const RoadSegment &g = s.roads.segs[size_t(sg)];
 		if (!g.alive) return;
 		const Profile &p = s.roads.profile_of(sg);
 		for (int side = 0; side < SIDES; side++) {
 			int code = side == 0 ? g.zl : g.zr;
-			if (code == 0) continue;
+			const bool players = g.flags & (side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT);
+			if (code == 0 || (!players && !every)) continue;
 			uint32_t c = s.catalog.zone(code).color;
 			Color col(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE_MAX,
-					float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, float(c & 0xff) / BYTE_MAX);
+					float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, every ? zone_alpha_tool_ : zone_alpha_);
 			if (side == 0) strip(r, s, sg, p.left, p.left + zone_depth_, col, false);
 			else strip(r, s, sg, -p.right - zone_depth_, -p.right, col, false);
 		}
@@ -76,6 +78,7 @@ OverlayRenderer::Ribbon OverlayRenderer::build_congestion_cpu(const CityState &s
 		float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
 		float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
 		Color col = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
+		col.a = congestion_alpha_;
 		strip(r, s, sg, -p.asph_right, p.asph_left, col, true);
 	});
 	return r;

@@ -61,7 +61,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::step(s, float(dt));
-			growing = !s.growth.cells.empty();
+			growing = s.traffic.levels.growth_on && !s.growth.cells.empty();
 		}
 		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
 		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows

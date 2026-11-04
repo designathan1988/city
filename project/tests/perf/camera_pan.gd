@@ -76,8 +76,6 @@ func _ready() -> void:
 			moves = arg.trim_prefix("--moves=").split(",")
 	var world := CityWorld.new()
 	add_child(world)
-	Settings.apply(world, get_viewport())
-	_knobs(world)
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	rig = CityCamera.new()
 	add_child(rig)
@@ -87,6 +85,8 @@ func _ready() -> void:
 		GameFlow.quit_now()
 		return
 	print("cidade: ", CityStore.new_map(map, SEED, true))
+	Settings.attach(world, get_viewport()) # the tier reaches the core: after the boot
+	_knobs(world)
 	rig.look_at_ground(Vector3.ZERO)
 	add_child(RoadcraftHud.new())
 	CityStore.dispatch(&"set_speed", [1])

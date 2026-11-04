@@ -6,6 +6,7 @@
 shader_type spatial;
 
 global uniform float night;
+global uniform float road_paint; // 0: the detail cut-off of the graphics tier leaves the paint out
 
 uniform sampler2D asphalt_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -124,6 +125,7 @@ void fragment() {
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
+	if (v_mat == M_PAINT && road_paint < 0.5) discard;
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_JOIN || v_mat == M_PAINT || v_mat == M_LANE) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);

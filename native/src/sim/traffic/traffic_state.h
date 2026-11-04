@@ -7,6 +7,7 @@
 #include "core/random.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
+#include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
 
@@ -16,88 +17,11 @@
 
 namespace city {
 
-constexpr int MAX_LANES = 4; // lanes per direction (the widest one-way profile has 4)
-constexpr int CONN_STEPS = 8; // arc-length table of a connector curve
 constexpr int NODE_ARMS_MAX = 8; // arms a node may have in the crosswalk answer cache
 constexpr int CROSS_CACHE_KINDS = 2; // walk_ok and cars_on_crossing are cached apart
 constexpr uint32_t STAMP_NONE = 0xFFFFFFFFu; // crosswalk cache: no step answered yet
 enum StepStage { STAGE_BAYS = 0, STAGE_FLEET, STAGE_LOTS, STAGE_WALKERS, STAGE_LOT_OUT, STAGE_LOT_IN, STAGE_PUBLISH, TIMED_STAGES };
 constexpr uint64_t TRAFFIC_SEED = 12345; // Roadcraft traffic.ts: Rng(12345)
-
-enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
-enum class Control : uint8_t { NONE = 0, PRIORITY = 1, SIGNAL = 2 };
-enum class Light : uint8_t { GREEN = 0, AMBER = 1, RED = 2 };
-// Why a vehicle is not moving (traffic_probe, tests).
-enum class Hold : uint8_t { QUEUED = 0, WRONG_LANE, RED, EXIT_ROOM, CONFLICT_BUSY, YIELD, ON_CONNECTOR, FREE, CROSSING, COUNT };
-
-// One direction of a segment: ds = seg * 2 + dir; dir 0 runs a -> b on the profile's fwd lanes, dir 1 b -> a on back.
-// s = 0 at the entry mouth, s = len at the exit mouth (stop line).
-struct DirSeg {
-	bool ok = false;
-	int seg = -1, from = -1, to = -1, lanes = 0;
-	float u[MAX_LANES] = {}; // profile offsets (a -> b frame) of lane 0 (rightmost) ... lanes-1
-	float len = 0, speed = 0; // metres, m/s
-	float at0 = 0, sign = 1; // arc length along the segment at s = 0 and its direction
-	float ex = 0, ez = 0; // endpoint (s = len) in world XZ, computed once at graph build (A* heuristic)
-	int stage = -1; // signal stage serving this approach at node `to`
-	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
-	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
-	float cycle_shift = 0; // a bike strip beside lane 0: how far across (u, a -> b frame), 0 for none
-	float edge_shift = 0; // no strip: how far across a bicycle rides within lane 0, on the kerb edge of the carriageway
-	bool bikes = true; // bicycles may ride it (the street has a footway)
-	float detector = 0, extension = 0; // a signalled approach: its detection section before the line, green per call
-};
-
-// A lane connector through a node: quadratic Bézier from the end of an in-lane to the start of an out-lane.
-// Connections live in one pool with a free list; each node and each lane of origin keeps a linked list of them
-// (Roadcraft lanes.ts nodeConn/laneConn), so a node rebuild touches only its own connections.
-struct Conn {
-	int node = -1, from_ds = -1, from_lane = 0, to_ds = -1, to_lane = 0;
-	Turn turn = Turn::STRAIGHT;
-	float x0 = 0, z0 = 0, cx = 0, cz = 0, x1 = 0, z1 = 0, y0 = 0, y1 = 0;
-	float table[CONN_STEPS + 1] = {};
-	float len = 0;
-	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
-	bool alive = false;
-	std::vector<int> conflicts;
-	std::vector<float> conflict_at; // per conflict: metres along THAT connector after which its vehicles are clear
-};
-
-struct Junction {
-	Control ctl = Control::NONE;
-	// per stage, seconds: minimum and maximum green, then the intergreen (amber, all-red); its approaches
-	std::vector<float> green, green_max, amber, all_red;
-	std::vector<float> least; // the minimum greens, under any fixed plan
-	std::vector<std::vector<int>> approaches;
-	float cycle = 0; // with the minimum greens
-	int run = 0; // the stage running, since `run_start` (its green); its green once ended (-1 while the green lasts)
-	double run_start = 0;
-	float run_green = -1;
-	bool fixed = false; // fixed time: the stage follows the clock (`offset`), not the detectors
-	float offset = 0;
-	double settle = 0; // a new plan takes over only then: the stage running ends its intergreen first
-	int degree = 0; // arms with lanes
-};
-
-struct LaneGraph {
-	int version = -1; // RoadNetwork::version it was built from
-	std::vector<DirSeg> ds;
-	std::vector<Conn> conns; // pool: dead entries are on free_conns
-	std::vector<int> free_conns;
-	std::vector<int> node_conn; // per node: first connection of its list (-1)
-	std::vector<int> lane_conn; // per ds * MAX_LANES + lane: first connection leaving it (-1)
-	std::vector<Junction> junctions; // per node
-	double lane_metres = 0;
-};
-
-// Walks the connections leaving `ds` (all its lanes), skipping dead pool entries.
-template <typename F>
-void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
-	for (int lane = 0; lane < MAX_LANES; lane++) {
-		for (int c = g.lane_conn[size_t(ds) * MAX_LANES + lane]; c >= 0; c = g.conns[c].next_from)
-			if (g.conns[c].alive) fn(c);
-	}
-}
 
 // A vehicle's paint from here up is the colour of a transport line, not one of the paints (agent_renderer.cpp).
 constexpr int LINE_PAINT = 64;
@@ -113,6 +37,13 @@ struct KerbStop {
 	bool back = false; // the mate is on the way back
 	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
 	V2 from; // where the person to pick up set off from
+};
+
+// What the Simulation panel sets (Roadcraft SimWorld trafficIntensity, pedestrianIntensity, demandMultiplier): shares of
+// the city's own density, 1 = as the catalog says; and the Effects panel's switches, what each system costs the tick.
+struct TrafficLevels {
+	float traffic = 1, people = 1, demand = 1, population = 1; // population: the Optimisations tab's cap on both
+	bool vehicles_on = true, people_on = true, growth_on = true, crowd_on = true;
 };
 
 struct Vehicle {
@@ -153,6 +84,7 @@ struct Vehicle {
 
 struct TrafficState {
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last pose publications (publish_poses)
+	TrafficLevels levels;
 	LaneGraph g;
 	std::vector<Vehicle> vehicles;
 	std::vector<int> free_vehicles;
@@ -163,6 +95,7 @@ struct TrafficState {
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
+	std::vector<uint32_t> seg_volume; // per segment: vehicles that entered it since the city opened (the Inspect tool)
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
@@ -246,5 +179,12 @@ inline int route_at(const std::vector<int> &pool, const RouteRef &r, int k) {
 }
 void route_set(std::vector<int> &pool, RouteRef &r, size_t &waste, const int *src, int n);
 void route_compact(TrafficState &t);
+
+// A vehicle enters the directed segment: it counts on that road's volume.
+inline void count_entry(TrafficState &t, int ds) {
+	const size_t seg = size_t(ds) / 2;
+	if (seg >= t.seg_volume.size()) t.seg_volume.resize(seg + 1, 0);
+	t.seg_volume[seg]++;
+}
 
 } // namespace city

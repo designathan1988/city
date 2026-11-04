@@ -90,6 +90,8 @@
           "PAINT",
           "TREES",
           "CLOUD",
+          "STRIKE",
+          "SHOOT",
           "TRANSIT"
          ]
         },

@@ -32,6 +32,7 @@ const COMMANDS := {
 	&"transit_drop_line": "transit_drop_line", &"transit_vehicles": "transit_vehicles",
 	&"set_interior": "set_interior",
 	&"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
+	&"show_every_zone": "show_every_zone", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -50,4 +51,5 @@ const QUERIES := {
 	&"interior": "interior", &"interior_revision": "interior_revision", &"interior_cost": "interior_cost",
 	&"people_census": "people_census", &"set_city_hour": "set_city_hour",
 	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
+	&"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path", &"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
 }

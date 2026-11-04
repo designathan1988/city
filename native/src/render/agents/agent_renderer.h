@@ -27,6 +27,15 @@ public:
 	// draws (surfaces of the shown MultiMeshes): counts, no clock (city_core_probe agent_cost).
 	godot::Dictionary cost() const;
 
+	// The graphics tier: the reach and the cap of the cabin level, and the nearest level people may use.
+	void set_detail(float cabin_m, int cabin_cap, int people_floor) {
+		cabin_reach_ = cabin_m;
+		cabin_cap_ = cabin_cap;
+		cabin_limit2_ = 0;
+		people_.set_floor(people_floor);
+	}
+	int cabins_drawn() const;
+
 private:
 	static constexpr int CABIN_LEVEL = 0, BODY_LEVEL = 1, LEVELS = 2;
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
@@ -60,6 +69,10 @@ private:
 	std::vector<Odometer> odo_;
 	PeopleRenderer people_;
 	float vehicle_r_ = 0, cabin_r_ = 0, people_r_ = 0, jump_m_ = 0;
+	float cabin_reach_ = 0; // the tier's reach of the cabin level; 0: the table's
+	int cabin_cap_ = 0; // the most cabins drawn, the nearest; 0: no cap
+	float cabin_limit2_ = 0; // the cap's distance, squared, found on the last frame (0: none)
+	std::vector<float> near_d2_;
 	int drawn_vehicles_ = 0, drawn_people_ = 0;
 };
 

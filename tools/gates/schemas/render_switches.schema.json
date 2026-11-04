@@ -1,0 +1,13 @@
+{
+ "type": "object",
+ "required": [
+  "groups",
+  "resolutions",
+  "stats_every_s"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ }
+}

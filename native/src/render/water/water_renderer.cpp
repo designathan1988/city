@@ -74,7 +74,7 @@ void WaterRenderer::build(const Heightfield &hf, int64_t key) {
 		}
 	Draw &d = chunks_[key];
 	OwnedMesh next = mb.empty() ? OwnedMesh() : mb.bake();
-	swap_base(d.inst, d.mesh, next.release(), scenario_, material_, false);
+	swap_base(d.inst, d.mesh, next.release(), scenario_, material_, false, LAYER_WATER);
 }
 
 void WaterRenderer::sync(const Heightfield &hf) {

@@ -86,7 +86,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
 			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
@@ -94,7 +95,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		pl.coarse = true;
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
-		b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+		if (lots_drawn_.load()) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
 		near_shells[i].glass = mid_shells[i].glass = nullptr;

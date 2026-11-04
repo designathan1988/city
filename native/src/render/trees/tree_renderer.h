@@ -26,6 +26,8 @@ public:
 	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
 	void mark_dirty(int64_t key);
+	void set_share(float share); // the graphics tier: every drawn chunk is placed again
+	int near_trees() const; // trees of the near level now
 	void sync(const CityState &s, const godot::Vector3 &cam, BuildBudget &budget);
 	void commit(const std::chrono::steady_clock::time_point &until);
 	int pending() const;
@@ -33,6 +35,7 @@ public:
 private:
 	struct Near {
 		std::vector<MultiMeshDraw> body, cards;
+		int trees = 0;
 	};
 	struct Built {
 		int64_t key = 0;

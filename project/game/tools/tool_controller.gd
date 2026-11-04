@@ -16,6 +16,7 @@ signal tagged(text: String, at: Vector3, ok: bool)
 signal plan_changed # the transport tool laid something the drawer lists
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
+signal hovered(info: Dictionary)
 
 enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, STRIKE, SHOOT, BUILD, TRANSIT }
 

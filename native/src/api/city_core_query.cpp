@@ -1,6 +1,8 @@
 // Read-only views for the UI and the tests. Values are derived here from CityState; the UI never recomputes them.
 #include "api/city_core.h"
 
+#include "render/render_layers.h"
+
 #include "core/math.h"
 #include "core/units.h"
 #include "render/film_grade.h"
@@ -21,8 +23,6 @@ namespace city {
 namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
-constexpr float INSPECT_RADIUS_M = 30.f;
-constexpr float SIGNAL_PICK_M = 8.f; // about a junction box round its node
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
 
@@ -95,6 +95,9 @@ Dictionary CityCore::constants() const {
 	d["minutes_per_day"] = MINUTES_PER_DAY;
 	d["minutes_per_hour"] = MINUTES_PER_HOUR;
 	d["zone_codes"] = ZONE_CODES;
+	Dictionary layers;
+	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
+	d["render_layers"] = layers;
 	return d;
 }
 
@@ -119,7 +122,11 @@ Dictionary CityCore::snapshot() {
 	d["minutes"] = s.clock.minutes.load();
 	d["buildings"] = s.buildings.count;
 	d["segments"] = s.roads.alive_segments();
-	if (s.edit_revision != snap_edit_revision_) {
+	d["marking_style"] = s.marking_style.load();
+	d["edit_revision"] = int64_t(s.edit_revision);
+	d["player_zones"] = s.roads.player_sides;
+	d["style"] = String(s.style.c_str());
+	if (s.edit_revision != snap_.edit_revision) {
 		int nodes = 0;
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
 		int zoned = 0;
@@ -134,22 +141,25 @@ Dictionary CityCore::snapshot() {
 			residents += r;
 			jobs += j;
 		}
-		snap_edit_revision_ = s.edit_revision;
-		snap_nodes_ = nodes;
-		snap_zoned_ = zoned;
-		snap_residents_ = residents;
-		snap_jobs_ = jobs;
+		snap_.edit_revision = s.edit_revision;
+		snap_.nodes = nodes;
+		snap_.zoned = zoned;
+		snap_.residents = residents;
+		snap_.jobs = jobs;
 	}
-	d["nodes"] = snap_nodes_;
-	d["zoned_sides"] = snap_zoned_;
+	d["nodes"] = snap_.nodes;
+	d["zoned_sides"] = snap_.zoned;
 	d["grown"] = s.growth.grown;
 	d["growth_cells"] = int(s.growth.cells.size());
-	d["residents"] = snap_residents_;
-	d["jobs"] = snap_jobs_;
+	d["residents"] = snap_.residents;
+	d["jobs"] = snap_.jobs;
 	d["vehicles"] = s.traffic.vehicle_count + s.traffic.park.moving;
 	d["people"] = s.traffic.ped_count;
 	d["trips_arrived"] = s.traffic.arrived;
 	d["trips_lost"] = s.traffic.lost;
+	d["traffic_level"] = s.traffic.levels.traffic;
+	d["people_level"] = s.traffic.levels.people;
+	d["demand"] = s.traffic.levels.demand;
 	d["speed"] = int(sim_.speed());
 	d["unsaved"] = s.has_unsaved_work();
 	d["edited"] = s.edited;
@@ -179,66 +189,6 @@ if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	if (!state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz)) return d;
 	d["hit"] = true;
 	d["position"] = Vector3(hx, hy, hz);
-	return d;
-}
-
-// A signal under the click: what is set on the node (a change shows at once, the traffic takes it up on its next step) over
-// each stage's minimum green, which still stands. The caller holds the map.
-static bool inspect_signal(const CityState &s, std::mutex &traffic, const Vector3 &p, Dictionary &d) {
-	const int n = s.roads.find_node_near(p.x, p.z, SIGNAL_PICK_M);
-	std::lock_guard<std::mutex> tr(traffic);
-	const std::vector<Junction> &all = s.traffic.g.junctions;
-	if (n < 0 || n >= int(all.size()) || all[size_t(n)].ctl != Control::SIGNAL || all[size_t(n)].least.empty()) return false;
-	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
-	const std::vector<float> &least = all[size_t(n)].least;
-	PackedFloat32Array greens;
-	for (size_t k = 0; k < least.size(); k++) greens.push_back(set.fixed && k < set.greens.size() ? std::max(least[k], set.greens[k]) : least[k]);
-	d["kind"] = "junction";
-	d["id"] = n;
-	d["fixed"] = set.fixed;
-	d["offset"] = set.offset;
-	d["greens"] = greens;
-	return true;
-}
-
-Dictionary CityCore::inspect(const Vector3 &p) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const CityState &s = *state_;
-	Dictionary d;
-	if (inspect_signal(s, state_->traffic_mutex, p, d)) return d;
-	int best = -1;
-	float bd = INSPECT_RADIUS_M;
-	s.buildings.query(p.x - INSPECT_RADIUS_M, p.z - INSPECT_RADIUS_M, p.x + INSPECT_RADIUS_M, p.z + INSPECT_RADIUS_M, [&](int id) {
-		const Building &b = s.buildings.items[id];
-		float dd = std::hypot(b.x - p.x, b.z - p.z);
-		if (dd < bd) { bd = dd; best = id; }
-	});
-	if (best >= 0) {
-		const Building &b = s.buildings.items[best];
-		d["kind"] = "building";
-		d["id"] = best;
-		d["floors"] = int(b.floors);
-		d["zone"] = int(b.zone);
-		d["fn"] = int(b.fn);
-		return d;
-	}
-	double t, dist;
-	int seg = s.roads.find_segment_near(p.x, p.z, INSPECT_RADIUS_M, t, dist);
-	if (seg >= 0) {
-		d["kind"] = "road";
-		d["id"] = seg;
-		d["profile"] = String(s.catalog.profile(s.roads.segs[seg].profile).name_key.c_str());
-		Array ends; // its dead ends, start first: the node and whether it turns in a bulb
-		for (int n : { s.roads.segs[seg].a, s.roads.segs[seg].b }) {
-			if (s.roads.nodes[n].segs.size() != 1) continue;
-			Dictionary e;
-			e["node"] = n;
-			e["start"] = n == s.roads.segs[seg].a;
-			e["bulb"] = s.roads.nodes[n].bulb;
-			ends.push_back(e);
-		}
-		d["ends"] = ends;
-	}
 	return d;
 }
 

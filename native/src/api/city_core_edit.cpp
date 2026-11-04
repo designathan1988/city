@@ -5,6 +5,7 @@
 #include "api/edit_result.h"
 #include "sim/roads/road_network.h"
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include <cmath>
@@ -48,6 +49,44 @@ Dictionary CityCore::set_signal(int node, bool fixed, const PackedFloat32Array &
 
 Dictionary CityCore::green_wave(int node) {
 	return run_edit(*state_, "cmd.place.greenWave", [&](CityState &s) { return city::green_wave(s, node); });
+}
+
+Array CityCore::recent_edits(int count) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const std::vector<EditEntry> &stack = state_->history.undo_stack;
+	Array out;
+	for (int i = int(stack.size()) - 1; i >= 0 && out.size() < count; i--) {
+		const EditEntry &e = stack[size_t(i)];
+		Dictionary d;
+		d["label"] = String(e.label.c_str());
+		d["has_box"] = e.has_box;
+		d["min"] = Vector2(float(e.minx), float(e.minz));
+		d["max"] = Vector2(float(e.maxx), float(e.maxz));
+		out.push_back(d);
+	}
+	return out;
+}
+
+Dictionary CityCore::reverse_road(int seg) {
+	return run_edit(*state_, "cmd.reverse", [&](CityState &s) { return city::reverse_road(s, seg); });
+}
+
+Dictionary CityCore::duplicate_road(int seg) {
+	return run_edit(*state_, "cmd.duplicate", [&](CityState &s) { return city::duplicate_road(s, seg); });
+}
+
+Dictionary CityCore::set_marking_style(int style, bool undoable) {
+	if (undoable) return run_edit(*state_, "cmd.paint", [&](CityState &s) { return city::set_marking_style(s, style); });
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	return result_dict(city::set_marking_style(*state_, style));
+}
+
+Dictionary CityCore::set_style(const String &id) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->style = id.utf8().get_data();
+	Dictionary d;
+	d["ok"] = true;
+	return d;
 }
 
 Dictionary CityCore::split_road(const Vector3 &p) {

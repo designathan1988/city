@@ -8,6 +8,7 @@
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
+#include <atomic>
 #include <chrono>
 #include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -25,6 +26,7 @@ public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void set(Overlay o, bool on);
+	void show_every_zone(bool on); // the brush in hand: every zoned side, not only the player's
 	bool is_on(Overlay o) const { return on_[int(o)]; }
 	void mark_dirty(int64_t key); // a road chunk changed: its zone mesh is stale
 	void update(const CityState &s, const PoseFrame &f, double dt);
@@ -52,6 +54,8 @@ private:
 	std::unordered_map<int64_t, MeshDraw> zones_, congestion_;
 	std::unordered_set<int64_t> zones_dirty_, roads_known_;
 	bool zones_all_ = false;
+	std::atomic<bool> every_zone_{ false };
+	float zone_alpha_ = 0, zone_alpha_tool_ = 0, congestion_alpha_ = 0;
 	bool on_[int(Overlay::COUNT)] = {};
 	std::mutex queue_mutex_;
 	std::vector<Built> done_;

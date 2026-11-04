@@ -13,7 +13,7 @@ var _last := Vector3.INF
 func enter() -> void:
 	zone = params.get("zone", 1)
 	radius = params.get("radius", DataTables.ui("drawers").zone_radius)
-	ctl.hint.emit(tr("hint.tool.zone"), true)
+	ctl.hint.emit("", true)
 
 
 func click(p: Vector3) -> void:

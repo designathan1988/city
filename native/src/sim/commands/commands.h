@@ -118,6 +118,10 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 // --- Road drawer tabs (road_tabs.cpp, roundabout.cpp)
 // Splits the segment under (x, z) where clicked (at least edit_split_min_m from its ends).
 EditResult split_road_at(CityState &s, double x, double z);
+// The one-way runs the other way (road_copies.cpp); a road copied alongside; the map's paint standard, every road drawn again.
+EditResult reverse_road(CityState &s, int seg);
+EditResult duplicate_road(CityState &s, int seg);
+EditResult set_marking_style(CityState &s, int style);
 // Puts `profile` on the segment under (x, z), or on its whole street; charges the difference or refunds a share.
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
 // How a dead end finishes (Roadcraft doc.ts setNodeEnd): a straight cut, or a turning bulb when there is room for one.

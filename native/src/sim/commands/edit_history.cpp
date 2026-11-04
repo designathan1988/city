@@ -54,12 +54,18 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			if (fwd) { mark_seg(s, op.id, true); net.remove_segment(op.id); }
 			else { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
 			break;
+		case OpKind::MARKING:
+			s.marking_style.store(fwd ? op.to : op.from);
+			for (int seg = 0; seg < int(net.segs.size()); seg++)
+				if (net.segs[size_t(seg)].alive) net.mark_segment(seg);
+			break;
 		case OpKind::PROFILE:
 			net.set_profile(op.id, fwd ? op.to : op.from);
 			mark_seg(s, op.id, false);
 			break;
 		case OpKind::ZONE:
 			net.set_zone(op.id, op.side, fwd ? op.to : op.from);
+			net.set_player_zone(op.id, op.side, fwd ? op.to != 0 : op.player);
 			mark_furniture(s, op.id);
 			break;
 		case OpKind::ADD_BLD: if (fwd) s.buildings.put(op.id, op.bld, true); else s.buildings.remove(op.id); break;

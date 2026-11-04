@@ -5,9 +5,7 @@ extends Node3D
 
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
 const LUMA := Vector3(0.3, 0.6, 0.1) # the weights terrain_layers.gdshaderinc reads a colour's luma with
-const WATER_SHADER := "res://render/shaders/water.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
-const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
@@ -27,21 +25,27 @@ var sun: DirectionalLight3D
 var environment: Environment
 var daylight: Daylight
 var sky: SkyView
-var _water_mat: ShaderMaterial
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
 
 
+var marks: ChangeMarks # F8
+var water: CityWater
+var _mesh_size := 0
 var sky_mode: String:
 	get:
 		return daylight.mode
 
 
 func _ready() -> void:
+	add_to_group(&"world")
 	var palette: Dictionary = DataTables.render().palette
 	_build_environment(palette)
 	_build_terrain(palette)
-	_build_water(palette)
+	water = CityWater.new(palette)
+	add_child(water)
+	marks = ChangeMarks.new()
+	add_child(marks)
 	sky = SkyView.new(self)
 	add_child(sky)
 
@@ -55,9 +59,9 @@ func materials() -> Dictionary:
 				continue
 			var m := EffectMaterials.make(key, table[key], environment)
 			for name in table[key].params:
-				m.set_shader_parameter(name, _param(table[key].params[name]))
+				m.set_shader_parameter(name, shader_value(table[key].params[name]))
 			if key == "road":
-				SurfaceMeans.apply(m, table[key].params, _param)
+				SurfaceMeans.apply(m, table[key].params, shader_value)
 			elif key == "verge":
 				_set_ground(m)
 			elif key == "prop":
@@ -69,7 +73,7 @@ func materials() -> Dictionary:
 				var over: ShaderMaterial = m.duplicate()
 				over.render_priority = layer
 				_materials["%s_%d" % [key, layer]] = over
-		_materials["water"] = _water_mat # the lakes and rivers of the core (render/water) wear the sea's material
+		_materials["water"] = water.own # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
 
 
@@ -78,16 +82,16 @@ func _set_ground(m: ShaderMaterial) -> void:
 	var ground: Dictionary = DataTables.render().palette.terrain
 	for key in ground:
 		if not key.begins_with("_"):
-			m.set_shader_parameter(key, _param(ground[key]))
+			m.set_shader_parameter(key, shader_value(ground[key]))
 	m.set_shader_parameter("grass_mean", _grass_mean(ground))
 
 
 func _grass_mean(ground: Dictionary) -> float:
-	var mean := SurfaceMeans.mean_color(_param(ground.grass_map)).srgb_to_linear()
+	var mean := SurfaceMeans.mean_color(shader_value(ground.grass_map)).srgb_to_linear()
 	return mean.r * LUMA.x + mean.g * LUMA.y + mean.b * LUMA.z
 
 
-func _param(v: Variant) -> Variant:
+static func shader_value(v: Variant) -> Variant:
 	if v is String and v.begins_with("res://"):
 		return load(v)
 	if v is String and v.begins_with("#"):
@@ -111,21 +115,21 @@ func set_map_biome(region: int) -> void:
 
 ## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
 func set_water_look(weather: Dictionary) -> void:
-	_water_mat.set_shader_parameter("waves", minf(1.0, weather.waves + weather.wind / WIND_FULL_WAVES_MS))
-	_water_mat.set_shader_parameter("foam", weather.foam)
-	_water_mat.set_shader_parameter("current", weather.current)
+	water.own.set_shader_parameter("waves", minf(1.0, weather.waves + weather.wind / WIND_FULL_WAVES_MS))
+	water.own.set_shader_parameter("foam", weather.foam)
+	water.own.set_shader_parameter("current", weather.current)
 	_terrain_material.set_shader_param("gully_auto", weather.gully_auto)
 
 
 func _build_environment(_palette: Dictionary) -> void:
 	var day: Dictionary = DataTables.game("daylight")
-	sun = Daylight.make_sun(day)
+	sun = DaylightRig.sun(day)
 	add_child(sun)
-	var fill := Daylight.make_plain()
+	var fill := DaylightRig.plain()
 	add_child(fill)
-	var sky_top := Daylight.make_top()
+	var sky_top := DaylightRig.top()
 	add_child(sky_top)
-	var under := Daylight.make_under()
+	var under := DaylightRig.under()
 	add_child(under)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
@@ -182,6 +186,13 @@ func _process(_delta: float) -> void:
 	daylight.follow_view(get_viewport().get_camera_3d())
 
 
+## The Optimisations tab: the terrain's nearest meshes divided (Terrain3D mesh_size: lod0 has 4 mesh_size + 2 quads a side).
+func set_terrain_lod(divide: int) -> void:
+	var size: int = _mesh_size / maxi(1, divide)
+	if terrain.get("mesh_size") != size:
+		terrain.set("mesh_size", size)
+
+
 func _build_terrain(palette: Dictionary) -> void:
 	terrain = ClassDB.instantiate(&"Terrain3D")
 	terrain.name = "Terrain3D"
@@ -202,26 +213,11 @@ func _build_terrain(palette: Dictionary) -> void:
 	terrain.collision_mode = 0 # disabled: picking uses the core's raycast
 	terrain.free_editor_textures = false
 	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
+	terrain.render_layers = int(CityStore.constants.render_layers.terrain)
 	add_child(terrain)
+	_mesh_size = terrain.get("mesh_size")
 	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene.
 	for key in palette.terrain:
 		if not key.begins_with("_"):
-			mat.set_shader_param(key, _param(palette.terrain[key]))
+			mat.set_shader_param(key, shader_value(palette.terrain[key]))
 	mat.set_shader_param("grass_mean", _grass_mean(palette.terrain))
-
-
-func _build_water(palette: Dictionary) -> void:
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(WATER_EXTENT_M, WATER_EXTENT_M)
-	var mat := ShaderMaterial.new()
-	mat.shader = load(WATER_SHADER)
-	for key in palette.water:
-		if key != "sea_level_m" and not key.begins_with("_"):
-			mat.set_shader_parameter(key, _param(palette.water[key]))
-	_water_mat = mat
-	var water := MeshInstance3D.new()
-	water.mesh = plane
-	water.material_override = mat
-	water.position.y = palette.water.sea_level_m
-	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(water)

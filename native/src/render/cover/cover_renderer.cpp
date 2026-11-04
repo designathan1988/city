@@ -136,13 +136,13 @@ void CoverRenderer::commit_one(Built &b) {
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		for (size_t v = 0; v < k.variants.size(); v++) {
 			size_t at = size_t(first_[size_t(p)]) + v;
-			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts);
+			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts, LAYER_VEGETATION);
 			ch[at].range(0, end);
 		}
 	}
 	for (size_t i = 0; i < models_.all().size(); i++) {
 		size_t at = size_t(draws_) + i;
-		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false);
+		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false, LAYER_VEGETATION);
 		ch[at].range(0, end);
 	}
 }

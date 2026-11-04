@@ -6,7 +6,7 @@ const MARK_SHARE := 0.6
 
 
 func enter() -> void:
-	ctl.hint.emit(tr("hint.split"), true)
+	ctl.hint.emit("", true)
 
 
 func exit() -> void:
@@ -14,11 +14,9 @@ func exit() -> void:
 
 
 func hover(p: Vector3) -> void:
-	var seg: Dictionary = CityStore.query(&"segment_at", [p])
-	if seg.get("seg", -1) < 0:
-		ctl.preview.clear()
-		return
-	ctl.preview.show_disc(seg.at, seg.half_width * MARK_SHARE, true)
+	var seg := road_under(p)
+	if not seg.is_empty():
+		ctl.preview.show_disc(seg.at, seg.half_width * MARK_SHARE, true)
 
 
 func click(p: Vector3) -> void:

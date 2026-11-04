@@ -8,6 +8,7 @@ render_mode cull_back;
 global uniform float night;
 global uniform float rooms_awake;
 global uniform float room_daylight;
+global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
 uniform float glass_floor = 0.18;
@@ -66,7 +67,7 @@ void fragment() {
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 		float office = (int(COLOR.a * 255.0 + 0.5) & OFFICE_BIT) != 0 ? 1.0 : 0.0;
 		vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), sub);
-		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub);
+		float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, sub) * building_night_windows;
 		albedo = mix(albedo, glass, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
 		rough = mix(rough, 0.35, m);
 		emit = (lamp * lit * night * window_glow + MEAN_SEEN * room_daylight) * m;

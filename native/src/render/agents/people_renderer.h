@@ -45,6 +45,8 @@ public:
 	void reset();
 	// Returns how many people were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
+	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
+	int shown(int level) const; // people drawn at this level on the last frame
 
 private:
 	PeopleAsset asset_;
@@ -58,6 +60,7 @@ private:
 	godot::PackedFloat32Array blob_buf_;
 	godot::RID blob_material_;
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
+	int floor_ = 0;
 };
 
 } // namespace city

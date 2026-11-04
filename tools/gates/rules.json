@@ -329,6 +329,12 @@
     "project/data/game/settings.json": "tools/gates/schemas/settings.schema.json",
     "project/data/game/daylight.json": "tools/gates/schemas/daylight.schema.json",
     "project/data/game/saves.json": "tools/gates/schemas/saves.schema.json",
+    "project/data/game/render_switches.json": "tools/gates/schemas/render_switches.schema.json",
+    "project/data/game/optimizations.json": "tools/gates/schemas/optimizations.schema.json",
+    "project/data/game/health.json": "tools/gates/schemas/health.schema.json",
+    "project/data/game/start.json": "tools/gates/schemas/start.schema.json",
+    "project/data/ui/keys.json": "tools/gates/schemas/keys.schema.json",
+    "project/data/ui/help.json": "tools/gates/schemas/help.schema.json",
     "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json",
     "project/data/render/bay_props.json": "tools/gates/schemas/bay_props.schema.json"
   },
@@ -375,7 +381,7 @@
       "native/src/sim/buildings/b40/model.h:NO_BAY", "project/game/tools/building_tool.gd:NO_BAY",
       "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
       "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H", "native/src/render/atmosphere/fog_field.cpp:BUCKET_M", "native/src/render/effects/effect_blast.cpp:SOIL_TINT",
-      "native/src/render/effects/effect_things.cpp:FLESH"],
+      "native/src/render/effects/effect_things.cpp:FLESH", "native/src/sim/traffic/way_search.cpp:FINE_HEADINGS"],
     "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
   },
   "clones": {

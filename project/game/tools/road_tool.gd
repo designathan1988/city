@@ -34,7 +34,7 @@ func enter() -> void:
 	if drawn < 0:
 		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
-	ctl.hint.emit(tr("ui.do.roadPoint"), true)
+	ctl.hint.emit("", true)
 
 
 func _clear_preview() -> void:
@@ -102,7 +102,7 @@ func cancel() -> void:
 	bend = {}
 	chain = Vector3.INF
 	_clear_preview()
-	ctl.hint.emit(tr("ui.do.roadPoint"), true)
+	ctl.hint.emit("", true)
 
 
 func key(keycode: Key) -> void:

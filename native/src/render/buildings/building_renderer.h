@@ -14,6 +14,9 @@
 // indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
 
+#include "render/buildings/occluders.h"
+#include <atomic>
+
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
@@ -39,6 +42,8 @@ namespace city {
 
 class BuildingRenderer {
 public:
+	void set_detail_scale(float scale); // the graphics tier's share of the near level's reach
+	void set_lots_drawn(bool on) { lots_drawn_.store(on); } // the Effects panel; the caller redraws everything
 	const b40::BuildingLook &look() const { return look_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
@@ -83,6 +88,7 @@ private:
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
+	static constexpr float REACH_PAD = 0.25f; // of a chunk: the stream starts a level a little before its range reaches the eye
 	// What the meshes hold, surface by surface (building_cost).
 	enum SurfaceKind { HELD_NEAR_WALLS, HELD_NEAR_PANES, HELD_NEAR_GUARDS, HELD_NEAR_CARDS, HELD_NEAR_PIECES, HELD_MID_WALLS, HELD_MID_PANES, HELD_MID_CARDS, HELD_KINDS };
 	struct Held {
@@ -104,6 +110,7 @@ private:
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
+		ChunkOccluder occluder; // the near level's walls (occluders.h)
 	};
 	struct Super {
 		MeshDraw far;
@@ -142,6 +149,8 @@ private:
 		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_DRAWS> band_count{};
 		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
+		godot::RID unit_box; // the parts' box mesh
+		OccluderWalls walls;
 		bool has_near = false, has_mid = false, baked = false;
 		bool cut = false; // a building of the near level is cut open
 		std::array<Held, HELD_KINDS> held;
@@ -177,8 +186,9 @@ private:
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr);
-	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
-	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown) const;
+	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
+			RenderLayer layer);
+	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	void commit_one(Built &b);
@@ -203,6 +213,8 @@ private:
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_DRAWS> band_end_{};
+	float detail_scale_ = 1; // the graphics tier's share of the near reach (set_detail_scale)
+	std::atomic<bool> lots_drawn_{ true }; // read by the mesh jobs
 	mutable std::mutex queue_mutex_;
 	Results<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job

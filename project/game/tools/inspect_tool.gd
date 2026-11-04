@@ -4,13 +4,17 @@ extends ToolBase
 
 
 func enter() -> void:
-	ctl.hint.emit(tr("hint.tool.inspect"), true)
+	ctl.hint.emit("", true)
 
 
 func click(p: Vector3) -> void:
 	var info: Dictionary = CityStore.query(&"inspect", [p])
 	info["at"] = p
 	ctl.inspected.emit(info)
+
+
+func hover(p: Vector3) -> void:
+	ctl.hovered.emit(CityStore.query(&"inspect", [p]))
 
 
 func cancel() -> void:

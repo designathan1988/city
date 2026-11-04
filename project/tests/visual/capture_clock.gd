@@ -27,10 +27,10 @@ func _ready() -> void:
 	await _frames(BOOT_FRAMES)
 	var hud: Node = play.find_children("*", "RoadcraftHud", true, false)[0]
 	var world: CityWorld = play.find_children("*", "CityWorld", true, false)[0]
-	await _press(hud._sky_buttons[MOON_BUTTON], world, "modo_noite")
-	await _press(hud._sky_buttons[SUN_BUTTON], world, "modo_dia")
-	await _press(hud._sky_buttons[CLOCK_BUTTON], world, "modo_relogio")
-	hud._speed_buttons[FASTEST].pressed.emit()
+	await _press(hud.top_bar._sky_buttons[MOON_BUTTON], world, "modo_noite")
+	await _press(hud.top_bar._sky_buttons[SUN_BUTTON], world, "modo_dia")
+	await _press(hud.top_bar._sky_buttons[CLOCK_BUTTON], world, "modo_relogio")
+	hud.top_bar._speed_buttons[FASTEST].pressed.emit()
 	var hour: float = CityStore.snapshot.hour
 	for i in SHOTS:
 		var next := fmod(hour + HOURS_APART, HOURS_A_DAY)
