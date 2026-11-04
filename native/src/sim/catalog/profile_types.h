@@ -35,6 +35,7 @@ struct MarkLine {
 	bool exclusive = false; // separates a lane for one kind of vehicle (its width is the render's: streets.json markings)
 	LineKind kind = LineKind::NONE;
 	LineColor color = LineColor::WHITE;
+	bool centre = false; // between the two directions
 };
 
 struct LaneInfo {

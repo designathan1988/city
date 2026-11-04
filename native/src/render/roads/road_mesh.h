@@ -28,6 +28,8 @@ bool crossing_node(const CityState &s, int node);
 // Four corners with their own uv (texture metres) and uv2 (lamp pool), flat normal facing `out`.
 void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Vector2 uv2[4], const godot::Color &col,
 		const godot::Vector3 &out);
+void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Vector2 uv2[4], const godot::Color cols[4],
+		const godot::Vector3 &out);
 
 void emit_segment(const RoadEmit &e, int sid);
 void emit_markings(const RoadEmit &e, int sid);

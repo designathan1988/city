@@ -370,7 +370,7 @@
    "category": "avenidas",
    "ring": false,
    "surface": 0,
-   "centre": "double",
+   "centre": "solid",
    "strips": [
     {
      "kind": "sidewalk",

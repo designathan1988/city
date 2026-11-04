@@ -1,8 +1,7 @@
 """Writes project/data/catalog/road_profiles*.json: the road catalogue of Roadcraft 4.0 (src/world/roads/catalog.ts and the
 classes of src/world/roadTypes.ts), kept in the order the saves index it by. A width here is the 4.0's: a footway counts its
 kerb, a median its two kerbs. "rank" is the card's place in its tab; "antigos" holds the two roads the 4.0 dropped, for old
-saves only. The centre line follows MBST vol. IV (2022) 4.1: double where a two-way urban road has more than one lane in a
-direction (LFO-3), dashed where it has one (LFO-2), none on local streets, where the line is optional. Strips are listed from the right edge (negative u) to the left edge looking from node a to node b; lanes with
+saves only. The centre line is the one the 4.0 draws by class. Strips are listed from the right edge (negative u) to the left edge looking from node a to node b; lanes with
 dir 1 go a -> b. Run once when the catalogue changes: python3 tools/assets/make_road_profiles.py
 """
 import json
@@ -84,7 +83,7 @@ BUILTIN = [
     profile("localStreet", "local", 30, False, 0, "ruas", two(2, 1, 3)),
     profile("streetWithParking", "urban", 40, False, 1, "ruas", two(2, 1, 3, edge=PARK), centre="dashed"),
     profile("oneWayWithParking", "urban", 50, True, 1, "antigos", [sw(2.85), CURB, PARK, lane(1, 3), lane(1, 3), CURB, sw(2.85)]),
-    profile("avenue", "avenue", 60, False, 2, "avenidas", two(2, 2, 3.5), centre="double"),
+    profile("avenue", "avenue", 60, False, 2, "avenidas", two(2, 2, 3.5), centre="solid"),
     profile("avenueWithCycleTrack", "avenue", 60, False, 2, "avenidas", two(3, 2, 3, edge=bike(), med=planted(2))),
     profile("expressway", "highway", 100, False, 4, "rodovias", two(1, 2, 4, med=planted(2))),
     profile("roundabout", "urban", 30, True, 3, "especiais", [sw(2.85), CURB, lane(1, 4), lane(1, 4), CURB, median(1.35)], ring=True),
@@ -100,7 +99,7 @@ BUILTIN = [
     profile("cobblestoneStreet", "local", 30, False, 0, "ruas", two(2, 1, 3), surface=COBBLE),
     profile("avenue4Lanes", "avenue", 60, False, 2, "avenidas", two(3, 2, 3, med=planted(2))),
     profile("avenue6LanesMedian", "avenue", 60, False, 2, "avenidas", two(3, 3, 3, med=planted(3))),
-    profile("avenueWithParking", "avenue", 50, False, 2, "avenidas", two(3, 2, 3, edge=PARK), centre="double"),
+    profile("avenueWithParking", "avenue", 50, False, 2, "avenidas", two(3, 2, 3, edge=PARK), centre="solid"),
     profile("curbsideBusLane", "avenue", 60, False, 2, "avenidas", two(3, 2, 3, med=planted(2), bus="outer")),
     profile("centralBusway", "avenue", 60, False, 2, "avenidas", two(3, 3, 3, med=planted(2, CONCRETE), bus="inner")),
     profile("oneWayAvenue3Lanes", "avenue", 60, True, 2, "avenidas", one(3, 3, 3)),

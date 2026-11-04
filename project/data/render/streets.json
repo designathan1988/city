@@ -6,8 +6,7 @@
   "bike": "#9a4a3e",
   "shoulder": "#4a4c4f",
   "curb": "#9d9c98",
-  "barrier": "#a9a59d",
-  "gutter": "#99958c"
+  "barrier": "#a9a59d"
  },
  "paving_colors": ["#7e7e7b", "#a89c8c", "#c9c3b8", "#5a7a3e"],
  "median_colors": ["#a9a59d", "#a89c8c", "#c9c3b8", "#5a7a3e"],
@@ -21,8 +20,13 @@
  },
  "sample_step_m": 3,
  "face_eps_m": 0.004,
- "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "line_clear_m": 4.6, "line_m": 0.1, "line_fast_m": 0.15, "line_fast_kmh": 80, "exclusive_line_m": 0.25, "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "double_gap_m": 0.1},
- "gutter_width_m": 0.45,
+ "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "line_clear_m": 4.6, "style": "roadcraft",
+  "styles": {
+   "roadcraft": {"centre_m": 0.16, "divider_m": 0.128, "fast_kmh": 80, "fast_centre_m": 0.16, "fast_divider_m": 0.128, "exclusive_m": 0.248, "double_line_m": 0.12, "double_gap_m": 0.24, "dash_kmh": [60, 80], "dash_m": [3, 3, 4], "gap_m": [6, 9, 12], "zebra_period_m": 1.0, "zebra_bar_m": 0.5, "multi_lane_double": false},
+   "mbst": {"centre_m": 0.1, "divider_m": 0.1, "fast_kmh": 80, "fast_centre_m": 0.15, "fast_divider_m": 0.15, "exclusive_m": 0.25, "double_line_m": 0.1, "double_gap_m": 0.1, "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "multi_lane_double": true}
+  }},
+ "gutter_width_m": 0.65,
+ "gutter_shade": [0.725, 0.696, 0.658],
  "dropped_kerb": {
   "full_m": 0.65,
   "flat_m": 3.65,

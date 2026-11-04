@@ -27,18 +27,20 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 }
 
 struct StreetLook {
-	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, gutter, plate_concrete;
+	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
-	float gutter_w = 0, face_eps = 0; // coplanar faces closer than this are one
+	float gutter_w = 0, gutter_shade[3] = { 1, 1, 1 }, face_eps = 0; // coplanar faces closer than this are one
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	float arc_step = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
 	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
-	// Longitudinal lines by the road's speed: `line_w` below line_fast_kmh, `line_fast_w` from it; an exclusive lane's
-	// line `exclusive_w`; dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond.
-	float line_w = 0, line_fast_w = 0, line_fast_kmh = 0, exclusive_w = 0;
+	// Longitudinal lines of the chosen paint style (streets.json markings.styles): the centre and lane widths, wider from
+	// fast_kmh on where the style says so, a bus lane's `exclusive_w`, a double line's `double_w`; dashes `dash[k]` long and
+	// `gap[k]` apart below dash_kmh[k]. multi_lane_double: the norm's double line where a direction has more than one lane.
+	float centre_w = 0, lane_w = 0, fast_kmh = 0, fast_centre_w = 0, fast_lane_w = 0, exclusive_w = 0, double_w = 0;
+	bool multi_lane_double = false;
 	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);

@@ -26,7 +26,6 @@ uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
 uniform float normal_strength = 0.8;
 uniform float kerb_block_m = 1.0;
-uniform float gutter_joint_m = 1.0;
 uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
@@ -98,7 +97,7 @@ void fragment() {
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
-	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT) {
+	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_GUTTER) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m).rgb);
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / max(source_linear(asphalt_reference), vec3(MEAN_FLOOR)) * blotch;
@@ -112,14 +111,12 @@ void fragment() {
 		vec2 q = vec2(uv.y, uv.x);
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
-	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE || v_mat == M_GUTTER) {
+	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
 		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
 		albedo = source_linear(texture(kerb_map, kq / kerb_m).rgb)
 				* base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
-		float cell = v_mat == M_GUTTER ? gutter_joint_m : kerb_block_m;
-		float along = v_mat == M_GUTTER ? uv.y : kq.x;
-		float tone = 1.0 + (hash2(vec2(floor(along / cell), 7.0)) - 0.5) * 0.1;
-		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(along / cell + 0.5) - 0.5) * cell);
+		float tone = 1.0 + (hash2(vec2(floor(kq.x / kerb_block_m), 7.0)) - 0.5) * 0.1;
+		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(kq.x / kerb_block_m + 0.5) - 0.5) * kerb_block_m);
 		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {

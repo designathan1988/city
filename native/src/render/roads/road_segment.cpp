@@ -19,7 +19,7 @@ enum class Ramp : uint8_t { NONE, KERB, LOW_U0, LOW_U1 };
 struct Piece {
 	float u0 = 0, u1 = 0, h = 0;
 	RoadMat mat = RoadMat::ASPHALT;
-	Color col;
+	Color col, col_u1; // col_u1 only on a gutter: the colour at u1, where the other is at u0
 	Ramp ramp = Ramp::NONE;
 };
 
@@ -52,10 +52,13 @@ void carriageway(const StreetLook &L, const Profile &p, int i, const Piece &base
 	float w = pc.u1 - pc.u0, gw = std::min(L.gutter_w, w * 0.5f);
 	Piece gut = pc;
 	gut.mat = RoadMat::GUTTER;
-	gut.col = L.gutter;
+	const Color lin = pc.col.srgb_to_linear();
+	const Color dirty = Color(lin.r * L.gutter_shade[0], lin.g * L.gutter_shade[1], lin.b * L.gutter_shade[2]).linear_to_srgb();
 	if (g0) {
 		gut.u0 = pc.u0;
 		gut.u1 = pc.u0 += gw;
+		gut.col = dirty;
+		gut.col_u1 = base.col;
 		out.push_back(gut);
 	}
 	float end = pc.u1;
@@ -64,6 +67,8 @@ void carriageway(const StreetLook &L, const Profile &p, int i, const Piece &base
 	if (g1) {
 		gut.u0 = pc.u1;
 		gut.u1 = end;
+		gut.col = base.col;
+		gut.col_u1 = dirty;
 		out.push_back(gut);
 	}
 }
@@ -196,7 +201,9 @@ void tops(const Ctx &c, const Piece &pc) {
 		float va = c.sm[k].at, vb = c.sm[k + 1].at;
 		const Vector2 uv[4] = { Vector2(pc.u0, va), Vector2(pc.u1, va), Vector2(pc.u1, vb), Vector2(pc.u0, vb) };
 		const Vector2 uv2[4] = { c.pool(pc.u0, va), c.pool(pc.u1, va), c.pool(pc.u1, vb), c.pool(pc.u0, vb) };
-		emit_quad(c.e.mb, p, uv, uv2, road_color(pc.col, pc.mat), Vector3(0, 1, 0));
+		const Color at_u0 = road_color(pc.col, pc.mat), at_u1 = pc.mat == RoadMat::GUTTER ? road_color(pc.col_u1, pc.mat) : at_u0;
+		const Color cols[4] = { at_u0, at_u1, at_u1, at_u0 };
+		emit_quad(c.e.mb, p, uv, uv2, cols, Vector3(0, 1, 0));
 	}
 }
 

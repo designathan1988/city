@@ -49,9 +49,6 @@
       "kerb_block_m": {
        "type": "number"
       },
-      "gutter_joint_m": {
-       "type": "number"
-      },
       "paver_w": {
        "type": "number"
       },
@@ -91,7 +88,6 @@
       "verge_m",
       "normal_strength",
       "kerb_block_m",
-      "gutter_joint_m",
       "paver_w",
       "paver_h",
       "cobble_per_m",

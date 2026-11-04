@@ -24,7 +24,7 @@ void derive_lines(Profile &p) {
 		bool la = a.kind == StripKind::LANE, lb = b.kind == StripKind::LANE;
 		if (la && lb) {
 			if (a.dir != b.dir) {
-				if (centre_kind(p.centre) != LineKind::NONE) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW });
+				if (centre_kind(p.centre) != LineKind::NONE) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW, true });
 			} else {
 				bool solid = (a.dir == 1 ? b.solid : a.solid) || a.bus != b.bus;
 				p.lines.push_back({ at, a.bus != b.bus, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE });

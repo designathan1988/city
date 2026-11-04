@@ -65,7 +65,7 @@ func _variants(e: Vector3) -> void:
 	var wide: int = CityStore.dispatch(&"road_variant", [urban, 0, WIDE_M, 0])
 	profiles = CityStore.query(&"road_profiles")
 	_check(profiles[four].lanes == 4 and profiles[four].width == URBAN_M + 2 * LANE_M, "quatro faixas: %s" % profiles[four].width)
-	_check(profiles[four].centre == "double", "duas faixas por sentido sem canteiro têm linha dupla: %s" % profiles[four].centre)
+	_check(profiles[four].centre == "solid", "duas faixas por sentido têm a linha do 4.0: %s" % profiles[four].centre)
 	_check(profiles[bays].width == URBAN_M + 2 * BAY_M, "vagas dos dois lados: %s" % profiles[bays].width)
 	_check(profiles[wide].width == WIDE_M and profiles[wide].lanes == 2, "largura total: %s" % profiles[wide].width)
 	_check(CityStore.dispatch(&"road_variant", [urban, 4, 0.0, 0]) == four, "a mesma variante é o mesmo perfil")
@@ -161,7 +161,7 @@ func _side_by_side(e: Vector3) -> void:
 	_check(r.get("ok", false), "seguir da ponta passa: %s" % r)
 
 
-## A dragged curve passes through the farthest point of the drag, and no curve turns tighter than the design car does.
+## A dragged curve bends as the 4.0's does, short of the farthest point of the drag, and none turns tighter than the design car.
 func _curves(e: Vector3) -> void:
 	var a := e + Vector3(0, 0, CURVE_OFF_M)
 	var b := a + Vector3(CHORD_M, 0, 0)
@@ -169,7 +169,8 @@ func _curves(e: Vector3) -> void:
 	var far := (a + b) * 0.5 + Vector3(0, 0, BEND_M)
 	var q: PackedVector3Array = CityStore.query(&"road_pieces", [a, b, 1, false, Vector3.ZERO, PackedVector3Array([a, far, b]), urban, PX])
 	var apex := (q[0] + 2 * q[1] + q[2]) * 0.25
-	_check(apex.distance_to(far) < NEAR_M, "a curva passa pelo ponteiro: %s" % apex.distance_to(far))
+	var bend: float = BEND_M * DataTables.tuning("road_bend_gain") * 0.5
+	_check(absf(apex.distance_to((a + b) * 0.5) - bend) < NEAR_M, "a curva dobra como a do 4.0: %s" % apex.distance_to((a + b) * 0.5))
 	b = a + Vector3(TIGHT_CHORD_M, 0, 0)
 	var control := (a + b) * 0.5 + Vector3(0, 0, TIGHT_CONTROL_M)
 	q = CityStore.query(&"road_pieces", [a, b, 1, true, control, PackedVector3Array(), urban, PX])

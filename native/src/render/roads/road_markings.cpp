@@ -44,15 +44,17 @@ struct Painter {
 
 void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	const StreetLook &L = pt.e.L;
-	const float plain_w = p.speed < L.line_fast_kmh ? L.line_w : L.line_fast_w;
+	const bool fast = p.speed >= L.fast_kmh;
+	const bool many = std::max(p.lanes_fwd(), p.lanes_back()) > 1;
 	size_t band = 0; // the dash pattern of the road's speed
 	while (band < L.dash_kmh.size() && p.speed >= L.dash_kmh[band]) band++;
 	const double dash = L.dash[band], period = dash + L.gap[band];
 	for (const MarkLine &m : p.lines) {
 		Color c = m.color == LineColor::YELLOW ? L.yellow : L.white;
-		const float w = m.exclusive ? L.exclusive_w : plain_w, hw = w / 2;
-		auto line = [&](float u) {
-			if (m.kind != LineKind::DASHED) {
+		const float w = m.exclusive ? L.exclusive_w : m.centre ? (fast ? L.fast_centre_w : L.centre_w) : (fast ? L.fast_lane_w : L.lane_w);
+		const LineKind kind = m.centre && m.kind == LineKind::SOLID && L.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
+		auto line = [&](float u, float hw) {
+			if (kind != LineKind::DASHED) {
 				if (l1 > l0) pt.rect(u - hw, u + hw, l0, l1, c);
 				return;
 			}
@@ -61,10 +63,10 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 				if (b > a) pt.rect(u - hw, u + hw, a, b, c);
 			}
 		};
-		if (m.kind == LineKind::DOUBLE) { // two lines double_gap apart
-			line(m.u - (w + L.double_gap) / 2);
-			line(m.u + (w + L.double_gap) / 2);
-		} else line(m.u);
+		if (kind == LineKind::DOUBLE) { // two lines double_gap apart
+			line(m.u - (L.double_w + L.double_gap) / 2, L.double_w / 2);
+			line(m.u + (L.double_w + L.double_gap) / 2, L.double_w / 2);
+		} else line(m.u, w / 2);
 	}
 }
 

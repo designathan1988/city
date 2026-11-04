@@ -15,9 +15,6 @@ namespace city {
 namespace {
 constexpr double TOLERANCE_GROWTH = 1.5; // the thinning loosens by this until the stroke fits max_controls
 constexpr double SAME_POINT_M = 1e-6;
-// A dragged curve passes through the farthest point of the drag: a quadratic's middle is half way to its control, and a
-// bend of half the chord is the half circle, past which the road would turn back on itself.
-constexpr double BEND_LIMIT = 0.5, APEX_TO_CONTROL = 2;
 constexpr double NODE_FOUND_M = 0.01; // the node a piece just laid ends on
 
 double dist(const StrokePoint &a, const StrokePoint &b) { return std::hypot(a.x - b.x, a.z - b.z); }
@@ -87,7 +84,7 @@ std::vector<Quad> free_pieces(const Tuning &tn, const StrokePoint &start, const 
 }
 
 // A dragged curve: bent as far as the drag went off the chord.
-Quad dragged_curve(const RoadStroke &k) {
+Quad dragged_curve(const Tuning &tn, const RoadStroke &k) {
 	Quad straight = Quad::straight(k.start.x, k.start.z, k.end.x, k.end.z);
 	double dx = k.end.x - k.start.x, dz = k.end.z - k.start.z, chord = std::hypot(dx, dz);
 	double nx = -dz / chord, nz = dx / chord, mx = (k.start.x + k.end.x) / 2, mz = (k.start.z + k.end.z) / 2, side = 0;
@@ -95,9 +92,9 @@ Quad dragged_curve(const RoadStroke &k) {
 		double c = (p.x - mx) * nx + (p.z - mz) * nz;
 		if (std::fabs(c) > std::fabs(side)) side = c;
 	}
-	side = std::clamp(side, -chord * BEND_LIMIT, chord * BEND_LIMIT);
+	side = std::clamp(side, -chord * tn.road_bend_limit, chord * tn.road_bend_limit);
 	if (std::fabs(side) < k.flat_m) return straight;
-	return { k.start.x, k.start.z, mx + nx * side * APEX_TO_CONTROL, mz + nz * side * APEX_TO_CONTROL, k.end.x, k.end.z };
+	return { k.start.x, k.start.z, mx + nx * side * tn.road_bend_gain, mz + nz * side * tn.road_bend_gain, k.end.x, k.end.z };
 }
 
 Anchor free_anchor(double x, double z) {
@@ -115,7 +112,7 @@ std::vector<Quad> road_pieces(const CityState &s, const RoadStroke &k) {
 	if (k.alignment == RoadAlignment::FREE) out = free_pieces(tn, k.start, k.end, k.samples);
 	else if (k.alignment == RoadAlignment::STRAIGHT) out.push_back(Quad::straight(k.start.x, k.start.z, k.end.x, k.end.z));
 	else if (k.has_control) out.push_back({ k.start.x, k.start.z, k.control.x, k.control.z, k.end.x, k.end.z });
-	else out.push_back(dragged_curve(k));
+	else out.push_back(dragged_curve(tn, k));
 	// a curve's inner edge keeps the design car's tightest turn; a road with no carriageway only must not fold
 	const Profile &p = s.catalog.profile(k.profile);
 	double radius = std::max(double(p.half()), double(std::max(p.asph_left, p.asph_right)) + tn.road_inner_radius_m);

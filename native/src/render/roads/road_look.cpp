@@ -41,7 +41,6 @@ void load_colors(StreetLook &L, const Dictionary &t, PackedStringArray &errors) 
 	L.shoulder = hexc(c["shoulder"]);
 	L.curb = hexc(c["curb"]);
 	L.barrier = hexc(c["barrier"]);
-	L.gutter = hexc(c["gutter"]);
 }
 
 void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
@@ -55,6 +54,8 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.step = float(t["sample_step_m"]);
 	L.face_eps = float(t["face_eps_m"]);
 	L.gutter_w = float(t["gutter_width_m"]);
+	const Array shade = t["gutter_shade"];
+	for (int i = 0; i < 3; i++) L.gutter_shade[i] = float(shade[i]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
 	L.ramp_full = float(r["full_m"]);
 	L.ramp_flat = float(r["flat_m"]);
@@ -74,13 +75,22 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.yellow = hexc(m["yellow"]);
 	L.paint_lift = float(m["lift_m"]);
 	L.line_clear = float(m["line_clear_m"]);
-	L.line_w = float(m["line_m"]);
-	L.line_fast_w = float(m["line_fast_m"]);
-	L.line_fast_kmh = float(m["line_fast_kmh"]);
-	L.exclusive_w = float(m["exclusive_line_m"]);
+	Dictionary styles = sub(m, "styles", errors);
+	Dictionary st = sub(styles, String(m["style"]).utf8().get_data(), errors);
+	L.centre_w = float(st["centre_m"]);
+	L.lane_w = float(st["divider_m"]);
+	L.fast_kmh = float(st["fast_kmh"]);
+	L.fast_centre_w = float(st["fast_centre_m"]);
+	L.fast_lane_w = float(st["fast_divider_m"]);
+	L.exclusive_w = float(st["exclusive_m"]);
+	L.double_w = float(st["double_line_m"]);
+	L.double_gap = float(st["double_gap_m"]);
+	L.zebra_period = float(st["zebra_period_m"]);
+	L.zebra_bar = float(st["zebra_bar_m"]);
+	L.multi_lane_double = bool(st["multi_lane_double"]);
 	auto floats = [&](const char *key, std::vector<float> &out) {
 		out.clear();
-		Array a = m[key];
+		Array a = st[key];
 		for (int i = 0; i < a.size(); i++) out.push_back(float(a[i]));
 	};
 	floats("dash_kmh", L.dash_kmh);
@@ -88,9 +98,6 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	floats("gap_m", L.gap);
 	if (L.dash.empty() || L.dash.size() != L.gap.size() || L.dash.size() != L.dash_kmh.size() + 1)
 		errors.push_back("streets.json markings: dash_m e gap_m com uma faixa a mais que dash_kmh");
-	L.zebra_period = float(m["zebra_period_m"]);
-	L.zebra_bar = float(m["zebra_bar_m"]);
-	L.double_gap = float(m["double_gap_m"]);
 }
 } // namespace
 

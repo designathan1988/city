@@ -15,7 +15,6 @@
    "verge_m": 8.8,
    "normal_strength": 0.8,
    "kerb_block_m": 1.0,
-   "gutter_joint_m": 1.0,
    "paver_w": 0.2,
    "paver_h": 0.1,
    "cobble_per_m": 4.2,

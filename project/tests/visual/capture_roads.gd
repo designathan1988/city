@@ -11,6 +11,10 @@ const PX := 0.25
 const OPEN_GROUND_M := 420.0
 const TOP := [20.0, 62.0]
 const LOW := [30.0, 24.0]
+const PAIR_TOP := [-20.0, 62.0] # the 4.0's azimuth turns the other way round
+const PAIR_LOW := [-30.0, 24.0]
+const PAIR_TOP_M := 100.0
+const PAIR_LOW_M := 50.0
 const CLOSE_M := 90.0
 const NEAR_M := 42.0
 const WIDE_M := 520.0
@@ -79,6 +83,9 @@ func _run() -> void:
 	await _photo("road_end", at(0, -40), [200.0, 55.0], NEAR_M * 1.5)
 	await _photo("curve_top", at(280, -80), [0.0, 70.0], WIDE_M * 0.5)
 	await _photo("layout_top", at(40, 0), [0.0, 70.0], WIDE_M)
+	await _photo("pair_urban_top", at(0, -120), PAIR_TOP, PAIR_TOP_M)
+	await _photo("pair_urban_low", at(0, -120), PAIR_LOW, PAIR_LOW_M)
+	await _photo("bend_top", at(0, 300), [0.0, 62.0], PAIR_TOP_M)
 	await _night()
 	if only.is_empty():
 		await _tool()
@@ -134,6 +141,8 @@ func _lay() -> void:
 	_road(at(-60, 30), at(-60, 170), "avenue")
 	_road(at(90, 30), at(90, 100), "urbanStreet")
 	_road(at(230, -190), at(350, 40), "urbanStreet", at(360, -180))
+	_road(at(-200, 300), at(0, 300), "urbanStreet")
+	_road(at(0, 300), at(190, 360), "urbanStreet")
 
 
 func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
