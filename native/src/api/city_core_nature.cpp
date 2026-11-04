@@ -186,4 +186,9 @@ Dictionary CityCore::canyon_field(const Vector3 &camera) {
 	return render_.canyon().view();
 }
 
+Dictionary CityCore::shore_field() {
+	render_.shore().sync(*state_);
+	return render_.shore().view();
+}
+
 } // namespace city

@@ -36,9 +36,6 @@ group_uniforms ground;
 uniform sampler2D grass_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float grass_m = 14.0; // metres per repeat of the grass map
 uniform vec3 rock : source_color;
-uniform vec3 sand : source_color;
-uniform float water_level = 0.0;
-uniform float sand_band = 2.0;
 uniform float rock_slope; // 1 - normal.y; data/render/palette.json terrain (angle of repose)
 uniform float patch_scale;
 uniform sampler2DArray land_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -53,6 +50,9 @@ uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable
 uniform float detail_m = 1.6; // metres one tile of the grain covers
 uniform float detail_near_px; // metres a pixel under which the grain is whole, and over which it is gone
 uniform float detail_far_px;
+uniform float detail_wide_from_px; // metres a pixel where the blades' colour starts to thin, gone at the next
+uniform float detail_wide_to_px;
+uniform float detail_wide_share;
 uniform float detail_albedo = 0.9;
 global uniform float night;
 group_uniforms;
@@ -186,6 +186,7 @@ void vertex() {
 
 #include "res://render/shaders/terrain_layers.gdshaderinc"
 #include "res://render/shaders/ground_paint.gdshaderinc"
+#include "res://render/shaders/shore.gdshaderinc"
 
 global uniform float rain_wet;
 
@@ -229,7 +230,7 @@ void fragment() {
 	if (dirt_w > 0.0) {
 		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
 	}
-	c = mix(c, sand, 1.0 - smoothstep(water_level + sand_band * 0.5, water_level + sand_band, v_vertex.y));
+	c = shore_over(c, v_vertex, slope, wdx, wdy);
 	if (rock_w > 0.0) {
 		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
 	}

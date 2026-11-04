@@ -179,6 +179,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	FilmLook.vignette(self, day.vignette)
 	daylight = Daylight.new(day, sun, fill, sky_top, environment, sky_mat)
 	add_child(ElementEffects.new())
+	add_child(ShoreView.new(self))
 	daylight.set_hour(day.day_hour)
 
 
@@ -224,8 +225,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	terrain.free_editor_textures = false
 	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
 	add_child(terrain)
-	# Terrain3D rebuilds its material when it enters the tree and drops parameters set before that (the ground then
-	# sampled the shader's white default texture), so the look is applied once the terrain is in the scene.
+	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene.
 	for key in palette.terrain:
 		if not key.begins_with("_"):
 			mat.set_shader_param(key, _param(palette.terrain[key]))

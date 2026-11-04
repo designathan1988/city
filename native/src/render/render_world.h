@@ -17,6 +17,7 @@
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
+#include "render/water/shore_field.h"
 #include "render/water/water_renderer.h"
 
 #include "core/laps.h"
@@ -54,6 +55,7 @@ public:
 	const Cost &cost() const { return cost_; }
 	FogField &fog() { return fog_; }
 	CanyonField &canyon() { return canyon_; }
+	ShoreField &shore() { return shore_; }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
@@ -68,6 +70,7 @@ private:
 	WaterRenderer water_;
 	FogField fog_;
 	CanyonField canyon_;
+	ShoreField shore_;
 	BuildingRenderer buildings_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;
