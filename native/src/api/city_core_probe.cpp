@@ -25,6 +25,7 @@ Dictionary CityCore::render_cost() const {
 	d["flush"] = c.flush;
 	d["chunk_max"] = c.chunk_max;
 	d["super_max"] = c.super_max;
+	d["super_mb_max"] = double(render_.super_bytes_max()) / BYTES_PER_MIB; // largest far mesh built
 	d["b_scan"] = c.building.scan;
 	d["b_freed"] = c.building.freed;
 	d["b_sort"] = c.building.sort;

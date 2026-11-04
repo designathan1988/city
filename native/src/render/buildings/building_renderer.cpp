@@ -241,6 +241,8 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
 		SuperBuilt b = build_super_cpu(in, key);
+		for (int64_t seen = super_bytes_max_.load(); b.bytes() > seen && !super_bytes_max_.compare_exchange_weak(seen, b.bytes());) {
+		}
 		b.job = super_job_key(key);
 		b.seq = seq;
 		b.priority = priority;

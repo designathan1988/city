@@ -27,6 +27,7 @@
 #include <godot_cpp/classes/array_mesh.hpp>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <limits>
 #include <mutex>
@@ -50,6 +51,8 @@ public:
 	int pending() const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
+	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
+	int64_t super_bytes_max() const { return super_bytes_max_.load(); }
 	const CommitTimes &commit_times() const { return times_; }
 
 private:
@@ -152,6 +155,7 @@ private:
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job
 	BakingSet baking_, super_baking_;
 	int64_t waiting_ = 0, super_waiting_ = 0;
+	std::atomic<int64_t> super_bytes_max_{ 0 }; // written by the superchunk jobs
 	CommitTimes times_; // the last commit's (render_cost probe)
 	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;

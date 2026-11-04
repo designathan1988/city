@@ -310,7 +310,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
-  24 km, 457.714 prédios — 598 estática, 1.408 de vídeo, 766 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %).
+  24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
+  maior HLOD de superchunk 8,1 MiB).
 - Menu principal / tela inicial (semente, tamanho, novo/abrir): o jogo abre numa cidade gerada. Lote: os pátios
   livres do massing 4.0 (`free`, furnishZones.ts) não são mobiliados (`lot_furnish.cpp` condensado).
 - Interface "em construção": camadas Grade e Interior, Sobre, aba Mover, Construir (Modelos, Massa, Fachada, Peças,
