@@ -16,7 +16,7 @@ const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
 
 
 func _ready() -> void:
-	theme_type_variation = &"Surface"
+	theme_type_variation = &"SidePanel"
 	anchor_left = 1.0
 	anchor_right = 1.0
 	grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -45,7 +45,7 @@ func _head(col: Control, text: String) -> void:
 	var row := HudWidgets.hbox(col)
 	var name := HudWidgets.label(row, &"SideTitle", text)
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "icon_btn", "icon_btn")
+	var x := HudWidgets.button(&"IconButton", "close", "", "v2.close", "side_close", "side_close")
 	x.pressed.connect(close)
 	row.add_child(x)
 

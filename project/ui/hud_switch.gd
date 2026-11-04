@@ -2,8 +2,6 @@
 class_name HudSwitch
 extends Control
 
-const ARC_POINTS := 12
-
 @export var on := false
 
 
@@ -21,9 +19,6 @@ func _ready() -> void:
 func _draw() -> void:
 	var h := size.y
 	var r := HudWidgets.px("switch_knob") * 0.5
-	var track := ThemeBuilder.color("switch_on" if on else "switch_off")
-	draw_rect(Rect2(h * 0.5, 0, size.x - h, h), track)
-	draw_arc(Vector2(h * 0.5, h * 0.5), h * 0.25, PI * 0.5, PI * 1.5, ARC_POINTS, track, h * 0.5)
-	draw_arc(Vector2(size.x - h * 0.5, h * 0.5), h * 0.25, -PI * 0.5, PI * 0.5, ARC_POINTS, track, h * 0.5)
+	draw_style_box(ThemeBuilder.box("switch_on" if on else "switch_off", "pill_radius"), Rect2(Vector2.ZERO, size))
 	var x := size.x - h * 0.5 if on else h * 0.5
 	draw_circle(Vector2(x, h * 0.5), r, ThemeBuilder.color("accent" if on else "muted"))

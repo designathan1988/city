@@ -26,7 +26,7 @@ static func segment_rows(info: Dictionary) -> Array:
 		return []
 	var lanes := tr_key("inspector.lanesOneWay" if info.one_way else "inspector.lanesTwoWay").format(
 			{"count": info.lanes, "perSide": info.lanes / 2})
-	var rows := [["inspector.length", "%.1f m" % info.length_m], ["inspector.lanes", lanes],
+	var rows := [["inspector.length", "%s m" % Formatters.format_tenths(info.length_m)], ["inspector.lanes", lanes],
 		["inspector.speed", "%d km/h" % int(info.speed_kmh)]]
 	rows.append_array(_traffic(t))
 	return rows

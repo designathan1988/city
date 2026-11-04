@@ -8,7 +8,7 @@ const PRESETS := ["auto", "low", "medium", "high", "ultra"]
 func _row(name_key: String, items: Array, value: Variant, pick: Callable, note_key := "") -> void:
 	column.add_child(HSeparator.new())
 	var box := HudWidgets.vbox(column)
-	HudWidgets.label(box, &"FieldLabel", tr(name_key))
+	HudWidgets.label(box, &"MutedLabel", tr(name_key))
 	HudWidgets.choices(box, items, value, func(v: Variant) -> void:
 		if v != value:
 			pick.call(v)
@@ -25,6 +25,7 @@ func _on_off() -> Array:
 func fill() -> void:
 	var t: Dictionary = DataTables.game("settings")
 	var now := Settings.current()
+	column.theme_type_variation = &"VDialog"
 	HudWidgets.label(column, &"HeadLabel", tr("gfx.title"))
 	var presets := []
 	for p: String in PRESETS:

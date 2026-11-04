@@ -123,7 +123,7 @@ func _tip() -> void:
 ## A click on a road and on a junction, the panel the player gets, close enough to see them.
 func _inspector() -> void:
 	hud.open_category("info")
-	for kind: String in ["road", "node"]:
+	for kind: String in ["road", "node", "signal"]:
 		var spot := _nearest(kind)
 		rig.jump(spot, VIEW[0], INSPECT_PITCH, STREET_M) # from above: a click on the middle of the screen falls on the road, not on a tower
 		await _frames(FRAMES / 2)
@@ -140,7 +140,11 @@ func _nearest(kind: String) -> Vector3:
 		for i in ring * 8 + 1:
 			var a := TAU * i / (ring * 8 + 1)
 			var p := Vector3(cos(a), 0.0, sin(a)) * ring * SEARCH_STEP_M
-			if CityStore.query(&"inspect", [p]).get("kind", "") == kind:
+			var info: Dictionary = CityStore.query(&"inspect", [p])
+			var found: String = info.get("kind", "")
+			if found == "node" and CityStore.query(&"node_traffic", [info.id]).has("cycle_s"):
+				found = "signal"
+			if found == kind:
 				return p
 	return Vector3.ZERO
 

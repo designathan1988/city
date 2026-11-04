@@ -201,7 +201,7 @@ func _build_strip(tab: Dictionary) -> void:
 			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), _retool.bind("LOT", "fn")))
 	var note := HudWidgets.label(_strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.custom_minimum_size.x = HudWidgets.px("side_w")
+	note.custom_minimum_size.x = HudWidgets.px("note_w")
 	note.visible = note.text != "" and _strip.get_child_count() == 1 # a mode with nothing to pick says what it does
 	options_panel.visible = _options.get_child_count() > 0
 	options_panel.reset_size()

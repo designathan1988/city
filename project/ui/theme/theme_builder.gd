@@ -34,7 +34,7 @@ static func theme() -> Theme:
 		_theme.default_font = font(SystemFont.new().font_weight)
 		_panels()
 		_buttons()
-		_slider()
+		ThemeArt.slider(_theme)
 		ThemeText.apply(_theme)
 	return _theme
 
@@ -93,6 +93,15 @@ static func _panels() -> void:
 	var surface := box("bg", "radius", "line", true)
 	surface.set_content_margin_all(size("pad"))
 	_panel(&"Surface", surface)
+	_panel(&"SidePanel", _pad(box("bg", "radius", "line", true), "gap"))
+	var icons := box("bg_strong", "radius", "line", true)
+	icons.set_content_margin_all(size("pad_s") + 1.0)
+	_panel(&"PopoverIcons", icons)
+	_theme.set_type_variation(&"Inset", &"MarginContainer")
+	for side in [&"margin_left", &"margin_right"]:
+		_theme.set_constant(side, &"Inset", int(size("pop_inset")))
+	_theme.set_color(&"font_color", &"LinkButton", color("text"))
+	_theme.set_color(&"font_hover_color", &"LinkButton", color("accent"))
 	var bar := surface.duplicate()
 	bar.content_margin_left = size("bar_pad")
 	bar.content_margin_right = size("bar_pad")
@@ -130,7 +139,7 @@ static func _panels() -> void:
 	for axis in ["H", "V"]:
 		var base := StringName(axis + "BoxContainer")
 		_theme.set_constant(&"separation", base, int(size("pad_s")))
-		for v in [["Gap", "gap"], ["Pad", "pad"]]:
+		for v in [["Gap", "gap"], ["Pad", "pad"], ["Dialog", "dialog_gap"], ["Tight", "tight"]]:
 			_variation(StringName(axis + v[0]), base)
 			_theme.set_constant(&"separation", StringName(axis + v[0]), int(size(v[1])))
 
@@ -169,20 +178,6 @@ static func _wide(sb: StyleBoxFlat) -> StyleBoxFlat:
 	return sb
 
 
-## The slider of the panels: a thin track, the part behind the knob in the accent colour.
-static func _slider() -> void:
-	var track := box("raise_2", "pill_radius", "line")
-	track.content_margin_top = size("slider_h") * 0.5
-	track.content_margin_bottom = size("slider_h") * 0.5
-	var knob := ThemeArt.disc(color("accent"), int(size("knob")))
-	for role in [&"grabber", &"grabber_highlight", &"grabber_disabled"]:
-		_theme.set_icon(role, &"HSlider", knob)
-	var filled := box("accent", "pill_radius")
-	_theme.set_stylebox(&"slider", &"HSlider", track)
-	_theme.set_stylebox(&"grabber_area", &"HSlider", filled)
-	_theme.set_stylebox(&"grabber_area_highlight", &"HSlider", filled)
-
-
 static func _buttons() -> void:
 	var none := StyleBoxEmpty.new()
 	none.set_content_margin_all(size("pad_s"))
@@ -201,10 +196,11 @@ static func _buttons() -> void:
 		["muted", "text", "text"], "font_card")
 	_button(&"SwatchCard", [box("raise", "card_radius", "line"), box("raise_2", "card_radius", "accent_line"), chosen],
 		["muted", "text", "text"], "font_card")
-	for role in [&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color", &"icon_hover_pressed_color"]:
-		_theme.set_color(role, &"SwatchCard", color("white"))
 	_button(&"RcCard", [box("raise", "card_radius", "line"), box("raise_2", "card_radius", "accent_line"),
 		box("accent_soft", "card_radius", "accent")], ["muted", "text", "accent"], "font_card")
+	for role in [&"icon_normal_color", &"icon_hover_color", &"icon_pressed_color", &"icon_hover_pressed_color"]:
+		for picture in [&"SwatchCard", &"RcCard"]: # a picture keeps its colours: the icon tint multiplies them
+			_theme.set_color(role, picture, color("white"))
 	_button(&"RcTab", [none, box("raise", "card_radius"), box("raise_2", "card_radius")], ["muted", "text", "text"],
 		"font_tab")
 	_button(&"CompassButton", [box("bg", "pill_radius", "line", true), box("bg", "pill_radius", "accent_line", true),
@@ -224,7 +220,7 @@ static func _buttons() -> void:
 	_button(&"Ghost", [box("raise", "card_radius", "line"), box("raise_2", "card_radius", "accent_line"),
 		box("raise_2", "card_radius", "accent")], ["text", "text", "text"])
 	_button(&"Chip", [_wide(box("raise", "pill_radius", "line")), _wide(box("raise_2", "pill_radius", "accent_line")),
-		_wide(box("accent", "pill_radius"))], ["text", "text", "accent_ink"], "font_tab")
+		_wide(box("accent", "pill_radius"))], ["text", "text", "accent_ink"], "font_body")
 	_button(&"LinkBtn", [none, none, none], ["link", "accent", "accent"], "font_tab")
 	_button(&"Row", [none, box("raise_2", "card_radius"), box("raise_2", "card_radius")], ["text", "text", "accent"], "font_row")
 	for name in [&"Row", &"LayerRow"]:

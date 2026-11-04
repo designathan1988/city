@@ -37,9 +37,11 @@ func toggle(which: String, under: Rect2) -> bool:
 	HudWidgets.clear(self)
 	_metrics.clear()
 	var spec: Dictionary = DataTables.ui("drawers").popovers[which]
+	var icons := which == "camera" # a row of icons, as a camera bar: the panel hugs it (.v2-pop-body.icons)
+	theme_type_variation = &"PopoverIcons" if icons else &"Popover"
 	var col := HudWidgets.vbox(self, &"Pad")
 	if spec.has("title_key"):
-		HudWidgets.label(col, &"TitleLabel", tr(spec.title_key).to_upper())
+		HudWidgets.label(_inset(col) if icons else col, &"TitleLabel", tr(spec.title_key).to_upper())
 	call("_build_" + which, col, spec)
 	show()
 	reset_size()
@@ -160,8 +162,15 @@ func _seg_language(col: Control, r: Dictionary) -> void:
 	HudWidgets.choices(row, StartScreen.LANGUAGES, TranslationServer.get_locale(), Settings.set_language)
 
 
+func _inset(col: Control) -> Control:
+	var m := MarginContainer.new()
+	m.theme_type_variation = &"Inset"
+	col.add_child(m)
+	return m
+
+
 func _build_camera(col: Control, spec: Dictionary) -> void:
-	var row := HudWidgets.hbox(col)
+	var row := HudWidgets.hbox(col, &"Tight")
 	for c in spec.buttons:
 		var b := HudWidgets.button(&"IconButton", c.icon, "", c.label_key, "icon_btn", "icon_btn")
 		row.add_child(b)
@@ -172,7 +181,7 @@ func _build_camera(col: Control, spec: Dictionary) -> void:
 		else:
 			HudWidgets.soon(b, c.label_key)
 	col.add_child(HSeparator.new())
-	var grid := PopBodies.grid(col)
+	var grid := PopBodies.grid(_inset(col))
 	for key: String in ["camera.zoom", "camera.centre"]:
 		_metrics[key] = PopBodies.metric(grid, tr(key))
 	_read_camera()

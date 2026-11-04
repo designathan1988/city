@@ -2,7 +2,9 @@
 shader_type spatial;
 render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
 
+#include "res://render/shaders/color_space.gdshaderinc"
+
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	ALBEDO = linear_out(srgb_to_linear(COLOR.rgb)); // the tokens are screen colours
 	ALPHA = COLOR.a;
 }

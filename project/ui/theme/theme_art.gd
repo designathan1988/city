@@ -5,6 +5,20 @@ extends RefCounted
 const VIGNETTE_SIDE := 256
 
 
+## The slider of the panels: a thin track, the part behind the knob in the accent colour.
+static func slider(theme: Theme) -> void:
+	var track := ThemeBuilder.box("raise_2", "pill_radius", "line")
+	track.content_margin_top = ThemeBuilder.size("slider_h") * 0.5
+	track.content_margin_bottom = ThemeBuilder.size("slider_h") * 0.5
+	var knob := disc(ThemeBuilder.color("accent"), int(ThemeBuilder.size("knob")))
+	for role in [&"grabber", &"grabber_highlight", &"grabber_disabled"]:
+		theme.set_icon(role, &"HSlider", knob)
+	var filled := ThemeBuilder.box("accent", "pill_radius")
+	theme.set_stylebox(&"slider", &"HSlider", track)
+	theme.set_stylebox(&"grabber_area", &"HSlider", filled)
+	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", filled)
+
+
 ## A round knob with a soft edge.
 static func disc(colour: Color, px: int) -> Texture2D:
 	var img := Image.create_empty(px, px, false, Image.FORMAT_RGBA8)

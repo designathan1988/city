@@ -23,6 +23,12 @@ static func format_int(v: float) -> String:
 	return ("-" if v < 0.0 and n != 0 else "") + digits + out
 
 
+## One decimal, with the comma of the Portuguese text.
+static func format_tenths(v: float) -> String:
+	var text := "%.1f" % v
+	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
+
+
 static func format_money(v: float) -> String:
 	return "%s %s" % [CURRENCY, format_int(v)]
 
