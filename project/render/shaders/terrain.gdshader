@@ -46,6 +46,7 @@ uniform float rock_m = 23.2;
 uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)
 uniform float dirt_to; // ... and where it has replaced the grass
 uniform float map_half = 5120.0;
+uniform float past_map_y_m; // past the map the land lies under the sea
 uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable; // data, not colour: mean 0.5, doubled in the shader
 uniform float detail_m = 1.6; // metres one tile of the grain covers
 uniform float detail_near_px; // metres a pixel under which the grain is whole, and over which it is gone
@@ -171,7 +172,7 @@ void vertex() {
 			ivec3 coord_b = get_index_coord(end_pos);
 			h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
 		}
-		v_vertex.y = h;
+		v_vertex.y = v_region.z < 0 ? past_map_y_m : h;
 	}
 
 	// Convert model space to view space w/ skip_vertex_transform render mode

@@ -178,6 +178,9 @@
     "detail_wide_share": {
      "type": "number"
     },
+    "past_map_y_m": {
+     "type": "number"
+    },
     "sand": {
      "type": "string",
      "pattern_prefix": "#"
