@@ -1,4 +1,4 @@
-// Priority job pool (roadcraft-novo jobs/pool.ts): a fixed set of worker threads, jobs ordered by priority, a job
+// Priority job pool: a fixed set of worker threads, jobs ordered by priority, a job
 // of the same key replacing a queued older one, and a blocking parallel_for for the lot cache. parallel_for helpers
 // live outside the keyed queue (no key to collide with or be superseded by) and the caller works too, so it finishes
 // even when every worker is parked on a lock the caller holds (mesh jobs wait for map_mutex during a command).

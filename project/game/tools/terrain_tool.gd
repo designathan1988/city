@@ -1,9 +1,9 @@
-## Relief brush (Roadcraft world/brush.ts, Landscape › Relief): hold the left button to raise, lower, smooth or level
+## Relief brush (Landscape › Relief): hold the left button to raise, lower, smooth or level
 ## (or lay a landform) under the disc; the core applies one dab per DAB_S held and the whole stroke is one undo step.
 ## Roads keep their corridors and buildings settle on the new ground.
 extends ToolBase
 
-## Roadcraft dabs every frame with its dt; one dab per DAB_S keeps each step above the 1 cm height quantum.
+## One dab per DAB_S held keeps each step above the 1 cm height quantum.
 const DAB_S := 0.1
 const PERCENT := 100.0
 

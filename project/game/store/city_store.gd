@@ -85,7 +85,7 @@ func save_city() -> Dictionary:
 	return save_game(_city_slot)
 
 
-## Save map (Roadcraft exportMap): the city is saved, and its file is copied to mapa-<seed> once it is written.
+## Save map: the city is saved, and its file is copied to mapa-<seed> once it is written.
 func export_map() -> Dictionary:
 	var to := SaveSlots.path(SaveSlots.export_slot(int(snapshot.get("seed", 0))))
 	var r := save_city()
@@ -178,13 +178,13 @@ func _process(delta: float) -> void:
 		refresh()
 	_since_autosave += delta
 	if _since_autosave >= DataTables.game("saves").autosave_s:
-		_since_autosave = 0.0 # checked every autosave_s, saved only when due (Roadcraft game.ts autosaveAt)
+		_since_autosave = 0.0 # checked every autosave_s, saved only when due
 		if _autosave_due():
 			_save_auto = true
 			save_city()
 
 
-## Unsaved work of the player's (Roadcraft game.ts autosave): a city never saved nor edited is not written.
+## Unsaved work of the player's: a city never saved nor edited is not written.
 func _autosave_due() -> bool:
 	var players: bool = not _city_slot.is_empty() or snapshot.get("edited", false)
 	return snapshot.get("ready", false) and snapshot.get("unsaved", false) and not _save_pending and players

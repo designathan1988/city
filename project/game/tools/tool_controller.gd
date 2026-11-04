@@ -1,4 +1,4 @@
-## ToolController: the state machine of the tool in hand (Roadcraft game.ts tool switch). Turns clicks on the map
+## ToolController: the state machine of the tool in hand. Turns clicks on the map
 ## into ground points and hands them to the active tool; tools only dispatch store commands and report hints.
 ## Tool: NONE (camera) → ROAD | ZONE | DEMOLISH | INSPECT | UPGRADE | SPLIT | ROUNDABOUT | TERRAIN | LOT; set_tool() is
 ## the only transition, Esc and a right click that stays a click (CityCamera.right_clicked) cancel; a right or middle
@@ -31,7 +31,7 @@ var rig: CityCamera
 var preview: PreviewLine
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
-## The params each tool was last used with (Roadcraft: a category reopens with the tool and choice last used).
+## The params each tool was last used with: a category reopens with the tool and choice last used.
 var remembered: Dictionary = {}
 var active: ToolBase
 var _dragging := false

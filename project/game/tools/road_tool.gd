@@ -1,4 +1,4 @@
-## Road tool (Roadcraft features/roads/roadTool.ts, modes "Reta" and "Curva"): click the start, in curve mode click
+## Road tool (modes "Reta" and "Curva"): click the start, in curve mode click
 ## the control point, click the end. While aiming, the core plans the road (preview_road: the same validation the build
 ## runs) and the ribbon shows it green or red with the price; the click on the end builds it and the road chains on
 ## from its end. V toggles straight/curve, Esc or right click drops the stroke.

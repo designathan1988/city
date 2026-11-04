@@ -1,4 +1,4 @@
-## Inspect (Roadcraft tool `inspect`): a click picks the building or road there and the HUD's inspector shows what
+## Inspect: a click picks the building or road there and the HUD's inspector shows what
 ## the core reports about it.
 extends ToolBase
 

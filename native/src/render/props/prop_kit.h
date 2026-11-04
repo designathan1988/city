@@ -1,4 +1,4 @@
-// Street furniture meshes (Roadcraft render/propMeshes.ts) built once from data/render/streets.json "props": each prop
+// Street furniture meshes built once from data/render/streets.json "props": each prop
 // is a list of parts in local space (+z faces the road or the arriving traffic, y up, base at y = 0) and is appended
 // into chunk meshes with a transform. UV2.x tags the parts for render/shaders/props.gdshader (PropTag). The signal's
 // lenses are not in its mesh: they are a mesh of their own (lenses()), every lens drawn once, lit or not, by

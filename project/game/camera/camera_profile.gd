@@ -1,4 +1,4 @@
-## The camera's shape by distance (Roadcraft view/cameraProfile.ts): how the perspective rig looks at the town as it
+## The camera's shape by distance: how the perspective rig looks at the town as it
 ## comes closer. Everything is a function of `half`, the half height of the ground in view at the point looked at
 ## (metres): the lens widens, the tilt eases towards a pedestrian's view and the point looked at rises to eye height.
 ## Values come from data/game/camera.json; angles there are degrees, here radians.

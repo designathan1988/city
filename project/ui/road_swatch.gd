@@ -1,4 +1,4 @@
-## The road catalogue card picture (Roadcraft roadCatalog.ts topSwatch, specs ui.md §8.1): the cross-section seen
+## The road catalogue card picture: the cross-section seen
 ## from above, strips top to bottom over grass, filling rc_fill + rc_fill_extra × (width / widest) of the height;
 ## a yellow centre line between opposite lanes, white dashes between lanes of one direction, rails on tracks.
 class_name RoadSwatch

@@ -1,4 +1,4 @@
-## The inspector side panel (Roadcraft inspector.ts, specs ui.md §8.4, reduced to what the core reports): what the
+## The inspector side panel (what the core reports): what the
 ## inspect tool picked (a building: zone or function and floors; a road: its profile) and a Demolish action that sends
 ## the store command at that place.
 class_name InspectorPanel

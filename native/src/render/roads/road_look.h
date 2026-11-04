@@ -10,6 +10,8 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
+#include <vector>
+
 namespace city {
 
 // Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
@@ -33,7 +35,11 @@ struct StreetLook {
 	float arc_step = 0, dead_end_depth = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
-	float paint_lift = 0, line_clear = 0, dash_period = 1, dash_duty = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
+	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
+	// Longitudinal lines by the road's speed: `line_w` below line_fast_kmh, `line_fast_w` from it; an exclusive lane's
+	// line `exclusive_w`; dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond.
+	float line_w = 0, line_fast_w = 0, line_fast_kmh = 0, exclusive_w = 0;
+	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
