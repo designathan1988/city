@@ -644,6 +644,42 @@
     "params"
    ],
    "strict": true
+  },
+  "puffs": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {}
+    }
+   }
+  },
+  "debris": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {}
+    }
+   }
+  },
+  "marks": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {}
+    }
+   }
   }
  },
  "required": [

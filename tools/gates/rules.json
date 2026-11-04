@@ -300,6 +300,7 @@
     "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
     "project/data/catalog/blast.json": "tools/gates/schemas/blast.schema.json",
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
+    "project/data/render/effects.json": "tools/gates/schemas/effects.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",

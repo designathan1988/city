@@ -22,7 +22,7 @@ const QUERIES := {
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status", &"damage_probe": "damage_probe",
-	&"blast_probe": "blast_probe",
+	&"blast_probe": "blast_probe", &"effects_shake": "effects_shake",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every

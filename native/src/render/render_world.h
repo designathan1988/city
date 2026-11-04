@@ -8,6 +8,7 @@
 #include "render/agents/agent_renderer.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
+#include "render/effects/effect_world.h"
 #include "render/overlays/overlay_renderer.h"
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
@@ -39,6 +40,9 @@ public:
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
+	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
+	int effect_pieces() const { return effects_.pieces(); }
+	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
@@ -61,6 +65,7 @@ private:
 	BuildingRenderer buildings_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;
+	EffectWorld effects_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).

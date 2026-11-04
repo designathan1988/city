@@ -47,6 +47,7 @@ public:
 
 	// --- the bomb (city_core_strike.cpp)
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
+	float effects_shake() const { return render_.shake(); } // metres the blasts move the camera now
 	godot::Dictionary damage_probe() const; // what blows left on the map (counts)
 	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 

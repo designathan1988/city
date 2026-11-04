@@ -24,6 +24,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
+	ok = effects_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }
 
@@ -34,6 +35,7 @@ void RenderWorld::reset() {
 	buildings_.reset();
 	agents_.reset();
 	overlays_.reset();
+	effects_.reset();
 	road_stream_.clear();
 	props_stream_.clear();
 	building_stream_.clear();
@@ -82,6 +84,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
 		cost_.lock = laps.lap();
 		drain_log(s);
+		effects_.sync(s);
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
 		ChangeLog::dedup(road_keys_);

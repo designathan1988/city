@@ -205,5 +205,17 @@
    "roughness": 0.85,
    "cover_per_mip": 0.25
   }
+ },
+ "puffs": {
+  "shader": "res://render/shaders/puffs.gdshader",
+  "params": {}
+ },
+ "debris": {
+  "shader": "res://render/shaders/debris.gdshader",
+  "params": {}
+ },
+ "marks": {
+  "shader": "res://render/shaders/marks.gdshader",
+  "params": {}
  }
 }

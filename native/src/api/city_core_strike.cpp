@@ -23,6 +23,8 @@ Dictionary CityCore::damage_probe() const {
 	d["hurt"] = int(s.damage.hurt.size());
 	d["fires"] = int(s.damage.fires.size());
 	d["strikes"] = int(s.damage.strikes);
+	d["pieces"] = render_.effect_pieces();
+	d["effects_busy"] = render_.effects_busy();
 	d["buildings"] = s.buildings.count;
 	d["pedestrians"] = s.traffic.ped_count;
 	d["vehicles"] = s.traffic.vehicle_count;

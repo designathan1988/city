@@ -1,0 +1,421 @@
+{
+ "type": "object",
+ "strict": true,
+ "required": [
+  "_doc",
+  "fireball_per_cbrt_kg",
+  "bursts",
+  "puffs",
+  "burn",
+  "ring",
+  "shake",
+  "shrapnel",
+  "soot",
+  "debris",
+  "geyser",
+  "blood",
+  "paper",
+  "down",
+  "flash"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "fireball_per_cbrt_kg": {
+   "type": "number"
+  },
+  "bursts": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "strict": true,
+    "required": [
+     "kind",
+     "count",
+     "height_m",
+     "spread_m",
+     "spread_r",
+     "size_m",
+     "size_r",
+     "life_s"
+    ],
+    "properties": {
+     "kind": {
+      "type": "number"
+     },
+     "count": {
+      "type": "number"
+     },
+     "height_m": {
+      "type": "number"
+     },
+     "spread_m": {
+      "type": "number"
+     },
+     "spread_r": {
+      "type": "number"
+     },
+     "size_m": {
+      "type": "number"
+     },
+     "size_r": {
+      "type": "number"
+     },
+     "life_s": {
+      "type": "number"
+     }
+    }
+   }
+  },
+  "puffs": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "pool",
+    "wind_x",
+    "wind_z"
+   ],
+   "properties": {
+    "pool": {
+     "type": "number"
+    },
+    "wind_x": {
+     "type": "number"
+    },
+    "wind_z": {
+     "type": "number"
+    }
+   }
+  },
+  "burn": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "puff_rate_hz",
+    "building_rate_hz",
+    "flame_kind",
+    "smoke_kind",
+    "flame_size_m",
+    "flame_life_s",
+    "smoke_size_m",
+    "smoke_life_s",
+    "column_chance"
+   ],
+   "properties": {
+    "puff_rate_hz": {
+     "type": "number"
+    },
+    "building_rate_hz": {
+     "type": "number"
+    },
+    "flame_kind": {
+     "type": "number"
+    },
+    "smoke_kind": {
+     "type": "number"
+    },
+    "flame_size_m": {
+     "type": "number"
+    },
+    "flame_life_s": {
+     "type": "number"
+    },
+    "smoke_size_m": {
+     "type": "number"
+    },
+    "smoke_life_s": {
+     "type": "number"
+    },
+    "column_chance": {
+     "type": "number"
+    }
+   }
+  },
+  "ring": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "life_s",
+    "height_m"
+   ],
+   "properties": {
+    "life_s": {
+     "type": "number"
+    },
+    "height_m": {
+     "type": "number"
+    }
+   }
+  },
+  "shake": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "base_m",
+    "radius_k_m",
+    "decay_hz"
+   ],
+   "properties": {
+    "base_m": {
+     "type": "number"
+    },
+    "radius_k_m": {
+     "type": "number"
+    },
+    "decay_hz": {
+     "type": "number"
+    }
+   }
+  },
+  "shrapnel": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "base",
+    "count_k",
+    "speed_min_m",
+    "speed_span_m",
+    "lift_min_m",
+    "lift_span_m",
+    "size_min_m",
+    "size_span_m"
+   ],
+   "properties": {
+    "base": {
+     "type": "number"
+    },
+    "count_k": {
+     "type": "number"
+    },
+    "speed_min_m": {
+     "type": "number"
+    },
+    "speed_span_m": {
+     "type": "number"
+    },
+    "lift_min_m": {
+     "type": "number"
+    },
+    "lift_span_m": {
+     "type": "number"
+    },
+    "size_min_m": {
+     "type": "number"
+    },
+    "size_span_m": {
+     "type": "number"
+    }
+   }
+  },
+  "soot": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "base",
+    "count_k",
+    "max",
+    "reach_r",
+    "size_min_m",
+    "size_span_m",
+    "size_r",
+    "kept"
+   ],
+   "properties": {
+    "base": {
+     "type": "number"
+    },
+    "count_k": {
+     "type": "number"
+    },
+    "max": {
+     "type": "number"
+    },
+    "reach_r": {
+     "type": "number"
+    },
+    "size_min_m": {
+     "type": "number"
+    },
+    "size_span_m": {
+     "type": "number"
+    },
+    "size_r": {
+     "type": "number"
+    },
+    "kept": {
+     "type": "number"
+    }
+   }
+  },
+  "debris": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "max_pieces",
+    "gravity_ms2",
+    "restitution",
+    "friction",
+    "rest_s",
+    "damp_ground"
+   ],
+   "properties": {
+    "max_pieces": {
+     "type": "number"
+    },
+    "gravity_ms2": {
+     "type": "number"
+    },
+    "restitution": {
+     "type": "number"
+    },
+    "friction": {
+     "type": "number"
+    },
+    "rest_s": {
+     "type": "number"
+    },
+    "damp_ground": {
+     "type": "number"
+    }
+   }
+  },
+  "geyser": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "seconds",
+    "fade_s",
+    "jet_hz",
+    "size_m"
+   ],
+   "properties": {
+    "seconds": {
+     "type": "number"
+    },
+    "fade_s": {
+     "type": "number"
+    },
+    "jet_hz": {
+     "type": "number"
+    },
+    "size_m": {
+     "type": "number"
+    }
+   }
+  },
+  "blood": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "max_decals",
+    "pool_spread_s",
+    "pool_size_m",
+    "splat_m",
+    "drop_m"
+   ],
+   "properties": {
+    "max_decals": {
+     "type": "number"
+    },
+    "pool_spread_s": {
+     "type": "number"
+    },
+    "pool_size_m": {
+     "type": "number"
+    },
+    "splat_m": {
+     "type": "number"
+    },
+    "drop_m": {
+     "type": "number"
+    }
+   }
+  },
+  "paper": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "count",
+    "size_m",
+    "life_s",
+    "spread_m"
+   ],
+   "properties": {
+    "count": {
+     "type": "number"
+    },
+    "size_m": {
+     "type": "number"
+    },
+    "life_s": {
+     "type": "number"
+    },
+    "spread_m": {
+     "type": "number"
+    }
+   }
+  },
+  "down": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "dust_count",
+    "dust_size_m",
+    "dust_life_s",
+    "dust_spread_m"
+   ],
+   "properties": {
+    "dust_count": {
+     "type": "number"
+    },
+    "dust_size_m": {
+     "type": "number"
+    },
+    "dust_life_s": {
+     "type": "number"
+    },
+    "dust_spread_m": {
+     "type": "number"
+    }
+   }
+  },
+  "flash": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "color",
+    "energy",
+    "reach_k",
+    "range_min_m",
+    "life_s",
+    "decay",
+    "height_m"
+   ],
+   "properties": {
+    "color": {
+     "type": "string"
+    },
+    "energy": {
+     "type": "number"
+    },
+    "reach_k": {
+     "type": "number"
+    },
+    "range_min_m": {
+     "type": "number"
+    },
+    "life_s": {
+     "type": "number"
+    },
+    "decay": {
+     "type": "number"
+    },
+    "height_m": {
+     "type": "number"
+    }
+   }
+  }
+ }
+}
