@@ -151,6 +151,16 @@
       "sim/terrain/",
       "sim/traffic/"
     ],
+    "native/src/sim/transit": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/",
+      "sim/roads/",
+      "sim/buildings/",
+      "sim/terrain/",
+      "sim/traffic/",
+      "sim/transit/"
+    ],
     "native/src/sim/economy": [
       "core/",
       "sim/"

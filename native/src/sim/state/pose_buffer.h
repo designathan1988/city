@@ -13,6 +13,7 @@
 namespace city {
 
 constexpr int POSE_TRAIL = 3; // publications kept per agent: k-2, k-1, k
+constexpr uint32_t METRO_LOOK = 1u << 8; // PoseFrame::train_cars look: the car runs under the ground
 
 struct Pose {
 	float x = 0, y = 0, z = 0, fx = 0, fz = 1; // position and unit heading in the XZ plane
@@ -62,6 +63,8 @@ struct PoseSample {
 
 struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
+	// Train and metro cars (sim/transit): id the train's key, look its line colour | METRO_LOOK when underground.
+	std::vector<AgentRecord> train_cars;
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }

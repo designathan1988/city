@@ -141,6 +141,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/state/change_log.h` — canal único de mudanças (campos líquidos e sujos)
 - `native/src/sim/state/city_state.h` — fonte única da verdade, travas, poses, jobs e revisões
 - `native/src/sim/state/pose_buffer.h` — buffer triplo sem trava das poses (PoseFrame)
+- `native/src/sim/transit/transit_plan.cpp` · `native/src/sim/transit/transit_plan.h` — transporte público como o jogador o traça (Roadcraft 4.0 world/transit.ts): paradas, trilhos, estações, linhas; edições puras e índice por célula
+- `native/src/sim/transit/rail_graph.cpp` · `native/src/sim/transit/rail_graph.h` — trilhos de um modo como grafo e o caminho por eles (Dijkstra com heap)
+- `native/src/sim/transit/transit_state.h` — estado do transporte no CityState: plano, índice, ônibus, linhas de trem/metrô, passagens de nível
 - `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
