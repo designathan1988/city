@@ -15,7 +15,7 @@ signal profile_picked(index: int)
 
 
 func _ready() -> void:
-	for p in DataTables.catalog().road_profiles.profiles:
+	for p in DataTables.road_profiles():
 		_strips[p.id] = p.strips
 	for p in CityStore.query(&"road_profiles"):
 		if not p.ring:

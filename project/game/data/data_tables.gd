@@ -109,6 +109,30 @@ static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
 
 
+## The profiles as written, read anew: only the road catalog's strips want them once the core has its own.
+static func road_profiles() -> Array:
+	var list: Array = _parse(CATALOG.road_profiles).get("profiles", [])
+	for path: String in CATALOG_FRAGMENTS.road_profiles:
+		list.append_array(_parse(path).get("profiles", []))
+	return list
+
+
+static func maps() -> Dictionary:
+	return _read(CATALOG.maps)
+
+
+## The core holds its own copy of the catalog and of the render tables once it has booted: they need not stay here too.
+## Tuning stays, the script reads it all along; anything asked again is read anew.
+static func release_boot_tables() -> void:
+	for group: Dictionary in [CATALOG, RENDER_TABLES]:
+		for path: String in group.values():
+			if path != CATALOG.tuning:
+				_cache.erase(path)
+	for paths: Array in CATALOG_FRAGMENTS.values():
+		for path: String in paths:
+			_cache.erase(path)
+
+
 static func ui(name: String) -> Dictionary:
 	return _read(UI[name])
 

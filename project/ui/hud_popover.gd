@@ -79,7 +79,7 @@ func _build_files(col: Control, spec: Dictionary) -> void:
 
 
 func _build_menu(col: Control, spec: Dictionary) -> void:
-	var km: int = int(DataTables.catalog().maps.maps[0].tiles * DataTables.tuning("world_tile_m") / METRES_PER_KM)
+	var km: int = int(DataTables.maps().maps[0].tiles * DataTables.tuning("world_tile_m") / METRES_PER_KM)
 	for r in spec.rows:
 		var b := _row(col, r)
 		b.text = b.text.format({"km": km})

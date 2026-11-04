@@ -43,7 +43,7 @@ class _Paper:
 	var cells: Array = []
 	var painted := false
 	var font := FontVariation.new()
-	var _face: FontFile # its own and only one: a copy of a font costs 3 MiB, and the cache of the shared one would stay
+	var _face: FontFile # its own, for a batch only: the big glyphs of the shared font's cache would stay for good
 
 	func begin(batch: Array) -> void:
 		cells = batch
@@ -53,10 +53,12 @@ class _Paper:
 			font.variation_embolden = look.word_bold
 		queue_redraw()
 
-	## The sheet holds the picture now: the big glyphs need not stay. The entry stays, or the next batch finds no font.
+	## The sheet holds the picture now: neither the font and its glyphs nor the drawing need stay.
 	func end() -> void:
 		cells = []
-		_face.clear_size_cache(0)
+		font.base_font = null
+		_face = null
+		queue_redraw()
 
 	func _draw() -> void:
 		for c: Array in cells:

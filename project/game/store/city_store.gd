@@ -61,7 +61,9 @@ func boot(terrain: Node, materials: Dictionary) -> PackedStringArray:
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
-	return _core.setup_render(DataTables.render(), materials)
+	var problems: PackedStringArray = _core.setup_render(DataTables.render(), materials)
+	DataTables.release_boot_tables()
+	return problems
 
 
 ## A new map (entry of data/catalog/maps.json); with_city = false makes an empty map. Returns the core's report.
