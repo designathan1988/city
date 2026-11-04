@@ -42,7 +42,7 @@ Regras do processo:
 ## 5. Jogo, carga da máquina e medições
 
 - Só a cidade pequena: mapa 0, `--map=0`, nunca 1 a 4.
-- O Roadcraft 4.0 é pesado. Referência visual vem primeiro das fotos prontas em `ports/*/reference/` (cada funcionalidade tem as suas; `build`, `landscape`, `interface` e `roads` têm planos diferentes). Só abra o 4.0 se a foto não existir e for indispensável: nunca a cidade grande (`size: large`), sempre o mínimo, só a funcionalidade a explorar, numa cidade pequena ou mapa vazio, e feche pelo PID ao terminar. Ordem do usuário, 2026-11-04.
+- Abrir o jogo e o Roadcraft 4.0 faz parte do porte: as fotos do 4.0 e as de antes e depois exigem isso, e nada proíbe abrir. A única restrição é a cidade grande do 4.0 (`size: large`), pesada demais: use a cidade pequena ou só a funcionalidade a explorar, e feche pelo PID ao terminar. Ordem do usuário, 2026-11-04.
 - No máximo uma instância sua do jogo por vez, sempre por `tools/build/hidden_run.ps1 -Command "<cmd>" -WorkDir <pasta do seu repositório> -TimeoutS <s>`. Na filha o `-WorkDir` é obrigatório (o padrão aponta para `fonte`). Nunca abra `godot` com janela. Feche a sua instância pelo PID ao terminar cada captura ou teste. Nunca mexa em processos de outras sessões.
 - Compile com `-j 4`. No máximo 6 filhas compilando ou rodando o jogo ao mesmo tempo (ordem do usuário, 2026-11-04); a coordenadora dosa o lote.
 - Nenhuma sessão espera a outra: siga no seu ritmo.
