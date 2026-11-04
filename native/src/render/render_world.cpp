@@ -111,7 +111,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			cover_.mark_dirty(k);
 		}
 		nature_keys_.clear();
-		for (int64_t k : water_keys_) water_.mark(k);
+		for (int64_t k : water_keys_) {
+			water_.mark(k);
+			cover_.mark_dirty(k);
+		}
 		water_keys_.clear();
 		water_.sync(s.terrain);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.

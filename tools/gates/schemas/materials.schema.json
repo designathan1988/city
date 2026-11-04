@@ -461,6 +461,9 @@
   "cover_plant": {
    "type": "object"
   },
+  "cover_shore": {
+   "type": "object"
+  },
   "cover_rock": {
    "type": "object"
   },
@@ -540,7 +543,8 @@
   "vegetation_cards",
   "building_ghost",
   "cover_plant",
-  "cover_rock"
+  "cover_rock",
+  "cover_shore"
  ],
  "strict": true
 }
