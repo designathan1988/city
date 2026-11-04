@@ -4,6 +4,12 @@
   "_doc": {
    "type": "string"
   },
+  "cascades_a_side": {
+   "type": "number"
+  },
+  "filter_radius": {
+   "type": "array"
+  },
   "default": {
    "type": "string"
   },

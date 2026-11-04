@@ -38,6 +38,8 @@ private:
 	float shade_ = 1; // the light a crown keeps from its own shadow and its neighbours, which a picture cannot cast
 	std::vector<float> elevations_;
 	godot::Ref<godot::Image> leaves_;
+	godot::PackedByteArray frond_texels_; // the atlas with its levels, while the pictures are drawn
+	godot::Color frond_at(float u, float v) const;
 	godot::PackedByteArray colour_, normals_;
 	godot::Ref<godot::ImageTexture> albedo_, normal_;
 };

@@ -1,0 +1,46 @@
+// The town's solids as the atmosphere pass reads them to take the sky out of its streets: a window of the land round the
+// view, a texel holding the height of what stands there and the highest thing within reach of it (a pixel with nothing over it
+// within reach reads no more). A job lays the building volumes; the main thread only uploads them.
+#pragma once
+
+#include "render/buildings/building_bodies.h"
+#include "sim/state/city_state.h"
+
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+
+#include <atomic>
+#include <mutex>
+
+namespace city {
+
+class CanyonField {
+public:
+	// Called each frame: starts a job when the buildings changed or the view left the window, takes a finished one in.
+	void sync(const CityState &s, float cam_x, float cam_z);
+	// { any, texture, window } for render/sky_view.gd.
+	godot::Dictionary view() const;
+	void touch() { revision_++; } // the buildings changed
+	void reset();
+
+private:
+	struct Raster {
+		godot::PackedByteArray texels;
+		float ox = 0, oz = 0;
+		bool any = false;
+	};
+	void work(const CityState &s, float ox, float oz, uint64_t revision);
+	godot::Ref<godot::ImageTexture> texture_;
+	mutable std::mutex mutex_;
+	Raster done_;
+	bool has_done_ = false;
+	std::atomic<bool> busy_{ false };
+	std::atomic<uint64_t> revision_{ 0 };
+	uint64_t seen_ = ~uint64_t(0);
+	float ox_ = 0, oz_ = 0;
+	bool any_ = false;
+	BuildingBodies bodies_; // the job's alone
+};
+
+} // namespace city

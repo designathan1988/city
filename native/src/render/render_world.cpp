@@ -59,6 +59,8 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 		terrain_.push_all_paint(s.terrain, s.nature.ground, terrain3d);
 	}
 	fog_.reset();
+	canyon_.reset();
+	shore_.reset();
 	water_.mark_all(s.terrain);
 	for (const RoadSegment &g : s.roads.segs)
 		if (g.alive) {
@@ -89,6 +91,8 @@ void RenderWorld::drain_log(CityState &s) {
 	paint_rects_.swap(s.log.paint_rects);
 	nature_keys_.swap(s.log.nature_chunks);
 	water_keys_.swap(s.log.water_chunks);
+	if (!building_keys_.empty()) canyon_.touch();
+	if (!water_keys_.empty() || !terrain_rects_.empty()) shore_.touch();
 }
 
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {

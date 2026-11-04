@@ -52,6 +52,8 @@ FrondSpec fronds_of(const Dictionary &f) {
 	return s;
 }
 
+constexpr float RING_LAP = 0.02f; // a ring runs this far into the next, of a ring, so no seam opens at a bend
+
 Tones bark_of(const Dictionary &t) { return Tones{ hexc(t["dark"]), hexc(t["lit"]) }; }
 
 // The trunk from the ground to `top`, in `rings` tubes along a curve that bends out by `lean` (quadratic in height),
@@ -64,9 +66,10 @@ Vector3 trunk(MeshBuilder &mb, const Dictionary &t, Rng &r) {
 	auto at_h = [&](float k) { return Vector3(0, top * k, 0) + dir * (lean * k * k); };
 	auto radius = [&](float k) { return r0 + (r1 - r0) * k + r0 * flare * std::exp(-k / flare_h); };
 	Tones bark = bark_of(t);
+	TreePart skin = bool(t.get("smooth", false)) ? TreePart::BODY : TreePart::BARK; // a palm's stem has no furrows
 	for (int i = 0; i < rings; i++) {
-		float k0 = float(i) / rings, k1 = float(i + 1) / rings;
-		tree_tube(mb, at_h(k0), at_h(k1), radius(k0), radius(k1), sides, bark, TreePart::BARK);
+		float k0 = float(i) / rings, k1 = (float(i + 1) + RING_LAP) / rings;
+		tree_tube(mb, at_h(k0), at_h(k1), radius(k0), radius(k1), sides, bark, skin);
 	}
 	return at_h(1.f);
 }

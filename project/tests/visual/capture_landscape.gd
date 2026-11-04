@@ -8,9 +8,12 @@ const TOWN_MAP := 0
 const SEED := 7
 const SETTLE_FRAMES := 240
 const SHOT_FRAMES := 30
+const GPU_STEP_MS := 0.01
 const FIELD_AT := Vector2(3000.0, 0.0) # the 4.0 runs' setView x and -y: the same ground in both games
 const PAINT_AT := Vector2(4500.0, -1500.0)
 const RIVER_AT := Vector2(3000.0, 2250.0)
+const CINT_STEP_M := 0.7 # under a pixel of the far ground: what changes between the two pictures is shimmer
+const SEA_AT := Vector3(3000.0, 0.0, 5400.0) # the open sea past the north edge
 const BARE_AT := Vector2(3160.0, -720.0)
 const VIEW_LINES := 1080.0
 const SHOT_SIZE := Vector2i(1920, 1080) # a window with a title bar loses 19 lines on a 1080-line screen
@@ -53,6 +56,7 @@ func _ready() -> void:
 	add_child(world)
 	rig = CityCamera.new()
 	add_child(rig)
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
@@ -83,16 +87,27 @@ func _ground(x: float, z: float) -> Vector3:
 
 ## The 4.0's view (`__roadcraft.setView`, render/isoViewport.ts): bearing and tilt in degrees and its zoom, pixels a metre at
 ## 1080 lines, so a pair stands in the same frame: its bearing runs from +X towards +Z, ours from +Z towards +X.
+## The painted elements from three distances, and two pictures a step apart for the shimmer of the far ground.
+func _element_shots(e: Vector3) -> void:
+	await shot("elementos", e, 90.0, 22.0, 24.0)
+	await shot("elementos_perto", e, 90.0, 12.0, 90.0)
+	await shot("elementos_longe", e, 90.0, 30.0, 6.0)
+	await shot("cint_a", e + Vector3(0, 0, 500.0), 45.0, 8.0, 5.0)
+	await shot("cint_b", e + Vector3(CINT_STEP_M, 0, 500.0), 45.0, 8.0, 5.0)
+
+
 func shot(name: String, at: Vector3, azimuth: float, tilt: float, zoom: float) -> void:
 	if not only.is_empty() and not only.has(name):
 		return
 	var half := VIEW_LINES / (2.0 * zoom)
 	rig.jump(at, RIGHT_ANGLE - azimuth, tilt, CameraProfile.view_distance(rig.cfg, half))
 	print("pose ", name, ": inclinacao ", rad_to_deg(rig.pitch), " lente ", rig.camera.fov, " meia altura ", half, " olho ", rig.camera.global_position)
-	await _frames(SHOT_FRAMES)
-	while CityStore.query(&"render_pending") > 0:
+	await CaptureWait.until_drawn(self, SHOT_FRAMES, name)
+	var gpu_ms := 0.0
+	for i in SHOT_FRAMES:
 		await get_tree().process_frame
-	await _frames(SHOT_FRAMES)
+		gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid())
+	print("gpu ", name, " ", snappedf(gpu_ms / SHOT_FRAMES, GPU_STEP_MS), " ms")
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
 
@@ -138,6 +153,10 @@ func _measure_card(c: Vector3) -> bool:
 		await LandscapeCards.ramp(self, c)
 	elif only.has("cubo_a"):
 		await LandscapeCards.cube(self, c)
+	elif only.has("lamina"):
+		await LandscapeCards.blades(self, c)
+	elif only.has("trama_3_10"):
+		await LandscapeCards.weave(self, c)
 	elif only.has("solta_palma"):
 		await LandscapeCards.alone(self, _ground(BARE_AT.x, BARE_AT.y))
 	elif only.has("arv_perto"):
@@ -191,7 +210,7 @@ func _run() -> void:
 		var at := e + Vector3((k % 6) * 22.0 - 55.0, 0, (k / 6) * 22.0 - 22.0)
 		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
 	CityStore.dispatch(&"end_stroke")
-	await shot("elementos", e, 90.0, 22.0, 24.0)
+	await _element_shots(e)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in 12:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 30.0 - 150.0, 0, 260.0), 40.0, 0, i % 4, {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}])
@@ -203,4 +222,5 @@ func _run() -> void:
 		CityStore.dispatch(&"terrain_brush", [r + Vector3(i * RIVER_STEP_M - 600.0, 0, -sin(i / 12.0) * 150.0), 125.0, 1.0, 0.1, 8, 0.0])
 	CityStore.dispatch(&"end_stroke")
 	await shot("rio", r, 30.0, 24.0, 3.0)
+	await shot("mar", SEA_AT, 0.0, 20.0, 2.0)
 	await _city_light(c)

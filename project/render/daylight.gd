@@ -5,14 +5,22 @@ class_name Daylight
 extends RefCounted
 
 const RIGHT_ANGLE := 90.0
+const BIAS_PERCENT := 100.0 # the engine reads the bias in hundredths
+const HALF := 0.5
+const MARGIN_TEXELS := 2.0
+const LEAST_LIGHT := 0.001 # a share of no light at all stays a number
 
 var _d: Dictionary
 var _sun: DirectionalLight3D
 var _fill: DirectionalLight3D
 var _top: DirectionalLight3D
+var _under: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
+var shadow_side_px := 2048.0 # a cascade's side: game/settings/settings.gd
+var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
+var direct_share := 0.0 # the sun's or moon's share of the light on level ground
 var mode := "day"
 var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
 var _clock_shown := -1.0
@@ -22,11 +30,12 @@ var _dark := 0.0
 var _flash := 0.0
 
 
-func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, top: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
+func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, top: DirectionalLight3D, under: DirectionalLight3D, env: Environment, sky: ShaderMaterial) -> void:
 	_d = day
 	_sun = sun
 	_fill = fill
 	_top = top
+	_under = under
 	_env = env
 	_sky = sky
 
@@ -47,6 +56,16 @@ static func make_top() -> DirectionalLight3D:
 	return top
 
 
+## What the ground does not give back to what faces it: the same lobe as the sky's, taken away, so a flat ambient and the two
+## make a hemisphere, the sky over and the ground under (a soffit, the underside of a crown).
+static func make_under() -> DirectionalLight3D:
+	var under := make_plain()
+	under.light_specular = 0.0
+	under.light_negative = true
+	under.rotation_degrees = Vector3(RIGHT_ANGLE, 0.0, 0.0)
+	return under
+
+
 ## The sun with its shadows: four cascades, blended where they meet.
 static func make_sun(day: Dictionary) -> DirectionalLight3D:
 	var sun := DirectionalLight3D.new()
@@ -59,7 +78,8 @@ static func make_sun(day: Dictionary) -> DirectionalLight3D:
 	sun.directional_shadow_blend_splits = true
 	sun.directional_shadow_fade_start = day.shadow_fade_start
 	sun.shadow_normal_bias = day.shadow_normal_bias
-	sun.shadow_bias = day.shadow_bias
+	sun.shadow_blur = day.shadow_blur
+	sun.directional_shadow_pancake_size = day.shadow_pancake_m
 	return sun
 
 
@@ -121,6 +141,12 @@ func set_hour(hour: float) -> void:
 	_top.light_color = _c("sky_top")
 	_top.light_energy = _d.sky_top_energy * light * sky
 	_top.visible = _top.light_energy > 0.0
+	_under.light_color = _c("ground_under")
+	_under.light_energy = _d.ground_under_k * _env.ambient_light_energy
+	_under.visible = _under.light_energy > 0.0
+	var direct: float = _sun.light_energy * maxf(_sun.basis.z.y, 0.0)
+	var fill: float = _fill.light_energy * maxf(_fill.basis.z.y, 0.0) if _fill.visible else 0.0
+	direct_share = direct / maxf(direct + fill + _env.ambient_light_energy + _top.light_energy, LEAST_LIGHT)
 	_set_sky(elev)
 	_env.glow_enabled = night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
@@ -155,7 +181,7 @@ func follow_view(camera: Camera3D) -> void:
 func _fit_cascades(camera: Camera3D) -> void:
 	var eye := camera.global_position
 	var above: float = maxf(eye.y - CityStore.query(&"height_at", [eye.x, eye.z]), 0.0)
-	var look: float = above / maxf(_d.shadow_view_least_dip, -camera.global_basis.z.y)
+	var look: float = above / maxf(_d.shadow_view_least_dip, camera.global_basis.z.y)
 	var depth: float = clampf(maxf(look + _d.shadow_reach_m, look * _d.shadow_past_look), shadow_least_m, _d.shadow_depth_max_m)
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
 		_sun.directional_shadow_max_distance = depth
@@ -165,6 +191,20 @@ func _fit_cascades(camera: Camera3D) -> void:
 	_sun.directional_shadow_split_1 = first / end
 	_sun.directional_shadow_split_2 = second / end
 	_sun.directional_shadow_split_3 = sqrt(second * end) / end
+	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _d.shadow_blur * shadow_filter_radius)
+	if absf(bias - _sun.shadow_bias) > bias * _d.shadow_reach_step:
+		_sun.shadow_bias = bias
+
+
+## The first cascade's depth as the engine takes it (renderer_scene_cull.cpp, 4.7.2): the sphere round the slice of the view, a texel
+## of margin on each side, and the pancake. The bias of the others grows with theirs, and so stays the same in texels.
+func _first_depth(camera: Camera3D, end: float) -> float:
+	var near := camera.near
+	var far: float = near + _sun.directional_shadow_split_1 * (minf(end, camera.far) - near)
+	var screen := camera.get_viewport().get_visible_rect().size
+	var across: float = far * tan(deg_to_rad(camera.fov) * HALF) * Vector2(screen.x / screen.y, 1.0).length()
+	var radius: float = Vector2(across, (far - near) * HALF).length() * shadow_side_px / (shadow_side_px - MARGIN_TEXELS)
+	return 2.0 * radius + _d.shadow_pancake_m
 
 
 ## The fill: a light round from the sun and lower, that keeps the side away from it readable, never more than a share of

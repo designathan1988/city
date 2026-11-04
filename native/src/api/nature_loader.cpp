@@ -96,11 +96,6 @@ void load_paint(const Dictionary &t, PaintDef &p, PackedStringArray &e) {
 		if (found < 0) e.push_back("nature.paint.landform_rock: tipo desconhecido");
 		p.landform_rock.push_back(found);
 	}
-	std::string sand = text(t.get("river_sand", ""));
-	for (const PaintKindDef &k : p.kinds)
-		if (k.id == sand) p.river_sand = int(&k - p.kinds.data());
-	if (p.river_sand < 0) e.push_back("nature.paint.river_sand: tipo desconhecido");
-	p.river_sand_reach = r.num(t, "river_sand_reach");
 }
 
 void load_trees(const Dictionary &t, TreeBrushDef &b, PackedStringArray &e) {

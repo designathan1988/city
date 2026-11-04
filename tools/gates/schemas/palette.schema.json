@@ -169,9 +169,67 @@
      "type": "string",
      "pattern_prefix": "#"
     },
+    "detail_wide_from_px": {
+     "type": "number"
+    },
+    "detail_wide_to_px": {
+     "type": "number"
+    },
+    "detail_wide_share": {
+     "type": "number"
+    },
+    "past_map_y_m": {
+     "type": "number"
+    },
     "sand": {
      "type": "string",
      "pattern_prefix": "#"
+    },
+    "bank_tint": {
+     "type": "string",
+     "pattern_prefix": "#"
+    },
+    "beach_from_m": {
+     "type": "number"
+    },
+    "beach_to_m": {
+     "type": "number"
+    },
+    "beach_wander_m": {
+     "type": "number"
+    },
+    "bank_from_m": {
+     "type": "number"
+    },
+    "bank_to_m": {
+     "type": "number"
+    },
+    "bank_wander_m": {
+     "type": "number"
+    },
+    "wet_from_m": {
+     "type": "number"
+    },
+    "wet_to_m": {
+     "type": "number"
+    },
+    "wet_keep": {
+     "type": "number"
+    },
+    "shore_gentle_from": {
+     "type": "number"
+    },
+    "shore_gentle_to": {
+     "type": "number"
+    },
+    "shore_wander_len_m": {
+     "type": "number"
+    },
+    "sand_grain_m": {
+     "type": "number"
+    },
+    "sand_speck_m": {
+     "type": "number"
     },
     "land_map": {
      "type": "string"

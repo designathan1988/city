@@ -53,8 +53,13 @@ float blade_weight(float per_pixel) {
 	return 1.0 - smoothstep(detail_near_px, detail_far_px, per_pixel);
 }
 
+// The blades' colour reaches further than their light: under the fine grain, a share of it stays out to where a pixel holds a tuft.
+float blade_colour_weight(float per_pixel) {
+	return max(blade_weight(per_pixel), detail_wide_share * (1.0 - smoothstep(detail_wide_from_px, detail_wide_to_px, per_pixel)));
+}
+
 vec3 grass_grain(vec2 xz, float per_pixel) {
-	float w = blade_weight(per_pixel);
+	float w = blade_colour_weight(per_pixel);
 	if (w <= 0.0) return vec3(1.0);
 	vec2 uv = xz / detail_m;
 	vec2 dx = dFdx(uv), dy = dFdy(uv);

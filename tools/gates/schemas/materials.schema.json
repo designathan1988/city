@@ -439,6 +439,7 @@
       "roughness": { "type": "number" },
       "leaf_specular": { "type": "number" },
       "cover_per_mip": { "type": "number" },
+      "leaf_edge": { "type": "number" },
       "leaf_near_m": { "type": "number" },
       "leaf_far_m": { "type": "number" }
      },

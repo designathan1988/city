@@ -40,7 +40,8 @@
   "min_hard_wall_m": 8,
   "river_depth_m": 2.5,
   "river_freeboard_m": 1,
-  "river_floor_share": 0.72
+  "river_floor_share": 0.72,
+  "shore_reach_m": 19
  },
  "road": {
   "min_len_m": 8,

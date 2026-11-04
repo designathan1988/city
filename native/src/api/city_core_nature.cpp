@@ -181,4 +181,14 @@ Dictionary CityCore::fog_field(const Vector3 &camera) {
 	return render_.fog().view();
 }
 
+Dictionary CityCore::canyon_field(const Vector3 &camera) {
+	render_.canyon().sync(*state_, camera.x, camera.z);
+	return render_.canyon().view();
+}
+
+Dictionary CityCore::shore_field() {
+	render_.shore().sync(*state_);
+	return render_.shore().view();
+}
+
 } // namespace city

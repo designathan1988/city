@@ -42,7 +42,7 @@ const QUERIES := {
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
 	&"overlays": "overlays", &"save_status": "save_status", &"park_sample": "park_sample", &"camera_clear": "camera_clear", &"kerb_busy": "kerb_busy", &"dock_count": "dock_count", &"lot_clearance": "lot_clearance", &"vehicles_near": "vehicles_near",
 	&"landscape": "landscape", &"cloud_at": "cloud_at",
-	&"sky_revision": "sky_revision", &"fog_field": "fog_field", &"effects_near": "effects_near",
+	&"sky_revision": "sky_revision", &"fog_field": "fog_field", &"canyon_field": "canyon_field", &"shore_field": "shore_field", &"effects_near": "effects_near",
 	&"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
 	&"transit_plan": "transit_plan", &"transit_footway": "transit_footway", &"transit_xray": "transit_xray", &"transit_preview": "transit_preview", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 }

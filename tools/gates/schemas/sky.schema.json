@@ -1,6 +1,15 @@
 {
  "type": "object",
  "properties": {
+  "start_noise": {
+   "type": "string"
+  },
+  "rain_mist": {
+   "type": "number"
+  },
+  "rain_mist_height_m": {
+   "type": "number"
+  },
   "_doc": {
    "type": "string"
   }

@@ -41,7 +41,7 @@ struct Canvas {
 	// One lens of length `len` and width `wid` centred at (cx, cy), turned by `ang`; `tone` 0..1 before its lit half
 	// and rim.
 	void lens(const Look &L, float cx, float cy, float len, float wid, float ang, float tone) {
-		float a = len * HALF_F, b = wid * HALF_F, c = std::cos(ang), s = std::sin(ang), reach = std::max(a, b);
+		float a = len * HALF_F, b = wid * HALF_F, c = std::cos(ang), s = std::sin(ang), reach = std::max(a, b) + 1.f;
 		int x0 = std::max(0, int(cx - reach)), x1 = std::min(w - 1, int(cx + reach) + 1);
 		int y0 = std::max(0, int(cy - reach)), y1 = std::min(h - 1, int(cy + reach) + 1);
 		uint8_t *d = px.ptrw();
@@ -50,12 +50,17 @@ struct Canvas {
 				float dx = x + HALF_F - cx, dy = y + HALF_F - cy;
 				float u = dx * c + dy * s, v = -dx * s + dy * c;
 				float e = (u * u) / (a * a) + (v * v) / (b * b);
-				if (e > 1.f) continue;
-				float t = tone * (v < 0 ? 1.f + L.lit_lift : 1.f) * (e > L.rim_share * L.rim_share ? L.rim : 1.f);
-				uint8_t g = uint8_t(std::clamp(t, 0.f, 1.f) * BYTE);
+				// Every line of the leaf in pixels from it, so a leaf seen close runs along a smooth line and not along the atlas's steps.
+				float r = std::sqrt(e), side = std::min(a, b);
+				float cover = std::clamp((1.f - r) * side + HALF_F, 0.f, 1.f);
+				if (cover <= 0.f) continue;
+				float inside = std::clamp((L.rim_share - r) * side + HALF_F, 0.f, 1.f), lit = std::clamp(HALF_F - v, 0.f, 1.f);
+				float t = std::clamp(tone - L.rim + (tone * (1.f + L.lit_lift * lit) - tone + L.rim) * inside, 0.f, 1.f);
+				// Over the leaves already there, so its edge is as smooth against them as against the air.
 				uint8_t *p = d + size_t((y * w + x) * RGBA);
-				p[0] = p[1] = p[2] = g;
-				p[ALPHA] = uint8_t(BYTE);
+				float under = p[ALPHA] / BYTE * (1.f - cover), all = cover + under;
+				p[0] = p[1] = p[2] = uint8_t((t * cover + p[0] / BYTE * under) / all * BYTE);
+				p[ALPHA] = uint8_t(all * BYTE);
 			}
 	}
 };

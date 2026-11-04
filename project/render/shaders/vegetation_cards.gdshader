@@ -3,7 +3,7 @@
 // sides. As the atlas' mips average leaves into gaps, the cover is raised with the mip level so a crown keeps its fill
 // far away (Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017).
 shader_type spatial;
-render_mode skip_vertex_transform, cull_disabled, shadows_disabled;
+render_mode skip_vertex_transform, cull_disabled, shadows_disabled, alpha_to_coverage;
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 
@@ -11,6 +11,7 @@ const float REGION_W = 1.0 / 3.0, LEAF_U = 0.0, FROND_U = 2.0 / 3.0; // leaf_atl
 const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float cover_per_mip = 0.25;
+uniform float leaf_edge = 0.3; // below the cut: the alpha a leaf's rim goes to coverage from, so MSAA smooths what the cut alone leaves in steps
 uniform float leaf_near_m = 22.0; // the near tuft whole up to here
 uniform float leaf_far_m = 70.0; // and gone from here
 uniform sampler2D tree_albedo : source_color, filter_linear_mipmap, repeat_disable;
@@ -26,6 +27,8 @@ void fragment() {
 		float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
 		ALPHA = p.a * (1.0 + mip * cover_per_mip);
 		ALPHA_SCISSOR_THRESHOLD = CUT;
+		ALPHA_ANTIALIASING_EDGE = leaf_edge;
+		ALPHA_TEXTURE_COORDINATE = texel;
 		ALBEDO = linear_out(source_linear(p.rgb) * v_tint);
 		NORMAL = normalize(texture(tree_normal, at).xyz * 2.0 - 1.0);
 		ROUGHNESS = roughness;
@@ -43,6 +46,8 @@ void fragment() {
 	float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
 	ALPHA = leaf.a * (1.0 + mip * cover_per_mip);
 	ALPHA_SCISSOR_THRESHOLD = CUT;
+	ALPHA_ANTIALIASING_EDGE = leaf_edge;
+	ALPHA_TEXTURE_COORDINATE = texel;
 	ALBEDO = vertex_albedo(COLOR.rgb, OUTPUT_IS_SRGB) * v_tint * leaf.r;
 	ROUGHNESS = roughness;
 	SPECULAR = leaf_specular;

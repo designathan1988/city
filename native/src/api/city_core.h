@@ -133,6 +133,8 @@ public:
 	godot::Dictionary landscape() const;
 	int64_t sky_revision() const;
 	godot::Dictionary fog_field(const godot::Vector3 &camera);
+	godot::Dictionary canyon_field(const godot::Vector3 &camera);
+	godot::Dictionary shore_field();
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();

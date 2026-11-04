@@ -33,7 +33,9 @@ var _bounds := PackedVector4Array()
 var _puffs := PackedVector4Array()
 var _looks := PackedVector4Array()
 var _weather_view: WeatherView
+var _air := 0.0
 var _fog_field: Dictionary = {}
+var _canyon_field: Dictionary = {}
 
 
 func _init(world: CityWorld) -> void:
@@ -50,6 +52,7 @@ func _ready() -> void:
 	_mat.shader = load("res://render/shaders/atmosphere.gdshader")
 	_mat.render_priority = RenderingServer.MATERIAL_RENDER_PRIORITY_MAX
 	_mat.set_shader_parameter("noise_volume", _noise())
+	_mat.set_shader_parameter("start_noise", load(_d.start_noise))
 	_mat.set_shader_parameter("air_gain", DataTables.game("daylight").sky_gain)
 	_mat.set_shader_parameter("fog_extinction", _d.fog_extinction_km / METRES_A_KM)
 	for key in ["mist_beta", "mist_reach", "shadow_strength"]:
@@ -104,7 +107,9 @@ func _process(dt: float) -> void:
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
 	_fog_field = CityStore.query(&"fog_field", [get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() else Vector3.ZERO])
+	_canyon_field = CityStore.query(&"canyon_field", [get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() else Vector3.ZERO])
 	_apply_fog()
+	_apply_canyon()
 
 
 func _read() -> void:
@@ -113,8 +118,11 @@ func _read() -> void:
 	clouds = land.clouds
 	_world.set_map_biome(land.biome)
 	_world.set_water_look(weather)
-	_mat.set_shader_parameter("mist", weather.mist)
-	_mat.set_shader_parameter("mist_height", weather.mist_height_m)
+	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
+	var rain: float = weather.get("rain", 0.0)
+	_air = maxf(weather.mist, rain * _d.rain_mist)
+	_mat.set_shader_parameter("mist", _air)
+	_mat.set_shader_parameter("mist_height", maxf(weather.mist_height_m, _d.rain_mist_height_m) if rain > 0.0 else weather.mist_height_m)
 	_mat.set_shader_parameter("fog_density", weather.fog_density)
 
 
@@ -131,9 +139,11 @@ func _light(way: Vector2) -> void:
 	_mat.set_shader_parameter("sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
 	_mat.set_shader_parameter("sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
-	var fog := _world.environment.fog_light_color
-	_mat.set_shader_parameter("sky_light", Vector3(fog.r, fog.g, fog.b))
-	_mat.set_shader_parameter("mist_color", Vector3(fog.r, fog.g, fog.b))
+	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
+	var horizon: Color = (_world.environment.sky.sky_material as ShaderMaterial).get_shader_parameter("horizon")
+	horizon = horizon.srgb_to_linear()
+	_mat.set_shader_parameter("sky_light", Vector3(horizon.r, horizon.g, horizon.b))
+	_mat.set_shader_parameter("mist_color", Vector3(horizon.r, horizon.g, horizon.b))
 	_mat.set_shader_parameter("dark", _world.daylight.night)
 
 
@@ -165,7 +175,7 @@ func _lay() -> void:
 	_mat.set_shader_parameter("cloud", _bounds)
 	_mat.set_shader_parameter("puff", _puffs)
 	_mat.set_shader_parameter("cloud_look", _looks)
-	_quad.visible = n > 0 or float(weather.get("mist", 0.0)) > 0.0 or bool(_fog_field.get("any", false))
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
 
 
 func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
@@ -183,6 +193,15 @@ func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
 		var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
 		var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
 		_puffs[i * LOBES + k] = Vector4(x + (ja * cs - jb * sn) * size, c.height + p[1] * size, z + (ja * sn + jb * cs) * size, jr * size)
+
+
+## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).
+func _apply_canyon() -> void:
+	var on: bool = _canyon_field.get("any", false)
+	_mat.set_shader_parameter("canyon_sky", _d.canyon_sky_most - _d.canyon_sun_cut * _world.daylight.direct_share if on else 0.0)
+	if on:
+		_mat.set_shader_parameter("canyon_map", _canyon_field.texture)
+		_mat.set_shader_parameter("canyon_window", _canyon_field.window)
 
 
 func _apply_fog() -> void:

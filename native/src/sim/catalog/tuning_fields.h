@@ -18,7 +18,7 @@
 	X(terrain, min_height_m) X(terrain, max_height_m) \
 	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) \
 	X(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
-	X(terrain, river_freeboard_m) X(terrain, river_floor_share) \
+	X(terrain, river_freeboard_m) X(terrain, river_floor_share) X(terrain, shore_reach_m) \
 	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
 	X(render, max_chunk_rebuilds_per_frame) X(render, commit_budget_ms) X(render, upload_budget_mb) X(render, pose_delay_ticks) \
 	X(history, max_entries) X(history, max_mb) \

@@ -11,6 +11,7 @@ render_mode unshaded, fog_disabled, depth_test_disabled, depth_draw_never, cull_
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler3D noise_volume : repeat_enable, filter_linear;
+uniform sampler2D start_noise : repeat_enable, filter_nearest; // blue noise, one texel a pixel: each ray its own start
 uniform sampler2D fog_map : repeat_enable, filter_linear;
 uniform int cloud_count = 0;
 uniform vec4 cloud[MAX_CLOUDS]; // bounding sphere: x, y, z, size
@@ -36,16 +37,13 @@ uniform vec2 wind_dir = vec2(0.93, 0.35);
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/cloud_field.gdshaderinc"
+#include "res://render/shaders/canyon_light.gdshaderinc"
 
-const int FOG_STEPS = 24;
+const int FOG_STEPS = 36; // the grain of the start goes with the length of a step: 2.1 grey levels at 24, measured on a bank
 const int CLOUD_STEPS = 16;
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
-}
-
-float ign(vec2 frag) { // interleaved gradient noise (Jimenez 2014): each pixel its own start
-	return fract(52.9829189 * fract(dot(frag, vec2(0.06711056, 0.00583715))));
 }
 
 // How much of the sun's direct light is left at a ground point under the clouds: five steps of the sun's ray through each
@@ -201,8 +199,9 @@ void fragment() {
 	float t_scene = sky ? 1e7 : length(hit - ro);
 	float keep = 1.0;
 	vec3 add = vec3(0.0);
-	float jitter = ign(FRAGCOORD.xy);
+	float jitter = texture(start_noise, FRAGCOORD.xy / vec2(textureSize(start_noise, 0))).r;
 	if (!sky && cloud_count > 0) keep *= cloud_shade(hit);
+	if (!sky && canyon_sky > 0.0) keep *= canyon_keep(hit, ro, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX, INV_VIEW_MATRIX);
 	if (mist > 0.0) {
 		float a = mist_amount(ro, rd, t_scene, sky ? mist_height : hit.y);
 		add = add * (1.0 - a) + mix(mist_color, mist_color * 0.18, dark) * a;

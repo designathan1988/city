@@ -7,6 +7,7 @@
 
 #include "render/agents/agent_renderer.h"
 #include "render/transit/transit_renderer.h"
+#include "render/atmosphere/canyon_field.h"
 #include "render/atmosphere/fog_field.h"
 #include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
@@ -20,6 +21,7 @@
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
+#include "render/water/shore_field.h"
 #include "render/water/water_renderer.h"
 
 #include "core/laps.h"
@@ -78,6 +80,8 @@ public:
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	FogField &fog() { return fog_; }
+	CanyonField &canyon() { return canyon_; }
+	ShoreField &shore() { return shore_; }
 	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
@@ -99,6 +103,8 @@ private:
 	CoverRenderer cover_;
 	WaterRenderer water_;
 	FogField fog_;
+	CanyonField canyon_;
+	ShoreField shore_;
 	BuildingRenderer buildings_;
 	BodyStage stage_;
 	AgentRenderer agents_;
