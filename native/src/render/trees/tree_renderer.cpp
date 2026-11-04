@@ -22,10 +22,6 @@ constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 const float DIAGONAL = std::sqrt(2.f);
 // Job keys: lane 2 of the shared key * 4 + lane scheme; far superchunk keys are moved clear of every chunk key (and of
 // the buildings' and the zones' offsets, 1 << 20 and 1 << 19) before they take the lane.
-constexpr int64_t KEY_LANES = 4, TREE_LANE = 2, FAR_JOB_OFFSET = int64_t(1) << 21;
-int64_t job_key(int64_t key, bool far) {
-	return (far ? cell_key(key_x(key) + int(FAR_JOB_OFFSET), key_y(key) + int(FAR_JOB_OFFSET)) : key) * KEY_LANES + TREE_LANE;
-}
 
 AABB box_of(int64_t key, float size) { return AABB(Vector3(key_x(key) * size, AABB_MIN_Y, key_y(key) * size), Vector3(size, AABB_H, size)); }
 
@@ -156,7 +152,7 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 		seq = ++seq_;
 		t.requested[key] = seq;
 	}
-	s.jobs->submit(job_key(key, far), priority, [this, &s, &t, key, seq, priority, far]() {
+	s.jobs->submit(JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key }, priority, [this, &s, &t, key, seq, priority, far]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b = far ? build_far(s, key) : build_near(s, key);
 		b.seq = seq;

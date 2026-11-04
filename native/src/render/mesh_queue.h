@@ -8,7 +8,8 @@ namespace city {
 
 // A road or furniture chunk's result: the builder its job filled, then the mesh baked from it.
 struct BuiltMesh {
-	int64_t key = 0, job = 0;
+	int64_t key = 0;
+	JobKey job;
 	float priority = 0;
 	uint64_t seq = 0;
 	MeshBuilder mb;
@@ -24,7 +25,7 @@ struct BuiltMesh {
 
 // `build(mb)` fills the chunk's builder from the map.
 template <typename Build>
-void submit_mesh_job(const CityState &s, JobPool &pool, int64_t job, int64_t key, float priority, std::mutex &mutex,
+void submit_mesh_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, std::mutex &mutex,
 		std::vector<std::shared_ptr<BuiltMesh>> &done, std::unordered_map<int64_t, uint64_t> &requested, uint64_t &seq_counter,
 		Build &&build) {
 	uint64_t seq;
@@ -67,7 +68,7 @@ protected:
 	virtual ~MeshQueue() = default;
 	virtual void commit_one(BuiltMesh &b) = 0;
 	template <typename Build>
-	void submit_job(const CityState &s, JobPool &pool, int64_t job, int64_t key, float priority, Build &&build) {
+	void submit_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
 		submit_mesh_job(s, pool, job, key, priority, mutex_, done_, requested_, seq_, std::forward<Build>(build));
 	}
 	void forget(int64_t key) { // the chunk left: a result still on its way is dropped

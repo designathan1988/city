@@ -18,9 +18,6 @@ namespace city {
 namespace {
 constexpr float COVER_MIN_Y = -100.f, COVER_SPAN_Y = 700.f, HALF = 0.5f, DROP_CHUNKS = 2.f;
 constexpr uint32_t COVER_SALT = 0xc07e12u;
-// A job key of its own: the pool lets a key's newest job replace a queued one, and lane 3 of a chunk's key is its building's, whose
-// request would then wait for ever (the chunk never drawn).
-constexpr int64_t JOB_LANES = 4, COVER_LANE = 3, COVER_JOB_OFFSET = int64_t(1) << 18;
 const float DIAGONAL = std::sqrt(2.f);
 // Hash streams of one lattice cell.
 enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, SIZE, YAW, TINT, VARIANT };
@@ -158,7 +155,7 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 		seq = ++seq_;
 		requested_[key] = seq;
 	}
-	s.jobs->submit(cell_key(key_x(key) + int(COVER_JOB_OFFSET), key_y(key) + int(COVER_JOB_OFFSET)) * JOB_LANES + COVER_LANE, priority, [this, &s, key, seq, priority]() {
+	s.jobs->submit(JobKey{ JobLane::COVER, key }, priority, [this, &s, key, seq, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b = build(s, key);
 		b.seq = seq;

@@ -19,8 +19,8 @@ static func until_drawn(host: Node, settle: int, label: String) -> int:
 		waited += 1
 	var pending: int = CityStore.query(&"render_pending")
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("espera: %s quadros=%d pendente=%d pedir=%d sem_vez=%d pedidos=%d prontos=%d orcamento=%d fila=%s" % [label, waited, pending,
-			cost.b_want, cost.b_unmet, cost.b_requested, cost.b_done, cost.budget_left, cost.backlog])
+	print("espera: %s quadros=%d pendente=%d pedir=%d sem_vez=%d pedidos=%d prontos=%d orcamento=%d fila=%s substituidos=%d" % [label, waited, pending,
+			cost.b_want, cost.b_unmet, cost.b_requested, cost.b_done, cost.budget_left, cost.backlog, cost.jobs_replaced])
 	if pending > 0:
 		push_warning("FOTO INCOMPLETA: %s saiu com %d trabalhos de desenho pendentes depois de %d quadros" % [label, pending, waited])
 	return waited

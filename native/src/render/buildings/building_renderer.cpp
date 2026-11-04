@@ -21,7 +21,6 @@ namespace {
 constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
-constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
@@ -29,10 +28,6 @@ int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SU
 
 Vector3 super_centre(int64_t key) {
 	return Vector3((float(key_x(key)) + HALF) * SUPERCHUNK, 0, (float(key_y(key)) + HALF) * SUPERCHUNK);
-}
-
-int64_t super_job_key(int64_t key) {
-	return cell_key(key_x(key) + int(SUPER_JOB_OFFSET), key_y(key) + int(SUPER_JOB_OFFSET)) * 4 + 3;
 }
 
 void range(const MeshDraw &d, float begin, float end) {
@@ -207,14 +202,15 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		requested_[key] = seq;
 		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0));
 	}
-	s.jobs->submit(key * 4 + 3, priority, [this, &s, key, seq, version, near, mid, priority]() { // job: Built::job
+	const JobKey job{ JobLane::BUILDING, key };
+	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, priority]() {
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, &key, 1);
 		}
 		Built b = build_cpu(in, key, near, mid);
-		b.job = key * 4 + 3;
+		b.job = job;
 		b.seq = seq;
 		b.version = version;
 		b.priority = priority;
@@ -236,7 +232,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		seq = ++super_seq_;
 		super_requested_[key] = seq;
 	}
-	s.jobs->submit(super_job_key(key), priority, [this, &s, key, seq, priority]() {
+	s.jobs->submit(JobKey{ JobLane::BUILDING_SUPER, key }, priority, [this, &s, key, seq, priority]() {
 		std::array<int64_t, CHUNKS_PER_SUPER * CHUNKS_PER_SUPER> chunks;
 		const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
 		for (int j = 0; j < CHUNKS_PER_SUPER; j++)
@@ -249,7 +245,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		SuperBuilt b = build_super_cpu(in, key);
 		for (int64_t seen = super_bytes_max_.load(); b.bytes() > seen && !super_bytes_max_.compare_exchange_weak(seen, b.bytes());) {
 		}
-		b.job = super_job_key(key);
+		b.job = JobKey{ JobLane::BUILDING_SUPER, key };
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);

@@ -151,6 +151,7 @@ public:
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
+	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 

@@ -63,6 +63,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
 	ClassDB::bind_method(D_METHOD("building_chunk", "x", "z"), &CityCore::building_chunk);
+	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityCore::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);

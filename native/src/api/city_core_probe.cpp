@@ -51,6 +51,7 @@ Dictionary CityCore::render_cost() const {
 	d["b_unmet"] = need.unmet;
 	d["b_requested"] = need.requested;
 	d["b_done"] = need.done;
+	d["jobs_replaced"] = int64_t(state_->jobs ? state_->jobs->replaced() : 0);
 	return d;
 }
 

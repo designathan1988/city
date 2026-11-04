@@ -100,7 +100,8 @@ private:
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
 	struct Built {
-		int64_t key = 0, job = 0;
+		int64_t key = 0;
+		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
@@ -118,7 +119,8 @@ private:
 		void bake();
 	};
 	struct SuperBuilt {
-		int64_t key = 0, job = 0;
+		int64_t key = 0;
+		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
 		b40::Shell far_shell;
