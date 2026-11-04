@@ -90,7 +90,7 @@ void add_company(CityState &s, int leader) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Pedestrian w;
-	dress_walker(t, p, w, partner_age(t, p, t.peds[size_t(leader)].age));
+	dress_walker(t, p, w, partner_age(t, p, t.peds[size_t(leader)].age), s.catalog.blast.walker_hp);
 	const int id = alloc_walker(t);
 	Pedestrian &l = t.peds[size_t(leader)];
 	l.speed = std::min(l.speed, w.speed);

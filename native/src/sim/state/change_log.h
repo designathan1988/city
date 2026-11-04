@@ -5,6 +5,8 @@
 // needs the map exclusively and never waits for the mesh jobs that read the map.
 #pragma once
 
+#include "sim/demolition/damage_event.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <mutex>
@@ -33,6 +35,8 @@ struct ChangeLog {
 	std::vector<int> lots_changed;
 	// Junctions whose signal settings changed: only their plan is made again, the lanes and connectors stay.
 	std::vector<int> signal_nodes;
+	// Blows, shots and falls for the render to play once (damage_event.h): drained with the other render lists.
+	std::vector<DamageEvent> damage_events;
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -58,6 +62,7 @@ struct ChangeLog {
 		building_chunks.clear();
 		view_chunks.clear();
 		terrain_rects.clear();
+		damage_events.clear();
 		paint_rects.clear();
 		nature_chunks.clear();
 		water_chunks.clear();

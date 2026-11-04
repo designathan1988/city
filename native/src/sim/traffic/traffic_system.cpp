@@ -151,6 +151,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (Pedestrian &w : s.traffic.peds) {
 		if (!w.alive) continue;
 		w.trail.push(w.cur, stamp_ns, before);
+		if (s.traffic.time < w.down_until) continue; // on the ground: the effects draw the body, not the walker
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
 		if (dx * dx + dz * dz > r2) continue;
 		AgentRecord rec;

@@ -148,6 +148,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.buildings.init(&s.log);
 	s.lots.clear();
 	s.growth.clear();
+	s.damage.clear(); // what blows left on the last map is not on this one
 	s.history.reset(c.tune);
 	s.edited = false; // a city just made or opened holds no edit of the player's yet
 	s.money = c.tune.economy_start_money;

@@ -31,6 +31,7 @@ private:
 	std::atomic<SimSpeed> speed_{ SimSpeed::STOPPED };
 	std::atomic<bool> running_{ false };
 	std::atomic<int64_t> period_ns_{ 0 };
+	double owed_ = 0; // seconds of the damage clock the map lock was not free for
 };
 
 } // namespace city

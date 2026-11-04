@@ -31,6 +31,7 @@ const COMMANDS := {
 	&"transit_station": "transit_station", &"transit_track": "transit_track", &"transit_line": "transit_line", &"transit_remove": "transit_remove",
 	&"transit_drop_line": "transit_drop_line", &"transit_vehicles": "transit_vehicles",
 	&"set_interior": "set_interior",
+	&"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -48,4 +49,5 @@ const QUERIES := {
 	&"transit_plan": "transit_plan", &"transit_footway": "transit_footway", &"transit_xray": "transit_xray", &"transit_preview": "transit_preview", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 	&"interior": "interior", &"interior_revision": "interior_revision", &"interior_cost": "interior_cost",
 	&"people_census": "people_census", &"set_city_hour": "set_city_hour",
+	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
 }

@@ -151,6 +151,24 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 // The function and floors of a building (Build drawer, Mass tab).
 EditResult edit_building(CityState &s, int id, int fn, int floors);
 
+// --- Demolition (strike_commands.cpp, shoot_commands.cpp)
+// The bomb: a blow of force `strength` (1..50) bursting at (x, z) at `height` (the ground, or the roof it landed on).
+// Changes the buildings, the ground, the roads, the furniture, the vehicles and the walkers it reaches (one undo step).
+EditResult strike_at(CityState &s, double x, double z, double strength, double height);
+
+// The pistol: one round along the line of sight from (ox, oy, oz) in direction (dx, dy, dz) (any length). What it hit, and
+// whether the car it hit took enough rounds to burst (the caller then strikes at `burst_*`: a blow of burst_force).
+struct ShotResult {
+	enum Hit : uint8_t { NONE = 0, WALKER, VEHICLE } hit = NONE;
+	bool killed = false, burst = false;
+	int id = -1;
+	float burst_x = 0, burst_y = 0, burst_z = 0;
+};
+ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, double dy, double dz);
+
+// Bulldoze everything in the box between two corners: the buildings whose centre is in it, the rubble, the road segments
+// whose middle is in it (their refund added up). One undo step.
+EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz);
 // --- Landscape drawer (nature_commands.cpp): the sky, the painted ground, the planted trees, the map's biome
 constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
 EditResult set_weather(CityState &s, const Weather &next);

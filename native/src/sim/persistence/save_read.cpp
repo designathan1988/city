@@ -5,6 +5,7 @@
 #include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
+#include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/state/city_state.h"
 
@@ -88,16 +89,7 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Building b;
-		b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
-		b.zone = r.get<uint8_t>();
-		b.fn = r.get<uint8_t>();
-		b.floors = r.get<uint16_t>();
-		b.seed = r.get<uint32_t>();
-		b.style = r.get<uint16_t>();
-		b.profile = r.get<uint16_t>();
-		b.landmark = r.get<int16_t>();
-		b.built = r.get<double>();
-		if (r.ok) bs.put(int(i), b, false);
+		if (get_building(r, b)) bs.put(int(i), b, false);
 	}
 	return r.ok;
 }
@@ -163,6 +155,19 @@ bool read_variants(ByteReader &r, Catalog &c) {
 }
 } // namespace
 
+bool get_building(ByteReader &r, Building &b) {
+	b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
+	b.zone = r.get<uint8_t>();
+	b.fn = r.get<uint8_t>();
+	b.floors = r.get<uint16_t>();
+	b.seed = r.get<uint32_t>();
+	b.style = r.get<uint16_t>();
+	b.profile = r.get<uint16_t>();
+	b.landmark = r.get<int16_t>();
+	b.built = r.get<double>();
+	return r.ok;
+}
+
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
@@ -196,9 +201,10 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	uint32_t tag = r.get<uint32_t>();
 	if (tag == SAVE_BODIES) {
 		if (!read_edited_bodies(r, s.buildings)) return false;
-		tag = r.get<uint32_t>();
+	} else {
+		r.o -= sizeof(uint32_t); // not the edited bodies: the tag is the first of the extra blocks
 	}
-	if (!r.ok || tag != SAVE_END) return false;
+	if (!r.ok || !read_extra_blocks(r, s)) return false; // the demolition block, then the end
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

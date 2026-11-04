@@ -52,11 +52,44 @@ void build(const CityState &s, int seg, SidewalkFurniture &out) {
 
 } // namespace
 
+namespace {
+GoneKind gone_kind(FurnitureKind k) {
+	switch (k) {
+		case FurnitureKind::SIGNAL: return GoneKind::POST;
+		case FurnitureKind::LAMP: return GoneKind::POLE;
+		case FurnitureKind::HYDRANT: return GoneKind::HYDRANT;
+		case FurnitureKind::BIN: return GoneKind::BIN;
+		case FurnitureKind::BENCH: return GoneKind::BENCH;
+		default: return GoneKind::TREE;
+	}
+}
+constexpr float GONE_MATCH_M = 0.25f; // a piece knocked out is the one standing within this of where it stood
+} // namespace
+
+bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z) {
+	if (f.side < 0) return false;
+	const Profile &p = s.roads.profile_of(seg);
+	Pose at;
+	sidewalk_pose(s, seg, f.side, float(f.v), f.u - (f.side == 0 ? p.walk_right : p.walk_left), at);
+	x = at.x;
+	z = at.z;
+	return true;
+}
+
 void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	if (!g.alive) return;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
+	const size_t first = out.size();
 	segment_furniture(s.roads, sid, signalled, kinds, out);
+	if (s.damage.gone.empty()) return;
+	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)
+	size_t keep = first;
+	for (size_t i = first; i < out.size(); i++) {
+		float x, z;
+		if (!furniture_xz(s, sid, out[i], x, z) || !s.damage.is_gone(gone_kind(out[i].kind), x, z, GONE_MATCH_M)) out[keep++] = out[i];
+	}
+	out.resize(keep);
 }
 
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg) {

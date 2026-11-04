@@ -26,6 +26,8 @@ int anchor_node(CityState &s, const Anchor &a);
 int clear_under(CityState &s, int seg);
 // The ground follows the new segment (a terrain corridor modifier, as the generated city's streets).
 void conform_under(CityState &s, int seg);
+// Removes the segment and the nodes it leaves alone, refunding its share; returns the money back (R$, 0 when none).
+double demolish_segment(CityState &s, int seg);
 // The ground moved under the box: its roads, buildings and lots are drawn / derived again (brush.ts touchSamples).
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
 // The painted ground of a sample rectangle is drawn again, its trees and covers placed again.

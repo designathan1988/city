@@ -68,6 +68,13 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			std::unique_lock<std::shared_mutex> map(s.map_mutex);
 			grow_step(s, dt);
 		}
+		{
+			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared: the damage clock is owed what it missed
+			if (map.owns_lock()) {
+				damage_step(s, owed_ + dt);
+				owed_ = 0;
+			} else owed_ += dt;
+		}
 	}
 	{
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);

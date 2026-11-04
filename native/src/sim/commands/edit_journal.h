@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/buildings/building_store.h"
+#include "sim/demolition/damage_state.h"
 #include "sim/nature/ground_paint.h"
 #include "sim/roads/road_network.h"
 #include "sim/terrain/heightfield.h"
@@ -22,7 +23,7 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY, NATURE, TRANSIT };
+	MONEY, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
 
 // A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
 using NatureEdit = std::function<void(CityState &, bool forward)>;
@@ -38,6 +39,11 @@ struct EditOp {
 	Building bld, bld_after;
 	TerrainModifier mod;
 	std::shared_ptr<const TransitData> transit_before, transit_after; // TRANSIT: the plan replaced whole
+	Crater crater; // DMG_CRATER
+	Ruin ruin; // DMG_RUIN (side 0 added, 1 removed; id its index)
+	Gone gone; // DMG_GONE
+	Hurt hurt; // DMG_HURT: the building's damage after (hurt_before: before; 0 means none)
+	float hurt_before = 0;
 	std::shared_ptr<const NatureEdit> nature; // NATURE
 };
 
@@ -113,6 +119,14 @@ void j_edit_building(CityState &s, int id, const Building &after);
 int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, float max_run);
 void j_money(CityState &s, double delta);
 void j_transit(CityState &s, TransitData next); // the public transport plan replaced
+// Damage (journal_damage.cpp): a crater dug, a ruin left or cleared, a piece of street furniture knocked out.
+void j_add_crater(CityState &s, const Crater &c);
+void j_add_ruin(CityState &s, const Ruin &r);
+void j_remove_ruin(CityState &s, int index);
+void j_add_gone(CityState &s, const Gone &g);
+// Sets what a building has taken (0 clears it).
+void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount);
+void apply_damage_op(CityState &s, const EditOp &op, bool forward);
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 // A landscape change already made, with what undoes and redoes it; `bytes` what it keeps.

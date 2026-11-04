@@ -142,6 +142,7 @@ struct Vehicle {
 	Errand errand = Errand::NONE; // still to do on this trip
 	int kerb = -1; // its stop in TrafficState::kerb_stops
 	uint8_t aboard = ABOARD_AS_DRAWN;
+	uint8_t shots = 0; // rounds taken on the bodywork (the pistol): enough of them and it burns
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool

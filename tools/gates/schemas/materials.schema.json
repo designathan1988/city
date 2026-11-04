@@ -567,7 +567,10 @@
     }
    },
    "strict": true
-  }
+  },
+  "puffs": { "type": "object", "properties": { "shader": { "type": "string" }, "render_priority": { "type": "integer" }, "params": { "type": "object" } } },
+  "debris": { "type": "object", "properties": { "shader": { "type": "string" }, "params": { "type": "object" } } },
+  "marks": { "type": "object", "properties": { "shader": { "type": "string" }, "display_colors": { "type": "object" }, "params": { "type": "object" } } }
  },
  "required": [
   "transit", "transit_glass", "transit_xray",

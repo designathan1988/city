@@ -10,6 +10,7 @@ const CATALOG := {
 	"growth": "res://data/catalog/growth.json",
 	"traffic": "res://data/catalog/traffic.json",
 	"street_furniture": "res://data/catalog/street_furniture.json",
+	"blast": "res://data/catalog/blast.json",
 	"nature": "res://data/catalog/nature.json",
 }
 ## Tables split only to keep each file small; merged under the same key they extend.
@@ -33,6 +34,7 @@ const RENDER_TABLES := {
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
 	"transit": "res://data/render/transit.json",
+	"effects": "res://data/render/effects.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",

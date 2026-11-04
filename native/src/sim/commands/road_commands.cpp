@@ -187,6 +187,14 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.buildings_removed = 1;
 		return r;
 	}
+	const int ruin = s.damage.ruin_at(float(x), float(z), 0.f); // the rubble a blow left: clearing it frees the lot
+	if (ruin >= 0) {
+		const Ruin gone = s.damage.ruins[size_t(ruin)];
+		j_remove_ruin(s, ruin);
+		finish_edit(s, gone.x, gone.z, gone.x, gone.z);
+		r.ok = true;
+		return r;
+	}
 	double t, d;
 	RoadNetwork &net = s.roads;
 	int seg = net.find_segment_near(x, z, reach, t, d);
@@ -194,19 +202,23 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.error = "help.tool.bulldoze";
 		return r;
 	}
-	RoadSegment g = net.segs[seg];
-	double refund = (g.flags & SEG_FREE) ? 0 : segment_value(s, seg) * s.catalog.tune.economy_refund_share;
-	j_remove_segment(s, seg);
-	j_remove_node_if_orphan(s, g.a);
-	j_remove_node_if_orphan(s, g.b);
-	if (refund >= MIN_CHARGE && !s.unlimited_money) {
-		r.money = -std::round(refund);
-		j_money(s, -r.money);
-	}
+	const RoadSegment g = net.segs[seg];
+	r.money = -demolish_segment(s, seg);
 	finish_edit(s, g.minx, g.minz, g.maxx, g.maxz);
 	r.ok = true;
 	r.segments = 1;
 	return r;
+}
+
+double demolish_segment(CityState &s, int seg) {
+	const RoadSegment g = s.roads.segs[seg];
+	const double refund = (g.flags & SEG_FREE) ? 0 : segment_value(s, seg) * s.catalog.tune.economy_refund_share;
+	j_remove_segment(s, seg);
+	j_remove_node_if_orphan(s, g.a);
+	j_remove_node_if_orphan(s, g.b);
+	if (refund < MIN_CHARGE || s.unlimited_money) return 0;
+	j_money(s, std::round(refund));
+	return std::round(refund);
 }
 
 } // namespace city

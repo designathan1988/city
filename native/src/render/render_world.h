@@ -12,6 +12,7 @@
 #include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
+#include "render/effects/effect_world.h"
 #include "render/overlays/overlay_renderer.h"
 #include "render/wear/wear_field.h"
 #include "render/props/prop_renderer.h"
@@ -63,6 +64,10 @@ public:
 	}
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
+	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
+	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
+	int effect_pieces() const { return effects_.pieces(); }
+	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int64_t worn_cells() const { return wear_.worn_cells(); }
 	int64_t wear_publications() const { return wear_.publications(); }
@@ -111,6 +116,7 @@ private:
 	AgentRenderer agents_;
 	TransitRenderer transit_;
 	OverlayRenderer overlays_;
+	EffectWorld effects_;
 	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
@@ -120,6 +126,7 @@ private:
 	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;
 	void drain_log(CityState &s);
+	void sync_nature(CityState &s); // the landscape's dirty chunks and the water
 };
 
 } // namespace city

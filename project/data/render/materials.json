@@ -267,5 +267,19 @@
    "leaf_near_m": 22.0,
    "leaf_far_m": 70.0
   }
+ },
+ "puffs": {
+  "shader": "res://render/shaders/puffs.gdshader",
+  "render_priority": 1,
+  "params": {}
+ },
+ "debris": {
+  "shader": "res://render/shaders/debris.gdshader",
+  "params": {}
+ },
+ "marks": {
+  "shader": "res://render/shaders/marks.gdshader",
+  "display_colors": { "crater": ["#231C15", "#493A2D", "#736C64", "#96918A", "#2A1F15", "#58412B", "#785C3E", "#8A6C4B"] },
+  "params": { "eye_pull_m": 0.5, "blood_deep": "#600609", "blood_thin": "#850C10" }
  }
 }

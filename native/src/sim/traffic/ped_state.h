@@ -69,6 +69,12 @@ struct Pedestrian {
 	uint32_t look = 0; // render hash: clothes, skin, hair
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
+	float hp = 0, bleed = 0; // health (data shot.walker_hp) and what a wound takes from it each second
+	float hurt_head = 0, hurt_torso = 0, hurt_limb[4] = {}; // damage taken by part
+	uint8_t lost = 0; // limbs gone (damage_event.h CasLimb bits), shot or blown off
+	uint8_t hits = 0;
+	bool opened = false; // the trunk shot open
+	float down_until = 0, panic_until = 0, flinch_until = 0; // t.time until which a blow keeps it on the ground / running / bent over a wound
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over

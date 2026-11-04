@@ -29,6 +29,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = agents_.init(ctx, errors) && ok;
 	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
+	ok = effects_.init(ctx, errors) && ok;
 	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }
@@ -46,6 +47,7 @@ void RenderWorld::reset() {
 	agents_.reset();
 	transit_.reset();
 	overlays_.reset();
+	effects_.reset();
 	road_stream_.clear();
 	props_stream_.clear();
 	building_stream_.clear();
@@ -96,6 +98,19 @@ void RenderWorld::drain_log(CityState &s) {
 	if (!water_keys_.empty() || !terrain_rects_.empty()) shore_.touch();
 }
 
+// The landscape's changes: the trees and ground cover of the touched chunks are marked, the water's chunks and surface follow.
+void RenderWorld::sync_nature(CityState &s) {
+	ChangeLog::dedup(nature_keys_);
+	for (int64_t k : nature_keys_) {
+		trees_.mark_dirty(k);
+		cover_.mark_dirty(k);
+	}
+	nature_keys_.clear();
+	for (int64_t k : water_keys_) water_.mark(k);
+	water_keys_.clear();
+	water_.sync(s.terrain);
+}
+
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
 	const int64_t window = int64_t(t.render_upload_budget_mb * BYTES_PER_MIB);
@@ -107,18 +122,11 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
 		cost_.lock = laps.lap();
 		drain_log(s);
+		effects_.sync(s);
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
 		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
 		paint_rects_.clear();
-		ChangeLog::dedup(nature_keys_);
-		for (int64_t k : nature_keys_) {
-			trees_.mark_dirty(k);
-			cover_.mark_dirty(k);
-		}
-		nature_keys_.clear();
-		for (int64_t k : water_keys_) water_.mark(k);
-		water_keys_.clear();
-		water_.sync(s.terrain);
+		sync_nature(s);
 		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
 		ChangeLog::dedup(road_keys_);
 		ChangeLog::dedup(building_keys_);

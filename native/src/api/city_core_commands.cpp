@@ -156,6 +156,10 @@ Dictionary CityCore::build_road(const Vector3 &a, const Vector3 &b, bool has_con
 	return build_road_path(one, profile, px);
 }
 
+Dictionary CityCore::demolish_box(const Vector3 &a, const Vector3 &b) {
+	return run_edit(*state_, "cmd.demolish.box", [&](CityState &s) { return ::city::demolish_box(s, a.x, a.z, b.x, b.z); });
+}
+
 Dictionary CityCore::demolish(const Vector3 &p) {
 	return run_edit(*state_, "cmd.demolish.road", [&](CityState &s) { return demolish_at(s, p.x, p.z); });
 }

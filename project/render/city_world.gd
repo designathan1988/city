@@ -53,8 +53,7 @@ func materials() -> Dictionary:
 		for key in table:
 			if key.begins_with("_"):
 				continue
-			var m := ShaderMaterial.new()
-			m.shader = load(table[key].shader)
+			var m := EffectMaterials.make(key, table[key], environment)
 			for name in table[key].params:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":

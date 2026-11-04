@@ -36,6 +36,7 @@ func _ready() -> void:
 	camera.far = cfg.far
 	add_child(camera)
 	camera.current = true
+	add_child(CameraShake.new(camera))
 	gestures = CameraGestures.new(self)
 	motion = CameraMotion.new(self)
 	yaw = deg_to_rad(cfg.start_yaw)

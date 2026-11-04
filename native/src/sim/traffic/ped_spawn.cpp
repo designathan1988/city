@@ -103,8 +103,9 @@ PedAge roll_age(TrafficState &t, const TrafficParams &p) {
 	return r < p.ped_child_share + p.ped_elder_share ? PedAge::ELDER : PedAge::ADULT;
 }
 
-void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age) {
+void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp) {
 	w.alive = true;
+	w.hp = hp;
 	w.age = age;
 	w.look = t.rng.next();
 	const float pace = age == PedAge::CHILD ? p.ped_child_pace : age == PedAge::ELDER ? p.ped_elder_pace : 1.f;
@@ -132,7 +133,7 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	const Profile &pf = s.roads.profile_of(seg);
 	const RoadSegment &g = s.roads.segs[seg];
 	Pedestrian w;
-	dress_walker(t, p, w, roll_age(t, p));
+	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp);
 	w.seg = seg;
 	w.dir = int(t.rng.next() & 1);
 	w.side = has_side(pf, 0) && (!has_side(pf, 1) || (t.rng.next() & 1)) ? 0 : 1;

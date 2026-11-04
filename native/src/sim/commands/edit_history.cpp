@@ -74,6 +74,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			s.transit = fwd ? *op.transit_after : *op.transit_before;
 			s.transit_revision++;
 			break;
+		case OpKind::DMG_CRATER:
+		case OpKind::DMG_RUIN:
+		case OpKind::DMG_GONE:
+		case OpKind::DMG_HURT: apply_damage_op(s, op, fwd); break;
 		case OpKind::NATURE: (*op.nature)(s, fwd); break;
 	}
 }

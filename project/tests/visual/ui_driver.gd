@@ -113,8 +113,8 @@ func drawn() -> void:
 		waited += 1
 
 
-func shot(name: String) -> void:
-	await frames(SETTLE_FRAMES)
+func shot(name: String, settle: int = SETTLE_FRAMES) -> void:
+	await frames(settle)
 	var path := "%s/%s.png" % [out_dir, name]
 	tree.root.get_texture().get_image().save_png(path)
 	print("captura: ", path)

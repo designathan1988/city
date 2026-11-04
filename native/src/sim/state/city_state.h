@@ -7,6 +7,7 @@
 #include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
+#include "sim/demolition/damage_state.h"
 #include "sim/lots/lot_cache.h"
 #include "sim/nature/nature_state.h"
 #include "sim/roads/road_network.h"
@@ -47,6 +48,7 @@ struct CityState {
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::unique_ptr<JobPool> jobs{ std::make_unique<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
+	DamageState damage; // craters, ruins, furniture knocked out, fires (sim/demolition)
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time
 	CityClock clock;
 	EditHistory history; // undo / redo of the player's commands (sim/commands/edit_history.cpp)

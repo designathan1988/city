@@ -125,6 +125,14 @@ cmd.demolish.line,apagar linha,delete line
 cmd.demolish.lot,apagar lote,delete lot
 cmd.demolish.lots,apagar lotes,delete lots
 cmd.demolish.road,demolir via,demolish road
+cmd.strike,bomba,bomb
+cmd.demolish.box,demolir na caixa,demolish in a box
+help.tool.strike,"Clique onde a bomba cai. A força muda o tamanho da explosão; tudo volta com Desfazer, menos quem morreu.","Click where the bomb falls. The force sets the size of the blast; everything but the dead comes back with Undo."
+help.tool.shoot,"Clique em uma pessoa ou num veículo para atirar na parte do corpo que você clicar.","Click a person or a vehicle to shoot the part of the body you click."
+hint.strike.done,"Bomba de força {force} lançada.","Bomb of force {force} dropped."
+hint.shoot.miss,"Ninguém aí: clique numa pessoa.","Nobody there: click a person."
+hint.shoot.hit,"Acertou.","Hit."
+hint.shoot.killed,"Acertou: morreu.","Hit: dead."
 cmd.demolish.signRule,tirar placa com regra,remove sign with a rule
 cmd.demolish.stop,tirar parada,remove stop
 cmd.place.autoLaneLinks,conexões automáticas,automatic lane connections
@@ -376,6 +384,7 @@ game.toast.bombHit,Atingido: continue batendo para derrubar.,Hit: keep striking 
 game.toast.buildWhere,Clique num prédio ou num lote vazio (zoneie as vias primeiro).,Click a building or an empty lot (zone the roads first).
 game.toast.deleted,Apagado.,Deleted.
 game.toast.demolished.one,Demolido: 1 coisa,Demolished: 1 thing
+game.toast.demolished.box,"Tudo na caixa foi demolido.","Everything in the box was demolished."
 game.toast.demolished.other,Demolido: {count} coisas,Demolished: {count} things
 game.toast.flattened,Mapa aplainado.,Map flattened.
 game.toast.flowFailed,{what} não terminou: {message}. A cidade na tela está incompleta e não será salva; o salvamento anterior não foi tocado.,{what} did not finish: {message}. The city on screen is incomplete and will not be saved; the previous save was not touched.

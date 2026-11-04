@@ -138,6 +138,7 @@ void walk(CityState &s, int id, float dt) {
 	Pedestrian &w = t.peds[id];
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
+	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
 	if (w.mode == PedMode::LOT) {
 		walk_lot(s, id, dt);
 		return;
@@ -156,7 +157,8 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT) return;
 	}
 	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
-	const float step = w.pace * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
+	const float run = (t.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f) * traffic::wounded_pace(s.catalog.blast, w); // frightened by a bang: runs
+	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
 		if (w.slot < 0 && (w.cross_cd -= dt) <= 0) { // no place at the kerb ahead yet: asked again at 5 Hz
@@ -205,6 +207,7 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	w.alive = true;
 	w.seg = seg;
 	w.side = side;
+	w.hp = s.catalog.blast.walker_hp;
 	w.dir = int(t.rng.next() & 1);
 	w.look = t.rng.next();
 	w.s = clampf(arc, arc_lo(g), arc_hi(g));
@@ -224,6 +227,20 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 }
 
 void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
+
+void remove_pedestrian(CityState &s, int id) {
+	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s.traffic, id, false);
+}
+
+void down_pedestrian(CityState &s, int id, float seconds) {
+	Pedestrian &w = s.traffic.peds[size_t(id)];
+	w.down_until = float(s.traffic.time) + seconds;
+}
+
+void frighten_pedestrian(CityState &s, int id, float seconds) {
+	Pedestrian &w = s.traffic.peds[size_t(id)];
+	w.panic_until = float(s.traffic.time) + seconds;
+}
 
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;

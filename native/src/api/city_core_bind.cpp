@@ -19,6 +19,7 @@ void CityCore::_bind_methods() {
 	bind_nature();
 	bind_transit();
 	bind_probes();
+	bind_damage();
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);
@@ -102,6 +103,18 @@ void CityCore::bind_probes() {
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityCore::set_city_hour);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
+}
+
+// The bomb and the pistol's script API: blows, shots, boxes knocked down and what the tests read of the damage.
+void CityCore::bind_damage() {
+	ClassDB::bind_method(D_METHOD("strike", "position", "strength"), &CityCore::strike);
+	ClassDB::bind_method(D_METHOD("shoot", "origin", "direction"), &CityCore::shoot);
+	ClassDB::bind_method(D_METHOD("demolish_box", "a", "b"), &CityCore::demolish_box);
+	ClassDB::bind_method(D_METHOD("damage_probe"), &CityCore::damage_probe);
+	ClassDB::bind_method(D_METHOD("shot_targets", "limit"), &CityCore::shot_targets);
+	ClassDB::bind_method(D_METHOD("effects_shake"), &CityCore::effects_shake);
+	ClassDB::bind_method(D_METHOD("effects_since_blast"), &CityCore::effects_since_blast);
+	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
 }
 
 // Public transport's script API: stops, stations, tracks, lines, the plan, the footway and the pickers.

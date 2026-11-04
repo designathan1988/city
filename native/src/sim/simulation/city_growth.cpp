@@ -55,7 +55,7 @@ void GrowthQueue::assign(std::vector<int64_t> keys) {
 
 void grow_step(CityState &s, double dt) {
 	GrowthQueue &g = s.growth;
-	if (g.cells.empty()) return;
+	if (g.cells.empty() || s.damage.now < s.damage.growth_hold_until) return; // rubble lies: nothing is built over it yet
 	g.acc = std::min(g.acc + dt * s.catalog.tune.sim_growth_per_s, MAX_OWED);
 	for (int tries = int(s.catalog.tune.sim_growth_tries); g.acc >= 1 && tries > 0; tries--) {
 		Pick p = nearest_free(s);

@@ -86,6 +86,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 **API GDExtension — native/src/api**
 - `native/src/api/body_doc.cpp` · `native/src/api/body_doc.h` — um prédio como documento (projeto de lote, prédio de uma cidade do Roadcraft) feito corpo
 - `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` — buildings.json → tabelas do gerador de prédios da simulação
+- `native/src/api/blast_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera)
+- `native/src/api/city_core_strike.cpp` — a bomba como API de script (`strike`, um passo de desfazer) e as sondas `damage_probe` (o que os golpes deixaram no mapa) e `blast_probe` (números do modelo)
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
@@ -139,6 +141,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/buildings/interior/cut.cpp` · `native/src/sim/buildings/interior/cut.h` — o prédio cortado num andar (dono único do corte): volumes acima saem, os demais perdem os andares de cima; a direção da câmera em 8 passos
 - `native/src/sim/buildings/interior/view.h` — o que a camada Interior mostra: quais prédios estão cortados, em que andar e para que direção da câmera (vista, não é salva)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
+- `native/src/sim/catalog/blast_params.h` — parâmetros da explosão (sem valores): curvas de sobrepressão, impulso e duração, limiares de dano, pessoas, cratera
 - `native/src/sim/catalog/nature_types.h` — tipos do clima, nuvens, neblina, pintura, pincel de árvores e comunidades de plantas (X-macro do clima)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
@@ -153,18 +156,23 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/citygen/road_gen.cpp` · `native/src/sim/citygen/road_gen.h` — linhas da malha e marcha sobre o terreno
 - `native/src/sim/citygen/road_gen_graph.cpp` — grafo planar das ruas geradas (cruzamentos, nós fundidos)
 - `native/src/sim/citygen/road_gen_tidy.cpp` — limpeza do grafo gerado (nós e braços degenerados)
+- `native/src/sim/demolition/blast_model.cpp` · `native/src/sim/demolition/blast_model.h` — dono único da física do sopro: escala de Hopkinson-Cranz e curvas de Kingery-Bulmash (Swisdak), pressão sentida pela estrutura, letalidade e tímpano, alcance, cratera
+- `native/src/sim/demolition/damage_state.cpp` · `native/src/sim/demolition/damage_state.h` · `native/src/sim/demolition/damage_event.h` — o que sobra dos golpes no `CityState` (crateras, ruínas, mobiliário derrubado, dano dos prédios, fogos) e o relógio do dano; os eventos que o render toca uma vez
+- `native/src/sim/demolition/wounds.cpp` — os feridos sangram e morrem do sangramento (pelo relógio do dano, sob a trava exclusiva)
 - `native/src/sim/commands/body_edit.cpp` · `native/src/sim/commands/body_facade.cpp` · `native/src/sim/commands/body_finish.cpp` · `native/src/sim/commands/body_mass.cpp` · `native/src/sim/commands/body_ops.h` · `native/src/sim/commands/body_parts.cpp` — o único caminho de uma edição até o corpo (cópia, validação, diário) e o que um corpo precisa ser; abas Fachada, Telhado, Cores, Massa e Peças
 - `native/src/sim/commands/body_pick.cpp` · `native/src/sim/commands/body_pick.h` — o que um raio da câmera acerta: registro, bloco, face, andar e vão
 - `native/src/sim/commands/commands.h` — API de comandos do jogador
 - `native/src/sim/commands/edit_history.cpp` — pilhas de desfazer/refazer e limites
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
+- `native/src/sim/commands/journal_damage.cpp` — operações do diário do dano (cratera, ruína, mobiliário derrubado, dano acumulado do prédio) e o inverso de cada uma
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
 - `native/src/sim/commands/element_commands.cpp` — pincel de elementos com desfazer
 - `native/src/sim/commands/nature_commands.cpp` — clima, nuvens, neblina, pintura, árvores plantadas, bioma e relevo de volta ao original
 - `native/src/sim/commands/model_ops.h` · `native/src/sim/commands/model_body.cpp` · `native/src/sim/commands/model_place.cpp` · `native/src/sim/commands/place_snap.cpp` · `native/src/sim/commands/body_weld.cpp` — modelo feito corpo; colocar (recusas e fusão, um passo de desfazer); encaixe na rua, no vizinho e na grade; dois prédios feitos um
 - `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar); `interior_focus`, dono único de onde o corpo fica (centro dos volumes, lado maior, andares: as fotos miram aí)
 - `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
+- `native/src/sim/commands/demolish_box.cpp` — demolir na caixa: prédios, entulho e vias com o meio dentro do retângulo, num passo de desfazer
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
@@ -173,6 +181,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/transit_commands.cpp` · `native/src/sim/commands/transit_commands.h` — comandos do transporte público
+- `native/src/sim/commands/strike_commands.cpp` · `native/src/sim/commands/strike_internal.h` — a bomba: um golpe de força 1..50 aplicado à cidade pelo diário (prédios, chão, vias, mobiliário, veículos, pedestres) e avisado ao render por eventos
+- `native/src/sim/commands/strike_buildings.cpp` · `native/src/sim/commands/strike_ground.cpp` · `native/src/sim/commands/strike_roads.cpp` · `native/src/sim/commands/strike_people.cpp` — prédios (dano que se soma, queda e ruína, fogo, desgaste); cratera, terreno e mobiliário derrubado; o trecho de via que a cratera corta; pedestres (mortos, derrubados, assustados) e veículos explodidos
+- `native/src/sim/commands/shoot_commands.cpp` · `native/src/sim/commands/shoot_internal.h` · `native/src/sim/commands/shoot_people.cpp` · `native/src/sim/commands/shoot_vehicles.cpp` — a pistola: um tiro ao longo da linha de visão (para no terreno; pega o primeiro pedestre, em pé ou caído, ou veículo); ferida por parte do corpo (cabeça mata, tronco um terço da vida, membro um quinto; membro arrancado, barriga aberta, sangramento até morrer), motociclista derrubado, vidro de carro (para o carro), rajada que o faz explodir; avisa o render por eventos
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
@@ -183,6 +194,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/nature/sky.cpp` · `native/src/sim/nature/sky.h` — clima do mapa e nuvens colocadas (deriva, escolha pelo raio, espalhar)
 - `native/src/sim/persistence/body_codec.cpp` · `native/src/sim/persistence/body_codec.h` — o corpo em bytes, iguais para corpos iguais: seção do save e digest
 - `native/src/sim/persistence/save_format.h` — formato do save da cidade
+- `native/src/sim/persistence/save_demolition.cpp` · `native/src/sim/persistence/save_demolition.h` — o bloco do save com o que golpes deixaram (crateras, ruínas, mobiliário derrubado, prédios com dano, a espera do crescimento); etiqueta e tamanho antes de SAVE_END, um leitor sem a etiqueta pula o bloco; o registro de prédio compartilhado
 - `native/src/sim/persistence/save_nature.cpp` — gravar e abrir a paisagem
 - `native/src/sim/persistence/save_read.cpp` — abrir: terreno do seed, ladrilhos esculpidos, modificadores e grafo
 - `native/src/sim/persistence/save_write.cpp` — gravar: cabeçalho, terreno, modificadores, vias e prédios
@@ -229,6 +241,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/day_table.h` — uma tabela do dia (uma entrada por hora) lida numa hora, com a volta da meia-noite: dono único, lido pelos pedestres e pelos carros dos lotes
 - `native/src/sim/traffic/parking_state.h` · `native/src/sim/traffic/parking_sources.cpp` · `native/src/sim/traffic/parking_lanes.cpp` — vagas perto da câmera (guias e lotes, lidas por orçamento) e carros parados de cenário; ponto da via, faixa de uma portaria e quem está a pé perto de um ponto
 - `native/src/sim/traffic/lot_traffic.cpp` · `native/src/sim/traffic/lot_demand.cpp` · `native/src/sim/traffic/manoeuvre.cpp` · `native/src/sim/traffic/manoeuvre.h` — carros que entram e saem dos lotes pelas portarias, pelas horas de cada tipo de lugar; caminho fora da via (curvas de Hermite, ré e frente)
+- `native/src/sim/traffic/ped_wounds.cpp` — quanto do passo próprio guarda um pedestre ferido (leve, na perna, grave)
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/ped_state.h` — grafo de faixas, veículos, meso e pools; os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
@@ -276,6 +289,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/roof_util.h` — predicados de telhado compartilhados
 - `native/src/render/buildings/shell.cpp` · `native/src/render/buildings/shell.h` — escrita de vértices das malhas de prédio
 - `native/src/render/chunk_jobs.h` · `native/src/render/chunk_queue.h` · `native/src/render/mesh_queue.h` — jobs por chunk, conversão no orçamento de envio e commit orçado; chunks ao redor da câmera; fila de uma superfície
+- `native/src/render/effects/effect_world.cpp` · `native/src/render/effects/effect_world.h` — dono dos efeitos da explosão: lê os eventos dos golpes no ChangeLog, desenha crateras e fogos do estado, relógio próprio, clarão (luz), tremor da câmera, gêiseres
+- `native/src/render/effects/effect_blast.cpp` · `native/src/render/effects/effect_things.cpp` · `native/src/render/effects/effect_ruins.cpp` · `native/src/render/effects/effect_bodies.cpp` — o corpo de quem foi atingido, como peças rígidas (cabeça, tronco, braços, pernas na pele e roupa do pedestre; membro arrancado voa sozinho; some quando a pessoa se levanta), o traçante, a ferida e o carro atingido; o monte que um prédio derrubado deixa (cai dentro dele e assenta; o do estado é posto direto, igual toda vez); os eventos tocados uma vez: bola de fogo, fumaça, poeira, estilhaços, anel de onda, fuligem, prédio atingido e caído; mobiliário jogado, veículos explodidos, sangue e corpo dilacerado
+- `native/src/render/effects/effect_params.cpp` · `native/src/render/effects/effect_params.h` — data/render/effects.json estrito (aparência dos efeitos)
+- `native/src/render/effects/mm_layer.h` · `native/src/render/effects/puffs.cpp` · `native/src/render/effects/puffs.h` — um MultiMesh de capacidade fixa; a reserva circular de fumaça, poeira, chama, faísca, sangue, água e papel (o shader move cada uma pela idade)
+- `native/src/render/effects/marks.cpp` · `native/src/render/effects/marks.h` — marcas no chão em um MultiMesh: crateras do estado, fuligem e sangue guardados, anel de onda
+- `native/src/render/effects/debris.cpp` · `native/src/render/effects/debris.h` · `native/src/render/effects/debris_step.inl` — peças rígidas jogadas (caixas e cilindros): gravidade, impulso por canto, repouso; carcaças que queimam
 - `native/src/render/mesh_builder.cpp` · `native/src/render/mesh_builder.h` — emissores de primitivas e envio de malha
 - `native/src/render/overlays/overlay_build.cpp` — malhas CPU das camadas, uma por chunk de 256 m
 - `native/src/render/overlays/overlay_renderer.cpp` · `native/src/render/overlays/overlay_renderer.h` — jobs das zonas e ciclo do congestionamento
@@ -311,6 +330,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
+- `project/game/camera/camera_shake.gd` — o tremor da câmera pelo relógio dos efeitos (a bomba), desfeito quando passa
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
 - `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos e as luzes; como no 4.0 a câmera fica onde o jogador pôs; relê o núcleo só quando a revisão muda
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
@@ -327,6 +347,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/cloud_tool.gd` · `project/game/tools/fog_tool.gd` · `project/game/tools/paint_tool.gd` · `project/game/tools/tree_tool.gd` · `project/game/tools/weather_tool.gd` — Céu (nuvens, neblina, clima), Solo e Natureza
 - `project/game/tools/building_tool.gd` — Construir: o clique escolhe bloco, face e vão; as ferramentas da gaveta agem na escolha
 - `project/game/tools/demolish_tool.gd` — demolir
+- `project/game/tools/strike_tool.gd` · `project/game/tools/shoot_tool.gd` — bomba (um clique, força do parâmetro `strength`) e pistola (um tiro pelo raio da câmera); a aba Demolir da interface chama `set_tool(STRIKE|SHOOT, ...)`
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
 - `project/game/tools/road_tool.gd` — via reta/curva com prévia
@@ -340,6 +361,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/transit_tool.gd` — parada, terminal, trilho, estação e linha
 - `project/game/tools/upgrade_tool.gd` — Melhorar
 - `project/game/tools/zone_tool.gd` — pincel de zona
+- `project/render/effect_materials.gd` — o que os materiais dos efeitos da bomba pedem ao tone mapping do Environment: exposição e branco do inverso do ACES nas fumaças, cores da cratera como radiância
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/transit_overlay.gd` — o plano do transporte sobre o mapa com a ferramenta ligada
@@ -353,6 +375,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/lamp_radiance.gd` — o que uma lente ou farol aceso precisa irradiar para aparecer na sua cor pelo tone mapping
 - `project/render/interior_lights.gd` — as luzes de cômodo do andar visto: seis luzes de ponto sem sombra sobre as primeiras lâmpadas do andar, com os valores do 4.0 (0,25 de dia a 1 à noite; `project/data/game/interior.json`)
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
+- `project/render/shaders/people_color.gdshaderinc` · `project/render/shaders/people_skin.gdshaderinc` — a pessoa cozida em qualquer shader que a desenhe (andando em `project/render/shaders/people.gdshader`): códigos do visual, cor de pele, cabelo e roupa; as quatro bones por vértice com a pose de cada uma como três linhas de matriz
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/people_blob.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mancha sob quem está longe, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_glass.gdshader` · `project/render/shaders/building_sheer.gdshader` · `project/render/shaders/building_card.gdshader` · `project/render/shaders/building_props.gdshader` · `project/render/shaders/building_pane.gdshaderinc` · `project/render/shaders/building_far_window.gdshaderinc` · `project/render/shaders/building_sky_glass.gdshaderinc`
@@ -363,6 +386,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
   modelo do renderizador); ruído de valor por hash inteiro do terreno, da água e das vias
 - `project/render/shaders/atmosphere.gdshader` · `project/render/shaders/canyon_light.gdshaderinc` · `project/render/shaders/cloud_field.gdshaderinc` · `project/render/shaders/ground_paint.gdshaderinc` · `project/render/shaders/lightning.gdshader` · `project/render/shaders/rain.gdshader` — passe de tela cheia (sombra das nuvens, céu que a rua perde entre os prédios, névoa, neblina, nuvens) e forma da nuvem; chão pintado e ravinas pelo mapa de controle; raio e chuva
 - `project/render/shaders/verge.gdshader` · `project/render/shaders/overlay.gdshader` · `project/render/shaders/shore.gdshaderinc` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, margem (praia, barranco e faixa molhada pelo nível da água), céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
+- `project/render/shaders/tone_inverse.gdshaderinc` — a radiância de cena que o ACES do Environment mostra como uma cor de tela (o inverso do `project/render/tone_map.gd` no shader; o que é desenhado sem luz com cor de tela, como as fumaças e chamas)
+- `project/render/shaders/puffs.gdshader` · `project/render/shaders/debris.gdshader` · `project/render/shaders/marks.gdshader` — fumaça, chama, faísca, sangue, água e papel movidos pela idade na GPU; peças jogadas; crateras, fuligem, sangue e anel de onda no chão
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície
@@ -382,6 +407,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` · `project/tests/visual/landscape_cards.gd` — capturas da paisagem nos ângulos do 4.0; rampa de cinzas, cubo cinza e árvores plantadas, medidos sozinhos
 - `project/tests/core/interior_test.gd` · `project/tests/core/interior_test.tscn` — a camada Interior pelo store: o andar limitado ao topo, prédio que não existe recusado, lâmpadas, custo do interior estável e a vista em volta de um ponto
 - `project/tests/visual/capture_interior.gd` · `project/tests/visual/capture_interior.tscn` — capturas da camada Interior dos prédios, dirigidas pelo controlador como o jogador (prédio, andar, volta, escala e hora por tabela)
+- `project/tests/core/strike_test.gd` · `project/tests/core/strike_test.tscn` — a bomba pela store: curva K-B contra o ponto conhecido, prédios que caem aos poucos, via cortada pela cratera, mobiliário derrubado, desfazer e refazer
+- `project/tests/visual/capture_blast.gd` — a bomba fotografada pelo relógio dos efeitos (nome do arquivo = instante real) e pela câmera do 4.0
+- `project/tests/visual/capture_demolition.gd` · `project/tests/visual/capture_demolition.tscn` — capturas da bomba (casa, rua, terra, bomba grande) em instantes depois do golpe
+- `project/tests/core/shoot_test.gd` · `project/tests/core/shoot_test.tscn` — a pistola pela store (cabeça mata, tronco fere, o ferido sangra, tiro no céu erra, rajada faz o carro explodir) e o que um golpe deixa num save: ida e volta de crateras, ruínas e mobiliário
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — vias de perto em chão livre (cruzamentos, T, ponta, curva) e a ferramenta em uso, nos ângulos das fotos do 4.0
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — parada, estação e trilho nas capturas; a rua com o outro lado livre, onde valem as poses do 4.0
@@ -408,10 +437,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/blast.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` · `project/data/game/sky.json` — câmera, dia/noite, saves, qualidade e céu desenhado
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` · `project/data/i18n/strings_d.csv` · `project/data/i18n/strings_e.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/transit.json` · `project/data/render/agents.json` · `project/data/render/bay_props.json` · `project/data/render/buildings.json` · `project/data/render/cover.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/models.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/effects.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/builder.json` · `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_elements.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
@@ -459,3 +488,4 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
 - Pedestres: sem passageiros de ônibus, celular, guarda-chuva, sentados; o clipe `pedal` está cozido e sem uso até a bicicleta da simulação chegar aqui; o rosto é da cor da pele, sem traços, e a barra da roupa é a do pacote cozido; a curva `people_busy` não tem pesquisa por trás. Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.
+- Demolição (bomba, pistola, demolir): o prédio atingido vira um monte de lajes, não é fraturado em Voronoi com a casca e as janelas dele (`b40::Shell` num job do `JobPool`); o corpo de quem cai são peças rígidas (cabeça, tronco, braços, pernas) sem juntas, sem Jolt, sem a malha cozida da pessoa, sem levantar nem rastejar animados, e some 90 s depois; barriga aberta e vísceras não são desenhadas; corpos já caídos não levam tiro de novo (só quem ainda está na calçada, ou caído com vida); os fios dos postes derrubados não balançam; a bomba cai no chão sob o cursor (o telhado pede o raio contra as caixas dos prédios); árvores naturais fora das ruas e parques não caem com a bomba (`render/trees/tree_place.cpp` é de outra área); a caixa do demolir não tem prévia; as constantes de projeto sem norma estão no `_doc` de `blast.json` (resposta da estrutura, k da cratera, carga, pessoas, tiro); a norma CONTRAN 210/2006 da largura da pista está citada no `_doc` de `blast.json`; a aba Demolir/Pistola/Bomba da interface (Porte 4) deve chamar `set_tool(STRIKE|SHOOT, {strength})` e `demolish_box`. Fogo da bomba (medido contra o 4.0 em 0,4 / 1,2 / 4,0 s, mesma câmera): cobertura e núcleo batem até 1,2 s; a chama do jogo sai ≈8% mais pálida (o 4.0 escreve a cor da tela com corte por camada, o jogo passa o HDR pelo ACES); o anel de choque aparece, mas o do 4.0 é maior (2,4× o raio da explosão, o do jogo vai ao alcance de colapso); a cratera tem as cores do 4.0 passadas pelo inverso do ACES (`display_colors` em `materials.json`, `_set_crater_radiance` em `city_world.gd`) e fica ≈30% mais escura que a dele (com fumaça por cima, não separável); o disco visível da cratera (buraco, lábio e terra revolvida) tem ≈22,5 m de raio na força 45 (medido numa foto de cima a 120 m), o do 4.0 20–23 m; o buraco físico é 15,9 m na 45 e 3,7 m na 5, o do 4.0 3 m e 20 m (a lei dele é linear na força, a do jogo segue ∛kg); o decalque da cratera e o anel ficam na altura mais alta do chão sob eles (`Marks::top_ground`) e toda marca é puxada 0,5 m ao olho no shader; fumaça, poeira e sangue passam pelo inverso do ACES (`project/render/shaders/tone_inverse.gdshaderinc`), chama e faísca não (o inverso de um laranja saturado dá manchas verde-limão); os estilhaços são pontinhos (o 4.0 lança lajes); `puffs` tem `render_priority` 1 para ser desenhado depois das marcas.

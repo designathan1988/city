@@ -5,6 +5,7 @@
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include "render/render_world.h"
+#include "sim/demolition/blast_model.h"
 #include "sim/simulation/simulation.h"
 
 #include <godot_cpp/classes/image.hpp>
@@ -92,13 +93,12 @@ public:
 	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary demolish(const godot::Vector3 &p);
+	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
-	godot::Dictionary transit_stop(const godot::Vector3 &p);
-	godot::Dictionary transit_terminal(const godot::Vector3 &p);
+	godot::Dictionary transit_stop(const godot::Vector3 &p), transit_terminal(const godot::Vector3 &p), transit_remove(const godot::Vector3 &p);
 	godot::Dictionary transit_station(const godot::Vector3 &p, int mode);
 	godot::Dictionary transit_track(const godot::PackedVector3Array &points, int mode);
 	godot::Dictionary transit_line(const godot::PackedInt32Array &stops);
-	godot::Dictionary transit_remove(const godot::Vector3 &p);
 	godot::Dictionary transit_drop_line(int id);
 	godot::Dictionary transit_vehicles(int id, int vehicles);
 	godot::Dictionary transit_plan();
@@ -111,25 +111,31 @@ public:
 	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
 
+	// --- the bomb (city_core_strike.cpp)
+	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
+	float effects_shake() const { return render_.shake(); } // metres the blasts move the camera now
+	float effects_since_blast() const { return render_.since_blast(); } // effect seconds since the last blast (-1 none)
+	// The pistol along a line of sight (origin, direction): {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}. A car
+	// that took enough rounds bursts as a blow of the data's force (one more undo step of its own).
+	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
+	godot::Dictionary damage_probe() const;
+	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, health, fallen, ...
+	godot::Dictionary shot_targets(int limit) const; // what blows left on the map (counts)
+	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 	// --- the Landscape drawer (city_core_nature.cpp)
 	godot::Dictionary set_weather(const godot::Dictionary &change);
 	godot::Dictionary add_cloud(const godot::Dictionary &c);
 	godot::Dictionary edit_cloud(int id, const godot::Dictionary &c);
 	godot::Dictionary remove_cloud(int id);
 	godot::Dictionary scatter_clouds(int count, const godot::Dictionary &like, float variation);
-	godot::Dictionary clear_clouds();
+	godot::Dictionary clear_clouds(), clear_fog(), clear_gullies(), clear_trees(), clear_elements(), clear_relief();
 	int cloud_at(const godot::Vector3 &origin, const godot::Vector3 &direction, float drift_x, float drift_z) const;
 	godot::Dictionary fog_brush(const godot::Vector3 &p, float radius, float strength, float height, float speed, bool erase);
-	godot::Dictionary clear_fog();
 	godot::Dictionary paint_brush(const godot::Vector3 &p, float radius, float strength, float hardness, int kind);
-	godot::Dictionary clear_gullies();
 	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
-	godot::Dictionary clear_trees();
 	godot::Dictionary element_brush(const godot::Vector3 &p, float radius, int kind, const godot::Dictionary &brush, bool erase);
-	godot::Dictionary clear_elements();
 	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
 	godot::Dictionary set_biome(int region);
-	godot::Dictionary clear_relief();
 	godot::Dictionary landscape() const;
 	int64_t sky_revision() const;
 	godot::Dictionary fog_field(const godot::Vector3 &camera);
@@ -208,11 +214,8 @@ public:
 
 protected:
 	static void _bind_methods();
-	static void bind_models();
-	static void bind_bodies();
-	static void bind_nature();
-	static void bind_transit();
-	static void bind_probes();
+	// What _bind_methods binds, by area: the models and bodies of buildings, the landscape, transport, the test probes, the damage.
+	static void bind_models(), bind_bodies(), bind_nature(), bind_transit(), bind_probes(), bind_damage();
 
 private:
 	godot::Object *terrain3d() const;
