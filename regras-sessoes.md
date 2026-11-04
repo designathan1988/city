@@ -60,3 +60,14 @@ Regras do processo:
 ## 8. Entrega da filha
 
 `ports/<feature>/relatorio.md` com: o que leu (rastreamento, 4.0, documentação); requisitos e causa; pesquisa com fontes; plano; commits por tema; gates, builds release/debug, testes e capturas com resultado; fotos antes/depois e do 4.0 analisadas uma a uma; constantes com fonte; o que não foi verificado (medições que dependem da máquina quieta, com comando). A filha não integra nada.
+
+## 9. Fotos: como analisar (ordem do usuário, 2026-11-04)
+
+Uma estrada ruim foi descrita como boa por uma sessão e por mim. Daqui em diante:
+
+1. Nenhuma foto é 'boa', 'certa' ou 'como o 4.0' sem o par do 4.0 no mesmo enquadramento: mesma posição, mesmo alvo, mesmo zoom, lado a lado.
+2. Toda foto é lida em resolução cheia. A análise lista os defeitos que ela mostra, um por um, ou diz 'li inteira e não achei defeito' e o que conferiu.
+3. Defeito visto na foto entra na lista de correção da própria sessão, nunca em 'não verificado'.
+4. Foto em outro enquadramento, outra hora do dia ou outra resolução não vale como par, e a análise diz isso.
+5. Efeitos animados (explosão, fogo, fumaça) são fotografados em instantes definidos nos dois jogos, com o instante no nome da foto.
+6. Vista de dentro: o par é o mesmo prédio, o mesmo andar e a mesma câmera.
