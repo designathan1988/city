@@ -1,0 +1,11 @@
+{
+ "type": "object",
+ "required": [
+  "options"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ }
+}

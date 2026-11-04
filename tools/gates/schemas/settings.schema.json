@@ -1,5 +1,18 @@
 {
  "type": "object",
+ "required": [
+  "default",
+  "levels",
+  "tiers",
+  "frame_cap",
+  "governor",
+  "dynamic_resolution",
+  "gpu_rules",
+  "gpu_default",
+  "ssao",
+  "shadow_choices",
+  "fps_choices"
+ ],
  "properties": {
   "_doc": {
    "type": "string"
@@ -7,63 +20,8 @@
   "default": {
    "type": "string"
   },
-  "frame_cap": {
-   "type": "object",
-   "properties": {
-    "max_fps": {
-     "type": "integer",
-     "minimum": 0
-    },
-    "background_fps": {
-     "type": "integer",
-     "minimum": 0
-    }
-   },
-   "required": [
-    "max_fps",
-    "background_fps"
-   ],
-   "strict": true
-  },
-  "presets": {
-   "type": "object",
-   "additional": {
-    "type": "object",
-    "properties": {
-     "label_key": {
-      "type": "string"
-     },
-     "shadows": {
-      "type": "boolean"
-     },
-     "msaa": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 2
-     },
-     "render_scale": {
-      "type": "number"
-     },
-     "shadow_distance": {
-      "type": "number"
-     }
-    },
-    "required": [
-     "label_key",
-     "shadows",
-     "msaa",
-     "render_scale",
-     "shadow_distance"
-    ],
-    "strict": true
-   }
+  "gpu_default": {
+   "type": "string"
   }
- },
- "required": [
-  "_doc",
-  "default",
-  "frame_cap",
-  "presets"
- ],
- "strict": true
+ }
 }

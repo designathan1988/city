@@ -307,6 +307,13 @@
     "project/data/game/settings.json": "tools/gates/schemas/settings.schema.json",
     "project/data/game/daylight.json": "tools/gates/schemas/daylight.schema.json",
     "project/data/game/saves.json": "tools/gates/schemas/saves.schema.json",
+    "project/data/game/render_switches.json": "tools/gates/schemas/render_switches.schema.json",
+    "project/data/game/optimizations.json": "tools/gates/schemas/optimizations.schema.json",
+    "project/data/game/health.json": "tools/gates/schemas/health.schema.json",
+    "project/data/game/start.json": "tools/gates/schemas/start.schema.json",
+    "project/data/game/thunder.json": "tools/gates/schemas/thunder.schema.json",
+    "project/data/ui/keys.json": "tools/gates/schemas/keys.schema.json",
+    "project/data/ui/help.json": "tools/gates/schemas/help.schema.json",
     "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json"
   },
   "magic_numbers": {
