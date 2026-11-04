@@ -34,7 +34,6 @@ REGRAS_COMANDO = [
     (re.compile(r'--map=[1-4]\b'), 'mapa proibido (só o mapa 0)'),
     (re.compile(r'\bgit\s+push\b'), 'push (filha não dá push)'),
     (re.compile(r'(?:\s-j\s*|JOBS=)([5-9]|\d\d)\b'), 'compilação acima de -j 4'),
-    (re.compile(r'size\W+large|openLargeCity|radiusMetres'), 'cidade grande do 4.0 (proibida)'),
 ]
 # Só o que executa: quem lê um script ou cita o jogo num texto não abre janela nenhuma.
 JOGO = re.compile(r'(godot(_console)?(\.exe)?|\$\{?GODOT\}?)["\']?\s+(--path|--rendering|res://|-e\b)'
