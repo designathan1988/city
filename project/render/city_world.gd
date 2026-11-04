@@ -26,6 +26,7 @@ var sun: DirectionalLight3D
 var environment: Environment
 var daylight: Daylight
 var sky: SkyView
+var occlusion: MeshInstance3D = preload("res://render/occlusion_pass.gd").new()
 var _water_mat: ShaderMaterial
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _terrain_material: Resource
@@ -152,8 +153,6 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.tonemap_exposure = day.exposure
 	environment.tonemap_white = day.tonemap_white
-	environment.ssao_radius = day.occlusion.radius_m
-	environment.ssao_light_affect = day.occlusion.light_affect
 	environment.fog_enabled = true
 	environment.fog_sky_affect = 0.0
 	environment.fog_light_energy = day.sky_gain
@@ -163,6 +162,8 @@ func _build_environment(_palette: Dictionary) -> void:
 	var we := WorldEnvironment.new()
 	we.environment = environment
 	add_child(we)
+	occlusion.setup(day.occlusion)
+	add_child(occlusion)
 	FilmLook.vignette(self, day.vignette)
 	daylight = Daylight.new(day, sun, fill, sky_top, environment, sky_mat)
 	add_child(ElementEffects.new())

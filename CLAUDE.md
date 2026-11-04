@@ -315,6 +315,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/model_studio.gd` — as fotos da prateleira de modelos, uma por quadro
 - `project/render/selection_box.gd` — contorno do bloco escolhido no Construir
 - `project/render/surface_means.gd` — média de cada mapa de superfície e tons da via, enviados uma vez ao material
+- `project/render/occlusion_pass.gd` · `project/render/shaders/occlusion.gdshader` — oclusão dos cantos, um passe de tela cheia que multiplica a imagem (GTAO pela profundidade; só em Forward+, onde a imagem é linear)
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
@@ -400,7 +401,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
   gerada que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
-- Oclusão: o GTAO do 4.0 tira 12 níveis do meio-fio ao sol e o SSAO do Godot, 1 a 2 em qualquer ajuste (sem oclusão os dois dão 193): falta um passe equivalente; o preset padrão do jogo (`medium`) nem liga a oclusão, e o 4.0 abre em `high`.
+- Oclusão: o preset padrão do jogo (`medium`) não liga o passe (`occlusion.gdshader`), e o 4.0 abre em `high`.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);
   Quarteirões ainda não; demolir via deixa o corredor de terreno. Falta do porte de vias: Personalizar e Meus modelos, editor de perfil, teclas, regras por acesso, conectores, nomes de rua, legendas, os estilos `eua` e `europa` de pintura, vazios, e larguras de faixa e calçada, zebra de escada e nomes de rua por estilo (em `streets.json` `markings.styles` há `roadcraft`, o desenho do 4.0, e `brasil`, a norma; o carregador lê `markings.style`), linha contínua na aproximação de semáforo (MBST IV 4.2.1), comparar a geração com `streets.ts`/`plan.ts`; a prévia não avisa de trecho apertado; parada, preferência e minirrotatória rodam como cruzamento de prioridade; mover recusa um nó cujo outro lado já era fechado.
 - Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
