@@ -11,6 +11,11 @@ const VIEW := [45.0, 52.0, 2300.0] # yaw, pitch (degrees), distance: the whole t
 const LONG_FRAME_MS := 80.0
 const TIP_WAIT_S := 1.2
 const STREET_M := 120.0
+const PHOTO_HOUR := 12.0
+const CLOCK_BUTTON := 2
+const SPEED_PAUSED := 0
+const SPEED_NORMAL := 1
+const SPEED_FASTEST := 3
 const INSPECT_PITCH := 75.0
 const SEARCH_M := 600.0
 const SEARCH_STEP_M := 3.0
@@ -45,12 +50,22 @@ func _ready() -> void:
 	await _run()
 
 
+## The bar's clock button and its fastest speed, up to the hour the reference's photos were taken at: same clock, same sun.
+func _to_noon() -> void:
+	hud.top_bar._sky_buttons[CLOCK_BUTTON].pressed.emit()
+	CityStore.dispatch(&"set_speed", [SPEED_FASTEST])
+	while float(CityStore.snapshot.hour) < PHOTO_HOUR:
+		await get_tree().process_frame
+	CityStore.dispatch(&"set_speed", [SPEED_PAUSED])
+
+
 func _run() -> void:
 	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
 	await _frames(FRAMES)
 	var start := StartScreen.new()
 	hud.root.add_child(start)
 	await _shot("start")
+	await _to_noon() # the reference's title screen is at the opening hour, the rest at noon
 	start.free()
 	await _shot("hud")
 	for which: String in ["menu", "layers", "sim", "camera", "help"]:
@@ -183,8 +198,12 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
+## The clock stands still between the photos; it runs for each, so the bar shows the game at 1x.
 func _shot(name: String) -> void:
+	CityStore.dispatch(&"set_speed", [SPEED_NORMAL])
 	await _frames(SETTLE)
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/shell_%s.png" % [out_dir, name])
+	CityStore.dispatch(&"set_speed", [SPEED_PAUSED])
+	print("hora %s %.3f" % [name, CityStore.snapshot.hour])
 	shots += 1
