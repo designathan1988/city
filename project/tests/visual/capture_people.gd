@@ -23,9 +23,11 @@ static func shots(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
 	cap.world.set_hour(HOUR)
 	var left: Dictionary = SHOTS.duplicate()
-	for key in SHOTS: # --only=pessoas,34_saindo: only those
+	for key in SHOTS: # --only=pessoas,34_saindo: only those, a moment later
 		if cap.only.size() > 1 and not cap.only.has(SHOTS[key]):
 			left.erase(key)
+	if cap.only.size() > 1:
+		CityStore.step_ticks(WAIT_TICKS)
 	for t in TRIES:
 		CityStore.query(&"set_city_hour", [HOUR])
 		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, NEAR_M])
