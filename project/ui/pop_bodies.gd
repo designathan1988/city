@@ -85,4 +85,4 @@ static func _keys(col: Control, title_key: String, rows: Array) -> void:
 		HudWidgets.kbd(cap, TranslationServer.translate(r[0])).size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		var what := HudWidgets.label(g, &"MutedLabel", TranslationServer.translate(r[1]))
 		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		what.custom_minimum_size.x = HudWidgets.px("help_w") * (1.0 - KEY_SHARE)
+		what.custom_minimum_size.x = HudWidgets.px("help_w") * (1.0 - KEY_SHARE) - HudWidgets.px("help_inset")
