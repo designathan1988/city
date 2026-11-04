@@ -32,7 +32,7 @@ func _ready() -> void:
 	await _save_time()
 	await _thunder()
 	CityStore.new_map(TOWN_MAP, SEED, false)
-	_edits()
+	await _edits()
 	_sharp()
 	_saves()
 	_session()
@@ -59,6 +59,8 @@ func _save_time() -> void:
 func _thunder() -> void:
 	var t := Thunder.new()
 	add_child(t)
+	await get_tree().process_frame # a long frame before it would count in the timer
+	await get_tree().process_frame
 	var from := Time.get_ticks_msec()
 	await t.play(THUNDER_M, 1.0)
 	var late := float(Time.get_ticks_msec() - from) / MS_PER_S
@@ -117,6 +119,7 @@ func _edits() -> void:
 	var before: int = CityStore.snapshot.segments
 	_check(CityStore.dispatch(&"duplicate_road", [_road_at(mid).id]).ok, "duplicar")
 	_check(CityStore.snapshot.segments == before + 1, "uma via a mais")
+	await _save_after_edit()
 	_check(CityStore.dispatch(&"undo"), "desfazer a duplicação")
 	_check(CityStore.snapshot.segments == before, "a cópia saiu")
 	CityStore.dispatch(&"set_marking_style", [2, true])
@@ -126,6 +129,22 @@ func _edits() -> void:
 	CityStore.dispatch(&"redo")
 	_check(CityStore.snapshot.marking_style == 2, "refazer a pintura")
 	CityStore.dispatch(&"set_marking_style", [0, false])
+
+
+## An edit writes itself once the player pauses, a save at a time.
+func _save_after_edit() -> void:
+	CityStore.refresh()
+	CityStore.saves.after_edit = true
+	CityStore.saves.tick(0.0)
+	CityStore.saves.tick(DataTables.game("saves").autosave_quiet_s)
+	_check(CityStore.saves.save_busy(), "a pausa depois da edição grava")
+	while CityStore.saves.save_busy():
+		CityStore.saves.tick(0.0)
+		await get_tree().process_frame
+	CityStore.saves.after_edit = false
+	var slot := CityStore.saves.city_slot()
+	DirAccess.remove_absolute(SaveSlots.path(slot))
+	DirAccess.remove_absolute(Session.path(slot))
 
 
 func _sharp() -> void:

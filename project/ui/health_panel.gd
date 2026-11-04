@@ -42,7 +42,7 @@ func _ready() -> void:
 func toggle() -> void:
 	visible = not visible
 	if visible:
-		position = Vector2(HudWidgets.px("margin"), HudWidgets.px("toast_top"))
+		position = Vector2.ONE * HudWidgets.px("margin")
 		_select(_tab)
 
 
@@ -100,8 +100,8 @@ func _render_health() -> void:
 	HudWidgets.label(_body, &"MutedLabel", tr("health.status." + Health.status()))
 	for e: Dictionary in Health.entries.slice(0, int(DataTables.game("health").rows)):
 		var row := HudWidgets.hbox(HudWidgets.panel(_body, &"RowBand"), &"Gap")
-		var dot := ColorRect.new()
-		dot.color = ThemeBuilder.color("danger" if e.severity == "broken" else "warn" if e.severity == "slow" else "muted")
+		var dot := Panel.new()
+		dot.theme_type_variation = &"DotBroken" if e.severity == "broken" else &"DotSlow" if e.severity == "slow" else &"DotNote"
 		dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
 		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(dot)

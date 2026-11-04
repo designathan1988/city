@@ -86,6 +86,10 @@ static func fade(from_left: bool) -> GradientTexture1D:
 
 
 static func _panels() -> void:
+	for dot: Array in [[&"DotBroken", "danger"], [&"DotSlow", "warn"], [&"DotNote", "muted"]]:
+		_variation(dot[0], &"Panel")
+		_theme.set_stylebox(&"panel", dot[0], box(dot[1], "dot"))
+	_panel(&"Tip", box("bg_strong", "kbd_radius", "line"))
 	_theme.set_type_variation(&"ScrollInset", &"MarginContainer")
 	_theme.set_constant(&"margin_right", &"ScrollInset", int(size("pad")))
 	var surface := box("bg", "radius", "line", true)
@@ -191,6 +195,9 @@ static func _buttons() -> void:
 	_button(&"Row", [none, box("raise_2", "card_radius"), box("raise_2", "card_radius")], ["text", "text", "accent"])
 	for name in [&"SegButton", &"DockButton", &"DockDanger", &"IconButton", &"Row", &"DrawerTab"]:
 		_theme.set_constant(&"icon_max_width", name, int(size("cat_icon")))
+	_theme.set_constant(&"icon_max_width", &"IconButton", int(size("bar_icon")))
+	_theme.set_constant(&"icon_max_width", &"SegButton", int(size("bar_icon")))
+	_theme.set_constant(&"icon_max_width", &"Row", int(size("row_icon")))
 	_theme.set_constant(&"icon_max_width", &"Card", int(size("card_glyph")))
 	_theme.set_constant(&"icon_max_width", &"SwatchCard", int(size("card_glyph")))
 	_theme.set_constant(&"icon_max_width", &"RcCard", int(size("rc_card_w")))
@@ -226,6 +233,11 @@ static func _labels() -> void:
 	_label(&"TitleBig", "font_h1", "white")
 	var bold := _font(int(size("font_bold")))
 	_theme.set_font(&"font", &"TitleBig", bold)
+	var strong := _font(int(size("font_strong")))
+	for name: StringName in [&"KbdLabel", &"TitleLabel", &"ClockLabel", &"MoneyLabel"]:
+		_theme.set_font(&"font", name, strong)
+	_theme.set_font(&"font", &"DockButton", strong)
+	_theme.set_font(&"font", &"DockDanger", strong)
 	_theme.set_font(&"font", &"HeadLabel", bold)
 	_theme.set_font(&"font", &"ClockLabel", bold)
 	_theme.set_font(&"font", &"MoneyLabel", bold)

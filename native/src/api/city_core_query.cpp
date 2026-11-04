@@ -113,6 +113,8 @@ Dictionary CityCore::snapshot() {
 	d["buildings"] = s.buildings.count;
 	d["segments"] = s.roads.alive_segments();
 	d["marking_style"] = s.marking_style.load();
+	d["edit_revision"] = int64_t(s.edit_revision);
+	d["zones_painted"] = s.zones_painted;
 	if (s.edit_revision != snap_edit_revision_) {
 		int nodes = 0;
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;

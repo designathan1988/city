@@ -603,15 +603,6 @@
      "action": "perspective"
     },
     {
-     "icon": "top",
-     "label_key": "ui.camera.top",
-     "action": "top"
-    },
-    {
-     "icon": "follow",
-     "label_key": "ui.camera.follow"
-    },
-    {
      "icon": "resetView",
      "label_key": "action.resetView",
      "action": "reset"

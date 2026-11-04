@@ -2,7 +2,9 @@
  "type": "object",
  "required": [
   "autosave_s",
-  "failed_hint_s"
+  "failed_hint_s",
+  "autosave_quiet_s",
+  "autosave_most_s"
  ],
  "properties": {
   "_doc": {
@@ -15,6 +17,14 @@
   "failed_hint_s": {
    "type": "number",
    "minimum": 1
+  },
+  "autosave_quiet_s": {
+   "type": "number",
+   "minimum": 0
+  },
+  "autosave_most_s": {
+   "type": "number",
+   "minimum": 0
   }
  },
  "strict": true

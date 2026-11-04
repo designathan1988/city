@@ -23,6 +23,7 @@ var language := ""
 var switches: RenderSwitches
 var optimizations: Dictionary = {} # the Effects panel: option id -> value over the tier
 var layers: Dictionary = {} # what shows over the map: layer -> on
+var zone_tool := false # the zone brush is in hand
 var _world: CityWorld
 var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
@@ -104,8 +105,17 @@ func set_layer(name: String, on: bool) -> void:
 func _show_layer(name: String) -> void:
 	if name == "grid":
 		switches.set_global(&"map_grid", 1.0 if layer_on(name) else 0.0)
+	elif name == "zones":
+		var painted: bool = CityStore.snapshot.get("zones_painted", false)
+		CityStore.dispatch(&"set_overlay", [name, zone_tool or (layer_on(name) and painted)])
 	else:
 		CityStore.dispatch(&"set_overlay", [name, layer_on(name)])
+
+
+## The zones show with their tool in hand, and, with the layer on, where the player zoned once it is put down (main.ts showLots).
+func set_zone_tool(on: bool) -> void:
+	zone_tool = on
+	_show_layer("zones")
 
 
 ## The play scene's world and viewport: from now on every choice reaches them.

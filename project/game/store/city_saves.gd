@@ -15,6 +15,11 @@ var _save_slot := ""
 var _city_slot := ""
 var _export_to := "" # a map copy to make once the save in flight is written
 var _save_auto := false # the save in flight is the autosave
+## The save after an edit (Roadcraft persistence.ts saveSoon). Tests that edit and look at what is unsaved keep it off.
+var after_edit := not GameFlow.tests_drive
+var _edit_seen := 0
+var _quiet := 0.0 # since the last edit
+var _waited := -1.0 # since the first edit not yet saved; < 0: none
 
 
 func _init(store: Node, core: Node3D) -> void:
@@ -26,6 +31,7 @@ func _init(store: Node, core: Node3D) -> void:
 func new_city() -> void:
 	_settle_save()
 	_city_slot = ""
+	_waited = -1.0
 
 
 ## The slot the city on screen is saved to ("" until its first save).
@@ -144,9 +150,30 @@ func tick(delta: float) -> void:
 	if _save_pending and not _core.save_status().get("busy", true):
 		_settle_save()
 		_store.refresh()
+	_tick_edits(delta)
 	_since_autosave += delta
 	if _since_autosave >= DataTables.game("saves").autosave_s:
 		_since_autosave = 0.0 # checked every autosave_s, saved only when due
+		if _autosave_due():
+			_save_auto = true
+			save_city()
+
+
+## An edit is written once the player pauses (autosave_quiet_s), or autosave_most_s after it in a run of edits: the file costs a thread
+## some hundred ms and the frame nothing (inspector_test measures it), so a crash loses seconds, as in the reference.
+func _tick_edits(delta: float) -> void:
+	var edit: int = _store.snapshot.get("edit_revision", 0)
+	if edit != _edit_seen:
+		_edit_seen = edit
+		_quiet = 0.0
+		_waited = maxf(_waited, 0.0)
+	if not after_edit or _waited < 0.0:
+		return
+	_quiet += delta
+	_waited += delta
+	var cfg: Dictionary = DataTables.game("saves")
+	if _quiet >= cfg.autosave_quiet_s or _waited >= cfg.autosave_most_s:
+		_waited = -1.0
 		if _autosave_due():
 			_save_auto = true
 			save_city()

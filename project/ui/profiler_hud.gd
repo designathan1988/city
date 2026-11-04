@@ -16,7 +16,7 @@ func _ready() -> void:
 	grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	offset_right = -HudWidgets.px("margin")
-	offset_bottom = -(HudWidgets.px("compass") + HudWidgets.px("compass_margin") * 2.0)
+	offset_bottom = -HudWidgets.px("margin")
 	_text = HudWidgets.label(self, &"MetaLabel")
 	hide()
 
@@ -25,7 +25,6 @@ func toggle() -> void:
 	visible = not visible
 	if visible:
 		_refresh()
-		_place()
 
 
 ## Stands by the bottom right corner at the size of its text: the anchors alone leave it no width, past the screen's edge.
@@ -56,6 +55,7 @@ func _refresh() -> void:
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / MIB, Performance.get_monitor(Performance.MEMORY_STATIC) / MIB])
 	lines.append(tr("profiler.hide"))
 	_text.text = "\n".join(lines)
+	_place.call_deferred()
 	reset_size()
 
 

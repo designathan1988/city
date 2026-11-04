@@ -51,7 +51,9 @@ func _fill() -> void:
 			Settings.set_language(l[0])
 			_fill.call_deferred())
 		langs.add_child(b)
-	var about := HudWidgets.button(&"LinkBtn", "", tr("action.about"), "", "", "opt_row_h")
+	var about := LinkButton.new()
+	about.text = tr("action.about")
+	about.focus_mode = Control.FOCUS_NONE
 	about.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	about.pressed.connect(_pick.bind("about"))
 	_card_box.add_child(about)

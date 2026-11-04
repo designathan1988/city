@@ -61,10 +61,6 @@ func north() -> void:
 	motion.aim_north()
 
 
-func top_view() -> void:
-	orbit(0.0, deg_to_rad(cfg.max_tilt_deg) - pitch)
-
-
 ## Jumps straight to a view: tests and framing actions. `dist` is the eye's distance from the point.
 func jump(p: Vector3, yaw_deg: float, pitch_deg: float, dist: float) -> void:
 	stop()

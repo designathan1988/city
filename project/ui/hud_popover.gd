@@ -184,7 +184,6 @@ func _camera(action: String) -> void:
 		"tilt_down": rig.tilt(-1)
 		"tilt_up": rig.tilt(1)
 		"north": rig.north()
-		"top": rig.top_view()
 		"reset": rig.reset_view()
 		"perspective":
 			var ortho := rig.camera.projection == Camera3D.PROJECTION_ORTHOGONAL

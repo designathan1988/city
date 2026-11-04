@@ -9,7 +9,7 @@ signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
 const DENSITY_MEDIUM := 1
-const DENSITIES := [[0, "zone.low"], [1, "zone.medium"], [2, "zone.high"]]
+const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "zone.high", "high"]]
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
@@ -120,7 +120,7 @@ func _zone() -> int:
 func _density_row() -> void:
 	var items := []
 	for d: Array in DENSITIES:
-		items.append([d[0], tr(d[1])])
+		items.append([d[0], "", d[2], "%s: %s" % [tr("v2.zone.density"), tr(d[1])]])
 	var row := HudWidgets.option_row(_options, tr("v2.zone.density"))
 	HudWidgets.choices(row, items, _density, func(v: int) -> void:
 		_density = v

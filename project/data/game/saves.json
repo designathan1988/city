@@ -1,5 +1,7 @@
 {
- "_doc": "Save files (game/store/city_store.gd, Roadcraft game.ts:756): autosave every autosave_s seconds of real time while the city has unsaved work; a save that fails says so at most once every failed_hint_s (Roadcraft persistence.ts onSaveFailed).",
+ "_doc": "Save files (game/store/city_store.gd, Roadcraft game.ts:756): autosave every autosave_s seconds of real time while the city has unsaved work; a save that fails says so at most once every failed_hint_s (Roadcraft persistence.ts onSaveFailed). After an edit the city is written autosave_quiet_s after the last one, at most autosave_most_s after the first (Roadcraft persistence.ts DEBOUNCE_MS, MAX_WAIT_MS; a save of the map 0 measured 0.4 s on its own thread); autosave_s is for what changes by itself.",
  "autosave_s": 120,
- "failed_hint_s": 60
+ "failed_hint_s": 60,
+ "autosave_quiet_s": 0.7,
+ "autosave_most_s": 3
 }

@@ -4,6 +4,7 @@ class_name HudWidgets
 extends RefCounted
 
 const ICONS := "res://ui/icons/%s.svg"
+const MS_PER_S := 1000.0
 
 
 static func icon(name: String) -> Texture2D:
@@ -74,7 +75,8 @@ static func panel(parent: Control, variation: StringName) -> PanelContainer:
 static func choices(parent: Control, items: Array, value: Variant, pick: Callable) -> HBoxContainer:
 	var row := hbox(parent)
 	for item: Array in items:
-		var b := button(&"Choice", "", item[1], "", "", "opt_row_h")
+		var drawn: bool = item.size() > 2 # [value, text] or, with an icon for a name, [value, "", icon, tip]
+		var b := button(&"Choice", item[2] if drawn else "", item[1], item[3] if drawn else "", "icon_btn" if drawn else "", "opt_row_h")
 		b.toggle_mode = true
 		b.set_pressed_no_signal(item[0] == value)
 		b.pressed.connect(func() -> void:
