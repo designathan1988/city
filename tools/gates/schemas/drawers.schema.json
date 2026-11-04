@@ -84,7 +84,8 @@
           "ROUNDABOUT",
           "TERRAIN",
           "LOT",
-          "MOVE"
+          "MOVE",
+          "CONTROL"
          ]
         },
         "profile": {

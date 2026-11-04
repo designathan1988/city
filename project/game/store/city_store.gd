@@ -13,7 +13,7 @@ const COMMANDS := {
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
-	&"upgrade_road": "upgrade_road", &"road_variant": "road_variant", &"move_node": "move_node",
+	&"upgrade_road": "upgrade_road", &"road_variant": "road_variant", &"move_node": "move_node", &"set_node_control": "set_node_control",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
 	&"set_building": "set_building", &"set_overlay": "set_overlay",
 }
@@ -22,7 +22,7 @@ const QUERIES := {
 	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",
-	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles", &"node_at": "node_at", &"moved_roads": "moved_roads",
+	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles", &"node_at": "node_at", &"junctions": "junctions", &"moved_roads": "moved_roads",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status",
 }

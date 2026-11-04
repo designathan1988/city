@@ -15,6 +15,7 @@ namespace city {
 
 namespace {
 constexpr int SEG_PREVIEW_STEPS = 24;
+constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 
 bool CityCore::undo() {
@@ -45,6 +46,27 @@ Dictionary CityCore::set_road_end(int node, bool bulb) {
 	return run_edit(*state_, "cmd.build.roadEnd", [&](CityState &s) { return city::set_road_end(s, node, bulb); });
 }
 
+Dictionary CityCore::set_node_control(int node, int ctl) {
+	return run_edit(*state_, "cmd.place.control", [&](CityState &s) { return city::set_node_control(s, node, ctl); });
+}
+
+// Every junction: [{node, at, ctl}], for the marks of the Controle tab.
+Array CityCore::junctions() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Array out;
+	const RoadNetwork &net = state_->roads;
+	for (int n = 0; n < int(net.nodes.size()); n++) {
+		const RoadNode &nd = net.nodes[size_t(n)];
+		if (!nd.alive || nd.segs.size() < JUNCTION_MARK_ARMS) continue;
+		Dictionary d;
+		d["node"] = n;
+		d["at"] = Vector3(float(nd.x), float(nd.y), float(nd.z));
+		d["ctl"] = int(nd.ctl);
+		out.push_back(d);
+	}
+	return out;
+}
+
 Dictionary CityCore::move_node(int node, const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.moveNode", [&](CityState &s) { return city::move_node(s, node, p.x, p.z); });
 }
@@ -59,6 +81,7 @@ Dictionary CityCore::node_at(const Vector3 &p, float px) {
 	if (n >= 0) {
 		const RoadNode &nd = s.roads.nodes[size_t(n)];
 		d["at"] = Vector3(float(nd.x), float(nd.y), float(nd.z));
+		d["ctl"] = int(nd.ctl);
 	}
 	return d;
 }

@@ -17,13 +17,13 @@ namespace city {
 
 struct CityState;
 
-enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
+enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
 	MONEY };
 
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
 	int id = -1;
-	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN
+	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
 	RoadNode node;
 	RoadSegment seg;
@@ -82,6 +82,7 @@ void apply_entry(CityState &s, const EditEntry &e, bool forward);
 int j_add_node(CityState &s, double x, double z, double y);
 void j_remove_node_if_orphan(CityState &s, int n);
 void j_set_plain(CityState &s, int n, bool plain);
+void j_set_control(CityState &s, int n, uint8_t ctl);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
 void j_remove_segment(CityState &s, int seg);
 void j_set_profile(CityState &s, int seg, int profile);

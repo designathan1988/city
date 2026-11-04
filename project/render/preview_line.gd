@@ -13,6 +13,8 @@ var _bad_mat: StandardMaterial3D
 var _bands: Array[StandardMaterial3D] = []
 var _paint: StandardMaterial3D
 var _paint_yellow: StandardMaterial3D
+var _edge_ok: StandardMaterial3D
+var _edge_bad: StandardMaterial3D
 var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
 
@@ -22,12 +24,14 @@ func _ready() -> void:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ok_mat = _material("preview_ok")
 	_bad_mat = _material("preview_bad")
+	_edge_ok = _material("preview_edge_ok")
+	_edge_bad = _material("preview_edge_bad")
 	for token in ["preview_casing", "preview_footway", "preview_kerb", "preview_asphalt"]:
 		_bands.append(_material(token, _bands.size() + 1))
 	_paint = _material("preview_paint", _bands.size() + 1)
 	_paint_yellow = _material("preview_paint_yellow", _bands.size() + 1)
-	_ring_ok = _material("preview_ok", _bands.size() + 2)
-	_ring_bad = _material("preview_bad", _bands.size() + 2)
+	_ring_ok = _material("preview_edge_ok", _bands.size() + 2)
+	_ring_bad = _material("preview_edge_bad", _bands.size() + 2)
 
 
 func _material(token: String, order: int = 0) -> StandardMaterial3D:
@@ -60,7 +64,7 @@ func show_road(plan: Dictionary, line: String, ok: bool, px_start: float, px_end
 	if points.size() < 2:
 		return
 	var verge: float = plan.half_width + ThemeBuilder.size("preview_casing_m")
-	_band(points, verge + ThemeBuilder.size("preview_edge_m"), _ok_mat if ok else _bad_mat)
+	_band(points, verge + ThemeBuilder.size("preview_edge_m"), _edge_ok if ok else _edge_bad)
 	_band(points, verge, _bands[0])
 	_band(points, plan.half_width, _bands[1])
 	_band(points, plan.asphalt_half + ThemeBuilder.size("preview_kerb_m"), _bands[2])

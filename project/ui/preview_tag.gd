@@ -11,6 +11,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label = HudWidgets.label(self, &"BodyLabel")
 	hide()
+	var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
+	if tools:
+		tools.tagged.connect(show_at)
 
 
 func show_at(text: String, at: Vector3, ok: bool) -> void:

@@ -39,6 +39,8 @@ func _ready() -> void:
 	_build_dock()
 	_build_compass()
 	_build_hint()
+	root.add_child(JunctionMarks.new())
+	root.add_child(PreviewTag.new())
 	drawer = HudDrawer.new()
 	drawer.options = RoadOptions.new()
 	root.add_child(drawer.options)
@@ -59,9 +61,6 @@ func _ready() -> void:
 	CityStore.changed.connect(_on_changed)
 	if tools:
 		tools.hint.connect(show_hint)
-		var tag := PreviewTag.new()
-		root.add_child(tag)
-		tools.tagged.connect(tag.show_at)
 		tools.inspected.connect(func(info: Dictionary) -> void: inspector.show_info(info, info.get("at", Vector3.ZERO)))
 	_set_sky("day")
 

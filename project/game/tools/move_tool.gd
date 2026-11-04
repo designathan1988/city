@@ -32,7 +32,7 @@ func click(p: Vector3) -> void:
 func drag(p: Vector3) -> void:
 	if _node < 0:
 		return
-	_moved = _moved or p.distance_to(_from) > ctl.px_at(p) * DataTables.tuning("road_click_px")
+	_moved = _moved or _left_press(p)
 	ctl.preview.show_ribbons(CityStore.query(&"moved_roads", [_node, p]))
 
 
@@ -42,10 +42,15 @@ func release(p: Vector3) -> void:
 	var node := _node
 	_node = -1
 	ctl.preview.clear()
-	if p == Vector3.INF or not _moved:
+	if p == Vector3.INF or not (_moved or _left_press(p)):
 		return
 	var r: Dictionary = CityStore.dispatch(&"move_node", [node, p])
 	ctl.hint.emit(tr("hint.move") if r.get("ok", false) else refusal(r), r.get("ok", false))
+
+
+## Whether the pointer went far enough from the press to be a drag and not a click.
+func _left_press(p: Vector3) -> bool:
+	return p.distance_to(_from) > ctl.px_at(p) * DataTables.tuning("road_click_px")
 
 
 func cancel() -> void:

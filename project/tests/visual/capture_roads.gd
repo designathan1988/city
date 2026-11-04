@@ -14,6 +14,8 @@ const LOW := [30.0, 24.0]
 const CLOSE_M := 90.0
 const NEAR_M := 42.0
 const WIDE_M := 520.0
+const NODE_VIEW_M := 200.0
+const DRAG_STEPS := 6
 const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
 
@@ -122,7 +124,31 @@ func _tool() -> void:
 	tools.active.cancel()
 	if CityStore.COMMANDS.has(&"build_road_path"):
 		await _freehand(street)
+	if ToolController.Tool.has("MOVE"):
+		await _node_tools()
 	hud.drawer.close()
+
+
+## The Controle and Mover tabs on the urban crossing.
+func _node_tools() -> void:
+	var junction := at(0, -120)
+	rig.jump(junction, 0.0, 70.0, NODE_VIEW_M)
+	await ui.drawn()
+	tools.set_tool(ToolController.Tool.CONTROL, {})
+	await ui.hover(junction)
+	await ui.shot("tool_control")
+	await ui.click(junction)
+	await ui.hover(at(60, -60))
+	await ui.shot("tool_control_signal")
+	tools.set_tool(ToolController.Tool.MOVE, {})
+	await ui.hover(junction)
+	await ui.button(rig.camera.unproject_position(junction), true)
+	for i in range(1, DRAG_STEPS + 1):
+		await ui.hover(junction.lerp(at(30, -100), float(i) / DRAG_STEPS))
+	await ui.shot("tool_move")
+	await ui.button(rig.camera.unproject_position(at(30, -100)), false)
+	await ui.drawn()
+	await ui.shot("tool_moved")
 
 
 func _freehand(street: int) -> void:

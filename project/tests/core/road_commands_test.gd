@@ -15,6 +15,7 @@ const ZONE_RES := 1
 const PX := 0.25
 const URBAN_M := 12.0
 const MOVE_OFF_M := 300.0
+const CONTROL_OFF_M := 420.0
 const MOVE_LEN_M := 60.0
 const MOVE_BY_M := 30.0
 const URBAN_PRICE := 1520.0
@@ -58,6 +59,7 @@ func _ready() -> void:
 	_freehand(e)
 	_variants(e)
 	_move_node(e)
+	_control(e)
 	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
 	print("zona: ", z, " células em crescimento: ", CityStore.snapshot.growth_cells)
 	_check(z.ok and z.zoned_sides > 0, "zoneou lados")
@@ -151,6 +153,25 @@ func _plan_cost(base: Vector3) -> void:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("prévia: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
 	_check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "peças dentro do limite (%d)" % [pieces.size() / 3])
+
+
+## The Controle tab: a junction takes a control and undoes it; a node of two roads is refused.
+func _control(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, CONTROL_OFF_M)
+	var urban: int = CityStore.first_road()
+	CityStore.dispatch(&"build_road", [a, a + Vector3(2 * MOVE_LEN_M, 0, 0), false, Vector3.ZERO, urban, PX])
+	var mid := a + Vector3(MOVE_LEN_M, 0, 0)
+	CityStore.dispatch(&"build_road", [mid, mid + Vector3(0, 0, MOVE_LEN_M), false, Vector3.ZERO, urban, PX])
+	var hit: Dictionary = CityStore.query(&"node_at", [mid, PX])
+	_check(hit.node >= 0 and hit.ctl == 0, "cruzamento novo é automático")
+	_check(CityStore.query(&"junctions").any(func(j: Dictionary) -> bool: return j.node == hit.node), "o cruzamento está na lista")
+	_check(CityStore.dispatch(&"set_node_control", [hit.node, 1]).get("ok", false), "semáforo")
+	_check(CityStore.query(&"node_at", [mid, PX]).ctl == 1, "o controle ficou")
+	CityStore.dispatch(&"undo")
+	_check(CityStore.query(&"node_at", [mid, PX]).ctl == 0, "desfazer volta o controle")
+	var end: Dictionary = CityStore.query(&"node_at", [a, PX])
+	var r: Dictionary = CityStore.dispatch(&"set_node_control", [end.node, 1])
+	_check(r.get("error", "") == "hint.control.notJunction", "ponta não tem controle: %s" % r)
 
 
 ## The Move tab: a node dropped elsewhere takes its roads along, charges only the difference, undoes in one step.

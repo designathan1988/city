@@ -39,7 +39,7 @@
      "id": "control",
      "icon": "control",
      "label_key": "tool.control",
-     "tool": "INSPECT",
+     "tool": "CONTROL",
      "note_key": "hint.control"
     },
     {

@@ -56,6 +56,19 @@ void j_remove_node_if_orphan(CityState &s, int n) {
 	s.log.net_node(n);
 }
 
+void j_set_control(CityState &s, int n, uint8_t ctl) {
+	RoadNode &nd = s.roads.nodes[n];
+	if (nd.ctl == ctl) return;
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_CTL, n);
+		op.from = nd.ctl;
+		op.to = ctl;
+		grow_point(s, nd.x, nd.z, 0);
+	}
+	nd.ctl = ctl;
+	s.log.net_node(n);
+}
+
 void j_set_plain(CityState &s, int n, bool plain) {
 	RoadNode &nd = s.roads.nodes[n];
 	if (nd.plain == plain) return;

@@ -116,6 +116,8 @@ EditResult split_road_at(CityState &s, double x, double z);
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
 // How a dead end finishes (Roadcraft doc.ts setNodeEnd): a straight cut, or a turning bulb when there is room for one.
 EditResult set_road_end(CityState &s, int node, bool bulb);
+// The Controle tab: what a junction of three or more arms runs by (NodeControl).
+EditResult set_node_control(CityState &s, int node, int ctl);
 // The Move tab: the node goes to (x, z) and its roads are laid again to it, each keeping its shape, zones and direction;
 // landing on a node joins them, landing on a road splits it. Only the difference in value is charged.
 EditResult move_node(CityState &s, int node, double x, double z);

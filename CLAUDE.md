@@ -70,7 +70,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); via: arrasto (`draft`) ou clique que guarda o início (`chain`) e clique que assenta; em Curva o fim fica esperando a dobra (`bend`); toda via assentada encerra o gesto.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); via: arrasto (`draft`) ou clique que guarda o início (`chain`) e clique que assenta; em Curva o fim fica esperando a dobra (`bend`); toda via assentada encerra o gesto.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -251,6 +251,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
 - `project/game/tools/road_tool.gd` — via reta/curva com prévia
+- `project/game/tools/control_tool.gd` — Controle
 - `project/game/tools/move_tool.gd` — Mover
 - `project/game/tools/roundabout_tool.gd` — rotatória
 - `project/game/tools/split_tool.gd` — Dividir
@@ -287,6 +288,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/inspector_panel.gd` — inspetor
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
+- `project/ui/junction_marks.gd` — marcas do controle de cada cruzamento na aba Controle
 - `project/ui/preview_tag.gd` — etiqueta de comprimento, preço e recusa junto do fim da via em mão
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola

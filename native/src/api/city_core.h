@@ -60,6 +60,8 @@ public:
 	godot::Dictionary split_road(const godot::Vector3 &p);
 	godot::Dictionary set_road_end(int node, bool bulb);
 	godot::Dictionary move_node(int node, const godot::Vector3 &p);
+	godot::Dictionary set_node_control(int node, int ctl);
+	godot::Array junctions();
 	godot::Dictionary node_at(const godot::Vector3 &p, float px);
 	godot::Array moved_roads(int node, const godot::Vector3 &p);
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
