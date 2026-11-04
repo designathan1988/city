@@ -138,7 +138,9 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 	}
 	std::map<int, bool> along;
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
-	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
+	RoadBox box;
+	for (int sg : segs) box.add(s.roads.segs[sg]);
+	const std::map<int, double> before = squeezes_in(s, box);
 	for (int sg : segs) {
 		if (!s.roads.segs[sg].alive) continue;
 		if (along.count(sg) && !along[sg]) {
@@ -149,13 +151,15 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		}
 		j_set_profile(s, sg, profile);
 		r.buildings_removed += settle_under(s, sg);
-		const RoadSegment &g = s.roads.segs[sg];
-		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
-		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
+		box.add(s.roads.segs[sg]);
 		r.segments++;
 	}
 	j_money(s, -price);
-	finish_edit(s, minx, minz, maxx, maxz);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (squeezed_worse(s, before, box)) {
+		r.error = "hint.rule.squeezed";
+		return r;
+	}
 	r.ok = true;
 	r.money = s.unlimited_money ? 0 : price;
 	return r;

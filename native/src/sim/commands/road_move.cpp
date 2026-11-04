@@ -35,7 +35,10 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	}
 	const RoadNode was = net.nodes[size_t(node)];
 	std::vector<RoadSegment> roads;
-	double value = 0, minx = was.x, minz = was.z, maxx = was.x, maxz = was.z;
+	double value = 0;
+	RoadBox box;
+	box.add(was.x, was.z);
+	box.add(x, z);
 	for (int sid : was.segs) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const RoadNode &far = net.nodes[size_t(g.a == node ? g.b : g.a)];
@@ -45,9 +48,9 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		}
 		roads.push_back(g);
 		value += road_value(s, g.profile, g.len);
-		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
-		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
+		box.add(g);
 	}
+	const std::map<int, double> before = squeezes_in(s, box);
 	for (int sid : was.segs) j_remove_segment(s, sid);
 	j_money(s, value);
 	Anchor to = snap_point(s, x, z, tn.road_merge_m);
@@ -82,7 +85,11 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		if (!was.plain) j_set_plain(s, end.node, false);
 		j_remove_node_if_orphan(s, node);
 	}
-	finish_edit(s, minx, minz, maxx, maxz);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (squeezed_worse(s, before, box)) {
+		r.error = "hint.rule.squeezed";
+		return r;
+	}
 	r.ok = true;
 	r.money = paid - value;
 	return r;

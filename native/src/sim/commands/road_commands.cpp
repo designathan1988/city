@@ -59,7 +59,16 @@ bool affords(const CityState &s, double price) { return s.unlimited_money || pri
 } // namespace
 
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
-	return lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
+	RoadBox box;
+	box.add(a.x, a.z);
+	box.add(b.x, b.z);
+	const std::map<int, double> before = squeezes_in(s, box);
+	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
+	if (r.ok && squeezed_worse(s, before, box)) {
+		r.ok = false;
+		r.error = "hint.rule.squeezed";
+	}
+	return r;
 }
 
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps) {

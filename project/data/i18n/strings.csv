@@ -485,6 +485,7 @@ help.tool.streetscape,"Coloca árvores, arbustos, bancos, lixeiras, iluminação
 hint.control,Clique num cruzamento para mudar o controle · Shift: voltar,Click a junction to change its control · Shift: go back
 hint.control.miss,Nenhum cruzamento aí — clique onde duas ou mais vias se encontram,No junction there — click where two or more roads meet
 hint.control.notJunction,Esse ponto liga só duas vias; não precisa de controle,That node joins only two roads; it needs no control
+hint.rule.squeezed,Recusado: trecho curto demais para as faixas se separarem na junção,Refused: too short a stretch for the lanes to part at the junction
 hint.move,Arraste um nó para reposicionar,Drag a node to reposition it
 hint.move.tooShort,Não movido: uma via ali ficaria curta demais para ser construída,Not moved: a road there would be too short to build
 hint.profile.toStreet,Perfil copiado para a rua inteira,Profile copied to the whole street

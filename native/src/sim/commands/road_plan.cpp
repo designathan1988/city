@@ -1,6 +1,7 @@
 // Snapping and road validation (Roadcraft src/roads/construction/snap.ts and plan.ts). The preview and the build run
 // the same plan, so what the player sees refused is exactly what the build refuses.
 #include "sim/commands/commands.h"
+#include "sim/roads/junction.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/state/city_state.h"
@@ -121,6 +122,27 @@ bool degrees_fit(const CityState &s, const Anchor &a, const Anchor &b, const Roa
 	}
 	return true;
 }
+// Whether a road leaving end `e` along (dx, dz) would meet a road already there at less than the smallest angle
+// (Roadcraft world/legAngles.ts MIN_LEG_ANGLE, road_sharp_cos): a node's arms, or the two ways of the road it splits.
+bool sharp_at(const CityState &s, const Anchor &e, double dx, double dz) {
+	const RoadNetwork &net = s.roads;
+	const double l = std::hypot(dx, dz), limit = s.catalog.tune.road_sharp_cos;
+	if (l <= 0) return false;
+	dx /= l;
+	dz /= l;
+	if (e.seg >= 0) {
+		const Quad &q = net.segs[size_t(e.seg)].q;
+		const double tx = (1 - e.t) * (q.cx - q.x0) + e.t * (q.x1 - q.cx), tz = (1 - e.t) * (q.cz - q.z0) + e.t * (q.z1 - q.cz);
+		const double tl = std::hypot(tx, tz);
+		return tl > 0 && std::fabs(tx * dx + tz * dz) / tl > limit;
+	}
+	if (e.node < 0) return false;
+	for (int sid : net.nodes[size_t(e.node)].segs) {
+		const Arm arm = arm_of(net.segs[size_t(sid)].q, net.profile_of(sid), net.segs[size_t(sid)].a == e.node ? 0 : 1);
+		if (arm.dx * dx + arm.dz * dz > limit) return true;
+	}
+	return false;
+}
 } // namespace
 
 Anchor snap_point(const CityState &s, double x, double z, double radius) {
@@ -158,7 +180,8 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	else if (p.len < tn.road_min_len_m) p.reason = "refuse.road.tooShort";
 	else if (a.node >= 0 && a.node == b.node) p.reason = "refuse.road.selfLoop";
 	if (!p.reason.empty() || !find_crossings(s, a, b, p)) return p;
-	if (overlaps_road(s, p.q, table, profile)) p.reason = "road.reason.overlap";
+	if (sharp_at(s, a, p.q.cx - a.x, p.q.cz - a.z) || sharp_at(s, b, p.q.cx - b.x, p.q.cz - b.z)) p.reason = "refuse.road.sharpAngle";
+	else if (overlaps_road(s, p.q, table, profile)) p.reason = "road.reason.overlap";
 	else if (!degrees_fit(s, a, b, p)) p.reason = "road.reason.fullNode";
 	if (!p.reason.empty()) return p;
 	double prev = 0;

@@ -4,7 +4,11 @@
 #pragma once
 
 #include "sim/commands/commands.h"
+#include "sim/roads/road_network.h"
 
+#include <algorithm>
+#include <limits>
+#include <map>
 #include <vector>
 
 namespace city {
@@ -33,6 +37,22 @@ struct RoadKeeps {
 };
 // build_road with `keeps` on every piece.
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps);
+// The area an edit touches.
+struct RoadBox {
+	double minx = std::numeric_limits<double>::max(), minz = minx, maxx = std::numeric_limits<double>::lowest(), maxz = maxx;
+	void add(double x, double z) {
+		minx = std::min(minx, x); minz = std::min(minz, z);
+		maxx = std::max(maxx, x); maxz = std::max(maxz, z);
+	}
+	void add(const RoadSegment &g) {
+		add(double(g.minx), double(g.minz));
+		add(double(g.maxx), double(g.maxz));
+	}
+};
+// The roads of the box whose two mouths overlap, and by how many metres (road_rules.cpp).
+std::map<int, double> squeezes_in(const CityState &s, const RoadBox &box);
+// Whether a road of the box overlaps more than `before` said, beyond road_squeeze_slack_m.
+bool squeezed_worse(const CityState &s, const std::map<int, double> &before, const RoadBox &box);
 // Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
 // of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
 // the revision.
