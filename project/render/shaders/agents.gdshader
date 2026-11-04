@@ -16,9 +16,16 @@ uniform vec3 head_glow : source_color;
 uniform vec3 tail_glow : source_color;
 uniform float head_power;
 uniform float tail_power;
-uniform float brake_power;
+uniform float brake_ratio; // a stop lamp's light against its rear position lamp's
 uniform vec3 sign_glow : source_color;
 uniform float sign_power;
+// roughness by surface (materials.json agent: sources there); every surface is a dielectric
+uniform float paint_roughness;
+uniform float lens_roughness;
+uniform float skin_roughness;
+uniform float helmet_roughness;
+uniform float trim_roughness;
+uniform float cloth_roughness;
 
 const float BRAKE_FLAG = 8.0;
 const float SEAT_LIMB = 2.0;
@@ -128,32 +135,28 @@ void vertex() {
 void fragment() {
 	int tag = int(v_tag + 0.5);
 	vec3 c = COLOR.rgb;
-	float rough = 0.62;
-	float metal = 0.0;
+	float rough = trim_roughness;
 	vec3 emit = vec3(0.0);
 	if (tag == 1) {
 		c = paints[int(v_custom.r + 0.5)];
-		rough = 0.28;
-		metal = 0.3;
+		rough = paint_roughness;
 	} else if (tag == 2) {
 		emit = head_glow * night * head_power;
-		rough = 0.2;
+		rough = lens_roughness;
 	} else if (tag == 3) {
-		emit = tail_glow * max(night * tail_power, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_power);
-		rough = 0.3;
+		emit = tail_glow * tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio);
+		rough = lens_roughness;
 	} else if (tag == 4) {
-		rough = 0.05;
-		metal = 0.5;
+		rough = lens_roughness;
 	} else if (tag == 11) {
 		emit = sign_glow * sign_power;
-		rough = 0.3;
+		rough = lens_roughness;
 	} else if (tag >= 5) { // a person's part, its colour drawn in vertex()
 		c = v_look;
-		rough = tag == 8 ? 0.25 : (tag == 5 ? 0.7 : 0.85);
-		metal = tag == 8 ? 0.2 : 0.0;
+		rough = tag == 8 ? helmet_roughness : (tag == 5 ? skin_roughness : cloth_roughness);
 	}
 	ALBEDO = c;
 	ROUGHNESS = rough;
-	METALLIC = metal;
+	METALLIC = 0.0;
 	EMISSION = emit;
 }

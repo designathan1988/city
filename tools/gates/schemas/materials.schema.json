@@ -380,7 +380,7 @@
       "tail_power": {
        "type": "number"
       },
-      "brake_power": {
+      "brake_ratio": {
        "type": "number"
       },
       "sign_glow": {
@@ -389,6 +389,24 @@
       },
       "sign_power": {
        "type": "number"
+      },
+      "paint_roughness": {
+       "type": "number"
+      },
+      "lens_roughness": {
+       "type": "number"
+      },
+      "skin_roughness": {
+       "type": "number"
+      },
+      "helmet_roughness": {
+       "type": "number"
+      },
+      "trim_roughness": {
+       "type": "number"
+      },
+      "cloth_roughness": {
+       "type": "number"
       }
      },
      "required": [
@@ -396,11 +414,20 @@
       "tail_glow",
       "head_power",
       "tail_power",
-      "brake_power",
+      "brake_ratio",
       "sign_glow",
-      "sign_power"
+      "sign_power",
+      "paint_roughness",
+      "lens_roughness",
+      "skin_roughness",
+      "helmet_roughness",
+      "trim_roughness",
+      "cloth_roughness"
      ],
      "strict": true
+    },
+    "_doc": {
+     "type": "string"
     }
    },
    "required": [
@@ -485,35 +512,25 @@
     "params": {
      "type": "object",
      "properties": {
-      "tint": {
-       "type": "string",
-       "pattern_prefix": "#"
-      },
-      "opacity": {
+      "transmittance": {
        "type": "number"
       },
-      "edge_opacity": {
-       "type": "number"
-      },
-      "edge_power": {
+      "ior": {
        "type": "number"
       },
       "roughness": {
        "type": "number"
-      },
-      "specular": {
-       "type": "number"
       }
      },
      "required": [
-      "tint",
-      "opacity",
-      "edge_opacity",
-      "edge_power",
-      "roughness",
-      "specular"
+      "transmittance",
+      "ior",
+      "roughness"
      ],
      "strict": true
+    },
+    "_doc": {
+     "type": "string"
     }
    },
    "required": [
