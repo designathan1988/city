@@ -23,7 +23,7 @@ export interface AuditResult {
   readonly sourceRoot: string;
   readonly graphUnits: number;
   readonly options: AuditOptions;
-  readonly hot: { readonly roots: string[]; readonly units: number };
+  readonly hot: { readonly roots: string[]; readonly units: number; readonly members: string[] };
   readonly rules: RuleSummary[];
   readonly features: FeatureMetrics[];
   readonly findings: Finding[];
@@ -73,7 +73,7 @@ export function runAudit(ir: GraphIR, options: AuditOptions): AuditResult {
     sourceRoot: ir.sourceRoot,
     graphUnits: ir.units.length,
     options,
-    hot: { roots: ctx.hotRoots, units: ctx.hot.size },
+    hot: { roots: ctx.hotRoots, units: ctx.hot.size, members: [...ctx.hot].sort() },
     rules,
     features: metrics,
     findings,

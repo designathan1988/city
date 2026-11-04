@@ -8,7 +8,7 @@ import type * as TS from 'typescript';
 import { normalizePath } from '../common/paths.ts';
 import type { ModuleLoad } from './ir.ts';
 import { containerName, declarationName, externalKey, isNondeterministic, moduleOf } from './origin.ts';
-import { isModuleLevelVariable, referenceKinds } from './references.ts';
+import { isModuleLevelVariable, outer, referenceKinds } from './references.ts';
 import type { Registry } from './registry.ts';
 import type { SourceProgram } from './typescript.ts';
 import { startsUnit, statementUnits, unitKey, unitOf, type UnitRef } from './units.ts';
@@ -46,6 +46,7 @@ export class Walker {
         return;
       }
       if (ts.isIdentifier(n) || ts.isPrivateIdentifier(n)) this.#identifier(key, n);
+      if (ts.isCallExpression(n) && this.#isScheduler(n)) this.#inlineSchedule(key, n);
       if (this.#isWorkerConstruction(n) || (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword)) {
         const specifier = this.#firstString(n);
         if (specifier !== null) this.#loadModule(key, root.getSourceFile().fileName, specifier, ts.isCallExpression(n) ? 'dynamicImport' : 'worker');
@@ -92,13 +93,85 @@ export class Walker {
         externalDone = true;
         continue;
       }
+      this.#slotCall(key, n, d);
       const target = unitOf(ts, d);
+      if (target && this.#registry.isCallable(target)) this.#functionValue(key, n, target);
       if (!target || unitKey(target) === key) continue; // code local to this unit
       // A variable or parameter of an enclosing unit, used here: closure state the enclosing unit owns.
       const captured = (ts.isVariableDeclaration(d) || ts.isParameter(d)) && !isModuleLevelVariable(ts, d) &&
         target.node !== d.parent?.parent;
       for (const kind of referenceKinds(ts, n, d, captured)) this.#registry.add(target, key, kind);
       this.#followDynamicDispatch(key, d);
+    }
+  }
+
+  /** `n` is the callee of a call through a parameter or a field: the call reaches whatever was passed into it. */
+  #slotCall(key: string, n: TS.Identifier | TS.PrivateIdentifier, d: TS.Declaration): void {
+    const { ts } = this.#sp;
+    if (!ts.isParameter(d) && !ts.isPropertyDeclaration(d) && !ts.isPropertySignature(d)) return;
+    const parent = n.parent;
+    const expr = parent && ts.isPropertyAccessExpression(parent) && parent.name === n ? parent : n;
+    const call = outer(ts, expr).parent;
+    if (call && ts.isCallExpression(call) && call.expression === outer(ts, expr)) this.#registry.slotCall(d, key);
+  }
+
+  /**
+   * A function used as a value (`n` names `target`): passed as an argument it flows into the callee's parameter,
+   * assigned to a field it flows into the field, handed to a scheduler it runs later.
+   */
+  #functionValue(key: string, n: TS.Identifier | TS.PrivateIdentifier, target: UnitRef): void {
+    const { ts, checker } = this.#sp;
+    const parent = n.parent;
+    const expr = outer(ts, parent && ts.isPropertyAccessExpression(parent) && parent.name === n ? parent : n);
+    const user = expr.parent;
+    if (!user) return;
+    if ((ts.isCallExpression(user) || ts.isNewExpression(user)) && user.expression !== expr) {
+      const args: readonly TS.Expression[] = user.arguments ?? [];
+      const index = args.indexOf(expr as TS.Expression);
+      if (index < 0) return;
+      if (ts.isCallExpression(user) && this.#isScheduler(user)) {
+        this.#registry.add(target, key, 'schedule');
+        return;
+      }
+      const declaration = checker.getResolvedSignature(user)?.declaration;
+      if (!declaration || ts.isJSDocSignature(declaration) || !this.#inScope(declaration.getSourceFile().fileName)) return;
+      const parameter = declaration.parameters[index];
+      if (parameter && !parameter.dotDotDotToken) this.#registry.slotTarget(parameter, target);
+      return;
+    }
+    if (ts.isBinaryExpression(user) && user.right === expr && user.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isPropertyAccessExpression(user.left)) {
+      const field = checker.getSymbolAtLocation(user.left.name)?.declarations?.[0];
+      if (field && this.#inScope(field.getSourceFile().fileName)) this.#registry.slotTarget(field, target);
+    }
+  }
+
+  /** requestAnimationFrame, setTimeout or setInterval of the platform (not a project function of that name). */
+  #isScheduler(call: TS.CallExpression): boolean {
+    const { ts, checker } = this.#sp;
+    const callee = ts.isPropertyAccessExpression(call.expression) ? call.expression.name : call.expression;
+    if (!ts.isIdentifier(callee) || !/^(requestAnimationFrame|setTimeout|setInterval)$/.test(callee.text)) return false;
+    const declarations = checker.getSymbolAtLocation(callee)?.declarations ?? [];
+    return declarations.length > 0 && declarations.every((d) => !this.#inScope(d.getSourceFile().fileName));
+  }
+
+  /** `requestAnimationFrame(() => tick())`: the units the inline callback calls are what runs later. */
+  #inlineSchedule(key: string, call: TS.CallExpression): void {
+    const { ts, checker } = this.#sp;
+    for (const argument of call.arguments) {
+      if (!ts.isArrowFunction(argument) && !ts.isFunctionExpression(argument)) continue;
+      const visit = (m: TS.Node): void => {
+        if (ts.isCallExpression(m)) {
+          const callee = ts.isPropertyAccessExpression(m.expression) ? m.expression.name : m.expression;
+          let symbol = checker.getSymbolAtLocation(callee);
+          if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+          const d = symbol?.declarations?.[0];
+          const target = d && this.#inScope(d.getSourceFile().fileName) ? unitOf(ts, this.#valueDeclaration(d)) : null;
+          if (target && this.#registry.isCallable(target)) this.#registry.add(target, key, 'schedule');
+        }
+        ts.forEachChild(m, visit);
+      };
+      visit(argument.body);
     }
   }
 

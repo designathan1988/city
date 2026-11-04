@@ -1,7 +1,7 @@
 // The intermediate representation every later stage reads: the source's declarations ("units"), the typed edges
 // between them, the external APIs they touch and the per-unit facts the classifier and the rule catalog decide on.
 
-export const IR_VERSION = 2;
+export const IR_VERSION = 3;
 
 export type UnitKind =
   | 'class'
@@ -24,7 +24,9 @@ export type UnitKind =
  * reference: a value used without calling it (a function passed as callback, a constant, an enum); typeRef: used as a
  * type; inherit/implements: heritage; implementation: an interface or abstract member reaching each implementation;
  * callbackAssign: a function-typed field reaching each place that stores a function in it; moduleLoad: a worker or
- * dynamic import pulling its whole module.
+ * dynamic import pulling its whole module; indirectCall: a call through a parameter or field reaching each function
+ * passed into it (`new FrameClock(frame)` … `this.frame(now)`); schedule: a function handed to
+ * requestAnimationFrame, setTimeout or setInterval, to run later.
  */
 export type EdgeKind =
   | 'call'
@@ -37,7 +39,9 @@ export type EdgeKind =
   | 'implements'
   | 'implementation'
   | 'callbackAssign'
-  | 'moduleLoad';
+  | 'moduleLoad'
+  | 'indirectCall'
+  | 'schedule';
 
 export interface Position {
   readonly line: number;

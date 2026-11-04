@@ -120,6 +120,19 @@ describe('factories', () => {
   });
 });
 
+describe('callback flow and scheduling', () => {
+  const ir = graph([]);
+
+  it('links a call through a parameter property to the function passed into it', () => {
+    assert.deepEqual(kinds(ir, 'src/loop.ts#Clock.shown', 'src/loop.ts#frame'), ['indirectCall']);
+  });
+
+  it('records what is handed to the frame scheduler, inline callbacks included', () => {
+    assert.ok(kinds(ir, 'src/loop.ts#Clock.request', 'src/loop.ts#Clock.shown').includes('schedule'));
+    assert.ok(kinds(ir, 'src/loop.ts#deferOnce', 'src/loop.ts#step').includes('schedule'));
+  });
+});
+
 describe('patterns and fingerprints', () => {
   const ir = graph([]);
   const patterns = (id: string): string[] => unit(ir, id).facts.patterns.map((p) => p.id);

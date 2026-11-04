@@ -51,6 +51,16 @@ describe('audit', () => {
     assert.ok(hot.findings.some((f) => f.rule === 'queue-shift' && f.severity === 'high'));
   });
 
+  it('roots the hot path in repeating frame callbacks, not in one-off deferrals', () => {
+    const auto = runAudit(ir, { ...base, hot: [] });
+    assert.deepEqual(auto.hot.roots, ['src/loop.ts#Clock.shown']);
+    const members = new Set(auto.hot.members);
+    for (const id of ['src/loop.ts#Clock.shown', 'src/loop.ts#frame', 'src/loop.ts#step', 'src/loop.ts#Clock.request']) {
+      assert.ok(members.has(id), `${id} runs every frame`);
+    }
+    assert.ok(!members.has('src/loop.ts#deferOnce'), 'a one-off deferral does not run every frame');
+  });
+
   it('measures feature scattering with Eaddy\'s formula', () => {
     const tick = result.features[0]!;
     assert.equal(tick.name, 'tick');

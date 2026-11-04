@@ -11,7 +11,7 @@ const MUTATING_METHODS = new Set([
 ]);
 
 /** Skips wrappers that do not change what an expression denotes: (x), x!, x as T, x satisfies T, <T>x. */
-function outer(ts: TypeScriptApi, expr: TS.Node): TS.Node {
+export function outer(ts: TypeScriptApi, expr: TS.Node): TS.Node {
   let e = expr;
   while (
     e.parent &&

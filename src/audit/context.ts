@@ -30,7 +30,8 @@ export interface Finding {
 /** A rule either returns its findings or says why it could not run. */
 export type RuleOutcome = Finding[] | { readonly skipped: string };
 
-const HOT_EDGES = new Set<EdgeKind>(['call', 'construct', 'implementation', 'callbackAssign']);
+/** How execution flows on from running code: what it calls, constructs, dispatches to, or schedules. */
+const HOT_EDGES = new Set<EdgeKind>(['call', 'construct', 'implementation', 'callbackAssign', 'indirectCall', 'schedule']);
 
 export class AuditContext {
   readonly ir: GraphIR;
@@ -50,8 +51,7 @@ export class AuditContext {
       push(this.incoming, edge.to, edge);
     }
     this.hotRoots = this.#hotRoots();
-    this.hot = this.reach(this.hotRoots, (edge) =>
-      HOT_EDGES.has(edge.kind) || (edge.kind === 'reference' && this.byId.get(edge.to)?.facts.callable === true));
+    this.hot = this.reach(this.hotRoots, (edge) => HOT_EDGES.has(edge.kind));
   }
 
   /** Lines of the unit's own code: its span minus the spans of the units nested in it. */
@@ -78,15 +78,23 @@ export class AuditContext {
     return seen;
   }
 
-  /** Units that schedule animation frames (and the callbacks they pass), plus the roots given with --hot. */
+  /**
+   * Repeating callbacks (a scheduled function whose own execution schedules it again: the frame loop
+   * `shown → frame → request → requestAnimationFrame(shown)`), plus the roots given with --hot. A function scheduled
+   * once (a deferral) is not a root.
+   */
   #hotRoots(): string[] {
     const roots = new Set<string>();
-    for (const unit of this.ir.units) {
-      if (!unit.facts.external.some((e) => e.key.endsWith(':requestAnimationFrame'))) continue;
-      roots.add(unit.id);
-      for (const edge of this.outgoing.get(unit.id) ?? []) {
-        if (edge.kind === 'reference' && this.byId.get(edge.to)?.facts.callable) roots.add(edge.to);
-      }
+    const scheduledBy = new Map<string, Set<string>>();
+    for (const edge of this.ir.edges) {
+      if (edge.kind !== 'schedule') continue;
+      const set = scheduledBy.get(edge.to) ?? new Set<string>();
+      set.add(edge.from);
+      scheduledBy.set(edge.to, set);
+    }
+    for (const [callback, schedulers] of scheduledBy) {
+      const reached = this.reach([callback], (edge) => HOT_EDGES.has(edge.kind));
+      if ([...schedulers].some((s) => reached.has(s))) roots.add(callback);
     }
     for (const spec of this.options.hot) {
       const matched = this.byId.has(spec) ? [spec] : this.ir.units.filter((u) => u.file === spec || u.id.startsWith(spec)).map((u) => u.id);

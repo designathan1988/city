@@ -142,16 +142,17 @@ export function syntaxFacts(ts: TypeScriptApi, ref: UnitRef): SyntaxFacts {
     if (isBitOperation(ts, n)) facts.bitOperations++;
     if (ts.isAwaitExpression(n) || (ts.isForOfStatement(n) && n.awaitModifier)) facts.awaits++;
     if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) facts.stringLiterals++;
-    if (ts.isDeleteExpression(n)) facts.patterns.push({ id: 'object-delete', line: line(n), detail: n.getText().slice(0, 80) });
+    // Details describe the pattern, never quote the source: the audit is read by people barred from the source.
+    if (ts.isDeleteExpression(n)) facts.patterns.push({ id: 'object-delete', line: line(n), detail: 'property removed with delete' });
     if ((ts.isNewExpression(n) || ts.isCallExpression(n)) && n.expression.getText() === 'Array' && n.arguments?.length === 1) {
-      facts.patterns.push({ id: 'holey-array', line: line(n), detail: n.getText().slice(0, 80) });
+      facts.patterns.push({ id: 'holey-array', line: line(n), detail: 'array preallocated with Array(n)' });
     }
     if (ts.isNewExpression(n) && n.expression.getText() === 'Date' && (n.arguments?.length ?? 0) === 0) facts.nondeterminism.push('es:new Date()');
     if (ts.isCallExpression(n)) {
       const name = calledName(ts, n);
-      if (name === 'shift' && n.arguments.length === 0 && loopDepth > 0) facts.patterns.push({ id: 'queue-shift', line: line(n), detail: n.getText().slice(0, 80) });
-      if (name !== null && SYNC_GPU_CALLS.has(name) && ts.isPropertyAccessExpression(n.expression)) facts.patterns.push({ id: 'sync-gpu-readback', line: line(n), detail: name });
-      if (name === 'postMessage' && n.arguments.length === 1) facts.patterns.push({ id: 'worker-copy', line: line(n), detail: n.getText().slice(0, 80) });
+      if (name === 'shift' && n.arguments.length === 0 && loopDepth > 0) facts.patterns.push({ id: 'queue-shift', line: line(n), detail: 'shift() inside a loop' });
+      if (name !== null && SYNC_GPU_CALLS.has(name) && ts.isPropertyAccessExpression(n.expression)) facts.patterns.push({ id: 'sync-gpu-readback', line: line(n), detail: `${name}()` });
+      if (name === 'postMessage' && n.arguments.length === 1) facts.patterns.push({ id: 'worker-copy', line: line(n), detail: 'postMessage without a transfer list' });
     }
     if (loopDepth > 0) {
       const what = allocationOf(ts, n);

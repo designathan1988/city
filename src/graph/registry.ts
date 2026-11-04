@@ -24,6 +24,9 @@ export class Registry {
   /** unit key → external key → kind → count */
   readonly external = new Map<string, Map<string, Map<EdgeKind, number>>>();
   readonly nondeterminism = new Map<string, Set<string>>();
+  /** Parameters and fields that hold function values: what was passed in, and who calls through them. */
+  readonly #slotTargets = new Map<TS.Declaration, Map<string, UnitRef>>();
+  readonly #slotCallers = new Map<TS.Declaration, Set<string>>();
   readonly #ids = new Set<string>();
   readonly #ts: TypeScriptApi;
   readonly #root: string;
@@ -36,7 +39,8 @@ export class Registry {
   /** Registers the unit (and its owner) if new; records the edge from `from` when given. Returns its key. */
   add(ref: UnitRef, from: string | null, kind: EdgeKind | null): string {
     const key = unitKey(ref);
-    if (from !== null && kind !== null && from !== key) this.edge(from, key, kind);
+    // A unit scheduling itself is the frame loop's signature, so that self edge is kept.
+    if (from !== null && kind !== null && (from !== key || kind === 'schedule')) this.edge(from, key, kind);
     if (this.units.has(key)) return key;
     const owner = ownerOf(this.#ts, ref);
     const parentKey = owner ? unitKey(owner) : null;
@@ -48,12 +52,40 @@ export class Registry {
     return key;
   }
 
+  /** Units that hold code to run: functions, methods, accessors, and fields initialised with a function. */
+  isCallable(ref: UnitRef): boolean {
+    const ts = this.#ts;
+    if (['function', 'method', 'constructor', 'getter', 'setter'].includes(kindOf(ts, ref))) return true;
+    const n = ref.node;
+    return ts.isPropertyDeclaration(n) && n.initializer !== undefined &&
+      (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer));
+  }
+
   edge(from: string, to: string, kind: EdgeKind, times = 1): void {
     bump(nested(this.edges, from, to), kind, times);
   }
 
   externalUse(from: string, externalKey: string, kind: EdgeKind): void {
     bump(nested(this.external, from, externalKey), kind, 1);
+  }
+
+  /** `target` was passed into or stored in `slot`: every unit calling through the slot reaches it. */
+  slotTarget(slot: TS.Declaration, target: UnitRef): void {
+    const targets = this.#slotTargets.get(slot) ?? new Map<string, UnitRef>();
+    this.#slotTargets.set(slot, targets);
+    const key = unitKey(target);
+    if (targets.has(key)) return;
+    targets.set(key, target);
+    for (const caller of this.#slotCallers.get(slot) ?? []) this.add(target, caller, 'indirectCall');
+  }
+
+  /** `caller` calls the function held by `slot`: it reaches every function passed into the slot, now or later. */
+  slotCall(slot: TS.Declaration, caller: string): void {
+    const callers = this.#slotCallers.get(slot) ?? new Set<string>();
+    this.#slotCallers.set(slot, callers);
+    if (callers.has(caller)) return;
+    callers.add(caller);
+    for (const target of this.#slotTargets.get(slot)?.values() ?? []) this.add(target, caller, 'indirectCall');
   }
 
   markNondeterministic(from: string, what: string): void {
