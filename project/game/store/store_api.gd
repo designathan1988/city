@@ -47,4 +47,5 @@ const QUERIES := {
 	&"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
 	&"transit_plan": "transit_plan", &"transit_footway": "transit_footway", &"transit_xray": "transit_xray", &"transit_preview": "transit_preview", &"transit_run": "transit_run", &"transit_pick": "transit_pick", &"transit_snap": "transit_snap",
 	&"interior": "interior", &"interior_revision": "interior_revision", &"interior_cost": "interior_cost",
+	&"people_census": "people_census", &"set_city_hour": "set_city_hour",
 }

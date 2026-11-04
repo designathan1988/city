@@ -94,7 +94,7 @@ bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &o
 	return astar(sc, net.nodes.size(), from, goal, int(tp.ped_route_max_expanded), h, expand, out);
 }
 
-int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, Waypoint *ways, int &side_out) {
+int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, int want_side, Waypoint *ways, int &side_out) {
 	std::vector<Arm> arms = arms_by_angle(s, n);
 	const int deg = int(arms.size());
 	int ai = -1, aj = -1;
@@ -110,7 +110,7 @@ int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out,
 	for (int pick = 0; pick < 2; pick++) {
 		int cj = pick == 0 ? aj : (aj - 1 + deg) % deg;
 		int side = pick == 0 ? side_to_next(arms[aj]) : 1 - side_to_next(arms[aj]);
-		if (!has_side(po, side)) continue;
+		if (!has_side(po, side) || (want_side >= 0 && has_side(po, want_side) && side != want_side)) continue;
 		int ccw = (cj - ci + deg) % deg, cw = (ci - cj + deg) % deg;
 		int steps = std::min(ccw, cw);
 		if (steps < best_steps || (steps == best_steps && (n & 1) == 0)) {

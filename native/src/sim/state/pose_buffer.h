@@ -36,12 +36,17 @@ struct PoseTrail {
 
 // AgentRecord::look of a vehicle: type in the low byte, then its paint, the brake light and whether anybody is in it.
 constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u;
+// How old a walker is: its pace and its body.
+enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
+constexpr int PED_AGES = int(PedAge::COUNT);
 
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
+	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
+	uint8_t age = 0; // pedestrians: PedAge
 };
 
 // A car standing in a bay (no trail: it does not move). id and look as AgentRecord's; ids are their own, past the fleet's.

@@ -164,7 +164,10 @@ void apply_network_changes(CityState &s) {
 	}
 	ChangeLog::dedup(signals);
 	for (int n : signals) replan_signal(s, n);
-	for (int seg : furniture) forget_furniture(s, seg);
+	for (int seg : furniture) {
+		forget_furniture(s, seg);
+		forget_doors(s, seg);
+	}
 	ChangeLog::dedup(lots);
 	for (int id : lots) forget_parking_lot(s, id);
 	if (nodes.empty() && removed.empty() && changed.empty()) {
@@ -178,8 +181,16 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
-	for (int seg : removed) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
-	for (int seg : changed) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
+	for (int seg : removed) {
+		forget_furniture(s, seg);
+		forget_parking_seg(s, seg);
+		forget_doors(s, seg);
+	}
+	for (int seg : changed) {
+		forget_furniture(s, seg);
+		forget_parking_seg(s, seg);
+		forget_doors(s, seg);
+	}
 	for (int n : nodes) {
 		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
 		for (int seg : s.roads.nodes[size_t(n)].segs) { forget_furniture(s, seg); forget_parking_seg(s, seg); }

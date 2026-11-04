@@ -23,8 +23,18 @@ struct Waypoint {
 };
 constexpr int MAX_WAYS = 12; // two per arm crossed (at most 3 at a 6-arm node) and the exit sidewalk start
 
-// KERB: under a kerb stop's hand (kerb_stops.cpp), between a door and the footway.
-enum class PedMode : uint8_t { SIDEWALK = 0, WAY = 1, WAIT = 2, KERB = 3 };
+// SIDEWALK, WAY (round a corner, over a zebra), WAIT (at a kerb), KERB (under a kerb stop's hand, kerb_stops.cpp: between a door and the
+// footway), LOT (between a door and the sidewalk), FOLLOW (with its leader).
+enum class PedMode : uint8_t { SIDEWALK, WAY, WAIT, KERB, LOT, FOLLOW };
+
+
+// A front door as the walkers use it: the sidewalk's arc and place across at the foot of its way, and the door itself.
+struct PedDoor {
+	int building = -1; // -1: no door
+	uint32_t seed = 0; // of the record it was read from: a building that went takes its door with it
+	float s = 0, u = 0, x = 0, y = 0, z = 0;
+	uint8_t kind = 0; // PlaceKind
+};
 
 // A piece of street furniture as a body standing on a sidewalk: its footprint along the segment's arc (s0..s1) and
 // across from the sidewalk's middle (u0..u1), and in the world (centre, the arc's direction there, half sizes).
@@ -37,10 +47,11 @@ struct StreetObstacle {
 // choice starts from (the stripe aimed at and how long held, its pace, how long held up, its speed and own side).
 struct CrowdEntry {
 	int id = -1, sidewalk = -1; // seg * 2 + side while on a sidewalk, else -1
+	int party = -1; // its leader's id, or its own: those of a party do not make way for each other
 	float s = 0, u = 0, x = 0, z = 0, fx = 0, fz = 0;
 	float u_goal = 0, held = 0, pace = 0, jam = 0, speed = 0, keep = 0;
 	uint8_t dir = 0;
-	bool moving = false;
+	bool moving = false, follows = false; // follows: a body the others see, with no choice of its own
 };
 
 struct SidewalkFurniture {
@@ -54,10 +65,12 @@ struct SidewalkFurniture {
 struct Pedestrian {
 	bool alive = false;
 	PedMode mode = PedMode::SIDEWALK;
+	PedAge age = PedAge::ADULT;
 	uint32_t look = 0; // render hash: clothes, skin, hair
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
+	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)
@@ -73,6 +86,12 @@ struct Pedestrian {
 	int64_t slot_key = -1; // the kerb a place to wait is held at (TrafficState::kerb_slots), and which place
 	int slot = -1;
 	float line_off = 0; // its line over the zebra lies this far left of the crosswalk's middle line (its place there)
+	PedDoor door; // the door it goes in at, on the last street of its route
+	int goal_side = -1; // the sidewalk of that street it heads for (-1: either)
+	bool entering = false, company_due = false; // on its way in at a door; its company comes out of the door after it
+	int with = -1, mate = -1; // the walker it follows; the walker following it
+	float flank = 1; // the side of its leader it walks on (+u or -u)
+	bool on_way = false; // following on a sidewalk (seg, side, s, u read as a walker's)
 	PoseTrail trail;
 };
 

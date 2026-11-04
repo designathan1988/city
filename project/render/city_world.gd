@@ -13,7 +13,7 @@ const PLACEHOLDER_TEX_PX := 16
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
 	"res://render/shaders/building_parts.gdshader", "res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
-	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
+	"res://render/shaders/people.gdshader", "res://render/shaders/people_blob.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
 	"res://render/shaders/vegetation.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
 	"res://render/shaders/verge.gdshader",

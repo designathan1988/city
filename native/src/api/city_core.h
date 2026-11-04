@@ -179,6 +179,9 @@ public:
 	int dock_count(); // lorry docks of the whole map
 	godot::Dictionary lot_clearance(); // how far the cars in lots stay from what is solid along their ways
 	godot::Array vehicles_near(const godot::Vector3 &at, float radius); // where each stands on its lane
+	// Who is on foot within `radius` of `at` (0: everywhere): ages, parties, modes, doors, and the nearest of each to look at.
+	godot::Dictionary people_census(const godot::Vector3 &at, float radius);
+	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
 	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
@@ -209,6 +212,7 @@ protected:
 	static void bind_bodies();
 	static void bind_nature();
 	static void bind_transit();
+	static void bind_probes();
 
 private:
 	godot::Object *terrain3d() const;

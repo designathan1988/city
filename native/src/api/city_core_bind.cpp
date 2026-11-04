@@ -18,6 +18,7 @@ void CityCore::_bind_methods() {
 	bind_bodies();
 	bind_nature();
 	bind_transit();
+	bind_probes();
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);
@@ -71,14 +72,6 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);
 	ClassDB::bind_method(D_METHOD("set_signal", "node", "fixed", "greens", "offset"), &CityCore::set_signal);
 	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
-	ClassDB::bind_method(D_METHOD("park_sample"), &CityCore::park_sample);
-	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityCore::camera_clear, DEFVAL(true));
-	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityCore::kerb_busy);
-	ClassDB::bind_method(D_METHOD("dock_count"), &CityCore::dock_count);
-	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityCore::lot_clearance);
-	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityCore::vehicles_near);
-	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
-	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("set_interior", "on", "target", "level", "dir"), &CityCore::set_interior);
@@ -95,6 +88,20 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);
+}
+
+// What the tests and the captures ask of the traffic and of who is on foot: the parked, the kerb, the lots, the amber, the walkers.
+void CityCore::bind_probes() {
+	ClassDB::bind_method(D_METHOD("park_sample"), &CityCore::park_sample);
+	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityCore::camera_clear, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityCore::kerb_busy);
+	ClassDB::bind_method(D_METHOD("dock_count"), &CityCore::dock_count);
+	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityCore::lot_clearance);
+	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityCore::vehicles_near);
+	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityCore::people_census);
+	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityCore::set_city_hour);
+	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
+	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 }
 
 // Public transport's script API: stops, stations, tracks, lines, the plan, the footway and the pickers.

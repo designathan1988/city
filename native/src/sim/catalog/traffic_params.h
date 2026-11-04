@@ -9,7 +9,7 @@ namespace city {
 
 // Scalar keys of traffic.json "params" (X-macro: declared here, required by the loader).
 #define CITY_TRAFFIC_FIELDS(X) \
-	X(density_per_lane_m) X(people_per_lane_m) X(traffic_share) X(people_share) X(fill_share) X(fleet_tau_s) \
+	X(density_per_lane_m) X(traffic_share) X(people_share) X(fill_share) X(fleet_tau_s) \
 	X(spawn_attempts_per_step) X(spawn_fill_attempts) X(route_budget_per_step) X(route_max_expanded) \
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
@@ -24,6 +24,9 @@ namespace city {
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
+	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
+	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \
+	X(ped_door_reach_m) X(ped_door_budget) X(work_stay_h) X(errand_stay_h) \
 	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \
 	X(day_base) X(day_morning_h) X(day_morning_w) X(day_morning_amp) X(day_evening_h) X(day_evening_w) \
 	X(day_evening_amp) X(day_midday_h) X(day_midday_w) X(day_midday_amp) X(day_night_cut) X(day_night_from_h) \
@@ -58,10 +61,13 @@ namespace city {
 // Vehicle classes (spec sim.md §5.1): car styles 0-5, then bus and truck.
 enum class VehicleType : uint8_t { SEDAN = 0, HATCH, SUV, VAN, PICKUP, MOTO, BUS, TRUCK, BICYCLE, COUNT };
 constexpr int VEHICLE_TYPES = int(VehicleType::COUNT);
+// What kind of place sends people out on foot (traffic.json people_kind_m, zone_kinds).
+enum class PlaceKind : uint8_t { HOME = 0, SHOP, WORK, CIVIC, COUNT };
+constexpr int PLACE_KINDS = int(PlaceKind::COUNT);
+constexpr int HOURS = 24;
 constexpr int CAR_STYLES = 6;
 constexpr int BASE_ZONES = 5; // none, residential, commercial, industrial, mixed
 constexpr int EXTENSION_LANES = 5; // traffic.json signal_extension_s: approaches of 1 to 5 lanes
-constexpr int DAY_HOURS = 24; // entries of traffic.json hours_working, hours_purchasing
 constexpr int PAINTS = 16; // Roadcraft shared/vehiclePaints.ts
 
 // Driver archetype of a class (drivers.ts ARCH) plus the body length and half width the simulation uses.
@@ -79,8 +85,10 @@ struct TrafficParams {
 	float signal_extension_s[EXTENSION_LANES] = {};
 	float style_share[CAR_STYLES] = {};
 	float zone_home[BASE_ZONES] = {}, zone_work[BASE_ZONES] = {}, zone_mid[BASE_ZONES] = {}, zone_truck[BASE_ZONES] = {};
-	float zone_walk[BASE_ZONES] = {};
-	float hours_working[DAY_HOURS] = {}, hours_purchasing[DAY_HOURS] = {};
+	float people_kind_m[PLACE_KINDS] = {}; // people per 100 m of street at full bustle
+	float people_busy[PLACE_KINDS * HOURS] = {}; // how busy each kind is at each hour, 0..1
+	float people_working[HOURS] = {}, people_purchasing[HOURS] = {}; // percent of everybody, at each hour
+	float zone_kinds[BASE_ZONES * PLACE_KINDS] = {}; // what each base zone's land is
 	int drive_side = 0; // the side of the road traffic keeps to, in the road's side numbers (0 right): the style's
 };
 

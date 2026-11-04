@@ -116,6 +116,8 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	if only.has("transporte"):
 		await CaptureTransit.shots(self)
+	if only.has("pessoas"):
+		await CapturePeople.shots(self)
 		return
 	var hour := DAY
 	await CaptureSignals.at_hour(self, hour)

@@ -7,11 +7,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 namespace city {
 namespace traffic {
 
 namespace {
+
+constexpr double STREET_SIDE = 0.5;
 
 constexpr float MESO_VIEW_STEP = 64.f; // the camera moving this far is enough to look at the window again
 constexpr double WINDOW_EVERY_S = 1.0;
@@ -28,15 +31,22 @@ float mid_dist2(const CityState &s, int seg, float cx, float cz) {
 void grow_ped_window(CityState &s, float cx, float cz) {
 	TrafficState &t = s.traffic;
 	const float w = s.catalog.traffic.ped_window_m, w2 = w * w;
-	t.ped_metres = 0;
+	std::fill(std::begin(t.ped_kind_m), std::end(t.ped_kind_m), 0.0);
 	t.ped_segs.clear();
 	s.roads.for_segments_near(cx - w, cz - w, cx + w, cz + w, [&](int seg) {
 		if (mid_dist2(s, seg, cx, cz) >= w2 || !walkable(s, seg)) return;
 		const Profile &p = s.roads.profile_of(seg);
 		const float len = float(s.roads.segs[size_t(seg)].len);
-		t.ped_metres += double(len) * ((p.has_walk_right ? 1 : 0) + (p.has_walk_left ? 1 : 0));
+		const TrafficParams &tp = s.catalog.traffic;
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		const int right = s.catalog.zone(g.zr).base % BASE_ZONES, left = s.catalog.zone(g.zl).base % BASE_ZONES;
+		for (int k = 0; k < PLACE_KINDS; k++) { // half of the street to each side's land
+			if (p.has_walk_right) t.ped_kind_m[k] += double(len) * STREET_SIDE * tp.zone_kinds[right * PLACE_KINDS + k];
+			if (p.has_walk_left) t.ped_kind_m[k] += double(len) * STREET_SIDE * tp.zone_kinds[left * PLACE_KINDS + k];
+		}
 		t.ped_segs.push_back(seg);
 	});
+	list_doors(s, cx, cz, w);
 	prune_furniture(s, cx, cz, w * FURNITURE_KEEP_WINDOWS); // the walkers' street furniture far behind the camera
 }
 

@@ -1,6 +1,7 @@
-// Who the lots send for and send out: the trips follow the hours of each kind of place (traffic.json hours_working,
-// hours_purchasing), the people going in and coming out of it; a bay is drawn by those shares, then the nearest passing car.
+// Who the lots send for and send out: the trips follow the hours of each kind of place (traffic.json people_working,
+// people_purchasing), the people going in and coming out of it; a bay is drawn by those shares, then the nearest passing car.
 #include "sim/traffic/traffic_system.h"
+#include "sim/traffic/day_table.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,13 +10,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-
-float at_hour(const float *table, float hour) {
-	const float h = std::fmod(std::fmod(hour, float(DAY_HOURS)) + DAY_HOURS, float(DAY_HOURS));
-	const int i = int(h);
-	const float u = h - float(i);
-	return table[i] * (1 - u) + table[(i + 1) % DAY_HOURS] * u;
-}
 
 // People going in at and coming out of a kind of place at an hour, from how many are there and how long they stay.
 void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float &out) {
@@ -27,7 +21,7 @@ void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float 
 		out = wi + si;
 		return;
 	}
-	const float *table = kind == PlaceKind::WORK ? p.hours_working : p.hours_purchasing;
+	const float *table = kind == PlaceKind::WORK ? p.people_working : p.people_purchasing;
 	const float stay = kind == PlaceKind::WORK ? p.stay_work_h : p.stay_errand_h;
 	const float there = at_hour(table, hour), rise = at_hour(table, hour + 0.5f) - at_hour(table, hour - 0.5f);
 	in = std::max(0.f, rise) + there / stay;

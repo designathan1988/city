@@ -18,7 +18,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float FRONT_MARK = 0.f, MIN_LENGTH = 1e-5f, LEAF_ARC = 0.75f, LEAF_BASE_LIFT = 0.05f, LEAF_TIP_FILL = 1.15f, LEAF_TIP_START = 0.08f;
-constexpr float LEAF_EDGE = 0.004f, BLADE_LONG = 1.4f, BLADE_NARROW = 0.55f, HALF = 0.5f;
+constexpr float LEAF_RIM = 0.004f, BLADE_LONG = 1.4f, BLADE_NARROW = 0.55f, HALF = 0.5f;
 constexpr const char *MODEL_NAMES[BAY_PROPS] = { "ac", "pot", "foliage", "bush", "chair", "table", "airer", "dish", "lounger", "bike" };
 
 Vector3 vec3(const Variant &v) {
@@ -90,7 +90,7 @@ void rosette(MeshBuilder &m, const Dictionary &p) {
 		Vector3 last[2];
 		for (int s = 0; s <= steps; s++) {
 			const float t = float(s) / float(steps);
-			const float half = width * std::sin(PI_F * std::min(1.f, t * LEAF_TIP_FILL + LEAF_TIP_START)) * HALF + LEAF_EDGE;
+			const float half = width * std::sin(PI_F * std::min(1.f, t * LEAF_TIP_FILL + LEAF_TIP_START)) * HALF + LEAF_RIM;
 			const Vector3 spine = dir * (length * t) + Vector3(0, rise * std::sin(t * PI_F * LEAF_ARC) + LEAF_BASE_LIFT, 0);
 			const Vector3 next[2] = { spine - side * half, spine + side * half };
 			if (s > 0) m.quad(last[0], last[1], next[1], next[0], col, (next[1] - last[0]).cross(next[0] - last[1]).normalized() + Vector3(0, MIN_LENGTH, 0));

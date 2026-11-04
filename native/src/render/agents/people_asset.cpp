@@ -23,7 +23,7 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
-constexpr uint32_t VERSION = 1, FLAG_FEMALE = 1, FLAG_SENIOR = 2;
+constexpr uint32_t VERSION = 2, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.1, 1.0]
@@ -116,9 +116,15 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 	PackedByteArray raw = FileAccess::get_file_as_bytes(path);
 	ByteReader r{ raw.ptr(), size_t(raw.size()) };
 	uint32_t magic = r.get<uint32_t>(), version = r.get<uint32_t>(), count = r.get<uint32_t>(), bones = r.get<uint32_t>();
-	uint32_t lod_count = r.get<uint32_t>(), pal_w = r.get<uint32_t>(), pal_h = r.get<uint32_t>();
+	uint32_t lod_count = r.get<uint32_t>(), pal_w = r.get<uint32_t>();
+	block_rows = int(r.get<uint32_t>());
+	idle_row = int(r.get<uint32_t>());
+	idle_frames = int(r.get<uint32_t>());
+	pedal_row = int(r.get<uint32_t>());
+	pedal_frames = int(r.get<uint32_t>());
+	const uint32_t pal_h = uint32_t(block_rows) * count;
 	if (!r.ok || magic != MAGIC || version != VERSION || count == 0 || count > MAX_VARIATIONS || lod_count == 0 || lod_count > MAX_LODS ||
-			pal_w != bones * BONE_TEXELS) {
+			pal_w != bones * BONE_TEXELS || idle_row <= 0 || idle_frames <= 0 || pedal_row < idle_row + idle_frames || pedal_row + pedal_frames > block_rows) {
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
 	}
@@ -127,14 +133,14 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
 	for (uint32_t v = 0; v < count; v++) {
 		PersonVariation &pv = variations[v];
-		pv.palette_row = int(r.get<uint32_t>());
-		pv.frames = int(r.get<uint32_t>());
-		pv.fps = r.get<float>();
+		pv.walk_frames = int(r.get<uint32_t>());
+		pv.idle_s = r.get<float>();
 		pv.walk_advance = r.get<float>();
 		pv.height = r.get<float>();
 		uint32_t flags = r.get<uint32_t>();
 		pv.female = flags & FLAG_FEMALE;
 		pv.senior = flags & FLAG_SENIOR;
+		pv.child = flags & FLAG_CHILD;
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 	}
 	for (uint32_t v = 0; v < count && r.ok; v++)
