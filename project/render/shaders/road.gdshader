@@ -151,7 +151,9 @@ void fragment() {
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
-		vec2 kq = v_world.xz; // laid over the ground as the map tiles: along a road it runs through the stone and the grime
+		// on top laid over the ground as the map tiles, along a road it runs through the stone and the grime; on a face, along it
+		// and up it, or the ground's two axes would hold still up the whole height and draw stripes
+		vec2 kq = up ? v_world.xz : uv;
 		vec3 t = source_linear(texture(kerb_map, kq / kerb_m, near * detail_kerb.z).rgb);
 		vec2 duv = kq / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {

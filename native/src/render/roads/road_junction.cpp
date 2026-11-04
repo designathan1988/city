@@ -16,6 +16,7 @@ namespace {
 constexpr double FILLET_SLACK = 0.05, PLATE_MIN_RETREAT = 0.05, CTRL_MAX = 0.5, CTRL_MIN = -60;
 constexpr double PARALLEL = 1e-3, SAME = 1e-3;
 constexpr int MIN_ARC = 2;
+constexpr float PLATE_CORE = 0.2f, PLATE_MEET = 0.15f; // share of the way out that fades to the mean; half the share of a corner where two arms blend
 constexpr double TAU_D = 2 * PI_D;
 const Vector3 UP(0, 1, 0);
 
@@ -172,17 +173,25 @@ void kerbed_line(const RoadEmit &e, const std::vector<Vector3> &in, const std::v
 	}
 }
 
-// A plate from `centre` out to `ring`, each ring point in its own colour and the centre in their mean: a junction wears each
-// arm's asphalt at its mouth, and the arms fade into one another across it.
+// A plate from `centre` out to `ring`, each ring point in its own colour: a junction wears each arm's asphalt from its mouth to
+// near the centre, and only the core around the node, a share of the way out, fades into the mean of the arms.
 void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<Vector3> &ring, const std::vector<Color> &cols) {
 	const Vector2 pl(POOL_PLATE, 0);
+	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, road_color(c, RoadMat::PLATE), Vector2(p.x, p.z), pl); };
 	Color mean(0, 0, 0);
 	for (const Color &c : cols) mean += c;
-	mean = mean / float(cols.size());
-	int c0 = e.mb.add(centre, UP, road_color(mean, RoadMat::PLATE), Vector2(centre.x, centre.z), pl);
-	std::vector<int> ids;
-	for (size_t i = 0; i < ring.size(); i++) ids.push_back(e.mb.add(ring[i], UP, road_color(cols[i], RoadMat::PLATE), Vector2(ring[i].x, ring[i].z), pl));
-	for (size_t i = 0; i < ids.size(); i++) e.mb.tri(c0, ids[i], ids[(i + 1) % ids.size()], UP);
+	const int c0 = add(centre, mean / float(cols.size()));
+	std::vector<int> out, in;
+	for (size_t i = 0; i < ring.size(); i++) {
+		out.push_back(add(ring[i], cols[i]));
+		in.push_back(add(centre + (ring[i] - centre) * PLATE_CORE, cols[i]));
+	}
+	for (size_t i = 0; i < ring.size(); i++) {
+		const size_t j = (i + 1) % ring.size();
+		e.mb.tri(c0, in[i], in[j], UP);
+		e.mb.tri(in[i], out[i], out[j], UP);
+		e.mb.tri(in[i], out[j], in[j], UP);
+	}
 }
 
 void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
@@ -197,7 +206,11 @@ void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 		cols.push_back(e.L.carriage(*a.prof));
 		std::vector<Vector3> in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
 		ring.insert(ring.end(), in.begin(), in.end());
-		for (size_t j = 0; j < in.size(); j++) cols.push_back(e.L.carriage(*a.prof).lerp(e.L.carriage(*b.prof), float(j + 1) / float(in.size() + 1)));
+		for (size_t j = 0; j < in.size(); j++) {
+			const float t = float(j + 1) / float(in.size() + 1); // along the corner: the arms meet on its bisector
+			const float share = std::clamp((t - 0.5f) / (2.f * PLATE_MEET) + 0.5f, 0.f, 1.f);
+			cols.push_back(e.L.carriage(*a.prof).lerp(e.L.carriage(*b.prof), share));
+		}
 		float ka = kerb_w(a, 1), kb = kerb_w(b, -1);
 		std::vector<Vector3> bk = outside(in, a, b, ka, kb);
 		std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
