@@ -213,7 +213,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
 	if (is_splice(s, c.node)) return true;
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
-	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m)) return false;
+	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (!has_exit(s, c, vid)) return false;
 	const float top = conn_speed(s, c) * me.vf;
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;

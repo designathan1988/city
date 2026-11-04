@@ -1,4 +1,4 @@
-// The signal plan in time (CONTRAN MBST vol. V, Res. 483/2014): the intergreen after each green (amber, then all-red,
+// The signal plan in time (CONTRAN MBST vol. V, 2022): the intergreen after each green (amber, then all-red,
 // item 5.7), the detection that actuates each green (cap. 7: minimum green, extension per vehicle over the detection
 // section, maximum green), the stage running now and the light each approach shows, when an approach next turns green,
 // and when walkers may still start over a crosswalk (their flashing red and all-red must fit before the stage ends).
@@ -128,6 +128,12 @@ Light light_for(const CityState &s, int ds) {
 	const TrafficState &t = s.traffic;
 	if (ds >= 0 && size_t(ds) < t.light_now.size()) return Light(t.light_now[size_t(ds)]);
 	return compute_light(s, ds);
+}
+
+float amber_left(const CityState &s, int ds) {
+	const TrafficState &t = s.traffic;
+	const Junction &j = t.g.junctions[size_t(t.g.ds[size_t(ds)].to)];
+	return float(j.run_start + double(j.run_green) + double(j.amber[size_t(j.run)]) - t.time);
 }
 
 double next_green(const CityState &s, int ds, double now) {

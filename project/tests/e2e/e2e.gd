@@ -11,6 +11,9 @@ const WARMUP_TICKS := 2400
 const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
 const LENSES_PER_POST := 2
+const SUV := 2 # traffic.json classes: b 2,8 and b_emergency 5,8 m/s²
+const NO_TURN := 1000.0 # m/s: no limit at the line
+const TURN_MS := 6.11 # turn_speed_kmh in m/s
 const AMBER_EPS_S := 0.01
 
 var failures := 0
@@ -45,11 +48,24 @@ func _ready() -> void:
 	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published
 	print("semáforos: ", probe.signals, ", lentes acesas ", probe.drawn_signal_lenses)
 	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "lentes dos semáforos acesas")
-	var core: Object = CityStore._core
-	_check(absf(core.amber_wanted(60.0) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
-	_check(absf(core.amber_wanted(70.0) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
+	_check(int(probe.red_entries) == 0, "ninguém entrou no vermelho (%d)" % probe.red_entries)
+	_check_amber_rule()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The amber's decision (light_rule.cpp) in numbers: speed, metres to where it stops, speed at the line, amber left.
+func _check_amber_rule() -> void:
+	var core: Object = CityStore._core
+	_check(core.amber_stops(10.0, 30.0, NO_TURN, 4.0, SUV), "amarelo: quem pode parar como o entreverdes supõe para")
+	_check(not core.amber_stops(16.67, 50.0, NO_TURN, 4.0, SUV), "amarelo: quem não para e chega à linha segue")
+	# just out of the far model near the line, as the soak saw it: slow enough to stop, the amber nearly over
+	_check(core.amber_stops(7.32, 9.57, NO_TURN, 0.1, SUV), "amarelo: quem não chega à linha a tempo para")
+	_check(not core.amber_stops(14.0, 40.0, NO_TURN, 3.5, SUV), "amarelo: em frente chega a tempo")
+	_check(core.amber_stops(14.0, 40.0, TURN_MS, 3.5, SUV), "amarelo: freando para a conversão não chega e para")
+	_check(not core.amber_stops(14.0, 10.0, NO_TURN, 0.1, SUV), "amarelo: quem nem a emergência para segue")
+	_check(absf(core.amber_wanted(60.0) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
+	_check(absf(core.amber_wanted(70.0) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
 
 
 func _wait_render() -> void:

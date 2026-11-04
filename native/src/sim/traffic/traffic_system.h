@@ -63,6 +63,7 @@ void build_junction(CityState &s, int n); // one node's control and stages (incr
 Control control_of(const CityState &s, int n);
 void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
+float amber_left(const CityState &s, int ds); // seconds of amber left on approach `ds`, which shows amber
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
 bool may_enter(const CityState &s, int vehicle, int conn, float dist_to_line);
 int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
@@ -71,13 +72,21 @@ Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
 
 // light_rule.cpp: the one rule of the lights, for admission, commitments and the stops ahead. `v` can stop
-// comfortably (its class's b) within `stop_m`; it stops at an amber `stop_m` ahead as the intergreen is timed
-// (CONTRAN MBST vol. V 5.7.1: reaction, then signal_decel), and how far ahead that rule must look at its speed; the
-// light of approach `ds` holds it (red always; amber by that rule, a decision held until green).
+// comfortably (its class's b) within `stop_m`; how far it needs to stop as the intergreen is timed (CONTRAN MBST vol. V
+// 5.7.1: reaction, then signal_decel); whether it stops at the amber of approach `ds`, `stop_m` ahead, with connector
+// `ci` past the line (-1: none from its lane); the light of `ds` holds it (red always; amber by that rule, a decision
+// held until green).
 bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m);
-bool stops_at_amber(const CityState &s, const Vehicle &v, float stop_m);
-float amber_reach(const CityState &s, const Vehicle &v);
-bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m);
+float amber_reach(const TrafficParams &p, float v);
+struct AmberApproach {
+	float v = 0, stop_m = 0; // its speed and the metres to where it stops
+	float top = 0; // the speed it may take the line at
+	float brake = 0, brake_hard = 0; // m/s²: its comfortable and its emergency braking
+	float left = 0; // seconds of amber left
+};
+bool amber_stops(const TrafficParams &p, const AmberApproach &a);
+bool stops_at_amber(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci);
+bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci);
 // Where a vehicle stops for the lights down its route: the first stop line within its horizon whose light holds it.
 struct LightStop {
 	float gap = NO_LEADER; // metres to where it stops
@@ -194,6 +203,8 @@ constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the v
 // walkers). What it leaves out (the jerk ramp from rest, slowing to the turn speed) only makes it early, the safe side.
 float front_time(const CityState &s, const Vehicle &v, float metres, float top);
 float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
+// The fastest `v` goes `dist` before its lane's end on the way onto `c`: braking down to the turn speed (no limit straight on).
+float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist);
 
 } // namespace traffic
 } // namespace city

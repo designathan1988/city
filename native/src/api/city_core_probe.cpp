@@ -175,6 +175,19 @@ String jam_detail(const CityState &s, int id, const Vehicle &v, int r) {
 
 } // namespace
 
+bool CityCore::amber_stops(float v, float stop_m, float top, float left, int type) const {
+	const TrafficParams &p = state_->catalog.traffic;
+	const VehicleClass &vc = p.classes[size_t(type)];
+	traffic::AmberApproach a;
+	a.v = v;
+	a.stop_m = stop_m;
+	a.top = top;
+	a.brake = vc.b;
+	a.brake_hard = vc.b_emergency;
+	a.left = left;
+	return traffic::amber_stops(p, a);
+}
+
 float CityCore::amber_wanted(float kmh) const {
 	return traffic::amber_wanted(state_->catalog.traffic, kmh / KMH_PER_MS);
 }
