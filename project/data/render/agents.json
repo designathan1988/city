@@ -1,23 +1,10 @@
 {
- "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6, Roadcraft carBody.ts / heavyBody.ts / vehicleModels.ts / people looks.ts). Metres; model frame +Z forward, +X the driver's left, Y up. car_body: [fine (the cabin level), coarse] stations, steps round each arch and in each rounded end; the half ring's bottom corner radius bottom_round_m and the flank's bulge (share of the half width), measured on side and front photos of the reference cars at ~130 px/m (a 6-8 px corner, a 2 % wider waist); the B pillar b_pillar_m and the door seams door_seam_m wide (the seams drawn wider than a real 3-5 mm gap so they read at ~10 m, 1 px at 100 px/m); the wing mirror's housing [out, high, long] on its arm, the door handle [long, high, out], measured on the same photos. car_body.bumper_top_m: the ends' dark bumper face up to the top of the bumper zone, 20 in over the road (US 49 CFR Part 581, bumper standard). Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back. wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends; tints as Roadcraft looks.ts.",
+ "_doc": "Vehicles and people drawn by native/src/render/agents (spec world.md §5-§6). Metres; model frame +Z forward, +X the driver's left, Y up. paints: the colours cars come in, 16 slots shared by the South American shares of Axalta's 2025 Global Automotive Color Popularity Report (white 35 %, grey 23 %, silver 14 %, blue 7 %, red 4 %; black, ranked fourth with no figure, midway between blue and silver), largest remainders; each the ISCC-NBS centroid of its name (white, medium grey, light grey for silver, black, moderate blue, vivid red). trim: tyre the physicallybased.info Tire albedo (0.023 linear); hub and chrome light grey (the database's aluminium and chromium are metals, which these dielectric parts cannot show); under, blackout and grille black; the plate white (the Mercosul plate's ground, CONTRAN Resolução 969/2022); far glass blackish blue (a dark cabin under the sky's reflection); lamp lenses white and dark red; the truck's box white; the bus's air conditioning light grey: all ISCC-NBS centroids. Car 'top' = roof line points [x share of length from the centre (front +0.5), y share of height], front to back; it and the glass, belt and plan lines are the reference's shapes, still to be measured on registered photos (pending). car_body: [fine (the cabin level), coarse] stations, steps round each arch and in each rounded end; the half ring's bottom corner radius bottom_round_m and the flank's bulge (share of the half width), measured on side and front photos of the reference cars at ~130 px/m (a 6-8 px corner, a 2 % wider waist); the B pillar b_pillar_m and the door seams door_seam_m wide (the seams drawn wider than a real 3-5 mm gap so they read at ~10 m, 1 px at 100 px/m); the wing mirror's housing [out, high, long] on its arm, the door handle [long, high, out], measured on the same photos. car_body.bumper_top_m: the ends' dark bumper face up to the top of the bumper zone, 20 in over the road (US 49 CFR Part 581, bumper standard). wheel_jump_m: a pose jump larger than this (respawn) does not turn the wheels. People: the cooked MakeHuman (CC0) bodies with the Rocketbox (MIT) walk in project/assets/people (tools/assets/cook_people.py); lod_m = camera distance where each level ends.",
  "vehicle_radius_m": 900,
  "cabin_radius_m": 140,
  "people_radius_m": 280,
- "paints": ["#f2f2f0", "#1c1d20", "#8c8f94", "#b5b8bc", "#e8e8e4", "#b3221f", "#2a5aa8", "#c4c7cb", "#2f7a4a", "#d8c39a", "#5f6368", "#e4b512", "#3f74c9", "#d96a1d", "#8e1b1b", "#1f6f78"],
- "trim": {
-  "tyre": "#161616",
-  "hub": "#babdbf",
-  "under": "#0b0b0c",
-  "blackout": "#16171a",
-  "grille": "#0d0e10",
-  "plate": "#e9e9e2",
-  "glass": "#1a2430",
-  "headlamp": "#fff1c8",
-  "tail": "#8a1010",
-  "truck_box": "#d9d6cf",
-  "chrome": "#b9bec4",
-  "roof": "#9aa0a4"
- },
+ "paints": ["#f2f3f4", "#f2f3f4", "#f2f3f4", "#f2f3f4", "#f2f3f4", "#f2f3f4", "#848482", "#848482", "#848482", "#848482", "#b9b8b5", "#b9b8b5", "#222222", "#222222", "#436b95", "#be0032"],
+ "trim": {"tyre": "#2a2a2a", "hub": "#b9b8b5", "under": "#222222", "blackout": "#222222", "grille": "#222222", "plate": "#f2f3f4", "glass": "#202830", "headlamp": "#f2f3f4", "tail": "#722f37", "truck_box": "#f2f3f4", "chrome": "#b9b8b5", "roof": "#b9b8b5"},
  "cars": [
   {"id": "sedan", "length": 4.4, "width": 1.84, "height": 1.45, "wheel": 0.33, "clearance": 0.14,
    "top": [[0.5, 0.43], [0.485, 0.5], [0.44, 0.555], [0.33, 0.6], [0.215, 0.645], [0.13, 0.78], [0.04, 0.995], [-0.05, 1], [-0.14, 0.995], [-0.24, 0.995], [-0.3, 0.9], [-0.36, 0.675], [-0.44, 0.665], [-0.49, 0.63], [-0.5, 0.56]],
