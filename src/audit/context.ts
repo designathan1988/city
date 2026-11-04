@@ -1,7 +1,6 @@
 // Indexes over a graph IR that every audit rule reads: units by id, edges by endpoint, a unit's own lines (without
 // nested units), directory membership and the hot set (code that runs every frame or every tick).
 import type { EdgeKind, EdgeRecord, GraphIR, UnitRecord } from '../graph/ir.ts';
-import type { Profile } from '../measure/profile.ts';
 
 export interface AuditOptions {
   readonly hot: readonly string[];
@@ -15,14 +14,6 @@ export interface AuditOptions {
   readonly maxScattering: number;
   readonly minWriterFiles: number;
   readonly minConstantFiles: number;
-  /** Calls per frame measured by `converter measure`; without it, hotness is static reachability. */
-  readonly profile: Profile | null;
-}
-
-/** The highest calls per frame a unit reached in any measured variant, and in which. */
-export interface Measured {
-  readonly perFrame: number;
-  readonly variant: string;
 }
 
 export type Severity = 'high' | 'medium' | 'low';
@@ -50,13 +41,11 @@ export class AuditContext {
   readonly incoming = new Map<string, EdgeRecord[]>();
   readonly hotRoots: string[];
   readonly hot: Set<string>;
-  readonly measured: Map<string, Measured> | null;
 
   constructor(ir: GraphIR, options: AuditOptions) {
     this.ir = ir;
     this.options = options;
     this.byId = new Map(ir.units.map((u) => [u.id, u]));
-    this.measured = options.profile ? measuredUnits(options.profile) : null;
     for (const edge of ir.edges) {
       push(this.outgoing, edge.from, edge);
       push(this.incoming, edge.to, edge);
@@ -114,19 +103,6 @@ export class AuditContext {
     }
     return [...roots].sort();
   }
-}
-
-function measuredUnits(profile: Profile): Map<string, Measured> {
-  const out = new Map<string, Measured>();
-  for (const variant of profile.variants) {
-    for (const unit of variant.units) {
-      // Closures inside a unit run its code too: a callback created per item counts as the unit running.
-      const perFrame = (unit.calls + unit.closureCalls) / variant.frames;
-      const best = out.get(unit.id);
-      if (!best || perFrame > best.perFrame) out.set(unit.id, { perFrame, variant: variant.name });
-    }
-  }
-  return out;
 }
 
 function push(map: Map<string, EdgeRecord[]>, key: string, edge: EdgeRecord): void {

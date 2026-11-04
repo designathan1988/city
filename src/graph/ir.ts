@@ -1,7 +1,7 @@
 // The intermediate representation every later stage reads: the source's declarations ("units"), the typed edges
 // between them, the external APIs they touch and the per-unit facts the classifier and the rule catalog decide on.
 
-export const IR_VERSION = 4;
+export const IR_VERSION = 3;
 
 export type UnitKind =
   | 'class'
@@ -110,11 +110,6 @@ export interface UnitRecord {
   readonly parent: string | null;
   /** Ranges inside this unit that belong to nested units (used or not), so its own code can be told apart. */
   readonly nested: Range[];
-  /**
-   * For a callable unit, its head: from the declaration's start to the start of the function body. A runtime
-   * function that begins inside it is the unit's own function; one that begins later is a closure inside the unit.
-   */
-  readonly callableHead: Range | null;
   readonly facts: UnitFacts;
 }
 
