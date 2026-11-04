@@ -22,7 +22,7 @@ const COMMANDS := {
 	&"body_add_gear": "body_add_gear", &"body_remove_gear": "body_remove_gear", &"body_turn_gear": "body_turn_gear",
 	&"body_add_part": "body_add_part", &"body_add_part_at": "body_add_part_at", &"body_remove_part": "body_remove_part",
 	&"body_turn_part": "body_turn_part", &"body_repeat_part": "body_repeat_part", &"place_model": "place_model",
-	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_weather": "set_weather",
+	&"set_weather": "set_weather",
 	&"add_cloud": "add_cloud", &"edit_cloud": "edit_cloud", &"remove_cloud": "remove_cloud",
 	&"scatter_clouds": "scatter_clouds", &"clear_clouds": "clear_clouds", &"fog_brush": "fog_brush",
 	&"clear_fog": "clear_fog", &"paint_brush": "paint_brush", &"clear_gullies": "clear_gullies",
@@ -38,7 +38,7 @@ const QUERIES := {
 	&"model_list": "model_list", &"model_bytes": "model_bytes", &"building_bytes": "building_bytes", &"body_size": "body_size",
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
 	&"overlays": "overlays", &"save_status": "save_status", &"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
-	&"overlays": "overlays", &"save_status": "save_status", &"landscape": "landscape", &"cloud_at": "cloud_at",
+	&"landscape": "landscape", &"cloud_at": "cloud_at",
 	&"sky_revision": "sky_revision", &"fog_field": "fog_field", &"effects_near": "effects_near",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
