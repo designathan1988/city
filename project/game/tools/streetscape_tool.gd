@@ -18,12 +18,12 @@ func _kind() -> int:
 	return params.get("kind", 0)
 
 
-func _reach() -> float:
-	return params.get("reach_m", 0.0)
+func _reach(p: Vector3) -> float:
+	return pick_m(p, params.get("reach_m", 0.0), params.get("pick_px", 0.0))
 
 
 func hover(p: Vector3) -> void:
-	var at: Dictionary = CityStore.query(&"preview_item", [p, _kind(), _reach()])
+	var at: Dictionary = CityStore.query(&"preview_item", [p, _kind(), _reach(p)])
 	if at.is_empty():
 		return
 	ctl.preview.show_disc(at.position, params.get("placing_ring_m", 0.0), at.ok)
@@ -36,7 +36,7 @@ func drag(p: Vector3) -> void:
 
 func click(p: Vector3) -> void:
 	if Input.is_key_pressed(KEY_SHIFT):
-		var r: Dictionary = CityStore.dispatch(&"remove_street", [p, _reach()])
+		var r: Dictionary = CityStore.dispatch(&"remove_street", [p, _reach(p)])
 		if r.get("ok", false):
 			ctl.hint.emit(tr("hint.streetscape.removed"), true)
 		return
@@ -50,13 +50,16 @@ func release(p: Vector3) -> void:
 	_a = Vector3.INF
 	var every: float = params.get("row_m", 0.0)
 	var r: Dictionary
-	if p != Vector3.INF and every > 0.0 and from.distance_to(p) >= every:
+	var row: bool = p != Vector3.INF and every > 0.0 and from.distance_to(p) >= every
+	if row:
 		r = CityStore.dispatch(&"place_item_row", [from, p, _kind(), every])
 	else:
-		r = CityStore.dispatch(&"place_item", [from, _kind(), params.get("sign", 0), params.get("words", ""), _reach()])
+		r = CityStore.dispatch(&"place_item", [from, _kind(), params.get("sign", 0), params.get("words", ""), _reach(from)])
 	var ok: bool = r.get("ok", false)
 	if not ok:
 		ctl.hint.emit(refusal(r), false)
+	elif row:
+		ctl.hint.emit(tr("hint.streetscape.row"), true)
 	elif not r.get("note", "").is_empty():
 		ctl.hint.emit(tr(r.note), true)
 

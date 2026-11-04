@@ -99,7 +99,7 @@ static func _item_params(table: Dictionary, c: Dictionary, last: Callable) -> Di
 	var text: String = last.call("STREETSCAPE", "text", "")
 	var street_name: String = last.call("STREETSCAPE", "street_name", "")
 	return {
-		"kind": c.kind, "reach_m": table.reach_m, "placing_ring_m": table.placing_ring_m, "row_m": c.get("row_m", 0.0),
+		"kind": c.kind, "reach_m": table.reach_m, "pick_px": table.pick_px, "placing_ring_m": table.placing_ring_m, "row_m": c.get("row_m", 0.0),
 		"sign": last.call("STREETSCAPE", "sign", 0), "text": text, "street_name": street_name,
 		"words": street_name if c.kind == table.name_kind else text,
 	}

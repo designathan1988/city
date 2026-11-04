@@ -51,6 +51,13 @@ func key(_keycode: Key) -> void:
 	pass
 
 
+## How far from `p` a click still catches something: `px` pixels on the ground there, never under `least_m`.
+func pick_m(p: Vector3, least_m: float, px: float) -> float:
+	var cam := ctl.rig.camera
+	var per_px := 2.0 * tan(deg_to_rad(cam.fov) * 0.5) * cam.global_position.distance_to(p) / cam.get_viewport().get_visible_rect().size.y
+	return maxf(least_m, px * per_px)
+
+
 ## The refusal text for a command result: "Não dá para construir aqui: {why}." / money / other keys as they are.
 func refusal(result: Dictionary, price: float = 0.0) -> String:
 	var why: String = result.get("error", "")

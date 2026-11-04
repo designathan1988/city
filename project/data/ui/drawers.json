@@ -231,10 +231,10 @@
   "files": {"title_key": "action.openMap", "empty_key": "save.none"}
  },
  "street": {
-  "_doc": "The Street tab of the Landscape drawer, as the Roadcraft 4.0 lays it out (photo reference/rua/23-aba-rua). kind: sim/street/street_works.h ItemKind and BarrierKind; row_m: the spacing of a dragged row; reach_m, pole_reach_m: how far from the pointer a piece is caught; placing_ring_m: the size of the placing ring; double_click_m: two clicks farther apart than this are two points.",
+  "_doc": "The Street tab of the Landscape drawer, as the Roadcraft 4.0 lays it out (photo reference/rua/23-aba-rua). kind: sim/street/street_works.h ItemKind and BarrierKind; row_m: the spacing of a dragged row; reach_m, pole_reach_m: how far from the pointer a piece is caught at the least; pick_px: the same in pixels, for a far camera; placing_ring_m: the size of the placing ring; double_click_m: two clicks farther apart than this are two points.",
   "item_columns": 6,
   "barrier_columns": 3,
-  "reach_m": 3,
+  "reach_m": 1.5, "pick_px": 26,
   "pole_reach_m": 6,
   "placing_ring_m": 0.6,
   "double_click_ms": 450, "double_click_m": 1.5,
