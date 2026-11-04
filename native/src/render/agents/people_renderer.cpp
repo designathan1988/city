@@ -151,7 +151,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			size_t k = size_t(v * levels + l);
 			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))]->get_rid(), material_, bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
-	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false);
+	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
 	return drawn;
 }
 
