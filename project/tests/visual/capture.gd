@@ -117,6 +117,9 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	var hour := DAY
 	await CaptureSignals.at_hour(self, hour)
+	if only.has("doca"):
+		await CaptureLorry.shots(self)
+		return
 	if only.has("trafego"):
 		await CaptureVehicles.car_shots(self, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
 		await CaptureTraffic.shots(self)

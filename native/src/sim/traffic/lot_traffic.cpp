@@ -4,6 +4,8 @@
 // with `off` set: on no lane list, out of the fleet count, its pose the manoeuvre's.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include "core/laps.h"
 
 #include <algorithm>
@@ -235,6 +237,7 @@ void step_lots(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	ParkingState &pk = t.park;
 	const TrafficParams &p = s.catalog.traffic;
+	step_lorries(s, dt);
 	for (int i = int(pk.cars.size()) - 1; i >= 0; i--) {
 		LotCar &car = pk.cars[size_t(i)];
 		car.t += dt;

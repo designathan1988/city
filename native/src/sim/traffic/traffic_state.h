@@ -117,6 +117,7 @@ struct Vehicle {
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
 	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
 	int car = -1; // its index in ParkingState::cars
+	int lorry = -1; // its index in ParkingState::lorries
 	float stop_at = -1; // called to a gate: on its last lane it stops with its front here, on lane stop_lane
 	int stop_lane = 0;
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
@@ -198,6 +199,7 @@ struct TrafficState {
 	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
 	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
 	double step_ms[TIMED_STAGES] = {};
+	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
 	std::vector<int> pub_count;
 	ParkingState park;

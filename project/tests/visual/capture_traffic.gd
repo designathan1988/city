@@ -8,6 +8,7 @@ const CAMERA_UP := 24.0
 const CAMERA_BACK := 2.0
 const SHOTS := [["30_vaga_rua", "kerb"], ["31_vaga_lote", "lot"], ["32_carro_manobra", "moving"], ["33_bicicleta", "bike"]]
 const BAND_SHOT := "35_ciclofaixa"
+const NEAR_M := 30.0
 const BAND_STEP_TICKS := 100 # the camera stands over the cycle lane while the traffic runs, this much at a time
 const BAND_STEPS := 60
 const BAND_BEHIND := 9.0 # along the lane, behind the bicycle and over the road: from straight above a tree may cover it
@@ -18,6 +19,11 @@ const BAND_UP := 4.5
 static func shots(cap: Node) -> void:
 	var sample: Dictionary = CityStore.query(&"park_sample", [])
 	print("park_sample: ", sample)
+	print("docas no mapa: ", CityStore.query(&"dock_count", []))
+	print("folga dos carros nos lotes: ", CityStore.query(&"lot_clearance", []))
+	for key in ["kerb", "moving"]:
+		if sample.has(key):
+			print("veículos perto de ", key, ": ", CityStore.query(&"vehicles_near", [sample[key], NEAR_M]))
 	for s in SHOTS:
 		if not sample.has(s[1]):
 			print("captura: nenhum alvo ", s[1], " sem prédio alto por perto")

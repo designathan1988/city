@@ -45,6 +45,8 @@ namespace city {
 	X(parker_stop_slack_m) X(parker_past_gate_m) X(parker_give_up_s) X(gate_lane_reach_m) X(gate_lane_min_m) X(gate_lane_end_m) X(gate_stop_before_m) X(gate_join_past_m) \
 	X(gate_span_min_m) X(man_forward_ms) X(man_backward_ms) X(man_ramp_m) X(man_creep_ms) X(man_tangent) X(man_across_m) \
 	X(man_least_m) X(man_lead_m) X(man_disc_pad_m) X(man_disc_step_m) X(stay_work_h) X(stay_errand_h) \
+	X(lorry_most) X(lorry_radius_m) X(lorry_rear_m) X(lorry_margin_m) X(lorry_cell_m) X(lorry_street_reach_m) X(lorry_street_window_m) X(lorry_mouth_flare_m) X(lorry_gate_in_m) X(lorry_dock_gap_m) X(lorry_stop_before_m) X(lorry_join_past_m) X(lorry_pre_dock_m) X(lorry_pre_step_m) X(lorry_reach_m) X(lorry_turn_rad) X(lorry_settle_step_m) X(lorry_fit_margin_m) \
+	X(lorry_clear_h_m) X(lorry_call_reach_m) X(lorry_call_timeout_s) X(lorry_unload_min_s) X(lorry_unload_max_s) X(lorry_lane_half_m) X(lorry_closure_margin_m) X(lorry_clear_margin_m) X(lorry_join_ms) X(lorry_ask_way_s) X(lorry_walker_clear_m) X(lorry_look_m) X(lorry_forward_ms) X(lorry_backward_ms) X(lorry_ramp_m) X(lorry_creep_ms) X(lorry_stop_slack_m) X(lorry_plan_wait_ticks) \
 	X(parker_look_ticks) X(bike_share) X(bike_speed_kmh) X(bike_edge_m) X(cycle_ease_m) X(cycle_clear_share) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)

@@ -3,6 +3,8 @@
 // down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include "core/units.h"
 
 #include <algorithm>
@@ -139,6 +141,10 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		if (!head) {
 			const Vehicle &o = t.vehicles[list[size_t(ahead)]];
 			l.take(o.s - body(s, o) - v.s, o.v);
+		}
+		if (!t.closures.empty()) {
+			const float shut = closure_ahead(t, ds * MAX_LANES + v.lane, v.s);
+			if (shut >= 0) l.take(shut, 0.f);
 		}
 		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;

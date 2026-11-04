@@ -59,6 +59,24 @@ Manoeuvre::Manoeuvre(const std::vector<ManoeuvreLeg> &legs, float tangent) {
 	length_ = at;
 }
 
+Manoeuvre::Manoeuvre(const std::vector<OffStep> &steps) {
+	float at = 0;
+	for (size_t i = 0; i < steps.size(); i++) {
+		const OffStep &q = steps[i];
+		if (i > 0) at += std::hypot(q.x - steps[i - 1].x, q.z - steps[i - 1].z);
+		samples_.push_back({ q.x, q.z, q.angle, at });
+		if (i + 1 == steps.size() || steps[i + 1].reverse != q.reverse) {
+			ends_.push_back(at);
+			reverse_.push_back(q.reverse);
+		}
+	}
+	length_ = at;
+}
+
+float Manoeuvre::at_step(int i) const {
+	return samples_.empty() ? 0.f : samples_[size_t(std::clamp(i, 0, int(samples_.size()) - 1))].at;
+}
+
 bool Manoeuvre::done() const { return s >= length_ - DONE_EPS; }
 
 int Manoeuvre::leg_now() const {

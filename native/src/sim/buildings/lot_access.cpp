@@ -255,6 +255,25 @@ void lot_bays(const Body &b, const LotFrame &f, LotAccess &out) {
 	}
 }
 
+void lot_solids(const Data &, const Body &b, const LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds) {
+	int kind = -1;
+	auto box = [&](float x0, float y0, float x1, float y1) {
+		out.push_back({ f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) });
+		if (kinds) kinds->push_back(kind);
+	};
+	for (const Volume &v : b.volumes) {
+		if (!is_garage(v)) { box(v.x, v.y, v.x + v.w, v.y + v.d); continue; }
+		box(v.x, v.y, v.x + GARAGE_WALL, v.y + v.d); // a car drives into a garage: its walls only, the door side open
+		box(v.x + v.w - GARAGE_WALL, v.y, v.x + v.w, v.y + v.d);
+		box(v.x, v.y + v.d - GARAGE_WALL, v.x + v.w, v.y + v.d);
+	}
+	for (const LotElement &e : b.elements) {
+		if (!solid(e, headroom)) continue;
+		kind = int(e.kind);
+		box(e.x - e.w * HALF, e.y - e.d * HALF, e.x + e.w * HALF, e.y + e.d * HALF);
+	}
+}
+
 void lot_access(const Data &data, const Body &b, const LotFrame &f, float car_half, float lorry_half, LotAccess &out) {
 	lot_bays(b, f, out);
 	if (out.bays.empty()) return;

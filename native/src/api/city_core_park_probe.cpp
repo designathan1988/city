@@ -2,6 +2,7 @@
 // stands in nothing (project/tests/visual/capture_traffic.gd); camera_clear: whether a capture may stand at a point.
 #include "api/city_core.h"
 
+#include "sim/buildings/b40/record.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <mutex>
@@ -95,7 +96,42 @@ Dictionary CityCore::park_sample() {
 	lot_to(s, d);
 	vehicles_to(s, d);
 	band_to(s, d);
+	const ParkingState &pk = s.traffic.park;
+	d["lorries"] = int(pk.lorries.size());
+	d["lorries_sent"] = pk.lorries_sent;
+	d["lorries_docked"] = pk.lorries_docked;
+	d["lorries_left"] = pk.lorries_left;
+	Array calls;
+	for (int n : pk.lorry_calls) calls.push_back(n);
+	d["lorry_calls"] = calls; // no dock, planning, no way, no truck, no route, sent
+	int trucks = 0, ways = 0, planned = 0;
+	for (int id : s.traffic.micro_list) trucks += s.traffic.vehicles[size_t(id)].type == VehicleType::TRUCK ? 1 : 0;
+	for (const auto &y : pk.yards) {
+		if (!y.second.job->done.load()) continue;
+		for (const traffic::DockWays &w : y.second.job->plan.docks) {
+			planned++;
+			ways += w.gate >= 0 ? 1 : 0;
+		}
+	}
+	d["trucks_near"] = trucks;
+	d["docks_planned"] = planned;
+	d["docks_with_way"] = ways;
+	for (const Lorry &l : pk.lorries)
+		if (l.phase != LorryPhase::COMING) d["lorry"] = Vector3(s.traffic.vehicles[size_t(l.id)].cur.x, s.traffic.vehicles[size_t(l.id)].cur.y, s.traffic.vehicles[size_t(l.id)].cur.z);
 	return d;
+}
+
+int CityCore::dock_count() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	int docks = 0;
+	b40::Body body;
+	for (const Building &rec : s.buildings.items) {
+		if (!rec.alive) continue;
+		b40::record_body(s.buildings.designs, rec, body);
+		for (const b40::LotElement &e : body.elements) docks += e.kind == b40::EL_DOCK ? 1 : 0;
+	}
+	return docks;
 }
 
 bool CityCore::camera_clear(const Vector3 &at, float radius) {

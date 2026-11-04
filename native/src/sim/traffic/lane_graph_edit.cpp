@@ -172,6 +172,7 @@ void apply_network_changes(CityState &s) {
 		return;
 	}
 	graph_grow(s, int(s.roads.segs.size()), int(s.roads.nodes.size()));
+	t.park.yards.clear(); // their ways cross the streets
 	ChangeLog::dedup(removed);
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);

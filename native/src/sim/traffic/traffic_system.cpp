@@ -3,6 +3,8 @@
 // poses render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include "core/laps.h"
 #include "core/units.h"
 #include "sim/traffic/lane_graph_internal.h"
@@ -42,6 +44,7 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
 	lot_car_forget(s, id);
+	lorry_gone(s, id);
 	if (v.conn >= 0) conn_del(s, v.conn, id);
 	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	meso_unlink(s, id);
@@ -138,7 +141,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		AgentRecord rec;
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
-		const bool empty = v.off && t.park.cars[size_t(v.car)].phase == CarPhase::PARKED; // nobody in a car standing in its bay
+		const bool empty = v.off && lot_car_at_rest(s, int(&v - t.vehicles.data())); // nobody in a car standing in its bay
 		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u);
 		f.vehicles.push_back(rec);
 	}

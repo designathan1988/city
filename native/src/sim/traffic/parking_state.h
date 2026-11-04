@@ -7,6 +7,7 @@
 #include "core/math.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/traffic/manoeuvre.h"
+#include "sim/traffic/yard.h"
 
 #include <cstdint>
 #include <memory>
@@ -63,6 +64,37 @@ struct LotCar {
 	bool reserved = false; // holding the ground of the rest of its way: it no longer stops for anybody
 };
 
+// A stretch of lane closed while something off the lanes stands on it. `key`: ds * MAX_LANES + lane.
+struct LaneClosure {
+	int key = -1;
+	float from = 0, to = 0;
+	int owner = -1;
+};
+
+enum class LorryPhase : uint8_t { COMING, WAITING, ARRIVING, DOCKED, LEAVING, JOINING };
+// Where a call for a lorry stops, for the probes.
+enum LorryCall { CALL_NO_DOCK, CALL_PLANNING, CALL_NO_WAY, CALL_NO_TRUCK, CALL_NO_ROUTE, CALL_SENT, LORRY_CALLS };
+
+// A truck called to a dock (lorry_traffic.cpp); the same Vehicle all along, `off` once it leaves the lanes.
+struct Lorry {
+	int id = -1, building = -1, bay = -1;
+	LorryPhase phase = LorryPhase::COMING;
+	traffic::YardGate gate;
+	std::vector<traffic::AxlePose> into, away;
+	int into_street = 0, away_street = 0;
+	float street_at = 0; // along `path`, where the part on the street ends (arriving) or begins (leaving)
+	std::vector<LaneClosure> close_in, close_out;
+	bool closed = false;
+	Manoeuvre path;
+	float t = 0, stay = 0, waited = 0;
+};
+
+// A yard's plan on its way: a worker fills `job`, and it is read from `ready_tick` on.
+struct YardEntry {
+	std::shared_ptr<traffic::YardJob> job;
+	uint64_t ready_tick = 0;
+};
+
 struct ParkingState {
 	std::vector<Bay> bays;
 	std::vector<int> free_bays;
@@ -79,6 +111,11 @@ struct ParkingState {
 	float clock = 0, owed = 0; // seconds since the last look; trips owed to the lots
 	int coming = 0, moving = 0; // cars on their way, and driving in or out of a bay now
 	int called = 0, parked_in = 0, left_by = 0; // probes: cars sent in, parked, driven out
+	std::vector<Lorry> lorries; // Vehicle::lorry is its index here
+	std::unordered_map<int, YardEntry> yards; // by building
+	float lorry_clock = 0;
+	int lorries_sent = 0, lorries_docked = 0, lorries_left = 0; // probes
+	int lorry_calls[LORRY_CALLS] = {};
 };
 
 } // namespace city

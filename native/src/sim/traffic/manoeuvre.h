@@ -12,6 +12,12 @@ struct OffPose {
 	float x = 0, z = 0, angle = 0; // heading of the body's nose in the XZ plane
 };
 
+// A body's pose along a way worked out pose by pose, and whether it is reached backing.
+struct OffStep {
+	float x = 0, z = 0, angle = 0;
+	bool reverse = false;
+};
+
 struct ManoeuvreLeg {
 	V2 p0, t0, p1, t1; // ends and unit directions of motion there
 	bool reverse = false;
@@ -25,6 +31,8 @@ class Manoeuvre {
 public:
 	Manoeuvre() = default;
 	explicit Manoeuvre(const std::vector<ManoeuvreLeg> &legs, float tangent);
+	explicit Manoeuvre(const std::vector<OffStep> &steps); // a leg for each run in one direction
+	float at_step(int i) const; // metres driven at step `i` of those
 	float length() const { return length_; }
 	bool done() const;
 	float s = 0; // metres driven along it
