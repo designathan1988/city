@@ -44,6 +44,10 @@
      "render_scale": {
       "type": "number"
      },
+     "shadow_size": { "type": "integer" },
+     "shadow_filter": { "type": "integer" },
+     "occlusion": { "type": "boolean" },
+     "smaa": { "type": "boolean" },
      "shadow_distance": {
       "type": "number"
      }

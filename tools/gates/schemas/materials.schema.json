@@ -366,24 +366,24 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": { "type": "number" },
-      "wind_dir_z": { "type": "number" },
-      "wind_speed_ms": { "type": "number" },
       "sway_per_ms2": { "type": "number" },
       "gust_m": { "type": "number" },
       "turbulence": { "type": "number" },
       "sway_hz": { "type": "number" },
-      "roughness": { "type": "number" }
+      "roughness": { "type": "number" },
+      "leaf_specular": { "type": "number" },
+      "bark_ridges": { "type": "number" },
+      "bark_run_m": { "type": "number" },
+      "bark_deep": { "type": "number" },
+      "bark_far_m": { "type": "number" }
      },
      "required": [
-      "wind_dir_x",
-      "wind_dir_z",
-      "wind_speed_ms",
       "sway_per_ms2",
       "gust_m",
       "turbulence",
       "sway_hz",
-      "roughness"
+      "roughness",
+      "leaf_specular"
      ],
      "strict": true
     }
@@ -401,20 +401,17 @@
     "params": {
      "type": "object",
      "properties": {
-      "wind_dir_x": { "type": "number" },
-      "wind_dir_z": { "type": "number" },
-      "wind_speed_ms": { "type": "number" },
       "sway_per_ms2": { "type": "number" },
       "gust_m": { "type": "number" },
       "turbulence": { "type": "number" },
       "sway_hz": { "type": "number" },
       "roughness": { "type": "number" },
-      "cover_per_mip": { "type": "number" }
+      "leaf_specular": { "type": "number" },
+      "cover_per_mip": { "type": "number" },
+      "leaf_near_m": { "type": "number" },
+      "leaf_far_m": { "type": "number" }
      },
      "required": [
-      "wind_dir_x",
-      "wind_dir_z",
-      "wind_speed_ms",
       "sway_per_ms2",
       "gust_m",
       "turbulence",
@@ -431,7 +428,6 @@
    ],
    "strict": true
   },
-  "building_sheer": { "type": "object", "required": ["shader", "params"], "properties": { "shader": { "type": "string" }, "params": { "type": "object", "required": ["opacity", "roughness", "metalness"], "properties": { "opacity": { "type": "number" }, "roughness": { "type": "number" }, "metalness": { "type": "number" } }, "strict": true } }, "strict": true },
   "building_ghost": {
    "type": "object",
    "required": [
@@ -459,6 +455,12 @@
     }
    },
    "strict": true
+  },
+  "cover_plant": {
+   "type": "object"
+  },
+  "cover_rock": {
+   "type": "object"
   },
   "building_glass": {
    "type": "object",
@@ -494,6 +496,31 @@
     }
    },
    "strict": true
+  },
+  "building_sheer": {
+   "type": "object",
+   "required": [
+    "shader",
+    "params"
+   ],
+   "properties": {
+    "shader": { "type": "string" },
+    "params": {
+     "type": "object",
+     "required": [
+      "opacity",
+      "roughness",
+      "metalness"
+     ],
+     "properties": {
+      "opacity": { "type": "number" },
+      "roughness": { "type": "number" },
+      "metalness": { "type": "number" }
+     },
+     "strict": true
+    }
+   },
+   "strict": true
   }
  },
  "required": [
@@ -510,7 +537,8 @@
   "vegetation",
   "vegetation_cards",
   "building_ghost",
-  "building_glass"
+  "cover_plant",
+  "cover_rock"
  ],
  "strict": true
 }

@@ -32,7 +32,8 @@ static func slider(parent: Control, label_key: String, lo: float, hi: float, ste
 	var head := HudWidgets.hbox(col)
 	var name := HudWidgets.label(head, &"MutedLabel", TranslationServer.translate(label_key))
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var shown := HudWidgets.label(head, &"BodyLabel", "%d%s" % [int(value), unit])
+	var form := "%d%s" if step >= 1.0 else "%.1f%s"
+	var shown := HudWidgets.label(head, &"BodyLabel", form % [value if step < 1.0 else int(value), unit])
 	var s := HSlider.new()
 	s.min_value = lo
 	s.max_value = hi
@@ -41,7 +42,7 @@ static func slider(parent: Control, label_key: String, lo: float, hi: float, ste
 	s.custom_minimum_size.x = HudWidgets.px("side_w")
 	s.focus_mode = Control.FOCUS_NONE
 	s.value_changed.connect(func(v: float) -> void:
-		shown.text = "%d%s" % [int(v), unit]
+		shown.text = form % [v if step < 1.0 else int(v), unit]
 		on_change.call(v))
 	col.add_child(s)
 	return s

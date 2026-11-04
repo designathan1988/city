@@ -11,7 +11,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float PANEL_LIFT = 0.18f, PANEL_TOP = 0.24f, PANEL_RIM = 0.15f, VENT_H = 1.f, TANK_H = 1.6f, CHIMNEY_H = 2.1f, CAP_H = 0.15f, CAP_OUT = 0.1f;
-constexpr float SINK = 0.2f, SPIRE_FOOT_H = 0.75f, SPIRE_FOOT_SINK = 0.15f, SPIRE_SHARE = 0.47f;
+constexpr float GEAR_SINK_M = 0.2f, SPIRE_FOOT_H = 0.75f, SPIRE_FOOT_SINK = 0.15f, SPIRE_SHARE = 0.47f;
 constexpr float SPIRE_RINGS[4][2] = { { 0.f, 0.78f }, { 0.28f, 0.48f }, { 0.84f, 0.12f }, { 1.f, 0.025f } }; // height share, radius share
 constexpr float LANTERN_H = 19.4f, BASE_H = 1.03f, GLASS_H = 7.47f, GLASS_SHARE = 3.69f / 4.02f, BAND_T = 0.07f, BAND_OUT = 0.04f, MULLION = 0.035f;
 constexpr float LID_OUT = 0.12f, LID_H = 0.25f, DOME_H = 1.1f, DOME_TOP = 0.16f, MAST_FOOT = 0.15f, MAST_TOP = 0.1f, BEACON = 0.2f, BEACON_LOW = 0.45f, BEACON_HIGH = 0.1f;
@@ -99,12 +99,12 @@ void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves
 		switch (p.kind) {
 			case GEAR_SOLAR: panel(g, v, p, eaves, "gear_panel"); break;
 			case GEAR_SKYLIGHT: panel(g, v, p, eaves, "gear_glazing"); break;
-			case GEAR_VENT: g.box(hw, hd, z - SINK, z + VENT_H, "gear_metal"); break;
+			case GEAR_VENT: g.box(hw, hd, z - GEAR_SINK_M, z + VENT_H, "gear_metal"); break;
 			case GEAR_CHIMNEY:
-				g.box(hw, hd, z - SINK, z + CHIMNEY_H, "gear_masonry");
+				g.box(hw, hd, z - GEAR_SINK_M, z + CHIMNEY_H, "gear_masonry");
 				g.box(hw + CAP_OUT, hd + CAP_OUT, z + CHIMNEY_H, z + CHIMNEY_H + CAP_H, "gear_cap");
 				break;
-			case GEAR_TANK: g.box(hw, hd, z - SINK / 2, z + TANK_H, "gear_metal"); break;
+			case GEAR_TANK: g.box(hw, hd, z - GEAR_SINK_M / 2, z + TANK_H, "gear_metal"); break;
 			case GEAR_SPIRE: spire(g, p, z); break;
 			default: lantern(g, p, z); break;
 		}

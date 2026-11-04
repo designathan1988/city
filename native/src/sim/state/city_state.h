@@ -7,6 +7,7 @@
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/lots/lot_cache.h"
+#include "sim/nature/nature_state.h"
 #include "sim/roads/road_network.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
@@ -32,6 +33,7 @@ struct CityState {
 	Catalog catalog;
 	ChangeLog log;
 	Heightfield terrain;
+	NatureState nature; // weather, clouds, fog, painted ground, planted trees, the ecosystem (sim/nature)
 	RoadNetwork roads;
 	LotCache lots;
 	BuildingStore buildings;

@@ -5,7 +5,7 @@ extends SubViewport
 
 signal pictured(key: String, picture: Texture2D)
 
-const PICTURE_PX := 128
+const SHELF_PICTURE_PX := 128
 const VIEW_FROM := Vector3(0.62, 0.5, 0.6) # front right and above: the lot's front looks towards +z
 const FRAME_MARGIN := 1.12
 const CLOSEST_M := 1.0
@@ -23,7 +23,7 @@ var _camera: Camera3D
 
 
 func _init() -> void:
-	size = Vector2i(PICTURE_PX, PICTURE_PX)
+	size = Vector2i(SHELF_PICTURE_PX, SHELF_PICTURE_PX)
 	world_3d = World3D.new()
 	transparent_bg = true
 	render_target_update_mode = SubViewport.UPDATE_DISABLED

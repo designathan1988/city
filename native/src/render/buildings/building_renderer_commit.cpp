@@ -153,7 +153,7 @@ void BuildingRenderer::commit_one(Built &b) {
 void BuildingRenderer::commit_super(SuperBuilt &b) {
 	Super &sp = supers_[b.key];
 	sp.has_content = b.far.mesh.valid();
-	put(sp.far, b.far, scenario_, material_far_, false, true);
+	put(sp.far, b.far, scenario_, material_far_, true, true); // casts: past the mid level it is the only thing that can
 	sp.built = true;
 	sp.mask_sent = -1; // the mask update_view computed this frame goes to the (maybe new) instance at once
 	send_mask(sp);

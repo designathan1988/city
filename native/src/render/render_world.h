@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/atmosphere/fog_field.h"
 #include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
@@ -15,7 +16,9 @@
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
 #include "render/terrain_bridge.h"
+#include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
+#include "render/water/water_renderer.h"
 
 #include "core/laps.h"
 
@@ -63,9 +66,10 @@ public:
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
+	FogField &fog() { return fog_; }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
-				buildings_.pending() + trees_.pending();
+				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
 private:
@@ -73,6 +77,9 @@ private:
 	RoadRenderer roads_;
 	PropRenderer props_;
 	TreeRenderer trees_;
+	CoverRenderer cover_;
+	WaterRenderer water_;
+	FogField fog_;
 	BuildingRenderer buildings_;
 	BodyStage stage_;
 	AgentRenderer agents_;
@@ -82,7 +89,8 @@ private:
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
 	std::vector<int64_t> road_keys_, building_keys_;
-	std::vector<int> terrain_rects_;
+	std::vector<int> terrain_rects_, paint_rects_;
+	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;
 	void drain_log(CityState &s);
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/catalog/furniture_types.h"
+#include "sim/catalog/nature_types.h"
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
@@ -83,6 +84,7 @@ struct Catalog {
 	Tuning tune;
 	TrafficParams traffic; // data/catalog/traffic.json
 	StreetFurnitureDef furniture; // data/catalog/street_furniture.json
+	NatureDef nature; // data/catalog/nature.json
 
 	bool ready() const { return !profiles.empty(); }
 	const Profile &profile(int id) const { return profiles[size_t(id) < profiles.size() ? size_t(id) : 0]; }
