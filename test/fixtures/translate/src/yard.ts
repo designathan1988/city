@@ -1,0 +1,83 @@
+// Fixture: a small feature with every case the flow of values must decide (each one a bug a translator makes when
+// it decides types in several places).
+import type { Vec2 } from './vec2';
+import { identityMemo } from './memo';
+
+export interface Post {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly tag?: string;
+}
+
+export interface YardData {
+  readonly posts: readonly Post[];
+  readonly nextId: number;
+}
+
+export const emptyYard = (): YardData => ({ posts: [], nextId: 1 });
+
+const CELL = 16;
+
+/** Edits return a new yard: the target changes it in place. */
+export function addPost(t: YardData, x: number, y: number): { data: YardData; id: number } {
+  const id = t.nextId;
+  return { data: { ...t, posts: [...t.posts, { id, x, y }], nextId: id + 1 }, id };
+}
+
+export function removePost(t: YardData, id: number): YardData {
+  return { ...t, posts: t.posts.filter((p) => p.id !== id) };
+}
+
+/** Posts by cell: a 64-bit key from the target's owner of cell keys, lists filled through an alias. */
+const postCells = identityMemo((t: YardData) => {
+  const cells = new Map<number, Post[]>();
+  for (const p of t.posts) {
+    const key = (Math.floor(p.x / CELL) + 32768) * 65536 + (Math.floor(p.y / CELL) + 32768);
+    const list = cells.get(key);
+    if (list) list.push(p); else cells.set(key, [p]);
+  }
+  return cells;
+});
+
+/** A counter whose only values are integers, through a cycle (i = i + 1). */
+export function countNear(t: YardData, p: Vec2, reach: number): number {
+  let n = 0;
+  const cells = postCells(t);
+  for (let x = Math.floor((p.x - reach) / CELL); x <= Math.floor((p.x + reach) / CELL); x++) {
+    for (const q of cells.get((x + 32768) * 65536 + (Math.floor(p.y / CELL) + 32768)) ?? []) {
+      if (Math.hypot(q.x - p.x, q.y - p.y) < reach) n = n + 1;
+    }
+  }
+  return n;
+}
+
+/** The nearest post: set inside a callback (narrowing does not see it), an annotation narrower than the value. */
+export function nearest(t: YardData, p: Vec2): { i: number; d: number } | null {
+  let best: { i: number; d: number; at: Vec2 } | null = null;
+  t.posts.forEach((q, i) => {
+    const at = { x: q.x, y: q.y };
+    const d = Math.hypot(at.x - p.x, at.y - p.y);
+    if (!best || d < best.d) best = { i, d, at };
+  });
+  return best;
+}
+
+/** A reference to an element, never pointed elsewhere; a value rounded the JavaScript way. */
+export function firstX(t: YardData): number {
+  const first = t.posts[0]!;
+  return Math.round(first.x);
+}
+
+/** Point indices kept in a map through a helper whose parameters come from integer call sites. */
+export function chain(points: readonly Vec2[]): number {
+  const at = new Map<number, number[]>();
+  const link = (a: number, b: number): void => {
+    for (const end of [a, b]) {
+      const list = at.get(end);
+      if (list) list.push(a + b); else at.set(end, [a + b]);
+    }
+  };
+  for (let i = 1; i < points.length; i++) link(i - 1, i);
+  return at.size;
+}
