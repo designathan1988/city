@@ -103,6 +103,13 @@ PedAge roll_age(TrafficState &t, const TrafficParams &p) {
 	return r < p.ped_child_share + p.ped_elder_share ? PedAge::ELDER : PedAge::ADULT;
 }
 
+// The age of somebody who goes on foot with no one: a child never does (it walks with a grown-up, the party), so the share of
+// children is left out and the others keep their proportion.
+PedAge roll_age_alone(TrafficState &t, const TrafficParams &p) {
+	const float r = t.rng.f() * (1.f - p.ped_child_share);
+	return r < p.ped_elder_share ? PedAge::ELDER : PedAge::ADULT;
+}
+
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp) {
 	w.alive = true;
 	w.hp = hp;
@@ -170,7 +177,7 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	const TrafficParams &p = s.catalog.traffic;
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	Pedestrian w;
-	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp);
+	dress_walker(t, p, w, roll_age_alone(t, p), s.catalog.blast.walker_hp);
 	w.seg = seg;
 	w.side = side;
 	w.dir = int(t.rng.next() & 1);

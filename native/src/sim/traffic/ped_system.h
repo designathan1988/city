@@ -53,6 +53,7 @@ bool pick_door(CityState &s, const PeopleNow &now, int seg, int side, bool out, 
 
 // ped_spawn.cpp
 PedAge roll_age(TrafficState &t, const TrafficParams &p);
+PedAge roll_age_alone(TrafficState &t, const TrafficParams &p);
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp); // a body of that age and its own pace
 int alloc_walker(TrafficState &t);
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);

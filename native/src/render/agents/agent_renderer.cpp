@@ -286,7 +286,9 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
-		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		const float d2 = flat2 + dy * dy;
+		if (cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
+		const int level = d2 > near2 ? BODY_LEVEL : CABIN_LEVEL;
 		push_agent(bufs[model_of(type, paint)][level], rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}

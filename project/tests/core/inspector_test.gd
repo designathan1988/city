@@ -5,6 +5,7 @@ extends Node3D
 const TOWN_MAP := 0
 const SEED := 1
 const ROAD_LEN_M := 300.0
+const PX := 0.25 # metres a pixel the road tool snaps by (road_commands_test.gd)
 const SHARP_DEG := 12.0
 const TICKS := 600
 const KIB := 1024
@@ -107,7 +108,7 @@ func _edits() -> void:
 			one_way = p.index
 	var a := Vector3(0, 0, 0)
 	var b := Vector3(ROAD_LEN_M, 0, 0)
-	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, one_way if one_way >= 0 else 0])
+	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, one_way if one_way >= 0 else 0, PX])
 	_check(built.get("ok", false), "via de teste")
 	var mid := Vector3(ROAD_LEN_M * 0.5, 0, 0)
 	var info := _road_at(mid)
@@ -162,8 +163,8 @@ func _sharp() -> void:
 	var o := Vector3(0, 0, 1000)
 	var dir := Vector3(ROAD_LEN_M, 0, 0)
 	var other := dir.rotated(Vector3.UP, deg_to_rad(SHARP_DEG))
-	CityStore.dispatch(&"build_road", [o, o + dir, false, Vector3.ZERO, 0])
-	var r: Dictionary = CityStore.dispatch(&"build_road", [o, o + other, false, Vector3.ZERO, 0])
+	CityStore.dispatch(&"build_road", [o, o + dir, false, Vector3.ZERO, 0, PX])
+	var r: Dictionary = CityStore.dispatch(&"build_road", [o, o + other, false, Vector3.ZERO, 0, PX])
 	var bad: Array = CityStore.query(&"impossible_nodes")
 	print("  segunda via: %s; nós impossíveis: %d" % [r.get("ok", false), bad.size()])
 	_check(not r.get("ok", false) or bad.size() == 1, "nó agudo vira aviso ou é recusado")

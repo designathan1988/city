@@ -20,8 +20,8 @@ func run() -> void:
 	CityStore.step_ticks(SIGNAL_TICKS)
 	var at: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 	var was: Dictionary = CityStore.query(&"inspect", [at])
-	_check.call(was.get("kind", "") == "junction", "semáforo inspecionado %s" % [was])
-	if was.get("kind", "") != "junction":
+	_check.call(was.get("kind", "") == "node" and was.has("greens"), "semáforo inspecionado %s" % [was])
+	if not was.has("greens"):
 		return
 	var r: Dictionary = CityStore.dispatch(&"set_signal", [was.id, true, was.greens, SIGNAL_OFFSET])
 	var fixed_plan: Dictionary = CityStore.query(&"inspect", [at])

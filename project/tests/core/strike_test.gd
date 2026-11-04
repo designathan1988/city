@@ -121,9 +121,9 @@ func _roads() -> void:
 	while x < bounds.max.x and spot == Vector3.INF:
 		var z: float = bounds.min.z
 		while z < bounds.max.z and spot == Vector3.INF:
-			var anchor: Dictionary = CityStore.query(&"snap_road", [Vector3(x, 0, z), 0])
+			var anchor: Dictionary = CityStore.query(&"segment_at", [Vector3(x, 0, z)])
 			if anchor.get("seg", -1) >= 0:
-				spot = anchor.position
+				spot = anchor.at
 			z += SCAN_STEP_M
 		x += SCAN_STEP_M
 	_check(spot != Vector3.INF, "achou um ponto de via")

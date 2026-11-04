@@ -141,14 +141,14 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			under.y += blob_lift_m_;
 			push_agent(blob_buf_, under, blob_radius_m_, 0, 0, 0, 0);
 		}
-		push_agent(bufs_[size_t(v * levels + (blob ? lods : lod))], p, 1.f, float(v), float(pv.walk_frames) + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin,
+		push_agent(bufs_[slot(size_t(v), blob ? lods : lod)], p, 1.f, float(v), float(pv.walk_frames) + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin,
 				phase - std::floor(phase), 1.f - rec.rest);
 		drawn++;
 	}
 	AABB box(Vector3(cam.x - radius, cam.y - AABB_HALF_H, cam.z - radius), Vector3(radius * 2, AABB_HALF_H * 2, radius * 2));
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
-			size_t k = size_t(v * levels + l);
+			size_t k = slot(size_t(v), l);
 			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))]->get_rid(), material_, bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
@@ -157,7 +157,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 
 int PeopleRenderer::shown(int level) const {
 	int n = 0;
-	for (size_t v = 0; v < asset_.variations.size(); v++) n += int(bufs_[v * size_t(asset_.lods) + size_t(level)].size() / MM_STRIDE);
+	for (size_t v = 0; v < asset_.variations.size(); v++) n += int(bufs_[slot(v, level)].size() / MM_STRIDE);
 	return n;
 }
 

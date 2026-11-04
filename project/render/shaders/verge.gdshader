@@ -13,6 +13,9 @@ uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable
 uniform float detail_m = 1.6;
 uniform float detail_near_px;
 uniform float detail_far_px;
+uniform float detail_wide_from_px; // where the blades' colour starts to thin, gone at the next (as terrain.gdshader)
+uniform float detail_wide_to_px;
+uniform float detail_wide_share;
 uniform float detail_albedo = 0.9;
 uniform vec3 biome_tint[7] : source_color;
 uniform int map_biome = 0;
