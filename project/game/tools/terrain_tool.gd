@@ -25,10 +25,11 @@ func enter() -> void:
 
 
 func _spec() -> Dictionary:
-	for c in DataTables.ui("drawers").categories:
-		if c.has("brush"):
-			return c.brush
-	return {}
+	var out := {}
+	for s in DataTables.ui("land_panels").TERRAIN.sliders:
+		if s.has("key"):
+			out[s.key] = s
+	return out
 
 
 func exit() -> void:
@@ -67,6 +68,10 @@ func release(_p: Vector3) -> void:
 
 
 func _dab(dt: float) -> void:
-	var r: Dictionary = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode, hardness])
+	var r: Dictionary
+	if mode < 0: # the gully brush: cut or wipe, on the light the land reads (sim/nature/ground_paint.h)
+		r = CityStore.dispatch(&"paint_brush", [_at, radius, strength * dt / DAB_S, 0.0, mode])
+	else:
+		r = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode, hardness])
 	if not r.get("ok", false):
 		ctl.hint.emit(refusal(r), false)

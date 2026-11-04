@@ -70,7 +70,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -253,6 +253,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/save_slots.gd` — onde as cidades são salvas: um arquivo por cidade, cópia do mapa, índice da última e pasta dos testes
+- `project/game/tools/brush_defaults.gd` · `project/game/tools/brush_tool.gd` — valores de um pincel da Paisagem (land_panels.json); traço com dabs espaçados
+- `project/game/tools/cloud_tool.gd` · `project/game/tools/fog_tool.gd` · `project/game/tools/paint_tool.gd` · `project/game/tools/tree_tool.gd` · `project/game/tools/weather_tool.gd` — Céu (nuvens, neblina, clima), Solo e Natureza
 - `project/game/tools/demolish_tool.gd` — demolir
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
@@ -289,6 +291,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
+- `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
@@ -298,7 +301,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
-- `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
+- `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/land_panels.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**

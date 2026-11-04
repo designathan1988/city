@@ -19,6 +19,7 @@ const CATALOG_FRAGMENTS := {
 		"res://data/catalog/road_profiles_b.json",
 	],
 }
+static var _catalog_cache := {}
 const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
@@ -29,6 +30,7 @@ const RENDER_TABLES := {
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",
+	"land_panels": "res://data/ui/land_panels.json",
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
@@ -65,6 +67,13 @@ static func _group(paths: Dictionary) -> Dictionary:
 	for key in paths:
 		out[key] = _read(paths[key])
 	return out
+
+
+## One table of the catalog (kept once read).
+static func catalog_table(key: String) -> Dictionary:
+	if not _catalog_cache.has(key):
+		_catalog_cache[key] = _read(CATALOG[key])
+	return _catalog_cache[key]
 
 
 static func catalog() -> Dictionary:
