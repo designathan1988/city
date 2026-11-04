@@ -70,10 +70,13 @@ int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
 
-// light_rule.cpp: the one rule of the lights (as in Roadcraft 4.0), for admission, commitments and
-// the stops ahead. `v` can stop comfortably (its class's b) within `stop_m`; the light of approach `ds` holds it with
-// its stop `stop_m` metres ahead (red always; amber when it can stop comfortably, a decision held until green).
+// light_rule.cpp: the one rule of the lights, for admission, commitments and the stops ahead. `v` can stop
+// comfortably (its class's b) within `stop_m`; it stops at an amber `stop_m` ahead as the intergreen is timed
+// (CONTRAN MBST vol. V 5.7.1: reaction, then signal_decel), and how far ahead that rule must look at its speed; the
+// light of approach `ds` holds it (red always; amber by that rule, a decision held until green).
 bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m);
+bool stops_at_amber(const CityState &s, const Vehicle &v, float stop_m);
+float amber_reach(const CityState &s, const Vehicle &v);
 bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m);
 // Where a vehicle stops for the lights down its route: the first stop line within its horizon whose light holds it.
 struct LightStop {
@@ -162,7 +165,13 @@ bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &o
 int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, Waypoint *ways, int &side_out);
 
 // ped_crossing.cpp
-int green_stage(const CityState &s, int node); // the stage on green now, -1 on amber/all-red or no signal
+// The intergreen after the green of approach `ds` into node `n` (amber, all-red), `walkers` when it has crosswalks.
+void intergreen(const CityState &s, int n, int ds, bool walkers, float &amber, float &all_red);
+// Walkers at signalled node `node` may step onto the crosswalk over arm `arm_seg` (its traffic in `arm_stage`) now: while
+// another stage runs and their flashing red and all-red still fit before it ends (CONTRAN MBST vol. V 5.7.2).
+bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage);
+// The flashing red a crosswalk over arm `arm_seg` needs: reaction and its length at the walkers' design speed.
+float ped_clearance(const CityState &s, int arm_seg);
 bool walk_ok(CityState &s, int node, int arm_seg); // a walker may step onto the crosswalk over this arm
 bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it or too close to stop
 // Walkers on the crosswalks connector `conn` drives over (the arm it comes from and the one it leaves by) who are

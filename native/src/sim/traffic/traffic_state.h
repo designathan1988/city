@@ -57,7 +57,7 @@ struct Conn {
 
 struct Junction {
 	Control ctl = Control::NONE;
-	std::vector<float> green, amber; // per stage, seconds
+	std::vector<float> green, amber, all_red; // per stage, seconds (the intergreen is the amber, then the all-red)
 	float cycle = 0, offset = 0;
 	int degree = 0; // arms with lanes
 };

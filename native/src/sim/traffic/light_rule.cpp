@@ -1,5 +1,5 @@
-// The lights for vehicles, as in Roadcraft 4.0: one rule for admission, commitments and braking (red holds; amber
-// holds whoever can still stop comfortably, a decision held until green), and the stop each vehicle sees along its
+// The lights for vehicles: one rule for admission, commitments and braking (red holds; amber holds whoever can still
+// stop at the line as the intergreen is timed, a decision held until green), and the stop each vehicle sees along its
 // route, past road joints and junctions, as a driver sees the signals down the street.
 #include "sim/traffic/traffic_system.h"
 
@@ -13,10 +13,19 @@ bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m) {
 	return stop_m >= 0 && v.v * v.v <= 2 * s.catalog.traffic.classes[int(v.type)].b * stop_m;
 }
 
+// At the amber, stops whoever can stop at the line the way the intergreen is timed (CONTRAN MBST vol. V 5.7.1): reacting
+// in signal_reaction_s, then braking at signal_decel; the others reach the line before the amber ends.
+float amber_reach(const CityState &s, const Vehicle &v) {
+	const TrafficParams &p = s.catalog.traffic;
+	return v.v * p.signal_reaction_s + v.v * v.v / (2 * p.signal_decel);
+}
+
+bool stops_at_amber(const CityState &s, const Vehicle &v, float stop_m) { return stop_m >= 0 && stop_m >= amber_reach(s, v); }
+
 bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m) {
 	switch (light_for(s, ds)) {
 		case Light::RED: return true;
-		case Light::AMBER: return v.amber_hold == ds || stop_is_comfortable(s, v, stop_m);
+		case Light::AMBER: return v.amber_hold == ds || stops_at_amber(s, v, stop_m);
 		default: return false;
 	}
 }
@@ -25,8 +34,10 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const VehicleClass &vc = p.classes[int(v.type)];
-	// a standing obstacle starts to matter at the IDM's desired gap to it; never nearer than a head looks at its junction
-	const float horizon = std::max(p.look_ahead_m, vc.min_gap + v.v * vc.headway + v.v * v.v / (2 * std::sqrt(vc.a * vc.b)));
+	// a standing obstacle starts to matter at the IDM's desired gap to it; never nearer than a head looks at its junction,
+	// nor than an amber's stopping distance (each light is seen when it turns amber, as the intergreen supposes)
+	const float horizon = std::max({ p.look_ahead_m, vc.min_gap + v.v * vc.headway + v.v * v.v / (2 * std::sqrt(vc.a * vc.b)),
+			amber_reach(s, v) + p.stop_margin_m });
 	LightStop out;
 	float back = NO_LEADER; // the previous lane's stop while it can still stop there, and whether that is its own lane
 	bool back_own = false;

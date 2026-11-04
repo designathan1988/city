@@ -97,12 +97,14 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	}
 	if (ci < 0 || t.g.conns[ci].from_lane != v.lane || dist >= p.look_ahead_m) return false;
 	if (v.pass == ci) {
-		// a commitment is taken back while the nose is still behind the line (Roadcraft 4.0 revokes a stale grant): the
-		// light went against it and it can still stop comfortably, a light past the junction stops it before it, or it
+		// a commitment is taken back while the nose is still behind the line: the light went against it and it can still
+		// stop (at an amber by the amber's rule, at a red comfortably), a light past the junction stops it before it, or it
 		// stands and its exit filled meanwhile; else it goes once the box is clear, never into a junction it cannot leave
 		// nor against the light (a jammed junction's release lets its one vehicle in whatever its exit)
-		const bool can_stop = stop_is_comfortable(s, v, line - p.stop_margin_m);
-		const bool stale = held || (can_stop && light_for(s, v.ds) != Light::GREEN) ||
+		const Light light = light_for(s, v.ds);
+		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, line - p.stop_margin_m) || v.amber_hold == v.ds
+				: stop_is_comfortable(s, v, line - p.stop_margin_m);
+		const bool stale = held || (can_stop && light != Light::GREEN) ||
 				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci);
 		release(s, id, ci);
