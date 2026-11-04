@@ -4,6 +4,7 @@
   "_doc": {
    "type": "string"
   },
+  "verge": { "type": "object", "properties": { "shader": { "type": "string" }, "params": { "type": "object" } }, "required": ["shader", "params"], "strict": true },
   "road": {
    "type": "object",
    "properties": {
@@ -689,7 +690,8 @@
   "vegetation_cards",
   "building_ghost",
   "cover_plant",
-  "cover_rock"
+  "cover_rock",
+  "verge"
  ],
  "strict": true
 }

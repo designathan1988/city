@@ -6,6 +6,7 @@
 #include "sim/roads/junction.h"
 
 #include <algorithm>
+#include <iterator>
 #include <cmath>
 
 using namespace godot;
@@ -19,6 +20,11 @@ constexpr int MIN_ARC = 2;
 constexpr float PLATE_CORE = 0.2f, PLATE_MEET = 0.15f; // share of the way out that fades to the mean; half the share of a corner where two arms blend
 constexpr double TAU_D = 2 * PI_D;
 const Vector3 UP(0, 1, 0);
+
+Vector3 flat_unit(Vector3 v) {
+	v.y = 0;
+	return v.length() > 0 ? v.normalized() : UP;
+}
 
 struct End {
 	Vector3 p, d; // mouth centre, outward unit direction
@@ -252,41 +258,86 @@ void road_cut(const RoadEmit &e, int n, const End &en) {
 	face(al, f.l, walk);
 }
 
+// A circle of radius r round a turning bulb, open where the road comes in.
+std::vector<Vector3> bulb_ring(const StreetLook &L, const EndFrame &f, const End &en, double setback, double r) {
+	std::vector<Vector3> pts;
+	double a_in = std::acos(std::min(1.0, setback / r));
+	for (int i = 0; i <= L.bulb_steps; i++) {
+		double phi = a_in + double(i) / L.bulb_steps * (TAU_D - 2 * a_in), along = r * std::cos(phi), u = r * std::sin(phi);
+		float y = along <= 0 ? f.node.y : float(f.node.y + (en.p.y - f.node.y) * std::min(1.0, along / setback));
+		pts.push_back(f.node + f.d * float(along) + f.left * float(u) + Vector3(0, y - f.node.y, 0));
+	}
+	return pts;
+}
+
 void bulb(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
 	EndFrame f = end_frame(e, n, en);
-	const Vector3 &node = f.node, &d = f.d, &left = f.left;
+	const Vector3 &node = f.node;
 	double setback = std::max(en.at, FILLET_SLACK);
 	float kw = f.kw;
-	auto ring = [&](double r) {
-		std::vector<Vector3> pts;
-		double a_in = std::acos(std::min(1.0, setback / r));
-		for (int i = 0; i <= L.bulb_steps; i++) {
-			double phi = a_in + double(i) / L.bulb_steps * (TAU_D - 2 * a_in), along = r * std::cos(phi), u = r * std::sin(phi);
-			float y = along <= 0 ? node.y : float(node.y + (en.p.y - node.y) * std::min(1.0, along / setback));
-			pts.push_back(node + d * float(along) + left * float(u) + Vector3(0, y - node.y, 0));
-		}
-		return pts;
-	};
+	auto ring = [&](double r) { return bulb_ring(L, f, en, setback, r); };
 	std::vector<Vector3> in = ring(BULB_R);
 	fan(e, node, in, std::vector<Color>(in.size(), L.carriage(*en.prof)));
 	kerbed_line(e, in, ring(BULB_R + kw), ring(BULB_R + BULB_WALK), kw > 0, walk_color(L, en, 1));
 }
-} // namespace
-
-void emit_node(const RoadEmit &e, int n) {
+// What a node is, and the function that draws that shape.
+template <typename Junction, typename Cut, typename Bulb>
+void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&turn) {
 	const RoadNode &nd = e.s.roads.nodes[n];
 	if (nd.segs.empty()) return;
 	std::vector<End> ends = ends_of(e, n);
 	if (ends.size() == 1) {
 		if (ends[0].prof->rail) return;
-		if (nd.bulb) bulb(e, n, ends[0]);
-		else road_cut(e, n, ends[0]);
+		if (nd.bulb) turn(e, n, ends[0]);
+		else cut(e, n, ends[0]);
 		return;
 	}
 	bool any = false;
 	for (const End &en : ends) any = any || en.at > PLATE_MIN_RETREAT;
-	if (any) junction(e, n, ends);
+	if (any) plate(e, n, ends);
 }
+
+// The verge along a line of the paving, each point taken `rise` up and sent out towards `from` the other way.
+void verge_from(const RoadEmit &e, std::vector<Vector3> edge, const std::vector<Vector3> &away, float rise) {
+	for (Vector3 &p : edge) p.y += rise;
+	verge_ribbon(e, edge, away);
+}
+
+void junction_verge(const RoadEmit &e, int n, const std::vector<End> &ends) {
+	const RoadNode &nd = e.s.roads.nodes[n];
+	const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
+	for (size_t i = 0; i < ends.size(); i++) {
+		const End &a = ends[i], &b = ends[(i + 1) % ends.size()];
+		const std::vector<Vector3> in = corner(e.L, node, a, a.arm.asph_left, b, b.arm.asph_right);
+		const std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
+		const std::vector<Vector3> unit = outside(in, a, b, 1.f, 1.f);
+		std::vector<Vector3> away;
+		for (size_t k = 0; k < in.size(); k++) away.push_back(flat_unit(unit[k] - in[k]));
+		verge_from(e, out, away, kerb_w(a, 1) > 0 || kerb_w(b, -1) > 0 ? e.L.h_sidewalk : 0.f);
+	}
+}
+
+void cut_verge(const RoadEmit &e, int n, const End &en) {
+	const EndFrame f = end_frame(e, n, en);
+	const float ar = float(en.arm.asph_right), al = float(en.arm.asph_left), walk = f.kw > 0 ? e.L.h_sidewalk : 0.f;
+	const float at[] = { -f.r, -ar, -ar, al, al, f.l }, up[] = { walk, walk, 0, 0, walk, walk };
+	std::vector<Vector3> edge;
+	for (size_t k = 0; k < std::size(at); k++) edge.push_back(f.node + f.left * at[k] + Vector3(0, up[k], 0));
+	verge_ribbon(e, edge, std::vector<Vector3>(edge.size(), -f.d));
+}
+
+void bulb_verge(const RoadEmit &e, int n, const End &en) {
+	const EndFrame f = end_frame(e, n, en);
+	const std::vector<Vector3> ring = bulb_ring(e.L, f, en, std::max(en.at, FILLET_SLACK), BULB_R + BULB_WALK);
+	std::vector<Vector3> away;
+	for (const Vector3 &p : ring) away.push_back(flat_unit(p - f.node));
+	verge_from(e, ring, away, f.kw > 0 ? e.L.h_sidewalk : 0.f);
+}
+} // namespace
+
+void emit_verge_node(const RoadEmit &e, int n) { each_shape(e, n, junction_verge, cut_verge, bulb_verge); }
+
+void emit_node(const RoadEmit &e, int n) { each_shape(e, n, junction, road_cut, bulb); }
 
 } // namespace city

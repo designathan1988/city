@@ -105,3 +105,13 @@ vec3 straw_over(vec3 c, vec3 map_colour, vec2 xz, int biome) {
 	float mask = smoothstep(0.35, 0.8, golden + (clamp((luma - 0.17) / 0.2, 0.0, 1.0) - 0.5) * 0.3) * straw_share;
 	return mix(c, dot(c, vec3(0.3, 0.6, 0.1)) * vec3(1.32, 1.04, 0.46) * 1.05, mask);
 }
+
+// The ground's grass at a world point, before soil and rock: g its map's colour, n its patches, for whoever carries on.
+vec3 grass_ground(vec2 xz, float detail, vec3 tint, int biome, float per_pixel, out vec3 g, out float n) {
+	n = mix(0.5, vnoise(xz * patch_scale) * 0.7 + vnoise(xz * patch_scale * 6.0) * 0.3, detail);
+	vec2 gp = xz / grass_m;
+	g = grass(gp, detail);
+	float macro = clamp(dot(grass(gp * 0.137 + 0.21, detail), vec3(0.3, 0.6, 0.1)) / max(dot(g, vec3(0.3, 0.6, 0.1)), 0.02), 0.7, 1.3);
+	vec3 c = straw_over(g * mix(1.0, macro, 0.35) * tint * mix(0.9, 1.08, n), g, xz, biome);
+	return c * grass_grain(xz, per_pixel) * grass_speckle(xz, per_pixel);
+}

@@ -135,19 +135,19 @@ void fragment() {
 		if (v_mat != M_PAINT) albedo = wear_asphalt(albedo, wear_at(v_world.xz).x, v_world.xz);
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
-		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m, near * detail_footway.z).rgb);
-		vec2 duv = uv.yx / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
+		vec3 t = source_linear(texture(footway_map, uv / footway_m, near * detail_footway.z).rgb);
+		vec2 duv = uv / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
 			t *= mix(vec3(1.0), detail_albedo(concrete_detail, duv, ddx, ddy), near * detail_footway.x);
 			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_footway.y;
 		}
 		bend_scale = normal_footway;
 		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
-		float grain = source_linear(texture(asphalt_map, uv.yx / asphalt_m * 2.7).rgb).r;
+		float grain = source_linear(texture(asphalt_map, uv / asphalt_m * 2.7).rgb).r;
 		if (COLOR.r + COLOR.g > 0.0) { // a paved median has neither kerb nor lot to wear by
 			albedo *= footway_wear(COLOR.r * WEAR_SPAN_M, (COLOR.r + COLOR.g) * WEAR_SPAN_M, grain);
 		}
-		bend = (texture(footway_normal, uv.yx / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
+		bend = (texture(footway_normal, uv / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
 		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);

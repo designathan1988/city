@@ -35,4 +35,10 @@ void emit_segment(const RoadEmit &e, int sid);
 void emit_markings(const RoadEmit &e, int sid);
 void emit_node(const RoadEmit &e, int node);
 
+// The ground round the road (road_verge.cpp): from `edge`, a line along the paving's outer top, out along `away` (unit,
+// flat) down to the terrain. emit_verge_node draws it round a node's corners and ends.
+void verge_ribbon(const RoadEmit &e, const std::vector<godot::Vector3> &edge, const std::vector<godot::Vector3> &away);
+void emit_verge_segment(const RoadEmit &e, int sid);
+void emit_verge_node(const RoadEmit &e, int node);
+
 } // namespace city

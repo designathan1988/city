@@ -52,11 +52,13 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.h_barrier = float(h["barrier"]);
 	L.skirt = float(h["skirt"]);
 	L.median_nose = float(t["median_nose_m"]);
+	Dictionary v = sub(t, "verge", errors);
+	L.verge_reach = float(v["reach_m"]);
+	L.verge_under = float(v["under_m"]);
+	L.verge_strips = int(v["strips"]);
 	L.step = float(t["sample_step_m"]);
 	L.face_eps = float(t["face_eps_m"]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
-	L.ramp_full = float(r["full_m"]);
-	L.ramp_flat = float(r["flat_m"]);
 	L.ramp_flare = float(r["flare_m"]);
 	L.ramp_low = float(r["low_m"]);
 	L.ramp_run = float(r["run_m"]);

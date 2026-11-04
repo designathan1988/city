@@ -17,6 +17,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
 	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
 	"res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
+	"res://render/shaders/verge.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
@@ -58,11 +59,22 @@ func materials() -> Dictionary:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":
 				SurfaceMeans.apply(m, table[key].params, _param)
+			elif key == "verge":
+				_set_ground(m)
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
 		_materials["water"] = _water_mat # the lakes and rivers of the core (render/water) wear the sea's material
 	return _materials
+
+
+## The verge wears the terrain's grass: the same table, the same values.
+func _set_ground(m: ShaderMaterial) -> void:
+	var ground: Dictionary = DataTables.render().palette.terrain
+	for key in ground:
+		if not key.begins_with("_"):
+			m.set_shader_parameter(key, _param(ground[key]))
+	m.set_shader_parameter("grass_mean", _grass_mean(ground))
 
 
 ## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its
@@ -79,6 +91,11 @@ func _set_lens_radiance(m: ShaderMaterial) -> void:
 			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
 					environment.tonemap_white)
 	m.set_shader_parameter("lit_radiance", lit)
+
+
+func _grass_mean(ground: Dictionary) -> float:
+	var mean := SurfaceMeans.mean_color(_param(ground.grass_map)).srgb_to_linear()
+	return mean.r * LUMA.x + mean.g * LUMA.y + mean.b * LUMA.z
 
 
 func _param(v: Variant) -> Variant:
@@ -99,6 +116,8 @@ func _param(v: Variant) -> Variant:
 ## The map's biome tints the grass (0 none, else the biome's index + 1).
 func set_map_biome(region: int) -> void:
 	_terrain_material.set_shader_param("map_biome", region + 1)
+	if _materials.has("verge"):
+		_materials.verge.set_shader_parameter("map_biome", region + 1)
 
 
 ## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
@@ -198,8 +217,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	for key in palette.terrain:
 		if not key.begins_with("_"):
 			mat.set_shader_param(key, _param(palette.terrain[key]))
-	var grass_mean := SurfaceMeans.mean_color(_param(palette.terrain.grass_map)).srgb_to_linear()
-	mat.set_shader_param("grass_mean", grass_mean.r * LUMA.x + grass_mean.g * LUMA.y + grass_mean.b * LUMA.z)
+	mat.set_shader_param("grass_mean", _grass_mean(palette.terrain))
 
 
 func _build_water(palette: Dictionary) -> void:
