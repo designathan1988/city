@@ -4,6 +4,7 @@
 #include "core/math.h"
 #include "core/units.h"
 #include "sim/buildings/lot_access.h"
+#include "sim/commands/interior_commands.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -215,6 +216,9 @@ Dictionary CityCore::probe_building(int id) {
 	d["zone"] = int(b.zone);
 	d["fn"] = int(b.fn);
 	d["lot"] = lot_probe(s, b);
+	const InteriorFocus body = interior_focus(s, id);
+	d["focus"] = Vector3(body.at.x, s.terrain.height_at(body.at.x, body.at.y), body.at.y);
+	d["extent"] = body.extent;
 	return d;
 }
 

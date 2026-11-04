@@ -21,4 +21,12 @@ const char *set_interior_view(CityState &s, const InteriorRequest &r);
 // The floors of a building (its body's highest floor + 1); 0 when it is not there.
 int interior_floors(const CityState &s, int id);
 
+// Where a building's body stands: the middle of its volumes' bounding rectangle in the world (XZ) and that rectangle's
+// longest side. The lot's middle is not it (a long lot keeps its house at the front): this is what the camera frames.
+struct InteriorFocus {
+	V2 at;
+	float extent = 0;
+};
+InteriorFocus interior_focus(const CityState &s, int id);
+
 } // namespace city

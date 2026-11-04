@@ -25,10 +25,9 @@ func set_lamps(lamps: PackedVector3Array) -> void:
 	_place(Vector3.ZERO)
 
 
-## The lights go to the lamps nearest the focus, as bright as the hour asks.
-func follow(focus: Vector3) -> void:
+## The lights go to the lamps nearest the focus, as bright as the hour asks (`night`: 0 day, 1 night, the daylight's own).
+func follow(focus: Vector3, night: float) -> void:
 	_place(focus)
-	var night: float = RenderingServer.global_shader_parameter_get(&"night")
 	for light in _lights:
 		light.light_energy = lerpf(_cfg.energy_day, _cfg.energy_night, night)
 

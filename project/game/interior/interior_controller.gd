@@ -11,6 +11,7 @@ const FLAT_LOOK := 0.2
 
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var hud: RoadcraftHud = get_tree().get_first_node_in_group(&"hud")
+var _world: CityWorld
 var _bar: InteriorBar
 var _lights: InteriorLights
 var _cfg: Dictionary
@@ -20,6 +21,9 @@ var _step := -1
 func _ready() -> void:
 	add_to_group(&"interior_controller")
 	_cfg = DataTables.game("interior")
+	for sibling in get_parent().get_children():
+		if sibling is CityWorld:
+			_world = sibling
 	_lights = InteriorLights.new(_cfg.lights)
 	add_child(_lights)
 	_bar = InteriorBar.new()
@@ -73,7 +77,7 @@ func _process(_delta: float) -> void:
 	if step != _step:
 		var s: Dictionary = CityStore.query(&"interior")
 		_send(true, s.target, s.level, step)
-	_lights.follow(rig.focus)
+	_lights.follow(rig.focus, _world.daylight.night if _world else 0.0)
 
 
 ## Opens building `id` at `level` and frames it. The floor kept goes no higher than the building's top.
@@ -82,8 +86,7 @@ func _open(id: int, level: int) -> void:
 	_send(true, id, level)
 	if info.is_empty():
 		return
-	var size := maxf(info.w, info.d)
-	rig.jump(info.position, rad_to_deg(rig.yaw), _cfg.camera.pitch_deg, maxf(size * _cfg.camera.distance_per_m, _cfg.camera.min_distance_m))
+	rig.jump(info.focus, rad_to_deg(rig.yaw), _cfg.camera.pitch_deg, maxf(info.extent * _cfg.camera.distance_per_m, _cfg.camera.min_distance_m))
 
 
 func _move_floor(delta: int) -> void:

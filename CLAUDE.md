@@ -220,6 +220,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
+- `native/src/render/buildings/roof_clip.cpp` · `native/src/render/buildings/roof_clip.h` — o telhado inclinado de um volume baixo recortado onde um volume mais alto do corpo aberto o encerra (só no corte; pedaços convexos exatos no plano das paredes)
 - `native/src/render/buildings/roof_pitched.cpp` — telhados inclinados e dente de serra
 - `native/src/render/buildings/roof_plant.cpp` — equipamentos de cobertura
 - `native/src/render/buildings/roof_terrace.cpp` — terraços usados
@@ -293,6 +294,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/interior_test.gd` · `project/tests/core/interior_test.tscn` — a camada Interior pelo store: o andar limitado ao topo, prédio que não existe recusado, lâmpadas, custo do interior estável e a vista em volta de um ponto
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
+- `project/tests/visual/capture_interior.gd` · `project/tests/visual/capture_interior.tscn` — capturas da camada Interior dos prédios, dirigidas pelo controlador como o jogador (prédio, andar, volta, escala e hora por tabela)
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
