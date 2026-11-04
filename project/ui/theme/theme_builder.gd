@@ -76,6 +76,13 @@ static func _panels() -> void:
 	_panel(&"TabStrip", box("rc_strip", "card_radius"))
 	_panel(&"Toast", box("bg_strong", "pill_radius", "line", true))
 	_panel(&"DangerToast", box("bg_strong", "pill_radius", "danger", true))
+	for name in [&"Tag", &"DangerTag"]:
+		var tag := box("tag_bg", "tag_radius")
+		tag.set_content_margin(SIDE_LEFT, size("tag_pad_x"))
+		tag.set_content_margin(SIDE_RIGHT, size("tag_pad_x"))
+		tag.set_content_margin(SIDE_TOP, size("tag_pad_y"))
+		tag.set_content_margin(SIDE_BOTTOM, size("tag_pad_y"))
+		_panel(name, tag)
 	for axis in ["H", "V"]:
 		var base := StringName(axis + "BoxContainer")
 		_theme.set_constant(&"separation", base, int(size("pad_s")))
@@ -154,5 +161,12 @@ static func _labels() -> void:
 	_label(&"CardLabel", "font_card", "muted")
 	_label(&"MetaLabel", "font_meta", "muted")
 	_label(&"DangerLabel", "font_body", "danger_ink")
+	_label(&"TagLabel", "font_tag", "tag_ink")
+	_label(&"DangerTagLabel", "font_tag", "tag_danger_ink")
+	var bold := FontVariation.new()
+	bold.base_font = ThemeDB.fallback_font
+	bold.variation_embolden = size("money_embolden")
+	for money in [&"MoneyLabel", &"TagLabel", &"DangerTagLabel"]:
+		_theme.set_font(&"font", money, bold)
 	_variation(&"Glyph", &"TextureRect")
 

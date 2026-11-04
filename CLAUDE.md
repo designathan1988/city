@@ -273,12 +273,14 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
+- `project/tests/visual/capture_money.gd` · `project/tests/visual/capture_money.tscn` — o dinheiro por entrada real, nos passos e na câmera do 4.0
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas
 - `project/ui/hud_actions.gd` — menu, desfazer/refazer e atalhos
 - `project/ui/hud_drawer.gd` — gavetas das categorias
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
+- `project/ui/hud_tag.gd` — rótulo na ponta da via na mão (comprimento, preço, motivo da recusa)
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
 - `project/ui/road_catalog.gd` — catálogo de vias

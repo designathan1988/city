@@ -35,7 +35,7 @@ func click(p: Vector3) -> void:
 		return
 	var r: Dictionary = CityStore.dispatch(&"upgrade_road", [p, profile, Input.is_key_pressed(KEY_SHIFT)])
 	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r, r.get("money", 0.0)), false)
+		ctl.hint.emit(refusal(r), false)
 		return
 	var text := tr("ui.insp.upgraded").format({"count": r.segments})
 	if r.money > 0:

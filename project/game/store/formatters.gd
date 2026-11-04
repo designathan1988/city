@@ -2,8 +2,6 @@
 class_name Formatters
 extends RefCounted
 
-const CURRENCY := "R$"
-const THOUSANDS := "."
 const GROUP := 3
 const PERCENT := 100.0
 
@@ -12,14 +10,22 @@ static func format_int(v: float) -> String:
 	var n := int(round(absf(v)))
 	var digits := str(n)
 	var out := ""
+	var group := TranslationServer.translate(&"economy.group")
 	while digits.length() > GROUP:
-		out = THOUSANDS + digits.substr(digits.length() - GROUP) + out
+		out = group + digits.substr(digits.length() - GROUP) + out
 		digits = digits.substr(0, digits.length() - GROUP)
 	return ("-" if v < 0.0 and n != 0 else "") + digits + out
 
 
 static func format_money(v: float) -> String:
-	return "%s %s" % [CURRENCY, format_int(v)]
+	return TranslationServer.translate(DataTables.money_key()).format({"value": format_int(v)})
+
+
+## What a road in hand costs: its price, or what an edit that lowers the value gives back.
+static func format_cost(cost: float) -> String:
+	if cost < 0.0:
+		return TranslationServer.translate(&"economy.refund").format({"value": format_money(-cost)})
+	return format_money(cost)
 
 
 static func format_percent(v: float) -> String:

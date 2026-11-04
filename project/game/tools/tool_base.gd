@@ -51,11 +51,14 @@ func key(_keycode: Key) -> void:
 	pass
 
 
-## The refusal text for a command result: "Não dá para construir aqui: {why}." / money / other keys as they are.
-func refusal(result: Dictionary, price: float = 0.0) -> String:
+## The refusal text for a command result: "Não dá para construir aqui: {why}." / other keys as they are.
+func refusal(result: Dictionary) -> String:
 	var why: String = result.get("error", "")
-	if why == "ui.insp.noMoney":
-		return tr(why).format({"price": Formatters.format_money(price)})
 	if why.begins_with("refuse.") or why.begins_with("road.reason."):
-		return tr("tools.toast.cannotBuild").format({"why": tr(why).format({"max": DataTables.tuning("road_max_degree")})})
+		return tr("tools.toast.cannotBuild").format({"why": reason(result)})
 	return tr(why)
+
+
+## Why a command was refused, in the few words the label at the tip of a road has room for.
+func reason(result: Dictionary) -> String:
+	return tr(result.get("error", "")).format({"max": DataTables.tuning("road_max_degree")})

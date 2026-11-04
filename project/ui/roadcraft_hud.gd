@@ -21,6 +21,7 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 @onready var _money: Label
 @onready var _stats: Label
 @onready var _hint: Label
+@onready var _tag: HudTag
 @onready var _speed_buttons: Array[Button] = []
 @onready var _sky_buttons: Array[Button] = []
 @onready var _action_buttons: Dictionary = {}
@@ -39,6 +40,8 @@ func _ready() -> void:
 	_build_dock()
 	_build_compass()
 	_build_hint()
+	_tag = HudTag.new()
+	root.add_child(_tag)
 	drawer = HudDrawer.new()
 	root.add_child(drawer)
 	drawer.tool_requested.connect(_on_tool_requested)
@@ -54,6 +57,7 @@ func _ready() -> void:
 	CityStore.changed.connect(_on_changed)
 	if tools:
 		tools.hint.connect(show_hint)
+		tools.tag.connect(_tag.show_at)
 		tools.inspected.connect(func(info: Dictionary) -> void: inspector.show_info(info, info.get("at", Vector3.ZERO)))
 	_set_sky("day")
 

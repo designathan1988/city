@@ -10,6 +10,8 @@ extends Node
 signal tool_changed(tool: Tool, params: Dictionary)
 ## A line for the hint bar: text already translated, ok = false draws it as a refusal.
 signal hint(text: String, ok: bool)
+## The label at the tip of a road in hand, at a point of the screen; empty text hides it.
+signal tag(text: String, ok: bool, screen: Vector2)
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 
@@ -35,6 +37,9 @@ var params: Dictionary = {}
 var remembered: Dictionary = {}
 var active: ToolBase
 var _dragging := false
+var _tag_text := ""
+var _tag_ok := true
+var _tag_at := Vector3.ZERO
 
 
 func _init(camera_rig: CityCamera) -> void:
@@ -83,7 +88,21 @@ func hover_world(p: Vector3) -> void:
 		active.hover(p)
 
 
+## Shows the label at a world point, where it stays as the camera moves; empty text hides it.
+func show_tag(text: String, ok: bool, at: Vector3) -> void:
+	_tag_text = text
+	_tag_ok = ok
+	_tag_at = at
+	_place_tag()
+
+
+func _place_tag() -> void:
+	tag.emit(_tag_text, _tag_ok, rig.camera.unproject_position(_tag_at))
+
+
 func _process(delta: float) -> void:
+	if _tag_text != "":
+		_place_tag()
 	if active and _dragging:
 		active.tick(delta)
 

@@ -480,7 +480,6 @@ save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes."
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
-ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
 hint.rule.funds,Recusado: não há dinheiro para construir isto. Demolir vias devolve parte do preço delas.,Refused: not enough money to build this. Demolishing roads gives back part of their price.
 rule.short.funds,dinheiro insuficiente,not enough money
 economy.refund,devolve {value},refund {value}

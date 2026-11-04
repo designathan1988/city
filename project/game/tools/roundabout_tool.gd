@@ -36,10 +36,10 @@ func hover(p: Vector3) -> void:
 func click(p: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"roundabout", [p, radius, Input.is_key_pressed(KEY_SHIFT)])
 	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r, r.get("money", 0.0)), false)
+		ctl.hint.emit(refusal(r), false)
 		return
 	ctl.preview.clear()
-	ctl.hint.emit(tr("ui.do.roundabout") + " · −" + Formatters.format_money(r.money), true)
+	ctl.hint.emit(tr("ui.do.roundabout") + " · " + Formatters.format_cost(r.money), true)
 
 
 func key(keycode: Key) -> void:
