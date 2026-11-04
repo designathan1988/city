@@ -180,44 +180,7 @@ void vertex() {
 // Fragment: grass map in world space, sand at the shore, soil and rock on slopes steeper than loose debris rests
 ////////////////////////
 
-// Integer hash (pcg, as building.gdshader): exact on every GPU, unlike fract(sin(...)).
-uint pcg(uint v) {
-	uint s = v * 747796405u + 2891336453u;
-	uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
-	return (w >> 22u) ^ w;
-}
-
-float hash2(vec2 p) {
-	ivec2 i = ivec2(floor(p));
-	uint h = uint(i.x + 32768) * 73856093u ^ uint(i.y + 32768) * 19349663u;
-	return float(pcg(h)) / 4294967295.0;
-}
-
-float vnoise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash2(i), hash2(i + vec2(1, 0)), u.x), mix(hash2(i + vec2(0, 1)), hash2(i + vec2(1, 1)), u.x), u.y);
-}
-
-// One layer of the stacked land map with the derivatives of the unwrapped coordinates (no seams at the wrap).
-vec3 land(float layer, vec2 p) {
-	vec2 q = vec2(fract(p.x), (layer + fract(p.y)) / land_layers);
-	return textureGrad(land_map, q, dFdx(p) * vec2(1.0, 1.0 / land_layers), dFdy(p) * vec2(1.0, 1.0 / land_layers)).rgb;
-}
-
-// Grass detail fades out beyond ~300 m (the second rotated read and the micro noise stop paying for themselves).
-const float DETAIL_NEAR_M = 240.0;
-const float DETAIL_FAR_M = 300.0;
-
-// Grass without visible tiling: two reads, the second rotated 30 degrees, blended by large blotches.
-vec3 grass(vec2 p, float detail) {
-	vec3 g = texture(grass_map, p).rgb;
-	if (detail <= 0.0) return g;
-	vec2 r = vec2(0.866 * p.x - 0.5 * p.y, 0.5 * p.x + 0.866 * p.y) + 0.37;
-	float k = smoothstep(0.35, 0.65, vnoise(p * 0.25));
-	return mix(g, texture(grass_map, r).rgb, k * detail);
-}
+#include "res://render/shaders/terrain_layers.gdshaderinc"
 
 void fragment() {
 	vec2 uv = UV; // Terrain3D injects editor overlays that read `uv`
@@ -240,11 +203,16 @@ void fragment() {
 	vec3 c = g * mix(1.0, macro, 0.35) * grass_tint * mix(0.9, 1.08, n);
 	c = mix(vec3(dot(c, vec3(0.3, 0.6, 0.1))), c, 0.85);
 	float wander = (n - 0.5) * 0.08;
-	vec3 dirt = land(dirt_layer, v_vertex.xz / dirt_m);
-	c = mix(c, dirt, smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope)));
+	float dirt_w = smoothstep(dirt_from, dirt_to, slope + wander) * (1.0 - smoothstep(rock_slope, rock_slope + 0.1, slope));
+	float rock_w = smoothstep(rock_slope, rock_slope + 0.1, slope + wander);
+	vec3 wdx = dFdx(v_vertex), wdy = dFdy(v_vertex);
+	if (dirt_w > 0.0) {
+		c = mix(c, land_triplanar(dirt_layer, v_vertex / dirt_m, wdx / dirt_m, wdy / dirt_m, w_normal), dirt_w);
+	}
 	c = mix(c, sand, 1.0 - smoothstep(water_level + sand_band * 0.5, water_level + sand_band, v_vertex.y));
-	vec3 stone = mix(land(rock_layer, v_vertex.xz / rock_m), rock, 0.25);
-	c = mix(c, stone, smoothstep(rock_slope, rock_slope + 0.1, slope + wander));
+	if (rock_w > 0.0) {
+		c = mix(c, mix(land_triplanar(rock_layer, v_vertex / rock_m, wdx / rock_m, wdy / rock_m, w_normal), rock, 0.25), rock_w);
+	}
 	c *= 1.0 - 0.4 * step(map_half - 0.5, max(abs(v_vertex.x), abs(v_vertex.z)));
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
