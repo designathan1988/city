@@ -44,6 +44,7 @@ inspector.demolish,Demolir,Demolish
 inspector.duplicate,Duplicar via,Duplicate road
 inspector.duplicateHint,Duplicar via (Ctrl/Cmd+D),Duplicate road (Ctrl/Cmd+D)
 inspector.end.bulb,Balão de retorno,Turning circle
+inspector.end.noRoom,Sem espaço para o balão aqui,No room for a turning circle here
 inspector.endEnd,Ponta final,End of the road
 inspector.endStart,Ponta inicial,Start of the road
 inspector.heightEnd,Altura final (m),End height (m)
@@ -184,30 +185,30 @@ pole.lamps.none,Sem luz,No lights
 pole.mode.build,Construir rede,Build line
 pole.mode.remove,Remover postes,Remove poles
 profile.avenue,Avenida,Avenue
-profile.avenue4Lanes,Avenida 4 faixas,4-lane avenue
-profile.avenue6LanesMedian,Avenida 6 faixas com canteiro,6-lane avenue with median
-profile.avenueWithCycleTrack,Avenida com ciclovia,Avenue with cycle track
+profile.avenue4Lanes,Avenida 4 faixas com canteiro,Four-lane avenue with median
+profile.avenue6LanesMedian,Avenida 6 faixas com canteiro,Six-lane avenue with median
+profile.avenueWithCycleTrack,Avenida com ciclofaixa,Avenue with cycle lanes
 profile.avenueWithParking,Avenida com estacionamento,Avenue with parking
 profile.boulevard,Bulevar,Boulevard
-profile.centralBusway,Corredor de ônibus central,Central busway
-profile.cobblestoneStreet,Rua de paralelepípedo,Cobblestone street
+profile.centralBusway,Avenida com corredor de ônibus central,Avenue with a central bus corridor
+profile.cobblestoneStreet,Rua de paralelepípedo,Cobbled street
 profile.concreteRoad,Estrada de concreto,Concrete road
 profile.copied,Via copiada,Copied road
 profile.countryRoad,Estrada simples,Country road
-profile.curbsideBusLane,Faixa de ônibus lateral,Curbside bus lane
+profile.curbsideBusLane,Avenida com faixa de ônibus lateral,Avenue with kerbside bus lanes
 profile.diagram,"A via de lado a lado, da borda esquerda à direita, vista de A para B","The road across, left edge to right edge, seen from A towards B"
 profile.doubleRailway,Ferrovia dupla,Double railway
 profile.drawWith,Desenhar com este perfil,Draw with this profile
 profile.drawWithTip,"Conta-gotas: a ferramenta de vias pega esta via como ela é, para desenhar outras iguais","Eyedropper: the road tool takes this road as it is, to draw new roads like it"
-profile.dualCarriageway2Lanes,"Pista dupla, 2 faixas","Dual carriageway, 2 lanes"
+profile.dualCarriageway2Lanes,"Pista dupla, 2 faixas","Divided road, 2 lanes"
 profile.element.cycle,Ciclofaixa,Cycle lane
 profile.element.footway,Calçada,Footway
 profile.element.lane,Faixa,Lane
 profile.element.median,Canteiro,Median
 profile.element.parking,Estacionamento,Parking
-profile.expressway,Via expressa,Expressway
-profile.highway6Lanes,Rodovia 6 faixas,6-lane highway
-profile.localStreet,Rua local,Local street
+profile.expressway,Rodovia,Highway
+profile.highway6Lanes,Rodovia 6 faixas,Six-lane highway
+profile.localStreet,Rua residencial,Residential street
 profile.material.carriageway,Pista,Carriageway
 profile.materialName.asphalt,Asfalto,Asphalt
 profile.materialName.cobble,Paralelepípedo,Cobblestones
@@ -220,14 +221,14 @@ profile.narrowStreet,Rua estreita,Narrow street
 profile.notRemoved,Não apagado: o armazenamento do navegador está cheio ou bloqueado.,Not deleted: browser storage is full or blocked.
 profile.notSaved,Não salvo: dê um nome.,Not saved: give it a name.
 profile.notStored,Não salvo: o armazenamento do navegador está cheio ou bloqueado.,Not saved: browser storage is full or blocked.
-profile.oneWay1Lane,"Mão única, 1 faixa","One-way, 1 lane"
-profile.oneWay2Lanes,"Mão única, 2 faixas","One-way, 2 lanes"
+profile.oneWay1Lane,"Rua mão única, 1 faixa","One-way street, 1 lane"
+profile.oneWay2Lanes,"Rua mão única, 2 faixas","One-way street, 2 lanes"
 profile.oneWayAvenue3Lanes,"Avenida mão única, 3 faixas","One-way avenue, 3 lanes"
 profile.oneWayAvenue4Lanes,"Avenida mão única, 4 faixas","One-way avenue, 4 lanes"
 profile.oneWayHighway2Lanes,"Rodovia mão única, 2 faixas","One-way highway, 2 lanes"
 profile.oneWayHighway3Lanes,"Rodovia mão única, 3 faixas","One-way highway, 3 lanes"
 profile.oneWayWithParking,Mão única com estacionamento,One-way with parking
-profile.parkingOneSide,Estacionamento de um lado,Parking on one side
+profile.parkingOneSide,Rua com estacionamento de um lado,Street with parking on one side
 profile.problem.busOnly,"Cada sentido precisa de pelo menos uma faixa para todos os veículos, além das de ônibus.",Each direction needs at least one lane for every vehicle besides its bus lanes.
 profile.problem.class,Esta classe de via não tem estacionamento nem ciclofaixa.,This road class has no parking or cycle lane.
 profile.problem.footways,"A via precisa de uma calçada em cada borda, e só nelas.","A road needs a footway at each edge, and only there."
@@ -238,23 +239,23 @@ profile.problem.noLanes,A via precisa de pelo menos uma faixa.,A road needs at l
 profile.problem.order,"As faixas para A ficam à esquerda; as faixas para B, à direita.","Lanes to A go on the left, lanes to B on the right."
 profile.problem.parkingSide,Estacionamento e ciclofaixa ficam junto à calçada.,Parking and cycle lanes go next to the footway.
 profile.problem.width,Este elemento está mais estreito ou mais largo do que se pode construir.,This element is narrower or wider than can be built.
-profile.ramp,Alça de acesso,Ramp
-profile.ramp2Lanes,"Alça de acesso, 2 faixas","Ramp, 2 lanes"
+profile.ramp,Alça de acesso,Access ramp
+profile.ramp2Lanes,"Alça de acesso, 2 faixas",Two-lane ramp
 profile.roundabout,Rotatória,Roundabout
-profile.ruralCobblestoneRoad,Estrada rural de paralelepípedo,Rural cobblestone road
-profile.sharedStreet,Rua compartilhada,Shared street
+profile.ruralCobblestoneRoad,Estrada rural de paralelepípedo,Cobbled rural road
+profile.sharedStreet,Rua compartilhada (sem meio-fio),Shared street (no kerb)
 profile.singleRailway,Ferrovia simples,Single railway
-profile.streetWithBikeLane,Rua com ciclofaixa,Street with bike lane
-profile.streetWithMedian,Rua com canteiro central,Street with median
-profile.streetWithParking,Rua com estacionamento,Street with parking
+profile.streetWithBikeLane,Rua com ciclofaixa,Street with cycle lanes
+profile.streetWithMedian,Rua com canteiro central,Street with a central reservation
+profile.streetWithParking,Rua com estacionamento dos dois lados,Street with parking on both sides
 profile.summary.lanes.one,1 faixa,1 lane
 profile.summary.lanes.other,{count} faixas,{count} lanes
 profile.templateName,Nome do modelo,Template name
 profile.title,Perfil da via,Road profile
 profile.toStreet,Rua inteira ({count}),Whole street ({count})
 profile.toStreetTip,"Este perfil em todos os trechos da rua, atravessando os cruzamentos","This profile on every stretch of the street it runs in, through its junctions"
-profile.urbanStreet,Rua urbana,Urban street
-profile.wideSidewalks,Calçadas largas,Wide sidewalks
+profile.urbanStreet,Via urbana,Urban road
+profile.wideSidewalks,Rua de calçadas largas,Street with wide footways
 profileEditor.add,Adicionar,Add
 profileEditor.allLanes,todas as faixas juntas,all lanes together
 profileEditor.apply,Aplicar na via,Apply to the road

@@ -8,12 +8,15 @@
 	X(sim, growth_per_s) X(sim, growth_tries) \
 	X(road, min_len_m) X(road, snap_m) X(road, snap_end_m) X(road, max_seg_m) X(road, fixed_gap_m) X(road, merge_m) \
 	X(road, sharp_cos) X(road, level_dy_m) X(road, max_degree) X(road, pick_m) X(road, overlap_share) \
-	X(road, overlap_run_m) X(road, parallel_cos) X(road, overlap_pad_m) \
+	X(road, overlap_run_m) X(road, parallel_cos) \
+	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, inner_radius_m) X(road, bend_limit) X(road, bend_gain) \
+	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
+	X(road, bay_m) X(road, max_variants) \
 	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
-	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \
+	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) \
 	X(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
 	X(terrain, river_freeboard_m) X(terrain, river_floor_share) \
 	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \

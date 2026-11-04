@@ -206,6 +206,16 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 		d["kind"] = "road";
 		d["id"] = seg;
 		d["profile"] = String(s.catalog.profile(s.roads.segs[seg].profile).name_key.c_str());
+		Array ends; // its dead ends, start first: the node and whether it turns in a bulb
+		for (int n : { s.roads.segs[seg].a, s.roads.segs[seg].b }) {
+			if (s.roads.nodes[n].segs.size() != 1) continue;
+			Dictionary e;
+			e["node"] = n;
+			e["start"] = n == s.roads.segs[seg].a;
+			e["bulb"] = s.roads.nodes[n].bulb;
+			ends.push_back(e);
+		}
+		d["ends"] = ends;
 	}
 	return d;
 }

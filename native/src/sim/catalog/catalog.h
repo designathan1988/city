@@ -76,7 +76,8 @@ struct GrowthDef {
 struct Catalog {
 	GrowthDef growth;
 	std::vector<MapDef> maps;
-	std::vector<Profile> profiles;
+	std::vector<Profile> profiles; // room for every variant is reserved at load: a profile never moves
+	std::vector<RoadVariant> variants; // the profiles after the catalogue's own, in order (road_variants.cpp)
 	RoadPrices prices;
 	StructureCost structure;
 	ZoneDef zones[ZONE_CODES];

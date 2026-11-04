@@ -38,6 +38,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			net.nodes[op.id].plain = (fwd ? op.to : op.from) != 0;
 			s.log.net_node(op.id);
 			break;
+		case OpKind::NODE_CTL:
+			net.nodes[op.id].ctl = uint8_t(fwd ? op.to : op.from);
+			s.log.net_node(op.id);
+			break;
 		case OpKind::ADD_SEG:
 			if (fwd) { net.put_segment(op.id, op.seg); mark_seg(s, op.id, false); }
 			else { mark_seg(s, op.id, true); net.remove_segment(op.id); }

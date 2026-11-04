@@ -96,7 +96,6 @@ void Builder::vacant() {
 		entries.push_back({ ang, e });
 		double fx = cx + ux * (radius + len), fz = cz + uz * (radius + len);
 		int far = j_add_node(s, fx, fz, s.terrain.base_height_at(float(fx), float(fz)));
-		j_set_plain(s, far, true);
 		approaches.push_back(j_add_segment(s, far, e, Quad::straight(fx, fz, cx + ux * radius, cz + uz * radius), 0, 0, 0, 0));
 	}
 }

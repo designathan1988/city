@@ -12,6 +12,8 @@ signal closed
 
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
+## The road tool's options, a panel of its own beside the drawer (the HUD makes it).
+@onready var options: RoadOptions
 @onready var _head: HBoxContainer
 @onready var _strip: Container
 @onready var _tabs: Dictionary = {}
@@ -36,7 +38,7 @@ func _ready() -> void:
 	catalog = RoadCatalog.new()
 	catalog.profile_picked.connect(func(i: int) -> void:
 		var upgrading := tools != null and tools.tool == ToolController.Tool.UPGRADE
-		tool_requested.emit("UPGRADE" if upgrading else "ROAD", {"profile": i}))
+		retool(i, "UPGRADE" if upgrading else "ROAD", "profile"))
 	hide()
 
 
@@ -60,6 +62,7 @@ func open(cat: Dictionary) -> void:
 
 func close() -> void:
 	hide()
+	options.hide()
 	category = {}
 	closed.emit()
 
@@ -72,6 +75,7 @@ func select_tab(tab: Dictionary) -> void:
 	if tab.has("profile"):
 		params.profile = _profile_ids.get(tab.profile, 0)
 	elif tab.tool == "ROAD" or tab.tool == "UPGRADE":
+		params = tools.remembered.get(ToolController.Tool[tab.tool], {}).duplicate() if tools else {}
 		params.profile = catalog.picked()
 	elif tab.tool == "ZONE":
 		params.zone = _zone()
@@ -81,12 +85,17 @@ func select_tab(tab: Dictionary) -> void:
 
 
 ## The tool in hand again with one parameter changed (a card or a slider of the strip).
-func _retool(value: Variant, tool: String, key: String) -> void:
+func retool(value: Variant, tool: String, key: String) -> void:
 	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}).duplicate() if tools else {}
 	params[key] = value
 	tool_requested.emit(tool, params)
-	if key != "radius" and key != "strength":
+	if key not in ["radius", "strength", "lanes", "width", "parking"]:
 		DrawerStrips.light(_strip, value)
+
+
+## A road of the catalogue by id, as if its card were clicked.
+func pick_road(id: String) -> void:
+	catalog.pick(_profile_ids.get(id, 0))
 
 
 func _param(tool: String, key: String, fallback: Variant) -> Variant:
@@ -131,6 +140,9 @@ func _build_strip(tab: Dictionary) -> void:
 		catalog.get_parent().remove_child(catalog)
 	HudWidgets.clear(_strip)
 	var kind: String = category.get("strip", "")
+	options.hide()
+	if tab.get("tool", "") == "ROAD":
+		options.open()
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
 		_strip.add_child(catalog)
 	elif kind == "zone_cards" and tab.tool == "ZONE":
@@ -140,14 +152,14 @@ func _build_strip(tab: Dictionary) -> void:
 		var ring: Dictionary = category.ring
 		DrawerStrips.slider(_strip, ring.label_key, DataTables.tuning("roundabout_radius_min_m"),
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), " m",
-			_retool.bind("ROUNDABOUT", "radius"))
+			retool.bind("ROUNDABOUT", "radius"))
 	elif kind == "land_panels":
 		LandStrips.build(self, _strip, tab.get("tool", ""))
 	elif tab.get("tool", "") == "BUILD":
 		BuilderStrip.fill(_strip, tab.id, tools)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
-			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), _retool.bind("LOT", "fn")))
+			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), retool.bind("LOT", "fn")))
 	var note := HudWidgets.label(_strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = HudWidgets.px("side_w")
@@ -160,11 +172,11 @@ func land_param(tool_name: String, key: String, fallback: Variant) -> Variant:
 
 
 func land_slide(value: float, tool_name: String, key: String) -> void:
-	_retool(value, tool_name, key)
+	retool(value, tool_name, key)
 
 
 func land_pick(value: Variant, tool_name: String, key: String) -> void:
-	_retool(value, tool_name, key)
+	retool(value, tool_name, key)
 	_land_rebuild()
 
 

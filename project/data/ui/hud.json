@@ -1,4 +1,13 @@
 {
+ "control_marks": [
+  {"glyph": "A", "token": "control_auto", "label_key": "control.auto"},
+  {"glyph": "S", "token": "control_signal", "label_key": "control.signal"},
+  {"glyph": "P", "token": "control_priority", "label_key": "control.priority"},
+  {"glyph": "\u25a0", "token": "control_stop", "label_key": "control.stop"},
+  {"glyph": "\u25bc", "token": "control_yield", "label_key": "control.yield"},
+  {"glyph": "\u2013", "token": "control_none", "label_key": "control.none"},
+  {"glyph": "\u25cb", "token": "control_mini", "label_key": "control.mini"}
+ ],
  "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it.",
  "stats": [
   {

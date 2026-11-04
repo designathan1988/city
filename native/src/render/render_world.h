@@ -15,6 +15,7 @@
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
+#include "render/roads/verge_renderer.h"
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
 #include "render/trees/tree_renderer.h"
@@ -72,14 +73,20 @@ public:
 	FogField &fog() { return fog_; }
 	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
+	RoadChunks::Count road_count() const { return roads_.count(); }
+	RoadChunks::Count verge_count() const { return verges_.count(); }
+	void draw_verges(bool on) { verges_.draw(on); }
+	int64_t wear_bytes() const { return wear_.bytes(); }
+	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
+		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + verges_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
 private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
+	VergeRenderer verges_;
 	PropRenderer props_;
 	TreeRenderer trees_;
 	CoverRenderer cover_;

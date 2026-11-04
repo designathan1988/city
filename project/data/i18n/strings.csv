@@ -114,6 +114,7 @@ cmd.build.changeProfile,trocar perfil,change profile
 cmd.build.changeStreetProfile,trocar perfil da rua,change the street's profile
 cmd.build.lotDrawn,lote desenhado,lot drawn
 cmd.build.road,construir via,build road
+cmd.build.roadEnd,ponta da via,road end
 cmd.build.roundabout,rotatória,roundabout
 cmd.build.wall,muro,wall
 cmd.demolish.area,demolir área,demolish area
@@ -206,6 +207,13 @@ connectors.pickIn,Clique numa faixa que chega (azul) para ver aonde ela pode ir.
 connectors.pickOut,Clique numa faixa que sai (verde) para ligar ou desligar a conexão.,Click a leaving lane (green) to add or remove that connection.
 connectors.reset,Restaurar automáticas,Restore automatic
 connectors.title,Conexões de faixa,Lane connections
+cmd.place.control,controle do cruzamento,junction control
+control.auto,Automático,Automatic
+control.signal,Semáforo,Traffic signal
+control.priority,Preferencial,Priority road
+control.stop,Parada obrigatória,Stop sign
+control.yield,Dê a preferência,Give way
+control.mini,Minirrotatória,Mini-roundabout
 control.none,Sem controle,Uncontrolled
 creator.chooseTemplate,Escolher modelo…,Choose a template…
 creator.colour,Cor,Colour
@@ -475,7 +483,11 @@ help.tool.pole,Coloca postes com fios nas calçadas. Clique numa calçada e siga
 help.tool.poleRemove,"Clique num poste para removê-lo, com os fios. Shift+clique faz o mesmo enquanto constrói.","Click a pole to remove it, with its wires. Shift+click does the same while building."
 help.tool.streetscape,"Coloca árvores, arbustos, bancos, lixeiras, iluminação, hidrantes e caixas de correio nas calçadas. Clique numa calçada para pôr o item escolhido.","Places trees, shrubs, benches, bins, street lights, hydrants and post boxes on the footways. Click a footway to place the chosen item."
 hint.control,Clique num cruzamento para mudar o controle · Shift: voltar,Click a junction to change its control · Shift: go back
+hint.control.miss,Nenhum cruzamento aí — clique onde duas ou mais vias se encontram,No junction there — click where two or more roads meet
+hint.control.notJunction,Esse ponto liga só duas vias; não precisa de controle,That node joins only two roads; it needs no control
+hint.rule.squeezed,Recusado: trecho curto demais para as faixas se separarem na junção,Refused: too short a stretch for the lanes to part at the junction
 hint.move,Arraste um nó para reposicionar,Drag a node to reposition it
+hint.move.tooShort,Não movido: uma via ali ficaria curta demais para ser construída,Not moved: a road there would be too short to build
 hint.profile.toStreet,Perfil copiado para a rua inteira,Profile copied to the whole street
 hint.roundabout,Clique em terreno livre para criar uma rotatória · Ligue os quatro acessos com a ferramenta de via,Click vacant ground to place a roundabout · Connect its four arms with the road tool
 hint.split,Clique numa via para dividir,Click a road to split it

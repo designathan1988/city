@@ -22,6 +22,25 @@ func ground(x: float, z: float) -> Vector3:
 	return hit.position if hit.get("hit", false) else Vector3(x, 0, z)
 
 
+## Where a click lands against where it aimed, in pixels, at each distance of the camera: the pixel grid and the ray to the
+## ground, all a test can see of the pointer's error. The player's hand is not in this number.
+func pointer_error(p: Vector3, view: Array, distances: Array[float], aims: int) -> float:
+	var worst := 0.0
+	var size: Vector2 = rig.get_viewport().get_visible_rect().size
+	for dist in distances:
+		rig.jump(p, view[0], view[1], dist)
+		await frames(2)
+		for i in aims:
+			var aim: Variant = rig.ground_at(size * Vector2(fposmod(i * 0.381966, 1.0), fposmod(i * 0.618034, 1.0)))
+			if aim == null:
+				continue
+			var seen := rig.camera.unproject_position(aim)
+			var hit: Variant = rig.ground_at(seen.round())
+			if hit != null:
+				worst = maxf(worst, rig.camera.unproject_position(hit).distance_to(seen))
+	return worst
+
+
 func hover(p: Vector3) -> void:
 	await move(rig.camera.unproject_position(ground(p.x, p.z)))
 

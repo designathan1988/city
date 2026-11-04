@@ -1,6 +1,7 @@
 // Reading a city (save_format.h): the land is regenerated from the saved seed, then the sculpted tiles, modifiers,
 // roads, buildings and growth go back under their ids; lots and node shapes are derived again.
 #include "sim/persistence/save_format.h"
+#include "sim/roads/road_variants.h"
 #include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
@@ -97,11 +98,30 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 }
 } // namespace
 
+namespace {
+constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
+
+// Made again in the saved order, so each keeps the index the roads hold.
+bool read_variants(ByteReader &r, Catalog &c) {
+	const uint32_t n = r.get<uint32_t>();
+	for (uint32_t i = 0; i < n && r.ok; i++) {
+		RoadVariant v;
+		v.base = r.get<int32_t>();
+		v.lanes = r.get<int32_t>();
+		v.parking = r.get<int32_t>();
+		v.width = r.get<float>();
+		if (road_variant(c, v) < 0) return false;
+	}
+	return r.ok;
+}
+} // namespace
+
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
-	if (r.get<uint32_t>() != SAVE_VERSION) {
+	const uint32_t version = r.get<uint32_t>();
+	if (version > SAVE_VERSION) {
 		error = "save.file.newer";
 		return false;
 	}
@@ -113,7 +133,11 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();
-	if (!r.ok || !read_terrain(r, s.terrain) || !read_roads(r, s.roads) || !read_buildings(r, s.buildings) || !read_nature(r, s)) return false;
+	if (!r.ok || !read_terrain(r, s.terrain)) return false;
+	clear_variants(s.catalog);
+	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
+	if (!read_roads(r, s.roads) || !read_buildings(r, s.buildings)) return false;
+	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
 	s.growth.assign(std::move(growth_cells)); // members follow the cells (GrowthQueue owns that)

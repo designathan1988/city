@@ -68,12 +68,21 @@ StripKind strip_kind(const String &k, Reader &r) {
 	return StripKind::LANE;
 }
 
+RoadClass road_class(const String &k, Reader &r) {
+	static const char *NAMES[] = { "local", "urban", "avenue", "boulevard", "highway", "ramp", "rail" };
+	for (int i = 0; i < int(RoadClass::COUNT); i++)
+		if (k == NAMES[i]) return RoadClass(i);
+	r.errors.push_back(r.where + ": classe de via desconhecida '" + k + "'");
+	return RoadClass::LOCAL;
+}
+
 void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 	Reader top{ errors, "road_profiles" };
 	Dictionary pr = top.dict(t, "prices"), st = top.dict(t, "structure");
 	c.prices = { top.num(pr, "carriageway"), top.num(pr, "median"), top.num(pr, "footway") };
 	c.structure = { top.num(st, "ground"), top.num(st, "embankment"), top.num(st, "trench"), top.num(st, "bridge"), top.num(st, "tunnel") };
 	Array list = top.arr(t, "profiles");
+	c.profiles.reserve(size_t(list.size()) + size_t(c.tune.road_max_variants));
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary d = list[i];
 		Reader r{ errors, "road_profiles[" + String::num_int64(i) + "]" };
@@ -87,6 +96,9 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		p.ring = r.flag(d, "ring");
 		p.priority = r.integer(d, "priority");
 		p.surface = Surface(r.integer(d, "surface"));
+		p.road_class = road_class(r.str(d, "road_class"), r);
+		p.rank = r.integer(d, "rank");
+		p.class_card = r.flag(d, "class_card");
 		for (const Variant &sv : r.arr(d, "strips")) {
 			Dictionary sd = sv;
 			Strip s;

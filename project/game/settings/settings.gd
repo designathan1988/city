@@ -1,4 +1,4 @@
-## Player settings (graphics preset), persisted in user://settings.cfg, and the frame cap (Engine.max_fps): the game
+## Player settings (graphics preset, the road tool's snapping), persisted in user://settings.cfg, and the frame cap (Engine.max_fps): the game
 ## never renders faster than it needs to, and slower while another application has the focus (vsync alone does not hold
 ## a covered window back: it ran past twice the refresh rate). Presets and caps: data/game/settings.json.
 extends Node
@@ -7,12 +7,16 @@ const PATH := "user://settings.cfg"
 const MSAA_MODES := [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X]
 
 var preset := ""
+## The road tool's snapping: one switch for all of it, then each kind (Roadcraft editor/snap.ts RoadSnap).
+var road_snap := {"on": true, "angles": true, "grid": true}
 
 
 func _ready() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(PATH)
 	preset = cfg.get_value("graphics", "preset", DataTables.game("settings").default)
+	for key in road_snap:
+		road_snap[key] = cfg.get_value("road_snap", key, road_snap[key])
 	Engine.max_fps = DataTables.game("settings").frame_cap.max_fps
 
 
@@ -27,8 +31,19 @@ func _notification(what: int) -> void:
 
 func set_preset(name: String) -> void:
 	preset = name
+	_store("graphics", "preset", name)
+
+
+func set_road_snap(key: String, value: bool) -> void:
+	road_snap[key] = value
+	_store("road_snap", key, value)
+
+
+## One value written, the others kept.
+func _store(section: String, key: String, value: Variant) -> void:
 	var cfg := ConfigFile.new()
-	cfg.set_value("graphics", "preset", name)
+	cfg.load(PATH)
+	cfg.set_value(section, key, value)
 	cfg.save(PATH)
 
 

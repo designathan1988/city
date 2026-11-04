@@ -9,7 +9,6 @@ const WATER_SHADER := "res://render/shaders/water.gdshader"
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
 const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
-const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
@@ -17,6 +16,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
 	"res://render/shaders/vegetation.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
+	"res://render/shaders/verge.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
@@ -57,7 +57,9 @@ func materials() -> Dictionary:
 			for name in table[key].params:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":
-				_set_means(m, table[key].params)
+				SurfaceMeans.apply(m, table[key].params, _param)
+			elif key == "verge":
+				_set_ground(m)
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
@@ -65,14 +67,13 @@ func materials() -> Dictionary:
 	return _materials
 
 
-## The mean colour of each surface map, computed once here and sent as a uniform (road.gdshader divides by it): the
-## shader no longer samples the smallest mip every pixel.
-func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
-	for name in params:
-		if not name.ends_with("_map"):
-			continue
-		var col := _mean_color(_param(params[name]))
-		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
+## The verge wears the terrain's grass: the same table, the same values.
+func _set_ground(m: ShaderMaterial) -> void:
+	var ground: Dictionary = DataTables.render().palette.terrain
+	for key in ground:
+		if not key.begins_with("_"):
+			m.set_shader_parameter(key, _param(ground[key]))
+	m.set_shader_parameter("grass_mean", _grass_mean(ground))
 
 
 ## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its
@@ -91,24 +92,9 @@ func _set_lens_radiance(m: ShaderMaterial) -> void:
 	m.set_shader_parameter("lit_radiance", lit)
 
 
-func _mean_color(tex: Texture2D) -> Color:
-	if tex == null:
-		return Color(1, 1, 1)
-	var img := tex.get_image()
-	if img == null:
-		return Color(1, 1, 1)
-	img = img.duplicate()
-	if img.is_compressed():
-		if img.decompress() != OK:
-			return Color(1, 1, 1)
-	img.resize(MEAN_PX, MEAN_PX, Image.INTERPOLATE_BILINEAR)
-	var sum := Vector3.ZERO
-	for y in MEAN_PX:
-		for x in MEAN_PX:
-			var c := img.get_pixel(x, y)
-			sum += Vector3(c.r, c.g, c.b)
-	var n := float(MEAN_PX * MEAN_PX)
-	return Color(sum.x / n, sum.y / n, sum.z / n)
+func _grass_mean(ground: Dictionary) -> float:
+	var mean := SurfaceMeans.mean_color(_param(ground.grass_map)).srgb_to_linear()
+	return mean.r * LUMA.x + mean.g * LUMA.y + mean.b * LUMA.z
 
 
 func _param(v: Variant) -> Variant:
@@ -129,6 +115,8 @@ func _param(v: Variant) -> Variant:
 ## The map's biome tints the grass (0 none, else the biome's index + 1).
 func set_map_biome(region: int) -> void:
 	_terrain_material.set_shader_param("map_biome", region + 1)
+	if _materials.has("verge"):
+		_materials.verge.set_shader_parameter("map_biome", region + 1)
 
 
 ## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
@@ -228,8 +216,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	for key in palette.terrain:
 		if not key.begins_with("_"):
 			mat.set_shader_param(key, _param(palette.terrain[key]))
-	var grass_mean := _mean_color(_param(palette.terrain.grass_map)).srgb_to_linear()
-	mat.set_shader_param("grass_mean", grass_mean.r * LUMA.x + grass_mean.g * LUMA.y + grass_mean.b * LUMA.z)
+	mat.set_shader_param("grass_mean", _grass_mean(palette.terrain))
 
 
 func _build_water(palette: Dictionary) -> void:

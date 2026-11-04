@@ -9,6 +9,7 @@ namespace city {
 namespace {
 
 LineKind centre_kind(const std::string &centre) {
+	if (centre == "none") return LineKind::NONE;
 	if (centre == "solid") return LineKind::SOLID;
 	if (centre == "dashed") return LineKind::DASHED;
 	return LineKind::DOUBLE;
@@ -22,18 +23,22 @@ void derive_lines(Profile &p) {
 		float at = p.edges[i].u1;
 		bool la = a.kind == StripKind::LANE, lb = b.kind == StripKind::LANE;
 		if (la && lb) {
-			if (a.dir != b.dir) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW });
-			else {
+			if (a.dir != b.dir) {
+				if (centre_kind(p.centre) != LineKind::NONE) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW, true });
+			} else {
 				bool solid = (a.dir == 1 ? b.solid : a.solid) || a.bus != b.bus;
 				p.lines.push_back({ at, a.bus != b.bus, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE });
 			}
-		} else if (la != lb && is_asphalt(a.kind) && is_asphalt(b.kind)) {
-			p.lines.push_back({ at, false, LineKind::SOLID, LineColor::WHITE });
 		} else if (a.kind == StripKind::MEDIAN && a.flush && i > 0) {
 			p.lines.push_back({ p.edges[i].u0, false, LineKind::SOLID, LineColor::YELLOW });
 			p.lines.push_back({ at, false, LineKind::SOLID, LineColor::YELLOW });
 		}
 	}
+}
+
+bool is_median(const Profile &p, size_t i) {
+	auto median = [&](size_t j) { return j < p.edges.size() && p.edges[j].strip.kind == StripKind::MEDIAN; };
+	return median(i + 1) || (i > 0 && median(i - 1));
 }
 } // namespace
 
@@ -77,11 +82,12 @@ void derive_profile(Profile &p, const RoadPrices &prices) {
 	p.walk_right = (r.u0 + r.u1) / 2;
 	p.walk_left = (l.u0 + l.u1) / 2;
 	float carriage = 0, median = 0, foot = 0;
-	for (const StripEdge &e : p.edges) {
-		float w = e.u1 - e.u0;
-		StripKind k = e.strip.kind;
-		if (k == StripKind::SIDEWALK || k == StripKind::CURB) foot += w;
-		else if (k == StripKind::MEDIAN || k == StripKind::BARRIER) median += w;
+	for (size_t i = 0; i < p.edges.size(); i++) {
+		float w = p.edges[i].u1 - p.edges[i].u0;
+		StripKind k = p.edges[i].strip.kind;
+		bool by_median = k == StripKind::CURB && is_median(p, i); // a median's kerbs are priced with it
+		if (k == StripKind::MEDIAN || k == StripKind::BARRIER || by_median) median += w;
+		else if (k == StripKind::SIDEWALK || k == StripKind::CURB) foot += w;
 		else carriage += w;
 	}
 	p.cost_per_m = std::round(carriage * prices.carriageway + median * prices.median + foot * prices.footway);

@@ -9,6 +9,11 @@
 namespace city {
 
 namespace {
+constexpr double STRAIGHT_CROSS = 1e-9;
+constexpr int FIT_STEPS = 40; // bisections: the bend to a part in 2^40
+} // namespace
+
+namespace {
 constexpr int CLOSEST_SAMPLES = 32, CLOSEST_REFINE = 12;
 constexpr double LINE_PARALLEL = 1e-9, SEG_PARALLEL = 1e-12, MAX_RETREAT = 60, FAR_HIT = -50, OPPOSITE_DOT = -0.97;
 constexpr double TAPER_TURN = PI_D / 6, TAPER_STEP = 0.3, TAPER_MIN = 9.6, TAPER_SLOPE = 8, WIDTH_JUMP = 0.5, WIDTH_JUMP_RUN = 3;
@@ -128,6 +133,30 @@ void arm_retreats(const std::vector<Arm> &arms, double corner_radius, std::vecto
 		out[(i + 1) % n] = std::max(out[(i + 1) % n], tb + corner_radius);
 	}
 	for (double &v : out) v = std::max(0.0, std::min(v, MAX_RETREAT));
+}
+
+double quad_min_radius(const Quad &q) {
+	// B'(t) = 2 (A + t D) with A = c - a and D = (b - c) - A, so B' x B'' is constant and the curvature peaks where
+	// |A + t D| is least: radius = 2 |A + t D|^3 / |A x D|.
+	double ax = q.cx - q.x0, az = q.cz - q.z0, dx = q.x1 - q.cx - ax, dz = q.z1 - q.cz - az;
+	double cross = std::fabs(ax * dz - az * dx), dd = dx * dx + dz * dz;
+	if (cross < STRAIGHT_CROSS) return std::numeric_limits<double>::infinity();
+	double t = dd > 0 ? std::clamp(-(ax * dx + az * dz) / dd, 0.0, 1.0) : 0;
+	return 2 * std::pow(std::hypot(ax + t * dx, az + t * dz), 3) / cross;
+}
+
+Quad fit_quad_to_radius(const Quad &q, double min_radius) {
+	if (quad_min_radius(q) >= min_radius) return q;
+	// The control's foot on the chord keeps where along the chord the bend sits; only its height changes.
+	double dx = q.x1 - q.x0, dz = q.z1 - q.z0, l2 = dx * dx + dz * dz;
+	double t = l2 > 0 ? ((q.cx - q.x0) * dx + (q.cz - q.z0) * dz) / l2 : 0;
+	double fx = q.x0 + dx * t, fz = q.z0 + dz * t, lo = 0, hi = 1;
+	auto at = [&](double k) { return Quad{ q.x0, q.z0, fx + (q.cx - fx) * k, fz + (q.cz - fz) * k, q.x1, q.z1 }; };
+	for (int i = 0; i < FIT_STEPS; i++) {
+		double mid = (lo + hi) / 2;
+		(quad_min_radius(at(mid)) >= min_radius ? lo : hi) = mid;
+	}
+	return at(lo);
 }
 
 } // namespace city

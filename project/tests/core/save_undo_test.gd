@@ -8,6 +8,7 @@ extends Node3D
 const TOWN_MAP := 0
 const SEED := 1
 const OTHER_SEED := 7
+const VARIANT_OFF := Vector3(40, 0, 90) # clear of the city: no generated road end beside it
 const PROFILE := 0
 const UPGRADE_PROFILE := 3
 const OUT_M := 260.0
@@ -50,7 +51,10 @@ func _ready() -> void:
 
 func _undo_cases(a: Vector3, e: Vector3) -> void:
 	var mid := (a + e) * 0.5
-	_round("via", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE]))
+	_round("via", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, 0.25]))
+	var four: int = CityStore.dispatch(&"road_variant", [CityStore.first_road(), 4, 0.0, 0])
+	_round("via com variante", func() -> Dictionary:
+		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
 	_round("zona (traço)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, ZONE_RES])

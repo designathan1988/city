@@ -19,7 +19,7 @@ namespace {
 GenProfiles gen_profiles(const Catalog &c) {
 	GenProfiles g;
 	g.local = c.profile_id("streetWithParking");
-	g.avenue = c.profile_id("avenue");
+	g.avenue = c.profile_id("avenue4Lanes");
 	g.avenue_bike = c.profile_id("avenueWithCycleTrack");
 	g.expressway = c.profile_id("expressway");
 	g.collector = c.profile_id("urbanStreet");
@@ -45,6 +45,8 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 		const RoadNode &na = s.roads.nodes[a], &nb = s.roads.nodes[b];
 		s.roads.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), g[2], g[3], g[4], SEG_FREE);
 	}
+	// Only the generator's own dead ends turn in a bulb: a road demolished later leaves a straight cut.
+	for (int n : ids) s.roads.nodes[n].plain = s.roads.nodes[n].segs.size() != 1;
 	for (int n : ids) s.roads.refresh_node(n);
 }
 

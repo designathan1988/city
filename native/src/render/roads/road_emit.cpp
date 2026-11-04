@@ -37,13 +37,18 @@ bool crossing_node(const CityState &s, int node) {
 }
 
 void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color &col, const Vector3 &out) {
+	const Color cols[4] = { col, col, col, col };
+	emit_quad(mb, p, uv, uv2, cols, out);
+}
+
+void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color cols[4], const Vector3 &out) {
 	Vector3 nn = (p[1] - p[0]).cross(p[3] - p[0]);
 	if (nn.length_squared() < DEGENERATE) nn = (p[2] - p[1]).cross(p[0] - p[1]);
 	if (nn.length_squared() < DEGENERATE) return;
 	nn = nn.normalized();
 	if (nn.dot(out) < 0) nn = -nn;
 	int i[4];
-	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, col, uv[k], uv2[k]);
+	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, cols[k], uv[k], uv2[k]);
 	mb.tri(i[0], i[1], i[2], nn);
 	mb.tri(i[0], i[2], i[3], nn);
 }

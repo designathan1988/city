@@ -27,7 +27,7 @@ static func texture(profile: Dictionary, widest: float) -> Texture2D:
 		if s.get("rail", false):
 			_rails(img, y, sh)
 		if s.kind == "lane" and prev.get("kind", "") == "lane" and not s.get("rail", false):
-			_line(img, int(y), prev.get("dir", 0) != s.get("dir", 0))
+			_line(img, int(y), prev.get("dir", 0) != s.get("dir", 0), profile.centre)
 		prev = s
 		y += sh
 	var tex := ImageTexture.create_from_image(img)
@@ -46,15 +46,22 @@ static func _colour(s: Dictionary) -> Color:
 	return ThemeBuilder.color(token)
 
 
-static func _line(img: Image, y: int, opposite: bool) -> void:
+static func _line(img: Image, y: int, opposite: bool, centre: String) -> void:
 	var w := img.get_width()
-	if opposite:
+	if opposite and centre == "none":
+		return
+	if opposite and centre == "double":
+		img.fill_rect(Rect2i(0, y - 2, w, 1), ThemeBuilder.color("rc_yellow"))
+		img.fill_rect(Rect2i(0, y + 1, w, 1), ThemeBuilder.color("rc_yellow"))
+		return
+	if opposite and centre != "dashed":
 		img.fill_rect(Rect2i(0, y - 1, w, 2), ThemeBuilder.color("rc_yellow"))
 		return
 	var dash := int(ThemeBuilder.size("rc_dash"))
 	var gap := int(ThemeBuilder.size("rc_gap"))
+	var paint := ThemeBuilder.color("rc_yellow" if opposite else "rc_white")
 	for x in range(0, w, dash + gap):
-		img.fill_rect(Rect2i(x, y, dash, 1), ThemeBuilder.color("rc_white"))
+		img.fill_rect(Rect2i(x, y, dash, 1), paint)
 
 
 static func _rails(img: Image, y: float, sh: float) -> void:

@@ -6,6 +6,11 @@
 
 namespace city {
 
+// What a chunk's mesh holds, kept once the builder is gone (the probes count it).
+struct MeshCount {
+	int64_t triangles = 0, vertices = 0, bytes = 0;
+};
+
 // A road or furniture chunk's result: the builder its job filled, then the mesh baked from it.
 struct BuiltMesh {
 	int64_t key = 0;
@@ -14,10 +19,12 @@ struct BuiltMesh {
 	uint64_t seq = 0;
 	MeshBuilder mb;
 	OwnedMesh mesh;
+	MeshCount count;
 	bool baked = false;
 	int64_t bytes() const { return mb.bytes(); }
 	void bake() {
 		mesh = mb.bake();
+		count = { mb.idx.size() / 3, mb.v.size(), mb.bytes() };
 		mb = MeshBuilder();
 		baked = true;
 	}

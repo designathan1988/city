@@ -2,6 +2,8 @@
 // It owns the CityState (single source of truth), the simulation thread and the render world.
 #pragma once
 
+#include <godot_cpp/variant/packed_vector3_array.hpp>
+
 #include "render/render_world.h"
 #include "sim/simulation/simulation.h"
 
@@ -81,12 +83,18 @@ public:
 	void step_ticks(int ticks); // tests: deterministic steps with the clock paused
 
 	// --- player commands and previews (city_core_commands.cpp)
-	godot::Dictionary snap_road(const godot::Vector3 &p, int profile);
-	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile);
-	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile);
+	godot::Dictionary road_start(const godot::Vector3 &p, double px, bool on, bool grid);
+	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid);
+	godot::PackedVector3Array road_pieces(const godot::Vector3 &a, const godot::Vector3 &b, int alignment, bool has_control, const godot::Vector3 &c,
+			const godot::PackedVector3Array &samples, int profile, double px);
+	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
+	godot::Dictionary build_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
+	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
+	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
+	int road_variant(int base, int lanes, float width, int parking);
 
 	// --- the Landscape drawer (city_core_nature.cpp)
 	godot::Dictionary set_weather(const godot::Dictionary &change);
@@ -117,6 +125,12 @@ public:
 	void begin_stroke(const godot::String &label); // a held brush: every dab until end_stroke is one undo step
 	void end_stroke();
 	godot::Dictionary split_road(const godot::Vector3 &p);
+	godot::Dictionary set_road_end(int node, bool bulb);
+	godot::Dictionary move_node(int node, const godot::Vector3 &p);
+	godot::Dictionary set_node_control(int node, int ctl);
+	godot::Array junctions();
+	godot::Dictionary node_at(const godot::Vector3 &p, float px);
+	godot::Array moved_roads(int node, const godot::Vector3 &p);
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
@@ -151,6 +165,9 @@ public:
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
+	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes
+	void draw_verges(bool on) { render_.draw_verges(on); } // tests/perf/camera_pan: a frame without them
+	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary building_cost() const { return render_.building_cost(); } // the building levels by surface: triangles, bytes
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)

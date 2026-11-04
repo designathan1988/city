@@ -73,7 +73,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, BUILD (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); `RoadTool.Step`: START → CONTROL (curva) → END → (encadeia) END.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -158,6 +158,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
+- `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
+- `native/src/sim/commands/road_move.cpp` — Mover: o nó vai e as vias são assentadas de novo
+- `native/src/sim/commands/road_rules.cpp` — o que uma edição de via não pode deixar: trecho apertado demais entre duas junções
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
@@ -177,6 +180,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
+- `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` — via de classe com as faixas, a largura e as vagas das opções da ferramenta, um perfil a mais no catálogo
 - `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` · `native/src/sim/roads/street_furniture_posts.cpp` · `native/src/sim/roads/street_furniture_internal.h` — dono único de onde fica o mobiliário da rua (hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render; postes e semáforos; zonas da calçada
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
@@ -256,12 +260,14 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/render_context.h` — cenário, tabelas de render e materiais recebidos pelos renderizadores
 - `native/src/render/render_world.cpp` · `native/src/render/render_world.h` — consome o ChangeLog e aplica os orçamentos por quadro
 - `native/src/render/roads/road_emit.cpp` — referenciais de segmento, nós e quad texturizado
-- `native/src/render/roads/road_junction.cpp` — placas de nó, beco sem saída e balão
+- `native/src/render/roads/road_junction.cpp` · `native/src/render/roads/road_kerb.cpp` — placas de nó, beco sem saída e balão; a borda com meio-fio de uma esquina ou balão
 - `native/src/render/roads/road_look.cpp` · `native/src/render/roads/road_look.h` — streets.json → StreetLook (aparência das vias)
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
-- `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
-- `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
+- `native/src/render/roads/road_chunks.h` · `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
+- `native/src/render/roads/road_verge.cpp` · `native/src/render/roads/verge_renderer.cpp` · `native/src/render/roads/verge_renderer.h` — o talude: faixa do fim da calçada até o terreno, por chunk, na grama do terreno
+- `native/src/render/roads/road_section.cpp` · `native/src/render/roads/road_section.h` — a seção da via em peças: superfícies, rampa do rebaixo e ilha entre as pistas
+- `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/wear/wear_field.cpp` · `native/src/render/wear/wear_field.h` — desgaste das ruas e calçadas: campo em janela que dá a volta, em camadas de uma textura em array, só as alteradas enviadas
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores) e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
@@ -292,6 +298,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
 - `project/game/tools/road_tool.gd` — via reta/curva com prévia
+- `project/game/tools/control_tool.gd` — Controle
+- `project/game/tools/move_tool.gd` — Mover
 - `project/game/tools/roundabout_tool.gd` — rotatória
 - `project/game/tools/split_tool.gd` — Dividir
 - `project/game/tools/terrain_tool.gd` — Relevo
@@ -306,21 +314,23 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/film_look.gd` · `project/render/shaders/vignette.gdshader` — aspecto da imagem depois do tom: tabela da gradação no Environment e vinheta sob a interface
 - `project/render/model_studio.gd` — as fotos da prateleira de modelos, uma por quadro
 - `project/render/selection_box.gd` — contorno do bloco escolhido no Construir
+- `project/render/surface_means.gd` — média de cada mapa de superfície e tons da via, enviados uma vez ao material
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_glass.gdshader` · `project/render/shaders/building_sheer.gdshader` · `project/render/shaders/building_card.gdshader` · `project/render/shaders/building_pane.gdshaderinc` · `project/render/shaders/building_far_window.gdshaderinc` · `project/render/shaders/building_sky_glass.gdshaderinc`
   — prédio, massas distantes/HLOD, peças de fachada instanciadas; ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa); hash; lâmpadas e grade filtrada de janelas; guarda-corpos de vidro meio vistos através; grades como uma face, as barras no fragmento; vidros do nível perto com luz própria e o que cada um desenha (vão com sol e céu exatos, cômodo por interior mapping, cortina, caixilho); janelas do nível médio; o céu no vidro
 - `project/render/shaders/wear.gdshaderinc` — o desgaste lido pelas vias: trilhas, buracos, rachaduras e manchas de pisada
-- `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
-  modelo do renderizador); ruído de valor das vias; ruído de valor por hash inteiro do terreno e da água
+- `project/render/shaders/road.gdshader` · `project/render/shaders/road_detail.gdshaderinc` · `project/render/shaders/road_wear.gdshaderinc` · `project/render/shaders/water.gdshader` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; camada de detalhe de perto das vias; sujeira e desgaste da pista e da calçada; água (ondulação do espectro de vento, reflexo pelo
+  modelo do renderizador); ruído de valor por hash inteiro do terreno, da água e das vias
 - `project/render/shaders/atmosphere.gdshader` · `project/render/shaders/cloud_field.gdshaderinc` · `project/render/shaders/ground_paint.gdshaderinc` · `project/render/shaders/lightning.gdshader` · `project/render/shaders/rain.gdshader` — passe de tela cheia (sombra das nuvens, névoa, neblina, nuvens) e forma da nuvem; chão pintado e ravinas pelo mapa de controle; raio e chuva
-- `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
+- `project/render/shaders/verge.gdshader` · `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_part_cases.gd` · `project/tests/core/building_pick_cases.gd` · `project/tests/core/building_tool_test.gd` · `project/tests/core/building_tool_test.tscn` — edições do Construir pelo store e pela ferramenta: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
+- `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` — opções da via de classe, Mover, Controle e regras de edição
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
@@ -330,7 +340,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_clock.gd` · `project/tests/visual/capture_clock.tscn` — a luz no jogo de verdade: botões sol, lua e relógio de play.tscn
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` · `project/tests/visual/landscape_cards.gd` — capturas da paisagem nos ângulos do 4.0; rampa de cinzas, cubo cinza e árvores plantadas, medidos sozinhos
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
+- `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — vias de perto em chão livre (cruzamentos, T, ponta, curva) e a ferramenta em uso, nos ângulos das fotos do 4.0
 - `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele
+- `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
@@ -342,6 +354,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/inspector_panel.gd` — inspetor
 - `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json
 - `project/ui/road_catalog.gd` — catálogo de vias
+- `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
+- `project/ui/junction_marks.gd` — marcas do controle de cada cruzamento na aba Controle
+- `project/ui/preview_tag.gd` — etiqueta de comprimento, preço e recusa junto do fim da via em mão
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
@@ -369,7 +384,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e as abas Modelos, Massa, Fachada, Peças, Telhado e Cores existem, com seleção por raio; faltam Desenhar e Interior. Dos modelos, a função no registro só existe para as 13 do jogo (os outros entram sem função), e os 38 lotes vêm com o porte `marcos`. Bandeiras no pináculo e na lanterna ainda não. Árvores de corpo colocado já são desenhadas; as dos lotes crescidos ainda não. a peça não tem fantasma sob o ponteiro.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: forma, tons e atlas seguem o 4.0 no mesmo quadro (`capture_landscape --only=arv_perto,...`), escolha de modelagem dita no _doc de `trees`; as matas seguem a mesma regra e a mesma malha do 4.0 (mesma árvore na mesma célula: `tree_place.cpp`), e passar a instância sem cor quando o `rs_util.h` da rua integrar. Paisagem: a luz é a do 4.0 no mesmo sol (16h, 29°), medida em discos pintados de albedo igual, e os mapas de chão entram sem ganho; a imagem passa pela gradação de filme (`film_grade.cpp`) e pela vinheta. Falta o `canyonLight` do 4.0 (escurecimento das ruas) e a luz do céu fora do terreno; pedras da costa, estratos da rocha, grama seca da ecologia e lembrar a escolha dos pincéis não foram portados.
-- Água: alvo de cor vem de uma foto antiga do 4.0 (o mapa 0 não tem lago). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
+- Água: alvo de cor vem de uma foto antiga do 4.0 (o mapa 0 não tem lago).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a
   lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
@@ -385,8 +400,9 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   pistola/bomba. Salvar é um arquivo por cidade (sem gerações/quarentena do Roadcraft); o autosave não grava cidade
   gerada que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
-- Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
-  modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
+- Oclusão: o GTAO do 4.0 tira 12 níveis do meio-fio ao sol e o SSAO do Godot, 1 a 2 em qualquer ajuste (sem oclusão os dois dão 193): falta um passe equivalente; o preset padrão do jogo (`medium`) nem liga a oclusão, e o 4.0 abre em `high`.
+- Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);
+  Quarteirões ainda não; demolir via deixa o corredor de terreno. Falta do porte de vias: Personalizar e Meus modelos, editor de perfil, teclas, regras por acesso, conectores, nomes de rua, legendas, os estilos `eua` e `europa` de pintura, vazios, e larguras de faixa e calçada, zebra de escada e nomes de rua por estilo (em `streets.json` `markings.styles` há `roadcraft`, o desenho do 4.0, e `brasil`, a norma; o carregador lê `markings.style`), linha contínua na aproximação de semáforo (MBST IV 4.2.1), comparar a geração com `streets.ts`/`plan.ts`; a prévia não avisa de trecho apertado; parada, preferência e minirrotatória rodam como cruzamento de prioridade; mover recusa um nó cujo outro lado já era fechado.
 - Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).

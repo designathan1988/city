@@ -3,20 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dqvrisbyjspki"
-path.s3tc="res://.godot/imported/asphalt.map.png-b9931490ef99d562df1113c84c7912a6.s3tc.ctex"
+path="res://.godot/imported/asphalt.map.png-b9931490ef99d562df1113c84c7912a6.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/surfaces/asphalt.map.png"
-dest_files=["res://.godot/imported/asphalt.map.png-b9931490ef99d562df1113c84c7912a6.s3tc.ctex"]
+dest_files=["res://.godot/imported/asphalt.map.png-b9931490ef99d562df1113c84c7912a6.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

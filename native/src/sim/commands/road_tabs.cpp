@@ -14,6 +14,7 @@
 namespace city {
 
 namespace {
+constexpr size_t JUNCTION_ARMS = 3; // fewer arms need no control
 constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 constexpr float SAME_WIDTH_M = 0.01f;
 constexpr int CHAIN_GUARD = 4000;
@@ -137,7 +138,9 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 	}
 	std::map<int, bool> along;
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
-	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
+	RoadBox box;
+	for (int sg : segs) box.add(s.roads.segs[sg]);
+	const std::map<int, double> before = squeezes_in(s, box);
 	for (int sg : segs) {
 		if (!s.roads.segs[sg].alive) continue;
 		if (along.count(sg) && !along[sg]) {
@@ -148,15 +151,56 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		}
 		j_set_profile(s, sg, profile);
 		r.buildings_removed += settle_under(s, sg);
-		const RoadSegment &g = s.roads.segs[sg];
-		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
-		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
+		box.add(s.roads.segs[sg]);
 		r.segments++;
 	}
 	j_money(s, -price);
-	finish_edit(s, minx, minz, maxx, maxz);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (squeezed_worse(s, before, box)) {
+		r.error = "hint.rule.squeezed";
+		return r;
+	}
 	r.ok = true;
 	r.money = s.unlimited_money ? 0 : price;
+	return r;
+}
+
+EditResult set_node_control(CityState &s, int node, int ctl) {
+	EditResult r;
+	RoadNetwork &net = s.roads;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[node].alive || ctl < 0 || ctl >= CTL_COUNT) {
+		r.error = "hint.control.miss";
+		return r;
+	}
+	if (net.nodes[node].segs.size() < JUNCTION_ARMS) {
+		r.error = "hint.control.notJunction";
+		return r;
+	}
+	j_set_control(s, node, uint8_t(ctl));
+	double x = net.nodes[node].x, z = net.nodes[node].z;
+	finish_edit(s, x, z, x, z);
+	r.ok = true;
+	return r;
+}
+
+EditResult set_road_end(CityState &s, int node, bool bulb) {
+	EditResult r;
+	RoadNetwork &net = s.roads;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[node].alive || net.nodes[node].segs.size() != 1) {
+		r.error = "tool.failed";
+		return r;
+	}
+	j_set_plain(s, node, !bulb);
+	net.refresh_node(node);
+	if (bulb && !net.nodes[node].bulb) { // no room: back to the cut, shape included
+		j_set_plain(s, node, true);
+		net.refresh_node(node);
+		r.error = "inspector.end.noRoom";
+		return r;
+	}
+	double x = net.nodes[node].x, z = net.nodes[node].z;
+	finish_edit(s, x, z, x, z);
+	r.ok = true;
 	return r;
 }
 

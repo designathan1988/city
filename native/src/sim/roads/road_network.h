@@ -19,14 +19,17 @@ enum SegFlag : uint16_t {
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
 
+// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
+enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
+
 struct RoadNode {
 	bool alive = false;
 	double x = 0, z = 0, y = 0;
 	std::vector<int> segs;
-	uint8_t ctl = 0; // junction control (roads/control.ts), 0 = automatic
+	uint8_t ctl = CTL_AUTO; // NodeControl
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on
-	bool plain = false; // a dead end that never gets a bulb (roundabout approaches waiting to be extended)
+	bool plain = false; // a dead end ends in a straight cut: every player road's, until set_road_end asks for a bulb
 };
 
 struct RoadSegment {

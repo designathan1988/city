@@ -32,6 +32,16 @@ void write_terrain(ByteWriter &w, const Heightfield &t) {
 	}
 }
 
+void write_variants(ByteWriter &w, const std::vector<RoadVariant> &list) {
+	w.put<uint32_t>(uint32_t(list.size()));
+	for (const RoadVariant &v : list) {
+		w.put<int32_t>(v.base);
+		w.put<int32_t>(v.lanes);
+		w.put<int32_t>(v.parking);
+		w.put<float>(v.width);
+	}
+}
+
 void write_roads(ByteWriter &w, const RoadNetwork &net) {
 	w.put<uint32_t>(uint32_t(net.nodes.size()));
 	for (const RoadNode &n : net.nodes) {
@@ -84,6 +94,7 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	w.put<double>(s.clock.minutes.load());
 	w.put<double>(s.clock.day_shift.load());
 	write_terrain(w, s.terrain);
+	write_variants(w, s.catalog.variants);
 	write_roads(w, s.roads);
 	write_buildings(w, s.buildings);
 	write_nature(w, s);

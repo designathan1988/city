@@ -10,8 +10,10 @@ const SNAPSHOT_INTERVAL_S := 0.25
 ## Commands the UI/tools may send, with the CityCore method that executes each one.
 const COMMANDS := {
 	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
-	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
-	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
+	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
+	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
+	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
+	&"upgrade_road": "upgrade_road", &"road_variant": "road_variant", &"move_node": "move_node", &"set_node_control": "set_node_control",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
 	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_weather": "set_weather",
 	&"add_cloud": "add_cloud", &"edit_cloud": "edit_cloud", &"remove_cloud": "remove_cloud",
@@ -32,8 +34,9 @@ const COMMANDS := {
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "job_pool_probe", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
-	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",
-	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
+	&"render_cost": "render_cost", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",
+	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",
+	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles", &"node_at": "node_at", &"junctions": "junctions", &"moved_roads": "moved_roads",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"model_list": "model_list", &"model_bytes": "model_bytes", &"doc_body": "doc_body", &"building_bytes": "building_bytes", &"body_size": "body_size",
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
@@ -92,6 +95,15 @@ func ready_to_read() -> bool:
 
 
 ## The slot the city on screen is saved to ("" until its first save).
+## The road the tool opens with (data/ui/drawers.json first_road).
+func first_road() -> int:
+	var id: String = DataTables.ui("drawers").first_road
+	for p in query(&"road_profiles"):
+		if p.id == id:
+			return p.index
+	return 0
+
+
 func city_slot() -> String:
 	return _city_slot
 

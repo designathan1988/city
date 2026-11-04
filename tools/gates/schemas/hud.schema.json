@@ -1,6 +1,6 @@
 {
  "type": "object",
- "properties": {
+ "properties": {"control_marks":{"type":"array","items":{"type":"object","properties":{"glyph":{"type":"string"},"token":{"type":"string"},"label_key":{"type":"string"}},"required":["glyph","token","label_key"],"strict":true}},
   "_doc": {
    "type": "string"
   },

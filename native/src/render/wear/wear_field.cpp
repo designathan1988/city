@@ -106,6 +106,19 @@ void WearField::add(int channel, float x, float z, float amount) {
 	touch(tile);
 }
 
+void WearField::paint(float x0, float z0, float x1, float z1, float value) {
+	const uint8_t b = uint8_t(std::lround(std::clamp(value, 0.f, 1.f) * BYTE_MAX));
+	for (int gy = int(std::floor(z0 / cell_)); gy <= int(std::floor(z1 / cell_)); gy++) {
+		for (int gx = int(std::floor(x0 / cell_)); gx <= int(std::floor(x1 / cell_)); gx++) {
+			if (gx < ox_ || gy < oy_ || gx >= ox_ + RES || gy >= oy_ + RES) continue;
+			const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
+			uint8_t *bytes = tiles_[size_t(tile)].ptrw() + (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS;
+			bytes[0] = bytes[1] = b;
+			touch(tile);
+		}
+	}
+}
+
 void WearField::wear(const PoseFrame &f, float elapsed) {
 	const float dt = std::min(elapsed, most_step_);
 	if (dt <= 0) return;

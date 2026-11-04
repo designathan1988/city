@@ -3,20 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dokkqogedy15c"
-path.s3tc="res://.godot/imported/footway.map.png-96fbed256cd1eaf023573b02db2eddbc.s3tc.ctex"
+path="res://.godot/imported/footway.map.png-96fbed256cd1eaf023573b02db2eddbc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/surfaces/footway.map.png"
-dest_files=["res://.godot/imported/footway.map.png-96fbed256cd1eaf023573b02db2eddbc.s3tc.ctex"]
+dest_files=["res://.godot/imported/footway.map.png-96fbed256cd1eaf023573b02db2eddbc.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

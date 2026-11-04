@@ -3,6 +3,7 @@
 // simulation's crosswalk lies (catalog street_furniture.json "crossing"). Material PAINT, lit by the same lamp pools as
 // the road.
 #include "render/roads/road_mesh.h"
+#include "render/roads/road_section.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float STRAIGHT_TOL = 0.5f;
 
 struct Painter {
 	const RoadEmit &e;
@@ -44,15 +44,17 @@ struct Painter {
 
 void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	const StreetLook &L = pt.e.L;
-	const float plain_w = p.speed < L.line_fast_kmh ? L.line_w : L.line_fast_w;
+	const bool fast = p.speed >= L.fast_kmh;
+	const bool many = std::max(p.lanes_fwd(), p.lanes_back()) > 1;
 	size_t band = 0; // the dash pattern of the road's speed
 	while (band < L.dash_kmh.size() && p.speed >= L.dash_kmh[band]) band++;
 	const double dash = L.dash[band], period = dash + L.gap[band];
 	for (const MarkLine &m : p.lines) {
 		Color c = m.color == LineColor::YELLOW ? L.yellow : L.white;
-		const float w = m.exclusive ? L.exclusive_w : plain_w, hw = w / 2;
-		auto line = [&](float u) {
-			if (m.kind != LineKind::DASHED) {
+		const float w = m.exclusive ? L.exclusive_w : m.centre ? (fast ? L.fast_centre_w : L.centre_w) : (fast ? L.fast_lane_w : L.lane_w);
+		const LineKind kind = m.centre && m.kind == LineKind::SOLID && L.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
+		auto line = [&](float u, float hw) {
+			if (kind != LineKind::DASHED) {
 				if (l1 > l0) pt.rect(u - hw, u + hw, l0, l1, c);
 				return;
 			}
@@ -61,32 +63,40 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 				if (b > a) pt.rect(u - hw, u + hw, a, b, c);
 			}
 		};
-		if (m.kind == LineKind::DOUBLE) { // two lines double_gap apart
-			line(m.u - (w + L.double_gap) / 2);
-			line(m.u + (w + L.double_gap) / 2);
-		} else line(m.u);
+		if (kind == LineKind::DOUBLE) { // two lines double_gap apart
+			line(m.u - (L.double_w + L.double_gap) / 2, L.double_w / 2);
+			line(m.u + (L.double_w + L.double_gap) / 2, L.double_w / 2);
+		} else line(m.u, w / 2);
 	}
 }
 
 void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb) {
 	const StreetLook &L = pt.e.L;
 	const CrossingDef &x = pt.e.s.catalog.furniture.crossing;
-	float ar = -p.asph_right, al = p.asph_left;
+	float ar = -p.asph_right, al = p.asph_left, isle0 = 0, isle1 = 0;
+	const bool island = island_span(p, isle0, isle1); // without one both are the centre line
 	for (int end = 0; end < 2; end++) {
 		if (!(end == 0 ? ca : cb)) continue;
 		auto from = [&](double d) { return end == 0 ? v0 + d : v1 - d; };
 		double za = from(x.zebra_from_m), zb = from(x.zebra_to_m);
-		// as many bars as fit across the carriageway, the pattern centred on it
-		const float gap = L.zebra_period - L.zebra_bar;
-		const int bars = int(std::floor((al - ar + gap) / L.zebra_period));
-		const float first = ar + ((al - ar) - (bars * L.zebra_period - gap)) / 2;
-		for (int k = 0; k < bars; k++) {
-			const float u = first + k * L.zebra_period;
-			pt.rect(u, u + L.zebra_bar, std::min(za, zb), std::max(za, zb), L.white);
-		}
+		// as many bars as fit across each stretch of carriageway, clear of its kerbs, the pattern centred on it
+		auto across = [&](float from, float to) {
+			const float wide = to - from, gap = L.zebra_period - L.zebra_bar;
+			if (wide < L.zebra_bar) return;
+			const int bars = int(std::floor((wide + gap) / L.zebra_period));
+			const float first = from + (wide - (bars * L.zebra_period - gap)) / 2;
+			for (int k = 0; k < bars; k++) {
+				const float u = first + k * L.zebra_period;
+				pt.rect(u, u + L.zebra_bar, std::min(za, zb), std::max(za, zb), L.white);
+			}
+		};
+		if (island) {
+			across(ar + L.zebra_edge, isle0 - L.zebra_edge);
+			across(isle1 + L.zebra_edge, al - L.zebra_edge);
+		} else across(ar + L.zebra_edge, al - L.zebra_edge);
 		// stop line on the approach half (end a: traffic arrives on the +u side; one-way roads arrive only at b)
 		if (end == 0 && p.one_way) continue;
-		float su0 = p.one_way ? ar : (end == 0 ? 0.f : ar), su1 = p.one_way ? al : (end == 0 ? al : 0.f);
+		float su0 = p.one_way ? ar : (end == 0 ? isle1 : ar), su1 = p.one_way ? al : (end == 0 ? al : isle0);
 		double sa = from(x.stop_from_m), sb = from(x.stop_to_m);
 		pt.rect(su0, su1, std::min(sa, sb), std::max(sa, sb), L.white);
 	}
@@ -100,7 +110,8 @@ void emit_markings(const RoadEmit &e, int sid) {
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
-	lines(pt, p, v0 + (ca ? e.L.line_clear : 0), v1 - (cb ? e.L.line_clear : 0));
+	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
+	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
 	crossings(pt, p, v0, v1, ca, cb);
 }
 
