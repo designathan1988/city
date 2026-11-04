@@ -138,7 +138,8 @@ function extract(m: Machine, feature: string, entries: readonly string[]): numbe
     ...analysis, ...entries.flatMap((e) => ['--entry', e]), '--out', out]);
   if (code !== 0) return code;
   if (!fs.existsSync(cache.jelly)) fs.cpSync(path.join(out, 'jelly'), cache.jelly, { recursive: true });
-  console.log(`\nfeature ${feature}: read ${path.join(out, 'feature.md')}, then the code in ${path.join(out, 'source')} (boundary.json has every list)`);
+  console.log(`\nfeature ${feature}: read ${path.join(out, 'feature.md')}, then the code in ${path.join(out, 'source')} and the shared ` +
+    `declarations it uses in ${path.join(out, 'interface')} (boundary.json has every list)`);
   return 0;
 }
 
