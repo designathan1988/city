@@ -28,7 +28,7 @@ constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIF
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 // agents.gdshader palette array sizes
-constexpr int HAIR_MAX = 8, SKIN_MAX = 8, PAINT_MAX = 16, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
+constexpr int HAIR_MAX = 8, SKIN_MAX = 8, PAINT_MAX = 16, LINE_PAINTS = 8, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
 constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
 // A draw's room in instances grows past what it holds, in these steps, and shrinks only two steps below: vehicles
@@ -70,7 +70,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	glass_ = ctx.material("agent_glass", errors);
 	Dictionary t = ctx.table("agents", errors);
 	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
-	if (!push_palettes(t, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
+	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
 	vehicle_r_ = float(t["vehicle_radius_m"]);
 	cabin_r_ = float(t["cabin_radius_m"]);
 	people_r_ = float(t["people_radius_m"]);
@@ -119,7 +119,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	return errors.is_empty();
 }
 
-bool AgentRenderer::push_palettes(const Dictionary &t, PackedStringArray &errors) {
+bool AgentRenderer::push_palettes(const Dictionary &t, const std::vector<uint32_t> &lines, PackedStringArray &errors) {
 	const Dictionary people = t["people"], occupants = t["occupants"];
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const Array hair = people["hair"], skin = occupants["skin"], paints = t["paints"];
@@ -128,6 +128,10 @@ bool AgentRenderer::push_palettes(const Dictionary &t, PackedStringArray &errors
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)
 	PackedVector3Array raw;
 	for (const Color &c : palette(paints, PAINT_MAX, "paints", errors)) raw.push_back(Vector3(c.r, c.g, c.b));
+	for (size_t i = 0; i < lines.size() && i < size_t(LINE_PAINTS); i++) { // after them: a bus's line (traffic_state.h LINE_PAINT)
+		const Color c = rgb8_to_color(lines[i]);
+		raw.push_back(Vector3(c.r, c.g, c.b));
+	}
 	rs->material_set_param(material_, "paints", raw);
 	rs->material_set_param(material_, "paint_n", int(paints.size())); // the riders' helmets come in the paints too
 	rs->material_set_param(material_, "skin_cdf", cumulative(occupants["skin_weights"], int(skin.size()), SKIN_MAX, "skin_weights", errors));
@@ -256,7 +260,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		float passengers, order;
 		riders(type, rec.id, passengers, order);
 		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
-		push_agent(bufs[type][level], p, 1.f, float(paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
+		push_agent(bufs[type][level], p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);

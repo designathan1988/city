@@ -47,7 +47,7 @@ uniform int shirt_n[8];
 uniform int trousers_from[8];
 uniform int trousers_n[8];
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
-uniform vec3 paints[16];
+uniform vec3 paints[24]; // the paints, then the colours of the transport lines
 uniform int paint_n = 1;
 const int CUT_LONG = 1;
 const int CUT_SHAVED = 2;

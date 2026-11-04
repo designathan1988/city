@@ -42,6 +42,8 @@ public:
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
+	void transit_xray(bool on) { transit_.set_xray(on); }
+	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }

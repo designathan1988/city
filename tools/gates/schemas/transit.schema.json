@@ -7,91 +7,13 @@
   "radius_m": {
    "type": "number"
   },
-  "gauge_m": {
+  "items_per_frame": {
    "type": "number"
   },
-  "sleeper_step_m": {
+  "run_m": {
    "type": "number"
   },
-  "lay_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "sleeper_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "rail_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "ballast": {
-   "type": "string"
-  },
-  "sleeper": {
-   "type": "string"
-  },
-  "rail": {
-   "type": "string"
-  },
-  "platform_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "platform_off_m": {
-   "type": "number"
-  },
-  "platform_roof_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "platform_roof_up_m": {
-   "type": "number"
-  },
-  "platform": {
-   "type": "string"
-  },
-  "platform_roof": {
-   "type": "string"
-  },
-  "shelter_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "shelter_post_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "shelter_wall": {
-   "type": "string"
-  },
-  "shelter_roof": {
-   "type": "string"
-  },
-  "terminal_roof": {
-   "type": "string"
-  },
-  "entrance_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "entrance": {
+  "default_line": {
    "type": "string"
   },
   "car_m": {
@@ -100,56 +22,371 @@
     "type": "number"
    }
   },
-  "car_floor_m": {
+  "car_up_m": {
    "type": "number"
   },
-  "car_window_low": {
-   "type": "number"
+  "parts": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "colour": {
+      "type": "string"
+     },
+     "roughness": {
+      "type": "number"
+     },
+     "metal": {
+      "type": "number"
+     },
+     "xray": {
+      "type": "number"
+     },
+     "glass": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "colour",
+     "roughness",
+     "metal"
+    ]
+   }
   },
-  "car_window_high": {
-   "type": "number"
+  "track": {
+   "type": "object",
+   "properties": {
+    "gauge_m": {
+     "type": "number"
+    },
+    "piece_m": {
+     "type": "number"
+    },
+    "sleeper_step_m": {
+     "type": "number"
+    },
+    "ballast": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "over": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    },
+    "sleeper": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "long": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    },
+    "rail": {
+     "type": "object",
+     "properties": {
+      "up": {
+       "type": "number"
+      },
+      "high": {
+       "type": "number"
+      },
+      "wide": {
+       "type": "number"
+      },
+      "over": {
+       "type": "number"
+      },
+      "paved_up": {
+       "type": "number"
+      },
+      "paved_high": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "up",
+      "high",
+      "wide"
+     ]
+    }
+   },
+   "required": [
+    "gauge_m",
+    "piece_m",
+    "sleeper_step_m",
+    "ballast",
+    "sleeper",
+    "rail"
+   ]
   },
-  "car_window_proud_m": {
-   "type": "number"
+  "metro": {
+   "type": "object",
+   "properties": {
+    "rails_below_m": {
+     "type": "number"
+    },
+    "wide_m": {
+     "type": "number"
+    },
+    "high_m": {
+     "type": "number"
+    },
+    "floor_up_m": {
+     "type": "number"
+    },
+    "shell_m": {
+     "type": "number"
+    },
+    "side_gap_m": {
+     "type": "number"
+    },
+    "roof_wide_m": {
+     "type": "number"
+    },
+    "over_m": {
+     "type": "number"
+    },
+    "shaft_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "passage_m": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     }
+    },
+    "entrance_step_m": {
+     "type": "number"
+    },
+    "entrance_reach_m": {
+     "type": "number"
+    },
+    "entrance_clear_m": {
+     "type": "number"
+    },
+    "entrance_turns": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "rails_below_m",
+    "wide_m",
+    "high_m",
+    "floor_up_m",
+    "shell_m",
+    "side_gap_m",
+    "roof_wide_m",
+    "over_m",
+    "shaft_m",
+    "passage_m",
+    "entrance_step_m",
+    "entrance_reach_m",
+    "entrance_clear_m",
+    "entrance_turns"
+   ]
   },
-  "car_window": {
-   "type": "string"
+  "station": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
   },
-  "car_under": {
-   "type": "string"
+  "stop": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "terminal": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "entrance": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
+  },
+  "below": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "part": {
+      "type": "string"
+     },
+     "at": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "size": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "tint": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "part",
+     "at",
+     "size"
+    ]
+   }
   }
  },
  "required": [
   "_doc",
   "radius_m",
-  "gauge_m",
-  "sleeper_step_m",
-  "lay_m",
-  "sleeper_m",
-  "rail_m",
-  "ballast",
-  "sleeper",
-  "rail",
-  "platform_m",
-  "platform_off_m",
-  "platform_roof_m",
-  "platform_roof_up_m",
-  "platform",
-  "platform_roof",
-  "shelter_m",
-  "shelter_post_m",
-  "shelter_wall",
-  "shelter_roof",
-  "terminal_roof",
-  "entrance_m",
-  "entrance",
+  "items_per_frame",
+  "run_m",
+  "default_line",
   "car_m",
-  "car_floor_m",
-  "car_window_low",
-  "car_window_high",
-  "car_window_proud_m",
-  "car_window",
-  "car_under"
- ],
- "strict": true
+  "car_up_m",
+  "parts",
+  "track",
+  "metro",
+  "station",
+  "stop",
+  "terminal",
+  "entrance",
+  "below"
+ ]
 }

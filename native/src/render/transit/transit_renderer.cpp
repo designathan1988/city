@@ -1,130 +1,68 @@
-// Tracks in their layers (ballast, sleepers, rails), a platform with its roof at each station, a shelter at each bus stop, a way down at
-// each metro station; a car is a box with its windows and the line's stripe of paint. See transit_renderer.h.
+// See transit_renderer.h. An item is a track or a stop; its signature is what it is drawn from, so a plan's edit makes again only what it moved.
 #include "render/transit/transit_renderer.h"
 
-#include "core/color.h"
+#include "core/grid.h"
 #include "render/agents/people_renderer.h"
-#include "render/mesh_builder.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
-#include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <limits>
 
 using namespace godot;
 
 namespace city {
 
 namespace {
-constexpr float HALF = 0.5f, AABB_HALF_H_M = 500.f, FAR_M = 1e9f;
-constexpr int RGB_BITS = 8;
+constexpr float AABB_HALF_H_M = 500.f, HALF = 0.5f;
+constexpr int RGB_BITS = 8, RECT_INTS = 4;
 constexpr uint32_t OPAQUE = 0xFFu;
+constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull;
 
-Color hex(const Variant &v) {
-	const uint32_t c = parse_hex_color(String(v).utf8().get_data());
-	return Color::hex(c);
+int64_t track_key(int id) { return int64_t(id) * 2; }
+int64_t stop_key(int id) { return int64_t(id) * 2 + 1; }
+
+template <typename T>
+void mix(uint64_t &h, const T &v) {
+	unsigned char bytes[sizeof(T)];
+	std::memcpy(bytes, &v, sizeof(T));
+	for (unsigned char b : bytes) h = (h ^ b) * HASH_STEP;
 }
 
-Vector3 v3(const Variant &v) {
-	const Array a = v;
-	return Vector3(float(a[0]), float(a[1]), float(a[2]));
+uint64_t signature_of(const RailTrack &t) {
+	uint64_t h = HASH_START;
+	mix(h, int(t.mode));
+	for (const V2 &p : t.points) {
+		mix(h, p.x);
+		mix(h, p.y);
+	}
+	return h;
 }
 
-struct Ground {
-	const CityState &s;
-	float at(const V2 &p) const { return s.terrain.height_at(p.x, p.y); }
-	Vector3 on(const V2 &p, float up) const { return Vector3(p.x, at(p) + up, p.y); }
-};
-
-// A flat strip along a-b, `half` either side, `up` over the ground, facing up.
-void strip(MeshBuilder &mb, const Ground &g, const V2 &a, const V2 &b, float half, float up, const Color &c) {
-	const V2 d = (b - a).norm(), n(-d.y, d.x);
-	mb.quad(g.on(a + n * half, up), g.on(b + n * half, up), g.on(b - n * half, up), g.on(a - n * half, up), c, Vector3(0, 1, 0));
-}
-
-void track_mesh(MeshBuilder &mb, const Ground &g, const RailTrack &t, const Dictionary &look) {
-	const float gauge = look["gauge_m"], step = look["sleeper_step_m"];
-	const Vector3 ballast = v3(look["lay_m"]), sleeper = v3(look["sleeper_m"]), rail = v3(look["rail_m"]); // half width, height, along
-	const Color cb = hex(look["ballast"]), cs = hex(look["sleeper"]), cr = hex(look["rail"]);
-	for (size_t i = 1; i < t.points.size(); i++) {
-		const V2 &a = t.points[i - 1], &b = t.points[i], d = (b - a).norm(), n(-d.y, d.x);
-		strip(mb, g, a, b, ballast.x, ballast.y, cb);
-		for (int side : { -1, 1 }) strip(mb, g, a + n * (float(side) * gauge * HALF), b + n * (float(side) * gauge * HALF), rail.x, rail.y, cr);
-		const float len = (b - a).len();
-		for (float at = step * HALF; at < len; at += step) {
-			const V2 p = a + d * at;
-			strip(mb, g, p - d * (sleeper.z * HALF), p + d * (sleeper.z * HALF), sleeper.x, sleeper.y, cs);
+uint64_t signature_of(const CityState &s, const TransitStop &q) {
+	uint64_t h = HASH_START;
+	mix(h, int(q.mode));
+	mix(h, q.at.x);
+	mix(h, q.at.y);
+	mix(h, q.terminal);
+	mix(h, q.track);
+	mix(h, q.entrance.x);
+	mix(h, q.entrance.y);
+	for (const TransitLine &l : s.transit.lines)
+		if (std::find(l.stops.begin(), l.stops.end(), q.id) != l.stops.end()) {
+			mix(h, l.colour);
+			break;
 		}
-	}
+	return h;
 }
 
-// A box on the ground, `size` [long, high, wide], its long side along `dir`.
-void block(MeshBuilder &mb, const Ground &g, const V2 &at, const V2 &dir, const Vector3 &size, float up, const Color &c) {
-	const V2 d = dir.norm() * (size.x * HALF), n = V2(-dir.norm().y, dir.norm().x) * (size.z * HALF);
-	const float y0 = g.at(at) + up, y1 = y0 + size.y;
-	const V2 q[4] = { at - d - n, at + d - n, at + d + n, at - d + n };
-	for (int i = 0; i < 4; i++) {
-		const V2 &p = q[i], &r = q[(i + 1) % 4], e = (r - p), out(e.y, -e.x);
-		mb.quad(Vector3(p.x, y0, p.y), Vector3(r.x, y0, r.y), Vector3(r.x, y1, r.y), Vector3(p.x, y1, p.y), c, Vector3(out.x, 0, out.y));
-	}
-	mb.quad(Vector3(q[0].x, y1, q[0].y), Vector3(q[1].x, y1, q[1].y), Vector3(q[2].x, y1, q[2].y), Vector3(q[3].x, y1, q[3].y), c, Vector3(0, 1, 0));
-}
-
-V2 stop_dir(const CityState &s, const TransitStop &q) {
-	if (q.track >= 0)
-		for (const RailTrack &t : s.transit.tracks) {
-			if (t.id != q.track) continue;
-			V2 best(1, 0);
-			float dist = FAR_M;
-			for (size_t i = 1; i < t.points.size(); i++) {
-				const float d = ((t.points[i] + t.points[i - 1]) * HALF - q.at).len();
-				if (d < dist) {
-					dist = d;
-					best = (t.points[i] - t.points[i - 1]).norm();
-				}
-			}
-			return best;
-		}
-	if (q.seg >= 0 && size_t(q.seg) < s.roads.segs.size()) {
-		const RoadSegment &r = s.roads.segs[size_t(q.seg)];
-		double t, dist, dx, dz;
-		closest_t(r.q, q.at.x, q.at.y, t, dist);
-		r.q.deriv(t, dx, dz);
-		return V2(float(dx), float(dz)).norm();
-	}
-	return V2(1, 0);
-}
-
-void stop_mesh(MeshBuilder &mb, const Ground &g, const CityState &s, const TransitStop &q, const Dictionary &look) {
-	const V2 dir = stop_dir(s, q), n(-dir.y, dir.x);
-	if (q.mode == TransitMode::BUS) {
-		const Vector3 shelter = v3(look["shelter_m"]), post = v3(look["shelter_post_m"]);
-		block(mb, g, q.at, dir, Vector3(shelter.x, post.y, post.z), 0, hex(look["shelter_wall"]));
-		block(mb, g, q.at, dir, shelter, post.y, hex(look[q.terminal ? "terminal_roof" : "shelter_roof"]));
-		return;
-	}
-	if (q.mode == TransitMode::METRO) {
-		if (q.has_entrance) block(mb, g, q.entrance, dir, v3(look["entrance_m"]), 0, hex(look["entrance"]));
-		return;
-	}
-	const Vector3 p = v3(look["platform_m"]), roof = v3(look["platform_roof_m"]);
-	const float off = float(look["platform_off_m"]);
-	for (int side : { -1, 1 }) {
-		const V2 at = q.at + n * (float(side) * off);
-		block(mb, g, at, dir, p, 0, hex(look["platform"]));
-		block(mb, g, at, dir, roof, float(look["platform_roof_up_m"]), hex(look["platform_roof"]));
-	}
-}
-
-void car_mesh(MeshBuilder &mb, const Dictionary &look) {
-	const Vector3 c = v3(look["car_m"]); // long, high, wide
-	const float l = c.x * HALF, w = c.z * HALF, y = float(look["car_floor_m"]), band = float(look["car_window_low"]), top = float(look["car_window_high"]);
-	const Color glass = hex(look["car_window"]), dark = hex(look["car_under"]);
-	mb.box(Vector3(-w, y, -l), Vector3(w, y + c.y, l), Color(1, 1, 1));
-	mb.box(Vector3(-w, 0, -l), Vector3(w, y, l), dark);
-	const float g0 = y + c.y * band, g1 = y + c.y * top, proud = float(look["car_window_proud_m"]);
-	for (int side : { -1, 1 }) mb.box(Vector3(side * (w + proud) - proud * HALF, g0, -l * band), Vector3(side * (w + proud) + proud * HALF, g1, l * band), glass);
+// Each surface's material, in the order they were added.
+void add_surface(RenderingServer *rs, const RID &mesh, const MeshBuilder &mb, const RID &material, int &surface) {
+	if (mb.empty()) return;
+	mb.commit_to(mesh);
+	rs->mesh_surface_set_material(mesh, surface++, material);
 }
 } // namespace
 
@@ -132,46 +70,179 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	reset();
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("transit", errors);
-	look_ = ctx.table("transit", errors);
-	if (!errors.is_empty()) return false;
-	radius_ = look_["radius_m"];
-	MeshBuilder mb;
-	car_mesh(mb, look_);
+	glass_ = ctx.material("transit_glass", errors);
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) xray_[i] = ctx.material((std::string("transit_xray_") + std::to_string(i)).c_str(), errors);
+	const Dictionary t = ctx.table("transit", errors);
+	if (!errors.is_empty() || !look_.read(t, errors)) return false;
+	look_.kerb = Dictionary(Dictionary(ctx.table("streets", errors))["heights"])["sidewalk"];
+	radius_ = t["radius_m"];
+	per_frame_ = t["items_per_frame"];
+	TransitMeshes car;
+	transit_box(car, look_, look_.part("car"), Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	car_.reset();
 	car_.rid = rs->mesh_create();
-	mb.commit_to(car_.rid);
-	rs->mesh_surface_set_material(car_.rid, 0, material_);
+	int surface = 0;
+	add_surface(rs, car_.rid, car.solid, material_, surface);
 	return true;
 }
 
-void TransitRenderer::reset() {
+void TransitRenderer::drop(Piece &p) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	if (instance_.is_valid()) rs->free_rid(instance_);
-	instance_ = RID();
-	plan_.reset();
+	if (p.instance.is_valid()) rs->free_rid(p.instance);
+	if (p.cut_instance.is_valid()) rs->free_rid(p.cut_instance);
+	p.instance = p.cut_instance = RID();
+	p.mesh.reset();
+	p.cut.reset();
+}
+
+void TransitRenderer::reset() {
+	for (auto &e : items_)
+		for (Piece &p : e.second.pieces) drop(p);
+	items_.clear();
+	queue_.clear();
+	drop(preview_);
 	cars_.free();
 	plan_seen_ = ~uint64_t(0);
 	drawn_cars_ = 0;
 }
 
-void TransitRenderer::sync(const CityState &s) {
-	if (s.transit_revision == plan_seen_ || !material_.is_valid()) return;
-	plan_seen_ = s.transit_revision;
+void TransitRenderer::want(int64_t key, Item &item) {
+	if (item.waiting) return;
+	item.waiting = true;
+	queue_.push_back(key);
+}
+
+void TransitRenderer::touch(const std::vector<int64_t> &chunks) {
+	if (chunks.empty() || items_.empty()) return;
+	const std::unordered_set<int64_t> changed(chunks.begin(), chunks.end());
+	for (auto &e : items_) {
+		Item &it = e.second;
+		bool met = false;
+		for (float x = it.x0; x <= it.x1 + CHUNK && !met; x += CHUNK)
+			for (float z = it.z0; z <= it.z1 + CHUNK && !met; z += CHUNK) met = changed.count(chunk_of(std::min(x, it.x1), std::min(z, it.z1))) > 0;
+		if (met) want(e.first, it);
+	}
+}
+
+void TransitRenderer::touch_terrain(const CityState &s, const std::vector<int> &rects) {
+	std::vector<int64_t> chunks;
+	for (size_t i = 0; i + RECT_INTS <= rects.size(); i += RECT_INTS) {
+		const float x0 = s.terrain.x_of(rects[i]), z0 = s.terrain.x_of(rects[i + 1]), x1 = s.terrain.x_of(rects[i + 2]), z1 = s.terrain.x_of(rects[i + 3]);
+		for (float x = x0; x <= x1 + CHUNK; x += CHUNK)
+			for (float z = z0; z <= z1 + CHUNK; z += CHUNK) chunks.push_back(chunk_of(std::min(x, x1), std::min(z, z1)));
+	}
+	touch(chunks);
+}
+
+void TransitRenderer::see_plan(const CityState &s) {
+	std::unordered_set<int64_t> alive;
+	auto seen = [&](int64_t key, uint64_t signature) {
+		alive.insert(key);
+		Item &it = items_[key];
+		if (it.signature == signature) return;
+		it.signature = signature;
+		want(key, it);
+	};
+	for (const RailTrack &t : s.transit.tracks) seen(track_key(t.id), signature_of(t));
+	for (const TransitStop &q : s.transit.stops) seen(stop_key(q.id), signature_of(s, q));
+	for (auto e = items_.begin(); e != items_.end();) {
+		if (alive.count(e->first)) {
+			++e;
+			continue;
+		}
+		for (Piece &p : e->second.pieces) drop(p);
+		e = items_.erase(e);
+	}
+}
+
+void TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	MeshBuilder mb;
-	const Ground g{ s };
-	for (const RailTrack &t : s.transit.tracks)
-		if (t.mode == TransitMode::TRAIN) track_mesh(mb, g, t, look_);
-	for (const TransitStop &q : s.transit.stops) stop_mesh(mb, g, s, q, look_);
-	if (instance_.is_valid()) rs->free_rid(instance_);
-	instance_ = RID();
-	plan_.reset();
-	if (mb.empty()) return;
-	plan_.rid = rs->mesh_create();
-	mb.commit_to(plan_.rid);
-	rs->mesh_surface_set_material(plan_.rid, 0, material_);
-	instance_ = rs->instance_create2(plan_.rid, scenario_);
+	drop(out);
+	if (!m.solid.empty() || !m.glass.empty()) {
+		out.mesh.rid = rs->mesh_create();
+		int surface = 0;
+		add_surface(rs, out.mesh.rid, m.solid, material_, surface);
+		add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
+		out.instance = rs->instance_create2(out.mesh.rid, scenario_);
+	}
+	int surface = 0;
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) {
+		if (m.xray[i].empty()) continue;
+		if (!out.cut.valid()) out.cut.rid = rs->mesh_create();
+		add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
+	}
+	if (!out.cut.valid()) return;
+	out.cut_instance = rs->instance_create2(out.cut.rid, scenario_);
+	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
+	rs->instance_set_visible(out.cut_instance, xray_on_);
+}
+
+void TransitRenderer::build(const CityState &s, int64_t key, Item &item) {
+	std::vector<TransitMeshes> parts;
+	item.x0 = item.z0 = std::numeric_limits<float>::max();
+	item.x1 = item.z1 = std::numeric_limits<float>::lowest();
+	auto reach = [&](const V2 &p, float pad) {
+		item.x0 = std::min(item.x0, p.x - pad);
+		item.z0 = std::min(item.z0, p.y - pad);
+		item.x1 = std::max(item.x1, p.x + pad);
+		item.z1 = std::max(item.z1, p.y + pad);
+	};
+	const int id = int(key / 2);
+	if (key % 2 == 0) {
+		for (const RailTrack &t : s.transit.tracks) {
+			if (t.id != id) continue;
+			transit_track_parts(s, look_, t, parts);
+			for (const V2 &p : t.points) reach(p, look_.ballast.wide);
+		}
+	} else if (const TransitStop *q = s.transit.stop(id)) {
+		parts.resize(1);
+		transit_stop_parts(s, look_, *q, parts[0]);
+		reach(q->at, CHUNK * HALF);
+	}
+	for (size_t i = parts.size(); i < item.pieces.size(); i++) drop(item.pieces[i]);
+	item.pieces.resize(parts.size());
+	for (size_t i = 0; i < parts.size(); i++) draw(parts[i], item.pieces[i]);
+}
+
+void TransitRenderer::sync(const CityState &s) {
+	if (!material_.is_valid()) return;
+	if (s.transit_revision != plan_seen_) {
+		plan_seen_ = s.transit_revision;
+		see_plan(s);
+	}
+	for (int n = 0; n < per_frame_ && !queue_.empty(); n++) {
+		const int64_t key = queue_.front();
+		queue_.pop_front();
+		const auto it = items_.find(key);
+		if (it == items_.end()) continue;
+		it->second.waiting = false;
+		build(s, key, it->second);
+	}
+}
+
+void TransitRenderer::set_xray(bool on) {
+	if (xray_on_ == on) return;
+	xray_on_ = on;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	for (auto &e : items_)
+		for (const Piece &p : e.second.pieces)
+			if (p.cut_instance.is_valid()) rs->instance_set_visible(p.cut_instance, on);
+}
+
+void TransitRenderer::set_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) {
+	drop(preview_);
+	if (points.size() < 2 || !material_.is_valid()) return;
+	RailTrack run;
+	run.mode = mode;
+	run.points = points;
+	std::vector<TransitMeshes> parts;
+	TransitLook one = look_; // the run being laid is one mesh
+	one.run = std::numeric_limits<float>::max();
+	transit_track_parts(s, one, run, parts);
+	if (parts.empty()) return;
+	draw(parts[0], preview_);
+	if (preview_.cut_instance.is_valid()) RenderingServer::get_singleton()->instance_set_visible(preview_.cut_instance, true);
 }
 
 void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {

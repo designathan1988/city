@@ -156,7 +156,16 @@
  },
  "transit": {
   "shader": "res://render/shaders/transit.gdshader",
-  "params": { "roughness": 0.7 }
+  "params": {}
+ },
+ "transit_glass": {
+  "shader": "res://render/shaders/transit_glass.gdshader",
+  "params": {}
+ },
+ "transit_xray": {
+  "shader": "res://render/shaders/transit_xray.gdshader",
+  "layers": 5,
+  "params": {}
  },
  "agent_glass": {
   "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass).",

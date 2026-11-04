@@ -15,7 +15,8 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
-	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/transit.gdshader", "res://render/shaders/vegetation.gdshader",
+	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader",
+	"res://render/shaders/transit_xray.gdshader", "res://render/shaders/vegetation.gdshader",
 	"res://render/shaders/vegetation_cards.gdshader",
 ]
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
@@ -51,6 +52,10 @@ func materials() -> Dictionary:
 			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
+			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
+				var over: ShaderMaterial = m.duplicate()
+				over.render_priority = layer
+				_materials["%s_%d" % [key, layer]] = over
 	return _materials
 
 

@@ -652,16 +652,7 @@
      "type": "string"
     },
     "params": {
-     "type": "object",
-     "properties": {
-      "roughness": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "roughness"
-     ],
-     "strict": true
+     "type": "object"
     }
    },
    "required": [
@@ -669,6 +660,12 @@
     "params"
    ],
    "strict": true
+  },
+  "transit_glass": {
+   "type": "object"
+  },
+  "transit_xray": {
+   "type": "object"
   }
  },
  "required": [
@@ -684,7 +681,9 @@
   "agent_glass",
   "vegetation",
   "vegetation_cards",
-  "transit"
+  "transit",
+  "transit_glass",
+  "transit_xray"
  ],
  "strict": true
 }

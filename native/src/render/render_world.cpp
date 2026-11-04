@@ -98,6 +98,8 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 			building_stream_.mark(k);
 			trees_.mark_dirty(k);
 		}
+		transit_.touch(road_keys_);
+		transit_.touch_terrain(s, terrain_rects_);
 		road_keys_.clear();
 		building_keys_.clear();
 		terrain_rects_.clear();
