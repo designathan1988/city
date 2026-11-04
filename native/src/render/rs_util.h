@@ -12,6 +12,7 @@ namespace city {
 // Floats per instance: 12 transform + 4 colour + 4 custom. Props/agents/trees keep colour white and put
 // their tint in custom.rgb (the instance colour would also multiply fixed-colour parts).
 constexpr int MM_STRIDE = 20;
+constexpr int MM_PLAIN_STRIDE = 16; // no colour: the engine keeps three CPU copies of each instance, so what is not read is not stored
 
 // Appends one instance in the documented MultiMesh layout (row-major 3x4 transform, colour, custom).
 inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
@@ -21,6 +22,16 @@ inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, con
 	buf.resize(at + MM_STRIDE);
 	float *w = buf.ptrw() + at;
 	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
+}
+
+// The same without the colour, for a material that reads only INSTANCE_CUSTOM.
+inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
+		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
+	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
+	int64_t at = buf.size();
+	buf.resize(at + MM_PLAIN_STRIDE);
+	float *w = buf.ptrw() + at;
+	for (int i = 0; i < MM_PLAIN_STRIDE; i++) w[i] = v[i];
 }
 
 // `inst` (made on first use in `scenario`, with `material` when valid, casting shadows or not) shows `next` in place of
@@ -125,15 +136,15 @@ struct OwnedMesh {
 	}
 };
 
-// A MultiMesh of `buf` (MultiMesh layout, MM_STRIDE floats per instance) filled on the calling thread, as a mesh bake
+// A MultiMesh of `buf` (MultiMesh layout, MM_PLAIN_STRIDE floats per instance) filled on the calling thread, as a mesh bake
 // (chunk_jobs.h): its own box, so the RenderingServer never walks the instances to bound it. None when `buf` is empty.
 inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat32Array &buf, const godot::AABB &bounds) {
 	OwnedMesh m;
-	const int count = int(buf.size() / MM_STRIDE);
+	const int count = int(buf.size() / MM_PLAIN_STRIDE);
 	if (count == 0) return m;
 	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 	m.rid = rs->multimesh_create();
-	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
+	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, false, true);
 	rs->multimesh_set_mesh(m.rid, mesh);
 	rs->multimesh_set_custom_aabb(m.rid, bounds);
 	rs->multimesh_set_buffer(m.rid, buf);

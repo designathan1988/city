@@ -63,7 +63,7 @@ PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstanc
 		const float *bs = inst.basis;
 		Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]);
 		Vector3 z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]), o(inst.origin[0], inst.origin[1], inst.origin[2]);
-		mm_push(buf, x, y, z, o, Color(1, 1, 1, 1), c.r, c.g, c.b, float(inst.fin));
+		mm_push_plain(buf, x, y, z, o, c.r, c.g, c.b, float(inst.fin));
 	}
 	return buf;
 }
@@ -92,7 +92,7 @@ void BuildingRenderer::Built::bake() {
 		mid_glass[size_t(i)] = b40::Shell();
 	}
 	for (int b = 0; b < BAND_COUNT; b++) {
-		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_STRIDE);
+		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_PLAIN_STRIDE);
 		band_mm[size_t(b)] = bake_multimesh(unit_box, bands[size_t(b)], chunk_box(key));
 		bands[size_t(b)] = PackedFloat32Array();
 	}
