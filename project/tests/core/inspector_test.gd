@@ -33,6 +33,7 @@ func _ready() -> void:
 	await _thunder()
 	CityStore.new_map(TOWN_MAP, SEED, false)
 	await _edits()
+	_units()
 	_sharp()
 	_saves()
 	_session()
@@ -145,6 +146,16 @@ func _save_after_edit() -> void:
 	var slot := CityStore.saves.city_slot()
 	DirAccess.remove_absolute(SaveSlots.path(slot))
 	DirAccess.remove_absolute(Session.path(slot))
+
+
+## The state in SI, the units only in what is shown; the style chosen reaches the core.
+func _units() -> void:
+	_check(is_equal_approx(Formatters.speed_in(26.8224, "mph"), 60.0), "26,8224 m/s são 60 mph")
+	_check(is_equal_approx(Formatters.speed_in(10.0, "kmh"), 36.0), "10 m/s são 36 km/h")
+	_check(is_equal_approx(Formatters.length_in(30.48, "ft"), 100.0), "30,48 m são 100 pés")
+	_check(Formatters.format_speed(10.0) == "36 km/h", "o estilo do jogo mostra km/h")
+	CityStore.dispatch(&"set_style", ["roadcraft"])
+	_check(CityStore.snapshot.style == "roadcraft", "o estilo escolhido chega ao núcleo")
 
 
 func _sharp() -> void:

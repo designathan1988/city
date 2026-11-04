@@ -192,7 +192,7 @@ func _build_strip(tab: Dictionary) -> void:
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
 		HudWidgets.range_row(_options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
-			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), " m",
+			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
 			_retool.bind("ROUNDABOUT", "radius"))
 	elif kind == "relief_cards" and tab.get("tool", "") == "TERRAIN":
 		_relief_strip()
@@ -231,7 +231,7 @@ func _relief_strip() -> void:
 	for key in ["radius", "strength"]:
 		var spec: Dictionary = category.brush[key]
 		HudWidgets.range_row(_options, tr(spec.label_key), spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
-			" m" if key == "radius" else "%", _retool.bind("TERRAIN", key))
+			Formatters.format_length if key == "radius" else func(v: float) -> String: return "%d%%" % int(v), _retool.bind("TERRAIN", key))
 
 
 func _zone_card(c: Dictionary) -> Button:

@@ -1,4 +1,35 @@
 {
- "_doc": "The title screen (ui/start_screen.gd). reveal_limit_s: the most it waits for the first view to be drawn before lifting the curtain: never a curtain for ever. The map 0 draws its first view in a few seconds; the limit only guards a machine that cannot.",
- "reveal_limit_s": 90
+ "_doc": "The title screen (ui/start_screen.gd). reveal_limit_s: the most it waits for the first view to be drawn before lifting the curtain: never a curtain for ever. The map 0 draws its first view in a few seconds; the limit only guards a machine that cannot. styles: the regional styles a new city can take, a list that grows by data (regras-sessoes.md section 10); each says how the interface shows speed, length and money, the state staying in SI. units: an exact definition each, metres and seconds of the unit (1 mile = 1609.344 m, 1 foot = 0.3048 m: the international yard and pound of 1959).",
+ "reveal_limit_s": 90,
+ "default_style": "roadcraft",
+ "styles": {
+  "roadcraft": {
+   "name_key": "style.roadcraft",
+   "speed_unit": "kmh",
+   "length_unit": "m",
+   "currency": "R$"
+  }
+ },
+ "units": {
+  "kmh": {
+   "label": "km/h",
+   "m": 1000,
+   "s": 3600
+  },
+  "mph": {
+   "label": "mph",
+   "m": 1609.344,
+   "s": 3600
+  },
+  "m": {
+   "label": "m",
+   "m": 1,
+   "s": 1
+  },
+  "ft": {
+   "label": "ft",
+   "m": 0.3048,
+   "s": 1
+  }
+ }
 }

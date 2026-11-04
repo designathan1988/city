@@ -41,6 +41,13 @@ func _fill() -> void:
 		_action(&"StartBtn", "action.newMap", "new", "start_btn2_h")
 	_action(&"StartBtn", "action.openMap", "open", "start_btn2_h")
 	_action(&"StartBtn", "menu.graphicsOptions", "graphics", "start_btn2_h")
+	var t: Dictionary = DataTables.game("start")
+	var styles := []
+	for id: String in t.styles:
+		styles.append([id, tr(t.styles[id].name_key)])
+	var now: String = CityStore.snapshot.get("style", "")
+	HudWidgets.dropdown(_card_box, tr("style.label"), styles, now if t.styles.has(now) else t.default_style,
+		func(id: String) -> void: CityStore.dispatch(&"set_style", [id]))
 	var langs := HudWidgets.hbox(_card_box, &"Pad")
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
 	for l: Array in LANGUAGES:

@@ -49,7 +49,7 @@ Tally count_vehicles(const CityState &s, F &&wanted) {
 void put_tally(Dictionary &d, const Tally &t, int volume) {
 	d["vehicles"] = t.vehicles;
 	d["queued"] = t.queued;
-	d["mean_speed_kmh"] = t.seen > 0 ? t.speed / t.seen * KMH_PER_MS : -1.0;
+	d["mean_speed_ms"] = t.seen > 0 ? t.speed / t.seen : -1.0;
 	d["capacity"] = int(std::round(t.capacity));
 	d["volume"] = volume;
 }
@@ -66,7 +66,7 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 	d["profile_id"] = s.roads.segs[seg].profile;
 	d["lanes"] = int(p.fwd.size() + p.back.size());
 	d["one_way"] = p.one_way;
-	d["speed_kmh"] = p.speed;
+	d["speed_ms"] = p.speed / KMH_PER_MS;
 	d["width_m"] = p.right + p.left;
 	d["cost_per_m"] = p.cost_per_m;
 	d["length_m"] = s.roads.segs[seg].len;

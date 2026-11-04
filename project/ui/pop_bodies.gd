@@ -4,7 +4,6 @@
 class_name PopBodies
 extends RefCounted
 
-const MS_TO_KMH := 3.6
 const PERCENT := 100.0
 const KEY_SHARE := 0.42 # of the Help popover: the key caps' column
 
@@ -57,7 +56,7 @@ static func _short(key: String) -> String:
 static func sync_sim(metrics: Dictionary, s: Dictionary) -> void:
 	var traffic: Dictionary = CityStore.query(&"traffic_metrics")
 	var values := {"trips_arrived": Formatters.format_int(s.trips_arrived), "trips_lost": Formatters.format_int(s.trips_lost),
-		"mean_speed": "%d km/h" % int(round(traffic.mean_speed_ms * MS_TO_KMH)), "queued": Formatters.format_int(traffic.queued),
+		"mean_speed": Formatters.format_speed(traffic.mean_speed_ms), "queued": Formatters.format_int(traffic.queued),
 		"network": "%s · %s" % [Formatters.count_label("status.roads", s.segments), Formatters.count_label("status.nodes", s.nodes)]}
 	for k: String in metrics:
 		metrics[k].text = values.get(k, "")

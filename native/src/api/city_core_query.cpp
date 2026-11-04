@@ -115,6 +115,7 @@ Dictionary CityCore::snapshot() {
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
 	d["player_zones"] = s.roads.player_sides;
+	d["style"] = String(s.style.c_str());
 	if (s.edit_revision != snap_edit_revision_) {
 		int nodes = 0;
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;

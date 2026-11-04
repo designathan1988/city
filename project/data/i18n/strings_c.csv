@@ -389,7 +389,7 @@ v2.layer.grid,Grade,Grid
 v2.layer.inside,Interior dos prédios,Inside the buildings
 v2.layers,Camadas do mapa,Map layers
 v2.map,Mapa inteiro,Whole map
-v2.roundabout.radius,Raio (m),Radius (m)
+v2.roundabout.radius,Raio,Radius
 v2.row.biome,Bioma,Biome
 v2.row.brush,Pincel,Brush
 v2.row.clear,Apagar,Clear

@@ -2,7 +2,6 @@
 class_name Formatters
 extends RefCounted
 
-const CURRENCY := "R$"
 const THOUSANDS := "."
 const GROUP := 3
 const PERCENT := 100.0
@@ -29,8 +28,41 @@ static func format_tenths(v: float) -> String:
 	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
 
 
+## The city's regional style as the interface shows it: its units and money (data/game/start.json).
+static func style() -> Dictionary:
+	var t: Dictionary = DataTables.game("start")
+	return t.styles.get(CityStore.snapshot.get("style", ""), t.styles[t.default_style])
+
+
+## Metres per second in a speed unit.
+static func speed_in(ms: float, unit: String) -> float:
+	var u: Dictionary = DataTables.game("start").units[unit]
+	return ms * u.s / u.m
+
+
+## Metres in a length unit.
+static func length_in(metres: float, unit: String) -> float:
+	return metres / DataTables.game("start").units[unit].m
+
+
+static func format_speed(ms: float) -> String:
+	var unit: String = style().speed_unit
+	return "%d %s" % [int(round(speed_in(ms, unit))), DataTables.game("start").units[unit].label]
+
+
+static func format_length(metres: float) -> String:
+	var unit: String = style().length_unit
+	return "%d %s" % [int(round(length_in(metres, unit))), DataTables.game("start").units[unit].label]
+
+
+## With one decimal, as a road's length.
+static func format_length_tenths(metres: float) -> String:
+	var unit: String = style().length_unit
+	return "%s %s" % [format_tenths(length_in(metres, unit)), DataTables.game("start").units[unit].label]
+
+
 static func format_money(v: float) -> String:
-	return "%s %s" % [CURRENCY, format_int(v)]
+	return "%s %s" % [style().currency, format_int(v)]
 
 
 static func format_percent(v: float) -> String:

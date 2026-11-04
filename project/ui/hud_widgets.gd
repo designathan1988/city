@@ -97,7 +97,7 @@ static func option_row(parent: Control, name_text: String) -> HBoxContainer:
 
 
 ## "<name>  [——o——]  <value>": a slider's row; on_change(value) on every move.
-static func range_row(parent: Control, name_text: String, lo: float, hi: float, step: float, value: float, unit: String,
+static func range_row(parent: Control, name_text: String, lo: float, hi: float, step: float, value: float, shown: Callable,
 		on_change: Callable) -> HSlider:
 	var row := option_row(parent, name_text)
 	var s := HSlider.new()
@@ -110,9 +110,9 @@ static func range_row(parent: Control, name_text: String, lo: float, hi: float, 
 	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	s.focus_mode = Control.FOCUS_NONE
 	row.add_child(s)
-	var out := label(row, &"BodyLabel", "%d%s" % [int(value), unit])
+	var out := label(row, &"BodyLabel", shown.call(value))
 	s.value_changed.connect(func(v: float) -> void:
-		out.text = "%d%s" % [int(v), unit]
+		out.text = shown.call(v)
 		on_change.call(v))
 	return s
 

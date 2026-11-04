@@ -92,6 +92,8 @@ signal.red,vermelho,red
 start.continue,Continuar,Continue
 start.play,Começar a construir,Start building
 start.tagline,"Construa as ruas, a cidade cresce sozinha.","Build the streets, the city grows by itself."
+style.label,Estilo regional,Regional style
+style.roadcraft,Roadcraft,Roadcraft
 tool.building,Construção,Build
 tool.road,Via,Road
 tool.transit,Transporte público,Public transport

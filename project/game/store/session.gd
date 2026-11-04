@@ -21,6 +21,7 @@ static func write(slot: String, rig: CityCamera) -> void:
 	cfg.set_value(SECTION, "people", s.get("people_level", 1.0))
 	cfg.set_value(SECTION, "demand", s.get("demand", 1.0))
 	cfg.set_value(SECTION, "marking_style", s.get("marking_style", 0))
+	cfg.set_value(SECTION, "style", s.get("style", ""))
 	if rig != null:
 		cfg.set_value(SECTION, "camera", {"focus": rig.focus, "yaw": rad_to_deg(rig.yaw), "pitch": rad_to_deg(rig.pitch), "distance": rig.distance})
 	cfg.save(path(slot))
@@ -58,6 +59,7 @@ static func read(slot: String, rig: CityCamera) -> void:
 	CityStore.set_levels(n.traffic, n.people, n.demand)
 	CityStore.dispatch(&"set_speed", [n.speed])
 	CityStore.dispatch(&"set_marking_style", [int(cfg.get_value(SECTION, "marking_style", 0)), false])
+	CityStore.dispatch(&"set_style", [str(cfg.get_value(SECTION, "style", ""))])
 	var pose: Dictionary = cfg.get_value(SECTION, "camera", {})
 	if rig != null and not pose.is_empty():
 		rig.jump(pose.focus, pose.yaw, pose.pitch, pose.distance)

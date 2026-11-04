@@ -1,11 +1,40 @@
 {
  "type": "object",
  "required": [
-  "reveal_limit_s"
+  "reveal_limit_s",
+  "default_style",
+  "styles",
+  "units"
  ],
  "properties": {
   "_doc": {
    "type": "string"
+  },
+  "default_style": {
+   "type": "string"
+  },
+  "styles": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "name_key",
+     "speed_unit",
+     "length_unit",
+     "currency"
+    ]
+   }
+  },
+  "units": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "label",
+     "m",
+     "s"
+    ]
+   }
   }
  }
 }

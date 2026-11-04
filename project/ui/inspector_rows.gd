@@ -9,12 +9,12 @@ const NO_VALUE := "—"
 const CLEARING := 1 # the lamp between green and red
 
 
-static func _speed(kmh: float) -> String:
-	return NO_VALUE if kmh < 0.0 else "%d km/h" % int(round(kmh))
+static func _speed(ms: float) -> String:
+	return NO_VALUE if ms < 0.0 else Formatters.format_speed(ms)
 
 
 static func _traffic(t: Dictionary) -> Array:
-	return [["inspector.meanSpeed", _speed(t.mean_speed_kmh)], ["inspector.vehicles", Formatters.format_int(t.vehicles)],
+	return [["inspector.meanSpeed", _speed(t.mean_speed_ms)], ["inspector.vehicles", Formatters.format_int(t.vehicles)],
 		["inspector.queue", Formatters.format_int(t.queued)], ["inspector.capacity", Formatters.count_label("inspector.capacityValue", t.capacity)],
 		["inspector.volume", Formatters.format_int(t.volume)]]
 
@@ -26,8 +26,8 @@ static func segment_rows(info: Dictionary) -> Array:
 		return []
 	var lanes := tr_key("inspector.lanesOneWay" if info.one_way else "inspector.lanesTwoWay").format(
 			{"count": info.lanes, "perSide": info.lanes / 2})
-	var rows := [["inspector.length", "%s m" % Formatters.format_tenths(info.length_m)], ["inspector.lanes", lanes],
-		["inspector.speed", "%d km/h" % int(info.speed_kmh)]]
+	var rows := [["inspector.length", Formatters.format_length_tenths(info.length_m)], ["inspector.lanes", lanes],
+		["inspector.speed", Formatters.format_speed(info.speed_ms)]]
 	rows.append_array(_traffic(t))
 	return rows
 
@@ -40,7 +40,7 @@ static func node_rows(id: int) -> Array:
 	var control := tr_key("control.disconnected") if not t.known else tr_key(CONTROL_KEYS[t.control])
 	var rows := [["inspector.control", control], ["inspector.connections", str(t.connections)], ["inspector.movements", str(t.get("movements", 0))],
 		["inspector.vehicles", Formatters.format_int(t.vehicles)], ["inspector.queue", Formatters.format_int(t.queued)],
-		["inspector.meanSpeed", _speed(t.mean_speed_kmh)], ["inspector.capacity", Formatters.count_label("inspector.capacityValue", t.capacity)],
+		["inspector.meanSpeed", _speed(t.mean_speed_ms)], ["inspector.capacity", Formatters.count_label("inspector.capacityValue", t.capacity)],
 		["inspector.volume", Formatters.format_int(t.volume)]]
 	if t.has("cycle_s"):
 		var light: String = LIGHT_KEYS[CLEARING if t.get("lamps", []).has(CLEARING) else 0]

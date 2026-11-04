@@ -68,6 +68,14 @@ Dictionary CityCore::set_marking_style(int style, bool undoable) {
 	return result_dict(city::set_marking_style(*state_, style));
 }
 
+Dictionary CityCore::set_style(const String &id) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->style = id.utf8().get_data();
+	Dictionary d;
+	d["ok"] = true;
+	return d;
+}
+
 Dictionary CityCore::split_road(const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.splitRoad", [&](CityState &s) { return split_road_at(s, p.x, p.z); });
 }

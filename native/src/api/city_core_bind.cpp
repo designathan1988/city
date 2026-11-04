@@ -73,6 +73,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
 	ClassDB::bind_method(D_METHOD("show_every_zone", "on"), &CityCore::show_every_zone);
+	ClassDB::bind_method(D_METHOD("set_style", "id"), &CityCore::set_style);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);

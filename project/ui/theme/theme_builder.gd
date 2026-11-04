@@ -121,12 +121,7 @@ static func _panels() -> void:
 	_panel(&"CardArt", box("card_art", "card_radius"))
 	_panel(&"TabStrip", box("rc_strip", "card_radius"))
 	_panel(&"Card2", _pad(box("bg", "radius", "line", true), "dialog_pad"))
-	var start := box("bg", "start_radius", "line", true)
-	start.content_margin_left = size("start_pad_x")
-	start.content_margin_right = size("start_pad_x")
-	start.content_margin_top = size("start_pad_top")
-	start.content_margin_bottom = size("start_pad_bottom")
-	_panel(&"StartCard", start)
+	_panel(&"StartCard", _margins(box("bg", "start_radius", "line", true), "start_pad_x", "start_pad_top", "start_pad_bottom"))
 	var scrim := StyleBoxTexture.new()
 	scrim.texture = ThemeArt.vignette(color("scrim_in"), color("scrim_out"), Vector2(size("scrim_x"), size("scrim_y")), size("scrim_reach"))
 	_panel(&"Scrim", scrim)
@@ -134,14 +129,22 @@ static func _panels() -> void:
 	_panel(&"Tip", _pad(box("bg_solid", "kbd_radius", "line"), "pad"))
 	_panel(&"RowBand", box("raise", "kbd_radius"))
 	_panel(&"LampChip", _pad(box("raise", "pill_radius", "line"), "pad"))
-	_panel(&"Toast", box("bg_strong", "pill_radius", "line", true))
-	_panel(&"DangerToast", box("bg_strong", "pill_radius", "danger", true))
+	_panel(&"Toast", _margins(box("bg_strong", "pill_radius", "line", true), "toast_pad_x", "toast_pad_y", "toast_pad_y"))
+	_panel(&"DangerToast", _margins(box("bg_strong", "pill_radius", "danger", true), "toast_pad_x", "toast_pad_y", "toast_pad_y"))
 	for axis in ["H", "V"]:
 		var base := StringName(axis + "BoxContainer")
 		_theme.set_constant(&"separation", base, int(size("pad_s")))
 		for v in [["Gap", "gap"], ["Pad", "pad"], ["Dialog", "dialog_gap"], ["Tight", "tight"]]:
 			_variation(StringName(axis + v[0]), base)
 			_theme.set_constant(&"separation", StringName(axis + v[0]), int(size(v[1])))
+
+
+static func _margins(sb: StyleBoxFlat, sides: String, top: String, bottom: String) -> StyleBoxFlat:
+	sb.content_margin_left = size(sides)
+	sb.content_margin_right = size(sides)
+	sb.content_margin_top = size(top)
+	sb.content_margin_bottom = size(bottom)
+	return sb
 
 
 static func _pad(sb: StyleBoxFlat, key: String) -> StyleBoxFlat:

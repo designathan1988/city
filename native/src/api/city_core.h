@@ -107,6 +107,7 @@ public:
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	void show_every_zone(bool on);
+	godot::Dictionary set_style(const godot::String &id); // the regional style of this city
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
