@@ -48,6 +48,11 @@ func _buses() -> void:
 	print("ônibus: ", run)
 	_check(int(run.buses) > 0, "ônibus na linha")
 	_check(int(run.stops_called) > 0, "ônibus atendeu parada")
+	var far := Vector3(ground.x, 0, ground.z)
+	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are
+	CityStore.step_ticks(1)
+	var after: Dictionary = CityStore.query(&"transit_run")
+	_check(int(after.on_road) >= int(run.on_road), "buses go on after an edit of the plan: %d of %d" % [after.on_road, run.on_road])
 
 
 func _trains() -> void:

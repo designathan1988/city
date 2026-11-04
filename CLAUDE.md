@@ -152,6 +152,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário
 - `native/src/sim/roads/street_furniture.cpp` · `native/src/sim/roads/street_furniture.h` · `native/src/sim/roads/street_furniture_posts.cpp` · `native/src/sim/roads/street_furniture_internal.h` — dono único de onde fica o mobiliário da rua (hidrantes, lixeiras, bancos, árvores; sempre com passagem para quem anda), lido pelos pedestres e pelo render; postes e semáforos; zonas da calçada
+- `native/src/sim/transit/transit_ground.cpp` · `native/src/sim/transit/transit_ground.h` — onde o transporte encontra a rua: pista, superfície da rua, referencial de uma parada, prédio perto
 - `native/src/sim/transit/transit_data.cpp` · `native/src/sim/transit/transit_data.h` · `native/src/sim/transit/transit_sim.cpp` · `native/src/sim/transit/transit_sim.h` · `native/src/sim/transit/rail_run.cpp` · `native/src/sim/transit/rail_run.h` — transporte público: plano do jogador (paradas, trilhos, linhas, grafo de trilhos); ônibus de cada linha; trens numa volta, passagens de nível
 - `native/src/sim/simulation/city_growth.cpp` · `native/src/sim/simulation/city_growth.h` — crescimento ao longo do tempo nas células da fila
 - `native/src/sim/simulation/growth.cpp` — floorsFor/recordFor/fillAll e civicFor do Roadcraft
@@ -232,7 +233,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
-- `native/src/render/transit/transit_renderer.cpp` · `native/src/render/transit/transit_renderer.h` — trilhos, estações, abrigos e vagões dos trens
+- `native/src/render/transit/transit_parts.cpp` · `native/src/render/transit/transit_parts.h` · `native/src/render/transit/transit_renderer.cpp` · `native/src/render/transit/transit_renderer.h` — caixas do trilho, da estação, do abrigo e da entrada do metrô a partir de transit.json; malhas por item (só o que mudou, poucas por quadro), corte do metrô, prévia do trilho e vagões dos trens
 - `native/src/render/trees/leaf_atlas.cpp` · `native/src/render/trees/leaf_atlas.h` · `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` · `native/src/render/trees/tree_parts.cpp` · `native/src/render/trees/tree_parts.h` — folhas e espécies (corpo facetado, cartões, frondes, cartão distante)
 - `native/src/render/trees/far_cards.cpp` · `native/src/render/trees/far_cards.h` · `native/src/render/trees/tree_look.cpp` · `native/src/render/trees/tree_place.cpp` · `native/src/render/trees/tree_place.h` · `native/src/render/trees/tree_renderer.cpp` · `native/src/render/trees/tree_renderer.h` — manchas de mato, parques e ruas; modelos perto por chunk, cartões longe numa malha por superchunk
 
@@ -262,10 +263,12 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/zone_tool.gd` — pincel de zona
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
+- `project/render/transit_overlay.gd` — o plano do transporte sobre o mapa com a ferramenta ligada
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc`
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa)
+- `project/render/shaders/transit_glass.gdshader` · `project/render/shaders/transit_xray.gdshader` — vidro do transporte; o metrô em corte, através do chão
 - `project/render/shaders/transit.gdshader` · `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
   modelo do renderizador); ruído de valor das vias; ruído de valor por hash inteiro do terreno e da água
 - `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` · `project/render/shaders/terrain_layers.gdshaderinc` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D; ruído, camadas triplanares e grama); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
@@ -316,7 +319,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.
 - Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
-- Transporte: ônibus param na faixa sem baia e sem embarque (o `kerb_stops` do `convert/traffic` entra na integração); o metrô roda sem túnel desenhado; sem prioridade ao ônibus no semáforo; linhas só na lista da gaveta, sem desenho no mapa. Escolas com alunos não são simuladas. Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
+- Transporte: ônibus param na faixa sem baia e sem embarque (o `kerb_stops` do `convert/traffic` entra na integração); sem cancelas desenhadas nas passagens (nem o 4.0 tem); edição de via reencontra as faixas de todas as paradas e passagens, não só as da área; paradas e trilhos procurados em lista, sem índice por célula; a prévia do trilho é opaca e refeita a cada movimento do ponteiro; passagem fecha a 160 m (valor do 4.0: 7 s a 22 m/s; 49 CFR 234.225 pede 20 s). Escolas com alunos não são simuladas. Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
