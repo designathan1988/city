@@ -163,5 +163,29 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	return true;
 }
 
+// A walker on the footway at `arc`, set there for a kerb stop's errand (kerb_stops.cpp): its body and trip as any walker's, held by
+// the stop (PedMode::KERB); -1 with no room there.
+int ped_on_footway(CityState &s, int seg, int side, float arc) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	Pedestrian w;
+	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp);
+	w.seg = seg;
+	w.side = side;
+	w.dir = int(t.rng.next() & 1);
+	w.s = clampf(arc, arc_lo(g), arc_hi(g));
+	on_sidewalk(w);
+	sidewalk_pose(s, seg, side, w.s, w.u, w.cur);
+	std::vector<int> route;
+	if (crowded(t, p, w.cur) || !plan_trip(s, w.dir == 0 ? g.b : g.a, route, w.goal_side)) return -1;
+	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
+	w.mode = PedMode::KERB;
+	const int id = alloc_walker(t);
+	t.peds[size_t(id)] = std::move(w);
+	t.ped_count++;
+	return id;
+}
+
 } // namespace traffic
 } // namespace city
