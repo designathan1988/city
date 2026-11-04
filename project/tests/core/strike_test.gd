@@ -12,6 +12,10 @@ const SCALED_Z := 10.0
 const KB_AT_Z10_KPA := 14.9
 const KB_TOLERANCE := 0.05
 const BIG_FORCE := 50
+const CURVE_Z := [0.2, 1.0, 10.0, 40.0, 100.0, 300.0]
+const DURATION_SLACK_MS := 1e-3
+const CURVE_LAST_Z := 40.0 # the duration fit holds to here
+const DURATION_HOLD_TOL := 1e-3
 const SMALL_FORCE := 5
 const HITS_TO_FALL := 12
 const WARM_TICKS := 600
@@ -44,8 +48,29 @@ func _model() -> void:
 	var far: Dictionary = CityStore.query(&"blast_probe", [float(SMALL_FORCE), 2.0 * at.light_range_m])
 	_check(far.pressure_kpa < at.pressure_kpa, "a sobrepressão cai com a distância")
 	var big: Dictionary = CityStore.query(&"blast_probe", [float(BIG_FORCE), 1.0])
+	_curves(kg)
 	_check(big.collapse_range_m > one.collapse_range_m * 2.0, "mais força, mais alcance: %.1f m -> %.1f m" % [one.collapse_range_m, big.collapse_range_m])
 	_check(big.crater_radius_m > one.crater_radius_m, "cratera cresce com a carga")
+
+
+## The three curves at scaled distances from the first row to far past the last: finite everywhere, the pressure falling and the
+## duration never falling (a polynomial fitted to Z <= 40 must not be carried beyond it).
+func _curves(kg: float) -> void:
+	var cbrt := pow(kg, 1.0 / 3.0)
+	var last_p := INF
+	var last_d := 0.0
+	var at_40 := 0.0
+	var ok := true
+	for z in CURVE_Z:
+		var s: Dictionary = CityStore.query(&"blast_probe", [float(SMALL_FORCE), z * cbrt])
+		ok = ok and is_finite(s.pressure_kpa) and is_finite(s.duration_ms) and is_finite(s.impulse_kpa_ms)
+		ok = ok and s.pressure_kpa < last_p and s.duration_ms >= last_d - DURATION_SLACK_MS
+		if z == CURVE_LAST_Z:
+			at_40 = s.duration_ms
+		ok = ok and (z <= CURVE_LAST_Z or s.duration_ms <= at_40 * (1.0 + DURATION_HOLD_TOL)) # held, not carried on
+		last_p = s.pressure_kpa
+		last_d = s.duration_ms
+	_check(ok, "pressão cai, duração não cai e tudo é finito de Z=%s a %s" % [CURVE_Z[0], CURVE_Z[-1]])
 
 
 func _effects() -> void:

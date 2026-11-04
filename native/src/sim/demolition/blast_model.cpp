@@ -17,13 +17,22 @@ constexpr float QUANTILE_LIMIT = 8.f; // the standard normal's quantile is searc
 constexpr int QUANTILE_BISECTIONS = 48;
 
 // F = exp(A + B ln Z + C ln2 Z + ...) of the row holding Z. Nearer than the first row: its value at its start (DDESB
-// TP 20 2.4.3.2). Farther than the last row: that row goes on, a plain power law in the data (A + B ln Z).
+// TP 20 2.4.3.2). Farther than the last row: a row that is a plain power law in the data (A + B ln Z, the pressure's and
+// the impulse's) goes on; a row with higher terms is a polynomial fitted only to its own range (the duration's, to
+// Z = 40) and diverges outside it, so it is held at its far end, as the near end is.
+bool power_law(const BlastCurve &r) {
+	for (int k = 2; k < BLAST_COEFFS; k++)
+		if (r.c[k] != 0.f) return false;
+	return true;
+}
+
 float evaluate(const std::vector<BlastCurve> &rows, float z) {
 	if (rows.empty()) return 0.f;
 	const BlastCurve *row = &rows.back();
 	for (const BlastCurve &r : rows)
 		if (z < r.z1) { row = &r; break; }
 	z = std::max(z, rows.front().z0);
+	if (row == &rows.back() && !power_law(*row)) z = std::min(z, row->z1);
 	const float lz = std::log(z);
 	float sum = 0, power = 1;
 	for (int k = 0; k < BLAST_COEFFS; k++) {
