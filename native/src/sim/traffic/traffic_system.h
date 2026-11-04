@@ -37,7 +37,8 @@ void forget_parking_lot(CityState &s, int id); // a building came or went: its b
 void refile_bay(CityState &s, int b, bool away); // the bay on the free or scenery list its state says; `away`: on none
 void remove_row(ParkingState &p, int b); // the scenery car of bay `b` is gone
 bool read_bay_way(CityState &s, int b); // the bay's way out through its gate and the lane it joins; false: it has none
-void publish_parked(const CityState &s, float cx, float cz, float r2, std::vector<ParkedRecord> &out);
+void add_row(ParkingState &p, int b); // a car stands in bay `b` now
+void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made again only when a row changed
 
 // parking_lanes.cpp
 void seg_point(const CityState &s, int seg, float arc, float u, Pose &out); // the point (arc, u) of a segment, its a -> b heading
@@ -49,6 +50,7 @@ void step_lots(CityState &s, float dt);
 bool lot_car_at_rest(const CityState &s, int id); // standing in its bay and not sent out
 void lot_car_gone(CityState &s, int id); // its bay went: off the road it goes too, on the road it drives on
 void lot_car_forget(CityState &s, int id); // the vehicle left the scene: its bay is free
+void settle_parked(CityState &s); // the cars that parked become rows of their bays, their Vehicles let go
 void set_off_pose(CityState &s, Vehicle &v, const OffPose &q); // where a vehicle off the lanes stands
 
 // lot_demand.cpp

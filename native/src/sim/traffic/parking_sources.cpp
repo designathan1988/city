@@ -51,8 +51,7 @@ void stand(CityState &s, int b) {
 	bay.row_type = uint8_t(fits[int(r.next() % uint32_t(n))]);
 	bay.row_paint = uint8_t(r.next() % PAINTS);
 	bay.row_id = p.next_row++;
-	bay.has_row = true;
-	p.rows.push_back(b);
+	add_row(p, b);
 }
 
 PlaceKind place_of(const CityState &s, const Building &rec) {
@@ -181,15 +180,24 @@ void look_round(CityState &s, float cx, float cz) {
 
 } // namespace
 
+void add_row(ParkingState &p, int b) {
+	Bay &bay = p.bays[size_t(b)];
+	bay.has_row = true;
+	bay.row_at = int(p.rows.size());
+	p.rows.push_back(b);
+	p.rows_dirty = true;
+}
+
 void remove_row(ParkingState &p, int b) {
 	Bay &bay = p.bays[size_t(b)];
 	if (!bay.has_row) return;
 	bay.has_row = false;
-	auto it = std::find(p.rows.begin(), p.rows.end(), b);
-	if (it != p.rows.end()) {
-		*it = p.rows.back();
-		p.rows.pop_back();
-	}
+	const int last = p.rows.back();
+	p.rows[size_t(bay.row_at)] = last;
+	p.bays[size_t(last)].row_at = bay.row_at;
+	p.rows.pop_back();
+	bay.row_at = -1;
+	p.rows_dirty = true;
 }
 
 void refile_bay(CityState &s, int b, bool away) {
@@ -297,24 +305,28 @@ bool read_bay_way(CityState &s, int b) {
 	return p.bays[size_t(b)].reached;
 }
 
-void publish_parked(const CityState &s, float cx, float cz, float r2, std::vector<ParkedRecord> &out) {
-	const ParkingState &p = s.traffic.park;
-	const float lift = s.catalog.traffic.body_lift_m;
-	out.clear();
-	for (int b : p.rows) {
-		const Bay &bay = p.bays[size_t(b)];
-		const float dx = bay.at.x - cx, dz = bay.at.y - cz;
-		if (dx * dx + dz * dz > r2) continue;
-		ParkedRecord rec;
-		rec.at.x = bay.at.x;
-		rec.at.z = bay.at.y;
-		rec.at.y = bay.y + lift;
-		rec.at.fx = -bay.open.x;
-		rec.at.fz = -bay.open.y;
-		rec.id = bay.row_id;
-		rec.look = uint32_t(bay.row_type) | (uint32_t(bay.row_paint) << LOOK_PAINT_SHIFT);
-		out.push_back(rec);
+void publish_parked(CityState &s, PoseFrame &f) {
+	ParkingState &p = s.traffic.park;
+	if (p.rows_dirty) {
+		const float lift = s.catalog.traffic.body_lift_m;
+		auto out = std::make_shared<std::vector<ParkedRecord>>();
+		out->reserve(p.rows.size());
+		for (int b : p.rows) {
+			const Bay &bay = p.bays[size_t(b)];
+			ParkedRecord rec;
+			rec.at.x = bay.at.x;
+			rec.at.z = bay.at.y;
+			rec.at.y = bay.y + lift;
+			rec.at.fx = -bay.open.x;
+			rec.at.fz = -bay.open.y;
+			rec.id = bay.row_id;
+			rec.look = uint32_t(bay.row_type) | (uint32_t(bay.row_paint) << LOOK_PAINT_SHIFT);
+			out->push_back(rec);
+		}
+		p.published = std::move(out);
+		p.rows_dirty = false;
 	}
+	f.parked = p.published;
 }
 
 } // namespace traffic

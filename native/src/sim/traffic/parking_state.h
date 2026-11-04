@@ -5,9 +5,11 @@
 #pragma once
 
 #include "core/math.h"
+#include "sim/state/pose_buffer.h"
 #include "sim/traffic/manoeuvre.h"
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -39,6 +41,8 @@ struct Bay {
 	float y = 0, room = 0; // ground; half its clear length
 	uint8_t row_type = 0, row_paint = 0;
 	uint32_t row_id = 0;
+	int row_at = -1; // its place in ParkingState::rows
+	double stay_until = 0; // a car that parked here stands at least until then
 	LaneSpot lane;
 	std::vector<V2> via; // from the aisle in front of the stall to just inside the gate
 };
@@ -49,16 +53,14 @@ struct ParkSource {
 
 enum class CarPhase : uint8_t { COMING, PARKING, PARKED, LEAVING };
 
-// A car of the lots: on the road while it is COMING, off the lanes after that (Vehicle::off).
+// A car of the lots: on the road while it is COMING, off the lanes after that (Vehicle::off). Once PARKED it becomes its bay's
+// row at the next look, its Vehicle let go: a standing car costs nothing a tick, like a scenery one.
 struct LotCar {
 	int id = -1, bay = -1;
 	CarPhase phase = CarPhase::COMING;
 	Manoeuvre path;
 	float t = 0, waited = 0; // seconds in the phase; seconds waited for walkers
-	double until = 0; // when its least stay is over
-	bool go = false; // sent out: it leaves once its stay is over
 	bool reserved = false; // holding the ground of the rest of its way: it no longer stops for anybody
-	bool ripe = false; // its stay over, not sent out yet: `depart` draws among these
 };
 
 struct ParkingState {
@@ -66,7 +68,9 @@ struct ParkingState {
 	std::vector<int> free_bays;
 	std::unordered_map<int, ParkSource> lots, kerbs; // by building, by segment
 	std::vector<int> lots_wanted, kerbs_wanted; // to read, nearest last
-	std::vector<int> rows; // the bays with a scenery car, in filing order (published)
+	std::vector<int> rows; // the bays with a car standing in them
+	bool rows_dirty = true; // `published` is to be made again
+	std::shared_ptr<const std::vector<ParkedRecord>> published; // what the render reads: shared by the frames until a row changes
 	std::vector<int> free_of[PLACE_KINDS], row_of[PLACE_KINDS]; // the bays free / with a scenery car, by kind, gated lots only
 	std::vector<LotCar> cars; // Vehicle::car is its index here
 	float win_x = 0, win_z = 0;

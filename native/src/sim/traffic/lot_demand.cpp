@@ -34,9 +34,10 @@ void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float 
 	out = std::max(0.f, -rise) + there / stay;
 }
 
-// A scenery car of a gated bay: the lots' from now on, a Vehicle standing where it stood, its bay left empty.
+// A car standing in a gated bay drives out: a Vehicle again from where it stood, on its way to the lane, the bay left empty.
 void take_row(CityState &s, int b) {
 	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
 	Bay &bay = t.park.bays[size_t(b)];
 	const int id = new_vehicle(s, VehicleType(bay.row_type), bay.row_paint);
 	Vehicle &v = t.vehicles[size_t(id)];
@@ -46,10 +47,11 @@ void take_row(CityState &s, int b) {
 	LotCar car;
 	car.id = id;
 	car.bay = b;
-	car.phase = CarPhase::PARKED;
-	car.go = true;
+	car.phase = CarPhase::LEAVING;
+	car.path = bay_departure(bay.at, bay.open, bay.via, bay.lane.p, bay.lane.t, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
 	v.car = int(t.park.cars.size());
 	t.park.cars.push_back(std::move(car));
+	t.park.moving++;
 	remove_row(t.park, b);
 	bay.vacated = true;
 	bay.holder = id;
@@ -82,44 +84,23 @@ void lot_depart(CityState &s, double target) {
 	TrafficState &t = s.traffic;
 	ParkingState &pk = t.park;
 	const TrafficParams &p = s.catalog.traffic;
-	int leaving_now = pk.moving;
-	std::vector<int> ripe[PLACE_KINDS];
-	for (int i = 0; i < int(pk.cars.size()); i++) {
-		const LotCar &c = pk.cars[size_t(i)];
-		if (c.phase == CarPhase::PARKED && c.go) leaving_now++;
-		if (c.ripe && !c.go) ripe[int(pk.bays[size_t(c.bay)].kind)].push_back(i);
-	}
-	const int short_of = std::min(int(p.parker_depart_per_look), int(target) - t.vehicle_count - leaving_now);
+	const int short_of = std::min(int(p.parker_depart_per_look), int(target) - t.vehicle_count - pk.moving);
 	const float hour = float(s.clock.hour());
-	float w[PLACE_KINDS];
+	float w[PLACE_KINDS], total = 0;
 	for (int k = 0; k < PLACE_KINDS; k++) {
 		float in;
 		flows(p, PlaceKind(k), hour, in, w[k]);
+		w[k] *= float(pk.row_of[k].size());
+		total += w[k];
 	}
-	for (int n = 0; n < short_of; n++) {
-		float total = 0;
-		for (int k = 0; k < PLACE_KINDS; k++) total += w[k] * float(ripe[k].size() + pk.row_of[k].size());
-		if (total <= 0) return;
+	for (int n = 0; n < short_of && total > 0; n++) {
 		float roll = t.rng.f() * total;
-		for (int k = 0; k < PLACE_KINDS; k++) {
-			const float cars = w[k] * float(ripe[k].size()), rows = w[k] * float(pk.row_of[k].size());
-			if (roll < cars) {
-				const size_t at = size_t(t.rng.next() % uint32_t(ripe[k].size()));
-				LotCar &c = pk.cars[size_t(ripe[k][at])];
-				c.go = true;
-				c.ripe = false;
-				ripe[k][at] = ripe[k].back();
-				ripe[k].pop_back();
-				break;
-			}
-			roll -= cars;
-			if (roll < rows) {
-				const int b = pk.row_of[k][size_t(t.rng.next() % uint32_t(pk.row_of[k].size()))];
-				if (read_bay_way(s, b)) take_row(s, b);
-				break;
-			}
-			roll -= rows;
-		}
+		int kind = 0;
+		while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
+		if (pk.row_of[kind].empty()) continue;
+		const int b = pk.row_of[kind][size_t(t.rng.next() % uint32_t(pk.row_of[kind].size()))];
+		// a car that has not stood its stay is left there: the draw goes to another next look
+		if (t.time >= pk.bays[size_t(b)].stay_until && read_bay_way(s, b)) take_row(s, b);
 	}
 }
 

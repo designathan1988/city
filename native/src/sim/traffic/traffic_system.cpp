@@ -153,7 +153,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
 		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
-	publish_parked(s, cx, cz, r2, f.parked);
+	publish_parked(s, f);
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();

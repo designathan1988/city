@@ -136,7 +136,6 @@ void parking(CityState &s, LotCar &car, float dt) {
 	if (!car.path.done()) return;
 	ParkingState &pk = s.traffic.park;
 	pk.parked_in++;
-	car.until = s.traffic.time + double(s.traffic.rng.range(p.parker_stay_min_s, p.parker_stay_max_s));
 	enter_phase(pk, car, CarPhase::PARKED);
 }
 
@@ -174,16 +173,6 @@ void leaving(CityState &s, LotCar &car, float dt) {
 	if (car.path.done()) join_lane(s, car);
 }
 
-void parked(CityState &s, LotCar &car) {
-	const TrafficParams &p = s.catalog.traffic;
-	TrafficState &t = s.traffic;
-	if (t.time >= car.until) car.ripe = !car.go;
-	if (!car.go || t.time < car.until) return;
-	const Bay &bay = t.park.bays[size_t(car.bay)];
-	car.path = bay_departure(bay.at, bay.open, bay.via, bay.lane.p, bay.lane.t, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
-	enter_phase(t.park, car, CarPhase::LEAVING);
-}
-
 } // namespace
 
 void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
@@ -197,7 +186,7 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 
 bool lot_car_at_rest(const CityState &s, int id) {
 	const Vehicle &v = s.traffic.vehicles[size_t(id)];
-	return v.car >= 0 && s.traffic.park.cars[size_t(v.car)].phase == CarPhase::PARKED && !s.traffic.park.cars[size_t(v.car)].go;
+	return v.car >= 0 && s.traffic.park.cars[size_t(v.car)].phase == CarPhase::PARKED;
 }
 
 void lot_car_gone(CityState &s, int id) {
@@ -218,6 +207,25 @@ void lot_car_forget(CityState &s, int id) {
 	if (v.car >= 0) untrack(s, t.park.cars[size_t(v.car)]);
 }
 
+void settle_parked(CityState &s) {
+	TrafficState &t = s.traffic;
+	ParkingState &pk = t.park;
+	const TrafficParams &p = s.catalog.traffic;
+	for (int i = int(pk.cars.size()) - 1; i >= 0; i--) {
+		if (pk.cars[size_t(i)].phase != CarPhase::PARKED) continue;
+		const int id = pk.cars[size_t(i)].id, b = pk.cars[size_t(i)].bay;
+		const Vehicle &v = t.vehicles[size_t(id)];
+		Bay &bay = pk.bays[size_t(b)];
+		bay.row_type = uint8_t(v.type);
+		bay.row_paint = v.paint;
+		bay.row_id = pk.next_row++;
+		bay.stay_until = t.time + double(t.rng.range(p.parker_stay_min_s, p.parker_stay_max_s));
+		add_row(pk, b);
+		untrack(s, pk.cars[size_t(i)]);
+		free_vehicle(t, id);
+	}
+}
+
 void step_lots(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	ParkingState &pk = t.park;
@@ -228,13 +236,14 @@ void step_lots(CityState &s, float dt) {
 		switch (car.phase) {
 			case CarPhase::COMING: coming(s, car); break;
 			case CarPhase::PARKING: parking(s, car, dt); break;
-			case CarPhase::PARKED: parked(s, car); break;
+			case CarPhase::PARKED: break; // its Vehicle stands until the look makes it a row
 			case CarPhase::LEAVING: leaving(s, car, dt); break;
 		}
 	}
 	pk.clock += dt;
 	if (pk.clock < p.parker_look_s) return;
 	pk.clock = 0;
+	settle_parked(s);
 	const double target = fleet_target(s);
 	lot_depart(s, target);
 	// trips ending in a lot at the rate a trip ends; as many on their way as that brings in while a called car drives there

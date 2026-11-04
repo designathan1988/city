@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace city {
@@ -72,7 +73,7 @@ struct PoseSample {
 
 struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
-	std::vector<ParkedRecord> parked; // the scenery cars near the camera
+	std::shared_ptr<const std::vector<ParkedRecord>> parked; // the cars standing in bays near the camera, made again only when one changes
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }

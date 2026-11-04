@@ -261,7 +261,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		push_agent(bufs[type][level], p, 1.f, float(paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
-	for (const ParkedRecord &rec : f.parked) {
+	if (f.parked) for (const ParkedRecord &rec : *f.parked) {
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
