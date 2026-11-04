@@ -8,7 +8,8 @@ import type * as TS from 'typescript';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import type { ConstantPlan, TranslateContext } from './context.ts';
 import { INT, realLiteral, type CppType } from './cpptype.ts';
-import { featureFiles } from './files.ts';
+import { translationFiles } from './files.ts';
+import { ModulePlacement } from './modules.ts';
 import { FlowGraph, Num } from './flow.ts';
 import { Patterns } from './patterns.ts';
 import { resolveSpec, type Pending, type TranslationSpec } from './spec.ts';
@@ -27,12 +28,18 @@ export interface TranslationResult {
   readonly structs: readonly CppStruct[];
   readonly enums: readonly CppEnum[];
   readonly state: string;
+  /** The source file that declares the state (its module holds the state, its indexes and its empty value). */
+  readonly stateModule: string;
+  /** The header the state manager includes to hold the state (the state module's types header). */
+  readonly stateHeader: string;
   /** The source files the translation read (the feature's file and the modules it imports), relative to the root. */
   readonly sourcesRead: readonly string[];
 }
 
 export interface ApiFunction {
   readonly source: string;
+  /** The source file that exports it (relative to the source root). */
+  readonly module: string;
   readonly cpp: string;
   readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean }[];
   readonly ret: CppType;
@@ -73,13 +80,16 @@ export function translate(input: TranslateInput): TranslationResult {
   for (const f of sources) visit(f);
   const patterns = new Patterns(ts, spec.patterns);
   const flow = new FlowGraph(ts, sp.checker, sources, spec, patterns, memoBodies);
-  const types = new TypeMapper(ts, sp.checker, spec, flow, errors);
+  const relative = (f: TS.SourceFile): string => path.relative(input.sourceRoot, f.fileName).split(path.sep).join('/');
+  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
   const real = types.number(Num.Float, 'local');
   const namedLiterals = new Map<number, ConstantPlan>(Object.entries(spec.literals).map(([value, named]) => [Number(value), {
     source: value, cpp: named.name, type: Number.isInteger(Number(value)) ? INT : real,
-    value: Number.isInteger(Number(value)) ? value : realLiteral(value, spec.number), line: 0, doc: named.comment, constexpr: true,
+    value: Number.isInteger(Number(value)) ? value : realLiteral(value, spec.number), module: null, line: 0, doc: named.comment, constexpr: true,
   }]));
-  const c: TranslateContext = { ts, checker: sp.checker, spec, file, flow, types, patterns, errors, includes: new Set(),
+  // Every file of the program placed at once: a source file keeps its owner and name whatever is translated with it.
+  const placement = new ModulePlacement(sources.map(relative));
+  const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), namedLiterals,
     allowedNumbers: allowedNumbers(input.targetRoot, spec.layer.rules) };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
@@ -91,18 +101,19 @@ export function translate(input: TranslateInput): TranslationResult {
   const units = translator.trace();
   translator.plan(units);
   translator.emit();
-  const { files } = featureFiles(c, translator.emitted, translator.builders);
+  const files = translationFiles(c, translator.emitted, translator.builders);
   const listed = [
-    ...[...c.functions.values()].map((f) => ({ source: f.source, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
+    ...[...c.functions.values()].map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
     ...[...c.memos.values()].map((m) => ({ source: m.source, cpp: `${m.struct} (index)`, kind: 'index' as const, line: m.line })),
     ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
   const api = [...c.functions.values()].filter((f) => f.exported)
-    .map((f) => ({ source: f.source, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
+    .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
   return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
-    enums: [...types.enums.values()], state: spec.state.target, sourcesRead: sourcesRead(ts, sp.checker, file, input.sourceRoot) };
+    enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
+    stateHeader: stateHeader(placement, relative(file)), sourcesRead: sourcesRead(c) };
 }
 
 /** The program's own source files: under the source root, not declarations, not dependencies, not tests. */
@@ -116,16 +127,17 @@ function programFiles(program: TS.Program, sourceRoot: string): TS.SourceFile[] 
   });
 }
 
-/** The feature's file and every module it imports (what the translation read), relative to the source root. */
-function sourcesRead(ts: typeof TS, checker: TS.TypeChecker, file: TS.SourceFile, root: string): string[] {
-  const relative = (f: string): string => path.relative(root, f).split(path.sep).join('/');
-  const out = new Set([relative(file.fileName)]);
-  for (const st of file.statements) {
-    if (!ts.isImportDeclaration(st)) continue;
-    const module = checker.getSymbolAtLocation(st.moduleSpecifier);
-    const decl = module?.valueDeclaration ?? module?.declarations?.[0];
-    if (decl) out.add(relative(decl.getSourceFile().fileName));
-  }
+function stateHeader(placement: ModulePlacement, module: string): string {
+  const id = placement.of(module);
+  return 'error' in id ? '' : `${id.owner.replace(/^native\/src\//, '')}/${id.stem}_types.h`;
+}
+
+/** What the translation read: every module it translated, and the files the target's owners stand in for. */
+function sourcesRead(c: TranslateContext): string[] {
+  const out = new Set([c.relative(c.file), ...[...c.functions.values()].map((f) => f.module)]);
+  for (const k of c.constants.values()) if (k.module) out.add(k.module);
+  for (const s of c.types.structs.values()) if (s.module) out.add(s.module);
+  for (const e of c.types.enums.values()) if (e.module) out.add(e.module);
   return [...out].sort();
 }
 

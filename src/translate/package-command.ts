@@ -55,7 +55,7 @@ export function runPackageCommand(argv: readonly string[]): void {
         },
         {
           message: `Hold ${state.target} in ${path.basename(state.root)}\n\n${summary}: its state is a member of the state manager.`,
-          files: new Map([[state.root, addStateMember(need(state.root), state.rootHeader, state.anchor!, state.memberLine!)]]),
+          files: new Map([[state.root, addStateMember(need(state.root), result.stateHeader, state.anchor!, state.memberLine!)]]),
         },
       ];
     },

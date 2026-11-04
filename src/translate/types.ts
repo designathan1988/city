@@ -23,11 +23,14 @@ export interface CppStruct {
   readonly name: string;
   readonly comment: string | null;
   readonly fields: CppField[];
+  /** The source file that declares it (its module), null when it has no declaration of its own. */
+  readonly module: string | null;
   readonly line: number;
 }
 
 export interface CppEnum {
   readonly name: string;
+  readonly module: string | null;
   readonly comment: string | null;
   /** The source's string values, in order. */
   readonly values: readonly string[];
@@ -47,15 +50,28 @@ export class TypeMapper {
   readonly #spec: TranslationSpec;
   readonly #flow: FlowGraph;
   readonly #errors: string[];
+  readonly #relative: (file: TS.SourceFile) => string;
   /** Anonymous shapes by their printed form: two literals of the same fields are one struct. */
   readonly #anonymous = new Map<string, string>();
+  /** Told the module of every struct and enum a type uses (the emitter records what each function needs). */
+  observe: ((module: string) => void) | null = null;
 
-  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[]) {
+  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[], relative: (file: TS.SourceFile) => string) {
     this.#ts = ts;
     this.#checker = checker;
     this.#spec = spec;
     this.#flow = flow;
     this.#errors = errors;
+    this.#relative = relative;
+  }
+
+  #seen<T extends { readonly module: string | null }>(declared: T): T {
+    if (declared.module !== null) this.observe?.(declared.module);
+    return declared;
+  }
+
+  #moduleOf(decl: TS.Node | undefined): string | null {
+    return decl && this.#flow.inProgram(decl) ? this.#relative(decl.getSourceFile()) : null;
   }
 
   /** The C++ type of a slot, used as `use`. */
@@ -156,11 +172,16 @@ export class TypeMapper {
     const shape = this.#checker.typeToString(type, undefined, this.#ts.TypeFormatFlags.NoTruncation | this.#ts.TypeFormatFlags.InTypeAlias);
     const name = declared === this.#spec.state.source ? this.#spec.state.target
       : declared ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? pascal(hint);
-    if (this.structs.has(name)) return { k: 'struct', name };
+    const known = this.structs.get(name);
+    if (known) {
+      this.#seen(known);
+      return { k: 'struct', name };
+    }
     if (!declared) this.#anonymous.set(shape, name);
     const decl = symbol?.declarations?.[0];
-    const made: CppStruct = { name, comment: symbol && declared ? this.#doc(symbol) : null, fields: [],
+    const made: CppStruct = { name, comment: symbol && declared ? this.#doc(symbol) : null, fields: [], module: this.#moduleOf(decl),
       line: decl ? decl.getSourceFile().getLineAndCharacterOfPosition(decl.getStart()).line + 1 : 0 };
+    this.#seen(made);
     // Registered before its fields: a type that holds itself stops here. The files order structs by what they hold.
     this.structs.set(name, made);
     for (const prop of this.#checker.getPropertiesOfType(type)) {
@@ -179,13 +200,13 @@ export class TypeMapper {
     const values = types.map((t) => (t as TS.StringLiteralType).value);
     if (alias) {
       const existing = this.enums.get(alias.name);
-      if (existing) return existing;
-      const made = { name: alias.name, comment: this.#doc(alias), values };
+      if (existing) return this.#seen(existing);
+      const made = { name: alias.name, module: this.#moduleOf(alias.declarations?.[0]), comment: this.#doc(alias), values };
       this.enums.set(alias.name, made);
-      return made;
+      return this.#seen(made);
     }
-    for (const e of this.enums.values()) if (values.every((v) => e.values.includes(v))) return e;
-    const made = { name: pascal(hint), comment: null, values };
+    for (const e of this.enums.values()) if (values.every((v) => e.values.includes(v))) return this.#seen(e);
+    const made = { name: pascal(hint), module: null, comment: null, values };
     this.enums.set(made.name, made);
     return made;
   }

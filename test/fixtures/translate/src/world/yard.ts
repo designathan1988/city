@@ -1,7 +1,8 @@
 // Fixture: a small feature with every case the flow of values must decide (each one a bug a translator makes when
 // it decides types in several places).
-import type { Vec2 } from './vec2';
-import { identityMemo } from './memo';
+import type { Vec2 } from '../core/vec2';
+import { identityMemo } from '../core/memo';
+import { dist } from '../core/geo';
 
 export interface Post {
   readonly id: number;
@@ -46,7 +47,7 @@ export function countNear(t: YardData, p: Vec2, reach: number): number {
   const cells = postCells(t);
   for (let x = Math.floor((p.x - reach) / CELL); x <= Math.floor((p.x + reach) / CELL); x++) {
     for (const q of cells.get((x + 32768) * 65536 + (Math.floor(p.y / CELL) + 32768)) ?? []) {
-      if (Math.hypot(q.x - p.x, q.y - p.y) < reach) n = n + 1;
+      if (dist(q, p) < reach) n = n + 1;
     }
   }
   return n;

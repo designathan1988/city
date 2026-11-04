@@ -91,7 +91,7 @@ export function runDifferentialCommand(argv: readonly string[]): void {
     if (translation.errors.length > 0) throw new Error(`the translation has errors:\n${translation.errors.join('\n')}`);
     const results: DifferentialResult[] = [];
     for (let seed = 1; seed <= seeds; seed++) {
-      results.push(runDifferential({ ts, tsconfig, sourceFile: path.join(sourceRoot, spec.source), empty: spec.state.empty, translation,
+      results.push(runDifferential({ ts, tsconfig, sourceRoot, empty: spec.state.empty, translation,
         includes: [...build.includes, path.join(targetRoot, 'native', 'src')], cxx: flags.require('cxx'),
         work: path.join(out, `${build.spec.number}-seed${seed}`), steps, seed, tolerance: build.tolerance, valueTypes }));
     }

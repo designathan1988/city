@@ -29,6 +29,8 @@ export abstract class ExpressionEmitter {
   protected indent = '';
   /** Inside an index builder: objects it files by reference are stored in the index. */
   protected memo: MemoPlan | null = null;
+  /** The modules the code being written uses (a function, a constant, an index of another module). */
+  protected uses: Set<string> | null = null;
   #temp = 0;
 
   constructor(c: TranslateContext) {
@@ -85,7 +87,40 @@ export abstract class ExpressionEmitter {
     if (want.k === 'optional' && v.type.k === 'ptr' && same(want.of, v.type.to)) return `(${v.code} ? std::optional<${render(want.of)}>(*${v.code}) : std::nullopt)`;
     if (want.k === 'string' && v.type.k === 'literal') return `std::string(${v.code})`;
     if (e && want.k === 'enum' && this.c.ts.isStringLiteral(e)) return this.#enumLiteral(want.name, e);
+    const structural = this.#structural(v, want);
+    if (structural) return structural;
     return v.code;
+  }
+
+  /**
+   * TypeScript is structural: a value of a wider shape is passed where a narrower one is asked (a post with x and y
+   * where a point is asked). In C++ the asked type is built from the value's same-named fields.
+   */
+  #structural(v: Value, want: CppType): string | null {
+    const to = want.k === 'optional' ? want.of : want;
+    const from = target(v.type);
+    if (to.k !== 'struct' || from.k !== 'struct' || to.name === from.name) return null;
+    const fieldsOf = (name: string): { source: string; cpp: string }[] | null => {
+      const known = Object.values(this.c.spec.types).find((k) => k.type === name);
+      if (known?.fields) return Object.entries(known.fields).map(([source, cpp]) => ({ source, cpp }));
+      const s = this.c.types.structs.get(name);
+      return s ? s.fields.map((f) => ({ source: f.source, cpp: f.name })) : null;
+    };
+    const wanted = fieldsOf(to.name);
+    const given = fieldsOf(from.name);
+    if (!wanted || !given) return null;
+    const byName = new Map(given.map((f) => [f.source, f.cpp]));
+    if (!wanted.every((f) => byName.has(f.source))) return null;
+    const access = v.type.k === 'ptr' || v.type.k === 'optional' ? '->' : '.';
+    const known = Object.values(this.c.spec.types).some((k) => k.type === to.name);
+    const build = (base: string): string => {
+      const args = wanted.map((f) => `${base}${access}${byName.get(f.source)}`).join(', ');
+      return known ? `${to.name}(${args})` : `${to.name}{${args}}`;
+    };
+    // A value read once: a name is read in place, anything else through a temporary.
+    if (/^[A-Za-z_][\w.]*$/.test(v.code)) return build(v.code);
+    const tmp = this.temp('from');
+    return `[&] { const auto &${tmp} = ${v.code}; return ${build(tmp)}; }()`;
   }
 
   #lvalue(code: string): string {
@@ -197,7 +232,10 @@ export abstract class ExpressionEmitter {
     const local = this.lookup(symbol);
     if (local) return { code: local.cpp, type: local.type };
     const constant = this.c.constants.get(symbol);
-    if (constant) return { code: constant.cpp, type: constant.type };
+    if (constant) {
+      if (constant.module) this.uses?.add(constant.module);
+      return { code: constant.cpp, type: constant.type };
+    }
     const fn = this.c.functions.get(symbol);
     if (fn) return { code: fn.cpp, type: { k: 'lambda', ret: fn.ret } };
     return this.fail(e, 'a name outside the feature that the spec does not map');
@@ -269,7 +307,7 @@ export abstract class ExpressionEmitter {
     if (ts.isIdentifier(callee)) {
       const symbol = this.symbolOf(callee);
       const decl = symbol?.valueDeclaration;
-      const external = decl && decl.getSourceFile() !== this.c.file ? this.c.spec.functions[callee.text] : undefined;
+      const external = symbol && !this.c.functions.has(symbol) ? this.c.spec.functions[callee.text] : undefined;
       if (external) {
         return { code: external.template.replace(/\$(\d)/g, (_, i: string) => this.expr(e.arguments[Number(i)]!)), type: this.numberType(e) };
       }
@@ -277,6 +315,7 @@ export abstract class ExpressionEmitter {
       if (memo) return this.#memoRead(e, memo);
       const plan = symbol ? this.c.functions.get(symbol) : undefined;
       if (plan) {
+        this.uses?.add(plan.module);
         if (plan.edit) return this.fail(e, 'an edit used as a value (only as a statement or a return)');
         const args = plan.params.map((p, i) => (e.arguments[i] ? this.expr(e.arguments[i]!, p.type) : p.type.k === 'optional' ? 'std::nullopt' : `${render(p.type)}{}`));
         return { code: `${plan.cpp}(${args.join(', ')})`, type: plan.ret };
@@ -300,6 +339,7 @@ export abstract class ExpressionEmitter {
   }
 
   #memoRead(e: TS.CallExpression, memo: MemoPlan): Value {
+    this.uses?.add(this.c.relative(this.c.file));
     const base = `${this.expr(e.arguments[0]!)}.index.${memo.member}`;
     // A builder that returns one container is read as that container; one that returns several, as the index.
     if (memo.single) return { code: `${base}.${memo.fields[0]!.name}`, type: memo.fields[0]!.type };

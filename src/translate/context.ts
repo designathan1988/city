@@ -5,6 +5,7 @@ import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { CppType } from './cpptype.ts';
 import type { FlowGraph } from './flow.ts';
+import type { ModulePlacement } from './modules.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
 import type { TypeMapper } from './types.ts';
@@ -26,6 +27,8 @@ export interface FunctionPlan {
   /** An edit takes the feature's state first and changes it in place; `result` is what it returns besides. */
   readonly edit: { readonly result: CppType | null; readonly resultField: string | null } | null;
   readonly exported: boolean;
+  /** The source file it comes from, relative to the source root: its module. */
+  readonly module: string;
   readonly line: number;
   readonly doc: string | null;
 }
@@ -42,6 +45,8 @@ export interface MemoPlan {
   readonly stores: Map<string, string>;
   /** The builder returns one container (read as that container), not an object of several. */
   readonly single: boolean;
+  /** The source file it is written in (the index itself belongs to the state's owner). */
+  readonly writtenIn: string;
   readonly line: number;
   readonly doc: string | null;
 }
@@ -51,6 +56,8 @@ export interface ConstantPlan {
   readonly cpp: string;
   readonly type: CppType;
   readonly value: string;
+  /** The source file it comes from (null: a literal the spec names, kept with the state's owner). */
+  readonly module: string | null;
   readonly line: number;
   readonly doc: string | null;
   readonly constexpr: boolean;
@@ -69,7 +76,14 @@ export interface TranslateContext {
   readonly ts: TypeScriptApi;
   readonly checker: TS.TypeChecker;
   readonly spec: TranslationSpec;
+  /** The file that declares the feature's state and its roots. */
   readonly file: TS.SourceFile;
+  /** Every file of the source program (tests left out). */
+  readonly sources: readonly TS.SourceFile[];
+  /** A source file's path relative to the source root (its module's name). */
+  readonly relative: (file: TS.SourceFile) => string;
+  /** Where every source file goes in the target. */
+  readonly placement: ModulePlacement;
   readonly flow: FlowGraph;
   readonly types: TypeMapper;
   readonly patterns: Patterns;

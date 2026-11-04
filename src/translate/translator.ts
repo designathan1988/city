@@ -1,5 +1,7 @@
-// The translation of one feature: the spec's units are the roots; the file-level functions, constants and indexes
-// they use come with them (the feature traced through its own file). Each function gets its C++ signature first (so
+// The translation of one feature: the spec's units are the roots; every top-level function, constant and index they
+// reach comes with them, in whatever file of the program it is written (shared code included: each goes to its own
+// module, once). What the target already owns (the spec's mapped functions and memoizers) is not traced: the target's
+// owner is called. Each function gets its C++ signature first (so
 // any body can call any other), then its body. An edit is written twice: `edit_x` changes the state (edits call one
 // another through these), and the public `x` calls it and rebuilds the indexes once. The indexes point into the
 // state's vectors, which an edit may reallocate, so no edit may read an index: that is checked, not assumed.
@@ -11,6 +13,8 @@ import { Emitter } from './statements.ts';
 
 export interface EmittedFunction {
   readonly plan: FunctionPlan;
+  /** The modules (source files) whose structs, constants, indexes or functions its code uses. */
+  readonly uses: Set<string>;
   /** The declaration, for the header (public) or the anonymous namespace (internal). */
   readonly signature: string;
   readonly lines: string[];
@@ -21,6 +25,7 @@ export interface EmittedFunction {
 
 export interface EmittedMemo {
   readonly plan: MemoPlan;
+  readonly uses: Set<string>;
   readonly lines: string[];
 }
 
@@ -32,18 +37,24 @@ export class Translator extends Emitter {
   constructor(c: TranslateContext) {
     super(c);
     const ts = c.ts;
-    for (const statement of c.file.statements) {
-      if (ts.isFunctionDeclaration(statement) && statement.name) this.#decls.set(this.symbolOf(statement.name)!, statement);
-      if (ts.isVariableStatement(statement)) {
-        for (const d of statement.declarationList.declarations) if (ts.isIdentifier(d.name)) this.#decls.set(this.symbolOf(d.name)!, d);
+    // The target owns these: calls to them are written as the target's (spec), never traced into.
+    const mapped = new Set([...Object.keys(c.spec.functions), ...c.spec.memoizers]);
+    for (const file of c.sources) {
+      for (const statement of file.statements) {
+        if (ts.isFunctionDeclaration(statement) && statement.name && !mapped.has(statement.name.text)) this.#decls.set(this.symbolOf(statement.name)!, statement);
+        if (ts.isVariableStatement(statement)) {
+          for (const d of statement.declarationList.declarations) {
+            if (ts.isIdentifier(d.name) && !mapped.has(d.name.text)) this.#decls.set(this.symbolOf(d.name)!, d);
+          }
+        }
       }
     }
   }
 
-  /** The top-level declarations the roots reach inside the file, in source order. */
+  /** The top-level declarations the roots reach in the whole program, in file and source order. */
   trace(): TS.Node[] {
     const ts = this.c.ts;
-    const byName = new Map([...this.#decls.keys()].map((s) => [s.name, s]));
+    const byName = new Map([...this.#decls].filter(([, d]) => d.getSourceFile() === this.c.file).map(([s]) => [s.name, s]));
     const reached = new Set<TS.Symbol>();
     const queue: TS.Symbol[] = [];
     for (const name of this.c.spec.units) {
@@ -70,14 +81,15 @@ export class Translator extends Emitter {
       };
       visit(this.#decls.get(queue[i]!)!);
     }
-    return [...this.#decls].filter(([s]) => reached.has(s)).map(([, d]) => d).sort((a, b) => a.pos - b.pos);
+    return [...this.#decls].filter(([s]) => reached.has(s)).map(([, d]) => d)
+      .sort((a, b) => this.c.relative(a.getSourceFile()).localeCompare(this.c.relative(b.getSourceFile())) || a.pos - b.pos);
   }
 
   /** Signatures, constants and indexes of every traced unit (before any body). */
   plan(units: readonly TS.Node[]): void {
     const ts = this.c.ts;
     for (const node of units) {
-      const line = this.c.file.getLineAndCharacterOfPosition(node.getStart()).line + 1;
+      const line = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart()).line + 1;
       if (ts.isFunctionDeclaration(node)) {
         this.#planFunction(node, node.name!.text, line, node);
         continue;
@@ -94,9 +106,10 @@ export class Translator extends Emitter {
 
   /** The declaration's own comment: the last one before it (a section rule above it is not about it). */
   #doc(node: TS.Node): string | null {
-    const ranges = this.c.ts.getLeadingCommentRanges(this.c.file.text, node.getFullStart()) ?? [];
+    const source = node.getSourceFile().text;
+    const ranges = this.c.ts.getLeadingCommentRanges(source, node.getFullStart()) ?? [];
     const last = ranges[ranges.length - 1];
-    const text = last ? this.c.file.text.slice(last.pos, last.end) : '';
+    const text = last ? source.slice(last.pos, last.end) : '';
     if (/^\/\/\s*-{4,}/.test(text)) return null;
     const clean = text.replace(/\/\*\*|\*\/|^\s*\*|\/\//gm, ' ').replace(/\s+/g, ' ').trim();
     return clean.length > 0 ? clean : null;
@@ -142,7 +155,7 @@ export class Translator extends Emitter {
     });
     const ret = edit ? edit.result ?? { k: 'void' as const } : this.c.types.slot(flow.returnSlot(fn), 'return');
     this.c.functions.set(this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!, {
-      source: name, cpp: snake(name), decl: fn, params, ret, edit, exported: this.#exported(holder), line,
+      source: name, cpp: snake(name), decl: fn, params, ret, edit, exported: this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
       doc: this.#doc(this.c.ts.isVariableDeclaration(holder) ? holder.parent.parent : holder),
     });
   }
@@ -179,11 +192,13 @@ export class Translator extends Emitter {
       return { local: id.text, name: snake(id.text), type: this.c.types.slot(this.c.flow.symbolSlot(localSymbol), 'local'), symbol: localSymbol };
     });
     const plan: MemoPlan = { source: name, member: snake(name), struct: pascal(name), fn, single: ts.isIdentifier(ret),
-      fields: fields.map(({ local, name: n, type }) => ({ local, name: n, type })), stores: new Map(), line, doc: this.#doc(d.parent.parent) };
+      fields: fields.map(({ local, name: n, type }) => ({ local, name: n, type })), stores: new Map(), writtenIn: this.c.relative(d.getSourceFile()),
+      line, doc: this.#doc(d.parent.parent) };
     this.c.memos.set(this.symbolOf(d.name)!, plan);
     for (const f of fields) this.memoLocals.set(f.symbol, f.name);
     // Known with the structs so `stopIndex(t).byId` reads a member; laid out with the index, not as a struct.
-    this.c.types.structs.set(plan.struct, { name: plan.struct, comment: null, line: 0,
+    // The indexes of the state belong to the state's owner, wherever the source wrote them.
+    this.c.types.structs.set(plan.struct, { name: plan.struct, comment: null, line: 0, module: this.c.relative(this.c.file),
       fields: plan.fields.map((f) => ({ source: f.local, name: f.name, type: f.type, init: '', comment: null })) });
     this.c.types.indexStructs.add(plan.struct);
   }
@@ -193,7 +208,7 @@ export class Translator extends Emitter {
     const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
     const value = d.initializer ? this.expr(d.initializer, type) : '{}';
     const scalar = type.k === 'int' || type.k === 'real' || type.k === 'bool';
-    this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value, line, doc: this.#doc(d.parent.parent), constexpr: scalar });
+    this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value, module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: scalar });
   }
 
   /**
@@ -227,10 +242,32 @@ export class Translator extends Emitter {
     }
   }
 
-  /** Every planned function and index written out. */
+  /** Every planned function and index written out, each with the modules its code uses. */
   emit(): void {
-    for (const plan of this.c.functions.values()) this.#emitFunction(plan);
-    for (const memo of this.c.memos.values()) this.#emitMemo(memo);
+    for (const plan of this.c.functions.values()) {
+      const from = this.emitted.length;
+      const uses = this.#recording(() => this.#emitFunction(plan));
+      for (const e of this.emitted.slice(from)) for (const u of uses) e.uses.add(u);
+    }
+    for (const memo of this.c.memos.values()) {
+      const from = this.builders.length;
+      const uses = this.#recording(() => this.#emitMemo(memo));
+      for (const b of this.builders.slice(from)) for (const u of uses) b.uses.add(u);
+    }
+  }
+
+  /** What a piece of emission uses: every struct or enum the types meet, every function, constant or index it calls. */
+  #recording(emit: () => void): Set<string> {
+    const uses = new Set<string>();
+    this.uses = uses;
+    this.c.types.observe = (m) => uses.add(m);
+    try {
+      emit();
+    } finally {
+      this.uses = null;
+      this.c.types.observe = null;
+    }
+    return uses;
   }
 
   #signature(plan: FunctionPlan, name: string): string {
@@ -259,16 +296,16 @@ export class Translator extends Emitter {
     this.state = null;
     this.fn = null;
     if (plan.edit) {
-      this.emitted.push({ plan, signature: this.#signature(plan, `edit_${plan.cpp}`), lines: body, exported: false, role: 'edit' });
+      this.emitted.push({ plan, signature: this.#signature(plan, `edit_${plan.cpp}`), lines: body, exported: false, role: 'edit', uses: new Set() });
       if (!plan.exported) return;
       const call = `edit_${plan.cpp}(${plan.params.map((p) => p.name).join(', ')})`;
       const state = plan.params[0]!.name;
       const wrapper = plan.ret.k === 'void' ? [`\t${call};`, `\treindex(${state});`]
         : [`\tconst ${render(plan.ret)} result = ${call};`, `\treindex(${state});`, '\treturn result;'];
-      this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: wrapper, exported: true, role: 'edit' });
+      this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: wrapper, exported: true, role: 'edit', uses: new Set() });
       return;
     }
-    this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: body, exported: plan.exported, role: 'query' });
+    this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: body, exported: plan.exported, role: 'query', uses: new Set() });
   }
 
   #emitMemo(plan: MemoPlan): void {
@@ -279,7 +316,7 @@ export class Translator extends Emitter {
     const lines = this.functionBody(plan.fn, { k: 'void' });
     this.scopes.pop();
     this.memo = null;
-    this.builders.push({ plan, lines });
+    this.builders.push({ plan, lines, uses: new Set() });
   }
 }
 

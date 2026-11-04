@@ -48,7 +48,7 @@ export interface TranslationSpec {
   readonly summary: string;
   /** The feature's state: the source type, the target struct, and its member in the state manager. */
   readonly state: {
-    readonly source: string; readonly target: string; readonly member: string; readonly root: string; readonly rootHeader: string;
+    readonly source: string; readonly target: string; readonly member: string; readonly root: string;
     /** The source function that makes the empty state: its values are the C++ defaults. */
     readonly empty?: string;
     /** The line of the state manager the member goes after, and the member's line (with its comment). */

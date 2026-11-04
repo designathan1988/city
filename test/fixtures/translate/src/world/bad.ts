@@ -1,5 +1,5 @@
 // Fixture: an edit that reads an index of the state it changes (refused: its pointers may be stale).
-import { identityMemo } from './memo';
+import { identityMemo } from '../core/memo';
 
 export interface BinData {
   readonly items: readonly number[];

@@ -9,7 +9,6 @@
     "target": "TransitState",
     "member": "transit",
     "root": "native/src/sim/state/city_state.h",
-    "rootHeader": "sim/transit/transit_types.h",
     "empty": "emptyTransit",
     "anchor": "TrafficState traffic;",
     "memberLine": "TransitState transit; // public transport: stops, tracks, lines and the rail network (sim/transit)"

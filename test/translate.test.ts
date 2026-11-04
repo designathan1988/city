@@ -27,7 +27,17 @@ describe('translate', () => {
 
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
-    assert.deepEqual([...result.files.keys()].sort(), ['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`));
+    assert.deepEqual([...result.files.keys()].sort(), [
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h'].map((f) => `native/src/core/${f}`),
+      ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
+    ]);
+  });
+
+  it('translates shared code once, into its own owner, and the feature includes it', () => {
+    assert.match(result.files.get('native/src/core/geo.h')!, /float dist\(const V2 &a, const V2 &b\);/);
+    assert.match(file('yard_query.cpp'), /#include "core\/geo\.h"/);
+    assert.match(file('yard_query.cpp'), /if \(dist\(V2\(q->x, q->y\), p\) < reach\)/);
+    assert.doesNotMatch(file('yard_query.cpp'), /float dist\(/, 'the helper is not copied into the feature');
   });
 
   it('keeps integers integers, through cycles, callbacks and helpers called with integers', () => {
@@ -61,7 +71,7 @@ describe('translate', () => {
   });
 
   it('refuses an edit that reads an index of the state it changes', () => {
-    const bad = translate({ ...input, spec: { ...spec, source: 'src/bad.ts', units: ['addItem'], state: { ...spec.state, source: 'BinData', target: 'BinState', empty: undefined } } });
+    const bad = translate({ ...input, spec: { ...spec, source: 'src/world/bad.ts', units: ['addItem'], state: { ...spec.state, source: 'BinData', target: 'BinState', empty: undefined } } });
     assert.ok(bad.errors.some((e) => e.includes('the edit addItem reads an index')), bad.errors.join('\n'));
   });
 
@@ -87,7 +97,7 @@ describe('translate', () => {
     if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-differential-'));
     after(() => removeTree(work));
-    const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceFile: path.join(root, 'src/yard.ts'),
+    const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceRoot: root,
       empty: 'emptyYard', includes: [path.join(target, 'native/src')], cxx, steps: 400, seed: 7, tolerance: 1e-4,
       valueTypes: { V2: { x: 'x', y: 'y' } } };
     const same = runDifferential({ ...base, translation: result, work: path.join(work, 'same') });

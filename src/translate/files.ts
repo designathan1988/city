@@ -1,20 +1,18 @@
-// The feature's files in its owner folder, by role: `<f>_types.h` (enums, constants with their source, the structs,
-// the indexes and the state), `<f>.h` (what other owners may call), `<f>_edit.cpp` (the edits), `<f>_query.cpp`
-// (the queries), `<f>_index.cpp` (the index builders and reindex). Every file opens with the comment the target's
-// gates require. Structs come after the structs they hold.
+// The translation's files: one module per source file, in the owner folder the placement gives it. Each module has
+// `<stem>_types.h` (its enums, constants with their source, its structs; the state's module also the indexes and
+// the state), `<stem>.h` (what other modules and owners call), `<stem>_edit.cpp`, `<stem>_query.cpp` and, for the
+// state's module, `<stem>_index.cpp`. A header includes exactly the headers of the modules its declarations name; a
+// source file, the modules its code was recorded using while it was written. Every file opens with the comment the
+// target's gates require: the module's own summary (the source file's first comment).
+import type * as TS from 'typescript';
 import type { TranslateContext } from './context.ts';
 import { declare, render, type CppType } from './cpptype.ts';
+import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
 import type { EmittedFunction, EmittedMemo } from './translator.ts';
 
-export interface FeatureFiles {
-  /** Path relative to the target root → contents. */
-  readonly files: Map<string, string>;
-  readonly typesHeader: string;
-}
-
-const STD = new Set(['algorithm', 'cmath', 'cstdint', 'deque', 'functional', 'limits', 'optional', 'queue', 'string', 'tuple',
-  'unordered_map', 'unordered_set', 'utility', 'vector', 'iterator']);
+const STD = new Set(['algorithm', 'cmath', 'cstdint', 'deque', 'functional', 'iterator', 'limits', 'optional', 'queue', 'string', 'tuple',
+  'unordered_map', 'unordered_set', 'utility', 'vector']);
 
 function comment(text: string | null, indent = ''): string[] {
   if (!text) return [];
@@ -31,12 +29,33 @@ function comment(text: string | null, indent = ''): string[] {
   return lines.map((l) => `${indent}// ${l}`);
 }
 
-/** Structs in an order where each comes after the structs its fields hold. */
+/** The struct and enum names a type holds or refers to. */
+function namesIn(t: CppType): string[] {
+  switch (t.k) {
+    case 'struct':
+    case 'enum':
+      return [t.name];
+    case 'optional':
+    case 'vector':
+    case 'deque':
+    case 'list':
+      return namesIn(t.of);
+    case 'ptr':
+      return namesIn(t.to);
+    case 'map':
+      return [...namesIn(t.key), ...namesIn(t.of)];
+    case 'function':
+      return [...t.params.flatMap(namesIn), ...namesIn(t.ret)];
+    case 'lambda':
+      return namesIn(t.ret);
+    default:
+      return [];
+  }
+}
+
+/** Structs in an order where each comes after the structs it holds by value. */
 function ordered(structs: readonly CppStruct[]): CppStruct[] {
   const byName = new Map(structs.map((s) => [s.name, s]));
-  const out: CppStruct[] = [];
-  const seen = new Set<string>();
-  // A struct a field holds by value (directly, in an optional or a container) must be complete before it.
   const held = (t: CppType): string[] => {
     switch (t.k) {
       case 'struct':
@@ -52,14 +71,14 @@ function ordered(structs: readonly CppStruct[]): CppStruct[] {
         return [];
     }
   };
+  const out: CppStruct[] = [];
+  const seen = new Set<string>();
   const visit = (s: CppStruct): void => {
     if (seen.has(s.name)) return;
     seen.add(s.name);
-    for (const f of s.fields) {
-      for (const n of held(f.type)) {
-        const dep = byName.get(n);
-        if (dep && dep !== s) visit(dep);
-      }
+    for (const f of s.fields) for (const n of held(f.type)) {
+      const dep = byName.get(n);
+      if (dep && dep !== s) visit(dep);
     }
     out.push(s);
   };
@@ -67,111 +86,159 @@ function ordered(structs: readonly CppStruct[]): CppStruct[] {
   return out;
 }
 
-function struct(s: CppStruct, source: string): string[] {
+/** A source file's own summary: the first sentence of the comment it opens with. */
+function summaryOf(file: TS.SourceFile, ts: TranslateContext['ts']): string | null {
+  const first = file.statements[0];
+  const ranges = first ? ts.getLeadingCommentRanges(file.text, first.getFullStart()) ?? [] : [];
+  const text = ranges.map((r) => file.text.slice(r.pos, r.end)).join(' ').replace(/\/\*\*?|\*\/|^\s*\*|\/\//gm, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  const sentence = /^(.+?[.!?])(\s|$)/.exec(text)?.[1] ?? text;
+  return sentence.replace(/[.!?]$/, '');
+}
+
+const pascalIndex = (state: string): string => `${state.replace(/State$/, '')}Index`;
+
+export function translationFiles(c: TranslateContext, functions: readonly EmittedFunction[], builders: readonly EmittedMemo[]): Map<string, string> {
+  const { spec } = c;
+  const ns = spec.namespace;
+  const stateModule = c.relative(c.file);
+  const state = spec.state.target;
+  const files = new Map<string, string>();
+  const sourceFiles = new Map(c.sources.map((f) => [c.relative(f), f]));
+  // ---- which module everything belongs to
+  const structModule = (s: { module: string | null; name: string }): string => (c.types.indexStructs.has(s.name) || s.name === state || s.module === null ? stateModule : s.module);
+  const nameModule = new Map<string, string>();
+  for (const s of c.types.structs.values()) nameModule.set(s.name, structModule(s));
+  for (const e of c.types.enums.values()) nameModule.set(e.name, e.module ?? stateModule);
+  const modules = new Set<string>([stateModule]);
+  for (const f of functions) modules.add(f.plan.module);
+  for (const k of c.constants.values()) modules.add(k.module ?? stateModule);
+  for (const m of nameModule.values()) modules.add(m);
+  const placed = new Map<string, ModuleId>();
+  for (const m of modules) {
+    const id = c.placement.of(m);
+    if ('error' in id) c.errors.push(id.error);
+    else placed.set(m, id);
+  }
+  const header = (m: string, kind: 'types' | 'api'): string => {
+    const id = placed.get(m)!;
+    return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'types' ? '_types' : ''}.h`;
+  };
+  const projectIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => i.endsWith('.h')).sort();
+  const stdIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => STD.has(i));
+  if (builders.some((b) => b.plan.stores.size > 0)) stdIncludes.push('deque');
+  const depsOf = (types: readonly CppType[], self: string): string[] =>
+    [...new Set(types.flatMap(namesIn).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
+
+  for (const [m, id] of placed) {
+    const source = sourceFiles.get(m);
+    const summary = (source && summaryOf(source, c.ts)) ?? `Roadcraft 4.0 ${m}`;
+    const top = (what: string): string[] => [`// ${summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${m} by the converter; the owner is ${id.owner}.`];
+    const isState = m === stateModule;
+    const enums = [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
+    const constants = [...(isState ? c.namedLiterals.values() : []), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const structs = ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
+    const memoStructs = isState ? builders : [];
+    const own = functions.filter((f) => f.plan.module === m);
+
+    // ---- types
+    const typeRefs: CppType[] = [...structs.flatMap((s) => s.fields.map((f) => f.type)), ...constants.map((k) => k.type),
+      ...memoStructs.flatMap((b) => b.plan.fields.map((f) => f.type))];
+    const stateStruct = isState ? c.types.structs.get(state) : undefined;
+    if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
+    for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
+    const types: string[] = [...top('types and constants'), '#pragma once', ''];
+    for (const p of projectIncludes) types.push(`#include "${p}"`);
+    for (const d of depsOf(typeRefs, m)) types.push(`#include "${header(d, 'types')}"`);
+    types.push('', ...[...new Set(stdIncludes)].sort().map((s) => `#include <${s}>`), '', `namespace ${ns} {`, '');
+    for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
+    for (const k of constants) {
+      types.push(...comment(`${k.doc ?? ''}${k.line > 0 ? ` (Roadcraft 4.0 ${m}:${k.line})` : ''}`.trim()));
+      types.push(k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`);
+    }
+    if (constants.length > 0) types.push('');
+    for (const s of structs) types.push(...structLines(s, m));
+    for (const b of memoStructs) {
+      types.push(...comment(b.plan.doc), `// (Roadcraft 4.0 ${b.plan.writtenIn}:${b.plan.line}: rebuilt by every edit)`, `struct ${b.plan.struct} {`);
+      for (const [owned, member] of b.plan.stores) types.push(`\tstd::deque<${owned}> ${member}; // owned here, filed below by address (a deque never moves them)`);
+      for (const f of b.plan.fields) types.push(`\t${declare(f.type, f.name)};`);
+      types.push('};', '');
+    }
+    if (memoStructs.length > 0) {
+      const index = pascalIndex(state);
+      types.push(
+        '// The indexes of the state: rebuilt by every edit (reindex), read by queries. They point into the state, so a',
+        '// copy would point into the original: copying is refused, moving keeps every address.',
+        `struct ${index} {`, ...memoStructs.map((b) => `\t${b.plan.struct} ${b.plan.member};`),
+        `\t${index}() = default;`, `\t${index}(const ${index} &) = delete;`, `\t${index} &operator=(const ${index} &) = delete;`,
+        `\t${index}(${index} &&) = default;`, `\t${index} &operator=(${index} &&) = default;`, '};', '');
+    }
+    if (stateStruct) {
+      const lines = structLines(stateStruct, m);
+      if (memoStructs.length > 0) lines.splice(lines.length - 2, 0, `\t${pascalIndex(state)} index; // rebuilt by every edit: never written elsewhere`);
+      types.push(...lines);
+    }
+    types.push(`} // namespace ${ns}`, '');
+    files.set(`${id.owner}/${id.stem}_types.h`, types.join('\n'));
+
+    // ---- what other modules and owners call: the public functions, and the edits without reindex for other edits
+    const visible = own.filter((f) => f.exported || f.plan.edit);
+    const apiRefs = visible.flatMap((f) => [...f.plan.params.map((p) => p.type), f.plan.ret]);
+    const api: string[] = [...top('what other owners call'), '#pragma once', '', `#include "${header(m, 'types')}"`];
+    for (const d of depsOf(apiRefs, m)) api.push(`#include "${header(d, 'types')}"`);
+    api.push('', `namespace ${ns} {`, '');
+    for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
+    const raw = visible.filter((x) => !x.exported);
+    if (raw.length > 0) {
+      api.push('// The edits without the rebuild of the indexes, for other edits of the state (the public ones rebuild once).');
+      for (const f of raw) api.push(`${f.signature};`);
+      api.push('');
+    }
+    if (isState && builders.length > 0) api.push('// Rebuilds the indexes from the state (every edit does; also after loading a saved state).', `void reindex(${state} &t);`, '');
+    api.push(`} // namespace ${ns}`, '');
+    files.set(`${id.owner}/${id.stem}.h`, api.join('\n'));
+
+    // ---- the code
+    const cpp = (role: string, fns: readonly EmittedFunction[], extraUses: readonly string[]): string => {
+      const uses = new Set([...fns.flatMap((f) => [...f.uses]), ...extraUses]);
+      uses.delete(m);
+      const out = [...top(role), `#include "${header(m, 'api')}"`];
+      for (const u of [...uses].filter((x) => placed.has(x)).sort()) out.push(`#include "${header(u, 'api')}"`);
+      out.push('', `namespace ${ns} {`, '');
+      const internal = fns.filter((f) => !f.exported && !f.plan.edit);
+      if (internal.length > 0) {
+        out.push('namespace {', '', ...internal.map((f) => `${f.signature};`), '');
+        for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+        out.push('} // namespace', '');
+      }
+      for (const f of fns.filter((x) => x.exported || x.plan.edit)) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      out.push(`} // namespace ${ns}`, '');
+      return out.join('\n');
+    };
+    const edits = own.filter((f) => f.role === 'edit');
+    // A public edit rebuilds the state's indexes: its module needs the state's module.
+    if (edits.length > 0) files.set(`${id.owner}/${id.stem}_edit.cpp`, cpp('the edits (each rebuilds the indexes once)', edits, builders.length > 0 ? [stateModule] : []));
+    const queries = own.filter((f) => f.role === 'query');
+    if (queries.length > 0) files.set(`${id.owner}/${id.stem}_query.cpp`, cpp('the queries (they only read)', queries, []));
+    if (isState && builders.length > 0) {
+      const uses = new Set(builders.flatMap((b) => [...b.uses]));
+      uses.delete(m);
+      const index: string[] = [...top('the indexes of the state'), `#include "${header(m, 'api')}"`];
+      for (const u of [...uses].filter((x) => placed.has(x)).sort()) index.push(`#include "${header(u, 'api')}"`);
+      index.push('', `namespace ${ns} {`, '', 'namespace {', '');
+      for (const b of builders) index.push(...comment(b.plan.doc), `void build_${b.plan.member}(const ${state} &t, ${b.plan.struct} &index) {`, ...b.lines, '}', '');
+      index.push('} // namespace', '', `void reindex(${state} &t) {`, `\tt.index = ${pascalIndex(state)}();`);
+      for (const b of builders) index.push(`\tbuild_${b.plan.member}(t, t.index.${b.plan.member});`);
+      index.push('}', '', `} // namespace ${ns}`, '');
+      files.set(`${id.owner}/${id.stem}_index.cpp`, index.join('\n'));
+    }
+  }
+  return files;
+}
+
+function structLines(s: CppStruct, source: string): string[] {
   const head = comment(s.comment ?? null);
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
   return [...head, `struct ${s.name} {`, ...fields, '};', ''];
-}
-
-export function featureFiles(c: TranslateContext, functions: readonly EmittedFunction[], builders: readonly EmittedMemo[]): FeatureFiles {
-  const { spec } = c;
-  const base = `${spec.subsystem}/${spec.feature}`;
-  const include = (file: string): string => `${spec.subsystem.replace(/^native\/src\//, '')}/${file}`;
-  const typesHeader = `${base}_types.h`;
-  const includes = [...new Set([...c.includes, ...c.types.includes])];
-  if (builders.some((b) => b.plan.stores.size > 0)) includes.push('deque');
-  const project = includes.filter((i) => i.endsWith('.h')).sort();
-  const std = includes.filter((i) => STD.has(i)).sort();
-  const header = (what: string): string[] => [`// ${spec.summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${spec.source} by the converter; the owner is ${spec.subsystem}.`];
-
-  // ---- types
-  const types: string[] = [...header('types, constants and the state'), '#pragma once', ''];
-  for (const p of project) types.push(`#include "${p}"`);
-  if (project.length > 0) types.push('');
-  for (const s of [...new Set(std)]) types.push(`#include <${s}>`);
-  types.push('', `namespace ${spec.namespace} {`, '');
-  for (const e of c.types.enums.values()) {
-    types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
-  }
-  const constants = [...c.namedLiterals.values(), ...c.constants.values()];
-  for (const k of constants) {
-    const source = k.line > 0 ? ` (Roadcraft 4.0 ${spec.source}:${k.line})` : '';
-    types.push(...comment(`${k.doc ?? ''}${source}`.trim()));
-    types.push(k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`);
-  }
-  if (constants.length > 0) types.push('');
-  const state = spec.state.target;
-  const regular = ordered([...c.types.structs.values()].filter((s) => s.name !== state && !c.types.indexStructs.has(s.name)));
-  for (const s of regular) types.push(...struct(s, spec.source));
-  for (const b of builders) {
-    types.push(...comment(b.plan.doc), `// (Roadcraft 4.0 ${spec.source}:${b.plan.line}: rebuilt by every edit)`, `struct ${b.plan.struct} {`);
-    for (const [owned, member] of b.plan.stores) types.push(`\tstd::deque<${owned}> ${member}; // owned here, filed below by address (a deque never moves them)`);
-    for (const f of b.plan.fields) types.push(`\t${declare(f.type, f.name)};`);
-    types.push('};', '');
-  }
-  if (builders.length > 0) {
-    types.push(
-      `// The indexes of the state: rebuilt by every edit (reindex), read by queries. They point into the state, so a`,
-      `// copy would point into the original: copying is refused, moving keeps every address.`,
-      `struct ${pascalIndex(state)} {`,
-      ...builders.map((b) => `\t${b.plan.struct} ${b.plan.member};`),
-      `\t${pascalIndex(state)}() = default;`,
-      `\t${pascalIndex(state)}(const ${pascalIndex(state)} &) = delete;`,
-      `\t${pascalIndex(state)} &operator=(const ${pascalIndex(state)} &) = delete;`,
-      `\t${pascalIndex(state)}(${pascalIndex(state)} &&) = default;`,
-      `\t${pascalIndex(state)} &operator=(${pascalIndex(state)} &&) = default;`,
-      '};', '');
-  }
-  const stateStruct = c.types.structs.get(state);
-  if (stateStruct) {
-    const s = { ...stateStruct, fields: [...stateStruct.fields] };
-    const lines = struct(s, spec.source);
-    if (builders.length > 0) lines.splice(lines.length - 2, 0, `\t${pascalIndex(state)} index; // rebuilt by every edit: never written elsewhere`);
-    types.push(...lines);
-  }
-  types.push(`} // namespace ${spec.namespace}`, '');
-
-  // ---- public API
-  const api: string[] = [...header('what other owners call'), '#pragma once', '', `#include "${include(`${spec.feature}_types.h`)}"`, '', `namespace ${spec.namespace} {`, ''];
-  for (const f of functions.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
-  if (builders.length > 0) api.push('// Rebuilds the indexes from the state (every edit does; also after loading a saved state).', `void reindex(${state} &t);`, '');
-  api.push(`} // namespace ${spec.namespace}`, '');
-
-  const cpp = (role: string, fns: readonly EmittedFunction[], extra: string[] = []): string[] => {
-    const internal = fns.filter((f) => !f.exported);
-    const out = [...header(role), `#include "${include(`${spec.feature}.h`)}"`, '', `namespace ${spec.namespace} {`, ''];
-    if (internal.length > 0) {
-      out.push('namespace {', '');
-      for (const f of internal) out.push(`${f.signature};`);
-      out.push('');
-      for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
-      out.push('} // namespace', '');
-    }
-    for (const f of fns.filter((x) => x.exported)) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
-    out.push(...extra, `} // namespace ${spec.namespace}`, '');
-    return out;
-  };
-  const files = new Map<string, string>();
-  files.set(typesHeader, types.join('\n'));
-  files.set(`${base}.h`, api.join('\n'));
-  const edits = functions.filter((f) => f.role === 'edit');
-  if (edits.length > 0) files.set(`${base}_edit.cpp`, cpp('the edits (each rebuilds the indexes once)', edits).join('\n'));
-  const queries = functions.filter((f) => f.role === 'query');
-  if (queries.length > 0) files.set(`${base}_query.cpp`, cpp('the queries (they only read)', queries).join('\n'));
-  if (builders.length > 0) {
-    const index: string[] = [...header('the indexes of the state'), `#include "${include(`${spec.feature}.h`)}"`, '', `namespace ${spec.namespace} {`, '', 'namespace {', ''];
-    for (const b of builders) {
-      index.push(...comment(b.plan.doc), `void build_${b.plan.member}(const ${state} &t, ${b.plan.struct} &index) {`, ...b.lines, '}', '');
-    }
-    index.push('} // namespace', '', `void reindex(${state} &t) {`, `\tt.index = ${pascalIndex(state)}();`);
-    for (const b of builders) index.push(`\tbuild_${b.plan.member}(t, t.index.${b.plan.member});`);
-    index.push('}', '', `} // namespace ${spec.namespace}`, '');
-    files.set(`${base}_index.cpp`, index.join('\n'));
-  }
-  return { files, typesHeader };
-}
-
-function pascalIndex(state: string): string {
-  return `${state.replace(/State$/, '')}Index`;
 }

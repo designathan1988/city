@@ -18,8 +18,8 @@ import type { CppEnum, CppStruct } from './types.ts';
 export interface DifferentialInput {
   readonly ts: TypeScriptApi;
   readonly tsconfig: string;
-  /** The source file of the feature (absolute). */
-  readonly sourceFile: string;
+  /** The source root: each public function is imported from its own module under it. */
+  readonly sourceRoot: string;
   /** The source function that makes the empty state. */
   readonly empty: string;
   readonly translation: TranslationResult;
@@ -47,6 +47,16 @@ export interface DifferentialResult {
   readonly steps: number;
   readonly mismatches: readonly Mismatch[];
   readonly calls: Readonly<Record<string, number>>;
+}
+
+/** The scenario calls a public function through the namespace of the module that exports it. */
+function jsName(f: ApiFunction): string {
+  return `m${f.module.replace(/[^A-Za-z0-9]+/g, '_')}.${f.source}`;
+}
+
+function moduleImports(t: TranslationResult, root: string): string[] {
+  return [...new Set([t.stateModule, ...t.api.map((f) => f.module)])].sort()
+    .map((m) => `import * as m${m.replace(/[^A-Za-z0-9]+/g, '_')} from ${JSON.stringify(pathToFileURL(path.join(root, m)).href)};`);
 }
 
 /** mulberry32: a small deterministic generator (the same scenario from the same seed). */
@@ -178,7 +188,7 @@ class Scenario {
     const maker = this.#t.api.find((f) => !f.edit && f.ret.k === 'struct' && f.ret.name === name);
     if (maker) {
       const args = maker.params.slice(1).map((p) => this.value(p.type, p.name, state));
-      return { js: `api.${maker.source}(state${args.map((a) => `, ${a.js}`).join('')})`, cpp: `${maker.cpp}(state${args.map((a) => `, ${a.cpp}`).join('')})` };
+      return { js: `${jsName(maker)}(state${args.map((a) => `, ${a.js}`).join('')})`, cpp: `${maker.cpp}(state${args.map((a) => `, ${a.cpp}`).join('')})` };
     }
     const struct = this.#t.structs.find((s) => s.name === name);
     if (!struct) throw new Error(`the harness knows no struct ${name} (for ${hint})`);
@@ -351,7 +361,7 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
     const cppArgs = (takesState ? ['state'] : []).concat(allArgs.map((a) => a.cpp)).join(', ');
     names.push(`${f.source}(${allArgs.map((a) => a.js).join(', ')})`);
     if (f.edit) {
-      js.push(`{ const r = api.${f.source}(${jsArgs}); const isData = r && typeof r === 'object' && 'data' in r && !Array.isArray(r); state = isData ? r.data : r;`
+      js.push(`{ const r = ${jsName(f)}(${jsArgs}); const isData = r && typeof r === 'object' && 'data' in r && !Array.isArray(r); state = isData ? r.data : r;`
         + ` emit(${i}, isData ? Object.values(r).find((x, k) => Object.keys(r)[k] !== 'data') : null, state); }`);
       if (f.ret.k === 'void') cpp.push(`\t{ ${f.cpp}(${cppArgs}); emit(${i}, nullptr, &state); }`);
       else {
@@ -359,17 +369,17 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
         scenario.issued++;
       }
     } else {
-      js.push(`emit(${i}, api.${f.source}(${jsArgs}));`);
+      js.push(`emit(${i}, ${jsName(f)}(${jsArgs}));`);
       cpp.push(`\temit(${i}, ${f.cpp}(${cppArgs}));`);
     }
   }
   // ---- the source, as it is
   fs.writeFileSync(path.join(input.work, 'hooks.mjs'), hooks(input));
   fs.writeFileSync(path.join(input.work, 'source.mjs'), [
-    `import * as api from ${JSON.stringify(pathToFileURL(input.sourceFile).href)};`, JS_SER,
+    ...moduleImports(input.translation, input.sourceRoot), JS_SER,
     'const lines = [];',
     `const emit = (step, out, state) => lines.push(JSON.stringify(state === undefined ? { step, out: ser(out) } : { step, out: ser(out), state: ser(state) }));`,
-    `let state = api.${input.empty}();`, ...js, `process.stdout.write(lines.join('\\n') + '\\n');`].join('\n'));
+    `let state = m${input.translation.stateModule.replace(/[^A-Za-z0-9]+/g, '_')}.${input.empty}();`, ...js, `process.stdout.write(lines.join('\\n') + '\\n');`].join('\n'));
   const sourceOut = execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--import', pathToFileURL(path.join(input.work, 'hooks.mjs')).href,
     path.join(input.work, 'source.mjs')], { encoding: 'utf8', maxBuffer: 1 << 30 });
   // ---- the translation
@@ -379,9 +389,10 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, text);
   }
-  const apiHeader = [...t.files.keys()].find((f) => /\/[a-z_]+\.h$/.test(f) && !f.endsWith('_types.h'))!;
+  // Every module's public header: the scenario calls the feature's functions, whatever module they are in.
+  const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [
-    `#include "${apiHeader.replace(/^native\/src\//, '')}"`, CPP_HEAD, cppPrinter(t, input.valueTypes),
+    ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
     'std::ostringstream lines;',
     // Declared before the template that calls it: names in a template are looked up where it is defined.
     `inline void put(std::ostream &o, std::nullptr_t) { o << "null"; }`,
