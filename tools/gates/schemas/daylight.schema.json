@@ -32,6 +32,8 @@
   "sun_rise_from": { "type": "number" },
   "fill": { "type": "string", "pattern_prefix": "#" },
   "sky_top": { "type": "string", "pattern_prefix": "#" },
+  "ground_under": { "type": "string", "pattern_prefix": "#" },
+  "ground_under_k": { "type": "number" },
   "fill_energy": { "type": "number" },
   "fill_key_share": { "type": "number" },
   "fill_elev_deg": { "type": "number" },

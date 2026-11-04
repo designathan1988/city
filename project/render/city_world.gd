@@ -147,6 +147,8 @@ func _build_environment(_palette: Dictionary) -> void:
 	add_child(fill)
 	var sky_top := Daylight.make_top()
 	add_child(sky_top)
+	var under := Daylight.make_under()
+	add_child(under)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load(SKY_SHADER)
 	var sky := Sky.new()
@@ -176,7 +178,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	we.environment = environment
 	add_child(we)
 	FilmLook.vignette(self, day.vignette)
-	daylight = Daylight.new(day, sun, fill, sky_top, environment, sky_mat)
+	daylight = Daylight.new(day, sun, fill, sky_top, under, environment, sky_mat)
 	add_child(ElementEffects.new())
 	add_child(ShoreView.new(self))
 	daylight.set_hour(day.day_hour)
@@ -210,8 +212,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	mat.shader_override_enabled = true
 	terrain.material = mat
 	_terrain_material = mat
-	# Terrain3D forces its checkered debug view while the asset list has no texture; the override shader paints
-	# its own ground, so one tiny placeholder texture is enough to keep that view off.
+	# One tiny placeholder texture keeps off Terrain3D's checkered debug view: the override shader paints its own ground.
 	var assets: Resource = ClassDB.instantiate(&"Terrain3DAssets")
 	var tex_asset: Resource = ClassDB.instantiate(&"Terrain3DTextureAsset")
 	var img := Image.create(PLACEHOLDER_TEX_PX, PLACEHOLDER_TEX_PX, true, Image.FORMAT_RGBA8)
