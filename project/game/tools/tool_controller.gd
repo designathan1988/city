@@ -73,6 +73,13 @@ func ground_at(screen: Vector2) -> Variant:
 	return rig.ground_at(screen)
 
 
+## Metres a screen pixel covers at a point of the world: radii given in pixels mean the same at any zoom. Camera3D.fov is
+## the vertical angle (the camera keeps the view's height).
+func px_at(p: Vector3) -> float:
+	var cam := rig.camera
+	return cam.global_position.distance_to(p) * 2.0 * tan(deg_to_rad(cam.fov) / 2.0) / get_viewport().get_visible_rect().size.y
+
+
 func click_world(p: Vector3) -> void:
 	if active:
 		active.click(p)

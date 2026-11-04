@@ -2,7 +2,8 @@
  "type": "object",
  "required": [
   "categories",
-  "catalog_tabs"
+  "catalog_tabs",
+  "road_options"
  ],
  "properties": {
   "_doc": {
@@ -225,6 +226,96 @@
    "unique_key": "id",
    "minItems": 7,
    "maxItems": 7
+  },
+  "road_options": {
+   "type": "object",
+   "required": [
+    "trace",
+    "snap"
+   ],
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "trace": {
+     "type": "object",
+     "required": [
+      "label_key",
+      "choices"
+     ],
+     "properties": {
+      "label_key": {
+       "type": "string"
+      },
+      "choices": {
+       "type": "array",
+       "minItems": 3,
+       "maxItems": 3,
+       "items": {
+        "type": "object",
+        "required": [
+         "icon",
+         "label_key"
+        ],
+        "properties": {
+         "icon": {
+          "type": "string"
+         },
+         "label_key": {
+          "type": "string"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     },
+     "additionalProperties": false
+    },
+    "snap": {
+     "type": "object",
+     "required": [
+      "label_key",
+      "choices"
+     ],
+     "properties": {
+      "label_key": {
+       "type": "string"
+      },
+      "choices": {
+       "type": "array",
+       "minItems": 3,
+       "maxItems": 3,
+       "items": {
+        "type": "object",
+        "required": [
+         "icon",
+         "label_key",
+         "key"
+        ],
+        "properties": {
+         "icon": {
+          "type": "string"
+         },
+         "label_key": {
+          "type": "string"
+         },
+         "key": {
+          "type": "string",
+          "enum": [
+           "on",
+           "angles",
+           "grid"
+          ]
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "additionalProperties": false
   },
   "catalog_tabs": {
    "type": "array",

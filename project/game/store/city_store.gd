@@ -10,7 +10,8 @@ const SNAPSHOT_INTERVAL_S := 0.25
 ## Commands the UI/tools may send, with the CityCore method that executes each one.
 const COMMANDS := {
 	&"set_speed": "set_speed", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
-	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
+	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
+	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
 	&"set_building": "set_building", &"set_overlay": "set_overlay",
@@ -19,7 +20,8 @@ const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
-	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
+	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",
+	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status",
 }

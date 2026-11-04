@@ -19,9 +19,13 @@ void CityCore::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "terrain_path"), "set_terrain_path", "get_terrain_path");
 	ClassDB::bind_method(D_METHOD("step_ticks", "ticks"), &CityCore::step_ticks);
 
-	ClassDB::bind_method(D_METHOD("snap_road", "position", "profile"), &CityCore::snap_road);
-	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile"), &CityCore::preview_road);
-	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile"), &CityCore::build_road);
+	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid"), &CityCore::road_start);
+	ClassDB::bind_method(D_METHOD("road_end", "start", "position", "px", "on", "angles", "grid"), &CityCore::road_end);
+	ClassDB::bind_method(D_METHOD("road_pieces", "start", "end", "alignment", "has_control", "control", "samples", "profile", "px"), &CityCore::road_pieces);
+	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px"), &CityCore::preview_road_path);
+	ClassDB::bind_method(D_METHOD("build_road_path", "pieces", "profile", "px"), &CityCore::build_road_path);
+	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::preview_road);
+	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::build_road);
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);

@@ -163,11 +163,11 @@ func _tool_tests() -> void:
 	var c := _screen() * 0.5
 	await _click(MOUSE_BUTTON_LEFT, c)
 	var road: Variant = tools.active
-	_check(road.step != 0, "esquerdo chega à ferramenta (via começada)")
+	_check(road.chain != Vector3.INF, "esquerdo chega à ferramenta (via começada)")
 	await _drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(80, 0), false, true)
-	_check(road.step != 0, "arrastar com o direito não cancela a via")
+	_check(road.chain != Vector3.INF, "arrastar com o direito não cancela a via")
 	await _click(MOUSE_BUTTON_RIGHT, c)
-	_check(road.step == 0, "clique direito cancela a via")
+	_check(road.chain == Vector3.INF, "clique direito cancela a via")
 	tools.set_tool(ToolController.Tool.NONE)
 
 

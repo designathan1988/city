@@ -46,7 +46,7 @@ func _ready() -> void:
 
 func _undo_cases(a: Vector3, e: Vector3) -> void:
 	var mid := (a + e) * 0.5
-	_round("via", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE]))
+	_round("via", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, 0.25]))
 	_round("zona (traço)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, ZONE_RES])

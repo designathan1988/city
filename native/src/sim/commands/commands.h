@@ -6,6 +6,7 @@
 
 #include "sim/roads/geometry.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,53 @@ struct EditResult {
 	double money = 0;
 	int segments = 0, buildings_removed = 0, zoned_sides = 0;
 };
+
+// What produced a snapped end, for the guide the tool shows (Roadcraft editor/snap.ts SnapResult).
+enum class SnapGuide : uint8_t { NONE, NETWORK, CONTINUE, PERPENDICULAR, ORTHOGONAL, ANGLE };
+
+// The road tool's snapping: one switch for all of it, then each kind. px = metres per screen pixel at the pointer.
+struct SnapOptions {
+	bool on = true, angles = true, grid = true;
+	double px = 1;
+};
+
+struct SnappedEnd {
+	double x = 0, z = 0;
+	SnapGuide guide = SnapGuide::NONE;
+	double angle = 0, length = 0; // radians from +x towards +z, metres from the start
+};
+
+// How a road follows the gesture (Roadcraft roadTool.ts alignment).
+enum class RoadAlignment : uint8_t { STRAIGHT, CURVE, FREE };
+
+struct StrokePoint {
+	double x = 0, z = 0;
+};
+
+// A gesture as the tool hands it in: its ends, the bend chosen by a click (has_control), the pointer's samples, and the
+// bend under which a dragged curve stays straight (metres: a few screen pixels).
+struct RoadStroke {
+	RoadAlignment alignment = RoadAlignment::STRAIGHT;
+	StrokePoint start, end, control;
+	bool has_control = false;
+	std::vector<StrokePoint> samples;
+	int profile = 0;
+	double flat_m = 0;
+};
+
+// --- Where a road lands and what it is laid as (road_snap.cpp, road_path.cpp)
+// What is under the pointer: a node, a point on a road (anywhere on its surface) or open ground.
+Anchor find_anchor(const CityState &s, double x, double z, double px);
+// Where a road starts: a junction or road keeps its exact point, open ground goes on the grid.
+Anchor snap_road_start(const CityState &s, const Anchor &a, const SnapOptions &o);
+// The end the pointer asks for from `start`, after the network, the angles and the grid.
+SnappedEnd snap_road_end(const CityState &s, const Anchor &start, double x, double z, const SnapOptions &o);
+// The curves a gesture is laid as: one, or the chain of a freehand stroke; none are tighter than the road allows.
+std::vector<Quad> road_pieces(const CityState &s, const RoadStroke &k);
+// plan_road over the pieces: the sum of their prices and lengths, the first refusal.
+RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile);
+// Builds every piece, in one undo entry when the caller runs it in one: a refused piece refuses the whole road.
+EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Anchor &a, const Anchor &b, int profile);
 
 // Snaps (x, z) to the nearest node within `radius`, else to a segment within 0.8 radius (its end node when the hit is
 // within road_snap_end_m of an end), else returns the free point.

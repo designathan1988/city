@@ -405,6 +405,19 @@
    "no_drawer": true
   }
  ],
+ "road_options": {
+  "_doc": "The road tool's option rows (Roadcraft ui/v2/shell.ts renderRoads). trace: the alignment, in ToolController order; snap: key = Settings.road_snap.",
+  "trace": {"label_key": "palette.trace", "choices": [
+    {"icon": "straight", "label_key": "palette.alignment.straight"},
+    {"icon": "curve", "label_key": "palette.alignment.curve"},
+    {"icon": "free", "label_key": "palette.alignment.free"}
+  ]},
+  "snap": {"label_key": "v2.snap.title", "choices": [
+    {"icon": "magnet", "label_key": "v2.snap.on", "key": "on"},
+    {"icon": "angle", "label_key": "v2.snap.angles", "key": "angles"},
+    {"icon": "cells", "label_key": "v2.snap.grid", "key": "grid"}
+  ]}
+ },
  "catalog_tabs": [
   [
    "ruas",

@@ -2,6 +2,8 @@
 // It owns the CityState (single source of truth), the simulation thread and the render world.
 #pragma once
 
+#include <godot_cpp/variant/packed_vector3_array.hpp>
+
 #include "render/render_world.h"
 #include "sim/simulation/simulation.h"
 
@@ -37,9 +39,14 @@ public:
 	void step_ticks(int ticks); // tests: deterministic steps with the clock paused
 
 	// --- player commands and previews (city_core_commands.cpp)
-	godot::Dictionary snap_road(const godot::Vector3 &p, int profile);
-	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile);
-	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile);
+	godot::Dictionary road_start(const godot::Vector3 &p, double px, bool on, bool grid);
+	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid);
+	godot::PackedVector3Array road_pieces(const godot::Vector3 &a, const godot::Vector3 &b, int alignment, bool has_control, const godot::Vector3 &c,
+			const godot::PackedVector3Array &samples, int profile, double px);
+	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
+	godot::Dictionary build_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
+	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
+	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;

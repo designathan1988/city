@@ -51,7 +51,16 @@
   "overlap_share": 0.75,
   "overlap_run_m": 8,
   "parallel_cos": 0.9,
-  "overlap_pad_m": 10
+  "overlap_pad_m": 10,
+  "snap_node_px": 30,
+  "snap_pick_px": 26,
+  "snap_land_px": 40,
+  "snap_step_deg": 15,
+  "grid_m": 1,
+  "verge_m": 1,
+  "free_tolerance_m": 5,
+  "free_max_controls": 48,
+  "click_px": 7
  },
  "history": {
   "max_entries": 500,
