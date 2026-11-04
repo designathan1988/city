@@ -43,8 +43,38 @@
       "verge_m": {
        "type": "number"
       },
-      "normal_strength": {
-       "type": "number"
+      "normal_asphalt": {
+        "type": "number"
+      },
+      "normal_footway": {
+        "type": "number"
+      },
+      "normal_kerb": {
+        "type": "number"
+      },
+      "asphalt_detail_m": {
+        "type": "number"
+      },
+      "concrete_detail_m": {
+        "type": "number"
+      },
+      "detail_near_m": {
+        "type": "number"
+      },
+      "detail_far_m": {
+        "type": "number"
+      },
+      "asphalt_detail": {
+        "type": "string"
+      },
+      "asphalt_detail_normal": {
+        "type": "string"
+      },
+      "concrete_detail": {
+        "type": "string"
+      },
+      "concrete_detail_normal": {
+        "type": "string"
       },
       "kerb_block_m": {
        "type": "number"
@@ -86,7 +116,17 @@
       "footway_m",
       "kerb_m",
       "verge_m",
-      "normal_strength",
+      "normal_asphalt",
+      "normal_footway",
+      "normal_kerb",
+      "asphalt_detail",
+      "asphalt_detail_normal",
+      "concrete_detail",
+      "concrete_detail_normal",
+      "asphalt_detail_m",
+      "concrete_detail_m",
+      "detail_near_m",
+      "detail_far_m",
       "kerb_block_m",
       "paver_w",
       "paver_h",
