@@ -114,6 +114,7 @@ cmd.build.changeProfile,trocar perfil,change profile
 cmd.build.changeStreetProfile,trocar perfil da rua,change the street's profile
 cmd.build.lotDrawn,lote desenhado,lot drawn
 cmd.build.road,construir via,build road
+cmd.build.roadEnd,ponta da via,road end
 cmd.build.roundabout,rotatória,roundabout
 cmd.build.wall,muro,wall
 cmd.demolish.area,demolir área,demolish area

@@ -160,4 +160,25 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 	return r;
 }
 
+EditResult set_road_end(CityState &s, int node, bool bulb) {
+	EditResult r;
+	RoadNetwork &net = s.roads;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[node].alive || net.nodes[node].segs.size() != 1) {
+		r.error = "tool.failed";
+		return r;
+	}
+	j_set_plain(s, node, !bulb);
+	net.refresh_node(node);
+	if (bulb && !net.nodes[node].bulb) { // no room: back to the cut, shape included
+		j_set_plain(s, node, true);
+		net.refresh_node(node);
+		r.error = "inspector.end.noRoom";
+		return r;
+	}
+	double x = net.nodes[node].x, z = net.nodes[node].z;
+	finish_edit(s, x, z, x, z);
+	r.ok = true;
+	return r;
+}
+
 } // namespace city

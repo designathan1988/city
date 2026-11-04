@@ -36,6 +36,7 @@ void EditEntry::grow(double x0, double z0, double x1, double z1) {
 
 int j_add_node(CityState &s, double x, double z, double y) {
 	int id = s.roads.add_node(x, z, y);
+	s.roads.nodes[id].plain = true; // a road the player lays ends in a straight cut: the bulb is chosen (set_road_end)
 	s.log.net_node(id);
 	if (s.history.recording) {
 		record(s, OpKind::ADD_NODE, id).node = s.roads.nodes[id];
@@ -62,6 +63,7 @@ void j_set_plain(CityState &s, int n, bool plain) {
 		EditOp &op = record(s, OpKind::NODE_PLAIN, n);
 		op.from = nd.plain ? 1 : 0;
 		op.to = plain ? 1 : 0;
+		grow_point(s, nd.x, nd.z, 0);
 	}
 	nd.plain = plain;
 	s.log.net_node(n);

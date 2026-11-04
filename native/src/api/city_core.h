@@ -57,6 +57,7 @@ public:
 	void begin_stroke(const godot::String &label); // a held brush: every dab until end_stroke is one undo step
 	void end_stroke();
 	godot::Dictionary split_road(const godot::Vector3 &p);
+	godot::Dictionary set_road_end(int node, bool bulb);
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary preview_roundabout(const godot::Vector3 &p, float radius, bool cut);

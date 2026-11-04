@@ -26,7 +26,7 @@ struct RoadNode {
 	uint8_t ctl = 0; // junction control (roads/control.ts), 0 = automatic
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on
-	bool plain = false; // a dead end that never gets a bulb (roundabout approaches waiting to be extended)
+	bool plain = false; // a dead end ends in a straight cut: every player road's, until set_road_end asks for a bulb
 };
 
 struct RoadSegment {

@@ -15,6 +15,8 @@ const NEAR_M := 42.0
 const WIDE_M := 520.0
 const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
+## The hour of the 4.0 photos: colours only compare under the same sun.
+const NOON := 12.0
 
 var out_dir := "user://captures"
 var rig: CityCamera
@@ -42,6 +44,7 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
+	world.set_hour(NOON)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)

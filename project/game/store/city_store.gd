@@ -12,7 +12,8 @@ const COMMANDS := {
 	&"set_speed": "set_speed", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
-	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
+	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
+	&"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
 	&"set_building": "set_building", &"set_overlay": "set_overlay",
 }

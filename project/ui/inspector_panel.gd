@@ -30,6 +30,8 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 	else:
 		HudWidgets.label(col, &"TitleLabel", tr("inspector.road"))
 		HudWidgets.label(col, &"BodyLabel", tr(info.profile))
+		for e in info.get("ends", []):
+			_end_row(col, e, at)
 	var row := HudWidgets.hbox(col)
 	var demolish := HudWidgets.button(&"IconButton", "demolish", "", "inspector.demolish", "icon_btn", "icon_btn")
 	demolish.pressed.connect(_demolish.bind(at))
@@ -38,6 +40,20 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 	close.pressed.connect(hide)
 	row.add_child(close)
 	show()
+
+
+## A dead end of the road: "Ponta inicial [balão]"; the choice comes back from the core, so a refused one stays off.
+func _end_row(col: Control, e: Dictionary, at: Vector3) -> void:
+	var row := HudWidgets.hbox(col)
+	var name := HudWidgets.label(row, &"MutedLabel", tr("inspector.endStart" if e.start else "inspector.endEnd"))
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var b := HudWidgets.button(&"IconButton", "roundabout", "", "inspector.end.bulb", "icon_btn", "icon_btn")
+	b.toggle_mode = true
+	b.set_pressed_no_signal(e.bulb)
+	b.pressed.connect(func() -> void:
+		CityStore.dispatch(&"set_road_end", [e.node, not e.bulb])
+		show_info(CityStore.query(&"inspect", [at]), at))
+	row.add_child(b)
 
 
 func _demolish(at: Vector3) -> void:

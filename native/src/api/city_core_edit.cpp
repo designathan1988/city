@@ -41,6 +41,10 @@ Dictionary CityCore::split_road(const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.splitRoad", [&](CityState &s) { return split_road_at(s, p.x, p.z); });
 }
 
+Dictionary CityCore::set_road_end(int node, bool bulb) {
+	return run_edit(*state_, "cmd.build.roadEnd", [&](CityState &s) { return city::set_road_end(s, node, bulb); });
+}
+
 Dictionary CityCore::upgrade_road(const Vector3 &p, int profile, bool whole_street) {
 	const char *label = whole_street ? "cmd.build.changeStreetProfile" : "cmd.build.changeProfile";
 	return run_edit(*state_, label, [&](CityState &s) { return change_profile_at(s, p.x, p.z, profile, whole_street); });

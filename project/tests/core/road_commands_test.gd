@@ -42,6 +42,7 @@ func _ready() -> void:
 	_check(s1.segments > s0.segments, "segmentos %d -> %d" % [s0.segments, s1.segments])
 	var bad: Dictionary = CityStore.dispatch(&"build_road", [e, e + Vector3(2, 0, 0), false, Vector3.ZERO, PROFILE, PX])
 	_check(not bad.ok and bad.error == "refuse.road.tooShort", "recusa via curta: %s" % bad.error)
+	_road_end(e)
 	_snapping(a, e)
 	_freehand(e)
 	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
@@ -57,6 +58,18 @@ func _ready() -> void:
 	_check(d.ok, "demoliu")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## A road the player lays ends in a straight cut; the bulb is a choice, undone like any edit.
+func _road_end(e: Vector3) -> void:
+	var ends: Array = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).get("ends", [])
+	_check(ends.size() == 1 and not ends[0].bulb, "via nova termina em corte reto: %s" % [ends])
+	var r: Dictionary = CityStore.dispatch(&"set_road_end", [ends[0].node, true])
+	var now: Array = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).ends
+	_check(r.ok and now[0].bulb, "balão a pedido: %s" % r)
+	CityStore.dispatch(&"undo", [])
+	now = CityStore.query(&"inspect", [e - Vector3(2, 0, 0)]).ends
+	_check(not now[0].bulb, "desfazer tira o balão")
 
 
 ## Where the road lands: the grid, the angles, the road it leaves and the road it arrives on.

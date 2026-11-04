@@ -44,6 +44,7 @@ inspector.demolish,Demolir,Demolish
 inspector.duplicate,Duplicar via,Duplicate road
 inspector.duplicateHint,Duplicar via (Ctrl/Cmd+D),Duplicate road (Ctrl/Cmd+D)
 inspector.end.bulb,Balão de retorno,Turning circle
+inspector.end.noRoom,Sem espaço para o balão aqui,No room for a turning circle here
 inspector.endEnd,Ponta final,End of the road
 inspector.endStart,Ponta inicial,Start of the road
 inspector.heightEnd,Altura final (m),End height (m)
