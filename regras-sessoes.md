@@ -14,6 +14,7 @@ Arquivo único de regras, mantido pela coordenadora. Toda sessão (coordenadora 
 
 - A pasta `C:\Users\Jonathan\Documents\Projects\roadcraft-4.0-main` (e a cópia usada pelo conversor, `C:\Users\Jonathan\Documents\Labs\roadcraft-4.0-main`) pode ser lida, aberta, rodada e estudada a qualquer momento: é a referência de visual, comportamento e funcionalidade.
 - O código do 4.0 está doente e não otimizado: não se porta o código, portam-se as funcionalidades. O script (`converter/scripts/port.ts extract`) **rastreia** a funcionalidade completa; a **conversão é escrita por você** na arquitetura atual, otimizada. Nada de código colado sem passar pela arquitetura.
+- O rastreamento é o roteiro do porte: comece por `converter/out/features/<feature>/feature.md`, leia `source/` e `boundary.json`, e porte tudo o que ele lista; o `src/` do 4.0 só complementa. Se ele estiver incompleto, rode `node scripts/port.ts extract <feature> <entradas>` em `converter` (só escreve em `converter/out`).
 - Toda constante em `data/**` é justificada por medição ou por fonte primária (documentação oficial do Godot 4.7, artigos, SUMO, normas); o valor do 4.0 é referência de comportamento, não fonte.
 - Toda funcionalidade portada tem dono único, entra pelas camadas (`core` → `sim` → `render` → `api`) e passa pelos gates.
 - Sem auditoria de origem: não há obrigação de rastrear, reescrever ou apagar comentários, `_doc`, nomes ou constantes por terem vindo do 4.0. O que vale é a arquitetura, a fonte de cada constante e os gates.
@@ -41,6 +42,7 @@ Regras do processo:
 ## 5. Jogo, carga da máquina e medições
 
 - Só a cidade pequena: mapa 0, `--map=0`, nunca 1 a 4.
+- O Roadcraft 4.0 é pesado. Referência visual vem primeiro das fotos prontas em `ports/*/reference/` (cada funcionalidade tem as suas; `build`, `landscape`, `interface` e `roads` têm planos diferentes). Só abra o 4.0 se a foto não existir e for indispensável: nunca a cidade grande (`size: large`), sempre o mínimo, só a funcionalidade a explorar, numa cidade pequena ou mapa vazio, e feche pelo PID ao terminar. Ordem do usuário, 2026-11-04.
 - No máximo uma instância sua do jogo por vez, sempre por `tools/build/hidden_run.ps1 -Command "<cmd>" -WorkDir <pasta do seu repositório> -TimeoutS <s>`. Na filha o `-WorkDir` é obrigatório (o padrão aponta para `fonte`). Nunca abra `godot` com janela. Feche a sua instância pelo PID ao terminar cada captura ou teste. Nunca mexa em processos de outras sessões.
 - Compile com `-j 4`. No máximo 6 filhas compilando ou rodando o jogo ao mesmo tempo (ordem do usuário, 2026-11-04); a coordenadora dosa o lote.
 - Nenhuma sessão espera a outra: siga no seu ritmo.
@@ -59,4 +61,4 @@ Regras do processo:
 
 ## 8. Entrega da filha
 
-`ports/<feature>/relatorio.md` com: o que leu (rastreamento, 4.0, documentação); requisitos e causa; pesquisa com fontes; plano; commits por tema; gates, builds release/debug, testes e capturas com resultado; fotos antes/depois e do 4.0 analisadas uma a uma; constantes com fonte; o que não foi verificado (medições que dependem da máquina quieta, com comando). A filha não integra nada.
+`ports/<feature>/relatorio.md` com: o que leu (rastreamento, 4.0, documentação); requisitos e causa; pesquisa com fontes; plano; commits por tema; gates, builds release/debug, testes e capturas com resultado; fotos antes/depois e do 4.0 analisadas uma a uma; constantes com fonte; tabela de cobertura do rastreamento (cada arquivo e declaração própria de `feature.md`: portado, já existia ou não se aplica, com o motivo e o dono no jogo; sem ela a entrega volta); o que não foi verificado (medições que dependem da máquina quieta, com comando). A filha não integra nada.
