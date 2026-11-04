@@ -204,16 +204,11 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	const TrafficParams &p = s.catalog.traffic;
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	Pedestrian w;
-	w.alive = true;
+	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp); // a body of its own, as any walker the street puts out
 	w.seg = seg;
 	w.side = side;
-	w.hp = s.catalog.blast.walker_hp;
 	w.dir = int(t.rng.next() & 1);
-	w.look = t.rng.next();
 	w.s = clampf(arc, arc_lo(g), arc_hi(g));
-	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max);
-	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
-	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
 	on_sidewalk(w);
 	sidewalk_pose(s, seg, side, w.s, w.u, w.cur);
 	std::vector<int> route;
