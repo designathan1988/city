@@ -29,6 +29,7 @@ static func shots(cap: Node, probe: Dictionary, ground: Vector3) -> void:
 		for v in VIEWS[type]:
 			var off: Vector3 = v[1]
 			await cap._shot(v[0], at + left * off.x + Vector3.UP * off.y + ahead * off.z, at + Vector3.UP * v[2])
+			print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
 
 
 ## Index in the sample of the vehicle of `type` nearest to `to`, -1 when there is none.

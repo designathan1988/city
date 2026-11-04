@@ -102,6 +102,8 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			// near, the glass is see-through over the cabin; far, it stays in the body, opaque
 			MeshBuilder shell, glass;
 			if (level == CABIN_LEVEL) split_tag(mb, AgentTag::GLASS, shell, glass);
+			body_tris_[i][level] = int((level == CABIN_LEVEL ? shell : mb).idx.size() / 3);
+			glass_tris_[i][level] = int(glass.idx.size() / 3);
 			OwnedMesh &m = meshes_[i][level];
 			m.reset();
 			m.rid = rs->mesh_create();
@@ -209,6 +211,26 @@ void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &orde
 	order = float(stride * l.seats + first);
 }
 
+Dictionary AgentRenderer::cost() const {
+	static const char *const NAMES[VEHICLE_TYPES] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck" };
+	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body" };
+	Dictionary out;
+	int draws = 0, tris = 0;
+	for (int i = 0; i < VEHICLE_TYPES; i++)
+		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
+			Dictionary d;
+			d["body_tris"] = body_tris_[i][level];
+			d["glass_tris"] = glass_tris_[i][level];
+			d["instances"] = shown_[i][level];
+			out[String(NAMES[i]) + "_" + LEVEL_NAMES[level]] = d;
+			if (shown_[i][level] > 0) draws += glass_tris_[i][level] > 0 ? 2 : 1;
+			tris += shown_[i][level] * (body_tris_[i][level] + glass_tris_[i][level]);
+		}
+	out["draws"] = draws;
+	out["triangles"] = tris; // drawn last frame, in the main pass (shadow passes again for the casters)
+	return out;
+}
+
 void AgentRenderer::reset() {
 	for (auto &levels : draws_)
 		for (MultiMeshDraw &m : levels) m.free();
@@ -260,6 +282,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			buf.resize(int64_t(room) * MM_STRIDE);
 			d.set(scenario_, meshes_[i][level].rid, RID(), buf, box, true);
 			if (d.mm.is_valid()) rs->multimesh_set_visible_instances(d.mm, n);
+			shown_[i][level] = n;
 		}
 }
 

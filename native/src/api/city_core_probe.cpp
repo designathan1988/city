@@ -14,6 +14,8 @@ using namespace godot;
 
 namespace city {
 
+Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }
+
 Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;

@@ -129,6 +129,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 			await _frames(_sky_frames())
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
+		print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
 	var k := _nearest(probe.sample, ground)
 	var car: Vector3 = probe.sample[k]
 	var ahead: Vector3 = probe.sample_dir[k]

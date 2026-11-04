@@ -78,6 +78,7 @@ public:
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
+	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:

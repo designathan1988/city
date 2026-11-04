@@ -21,6 +21,9 @@ public:
 	void update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at);
 	int drawn_vehicles() const { return drawn_vehicles_; }
 	int drawn_people() const { return drawn_people_; }
+	// Per vehicle type and level: the triangles of its body and glass surfaces, the instances drawn last frame and the
+	// draws (surfaces of the shown MultiMeshes): counts, no clock (city_core_probe agent_cost).
+	godot::Dictionary cost() const;
 
 private:
 	static constexpr int CABIN_LEVEL = 0, BODY_LEVEL = 1, LEVELS = 2;
@@ -44,6 +47,7 @@ private:
 	godot::RID scenario_, material_, glass_;
 	OwnedMesh meshes_[VEHICLE_TYPES][LEVELS]; // the body surface, and the near level's glass surface
 	MultiMeshDraw draws_[VEHICLE_TYPES][LEVELS];
+	int body_tris_[VEHICLE_TYPES][LEVELS] = {}, glass_tris_[VEHICLE_TYPES][LEVELS] = {}, shown_[VEHICLE_TYPES][LEVELS] = {};
 	Load load_[VEHICLE_TYPES];
 	int paints_ = 0;
 	float wheel_r_[VEHICLE_TYPES] = {};
