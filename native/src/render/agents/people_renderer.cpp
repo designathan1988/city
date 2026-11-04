@@ -108,6 +108,34 @@ void PeopleRenderer::reset() {
 	blob_.free();
 }
 
+Array PeopleRenderer::clips() const {
+	Array out;
+	for (size_t c = 0; c < asset_.clips.size(); c++) {
+		const PersonClip &clip = asset_.clips[c];
+		const PersonFit &fit = asset_.variations.front().fits[c];
+		Dictionary d;
+		d["name"] = String(clip.name.c_str());
+		d["row"] = clip.row;
+		d["frames"] = clip.frames;
+		d["pelvis"] = fit.pelvis;
+		d["above"] = fit.above;
+		d["below"] = fit.below;
+		d["ahead"] = fit.ahead;
+		d["side"] = fit.side;
+		out.push_back(d);
+	}
+	return out;
+}
+
+bool PeopleRenderer::show_clip(const String &name) {
+	const int c = asset_.clip(name.utf8().get_data());
+	if (c < 0) return false;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->material_set_param(material_, "idle_row", asset_.clips[size_t(c)].row);
+	rs->material_set_param(material_, "idle_frames", asset_.clips[size_t(c)].frames);
+	return true;
+}
+
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
 	for (PackedFloat32Array &b : bufs_) b.resize(0);

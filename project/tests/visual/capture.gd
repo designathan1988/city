@@ -116,6 +116,8 @@ func _wait_render() -> void:
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	if only.has("pessoas"):
 		await CapturePeople.shots(self)
+	if only.has("clipes"):
+		await CapturePeople.clips(self)
 		return
 	var hour := DAY
 	for v in CaptureViews.VIEWS:

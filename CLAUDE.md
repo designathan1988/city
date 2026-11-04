@@ -357,7 +357,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
-- `tools/assets/cook_people.py` · `tools/assets/people_clean.py` · `tools/assets/export_builder_ui.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_road_profiles.py` — pessoas cozidas
+- `tools/assets/cook_people.py` · `tools/assets/people_clean.py` · `tools/assets/rider_poses.py` · `tools/assets/export_builder_ui.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_road_profiles.py` — pessoas cozidas
   (MakeHuman CC0 + clipes Rocketbox MIT), pele da cabeça e da cintura, ícones e textos do Construir, KTX2 do Roadcraft → PNG, road_profiles.json da fonte do Roadcraft
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
@@ -393,5 +393,5 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
-- Pedestres: sem passageiros de ônibus, celular, guarda-chuva, sentados; o clipe `pedal` está cozido e sem uso até a bicicleta da simulação chegar aqui; o rosto é da cor da pele, sem traços, e a barra da roupa é a do pacote cozido; a curva `people_busy` não tem pesquisa por trás. Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
+- Pedestres: sem passageiros de ônibus, celular, guarda-chuva, sentados; os clipes de quem vai em veículo (`chairSit`, `carDrive`, `carRide`, `carRearRide`, `cabDrive`, `cabRide`, `motoRide`, `motoStop`, `bikeStop`, `bikePedal`) estão cozidos em `people.bin` versão 3, sem uso até o transporte desenhá-los; corpo de criança não alcança manopla nem pedal de tamanho adulto, e os lados e o telefone do 4.0 não foram cozidos; o rosto é da cor da pele, sem traços, e a barra da roupa é a do pacote cozido; a curva `people_busy` não tem pesquisa por trás. Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

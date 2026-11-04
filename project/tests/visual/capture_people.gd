@@ -14,6 +14,7 @@ const SHOTS := {"couple": "30_casal", "family": "31_familia", "child": "32_crian
 	"coming_out": "34_saindo", "going_in": "35_entrando", "wait": "36_espera"}
 const FAR_FROM := Vector3(-58, 9, 150) # from the ground under FAR_AT
 const FAR_AT := Vector3(-58, 1, 0)
+const CLIPS := ["chairSit", "carDrive", "carRide", "cabDrive", "motoRide", "motoStop", "bikeStop", "bikePedal"]
 const WAIT_TICKS := 200
 const TRIES := 16
 
@@ -45,6 +46,25 @@ static func shots(cap: Node) -> void:
 	CityStore.query(&"set_city_hour", [HOUR])
 	var ground: Vector3 = cap._ground(FAR_AT.x, FAR_AT.z)
 	await cap._shot("37_multidao", ground + FAR_FROM - Vector3(FAR_AT.x, 0, FAR_AT.z), ground + FAR_AT - Vector3(FAR_AT.x, 0, FAR_AT.z))
+
+
+## The clips of people in vehicles, on who waits at a kerb: --only=clipes. They are drawn with no vehicle round them, as the
+## skin of people.gdshader reads them from the palette.
+static func clips(cap: Node) -> void:
+	Settings.apply(cap.world, cap.get_viewport())
+	cap.world.set_hour(HOUR)
+	for t in TRIES:
+		CityStore.query(&"set_city_hour", [HOUR])
+		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, NEAR_M])
+		if census.spots.has("wait"):
+			var spot: Array = census.spots.wait
+			for clip: String in CLIPS:
+				print("clipe ", clip, ": ", CityStore.query(&"show_people_clip", [clip]))
+				await cap._shot("38_" + clip, _from(spot[0], spot[1], spot[2]), spot[0] + Vector3.UP * LOOK_Y)
+			CityStore.query(&"show_people_clip", ["idle"])
+			return
+		CityStore.step_ticks(WAIT_TICKS)
+	print("sem foto: ninguém à espera")
 
 
 static func _from(at: Vector3, way: Vector3, road: Vector3) -> Vector3:

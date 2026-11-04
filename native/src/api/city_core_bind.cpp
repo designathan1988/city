@@ -59,6 +59,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityCore::people_census);
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityCore::set_city_hour);
+	ClassDB::bind_method(D_METHOD("people_clips"), &CityCore::people_clips);
+	ClassDB::bind_method(D_METHOD("show_people_clip", "name"), &CityCore::show_people_clip);
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);

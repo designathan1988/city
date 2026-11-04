@@ -45,6 +45,9 @@ public:
 	void reset();
 	// Returns how many people were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
+	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
+	godot::Array clips() const;
+	bool show_clip(const godot::String &name);
 
 private:
 	PeopleAsset asset_;

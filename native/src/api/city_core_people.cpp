@@ -86,6 +86,10 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 
 } // namespace
 
+Array CityCore::people_clips() const { return render_.people_clips(); }
+
+bool CityCore::show_people_clip(const String &name) { return render_.show_people_clip(name); }
+
 Dictionary CityCore::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);

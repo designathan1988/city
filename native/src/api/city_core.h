@@ -143,6 +143,8 @@ public:
 	// Who is on foot within `radius` of `at` (0: everywhere): ages, parties, modes, doors, and the nearest of each to look at.
 	godot::Dictionary people_census(const godot::Vector3 &at, float radius);
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
+	godot::Array people_clips() const; // tests: the clips of people.bin
+	bool show_people_clip(const godot::String &name); // captures: everybody at rest in that clip
 	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
