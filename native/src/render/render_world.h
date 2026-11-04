@@ -56,6 +56,7 @@ public:
 	godot::Dictionary agent_cost() const { return agents_.cost(); }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
+	BuildingRenderer::InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	int pending() const {
@@ -75,7 +76,7 @@ private:
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
-	std::vector<int64_t> road_keys_, building_keys_;
+	std::vector<int64_t> road_keys_, building_keys_, view_keys_;
 	std::vector<int> terrain_rects_;
 	Cost cost_;
 	void drain_log(CityState &s);

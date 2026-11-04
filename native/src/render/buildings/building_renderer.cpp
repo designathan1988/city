@@ -18,7 +18,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
+constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f, NEVER_M = 1e9f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
 constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
@@ -68,6 +68,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;
 	if (!look_.load(t, errors)) return false;
+	if (!look_.interior.load(ctx.table("furniture", errors), errors)) return false;
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();
@@ -132,10 +133,11 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 // Chunk instances: near and mid hand over at the near end; the mid level has no end of its own (the chunk is shown or
 // left to the far mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
+	// A chunk with a building cut open draws its near level at any distance and hides its mid level (the far mesh stands aside).
 	for (int i = 0; i < SUB_COUNT; i++) {
-		range(ch.near[size_t(i)], 0, near_end_);
+		range(ch.near[size_t(i)], 0, ch.cut ? 0 : near_end_);
 		range(ch.parts[size_t(i)], 0, parts_end_);
-		range(ch.mid[size_t(i)], near_end_, 0);
+		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : near_end_, 0);
 	}
 	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
 }
@@ -286,10 +288,10 @@ void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, f
 	each_chunk_of(chunks_, key, [&](int64_t ck, Chunk &ch) {
 		const float dc = horizontal(cam, ch.centre); // streaming of the levels: the ground distance
 		const float d = std::sqrt(dc * dc + eye * eye); // the switch: with the eye height, as visibility ranges measure
-		ch.detail = ch.detail ? d < leave : d < mid_end_;
+		ch.detail = ch.cut || (ch.detail ? d < leave : d < mid_end_);
 		uint8_t levels = 0;
-		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && dc < near_reach()) levels = uint8_t(levels | BAND_BIT_NEAR);
-		else if (ch.built[LEVEL_NEAR] && dc > near_reach() * DROP_K) drop(ch, LEVEL_NEAR);
+		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && (dc < near_reach() || ch.cut)) levels = uint8_t(levels | BAND_BIT_NEAR);
+		else if (ch.built[LEVEL_NEAR] && !ch.cut && dc > near_reach() * DROP_K) drop(ch, LEVEL_NEAR);
 		// a chunk drawn in detail keeps its mid level current even in the hysteresis band past mid_reach
 		if ((!ch.built[LEVEL_MID] || ch.stale[LEVEL_MID]) && (dc < mid_reach || ch.detail)) {
 			levels = uint8_t(levels | BAND_BIT_MID);

@@ -23,6 +23,7 @@ const RENDER_TABLES := {
 	"streets": "res://data/render/streets.json",
 	"buildings": "res://data/render/buildings.json",
 	"interiors": "res://data/render/interiors.json",
+	"furniture": "res://data/render/furniture.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
@@ -38,6 +39,7 @@ const GAME := {
 	"settings": "res://data/game/settings.json",
 	"daylight": "res://data/game/daylight.json",
 	"saves": "res://data/game/saves.json",
+	"interior": "res://data/game/interior.json",
 }
 const STRINGS := [
 	"res://data/i18n/strings.csv",

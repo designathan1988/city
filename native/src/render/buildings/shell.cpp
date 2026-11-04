@@ -157,7 +157,7 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
 	Vector3 n = f.e2;
 	Color code(float(look.slot & SEED_BYTE) / BYTE, float((look.slot >> BYTE_BITS) & SEED_BYTE) / BYTE, float(look.bay) / BYTE,
-			float(look.dark ? SK_PANE_DARK : SK_PANE) / BYTE);
+			float(look.plain ? SK_PANE_CLEAR : look.dark ? SK_PANE_DARK : SK_PANE) / BYTE);
 	Vector2 size(a1 - a0, b1 - b0);
 	int i0 = vert(f.at(a0, b0, c), n, code, Vector2(0, 0), size), i1 = vert(f.at(a1, b0, c), n, code, Vector2(1, 0), size);
 	int i2 = vert(f.at(a1, b1, c), n, code, Vector2(1, 1), size), i3 = vert(f.at(a0, b1, c), n, code, Vector2(0, 1), size);

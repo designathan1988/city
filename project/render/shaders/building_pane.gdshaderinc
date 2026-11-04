@@ -202,6 +202,17 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, ou
 	metal = mix(0.0, 0.05, frame);
 }
 
+// The glass of a building cut open: nothing behind it to trace (the inside is real geometry), only what the glass reflects.
+void pane_clear(vec3 n, vec3 V, out vec3 albedo, out vec3 emit, out vec3 nn, out float rough, out float metal) {
+	float cosv = clamp(dot(-V, n), 0.0, 1.0);
+	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
+	albedo = vec3(0.0075, 0.0096, 0.0115);
+	emit = glass_reflection(V, n, F);
+	nn = n;
+	rough = 0.12;
+	metal = 0.0;
+}
+
 // The mid level's window grid: `code` = opening width, sill, head (shares of the bay and the storey) and flags (shell.h). The
 // wall, the frame, the glass and the roller shutter by the share of the pixel each covers; what a bay picks for itself fades to
 // the share of bays that pick it as a bay drops under a few pixels, so the facades neither sparkle nor flatten.

@@ -111,6 +111,8 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 	look.bay = uint8_t((c.hash >> BAY_BYTE_SHIFT) & BAY_BYTE);
 	look.trim = c.trim;
 	look.frame = frame;
+	look.plain = !pl.rooms;
+	if (look.plain) return look;
 	const float am = (a0 + a1) / 2, hm = (h0 + h1) / 2;
 	const float px = c.plan_at.x + c.plan_along.x * am, py = c.plan_at.y + c.plan_along.y * am;
 	const FloorInterior &floor = pl.rooms->inside.at(c.level);

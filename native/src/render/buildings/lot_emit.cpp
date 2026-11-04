@@ -192,7 +192,11 @@ void LotEmit::element(const LotElement &e) {
 
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl) {
 	LotEmit le{ shell, parts, pl, pl.lot.o.y };
-	for (const LotElement &e : pl.b->elements) le.element(e);
+	const Body &b = *pl.b;
+	for (const LotElement &e : b.elements) {
+		if (b.cut_level >= 0 && e.z >= b.level_z(b.cut_level + 1) - EPS) continue; // cut open: what hangs above the floor seen is gone
+		le.element(e);
+	}
 }
 
 } // namespace city::b40

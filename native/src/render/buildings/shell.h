@@ -17,7 +17,7 @@
 namespace city::b40 {
 
 // Surface kinds (COLOR.a byte), read by project/render/shaders/building.gdshader.
-enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_COUNT };
+enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_PANE_CLEAR, SK_COUNT };
 
 // A byte's 1.0 in CUSTOM0..3 (building_pane.gdshaderinc ROOM_SPAN_M, FRAME_SPAN_M): 5 cm and 1 mm steps, more than a
 // pane shows.
@@ -39,6 +39,7 @@ struct PaneLook {
 	uint16_t slot = 0;
 	uint8_t bay = 0;
 	bool dark = false;
+	bool plain = false; // clear glass, no room behind it (a building cut open: its inside is real)
 	PaneRoom room;
 	Lin trim;
 	float frame = 0;

@@ -3,6 +3,8 @@
 // The generator's own tables (styles, palettes, openings) are the simulation's (sim/buildings/b40/data.h).
 #pragma once
 
+#include "render/buildings/furniture_look.h"
+
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
@@ -24,6 +26,7 @@ struct BuildingLook {
 	float fence_bar_m = 0; // lot_emit.cpp
 	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
+	InteriorLook interior; // the furniture models and the paints of a building cut open (furniture.json)
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds

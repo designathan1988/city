@@ -23,6 +23,7 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
+#include "render/buildings/interior_emit.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
 
@@ -41,6 +42,9 @@ public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
+	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
+	// far mesh draws them whole either way, so its superchunk stays.
+	void restyle_chunk(int64_t key);
 	void submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority);
 	// chunk_max / super_max: the slowest single chunk / superchunk commit, ms (render_cost probe)
 	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max, double &super_max);
@@ -48,6 +52,15 @@ public:
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
+	// What the inside of building `id` costs when it is cut open at `level` for a camera looking along step `dir`: the near
+	// level's triangles and instanced boxes of the facades and roofs, and of the interior alone (render_cost probe; the map
+	// lock held shared by the caller).
+	struct InteriorCost {
+		int shell_triangles = 0, shell_boxes = 0; // the cut building without its inside
+		int inside_triangles = 0, inside_boxes = 0; // the floor, cores, walls and furniture
+		int64_t inside_bytes = 0;
+	};
+	InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
 	int pending() const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
@@ -68,6 +81,7 @@ private:
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
+		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
 	};
 	struct Super {
@@ -103,6 +117,7 @@ private:
 		std::array<int, BAND_COUNT> band_count{};
 		godot::RID unit_box; // the parts' box mesh
 		bool has_near = false, has_mid = false, baked = false;
+		bool cut = false; // a building of the near level is cut open
 		int64_t bytes() const;
 		void bake();
 	};
@@ -120,6 +135,8 @@ private:
 	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
 	struct Inputs {
 		std::vector<Building> records;
+		std::vector<int> ids; // the id of each record
+		InteriorView view; // the Interior layer as the job started
 		HeightPatch ground;
 	};
 	struct Want {

@@ -53,7 +53,9 @@ void fragment() {
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = 0.86, metal = 0.0;
-	if (kind == 1 || kind == 2) {
+	if (kind == 6) {
+		pane_clear(n, V, albedo, emit, nn, rough, metal);
+	} else if (kind == 1 || kind == 2) {
 		uint code = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u);
 		pane(UV, max(UV2, vec2(0.3)), code, uint(COLOR.b * 255.0 + 0.5), kind == 2, n, V, albedo, emit, nn, rough, metal);
 	} else if (kind == 4) {

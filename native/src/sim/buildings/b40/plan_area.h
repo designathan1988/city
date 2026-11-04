@@ -13,6 +13,7 @@ using Ring = std::vector<Point2>;
 // The plan of a volume in the lot frame, counter-clockwise.
 Ring ring_of(const Volume &v);
 float ring_area(const Ring &ring); // signed: positive counter-clockwise
+std::vector<Ring> plan_triangles(const Ring &ring); // a simple ring as triangles (ears)
 float overlap_area(const Ring &a, const Ring &b);
 // The share (0..1) of `ring` lying over `supports`; where supports overlap each other their area counts once.
 float support_share(const Ring &ring, const std::vector<Ring> &supports);
