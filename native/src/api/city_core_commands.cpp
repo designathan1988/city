@@ -171,6 +171,8 @@ Array CityCore::road_profiles() const {
 		d["id"] = String(p.id.c_str());
 		d["name_key"] = String(p.name_key.c_str());
 		d["category"] = String(p.category.c_str());
+		d["rank"] = p.rank;
+		d["centre"] = String(p.centre.c_str());
 		d["width"] = p.left + p.right;
 		d["cost_per_m"] = p.cost_per_m;
 		d["lanes"] = p.lanes_fwd() + p.lanes_back();

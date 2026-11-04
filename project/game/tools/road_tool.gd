@@ -25,7 +25,7 @@ var _last_plan: Dictionary = {}
 
 
 func enter() -> void:
-	profile = params.get("profile", 0)
+	profile = params.get("profile", CityStore.first_road())
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	ctl.hint.emit(tr("ui.do.roadPoint"), true)
 

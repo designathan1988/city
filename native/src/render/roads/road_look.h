@@ -27,12 +27,12 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 }
 
 struct StreetLook {
-	godot::Color surface[4], paving[4], median[4], parking, bike, shoulder, curb, barrier, gutter, plate_concrete;
+	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, gutter, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
 	float gutter_w = 0, face_eps = 0; // coplanar faces closer than this are one
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
-	float arc_step = 0, dead_end_depth = 0;
+	float arc_step = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
 	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
@@ -42,6 +42,10 @@ struct StreetLook {
 	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	// The carriageway's colour: asphalt keeps its class's tone, the other pavings their own.
+	const godot::Color &carriage(const Profile &p) const {
+		return p.surface == Surface::ASPHALT ? asphalt[int(p.road_class)] : surface[int(p.surface)];
+	}
 };
 
 } // namespace city

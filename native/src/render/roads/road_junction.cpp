@@ -191,7 +191,7 @@ void junction(const RoadEmit &e, int n, const std::vector<End> &ends) {
 		std::vector<Vector3> out = outside(in, a, b, float(a.arm.left - a.arm.asph_left), float(b.arm.right - b.arm.asph_right));
 		kerbed_line(e, in, bk, out, ka > 0 || kb > 0, walk_color(e.L, a, 1));
 	}
-	fan(e, node, ring, e.L.surface[int(best->surface)]);
+	fan(e, node, ring, e.L.carriage(*best));
 }
 
 struct EndFrame {
@@ -207,20 +207,24 @@ EndFrame end_frame(const RoadEmit &e, int n, const End &en) {
 	return { node, d, left, float(en.arm.left), float(en.arm.right), std::max(kerb_w(en, 1), kerb_w(en, -1)) };
 }
 
-void dead_end(const RoadEmit &e, int n, const End &en) {
+// A plain road end: the carriageway runs to the cut and the footways stop level with it, closed by one face down to the
+// ground on each piece of the section (Roadcraft 4.0 has no kerb across the end).
+void road_cut(const RoadEmit &e, int n, const End &en) {
 	const StreetLook &L = e.L;
-	EndFrame f = end_frame(e, n, en);
-	const Vector3 &node = f.node, &d = f.d, &left = f.left;
-	float l = f.l, r = f.r, kw = f.kw;
-	float al = float(en.arm.asph_left), ar = float(en.arm.asph_right);
-	// sections across the end, from the right side to the left, the kerb face toward the street (+d)
-	auto pt = [&](float u, float back) { return node + left * u - d * back; };
-	std::vector<Vector3> in = { pt(-r, 0), pt(-ar, 0), pt(al, 0), pt(l, 0) }, bk, out;
-	for (const Vector3 &p : in) {
-		bk.push_back(p - d * kw);
-		out.push_back(p - d * L.dead_end_depth);
-	}
-	kerbed_line(e, in, bk, out, kw > 0, walk_color(L, en, 1));
+	const EndFrame f = end_frame(e, n, en);
+	const float ar = float(en.arm.asph_right), al = float(en.arm.asph_left), walk = f.kw > 0 ? L.h_sidewalk : 0.f;
+	const Color col = road_color(L.curb, RoadMat::KERB);
+	auto face = [&](float u0, float u1, float h) {
+		if (u1 <= u0) return;
+		const Vector3 a = f.node + f.left * u0, b = f.node + f.left * u1, up(0, h, 0), down(0, -L.skirt, 0);
+		const Vector3 p[4] = { a + up, b + up, b + down, a + down };
+		const Vector2 uv[4] = { Vector2(u0, h), Vector2(u1, h), Vector2(u1, -L.skirt), Vector2(u0, -L.skirt) };
+		const Vector2 pool(POOL_NONE, 0), pools[4] = { pool, pool, pool, pool };
+		emit_quad(e.mb, p, uv, pools, col, -f.d);
+	};
+	face(-f.r, -ar, walk);
+	face(-ar, al, 0);
+	face(al, f.l, walk);
 }
 
 void bulb(const RoadEmit &e, int n, const End &en) {
@@ -240,7 +244,7 @@ void bulb(const RoadEmit &e, int n, const End &en) {
 		return pts;
 	};
 	std::vector<Vector3> in = ring(BULB_R);
-	fan(e, node, in, L.surface[int(en.prof->surface)]);
+	fan(e, node, in, L.carriage(*en.prof));
 	kerbed_line(e, in, ring(BULB_R + kw), ring(BULB_R + BULB_WALK), kw > 0, walk_color(L, en, 1));
 }
 } // namespace
@@ -252,7 +256,7 @@ void emit_node(const RoadEmit &e, int n) {
 	if (ends.size() == 1) {
 		if (ends[0].prof->rail) return;
 		if (nd.bulb) bulb(e, n, ends[0]);
-		else dead_end(e, n, ends[0]);
+		else road_cut(e, n, ends[0]);
 		return;
 	}
 	bool any = false;

@@ -21,6 +21,7 @@ func _ready() -> void:
 		if not p.ring:
 			p["strips"] = _strips.get(p.id, [])
 			_profiles.append(p)
+	_profiles.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.rank < b.rank)
 	var strip := HudWidgets.panel(self, &"TabStrip")
 	strip.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_tabs_row = HudWidgets.hbox(strip)
@@ -56,7 +57,8 @@ func show_category(category: String) -> void:
 
 ## The profile the road tool last drew with (ToolController remembers it).
 func picked() -> int:
-	return tools.last_param(ToolController.Tool.ROAD, "profile", 0) if tools else 0
+	var first: int = CityStore.first_road()
+	return tools.last_param(ToolController.Tool.ROAD, "profile", first) if tools else first
 
 
 func pick(index: int) -> void:

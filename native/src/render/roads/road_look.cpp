@@ -33,8 +33,10 @@ void load_colors(StreetLook &L, const Dictionary &t, PackedStringArray &errors) 
 		L.paving[i] = hexc(pc[i]);
 		L.median[i] = hexc(mc[i]);
 	}
+	static const char *CLASSES[] = { "local", "urban", "avenue", "boulevard", "highway", "ramp", "rail" };
+	Dictionary ac = sub(t, "asphalt_by_class", errors);
+	for (int i = 0; i < int(RoadClass::COUNT); i++) L.asphalt[i] = hexc(ac[CLASSES[i]]);
 	Dictionary c = sub(t, "strip_colors", errors);
-	L.parking = hexc(c["parking"]);
 	L.bike = hexc(c["bike"]);
 	L.shoulder = hexc(c["shoulder"]);
 	L.curb = hexc(c["curb"]);
@@ -64,7 +66,6 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.arc_step = float(j["arc_step_rad"]);
 	L.bevel_steps = int(j["bevel_steps"]);
 	L.bulb_steps = int(j["bulb_steps"]);
-	L.dead_end_depth = float(j["dead_end_depth_m"]);
 }
 
 void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {

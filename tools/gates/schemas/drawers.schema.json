@@ -2,10 +2,14 @@
  "type": "object",
  "required": [
   "categories",
+  "first_road",
   "catalog_tabs",
   "road_options"
  ],
  "properties": {
+  "first_road": {
+   "type": "string"
+  },
   "_doc": {
    "type": "string"
   },

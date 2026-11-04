@@ -97,10 +97,8 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
 		pc.u0 = p.edges[i].u0;
 		pc.u1 = p.edges[i].u1;
 		pc.mat = surface_mat(p.surface);
-		pc.col = L.surface[int(p.surface)];
-		bool asph = p.surface == Surface::ASPHALT;
+		pc.col = L.carriage(p);
 		switch (s.kind) {
-			case StripKind::PARKING: if (asph) pc.col = L.parking; break;
 			case StripKind::BIKE: pc.col = L.bike; pc.mat = RoadMat::ASPHALT; break;
 			case StripKind::SHOULDER: if (p.surface != Surface::BALLAST) pc.col = L.shoulder; break;
 			case StripKind::CURB:

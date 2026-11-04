@@ -72,6 +72,15 @@ func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
 
 
 ## The slot the city on screen is saved to ("" until its first save).
+## The road the tool opens with (data/ui/drawers.json first_road).
+func first_road() -> int:
+	var id: String = DataTables.ui("drawers").first_road
+	for p in query(&"road_profiles"):
+		if p.id == id:
+			return p.index
+	return 0
+
+
 func city_slot() -> String:
 	return _city_slot
 

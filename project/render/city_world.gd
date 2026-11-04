@@ -62,6 +62,7 @@ func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
 			continue
 		var col := _mean_color(_param(params[name]))
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
+	m.set_shader_parameter("asphalt_reference", Color.html(DataTables.render().streets.surface_colors[0]))
 
 
 ## Each lens lit (data/render/streets.json props.signal): the scene radiance the Environment's tone mapping shows as its

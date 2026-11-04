@@ -110,7 +110,8 @@ bool spawn_one(CityState &s, int &routes) {
 	int lane = int(t.rng.next() % uint32_t(d.lanes));
 	float at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
 	const int key = from * MAX_LANES + lane;
-	if (at < vc.length + p.mouth_clear_m || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
+	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
+	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	routes++;
 	std::vector<int> route;
@@ -126,7 +127,7 @@ bool spawn_one(CityState &s, int &routes) {
 	v.s = at;
 	v.vf = vc.speed_share * (VF_BASE + VF_SPAN * t.rng.f());
 	v.drift = t.rng.range(0.f, TAU_F);
-	v.v = d.speed * v.vf * START_SPEED_SHARE;
+	v.v = std::min(d.speed * v.vf * START_SPEED_SHARE, std::sqrt(2 * vc.b * (stop - at)));
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
 	t.vehicle_count++;

@@ -18,7 +18,7 @@ namespace {
 GenProfiles gen_profiles(const Catalog &c) {
 	GenProfiles g;
 	g.local = c.profile_id("streetWithParking");
-	g.avenue = c.profile_id("avenue");
+	g.avenue = c.profile_id("avenue4Lanes");
 	g.avenue_bike = c.profile_id("avenueWithCycleTrack");
 	g.expressway = c.profile_id("expressway");
 	g.collector = c.profile_id("urbanStreet");

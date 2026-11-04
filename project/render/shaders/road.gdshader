@@ -19,6 +19,7 @@ uniform vec3 mean_asphalt : source_color = vec3(1.0);
 uniform vec3 mean_footway : source_color = vec3(1.0);
 uniform vec3 mean_kerb : source_color = vec3(1.0);
 uniform vec3 mean_verge : source_color = vec3(1.0);
+uniform vec3 asphalt_reference : source_color = vec3(1.0); // the colour the asphalt map is authored against
 uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
 uniform float kerb_m = 3.2;
@@ -100,7 +101,7 @@ void fragment() {
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m).rgb);
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
-		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / asphalt_avg * blotch;
+		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / max(source_linear(asphalt_reference), vec3(MEAN_FLOOR)) * blotch;
 		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {

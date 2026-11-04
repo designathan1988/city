@@ -60,6 +60,12 @@
      "name_key": {
       "type": "string"
      },
+     "road_class": {
+      "type": "string"
+     },
+     "rank": {
+      "type": "integer"
+     },
      "speed": {
       "type": "integer"
      },
@@ -120,6 +126,8 @@
     "required": [
      "id",
      "name_key",
+     "road_class",
+     "rank",
      "speed",
      "one_way",
      "priority",

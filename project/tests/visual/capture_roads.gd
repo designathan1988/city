@@ -62,7 +62,7 @@ func _run() -> void:
 	await _photo("cross_avenue_top", at(-60, 100), TOP, CLOSE_M)
 	await _photo("cross_avenue_low", at(-60, 100), LOW, NEAR_M)
 	await _photo("t_top", at(90, 100), TOP, CLOSE_M)
-	await _photo("road_end", at(0, -20), [200.0, 55.0], CLOSE_M)
+	await _photo("road_end", at(0, -40), [200.0, 55.0], NEAR_M * 1.5)
 	await _photo("curve_top", at(280, -80), [0.0, 70.0], WIDE_M * 0.5)
 	await _photo("layout_top", at(40, 0), [0.0, 70.0], WIDE_M)
 	await _tool()
@@ -85,8 +85,8 @@ func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> 
 func _lay() -> void:
 	_road(at(-160, -120), at(160, -120), "urbanStreet")
 	_road(at(0, -220), at(0, -20), "urbanStreet")
-	_road(at(-200, 100), at(200, 100), "avenue4Lanes")
-	_road(at(-60, 30), at(-60, 170), "urbanStreet")
+	_road(at(-200, 100), at(200, 100), "avenue")
+	_road(at(-60, 30), at(-60, 170), "avenue")
 	_road(at(90, 30), at(90, 100), "urbanStreet")
 	_road(at(230, -190), at(350, 40), "urbanStreet", at(360, -180))
 

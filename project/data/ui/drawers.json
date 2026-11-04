@@ -418,6 +418,7 @@
     {"icon": "cells", "label_key": "v2.snap.grid", "key": "grid"}
   ]}
  },
+ "first_road": "urbanStreet",
  "catalog_tabs": [
   [
    "ruas",
