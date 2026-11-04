@@ -76,7 +76,7 @@ func _lay_buildings() -> void:
 func _stand(v: Dictionary) -> void:
 	rig.set_process(false)
 	rig.set_process_unhandled_input(false)
-	var pos := Vector3(v.pos[0], v.pos[1], v.pos[2])
+	var pos := Vector3(v.pos[0], v.pos[1] + ui.ground(v.x, -v.y).y, v.pos[2]) # the 4.0's ground stands at 0
 	var look := Vector3(v.fwd[0], v.fwd[1], v.fwd[2])
 	var up := Vector3(v.up[0], v.up[1], v.up[2])
 	rig.camera.fov = v.fov
