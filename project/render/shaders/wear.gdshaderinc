@@ -4,6 +4,7 @@
 uniform sampler2DArray wear_field : filter_nearest;
 uniform vec2 wear_origin = vec2(0.0); // the window's low corner, cells
 uniform float wear_cell_m = 5.0;
+uniform bool wear_shown = true; // tests/perf/camera_pan: a frame without it
 const int WEAR_RES = 2048, WEAR_TILE = 256, WEAR_TILES = 8; // wear_field.h
 
 vec2 wear_texel(ivec2 c) {
@@ -14,6 +15,7 @@ vec2 wear_texel(ivec2 c) {
 
 // (wheels, feet) under a world point; none off the window.
 vec2 wear_at(vec2 xz) {
+	if (!wear_shown) return vec2(0.0);
 	vec2 g = xz / wear_cell_m - 0.5, local = g - wear_origin;
 	if (local.x < 0.0 || local.y < 0.0 || local.x >= float(WEAR_RES - 1) || local.y >= float(WEAR_RES - 1)) return vec2(0.0);
 	ivec2 i = ivec2(floor(g));

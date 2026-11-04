@@ -60,7 +60,27 @@ void RoadChunks::commit_one(BuiltMesh &b) {
 	const bool any = b.mesh.valid();
 	c.surface.adopt(scenario_, material_, false, b.mesh.release());
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
-	c.surface.visible(any);
+	c.surface.visible(any && drawn_);
+	c.made = b.count;
+}
+
+RoadChunks::Count RoadChunks::count() const {
+	Count n;
+	for (const auto &kv : chunks_) {
+		const MeshCount &m = kv.second.made;
+		if (m.triangles == 0) continue;
+		n.chunks++;
+		n.all.triangles += m.triangles;
+		n.all.vertices += m.vertices;
+		n.all.bytes += m.bytes;
+		n.largest = std::max(n.largest, m.bytes);
+	}
+	return n;
+}
+
+void RoadChunks::draw(bool on) {
+	drawn_ = on;
+	for (auto &kv : chunks_) kv.second.surface.visible(on && kv.second.made.triangles > 0);
 }
 
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {

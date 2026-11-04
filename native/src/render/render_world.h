@@ -72,6 +72,10 @@ public:
 	FogField &fog() { return fog_; }
 	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
+	RoadChunks::Count road_count() const { return roads_.count(); }
+	RoadChunks::Count verge_count() const { return verges_.count(); }
+	void draw_verges(bool on) { verges_.draw(on); }
+	int64_t wear_bytes() const { return wear_.bytes(); }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + verges_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();

@@ -56,6 +56,26 @@ Dictionary CityCore::render_cost() const {
 }
 
 namespace {
+Dictionary count_of(const RoadChunks::Count &n) {
+	Dictionary d;
+	d["chunks"] = n.chunks; // one instance and one draw call each
+	d["triangles"] = n.all.triangles;
+	d["vertices"] = n.all.vertices;
+	d["bytes"] = n.all.bytes;
+	d["largest_bytes"] = n.largest;
+	return d;
+}
+} // namespace
+
+Dictionary CityCore::road_mesh_counts() const {
+	Dictionary d;
+	d["roads"] = count_of(render_.road_count());
+	d["verges"] = count_of(render_.verge_count());
+	d["wear_bytes"] = render_.wear_bytes();
+	return d;
+}
+
+namespace {
 constexpr float EARLY_GAP = 0.5f, LATE_GAP = 1.5f; // pose_stats: a publication this share of a tick after the last
 } // namespace
 

@@ -24,6 +24,7 @@ public:
 	// The agents of a fresh publication wear what they stand on, for `elapsed` simulated seconds (up to most_step_s).
 	void wear(const PoseFrame &f, float elapsed);
 	void follow(float x, float z); // keeps the window round where the view looks
+	int64_t bytes() const { return int64_t(RES) * RES * CHANNELS; } // of the texture, and as much again here
 	void upload(float dt); // sends the tiles that changed and are due
 	int64_t worn_cells() const; // cells any agent has left wear on (render_cost probe)
 	int64_t publications() const { return publications_; }

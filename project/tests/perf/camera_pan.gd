@@ -6,7 +6,8 @@
 ## the triangles and draw calls of the visible and shadow passes, and the memory (static, video, buffers). The slowest
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
-## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), to see what a feature costs; --moves=a,b runs
+## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
+## read), to see what a feature costs; --moves=a,b runs
 ## only those movements (the rig still goes where each one starts).
 ## Run: godot --path project --resolution 1600x900 res://tests/perf/camera_pan.tscn -- --no-flow [--map=N]
 ## [--shot-dir=DIR] (a picture halfway through each movement: proof of where the camera was)
@@ -54,6 +55,8 @@ func _knobs(world: CityWorld) -> void:
 			world.sun.shadow_enabled = false
 		elif arg == "--msaa=0":
 			get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		elif arg == "--wear=0":
+			world.materials().road.set_shader_parameter("wear_shown", false)
 
 
 func _ready() -> void:
@@ -92,6 +95,9 @@ func _ready() -> void:
 		await get_tree().process_frame
 		waited += 1
 	print("cidade %s .. %s, desenhada em %d quadros" % [lo, hi, waited])
+	print("malhas: ", CityStore.query(&"road_mesh_counts"))
+	if "--verges=0" in OS.get_cmdline_user_args():
+		CityStore.query(&"draw_verges", [false])
 	await _run("parada", STILL_S, func(_dt: float, _t: float) -> void: pass)
 	var a := Vector3(lerpf(lo.x, hi.x, CROSS_INSET), 0.0, centre.z)
 	var b := Vector3(lerpf(lo.x, hi.x, 1.0 - CROSS_INSET), 0.0, centre.z)
