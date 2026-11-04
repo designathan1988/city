@@ -6,16 +6,19 @@
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 
+#include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/tone_inverse.gdshaderinc"
+
 global uniform float night;
 uniform float now = 0.0; // the effects clock, seconds (the same clock the puffs were born on)
 uniform vec2 wind_dir = vec2(0.6, 0.8);
-uniform vec3 smoke_color : source_color = vec3(0.55, 0.56, 0.58);
-uniform vec3 dust_color : source_color = vec3(0.6, 0.53, 0.43);
-uniform vec3 dark_color : source_color = vec3(0.16, 0.15, 0.15); // the reference game's dark smoke (exhaust.ts); the pale core of a blast was missing flame sources, not a lighter smoke
-uniform vec3 concrete_color : source_color = vec3(0.74, 0.71, 0.66);
-uniform vec3 blood_color : source_color = vec3(0.2, 0.008, 0.015);
-uniform vec3 grit_color : source_color = vec3(0.3, 0.24, 0.18);
-uniform vec3 water_color : source_color = vec3(0.82, 0.9, 0.97);
+uniform vec3 smoke_color = vec3(0.55, 0.56, 0.58);
+uniform vec3 dust_color = vec3(0.6, 0.53, 0.43);
+uniform vec3 dark_color = vec3(0.16, 0.15, 0.15); // the reference game's dark smoke (exhaust.ts); the pale core of a blast was missing flame sources, not a lighter smoke
+uniform vec3 concrete_color = vec3(0.74, 0.71, 0.66);
+uniform vec3 blood_color = vec3(0.2, 0.008, 0.015);
+uniform vec3 grit_color = vec3(0.3, 0.24, 0.18);
+uniform vec3 water_color = vec3(0.82, 0.9, 0.97);
 uniform vec3 spark_color = vec3(4.0, 2.6, 1.0);
 uniform vec3 flame_hot = vec3(3.4, 2.6, 1.4);
 uniform vec3 flame_warm = vec3(2.4, 0.9, 0.18);
@@ -103,6 +106,9 @@ void fragment() {
 	}
 	bool lit_up = k > 4.5 && k < 6.5;
 	c *= (0.85 + 0.3 * (0.5 - d.y)) * (lit_up ? 1.0 : mix(1.0, night_dim, clamp(night, 0.0, 1.0)));
-	ALBEDO = c;
+	// Smoke, dust, blood, grit, water and paper are the colour the screen should show (the reference game writes them straight to its
+	// frame buffer), so they go through the inverse of the ACES; flame and spark are light, brighter than white: the ACES takes them as
+	// they are (their saturated oranges need radiance the ACES cannot give back without a hue shift: measured, ports/demolition/relatorio.md).
+	ALBEDO = lit_up ? c : linear_out(display_to_radiance(min(c, vec3(1.0))));
 	ALPHA = clamp(v_alpha * soft, 0.0, 1.0);
 }

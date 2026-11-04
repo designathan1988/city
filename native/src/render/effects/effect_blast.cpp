@@ -71,8 +71,9 @@ void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
 	blast_at_ = now_;
 	Mark ring;
 	ring.kind = MARK_RING;
-	ring.x = e.x; ring.z = e.z; ring.y = s.terrain.height_at(e.x, e.z) + params_.ring_height;
+	ring.x = e.x; ring.z = e.z;
 	ring.size = e.a * 2.f; // across: the damage reach
+	ring.y = Marks::top_ground(e.x, e.z, ring.size * 0.5f, [&](float x, float z) { return s.terrain.height_at(x, z); }) + params_.ring_height;
 	ring.born = now_;
 	ring.life = params_.ring_life;
 	marks_.ring(ring);

@@ -16,6 +16,7 @@ uniform vec3 ring_color = vec3(1.0, 0.945, 0.816);
 uniform float night_dim = 0.4;
 uniform float now = 0.0; // the effects clock, seconds
 uniform float pool_spread_s = 6.0; // seconds a blood pool takes to reach its size
+uniform float eye_pull_m = 0.5; // every mark is drawn this far nearer the eye along its ray (no change on screen): the ground's small bumps do not bury it
 
 varying flat float v_kind;
 varying flat float v_seed;
@@ -33,6 +34,8 @@ void vertex() {
 		VERTEX.xz *= 1.0 - (1.0 - k) * (1.0 - k);
 		v_fade = 1.0 - k;
 	}
+	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	VERTEX += (inverse(MODEL_MATRIX) * vec4(normalize(CAMERA_POSITION_WORLD - world) * eye_pull_m, 0.0)).xyz;
 }
 
 float hash21(vec2 p) {

@@ -52,6 +52,9 @@ func materials() -> Dictionary:
 				_set_means(m, table[key].params)
 			elif key == "prop":
 				_set_lens_radiance(m)
+			elif key == "puffs":
+				m.set_shader_parameter("tone_exposure", environment.tonemap_exposure) # puffs.gdshader draws display colours through the inverse of the ACES
+				m.set_shader_parameter("tone_white", environment.tonemap_white)
 			elif key == "marks":
 				_set_crater_radiance(m, table[key].display_colors.crater)
 			_materials[key] = m

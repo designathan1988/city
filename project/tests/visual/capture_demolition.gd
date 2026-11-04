@@ -69,6 +69,8 @@ func _run() -> void:
 		await _paired()
 	if "earth" in phases:
 		await blast.earth()
+	if "topo" in phases:
+		await blast.topdown()
 	if "people" in phases:
 		await _people()
 	if "car" in phases:
