@@ -1,19 +1,24 @@
-// A car's glass (native/src/render/agents: the glass surface of its mesh, over its cabin and the people in it): tinted,
-// glossy and see-through, more so looked at square than at a grazing angle (Fresnel), as the Roadcraft 4.0 car glass.
+// A vehicle's glass near the camera (native/src/render/agents: the glass surface of a car's, bus's or truck's near mesh,
+// over its cabin and the people in it). Glass has no diffuse colour of its own: what is seen is the light it reflects
+// and what lies behind it, dimmed. Its surface reflects R(θ) = F0 + (1 - F0)(1 - cos θ)^5 (Schlick, "An Inexpensive BRDF
+// Model for Physically-based Rendering", Computer Graphics Forum 13(3), 1994), F0 = ((n - 1) / (n + 1))^2 for its index
+// of refraction n; what gets through the surface is then dimmed to `transmittance`. So the part of the view behind that
+// is covered, the blend's alpha, is 1 - transmittance * (1 - R). Godot's SPECULAR is F0 / 0.08 (0.5: F0 = 4 %).
 shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
 
-uniform vec3 tint : source_color;
-uniform float opacity = 0.35;
-uniform float edge_opacity = 0.9;
-uniform float edge_power = 3.0;
-uniform float roughness = 0.05;
-uniform float specular = 0.8;
+const float SPECULAR_PER_F0 = 12.5; // Godot: F0 = 0.08 * SPECULAR
+const float SCHLICK_POWER = 5.0;
+
+uniform float transmittance = 0.7;
+uniform float ior = 1.52;
+uniform float roughness = 0.0;
 
 void fragment() {
-	float grazing = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), edge_power);
-	ALBEDO = tint;
-	ALPHA = mix(opacity, edge_opacity, grazing);
+	float f0 = pow((ior - 1.0) / (ior + 1.0), 2.0);
+	float r = f0 + (1.0 - f0) * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), SCHLICK_POWER);
+	ALBEDO = vec3(0.0);
+	ALPHA = 1.0 - transmittance * (1.0 - r);
 	ROUGHNESS = roughness;
-	SPECULAR = specular;
+	SPECULAR = clamp(f0 * SPECULAR_PER_F0, 0.0, 1.0);
 }

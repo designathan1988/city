@@ -1,6 +1,8 @@
-// Bus, lorry and motorbike (Roadcraft render/heavyBody.ts and vehicleModels.ts, reduced to boxes): painted shells
-// with wheel-arch cut-outs, a glazed window band with pillars, windscreens, lamps and wheels; the motorbike carries
-// its rider.
+// Truck and motorbike, and the parts the heavy vehicles share (the bus is bus_body.cpp). The truck (agents.json "truck",
+// its sources in the _doc): a hollow cab over the front wheel, glazed in front and on both sides between its pillars, with
+// its cab inside (agent_cabin: the driver at the wheel, toes on the pedals, a passenger beside), the wind deflector on its
+// roof up to the box; the chassis under the box body behind it, the fuel tank on the chassis. The motorbike carries its
+// rider astride, dressed like the people in cars, in a helmet.
 #include "render/agents/agent_meshes.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -13,156 +15,200 @@ namespace city {
 
 namespace {
 
-constexpr float ARCH_PAD_M = 0.07f, WHEEL_INSET_M = 0.2f, GLASS_INSET_M = 0.02f, PILLAR_W = 0.12f, PROUD_M = 0.01f;
-constexpr float SCREEN_LOW_M = 0.95f, SCREEN_TOP_PAD_M = 0.32f, SCREEN_SIDE_M = 0.12f, BLIND_M = 0.22f, BLIND_W = 0.8f;
-constexpr float ROOF_INSET_M = 0.1f, ROOF_T = 0.06f, POD_L = 2.4f, POD_W = 0.7f, POD_H = 0.25f;
-constexpr float BUS_LAMP_Y = 0.62f, LAMP_W = 0.32f, LAMP_H = 0.14f, LAMP_X_PAD = 0.35f, TAIL_Y_M = 1.0f, SKIRT_M = 0.16f;
-constexpr float RIDER_TORSO_M = 0.6f, RIDER_ARMS_LOW_M = 0.43f, RIDER_ARMS_HIGH_M = 0.55f;
+constexpr float LITRES_PER_M3 = 1000.f;
+constexpr float MIRROR_W = 0.08f, MIRROR_H = 0.32f, MIRROR_D = 0.12f, DOOR_SPLIT_W = 0.04f, CAB_DOOR_SEAM = 0.03f;
+constexpr float MOTO_SEAT_H = 0.12f, LAMP_H = 0.14f;
 // motorbike proportions (shares of the axle distance or of the body half width)
 constexpr float MOTO_TAIL = 0.8f, MOTO_NOSE = 0.7f, MOTO_SEAT_W = 0.8f, MOTO_BAR_W = 2.f, MOTO_BAR_Z = 0.6f, MOTO_BAR_H = 1.5f;
-constexpr float MOTO_LAMP_W = 0.4f, MOTO_LAMP_D = 0.03f, RIDER_LEGS_W = 1.2f, RIDER_TORSO_W = 1.1f, RIDER_ARMS_W = 1.3f;
-constexpr float RIDER_BACK = 0.3f, RIDER_KNEE = 0.15f, RIDER_HEAD_BACK = 0.1f, HELMET_TALL = 1.1f, HELMET_LONG = 1.15f;
-constexpr float CHASSIS_SHARE = 0.8f; // lorry chassis rails against the body width
-constexpr float CAB_GLASS_LOW = 0.1f, CAB_GLASS_PAD = 0.12f, CHASSIS_Y = 0.55f, BUMPER_H = 0.3f, POST_W = 0.08f;
-// bus doors on the kerb side (-X) [front - 1.5, front - 0.3] and [-0.9, 0.3] (heavyBody.ts), seam, rounded roof ends
-constexpr float DOOR1_FROM = 1.5f, DOOR1_TO = 0.3f, DOOR2_FROM = -0.9f, DOOR2_TO = 0.3f, DOOR_SPLIT_W = 0.04f, SEAM_H = 0.05f;
-constexpr float ROOF_END_M = 0.35f, ROOF_END_DROP = 0.12f, MIRROR_ARM = 0.35f, MIRROR_W = 0.08f, MIRROR_H = 0.32f, MIRROR_D = 0.12f;
-constexpr float MIRROR_Y_SHARE = 0.62f, MIRROR_Z_BACK = 0.25f;
-// lorry: steps, mudguards, side guards, fuel tank, rear door seam and handles
-constexpr float STEP_H = 0.06f, STEP_D = 0.35f, STEP_OUT = 0.06f, GUARD_PAD = 0.06f, GUARD_T = 0.05f, SIDE_GUARD_H = 0.25f;
-constexpr float SIDE_GUARD_Y = 0.45f, TANK_L = 1.1f, TANK_H = 0.5f, TANK_D = 0.45f, TANK_Y = 0.5f, BUS_GRAB_W = 0.05f, HANDLE_H = 0.9f;
-constexpr float BUS_GRAB_Y = 1.6f, HANDLE_X = 0.15f, CAB_DOOR_SEAM = 0.03f;
+constexpr float MOTO_LAMP_W = 0.4f, MOTO_LAMP_D = 0.03f, HELMET_TALL = 1.1f, HELMET_LONG = 1.15f;
 
-std::vector<float> axles_of(const Dictionary &d, float L) {
-	std::vector<float> zs;
-	Array a = d["axles"];
-	for (int i = 0; i < a.size(); i++) zs.push_back(float(a[i]) * L);
-	return zs;
+struct Truck {
+	float L = 0, hl = 0, chw = 0, cab_back = 0, cab_bottom = 0, floor = 0, belt = 0, glass_top = 0, cab_top = 0, wall = 0;
+	float box_front = 0, box_hw = 0, box_bottom = 0, box_top = 0, rails_hw = 0;
+	Running g;
+};
+
+Truck read_truck(const Dictionary &d) {
+	Truck k;
+	k.L = d["length"]; k.hl = k.L * 0.5f; k.wall = d["wall_m"];
+	k.g = heavy_running(d, k.L);
+	k.chw = float(d["cab_w"]) * 0.5f;
+	k.rails_hw = float(d["rails_m"]) * 0.5f;
+	k.cab_back = k.g.axles[0] - float(d["body_from_axle_m"]);
+	k.cab_bottom = 2 * k.g.r + HEAVY_ARCH_PAD_M; // over the front wheel
+	k.floor = k.cab_bottom + k.wall;
+	k.cab_top = d["cab_top"];
+	const Vector2 lines = agent_v2(d["cab_lines"]); // the belt and the glass's top, shares of the cab's height
+	k.belt = k.cab_bottom + (k.cab_top - k.cab_bottom) * lines.x;
+	k.glass_top = k.cab_bottom + (k.cab_top - k.cab_bottom) * lines.y;
+	const Array box = d["box_m"]; // length from the back, width, bottom (the chassis' platform), top
+	k.box_front = -k.hl + float(box[0]);
+	k.box_hw = float(box[1]) * 0.5f;
+	k.box_bottom = box[2];
+	k.box_top = box[3];
+	return k;
 }
 
-void wheels(MeshBuilder &mb, const std::vector<float> &zs, float W, float r, float ww, int sides, const AgentTrim &trim) {
-	for (float z : zs)
-		for (int side : { -1, 1 }) agent_wheel(mb, Vector3(side * (W * 0.5f - WHEEL_INSET_M), r, z), r, ww, sides, side, trim);
-}
-
-void lamps(MeshBuilder &mb, float W, float L, float tail_y, const AgentTrim &trim) {
+// The cab: hollow under the belt over its floor, the blind back, the roof over the glass, the windscreen and side glass
+// between their pillars, the door's back edge; the bumper under the cab's front down to the axle's height.
+void cab(MeshBuilder &mb, const Truck &k, const AgentTrim &trim) {
+	Tub t;
+	t.half_w = k.chw; t.wall = k.wall; t.y0 = k.cab_bottom; t.y1 = k.belt; t.z0 = k.cab_back; t.z1 = k.hl; t.floor = k.floor;
+	t.axles = k.g.axles;
+	t.arch_r = k.g.r + HEAVY_ARCH_PAD_M;
+	t.arch_top = k.cab_bottom; // the cab clears the wheel: nothing to cut
+	t.pan_half_w = k.rails_hw;
+	agent_tub(mb, t, trim);
+	agent_box(mb, Vector3(-k.chw, k.cab_bottom, k.hl - k.wall), Vector3(k.chw, k.belt, k.hl), AGENT_WHITE, AgentTag::PAINT);
+	agent_box(mb, Vector3(-k.chw, k.cab_bottom, k.cab_back), Vector3(k.chw, k.cab_top, k.cab_back + k.wall), AGENT_WHITE, AgentTag::PAINT);
+	agent_box(mb, Vector3(-k.chw, k.glass_top, k.cab_back), Vector3(k.chw, k.cab_top, k.hl), AGENT_WHITE, AgentTag::PAINT);
+	agent_box(mb, Vector3(-k.chw, k.g.r, k.hl - k.wall), Vector3(k.chw, k.cab_bottom, k.hl + HEAVY_PROUD_M), trim.grille, AgentTag::FIXED);
+	const float zg = k.hl - HEAVY_GLASS_INSET_M, xg = k.chw - HEAVY_PILLAR_M, door = k.cab_back + HEAVY_PILLAR_M;
+	agent_pane(mb, Vector3(-xg, k.belt, zg), Vector3(xg, k.belt, zg), Vector3(xg, k.glass_top, zg), Vector3(-xg, k.glass_top, zg), Vector3(0, 0, 1), trim);
 	for (int side : { -1, 1 }) {
-		float x = side * (W * 0.5f - LAMP_X_PAD);
-		agent_box(mb, Vector3(x - LAMP_W * 0.5f, BUS_LAMP_Y, L * 0.5f - PROUD_M), Vector3(x + LAMP_W * 0.5f, BUS_LAMP_Y + LAMP_H, L * 0.5f + PROUD_M),
-				trim.headlamp, AgentTag::HEAD);
-		agent_box(mb, Vector3(x - LAMP_W * 0.5f, tail_y, -L * 0.5f - PROUD_M), Vector3(x + LAMP_W * 0.5f, tail_y + LAMP_H, -L * 0.5f + PROUD_M),
-				trim.tail, AgentTag::TAIL);
+		const float x = side * (k.chw - HEAVY_GLASS_INSET_M), z1 = k.hl - HEAVY_PILLAR_M;
+		agent_pane(mb, Vector3(x, k.belt, door), Vector3(x, k.belt, z1), Vector3(x, k.glass_top, z1), Vector3(x, k.glass_top, door), Vector3(side, 0, 0), trim);
+		agent_box(mb, Vector3(side * xg, k.belt, z1), Vector3(side * k.chw, k.glass_top, k.hl), AGENT_WHITE, AgentTag::PAINT);
+		agent_box(mb, Vector3(side * (k.chw - k.wall), k.belt, k.cab_back), Vector3(side * k.chw, k.glass_top, door), AGENT_WHITE, AgentTag::PAINT);
+		agent_box(mb, Vector3(side * (k.chw - HEAVY_PROUD_M), k.cab_bottom, door), Vector3(side * (k.chw + HEAVY_PROUD_M), k.glass_top, door + CAB_DOOR_SEAM),
+				trim.blackout, AgentTag::FIXED);
 	}
 }
 
-float ww_of(const Dictionary &d) { return float(d["wheel_w"]); }
+// The wind deflector: a wedge from the roof's front edge up to the box's top at the cab's back, as wide as the cab.
+void deflector(MeshBuilder &mb, const Truck &k) {
+	const float x = k.chw, y0 = k.cab_top, y1 = k.box_top, zb = k.cab_back, zf = k.hl;
+	const Vector2 paint = agent_tag(AgentTag::PAINT);
+	mb.quad(Vector3(-x, y1, zb), Vector3(x, y1, zb), Vector3(x, y0, zf), Vector3(-x, y0, zf), AGENT_WHITE, Vector3(0, zf - zb, y1 - y0), nullptr, paint);
+	mb.quad(Vector3(-x, y0, zb), Vector3(x, y0, zb), Vector3(x, y1, zb), Vector3(-x, y1, zb), AGENT_WHITE, Vector3(0, 0, -1), nullptr, paint);
+	for (int side : { -1, 1 })
+		mb.quad(Vector3(side * x, y0, zb), Vector3(side * x, y0, zf), Vector3(side * x, y1, zb), Vector3(side * x, y1, zb), AGENT_WHITE, Vector3(side, 0, 0),
+				nullptr, paint);
+}
 
-void mirrors(MeshBuilder &mb, float hw, float z, float y, const AgentTrim &trim) {
+// Two seats either side of the cab's middle, the driver's on +X with their toes on the pedals, the dashboard across.
+int cab_inside(MeshBuilder &mb, const Truck &k, const Dictionary &in, const CabinLook &l) {
+	Cabin c;
+	c.floor = k.floor;
+	c.roof = k.glass_top;
+	c.half_w = k.chw - k.wall;
+	c.z_front = k.hl - k.wall;
+	c.z_back = k.cab_back + k.wall;
+	c.side_top = c.front_top = k.belt;
+	c.back_top = c.roof;
+	c.paint = read_cabin_paint(in);
+	const float x = (c.half_w - l.lining_inset_m) * 0.5f;
+	std::vector<Seat> seats;
+	seat_rows(seats, pedal_hip_z(c, l), pedal_hip_z(c, l), 1.f, { x, -x }, c.floor, l.cab);
+	seats[0].driver = true;
+	dash_for(c, seats[0], l, 2 * (c.half_w - l.lining_inset_m));
+	return agent_cabin(mb, c, seats, l);
+}
+
+// The chassis (rails as wide as the sheet's, from the axles' height to the platform), the box with its rear doors' split,
+// the fuel tank on the chassis behind the cab (its volume over its length and depth).
+void chassis_and_box(MeshBuilder &mb, const Truck &k, const Dictionary &d, const AgentTrim &trim) {
+	agent_box(mb, Vector3(-k.rails_hw, k.g.r, -k.hl), Vector3(k.rails_hw, k.box_bottom, k.cab_back), trim.blackout, AgentTag::FIXED);
+	agent_box(mb, Vector3(-k.box_hw, k.box_bottom, -k.hl), Vector3(k.box_hw, k.box_top, k.box_front), trim.truck_box, AgentTag::FIXED);
+	agent_box(mb, Vector3(-DOOR_SPLIT_W * 0.5f, k.box_bottom, -k.hl - HEAVY_PROUD_M), Vector3(DOOR_SPLIT_W * 0.5f, k.box_top, -k.hl), trim.blackout,
+			AgentTag::FIXED);
+	const Vector2 tank = agent_v2(d["fuel_tank_m"]); // length, depth
+	const float h = float(d["fuel_l"]) / LITRES_PER_M3 / (tank.x * tank.y);
+	agent_box(mb, Vector3(k.rails_hw, k.box_bottom - h, k.cab_back - tank.x), Vector3(k.rails_hw + tank.y, k.box_bottom, k.cab_back), trim.chrome,
+			AgentTag::FIXED);
+}
+
+} // namespace
+
+Running heavy_running(const Dictionary &d, float L) {
+	Running g;
+	const Vector2 tyre = agent_tyre(d["tyre"]), track = agent_v2(d["track_m"]);
+	g.r = tyre.x;
+	g.w = tyre.y;
+	g.front_track = track.x;
+	g.rear_track = track.y;
+	g.dual = d["dual_m"];
+	float z = L * 0.5f - float(d["front_overhang_m"]);
+	g.axles.push_back(z);
+	for (const Variant &wb : Array(d["wheelbase_m"])) g.axles.push_back(z -= float(wb));
+	return g;
+}
+
+void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim &trim) {
+	for (size_t i = 0; i < g.axles.size(); i++) {
+		const float z = g.axles[i];
+		for (int side : { -1, 1 }) {
+			if (i == 0) {
+				agent_wheel(mb, Vector3(side * g.front_track * 0.5f, g.r, z), g.r, g.w, sides, side, trim);
+				continue;
+			}
+			for (int twin : { -1, 1 }) // the twin tyres: the hubcap on the outer one's face
+				agent_wheel(mb, Vector3(side * (g.rear_track + twin * g.dual) * 0.5f, g.r, z), g.r, g.w, sides, twin > 0 ? side : -side, trim);
+		}
+	}
+}
+
+void heavy_lamps(MeshBuilder &mb, const Dictionary &lamps, float W, float L, const AgentTrim &trim) {
+	const Array head = lamps["head"], tail = lamps["tail"]; // [centre height, outer edge in from the side, w, h]
+	for (int side : { -1, 1 })
+		for (int end : { 1, -1 }) {
+			const Array &l = end > 0 ? head : tail;
+			const float y = l[0], w = l[2], h = l[3], x = side * (W * 0.5f - float(l[1]) - w * 0.5f), z = end * L * 0.5f;
+			agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - HEAVY_PROUD_M), Vector3(x + w * 0.5f, y + h * 0.5f, z + HEAVY_PROUD_M),
+					end > 0 ? trim.headlamp : trim.tail, end > 0 ? AgentTag::HEAD : AgentTag::TAIL);
+		}
+}
+
+void heavy_mirrors(MeshBuilder &mb, float hw, float z, float y, float out, const AgentTrim &trim) {
 	for (int side : { -1, 1 }) {
-		float x0 = side * hw, x1 = side * (hw + MIRROR_ARM);
-		agent_box(mb, Vector3(std::min(x0, x1), y + MIRROR_H - MIRROR_W, z - MIRROR_W * 0.5f), Vector3(std::max(x0, x1), y + MIRROR_H, z + MIRROR_W * 0.5f),
-				trim.blackout, AgentTag::FIXED);
+		const float x1 = side * (hw + out - MIRROR_W * 0.5f);
+		agent_box(mb, Vector3(side * hw, y + MIRROR_H - MIRROR_W, z - MIRROR_W * 0.5f), Vector3(x1, y + MIRROR_H, z + MIRROR_W * 0.5f), trim.blackout,
+				AgentTag::FIXED);
 		agent_box(mb, Vector3(x1 - MIRROR_W * 0.5f, y, z - MIRROR_D * 0.5f), Vector3(x1 + MIRROR_W * 0.5f, y + MIRROR_H, z + MIRROR_D * 0.5f), trim.blackout,
 				AgentTag::FIXED);
 	}
 }
 
-} // namespace
-
-void build_bus(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
-	const float L = float(d["length"]), W = float(d["width"]), H = float(d["height"]), r = float(d["wheel"]);
-	const float clear = float(d["clearance"]), sill = float(d["sill"]), cant = H - float(d["cant"]), pitch = float(d["pillar_m"]);
-	const float hw = W * 0.5f, hl = L * 0.5f;
-	std::vector<float> zs = axles_of(d, L);
-	agent_arched_box(mb, hw, clear, sill, L, zs, r + ARCH_PAD_M, 2 * r + ARCH_PAD_M, AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw + PROUD_M, clear - PROUD_M, -hl + PROUD_M), Vector3(hw - PROUD_M, clear + SKIRT_M, hl - PROUD_M), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-hw + GLASS_INSET_M, sill, -hl + GLASS_INSET_M), Vector3(hw - GLASS_INSET_M, cant, hl - GLASS_INSET_M), trim.glass, AgentTag::GLASS);
-	for (float z = -hl + pitch * 0.5f; z < hl - pitch * 0.5f; z += pitch)
-		for (int side : { -1, 1 })
-			agent_box(mb, Vector3(side * hw - PROUD_M, sill, z - PILLAR_W * 0.5f), Vector3(side * hw + PROUD_M, cant, z + PILLAR_W * 0.5f), AGENT_WHITE,
-					AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw, cant, -hl), Vector3(hw, H - ROOF_T, hl), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw + ROOF_INSET_M, H - ROOF_T, -hl + ROOF_INSET_M), Vector3(hw - ROOF_INSET_M, H, hl - ROOF_INSET_M), trim.roof, AgentTag::FIXED);
-	agent_box(mb, Vector3(-POD_W, H, -POD_L * 0.5f), Vector3(POD_W, H + POD_H, POD_L * 0.5f), trim.roof, AgentTag::FIXED);
-	agent_box(mb, Vector3(-hw + SCREEN_SIDE_M, SCREEN_LOW_M, hl - PROUD_M), Vector3(hw - SCREEN_SIDE_M, H - SCREEN_TOP_PAD_M, hl + PROUD_M), trim.glass,
-			AgentTag::GLASS);
-	agent_box(mb, Vector3(-BLIND_W, H - SCREEN_TOP_PAD_M, hl - PROUD_M), Vector3(BLIND_W, H - SCREEN_TOP_PAD_M + BLIND_M, hl + PROUD_M), trim.headlamp,
-			AgentTag::HEAD);
-	for (float z0 : { hl - DOOR1_FROM, DOOR2_FROM }) {
-		float z1 = z0 + (z0 > 0 ? DOOR1_FROM - DOOR1_TO : DOOR2_TO - DOOR2_FROM);
-		agent_box(mb, Vector3(-hw - PROUD_M * 2, clear + SKIRT_M, z0), Vector3(-hw + PROUD_M, cant, z1), trim.glass, AgentTag::GLASS);
-		agent_box(mb, Vector3(-hw - PROUD_M * 3, clear + SKIRT_M, (z0 + z1) * 0.5f - DOOR_SPLIT_W), Vector3(-hw + PROUD_M, cant, (z0 + z1) * 0.5f + DOOR_SPLIT_W),
-				trim.blackout, AgentTag::FIXED);
-	}
-	agent_box(mb, Vector3(-hw - PROUD_M, sill - SEAM_H, -hl), Vector3(hw + PROUD_M, sill, hl), trim.blackout, AgentTag::FIXED);
-	for (int end : { -1, 1 })
-		agent_box(mb, Vector3(-hw + ROOF_INSET_M, H - ROOF_END_DROP, end > 0 ? hl - ROOF_END_M : -hl), Vector3(hw - ROOF_INSET_M, H, end > 0 ? hl : -hl + ROOF_END_M),
-				AGENT_WHITE, AgentTag::PAINT);
-	mirrors(mb, hw, hl - MIRROR_Z_BACK, H * MIRROR_Y_SHARE, trim);
-	lamps(mb, W, L, TAIL_Y_M, trim);
-	wheels(mb, zs, W, r, float(d["wheel_w"]), sides, trim);
+int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook *look, const AgentTrim &trim) {
+	const Truck k = read_truck(d);
+	const int passengers = look ? cab_inside(mb, k, d["interior"], *look) : 0;
+	cab(mb, k, trim);
+	deflector(mb, k);
+	chassis_and_box(mb, k, d, trim);
+	heavy_mirrors(mb, k.chw, k.hl - HEAVY_PILLAR_M, k.belt, float(d["mirror_out_m"]), trim);
+	heavy_lamps(mb, d["lamps_m"], float(d["cab_w"]), k.L, trim);
+	heavy_wheels(mb, k.g, sides, trim);
+	return passengers;
 }
 
-void build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
-	const float L = float(d["length"]), W = float(d["width"]), H = float(d["height"]), r = float(d["wheel"]);
-	const float hw = W * 0.5f, hl = L * 0.5f, cab_back = hl - L * float(d["cab_share"]);
-	const float cab_bottom = float(d["cab_bottom"]), belt = float(d["belt"]), cab_top = float(d["cab_top"]), box_bottom = float(d["box_bottom"]);
-	std::vector<float> zs = axles_of(d, L);
-	agent_box(mb, Vector3(-hw * CHASSIS_SHARE, CHASSIS_Y, -hl), Vector3(hw * CHASSIS_SHARE, box_bottom, hl - PROUD_M), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-hw, cab_bottom, cab_back), Vector3(hw, belt, hl), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw + GLASS_INSET_M, belt, cab_back + CAB_GLASS_PAD), Vector3(hw - GLASS_INSET_M, cab_top - CAB_GLASS_LOW, hl - GLASS_INSET_M),
-			trim.glass, AgentTag::GLASS);
-	agent_box(mb, Vector3(-hw, belt, cab_back), Vector3(hw, cab_top, cab_back + CAB_GLASS_PAD), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw, cab_top - CAB_GLASS_LOW, cab_back), Vector3(hw, cab_top, hl), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-hw, cab_bottom - BUMPER_H, hl - BUMPER_H), Vector3(hw, cab_bottom, hl + PROUD_M), trim.grille, AgentTag::FIXED);
-	float box_front = cab_back - ARCH_PAD_M * 2;
-	agent_box(mb, Vector3(-hw, box_bottom, -hl), Vector3(hw, H, box_front), trim.truck_box, AgentTag::FIXED);
-	for (float z : { -hl, box_front - POST_W })
-		for (int side : { -1, 1 })
-			agent_box(mb, Vector3(side * hw - PROUD_M - POST_W * (side > 0), box_bottom, z), Vector3(side * hw + PROUD_M + POST_W * (side < 0), H, z + POST_W),
-					trim.chrome, AgentTag::FIXED);
-	for (int side : { -1, 1 }) {
-		float x = side * hw;
-		agent_box(mb, Vector3(x - side * STEP_D * 0.5f - STEP_OUT, cab_bottom - BUMPER_H, hl - L * float(d["cab_share"]) * 0.5f),
-				Vector3(x + STEP_OUT * side, cab_bottom - BUMPER_H + STEP_H, hl - BUMPER_H), trim.chrome, AgentTag::FIXED);
-		agent_box(mb, Vector3(x - PROUD_M, cab_bottom, cab_back + CAB_GLASS_PAD * 2), Vector3(x + PROUD_M, belt, cab_back + CAB_GLASS_PAD * 2 + CAB_DOOR_SEAM), trim.blackout,
-				AgentTag::FIXED);
-		for (float z : zs) {
-			float zr = r + GUARD_PAD;
-			agent_box(mb, Vector3(x - side * (WHEEL_INSET_M + ww_of(d)), 2 * r + GUARD_PAD, z - zr), Vector3(x, 2 * r + GUARD_PAD + GUARD_T, z + zr), trim.blackout,
-					AgentTag::FIXED);
-		}
-		agent_box(mb, Vector3(x - side * POST_W, SIDE_GUARD_Y, zs[1] + r + GUARD_PAD), Vector3(x, SIDE_GUARD_Y + SIDE_GUARD_H, box_front - r), trim.chrome, AgentTag::FIXED);
-		agent_box(mb, Vector3(-HANDLE_X * side - BUS_GRAB_W * 0.5f, BUS_GRAB_Y, -hl - PROUD_M * 2), Vector3(-HANDLE_X * side + BUS_GRAB_W * 0.5f, BUS_GRAB_Y + HANDLE_H, -hl),
-				trim.chrome, AgentTag::FIXED);
-	}
-	agent_box(mb, Vector3(hw - TANK_D, TANK_Y, zs[0] - r - GUARD_PAD - TANK_L - TANK_L), Vector3(hw, TANK_Y + TANK_H, zs[0] - r - GUARD_PAD - TANK_L), trim.chrome,
-			AgentTag::FIXED);
-	agent_box(mb, Vector3(-DOOR_SPLIT_W * 0.5f, box_bottom, -hl - PROUD_M * 2), Vector3(DOOR_SPLIT_W * 0.5f, H, -hl), trim.blackout, AgentTag::FIXED);
-	mirrors(mb, hw, hl - MIRROR_Z_BACK, belt, trim);
-	lamps(mb, W, L, box_bottom, trim);
-	wheels(mb, zs, W, r, float(d["wheel_w"]), sides, trim);
-}
-
-void build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
-	const float r = float(d["wheel"]), ww = float(d["wheel_w"]), az = float(d["axle_z"]), seat = float(d["rider_seat_y"]), helmet = float(d["helmet_r"]);
-	Array b = d["body"];
-	const float bw = float(b[0]) * 0.5f, by0 = float(b[1]), by1 = float(b[2]);
+int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
+	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
+	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
+	const Vector2 b = agent_v2(d["body"]); // width, bottom; its top under the saddle
+	const float bw = b.x * 0.5f, by0 = b.y, by1 = float(d["saddle_m"]) - MOTO_SEAT_H;
 	const float tail = -az * MOTO_TAIL, nose = az * MOTO_NOSE, lamp_w = bw * MOTO_LAMP_W;
-	for (float z : { -az, az }) agent_wheel(mb, Vector3(0, r, z), r, ww, sides, 1, trim);
+	agent_wheel(mb, Vector3(0, rear.x, -az), rear.x, rear.y, sides, 1, trim);
+	agent_wheel(mb, Vector3(0, front.x, az), front.x, front.y, sides, 1, trim);
 	agent_box(mb, Vector3(-bw, by0, tail), Vector3(bw, by1, nose), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-bw * MOTO_SEAT_W, by1, -az * MOTO_NOSE), Vector3(bw * MOTO_SEAT_W, by1 + PILLAR_W, 0), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-bw * MOTO_BAR_W, by1 + PILLAR_W, az * MOTO_BAR_Z), Vector3(bw * MOTO_BAR_W, by1 + PILLAR_W * MOTO_BAR_H, nose), trim.blackout,
+	agent_box(mb, Vector3(-bw * MOTO_SEAT_W, by1, -az * MOTO_NOSE), Vector3(bw * MOTO_SEAT_W, by1 + MOTO_SEAT_H, 0), trim.blackout, AgentTag::FIXED);
+	agent_box(mb, Vector3(-bw * MOTO_BAR_W, by1 + MOTO_SEAT_H, az * MOTO_BAR_Z), Vector3(bw * MOTO_BAR_W, by1 + MOTO_SEAT_H * MOTO_BAR_H, nose), trim.blackout,
 			AgentTag::FIXED);
 	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, nose), Vector3(lamp_w, by1, nose + MOTO_LAMP_D), trim.headlamp, AgentTag::HEAD);
 	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, tail - MOTO_LAMP_D), Vector3(lamp_w, by1, tail), trim.tail, AgentTag::TAIL);
-	// rider: legs, torso, arms reaching the bars, helmet in the bike's paint
-	agent_box(mb, Vector3(-bw * RIDER_LEGS_W, by0, -az * RIDER_BACK), Vector3(bw * RIDER_LEGS_W, seat, az * RIDER_KNEE), trim.rider_legs, AgentTag::FIXED);
-	agent_box(mb, Vector3(-bw * RIDER_TORSO_W, seat, -az * RIDER_BACK), Vector3(bw * RIDER_TORSO_W, seat + RIDER_TORSO_M, 0), trim.rider, AgentTag::FIXED);
-	agent_box(mb, Vector3(-bw * RIDER_ARMS_W, seat + RIDER_ARMS_LOW_M, 0), Vector3(bw * RIDER_ARMS_W, seat + RIDER_ARMS_HIGH_M, az * MOTO_BAR_Z), trim.rider,
-			AgentTag::FIXED);
-	mb.blob(Vector3(0, seat + RIDER_TORSO_M + helmet, -az * RIDER_HEAD_BACK), Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG), AGENT_WHITE,
-			agent_tag(AgentTag::PAINT));
+	// the rider astride (agents.json moto.rider): on the saddle, leaning to the grips, feet by the engine, in a helmet
+	const Dictionary pose = d["rider"];
+	Figure f;
+	f.hip = agent_v3(pose["hip"]);
+	f.shoulders = agent_v3(pose["shoulders"]);
+	f.knee = agent_v3(pose["knee"]);
+	f.ankle = agent_v3(pose["ankle"]);
+	f.hand = agent_v3(pose["hand"]);
+	f.holds = true;
+	f.helmet = Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG);
+	const int64_t from = mb.v.size();
+	agent_person(mb, rider, f);
+	seat_order(mb, from, DRIVER_ORDER);
+	return 0;
 }
 
 } // namespace city
