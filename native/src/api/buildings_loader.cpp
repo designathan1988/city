@@ -29,6 +29,8 @@ const char *const CROWN_NAMES[] = { "cornice", "deco", "slab", "attic", "none" }
 // Finish names outside the cooked layers: lawn/hedge ground has no finish, plastic reads as plaster.
 const char *const NO_FINISH = "grass";
 const char *const PLASTIC = "plastic";
+// The note a table carries for its readers (skipped where a table's keys are its rows).
+const char *const DOC_KEY = "_doc";
 
 Variant at(const Dictionary &d, const Variant &k) { return d.get(k, Variant()); }
 std::string str(const Variant &v) { return std::string(String(v).utf8().get_data()); }
@@ -170,6 +172,7 @@ bool load_buildings(const Dictionary &t, Data &d, PackedStringArray &errors) {
 	Dictionary op = at(t, "openings");
 	Array ok = op.keys();
 	for (int i = 0; i < ok.size(); i++) {
+		if (str(ok[i]) == DOC_KEY) continue;
 		Array r = at(op, ok[i]);
 		OpeningDef &o = d.openings[index_of(BAY_NAMES, str(ok[i]), "abertura", errors)];
 		enum { W_IN, W_MAX, SILL, HEAD_IN, HEAD_MAX, DEPTH };
