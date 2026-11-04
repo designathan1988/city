@@ -31,6 +31,15 @@ public:
 	void mark_saved();
 	void set_speed(int speed);
 	void set_day_hour(double hour);
+	godot::Dictionary body_info(int id) const;
+	godot::Dictionary body_storeys(int id, int vol, int count);
+	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
+	godot::Dictionary body_resize(int id, int vol, int side, double delta, bool snap);
+	godot::Dictionary body_add_wing(int id, int vol, int side, double depth, double length);
+	godot::Dictionary body_add_setback(int id, int vol, double inset, int storeys);
+	godot::Dictionary body_split(int id, int vol, int level);
+	godot::Dictionary body_remove_volume(int id, int vol);
+	godot::Dictionary body_heights(int id, double ground_h, double storey_h);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }

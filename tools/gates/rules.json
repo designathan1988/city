@@ -347,7 +347,11 @@
     "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START"
+      "native/src/sim/terrain/heightfield.cpp:BANK_START",
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
+      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
+      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
+      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H"
     ],
     "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
   },

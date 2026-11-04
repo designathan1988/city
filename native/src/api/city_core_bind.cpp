@@ -14,6 +14,15 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mark_saved"), &CityCore::mark_saved);
 	ClassDB::bind_method(D_METHOD("set_speed", "speed"), &CityCore::set_speed);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);
+	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityCore::body_info);
+	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityCore::body_storeys);
+	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityCore::body_insert_storey);
+	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityCore::body_resize);
+	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityCore::body_add_wing);
+	ClassDB::bind_method(D_METHOD("body_add_setback", "id", "vol", "inset", "storeys"), &CityCore::body_add_setback);
+	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityCore::body_split);
+	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityCore::body_remove_volume);
+	ClassDB::bind_method(D_METHOD("body_heights", "id", "ground_h", "storey_h"), &CityCore::body_heights);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);

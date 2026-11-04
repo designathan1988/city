@@ -19,7 +19,7 @@ struct LotFrame {
 };
 LotFrame lot_frame(const Building &rec);
 
-// The record's body: a civic building, an open lot or a grown building, made from its seed.
+// The record's body: the version the player edited, or a civic building, an open lot or a grown building made from its seed.
 void record_body(const Data &data, const Building &rec, Body &b);
 
 // A tree the lot's layout planted, in the world: where, its crown's reach and its height (for the trees' renderer).

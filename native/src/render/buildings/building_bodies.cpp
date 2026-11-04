@@ -16,12 +16,13 @@ constexpr size_t CACHE_MAX = 8192;
 constexpr float PLINTH_MIN = 0.15f, GRID_STEP = 1.5f, SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
 constexpr int LOT_GRID_MAX = 24;
 constexpr uint32_t GOLDEN = 2654435761u;
+constexpr uint64_t EDITED_MIX = 0x9e3779b97f4a7c15ull;
 constexpr uint64_t SEED_BITS = 32, ZONE_BITS = 8, FLOOR_BITS = 16, SIZE_Q = 10;
 uint64_t key_of(const Building &r) {
 	uint64_t k = uint64_t(r.seed) << SEED_BITS;
 	k ^= uint64_t(r.zone) | (uint64_t(r.floors) << ZONE_BITS) | (uint64_t(r.fn) << (ZONE_BITS + FLOOR_BITS));
 	k ^= uint64_t(std::lround(r.w * SIZE_Q)) * GOLDEN ^ (uint64_t(std::lround(r.d * SIZE_Q)) << ZONE_BITS);
-	return k;
+	return k ^ uint64_t(r.body) * EDITED_MIX; // an edited body is its own, whatever its seed says
 }
 
 } // namespace

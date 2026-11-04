@@ -1,6 +1,7 @@
 // Writing a city (save_format.h): header, sculpted height tiles, terrain modifiers, road nodes and segments with
 // their ids, building records and the growth queue.
 #include "sim/persistence/save_format.h"
+#include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
 #include "sim/state/city_state.h"
@@ -87,6 +88,8 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	write_buildings(w, s.buildings);
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
+	w.put<uint32_t>(SAVE_BODIES);
+	write_edited_bodies(w, s.buildings);
 	w.put<uint32_t>(SAVE_END);
 	return std::move(w.buf);
 }
