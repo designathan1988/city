@@ -84,6 +84,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
 
 **API GDExtension — native/src/api**
+- `native/src/api/body_doc.cpp` · `native/src/api/body_doc.h` — um prédio como documento (projeto de lote, prédio de uma cidade do Roadcraft) feito corpo
 - `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` — buildings.json → tabelas do gerador de prédios da simulação
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
@@ -92,9 +93,9 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
-- `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa
+- `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa; a regra do âmbar para os testes
 - `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
-- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
+- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
@@ -107,7 +108,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
 - `native/src/core/color.h` — "#RRGGBB"/"#RRGGBBAA" → RGBA8 empacotado (único parser de cor)
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
-- `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`
+- `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/math.h` — vetores 2D no plano XZ
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
 - `native/src/core/seeded.h` — geradores com os números do Roadcraft bit a bit
@@ -237,6 +238,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` — streaming dos níveis near/mid/far por chunk e superchunk
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
+- `native/src/render/buildings/building_renderer_probe.cpp` — o que os testes leem dos níveis: o que a vista ainda pede e como está um chunk
 - `native/src/render/buildings/civic.h` — repasse para `native/src/sim/buildings/b40/civic.h` enquanto `native/src/render/trees/tree_place.cpp` (outra área) não troca o include
 - `native/src/render/buildings/facade.h` — corpo colocado no mundo e emissores que o desenham
 - `native/src/render/buildings/facade_bay.cpp` · `native/src/render/buildings/facade_bay.h` — abertura de uma bay, parede e peças
@@ -326,8 +328,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building_ghost.gdshader` — o fantasma do prédio antes de colocar
-- `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_pane.gdshaderinc`
-  — prédio, massas distantes/HLOD, peças de fachada instanciadas; ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa); hash; lâmpadas e grade filtrada de janelas; vidro (cômodo por interior mapping, cortina, caixilho) e janelas do nível médio
+- `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_glass.gdshader` · `project/render/shaders/building_sheer.gdshader` · `project/render/shaders/building_card.gdshader` · `project/render/shaders/building_pane.gdshaderinc` · `project/render/shaders/building_far_window.gdshaderinc` · `project/render/shaders/building_sky_glass.gdshaderinc`
+  — prédio, massas distantes/HLOD, peças de fachada instanciadas; ruído, acabamento e intemperismo; espaço de cor (entra e sai como cada renderizador passa); hash; lâmpadas e grade filtrada de janelas; guarda-corpos de vidro meio vistos através; grades como uma face, as barras no fragmento; vidros do nível perto com luz própria e o que cada um desenha (vão com sol e céu exatos, cômodo por interior mapping, cortina, caixilho); janelas do nível médio; o céu no vidro
 - `project/render/shaders/wear.gdshaderinc` — o desgaste lido pelas vias: trilhas, buracos, rachaduras e manchas de pisada
 - `project/render/shaders/transit_glass.gdshader` · `project/render/shaders/transit_xray.gdshader` — vidro do transporte; o metrô em corte, através do chão
 - `project/render/shaders/transit.gdshader` · `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` · `project/render/shaders/lattice_noise.gdshaderinc` — vias, meios-fios e pintura; água (ondulação do espectro de vento, reflexo pelo
@@ -340,6 +342,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/transit_test.gd` · `project/tests/core/transit_test.tscn` — paradas, linha, ônibus, trem, desfazer e save do transporte
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_part_cases.gd` · `project/tests/core/building_pick_cases.gd` · `project/tests/core/building_tool_test.gd` · `project/tests/core/building_tool_test.tscn` — edições do Construir pelo store e pela ferramenta: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
+- `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
 - `project/tests/core/yard_test.gd` · `project/tests/core/yard_test.tscn` — pátios de zona industrial em várias direções: docas com caminho, caminhão na própria faixa e um ciclo inteiro
@@ -350,6 +353,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_landscape.gd` · `project/tests/visual/capture_landscape.tscn` · `project/tests/visual/landscape_cards.gd` — capturas da paisagem nos ângulos do 4.0; rampa de cinzas, cubo cinza e árvores plantadas, medidos sozinhos
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_transit.gd` — parada, estação e trilho nas capturas
+- `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)

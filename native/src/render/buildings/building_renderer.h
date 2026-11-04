@@ -49,7 +49,14 @@ public:
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
-	int pending() const;
+	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
+	// What the view asked of the last frame and what the frame's budget left unasked.
+	struct ViewNeed {
+		int want = 0, unmet = 0, requested = 0, done = 0;
+	};
+	ViewNeed view_need() const;
+	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
+	int chunk_flags(float x, float z) const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
@@ -88,16 +95,20 @@ private:
 	struct Surface {
 		OwnedMesh mesh;
 		godot::AABB box;
+		int glass_at = -1, sheer_at = -1, card_at = -1; // the mesh surfaces of the panes, the glass guards and the railings, -1: none
 	};
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
 	struct Built {
-		int64_t key = 0, job = 0;
+		int64_t key = 0;
+		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
 		uint32_t version = 0; // the chunk's version when the job was submitted
 		std::array<b40::Shell, SUB_COUNT> near_shell, parts_shell, mid_shell; // one per sub-chunk, until baked
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
+		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
+		std::array<b40::Shell, SUB_COUNT> near_cards, mid_cards; // their railings: another
 		std::array<Surface, SUB_COUNT> near, parts, mid;
 		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
@@ -108,7 +119,8 @@ private:
 		void bake();
 	};
 	struct SuperBuilt {
-		int64_t key = 0, job = 0;
+		int64_t key = 0;
+		JobKey job;
 		float priority = 0;
 		uint64_t seq = 0;
 		b40::Shell far_shell;
@@ -131,8 +143,9 @@ private:
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
+	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
@@ -149,7 +162,8 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
-	godot::RID scenario_, material_, material_far_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_far_, material_parts_;
+	ViewNeed need_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;

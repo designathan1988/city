@@ -12,13 +12,12 @@ const PLACEHOLDER_TEX_PX := 16
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
-	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader",
-	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
-	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
-	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
-	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
-	"res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader", "res://render/shaders/transit.gdshader",
-	"res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
+	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
+	"res://render/shaders/building_parts.gdshader", "res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
+	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
+	"res://render/shaders/vegetation.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
+	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
+	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 

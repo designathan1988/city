@@ -197,6 +197,7 @@
     ]
   },
   "forbidden": [
+  {"id": "JOB_SEM_CHAVE", "paths": ["native/src/"], "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))", "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"},
     {
       "id": "SIM_SEM_GODOT",
       "paths": [

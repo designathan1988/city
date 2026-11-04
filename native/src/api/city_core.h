@@ -38,6 +38,7 @@ public:
 	// Build > Models (city_core_models.cpp): a body in hand travels as bytes.
 	godot::Array model_list() const;
 	godot::PackedByteArray model_bytes(const godot::String &id) const;
+	godot::Dictionary doc_body(const godot::Dictionary &doc) const;
 	godot::Dictionary building_bytes(int id) const;
 	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
 	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
@@ -171,7 +172,9 @@ public:
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
+	int building_chunk(float x, float z) const { return render_.building_chunk(x, z); } // the tests: BuildingRenderer::chunk_flags
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
+	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 

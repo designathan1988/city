@@ -17,7 +17,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr int64_t YARD_JOB_KEY_BASE = int64_t(1) << 40; // the pool's keys: apart from the chunks'
 constexpr float JOB_PRIORITY = std::numeric_limits<float>::max(); // behind everything the player sees: a chunk's priority is its distance in metres
 constexpr float LOOK_S = 2.f; // a look for a dock with no lorry
 
@@ -211,7 +210,7 @@ std::shared_ptr<YardJob> yard_of(CityState &s, int building) {
 		job->done.store(true);
 		return nullptr;
 	}
-	s.jobs->submit(YARD_JOB_KEY_BASE + building, JOB_PRIORITY, [in, job] {
+	s.jobs->submit(JobKey{ JobLane::YARDS, building }, JOB_PRIORITY, [in, job] {
 		Laps took;
 		plan_yard(*in, job->plan);
 		job->plan.planned_ms = took.lap();

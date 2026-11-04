@@ -103,7 +103,7 @@ void FogField::sync(const CityState &s, float cam_x, float cam_z) {
 	if (rev == seen_ && !moved) return;
 	busy_ = true;
 	float ox = std::floor((cam_x - side * 0.5f) / def.texel_m) * def.texel_m, oz = std::floor((cam_z - side * 0.5f) / def.texel_m) * def.texel_m;
-	s.jobs->submit(int64_t(-1), 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
+	s.jobs->submit(JobKey{ JobLane::FOG, 0 }, 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
 }
 
 Dictionary FogField::view() const {

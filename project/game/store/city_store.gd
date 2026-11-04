@@ -35,11 +35,11 @@ const COMMANDS := {
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
-	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
+	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "job_pool_probe", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"model_list": "model_list", &"model_bytes": "model_bytes", &"building_bytes": "building_bytes", &"body_size": "body_size",
+	&"model_list": "model_list", &"model_bytes": "model_bytes", &"doc_body": "doc_body", &"building_bytes": "building_bytes", &"body_size": "body_size",
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
 	&"overlays": "overlays", &"save_status": "save_status", &"park_sample": "park_sample", &"camera_clear": "camera_clear", &"kerb_busy": "kerb_busy", &"dock_count": "dock_count", &"lot_clearance": "lot_clearance", &"vehicles_near": "vehicles_near",
 	&"landscape": "landscape", &"cloud_at": "cloud_at",

@@ -1,6 +1,7 @@
-// The opening of a bay and the wall round it: the four wall
-// rectangles, the jambs (trim x 0.68), the sill (trim x 0.92) and head strips, the closing pane or leaf at the reveal
-// depth, roller shutters, the rain streak under the sill; then the component's parts.
+// The opening of a bay and the wall round it: the four wall rectangles; an opening with nothing in its recess but glass and
+// frame gets a pane on the wall's face, which draws the recess itself (building_pane.gdshaderinc); any other its jambs
+// (trim x 0.68), sill (trim x 0.92) and head strips and the closing pane or leaf at the reveal depth; roller shutters, the
+// rain streak under the sill; then the component's parts.
 #include "render/buildings/facade_bay.h"
 
 using namespace godot;
@@ -11,7 +12,7 @@ namespace {
 constexpr float MIN_SILL_ROOM = 0.65f, MIN_W = 0.4f, W_MARGIN = 0.2f, MIN_H = 0.5f, HEAD_ROOM = 0.15f, NO_OPENING = 0.2f;
 constexpr float REVEAL = 0.68f, SILL_SHADE = 0.92f, HEAD_SHADE = 0.8f, THRESHOLD = 0.012f, THRESHOLD_BELOW = 0.02f;
 constexpr int PICKS = 20, DARK_PICKS = 5, ROLL_FROM = 9, ROLL_TO = 13, LOGGIA_DARK = 4, BRISE_DARK = 5;
-constexpr float ROLL_BASE = 0.25f, ROLL_STEP = 0.15f, ROLL_OUT = 0.05f, WIDE_PANE = 1.8f;
+constexpr float ROLL_BASE = 0.25f, ROLL_STEP = 0.15f, ROLL_OUT = 0.05f, TALL_OPENING = 2.2f;
 constexpr float STREAK_OUT = 0.012f, STREAK_MIN_SILL = 0.5f, STREAK_LO = 0.05f, STREAK_BASE = 0.7f, STREAK_STEP = 0.12f;
 constexpr float STREAK_HALF = 0.32f, STREAK_HALF_STEP = 0.03f, STREAK_TOP = 0.02f, STREAK_DARK = 0.93f, STREAK_MID = 0.965f;
 constexpr int STREAK_SKIP = 3, STREAK_REACH = 7, STREAK_WIDTH = 5;
@@ -22,12 +23,30 @@ bool glazed(uint8_t c) {
 }
 bool streaks(int8_t fin) { return fin == FIN_PLASTER || fin == FIN_STUCCO || fin == FIN_CONCRETE || fin == FIN_STONE; }
 
-bool dark_pane(const BayCtx &c, float w) {
-	uint32_t h = c.hash;
+bool dark_pane(const BayCtx &c) {
+	switch (pane_dark(c.comp)) {
+		case PANE_DARK_PICK: return int(c.hash % PICKS) < DARK_PICKS;
+		case PANE_DARK_QUARTER: return c.hash % LOGGIA_DARK == 0;
+		case PANE_DARK_FIFTH: return c.hash % BRISE_DARK == 0;
+		default: return false;
+	}
+}
+
+// A plain window with its roller shutter part way down.
+bool rolled(const BayCtx &c) {
+	int pick = int(c.hash % PICKS);
+	return c.comp == BAY_WINDOW && pick >= ROLL_FROM && pick < ROLL_TO;
+}
+
+// An opening with nothing in its recess but its glass and frame: its wall stays whole and the pane on it draws the recess.
+// What else it has stands on the wall or out of it. Not one with a shutter or a transom inside, or one down to the floor.
+bool flush(const BayCtx &c, const Opening &o) {
+	if (o.h0 <= 0) return false;
 	switch (c.comp) {
-		case BAY_WINDOW: case BAY_SASH: return int(h % PICKS) < (w >= WIDE_PANE ? DARK_PICKS - 1 : DARK_PICKS);
-		case BAY_LOGGIA: case BAY_SHUTTERED: case BAY_GOURMET: return h % LOGGIA_DARK == 0;
-		default: return h % BRISE_DARK == 0;
+		case BAY_WINDOW: return !rolled(c);
+		case BAY_SASH: case BAY_WIDE: case BAY_BALCONY: case BAY_SHOPFRONT: case BAY_BRISE: case BAY_SHUTTERED: case BAY_GOURMET: return true;
+		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON: return o.h1 - o.h0 <= TALL_OPENING;
+		default: return false;
 	}
 }
 
@@ -47,15 +66,25 @@ void streak(Shell &s, const BayCtx &c, const Opening &o) {
 	s.rect(c.f, am - hw, am + hw, mid, o.h0 - STREAK_TOP, STREAK_OUT, c.wall * STREAK_DARK, c.wall_fin);
 }
 
+void reveals(Shell &shell, const BayCtx &c, const Opening &o) {
+	bool porch = c.comp == BAY_LOGGIA;
+	Lin reveal = porch ? c.wall * REVEAL : c.trim * REVEAL;
+	int8_t rfin = porch ? c.wall_fin : c.trim_fin;
+	Basis jl{ c.f.at(o.a0, 0, 0), c.f.e2, c.f.e1, c.f.e0 }, jr{ c.f.at(o.a1, 0, 0), c.f.e2, c.f.e1, -c.f.e0 };
+	shell.rect(jl, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
+	shell.rect(jr, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
+	Basis flat{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
+	float sill_h = o.h0 < THRESHOLD_BELOW ? THRESHOLD : o.h0;
+	shell.rect(flat, o.a0, o.a1, -o.depth, 0, sill_h, porch ? reveal : c.trim * SILL_SHADE, rfin);
+	shell.rect(flat, o.a0, o.a1, -o.depth, 0, o.h1, reveal * HEAD_SHADE, rfin, true);
+}
+
 void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
 	if (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) return; // their parts close them (facade_parts.cpp door_back)
 	if (glazed(c.comp)) {
-		bool dark = dark_pane(c, o.w);
-		s.pane(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, pane_look(pl, c, o.a0, o.a1, o.h0, o.h1, dark, frame_of(c.comp)));
-		int pick = int(c.hash % PICKS);
-		bool roll = (c.comp == BAY_WINDOW || c.comp == BAY_SASH) && pick >= ROLL_FROM && pick < ROLL_TO && o.w < WIDE_PANE;
-		if (roll && c.comp != BAY_SASH) {
-			float down = (o.h1 - o.h0) * (ROLL_BASE + ROLL_STEP * float(pick - ROLL_FROM));
+		s.pane(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, pane_look(pl, c, o.a0, o.a1, o.h0, o.h1, dark_pane(c), frame_of(c.comp)));
+		if (rolled(c)) {
+			float down = (o.h1 - o.h0) * (ROLL_BASE + ROLL_STEP * float(int(c.hash % PICKS) - ROLL_FROM));
 			s.rect(c.f, o.a0, o.a1, o.h1 - down, o.h1, -o.depth + ROLL_OUT, paint_lin(pl.data->color("shutter")), FIN_METAL);
 		}
 		return;
@@ -64,6 +93,15 @@ void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
 	s.rect(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, paint_lin(p), p.finish);
 }
 } // namespace
+
+PaneDark pane_dark(uint8_t comp) {
+	switch (comp) {
+		case BAY_WINDOW: return PANE_DARK_PICK;
+		case BAY_LOGGIA: case BAY_SHUTTERED: case BAY_GOURMET: return PANE_DARK_QUARTER;
+		case BAY_BRISE: case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON: return PANE_DARK_FIFTH;
+		default: return PANE_DARK_NONE;
+	}
+}
 
 Opening opening_of(const Data &data, const BayCtx &c) {
 	Opening o;
@@ -97,17 +135,14 @@ void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c) {
 	shell.rect(c.f, o.a1, c.W, 0, c.H, 0, c.wall, c.wall_fin);
 	shell.rect(c.f, o.a0, o.a1, 0, o.h0, 0, c.wall, c.wall_fin);
 	shell.rect(c.f, o.a0, o.a1, o.h1, c.H, 0, c.wall, c.wall_fin);
-	bool porch = c.comp == BAY_LOGGIA;
-	Lin reveal = porch ? c.wall * REVEAL : c.trim * REVEAL;
-	int8_t rfin = porch ? c.wall_fin : c.trim_fin;
-	Basis jl{ c.f.at(o.a0, 0, 0), c.f.e2, c.f.e1, c.f.e0 }, jr{ c.f.at(o.a1, 0, 0), c.f.e2, c.f.e1, -c.f.e0 };
-	shell.rect(jl, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
-	shell.rect(jr, -o.depth, 0, o.h0, o.h1, 0, reveal, rfin);
-	Basis flat{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
-	float sill_h = o.h0 < THRESHOLD_BELOW ? THRESHOLD : o.h0;
-	shell.rect(flat, o.a0, o.a1, -o.depth, 0, sill_h, porch ? reveal : c.trim * SILL_SHADE, rfin);
-	shell.rect(flat, o.a0, o.a1, -o.depth, 0, o.h1, reveal * HEAD_SHADE, rfin, true);
-	closing(shell, pl, c, o);
+	if (flush(c, o)) {
+		PaneLook look = pane_look(pl, c, o.a0, o.a1, o.h0, o.h1, dark_pane(c), frame_of(c.comp));
+		look.recess = o.depth;
+		shell.pane(c.f, o.a0, o.a1, o.h0, o.h1, 0, look);
+	} else {
+		reveals(shell, c, o);
+		closing(shell, pl, c, o);
+	}
 	streak(shell, c, o);
 	emit_bay_parts(shell, parts, pl, c, o);
 	if (c.level >= 1) emit_bay_props(parts, pl, c, o);

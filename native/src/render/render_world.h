@@ -34,6 +34,8 @@ public:
 	struct Cost {
 		double lock = 0, stream = 0, levels = 0, flush = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
 		double chunk_max = 0, super_max = 0;
+		bool backlog = false; // no chunk was asked for this frame: the baked results wait for the upload budget
+		int budget_left = 0;
 		CommitTimes building; // inside the building commit
 	};
 
@@ -74,6 +76,8 @@ public:
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	FogField &fog() { return fog_; }
+	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
+	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
