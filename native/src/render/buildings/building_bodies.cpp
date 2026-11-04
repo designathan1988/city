@@ -3,9 +3,9 @@
 // floor = highest ground under the ground volumes (corners and a 1.5 m grid) + 0.15 m plinth.
 #include "render/buildings/building_bodies.h"
 
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/paint.h"
+#include "sim/buildings/b40/civic.h"
 
 #include <cmath>
 
@@ -40,7 +40,7 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	return *(cache_[k] = std::move(b));
 }
 
-void BuildingBodies::place(const b40::Data &data, const HeightPatch &ground, const Building &rec, b40::Placed &pl) {
+void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl) {
 	const b40::Body &b = body(data, rec);
 	float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
 	Vector3 o(rec.x + rec.d / 2 * sn, 0, rec.z + rec.d / 2 * cs);
@@ -64,6 +64,7 @@ void BuildingBodies::place(const b40::Data &data, const HeightPatch &ground, con
 	if (hi < lo) { sample(0, rec.d / 2); }
 	float floor = hi + PLINTH_MIN;
 	pl.data = &data;
+	pl.look = &look;
 	pl.b = &b;
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;

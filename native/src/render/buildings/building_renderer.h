@@ -15,7 +15,7 @@
 #pragma once
 
 #include "core/job_pool.h"
-#include "render/buildings/b40_data.h"
+#include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
 #include "render/buildings/shell.h"
 #include "render/chunk_jobs.h"
@@ -143,7 +143,9 @@ private:
 	void ranges(Chunk &ch) const;
 	float near_reach() const;
 	void send_mask(Super &sp);
-	b40::Data data_;
+	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
+	const b40::Data &designs() const { return state_->buildings.designs; }
+	b40::BuildingLook look_;
 	BuildingBodies bodies_;
 	godot::RID scenario_, material_, material_far_, material_parts_;
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)

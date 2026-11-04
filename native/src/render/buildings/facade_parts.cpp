@@ -31,7 +31,7 @@ struct Ctx {
 	const Opening &o;
 	float am, hm, w, h;
 	Lin paint(const char *n) const { return paint_lin(pl.data->color(n)); }
-	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz, pl.data }; }
+	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz, pl.look }; }
 	void frame(float d) const { part_frame(parts, at(am, hm, o.depth - FRAME_IN, w, h, d), c.trim, c.trim_fin); }
 	void sill(float past, float t, float out) const {
 		part_box(shell, at(am, o.h0 - t / 2, (o.depth - out) / 2, w + past, t, o.depth + out), paint("sill"), FIN_CONCRETE);

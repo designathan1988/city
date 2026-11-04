@@ -2,8 +2,8 @@
 // roof paints, the second skin of twin/pair forms and the common finish (membranes, facades, door, dress).
 #pragma once
 
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/paint.h"
 
 namespace city::b40 {
 

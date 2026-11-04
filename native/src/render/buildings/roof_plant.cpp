@@ -174,7 +174,7 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;
 	for (int k = 0; k < PLANT_KINDS; k++) {
 		const PlantDef &d = PLANT[k];
-		float per_area = k == AIR_HANDLER ? pl.data->air_handler_per_area : d.per_area;
+		float per_area = k == AIR_HANDLER ? pl.look->air_handler_per_area : d.per_area;
 		float p = std::min(1.f, chance(PlantKind(k), use, v.top(), area, age, !b.cores.empty()));
 		int count = per_area > 0 ? std::min(PER_AREA_CAP * d.max, int(std::round(area / per_area * p + ROUND_JITTER * float(r.next())))) : 0;
 		for (int n = 0; per_area > 0 ? n < count : (n < d.max && r.next() < p); n++) {

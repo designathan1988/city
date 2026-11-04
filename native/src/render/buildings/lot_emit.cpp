@@ -88,8 +88,8 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	if (!light) {
 		// One panel instead of a box every BAR_EVERY metres: a single instance the finish map tiles along the length.
 		float lo = base + (top - base) * RAIL_LOW, hi = top - COPING_H;
-		if (along_x) parts.box(pl.lot, x0, x1, cy - pl.data->fence_bar_m / 2, cy + pl.data->fence_bar_m / 2, lo, hi, m, FIN_METAL);
-		else parts.box(pl.lot, cx - pl.data->fence_bar_m / 2, cx + pl.data->fence_bar_m / 2, y0, y1, lo, hi, m, FIN_METAL);
+		if (along_x) parts.box(pl.lot, x0, x1, cy - pl.look->fence_bar_m / 2, cy + pl.look->fence_bar_m / 2, lo, hi, m, FIN_METAL);
+		else parts.box(pl.lot, cx - pl.look->fence_bar_m / 2, cx + pl.look->fence_bar_m / 2, y0, y1, lo, hi, m, FIN_METAL);
 	}
 }
 
@@ -97,9 +97,9 @@ void LotEmit::gate(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, g = ground(e.x, e.y);
 	Lin m = paint(e, "gate");
 	for (float x : { x0 - GATE_POST, x1 }) parts.box(pl.lot, x, x + GATE_POST, e.y - GATE_POST / 2, e.y + GATE_POST / 2, g - FOOT, g + e.h + GATE_RAIL, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + e.h - GATE_RAIL, g + e.h, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + GATE_RAIL, g + 2 * GATE_RAIL, m, FIN_METAL);
-	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) parts.box(pl.lot, x, x + pl.data->fence_bar_m, e.y - pl.data->fence_bar_m / 2, e.y + pl.data->fence_bar_m / 2, g + GATE_RAIL, g + e.h, m, FIN_METAL);
+	parts.box(pl.lot, x0, x1, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + e.h - GATE_RAIL, g + e.h, m, FIN_METAL);
+	parts.box(pl.lot, x0, x1, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + GATE_RAIL, g + 2 * GATE_RAIL, m, FIN_METAL);
+	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) parts.box(pl.lot, x, x + pl.look->fence_bar_m, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + GATE_RAIL, g + e.h, m, FIN_METAL);
 }
 
 void LotEmit::prop(const LotElement &e) {

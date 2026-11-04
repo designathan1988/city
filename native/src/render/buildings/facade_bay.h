@@ -36,7 +36,7 @@ void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Openi
 struct Part {
 	const Basis *f;
 	float a, h, depth, sx, sy, sz;
-	const Data *data = nullptr; // part model sizes (buildings.json "parts")
+	const BuildingLook *look = nullptr; // part model sizes (buildings.json "parts")
 };
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin);
 void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin);

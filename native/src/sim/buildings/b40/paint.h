@@ -3,7 +3,7 @@
 #pragma once
 
 #include "core/seeded.h"
-#include "render/buildings/b40_types.h"
+#include "sim/buildings/b40/types.h"
 
 #include <algorithm>
 #include <cmath>

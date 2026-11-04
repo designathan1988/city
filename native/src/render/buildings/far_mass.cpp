@@ -4,7 +4,7 @@
 // plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and
 // machine rooms.
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/b40_gen.h"
+#include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
 using namespace godot;

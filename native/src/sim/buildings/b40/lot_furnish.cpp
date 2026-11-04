@@ -2,8 +2,8 @@
 // side drives and paths, the back (yard with terrace and pool, parking with stalls, service yard with wall ACs,
 // courtyard) and the boundary (fence on a low wall, hedge or wall in front, walls round the sides and back) with
 // gates at the door and on drives. Elements are boxes in the lot frame, laid by lot_emit.cpp.
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/paint.h"
 
 #include <algorithm>
 

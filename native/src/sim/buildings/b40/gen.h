@@ -2,8 +2,8 @@
 // plan_lot (lot_plan.cpp) -> made_to_measure (massing_*.cpp) -> furnish_lot (lot_furnish.cpp). make_body runs them.
 #pragma once
 
-#include "render/buildings/b40_data.h"
-#include "render/buildings/b40_types.h"
+#include "sim/buildings/b40/data.h"
+#include "sim/buildings/b40/types.h"
 
 #include "core/seeded.h"
 

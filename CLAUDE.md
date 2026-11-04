@@ -79,6 +79,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
 
 **API GDExtension — native/src/api**
+- `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` — buildings.json → tabelas do gerador de prédios da simulação
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` — Dictionary → Catalog estrito; a X-macro do tuning dita as chaves
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
@@ -101,7 +102,17 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/units.h` · `native/src/core/laps.h` — unidades físicas e de calendário (único dono dos fatores); cronômetro das sondas
 
 **Núcleo — native/src/sim**
-- `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação e consultas espaciais
+- `native/src/sim/buildings/building_store.cpp` · `native/src/sim/buildings/building_store.h` — registros de prédio, ocupação, consultas espaciais e tabelas do gerador
+- `native/src/sim/buildings/b40/data.h` · `native/src/sim/buildings/b40/types.h` — tabelas do gerador (estilos, paletas, aberturas) e vocabulário do corpo (bays, telhados, acabamentos, lote)
+- `native/src/sim/buildings/b40/gen.h` · `native/src/sim/buildings/b40/massing.h` — gerador do corpo de um registro num Xoshiro128 e passos comuns do massing
+- `native/src/sim/buildings/b40/paint.cpp` · `native/src/sim/buildings/b40/paint.h` — ajuste HSL de telhado e segunda pele
+- `native/src/sim/buildings/b40/massing_core.cpp` · `native/src/sim/buildings/b40/massing_house.cpp` · `native/src/sim/buildings/b40/massing_tall.cpp` ·
+  `native/src/sim/buildings/b40/massing_works.cpp` — corpo de um registro (blocos, telhados, segunda pele); casas; apartamentos, torres, lojas e escritórios; galpões
+- `native/src/sim/buildings/b40/facade_compose.cpp` — gramática de fachada (dono da fachada)
+- `native/src/sim/buildings/b40/lot_plan.cpp` — plano do lote crescido (frente, lados e fundo)
+- `native/src/sim/buildings/b40/lot_furnish.cpp` — mobiliário do lote (jardim, piscina, cerca)
+- `native/src/sim/buildings/b40/civic.cpp` · `native/src/sim/buildings/b40/civic.h` · `native/src/sim/buildings/b40/civic_services.cpp` · `native/src/sim/buildings/b40/open_lots.cpp`
+  — corpos cívicos (escola, igreja, hospital; posto, mercado, prefeitura, polícia, bombeiros) e lotes abertos (praça, parque, quadra, vazio)
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/catalog/catalog.h` — tipos do catálogo (sem valores)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
@@ -173,32 +184,19 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/agents/heavy_meshes.cpp` — ônibus, caminhão e moto
 - `native/src/render/agents/people_asset.cpp` · `native/src/render/agents/people_asset.h` — pessoas cozidas (people.bin)
 - `native/src/render/agents/people_renderer.cpp` · `native/src/render/agents/people_renderer.h` — pedestres com esqueleto no shader e 2 níveis
-- `native/src/render/buildings/b40_data.cpp` · `native/src/render/buildings/b40_data.h` — buildings.json → tabelas do gerador 4.0
-- `native/src/render/buildings/b40_gen.h` — gerador 4.0 passo a passo num Xoshiro128
-- `native/src/render/buildings/b40_paint.cpp` · `native/src/render/buildings/b40_paint.h` — ajuste HSL de telhado e segunda pele
-- `native/src/render/buildings/b40_types.h` — vocabulário 4.0 (bays, telhados, acabamentos) e corpos
 - `native/src/render/buildings/building_bodies.cpp` · `native/src/render/buildings/building_bodies.h` — cache de corpos e colocação no mundo
+- `native/src/render/buildings/building_look.cpp` · `native/src/render/buildings/building_look.h` — buildings.json → frações dos níveis, bandas de peças e medidas das peças finas
 - `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` — streaming dos níveis near/mid/far por chunk e superchunk
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
-- `native/src/render/buildings/civic.cpp` · `native/src/render/buildings/civic.h` — corpos cívicos (praça, escola, igreja, hospital)
-- `native/src/render/buildings/civic_services.cpp` — posto, mercado, prefeitura, polícia e bombeiros
+- `native/src/render/buildings/civic.h` — repasse para `native/src/sim/buildings/b40/civic.h` enquanto `native/src/render/trees/tree_place.cpp` (outra área) não troca o include
 - `native/src/render/buildings/facade.h` — corpo colocado no mundo e emissores que o desenham
 - `native/src/render/buildings/facade_bay.cpp` · `native/src/render/buildings/facade_bay.h` — abertura de uma bay, parede e peças
-- `native/src/render/buildings/facade_compose.cpp` — gramática de fachada 4.0 (dono da fachada)
 - `native/src/render/buildings/facade_emit.cpp` — paredes de cada volume, lado, andar e bay
 - `native/src/render/buildings/facade_parts.cpp` — peças de cada componente de bay
 - `native/src/render/buildings/facade_props.cpp` — AC, antenas e vasos dos andares altos
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
 - `native/src/render/buildings/lot_emit.cpp` — elementos de lote (calçadas, muros, portões)
-- `native/src/render/buildings/lot_furnish.cpp` — mobiliário do lote (jardim, piscina, cerca)
-- `native/src/render/buildings/lot_plan.cpp` — plano do lote crescido (frente, lados e fundo)
-- `native/src/render/buildings/massing.h` — passos comuns do massing 4.0
-- `native/src/render/buildings/massing_core.cpp` — blocos, telhados, segunda pele e corpo de um registro
-- `native/src/render/buildings/massing_house.cpp` — casas (asa, varanda, bangalô etc.)
-- `native/src/render/buildings/massing_tall.cpp` — apartamentos, torres, lojas e escritórios
-- `native/src/render/buildings/massing_works.cpp` — galpões industriais
-- `native/src/render/buildings/open_lots.cpp` — praça, parque, quadra e lote vazio
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado

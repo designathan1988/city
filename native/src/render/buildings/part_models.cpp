@@ -40,7 +40,7 @@ void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s,
 // Frame ring: front faces of the four bars, mullion and transom, and the ring's inner faces (no hidden backs).
 void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	float bx = p.data->part_frame_bar_m * p.sx, by = p.data->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
+	float bx = p.look->part_frame_bar_m * p.sx, by = p.look->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
 	if (2 * by > p.sy) by = p.sy / 4;
 	s.rect(m, -hx, -hx + bx, -hy, hy, hz, lin, fin);
 	s.rect(m, hx - bx, hx, -hy, hy, hz, lin, fin);
@@ -83,7 +83,7 @@ void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_HI - PANEL_TALL / 2) * p.sy, (PANEL_Y_HI + PANEL_TALL / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 		s.rect(m, (x - PANEL_W / 2) * p.sx, (x + PANEL_W / 2) * p.sx, (PANEL_Y_LO - PANEL_SHORT / 2) * p.sy, (PANEL_Y_LO + PANEL_SHORT / 2) * p.sy, panel_z, lin * PANEL_SHADE, fin);
 	}
-	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.data->part_handle_h_m / 2, HANDLE_Y + p.data->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
+	unit_box(s, p, HANDLE_X - DOOR_HANDLE_W / 2, HANDLE_X + DOOR_HANDLE_W / 2, HANDLE_Y - p.look->part_handle_h_m / 2, HANDLE_Y + p.look->part_handle_h_m / 2, HANDLE_Z - HANDLE_D / 2, HANDLE_Z + HANDLE_D / 2, lin_of(BRASS), FIN_METAL);
 }
 
 // Louvred leaf: stiles, rails and nine slats as front faces, slats tilted out at the bottom.
@@ -106,7 +106,7 @@ void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	for (int i = 0; i < BRISE_FINS; i++) {
 		float x = -HALF + (float(i) + HALF) / float(BRISE_FINS);
-		unit_box(s, p, x - p.data->part_brise_fin_m / 2, x + p.data->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
+		unit_box(s, p, x - p.look->part_brise_fin_m / 2, x + p.look->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
 	}
 }
 

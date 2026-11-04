@@ -1,5 +1,5 @@
 // The 4.0 HSL nudge of roof and second-skin colours (jobs/b40/paint.ts nudge): three floats, hue, saturation, lightness.
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/paint.h"
 
 namespace city::b40 {
 

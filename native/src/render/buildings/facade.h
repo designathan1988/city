@@ -3,7 +3,8 @@
 // points of each emitter file.
 #pragma once
 
-#include "render/buildings/b40_data.h"
+#include "render/buildings/building_look.h"
+#include "sim/buildings/b40/data.h"
 #include "render/buildings/shell.h"
 
 #include <functional>
@@ -13,6 +14,7 @@ namespace city::b40 {
 
 struct Placed {
 	const Data *data = nullptr;
+	const BuildingLook *look = nullptr; // sizes of the thin drawn pieces (fence bars, part frames, air handlers)
 	const Body *b = nullptr;
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)

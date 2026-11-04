@@ -2,7 +2,7 @@
 // floors, parapets cut per bay (outer wall face, inner face, coping and lip; attic crowns 1.5 m), terrace railings,
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/b40_gen.h"
+#include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
 using namespace godot;

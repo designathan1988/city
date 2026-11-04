@@ -3,7 +3,7 @@
 // storeys x 3.6 m, cream, blue-grey hip roof) round a lawn court with a sports court. Church: a nave 9 m high under a
 // steep clay gable with a 20 m bell tower, hip spire and gold cross in front. Hospital / clinic: a white ribbon-window
 // block (5-9 / 2 storeys) on a glazed podium, blue band, red cross panel and an entrance canopy.
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/civic.h"
 
 #include "core/math.h"
 #include "sim/buildings/building_store.h"

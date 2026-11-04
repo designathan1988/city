@@ -1,7 +1,7 @@
 // Roof predicates shared by the near and far building emitters.
 #pragma once
 
-#include "render/buildings/b40_types.h"
+#include "sim/buildings/b40/types.h"
 
 namespace city::b40 {
 

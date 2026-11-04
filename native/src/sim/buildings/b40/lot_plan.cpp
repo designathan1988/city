@@ -1,7 +1,7 @@
 // The plan of a grown lot (4.0 world/growth/lotPlan.ts, R5 jobs/b40/lot/plan.ts): front, sides and back uses and the
 // building envelope. Same rules and draw order; no corner gardens (R5 passes no corner).
-#include "render/buildings/b40_gen.h"
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/gen.h"
+#include "sim/buildings/b40/paint.h"
 
 namespace city::b40 {
 

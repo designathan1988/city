@@ -1,6 +1,6 @@
 // The common massing steps (jobs/b40/massing.ts: block, roofShape, roofOf, otherSkin, finish) and the body of a record
 // (jobs/building40.ts building40): kind from use and floors, plan, massing, lot furnishing, shift to the lot frame.
-#include "render/buildings/massing.h"
+#include "sim/buildings/b40/massing.h"
 
 #include <algorithm>
 #include <cmath>

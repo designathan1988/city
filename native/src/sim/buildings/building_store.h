@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "sim/buildings/b40/data.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
@@ -35,6 +36,7 @@ public:
 	SpatialHash hash; // by lot centre
 	ChangeLog *log = nullptr;
 	int count = 0;
+	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
 
 	void init(ChangeLog *l);
 	void clear();

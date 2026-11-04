@@ -4,7 +4,7 @@
 // orthonormal basis (a facade's along/up/out, the lot's x/y/up).
 #pragma once
 
-#include "render/buildings/b40_paint.h"
+#include "sim/buildings/b40/paint.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/rid.hpp>
