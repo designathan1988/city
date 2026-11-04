@@ -128,7 +128,8 @@ void spread(Grid &g, const std::vector<std::pair<int, int>> &sources) {
 		open.push({ 0.f, s.first });
 	}
 	while (!open.empty()) {
-		auto [d, c] = open.top();
+		const float d = open.top().first;
+		const int c = open.top().second;
 		open.pop();
 		if (d > g.dist[size_t(c)]) continue;
 		g.steps(c, true, [&](int n, float step) {

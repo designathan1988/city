@@ -7,7 +7,7 @@
 ##   each show what the engine's own material shows for the same colour x wall_gain under the same light (a
 ##   StandardMaterial3D below it, vertex colour as sRGB albedo, the same roughness): each albedo path against the engine's.
 ## Colours are sRGB as the meshes carry them (shell.cpp); their linear value is the sRGB decoding (IEC 61966-2-1).
-## The tolerance is one 8-bit step, as in prop_light_test.gd.
+## The tolerance is one 8-bit step, as in light_color_test.gd.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/building_light_test.tscn -- --no-flow
 extends Node3D
 
