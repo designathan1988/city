@@ -24,8 +24,12 @@ uniform float asphalt_m = 10.4;
 uniform float footway_m = 7.2;
 uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
-uniform float normal_strength = 0.8;
-uniform float kerb_block_m = 1.0;
+uniform float normal_asphalt = 1.0;
+uniform float normal_footway = 1.0;
+uniform float normal_kerb = 0.85;
+uniform vec3 detail_asphalt = vec3(0.6, 0.65, 1.6); // how hard the detail colours, how hard it bends, the macro map's blur
+uniform vec3 detail_footway = vec3(0.7, 0.8, 0.6);
+uniform vec3 detail_kerb = vec3(0.55, 0.7, 0.8);
 uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
@@ -58,6 +62,7 @@ const float MEAN_FLOOR = 0.001;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
+#include "res://render/shaders/road_detail.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -93,31 +98,48 @@ void fragment() {
 	vec2 uv = UV;
 	vec3 albedo = base;
 	vec2 bend = vec2(0.0);
+	vec2 fine = vec2(0.0);
+	float bend_scale = normal_asphalt;
+	float near = detail_weight(pix);
 	float rough = 1.0;
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_GUTTER) {
-		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m).rgb);
+		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
+		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
+		if (near > 0.0) {
+			t *= mix(vec3(1.0), detail_albedo(asphalt_detail, duv, ddx, ddy), near * detail_asphalt.x);
+			fine = detail_bend(asphalt_detail_normal, duv, ddx, ddy) * near * detail_asphalt.y;
+		}
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / max(source_linear(asphalt_reference), vec3(MEAN_FLOOR)) * blotch;
-		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
+		bend = (texture(asphalt_normal, uv / asphalt_m, near * detail_asphalt.z).xy - 0.5) * 2.0;
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
-		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m).rgb);
+		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m, near * detail_footway.z).rgb);
+		vec2 duv = uv.yx / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
+		if (near > 0.0) {
+			t *= mix(vec3(1.0), detail_albedo(concrete_detail, duv, ddx, ddy), near * detail_footway.x);
+			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_footway.y;
+		}
+		bend_scale = normal_footway;
 		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
-		bend = (texture(footway_normal, uv.yx / footway_m).xy - 0.5) * 2.0;
+		bend = (texture(footway_normal, uv.yx / footway_m, near * detail_footway.z).xy - 0.5) * 2.0;
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE) {
-		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
-		albedo = source_linear(texture(kerb_map, kq / kerb_m).rgb)
-				* base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
-		float tone = 1.0 + (hash2(vec2(floor(kq.x / kerb_block_m), 7.0)) - 0.5) * 0.1;
-		float joint = 1.0 - smoothstep(0.008, 0.008 + pix, abs(fract(kq.x / kerb_block_m + 0.5) - 0.5) * kerb_block_m);
-		albedo *= tone * (1.0 - 0.35 * joint * step(pix, 0.2));
+		vec2 kq = v_world.xz; // laid over the ground as the map tiles: along a road it runs through the stone and the grime
+		vec3 t = source_linear(texture(kerb_map, kq / kerb_m, near * detail_kerb.z).rgb);
+		vec2 duv = kq / concrete_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
+		if (near > 0.0) {
+			t *= mix(vec3(1.0), detail_albedo(concrete_detail, duv, ddx, ddy), near * detail_kerb.x);
+			fine = detail_bend(concrete_detail_normal, duv, ddx, ddy) * near * detail_kerb.y;
+		}
+		albedo = t * base / max(source_linear(mean_kerb), vec3(MEAN_FLOOR));
+		bend_scale = normal_kerb;
 		rough = 0.82;
 	} else if (v_mat == M_LAWN) {
 		albedo = source_linear(texture(verge_map, v_world.xz / verge_m).rgb) * base
@@ -134,8 +156,9 @@ void fragment() {
 	ROUGHNESS = rough;
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
 	if (up) {
-		float fade = (1.0 - smoothstep(0.02, 0.5, pix)) * normal_strength;
-		vec3 n = normalize(nw + vec3(-bend.x * fade, 0.0, -bend.y * fade));
+		float fade = 1.0 - smoothstep(0.02, 0.5, pix);
+		bend = bend * bend_scale * fade + fine;
+		vec3 n = normalize(nw + vec3(-bend.x, 0.0, -bend.y));
 		NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	}
 	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
