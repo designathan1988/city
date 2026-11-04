@@ -9,7 +9,12 @@ goes to an output folder. Paths are always given on the command line or in a con
 | Command | What it does |
 |---|---|
 | `graph` | Traces a feature (or the whole source) through the source's own type checker: every declaration it uses, typed edges, external APIs, patterns, fingerprints. |
+| `cppgraph` | The same graph for the target's C++, through clangd. |
 | `audit` | Runs the methodology catalog over a graph: each finding says what is wrong, the correct methodology, its form in the target, and the primary sources. |
+| `classify` | What a feature becomes in the target: roles from facts, mapped dependencies, what still blocks it. |
+| `translate` | Writes a feature as C++ in its owner folder (types, API, edits, queries, indexes); refuses when anything cannot be translated. |
+| `differential` | Runs the translation and its source on the same random scenario and compares them (a double build that must agree exactly, and the target's float build). |
+| `package` | The translation as a conversion package: its files, its registration where the target's gates look, its state member. |
 | `sandbox` | Tests a conversion package in an isolated clone of the target: the target's own setup and verification before and after the package; prints the manual integration. |
 | `baseline` | The target's own setup and verification on its base alone, which proves a sandbox configuration. |
 
@@ -46,6 +51,15 @@ The target's `CLAUDE.md` and gate rules are the authority; these are how the con
 5. **The correct methodology is written every time.** Each pattern of the audit catalog is converted to its correct
    form (instancing, reused buffers, a spatial index, a ring buffer, state in its owner), whatever its static rating.
 6. **The target's gates judge the result** in the sandbox, with its build, tests and photos.
+
+## How a translation decides types
+
+What each value is in C++ has one owner, the flow of values (`src/translate/flow.ts`): every place a value lives is
+a slot, every way it moves is a flow, and three facts per slot (integer or real, owned or referenced, which struct
+shape) are solved together to a fixpoint. The type mapper and the emitters only read that solution. A spec
+(`configs/<feature>.translate.json`) says what the translator may not guess: the owner folder, the state and its
+member, which names are integers, the target's types and owned concepts (patterns), the names of literals the
+target's gates forbid, and what stays with other owners.
 
 ## Tests
 
