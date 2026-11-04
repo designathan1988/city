@@ -47,6 +47,12 @@ struct SignalRecord {
 	bool walk = false;
 };
 
+// The record of approach `ds` in `signals` (sorted by ds), or none.
+inline const SignalRecord *find_signal(const std::vector<SignalRecord> &signals, uint32_t ds) {
+	auto it = std::lower_bound(signals.begin(), signals.end(), ds, [](const SignalRecord &r, uint32_t d) { return r.ds < d; });
+	return it != signals.end() && it->ds == ds ? &*it : nullptr;
+}
+
 // The moment the render draws: between at[first] and at[first + 1] of every record, `t` of the way (PoseFrame::sample).
 struct PoseSample {
 	int first = POSE_TRAIL - 2;
@@ -58,10 +64,7 @@ struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
-	const SignalRecord *signal(uint32_t ds) const {
-		auto it = std::lower_bound(signals.begin(), signals.end(), ds, [](const SignalRecord &r, uint32_t d) { return r.ds < d; });
-		return it != signals.end() && it->ds == ds ? &*it : nullptr;
-	}
+	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last publications (oldest first; 0: none yet)
 	int64_t period_ns = 0; // tick period
 	// The pair that holds `when` (ns, the render's clock less its delay), clamped to the trail's ends.

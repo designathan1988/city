@@ -6,6 +6,7 @@
 #include "render/buildings/civic.h"
 
 #include "core/math.h"
+#include "core/units.h"
 #include "sim/buildings/building_store.h"
 
 #include <algorithm>
@@ -20,7 +21,7 @@ constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_LINE = 0.12f, COURT_EDGE =
 constexpr int SCHOOL_STOREYS_LO = 2, SCHOOL_STOREYS_HI = 3;
 // church
 constexpr float NAVE_W = 14.f, NAVE_W_SHARE = 0.6f, NAVE_D = 30.f, NAVE_H = 9.f, NAVE_PITCH = 42.f, TOWER_W = 4.4f;
-constexpr float DEG = PI_F / 180.f, TOWER_STOREY = 3.7f, TOWER_PITCH = 68.f, CROSS_H = 1.8f, CROSS_W = 1.f, CROSS_T = 0.18f, CROSS_ARM_Z = 0.65f;
+constexpr float TOWER_STOREY = 3.7f, TOWER_PITCH = 68.f, CROSS_H = 1.8f, CROSS_W = 1.f, CROSS_T = 0.18f, CROSS_ARM_Z = 0.65f;
 constexpr int TOWER_STOREYS = 4;
 // hospital
 constexpr float WARD_SHARE = 0.8f, WARD_D = 22.f, WARD_D_SHARE = 0.55f, PODIUM_D_SHARE = 0.75f, SIGN_W = 3.2f, SIGN_T = 0.25f;
@@ -86,9 +87,9 @@ int church(const Data &data, Body &b, float w, float d) {
 		v->lines = LINES_EVERY;
 		v->crown = CROWN_NONE;
 	}
-	float top = b.level_z(t.top()) + TOWER_W / 2 * std::tan(TOWER_PITCH * DEG);
+	float top = b.level_z(t.top()) + TOWER_W / 2 * std::tan(TOWER_PITCH * DEG_TO_RAD);
 	cross(b, cx, TOWER_W / 2, top, b.add_paint(data.color("gold")));
-	cross(b, cx, TOWER_W / 2 + nd, b.level_z(1) + nw / 2 * std::tan(NAVE_PITCH * DEG), b.add_paint(data.color("gold")));
+	cross(b, cx, TOWER_W / 2 + nd, b.level_z(1) + nw / 2 * std::tan(NAVE_PITCH * DEG_TO_RAD), b.add_paint(data.color("gold")));
 	return tower;
 }
 

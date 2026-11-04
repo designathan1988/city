@@ -60,9 +60,8 @@
   "median_min_m": 1.2
  },
  "props": {
-  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head, as the Roadcraft 4.0 heads), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk); drawn dim (lens_dim) and, lit, a copy grown by lens_lit_grow over the dim one when the approach shows it.",
-  "lens_dim": 0.12,
-  "lens_lit_grow": 1.08,
+  "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk; the cars' red and green). color is the lens lit as the screen shows it (render/tone_map.gd gives the radiance): the colour regions of road traffic signals (CIE, as tabled by Janoff, Transportation Research Record 1316, 1991, Table 1; EN 12368 Table 7 asks the same) lie outside what an sRGB screen shows for red and amber, so each is the brightest colour the Environment's ACES can show whose chromaticity is within one MacAdam step (0.0011 in CIE 1976 u'v', CIE TN 001:2014) of the nearest one it can show (red: 0.0377 from the region, the nearest 0.0366; amber: 0.0073, the nearest 0.0062); green the brightest inside its region. An unlit lens is that colour times lens_dim (sRGB), a dark filter lit by the scene: in full sun (daylight.json sun and ambient) it stays at least 16 times dimmer than the lens lit, the phantom signal class 5 of EN 12368 (ratios 21.2, 16.6 and 19.9). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h.",
+  "lens_dim": 0.1,
   "signal": [
    {
     "shape": "cylinder",
@@ -100,42 +99,42 @@
     "shape": "blob",
     "center": [-3.2, 5.38, 0.2],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#ff3a2a",
+    "color": "#d20007",
     "lens": 0
    },
    {
     "shape": "blob",
     "center": [-3.2, 5.1, 0.2],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#ffb020",
+    "color": "#d46f09",
     "lens": 1
    },
    {
     "shape": "blob",
     "center": [-3.2, 4.82, 0.2],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#2fff6a",
+    "color": "#22ba50",
     "lens": 2
    },
    {
     "shape": "blob",
     "center": [-3.2, 5.38, -0.15],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#ff3a2a",
+    "color": "#d20007",
     "lens": 0
    },
    {
     "shape": "blob",
     "center": [-3.2, 5.1, -0.15],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#ffb020",
+    "color": "#d46f09",
     "lens": 1
    },
    {
     "shape": "blob",
     "center": [-3.2, 4.82, -0.15],
     "radius": [0.11, 0.11, 0.04],
-    "color": "#2fff6a",
+    "color": "#22ba50",
     "lens": 2
    },
    {
@@ -148,14 +147,14 @@
     "shape": "blob",
     "center": [-0.35, 2.92, 0],
     "radius": [0.03, 0.09, 0.09],
-    "color": "#ff3a2a",
+    "color": "#d20007",
     "lens": 3
    },
    {
     "shape": "blob",
     "center": [-0.35, 2.48, 0],
     "radius": [0.03, 0.09, 0.09],
-    "color": "#2fff6a",
+    "color": "#22ba50",
     "lens": 4
    }
   ],
