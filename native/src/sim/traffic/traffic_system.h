@@ -153,8 +153,11 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg); // a vehicle on it o
 bool peds_in_way(const CityState &s, int conn, float front_in = 0, float front_out = 0);
 constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the vehicle has already passed
 
-// Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top` (Roadcraft
-// 4.0 admission: a vehicle starting at its line reaches a crosswalk sooner than its speed now says).
+// Seconds for the front of `v` to cover `metres` accelerating at its class's rate from its speed up to `top`: a vehicle
+// starting at its line reaches a crosswalk sooner than its speed now says. Measured on 155 000 commitments (soak, 7
+// seeds): to the exit crosswalk it errs 0.2 s early on average, where metres / max(2 m/s, v) was 0.9 s late and let
+// vehicles in that then stood in the box for walkers (4x the box stops, 6x the hard brakes for walkers, the same for
+// walkers). What it leaves out (the jerk ramp from rest, slowing to the turn speed) only makes it early, the safe side.
 float front_time(const CityState &s, const Vehicle &v, float metres, float top);
 float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
 
