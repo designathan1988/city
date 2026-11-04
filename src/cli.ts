@@ -1,9 +1,11 @@
 // Entry point: `node src/cli.ts <command> --flag value ...`. Each stage of the conversion is one command.
+import { AUDIT_FLAGS, runAuditCommand } from './audit/command.ts';
 import { ArgsError, usage } from './common/args.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
 
 const COMMANDS: Record<string, { run: (argv: readonly string[]) => void; help: string }> = {
   graph: { run: runGraph, help: usage('graph', GRAPH_FLAGS) },
+  audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
 };
 
 function main(argv: readonly string[]): number {
