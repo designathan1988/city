@@ -79,7 +79,7 @@ static func _field(cap: Node, under: Node = null) -> LineEdit:
 ## Close to each piece and barrier, from the road's side at a person's height, looking at it.
 static func _close_views(cap: Node, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
-	for key: String in spots:
+	for key: String in cap.spots:
 		var at: Vector3 = cap.spots[key]
 		var toward := -side if key == "placas" or key.begins_with("barrier") else side
 		var name: String = key.get_slice(".", key.get_slice_count(".") - 1)
@@ -96,7 +96,7 @@ static func _look(cap: Node, name: String, from: Vector3, at: Vector3) -> void:
 
 
 static func _eye(cap: Node, name: String, from: Vector3, at: Vector3) -> void:
-	var eye := cap.ui.ground(from.x, from.z) + Vector3.UP * maxf(from.y - _floor(cap, from), cap.EYE_M)
+	var eye: Vector3 = cap.ui.ground(from.x, from.z) + Vector3.UP * maxf(from.y - _floor(cap, from), cap.EYE_M)
 	cap.rig.camera.global_position = eye
 	cap.rig.camera.look_at(cap.ui.ground(at.x, at.z) + Vector3.UP * cap.LOOK_Y)
 	await cap.ui.drawn()
