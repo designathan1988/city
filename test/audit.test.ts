@@ -15,7 +15,7 @@ const ir = buildGraph({ sourceRoot: path.join(import.meta.dirname, 'fixtures', '
 const base: AuditOptions = {
   hot: ['src/world.ts#World.tick'], uiDirs: ['src/ui'], stateDirs: ['src/world.ts'], simDirs: ['src/world.ts'],
   maxFileLines: 25, maxFunctionLines: 8, features: [{ name: 'tick', entry: 'src/world.ts#World.tick' }],
-  maxScattering: 0, minWriterFiles: 2, minConstantFiles: 2,
+  maxScattering: 0, minWriterFiles: 2, minConstantFiles: 2, profile: null,
 };
 
 describe('audit', () => {

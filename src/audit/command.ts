@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import { IR_VERSION } from '../graph/ir.ts';
+import { PROFILE_VERSION, type Profile } from '../measure/profile.ts';
 import type { AuditOptions } from './context.ts';
 import { renderAudit } from './report.ts';
 import { runAudit } from './run.ts';
@@ -24,7 +25,17 @@ export const AUDIT_FLAGS: readonly FlagSpec[] = [
   { name: 'max-scattering', help: 'degree of scattering at which a feature is reported (default 0.5, a project decision)' },
   { name: 'min-writer-files', help: 'files writing one state before it is reported as scattered (default 3)' },
   { name: 'min-constant-files', help: 'files repeating one value before it is reported (default 3)' },
+  { name: 'profile', help: 'profile JSON from `converter measure`: performance severity from measured calls per frame' },
 ];
+
+function readProfile(file: string | undefined, ir: GraphIR): Profile | null {
+  if (file === undefined) return null;
+  const profile = JSON.parse(fs.readFileSync(file, 'utf8')) as Profile;
+  if (profile.version !== PROFILE_VERSION) throw new ArgsError(`${file} is profile version ${profile.version}; this audit reads ${PROFILE_VERSION}`);
+  if (profile.sourceRoot !== ir.sourceRoot) throw new ArgsError(`${file} measured ${profile.sourceRoot}, the graph is of ${ir.sourceRoot}`);
+  if (profile.graphUnits !== ir.units.length) throw new ArgsError(`${file} was measured against a graph of ${profile.graphUnits} units; this graph has ${ir.units.length}: measure again`);
+  return profile;
+}
 
 function number(value: string | undefined, name: string): number | undefined {
   if (value === undefined) return undefined;
@@ -65,6 +76,7 @@ export function runAuditCommand(argv: readonly string[]): void {
     maxScattering: number(flags.one('max-scattering'), 'max-scattering') ?? 0.5,
     minWriterFiles: number(flags.one('min-writer-files'), 'min-writer-files') ?? 3,
     minConstantFiles: number(flags.one('min-constant-files'), 'min-constant-files') ?? 3,
+    profile: readProfile(flags.one('profile'), ir),
   };
   const result = runAudit(ir, options);
   const out = path.resolve(flags.require('out'));

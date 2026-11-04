@@ -2,13 +2,15 @@
 import { AUDIT_FLAGS, runAuditCommand } from './audit/command.ts';
 import { ArgsError, usage } from './common/args.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
+import { MEASURE_FLAGS, runMeasureCommand } from './measure/command.ts';
 
-const COMMANDS: Record<string, { run: (argv: readonly string[]) => void; help: string }> = {
+const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promise<void>; help: string }> = {
   graph: { run: runGraph, help: usage('graph', GRAPH_FLAGS) },
+  measure: { run: runMeasureCommand, help: usage('measure', MEASURE_FLAGS) },
   audit: { run: runAuditCommand, help: usage('audit', AUDIT_FLAGS) },
 };
 
-function main(argv: readonly string[]): number {
+async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
   const entry = command === undefined ? undefined : COMMANDS[command];
   if (!entry) {
@@ -16,7 +18,7 @@ function main(argv: readonly string[]): number {
     return 2;
   }
   try {
-    entry.run(rest);
+    await entry.run(rest);
     return 0;
   } catch (error) {
     if (error instanceof ArgsError) {
@@ -27,4 +29,4 @@ function main(argv: readonly string[]): number {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+process.exitCode = await main(process.argv.slice(2));

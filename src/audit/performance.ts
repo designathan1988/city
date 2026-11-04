@@ -1,39 +1,59 @@
-// Performance rules: methodology patterns recorded by the graph, allocations on the frame or tick path, one mesh per
-// item, and GPU resources never disposed. Severity follows the hot set, which is static reachability from the
-// repeating loops: every path the loop *can* take, not what it does every frame. Reachable code is therefore rated
-// medium, never high; "runs every frame" is a measurement, which the trace stage provides.
+// Performance rules: methodology patterns recorded by the graph, allocations in code that runs every frame, one mesh
+// per item, and GPU resources never disposed. Severity comes from the measured profile when there is one (calls per
+// frame in a real run, per quality tier): at least once per frame is high, less is medium, not executed is low.
+// Without a profile, it falls back to static reachability from the repeating loops, which is every path a loop *can*
+// take: rated medium at most, and said so.
 import type { PatternSite } from '../graph/ir.ts';
 import type { AuditContext, Finding, RuleOutcome, Severity } from './context.ts';
 
-/** Static reachability from a loop: possibly every frame, not measured. */
-const REACHABLE: Severity = 'medium';
-const REACHABLE_NOTE = ' (reachable from a frame or tick loop; not measured)';
+interface Rating {
+  readonly severity: Severity;
+  readonly note: string;
+  readonly runs: boolean;
+}
+
+function format(perFrame: number): string {
+  return perFrame >= 10 ? perFrame.toFixed(0) : perFrame >= 1 ? perFrame.toFixed(1) : perFrame.toPrecision(2);
+}
+
+function rate(ctx: AuditContext, unitId: string, unmeasuredCold: Severity): Rating {
+  if (ctx.measured) {
+    const m = ctx.measured.get(unitId);
+    if (!m) return { severity: 'low', note: ' (not executed in the measured run)', runs: false };
+    const note = ` (measured ${format(m.perFrame)} calls per frame, ${m.variant})`;
+    return { severity: m.perFrame >= 1 ? 'high' : 'medium', note, runs: true };
+  }
+  return ctx.hot.has(unitId)
+    ? { severity: 'medium', note: ' (reachable from a frame or tick loop; not measured)', runs: true }
+    : { severity: unmeasuredCold, note: '', runs: false };
+}
 
 export function patternRule(ctx: AuditContext, id: PatternSite['id'], coldSeverity: Severity = 'low'): RuleOutcome {
   const findings: Finding[] = [];
   for (const unit of ctx.ir.units) {
     for (const site of unit.facts.patterns) {
       if (site.id !== id) continue;
-      const reachable = ctx.hot.has(unit.id);
-      findings.push({ rule: id, severity: reachable ? REACHABLE : coldSeverity, unit: unit.id, file: unit.file, line: site.line,
-        message: `${unit.name}${reachable ? REACHABLE_NOTE : ''}: ${site.detail}` });
+      const rating = rate(ctx, unit.id, coldSeverity);
+      findings.push({ rule: id, severity: rating.severity, unit: unit.id, file: unit.file, line: site.line,
+        message: `${unit.name}${rating.note}: ${site.detail}` });
     }
   }
   return findings;
 }
 
 export function hotAllocation(ctx: AuditContext): RuleOutcome {
-  if (ctx.hot.size === 0) return { skipped: 'no hot roots: no requestAnimationFrame use found and no --hot given' };
+  if (!ctx.measured && ctx.hot.size === 0) return { skipped: 'no profile (--profile) and no repeating loop or --hot root found' };
   const findings: Finding[] = [];
-  for (const id of ctx.hot) {
-    const unit = ctx.byId.get(id)!;
+  for (const unit of ctx.ir.units) {
     const sites = unit.facts.loopAllocations;
     if (sites.length === 0) continue;
+    const rating = rate(ctx, unit.id, 'low');
+    if (!rating.runs) continue;
     const counts = new Map<string, number>();
     for (const site of sites) counts.set(site.what, (counts.get(site.what) ?? 0) + 1);
     const top = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([what, n]) => `${n}× ${what}`).join(', ');
-    findings.push({ rule: 'hot-allocation', severity: REACHABLE, unit: unit.id, file: unit.file, line: sites[0]!.line,
-      message: `${unit.name}${REACHABLE_NOTE}: ${sites.length} allocation(s) inside loops (${top})` });
+    findings.push({ rule: 'hot-allocation', severity: rating.severity, unit: unit.id, file: unit.file, line: sites[0]!.line,
+      message: `${unit.name}${rating.note}: ${sites.length} allocation site(s) inside loops (${top})` });
   }
   return findings;
 }
@@ -45,9 +65,9 @@ export function perObjectDraw(ctx: AuditContext): RuleOutcome {
   for (const unit of ctx.ir.units) {
     for (const site of unit.facts.loopAllocations) {
       if (!PER_OBJECT_MESH.test(site.what)) continue;
-      const reachable = ctx.hot.has(unit.id);
-      findings.push({ rule: 'per-object-draw', severity: 'medium', unit: unit.id, file: unit.file,
-        line: site.line, message: `${unit.name}${reachable ? REACHABLE_NOTE : ''}: ${site.what} inside a loop` });
+      const rating = rate(ctx, unit.id, 'medium');
+      findings.push({ rule: 'per-object-draw', severity: rating.severity === 'high' ? 'high' : rating.runs ? 'medium' : rating.severity,
+        unit: unit.id, file: unit.file, line: site.line, message: `${unit.name}${rating.note}: ${site.what} inside a loop` });
     }
   }
   return findings;

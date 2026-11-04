@@ -11,8 +11,11 @@ export function renderAudit(result: AuditResult): string {
     '',
     `Source: ${result.sourceRoot} (${result.graphUnits} units). Reachable from frame or tick loops: ${result.hot.units} units from ${result.hot.roots.length} root(s).`,
     '',
-    'Reachability is static: every path a loop can take, not what runs every frame. Performance findings in reachable code ' +
-      'are rated medium; which of them run every frame is measured by the trace stage, not inferred here.',
+    result.options.profile
+      ? `Performance severity is measured: ${result.options.profile.variants.map((v) => `${v.name} (${v.frames} frames)`).join(', ')} ` +
+        `on ${result.options.profile.renderer}, scenario ${result.options.profile.scenario}. At least one call per frame is high.`
+      : 'No profile: performance severity is static reachability (every path a loop can take), rated medium at most. ' +
+        'Run `converter measure` and pass --profile for measured calls per frame.',
     '',
     '| Rule | High | Medium | Low | Status |',
     '|---|---|---|---|---|',

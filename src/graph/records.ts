@@ -1,7 +1,7 @@
 // Turns the registry into the serialisable IR: positions, sizes, signatures, export status, facts and edges keyed by
 // readable ids, sorted so the same source always gives byte-identical output.
 import type * as TS from 'typescript';
-import type { EdgeKind, EdgeRecord, ExternalSummary, ExternalUse, UnitRecord } from './ir.ts';
+import type { EdgeKind, EdgeRecord, ExternalSummary, ExternalUse, Range, UnitRecord } from './ir.ts';
 import { isMutableModuleVariable } from './references.ts';
 import type { Registry, Unit } from './registry.ts';
 import { syntaxFacts } from './facts.ts';
@@ -28,6 +28,31 @@ function signatureOf(sp: SourceProgram, unit: Unit): string {
       .join('; ');
   }
   return '';
+}
+
+/** The function node that runs when the unit is called (a method itself, a field's or variable's arrow). */
+function functionNode(sp: SourceProgram, unit: Unit): TS.FunctionLikeDeclaration | null {
+  const { ts } = sp;
+  const n = unit.ref.node;
+  if (unit.ref.head) return null;
+  if (ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n) || ts.isConstructorDeclaration(n) || ts.isGetAccessorDeclaration(n) ||
+    ts.isSetAccessorDeclaration(n)) {
+    return n;
+  }
+  const value = ts.isPropertyDeclaration(n) || ts.isPropertyAssignment(n) ? n.initializer
+    : ts.isVariableStatement(n) ? n.declarationList.declarations[0]?.initializer : undefined;
+  return value && (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) ? value : null;
+}
+
+function callableHead(sp: SourceProgram, unit: Unit): Range | null {
+  const fn = functionNode(sp, unit);
+  if (!fn) return null;
+  const sf = unit.ref.node.getSourceFile();
+  const at = (pos: number): { line: number; column: number } => {
+    const lc = sf.getLineAndCharacterOfPosition(pos);
+    return { line: lc.line + 1, column: lc.character + 1 };
+  };
+  return { start: at(unit.ref.node.getStart(sf)), end: at(fn.body ? fn.body.getStart(sf) : fn.end) };
 }
 
 function isCallable(sp: SourceProgram, unit: Unit): boolean {
@@ -67,6 +92,7 @@ export function unitRecord(sp: SourceProgram, registry: Registry, unit: Unit, re
     signature: signatureOf(sp, unit),
     parent: unit.parentKey ? registry.units.get(unit.parentKey)!.id : null,
     nested: syntax.nested,
+    callableHead: callableHead(sp, unit),
     facts: {
       external: externalUses(registry, unit.key),
       nondeterminism,
