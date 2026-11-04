@@ -184,6 +184,7 @@
   "parker_stop_slack_m": 2.5,
   "bike_share": 0.04,
   "bike_speed_kmh": 20,
+  "bike_edge_m": 0.6,
   "cycle_ease_m": 8,
   "cycle_clear_share": 0.8,
   "parker_past_gate_m": 8,
@@ -218,7 +219,7 @@
   "ped_window_m": 600,
   "ped_despawn_window_share": 1.2
  },
- "_classes_doc": "[a, b, b_emergency, headway T, min gap s0, share of the speed limit, length, half width] per type: sedan, hatch, suv, van, pickup, moto, bus, truck (drivers.ts ARCH, traffic/state.ts), bicycle (SUMO vehicle type defaults, vClass bicycle: accel 1.2, decel 3, emergencyDecel 7, tau 1, minGap 0.5, length 1.6, width 0.65; bike_speed_kmh its desiredMaxSpeed 20 km/h).",
+ "_classes_doc": "[a, b, b_emergency, headway T, min gap s0, share of the speed limit, length, half width] per type: sedan, hatch, suv, van, pickup, moto, bus, truck (drivers.ts ARCH, traffic/state.ts), bicycle (SUMO vehicle type defaults, vClass bicycle: accel 1.2, decel 3, emergencyDecel 7, tau 1, minGap 0.5, length 1.6, width 0.65; bike_speed_kmh its desiredMaxSpeed 20 km/h). Where a street has no cycle lane a bicycle rides on the edge of the carriageway (CTB art. 58), its middle bike_edge_m from the lane's edge: half the 1,2 m minimum operating width of AASHTO's Guide for the Development of Bicycle Facilities, 2012.",
  "classes": [
   [2.4, 2.9, 6.0, 1.2, 2.0, 1.00, 4.4, 0.9],
   [2.9, 3.2, 6.5, 1.0, 1.8, 1.08, 3.9, 0.9],

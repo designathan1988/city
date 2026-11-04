@@ -42,6 +42,7 @@ struct DirSeg {
 	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
 	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
 	float cycle_shift = 0; // a bike strip beside lane 0: how far across (u, a -> b frame), 0 for none
+	float edge_shift = 0; // no strip: how far across a bicycle rides within lane 0, on the kerb edge of the carriageway
 	bool bikes = true; // bicycles may ride it (the street has a footway)
 	float detector = 0, extension = 0; // a signalled approach: its detection section before the line, green per call
 };

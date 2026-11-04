@@ -172,6 +172,7 @@ void build_dir(CityState &s, int seg) {
 		for (int k = 0; k < d.lanes; k++) d.u[k] = lanes[k].u;
 		d.bikes = p.walk_left > 0 || p.walk_right > 0;
 		d.cycle_shift = bike_strip_shift(p, d.u[0], dir);
+		if (d.cycle_shift == 0 && d.bikes) d.edge_shift = (dir == 0 ? -1.f : 1.f) * std::max(0.f, lanes[0].w * 0.5f - s.catalog.traffic.bike_edge_m);
 		d.len = len;
 		d.speed = p.speed / KMH_PER_MS;
 		d.at0 = float(dir == 0 ? sg.retreat_a : sg.len - sg.retreat_b);
