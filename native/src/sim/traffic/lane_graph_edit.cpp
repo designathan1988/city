@@ -152,29 +152,36 @@ void clear_node(CityState &s, int n) {
 void apply_network_changes(CityState &s) {
 	TrafficState &t = s.traffic;
 	// the step holds the map shared: the net lists are taken out under the log's own mutex (change_log.h)
-	std::vector<int> nodes, removed, changed, furniture;
+	std::vector<int> nodes, removed, changed, furniture, lots, signals;
 	{
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		nodes.swap(s.log.net_nodes);
 		removed.swap(s.log.net_segs_removed);
 		changed.swap(s.log.net_segs_changed);
 		furniture.swap(s.log.furniture_segs);
+		lots.swap(s.log.lots_changed);
+		signals.swap(s.log.signal_nodes);
 	}
+	ChangeLog::dedup(signals);
+	for (int n : signals) replan_signal(s, n);
 	for (int seg : furniture) forget_furniture(s, seg);
+	ChangeLog::dedup(lots);
+	for (int id : lots) forget_parking_lot(s, id);
 	if (nodes.empty() && removed.empty() && changed.empty()) {
 		t.g.version = s.roads.version;
 		return;
 	}
 	graph_grow(s, int(s.roads.segs.size()), int(s.roads.nodes.size()));
+	t.park.yards.clear(); // their ways cross the streets
 	ChangeLog::dedup(removed);
 	ChangeLog::dedup(changed);
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
-	for (int seg : removed) forget_furniture(s, seg);
-	for (int seg : changed) forget_furniture(s, seg);
+	for (int seg : removed) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
+	for (int seg : changed) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
 	for (int n : nodes) {
 		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
-		for (int seg : s.roads.nodes[size_t(n)].segs) forget_furniture(s, seg);
+		for (int seg : s.roads.nodes[size_t(n)].segs) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
 	}
 	for (int n : nodes) clear_node(s, n);
 	for (int seg : changed) build_dir(s, seg);

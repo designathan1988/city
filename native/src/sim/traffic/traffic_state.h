@@ -3,9 +3,11 @@
 // Pure C++ (no Godot types); written only by sim/traffic, read by render/agents.
 #pragma once
 
+#include "core/math.h"
 #include "core/random.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
+#include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
 
 #include <cstdint>
@@ -19,6 +21,7 @@ constexpr int CONN_STEPS = 8; // arc-length table of a connector curve
 constexpr int NODE_ARMS_MAX = 8; // arms a node may have in the crosswalk answer cache
 constexpr int CROSS_CACHE_KINDS = 2; // walk_ok and cars_on_crossing are cached apart
 constexpr uint32_t STAMP_NONE = 0xFFFFFFFFu; // crosswalk cache: no step answered yet
+enum StepStage { STAGE_BAYS = 0, STAGE_FLEET, STAGE_LOTS, STAGE_WALKERS, STAGE_LOT_OUT, STAGE_LOT_IN, STAGE_PUBLISH, TIMED_STAGES };
 constexpr uint64_t TRAFFIC_SEED = 12345; // Roadcraft traffic.ts: Rng(12345)
 
 enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
@@ -39,6 +42,9 @@ struct DirSeg {
 	int stage = -1; // signal stage serving this approach at node `to`
 	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
 	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
+	float cycle_shift = 0; // a bike strip beside lane 0: how far across (u, a -> b frame), 0 for none
+	float edge_shift = 0; // no strip: how far across a bicycle rides within lane 0, on the kerb edge of the carriageway
+	bool bikes = true; // bicycles may ride it (the street has a footway)
 	float detector = 0, extension = 0; // a signalled approach: its detection section before the line, green per call
 };
 
@@ -61,11 +67,15 @@ struct Junction {
 	Control ctl = Control::NONE;
 	// per stage, seconds: minimum and maximum green, then the intergreen (amber, all-red); its approaches
 	std::vector<float> green, green_max, amber, all_red;
+	std::vector<float> least; // the minimum greens, under any fixed plan
 	std::vector<std::vector<int>> approaches;
 	float cycle = 0; // with the minimum greens
 	int run = 0; // the stage running, since `run_start` (its green); its green once ended (-1 while the green lasts)
 	double run_start = 0;
 	float run_green = -1;
+	bool fixed = false; // fixed time: the stage follows the clock (`offset`), not the detectors
+	float offset = 0;
+	double settle = 0; // a new plan takes over only then: the stage running ends its intergreen first
 	int degree = 0; // arms with lanes
 };
 
@@ -91,6 +101,19 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 
 // A vehicle's paint from here up is the colour of a transport line, not one of the paints (agent_renderer.cpp).
 constexpr int LINE_PAINT = 64;
+// An errand at the kerb (kerb_stops.cpp): somebody set down, somebody picked up, a truck's mate away with a delivery.
+enum class Errand : uint8_t { NONE = 0, DROP, PICK, DELIVER };
+enum class KerbPhase : uint8_t { APPROACH, HALT, FETCH, OPEN, TRANSFER, AWAY, CLOSE };
+// Vehicle::aboard, what the render does to its passengers: as drawn, at least one to set down, one less, one more.
+constexpr uint8_t ABOARD_AS_DRAWN = 0, ABOARD_TO_SET_DOWN = 1, ABOARD_SET_DOWN = 2, ABOARD_PICKED_UP = 3;
+struct KerbStop {
+	int vehicle = -1, ds = -1, lane = 0, ped = -1;
+	Errand errand = Errand::NONE;
+	KerbPhase phase = KerbPhase::APPROACH;
+	bool back = false; // the mate is on the way back
+	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
+	V2 from; // where the person to pick up set off from
+};
 
 struct Vehicle {
 	bool alive = false, brake = false;
@@ -111,6 +134,14 @@ struct Vehicle {
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
 	int bus = -1; // its place in TransitRun::buses
 	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
+	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
+	int car = -1; // its index in ParkingState::cars
+	int lorry = -1; // its index in ParkingState::lorries
+	float stop_at = -1; // called to a gate: on its last lane it stops with its front here, on lane stop_lane
+	int stop_lane = 0;
+	Errand errand = Errand::NONE; // still to do on this trip
+	int kerb = -1; // its stop in TrafficState::kerb_stops
+	uint8_t aboard = ABOARD_AS_DRAWN;
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
@@ -181,11 +212,24 @@ struct TrafficState {
 	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
+	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
 	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;
 	float spawn_credit = 0;
+	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
+	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
+	double step_ms[TIMED_STAGES] = {};
+	std::vector<KerbStop> kerb_stops; // few: the vehicles pulling up or standing at the kerb
+	std::vector<int> free_kerb_stops;
+	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
+	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
+	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
+	std::vector<int> pub_count;
+	ParkingState park;
+	std::unordered_map<int64_t, std::vector<int>> walker_cells; // who stands where, filed when something off the lanes asks
+	uint64_t walkers_filed = ~0ull; // the tick they were filed in
 	Rng rng{ TRAFFIC_SEED };
 };
 

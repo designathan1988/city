@@ -9,7 +9,6 @@ namespace city {
 
 namespace {
 constexpr float DEGENERATE = 1e-12f;
-constexpr int CROSSING_DEGREE = 3;
 } // namespace
 
 SegFrame seg_frame(const CityState &s, int sid, double at) {
@@ -26,15 +25,7 @@ SegFrame seg_frame(const CityState &s, int sid, double at) {
 	return f;
 }
 
-bool crossing_node(const CityState &s, int node) {
-	const RoadNode &n = s.roads.nodes[node];
-	if (int(n.segs.size()) < CROSSING_DEGREE) return false;
-	for (int sid : n.segs) {
-		const Profile &p = s.catalog.profile(s.roads.segs[sid].profile);
-		if (p.ring || p.rail) return false;
-	}
-	return true;
-}
+bool crossing_node(const CityState &s, int node) { return s.roads.has_crosswalks(node); }
 
 void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color &col, const Vector3 &out) {
 	Vector3 nn = (p[1] - p[0]).cross(p[3] - p[0]);

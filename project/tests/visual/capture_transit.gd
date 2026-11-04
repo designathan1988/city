@@ -102,9 +102,7 @@ static func _tool_shots(cap: Node, bus: Array) -> void:
 
 
 static func _at_hour(cap: Node) -> void:
-	CityStore.set_clock_hour(HOUR)
-	cap.world.set_hour(HOUR)
-	await cap._frames(cap._sky_frames()) # the sky's radiance follows a new hour over several frames
+	await CaptureSignals.at_hour(cap, HOUR)
 
 
 static func _view(cap: Node, name: String, place: Dictionary, view: Array) -> void:
@@ -112,7 +110,7 @@ static func _view(cap: Node, name: String, place: Dictionary, view: Array) -> vo
 
 
 static func _look(cap: Node, name: String, at: Vector3, along: Vector3, out: Vector3, view: Array) -> void:
-	CityStore.set_clock_hour(HOUR)
+	cap.set_hour(HOUR)
 	var lens: float = cap.camera.fov
 	cap.camera.fov = view[3]
 	await cap._shot(name, at + along * view[0] + out * view[1] + Vector3.UP * view[2], at)

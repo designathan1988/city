@@ -5,7 +5,8 @@
   "vehicle_radius_m": {"type": "number"},
   "cabin_radius_m": {"type": "number"},
   "people_radius_m": {"type": "number"},
-  "paints": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+  "exhaust": {"type": "object"},
+  "styles": {"type": "object"},
   "trim": {
    "type": "object",
    "properties": {
@@ -19,10 +20,14 @@
     "headlamp": {"type": "string", "pattern_prefix": "#"},
     "tail": {"type": "string", "pattern_prefix": "#"},
     "truck_box": {"type": "string", "pattern_prefix": "#"},
+    "head_lit": {"type": "string", "pattern_prefix": "#"},
+    "tail_lit": {"type": "string", "pattern_prefix": "#"},
+    "indicator": {"type": "string", "pattern_prefix": "#"},
+    "mirror": {"type": "string", "pattern_prefix": "#"},
     "chrome": {"type": "string", "pattern_prefix": "#"},
     "roof": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": ["tyre", "hub", "under", "blackout", "grille", "plate", "glass", "headlamp", "tail", "truck_box", "chrome", "roof"],
+   "required": ["tyre", "hub", "under", "blackout", "grille", "plate", "glass", "headlamp", "tail", "truck_box", "chrome", "roof", "head_lit", "tail_lit", "indicator", "mirror"],
    "strict": true
   },
   "cars": {"type": "array", "items": {
@@ -40,12 +45,18 @@
     "top": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
     "screen": {"type": "array", "items": {"type": "number"}},
     "rear": {"type": "array", "items": {"type": "number"}},
-    "side_glass": {"type": "array", "items": {"type": "number"}},
     "belt": {"type": "array", "items": {"type": "number"}},
+    "doors": {"type": "array", "items": {"type": "number"}},
+    "quarter": {"type": "boolean"},
+    "tumble_m": {"type": "number"},
+    "nose_lift_m": {"type": "number"},
+    "tail_lift_m": {"type": "number"},
+    "tail_lamp_h_m": {"type": "number"},
+    "bed_from": {"type": "number"},
     "nose_r": {"type": "number"},
     "tail_r": {"type": "number"}
    },
-   "required": ["id", "length", "width", "height", "tyre", "wheelbase_m", "front_overhang_m", "track_m", "clearance", "top", "screen", "rear", "side_glass", "belt", "nose_r", "tail_r"],
+   "required": ["id", "length", "width", "height", "tyre", "wheelbase_m", "front_overhang_m", "track_m", "clearance", "top", "screen", "rear", "belt", "doors", "quarter", "tumble_m", "nose_lift_m", "tail_lift_m", "tail_lamp_h_m", "bed_from", "nose_r", "tail_r"],
    "strict": true
   }},
   "car_body": {
@@ -54,23 +65,35 @@
     "stations": {"type": "array", "items": {"type": "integer"}},
     "arch_steps": {"type": "array", "items": {"type": "number"}},
     "end_steps": {"type": "array", "items": {"type": "number"}},
+    "end_roll_steps": {"type": "array", "items": {"type": "number"}},
     "station_eps_m": {"type": "number"},
     "sill_m": {"type": "number"},
-    "tumble": {"type": "number"},
-    "glass_top_m": {"type": "number"},
-    "crown_m": {"type": "number"},
+    "crown_m": {"type": "array", "items": {"type": "number"}},
     "lamp_y": {"type": "number"},
     "tail_y": {"type": "number"},
-    "wheel_sides": {"type": "integer"},
-    "bumper_top_m": {"type": "number"},
+    "wheel_sides": {"type": "array", "items": {"type": "number"}},
     "bottom_round_m": {"type": "number"},
     "bulge": {"type": "number"},
     "b_pillar_m": {"type": "number"},
     "door_seam_m": {"type": "number"},
-    "wing_mirror_m": {"type": "array", "items": {"type": "number"}},
-    "car_handle_m": {"type": "array", "items": {"type": "number"}}
+    "car_handle_m": {"type": "array", "items": {"type": "number"}},
+    "glass_frame_m": {"type": "number"},
+    "a_foot_m": {"type": "number"},
+    "c_pillar_m": {"type": "array", "items": {"type": "number"}},
+    "last_door_m": {"type": "number"},
+    "pillar_foot_m": {"type": "number"},
+    "roof_round_m": {"type": "number"},
+    "tuck_m": {"type": "array", "items": {"type": "number"}},
+    "end_roll_m": {"type": "array", "items": {"type": "number"}},
+    "front_lens_m": {"type": "array", "items": {"type": "number"}},
+    "rear_lens_m": {"type": "array", "items": {"type": "number"}},
+    "indicator_m": {"type": "array", "items": {"type": "number"}},
+    "grille_m": {"type": "array", "items": {"type": "number"}},
+    "car_plate_m": {"type": "array", "items": {"type": "number"}},
+    "mirror": {"type": "object"},
+    "black_roof": {"type": "object"}
    },
-   "required": ["stations", "arch_steps", "end_steps", "station_eps_m", "sill_m", "tumble", "glass_top_m", "crown_m", "lamp_y", "tail_y", "wheel_sides", "bumper_top_m", "bottom_round_m", "bulge", "b_pillar_m", "door_seam_m", "wing_mirror_m", "car_handle_m"],
+   "required": ["stations", "arch_steps", "end_steps", "end_roll_steps", "station_eps_m", "sill_m", "crown_m", "lamp_y", "tail_y", "wheel_sides", "bottom_round_m", "bulge", "b_pillar_m", "door_seam_m", "car_handle_m", "glass_frame_m", "a_foot_m", "c_pillar_m", "last_door_m", "pillar_foot_m", "roof_round_m", "tuck_m", "end_roll_m", "front_lens_m", "rear_lens_m", "indicator_m", "grille_m", "car_plate_m", "mirror", "black_roof"],
    "strict": true
   },
   "cars_cabin": {
@@ -78,13 +101,14 @@
    "properties": {
     "_doc": {"type": "string"},
     "leg_room_m": {"type": "array", "items": {"type": "number"}},
+    "console_m": {"type": "array", "items": {"type": "number"}},
     "rows": {"type": "integer"},
     "lining": {"type": "string", "pattern_prefix": "#"},
     "floor": {"type": "string", "pattern_prefix": "#"},
     "seat": {"type": "string", "pattern_prefix": "#"},
     "dash": {"type": "string", "pattern_prefix": "#"}
    },
-   "required": ["_doc", "leg_room_m", "rows", "lining", "floor", "seat", "dash"],
+   "required": ["_doc", "leg_room_m", "rows", "console_m", "lining", "floor", "seat", "dash"],
    "strict": true
   },
   "cabin": {
@@ -119,6 +143,7 @@
        "type": "object",
        "properties": {
         "hip_m": {"type": "number"},
+        "recline": {"type": "number"},
         "cushion_m": {"type": "number"},
         "cushion_w_m": {"type": "number"},
         "cushion_d_m": {"type": "number"},
@@ -130,13 +155,14 @@
         "handle_m": {"type": "array", "items": {"type": "number"}},
         "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
+       "required": ["recline", "hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       },
       "cab": {
        "type": "object",
        "properties": {
         "hip_m": {"type": "number"},
+        "recline": {"type": "number"},
         "cushion_m": {"type": "number"},
         "cushion_w_m": {"type": "number"},
         "cushion_d_m": {"type": "number"},
@@ -148,13 +174,14 @@
         "handle_m": {"type": "array", "items": {"type": "number"}},
         "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
+       "required": ["recline", "hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       },
       "chair": {
        "type": "object",
        "properties": {
         "hip_m": {"type": "number"},
+        "recline": {"type": "number"},
         "cushion_m": {"type": "number"},
         "cushion_w_m": {"type": "number"},
         "cushion_d_m": {"type": "number"},
@@ -166,7 +193,7 @@
         "handle_m": {"type": "array", "items": {"type": "number"}},
         "handle": {"type": "string", "pattern_prefix": "#"}
        },
-       "required": ["hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
+       "required": ["recline", "hip_m", "cushion_m", "cushion_w_m", "cushion_d_m", "back_h_m", "back_d_m", "base_share", "wheel", "headrest_m", "handle_m", "handle"],
        "strict": true
       }
      },
@@ -241,7 +268,7 @@
     "front_tyre": {"type": "array", "items": {"type": "number"}},
     "wheelbase_m": {"type": "number"},
     "saddle_m": {"type": "number"},
-    "body": {"type": "array", "items": {"type": "number"}},
+    "shape": {"type": "object"},
     "helmet_r": {"type": "number"},
     "rider": {
      "type": "object",
@@ -256,7 +283,7 @@
      "strict": true
     }
    },
-   "required": ["_doc", "length", "tyre", "front_tyre", "wheelbase_m", "saddle_m", "body", "helmet_r", "rider"],
+   "required": ["_doc", "length", "tyre", "front_tyre", "wheelbase_m", "saddle_m", "shape", "helmet_r", "rider"],
    "strict": true
   },
   "bus": {
@@ -360,6 +387,7 @@
    "required": ["_doc", "length", "tyre", "dual_m", "track_m", "front_overhang_m", "wheelbase_m", "cab_w", "cab_top", "body_from_axle_m", "cab_lines", "box_m", "rails_m", "mirror_out_m", "fuel_l", "fuel_tank_m", "wall_m", "lamps_m", "interior"],
    "strict": true
   },
+  "bicycle": {"type": "object", "properties": {"spokes": {"type": "integer"}, "rack": {"type": "object"}, "_doc": {"type": "string"}, "length": {"type": "number"}, "tyre": {"type": "array", "items": {"type": "number"}}, "wheelbase_m": {"type": "number"}, "saddle_m": {"type": "number"}, "bracket": {"type": "array", "items": {"type": "number"}}, "head": {"type": "array", "items": {"type": "number"}}, "seat_back_m": {"type": "number"}, "head_tube_m": {"type": "number"}, "head_rake_m": {"type": "number"}, "tube_m": {"type": "number"}, "helmet_r": {"type": "number"}, "rider": {"type": "object", "properties": {"hip": {"type": "array", "items": {"type": "number"}}, "shoulders": {"type": "array", "items": {"type": "number"}}, "knee": {"type": "array", "items": {"type": "number"}}, "ankle": {"type": "array", "items": {"type": "number"}}, "hand": {"type": "array", "items": {"type": "number"}}}, "required": ["hip", "shoulders", "knee", "ankle", "hand"], "strict": true}}, "strict": true},
   "wheel_jump_m": {"type": "number"},
   "people": {
    "type": "object",
@@ -374,6 +402,6 @@
    "strict": true
   }
  },
- "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "paints", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
+ "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "styles", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
  "strict": true
 }

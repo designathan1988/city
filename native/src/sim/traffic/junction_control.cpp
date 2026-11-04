@@ -20,17 +20,6 @@ constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in i
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
 constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
-constexpr int CROSSWALK_DEGREE = 3; // crosswalks are painted at nodes of this many arms or more (render crossing_node)
-
-bool crosswalk_node(const CityState &s, int n) {
-	const RoadNode &node = s.roads.nodes[n];
-	if (int(node.segs.size()) < CROSSWALK_DEGREE) return false;
-	for (int seg : node.segs) {
-		const Profile &p = s.roads.profile_of(seg);
-		if (p.ring || p.rail) return false;
-	}
-	return true;
-}
 
 struct Arm {
 	int seg = -1, in = -1, priority = 0;
@@ -91,7 +80,7 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 	j.amber.assign(count, 0.f);
 	j.all_red.assign(count, 0.f);
 	j.approaches.assign(count, {});
-	const bool walkers = crosswalk_node(s, n);
+	const bool walkers = s.roads.has_crosswalks(n);
 	for (size_t i = 0; i < arms.size(); i++) {
 		if (arms[i].in < 0) continue;
 		DirSeg &d = s.traffic.g.ds[arms[i].in];
@@ -118,6 +107,14 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 	for (int k = 0; k < count; k++) {
 		j.green_max[k] = std::max(j.green[k], (tp.signal_cycle_max_s - lost) / float(count));
 		j.cycle += j.green[k];
+	}
+	j.least = j.green;
+	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
+	j.fixed = set.fixed;
+	j.offset = set.offset;
+	for (int k = 0; set.fixed && k < count; k++) {
+		if (size_t(k) < set.greens.size()) { j.cycle += std::max(0.f, set.greens[size_t(k)] - j.green[size_t(k)]); j.green[size_t(k)] = std::max(j.green[size_t(k)], set.greens[size_t(k)]); }
+		j.green_max[size_t(k)] = j.green[size_t(k)];
 	}
 	j.run = 0;
 	j.run_green = -1;
@@ -167,7 +164,7 @@ void build_junction(CityState &s, int n) {
 	for (const Arm &a : arms)
 		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
-	if (crosswalk_node(s, n))
+	if (s.roads.has_crosswalks(n))
 		for (const Arm &a : arms)
 			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
 	j.ctl = control_of(s, n);
@@ -178,6 +175,21 @@ void build_junction(CityState &s, int n) {
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
 	for (size_t k = 0; k < order.size(); k++)
 		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 ? RANK_MAIN : RANK_YIELD;
+}
+
+void replan_signal(CityState &s, int n) {
+	LaneGraph &g = s.traffic.g;
+	if (n < 0 || n >= int(g.junctions.size()) || n >= int(s.roads.nodes.size()) || !s.roads.nodes[size_t(n)].alive) return;
+	const Junction was = g.junctions[size_t(n)];
+	build_junction(s, n);
+	Junction &j = g.junctions[size_t(n)];
+	if (j.ctl != Control::SIGNAL || was.ctl != Control::SIGNAL || was.green.empty() || j.green.size() != was.green.size()) return;
+	// no jump from one green to another: the stage running keeps at least its minimum green (walkers started on it) and its intergreen
+	const size_t k = size_t(was.run);
+	j.run = was.run;
+	j.run_start = was.run_start;
+	j.run_green = was.run_green >= 0 ? was.run_green : float(std::max(s.traffic.time - was.run_start, double(was.green[k])));
+	j.settle = j.run_start + double(j.run_green) + j.amber[k] + j.all_red[k];
 }
 
 Control control_of(const CityState &s, int n) {
@@ -215,7 +227,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
 	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
 	if (!has_exit(s, c, vid)) return false;
-	const float top = conn_speed(s, c) * me.vf;
+	const float top = top_speed(s, me, conn_speed(s, c));
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through

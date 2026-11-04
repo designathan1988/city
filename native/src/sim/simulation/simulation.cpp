@@ -16,15 +16,12 @@ int64_t now_ns() {
 } // namespace
 
 double CityClock::hour() const {
-	double m = std::fmod(minutes.load() + day_shift, double(MINUTES_PER_DAY));
+	double m = std::fmod(minutes.load() + day_shift.load(), double(MINUTES_PER_DAY));
 	if (m < 0) m += MINUTES_PER_DAY;
 	return m / MINUTES_PER_HOUR;
 }
 
-void CityClock::skip_to(double to) {
-	const double ahead = std::fmod(to - hour() + HOURS_PER_DAY, HOURS_PER_DAY);
-	minutes.store(minutes.load() + ahead * MINUTES_PER_HOUR);
-}
+void CityClock::set_hour(double h) { day_shift.store(h * MINUTES_PER_HOUR - minutes.load()); }
 
 void Simulation::start(CityState &s) {
 	stop();

@@ -23,8 +23,9 @@ namespace city {
 namespace {
 
 constexpr float AABB_HALF_H = 500.f;
-constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars"
-constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16;
+constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars", then the wagon
+constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
+constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 // agents.gdshader palette array sizes
@@ -56,7 +57,7 @@ PackedFloat32Array cumulative(const Variant &weights, int count, int max, const 
 
 // agents.json occupants.load key of a vehicle type (the motorbike carries its rider alone).
 const char *load_key(int type) {
-	if (type < CAR_MODELS) return "car";
+	if (type < CAR_MODELS || type == WAGON_MODEL) return "car";
 	if (type == int(VehicleType::BUS)) return "bus";
 	return type == int(VehicleType::TRUCK) ? "truck" : nullptr;
 }
@@ -82,20 +83,22 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	const AgentTrim trim = read_trim(t["trim"]);
 	const Array cars = t["cars"];
 	const Dictionary body = t["car_body"], inside = t["cars_cabin"];
-	if (cars.size() != CAR_MODELS) errors.push_back("agents.json: esperado um carro por estilo");
+	if (cars.size() != CAR_MODELS + 1) errors.push_back("agents.json: esperado um carro por estilo");
 	CabinLook look;
 	if (!look.load(t["cabin"])) errors.push_back("agents.json: cabin incompleto");
 	if (!errors.is_empty()) return false;
-	const int sides = int(body["wheel_sides"]);
+	const Array wheel_sides = body["wheel_sides"];
 	RenderingServer *rs = RenderingServer::get_singleton();
-	for (int i = 0; i < VEHICLE_TYPES; i++)
+	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
 			MeshBuilder mb;
 			Dictionary d;
+			const int sides = int(wheel_sides[level]);
 			const CabinLook *l = level == CABIN_LEVEL ? &look : nullptr;
 			int seats = 0;
-			if (i < CAR_MODELS) seats = build_car(mb, d = cars[i], body, inside, l, trim);
+			if (i < CAR_MODELS || i == WAGON_MODEL) seats = build_car(mb, d = cars[i == WAGON_MODEL ? CAR_MODELS : i], body, inside, l, trim);
 			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, look.person, trim);
+			else if (i == int(VehicleType::BICYCLE)) seats = build_bicycle(mb, d = t["bicycle"], sides, look.person, trim);
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
 			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
@@ -122,7 +125,8 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 bool AgentRenderer::push_palettes(const Dictionary &t, const std::vector<uint32_t> &lines, PackedStringArray &errors) {
 	const Dictionary people = t["people"], occupants = t["occupants"];
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const Array hair = people["hair"], skin = occupants["skin"], paints = t["paints"];
+	const Dictionary styles = t["styles"], style = styles[REGIONAL_STYLE];
+	const Array hair = people["hair"], skin = occupants["skin"], paints = style["paints"];
 	rs->material_set_param(material_, "hair", palette(hair, HAIR_MAX, "hair", errors));
 	rs->material_set_param(material_, "skin", palette(skin, SKIN_MAX, "skin", errors));
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)
@@ -134,6 +138,9 @@ bool AgentRenderer::push_palettes(const Dictionary &t, const std::vector<uint32_
 	}
 	rs->material_set_param(material_, "paints", raw);
 	rs->material_set_param(material_, "paint_n", int(paints.size())); // the riders' helmets come in the paints too
+	const Dictionary roof = Dictionary(t["car_body"])["black_roof"];
+	rs->material_set_param(material_, "black_roof", agent_hex(roof["colour"]));
+	rs->material_set_param(material_, "black_roof_share", float(roof["share"]));
 	rs->material_set_param(material_, "skin_cdf", cumulative(occupants["skin_weights"], int(skin.size()), SKIN_MAX, "skin_weights", errors));
 	push_looks(occupants, people["clothes"], int(hair.size()), errors);
 	paints_ = int(paints.size());
@@ -171,7 +178,7 @@ void AgentRenderer::push_looks(const Dictionary &o, const Array &clothes, int ha
 }
 
 bool AgentRenderer::read_loads(const Dictionary &loads, PackedStringArray &errors) {
-	for (int i = 0; i < VEHICLE_TYPES; i++) {
+	for (int i = 0; i < AGENT_MODELS; i++) {
 		Load &l = load_[i];
 		const char *key = load_key(i);
 		if (!key || l.seats == 0) continue;
@@ -206,11 +213,11 @@ void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &orde
 }
 
 Dictionary AgentRenderer::cost() const {
-	static const char *const NAMES[VEHICLE_TYPES] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck" };
+	static const char *const NAMES[AGENT_MODELS] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck", "bicycle", "wagon" };
 	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body" };
 	Dictionary out;
 	int draws = 0, tris = 0;
-	for (int i = 0; i < VEHICLE_TYPES; i++)
+	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
 			Dictionary d;
 			d["body_tris"] = body_tris_[i][level];
@@ -246,7 +253,8 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 
 void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at) {
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
-	PackedFloat32Array bufs[VEHICLE_TYPES][LEVELS];
+	PackedFloat32Array bufs[AGENT_MODELS][LEVELS];
+	const auto model_of = [](int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; };
 	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_r_ * cabin_r_;
 	drawn_vehicles_ = 0;
 	for (const AgentRecord &rec : f.vehicles) {
@@ -259,15 +267,28 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		if (flat2 > r2) continue;
 		float passengers, order;
 		riders(type, rec.id, passengers, order);
+		const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
+		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
+		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
+		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
+		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
-		push_agent(bufs[type][level], p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
+		push_agent(bufs[model_of(type, paint)][level], p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
+		drawn_vehicles_++;
+	}
+	if (f.parked) for (const ParkedRecord &rec : *f.parked) {
+		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
+		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
+		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		push_agent(bufs[model_of(type, paint)][level], rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
 	// no override: each surface carries its material (the body and the near level's glass)
 	RenderingServer *rs = RenderingServer::get_singleton();
-	for (int i = 0; i < VEHICLE_TYPES; i++)
+	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
 			MultiMeshDraw &d = draws_[i][level];
 			PackedFloat32Array &buf = bufs[i][level];

@@ -1,7 +1,8 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader), 5 skin,
 // 6 shirt, 7 hair, 8 helmet, 9 trousers, 10 long hair of the people aboard, 11 a lit sign (the bus's destination, day
-// and night). UV2.y = 1 marks wheel vertices: they turn about X round
+// and night), 12 a roof (the paint, or black on a share of the cars), 13 the gloss black round the glass. The lenses of a vehicle standing with nobody aboard
+// are off, their vertex colours; on anything else they burn, day and night. UV2.y = 1 marks wheel vertices: they turn about X round
 // their hub (UV = hub y, z); UV2.y = 2 a person's: UV = (their seat's place in the order the seats fill, -1 the driver,
 // always there; the vehicle's passenger seats m). INSTANCE_CUSTOM = (paint index, wheel roll angle + 8 when braking,
 // passengers p, order = stride * m + first): seat j is taken when (stride * j + first) mod m < p, so exactly p seats,
@@ -19,6 +20,10 @@ uniform vec3 tail_glow : source_color;
 uniform float head_power;
 uniform float tail_power;
 uniform float brake_ratio; // a stop lamp's light against its rear position lamp's
+uniform vec3 head_lit; // a lens burning, by day: the radiance the tone mapping shows as its colour (render/tone_map.gd)
+uniform vec3 tail_lit;
+uniform vec3 black_roof : source_color;
+uniform float black_roof_share;
 uniform vec3 sign_glow : source_color;
 uniform float sign_power;
 // roughness by surface (materials.json agent: sources there); every surface is a dielectric
@@ -121,7 +126,7 @@ void vertex() {
 	v_look = vec3(1.0);
 	if (UV2.y > SEAT_LIMB - 0.5) {
 		v_seat = UV.x + 1.0; // the driver 0, passengers from 1
-		bool there = UV.x < -0.5 || aboard(int(UV.x + 0.5), int(UV.y + 0.5), INSTANCE_CUSTOM);
+		bool there = INSTANCE_CUSTOM.b > -0.5 && (UV.x < -0.5 || aboard(int(UV.x + 0.5), int(UV.y + 0.5), INSTANCE_CUSTOM));
 		if (!look(int(UV2.x + 0.5), v_seed, v_seat, v_look) || !there) VERTEX = vec3(0.0); // an empty seat, or a part their cut leaves out
 	} else if (UV2.y > 0.5) {
 		float a = INSTANCE_CUSTOM.g - (INSTANCE_CUSTOM.g >= BRAKE_FLAG ? BRAKE_FLAG : 0.0);
@@ -141,18 +146,27 @@ void fragment() {
 	if (tag == 1) {
 		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
+	} else if (tag == 12) {
+		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
+		rough = paint_roughness;
+	} else if (tag == 13) {
+		rough = paint_roughness;
 	} else if (tag == 2) {
-		emit = source_linear(head_glow) * night * head_power;
+		bool on = v_custom.b > -0.5;
+		emit = on ? head_lit + source_linear(head_glow) * night * head_power : vec3(0.0);
+		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == 3) {
-		emit = source_linear(tail_glow) * tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio);
+		bool on = v_custom.b > -0.5;
+		emit = on ? tail_lit + source_linear(tail_glow) * tail_power * max(night, (v_custom.g >= BRAKE_FLAG ? 1.0 : 0.0) * brake_ratio) : vec3(0.0);
+		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == 4) {
 		rough = lens_roughness;
 	} else if (tag == 11) {
 		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
-	} else if (tag >= 5) { // a person's part, its colour drawn in vertex()
+	} else if (tag >= 5) { // a person's part (tags 5 to 10), its colour drawn in vertex()
 		c = tag == 8 ? srgb_to_linear(v_look) : source_linear(v_look); // a helmet in a paint (sRGB numbers); the rest from colour uniforms
 		rough = tag == 8 ? helmet_roughness : (tag == 5 ? skin_roughness : cloth_roughness);
 	}

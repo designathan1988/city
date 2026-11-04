@@ -7,6 +7,7 @@
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/lots/lot_cache.h"
+#include "sim/nature/nature_state.h"
 #include "sim/roads/road_network.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
@@ -25,15 +26,16 @@ namespace city {
 
 struct CityClock {
 	std::atomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
-	double day_shift = 0; // added to minutes for the time of day (starts at the day start)
+	std::atomic<double> day_shift{ 0 }; // added to minutes for the time of day (starts at the day start)
 	double hour() const;
-	void skip_to(double hour); // forward to the next time it is `hour` (the captures: the clock the HUD shows and the sky together)
+	void set_hour(double hour); // the time of day moves; `minutes`, the city's age, does not
 };
 
 struct CityState {
 	Catalog catalog;
 	ChangeLog log;
 	Heightfield terrain;
+	NatureState nature; // weather, clouds, fog, painted ground, planted trees, the ecosystem (sim/nature)
 	RoadNetwork roads;
 	LotCache lots;
 	BuildingStore buildings;

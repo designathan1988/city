@@ -1,5 +1,6 @@
 {
- "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it.",
+ "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset.",
+ "signal_step_s": 2,
  "stats": [
   {
    "key": "money",

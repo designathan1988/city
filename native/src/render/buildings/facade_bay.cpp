@@ -15,7 +15,7 @@ constexpr float ROLL_BASE = 0.25f, ROLL_STEP = 0.15f, ROLL_OUT = 0.05f, WIDE_PAN
 constexpr float STREAK_OUT = 0.012f, STREAK_MIN_SILL = 0.5f, STREAK_LO = 0.05f, STREAK_BASE = 0.7f, STREAK_STEP = 0.12f;
 constexpr float STREAK_HALF = 0.32f, STREAK_HALF_STEP = 0.03f, STREAK_TOP = 0.02f, STREAK_DARK = 0.93f, STREAK_MID = 0.965f;
 constexpr int STREAK_SKIP = 3, STREAK_REACH = 7, STREAK_WIDTH = 5;
-constexpr float FRENCH_STREAK_SILL = 0.3f;
+constexpr float FRENCH_STREAK_SILL = 0.3f, FRAME_D = 0.06f, FRAME_THIN = 0.05f;
 
 bool glazed(uint8_t c) {
 	return c != BAY_DOOR && c != BAY_GARAGE_DOOR && c != BAY_LOADING_DOOR && c != BAY_WALL && c != BAY_PILLAR;
@@ -29,6 +29,11 @@ bool dark_pane(const BayCtx &c, float w) {
 		case BAY_LOGGIA: case BAY_SHUTTERED: case BAY_GOURMET: return h % LOGGIA_DARK == 0;
 		default: return h % BRISE_DARK == 0;
 	}
+}
+
+// The thickness of the frame the pane draws in front of its glass (building_pane.gdshaderinc pane_frame).
+float frame_of(uint8_t comp) {
+	return comp == BAY_WIDE || comp == BAY_SHOPFRONT || comp == BAY_BRISE || comp == BAY_GOURMET ? FRAME_THIN : FRAME_D;
 }
 
 void streak(Shell &s, const BayCtx &c, const Opening &o) {
@@ -46,7 +51,7 @@ void closing(Shell &s, const Placed &pl, const BayCtx &c, const Opening &o) {
 	if (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) return; // their parts close them (facade_parts.cpp door_back)
 	if (glazed(c.comp)) {
 		bool dark = dark_pane(c, o.w);
-		s.pane(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, c.hash, dark);
+		s.pane(c.f, o.a0, o.a1, o.h0, o.h1, -o.depth, pane_look(pl, c, o.a0, o.a1, o.h0, o.h1, dark, frame_of(c.comp)));
 		int pick = int(c.hash % PICKS);
 		bool roll = (c.comp == BAY_WINDOW || c.comp == BAY_SASH) && pick >= ROLL_FROM && pick < ROLL_TO && o.w < WIDE_PANE;
 		if (roll && c.comp != BAY_SASH) {

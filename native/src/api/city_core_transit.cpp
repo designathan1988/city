@@ -154,8 +154,6 @@ Dictionary CityCore::transit_footway(const Vector3 &p, float reach) {
 	return d;
 }
 
-void CityCore::set_clock_hour(double hour) { state_->clock.skip_to(hour); }
-
 void CityCore::transit_xray(bool on) { render_.transit_xray(on); }
 
 void CityCore::transit_preview(const PackedVector3Array &points, int mode) {

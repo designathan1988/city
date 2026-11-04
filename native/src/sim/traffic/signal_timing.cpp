@@ -87,6 +87,27 @@ void advance(const TrafficState &t, Junction &j) {
 	}
 }
 
+// Where a fixed plan stands now on the common clock, less the junction's offset: the same stage on every run, so two
+// junctions keep their distance in time (MBST vol. V: coordinated plans run off one reference).
+void run_fixed(const TrafficState &t, Junction &j) {
+	if (t.time < j.settle) return;
+	double total = 0;
+	for (size_t k = 0; k < j.green.size(); k++) total += double(j.green[k]) + j.amber[k] + j.all_red[k];
+	if (total <= 0) return;
+	double left = std::fmod(t.time - double(j.offset), total);
+	if (left < 0) left += total;
+	for (size_t k = 0; k < j.green.size(); k++) {
+		const double span = double(j.green[k]) + j.amber[k] + j.all_red[k];
+		if (left < span) {
+			j.run = int(k);
+			j.run_start = t.time - left;
+			j.run_green = j.green[k];
+			return;
+		}
+		left -= span;
+	}
+}
+
 Light compute_light(const CityState &s, int ds) {
 	const LaneGraph &g = s.traffic.g;
 	const DirSeg &d = g.ds[ds];
@@ -118,7 +139,10 @@ void update_lights(CityState &s) {
 	TrafficState &t = s.traffic;
 	if (t.green_wanted.size() != t.g.ds.size()) t.green_wanted.resize(t.g.ds.size(), 0.0);
 	for (Junction &j : t.g.junctions)
-		if (j.ctl == Control::SIGNAL && !j.green.empty()) advance(t, j);
+		if (j.ctl == Control::SIGNAL && !j.green.empty()) {
+			if (j.fixed) run_fixed(t, j);
+			else advance(t, j);
+		}
 	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
 	for (int ds = 0; ds < int(t.g.ds.size()); ds++)
 		if (t.g.ds[ds].ok) t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));

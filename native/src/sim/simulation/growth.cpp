@@ -2,6 +2,7 @@
 #include "sim/buildings/growth.h"
 
 #include "core/seeded.h"
+#include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
 #include "sim/state/city_state.h"
 
@@ -12,15 +13,12 @@ namespace city {
 
 namespace {
 constexpr float OCCUPIED_SHARE = 0.8f;
-constexpr int NEIGHBOURHOOD_CELLS = 2; // a neighbourhood is 2 x 2 cells and holds one square
-constexpr uint32_t SQUARE_SALT = 4242, CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
+constexpr uint32_t CIVIC_MUL = 2654435761U, CIVIC_MIX = 2246822519U;
 constexpr uint32_t AGE_MIX = 0x9e3779b9U, AGE_MUL1 = 0x85ebca6bU, AGE_MUL2 = 0xc2b2ae35U;
 constexpr uint32_t CIVIC_CHANCE_BITS = 1023, CIVIC_PICK_SHIFT = 10, CIVIC_PICK_STEPS = 1000;
 constexpr double DECAY_TENTHS = 10;
 constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
 constexpr uint32_t HASH_SHIFT_15 = 15, HASH_SHIFT_13 = 13, HASH_SHIFT_16 = 16;
-
-int draw(Mulberry32 &r, const IntRange &x) { return r.irange_excl(x.lo, x.hi); }
 
 int biggest(const std::vector<Lot> &l) {
 	size_t b = 0;
@@ -42,23 +40,12 @@ MapCell map_cell_of(const CityState &s, double x, double z) {
 	return c;
 }
 
-int floors_for(const GrowthDef &g, int zone_id, const Profile &street, uint32_t seed) {
-	Mulberry32 r(seed);
-	bool avenue = street.priority >= g.avenue_priority;
-	int zone = base_zone(zone_id), dens = zone_density(zone_id);
-	if (dens == 0) return draw(r, zone == 1 ? g.low_res : g.low_other);
-	if (dens == 2) return draw(r, zone == 1 ? (avenue ? g.high_res_avenue : g.high_res) : (avenue ? g.high_other_avenue : g.high_other));
-	switch (zone) {
-		case 1: {
-			if (avenue) return draw(r, g.res_avenue);
-			double x = r.next();
-			return draw(r, x < g.res_split[0] ? g.res_bands[0] : x < g.res_split[1] ? g.res_bands[1] : g.res_bands[2]);
-		}
-		case 2: return draw(r, avenue ? g.commercial_avenue : g.commercial);
-		case 3: return draw(r, g.industrial);
-		case 4: return draw(r, avenue ? g.mixed_avenue : g.mixed);
-		default: return 1;
-	}
+int body_floors(const b40::Data &data, const Building &rec) {
+	b40::Body body;
+	b40::record_body(data, rec, body);
+	int top = 0;
+	for (const b40::Volume &v : body.volumes) top = std::max(top, v.top());
+	return top;
 }
 
 int civic_for(const GrowthDef &g, int cell_id, int zone, bool is_biggest, float area) {
@@ -92,63 +79,36 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 		float reach = (float(std::min(l.w, l.d)) / 2 + std::min(b.w, b.d) / 2) * OCCUPIED_SHARE;
 		if (std::hypot(b.x - float(l.x), b.z - float(l.z)) < reach) hit = true;
 	});
+	// A square stands over many lots, its middle far from theirs.
+	const float wide = r + std::sqrt(float(s.catalog.growth.plan.square_area_high));
+	s.buildings.query(float(l.x) - wide, float(l.z) - wide, float(l.x) + wide, float(l.z) + wide, [&](int id) {
+		const Building &b = s.buildings.items[id];
+		hit = hit || (b.fn == FN_SQUARE && BuildingStore::covers(b, float(l.x), float(l.z), 0.f));
+	});
 	return hit;
 }
 
-// The cell of the neighbourhood that holds its square: the first, in an order drawn by the neighbourhood, whose
-// biggest lot is big enough and not industrial (-1 when none).
-static int square_cell(const CityState &s, const MapCell &c) {
-	int cells = int(std::lround(s.map_half * 2 / CHUNK));
-	int bx = c.x / NEIGHBOURHOOD_CELLS, bz = c.z / NEIGHBOURHOOD_CELLS;
-	uint32_t h = hash2(bx, bz, SQUARE_SALT);
-	for (uint32_t k = 0; k < 4; k++) {
-		uint32_t q = (h + k) & 3;
-		int x = bx * NEIGHBOURHOOD_CELLS + int(q & 1), z = bz * NEIGHBOURHOOD_CELLS + int(q >> 1);
-		if (x >= cells || z >= cells) continue;
-		int64_t key = cell_key(int(std::floor((x * CHUNK - s.map_half) / CHUNK)), int(std::floor((z * CHUNK - s.map_half) / CHUNK)));
-		const std::vector<Lot> *l = s.lots.lots_of(key);
-		if (!l || l->empty()) continue;
-		const Lot &b = (*l)[biggest(*l)];
-		if (b.w * b.d >= s.catalog.growth.square_min_area && base_zone(b.zone) != 3) return z * cells + x;
-	}
-	return -1;
-}
-
-static bool neighbourhood_has_square(const CityState &s, double x, double z) {
-	float span = CHUNK * NEIGHBOURHOOD_CELLS;
-	float x0 = std::floor((float(x) + s.map_half) / span) * span - s.map_half, z0 = std::floor((float(z) + s.map_half) / span) * span - s.map_half;
-	bool found = false;
-	s.buildings.query(x0, z0, x0 + span, z0 + span, [&](int id) { found = found || s.buildings.items[id].fn == FN_SQUARE; });
-	return found;
-}
-
-Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i, bool organic) {
+Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
-	bool big = biggest(cell_lots) == i;
-	bool square_here = big && square_cell(s, cell) == cell.id;
-	int fn = square_here ? int(FN_SQUARE) : civic_for(g, cell.id, base_zone(l.zone), big, float(l.w * l.d));
-	if (fn == FN_SQUARE && !square_here) fn = FN_NONE;
-	if (fn == FN_SQUARE && neighbourhood_has_square(s, l.x, l.z)) fn = FN_NONE;
-	int floors = floors_for(g, l.zone, s.catalog.profile(l.profile), l.seed);
-	if (organic) {
-		int tallest = -1;
-		float reach = g.organic_reach_m;
-		s.buildings.query(float(l.x) - reach, float(l.z) - reach, float(l.x) + reach, float(l.z) + reach, [&](int id) {
-			const Building &b = s.buildings.items[id];
-			if (std::hypot(b.x - float(l.x), b.z - float(l.z)) <= reach + std::max(b.w, b.d) / 2) tallest = std::max(tallest, int(b.floors));
-		});
-		if (tallest >= 0) floors = std::min(floors, std::max(1, tallest) + g.organic_extra_floors);
-	}
+	int fn = civic_for(g, cell.id, base_zone(l.zone), biggest(cell_lots) == i, float(l.w * l.d));
+	if (fn == FN_SQUARE) fn = FN_NONE; // the squares are the plan's (sim/citygen/squares.h)
+	int tallest = -1;
+	const float reach = g.organic_reach_m;
+	s.buildings.query(float(l.x) - reach, float(l.z) - reach, float(l.x) + reach, float(l.z) + reach, [&](int id) {
+		const Building &o = s.buildings.items[id];
+		if (std::hypot(o.x - float(l.x), o.z - float(l.z)) <= reach + std::max(o.w, o.d) / 2) tallest = std::max(tallest, int(o.floors));
+	});
 	Building b;
 	b.x = float(l.x); b.z = float(l.z); b.w = float(l.w); b.d = float(l.d); b.rot = float(l.rot);
-	b.zone = uint8_t(base_zone(l.zone));
+	b.zone = uint8_t(l.zone);
 	b.fn = uint8_t(fn);
-	b.floors = uint16_t(floors);
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
+	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
+	b.floors = uint16_t(body_floors(s.buildings.designs, b)); // the body is the height: a record never says another
 	return b;
 }
 
@@ -161,7 +121,7 @@ int fill_all(CityState &s) {
 		const std::vector<Lot> &lots = s.lots.by_cell[key];
 		for (int i = 0; i < int(lots.size()); i++) {
 			if (lot_occupied(s, lots[i])) continue;
-			Building b = record_for(s, lots, i, false);
+			Building b = record_for(s, lots, i);
 			b.built = s.clock.minutes.load() - generated_age(s.catalog.growth, b.seed);
 			s.buildings.add(b);
 			n++;

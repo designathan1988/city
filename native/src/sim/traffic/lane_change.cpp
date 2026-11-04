@@ -81,7 +81,11 @@ int choose(const CityState &s, int id) {
 		bool force = v.wait > FORCE_AFTER_S;
 		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, force) > p.lc_threshold ? cand : -1;
 	}
-	if (d.len - v.s < p.lc_free_m) return -1;
+	if (v.stop_at >= 0 && v.ri + 1 >= v.route.len && v.lane != v.stop_lane) {
+		const int cand = v.lane + (v.stop_lane > v.lane ? 1 : -1);
+		return evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, v.wait > FORCE_AFTER_S) > p.lc_threshold ? cand : -1;
+	}
+	if (d.len - v.s < p.lc_free_m || v.type == VehicleType::BICYCLE) return -1;
 	const float bias[2] = { p.lc_bias_right, -p.lc_bias_right };
 	const int cands[2] = { v.lane - 1, v.lane + 1 };
 	for (int k = 0; k < 2; k++) {

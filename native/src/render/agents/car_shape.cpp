@@ -14,9 +14,14 @@ namespace city {
 
 namespace {
 
-constexpr float BOTTOM_TAPER = 0.9f, ROOF_TAPER = 0.88f, ARCH_CENTRE = 0.96f;
+constexpr float BOTTOM_IN_M = 0.03f, ARCH_CENTRE = 0.96f;
+constexpr float ROOF_GAP_M = 0.002f, SILL_ROOM_M = 0.01f, BELT_ROOM_M = 0.02f; // what keeps the ring's rows apart
+constexpr float FLANK_LOW = 0.4f, FLANK_HIGH = 0.78f; // the flank's middle rows, as shares from the sill to the belt
+constexpr float ROOF_EDGE_SHARE = 0.45f; // the roof edge's radius across, at most this share of the half width there
+constexpr float CROWN_ROWS[3] = { 0.66f, 0.33f, 0.f };
+constexpr float ROLL_DEPTH = 0.9f; // how much of the quarter circle the ends' roll follows
+constexpr float EPS_M = 1e-6f, HALF_PI = 1.5707963f;
 constexpr float FC_LIMIT = 3.f; // Fritsch-Carlson: slopes scaled back inside the circle of radius 3 keep a piece monotone
-constexpr float QUARTER = 0.7071068f; // cos 45°: the middle point of a quarter ellipse
 
 void pair(const Dictionary &d, const char *k, float out[2]) {
 	Array a = d[k];
@@ -50,7 +55,7 @@ std::vector<float> monotone_slopes(const std::vector<float> &x, const std::vecto
 }
 
 float bottom_at(const CarStyle &s, float xf) {
-	float z = xf * s.L, ar = s.r + CAR_ARCH_PAD_M, y = s.clear;
+	float z = xf * s.L, ar = s.r + CAR_ARCH_PAD_M, y = car_low_at(s, xf);
 	for (float a : s.axles) {
 		float dz = z - a * s.L;
 		if (std::fabs(dz) < ar) y = std::max(y, s.r * ARCH_CENTRE + std::sqrt(ar * ar - dz * dz));
@@ -79,12 +84,24 @@ CarStyle read_car_style(const Dictionary &d, const Dictionary &body) {
 		s.top_y.push_back(float(p[1]));
 	}
 	s.top_m = monotone_slopes(s.top_x, s.top_y);
-	pair(d, "screen", s.screen); pair(d, "side_glass", s.side); pair(d, "belt", s.belt);
+	pair(d, "screen", s.screen); pair(d, "belt", s.belt);
 	s.rear_glass = Array(d["rear"]).size() == 2;
 	if (s.rear_glass) pair(d, "rear", s.rear);
+	for (const Variant &e : Array(d["doors"])) s.doors.push_back(float(e));
 	s.nose_r = float(d["nose_r"]); s.tail_r = float(d["tail_r"]);
-	s.sill = float(body["sill_m"]); s.tumble = float(body["tumble"]); s.glass_top = float(body["glass_top_m"]);
-	s.crown = float(body["crown_m"]); s.bottom_round = float(body["bottom_round_m"]); s.bulge = float(body["bulge"]);
+	s.lean = float(d["tumble_m"]) / std::max(EPS_M, s.H * (1 - s.belt[0]));
+	s.lift[0] = d["nose_lift_m"]; s.lift[1] = d["tail_lift_m"]; s.tail_lamp_h = d["tail_lamp_h_m"]; s.bed_from = d["bed_from"];
+	pair(body, "tuck_m", s.tuck); pair(body, "crown_m", s.crown);
+	const Array roll = body["end_roll_m"];
+	for (int i = 0; i < 3; i++) s.roll[i] = float(roll[i]);
+	s.sill = float(body["sill_m"]); s.bottom_round = float(body["bottom_round_m"]); s.bulge = float(body["bulge"]);
+	s.frame = float(body["glass_frame_m"]); s.pillar_foot = float(body["pillar_foot_m"]); s.roof_r = float(body["roof_round_m"]);
+	// the side glass from behind the A pillar to the C pillar, or just past the last door
+	float quarter[2];
+	pair(body, "c_pillar_m", quarter);
+	const float last = s.doors.back();
+	s.glass_front = s.screen[0] - float(body["a_foot_m"]) / s.L;
+	s.glass_back = bool(d["quarter"]) && s.rear_glass ? std::max(s.rear[0] + quarter[0] / s.L, last - quarter[1] / s.L) : last + float(body["last_door_m"]) / s.L;
 	return s;
 }
 
@@ -107,19 +124,42 @@ float car_half_w(const CarStyle &s, float xf) {
 	return hw;
 }
 
+float car_low_at(const CarStyle &s, float xf) {
+	const float nose = std::clamp(((xf - 0.5f) * s.L + s.tuck[0]) / s.tuck[0], 0.f, 1.f), tail = std::clamp(((-0.5f - xf) * s.L + s.tuck[1]) / s.tuck[1], 0.f, 1.f);
+	return s.clear + s.lift[0] * nose * nose + s.lift[1] * tail * tail;
+}
+
 void car_ring(const CarStyle &s, float xf, Vector2 out[RING]) {
-	const float top = car_top_at(s, xf), bot = std::min(bottom_at(s, xf), top), hw = car_half_w(s, xf);
+	const float top = car_top_at(s, xf), hw = car_half_w(s, xf), yt = top - s.roof_r;
 	const float belt = xf >= s.screen[0] ? s.belt[0] * s.H : s.H * (s.belt[1] + (s.belt[0] - s.belt[1]) * (xf + 0.5f) / (s.screen[0] + 0.5f));
-	const float y2 = std::min(bot + s.sill, top), y3 = clampf(belt, y2, top), y4 = std::max(y3, top - s.glass_top);
-	const float w4 = hw - s.tumble * (y4 - y3), hb = hw * BOTTOM_TAPER;
-	const float rb = std::min({ s.bottom_round, y2 - bot, hb }); // the bottom corner, a quarter circle
-	const float rx = w4 * (1 - ROOF_TAPER), ry = top - y4;          // the roof edge, a quarter ellipse
-	const Vector2 pts[RING] = {
-		Vector2(0, bot), Vector2(hb - rb, bot), Vector2(hb - rb + rb * QUARTER, bot + rb - rb * QUARTER), Vector2(hb, bot + rb),
-		Vector2(hw, y2), Vector2(hw * (1 + s.bulge), (y2 + y3) * 0.5f), Vector2(hw, y3),
-		Vector2(w4, y4), Vector2(w4 - rx + rx * QUARTER, y4 + ry * QUARTER), Vector2(w4 - rx, top), Vector2(0, top + s.crown)
-	};
-	for (int i = 0; i < RING; i++) out[i] = pts[i];
+	const float ys = std::min(belt, yt - ROOF_GAP_M), bot = std::min(bottom_at(s, xf), ys - BELT_ROOM_M);
+	const float mid = (bot + ys) * 0.5f, half = std::max(EPS_M, (ys - bot) * 0.5f);
+	auto flank = [&](float y) { const float t = (y - mid) / half; return hw * (1 - s.bulge * t * t); };
+	auto glass = [&](float y) { return flank(ys) - (y - ys) * s.lean; };
+	const float rb = std::min(s.bottom_round, ys - bot), zb = hw - BOTTOM_IN_M, low = bot + rb;
+	const float y2 = std::clamp(bot + s.sill, low + SILL_ROOM_M, std::max(low + SILL_ROOM_M, ys - BELT_ROOM_M));
+	const float f = std::min(s.frame, (yt - ys) * 0.5f), zt = glass(yt), rr = std::min(s.roof_r, zt * ROOF_EDGE_SHARE);
+	int n = 0;
+	out[n++] = Vector2(0, bot);
+	out[n++] = Vector2(zb - rb, bot);
+	out[n++] = Vector2(zb - rb + (flank(low) - zb + rb) * std::sin(HALF_PI * 0.5f), bot + rb * (1 - std::cos(HALF_PI * 0.5f)));
+	out[n++] = Vector2(flank(low), low);
+	for (float t : { 0.f, FLANK_LOW, FLANK_HIGH, 1.f }) {
+		const float y = y2 + (ys - y2) * t;
+		out[n++] = Vector2(flank(y), y);
+	}
+	for (float y : { ys + f, yt - f, yt }) out[n++] = Vector2(glass(y), y);
+	for (int k = 1; k <= 3; k++) {
+		const float a = HALF_PI * float(k) / 4;
+		out[n++] = Vector2(zt - rr + std::cos(a) * rr, yt + std::sin(a) * s.roof_r);
+	}
+	out[n++] = Vector2(zt - rr, top);
+	const float crown = xf > s.screen[0] || xf < s.bed_from ? s.crown[0] : s.crown[1];
+	for (float c : CROWN_ROWS) out[n++] = Vector2((zt - rr) * c, top + crown * (1 - c * c));
+	const float edge = (0.5f - std::fabs(xf)) * s.L;
+	if (edge >= s.roll[0]) return;
+	const float u = 1 - edge / s.roll[0], k = 1 - (1 - std::sqrt(std::max(0.f, 1 - u * u))) * ROLL_DEPTH, cy = (bot + top) * 0.5f;
+	for (int i = 0; i < RING; i++) out[i] = Vector2(out[i].x - (1 - k) * s.roll[1] * (out[i].x / std::max(EPS_M, hw)), cy + (out[i].y - cy) * (1 - (1 - k) * s.roll[2]));
 }
 
 bool car_within(float x, const float r[2]) { return x <= std::max(r[0], r[1]) && x >= std::min(r[0], r[1]); }
@@ -127,12 +167,6 @@ bool car_within(float x, const float r[2]) { return x <= std::max(r[0], r[1]) &&
 bool car_overhang(const CarStyle &s, float xf) {
 	const float z = xf * s.L, room = s.r + CAR_ARCH_PAD_M;
 	return z > s.axles[0] * s.L + room || z < s.axles[1] * s.L - room;
-}
-
-void car_door_edges(const CarStyle &s, float out[3]) {
-	out[0] = std::max(s.screen[0], s.screen[1]); // the A pillar's foot
-	out[1] = (s.side[0] + s.side[1]) * 0.5f;
-	out[2] = std::min(s.side[0], s.side[1]);
 }
 
 } // namespace city

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace city {
@@ -33,11 +34,20 @@ struct PoseTrail {
 	}
 };
 
+// AgentRecord::look of a vehicle: type in the low byte, then its paint, the brake light and whether anybody is in it.
+constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u;
+
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
+};
+
+// A car standing in a bay (no trail: it does not move). id and look as AgentRecord's; ids are their own, past the fleet's.
+struct ParkedRecord {
+	Pose at;
+	uint32_t id = 0, look = 0;
 };
 
 // A signalled approach (directed segment `ds` into its junction): the light its cars see (traffic Light) and whether
@@ -64,6 +74,7 @@ struct PoseSample {
 struct PoseFrame {
 	std::vector<AgentRecord> vehicles, people;
 	std::vector<AgentRecord> trains; // each car near the camera: look its RGB, id 1 when it is the metro's
+	std::shared_ptr<const std::vector<ParkedRecord>> parked; // the cars standing in bays near the camera, made again only when one changes
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }

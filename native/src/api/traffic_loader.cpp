@@ -42,6 +42,11 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_LOAD)
 #undef CITY_TRAFFIC_LOAD
 	for (const Variant &c : Array(t.get("line_colours", Array()))) p.line_colours.push_back(parse_hex_color(String(c).utf8().get_data()) >> LINE_ALPHA_BITS);
+	const Dictionary styles = t.has("styles") ? Dictionary(t["styles"]) : Dictionary();
+	const Dictionary style = styles.has(REGIONAL_STYLE) ? Dictionary(styles[REGIONAL_STYLE]) : Dictionary();
+	// the lanes are laid out for right-hand traffic (sim/roads/profiles.h): a left-hand style would come out half mirrored
+	if (String(style.get("drive_side", "")) != "right") errors.push_back("traffic.styles: drive_side deve ser 'right' por enquanto");
+	p.drive_side = 0;
 	Array classes = t.has("classes") ? Array(t["classes"]) : Array();
 	if (classes.size() != VEHICLE_TYPES) errors.push_back("traffic.classes: esperado uma linha por tipo de veiculo");
 	for (int i = 0; i < classes.size() && i < VEHICLE_TYPES; i++) {
@@ -58,6 +63,8 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	numbers(t, "zone_mid", p.zone_mid, BASE_ZONES, errors);
 	numbers(t, "zone_truck", p.zone_truck, BASE_ZONES, errors);
 	numbers(t, "zone_walk", p.zone_walk, BASE_ZONES, errors);
+	numbers(t, "hours_working", p.hours_working, DAY_HOURS, errors);
+	numbers(t, "hours_purchasing", p.hours_purchasing, DAY_HOURS, errors);
 	return errors.is_empty();
 }
 

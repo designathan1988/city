@@ -22,6 +22,8 @@ Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
 	d["process"] = process_ms_;
+	d["worn_cells"] = render_.worn_cells();
+	d["wear_publications"] = render_.wear_publications();
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;
 	d["stream"] = c.stream;
@@ -225,16 +227,47 @@ float CityCore::amber_wanted(float kmh) const {
 	return traffic::amber_wanted(state_->catalog.traffic, kmh / KMH_PER_MS);
 }
 
+namespace {
+// The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
+void park_probe(const TrafficState &t, Dictionary &d) {
+	const ParkingState &p = t.park;
+	Array ms;
+	for (double x : t.step_ms) ms.push_back(x);
+	d["step_ms"] = ms;
+	d["red_last"] = Array::make(t.red_last[0], t.red_last[1], t.red_last[2], t.red_last[3]);
+	d["parked_rows"] = int(p.rows.size()); // scenery cars standing in bays near the camera
+	d["lot_cars"] = int(p.cars.size());
+	d["lot_coming"] = p.coming;
+	d["lot_moving"] = p.moving;
+	d["lot_called"] = p.called;
+	d["lot_parked_in"] = p.parked_in;
+	d["lot_left_by"] = p.left_by;
+	d["bays"] = int(p.bays.size() - p.free_bays.size());
+	d["lots_read"] = int(p.lots.size());
+	d["kerbs_read"] = int(p.kerbs.size());
+}
+} // namespace
+
+static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids, Array &speeds) {
+	poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
+	dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
+	types.push_back(int(v.type));
+	mids.push_back(v.off || v.conn >= 0 ? 0.f : std::min(v.s, t.g.ds[size_t(v.ds)].len - v.s));
+	speeds.push_back(v.v);
+}
+
 Dictionary CityCore::traffic_probe(int sample) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TrafficState &t = state_->traffic;
 	Dictionary d;
-	d["vehicles"] = t.vehicle_count;
+	d["vehicles"] = t.vehicle_count + t.park.moving; // driving: on the lanes or in and out of the bays
+	park_probe(t, d);
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
 	d["lost_stuck"] = t.stuck_lost; // of which: removed after standing stuck_despawn_s
+	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
@@ -252,7 +285,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
-	Array poses, dirs, types, held, jams, jam_info, behind, box;
+	Array poses, dirs, types, mids, speeds, held, jams, jam_info, behind, box;
 	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
 	held.resize(int(Hold::COUNT));
@@ -281,11 +314,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 			const int k = int(traffic::box_hold(*state_, id));
 			box[k] = int(box[k]) + 1;
 		}
-		if (poses.size() < sample) {
-			poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
-			dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
-			types.push_back(int(v.type));
-		}
+		if (poses.size() < sample) push_sample(t, v, poses, dirs, types, mids, speeds);
 	}
 	d["signals"] = signals;
 	const int busy = busy_node(*state_);
@@ -302,6 +331,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["sample"] = poses;
 	d["sample_dir"] = dirs;
 	d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
+	d["sample_mid_m"] = mids; // how far along its lane from either end; 0 on a connector or off the lanes
+	d["sample_speed"] = speeds;
 	Array walkers, walker_dirs; // pedestrians, for close looks in the visual captures
 	for (const Pedestrian &w : t.peds)
 		if (w.alive && walkers.size() < sample) {

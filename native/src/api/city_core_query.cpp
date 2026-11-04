@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -20,6 +21,7 @@ namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
 constexpr float INSPECT_RADIUS_M = 30.f;
+constexpr float SIGNAL_PICK_M = 8.f; // about a junction box round its node
 constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
 
@@ -95,6 +97,14 @@ Dictionary CityCore::constants() const {
 	return d;
 }
 
+TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
+	return film_grade_slices(grade);
+}
+
+Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const {
+	return city::film_graded(grade, colour);
+}
+
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
@@ -135,7 +145,7 @@ Dictionary CityCore::snapshot() {
 	d["growth_cells"] = int(s.growth.cells.size());
 	d["residents"] = snap_residents_;
 	d["jobs"] = snap_jobs_;
-	d["vehicles"] = s.traffic.vehicle_count;
+	d["vehicles"] = s.traffic.vehicle_count + s.traffic.park.moving;
 	d["people"] = s.traffic.ped_count;
 	d["trips_arrived"] = s.traffic.arrived;
 	d["trips_lost"] = s.traffic.lost;
@@ -171,10 +181,30 @@ if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 	return d;
 }
 
+// A signal under the click: what is set on the node (a change shows at once, the traffic takes it up on its next step) over
+// each stage's minimum green, which still stands. The caller holds the map.
+static bool inspect_signal(const CityState &s, std::mutex &traffic, const Vector3 &p, Dictionary &d) {
+	const int n = s.roads.find_node_near(p.x, p.z, SIGNAL_PICK_M);
+	std::lock_guard<std::mutex> tr(traffic);
+	const std::vector<Junction> &all = s.traffic.g.junctions;
+	if (n < 0 || n >= int(all.size()) || all[size_t(n)].ctl != Control::SIGNAL || all[size_t(n)].least.empty()) return false;
+	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
+	const std::vector<float> &least = all[size_t(n)].least;
+	PackedFloat32Array greens;
+	for (size_t k = 0; k < least.size(); k++) greens.push_back(set.fixed && k < set.greens.size() ? std::max(least[k], set.greens[k]) : least[k]);
+	d["kind"] = "junction";
+	d["id"] = n;
+	d["fixed"] = set.fixed;
+	d["offset"] = set.offset;
+	d["greens"] = greens;
+	return true;
+}
+
 Dictionary CityCore::inspect(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
+	if (inspect_signal(s, state_->traffic_mutex, p, d)) return d;
 	int best = -1;
 	float bd = INSPECT_RADIUS_M;
 	s.buildings.query(p.x - INSPECT_RADIUS_M, p.z - INSPECT_RADIUS_M, p.x + INSPECT_RADIUS_M, p.z + INSPECT_RADIUS_M, [&](int id) {

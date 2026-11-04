@@ -22,6 +22,8 @@ Paint roof_of(Xoshiro128 &r, const std::vector<Paint> &list);
 std::vector<Paint> clay_of(const Data &data);
 Paint other_skin(const Data &data, int style, Xoshiro128 &r, const Paint &wall);
 void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim);
+// Flat roofs under a tile, slate or metal paint take a membrane.
+void membranes(const Data &data, Body &b, Xoshiro128 &r);
 // The common finish: pitches still unset, roof membranes, facades, entrance and back door, dress.
 void finish_body(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, uint8_t door_kind, int door_block);
 

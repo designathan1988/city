@@ -18,6 +18,9 @@ struct ChangeLog {
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
+	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
+	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
+	std::vector<int64_t> water_chunks; // CHUNK keys whose water surface must be built again
 	bool network_changed = false; // lanes and routes must be refreshed
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
@@ -25,6 +28,10 @@ struct ChangeLog {
 	// Segments whose street furniture must be placed again though their lanes did not change (a hydrant moving to
 	// another corner of its square, a zone change moving a bin): drained by the traffic with the net_* lists.
 	std::vector<int> furniture_segs;
+	// Buildings that came or went: their bays, and the kerbs their car gates keep bays off, are laid out again by the traffic.
+	std::vector<int> lots_changed;
+	// Junctions whose signal settings changed: only their plan is made again, the lanes and connectors stay.
+	std::vector<int> signal_nodes;
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -42,11 +49,16 @@ struct ChangeLog {
 		net_segs_removed.clear();
 		net_segs_changed.clear();
 		furniture_segs.clear();
+		lots_changed.clear();
+		signal_nodes.clear();
 	}
 	void clear_render() {
 		road_chunks.clear();
 		building_chunks.clear();
 		terrain_rects.clear();
+		paint_rects.clear();
+		nature_chunks.clear();
+		water_chunks.clear();
 	}
 };
 

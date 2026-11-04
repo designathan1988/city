@@ -67,6 +67,18 @@ void j_set_plain(CityState &s, int n, bool plain) {
 	s.log.net_node(n);
 }
 
+void j_set_signal(CityState &s, int n, const SignalSettings &to) {
+	RoadNode &nd = s.roads.nodes[size_t(n)];
+	if (nd.signal == to) return;
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_SIGNAL, n);
+		op.signal_from = nd.signal;
+		op.signal_to = to;
+	}
+	nd.signal = to;
+	s.log.signal_nodes.push_back(n);
+}
+
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
 	int id = s.roads.add_segment(a, b, q, profile, zl, zr, flags);
 	s.log.net_seg(id);
@@ -191,6 +203,21 @@ void j_terrain_touch(CityState &s, const SampleRect &r) {
 			e.terrain_open.emplace(i, t.base_q[i]);
 		}
 	e.grow(t.x_of(r.x0), t.x_of(r.z0), t.x_of(r.x1), t.x_of(r.z1));
+}
+
+void j_nature(CityState &s, size_t bytes, NatureEdit edit) {
+	if (!s.history.recording) return;
+	record(s, OpKind::NATURE, -1).nature = std::make_shared<const NatureEdit>(std::move(edit));
+	s.history.open.bytes += bytes;
+}
+
+void j_paint_touch(CityState &s, const std::vector<int> &tiles) {
+	if (!s.history.recording) return;
+	for (int key : tiles) {
+		if (s.history.open.paint_open.count(key)) continue;
+		const PaintTile *t = s.nature.ground.tile(key);
+		s.history.open.paint_open[key] = t ? std::make_shared<const PaintTile>(*t) : nullptr;
+	}
 }
 
 } // namespace city

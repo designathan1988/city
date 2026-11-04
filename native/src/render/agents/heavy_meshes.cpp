@@ -17,10 +17,9 @@ namespace {
 
 constexpr float LITRES_PER_M3 = 1000.f;
 constexpr float MIRROR_W = 0.08f, MIRROR_H = 0.32f, MIRROR_D = 0.12f, DOOR_SPLIT_W = 0.04f, CAB_DOOR_SEAM = 0.03f;
-constexpr float MOTO_SEAT_H = 0.12f, LAMP_H = 0.14f;
+constexpr float TAIL_LENS_H_M = 0.05f;
 // motorbike proportions (shares of the axle distance or of the body half width)
-constexpr float MOTO_TAIL = 0.8f, MOTO_NOSE = 0.7f, MOTO_SEAT_W = 0.8f, MOTO_BAR_W = 2.f, MOTO_BAR_Z = 0.6f, MOTO_BAR_H = 1.5f;
-constexpr float MOTO_LAMP_W = 0.4f, MOTO_LAMP_D = 0.03f, HELMET_TALL = 1.1f, HELMET_LONG = 1.15f;
+constexpr float MOTO_LAMP_D = 0.03f, HELMET_TALL = 1.1f, HELMET_LONG = 1.15f;
 
 struct Truck {
 	float L = 0, hl = 0, chw = 0, cab_back = 0, cab_bottom = 0, floor = 0, belt = 0, glass_top = 0, cab_top = 0, wall = 0;
@@ -181,22 +180,7 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 	return passengers;
 }
 
-int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
-	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
-	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
-	const Vector2 b = agent_v2(d["body"]); // width, bottom; its top under the saddle
-	const float bw = b.x * 0.5f, by0 = b.y, by1 = float(d["saddle_m"]) - MOTO_SEAT_H;
-	const float tail = -az * MOTO_TAIL, nose = az * MOTO_NOSE, lamp_w = bw * MOTO_LAMP_W;
-	agent_wheel(mb, Vector3(0, rear.x, -az), rear.x, rear.y, sides, 1, trim);
-	agent_wheel(mb, Vector3(0, front.x, az), front.x, front.y, sides, 1, trim);
-	agent_box(mb, Vector3(-bw, by0, tail), Vector3(bw, by1, nose), AGENT_WHITE, AgentTag::PAINT);
-	agent_box(mb, Vector3(-bw * MOTO_SEAT_W, by1, -az * MOTO_NOSE), Vector3(bw * MOTO_SEAT_W, by1 + MOTO_SEAT_H, 0), trim.blackout, AgentTag::FIXED);
-	agent_box(mb, Vector3(-bw * MOTO_BAR_W, by1 + MOTO_SEAT_H, az * MOTO_BAR_Z), Vector3(bw * MOTO_BAR_W, by1 + MOTO_SEAT_H * MOTO_BAR_H, nose), trim.blackout,
-			AgentTag::FIXED);
-	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, nose), Vector3(lamp_w, by1, nose + MOTO_LAMP_D), trim.headlamp, AgentTag::HEAD);
-	agent_box(mb, Vector3(-lamp_w, by1 - LAMP_H, tail - MOTO_LAMP_D), Vector3(lamp_w, by1, tail), trim.tail, AgentTag::TAIL);
-	// the rider astride (agents.json moto.rider): on the saddle, leaning to the grips, feet by the engine, in a helmet
-	const Dictionary pose = d["rider"];
+void agent_rider(MeshBuilder &mb, const Person &rider, const Dictionary &pose, const Vector3 &helmet) {
 	Figure f;
 	f.hip = agent_v3(pose["hip"]);
 	f.shoulders = agent_v3(pose["shoulders"]);
@@ -204,10 +188,65 @@ int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &ri
 	f.ankle = agent_v3(pose["ankle"]);
 	f.hand = agent_v3(pose["hand"]);
 	f.holds = true;
-	f.helmet = Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG);
+	f.helmet = helmet;
 	const int64_t from = mb.v.size();
 	agent_person(mb, rider, f);
 	seat_order(mb, from, DRIVER_ORDER);
+}
+
+static std::vector<Vector2> profile_of(const Dictionary &part) {
+	std::vector<Vector2> out;
+	for (const Variant &p : Array(part["at"])) out.push_back(agent_v2(p));
+	return out;
+}
+
+static void profile(MeshBuilder &mb, const Dictionary &part, const Color &c, AgentTag tag) {
+	const float half = float(part["wide_m"]) * 0.5f;
+	agent_extrude(mb, profile_of(part), -half, half, c, tag);
+}
+
+// The machine: the paint's tank, panels and tail, the saddle, the engine and its pipe, the frame, the fork and the bars.
+static void moto_frame(MeshBuilder &mb, const Dictionary &sh, float rear_z, float front_z, float wheel_r, const AgentTrim &trim) {
+	const Vector2 head = agent_v2(sh["head"]), spine = agent_v2(sh["spine_to"]), pivot = agent_v2(sh["pivot"]);
+	profile(mb, sh["tank"], AGENT_WHITE, AgentTag::PAINT);
+	profile(mb, sh["panel"], AGENT_WHITE, AgentTag::PAINT);
+	profile(mb, sh["cowl"], AGENT_WHITE, AgentTag::PAINT);
+	profile(mb, sh["saddle"], trim.blackout, AgentTag::FIXED);
+	profile(mb, sh["engine"], agent_hex(sh["block"]), AgentTag::FIXED);
+	const float fork = sh["fork_m"], fx = sh["fork_x_m"], ax = sh["arm_x_m"], ex = sh["exhaust_x_m"], em = sh["exhaust_m"];
+	agent_strut(mb, Vector3(0, head.y, head.x), Vector3(0, spine.y, spine.x), fork, fork, trim.blackout, AgentTag::FIXED);
+	for (int side : { -1, 1 }) {
+		agent_strut(mb, Vector3(side * fx, head.y, head.x), Vector3(side * fx, wheel_r, front_z), fork, fork, trim.chrome, AgentTag::FIXED);
+		agent_strut(mb, Vector3(side * ax, pivot.y, pivot.x), Vector3(side * ax, wheel_r, rear_z), fork, fork, trim.blackout, AgentTag::FIXED);
+	}
+	const Array pipe = sh["exhaust"];
+	for (int64_t i = 0; i + 1 < pipe.size(); i++) {
+		const Vector2 a = agent_v2(pipe[i]), b = agent_v2(pipe[i + 1]);
+		agent_strut(mb, Vector3(-ex, a.y, a.x), Vector3(-ex, b.y, b.x), em, em, trim.chrome, AgentTag::FIXED);
+	}
+}
+
+int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
+	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
+	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
+	const Dictionary sh = d["shape"];
+	const Vector2 head = agent_v2(sh["head"]);
+	for (int side : { -1, 1 }) {
+		agent_wheel(mb, Vector3(0, rear.x, -az), rear.x, rear.y, sides, side, trim);
+		agent_wheel(mb, Vector3(0, front.x, az), front.x, front.y, sides, side, trim);
+	}
+	moto_frame(mb, sh, -az, az, rear.x, trim);
+	const Vector3 nac = agent_v3(sh["nacelle_m"]), guard = agent_v3(sh["guard_m"]), bar = agent_v3(sh["bar_m"]);
+	const Vector2 lens = agent_v2(sh["lens_m"]);
+	agent_box(mb, Vector3(-nac.x * 0.5f, head.y - nac.y, head.x), Vector3(nac.x * 0.5f, head.y, head.x + nac.z), trim.blackout, AgentTag::FIXED);
+	agent_box(mb, Vector3(-lens.x * 0.5f, head.y - nac.y * 0.5f - lens.y * 0.5f, head.x + nac.z), Vector3(lens.x * 0.5f, head.y - nac.y * 0.5f + lens.y * 0.5f, head.x + nac.z + MOTO_LAMP_D), trim.headlamp, AgentTag::HEAD);
+	for (float z : { az, -az })
+		agent_box(mb, Vector3(-guard.x * 0.5f, front.x * 2 + guard.y, z - guard.z * 0.5f), Vector3(guard.x * 0.5f, front.x * 2 + guard.y * 2, z + guard.z * 0.5f), trim.blackout, AgentTag::FIXED);
+	agent_strut(mb, Vector3(-bar.x, bar.y, bar.z), Vector3(bar.x, bar.y, bar.z), float(sh["grip_m"]) * 2, float(sh["grip_m"]) * 2, trim.blackout, AgentTag::FIXED);
+	const Array cowl = Dictionary(sh["cowl"])["at"];
+	const Vector2 tail = agent_v2(cowl[2]);
+	agent_box(mb, Vector3(-lens.x * 0.5f, tail.y - TAIL_LENS_H_M, tail.x - MOTO_LAMP_D), Vector3(lens.x * 0.5f, tail.y, tail.x), trim.tail, AgentTag::TAIL);
+	agent_rider(mb, rider, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 

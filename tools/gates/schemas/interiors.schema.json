@@ -1,0 +1,40 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "styles": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "sizes": {
+      "type": "array",
+      "items": {
+       "type": "array"
+      }
+     },
+     "seen": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "recipes": {
+      "type": "object"
+     }
+    },
+    "required": [
+     "sizes",
+     "seen",
+     "recipes"
+    ]
+   }
+  }
+ },
+ "required": [
+  "_doc",
+  "styles"
+ ]
+}

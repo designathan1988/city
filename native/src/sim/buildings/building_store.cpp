@@ -16,6 +16,7 @@ void BuildingStore::init(ChangeLog *l) {
 }
 
 void BuildingStore::clear() {
+	designs.edited->clear();
 	items.clear();
 	free_ids.clear();
 	hash.clear();
@@ -81,6 +82,7 @@ void BuildingStore::place(int id, const Building &b) {
 
 void BuildingStore::mark(int id) const {
 	if (!log) return;
+	log->lots_changed.push_back(id);
 	const Building &b = items[id];
 	float r = std::max(b.w, b.d) * 0.5f;
 	for (int j = int(std::floor((b.z - r) / CHUNK)); j <= int(std::floor((b.z + r) / CHUNK)); j++)

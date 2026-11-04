@@ -1,6 +1,6 @@
 ## The inspector side panel (what the core reports): what the
-## inspect tool picked (a building: zone or function and floors; a road: its profile) and a Demolish action that sends
-## the store command at that place.
+## inspect tool picked (a building: zone or function and floors; a road: its profile; a signal: JunctionPanel) and a Demolish
+## action that sends the store command at that place.
 class_name InspectorPanel
 extends PanelContainer
 
@@ -21,7 +21,9 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 		hide()
 		return
 	var col := HudWidgets.vbox(self, &"Pad")
-	if info.kind == "building":
+	if info.kind == "junction":
+		JunctionPanel.fill(col, info, _inspect_again.bind(at))
+	elif info.kind == "building":
 		var fn_keys: Array = DataTables.ui("drawers").fn_keys
 		var fn: int = info.fn
 		var name := tr(fn_keys[fn]) if fn > 0 and fn < fn_keys.size() else tr("zone.name.%d" % info.zone)
@@ -31,13 +33,18 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 		HudWidgets.label(col, &"TitleLabel", tr("inspector.road"))
 		HudWidgets.label(col, &"BodyLabel", tr(info.profile))
 	var row := HudWidgets.hbox(col)
-	var demolish := HudWidgets.button(&"IconButton", "demolish", "", "inspector.demolish", "icon_btn", "icon_btn")
-	demolish.pressed.connect(_demolish.bind(at))
-	row.add_child(demolish)
+	if info.kind != "junction":
+		var demolish := HudWidgets.button(&"IconButton", "demolish", "", "inspector.demolish", "icon_btn", "icon_btn")
+		demolish.pressed.connect(_demolish.bind(at))
+		row.add_child(demolish)
 	var close := HudWidgets.button(&"IconButton", "close", "", "v2.close", "icon_btn", "icon_btn")
 	close.pressed.connect(hide)
 	row.add_child(close)
 	show()
+
+
+func _inspect_again(at: Vector3) -> void:
+	show_info(CityStore.query(&"inspect", [at]), at)
 
 
 func _demolish(at: Vector3) -> void:

@@ -39,6 +39,7 @@ struct StreetLook {
 	// Longitudinal lines by the road's speed: `line_w` below line_fast_kmh, `line_fast_w` from it; an exclusive lane's
 	// line `exclusive_w`; dashes `dash[k]` long and `gap[k]` apart below dash_kmh[k], the last band beyond.
 	float line_w = 0, line_fast_w = 0, line_fast_kmh = 0, exclusive_w = 0;
+	float parking_line_w = 0, parking_dash = 1, parking_gap = 1, no_parking_w = 0, no_parking_min = 0; // MER and LPP
 	std::vector<float> dash_kmh, dash, gap;
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
