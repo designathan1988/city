@@ -644,6 +644,31 @@
     "params"
    ],
    "strict": true
+  },
+  "transit": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "roughness": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "roughness"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -658,7 +683,8 @@
   "overlay",
   "agent_glass",
   "vegetation",
-  "vegetation_cards"
+  "vegetation_cards",
+  "transit"
  ],
  "strict": true
 }

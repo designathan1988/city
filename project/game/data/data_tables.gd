@@ -25,6 +25,7 @@ const RENDER_TABLES := {
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
+	"transit": "res://data/render/transit.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/transit/transit_renderer.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
 #include "render/overlays/overlay_renderer.h"
@@ -36,7 +37,11 @@ public:
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
-	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) { agents_.update(f, cam, at); }
+	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) {
+		agents_.update(f, cam, at);
+		transit_.update(f, cam, at);
+	}
+	int drawn_cars() const { return transit_.drawn_cars(); }
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
 	int lit_lenses() const { return props_.lit_lenses(); }
@@ -60,6 +65,7 @@ private:
 	TreeRenderer trees_;
 	BuildingRenderer buildings_;
 	AgentRenderer agents_;
+	TransitRenderer transit_;
 	OverlayRenderer overlays_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;

@@ -23,6 +23,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
 	ok = buildings_.init(ctx, errors) && ok;
 	ok = agents_.init(ctx, errors) && ok;
+	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }
@@ -33,6 +34,7 @@ void RenderWorld::reset() {
 	trees_.reset();
 	buildings_.reset();
 	agents_.reset();
+	transit_.reset();
 	overlays_.reset();
 	road_stream_.clear();
 	props_stream_.clear();
@@ -110,6 +112,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
+		transit_.sync(s);
 		trees_.sync(s, cam, budget);
 		buildings_.update_view(cam, budget);
 		cost_.levels = laps.lap();
