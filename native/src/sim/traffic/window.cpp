@@ -61,7 +61,7 @@ void materialize(CityState &s, int key) {
 	// that light and slow enough to stop there comfortably, as the near model would have it
 	const bool held = light_for(s, ds) != Light::GREEN;
 	const float stop = held ? L - d.stop_back - margin : L - margin;
-	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].back();
+	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].front(); // the rearmost drawn one
 	const float tail_len = tail >= 0 ? s.catalog.traffic.classes[int(t.vehicles[size_t(tail)].type)].length : 0.f;
 	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - MAT_TAIL_PAD_M : held ? stop : L - MAT_END_PAD_M;
 	int id = t.meso_head[size_t(key)];
