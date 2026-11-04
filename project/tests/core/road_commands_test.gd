@@ -14,6 +14,9 @@ const ZONE_RES := 1
 ## Metres a screen pixel covers (the tool asks the camera; here a close view).
 const PX := 0.25
 const URBAN_M := 12.0
+const MOVE_OFF_M := 300.0
+const MOVE_LEN_M := 60.0
+const MOVE_BY_M := 30.0
 const URBAN_PRICE := 1520.0
 const LANE_M := 4.0
 const BAY_M := 2.0
@@ -54,6 +57,7 @@ func _ready() -> void:
 	_snapping(a, e)
 	_freehand(e)
 	_variants(e)
+	_move_node(e)
 	var z: Dictionary = CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
 	print("zona: ", z, " células em crescimento: ", CityStore.snapshot.growth_cells)
 	_check(z.ok and z.zoned_sides > 0, "zoneou lados")
@@ -147,6 +151,31 @@ func _plan_cost(base: Vector3) -> void:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("prévia: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
 	_check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "peças dentro do limite (%d)" % [pieces.size() / 3])
+
+
+## The Move tab: a node dropped elsewhere takes its roads along, charges only the difference, undoes in one step.
+func _move_node(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, MOVE_OFF_M)
+	var mid := a + Vector3(MOVE_LEN_M, 0, 0)
+	var urban: int = CityStore.first_road()
+	CityStore.dispatch(&"build_road", [a, mid, false, Vector3.ZERO, urban, PX])
+	CityStore.dispatch(&"build_road", [mid, mid + Vector3(MOVE_LEN_M, 0, 0), false, Vector3.ZERO, urban, PX])
+	var node: int = CityStore.query(&"node_at", [mid, PX]).node
+	_check(node >= 0, "acha o nó do meio")
+	var s0: int = CityStore.snapshot.segments
+	var to := mid + Vector3(0, 0, MOVE_BY_M)
+	_check(CityStore.query(&"moved_roads", [node, to]).size() == 2, "prévia com as duas vias")
+	var r: Dictionary = CityStore.dispatch(&"move_node", [node, to])
+	_check(r.get("ok", false), "move o nó: %s" % r)
+	CityStore.refresh()
+	_check(CityStore.snapshot.segments == s0, "as vias continuam duas")
+	_check(CityStore.query(&"node_at", [to, PX]).node >= 0 and CityStore.query(&"node_at", [mid, PX]).node < 0, "o nó está no lugar novo")
+	_check(float(r.money) > 0 and float(r.money) < MOVE_LEN_M * URBAN_PRICE, "cobra só a diferença: %s" % r.money)
+	CityStore.dispatch(&"undo")
+	CityStore.refresh()
+	_check(CityStore.query(&"node_at", [mid, PX]).node >= 0, "desfazer devolve o nó")
+	var far: Dictionary = CityStore.dispatch(&"move_node", [node, a + Vector3(1, 0, 0)])
+	_check(not far.get("ok", false) and far.get("error", "") == "hint.move.tooShort", "curta demais é recusada: %s" % far)
 
 
 ## The tool's options on a class road: a profile of their own, made once, with the 4.0's widths and prices.

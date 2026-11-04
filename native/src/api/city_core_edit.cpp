@@ -45,6 +45,47 @@ Dictionary CityCore::set_road_end(int node, bool bulb) {
 	return run_edit(*state_, "cmd.build.roadEnd", [&](CityState &s) { return city::set_road_end(s, node, bulb); });
 }
 
+Dictionary CityCore::move_node(int node, const Vector3 &p) {
+	return run_edit(*state_, "cmd.place.moveNode", [&](CityState &s) { return city::move_node(s, node, p.x, p.z); });
+}
+
+// The node under the pointer: {node, at}, node -1 when none is within px pixels' reach.
+Dictionary CityCore::node_at(const Vector3 &p, float px) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	Dictionary d;
+	const int n = s.ready ? s.roads.find_node_near(p.x, p.z, s.catalog.tune.road_snap_node_px * px) : -1;
+	d["node"] = n;
+	if (n >= 0) {
+		const RoadNode &nd = s.roads.nodes[size_t(n)];
+		d["at"] = Vector3(float(nd.x), float(nd.y), float(nd.z));
+	}
+	return d;
+}
+
+// The node's roads as they would stand with it at p, for the Move tool's preview: [{points, half_width}].
+Array CityCore::moved_roads(int node, const Vector3 &p) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	Array out;
+	if (!s.ready || node < 0 || node >= int(s.roads.nodes.size())) return out;
+	for (int sid : s.roads.nodes[size_t(node)].segs) {
+		const RoadSegment &g = s.roads.segs[size_t(sid)];
+		const Quad q = moved_quad(g.q, g.a == node, p.x, p.z);
+		PackedVector3Array pts;
+		for (int i = 0; i <= SEG_PREVIEW_STEPS; i++) {
+			double x, z;
+			q.at(double(i) / SEG_PREVIEW_STEPS, x, z);
+			pts.push_back(Vector3(float(x), s.terrain.height_at(float(x), float(z)), float(z)));
+		}
+		Dictionary d;
+		d["points"] = pts;
+		d["half_width"] = s.catalog.profile(g.profile).half();
+		out.push_back(d);
+	}
+	return out;
+}
+
 Dictionary CityCore::upgrade_road(const Vector3 &p, int profile, bool whole_street) {
 	const char *label = whole_street ? "cmd.build.changeStreetProfile" : "cmd.build.changeProfile";
 	return run_edit(*state_, label, [&](CityState &s) { return change_profile_at(s, p.x, p.z, profile, whole_street); });

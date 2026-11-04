@@ -37,7 +37,7 @@ int crossing_node(CityState &s, const Quad &q, const Crossing &c) {
 
 // Lays the road from stop a to stop b in pieces no longer than road_max_seg_m (execute.ts refine, at grade).
 void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, const Stop &a, const Stop &b, int profile,
-		std::vector<int> &out) {
+		const RoadKeeps &keeps, std::vector<int> &out) {
 	RoadNetwork &net = s.roads;
 	double sa = arc_at(table, a.t), sb = arc_at(table, b.t);
 	int pieces = std::max(1, int(std::ceil((sb - sa) / s.catalog.tune.road_max_seg_m)));
@@ -50,7 +50,7 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
 		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
-		out.push_back(j_add_segment(s, prev, next, sub, profile, 0, 0, 0));
+		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, keeps.flags));
 		prev = next;
 	}
 }
@@ -59,6 +59,10 @@ bool affords(const CityState &s, double price) { return s.unlimited_money || pri
 } // namespace
 
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+	return lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
+}
+
+EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps) {
 	EditResult r;
 	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile);
 	if (!plan.ok) {
@@ -79,7 +83,7 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 	std::vector<double> table = arc_table(plan.q, ARC_STEPS);
 	std::vector<int> made;
 	for (size_t i = 0; i + 1 < stops.size(); i++)
-		if (stops[i].node != stops[i + 1].node) lay_pieces(s, plan.q, table, stops[i], stops[i + 1], profile, made);
+		if (stops[i].node != stops[i + 1].node) lay_pieces(s, plan.q, table, stops[i], stops[i + 1], profile, keeps, made);
 	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
 	for (int sg : made) {
 		const RoadSegment &g = s.roads.segs[sg];

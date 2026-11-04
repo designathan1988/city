@@ -40,6 +40,9 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("roundabout", "position", "radius", "cut"), &CityCore::roundabout);
 	ClassDB::bind_method(D_METHOD("preview_roundabout", "position", "radius", "cut"), &CityCore::preview_roundabout);
 	ClassDB::bind_method(D_METHOD("segment_at", "position"), &CityCore::segment_at);
+	ClassDB::bind_method(D_METHOD("move_node", "node", "position"), &CityCore::move_node);
+	ClassDB::bind_method(D_METHOD("node_at", "position", "px"), &CityCore::node_at);
+	ClassDB::bind_method(D_METHOD("moved_roads", "node", "position"), &CityCore::moved_roads);
 	ClassDB::bind_method(D_METHOD("terrain_brush", "position", "radius", "strength", "dt", "mode"), &CityCore::terrain_brush);
 	ClassDB::bind_method(D_METHOD("draw_building", "corner_a", "corner_b", "function", "zone"), &CityCore::draw_building);
 	ClassDB::bind_method(D_METHOD("preview_lot", "corner_a", "corner_b"), &CityCore::preview_lot);

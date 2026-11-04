@@ -24,7 +24,9 @@
     {
      "id": "move",
      "icon": "move",
-     "label_key": "tool.move"
+     "label_key": "tool.move",
+     "tool": "MOVE",
+     "note_key": "hint.move"
     },
     {
      "id": "split",

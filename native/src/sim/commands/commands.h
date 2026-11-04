@@ -116,6 +116,11 @@ EditResult split_road_at(CityState &s, double x, double z);
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
 // How a dead end finishes (Roadcraft doc.ts setNodeEnd): a straight cut, or a turning bulb when there is room for one.
 EditResult set_road_end(CityState &s, int node, bool bulb);
+// The Move tab: the node goes to (x, z) and its roads are laid again to it, each keeping its shape, zones and direction;
+// landing on a node joins them, landing on a road splits it. Only the difference in value is charged.
+EditResult move_node(CityState &s, int node, double x, double z);
+// The curve of a road with its end `at_a` taken to (x, z), its shape kept (Roadcraft world/doc.ts fitCurve).
+Quad moved_quad(const Quad &q, bool at_a, double x, double z);
 // The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
 std::vector<int> street_chain(const CityState &s, int seg);
 // Why a roundabout cannot go there ("" = it can); `cut` allows cutting the roads inside the circle.

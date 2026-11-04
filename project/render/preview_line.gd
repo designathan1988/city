@@ -72,6 +72,19 @@ func show_road(plan: Dictionary, line: String, ok: bool, px_start: float, px_end
 	_ring(points[-1], px_end, ring)
 
 
+## The roads a tool is moving: [{points, half_width}].
+func show_ribbons(roads: Array) -> void:
+	_mesh.clear_surfaces()
+	for r in roads:
+		_band(r.points, r.half_width, _ok_mat)
+
+
+## A node a press would take.
+func show_mark(centre: Vector3, px: float) -> void:
+	_mesh.clear_surfaces()
+	_ring(centre, px, _ring_ok)
+
+
 func _band(points: PackedVector3Array, half: float, material: StandardMaterial3D) -> void:
 	_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, material)
 	var lift := Vector3.UP * ThemeBuilder.size("preview_lift")

@@ -70,7 +70,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Máquinas de estado
 - `GameFlow.State`: BOOT → PLAYING → QUITTING (tabela `TRANSITIONS`; fechar a janela também passa por `quit`).
 - `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; só `start()/stop()` entram/saem de STOPPED.
-- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); via: arrasto (`draft`) ou clique que guarda o início (`chain`) e clique que assenta; em Curva o fim fica esperando a dobra (`bend`); toda via assentada encerra o gesto.
+- `ToolController.Tool`: NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE (só `set_tool`; botão segurado → `drag`/`tick`, solto → `release`); via: arrasto (`draft`) ou clique que guarda o início (`chain`) e clique que assenta; em Curva o fim fica esperando a dobra (`bend`); toda via assentada encerra o gesto.
 
 ## Mapa do código
 <!-- MAPA:INICIO -->
@@ -139,6 +139,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
+- `native/src/sim/commands/road_move.cpp` — Mover: o nó vai e as vias são assentadas de novo
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
@@ -250,6 +251,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/inspect_tool.gd` — inspecionar
 - `project/game/tools/lot_tool.gd` — Construir › Desenhar
 - `project/game/tools/road_tool.gd` — via reta/curva com prévia
+- `project/game/tools/move_tool.gd` — Mover
 - `project/game/tools/roundabout_tool.gd` — rotatória
 - `project/game/tools/split_tool.gd` — Dividir
 - `project/game/tools/terrain_tool.gd` — Relevo

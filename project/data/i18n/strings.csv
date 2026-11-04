@@ -477,6 +477,7 @@ help.tool.poleRemove,"Clique num poste para removê-lo, com os fios. Shift+cliqu
 help.tool.streetscape,"Coloca árvores, arbustos, bancos, lixeiras, iluminação, hidrantes e caixas de correio nas calçadas. Clique numa calçada para pôr o item escolhido.","Places trees, shrubs, benches, bins, street lights, hydrants and post boxes on the footways. Click a footway to place the chosen item."
 hint.control,Clique num cruzamento para mudar o controle · Shift: voltar,Click a junction to change its control · Shift: go back
 hint.move,Arraste um nó para reposicionar,Drag a node to reposition it
+hint.move.tooShort,Não movido: uma via ali ficaria curta demais para ser construída,Not moved: a road there would be too short to build
 hint.profile.toStreet,Perfil copiado para a rua inteira,Profile copied to the whole street
 hint.roundabout,Clique em terreno livre para criar uma rotatória · Ligue os quatro acessos com a ferramenta de via,Click vacant ground to place a roundabout · Connect its four arms with the road tool
 hint.split,Clique numa via para dividir,Click a road to split it

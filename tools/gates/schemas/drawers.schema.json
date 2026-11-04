@@ -83,7 +83,8 @@
           "SPLIT",
           "ROUNDABOUT",
           "TERRAIN",
-          "LOT"
+          "LOT",
+          "MOVE"
          ]
         },
         "profile": {

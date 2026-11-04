@@ -26,6 +26,13 @@ void conform_under(CityState &s, int seg);
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
 // The segment's street furniture is placed and drawn again (its zones changed, or its square's hydrant may move).
 void mark_furniture(CityState &s, int seg);
+// What a road keeps when it is laid again (moved): its zones and flags.
+struct RoadKeeps {
+	int zl = 0, zr = 0;
+	uint16_t flags = 0;
+};
+// build_road with `keeps` on every piece.
+EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps);
 // Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
 // of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
 // the revision.
