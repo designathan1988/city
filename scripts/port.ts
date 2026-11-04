@@ -23,6 +23,12 @@ const CACHE = path.join(CONVERTER, 'out', 'cache');
 const SOURCE_SERVER = 'http://127.0.0.1:5300/';
 const SERVER_WAIT_MS = 120_000;
 const POLL_MS = 1000;
+const LOOK_TIMEOUT_S = 3600;
+/** The shared 4.0 server's bookkeeping (inside the ignored cache): a lock, one lease per run using it, and who started it. */
+const SERVER_DIR = path.join(CACHE, 'source-server');
+const SERVER_STATE = path.join(SERVER_DIR, 'server.json');
+const LOCK_STALE_MS = 30_000;
+const LOCK_WAIT_MS = 10_000;
 const MIN_NODE = [23, 6];
 
 const MACHINE_KEYS = ['source', 'game', 'ports', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
@@ -203,27 +209,170 @@ async function answers(url: string): Promise<boolean> {
   }
 }
 
-/** Photos of the 4.0 by its own tool (scripts/look.mjs and a plan), on its dev server; a server this command started is stopped by its PID. */
-async function reference(m: Machine, feature: string, plan: string | undefined): Promise<number> {
-  if (!plan || !fs.existsSync(plan)) fail('give a look plan JSON (the 4.0\'s scripts/look format; city {"size": "small", "seed": 7})');
-  const out = path.join(portDir(m, feature), 'reference');
-  let server: ReturnType<typeof spawn> | null = null;
-  if (!(await answers(SOURCE_SERVER))) {
-    server = spawn(process.execPath, [path.join(m.source, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', '5300', '--strictPort'],
-      { cwd: m.source, stdio: 'ignore' });
-    const until = Date.now() + SERVER_WAIT_MS;
-    while (!(await answers(SOURCE_SERVER))) {
-      if (Date.now() > until) fail(`the 4.0's dev server did not answer at ${SOURCE_SERVER} in ${SERVER_WAIT_MS / 1000} s`);
-      await new Promise((r) => setTimeout(r, POLL_MS));
+/** The same question, answered at once: whether to start the server is decided under the lock. */
+function answersNow(url: string): boolean {
+  const probe = 'fetch(process.argv[1]).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))';
+  return spawnSync(process.execPath, ['-e', probe, url], { stdio: 'ignore' }).status === 0;
+}
+
+function alive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+function sleepNow(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** One owner at a time over the server's bookkeeping: a folder made atomically, taken over when older than LOCK_STALE_MS. */
+function underLock<T>(work: () => T): T {
+  fs.mkdirSync(SERVER_DIR, { recursive: true });
+  const lock = path.join(SERVER_DIR, 'lock');
+  const until = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    try {
+      fs.mkdirSync(lock);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      try {
+        if (Date.now() - fs.statSync(lock).mtimeMs > LOCK_STALE_MS) fs.rmdirSync(lock);
+      } catch {
+        /* taken or freed meanwhile: look again */
+      }
+      if (Date.now() > until) fail(`the 4.0 server bookkeeping at ${lock} stayed locked for ${LOCK_WAIT_MS / 1000} s`);
+      sleepNow(50);
     }
   }
   try {
-    console.log(`\n> look ${plan} -> ${out}`);
-    return spawnSync(process.execPath, [path.join('scripts', 'look.mjs'), path.resolve(plan), out], { cwd: m.source, stdio: 'inherit' }).status ?? 1;
+    return work();
   } finally {
-    // Vite starts helpers of its own: the whole tree of the process started here goes, and nothing else.
-    if (server?.pid) spawnSync('taskkill', ['/PID', String(server.pid), '/T', '/F'], { stdio: 'ignore' });
+    fs.rmSync(lock, { recursive: true, force: true });
   }
+}
+
+const leaseFile = (pid: number): string => path.join(SERVER_DIR, 'leases', String(pid));
+
+/** The runs using the server now; the lease of a run whose process is gone is removed. */
+function liveLeases(): number[] {
+  const dir = path.join(SERVER_DIR, 'leases');
+  fs.mkdirSync(dir, { recursive: true });
+  const live: number[] = [];
+  for (const name of fs.readdirSync(dir)) {
+    const pid = Number(name);
+    if (Number.isInteger(pid) && alive(pid)) live.push(pid);
+    else fs.rmSync(path.join(dir, name), { force: true });
+  }
+  return live;
+}
+
+/** The server a run started and recorded, while its process lives. */
+function recordedServer(): number | null {
+  try {
+    const { pid } = JSON.parse(fs.readFileSync(SERVER_STATE, 'utf8')) as { pid: number };
+    return alive(pid) ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Starts a process outside this process's tree (WMI makes it nobody's child): a run stopped with its whole tree must not take the shared server along. */
+function startOutsideTree(exe: string, args: readonly string[], cwd: string): number {
+  const literal = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+  const line = [exe, ...args].map((s) => `"${s}"`).join(' ');
+  const script = `$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ${literal(line)}; CurrentDirectory = ${literal(cwd)} }; if ($r.ReturnValue -ne 0) { exit 1 }; $r.ProcessId`;
+  const run = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' });
+  const pid = Number(String(run.stdout).trim());
+  if (run.status !== 0 || !Number.isInteger(pid) || pid <= 0) fail(`could not start ${exe} outside this process's tree: ${String(run.stderr).trim()}`);
+  return pid;
+}
+
+/** Stops the server a run started, only when no run holds a lease; a server nobody here started is never touched. */
+function stopServerIfIdle(): boolean {
+  if (liveLeases().length > 0) return false;
+  const pid = recordedServer();
+  if (pid !== null) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+  fs.rmSync(SERVER_STATE, { force: true });
+  return true;
+}
+
+let leaseReleased = false;
+function releaseServer(): void {
+  if (leaseReleased) return;
+  leaseReleased = true;
+  underLock(() => {
+    fs.rmSync(leaseFile(process.pid), { force: true });
+    stopServerIfIdle();
+  });
+}
+
+/** A lease on the 4.0's dev server, started when nobody has it: two runs share one server, and the last to leave stops it. */
+async function leaseServer(m: Machine): Promise<void> {
+  process.on('exit', releaseServer);
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(signal, () => process.exit(130));
+  underLock(() => {
+    liveLeases();
+    fs.writeFileSync(leaseFile(process.pid), '');
+    if (answersNow(SOURCE_SERVER) || recordedServer() !== null) return;
+    const vite = path.join(m.source, 'node_modules', 'vite', 'bin', 'vite.js');
+    const pid = startOutsideTree(process.execPath, [vite, '--host', '127.0.0.1', '--port', '5300', '--strictPort'], m.source);
+    fs.writeFileSync(SERVER_STATE, JSON.stringify({ pid }));
+  });
+  const until = Date.now() + SERVER_WAIT_MS;
+  while (!(await answers(SOURCE_SERVER))) {
+    if (Date.now() > until) fail(`the 4.0's dev server did not answer at ${SOURCE_SERVER} in ${SERVER_WAIT_MS / 1000} s`);
+    await new Promise((r) => setTimeout(r, POLL_MS));
+  }
+}
+
+/** The 4.0's photo tool under a time limit: past it, the whole tree (node, Chrome) is stopped by its PID. */
+function runLook(m: Machine, plan: string, out: string, timeoutS: number): Promise<number> {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join('scripts', 'look.mjs'), path.resolve(plan), out], { cwd: m.source, stdio: 'inherit' });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      console.error(`port: look.mjs passed ${timeoutS} s; its whole tree is stopped`);
+      if (child.pid) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+    }, timeoutS * 1000);
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      resolve(timedOut ? 124 : (code ?? 1));
+    });
+  });
+}
+
+/** Photos of the 4.0 by its own tool (scripts/look.mjs and a plan), on its dev server, shared with the runs that use it at the same time. */
+async function reference(m: Machine, feature: string, args: readonly string[]): Promise<number> {
+  const at = args.indexOf('--timeout');
+  const timeoutS = at >= 0 ? Number(args[at + 1]) : LOOK_TIMEOUT_S;
+  if (!Number.isFinite(timeoutS) || timeoutS <= 0) fail('--timeout takes a number of seconds');
+  const plan = (at >= 0 ? args.filter((_, i) => i !== at && i !== at + 1) : args)[0];
+  if (!plan || !fs.existsSync(plan)) fail('give a look plan JSON (the 4.0\'s scripts/look format; city {"size": "small", "seed": 7})');
+  const out = path.join(portDir(m, feature), 'reference');
+  await leaseServer(m);
+  console.log(`\n> look ${plan} -> ${out}`);
+  return runLook(m, plan, out, timeoutS);
+}
+
+/** What holds the shared server now, and stopping it when nobody does. */
+function serverCommand(action: string | undefined): number {
+  if (action === 'status') {
+    const leases = underLock(() => liveLeases());
+    console.log(`4.0 server ${SOURCE_SERVER}: ${answersNow(SOURCE_SERVER) ? 'answering' : 'not answering'}; started by a run: ${recordedServer() ?? 'no'}; runs holding it: ${leases.join(', ') || 'none'}`);
+    return 0;
+  }
+  if (action === 'stop') {
+    const stopped = underLock(() => stopServerIfIdle());
+    console.log(stopped ? 'no run holds the 4.0 server; the one a run started is stopped' : 'runs still hold the 4.0 server: left running');
+    return stopped ? 0 : 1;
+  }
+  console.log(HELP);
+  return 2;
 }
 
 const HELP = `node scripts/port.ts <command> [--machine <file>] ...
@@ -232,7 +381,10 @@ const HELP = `node scripts/port.ts <command> [--machine <file>] ...
   workspace <feature>             isolated clone of the game on convert/<feature> -> <ports>/<feature>/workspace, configured
   verify <feature> [step]...      the game's own checks in the workspace (gates, build-release, build-debug, import, tests, capture)
   audit <feature>                 the methodology audit of the port's own lines (C++ graph of the workspace through clangd)
-  reference <feature> <plan>      photos of the 4.0 by its scripts/look.mjs -> <ports>/<feature>/reference
+  reference <feature> <plan> [--timeout <s>]
+                                  photos of the 4.0 by its scripts/look.mjs -> <ports>/<feature>/reference; runs share one dev server
+                                  (the last to finish stops it) and look.mjs is stopped, tree and all, after --timeout (default 3600)
+  server status|stop              who holds the shared 4.0 dev server; stop it when no run does
   pack <feature>                  the branch's commits as a package -> <ports>/<feature>/package
   sandbox <feature>               the package verified from a fresh clone, before and after; prints the manual integration`;
 
@@ -252,7 +404,8 @@ async function main(argv: readonly string[]): Promise<number> {
     case 'workspace': return workspace(m, featureName(name));
     case 'verify': return verify(m, featureName(name), rest);
     case 'audit': return audit(m, featureName(name));
-    case 'reference': return reference(m, featureName(name), rest[0]);
+    case 'reference': return reference(m, featureName(name), rest);
+    case 'server': return serverCommand(name);
     case 'pack': return pack(m, featureName(name));
     case 'sandbox': return sandbox(m, featureName(name));
     default:
