@@ -333,37 +333,20 @@
       },
       "roughness": {
        "type": "number"
+      },
+      "lens_roughness": {
+       "type": "number"
+      },
+      "lens_ior": {
+       "type": "number"
       }
      },
      "required": [
       "glow_color",
       "glow_gain",
-      "roughness"
-     ],
-     "strict": true
-    }
-   },
-   "required": [
-    "shader",
-    "params"
-   ],
-   "strict": true
-  },
-  "signal_lens": {
-   "type": "object",
-   "properties": {
-    "shader": {
-     "type": "string"
-    },
-    "params": {
-     "type": "object",
-     "properties": {
-      "roughness": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "roughness"
+      "roughness",
+      "lens_roughness",
+      "lens_ior"
      ],
      "strict": true
     }
@@ -538,7 +521,6 @@
   "building_far",
   "building_parts",
   "prop",
-  "signal_lens",
   "agent",
   "people",
   "overlay",

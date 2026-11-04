@@ -15,9 +15,9 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_far.gdshader", "res://render/shaders/building_parts.gdshader",
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
-	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/signal_lens.gdshader",
+	"res://render/shaders/agent_glass.gdshader",
 ]
-const LENSES := 5 # signal_lens.gdshader lit_radiance (prop_kit.h Lens::COUNT)
+const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 
 var terrain: Node3D
 var sun: DirectionalLight3D
@@ -47,7 +47,7 @@ func materials() -> Dictionary:
 				m.set_shader_parameter(name, _param(table[key].params[name]))
 			if key == "road":
 				_set_means(m, table[key].params)
-			elif key == "signal_lens":
+			elif key == "prop":
 				_set_lens_radiance(m)
 			_materials[key] = m
 	return _materials

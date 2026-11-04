@@ -258,8 +258,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas)
-- `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos carros, veículos e ocupantes, pedestres cozidos, mobiliário e árvores
-- `project/render/shaders/signal_lens.gdshader` — lentes dos semáforos: apagada (vidro colorido) ou acesa (só a radiância que o tonemap mostra como a cor)
+- `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos carros, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc`
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
 - `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` — vias, meios-fios e pintura; água (ondas, Fresnel,

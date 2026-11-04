@@ -1,7 +1,7 @@
 // The lenses of the signal posts (render/props/street_props.h SignalHead), each drawn once: per chunk one MultiMesh of
 // its posts, every instance a post's lenses (PropKit::lenses) with the lenses it shows lit in INSTANCE_CUSTOM (the car
-// light and the walkers' stop or walk its approach publishes, PoseFrame::signals); render/shaders/signal_lens.gdshader
-// draws those lit and every other lens unlit. A chunk's buffer is written again only when one of its posts changes, the
+// light and the walkers' stop or walk its approach publishes, PoseFrame::signals); render/shaders/props.gdshader (the
+// "prop" material) draws those lit and every other lens unlit. A chunk's buffer is written again only when one of its posts changes, the
 // whole of it (a few posts): writing single instances would first read the MultiMesh back from the GPU (Godot
 // renderer_rd/storage_rd/mesh_storage.cpp _multimesh_make_local). A post beyond the published radius shows every lens
 // unlit.

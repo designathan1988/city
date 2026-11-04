@@ -13,7 +13,7 @@ namespace city {
 namespace {
 constexpr uint8_t DARK = 0xff; // a post with no published state: every lens unlit
 constexpr int WALKER_SHIFT = 4, CAR_MASK = 0xf;
-constexpr float NONE_LIT = -1.f; // INSTANCE_CUSTOM of a head with neither of its lenses lit (signal_lens.gdshader)
+constexpr float NONE_LIT = -1.f; // INSTANCE_CUSTOM of a head with neither of its lenses lit (props.gdshader)
 constexpr int LIT_PER_POST = 2; // a published post: its car lens and its walkers' lens
 
 Lens car_lens(uint8_t light) {

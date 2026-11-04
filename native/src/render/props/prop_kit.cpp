@@ -18,7 +18,7 @@ Vector3 vec3(const Variant &v) {
 	return a.size() == 3 ? Vector3(float(a[0]), float(a[1]), float(a[2])) : Vector3();
 }
 
-// One part in `col`, its UV2 `t2` (the PropTag of a prop's part, the Lens of a lens).
+// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens in y).
 void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 &t2, PackedStringArray &errors) {
 	String shape = p.get("shape", "");
 	if (shape == "box") b.box(vec3(p["min"]), vec3(p["max"]), col, t2, true);
@@ -68,7 +68,7 @@ bool PropKit::build(const Dictionary &props, PackedStringArray &errors) {
 			continue;
 		}
 		const Color lit = part_color(p);
-		shape(lenses_, p, Color(lit.r * dim, lit.g * dim, lit.b * dim, lit.a), Vector2(float(k), 0), errors);
+		shape(lenses_, p, Color(lit.r * dim, lit.g * dim, lit.b * dim, lit.a), Vector2(float(int(PropTag::LENS)), float(k)), errors);
 		seen[k] = true;
 	}
 	for (bool s : seen)

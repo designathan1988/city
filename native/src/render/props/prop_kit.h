@@ -13,7 +13,7 @@
 
 namespace city {
 
-enum class PropTag : int { FIXED = 0, TINT = 1, NIGHT_GLOW = 2 };
+enum class PropTag : int { FIXED = 0, TINT = 1, NIGHT_GLOW = 2, LENS }; // props.gdshader reads them as 0..3
 enum class PropKind : int { SIGNAL = 0, LAMP, HYDRANT, BIN, BENCH, COUNT };
 // The signal's lenses (streets.json props.signal "lens"): the cars' red, amber and green, the walkers' stop and walk.
 enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
@@ -29,8 +29,8 @@ class PropKit {
 public:
 	bool build(const godot::Dictionary &props, godot::PackedStringArray &errors);
 	const MeshBuilder &mesh(PropKind k) const { return meshes_[int(k)]; }
-	// Every lens of the signal, in its space: COLOR the lens unlit (its colour times lens_dim), UV2.x which Lens it is
-	// (render/shaders/signal_lens.gdshader).
+	// Every lens of the signal, in its space: COLOR the lens unlit (its colour times lens_dim), UV2 (PropTag::LENS, which
+	// Lens) for render/shaders/props.gdshader.
 	const MeshBuilder &lenses() const { return lenses_; }
 	// Copies `src` into `dst`, every vertex moved by basis then origin.
 	static void append(MeshBuilder &dst, const MeshBuilder &src, const godot::Basis &b, const godot::Vector3 &o);
