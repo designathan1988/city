@@ -18,6 +18,7 @@ const NEAR_M := 42.0
 const WIDE_M := 520.0
 const NODE_VIEW_M := 200.0
 const DRAG_STEPS := 6
+const JUMP_SETTLE_FRAMES := 4
 const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
 const POINTER_AIMS := 40
@@ -165,7 +166,9 @@ func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
 	if not only.is_empty() and not only.has(name):
 		return
 	rig.jump(p, view[0], view[1], dist)
-	await ui.drawn()
+	# nothing pending right after a jump may only mean the view has not reached the drawing yet: a photo that lies
+	if await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES, name) == 0:
+		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " de novo")
 	await ui.shot(name)
 
 
