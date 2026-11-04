@@ -17,7 +17,18 @@ namespace city {
 
 namespace {
 constexpr uint32_t CONTROL_AUTOSHADER = 1u;
-constexpr int MAP_TYPE_HEIGHT = 0, MAP_TYPE_ALL = 3; // Terrain3DRegion.MapType
+constexpr int MAP_TYPE_HEIGHT = 0, MAP_TYPE_CONTROL = 1, MAP_TYPE_ALL = 3; // Terrain3DRegion.MapType
+// Control map bits (Terrain3D docs, Control Map Format): base id 27, overlay id 22, blend 14, uv angle and scale 7 (the
+// biome's amount here), reserved 3 (the gullies: 3 bits of how much, the top bit a wipe).
+constexpr int BASE_SHIFT = 27, OVERLAY_SHIFT = 22, BLEND_SHIFT = 14, BIOME_SHIFT = 7, GULLY_SHIFT = 3;
+constexpr int BIOME_DROP = 1, GULLY_DROP = 5, WIPE_DROP = 7;
+constexpr uint32_t WIPE_BIT = 8u;
+
+uint32_t control_of(const PaintCell &c) {
+	uint32_t wipe = (c.gully_wipe >> WIPE_DROP) ? WIPE_BIT : 0u;
+	return (uint32_t(c.surface) << BASE_SHIFT) | (uint32_t(c.biome) << OVERLAY_SHIFT) | (uint32_t(c.amount) << BLEND_SHIFT) |
+			(uint32_t(c.biome_amount >> BIOME_DROP) << BIOME_SHIFT) | ((uint32_t(c.gully >> GULLY_DROP) | wipe) << GULLY_SHIFT) | CONTROL_AUTOSHADER;
+}
 constexpr int BYTES_PER_SAMPLE = 4;
 
 Object *terrain_data(Object *terrain3d) {
@@ -77,6 +88,42 @@ void TerrainBridge::push_rects(const Heightfield &hf, Object *terrain3d, const s
 	touched.erase(std::unique(touched.begin(), touched.end()), touched.end());
 	for (int64_t k : touched) write_region(hf, data, key_x(k), key_y(k), false);
 	data->call("update_maps", MAP_TYPE_HEIGHT, false, false);
+}
+
+void TerrainBridge::write_control(const Heightfield &hf, const GroundPaint &paint, Object *data, int bx, int bz) {
+	const int R = hf.region_size;
+	Object *region = Object::cast_to<Object>(data->call("get_region", Vector2i(bx - hf.regions / 2, bz - hf.regions / 2)));
+	if (!region) return;
+	PackedByteArray cb;
+	cb.resize(int64_t(R) * R * BYTES_PER_SAMPLE);
+	uint32_t *c = reinterpret_cast<uint32_t *>(cb.ptrw());
+	for (int z = 0; z < R; z++)
+		for (int x = 0; x < R; x++) c[size_t(z) * R + x] = control_of(paint.cell(bx * R + x, bz * R + z));
+	region->call("set_control_map", Image::create_from_data(R, R, false, Image::FORMAT_RF, cb));
+	region->call("set_edited", true);
+	region->call("set_modified", true);
+}
+
+void TerrainBridge::push_paint(const Heightfield &hf, const GroundPaint &paint, Object *terrain3d, const std::vector<int> &rects) {
+	Object *data = terrain_data(terrain3d);
+	if (!data || rects.empty()) return;
+	std::vector<int64_t> touched;
+	const int last = hf.regions - 1;
+	for (size_t i = 0; i + 3 < rects.size(); i += 4)
+		for (int z = clampi(rects[i + 1] / hf.region_size, 0, last); z <= clampi(rects[i + 3] / hf.region_size, 0, last); z++)
+			for (int x = clampi(rects[i] / hf.region_size, 0, last); x <= clampi(rects[i + 2] / hf.region_size, 0, last); x++) touched.push_back(cell_key(x, z));
+	std::sort(touched.begin(), touched.end());
+	touched.erase(std::unique(touched.begin(), touched.end()), touched.end());
+	for (int64_t k : touched) write_control(hf, paint, data, key_x(k), key_y(k));
+	data->call("update_maps", MAP_TYPE_CONTROL, false, false);
+}
+
+void TerrainBridge::push_all_paint(const Heightfield &hf, const GroundPaint &paint, Object *terrain3d) {
+	Object *data = terrain_data(terrain3d);
+	if (!data || paint.all().empty()) return;
+	for (int bz = 0; bz < hf.regions; bz++)
+		for (int bx = 0; bx < hf.regions; bx++) write_control(hf, paint, data, bx, bz);
+	data->call("update_maps", MAP_TYPE_CONTROL, true, false);
 }
 
 } // namespace city

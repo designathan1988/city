@@ -487,3 +487,69 @@ building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on 
 building.problem.outline,Isto ainda não vale para esta planta,This does not work on this plan yet
 building.problem.roofPart,Isto não cabe neste telhado,This does not fit on this roof
 building.problem.lastVolume,O último volume no chão não sai: demolir tira o prédio,The last block on the ground stays: demolish takes the building
+cmd.weather,Clima do mapa,Map weather
+cmd.cloud.add,Nuvem,Cloud
+cmd.cloud.edit,Editar nuvem,Edit cloud
+cmd.cloud.remove,Tirar nuvem,Remove cloud
+cmd.cloud.scatter,Espalhar nuvens,Spread clouds
+cmd.cloud.clear,Apagar nuvens,Clear clouds
+cmd.fog,Neblina,Fog
+cmd.fog.clear,Apagar neblina,Clear fog
+cmd.gully.clear,Apagar ravinas,Clear gullies
+cmd.trees.clear,Apagar árvores,Clear trees
+cmd.biome,Bioma do mapa,Map biome
+hint.tool.trees,Segure e arraste para plantar ou cortar.,Hold and drag to plant or cut.
+hint.tool.fog,Segure e arraste para deitar neblina.,Hold and drag to lay fog.
+hint.tool.cloud,Clique no céu para pôr ou pegar uma nuvem.,Click the sky to place or pick a cloud.
+hint.tileFull,Esta parte do mapa já tem o máximo que cabe,This part of the map holds as many as it can
+hint.cloud.full,O céu já tem o máximo de nuvens (24),The sky already holds the most clouds (24)
+gully.cut,Cavar,Cut
+gully.erase,Apagar,Erase
+gully.strength,Força,Strength
+gully.auto,Ravinas naturais,Natural gullies
+gully.clear,Apagar ravinas,Clear gullies
+tree.clear,Apagar árvores,Clear trees
+tree.density,Densidade,Density
+tree.height,Altura,Height
+tree.variation,Variação,Variation
+tree.spacing,Espaçamento,Spacing
+fog.strength,Força,Strength
+fog.speed,Velocidade,Speed
+fog.mapDensity,Toda a neblina,All fog
+fog.clear,Apagar neblina,Clear fog
+atmo.fogHeight,Altura da névoa,Mist height
+confirm.clearTerrain,"Aplainar todo o terreno? Esta ação pode ser desfeita.","Flatten the whole terrain? This can be undone."
+confirm.clearElements,"Apagar todos os elementos do mapa?","Remove every element on the map?"
+confirm.clearTrees,"Apagar todas as árvores que você plantou e deixar a mata voltar onde você cortou?","Remove every tree you planted and let the woods grow back where you cut them?"
+confirm.clearGullies,"Apagar todos os traços de ravina do mapa? As ravinas automáticas continuam.","Clear every gully stroke on the map? The land keeps its own gullies."
+confirm.clearClouds,"Apagar todas as nuvens do céu?","Remove every cloud in the sky?"
+confirm.clearFog,"Apagar toda a neblina do mapa?","Clear all the fog on the map?"
+el.mode.lay,"Colocar","Lay"
+el.mode.eraseKind,"Apagar este tipo","Erase this kind"
+el.mode.eraseAll,"Apagar tudo","Erase all"
+el.strength,"Força do pincel (%)","Brush strength (%)"
+el.variation,"Variação de tamanho (%)","Size variation (%)"
+el.intensity,"Intensidade do efeito (%)","Effect intensity (%)"
+el.clear,"Apagar todos os elementos","Remove every element"
+hint.terrain.elements,"Arraste para colocar (ou apagar) · Shift+roda: tamanho do pincel","Drag to lay (or erase) · Shift+wheel: brush size"
+hint.element.full,"O mapa já tem elementos demais","The map holds too many elements"
+cmd.place.element,"colocar elementos","lay elements"
+cmd.elements.clear,"Apagar elementos","Clear elements"
+el.kind.stones,"Pedras","Stones"
+el.kind.pebbles,"Seixos","Pebbles"
+el.kind.gravel,"Cascalho","Gravel"
+el.kind.leaves,"Folhas secas","Fallen leaves"
+el.kind.grass,"Grama","Grass"
+el.kind.tallGrass,"Capim alto","Tall grass"
+el.kind.scrub,"Mato","Scrub"
+el.kind.fern,"Samambaia","Fern"
+el.kind.clover,"Trevo","Clover"
+el.kind.flowers,"Flores","Flowers"
+el.kind.mushrooms,"Cogumelos","Mushrooms"
+el.kind.smoke,"Fumaça","Smoke"
+el.kind.fire,"Fogo","Fire"
+el.kind.steam,"Vapor","Steam"
+el.kind.dust,"Poeira","Dust"
+el.kind.soot,"Fuligem","Soot"
+el.kind.sparks,"Faíscas","Sparks"
+el.kind.spray,"Espuma e borrifo","Foam and spray"

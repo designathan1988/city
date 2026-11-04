@@ -5,8 +5,10 @@
 #include "render/render_world.h"
 #include "sim/simulation/simulation.h"
 
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/node_path.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 #include <atomic>
 #include <memory>
@@ -85,6 +87,29 @@ public:
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
 
+	// --- the Landscape drawer (city_core_nature.cpp)
+	godot::Dictionary set_weather(const godot::Dictionary &change);
+	godot::Dictionary add_cloud(const godot::Dictionary &c);
+	godot::Dictionary edit_cloud(int id, const godot::Dictionary &c);
+	godot::Dictionary remove_cloud(int id);
+	godot::Dictionary scatter_clouds(int count, const godot::Dictionary &like, float variation);
+	godot::Dictionary clear_clouds();
+	int cloud_at(const godot::Vector3 &origin, const godot::Vector3 &direction, float drift_x, float drift_z) const;
+	godot::Dictionary fog_brush(const godot::Vector3 &p, float radius, float strength, float height, float speed, bool erase);
+	godot::Dictionary clear_fog();
+	godot::Dictionary paint_brush(const godot::Vector3 &p, float radius, float strength, float hardness, int kind);
+	godot::Dictionary clear_gullies();
+	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
+	godot::Dictionary clear_trees();
+	godot::Dictionary element_brush(const godot::Vector3 &p, float radius, int kind, const godot::Dictionary &brush, bool erase);
+	godot::Dictionary clear_elements();
+	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
+	godot::Dictionary set_biome(int region);
+	godot::Dictionary clear_relief();
+	godot::Dictionary landscape() const;
+	int64_t sky_revision() const;
+	godot::Dictionary fog_field(const godot::Vector3 &camera);
+
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
 	bool redo();
@@ -95,7 +120,7 @@ public:
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary segment_at(const godot::Vector3 &p); // the segment a click there edits (preview)
-	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode);
+	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode, float hardness);
 	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone);
 	godot::Dictionary preview_lot(const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary set_building(int id, int fn, int floors);
@@ -118,6 +143,8 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
+	godot::TypedArray<godot::Image> film_grade(const godot::Dictionary &grade) const; // slices of the screen's lookup table
+	godot::Color film_graded(const godot::Dictionary &grade, const godot::Color &colour) const; // a display colour through it
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn

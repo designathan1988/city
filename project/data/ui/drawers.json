@@ -230,17 +230,20 @@
     {
      "id": "ground",
      "icon": "paint",
-     "label_key": "v2.land.ground"
+     "label_key": "v2.land.ground",
+     "tool": "PAINT"
     },
     {
      "id": "nature",
      "icon": "ls_tree",
-     "label_key": "v2.land.nature"
+     "label_key": "v2.land.nature",
+     "tool": "TREES"
     },
     {
      "id": "sky",
      "icon": "cloud",
-     "label_key": "v2.land.sky"
+     "label_key": "v2.land.sky",
+     "tool": "CLOUD"
     },
     {
      "id": "street",
@@ -253,70 +256,7 @@
      "label_key": "tool.person"
     }
    ],
-   "strip": "relief_cards",
-   "cards": [
-    {
-     "label_key": "terrain.raise",
-     "mode": 0,
-     "icon": "raise"
-    },
-    {
-     "label_key": "terrain.lower",
-     "mode": 1,
-     "icon": "lower"
-    },
-    {
-     "label_key": "terrain.smooth",
-     "mode": 2,
-     "icon": "smooth"
-    },
-    {
-     "label_key": "terrain.flatten",
-     "mode": 3,
-     "icon": "flatten"
-    },
-    {
-     "label_key": "terrain.mesa",
-     "mode": 4,
-     "icon": "mesa"
-    },
-    {
-     "label_key": "terrain.canyon",
-     "mode": 5,
-     "icon": "canyon"
-    },
-    {
-     "label_key": "terrain.escarpment",
-     "mode": 6,
-     "icon": "escarpment"
-    },
-    {
-     "label_key": "terrain.sugarloaf",
-     "mode": 7,
-     "icon": "sugarloaf"
-    },
-    {
-     "label_key": "terrain.gully",
-     "mode": 8,
-     "icon": "gully"
-    }
-   ],
-   "brush": {
-    "radius": {
-     "label_key": "terrain.radius",
-     "min": 5,
-     "max": 400,
-     "step": 5,
-     "default": 60
-    },
-    "strength": {
-     "label_key": "terrain.strength",
-     "min": 1,
-     "max": 100,
-     "step": 1,
-     "default": 40
-    }
-   }
+   "strip": "land_panels"
   },
   {
    "id": "transit",

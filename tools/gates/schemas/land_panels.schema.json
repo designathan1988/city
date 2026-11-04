@@ -1,0 +1,19 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ },
+ "additional": {
+  "type": "object"
+ },
+ "required": [
+  "TERRAIN",
+  "PAINT",
+  "TREES",
+  "CLOUD",
+  "FOG",
+  "WEATHER"
+ ]
+}

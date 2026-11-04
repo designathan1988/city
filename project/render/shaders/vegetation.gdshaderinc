@@ -1,6 +1,6 @@
 // Shared by vegetation.gdshader (tree bodies) and vegetation_cards.gdshader (leaf cards, palm fronds, far cards); the
 // vertex layout is native/src/render/trees/tree_kit.h's (UV2.x part, UV2.y a card's half size, UV a card's corner,
-// COLOR.rgb the sRGB tone, COLOR.a a card's roll), the instance custom data the tint (near) or linear tone (far) and the
+// COLOR.rgb the sRGB tone, COLOR.a a card's roll), the instance custom data the tint and the
 // species index. Vertices are placed here (skip_vertex_transform): the wind bends the tree, cards turn to the view
 // (the light's, in the shadow pass) and each tree fades between its near model and its far card by its own distance to
 // the main camera.
@@ -18,20 +18,27 @@
 // Leaf flutter is not drawn: no measured amplitude for it has been found.
 
 const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0; // tree_kit.h TreePart
+const float FAR_TINT_SPAN = 2.0; // far_cards.cpp: a vertex colour stops at 1, and the tint goes either side of it
 
 uniform float near_m = 240.0;
 uniform float fade_m = 30.0;
 uniform float pop_m = 3.0;
-uniform float wind_dir_x = 0.8; // the way the wind blows, x and z of a unit vector
-uniform float wind_dir_z = -0.6;
-uniform float wind_speed_ms = 3.0;
+global uniform float wind_x; // the way the wind blows, x and z of a unit vector (render/sky_view.gd)
+global uniform float wind_z;
+global uniform float wind_ms;
 uniform float sway_per_ms2 = 0.00016;
 uniform float gust_m = 220.0;
 uniform float turbulence = 0.19;
 uniform float sway_hz = 0.25;
 uniform float roughness = 0.85;
+uniform float leaf_specular = 0.15; // materials.json
+
+uniform int picture_frames = 1;
+uniform int picture_rows = 1;
+uniform float picture_top_deg = 80.0;
 
 varying flat vec3 v_tint;
+varying flat vec2 v_cell; // far: the picture's frame (column, row)
 varying flat float v_fade;
 varying flat float v_part;
 
@@ -56,11 +63,11 @@ float tree_fade(vec3 root, float d, bool far) {
 // The wind's push on a point `local` (model units, the tree one unit tall) of a tree standing at `root`, `height`
 // metres tall.
 vec3 wind_offset(vec3 local, vec3 root, float height, float t) {
-	vec2 wind_dir = normalize(vec2(wind_dir_x, wind_dir_z));
+	vec2 wind_dir = normalize(vec2(wind_x, wind_z));
 	float h = clamp(local.y, 0.0, 1.4);
-	float bend = sway_per_ms2 * wind_speed_ms * wind_speed_ms * h * h * height;
+	float bend = sway_per_ms2 * wind_ms * wind_ms * h * h * height;
 	// The gust the tree stands in: a wave of the frozen turbulence moving downwind at the mean speed.
-	float gust = sin(TAU * (dot(root.xz, wind_dir) - wind_speed_ms * t) / gust_m);
+	float gust = sin(TAU * (dot(root.xz, wind_dir) - wind_ms * t) / gust_m);
 	float phase = TAU * fract(dot(floor(root.xz), vec2(0.1031, 0.0973)) * 43.17); // each tree its own swing
 	float sway = sin(TAU * sway_hz * t + phase);
 	return vec3(wind_dir.x, 0.0, wind_dir.y) * bend * (1.0 + 2.0 * turbulence * gust + 2.0 * turbulence * sway);
@@ -88,10 +95,11 @@ float dither(vec2 frag) {
 // species), or a far-card mesh (render/trees/far_cards.h: CUSTOM0 is the card's width, the tree's height, the species
 // and the card's half height; COLOR.a the card centre's height; the corner is the vertex's index modulo 4).
 void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, vec4 color, vec4 inst, vec4 custom0, int vertex_id,
-		mat4 model, mat4 view, mat4 main_inv, float t, out float fade, out vec3 tint, out float part) {
+		mat4 model, mat4 view, mat4 main_inv, float t, out float fade, out vec3 tint, out float part, out vec2 cell) {
 	bool far = custom0.w > 0.0;
 	part = far ? PART_FAR : uv2.x;
-	tint = far ? vec3(1.0) : inst.rgb;
+	tint = far ? color.rgb * FAR_TINT_SPAN : inst.rgb;
+	cell = vec2(0.0);
 	vec3 root = (model * vec4(far ? vertex : vec3(0.0), 1.0)).xyz;
 	fade = tree_fade(root, distance(root, main_inv[3].xyz), far);
 	if (fade <= 0.0) {
@@ -108,6 +116,10 @@ void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, 
 		int k = vertex_id % 4;
 		uv = vec2(float(k == 1 || k == 2), float(k >= 2));
 		vp.xy += (uv - vec2(0.5)) * vec2(sx, 2.0 * custom0.w * sy);
+		// The frame nearest the view: how far above the horizon this pass looks down.
+		vec3 forward = -vec3(view[0][2], view[1][2], view[2][2]);
+		float elev = degrees(asin(clamp(-forward.y, 0.0, 1.0)));
+		cell = vec2(round(elev / picture_top_deg * float(picture_frames - 1)), custom0.z);
 	} else if (card) {
 		float a = color.a * TAU;
 		vp.xy += mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a))) * (uv - vec2(0.5)) * (2.0 * uv2.y * sx);
@@ -121,8 +133,10 @@ void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, 
 void vertex() {
 	float fade, part;
 	vec3 tint;
+	vec2 cell;
 	tree_vertex(VERTEX, NORMAL, UV, UV2, COLOR, INSTANCE_CUSTOM, CUSTOM0, VERTEX_ID, MODEL_MATRIX, VIEW_MATRIX, MAIN_CAM_INV_VIEW_MATRIX, TIME, fade, tint,
-			part);
+			part, cell);
+	v_cell = cell;
 	v_tint = tint;
 	v_fade = fade;
 	v_part = part;

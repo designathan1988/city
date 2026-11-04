@@ -1,0 +1,35 @@
+// What stands on the open ground under the trees (data/render/cover.json): rocks and scrub as lumps of flat faces, cactus
+// as columns, grass tufts as blades and wildflowers as a stem under a bloom, each kind in a few variants one unit tall,
+// drawn with the tree bodies' shader (render/shaders/vegetation.gdshader), so wind and the fade with distance come with
+// it. A kind says how far apart its plants may stand and how big they grow; where they stand is cover_renderer.cpp's.
+#pragma once
+
+#include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
+
+#include <array>
+#include <vector>
+
+namespace city {
+
+enum class CoverPiece : int { ROCKS, SCRUB, CACTUS, TUFTS, FLOWERS, COUNT };
+constexpr int COVER_PIECES = int(CoverPiece::COUNT);
+
+struct CoverLook {
+	float spacing_m = 1, least = 0, size0 = 0, size1 = 0, tall = 1, sink = 0, tint_vary = 0, road_margin_m = 0;
+	bool casts = false, sways = false;
+	std::vector<godot::Ref<godot::ArrayMesh>> variants;
+};
+
+class CoverKit {
+public:
+	bool build(const godot::Dictionary &table, godot::PackedStringArray &errors);
+	const CoverLook &look(CoverPiece p) const { return looks_[size_t(p)]; }
+	float reach_m = 0, fade_m = 0, pop_m = 0, tuft_share = 0;
+
+private:
+	std::array<CoverLook, COVER_PIECES> looks_;
+};
+
+} // namespace city

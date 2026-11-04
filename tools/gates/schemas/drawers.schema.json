@@ -38,7 +38,7 @@
       "enum": [
        "road_catalog",
        "zone_cards",
-       "relief_cards",
+       "land_panels",
        "build_cards"
       ]
      },

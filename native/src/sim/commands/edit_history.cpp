@@ -62,6 +62,7 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			break;
 		case OpKind::ADD_MOD: if (fwd) s.terrain.put_modifier(op.id, op.mod); else s.terrain.remove_modifier(op.id); break;
 		case OpKind::MONEY: s.money += fwd ? op.money : -op.money; break;
+		case OpKind::NATURE: (*op.nature)(s, fwd); break;
 	}
 }
 
@@ -76,6 +77,12 @@ void apply_entry(CityState &s, const EditEntry &e, bool forward) {
 	if (!e.terrain_idx.empty()) {
 		s.terrain.write_samples(e.terrain_idx, forward ? e.terrain_after : e.terrain_before);
 		mark_ground(s, e.minx, e.minz, e.maxx, e.maxz);
+	}
+	for (const PaintEdit &p : e.paint) {
+		s.nature.ground.put_tile(p.key, (forward ? p.after : p.before).get());
+		int r[4];
+		s.nature.ground.tile_rect(p.key, r);
+		mark_paint(s, r);
 	}
 	if (e.has_box) finish_edit(s, e.minx - SETTLE_PAD_M, e.minz - SETTLE_PAD_M, e.maxx + SETTLE_PAD_M, e.maxz + SETTLE_PAD_M);
 	else s.touch();
@@ -146,8 +153,22 @@ void EditHistory::close_terrain(const CityState &s) {
 	open.bytes += open.terrain_idx.size() * (sizeof(uint32_t) + 2 * sizeof(uint16_t));
 }
 
+void EditHistory::close_paint(const CityState &s) {
+	for (const auto &kv : open.paint_open) {
+		const PaintTile *now = s.nature.ground.tile(kv.first);
+		PaintEdit e;
+		e.key = kv.first;
+		e.before = kv.second;
+		if (now) e.after = std::make_shared<const PaintTile>(*now);
+		open.bytes += sizeof(PaintTile) * ((e.before ? 1 : 0) + (e.after ? 1 : 0));
+		open.paint.push_back(std::move(e));
+	}
+	open.paint_open.clear();
+}
+
 void EditHistory::push(CityState &s) {
 	close_terrain(s);
+	close_paint(s);
 	if (!open.empty()) {
 		undo_stack.push_back(std::move(open));
 		redo_stack.clear();

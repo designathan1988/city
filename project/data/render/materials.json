@@ -188,22 +188,19 @@
  "vegetation": {
   "shader": "res://render/shaders/vegetation.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,
    "sway_hz": 0.25,
-   "roughness": 0.85
+   "roughness": 0.85,
+   "leaf_specular": 0.15
   }
  },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
  "vegetation_cards": {
   "shader": "res://render/shaders/vegetation_cards.gdshader",
   "params": {
-   "wind_dir_x": 0.8,
-   "wind_dir_z": -0.6,
-   "wind_speed_ms": 3.0,
    "sway_per_ms2": 0.000161,
    "gust_m": 220.0,
    "turbulence": 0.189,

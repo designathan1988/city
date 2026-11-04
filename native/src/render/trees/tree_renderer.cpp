@@ -1,5 +1,5 @@
 // Streams the tree chunks (see tree_renderer.h). An instance carries its basis (turn, width, height and lean), its
-// foot, and in its custom data the tint (near) or the linear tone (far) and the species index the shader reads its
+// foot, and in its custom data the tint and the species index the shader reads its
 // wind response by.
 #include "render/trees/tree_renderer.h"
 #include "render/chunk_jobs.h"
@@ -59,6 +59,11 @@ void TreeRenderer::set_params(const RID &material) const {
 	rs->material_set_param(material, "fade_m", trees_.fade_m);
 	rs->material_set_param(material, "pop_m", trees_.pop_m);
 	rs->material_set_param(material, "leaf_atlas", kit_.atlas().texture());
+	rs->material_set_param(material, "tree_albedo", kit_.pictures().albedo());
+	rs->material_set_param(material, "tree_normal", kit_.pictures().normal());
+	rs->material_set_param(material, "picture_frames", kit_.pictures().frames());
+	rs->material_set_param(material, "picture_rows", kit_.pictures().rows());
+	rs->material_set_param(material, "picture_top_deg", kit_.pictures().top_elevation_deg());
 }
 
 void TreeRenderer::reset() {
@@ -106,7 +111,7 @@ TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) con
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
 			place_far(s, *look_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
-	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, FAR_CARD_HALF_TALL);
+	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, kit_.pictures().frame_share() * HALF);
 	return out;
 }
 

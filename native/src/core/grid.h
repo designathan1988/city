@@ -24,6 +24,13 @@ inline int64_t chunk_of(float x, float z, float size = CHUNK) {
 	return cell_key(int(std::floor(x / size)), int(std::floor(z / size)));
 }
 
+// Calls fn(key) for every CHUNK the box touches.
+template <typename F>
+void for_chunks(double minx, double minz, double maxx, double maxz, F &&fn) {
+	for (int j = int(std::floor(minz / CHUNK)); j <= int(std::floor(maxz / CHUNK)); j++)
+		for (int i = int(std::floor(minx / CHUNK)); i <= int(std::floor(maxx / CHUNK)); i++) fn(cell_key(i, j));
+}
+
 struct SpatialHash {
 	float cell = 64.f;
 	std::unordered_map<int64_t, std::vector<int>> cells;
