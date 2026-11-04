@@ -18,7 +18,7 @@ constexpr float PIECES_PER_M2 = 0.35f; // heap pieces over the lot's area, and w
 constexpr float PIECES_PER_STOREY = 0.25f;
 constexpr int HEAP_FEWEST = 14, HEAP_MOST = 90;
 constexpr float STOREYS_PER_M = 0.3125f; // a storey is about 3.2 m: a building's height for the fall
-constexpr float PIECE_MIN_M = 0.35f, PIECE_SPAN_M = 1.3f, PIECE_FLAT_MIN = 0.25f, PIECE_FLAT_SPAN = 0.5f;
+constexpr float PIECE_MIN_M = 0.35f, PIECE_SPAN_M = 1.6f, PIECE_FLAT_MIN = 0.08f, PIECE_FLAT_SPAN = 0.22f; // slabs of wall, roof and glass
 constexpr float HEAP_HEIGHT_K = 0.35f; // a heap's centre rises this share of the building's height (capped)
 constexpr float HEAP_MAX_M = 3.5f;
 constexpr float FALL_OUT_M = 2.5f; // the pieces of a falling building are thrown out a little

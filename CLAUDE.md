@@ -143,6 +143,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/journal_damage.cpp` — operações do diário do dano (cratera, ruína, mobiliário derrubado, dano acumulado do prédio) e o inverso de cada uma
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
+- `native/src/sim/commands/demolish_box.cpp` — demolir na caixa: prédios, entulho e vias com o meio dentro do retângulo, num passo de desfazer
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_tabs.cpp` — Dividir e Melhorar

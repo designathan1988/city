@@ -97,6 +97,10 @@ struct ShotResult {
 };
 ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, double dy, double dz);
 
+// Bulldoze everything in the box between two corners: the buildings whose centre is in it, the rubble, the road segments
+// whose middle is in it (their refund added up). One undo step.
+EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz);
+
 // Value of one segment (R$): length x price per metre x structure factor (ground).
 double segment_value(const CityState &s, int seg);
 

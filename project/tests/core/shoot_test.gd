@@ -23,6 +23,8 @@ const GLASS_AIM_M := 1.2
 const MOTO := 5
 const FIRST_HEAVY := 6
 const BIG_FORCE := 45
+const BOX_HALF_M := 120.0
+const ROOF_M := 6.0
 const SLOT := "shoot_test_slot"
 var failures := 0
 
@@ -37,6 +39,7 @@ func _ready() -> void:
 	CityStore.step_ticks(WARM_TICKS)
 	_walkers()
 	_vehicles()
+	_demolish()
 	await _save_marks()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -117,13 +120,34 @@ func _vehicles() -> void:
 	_check(burst or CityStore.query(&"damage_probe").vehicles < before, "rajadas fazem o carro explodir (%d tiros)" % shots)
 
 
-func _save_marks() -> void:
-	var spot := Vector3.INF
+## A blow leaves rubble; a drag over it clears the rubble, the buildings and the roads in the box in one step, and Undo
+## brings every one of them back.
+func _demolish() -> void:
+	var spot := _house()
+	_check(spot != Vector3.INF, "um prédio para demolir")
+	CityStore.dispatch(&"strike", [spot + Vector3(0, ROOF_M, 0), BIG_FORCE])
+	var before: Dictionary = CityStore.query(&"damage_probe")
+	_check(before.ruins > 0, "o golpe deixou entulho (%d)" % before.ruins)
+	var corner := Vector3(BOX_HALF_M, 0, BOX_HALF_M)
+	var r: Dictionary = CityStore.dispatch(&"demolish_box", [spot - corner, spot + corner])
+	var after: Dictionary = CityStore.query(&"damage_probe")
+	_check(r.get("ok", false) and after.buildings < before.buildings, "a caixa demoliu prédios (%d -> %d)" % [before.buildings, after.buildings])
+	_check(after.ruins == 0 and after.segments < before.segments, "e o entulho e as vias dentro dela (%d ruínas, %d trechos)" % [after.ruins, after.segments])
+	_check(CityStore.dispatch(&"undo", []), "desfez")
+	var undone: Dictionary = CityStore.query(&"damage_probe")
+	_check(undone.buildings == before.buildings and undone.ruins == before.ruins and undone.segments == before.segments, "Desfazer devolveu tudo da caixa")
+
+
+func _house() -> Vector3:
 	for id in CityStore.query(&"list_buildings"):
 		var info: Dictionary = CityStore.query(&"probe_building", [id])
 		if info.floors >= 2 and info.zone > 0:
-			spot = info.position
-			break
+			return info.position
+	return Vector3.INF
+
+
+func _save_marks() -> void:
+	var spot := _house()
 	_check(spot != Vector3.INF, "um prédio para a bomba")
 	CityStore.dispatch(&"strike", [spot, BIG_FORCE])
 	var marks: Dictionary = CityStore.query(&"damage_probe")

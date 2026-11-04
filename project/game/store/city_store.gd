@@ -13,7 +13,7 @@ const COMMANDS := {
 	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
-	&"set_building": "set_building", &"set_overlay": "set_overlay", &"strike": "strike", &"shoot": "shoot",
+	&"set_building": "set_building", &"set_overlay": "set_overlay", &"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",

@@ -1,8 +1,10 @@
-## Captures of the bomb in the real game (the store's `strike`, the effects drawn by the native renderer): a house hit by
-## a small bomb, the same by a big one, a bomb on a street (it cuts the road), and on bare earth, each at the moments
-## after the blow. The time between shots is real time: the effects run on their own clock. Writes PNGs in --capture-dir.
+## Captures of the bomb and the pistol in the real game (the store's `strike` and `shoot`, the effects drawn by the native
+## renderer), in phases picked by --phase=: `bomb` (a house, a street, bare earth, a big one), `pareada` (the views the
+## reference game was photographed from: a low house hit by force 5 and 45), `people` (a walker shot in the trunk, the leg
+## and the head: bodies, tracer, blood), `car` (a car shot through its glass until it bursts). The time between shots is real
+## time: the effects run on their own clock. Writes PNGs in --capture-dir.
 ## Run through tools/build/hidden_run.ps1: godot --path project --resolution 1600x900 res://tests/visual/capture_demolition.tscn
-##   -- --no-flow --capture-dir=<dir>
+##   -- --no-flow --phase=pareada,people,car --capture-dir=<dir>
 extends Node3D
 
 const TOWN_MAP := 0
@@ -13,12 +15,31 @@ const VIEW_YAW := 25.0
 const VIEW_PITCH := 38.0
 const VIEW_DIST := 70.0
 const FAR_DIST := 140.0
+const LOW_DIST := 45.0
+const WALKER_DIST := 8.0
+const CAR_DIST := 18.0
+const WALKER_PITCH := 25.0
 const EARTH_OUT_M := 500.0
 const SCAN_STEP_M := 40.0
 const MOMENTS := [0.0, 1.0, 2.0, 5.0]
+const PAIRED_MOMENTS := [0.1, 0.5, 1.0, 2.0, 5.0, 12.0]
 const SETTLE_FRAMES := 4
+const WARM_TICKS := 600
+const OPEN_M := 70.0 # no building taller than FLOORS_LOW this close: nothing between the camera and the target
+const LOOKUP_FACTOR := 1.0
+const TARGETS := 80
+const CHEST_M := 1.2
+const HEAD_M := 1.7
+const LEG_M := 0.4
+const GLASS_M := 1.2
+const BURST_SHOTS := 14
+const NORMAL_SPEED := 2 # SimSpeed::NORMAL
+const MOTO := 5
+const FIRST_HEAVY := 6
+const FLOORS_LOW := 2
 
 var out_dir := "user://captures"
+var phases := ["bomb"]
 var rig: CityCamera
 var ui: UiDriver
 var failures := 0
@@ -28,6 +49,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
+		elif arg.begins_with("--phase="):
+			phases = arg.trim_prefix("--phase=").split(",")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var world := CityWorld.new()
 	add_child(world)
@@ -40,28 +63,146 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
+	CityStore.step_ticks(WARM_TICKS)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	await _run()
 
 
 func _run() -> void:
-	var house := _house()
-	await _blow("bomba_casa_f%d" % SMALL, house, SMALL, VIEW_DIST)
-	var road := _road()
-	await _blow("bomba_rua_f%d" % SMALL, road, SMALL, VIEW_DIST)
-	var b: Dictionary = CityStore.query(&"city_bounds")
-	var earth := ui.ground(b.max.x + EARTH_OUT_M, (b.min.z + b.max.z) * 0.5)
-	await _blow("bomba_terra_f%d" % SMALL, earth, SMALL, VIEW_DIST)
-	await _blow("bomba_grande_f%d" % BIG, house, BIG, FAR_DIST)
+	if "bomb" in phases:
+		await _bomb()
+	if "pareada" in phases:
+		await _paired()
+	if "people" in phases:
+		await _people()
+	if "car" in phases:
+		await _car()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
-## The first building with floors, as a point on its roof (the blow lands on it).
-func _house() -> Vector3:
+func _bomb() -> void:
+	var house := _house(FLOORS_LOW + 1)
+	await _blow("bomba_casa_f%d" % SMALL, house, SMALL, VIEW_DIST, MOMENTS)
+	await _blow("bomba_rua_f%d" % SMALL, _road(), SMALL, VIEW_DIST, MOMENTS)
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	var earth := ui.ground(b.max.x + EARTH_OUT_M, (b.min.z + b.max.z) * 0.5)
+	await _blow("bomba_terra_f%d" % SMALL, earth, SMALL, VIEW_DIST, MOMENTS)
+	await _blow("bomba_grande_f%d" % BIG, house, BIG, FAR_DIST, MOMENTS)
+
+
+## The reference game's views: a low house, force 5 and then force 45 on another, the same moments.
+func _paired() -> void:
+	var lows := _houses(1, FLOORS_LOW)
+	if lows.size() < 3:
+		_check(false, "casas baixas para a pareada")
+		return
+	await _blow("bomba_f%d" % SMALL, lows[lows.size() / 2], SMALL, LOW_DIST, PAIRED_MOMENTS)
+	await _blow("bomba_f%d_grande" % BIG, lows[lows.size() / 3], BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
+
+
+func _people() -> void:
+	var found: Dictionary = CityStore.query(&"shot_targets", [TARGETS])
+	var walkers: Array = found.walkers
+	if walkers.size() < 3:
+		_check(false, "pedestres para as fotos")
+		return
+	await _shoot_walker("ped_tronco", walkers[0], CHEST_M, [0.1, 1.0])
+	await _shoot_walker("ped_perna", walkers[1], LEG_M, [0.1, 1.0, 3.0])
+	await _shoot_walker("ped_cabeca", walkers[2], HEAD_M, [0.1, 1.0, 8.0])
+
+
+func _car() -> void:
+	var cars: Array = CityStore.query(&"shot_targets", [TARGETS]).vehicles.filter(func(v): return v.type != MOTO and v.type < FIRST_HEAVY)
+	if cars.is_empty():
+		_check(false, "um carro para as fotos")
+		return
+	var car: Dictionary = cars[0]
+	CityStore.dispatch(&"set_speed", [0])
+	rig.jump(car.position, VIEW_YAW, WALKER_PITCH, CAR_DIST)
+	await ui.drawn()
+	await ui.shot("carro_antes")
+	_fire(car.position + Vector3(0, GLASS_M, 0))
+	await ui.frames(SETTLE_FRAMES)
+	await get_tree().create_timer(0.3).timeout
+	await ui.drawn()
+	await ui.shot("carro_tiro")
+	for k in BURST_SHOTS:
+		var now := _vehicle(car.id)
+		if now.is_empty():
+			break
+		if _fire(now.position + Vector3(0, GLASS_M, 0)).get("burst", false):
+			break
+	await ui.frames(SETTLE_FRAMES)
+	for t in [0.0, 2.0]:
+		await get_tree().create_timer(t if t > 0.0 else 0.1).timeout
+		await ui.drawn()
+		await ui.shot("carro_estouro_t%d" % int(t))
+
+
+func _walker(id: int) -> Dictionary:
+	for w in CityStore.query(&"shot_targets", [TARGETS * 4]).walkers:
+		if w.id == id:
+			return w
+	return {}
+
+
+func _vehicle(id: int) -> Dictionary:
+	for v in CityStore.query(&"shot_targets", [TARGETS * 4]).vehicles:
+		if v.id == id:
+			return v
+	return {}
+
+
+## A round at a point of the scene from where the camera is: the ray through it.
+func _fire(at: Vector3) -> Dictionary:
+	var origin := rig.camera.global_position
+	return CityStore.dispatch(&"shoot", [origin, (at - origin).normalized()])
+
+
+func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Array) -> void:
+	CityStore.dispatch(&"set_speed", [0]) # nobody moves while the camera comes and aims
+	var w := _walker(first.id)
+	rig.jump(w.position, VIEW_YAW, WALKER_PITCH, WALKER_DIST)
+	await ui.drawn()
+	await ui.shot("%s_antes" % label)
+	var r := _fire(w.position + Vector3(0, aim_m * w.scale, 0))
+	_check(r.get("hit", 0) == 1, "%s: acertou %s" % [label, r])
+	CityStore.dispatch(&"set_speed", [NORMAL_SPEED]) # the clocks of the wound run: the fallen get up, the bleeding bleeds
+	await ui.frames(SETTLE_FRAMES)
+	var elapsed := 0.0
+	for t in moments:
+		await get_tree().create_timer(maxf(t - elapsed, 0.05)).timeout
+		elapsed = t
+		await ui.drawn()
+		await ui.shot("%s_t%d" % [label, int(t * 10)])
+
+
+## The houses with between `lo` and `hi` floors, as the point on their roof the blow lands on.
+func _houses(lo: int, hi: int) -> Array:
+	var all := []
+	for id in CityStore.query(&"list_buildings"):
+		all.append(CityStore.query(&"probe_building", [id]))
+	var tall := all.filter(func(b): return b.floors > hi)
+	var out := []
+	for info in all:
+		if info.floors < lo or info.floors > hi or info.zone <= 0:
+			continue
+		var open := true
+		for other in tall:
+			if info.position.distance_to(other.position) < OPEN_M:
+				open = false
+				break
+		if open:
+			out.append(info.position + Vector3(0, 3.0 * info.floors, 0))
+	return out
+
+
+## The first building with at least `floors` floors, as a point on its roof.
+func _house(floors: int) -> Vector3:
 	for id in CityStore.query(&"list_buildings"):
 		var info: Dictionary = CityStore.query(&"probe_building", [id])
-		if info.floors >= 2 and info.zone > 0:
+		if info.floors >= floors and info.zone > 0:
 			return info.position + Vector3(0, 6.0, 0)
 	return Vector3.INF
 
@@ -80,7 +221,7 @@ func _road() -> Vector3:
 	return Vector3.INF
 
 
-func _blow(label: String, at: Vector3, force: int, dist: float) -> void:
+func _blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -> void:
 	_check(at != Vector3.INF, "%s: ponto achado" % label)
 	if at == Vector3.INF:
 		return
@@ -92,12 +233,12 @@ func _blow(label: String, at: Vector3, force: int, dist: float) -> void:
 	_check(r.ok, "%s: golpe" % label)
 	await ui.frames(SETTLE_FRAMES)
 	var elapsed := 0.0
-	for t in MOMENTS:
+	for t in moments:
 		if t > elapsed:
 			await get_tree().create_timer(t - elapsed).timeout
 			elapsed = t
 		await ui.drawn()
-		await ui.shot("%s_t%d" % [label, int(t)])
+		await ui.shot("%s_t%s" % [label, ("%.1f" % t).replace(".", "")])
 	var after: Dictionary = CityStore.query(&"damage_probe")
 	print(label, ": ", before, " -> ", after, " tremor ", CityStore.query(&"effects_shake"))
 

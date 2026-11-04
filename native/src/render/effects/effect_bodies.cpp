@@ -71,6 +71,8 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const float yaw = e.a;
 	const float side_x = -std::sin(yaw), side_z = std::cos(yaw); // to the walker's left
 	struct Part { Vector3 box, at; Color tint; uint32_t bit; };
+	// A limb or the head as a cylinder: (radius, length, radius) of the box that holds it.
+	auto round_of = [](const Vector3 &box) { return Vector3(std::min(box.x, box.z) * 0.5f, box.y, std::min(box.x, box.z) * 0.5f); };
 	const Part parts[PART_KINDS] = {
 		{ HEAD_BOX, Vector3(0, SKULL_CENTRE_M, 0), skin, CAS_LIMB_HEAD },
 		{ ARM_BOX, Vector3(side_x * ARM_SIDE_M, ARM_CENTRE_M, side_z * ARM_SIDE_M), top, CAS_LIMB_ARM_L },
@@ -78,9 +80,10 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		{ LEG_BOX, Vector3(side_x * LEG_SIDE_M, LEG_CENTRE_M, side_z * LEG_SIDE_M), bottom, CAS_LIMB_LEG_L },
 		{ LEG_BOX, Vector3(-side_x * LEG_SIDE_M, LEG_CENTRE_M, -side_z * LEG_SIDE_M), bottom, CAS_LIMB_LEG_R },
 	};
-	auto lay = [&](const Vector3 &box, const Vector3 &at, const Color &tint, float push, float keep_life) {
+	auto lay = [&](const Vector3 &box, const Vector3 &at, const Color &tint, float push, float keep_life, bool round) {
 		PieceSpec p;
-		p.size = box;
+		p.size = round ? round_of(box) : box;
+		p.cylinder = round;
 		p.at = Vector3(e.x + at.x, ground + at.y, e.z + at.z);
 		p.turn = Quaternion(Vector3(0, 1, 0), -yaw);
 		p.tint = charred ? BODY_CHAR : tint;
@@ -90,14 +93,14 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		p.spin = Vector3();
 		debris_.add(p);
 	};
-	if ((lost & CAS_LIMB_HEAD) == 0) lay(HEAD_BOX, parts[0].at, skin, params_.push_ms * power, life);
-	lay(TRUNK_BOX, Vector3(0, TRUNK_CENTRE_M, 0), top, params_.push_ms * power * TRUNK_PUSH_SHARE, life);
+	if ((lost & CAS_LIMB_HEAD) == 0) lay(HEAD_BOX, parts[0].at, skin, params_.push_ms * power, life, true);
+	lay(TRUNK_BOX, Vector3(0, TRUNK_CENTRE_M, 0), top, params_.push_ms * power * TRUNK_PUSH_SHARE, life, false);
 	for (int k = 1; k < PART_KINDS; k++) {
 		if ((lost & parts[k].bit) != 0 && (severed & parts[k].bit) == 0) continue;
 		const bool off = (severed & parts[k].bit) != 0;
-		lay(parts[k].box, parts[k].at, parts[k].tint, off ? params_.limb_push_ms : params_.push_ms * power, life);
+		lay(parts[k].box, parts[k].at, parts[k].tint, off ? params_.limb_push_ms : params_.push_ms * power, life, true);
 	}
-	if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life);
+	if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
 	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);
 }
 
