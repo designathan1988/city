@@ -25,7 +25,6 @@ public:
 	void reset();
 	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
 	void drop_chunk(int64_t key);
-	const FurnitureLook &furniture() const { return furniture_; }
 	void update_signals(const PoseFrame &f) { lamps_.update(f); }
 	int lit_lenses() const { return lamps_.lit(); }
 

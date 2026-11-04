@@ -3,6 +3,7 @@
 // in its own .cpp; Simulation::tick calls step() once per tick holding map_mutex shared and traffic_mutex.
 #pragma once
 
+#include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
 namespace city {
@@ -128,13 +129,29 @@ void change_lanes(CityState &s);
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
 
-// ped_crowd.cpp: walkers among walkers (stripes of the sidewalk, places to wait along a kerb)
-void crowd_step(CityState &s, float dt); // the sidewalk walkers' stripes and paces, from those around them
+// ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
+void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
 float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle
 void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way, its own pace
+void onto_line(Pedestrian &w); // onto a new line round a corner or over a zebra: from where it stands
+void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+
+// ped_kerb.cpp: places to wait at the kerb of a crosswalk
 void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
 void free_kerb_place(TrafficState &t, int id);
-void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
+// A waiting walker with a free place nearer the kerb: turned back toward its kerb (ways[wi]) to take it; true.
+bool step_to_nearer_place(CityState &s, int id);
+
+// ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
+// The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends.
+void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out);
+const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
+bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
+// The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.
+float clear_arc(CityState &s, int seg, int side, float at, float u);
+void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
+void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
+int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

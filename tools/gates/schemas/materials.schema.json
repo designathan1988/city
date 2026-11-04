@@ -68,9 +68,6 @@
       "pool_sigma": {
        "type": "number"
       },
-      "pool_step": {
-       "type": "number"
-      },
       "pool_gain": {
        "type": "number"
       },
@@ -100,7 +97,6 @@
       "cobble_per_m",
       "pool_color",
       "pool_sigma",
-      "pool_step",
       "pool_gain",
       "plate_glow",
       "pool_floor"

@@ -125,7 +125,7 @@ bool cars_on_crossing(CityState &s, int node, int arm_seg) {
 		}
 		for (int l = 0; l < d.lanes; l++) { // leaving the node: the last one's body still over the crosswalk
 			const auto &lane = t.lane_vehicles[size_t(ds) * MAX_LANES + l];
-			if (!lane.empty() && t.vehicles[size_t(lane.front())].s - body(s, t.vehicles[size_t(lane.front())]) < tp.crosswalk_m)
+			if (!lane.empty() && t.vehicles[size_t(lane.front())].s - body(s, t.vehicles[size_t(lane.front())]) < s.catalog.furniture.crossing.cleared())
 				return done(true);
 		}
 	}

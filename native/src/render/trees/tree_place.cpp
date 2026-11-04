@@ -123,12 +123,12 @@ bool TreeLook::load(const Dictionary &t, PackedStringArray &errors) {
 	return true;
 }
 
-void place_trees(const CityState &s, const StreetLook &L, const FurnitureLook &F, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
 		std::vector<TreeSpot> &out) {
 	std::vector<int> segs, lots;
 	chunk_segments(s, key, segs);
 	chunk_lots(s, key, lots);
-	place_street_trees(s, L, F, key, out);
+	place_street_trees(s, L, key, out);
 	for (TreeSpot &t : out) t.species = T.broadleaf;
 	parks(s, T, lots, key, out);
 	wild(s, T, kit, segs, lots, key, out);

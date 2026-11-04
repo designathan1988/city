@@ -12,12 +12,15 @@ namespace city {
 
 class CatalogLoader {
 public:
-	// tables: { "tuning": {...}, "maps": {...}, "roads": {...}, "zones": {...}, "services": {...} }
+	// tables: { "tuning", "maps", "road_profiles", "zones", "growth", "traffic", "street_furniture" } (parsed JSON)
 	static bool load(const godot::Dictionary &tables, Catalog &out, godot::PackedStringArray &errors);
 	static uint32_t parse_color(const godot::String &hex); // "#RRGGBB" or "#RRGGBBAA" -> RGBA8
 };
 
 // data/catalog/traffic.json (api/traffic_loader.cpp).
 bool load_traffic_params(const godot::Dictionary &t, TrafficParams &p, godot::PackedStringArray &errors);
+
+// data/catalog/street_furniture.json (api/furniture_loader.cpp).
+bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, godot::PackedStringArray &errors);
 
 } // namespace city

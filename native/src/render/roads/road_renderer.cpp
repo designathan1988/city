@@ -1,10 +1,13 @@
 // Road chunk meshes: every segment (by its midpoint) and node of a 256 m chunk meshed into one surface drawn with the
-// "road" material; the pieces are in road_segment.cpp, road_junction.cpp and road_markings.cpp.
+// "road" material; the pieces are in road_segment.cpp, road_junction.cpp and road_markings.cpp. The material's night
+// pools repeat every lamp step of the simulation's street furniture (its only owner).
 #include "render/roads/road_renderer.h"
 
 #include "render/owned_segments.h"
 
 #include "render/roads/road_mesh.h"
+
+#include <godot_cpp/classes/rendering_server.hpp>
 
 #include <algorithm>
 
@@ -21,6 +24,11 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	material_ = ctx.material("road", errors);
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
+	if (!ctx.catalog) {
+		errors.push_back("render sem catálogo");
+		return false;
+	}
+	RenderingServer::get_singleton()->material_set_param(material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
 	return look_.load(t, errors);
 }
 

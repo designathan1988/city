@@ -1,5 +1,5 @@
 {
- "_doc": "Roadcraft jobs/roadMesh.ts and render/roads.ts: strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and the street-lamp layout the night pools follow.",
+ "_doc": "Roadcraft jobs/roadMesh.ts and render/roads.ts: strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings (the zebra's bars) and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json.",
  "surface_colors": ["#4a4d53", "#8e8b85", "#6e675f", "#7a746b"],
  "strip_colors": {
   "parking": "#404246",
@@ -28,12 +28,8 @@
   "line_clear_m": 4.6,
   "dash_period_m": 9,
   "dash_duty": 0.38,
-  "zebra_from_m": 0.7,
-  "zebra_to_m": 3.6,
   "zebra_period_m": 1.1,
   "zebra_bar_m": 0.55,
-  "stop_from_m": 3.95,
-  "stop_to_m": 4.35,
   "double_gap_m": 0.12
  },
  "gutter_width_m": 0.45,
@@ -50,14 +46,6 @@
   "bevel_steps": 7,
   "bulb_steps": 28,
   "dead_end_depth_m": 3
- },
- "lamps": {
-  "first_m": 8,
-  "step_m": 32,
-  "end_clear_m": 2,
-  "inset_m": 0.5,
-  "reach_m": 1.9,
-  "median_min_m": 1.2
  },
  "props": {
   "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk; the cars' red and green). color is the lens lit as the screen shows it (render/tone_map.gd gives the radiance): the colour regions of road traffic signals (CIE, as tabled by Janoff, Transportation Research Record 1316, 1991, Table 1; EN 12368 Table 7 asks the same) lie outside what an sRGB screen shows for red and amber, so each is the brightest colour the Environment's ACES can show whose chromaticity is within one MacAdam step (0.0011 in CIE 1976 u'v', CIE TN 001:2014) of the nearest one it can show (red: 0.0377 from the region, the nearest 0.0366; amber: 0.0073, the nearest 0.0062); green the brightest inside its region. An unlit lens is that colour times lens_dim (sRGB), a dark filter lit by the scene: in full sun (daylight.json sun and ambient) it stays at least 16 times dimmer than the lens lit, the phantom signal class 5 of EN 12368 (ratios 21.2, 16.6 and 19.9). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h.",
@@ -284,30 +272,6 @@
    }
   ]
  },
- "furniture": {
-  "_doc": "Roadcraft jobs/props.ts automatic furniture (m from the mouth or the sidewalk edges). Signal posts: signal_back_m past the crosswalk (markings zebra_to_m), at most signal_max_share of the segment, signal_in_m from the kerb (Roadcraft 4.0: crosswalk + 2 m, kerb + 0.9 m).",
-  "min_walk_m": 1.8,
-  "kerb_u_m": 0.45,
-  "wall_u_m": 0.55,
-  "end_clear_m": 2,
-  "lamp_clear_m": 3.5,
-  "hydrant_first_m": 9,
-  "hydrant_step_m": 90,
-  "hydrant_min_span_m": 20,
-  "bin_first_m": 3.2,
-  "bin_min_span_m": 24,
-  "bench_min_span_m": 70,
-  "bench_min_walk_m": 2.3,
-  "bin_after_bench_m": 2.2,
-  "signal_back_m": 2.0,
-  "signal_in_m": 0.9,
-  "signal_max_share": 0.45,
-  "tree_first_m": 10,
-  "tree_step_m": 12,
-  "tree_min_walk_m": 2.4,
-  "tree_kerb_u_m": 0.9,
-  "tree_clear_m": 4
- },
  "wires": {
   "_doc": "Wires between consecutive lamp poles: strand heights and offsets across the pole, sag share of the span.",
   "y_m": [9.45, 9.45, 9.45, 8.35],
@@ -320,7 +284,7 @@
   "color": "#202224"
  },
  "trees": {
-  "_doc": "Low-poly trees (Roadcraft render/treeMeshes.ts tones) and where they grow (jobs/props.ts wild trees).",
+  "_doc": "Low-poly trees and where the wild and park trees grow (their tones and placement numbers are still to be sourced by the vegetation area); the street trees stand where data/catalog/street_furniture.json places them.",
   "species": [
    {
     "name": "broadleaf",
