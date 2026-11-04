@@ -58,7 +58,9 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 	d["price"] = p.price;
 	d["length"] = p.len;
 	d["crossings"] = int(p.crossings.size());
-	d["half_width"] = s.catalog.profile(profile).half();
+	const Profile &pf = s.catalog.profile(profile);
+	d["half_width"] = pf.half();
+	d["asphalt_half"] = std::max(pf.asph_left, pf.asph_right);
 	d["affordable"] = s.unlimited_money || p.price <= s.money;
 	d["points"] = pts;
 	d["start"] = anchor_dict(s, a);
@@ -172,6 +174,8 @@ Array CityCore::road_profiles() const {
 		d["name_key"] = String(p.name_key.c_str());
 		d["category"] = String(p.category.c_str());
 		d["rank"] = p.rank;
+		d["painted"] = !p.lines.empty();
+		d["yellow"] = p.centre != "none" && p.road_class == RoadClass::URBAN;
 		d["centre"] = String(p.centre.c_str());
 		d["width"] = p.left + p.right;
 		d["cost_per_m"] = p.cost_per_m;

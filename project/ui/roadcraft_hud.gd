@@ -57,6 +57,9 @@ func _ready() -> void:
 	CityStore.changed.connect(_on_changed)
 	if tools:
 		tools.hint.connect(show_hint)
+		var tag := PreviewTag.new()
+		root.add_child(tag)
+		tools.tagged.connect(tag.show_at)
 		tools.inspected.connect(func(info: Dictionary) -> void: inspector.show_info(info, info.get("at", Vector3.ZERO)))
 	_set_sky("day")
 

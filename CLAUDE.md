@@ -284,6 +284,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/inspector_panel.gd` — inspetor
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_options.gd` — opções da ferramenta de via (traçado, encaixe)
+- `project/ui/preview_tag.gd` — etiqueta de comprimento, preço e recusa junto do fim da via em mão
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)

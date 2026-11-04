@@ -10,6 +10,8 @@ extends Node
 signal tool_changed(tool: Tool, params: Dictionary)
 ## A line for the hint bar: text already translated, ok = false draws it as a refusal.
 signal hint(text: String, ok: bool)
+## The text beside the road in hand (ui/preview_tag.gd): empty hides it.
+signal tagged(text: String, at: Vector3, ok: bool)
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 

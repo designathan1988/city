@@ -17,6 +17,8 @@ var alignment: Alignment = Alignment.STRAIGHT
 var profile := 0
 ## The start held by a click, while the next stretch is previewed.
 var chain := Vector3.INF
+const ROUND_TO_M := 10
+
 ## The drag in progress: start, chained, pressed (where the press fell), samples, dragged, end (road_end's answer).
 var draft: Dictionary = {}
 ## The curve with its end down, waiting for the click that sets its bend: start, end, control.
@@ -30,8 +32,13 @@ func enter() -> void:
 	ctl.hint.emit(tr("ui.do.roadPoint"), true)
 
 
-func exit() -> void:
+func _clear_preview() -> void:
 	ctl.preview.clear()
+	ctl.tagged.emit("", Vector3.ZERO, true)
+
+
+func exit() -> void:
+	_clear_preview()
 
 
 func click(p: Vector3) -> void:
@@ -63,7 +70,7 @@ func hover(p: Vector3) -> void:
 		var end := _end_at(chain, p)
 		_preview(_pieces(chain, end.position, false, Vector3.ZERO, PackedVector3Array([chain])), end)
 	else:
-		ctl.preview.clear()
+		_clear_preview()
 
 
 ## The button let go: a click holds the start, a click on a curve's end waits for its bend, a drag is laid.
@@ -89,7 +96,7 @@ func cancel() -> void:
 	draft = {}
 	bend = {}
 	chain = Vector3.INF
-	ctl.preview.clear()
+	_clear_preview()
 	ctl.hint.emit(tr("ui.do.roadPoint"), true)
 
 
@@ -145,30 +152,39 @@ func _bend_to(p: Vector3) -> void:
 
 func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 	if pieces.is_empty():
-		ctl.preview.clear()
+		_clear_preview()
 		return
 	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, profile, ctl.px_at(pieces[-1])])
 	if _last_plan.is_empty():
-		ctl.preview.clear()
+		_clear_preview()
 		return
 	var ok: bool = _last_plan.ok and _last_plan.affordable
-	ctl.preview.show_ribbon(_last_plan.points, _last_plan.half_width, ok)
+	ctl.preview.show_road(_last_plan, _paint(), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
+	var text := _measure(end)
 	if not _last_plan.ok:
-		ctl.hint.emit(refusal(_last_plan), false)
+		text += " · " + refusal(_last_plan)
 	elif not _last_plan.affordable:
-		ctl.hint.emit(refusal({"error": "ui.insp.noMoney"}, _last_plan.price), false)
-	else:
-		ctl.hint.emit(_measure(end), true)
+		text += " · " + refusal({"error": "ui.insp.noMoney"}, _last_plan.price)
+	ctl.tagged.emit(text, pieces[-1], ok)
 
 
-## "120 m · R$ 150.000 · 90°": the angle only when something snapped it.
+## The paint the preview draws: none on a road without lines.
+func _paint() -> String:
+	var p: Dictionary = CityStore.query(&"road_profiles")[profile]
+	if not p.painted:
+		return ""
+	return "yellow" if p.yellow else "white"
+
+
+## "120 m · R$ 150.000 · 90°": the length in tens of metres, the angle only when something snapped it.
 func _measure(end: Dictionary) -> String:
-	var text := "%d m · %s" % [roundi(_last_plan.length), Formatters.format_money(_last_plan.price)]
+	var tens := roundi(_last_plan.length / ROUND_TO_M) * ROUND_TO_M
+	var text := "%d m · %s" % [tens, Formatters.format_money(_last_plan.price)]
 	return text + (" · %d°" % roundi(end.angle_deg) if end.get("guide", "") != "" else "")
 
 
 func _lay(pieces: PackedVector3Array) -> void:
-	ctl.preview.clear()
+	_clear_preview()
 	if pieces.is_empty():
 		return
 	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, profile, ctl.px_at(pieces[-1])])
