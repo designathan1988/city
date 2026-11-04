@@ -33,11 +33,17 @@ struct PoseTrail {
 	}
 };
 
+// How old a walker is: its pace and its body.
+enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
+constexpr int PED_AGES = int(PedAge::COUNT);
+
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
+	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
+	uint8_t age = 0; // pedestrians: PedAge
 };
 
 // A signalled approach (directed segment `ds` into its junction): the light its cars see (traffic Light) and whether

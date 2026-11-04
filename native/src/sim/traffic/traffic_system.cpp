@@ -143,6 +143,8 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.id = uint32_t(&w - s.traffic.peds.data());
 		rec.look = w.look;
 		rec.walked = w.walked;
+		rec.rest = w.rest;
+		rec.age = uint8_t(w.age);
 		f.people.push_back(rec);
 	}
 	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)

@@ -56,6 +56,17 @@ bool plan_trip(CityState &s, int from, std::vector<int> &route) {
 	return false;
 }
 
+// A walker's age, by the shares of who is out on foot.
+PedAge roll_age(TrafficState &t, const TrafficParams &p) {
+	const float r = t.rng.f();
+	if (r < p.ped_child_share) return PedAge::CHILD;
+	return r < p.ped_child_share + p.ped_elder_share ? PedAge::ELDER : PedAge::ADULT;
+}
+
+float age_pace(const TrafficParams &p, PedAge age) {
+	return age == PedAge::CHILD ? p.ped_child_pace : age == PedAge::ELDER ? p.ped_elder_pace : 1.f;
+}
+
 int alloc(TrafficState &t) {
 	if (!t.free_peds.empty()) {
 		int id = t.free_peds.back();
@@ -91,7 +102,8 @@ bool spawn_one(CityState &s) {
 	w.look = t.rng.next();
 	w.side = has_side(pf, 0) && (!has_side(pf, 1) || (t.rng.next() & 1)) ? 0 : 1;
 	w.s = t.rng.range(arc_lo(g), arc_hi(g));
-	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max);
+	w.age = roll_age(t, p);
+	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max) * age_pace(p, w.age);
 	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
 	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
 	w.walked = t.rng.range(0.f, w.speed);
@@ -307,7 +319,11 @@ void step_pedestrians(CityState &s, float dt) {
 			continue;
 		}
 		walk(s, id, dt);
-		if (t.peds[size_t(id)].alive) pose(s, t.peds[size_t(id)]);
+		if (!t.peds[size_t(id)].alive) continue;
+		Pedestrian &after = t.peds[size_t(id)];
+		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms;
+		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
+		pose(s, after);
 	}
 	for (int k = 0; k < spawns; k++) spawn_one(s);
 }

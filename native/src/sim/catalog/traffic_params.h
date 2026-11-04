@@ -23,6 +23,7 @@ namespace city {
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
+	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
 	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \
 	X(day_base) X(day_morning_h) X(day_morning_w) X(day_morning_amp) X(day_evening_h) X(day_evening_w) \
 	X(day_evening_amp) X(day_midday_h) X(day_midday_w) X(day_midday_amp) X(day_night_cut) X(day_night_from_h) \

@@ -1,7 +1,7 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
-// level, refilled every frame. Variation, tints and phase come from the pedestrian's look hash (Roadcraft looks.ts);
-// the walk phase follows the metres walked over the variation's stride. Material "people" (data/render/materials.json),
-// settings in data/render/agents.json "people".
+// level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
+// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle. Material "people"
+// (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
 #include "render/agents/people_asset.h"
@@ -51,6 +51,7 @@ private:
 	std::vector<MultiMeshDraw> draws_; // variation * lods + level
 	std::vector<godot::PackedFloat32Array> bufs_;
 	std::vector<float> lod_m_; // camera distance where each level ends
+	std::vector<int> by_age_[PED_AGES]; // the variations of each age
 };
 
 } // namespace city

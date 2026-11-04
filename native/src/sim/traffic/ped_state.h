@@ -53,10 +53,12 @@ struct SidewalkFurniture {
 struct Pedestrian {
 	bool alive = false;
 	PedMode mode = PedMode::SIDEWALK;
+	PedAge age = PedAge::ADULT;
 	uint32_t look = 0; // render hash: clothes, skin, hair
 	int seg = -1, dir = 0, side = 0; // walking a -> b (dir 0) on the right (side 0, -u) or left sidewalk
 	float s = 0, speed = 0, track = 0, walked = 0, wait = 0, scale = 1;
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
+	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)

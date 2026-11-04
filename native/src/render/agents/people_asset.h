@@ -18,9 +18,9 @@ namespace city {
 enum PersonRegion : int { REGION_SKIN = 0, REGION_HAIR = 1, REGION_TOP = 2, REGION_BOTTOM = 3 };
 
 struct PersonVariation {
-	int palette_row = 0, frames = 1;
-	float fps = 1, walk_advance = 1, height = 1;
-	bool female = false, senior = false;
+	int walk_frames = 1;
+	float idle_s = 1, walk_advance = 1, height = 1;
+	bool female = false, senior = false, child = false;
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
 };
 
@@ -28,6 +28,7 @@ struct PeopleAsset {
 	std::vector<PersonVariation> variations;
 	godot::Ref<godot::ImageTexture> palette;
 	int lods = 0;
+	int block_rows = 0, idle_row = 0, idle_frames = 0, pedal_row = 0, pedal_frames = 0; // each variation's rows of the palette
 	// Reads and checks the file; false (with a message) when it is missing or malformed.
 	bool load(const godot::String &path, godot::PackedStringArray &errors);
 };
