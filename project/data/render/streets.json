@@ -1,5 +1,5 @@
 {
- "_doc": "Street look (render/roads): strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json. markings follow CONTRAN's Manual Brasileiro de Sinalização de Trânsito, vol. IV, Sinalização Horizontal (2007): white N 9.5 and yellow 10YR 7.5/14 Munsell, as sRGB through the Munsell renotation data (RIT real.dat; Y by ASTM D1535; illuminant C to D65 by Bradford); longitudinal lines 0.10 m below 80 km/h and 0.15 m from it, an exclusive lane's line 0.25 m (its 0.20 to 0.30 m), double lines 0.10 m apart; dashes by speed, the first pattern its tables give for each band (below 60 km/h 2 m dash, 4 m gap; to 80, 3 and 6; beyond, 3 and 9); zebra bars 0.35 m wide 0.55 m apart, the middle of its 0.30 to 0.40 and 0.30 to 0.80 m, as many as fit across the carriageway and centred on it.",
+ "_doc": "Street look (render/roads): strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json. markings follow CONTRAN's Manual Brasileiro de Sinalização de Trânsito, vol. IV, Sinalização Horizontal (2007): white N 9.5 and yellow 10YR 7.5/14 Munsell, as sRGB through the Munsell renotation data (RIT real.dat; Y by ASTM D1535; illuminant C to D65 by Bradford); longitudinal lines 0.10 m below 80 km/h and 0.15 m from it, an exclusive lane's line 0.25 m (its 0.20 to 0.30 m), double lines 0.10 m apart; dashes by speed, the first pattern its tables give for each band (below 60 km/h 2 m dash, 4 m gap; to 80, 3 and 6; beyond, 3 and 9); zebra bars 0.35 m wide 0.55 m apart, the middle of its 0.30 to 0.40 and 0.30 to 0.80 m, as many as fit across the carriageway and centred on it. Heights: kerb, sidewalk and median 0.15 m over the carriageway (Porto Velho LC 748/2018 and the São Paulo standard kerb: 15 cm over the grade; the sidewalk level with the kerb's top), barrier 0.81 m (FHWA: the 32 in New Jersey safety shape). Dropped kerbs (ABNT NBR 9050): no lip at the road (low_m 0), the ramp across the footway and its far wing at most 1:12, 1.80 m for a 0.15 m kerb (run_m, flare_m); the wing on the junction side (full_m), where the ramp starts and ends along the kerb (flat_m) and the narrowest footway that gets one (min_walk_m) are not yet sized from the crosswalk (data/catalog/street_furniture.json crossing): the norm wants 1.20 m left free behind the ramp, else the whole footway lowered with 1:20 ramps along it.",
  "surface_colors": ["#4a4d53", "#8e8b85", "#6e675f", "#7a746b"],
  "strip_colors": {
   "parking": "#404246",
@@ -12,11 +12,11 @@
  "paving_colors": ["#b3b0aa", "#a89c8c", "#c9c3b8", "#5a7a3e"],
  "median_colors": ["#a9a59d", "#a89c8c", "#c9c3b8", "#5a7a3e"],
  "heights": {
-  "curb": 0.16,
+  "curb": 0.15,
   "curb_by_median": 0.15,
   "sidewalk": 0.15,
-  "median": 0.17,
-  "barrier": 0.9,
+  "median": 0.15,
+  "barrier": 0.81,
   "skirt": 0.7
  },
  "sample_step_m": 3,
@@ -26,8 +26,8 @@
  "dropped_kerb": {
   "full_m": 0.65,
   "flat_m": 3.65,
-  "flare_m": 1.5,
-  "low_m": 0.02,
+  "flare_m": 1.8,
+  "low_m": 0,
   "run_m": 1.8,
   "min_walk_m": 2.0
  },
