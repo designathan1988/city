@@ -1,6 +1,5 @@
 {
   "autoMemoryEnabled": false,
-  "disableAllHooks": true,
   "permissions": {
     "allow": [
       "Bash",
@@ -9,6 +8,37 @@
       "Write",
       "WebFetch",
       "WebSearch"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
+            "args": [
+              "C:/Projects/Roadcraft-windows/ferramentas/hook_regras.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
+            "args": [
+              "C:/Projects/Roadcraft-windows/ferramentas/hook_regras.py"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
