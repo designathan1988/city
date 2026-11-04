@@ -33,6 +33,7 @@ func _ready() -> void:
 	add_child(_lights)
 	_bar = InteriorBar.new()
 	_bar.floor_step.connect(_move_floor)
+	_bar.closed.connect(func() -> void: set_enabled(false))
 	var root := hud.root if hud else null
 	if root:
 		root.add_child(_bar)

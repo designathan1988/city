@@ -49,9 +49,17 @@ func _opens(id: int, what: String) -> void:
 	var s: Dictionary = CityStore.query(&"interior")
 	_check(r.get("ok", false) and s.on and s.target == id, "%s opens" % what)
 	_check(s.floors >= 1 and s.level == s.floors - 1, "%s: the floor asked for is limited to its top (%d of %d)" % [what, s.level, s.floors])
+	var top: Dictionary = s
+	var revision: int = CityStore.query(&"interior_revision")
 	CityStore.dispatch(&"set_interior", [true, id, 0, 3, Vector3.ZERO, 0.0])
 	s = CityStore.query(&"interior")
 	_check(s.level == 0 and s.dir == 3, "%s: floor and direction are kept" % what)
+	_check(int(CityStore.query(&"interior_revision")) != revision and s.revision == CityStore.query(&"interior_revision"), "%s: the cheap revision follows every command" % what)
+	var info: Dictionary = CityStore.query(&"probe_building", [id])
+	var off_lot := Vector2(info.focus.x - info.position.x, info.focus.z - info.position.z).length()
+	_check(info.extent > 0.0 and off_lot <= maxf(info.w, info.d), "%s: the body's focus (%.1f m from the lot's middle) and extent (%.1f m) are inside its lot" % [what, off_lot, info.extent])
+	_check(is_zero_approx(s.floor_height) and (s.floors == 1 or top.floor_height > 0.0), "%s: the ground floor is at 0 m and the top one above it (%.2f m)" % [what, top.floor_height])
+	_check(s.focus.distance_to(info.focus) < 0.01 and s.extent == info.extent, "%s: the interior reading and the probe agree on the body" % what)
 	print("INTERIOR %s id=%d floors=%d lamps=%d" % [what, id, s.floors, s.lamps.size()])
 
 

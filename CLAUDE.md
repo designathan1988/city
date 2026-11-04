@@ -88,7 +88,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
-- `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio (ou os de um raio) num andar, ler o estado com os andares e as lâmpadas, e o custo do interior de um prédio (testes)
+- `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio (ou os de um raio) num andar, ler o estado (andares, centro e tamanho do corpo, altura do andar e lâmpadas: leitura pesada, só depois de um comando), a revisão barata que avisa quando reler, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
@@ -144,7 +144,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
-- `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar)
+- `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar); `interior_focus`, dono único de onde o corpo fica (centro dos volumes, lado maior, andares, altura do andar)
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
@@ -255,7 +255,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
-- `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos, o enquadramento e as luzes
+- `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos, o enquadramento do corpo e do andar (a câmera gira em torno de um ponto do chão: um andar alto fica atrás do corpo, por altura sobre a tangente da inclinação) e as luzes; relê o núcleo só quando a revisão muda
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
@@ -304,7 +304,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
-- `project/ui/interior_bar.gd` — a barra do andar da camada Interior: andar abaixo, nome do andar, andar acima; só aparece com um prédio aberto
+- `project/ui/interior_bar.gd` — a barra do andar da camada Interior (canto de cima à direita): o botão que a fecha, andar abaixo, nome do andar, andar acima; só aparece com um prédio aberto
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
@@ -331,7 +331,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
-- Interior (vista de dentro): o corte, o piso, o poço do elevador, as paredes da planta e os móveis existem; faltam o meio-nível (`Volume.lift`, lances entre blocos: o modelo da Porte 2 não tem `lift`), a escada de núcleo (`Core` não tem tipo), as arestas arredondadas dos móveis e a largura variada dos livros, e o interior de prédios assinatura. A cabine do elevador não tem fonte primária (NBR NM 313 não é aberta). A energia das luzes de cômodo é calibrada em foto, sem fonte de lux. Custo medido (mapa 0): casa 1.826 triângulos e 284 a 525 caixas, torre no térreo 884 triângulos e 10 caixas, 115 a 275 KB por prédio; os 79 prédios a 150 m do centro somam cerca de 21 MB, a cidade inteira passaria de 350 MB: por isso `interior.max_radius_m`.
+- Interior (vista de dentro): sem par do 4.0 — a cidade do 4.0 (semente 7, 1348 prédios) e o mapa 0 do jogo (3154) são outras, os ids não casam, então nenhuma foto do jogo foi posta ao lado de uma do 4.0 (`ports/interior/evidence/fotos-lista.md`); a câmera salta ao enquadrar, sem suavização; o corte, o piso, o poço do elevador, as paredes da planta e os móveis existem; faltam o meio-nível (`Volume.lift`, lances entre blocos: o modelo da Porte 2 não tem `lift`), a escada de núcleo (`Core` não tem tipo), as arestas arredondadas dos móveis e a largura variada dos livros, e o interior de prédios assinatura. A cabine do elevador não tem fonte primária (NBR NM 313 não é aberta). A energia das luzes de cômodo é calibrada em foto, sem fonte de lux. Custo medido (mapa 0): casa 1.826 triângulos e 284 a 525 caixas, torre no térreo 884 triângulos e 10 caixas, 115 a 275 KB por prédio; os 79 prédios a 150 m do centro somam cerca de 21 MB, a cidade inteira passaria de 350 MB: por isso `interior.max_radius_m`.
 - Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e a aba Massa existem por comando; falta a interface do Construir e as outras abas.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.

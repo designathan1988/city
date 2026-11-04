@@ -1,9 +1,11 @@
-## The floor bar of the Interior layer: floor below, the floor's name, floor above. Shown only while a building is open. It reads
-## the core's state (CityStore.query interior) and only says "a floor up" or "a floor down": the floor itself lives in the core.
+## The floor bar of the Interior layer: the switch that closes it, floor below, the floor's name, floor above. Shown only while a
+## building is open. It reads the core's state (CityStore.query interior) and only says "close", "a floor up" or "a floor down":
+## the floor itself lives in the core.
 class_name InteriorBar
 extends PanelContainer
 
 signal floor_step(delta: int)
+signal closed
 
 @onready var _label: Label
 @onready var _down: Button
@@ -13,6 +15,9 @@ signal floor_step(delta: int)
 func _ready() -> void:
 	theme_type_variation = &"Surface"
 	var row := HudWidgets.hbox(self, &"Gap")
+	var off := HudWidgets.button(&"IconButton", "interiorView", "", "inside.toggle", "icon_btn", "icon_btn")
+	off.pressed.connect(func() -> void: closed.emit())
+	row.add_child(off)
 	_down = HudWidgets.button(&"IconButton", "floorDown", "", "inside.down", "icon_btn", "icon_btn")
 	_down.pressed.connect(func() -> void: floor_step.emit(-1))
 	row.add_child(_down)
