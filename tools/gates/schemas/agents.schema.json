@@ -102,9 +102,10 @@
       "neck_m": {"type": "number"},
       "hair_drop": {"type": "number"},
       "hair_back_m": {"type": "number"},
+      "long_hair_m": {"type": "array", "items": {"type": "number"}},
       "shoes": {"type": "string", "pattern_prefix": "#"}
      },
-     "required": ["torso_m", "arm_m", "thigh_m", "foot_m", "shin_w_m", "head_r_m", "neck_m", "hair_drop", "hair_back_m", "shoes"],
+     "required": ["torso_m", "arm_m", "thigh_m", "foot_m", "shin_w_m", "head_r_m", "neck_m", "hair_drop", "hair_back_m", "long_hair_m", "shoes"],
      "strict": true
     },
     "seats": {
@@ -177,6 +178,28 @@
    "properties": {
     "_doc": {"type": "string"},
     "skin": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+    "skin_weights": {"type": "array", "items": {"type": "number"}},
+    "light_skins": {"type": "integer"},
+    "hair_weights": {
+     "type": "object",
+     "properties": {
+      "light_skinned": {"type": "array", "items": {"type": "number"}},
+      "dark_skinned": {"type": "array", "items": {"type": "number"}}
+     },
+     "required": ["light_skinned", "dark_skinned"],
+     "strict": true
+    },
+    "cuts": {"type": "array", "items": {"type": "number"}},
+    "outfits": {"type": "array", "items": {
+     "type": "object",
+     "properties": {
+      "weight": {"type": "number"},
+      "shirts": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+      "trousers": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}}
+     },
+     "required": ["weight", "shirts", "trousers"],
+     "strict": true
+    }},
     "helmet": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
     "load": {
      "type": "object",
@@ -213,7 +236,7 @@
      "strict": true
     }
    },
-   "required": ["_doc", "skin", "helmet", "load"],
+   "required": ["_doc", "skin", "skin_weights", "light_skins", "hair_weights", "cuts", "outfits", "helmet", "load"],
    "strict": true
   },
   "moto": {

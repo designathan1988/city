@@ -135,6 +135,9 @@ void agent_person(MeshBuilder &mb, const Person &p, const Figure &f) {
 	const float hr = p.head_r * (1 + p.hair_drop);
 	mb.blob(head + Vector3(0, p.head_r * p.hair_drop, -p.hair_back_m), Vector3(hr, hr * (1 - p.hair_drop), hr), AGENT_WHITE,
 			agent_tag(AgentTag::HAIR, Limb::SEAT));
+	const Vector3 &lh = p.long_hair; // down the back of the head to the shoulders
+	mb.box(Vector3(head.x - lh.x * 0.5f, head.y - lh.y, head.z - hr - p.hair_back_m), Vector3(head.x + lh.x * 0.5f, head.y, head.z - hr - p.hair_back_m + lh.z),
+			AGENT_WHITE, agent_tag(AgentTag::HAIR_LONG, Limb::SEAT), true);
 }
 
 void seat_order(MeshBuilder &mb, int64_t from, float order) {
@@ -146,7 +149,7 @@ bool CabinLook::load(const Dictionary &d) {
 	const Dictionary p = d["person"], seats = d["seats"];
 	person.torso = agent_v3(p["torso_m"]); person.arm = agent_v3(p["arm_m"]); person.thigh = agent_v3(p["thigh_m"]); person.foot = agent_v3(p["foot_m"]);
 	person.shin_w = p["shin_w_m"]; person.head_r = p["head_r_m"]; person.neck_m = p["neck_m"]; person.hair_drop = p["hair_drop"];
-	person.hair_back_m = p["hair_back_m"]; person.shoes = agent_hex(p["shoes"]);
+	person.hair_back_m = p["hair_back_m"]; person.long_hair = agent_v3(p["long_hair_m"]); person.shoes = agent_hex(p["shoes"]);
 	const bool styles = load_style(seats["car"], car) && load_style(seats["cab"], cab) && load_style(seats["chair"], chair);
 	return styles && person.torso.y > 0 && person.thigh.z > 0 && rim_m > 0;
 }

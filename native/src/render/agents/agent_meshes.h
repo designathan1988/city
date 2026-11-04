@@ -17,7 +17,7 @@
 
 namespace city {
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS };
+enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.
 enum class Limb : int { NONE = 0, WHEEL = 1, SEAT = 2 };
 constexpr float DRIVER_ORDER = -1.f; // UV.x of the driver's parts: always there
@@ -28,9 +28,10 @@ struct AgentTrim {
 };
 
 // A person sitting (agents.json "cabin.person"): torso, arm, thigh and foot as [w, h, d] (the thigh's d from the hip to
-// the knee, the foot's from the heel to the toes).
+// the knee, the foot's from the heel to the toes) and long hair falling behind the head [w, below the head's middle, d]
+// (HAIR_LONG: only the long cut keeps it).
 struct Person {
-	godot::Vector3 torso, arm, thigh, foot;
+	godot::Vector3 torso, arm, thigh, foot, long_hair;
 	godot::Color shoes;
 	float shin_w = 0, head_r = 0, neck_m = 0, hair_drop = 0, hair_back_m = 0;
 };
