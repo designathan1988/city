@@ -15,8 +15,6 @@ namespace {
 constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
 constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
-constexpr uint32_t GOLDEN = 2654435761u;
-constexpr int ID_OFF = 7;
 
 FarWindows windows_of(const Placed &pl, const Volume &v, int k, int side, float W, float H) {
 	BayCtx c;
@@ -73,9 +71,7 @@ void roof(Shell &s, const Placed &pl, const Volume &v) {
 	const Body &b = *pl.b;
 	float eaves = b.level_z(v.top());
 	if (!roof_flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
-	Paint rp = v.roof == ROOF_TERRACE || covered_by_above(b, v) ? pl.data->color("terrace")
-			: v.roof_paint >= 0 ? b.paints[size_t(v.roof_paint)]
-			: pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
+	Paint rp = v.roof == ROOF_TERRACE || covered_by_above(b, v) ? pl.data->color("terrace") : flat_roof_of(pl, v);
 	Lin lin = paint_lin(rp);
 	std::vector<Vector3> p;
 	if (v.outline.empty()) p = { pl.lot.at(v.x, v.y, eaves), pl.lot.at(v.x + v.w, v.y, eaves), pl.lot.at(v.x + v.w, v.y + v.d, eaves), pl.lot.at(v.x, v.y + v.d, eaves) };

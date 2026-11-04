@@ -16,8 +16,6 @@ constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT 
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
 constexpr float MACHINE_H = 3.f, MACHINE_IN = 0.3f;
 constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
-constexpr uint32_t GOLDEN = 2654435761u;
-constexpr int ID_OFF = 7;
 
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
@@ -125,9 +123,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 			continue;
 		}
 		if (!roof_flat(v.roof)) { emit_pitched(shell, pl, v, eaves); continue; }
-		Paint rp = terrace ? pl.data->color("terrace")
-				: v.roof_paint >= 0 ? b.paints[size_t(v.roof_paint)]
-				: pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
+		Paint rp = terrace ? pl.data->color("terrace") : flat_roof_of(pl, v);
 		shell.grime_floor = -FAR_AWAY;
 		top_face(shell, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
 		RoofEmit re{ shell, parts, pl, v, eaves };
