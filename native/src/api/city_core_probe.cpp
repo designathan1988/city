@@ -84,7 +84,6 @@ namespace {
 
 constexpr float WAITING_S = 20.f; // traffic_probe: vehicles held this long count as waiting
 constexpr float BOX_STOP_MS = 0.5f; // traffic_probe: a vehicle on a connector slower than this stands in the junction
-constexpr float BODIES_TOUCH_M = 0.45f; // traffic_probe: two walkers' centres closer than this overlap (two body radii)
 
 // Ground position of the signalled node with the most pedestrians at its kerbs or on its crosswalks (captures).
 Vector3 busy_crossing(const CityState &s) {
@@ -100,8 +99,10 @@ Vector3 busy_crossing(const CityState &s) {
 	return Vector3(float(node.x), float(node.y), float(node.z));
 }
 
-// Walkers whose body overlaps another's (centres closer than BODIES_TOUCH_M): [walking, waiting at a kerb].
-Array people_overlaps(const TrafficState &t) {
+// Walkers whose body overlaps another's (centres closer than `touch`): [walking, waiting at a kerb].
+// Two bodies side by side (their centres two radii apart, to the rounding of the sum) touch; they do not overlap.
+constexpr float TOUCH_EPS_M = 1e-3f;
+Array people_overlaps(const TrafficState &t, float touch) {
 	std::vector<int> alive;
 	for (int i = 0; i < int(t.peds.size()); i++)
 		if (t.peds[size_t(i)].alive) alive.push_back(i);
@@ -111,7 +112,7 @@ Array people_overlaps(const TrafficState &t) {
 		for (int j : alive) {
 			const Pedestrian &b = t.peds[size_t(j)];
 			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (i == j || dx * dx + dz * dz >= BODIES_TOUCH_M * BODIES_TOUCH_M) continue;
+			if (i == j || dx * dx + dz * dz >= touch * touch) continue;
 			(a.mode == PedMode::WAIT ? waiting : walking)++;
 			break;
 		}
@@ -186,7 +187,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["lost_stuck"] = t.stuck_lost; // of which: removed after standing stuck_despawn_s
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
-	d["people_overlaps"] = people_overlaps(t); // walkers inside another's body: walking, waiting
+	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
 	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
 	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
 	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);

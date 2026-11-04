@@ -15,6 +15,7 @@ namespace traffic {
 struct WayFrame {
 	V2 at, fwd, left;
 	float u = 0, lo = 0, hi = 0, keep = 0, reserve_from = BIG;
+	bool zebra = false; // over a zebra (SUMO's crossing), else a sidewalk or a line round a corner (its walking area)
 };
 
 // A body in a walker's frame: its extent ahead and across, how near a centre may come across it and ahead of it
@@ -32,7 +33,7 @@ struct StripeChoice {
 // The crowd's rules for one step (traffic.json ped_*), with the step's length and the inverses a choice multiplies by.
 struct StripeRules {
 	float dt = 0, look = 0, gap = 0, inv_headway = 0, accel = 0, aside_share = 0, lateral_cost = 0, keep_cost = 0;
-	float inv_stripe = 0, gain = 0, hold = 0, jam_s = 0, jam_share = 0, moving = 0;
+	float stripe = 0, inv_stripe = 0, gain = 0, hold = 0, jam_s = 0, jam_crossing_s = 0, jam_narrow_s = 0, jam_share = 0, moving = 0;
 	// stepping aside costs at least what being off its own side does: a walker with nobody about, on the stripe it aims
 	// at, keeps it (no other stripe can score better), so its choice needs no stripe scored
 	bool settled_keeps = false;

@@ -36,7 +36,7 @@ namespace city {
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
-	X(ped_jam_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
+	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
 	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
