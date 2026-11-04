@@ -62,7 +62,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "highway6Lanes",
@@ -135,7 +136,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWayHighway2Lanes",
@@ -176,7 +178,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWayHighway3Lanes",
@@ -222,7 +225,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "dualCarriageway2Lanes",
@@ -275,7 +279,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "countryRoad",
@@ -308,7 +313,8 @@
      "kind": "shoulder",
      "width": 1.5
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "ramp",
@@ -344,7 +350,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "ramp2Lanes",
@@ -385,7 +392,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "ruralCobblestoneRoad",
@@ -426,7 +434,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "concreteRoad",
@@ -467,7 +476,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "doubleRailway",
@@ -502,7 +512,8 @@
      "kind": "shoulder",
      "width": 1.6
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "singleRailway",
@@ -531,7 +542,8 @@
      "kind": "shoulder",
      "width": 1.6
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "metroDouble",
@@ -566,7 +578,8 @@
      "kind": "shoulder",
      "width": 0.8
     }
-   ]
+   ],
+   "class_card": false
   }
  ]
 }

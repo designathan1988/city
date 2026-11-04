@@ -10,7 +10,8 @@
 	X(road, sharp_cos) X(road, level_dy_m) X(road, max_degree) X(road, pick_m) X(road, overlap_share) \
 	X(road, overlap_run_m) X(road, parallel_cos) X(road, overlap_pad_m) \
 	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, verge_m) \
-	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) \
+	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
+	X(road, bay_m) X(road, max_variants) \
 	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \

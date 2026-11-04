@@ -87,8 +87,13 @@ func retool(value: Variant, tool: String, key: String) -> void:
 	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}).duplicate() if tools else {}
 	params[key] = value
 	tool_requested.emit(tool, params)
-	if key != "radius" and key != "strength":
+	if key not in ["radius", "strength", "lanes", "width", "parking"]:
 		DrawerStrips.light(_strip, value)
+
+
+## A road of the catalogue by id, as if its card were clicked.
+func pick_road(id: String) -> void:
+	catalog.pick(_profile_ids.get(id, 0))
 
 
 func _param(tool: String, key: String, fallback: Variant) -> Variant:

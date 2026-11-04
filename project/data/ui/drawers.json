@@ -407,16 +407,17 @@
  ],
  "road_options": {
   "_doc": "The road tool's option rows (Roadcraft ui/v2/shell.ts renderRoads). trace: the alignment, in ToolController order; snap: key = Settings.road_snap.",
-  "trace": {"label_key": "palette.trace", "choices": [
-    {"icon": "straight", "label_key": "palette.alignment.straight"},
-    {"icon": "curve", "label_key": "palette.alignment.curve"},
-    {"icon": "free", "label_key": "palette.alignment.free"}
-  ]},
-  "snap": {"label_key": "v2.snap.title", "choices": [
-    {"icon": "magnet", "label_key": "v2.snap.on", "key": "on"},
-    {"icon": "angle", "label_key": "v2.snap.angles", "key": "angles"},
-    {"icon": "cells", "label_key": "v2.snap.grid", "key": "grid"}
-  ]}
+  "trace": {"label_key": "palette.trace", "choices": [{"icon": "straight", "label_key": "palette.alignment.straight"},
+    {"icon": "curve", "label_key": "palette.alignment.curve"}, {"icon": "free", "label_key": "palette.alignment.free"}]},
+  "snap": {"label_key": "v2.snap.title", "choices": [{"icon": "magnet", "label_key": "v2.snap.on", "key": "on"},
+    {"icon": "angle", "label_key": "v2.snap.angles", "key": "angles"}, {"icon": "cells", "label_key": "v2.snap.grid", "key": "grid"}]},
+  "lanes": {"label_key": "v2.row.lanes", "median_road": "boulevard", "choices": [{"icon": "lanes2", "count": 2}, {"icon": "lanes4", "count": 4},
+    {"icon": "lanes6", "count": 6}, {"icon": "median", "count": 0}]},
+  "width": {"label_key": "v2.row.width", "step_m": 1},
+  "parking": {"label_key": "v2.row.parking", "choices": [{"icon": "park-none", "label_key": "parking.preset.none"},
+    {"icon": "park-parallel", "label_key": "parking.preset.parallel"}, {"icon": "park-parallelRight", "label_key": "parking.preset.parallelRight"},
+    {"icon": "park-parallelLeft", "label_key": "parking.preset.parallelLeft"}, {"icon": "park-cycle", "label_key": "parking.preset.cycle"},
+    {"icon": "park-cycleParking", "label_key": "parking.preset.cycleParking"}]}
  },
  "first_road": "urbanStreet",
  "catalog_tabs": [

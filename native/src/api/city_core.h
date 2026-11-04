@@ -50,6 +50,7 @@ public:
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
+	int road_variant(int base, int lanes, float width, int parking);
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();

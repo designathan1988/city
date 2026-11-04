@@ -52,7 +52,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "wideSidewalks",
@@ -93,7 +94,8 @@
      "kind": "sidewalk",
      "width": 3.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "narrowStreet",
@@ -134,7 +136,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "sharedStreet",
@@ -171,7 +174,8 @@
      "pave": 2,
      "flush": true
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "cobblestoneStreet",
@@ -212,7 +216,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "avenue4Lanes",
@@ -276,7 +281,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "avenue6LanesMedian",
@@ -350,7 +356,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "avenueWithParking",
@@ -409,7 +416,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "curbsideBusLane",
@@ -475,7 +483,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "centralBusway",
@@ -550,7 +559,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWayAvenue3Lanes",
@@ -596,7 +606,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWayAvenue4Lanes",
@@ -647,7 +658,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   }
  ]
 }

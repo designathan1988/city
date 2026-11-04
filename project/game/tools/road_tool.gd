@@ -19,6 +19,8 @@ var profile := 0
 var chain := Vector3.INF
 const ROUND_TO_M := 10
 
+## The profile the road is laid with: `profile` under the options of the class (road_variant).
+var drawn := 0
 ## The drag in progress: start, chained, pressed (where the press fell), samples, dragged, end (road_end's answer).
 var draft: Dictionary = {}
 ## The curve with its end down, waiting for the click that sets its bend: start, end, control.
@@ -28,6 +30,9 @@ var _last_plan: Dictionary = {}
 
 func enter() -> void:
 	profile = params.get("profile", CityStore.first_road())
+	drawn = CityStore.dispatch(&"road_variant", [profile, params.get("lanes", 0), params.get("width", 0.0), params.get("parking", 0)])
+	if drawn < 0:
+		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	ctl.hint.emit(tr("ui.do.roadPoint"), true)
 
@@ -142,7 +147,7 @@ func _draft_pieces() -> PackedVector3Array:
 
 
 func _pieces(a: Vector3, b: Vector3, has_control: bool, control: Vector3, samples: PackedVector3Array) -> PackedVector3Array:
-	return CityStore.query(&"road_pieces", [a, b, alignment, has_control, control, samples, profile, ctl.px_at(b)])
+	return CityStore.query(&"road_pieces", [a, b, alignment, has_control, control, samples, drawn, ctl.px_at(b)])
 
 
 func _bend_to(p: Vector3) -> void:
@@ -154,7 +159,7 @@ func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 	if pieces.is_empty():
 		_clear_preview()
 		return
-	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, profile, ctl.px_at(pieces[-1])])
+	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
 	if _last_plan.is_empty():
 		_clear_preview()
 		return
@@ -170,7 +175,7 @@ func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 
 ## The paint the preview draws: none on a road without lines.
 func _paint() -> String:
-	var p: Dictionary = CityStore.query(&"road_profiles")[profile]
+	var p: Dictionary = CityStore.query(&"road_profiles")[drawn]
 	if not p.painted:
 		return ""
 	return "yellow" if p.yellow else "white"
@@ -187,7 +192,7 @@ func _lay(pieces: PackedVector3Array) -> void:
 	_clear_preview()
 	if pieces.is_empty():
 		return
-	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, profile, ctl.px_at(pieces[-1])])
+	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
 	if r.is_empty() or not r.ok:
 		ctl.hint.emit(refusal(r, _last_plan.get("price", 0.0)), false)
 		return

@@ -60,7 +60,13 @@
   "verge_m": 1,
   "free_tolerance_m": 2,
   "free_max_controls": 48,
-  "click_px": 7
+  "click_px": 7,
+  "variant_lane_lo_m": 2,
+  "variant_lane_hi_m": 6,
+  "variant_walk_lo_m": 1,
+  "variant_walk_hi_m": 12,
+  "bay_m": 2,
+  "max_variants": 256
  },
  "history": {
   "max_entries": 500,

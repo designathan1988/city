@@ -135,6 +135,10 @@ for ids in ORDER.values():
     for i, name in enumerate(ids):
         next(p for p in BUILTIN if p["id"] == name)["rank"] = i
 
+# The cards the tool's lanes, width and parking apply to: the 4.0's classes.
+for p in BUILTIN:
+    p["class_card"] = p["id"] in ("localStreet", "urbanStreet", "avenue", "boulevard", "expressway", "ramp")
+
 # The catalogue's three files: a data file stays under the gate's line limit.
 PARTS = (("road_profiles.json", 0, 12), ("road_profiles_a.json", 12, 24), ("road_profiles_b.json", 24, len(BUILTIN)))
 OUT = "project/data/catalog/"

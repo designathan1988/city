@@ -43,6 +43,13 @@ struct LaneInfo {
 	uint8_t turns = 0;
 };
 
+// A class road as the tool's options lay it (Roadcraft 4.0 ui/v2/shell.ts): its lanes, total width and what runs by the kerbs.
+// 0 keeps the class's own. parking is the preset's index: none, both, right, left, cycle lanes, cycle lane and bays.
+struct RoadVariant {
+	int base = 0, lanes = 0, parking = 0;
+	float width = 0;
+};
+
 struct RoadPrices { // R$ per m2 (data/catalog/road_profiles.json "prices")
 	float carriageway = 0, median = 0, footway = 0;
 };
@@ -50,7 +57,7 @@ struct RoadPrices { // R$ per m2 (data/catalog/road_profiles.json "prices")
 struct Profile {
 	std::string id, name_key, category, centre; // centre: "none" | "dashed" | "solid" | "double"
 	std::vector<Strip> strips;
-	bool one_way = false, ring = false, custom = false;
+	bool one_way = false, ring = false, custom = false, class_card = false; // class_card: the tool's options apply to it
 	float speed = 0; // km/h
 	int priority = 0; // 0 local ... 5 highway, 6 rails
 	Surface surface = Surface::ASPHALT;

@@ -4,6 +4,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "sim/roads/road_variants.h"
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
@@ -163,6 +164,16 @@ Dictionary CityCore::paint_zone(const Vector3 &p, float radius, int zone) {
 	return run_edit(*state_, "cmd.place.zone", [&](CityState &s) { return city::paint_zone(s, p.x, p.z, radius, zone); });
 }
 
+int CityCore::road_variant(int base, int lanes, float width, int parking) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	RoadVariant v;
+	v.base = base;
+	v.lanes = lanes;
+	v.width = width;
+	v.parking = parking;
+	return city::road_variant(state_->catalog, v);
+}
+
 Array CityCore::road_profiles() const {
 	Array out;
 	const Catalog &c = state_->catalog;
@@ -174,6 +185,8 @@ Array CityCore::road_profiles() const {
 		d["name_key"] = String(p.name_key.c_str());
 		d["category"] = String(p.category.c_str());
 		d["rank"] = p.rank;
+		d["class_card"] = p.class_card;
+		d["road_class"] = int(p.road_class);
 		d["painted"] = !p.lines.empty();
 		d["yellow"] = p.centre != "none" && p.road_class == RoadClass::URBAN;
 		d["centre"] = String(p.centre.c_str());

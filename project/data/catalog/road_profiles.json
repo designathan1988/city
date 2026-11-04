@@ -51,7 +51,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "streetWithParking",
@@ -100,7 +101,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWayWithParking",
@@ -145,7 +147,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "avenue",
@@ -196,7 +199,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "avenueWithCycleTrack",
@@ -268,7 +272,8 @@
      "kind": "sidewalk",
      "width": 2.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "expressway",
@@ -332,7 +337,8 @@
      "kind": "sidewalk",
      "width": 0.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "roundabout",
@@ -374,7 +380,8 @@
      "width": 1.35,
      "pave": 3
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "urbanStreet",
@@ -415,7 +422,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": true
   },
   {
    "id": "oneWay1Lane",
@@ -451,7 +459,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "oneWay2Lanes",
@@ -492,7 +501,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "parkingOneSide",
@@ -537,7 +547,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   },
   {
    "id": "streetWithBikeLane",
@@ -586,7 +597,8 @@
      "kind": "sidewalk",
      "width": 1.85
     }
-   ]
+   ],
+   "class_card": false
   }
  ]
 }

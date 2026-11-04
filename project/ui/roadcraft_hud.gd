@@ -44,6 +44,8 @@ func _ready() -> void:
 	root.add_child(drawer.options)
 	root.add_child(drawer)
 	drawer.options.alignment_picked.connect(func(a: int) -> void: drawer.retool(a, "ROAD", "alignment"))
+	drawer.options.option_picked.connect(func(key: String, value: Variant) -> void: drawer.retool(value, "ROAD", key))
+	drawer.options.road_picked.connect(drawer.pick_road)
 	drawer.tool_requested.connect(_on_tool_requested)
 	drawer.closed.connect(_on_drawer_closed)
 	popover = HudPopover.new()
