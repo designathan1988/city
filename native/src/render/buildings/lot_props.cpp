@@ -134,9 +134,9 @@ struct PropEmit {
 		const float wire = g + e.h - WIRE_DOWN;
 		parts.box(pl.lot, x0(), x1(), e.y - WIRE * HALF, e.y + WIRE * HALF, wire - WIRE, wire, lin, FIN_METAL);
 		const Lin cloth[2] = { named("flowers"), named("canopy") };
-		for (int k = 0; k < 2; k++) {
+		for (int k = 0; k < 2; k++) { // a cloth folds over the wire: its top half a wire above the wire's (no shared face)
 			float a = x0() + (x1() - x0()) * (CLOTH_AT + CLOTH_AT * float(k));
-			parts.box(pl.lot, a, a + CLOTH, e.y - WIRE, e.y + WIRE, wire - CLOTH_H, wire, cloth[k], FIN_NONE);
+			parts.box(pl.lot, a, a + CLOTH, e.y - WIRE, e.y + WIRE, wire - CLOTH_H, wire + WIRE * HALF, cloth[k], FIN_NONE);
 		}
 	}
 	void pallet() const {
