@@ -9,9 +9,9 @@ Estados: rastreada, em porte, entregue, verificada, integrada.
 | 1 | roads | em porte | continua o trabalho sem commit do clone; donos: `sim/roads`, `sim/commands`, `sim/persistence` |
 | 1 | build | em porte | continua o trabalho sem commit do clone; donos: `sim/buildings`, `render/buildings` |
 | 1 | landscape | em porte | continua o trabalho do clone; donos: `render/trees`, shaders de vegetação; absorve `clouds`; faltam fotos de referência |
-| 2 | interface | rastreada | depois de roads (mesmos `sim/persistence`, `api`); absorve `start-menu` e `camera` |
-| 2 | demolition | rastreada | depois de roads (mesmos `sim/commands`); absorve `bulldozer` |
-| 3 | traffic | rastreada | depois de demolition (mesmo `sim/traffic`); estacionar, docas, embarque |
+| 2 | interface | rastreada | absorve `start-menu` e `camera` |
+| 2 | demolition | rastreada | absorve `bulldozer` |
+| 3 | traffic | rastreada | estacionar, docas, embarque |
 | 3 | people | rastreada | refazer pessoas a partir do master; branch antigo foi apagado |
 | 3 | street-furniture | rastreada | absorve `poles` e `barriers` |
 | 4 | transit | rastreada | ônibus, linhas, metrô; `ports-arquivo/transit-parado-2026-11-04` tem trabalho antigo |
