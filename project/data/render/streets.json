@@ -1,5 +1,5 @@
 {
- "_doc": "Roadcraft jobs/roadMesh.ts and render/roads.ts: strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings (the zebra's bars) and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json.",
+ "_doc": "Street look (render/roads): strip colours (sRGB), heights over the carriageway (m), junction corners, dropped kerbs, markings and how the street furniture looks; where the furniture stands and where the crosswalk and stop line lie is data/catalog/street_furniture.json. markings follow CONTRAN's Manual Brasileiro de Sinalização de Trânsito, vol. IV, Sinalização Horizontal (2007): white N 9.5 and yellow 10YR 7.5/14 Munsell, as sRGB through the Munsell renotation data (RIT real.dat; Y by ASTM D1535; illuminant C to D65 by Bradford); longitudinal lines 0.10 m below 80 km/h and 0.15 m from it, an exclusive lane's line 0.25 m (its 0.20 to 0.30 m), double lines 0.10 m apart; dashes by speed, the first pattern its tables give for each band (below 60 km/h 2 m dash, 4 m gap; to 80, 3 and 6; beyond, 3 and 9); zebra bars 0.35 m wide 0.55 m apart, the middle of its 0.30 to 0.40 and 0.30 to 0.80 m, as many as fit across the carriageway and centred on it.",
  "surface_colors": ["#4a4d53", "#8e8b85", "#6e675f", "#7a746b"],
  "strip_colors": {
   "parking": "#404246",
@@ -21,17 +21,7 @@
  },
  "sample_step_m": 3,
  "face_eps_m": 0.004,
- "markings": {
-  "white": "#ebebe0",
-  "yellow": "#f2b826",
-  "lift_m": 0.02,
-  "line_clear_m": 4.6,
-  "dash_period_m": 9,
-  "dash_duty": 0.38,
-  "zebra_period_m": 1.1,
-  "zebra_bar_m": 0.55,
-  "double_gap_m": 0.12
- },
+ "markings": {"white": "#f1f1f1", "yellow": "#f9ac00", "lift_m": 0.02, "line_clear_m": 4.6, "line_m": 0.1, "line_fast_m": 0.15, "line_fast_kmh": 80, "exclusive_line_m": 0.25, "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "double_gap_m": 0.1},
  "gutter_width_m": 0.45,
  "dropped_kerb": {
   "full_m": 0.65,
