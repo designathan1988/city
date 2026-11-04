@@ -102,7 +102,7 @@ void conform_under(CityState &s, int seg) {
 		g.q.at(double(i) / n, x, z);
 		pts.insert(pts.end(), { float(x), float(s.roads.seg_y(seg, g.len * i / n)), float(z) });
 	}
-	j_add_modifier(s, pts, s.catalog.profile(g.profile).half(), s.catalog.tune.terrain_min_run_m);
+	j_add_modifier(s, pts, s.catalog.profile(g.profile).half() + s.catalog.tune.terrain_road_hold_m, s.catalog.tune.terrain_min_run_m);
 }
 
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz) {

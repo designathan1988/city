@@ -19,7 +19,7 @@
   "skirt": 0.7
  },
  "median_nose_m": 0.5,
- "verge": {"reach_m": 1.0, "under_m": 0.08, "strips": 4},
+ "verge": {"reach_m": 1.0, "under_m": 0.08, "strips": 1},
  "sample_step_m": 3,
  "face_eps_m": 0.004,
  "markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "style": "roadcraft",

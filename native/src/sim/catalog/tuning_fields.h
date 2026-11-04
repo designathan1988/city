@@ -16,7 +16,7 @@
 	X(economy, start_money) X(economy, refund_share) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
 	X(terrain, min_height_m) X(terrain, max_height_m) \
-	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) \
+	X(terrain, embankment_ratio) X(terrain, min_run_m) X(terrain, road_sink_m) X(terrain, road_hold_m) \
 	X(terrain, rough_reach_min) X(terrain, min_hard_rim) X(terrain, min_hard_wall_m) X(terrain, river_depth_m) \
 	X(terrain, river_freeboard_m) X(terrain, river_floor_share) \
 	X(render, road_end_m) X(render, props_end_m) X(render, building_detail_end_m) X(render, building_mid_end_m) X(render, building_far_end_m) \
