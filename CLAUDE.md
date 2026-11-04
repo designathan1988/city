@@ -230,7 +230,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_markings.cpp` — pintura viária como geometria fina elevada
 - `native/src/render/roads/road_mesh.h` — peças do malhador de vias
 - `native/src/render/roads/road_renderer.cpp` · `native/src/render/roads/road_renderer.h` — chunks de via por segmento e nó
-- `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
+- `native/src/render/roads/road_section.cpp` · `native/src/render/roads/road_section.h` — a seção da via em peças: superfícies, rampa do rebaixo e ilha entre as pistas
+- `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
 - `native/src/render/trees/leaf_atlas.cpp` · `native/src/render/trees/leaf_atlas.h` · `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` · `native/src/render/trees/tree_parts.cpp` · `native/src/render/trees/tree_parts.h` — folhas e espécies (corpo facetado, cartões, frondes, cartão distante)

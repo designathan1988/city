@@ -37,14 +37,14 @@ inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m
 
 struct StreetLook {
 	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, plate_concrete;
-	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
+	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
 	float face_eps = 0; // coplanar faces closer than this are one
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	float arc_step = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
-	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, double_gap = 0;
+	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, zebra_edge = 0, double_gap = 0;
 	// Longitudinal lines of the chosen paint style (streets.json markings.styles): the centre and lane widths, wider from
 	// fast_kmh on where the style says so, a bus lane's `exclusive_w`, a double line's `double_w`; dashes `dash[k]` long and
 	// `gap[k]` apart below dash_kmh[k]. multi_lane_double: the norm's double line where a direction has more than one lane.

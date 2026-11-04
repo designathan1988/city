@@ -51,6 +51,7 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.h_median = float(h["median"]);
 	L.h_barrier = float(h["barrier"]);
 	L.skirt = float(h["skirt"]);
+	L.median_nose = float(t["median_nose_m"]);
 	L.step = float(t["sample_step_m"]);
 	L.face_eps = float(t["face_eps_m"]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
@@ -84,6 +85,7 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.double_gap = float(st["double_gap_m"]);
 	L.zebra_period = float(st["zebra_period_m"]);
 	L.zebra_bar = float(st["zebra_bar_m"]);
+	L.zebra_edge = float(st["zebra_edge_m"]);
 	L.multi_lane_double = bool(st["multi_lane_double"]);
 	auto floats = [&](const char *key, std::vector<float> &out) {
 		out.clear();

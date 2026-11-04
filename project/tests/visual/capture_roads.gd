@@ -90,8 +90,12 @@ func _run() -> void:
 	await _pair("close_kerb_top", at(-26, 93), 30.0, 70.0, 60.0)
 	await _pair("line_far", at(-20, 100), 20.0, 62.0, 10.0)
 	await _pair("line_near", at(-20, 100), 20.0, 62.0, 40.0)
-	await _pair("median_top", at(0, 420), 20.0, 62.0, 14.0)
-	await _pair("median_low", at(0, 420), 30.0, 30.0, 30.0)
+	await _pair("median_top", at(480, 60), 20.0, 62.0, 14.0)
+	await _pair("median_low", at(480, 60), 30.0, 30.0, 30.0)
+	await _pair("median_nose_top", at(480, -60), 20.0, 62.0, 14.0)
+	await _pair("median_nose_low", at(480, -60), 30.0, 30.0, 30.0)
+	await _pair("median_paved_top", at(640, 0), 20.0, 62.0, 14.0)
+	await _pair("median_paved_low", at(640, 0), 30.0, 30.0, 30.0)
 	await _photo("bend_top", at(0, 300), [0.0, 62.0], NEAR_M * 2.0)
 	await _photo("t_close", at(90, 100), [0.0, 90.0], CLOSE_M)
 	await _night()
@@ -151,7 +155,9 @@ func _lay() -> void:
 	_road(at(230, -190), at(350, 40), "urbanStreet", at(360, -180))
 	_road(at(-200, 300), at(0, 300), "urbanStreet")
 	_road(at(0, 300), at(190, 360), "urbanStreet")
-	_road(at(-200, 420), at(200, 420), "streetWithMedian")
+	_road(at(480, -200), at(480, 200), "streetWithMedian")
+	_road(at(420, -60), at(540, -60), "urbanStreet")
+	_road(at(640, -200), at(640, 200), "highway6Lanes")
 
 
 func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:

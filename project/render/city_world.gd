@@ -10,6 +10,7 @@ const WATER_EXTENT_M := 70000.0
 const PLACEHOLDER_TEX_PX := 16
 const MEAN_PX := 64 # side of the shrunk copy whose average becomes a surface map's mean colour
 const LANE_TONES := 8 # slots of road_look.h TONE_SLOTS
+const MEAN_MAPS := ["asphalt_map", "footway_map", "kerb_map"] # those road.gdshader tones by their mean; the grass is its map
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader",
@@ -58,9 +59,7 @@ func materials() -> Dictionary:
 ## The mean colour of each surface map, computed once here and sent as a uniform (road.gdshader divides by it): the
 ## shader no longer samples the smallest mip every pixel.
 func _set_means(m: ShaderMaterial, params: Dictionary) -> void:
-	for name in params:
-		if not name.ends_with("_map"):
-			continue
+	for name in MEAN_MAPS:
 		var col := _mean_color(_param(params[name]))
 		m.set_shader_parameter("mean_" + name.trim_suffix("_map"), col)
 	var streets: Dictionary = DataTables.render().streets
