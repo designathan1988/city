@@ -18,6 +18,7 @@ static func report(minutes: int) -> void:
 			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("lost_stuck", 0), p.get("people_arrived", 0),
 			p.get("people_waiting", 0)])
 		print("  na fila atrás de: ", p.get("queued_behind", []))
+		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []))
 		print("  parados no cruzamento (atrás de outro, por pedestres, sem motivo): ", p.get("box_stops", []), ", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
 	for line in CityStore.query(&"traffic_probe", [SOAK_JAMS]).jam_info:
 		print("  retido: ", line)

@@ -85,7 +85,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
-- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, sondas, altura, raycast); custo do quadro e chegada das poses
+- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
@@ -155,7 +155,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/lane_graph_internal.h` — superfície interna do grafo de faixas
 - `native/src/sim/traffic/lane_list.cpp` — listas por faixa/conector e lista micro de veículos
 - `native/src/sim/traffic/meso.cpp` — modelo meso distante (uma fila por faixa)
-- `native/src/sim/traffic/ped_crossing.cpp` — pedestres e carros nas travessias
+- `native/src/sim/traffic/ped_crossing.cpp` · `native/src/sim/traffic/ped_crowd.cpp` — pedestres e carros nas travessias; multidão: faixas da calçada (desvio, distância) e lugares de espera na guia
 - `native/src/sim/traffic/ped_routes.cpp` — rotas a pé e caminho de esquina
 - `native/src/sim/traffic/pedestrians.cpp` — pedestres com destino
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
@@ -294,7 +294,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 **Ferramentas — tools/**
 - `tools/assets/cook_people.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_road_profiles.py` — pessoas cozidas
   (MakeHuman CC0 + caminhada Rocketbox MIT), KTX2 do Roadcraft → PNG, road_profiles.json da fonte do Roadcraft
-- `tools/build/build.sh` · `tools/build/run_tests.sh` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar
+- `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
@@ -322,7 +322,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos > 20 s por minuto, chegadas/perdidas).
-- Pedestres: sem multidão (desvio lateral, filas na guia), ciclistas, portas dos prédios e passageiros de ônibus.
+- Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; não desviam de árvores, postes e mobiliário da calçada
+  (a colocação deles é do render: precisa passar para a simulação, dono único, para os dois lerem).
 - Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox
   (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

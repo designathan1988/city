@@ -8,6 +8,7 @@
 #include "sim/state/pose_buffer.h"
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -133,6 +134,11 @@ struct Pedestrian {
 	int wn = 0, wi = 0, way_node = -1; // waypoints round node `way_node`, the next one
 	float lx = 0, ly = 0, lz = 0, llen = 0, ls = 0; // current straight line: start, length, metres walked on it
 	int cross_seg = -1; // the arm it is crossing now (-1 when not on a crosswalk)
+	// on a sidewalk (ped_crowd.cpp): across it, metres from its middle (u), the stripe aimed at, how long that has
+	// held and the pace the walkers ahead leave it
+	float u = 0, u_goal = 0, stripe_held = 0, pace = 0;
+	int64_t slot_key = -1; // the kerb a place to wait is held at (TrafficState::kerb_slots), and which place
+	int slot = -1;
 	Pose cur;
 	PoseTrail trail;
 };
@@ -152,6 +158,9 @@ struct TrafficState {
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
+	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
+	std::vector<std::vector<int>> crowd; // per sidewalk (seg * 2 + side): its walkers by arc, rebuilt every step
+	std::vector<int> crowd_keys; // the sidewalks of `crowd` with walkers this step
 	// Far (meso) model, Roadcraft traffic/meso.ts: one queue per lane in order of entry and one event per vehicle at
 	// the end of its lane; lane_last_exit spaces the queues; micro_list holds the near vehicles only.
 	std::vector<int> meso_head, meso_tail;

@@ -107,6 +107,13 @@ void change_lanes(CityState &s);
 // pedestrians.cpp
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
+
+// ped_crowd.cpp: walkers among walkers (stripes of the sidewalk, places to wait along a kerb)
+void crowd_step(CityState &s, float dt); // the sidewalk walkers' stripes and paces, from those around them
+float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle
+void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way, its own pace
+void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
+void free_kerb_place(TrafficState &t, int id);
 void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
 
 // ped_routes.cpp

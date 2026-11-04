@@ -1,7 +1,8 @@
 // Pedestrians (Roadcraft src/sim/peds.ts): walkers appear on sidewalks weighted by the zones beside them (commerce
 // pulls most) with a destination node 150-900 m away and a walking route to it; they walk their own track on the
 // sidewalk, go round each corner and over the crosswalks on the way (ped_routes.cpp), wait at the kerb for the walk
-// phase or a gap in the traffic (ped_crossing.cpp) and go indoors at the destination.
+// phase or a gap in the traffic (ped_crossing.cpp) and go indoors at the destination; among the others on a sidewalk
+// and at a kerb as ped_crowd.cpp moves them.
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -20,7 +21,6 @@ constexpr float PED_FAR_EDGE_M = 1.2f; // this many ped_window_m away it is gone
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 float arc_lo(const RoadSegment &g) { return float(g.retreat_a); }
 float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
-float track_u(const Pedestrian &p) { return p.dir == 0 ? -p.track : p.track; }
 int toward(const CityState &s, const Pedestrian &w) { return w.dir == 0 ? s.roads.segs[w.seg].b : s.roads.segs[w.seg].a; }
 
 // Only the walkable segments inside ped_window_m: walkers exist near the camera, and that caps the crowd.
@@ -87,7 +87,8 @@ bool spawn_one(CityState &s) {
 	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
 	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
 	w.walked = t.rng.range(0.f, w.speed);
-	sidewalk_pose(s, seg, w.side, w.s, track_u(w), w.cur);
+	on_sidewalk(w);
+	sidewalk_pose(s, seg, w.side, w.s, w.u, w.cur);
 	int id = alloc(t);
 	t.peds[id] = std::move(w);
 	t.ped_count++;
@@ -104,6 +105,7 @@ void off_crosswalk(TrafficState &t, int id) {
 
 void despawn(TrafficState &t, int id, bool arrived) {
 	off_crosswalk(t, id);
+	free_kerb_place(t, id);
 	t.ped_waste += size_t(t.peds[id].route.cap);
 	t.peds[id] = Pedestrian();
 	t.free_peds.push_back(id);
@@ -115,6 +117,7 @@ void despawn(TrafficState &t, int id, bool arrived) {
 void begin_line(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
+	take_kerb_place(s, id); // toward the kerb of a crosswalk: to its own place there
 	const Waypoint &to = w.ways[w.wi];
 	if (to.cross >= 0 && (!walk_ok(s, w.way_node, to.cross) || cars_on_crossing(s, w.way_node, to.cross))) {
 		w.mode = PedMode::WAIT;
@@ -125,6 +128,7 @@ void begin_line(CityState &s, int id) {
 	w.llen = std::max(MIN_LEG_M, std::hypot(to.x - w.lx, to.z - w.lz));
 	w.ls = 0;
 	if (to.cross >= 0) {
+		free_kerb_place(t, id); // onto the crosswalk: the place at the kerb is free again
 		w.cross_seg = to.cross;
 		t.node_crossers[w.way_node].push_back(id);
 	}
@@ -145,8 +149,9 @@ void at_node(CityState &s, int id) {
 	w.dir = ng.a == n ? 0 : 1;
 	w.side = side_out;
 	w.s = w.dir == 0 ? arc_lo(ng) : arc_hi(ng);
+	on_sidewalk(w);
 	Pose start;
-	sidewalk_pose(s, next, w.side, w.s, track_u(w), start);
+	sidewalk_pose(s, next, w.side, w.s, w.u, start);
 	w.ways[k++] = Waypoint{ start.x, start.y, start.z, -1 };
 	w.wn = k;
 	w.wi = 0;
@@ -169,7 +174,7 @@ void walk(CityState &s, int id, float dt) {
 		begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
-	float step = w.speed * dt;
+	const float step = (w.mode == PedMode::SIDEWALK ? w.pace : w.speed) * dt; // the crowd sets the pace on a sidewalk
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
 		w.ls += step;
@@ -191,7 +196,7 @@ void walk(CityState &s, int id, float dt) {
 
 void pose(const CityState &s, Pedestrian &w) {
 	if (w.mode == PedMode::SIDEWALK) {
-		sidewalk_pose(s, w.seg, w.side, w.s, track_u(w), w.cur);
+		sidewalk_pose(s, w.seg, w.side, w.s, w.u, w.cur);
 		if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }
 		return;
 	}
@@ -212,6 +217,9 @@ void reset_pedestrians(CityState &s) {
 	t.ped_waste = 0;
 	t.ped_count = 0;
 	t.node_crossers.assign(s.roads.nodes.size(), {});
+	t.kerb_slots.clear();
+	t.crowd.clear();
+	t.crowd_keys.clear();
 }
 
 void drop_pedestrians_on_seg(CityState &s, int seg) {
@@ -233,6 +241,7 @@ void step_pedestrians(CityState &s, float dt) {
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float out = p.ped_window_m * PED_FAR_EDGE_M, out2 = out * out;
 	t.ped_waiting = 0;
+	crowd_step(s, dt);
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
