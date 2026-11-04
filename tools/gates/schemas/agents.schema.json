@@ -5,7 +5,9 @@
   "vehicle_radius_m": {"type": "number"},
   "cabin_radius_m": {"type": "number"},
   "people_radius_m": {"type": "number"},
-  "paints": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
+  "exhaust": {"type": "object"},
+  "paint_source": {"type": "string"},
+  "paints_by_source": {"type": "object"},
   "trim": {
    "type": "object",
    "properties": {
@@ -375,6 +377,6 @@
    "strict": true
   }
  },
- "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "paints", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
+ "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "paint_source", "paints_by_source", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
  "strict": true
 }
