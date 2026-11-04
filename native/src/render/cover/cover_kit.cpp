@@ -33,15 +33,15 @@ void lump(MeshBuilder &mb, const Dictionary &k, uint32_t seed, Rng &r) {
 
 // A column with `arms` bent arms part way up.
 void cactus(MeshBuilder &mb, const Dictionary &k, Rng &r) {
-	Color tone = hexc(k["lit"]);
+	const Tones tone{ Color(0, 0, 0, 1), hexc(k["lit"]) };
 	float rad = k["radius"], arm_from = k["arm_from"], arm_reach = k["arm_reach"], arm_rise = k["arm_rise"];
 	int sides = k["ribs"], arms = k["arms"];
-	tree_tube(mb, Vector3(), Vector3(0, 1, 0), rad, rad * HALF_F, sides, tone);
+	tree_tube(mb, Vector3(), Vector3(0, 1, 0), rad, rad * HALF_F, sides, tone, TreePart::BODY);
 	for (int i = 0; i < arms; i++) {
 		float a = TAU_F * (float(i) + r.f()) / float(arms), y = arm_from + r.f() * (1.f - arm_from) * HALF_F;
 		Vector3 out(std::cos(a) * arm_reach, 0, std::sin(a) * arm_reach), root(0, y, 0), bend = root + out;
-		tree_tube(mb, root, bend, rad * HALF_F, rad * HALF_F, sides, tone);
-		tree_tube(mb, bend, bend + Vector3(0, arm_rise, 0), rad * HALF_F, rad * HALF_F * HALF_F, sides, tone);
+		tree_tube(mb, root, bend, rad * HALF_F, rad * HALF_F, sides, tone, TreePart::BODY);
+		tree_tube(mb, bend, bend + Vector3(0, arm_rise, 0), rad * HALF_F, rad * HALF_F * HALF_F, sides, tone, TreePart::BODY);
 	}
 }
 
@@ -68,7 +68,7 @@ void tuft(MeshBuilder &mb, const Dictionary &k, Rng &r) {
 
 void flower(MeshBuilder &mb, const Dictionary &k, const Color &bloom, uint32_t seed, Rng &r) {
 	float stem = k["stem_radius"], head = k["head_radius"];
-	tree_tube(mb, Vector3(), Vector3(0, 1.f - head, 0), stem, stem, STEM_SIDES, hexc(k["dark"]));
+	tree_tube(mb, Vector3(), Vector3(0, 1.f - head, 0), stem, stem, STEM_SIDES, Tones{ Color(0, 0, 0, 1), hexc(k["dark"]) }, TreePart::BODY);
 	Color shade = bloom * float(k["head_shade"]);
 	shade.a = 1;
 	Shade sh{ Tones{ shade, bloom }, 0.f, 1.f, 1.f, 1.f, BloomSpec{} };

@@ -175,7 +175,7 @@ void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<Tre
 		const PlantedTree &t = p.trees[size_t(id)];
 		if (!s.terrain.in_bounds(t.x, t.z) || s.terrain.is_water(t.x, t.z, 0.f)) return;
 		Vector3 at(t.x, s.terrain.height_at(t.x, t.z), t.z);
-		out.push_back({ at, t.height, t.height, t.yaw, 0, 0, T.planted_species[size_t(tree_slot(t.seed, d))], tint_of(T, t.seed) });
+		out.push_back({ at, t.height * T.open_tall, t.height * T.open_wide, t.yaw, 0, 0, T.planted_species[size_t(tree_slot(t.seed, d))], tint_of(T, t.seed) });
 	});
 }
 } // namespace

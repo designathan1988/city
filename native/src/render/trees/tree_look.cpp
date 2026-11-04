@@ -85,6 +85,7 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	slope_from = at(p["slope_grade"], 0); slope_to = at(p["slope_grade"], 1); slope_gain = p["slope_gain"];
 	water_m = p["riparian_m"]; water_gain = p["riparian_gain"];
 	crowd_tall = p["crowd_tall"]; crowd_narrow = p["crowd_narrow"]; edge_lean = p["edge_lean"]; width_vary = p["width_vary"];
+	open_tall = p["open_tall"]; open_wide = p["open_wide"];
 	tint_vary = p["tint_vary"]; min_y = p["min_y_m"]; max_grade = p["max_grade"]; road_margin = p["road_margin_m"]; lot_margin = p["lot_margin_m"];
 	park_m2_per_tree = p["park_m2_per_tree"]; park_edge = p["park_edge_m"]; park_max = p["park_max"];
 	park_h0 = at(p["park_height_m"], 0); park_h1 = at(p["park_height_m"], 1); street_height_m = p["street_height_m"];

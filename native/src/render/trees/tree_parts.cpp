@@ -38,6 +38,10 @@ constexpr float CARD_SKY_LIFT = 0.2f;
 // A frond row's tone: its share of the lit tone at a level row, plus this much per unit of its up axis.
 constexpr float FROND_ROW_BASE = 0.5f, FROND_TONE_UP = 0.3f;
 constexpr int FROND_COLS = 3; // left edge, rachis, right edge
+// A conifer: the core's faces; cards thicker low (a power of a uniform share of the height) up to this share of it; the
+// tip's reach as a share of the core; how far in a card may stand; how much a card's normal looks up.
+constexpr int CONE_SIDES = 6;
+constexpr float CONE_TIP_POWER = 1.3f, CONE_FILL = 0.92f, CONE_TIP_SHARE = 0.45f, CONE_IN = 0.55f, CONE_LIFT = 0.35f;
 const Vector3 UP(0, 1, 0);
 
 using Tri = std::array<Vector3, 3>;
@@ -67,8 +71,8 @@ Color with_alpha(Color c, float a) {
 	return c;
 }
 
-void flat_tri(MeshBuilder &mb, const Vector3 p[3], const Vector3 &out, const Color &col) {
-	const Vector2 tag(float(int(TreePart::BODY)), 0);
+void flat_tri(MeshBuilder &mb, const Vector3 p[3], const Vector3 &out, const Color &col, TreePart part = TreePart::BODY) {
+	const Vector2 tag(float(int(part)), 0);
 	int a = mb.add(p[0], out, col, Vector2(), tag), b = mb.add(p[1], out, col, Vector2(), tag), c = mb.add(p[2], out, col, Vector2(), tag);
 	mb.tri(a, b, c, out);
 }
@@ -92,7 +96,12 @@ void card(MeshBuilder &mb, const Vector3 &c, const Vector3 &n, const Color &tone
 }
 } // namespace
 
-void tree_tube(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float r0, float r1, int sides, const Color &col) {
+Color dimmed(const Color &c, float k) {
+	Color l = c.srgb_to_linear();
+	return Color(l.r * k, l.g * k, l.b * k, c.a).linear_to_srgb();
+}
+
+void tree_tube(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float r0, float r1, int sides, const Tones &tones, TreePart part) {
 	Vector3 axis = (b - a).normalized();
 	Vector3 side = std::fabs(axis.y) < (1.f - CARD_SKY_LIFT) ? axis.cross(UP).normalized() : Vector3(1, 0, 0);
 	Vector3 fwd = axis.cross(side).normalized();
@@ -101,11 +110,10 @@ void tree_tube(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float r0, fl
 		Vector3 d0 = side * std::cos(a0) + fwd * std::sin(a0), d1 = side * std::cos(a1) + fwd * std::sin(a1);
 		Vector3 p[4] = { a + d0 * r0, a + d1 * r0, b + d1 * r1, b + d0 * r1 };
 		Vector3 out = (d0 + d1).normalized();
-		Color c = col * face_light(out);
-		c.a = 1;
+		Color c = with_alpha(tones.tone(face_light(out)), 1);
 		const Vector3 t0[3] = { p[0], p[1], p[2] }, t1[3] = { p[0], p[2], p[3] };
-		flat_tri(mb, t0, out, c);
-		flat_tri(mb, t1, out, c);
+		flat_tri(mb, t0, out, c, part);
+		flat_tri(mb, t1, out, c, part);
 	}
 }
 
@@ -128,7 +136,7 @@ Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, cons
 		if (nn.dot(mid - c.centre) < 0) nn = -nn;
 		float k = clampf(face_light(nn) + (r.f() - HALF_F) * sh.jitter, 0.f, 1.f);
 		float low = sh.shade_bottom + (1.f - sh.shade_bottom) * height01(mid.y - c.centre.y);
-		Color col = tones_at(mid.y).tone(k) * (low * dim);
+		Color col = dimmed(tones_at(mid.y).tone(k), low * dim);
 		flat_tri(body, p, nn, with_alpha(col, 1));
 		faces += col;
 		nf++;
@@ -149,6 +157,24 @@ Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, cons
 	}
 	if (nl > 0) return with_alpha(leaves / float(nl), 1);
 	return nf > 0 ? with_alpha(faces / float(nf), 1) : sh.leaf.lit;
+}
+
+Color tree_cone(MeshBuilder &body, MeshBuilder &cards, const ConeSpec &c, const Shade &sh, Rng &r) {
+	const Tones core{ dimmed(sh.leaf.dark, sh.heart_shade), dimmed(sh.leaf.lit, sh.heart_shade) };
+	tree_tube(body, Vector3(0, c.base, 0), Vector3(0, c.base + c.height, 0), c.core, 0.f, CONE_SIDES, core, TreePart::BODY);
+	Color leaves;
+	for (int i = 0; i < c.cards; i++) {
+		float t = std::pow(r.f(), CONE_TIP_POWER), az = r.f() * TAU_F;
+		float reach = (c.crown * (1.f - t) + c.core * CONE_TIP_SHARE) * (CONE_IN + (1.f - CONE_IN) * r.f());
+		Vector3 d(std::cos(az), 0, std::sin(az)), out = Vector3(d.x, CONE_LIFT, d.z).normalized();
+		float size = c.card * (1.f - c.taper * t) * (1.f + (r.f() * 2.f - 1.f) * CARD_VARY);
+		Vector3 at = Vector3(0, c.base + c.height * CONE_FILL * t, 0) + d * reach + out * size * (CARD_OUT_MIN + CARD_OUT_SPAN * r.f());
+		float k = clampf((CARD_LOW_TONE + (1.f - CARD_LOW_TONE) * t) * (1.f + (r.f() * 2.f - 1.f) * CARD_TONE_VARY), 0.f, 1.f);
+		Color col = sh.leaf.tone(k);
+		card(cards, at, out, col, size * HALF_F, r.f());
+		leaves += col;
+	}
+	return c.cards > 0 ? with_alpha(leaves / float(c.cards), 1) : sh.leaf.lit;
 }
 
 void tree_fronds(MeshBuilder &cards, const Vector3 &top, const FrondSpec &f, const Tones &tones, Rng &r) {

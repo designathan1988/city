@@ -17,7 +17,7 @@
 //   for trees of this size with leaves).
 // Leaf flutter is not drawn: no measured amplitude for it has been found.
 
-const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0; // tree_kit.h TreePart
+const float PART_CARD = 1.0, PART_FROND = 2.0, PART_FAR = 3.0, PART_BARK = 4.0; // tree_part.h TreePart
 const float FAR_TINT_SPAN = 2.0; // far_cards.cpp: a vertex colour stops at 1, and the tint goes either side of it
 
 uniform float near_m = 240.0;
@@ -41,6 +41,7 @@ varying flat vec3 v_tint;
 varying flat vec2 v_cell; // far: the picture's frame (column, row)
 varying flat float v_fade;
 varying flat float v_part;
+varying vec3 v_model; // the point on the tree, metres from its foot
 
 vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -131,6 +132,7 @@ void tree_vertex(inout vec3 vertex, inout vec3 normal, inout vec2 uv, vec2 uv2, 
 
 // The vertex stage both vegetation shaders share.
 void vertex() {
+	v_model = VERTEX * length(MODEL_MATRIX[1].xyz);
 	float fade, part;
 	vec3 tint;
 	vec2 cell;

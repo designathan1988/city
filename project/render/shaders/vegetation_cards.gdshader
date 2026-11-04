@@ -3,14 +3,16 @@
 // sides. As the atlas' mips average leaves into gaps, the cover is raised with the mip level so a crown keeps its fill
 // far away (Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017).
 shader_type spatial;
-render_mode skip_vertex_transform, cull_disabled;
+render_mode skip_vertex_transform, cull_disabled, shadows_disabled;
 
 #include "res://render/shaders/vegetation.gdshaderinc"
 
-const float LEAF_U = 0.0, FROND_U = 0.5, REGION_W = 0.5; // leaf_atlas.h LEAF_REGION_U, FROND_REGION_U, ATLAS_REGION_W
+const float REGION_W = 1.0 / 3.0, LEAF_U = 0.0, FROND_U = 2.0 / 3.0; // leaf_atlas.h ATLAS_REGION_W, LEAF_REGION_U, FROND_REGION_U
 const float CUT = 0.5;
 uniform sampler2D leaf_atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float cover_per_mip = 0.25;
+uniform float leaf_near_m = 22.0; // the near tuft whole up to here
+uniform float leaf_far_m = 70.0; // and gone from here
 uniform sampler2D tree_albedo : source_color, filter_linear_mipmap, repeat_disable;
 uniform sampler2D tree_normal : hint_normal, filter_linear_mipmap, repeat_disable;
 
@@ -34,7 +36,12 @@ void fragment() {
 	} else {
 	bool frond = v_part > PART_FROND - 0.5 && v_part < PART_FROND + 0.5;
 	vec2 uv = vec2((frond ? FROND_U : LEAF_U) + clamp(UV.x, 0.0, 1.0) * REGION_W, UV.y);
-	vec4 leaf = texture(leaf_atlas, uv);
+	vec2 dx = dFdx(uv), dy = dFdy(uv);
+	vec4 leaf = textureGrad(leaf_atlas, uv, dx, dy);
+	float close = frond ? 0.0 : 1.0 - smoothstep(leaf_near_m, leaf_far_m, length(VERTEX));
+	if (close > 0.0) {
+		leaf = mix(leaf, textureGrad(leaf_atlas, uv + vec2(REGION_W, 0.0), dx, dy), close);
+	}
 	vec2 texel = uv * vec2(textureSize(leaf_atlas, 0));
 	float mip = max(0.0, 0.5 * log2(max(dot(dFdx(texel), dFdx(texel)), dot(dFdy(texel), dFdy(texel)))));
 	ALPHA = leaf.a * (1.0 + mip * cover_per_mip);

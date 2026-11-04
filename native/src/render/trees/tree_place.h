@@ -48,6 +48,7 @@ struct TreeLook {
 	float inner_share = 0, edge_share = 0, open_per_ha = 0;
 	float slope_from = 0, slope_to = 1, slope_gain = 0, water_m = 0, water_gain = 0;
 	float crowd_tall = 0, crowd_narrow = 0, edge_lean = 0, width_vary = 0, tint_vary = 0;
+	float open_tall = 1, open_wide = 1; // a tree standing alone against the height it was planted at
 	float min_y = 0, max_grade = 0, road_margin = 0, lot_margin = 0;
 	float park_m2_per_tree = 1, park_edge = 0, park_h0 = 0, park_h1 = 0, street_height_m = 1;
 	float eco_gain = 0, eco_mean = 0, forest_gain = 0; // how the ecosystem and painted forest raise the woods' field

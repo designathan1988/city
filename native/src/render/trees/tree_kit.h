@@ -11,6 +11,7 @@
 
 #include "render/mesh_builder.h"
 #include "render/trees/leaf_atlas.h"
+#include "render/trees/tree_part.h"
 #include "render/trees/tree_pictures.h"
 
 #include <godot_cpp/classes/array_mesh.hpp>
@@ -21,7 +22,6 @@
 
 namespace city {
 
-enum class TreePart : int { BODY = 0, CARD = 1, FROND = 2, FAR = 3 };
 // A far card is centred on the middle of its tree; how far it reaches is the pictures' frame (tree_pictures.h).
 constexpr float FAR_CARD_CENTRE = 0.5f;
 
@@ -31,7 +31,6 @@ struct TreeSpecies {
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
-	float far_width = 1; // the far card's width over the tree's height
 };
 
 class TreeKit {
