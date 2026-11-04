@@ -15,6 +15,13 @@ namespace city {
 namespace {
 constexpr double SAME_SQUEEZE_M = 1e-6; // the arithmetic of laying a road again, not a distance anyone sees
 
+// Metres the two mouths of a road would overlap.
+double squeeze_of(const RoadNetwork &net, int seg) {
+	const RoadSegment &g = net.segs[size_t(seg)];
+	return wanted_retreat(net, g.a, seg) + wanted_retreat(net, g.b, seg) - g.len;
+}
+} // namespace
+
 // How far from node `n` the junction wants the mouth of `seg`, before the road's length caps it.
 double wanted_retreat(const RoadNetwork &net, int n, int seg) {
 	const RoadNode &nd = net.nodes[size_t(n)];
@@ -27,13 +34,6 @@ double wanted_retreat(const RoadNetwork &net, int n, int seg) {
 	const size_t at = size_t(std::find(nd.segs.begin(), nd.segs.end(), seg) - nd.segs.begin());
 	return at < out.size() ? out[at] : 0;
 }
-
-// Metres the two mouths of a road would overlap.
-double squeeze_of(const RoadNetwork &net, int seg) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	return wanted_retreat(net, g.a, seg) + wanted_retreat(net, g.b, seg) - g.len;
-}
-} // namespace
 
 std::map<int, double> squeezes_in(const CityState &s, const RoadBox &box) {
 	std::map<int, double> out;

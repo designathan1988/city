@@ -93,7 +93,7 @@ void fragment() {
 	vec2 uv = UV;
 	vec3 albedo = base;
 	vec2 bend = vec2(0.0);
-	float rough = 0.88;
+	float rough = 1.0;
 	float blotch = 1.0 + (vnoise(v_world.xz * 0.08) - 0.5) * 0.12;
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
@@ -132,7 +132,7 @@ void fragment() {
 	}
 	ALBEDO = linear_out(albedo);
 	ROUGHNESS = rough;
-	SPECULAR = 0.35;
+	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
 	if (up) {
 		float fade = (1.0 - smoothstep(0.02, 0.5, pix)) * normal_strength;
 		vec3 n = normalize(nw + vec3(-bend.x * fade, 0.0, -bend.y * fade));
