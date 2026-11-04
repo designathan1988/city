@@ -95,6 +95,8 @@ func _boot_world() -> bool:
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
 		return false
+	Settings.apply(world, get_viewport()) # as game/play.gd: the picture the player sees (MSAA, shadows, scale)
+	print("qualidade: ", Settings.current(), " msaa_3d ", get_viewport().msaa_3d)
 	add_child(RoadcraftHud.new())
 	var report: Dictionary = CityStore.new_map(map, seed, true)
 	print("cidade: ", report)
