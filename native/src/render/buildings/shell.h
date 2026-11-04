@@ -1,6 +1,6 @@
-// The building mesh writer (4.0 meshCore.ts Shell): one vertex stream for every face of a chunk level, with the
+// The building mesh writer: one vertex stream for every face of a chunk level, with the
 // vertex code the shader reads (COLOR.a = surface kind; UV2 = finish layer + 1 or pane size; UV = pane/window cell),
-// the 4.0 tone (macro noise x foot grime) baked into the sRGB vertex colour, and box/rectangle helpers in any
+// the tone (macro noise x foot grime) baked into the sRGB vertex colour, and box/rectangle helpers in any
 // orthonormal basis (a facade's along/up/out, the lot's x/y/up).
 #pragma once
 

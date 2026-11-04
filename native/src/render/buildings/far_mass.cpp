@@ -1,4 +1,4 @@
-// The far level of a placed body (4.0 r40/render/buildings/massing.ts emitMassing, L1/L2 merged): each closed volume's
+// The far level of a placed body: each closed volume's
 // walls as one quad per side and storey band whose windows the shader paints from the opening shares of the style
 // (packed into UV2.y), the parapet as a raised wall with its coping, roof slabs, pitched roofs, machine rooms and the
 // plinth. A few dozen triangles per building; `lean` (the far level) keeps one band per side and drops the coping and

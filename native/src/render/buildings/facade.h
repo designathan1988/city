@@ -1,4 +1,4 @@
-// A 4.0 body placed in the world and the emitters that draw it (4.0 r40/render/buildings): the placement (lot basis,
+// A body placed in the world and the emitters that draw it: the placement (lot basis,
 // floor height, building shade, ground sampler), the volume sides as facade frames, the paints of a bay, and the entry
 // points of each emitter file.
 #pragma once
@@ -18,7 +18,7 @@ struct Placed {
 	const Body *b = nullptr;
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
-	float shade = 1; // 4.0 building shade, 0.93..1.05 on walls
+	float shade = 1; // a building's own shade on its walls
 	float ground_lo = 0; // lowest ground under the ground volumes, relative to the floor (<= 0)
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
@@ -40,9 +40,9 @@ bool covered(const Body &b, const Volume &self, int level, Point2 p);
 Lin wall_lin(const Placed &pl, const Volume &v, int storey, int side);
 Lin trim_lin(const Placed &pl);
 Lin paint_lin(const Paint &p);
-// Moulding (bands, cornices, coping) paint: the trim, or plaster wall x 1.1 when the trim is metal (4.0 buildingMesh.ts).
+// Moulding (bands, cornices, coping) paint: the trim, or plaster wall x 1.1 when the trim is metal.
 Paint moulding_of(const Placed &pl);
-// A two-tier band (4.0 roofMesh.ts band): lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
+// A two-tier band: lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
 // `flush`: one strip.
 void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by);

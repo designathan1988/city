@@ -26,7 +26,7 @@ struct StyleDef {
 	float module = 3;
 };
 
-// One row of the opening table (4.0 openingOf): w = min(W - w_in, w_max), sill, head = min(H - head_in, head_max).
+// One row of the opening table: w = min(W - w_in, w_max), sill, head = min(H - head_in, head_max).
 struct OpeningDef {
 	bool has = false;
 	float w_in = 0, w_max = 0, sill = 0, head_in = 0, head_max = 0, depth = 0;

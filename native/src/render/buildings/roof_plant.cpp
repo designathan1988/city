@@ -1,4 +1,4 @@
-// Roof plant on flat roofs (4.0 r40/world/buildings/roofPlant.ts, roofMesh.ts :23-112): the 12 kinds in catalogue
+// Roof plant on flat roofs: the 12 kinds in catalogue
 // order with their sizes, caps and chances by use, packed on a 0.5 m occupancy grid inside a 0.8 m margin, with a
 // two-cell clear ring round every piece and the machine rooms. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
 // 0x5f3759df). Drains, masts and dish posts are fine parts.

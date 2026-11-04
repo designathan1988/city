@@ -1,4 +1,4 @@
-// The opening of a bay and the wall round it (4.0 meshCore.ts openingOf, facadeEmit.ts :216-236): the four wall
+// The opening of a bay and the wall round it: the four wall
 // rectangles, the jambs (trim x 0.68), the sill (trim x 0.92) and head strips, the closing pane or leaf at the reveal
 // depth, roller shutters, the rain streak under the sill; then the component's parts.
 #include "render/buildings/facade_bay.h"

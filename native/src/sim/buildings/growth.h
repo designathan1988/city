@@ -1,4 +1,4 @@
-// What grows on a lot (Roadcraft src/world/growth.ts): the record of the building for a proposed lot (floors by zone
+// What grows on a lot: the record of the building for a proposed lot (floors by zone
 // and street, one square per 2x2-cell neighbourhood, at most one civic building per cell, the organic height cap)
 // and filling every free lot at once for a generated city.
 #pragma once
@@ -10,7 +10,7 @@ namespace city {
 struct CityState;
 struct Lot;
 
-// Map-relative cell coordinates (Roadcraft cellId: x from the map's west edge) of a world position.
+// Map-relative cell coordinates (x from the map's west edge) of a world position.
 struct MapCell {
 	int x = 0, z = 0, id = 0;
 };

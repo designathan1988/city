@@ -1,5 +1,5 @@
-// Houses made to measure (jobs/b40/massing.ts house): style, heights, roof kind and one of the forms wing, veranda,
-// ell, twin and bungalow, with the veranda's floor, roof slab and posts as lot elements. 4.0 draw order.
+// Houses made to measure: style, heights, roof kind and one of the forms wing, veranda, ell, twin and bungalow, with
+// the veranda's floor, roof slab and posts as lot elements.
 #include "sim/buildings/b40/massing.h"
 
 namespace city::b40 {

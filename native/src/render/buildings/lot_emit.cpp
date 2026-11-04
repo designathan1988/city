@@ -1,4 +1,4 @@
-// The lot elements of a placed body (4.0 r40/render/buildings/elementMesh.ts, lotMesh.ts, condensed): surfaces laid
+// The lot elements of a placed body: surfaces laid
 // on a 3 m grid following the ground (lawns drawn as grass by the shader), boundary walls with plinth and coping, fences
 // and railings on their base walls, hedges, gates with posts and bars, planters, benches, bollards, lamps (lit heads),
 // bins, stall lines, wall ACs, and the building-hung canopies, awnings, veranda floors, slabs and posts.

@@ -1,4 +1,4 @@
-// The 4.0 HSL nudge of roof and second-skin colours (jobs/b40/paint.ts nudge): three floats, hue, saturation, lightness.
+// The HSL nudge of roof and second-skin colours: three draws, hue, saturation, lightness.
 #include "sim/buildings/b40/paint.h"
 
 namespace city::b40 {

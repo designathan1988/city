@@ -1,4 +1,4 @@
-// The facade part models (4.0 r40/render/buildings/kit.ts), built straight into a mesh in the bay frame: unit models
+// The facade part models, built straight into a mesh in the bay frame: unit models
 // scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Frame bars, railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
@@ -55,7 +55,7 @@ void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 }
 
 // Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
-// are single front faces (4.0 kit.ts draws them as thin boxes).
+// are single front faces (a thin box seen from the street shows only its front).
 void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
 	float hx = p.sx / 2, z1 = p.sz, top0 = (RAIL_TOP_Y - RAIL_TOP_H / 2) * p.sy, top1 = (RAIL_TOP_Y + RAIL_TOP_H / 2) * p.sy;
@@ -78,7 +78,7 @@ void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 
 void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 	Basis m = centred(p);
-	// the front faces of the 4.0 leaf and panel boxes (kit.ts doorGeometry): the handle starts on the leaf's face
+	// the front faces of the leaf and its panel: the handle starts on the leaf's face
 	const float leaf_z = (LEAF_Z + LEAF_D / 2) * p.sz, panel_z = (PANEL_Z + PANEL_D / 2) * p.sz;
 	s.rect(m, -p.sx / 2, p.sx / 2, -p.sy / 2, p.sy / 2, leaf_z, lin, fin);
 	for (float x : { -PANEL_X, PANEL_X }) {

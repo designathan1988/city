@@ -1,4 +1,4 @@
-// Service buildings (Roadcraft civic.ts, in the envelope frame: x from its left edge, y from its front): gas station
+// Service buildings (in the envelope frame: x from its left edge, y from its front): gas station
 // (shop at the back, a 5.5 m canopy on columns over the pumps and an asphalt apron), supermarket / mall (a 7 / 14 m
 // box with a glazed shopfront, a sign band and parking in front), city hall (13 m stone block with a six-column
 // portico and stepped pediment) and police / fire station (8 m, garage doors, the fire station's 18 m hose tower).

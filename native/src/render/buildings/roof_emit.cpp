@@ -1,4 +1,4 @@
-// Roofs of a placed body (4.0 roofMesh.ts :485-541, roofPlan.ts): flat slabs (membrane or FLAT_ROOFS pick), terrace
+// Roofs of a placed body: flat slabs (membrane or FLAT_ROOFS pick), terrace
 // floors, parapets cut per bay (outer wall face, inner face, coping and lip; attic crowns 1.5 m), terrace railings,
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"

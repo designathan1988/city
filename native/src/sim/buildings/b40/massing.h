@@ -1,4 +1,4 @@
-// Shared steps of the 4.0 massing (jobs/b40/massing.ts) used by every kind: adding a block, the pitched-roof shape,
+// Shared steps of the massing used by every kind: adding a block, the pitched-roof shape,
 // roof paints, the second skin of twin/pair forms and the common finish (membranes, facades, door, dress).
 #pragma once
 
@@ -16,13 +16,13 @@ struct BlockSpec {
 };
 
 int add_block(Body &b, const BlockSpec &s);
-// Pitch and ridge (4.0 roofShape). `ridge_to_street` < 0 draws the default float (even for a flat roof).
+// Pitch and ridge of a volume's roof. `ridge_to_street` < 0 draws the default float (even for a flat roof).
 void roof_shape(Volume &v, Xoshiro128 &r, int ridge_to_street = -1);
 Paint roof_of(Xoshiro128 &r, const std::vector<Paint> &list);
 std::vector<Paint> clay_of(const Data &data);
 Paint other_skin(const Data &data, int style, Xoshiro128 &r, const Paint &wall);
 void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim);
-// Pitches still unset, roof membranes, facades, entrance and back door, dress (4.0 finish).
+// The common finish: pitches still unset, roof membranes, facades, entrance and back door, dress.
 void finish_body(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, uint8_t door_kind, int door_block);
 
 void house(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);

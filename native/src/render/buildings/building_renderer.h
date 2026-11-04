@@ -1,4 +1,4 @@
-// Building chunk meshes, Roadcraft "4.0" buildings (r40/render/buildings): 256 m chunks carried by four levels
+// Building chunk meshes: 256 m chunks carried by four levels
 // (tuning render.building_detail_end_m = D, building_mid_end_m, building_far_end_m; shares in buildings.json "lod"):
 //   parts  0 .. D x parts_share        instanced unit boxes in five thickness bands (material building_parts) + fine
 //                                      geometry that is not a box (lamps, AC fans, awnings) in the "building" material
@@ -78,7 +78,7 @@ private:
 		int mask = 0; // its chunks drawn in detail (bit = chunk in the superchunk): hidden in the far mesh
 		int mask_sent = -1; // the chunk_mask last given to the far instance (-1: none yet)
 		int chunks = 0; // its streamed chunks: the superchunk lives while one is
-		// A built far mesh is rebuilt on its own clock (Roadcraft deferredRebuild.ts): not before `due` (a delay
+		// A built far mesh is rebuilt on its own clock: not before `due` (a delay
 		// after the first change it waits for) nor within an interval of the previous request (`asked`).
 		double due = 0, asked = -std::numeric_limits<double>::infinity();
 	};

@@ -1,4 +1,4 @@
-// The 4.0 building generator, step by step on one Xoshiro128 stream seeded with the record seed:
+// The building generator, step by step on one Xoshiro128 stream seeded with the record's seed:
 // plan_lot (lot_plan.cpp) -> made_to_measure (massing_*.cpp) -> lay_out_lot (lot_layout.h). make_body runs them.
 #pragma once
 
@@ -9,7 +9,7 @@
 
 namespace city::b40 {
 
-// What the massing is told about its lot (4.0 B40Envelope).
+// What the massing is told about its lot: the envelope's size, a back door, the street's character and the era.
 struct Envelope {
 	float W = 0, D = 0;
 	bool back_door = false;

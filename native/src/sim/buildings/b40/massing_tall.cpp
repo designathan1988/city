@@ -1,5 +1,5 @@
-// Flats, residential towers, shops and offices made to measure (jobs/b40/massing.ts flats/shop/office/setbacks/
-// towerShape): podiums, setbacks, crowns, twins, ells, U and L courts, pairs, the lift core and the shop dress.
+// Flats, residential towers, shops and offices made to measure: podiums, setbacks, crowns, twins, ells, U and L
+// courts, pairs, the lift core and the shop dress.
 #include "sim/buildings/b40/massing.h"
 
 #include "core/math.h"

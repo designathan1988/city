@@ -1,5 +1,4 @@
-// Industrial halls made to measure (jobs/b40/massing.ts works; dormant in R5, drawn here for industrial lots instead of
-// the legacy warehouse): a hall of one tall storey with ribbon windows and loading doors at the back, a sawtooth,
+// Industrial halls made to measure: a hall of one tall storey with ribbon windows and loading doors at the back, a sawtooth,
 // shed, flat or gable roof, and an office annex in front.
 #include "sim/buildings/b40/massing.h"
 

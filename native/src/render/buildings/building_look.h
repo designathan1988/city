@@ -24,8 +24,8 @@ struct BuildingLook {
 	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
-	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (Roadcraft plate rule 0.9 / 1.1)
-	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds (Roadcraft deferredRebuild.ts)
+	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
+	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };

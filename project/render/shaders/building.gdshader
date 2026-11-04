@@ -1,8 +1,8 @@
-// Roadcraft 4.0 buildings (render/city.ts building material): one material for every building surface. COLOR.a is the
+// Buildings: one material for every building surface. COLOR.a is the
 // surface kind written by native/src/render/buildings/shell.h: 0 shell face (UV2.x = cooked finish layer + 1, 0 = no
 // finish), 1/2 glass pane (dark), 3 far wall with painted windows (UV in bays/storeys, UV2.y = packed window row),
-// 4 lamp, 5 lawn. Finishes: world-planar UVs in metres (4.0 shellParts.ts), map normalised by its layer mean, normal
-// map, roughness and metal mask. Panes: analytic interior mapping with lights, blinds and curtains (city.ts:282-364).
+// 4 lamp, 5 lawn. Finishes: world-planar UVs in metres, map normalised by its layer mean, normal
+// map, roughness and metal mask. Panes: analytic interior mapping with lights, blinds and curtains (interior mapping, J. van Dongen, "Interior Mapping", CGI 2008).
 shader_type spatial;
 render_mode cull_back;
 

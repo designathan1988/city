@@ -1,4 +1,4 @@
-// Civic bodies (Roadcraft jobs/buildingGen/civic.ts, drawn with the 4.0 facade grammar): a plaza in front, the
+// Civic bodies (drawn with the facade grammar of facade_compose.cpp): a plaza in front, the
 // building in an envelope set back from the street, then the function's own massing. School: an L of classrooms (2-3
 // storeys x 3.6 m, cream, blue-grey hip roof) round a lawn court with a sports court. Church: a nave 9 m high under a
 // steep clay gable with a 20 m bell tower, hip spire and gold cross in front. Hospital / clinic: a white ribbon-window

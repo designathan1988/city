@@ -1,4 +1,5 @@
-// The Roadcraft "4.0" building body: the vocabulary codes (bays, roofs, dress, finishes) in the 4.0 order and the
+// The building body: the vocabulary codes (bays, roofs, dress, finishes), in the order the lists of
+// data/render/buildings.json name them, and the
 // plain structures the generator fills (lot plan, volumes with storeys and bay overrides, lot elements, cores).
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
@@ -12,7 +13,7 @@ namespace city::b40 {
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
 constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
 
-// BAY_COMPONENTS, 4.0 order.
+// The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).
 enum Bay : uint8_t { BAY_WALL, BAY_WINDOW, BAY_SASH, BAY_FRENCH, BAY_BAY_WINDOW, BAY_RIBBON, BAY_WIDE, BAY_BALCONY, BAY_DOOR,
 	BAY_DOUBLE_DOOR, BAY_GARAGE_DOOR, BAY_SHOPFRONT, BAY_LOADING_DOOR, BAY_PILLAR, BAY_LOGGIA, BAY_BRISE, BAY_SHUTTERED,
 	BAY_GOURMET, BAY_COUNT, BAY_NONE = 0xff };
@@ -22,7 +23,7 @@ enum Crown : uint8_t { CROWN_CORNICE, CROWN_DECO, CROWN_SLAB, CROWN_ATTIC, CROWN
 enum Ground : uint8_t { GROUND_SHOP, GROUND_LOBBY, GROUND_HOUSE, GROUND_WORKS };
 enum Kind : uint8_t { KIND_HOUSE, KIND_FLATS, KIND_TOWER, KIND_SHOP, KIND_OFFICE, KIND_WORKS, KIND_COUNT };
 enum Use : uint8_t { USE_RESIDENTIAL, USE_COMMERCIAL, USE_INDUSTRIAL };
-// Styles, 4.0 architecture.ts order (indices into buildings.json "styles").
+// Architectural styles, in the order of buildings.json "styles" (their indices there).
 enum Style : uint8_t { STYLE_COLONIAL, STYLE_ART_DECO, STYLE_MODERNIST, STYLE_CONTEMPORARY, STYLE_BRICK, STYLE_TROPICAL,
 	STYLE_GLASS, STYLE_INDUSTRIAL, STYLE_COLONIAL_HOUSE, STYLE_BUNGALOW, STYLE_MODERN_HOUSE, STYLE_SOBRADO, STYLE_COUNT };
 // Finishes in the COOKED texture-array layer order (project/assets/surfaces/building-finishes.*.png).
@@ -35,7 +36,7 @@ struct Paint {
 	uint32_t rgb = 0;
 };
 
-// Lot plan (4.0 world/growth/lotPlan.ts).
+// The plan of a lot: what its front, each side and its back are used for, and the building's envelope.
 enum FrontUse : uint8_t { FRONT_STREET, FRONT_GARDEN, FRONT_CARPAD, FRONT_FORECOURT, FRONT_PLAZA, FRONT_APRON };
 enum SideUse : uint8_t { SIDE_ATTACHED, SIDE_PATH, SIDE_DRIVE, SIDE_DRIVE_PATH, SIDE_GARDEN };
 enum BackUse : uint8_t { BACK_NONE, BACK_YARD, BACK_PARKING, BACK_SERVICE, BACK_COURTYARD, BACK_LOADING };
@@ -56,7 +57,7 @@ struct LotPlan {
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0; // building envelope, x from the lot's left edge
 };
 
-// The composed geometry of one face (4.0 facadeGeometry): bay count, opening shares, sill, piers.
+// The composed geometry of one face: bay count, opening shares, sill, piers.
 struct FaceGeometry {
 	int bays = -1;
 	float window_w = 0, window_h = 0, sill = 0;

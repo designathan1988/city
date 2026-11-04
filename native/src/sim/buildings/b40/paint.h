@@ -1,5 +1,5 @@
-// Paint and draw helpers of the 4.0 generator (jobs/b40/paint.ts, massing.ts helpers): skin tint, HSL nudge,
-// lightness, sRGB <-> linear, and the Xoshiro choose/mix/snap draws, in the 4.0 order of float draws.
+// Paint and draw helpers of the generator: skin tint, HSL nudge, lightness, sRGB <-> linear (IEC 61966-2-1), and the
+// Xoshiro choose/mix/snap draws, each a fixed number of draws so a body is the same for its seed.
 #pragma once
 
 #include "core/seeded.h"
@@ -29,7 +29,7 @@ inline uint32_t pack(float r, float g, float b) {
 	auto q = [](float v) { return uint32_t(std::clamp(std::round(v), 0.f, CH_MAX)); };
 	return (q(r) << CH_R) | (q(g) << CH_G) | q(b);
 }
-// Every channel x k, rounded (4.0 tint / stoneBaseOf).
+// Every channel x k, rounded (a tint, a stone base darker than its wall).
 inline uint32_t scale_rgb(uint32_t c, float k) { return pack(ch(c, CH_R) * k, ch(c, CH_G) * k, ch(c, 0) * k); }
 
 inline float lightness(uint32_t c) {

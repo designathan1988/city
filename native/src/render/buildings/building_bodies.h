@@ -1,4 +1,4 @@
-// The 4.0 bodies of the building records (jobs/building40.ts building40; civic functions and open lots by civic.h): made once per (seed, zone, floors, size)
+// The bodies of the building records (sim/buildings/b40/record.h): made once per (seed, zone, floors, size)
 // and kept, so every level of a chunk draws the same building; and the placement of a record in the world (lot
 // basis, floor on the highest ground + 0.15 m, building shade, ground sampler).
 #pragma once

@@ -1,4 +1,4 @@
-// The parts of each bay component (4.0 facadeEmit.ts emitBay table): frames, sills, balcony slabs and railings,
+// The parts of each bay component: frames, sills, balcony slabs and railings,
 // doors with canopies and lamps, shopfront awnings, loggia glass parapets, brise racks, moulded surrounds with open
 // louvred shutters, gourmet balconies, transoms. Pieces that read from afar (sills, slabs, awnings, fins, surrounds)
 // go into the shell; fine repeated pieces (frames, railings, louvres, door panels) into `parts`.
@@ -48,7 +48,7 @@ struct Ctx {
 		for (float s : { -1.f, 1.f })
 			part_box(parts, at(am + s * (w / 2 + BRACKET_OFF), cz - BRACKET_H * HALF - CANOPY_RISE * HALF, -BRACKET_D / 2, BRACKET_W, BRACKET_H, BRACKET_D), c.trim, c.trim_fin);
 	}
-	// The leaves are parts, drawn only to parts_end: a door-coloured panel behind them (at the back of the 4.0 leaf
+	// The leaves are parts, drawn only to parts_end: a door-coloured panel behind them (at the back of the leaf
 	// box, so it never covers a leaf) closes the opening when they are culled.
 	void door_back(float y0, float y1) const {
 		const Paint &p = pl.data->color("door");
@@ -75,7 +75,7 @@ void Ctx::double_door() {
 	}
 	const bool fanlight = h > leaf + FAN_MIN;
 	door_back(o.h0, fanlight ? o.h0 + leaf + FAN_GAP : o.h1);
-	if (fanlight) { // glass over the leaves (Roadcraft facadeEmit.ts doubleDoor: the opening's only glass)
+	if (fanlight) { // glass over the leaves (a double door's fanlight: the opening's only glass)
 		float fan = h - leaf - FAN_GAP, fy = o.h0 + leaf + FAN_GAP + fan / 2;
 		shell.pane(c.f, o.a0, o.a1, fy - fan / 2, o.h1, -o.depth, c.hash, false);
 		part_frame(parts, at(am, fy, o.depth - FRAME_IN, w, fan, FRAME_THIN), c.trim, c.trim_fin);

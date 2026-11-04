@@ -1,5 +1,5 @@
-// Body cache and world placement of the building records (jobs/building40.ts building40 / volumes40,
-// r40/world/buildings/foundation.ts floorHeight): lot frame at the middle of the lot front, +y away from the street;
+// Body cache and world placement of the building records: lot frame at the middle of the lot front, +y away from the
+// street;
 // floor = highest ground under the ground volumes (corners and a 1.5 m grid) + 0.15 m plinth.
 #include "render/buildings/building_bodies.h"
 
