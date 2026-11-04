@@ -1,5 +1,4 @@
-// Segment surface: the profile's strips split into pieces (gutters inside
-// the outer kerbs, the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
+// Segment surface: the profile's strips split into pieces (the ramp band of a footway at a dropped kerb), extruded between the two mouths; vertical faces where
 // neighbouring pieces step in height (kerb faces), skirts down the outer edges and end faces of raised strips.
 #include "render/roads/road_mesh.h"
 
@@ -19,7 +18,9 @@ enum class Ramp : uint8_t { NONE, KERB, LOW_U0, LOW_U1 };
 struct Piece {
 	float u0 = 0, u1 = 0, h = 0;
 	RoadMat mat = RoadMat::ASPHALT;
-	Color col, col_u1; // col_u1 only on a gutter: the colour at u1, where the other is at u0
+	Color col;
+	float edge0 = 0, edge1 = 0, lane = 0; // where wear is read: the surface's two edges, and the lanes' width
+	int tone = 0;
 	Ramp ramp = Ramp::NONE;
 };
 
@@ -46,35 +47,25 @@ bool raised_walk(const Profile &p, int i) { return kind_at(p, i, StripKind::SIDE
 // A kerb between a raised footway and the carriageway (the ones that get gutters and dropped kerbs).
 bool outer_kerb(const Profile &p, int i) { return kind_at(p, i, StripKind::CURB) && (raised_walk(p, i - 1) || raised_walk(p, i + 1)); }
 
-void carriageway(const StreetLook &L, const Profile &p, int i, const Piece &base, std::vector<Piece> &out) {
-	Piece pc = base;
-	bool g0 = outer_kerb(p, i - 1) && !p.rail, g1 = outer_kerb(p, i + 1) && !p.rail;
-	float w = pc.u1 - pc.u0, gw = std::min(L.gutter_w, w * 0.5f);
-	Piece gut = pc;
-	gut.mat = RoadMat::GUTTER;
-	const Color lin = pc.col.srgb_to_linear();
-	const Color dirty = Color(lin.r * L.gutter_shade[0], lin.g * L.gutter_shade[1], lin.b * L.gutter_shade[2]).linear_to_srgb();
-	if (g0) {
-		gut.u0 = pc.u0;
-		gut.u1 = pc.u0 += gw;
-		gut.col = dirty;
-		gut.col_u1 = base.col;
-		out.push_back(gut);
-	}
-	float end = pc.u1;
-	if (g1) pc.u1 -= gw;
-	out.push_back(pc);
-	if (g1) {
-		gut.u0 = pc.u1;
-		gut.u1 = end;
-		gut.col = base.col;
-		gut.col_u1 = dirty;
-		out.push_back(gut);
-	}
+// Where the carriageway around strip `i` begins and ends: its lanes, bays and shoulders, up to a kerb or a raised strip.
+void carriage_span(const Profile &p, int i, float &edge0, float &edge1) {
+	auto flat = [&](int k) {
+		if (k < 0 || k >= int(p.edges.size())) return false;
+		const StripKind kind = p.edges[k].strip.kind;
+		return kind == StripKind::LANE || kind == StripKind::PARKING || kind == StripKind::BIKE || kind == StripKind::SHOULDER;
+	};
+	int a = i, b = i;
+	while (flat(a - 1)) a--;
+	while (flat(b + 1)) b++;
+	edge0 = p.edges[a].u0;
+	edge1 = p.edges[b].u1;
 }
 
 void walk(const StreetLook &L, const Profile &p, int i, const Piece &base, std::vector<Piece> &out) {
 	Piece pc = base;
+	const bool kerb_u1 = outer_kerb(p, i + 1);
+	pc.edge0 = kerb_u1 ? pc.u1 : pc.u0; // from the kerb: the footway's far side is the lot's
+	pc.edge1 = kerb_u1 ? pc.u0 : pc.u1;
 	float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - WALK_KEEP);
 	if (pc.h <= 0 || w < L.ramp_min_walk) {
 		out.push_back(pc);
@@ -119,15 +110,20 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
 				walk(L, p, i, pc, out);
 				continue;
 			case StripKind::MEDIAN:
-				pc.mat = paving_mat(s.pave);
+				pc.mat = s.pave == Paving::CONCRETE ? RoadMat::CONCRETE : paving_mat(s.pave); // no kerb and lot to wear by
 				pc.col = L.median[int(s.pave) & 3];
 				pc.h = s.flush ? 0 : L.h_median;
 				break;
 			case StripKind::BARRIER: pc.mat = RoadMat::CONCRETE; pc.col = L.barrier; pc.h = L.h_barrier; break;
 			default: break;
 		}
-		if (pc.h == 0 && s.kind != StripKind::MEDIAN) carriageway(L, p, i, pc, out);
-		else out.push_back(pc);
+		if (s.kind == StripKind::LANE && pc.mat == RoadMat::ASPHALT && !p.rail) {
+			pc.mat = RoadMat::LANE;
+			pc.lane = s.width;
+			pc.tone = int(p.road_class);
+			carriage_span(p, i, pc.edge0, pc.edge1);
+		}
+		out.push_back(pc);
 	}
 	return out;
 }
@@ -192,6 +188,11 @@ struct Ctx {
 	Vector3 at_u(size_t k, float u, float h) const { return sm[k].f.c + sm[k].f.left * u + Vector3(0, h, 0); }
 };
 
+// The wear coordinates of a piece at `u`. On a footway edge0 is the kerb's side and edge1 the lot's.
+Color wear_at(const Piece &pc, float u) {
+	return wear_color(std::fabs(u - pc.edge0), std::fabs(u - pc.edge1), pc.lane, pc.mat, pc.tone);
+}
+
 void tops(const Ctx &c, const Piece &pc) {
 	for (size_t k = 0; k + 1 < c.sm.size(); k++) {
 		float a0, a1, b0, b1;
@@ -201,7 +202,9 @@ void tops(const Ctx &c, const Piece &pc) {
 		float va = c.sm[k].at, vb = c.sm[k + 1].at;
 		const Vector2 uv[4] = { Vector2(pc.u0, va), Vector2(pc.u1, va), Vector2(pc.u1, vb), Vector2(pc.u0, vb) };
 		const Vector2 uv2[4] = { c.pool(pc.u0, va), c.pool(pc.u1, va), c.pool(pc.u1, vb), c.pool(pc.u0, vb) };
-		const Color at_u0 = road_color(pc.col, pc.mat), at_u1 = pc.mat == RoadMat::GUTTER ? road_color(pc.col_u1, pc.mat) : at_u0;
+		const Color plain = road_color(pc.col, pc.mat);
+		const bool wears = pc.mat == RoadMat::LANE || pc.mat == RoadMat::FOOTWAY;
+		const Color at_u0 = wears ? wear_at(pc, pc.u0) : plain, at_u1 = wears ? wear_at(pc, pc.u1) : plain;
 		const Color cols[4] = { at_u0, at_u1, at_u1, at_u0 };
 		emit_quad(c.e.mb, p, uv, uv2, cols, Vector3(0, 1, 0));
 	}

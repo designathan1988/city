@@ -15,7 +15,7 @@
 namespace city {
 
 // Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
-enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, GUTTER, PAINT, PAVERS, STONE, COBBLE,
+enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE,
 	BALLAST, SKIRT };
 constexpr float MAT_SCALE = 16.f;
 constexpr float MAT_HALF = 0.5f;
@@ -26,10 +26,19 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / MAT_SCALE);
 }
 
+// The wear (road_wear.gdshaderinc) reads how far a vertex is from its surface's two edges in place of a colour: R and G in
+// metres over WEAR_SPAN_M, interpolated exactly across a strip because they are linear in it. On a lane, B is the lane's
+// width over WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
+constexpr float WEAR_SPAN_M = 25.5f, WEAR_LANE_M = 12.75f;
+constexpr float TONE_SLOTS = 8.f;
+inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m, int tone) {
+	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
+}
+
 struct StreetLook {
 	godot::Color surface[4], paving[4], median[4], asphalt[int(RoadClass::COUNT)], bike, shoulder, curb, barrier, plate_concrete;
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0;
-	float gutter_w = 0, gutter_shade[3] = { 1, 1, 1 }, face_eps = 0; // coplanar faces closer than this are one
+	float face_eps = 0; // coplanar faces closer than this are one
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	float arc_step = 0;

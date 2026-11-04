@@ -53,9 +53,6 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.skirt = float(h["skirt"]);
 	L.step = float(t["sample_step_m"]);
 	L.face_eps = float(t["face_eps_m"]);
-	L.gutter_w = float(t["gutter_width_m"]);
-	const Array shade = t["gutter_shade"];
-	for (int i = 0; i < 3; i++) L.gutter_shade[i] = float(shade[i]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
 	L.ramp_full = float(r["full_m"]);
 	L.ramp_flat = float(r["flat_m"]);

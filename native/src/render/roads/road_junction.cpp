@@ -148,7 +148,14 @@ void band(const RoadEmit &e, const Section &a, const Section &b, bool kerbed, co
 		quad(a.i + up_t, b.i + up_t, b.k + up_t, a.k + up_t, L.curb, RoadMat::KERB, UP);
 		quad(a.k + up_s, b.k + up_s, b.k + up_t, a.k + up_t, L.curb, RoadMat::SKIRT, -a.n);
 	}
-	quad(ak + up_s, bk + up_s, b.o + up_s, a.o + up_s, walk, RoadMat::FOOTWAY, UP);
+	{ // the footway round the corner: no kerb at the inner line, the lot at the outer
+		const float wa = (a.o - ak).length(), wb = (b.o - bk).length();
+		const Vector3 p[4] = { ak + up_s, bk + up_s, b.o + up_s, a.o + up_s };
+		const Vector2 uv[4] = { xz(p[0]) + Vector2(0, p[0].y), xz(p[1]) + Vector2(0, p[1].y), xz(p[2]) + Vector2(0, p[2].y), xz(p[3]) + Vector2(0, p[3].y) };
+		const Color cols[4] = { wear_color(0, wa, 0, RoadMat::FOOTWAY, 0), wear_color(0, wb, 0, RoadMat::FOOTWAY, 0),
+				wear_color(wb, 0, 0, RoadMat::FOOTWAY, 0), wear_color(wa, 0, 0, RoadMat::FOOTWAY, 0) };
+		emit_quad(e.mb, p, uv, none, cols, UP);
+	}
 	quad(a.o + down, b.o + down, b.o + up_s, a.o + up_s, walk, RoadMat::SKIRT, -a.n);
 }
 
