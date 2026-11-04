@@ -260,7 +260,7 @@ void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseS
 		drawn_cars_++;
 	}
 	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H_M, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H_M * 2, radius_ * 2));
-	cars_.set(scenario_, car_.rid, RID(), buf, box, true);
+	cars_.set(scenario_, car_.rid, RID(), buf, box, true, LAYER_VEHICLES);
 }
 
 } // namespace city

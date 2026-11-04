@@ -4,8 +4,12 @@
 
 #include "core/units.h"
 
+#include <godot_cpp/classes/rendering_server.hpp>
+
 #include <algorithm>
 #include <cmath>
+
+using namespace godot;
 
 namespace city {
 
@@ -13,6 +17,12 @@ namespace {
 constexpr float NEVER_M = 1e9f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
+
+void range(const MeshDraw &d, float begin, float end) {
+	if (d.inst.is_valid())
+		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, 0, 0,
+				RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+}
 } // namespace
 
 void BuildingRenderer::set_ranges(const CityState &s) {

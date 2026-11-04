@@ -28,12 +28,6 @@ Vector3 super_centre(int64_t key) {
 	return Vector3((float(key_x(key)) + HALF) * SUPERCHUNK, 0, (float(key_y(key)) + HALF) * SUPERCHUNK);
 }
 
-void range(const MeshDraw &d, float begin, float end) {
-	if (d.inst.is_valid())
-		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, 0, 0,
-				RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
-}
-
 float horizontal(const Vector3 &cam, const Vector3 &at) {
 	float dx = cam.x - at.x, dz = cam.z - at.z;
 	return std::sqrt(dx * dx + dz * dz);
