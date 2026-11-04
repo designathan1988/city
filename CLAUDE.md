@@ -1,7 +1,7 @@
 # Cidade — city builder (Godot 4.7 + núcleo C++ GDExtension)
 
 Único documento do projeto. Regras, comandos, mapa do código e pendências ficam aqui; não crie outros
-documentos nem memórias (o hook `tools/gates/hook_pre_write.py` bloqueia). Atualize este arquivo na mesma
+documentos nem memórias (o gate `DOC_UNICO` confere). Atualize este arquivo na mesma
 mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando o mapa diverge do disco.
 
 ## Processo de trabalho (inegociável, toda tarefa, nesta ordem; trabalho direto, sem agentes)
@@ -13,7 +13,7 @@ A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda
 3. **Compreensão e plano** antes de codificar: a solução completa e correta, nunca a mais barata; sem arquivo-deus nem
    funcionalidade espalhada; regras deste arquivo (dono único, sem número mágico, dados em `data/**`, mapa em dia).
 4. **Codificação** sem tentativa e erro: se não deu certo, voltar à documentação até entender.
-5. **Teste:** "Gates OK" em `python3 tools/gates/run_gates.py` (o hook Stop bloqueia); C++ mudou → `tools/build/build.sh
+5. **Teste:** "Gates OK" em `python3 tools/gates/run_gates.py`; C++ mudou → `tools/build/build.sh
    core` / `core-windows` (DLL de release e de debug); visível mudou → `tools/build/build.sh e2e`. Medir de novo: quadros
    sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos analisadas com atenção (contra a referência e
    o estado anterior): nenhuma perda de qualidade visual; todo problema achado é corrigido.
@@ -75,7 +75,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Mapa do código
 <!-- MAPA:INICIO -->
 **Raiz e ferramentas**
-- `.claude/settings.json` — hooks: gates na sessão, a cada edição e ao parar; memória automática desligada
+- `.claude/settings.json` — memória automática desligada; sem hooks (os gates rodam na etapa de teste)
 - `native/CMakeLists.txt` — Godot 4.7 API, precisão simples, saída em `project/bin`
 - `native/toolchain-mingw.cmake` — compilação cruzada Windows via llvm-mingw
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
@@ -300,7 +300,6 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
   documento único, tamanhos e cabeçalhos; tuning ↔ JSON e espelhos
-- `tools/gates/hook_post_edit.py` · `tools/gates/hook_pre_write.py` — gates do arquivo editado; bloqueia documentos novos
 - `tools/gates/owners.json` · `tools/gates/rules.json` · `tools/gates/run_gates.py` — donos únicos, configuração, executa todos
 <!-- MAPA:FIM -->
 

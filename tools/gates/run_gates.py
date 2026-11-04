@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Project gates. Run before finishing any change: python3 tools/gates/run_gates.py
-Exit 2 + report on stderr when something fails (the Claude Code Stop hook uses this to block).
-Flags: --summary (short context for SessionStart), --file PATH (fast check of one edited file)."""
+Exit 2 + report on stderr when something fails.
+Flags: --summary (one-line result), --file PATH (fast check of one edited file)."""
 import json
 import os
 import sys
@@ -58,7 +58,7 @@ def main():
     try:
         only = args[args.index("--file") + 1] if "--file" in args else None
         problems = run(only)
-    except Exception as e:  # a crashing gate must still block (exit 1 would be ignored by the hook)
+    except Exception as e:  # a crashing gate is a failed run, never a pass
         problems = [f"[GATE_RUNNER] o verificador falhou: {e!r}"]
     if "--summary" in args:
         state = "OK" if not problems else f"{len(problems)} problema(s)"
