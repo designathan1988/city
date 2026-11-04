@@ -206,6 +206,7 @@
    "roughness": 0.8,
    "leaf_specular": 0.5,
    "cover_per_mip": 0.25,
+   "leaf_edge": 0.3,
    "leaf_near_m": 22.0,
    "leaf_far_m": 70.0
   }

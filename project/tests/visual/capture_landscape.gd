@@ -8,6 +8,7 @@ const TOWN_MAP := 0
 const SEED := 7
 const SETTLE_FRAMES := 240
 const SHOT_FRAMES := 30
+const GPU_STEP_MS := 0.01
 const FIELD_AT := Vector2(3000.0, 0.0) # the 4.0 runs' setView x and -y: the same ground in both games
 const PAINT_AT := Vector2(4500.0, -1500.0)
 const RIVER_AT := Vector2(3000.0, 2250.0)
@@ -53,6 +54,7 @@ func _ready() -> void:
 	add_child(world)
 	rig = CityCamera.new()
 	add_child(rig)
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
 		push_error("boot: %s" % errors)
@@ -92,7 +94,11 @@ func shot(name: String, at: Vector3, azimuth: float, tilt: float, zoom: float) -
 	await _frames(SHOT_FRAMES)
 	while CityStore.query(&"render_pending") > 0:
 		await get_tree().process_frame
-	await _frames(SHOT_FRAMES)
+	var gpu_ms := 0.0
+	for i in SHOT_FRAMES:
+		await get_tree().process_frame
+		gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid())
+	print("gpu ", name, " ", snappedf(gpu_ms / SHOT_FRAMES, GPU_STEP_MS), " ms")
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
 
@@ -138,6 +144,8 @@ func _measure_card(c: Vector3) -> bool:
 		await LandscapeCards.ramp(self, c)
 	elif only.has("cubo_a"):
 		await LandscapeCards.cube(self, c)
+	elif only.has("trama_3_10"):
+		await LandscapeCards.weave(self, c)
 	elif only.has("solta_palma"):
 		await LandscapeCards.alone(self, _ground(BARE_AT.x, BARE_AT.y))
 	elif only.has("arv_perto"):

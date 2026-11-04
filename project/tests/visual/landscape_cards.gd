@@ -11,6 +11,12 @@ const RAMP_HEIGHT_M := 80.0
 const CUBE_SIZE := Vector3(40.0, 120.0, 40.0)
 const CUBE_ALBEDO := 0.216
 const TREE_KINDS := 3
+const PILLAR_SIZE := Vector3(6.0, 50.0, 6.0)
+const PILLAR_LIFT_M := 30.0
+const PILLARS: Array[Vector2] = [Vector2(37.0, -20.0), Vector2(17.0, -40.0)]
+const SHADOW_FILTERS: Array[int] = [2, 3, 4, 5]
+const SHADOW_BLURS: Array[float] = [1.0, 0.6]
+const BLUR_TENTHS := 10.0
 const TREE_APART_M := 20.0
 const TREE_DAB_M := 4.0
 const TREE_DENSITY := 200.0
@@ -51,6 +57,26 @@ static func cube(on: Node3D, at: Vector3) -> void:
 	on.add_child(cube_node)
 	await on.shot("cubo_a", Vector3(at.x, 0.0, at.z), 45.0, 35.0, 3.0)
 	await on.shot("cubo_b", Vector3(at.x, 0.0, at.z), 225.0, 35.0, 3.0)
+
+
+## The shadow's edge on a plain wall, for each filter and blur: two pillars cast on the lit faces of the grey box.
+static func weave(on: Node3D, at: Vector3) -> void:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(CUBE_ALBEDO, CUBE_ALBEDO, CUBE_ALBEDO).linear_to_srgb()
+	m.roughness = 1.0
+	for spot: Vector3 in [Vector3.ZERO, Vector3(PILLARS[0].x, 0, PILLARS[0].y), Vector3(PILLARS[1].x, 0, PILLARS[1].y)]:
+		var box := BoxMesh.new()
+		box.size = CUBE_SIZE if spot == Vector3.ZERO else PILLAR_SIZE
+		box.material = m
+		var node := MeshInstance3D.new()
+		node.mesh = box
+		node.position = Vector3(at.x, 0.0 if spot == Vector3.ZERO else PILLAR_LIFT_M, at.z) + spot
+		on.add_child(node)
+	for f in SHADOW_FILTERS:
+		for b in SHADOW_BLURS:
+			RenderingServer.directional_soft_shadow_filter_set_quality(f as RenderingServer.ShadowQuality)
+			on.world.sun.shadow_blur = b
+			await on.shot("trama_%d_%d" % [f, roundi(b * BLUR_TENTHS)], at + Vector3(0, 20.0, 0), 45.0, 15.0, 6.0)
 
 
 ## An oak, a cypress and a palm planted side by side.
