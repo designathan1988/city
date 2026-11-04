@@ -38,6 +38,7 @@ public:
 	// Build > Models (city_core_models.cpp): a body in hand travels as bytes.
 	godot::Array model_list() const;
 	godot::PackedByteArray model_bytes(const godot::String &id) const;
+	godot::Dictionary doc_body(const godot::Dictionary &doc) const;
 	godot::Dictionary building_bytes(int id) const;
 	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
 	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;

@@ -35,7 +35,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"model_list": "model_list", &"model_bytes": "model_bytes", &"building_bytes": "building_bytes", &"body_size": "body_size",
+	&"model_list": "model_list", &"model_bytes": "model_bytes", &"doc_body": "doc_body", &"building_bytes": "building_bytes", &"body_size": "body_size",
 	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
 	&"overlays": "overlays", &"save_status": "save_status", &"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
 	&"landscape": "landscape", &"cloud_at": "cloud_at",

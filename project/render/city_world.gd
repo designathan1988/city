@@ -18,7 +18,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
 	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
 	"res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
-	"res://render/shaders/building_glass.gdshader",
+	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)

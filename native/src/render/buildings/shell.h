@@ -90,6 +90,7 @@ struct Shell {
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
+	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
 
 	bool empty() const { return idx.empty() && boxes.empty(); }

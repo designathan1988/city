@@ -431,6 +431,7 @@
    ],
    "strict": true
   },
+  "building_sheer": { "type": "object", "required": ["shader", "params"], "properties": { "shader": { "type": "string" }, "params": { "type": "object", "required": ["opacity", "roughness", "metalness"], "properties": { "opacity": { "type": "number" }, "roughness": { "type": "number" }, "metalness": { "type": "number" } }, "strict": true } }, "strict": true },
   "building_ghost": {
    "type": "object",
    "required": [
