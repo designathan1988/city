@@ -50,15 +50,17 @@ struct Canvas {
 				float dx = x + HALF_F - cx, dy = y + HALF_F - cy;
 				float u = dx * c + dy * s, v = -dx * s + dy * c;
 				float e = (u * u) / (a * a) + (v * v) / (b * b);
-				// The edge in pixels from the rim, so a leaf seen close is cut along a smooth line and not along the atlas's steps.
-				float cover = std::clamp((1.f - std::sqrt(e)) * std::min(a, b) + HALF_F, 0.f, 1.f);
+				// Every line of the leaf in pixels from it, so a leaf seen close runs along a smooth line and not along the atlas's steps.
+				float r = std::sqrt(e), side = std::min(a, b);
+				float cover = std::clamp((1.f - r) * side + HALF_F, 0.f, 1.f);
 				if (cover <= 0.f) continue;
-				float t = e > L.rim_share * L.rim_share ? tone - L.rim : tone * (v < 0 ? 1.f + L.lit_lift : 1.f);
-				uint8_t g = uint8_t(std::clamp(t, 0.f, 1.f) * BYTE), alpha = uint8_t(cover * BYTE);
+				float inside = std::clamp((L.rim_share - r) * side + HALF_F, 0.f, 1.f), lit = std::clamp(HALF_F - v, 0.f, 1.f);
+				float t = std::clamp(tone - L.rim + (tone * (1.f + L.lit_lift * lit) - tone + L.rim) * inside, 0.f, 1.f);
+				// Over the leaves already there, so its edge is as smooth against them as against the air.
 				uint8_t *p = d + size_t((y * w + x) * RGBA);
-				if (alpha < p[ALPHA]) continue; // the edge of a leaf does not cut into the one under it
-				p[0] = p[1] = p[2] = g;
-				p[ALPHA] = alpha;
+				float under = p[ALPHA] / BYTE * (1.f - cover), all = cover + under;
+				p[0] = p[1] = p[2] = uint8_t((t * cover + p[0] / BYTE * under) / all * BYTE);
+				p[ALPHA] = uint8_t(all * BYTE);
 			}
 	}
 };
