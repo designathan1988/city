@@ -184,6 +184,7 @@ struct TrafficState {
 	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
+	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
 	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds

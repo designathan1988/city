@@ -192,6 +192,10 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		// over the stop line on red (probe): from a standstill there, the gate let it run the red
 		if (through && line_was > 0 && L - v.s - t.g.ds[ds].stop_back <= 0 && light_for(s, ds) == Light::RED) {
 			t.red_entries++;
+			t.red_last[0] = float(v.type);
+			t.red_last[1] = v.v;
+			t.red_last[2] = float(ds);
+			t.red_last[3] = float(t.time);
 			t.red_from_stop += v.stood ? 1 : 0;
 		}
 	}
