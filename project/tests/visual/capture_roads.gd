@@ -1,4 +1,3 @@
-## The game's day sun is fixed at 16:00, as the 4.0's day mode (renderer.ts): both photos stand under the same sun.
 ## Captures of the roads up close, on open ground where nothing stands in front of them: the same crossings, T junction,
 ## road end and curve the Roadcraft 4.0 photos show, then the road tool in use with real mouse events. Works on a build
 ## without the road paths too (no px argument, no freehand), so one script takes the "before" and the "after".
@@ -22,6 +21,7 @@ const STROKE_STEPS := 40
 const STROKE_SWING_M := 34.0
 const POINTER_AIMS := 40
 const POINTER_VIEWS_M: Array[float] = [NEAR_M, CLOSE_M, WIDE_M]
+const WEAR_UPLOAD_S := 3.0
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -44,7 +44,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
 	add_child(world)
-	Settings.apply(world, get_viewport()) # as the player sees it: the viewport's anti-aliasing comes from here
+	PairCamera.quality(world, get_viewport())
 	rig = CityCamera.new()
 	add_child(rig)
 	var errors := CityStore.boot(world.terrain, world.materials())
@@ -99,6 +99,7 @@ func _run() -> void:
 	await _pair("median_nose_low", at(480, -60), 30.0, 30.0, 30.0)
 	await _pair("median_paved_top", at(640, 0), 20.0, 62.0, 14.0)
 	await _pair("median_paved_low", at(640, 0), 30.0, 30.0, 30.0)
+	await _worn(at(480, -60))
 	await _photo("bend_top", at(0, 300), [0.0, 62.0], NEAR_M * 2.0)
 	await _photo("t_close", at(90, 100), [0.0, 90.0], CLOSE_M)
 	await _night()
@@ -163,6 +164,19 @@ func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -
 		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " de novo")
 	await ui.shot(name)
 	rig.set_process(true)
+
+
+func _worn(p: Vector3) -> void:
+	print("altura da via no cruzamento do canteiro: %.3f m" % p.y)
+	if not only.is_empty() and not only.has("worn_low"):
+		return
+	await PairCamera.stand(rig, ui, p, 30.0, 30.0, 30.0) # the field's window follows the view: it must be here before the wear is
+	await ui.frames(JUMP_SETTLE_FRAMES)
+	PairCamera.lay_wear(p)
+	await get_tree().create_timer(WEAR_UPLOAD_S).timeout
+	rig.set_process(true)
+	await _pair("worn_top", p, 20.0, 62.0, 14.0)
+	await _pair("worn_low", p, 30.0, 30.0, 30.0)
 
 
 ## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.

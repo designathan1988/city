@@ -76,6 +76,7 @@ public:
 	RoadChunks::Count verge_count() const { return verges_.count(); }
 	void draw_verges(bool on) { verges_.draw(on); }
 	int64_t wear_bytes() const { return wear_.bytes(); }
+	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
 		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + verges_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();

@@ -78,6 +78,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 	ClassDB::bind_method(D_METHOD("road_mesh_counts"), &CityCore::road_mesh_counts);
 	ClassDB::bind_method(D_METHOD("draw_verges", "on"), &CityCore::draw_verges);
+	ClassDB::bind_method(D_METHOD("wear_paint", "x0", "z0", "x1", "z1", "value"), &CityCore::wear_paint);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);
 }

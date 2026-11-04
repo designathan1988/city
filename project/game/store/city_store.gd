@@ -34,7 +34,7 @@ const COMMANDS := {
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "job_pool_probe", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
-	&"render_cost": "render_cost", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
+	&"render_cost": "render_cost", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",
 	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles", &"node_at": "node_at", &"junctions": "junctions", &"moved_roads": "moved_roads",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",

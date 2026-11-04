@@ -167,6 +167,7 @@ public:
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)
 	godot::Dictionary road_mesh_counts() const; // what the road and verge chunks hold and the wear field's bytes
 	void draw_verges(bool on) { render_.draw_verges(on); } // tests/perf/camera_pan: a frame without them
+	void wear_paint(float x0, float z0, float x1, float z1, float value) { render_.wear_paint(x0, z0, x1, z1, value); } // tests/visual: a set use
 	godot::Dictionary job_pool_probe() const;
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
