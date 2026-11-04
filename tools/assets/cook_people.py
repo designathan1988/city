@@ -23,6 +23,8 @@ import sys
 
 import numpy as np
 
+import people_clean
+
 MAGIC = b"RCPP"
 VERSION = 2
 LODS = (0, 1)  # Roadcraft LOD0 (~4k tris) near, LOD1 (~600 tris) far
@@ -111,6 +113,7 @@ def cook(src, out):
     block_rows = pedal_row + pedal_frames
     heads, bodies, rows = [], [], []
     worst = 0.0
+    head_verts = waist_verts = 0
     for v in variations:
         clip = clips[v["clipSet"]]
         block = np.zeros((block_rows, nb, 12), dtype="<f4")
@@ -135,10 +138,13 @@ def cook(src, out):
             vert = np.zeros(len(used), dtype=[("p", "<f4", 3), ("n", "<f4", 3), ("c", "<u4"), ("b", "<u4"), ("w", "<u4"), ("d", "<f4")])
             vert["p"] = vpos[used, :3]
             vert["n"] = normals[used]
-            vert["c"] = vattr[used, 1]
+            colour, faces = people_clean.clean_head(vattr[used, 1], vattr[used, 2], meta["bones"])
+            vert["c"], detail, waist = people_clean.clean_waist(colour, vpos[used, 1], vpos[used, 3], vattr[used, 2], meta["bones"])
+            head_verts += faces
+            waist_verts += waist
             vert["b"] = vattr[used, 2]
             vert["w"] = vattr[used, 3]
-            vert["d"] = vpos[used, 3]
+            vert["d"] = detail
             bodies.append(vert.tobytes() + local.astype("<u2").tobytes())
         heads.append(head)
     pal = np.concatenate(rows, axis=0)  # frames x bones x 12
@@ -149,6 +155,7 @@ def cook(src, out):
     open(f"{out}/people.bin", "wb").write(blob)
     licenses(src, out)
     print(f"{len(variations)} variations, palette {nb * BONE_TEXELS}x{pal.shape[0]}, {len(blob) / 1e6:.2f} MB, idle resampled to within {worst:.4f}")
+    print(f"{head_verts} head vertices in the body's skin, {waist_verts} waist vertices dressed")
 
 
 if __name__ == "__main__":
