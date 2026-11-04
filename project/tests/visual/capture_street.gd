@@ -45,9 +45,9 @@ const SIGNS_SIDE_M := 6.0
 const SIGNS_ALONG_M := 12.0
 const ALONG_BACK_M := 50.0
 const ALONG_UP_M := 42.0
-const LOW_BACK_M := 22.0
+const LOW_BACK_M := 14.0
 const LOW_SIDE_M := 8.0
-const LOW_UP_M := 13.0
+const LOW_UP_M := 9.0
 const LOW_LOOK_SHARE := 0.35
 const LOW_LOOK_M := 5.0
 
@@ -177,9 +177,11 @@ func _poles(a: Vector3, b: Vector3) -> void:
 func _shot_low(name: String, a: Vector3, b: Vector3) -> void:
 	var held := rig.camera.global_transform
 	var dir := (b - a).normalized()
+	hud.visible = false
 	rig.camera.global_position = a - dir * LOW_BACK_M + dir.cross(Vector3.UP) * LOW_SIDE_M + Vector3.UP * LOW_UP_M
 	rig.camera.look_at(a.lerp(b, LOW_LOOK_SHARE) + Vector3.UP * LOW_LOOK_M)
 	await ui.shot(name)
+	hud.visible = true
 	rig.camera.global_transform = held
 	await ui.frames(2)
 
