@@ -19,9 +19,6 @@ constexpr float HALF = 0.5f, DROP_K = 1.5f;
 constexpr float RGBA_MAX = 255.f;
 constexpr int R_SHIFT = 24, G_SHIFT = 16, B_SHIFT = 8, JAM_STOPS = 3;
 constexpr uint32_t BYTE = 0xff;
-constexpr int64_t ZONE_JOB_OFFSET = 1 << 19; // keeps zone job keys apart from the other renderers' chunk jobs
-
-int64_t zone_job_key(int64_t key) { return cell_key(key_x(key) + int(ZONE_JOB_OFFSET), key_y(key) + int(ZONE_JOB_OFFSET)) * 4 + 0; }
 } // namespace
 
 bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -99,7 +96,7 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key) {
 		seq = ++seq_;
 		requested_[key] = seq;
 	}
-	s.jobs->submit(zone_job_key(key), priority, [this, &s, key, seq, priority]() {
+	s.jobs->submit(JobKey{ JobLane::ZONES, key }, priority, [this, &s, key, seq, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		Built b;
 		b.key = key;

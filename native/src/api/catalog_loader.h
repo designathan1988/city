@@ -23,4 +23,7 @@ bool load_traffic_params(const godot::Dictionary &t, TrafficParams &p, godot::Pa
 // data/catalog/street_furniture.json (api/furniture_loader.cpp).
 bool load_street_furniture(const godot::Dictionary &t, StreetFurnitureDef &d, godot::PackedStringArray &errors);
 
+// data/catalog/nature.json (api/nature_loader.cpp).
+bool load_nature(const godot::Dictionary &t, NatureDef &n, godot::PackedStringArray &errors);
+
 } // namespace city

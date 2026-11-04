@@ -16,6 +16,9 @@
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
 extends Node3D
 
+const BYTE_TOP := 255.0
+const GRADE_LEVELS_OFF := 1.0
+const GRADE_TABLE := {0.0: [0.0, 0.0, 0.0], 46.0: [38.2, 38.2, 38.1], 127.0: [129.4, 127.9, 125.1], 255.0: [255.0, 255.0, 251.4]}
 const LENSES := 5 # prop_kit.h Lens::COUNT
 const LENS_TAG := 3.0 # prop_kit.h PropTag::LENS (UV2.x)
 const GLOW_TAG := 2.0 # prop_kit.h PropTag::NIGHT_GLOW
@@ -34,6 +37,7 @@ const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
 const BYTE := 255.0
 const TOLERANCE := 1 # in 8-bit steps
+const LENS_STEPS := 3 # the signal green sits at the edge of the gamut: ACES has no radiance that lands on it exactly
 
 var failures := 0
 var world: CityWorld
@@ -53,6 +57,7 @@ func _ready() -> void:
 	await _lenses(material)
 	await _night(material, world.materials()["road"])
 	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FALHAS: ", failures)
+	_check_grade()
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -79,7 +84,7 @@ func _lenses(material: ShaderMaterial) -> void:
 	var img := get_viewport().get_texture().get_image()
 	var want := _lens_colours()
 	for k in LENSES:
-		_compare(img, centres[k], want[k], "lente %d" % k)
+		_compare(img, centres[k], want[k], "lente %d" % k, LENS_STEPS)
 	for n in nodes:
 		n.queue_free()
 
@@ -119,10 +124,21 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "luz da via (placa de cruzamento)")
 
 
-func _compare(img: Image, at: Vector3, want: Color, what: String) -> void:
+## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.
+func _check_grade() -> void:
+	var grade: Dictionary = DataTables.game("daylight").grade
+	for level: float in GRADE_TABLE:
+		var got: Color = CityStore.query(&"film_graded", [grade, Color(level / BYTE_TOP, level / BYTE_TOP, level / BYTE_TOP)])
+		var want: Array = GRADE_TABLE[level]
+		var off := maxf(maxf(absf(got.r * BYTE_TOP - want[0]), absf(got.g * BYTE_TOP - want[1])), absf(got.b * BYTE_TOP - want[2]))
+		_check(off <= GRADE_LEVELS_OFF, "gradação de %d: %s, o 4.0 dá %s" % [int(level), got.to_html(false), want])
+
+
+func _compare(img: Image, at: Vector3, wanted: Color, what: String, steps := TOLERANCE) -> void:
+	var want: Color = CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := img.get_pixelv(Vector2i(cam.unproject_position(at).round()))
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	_check(off <= TOLERANCE, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false),
+	_check(off <= steps, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false),
 			want.to_html(false), off])
 
 

@@ -5,6 +5,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "render/film_grade.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -97,6 +98,14 @@ Dictionary CityCore::constants() const {
 	for (const RenderLayerName &l : RENDER_LAYERS) layers[l.name] = int64_t(l.bit);
 	d["render_layers"] = layers;
 	return d;
+}
+
+TypedArray<Image> CityCore::film_grade(const Dictionary &grade) const {
+	return film_grade_slices(grade);
+}
+
+Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const {
+	return city::film_graded(grade, colour);
 }
 
 Dictionary CityCore::snapshot() {

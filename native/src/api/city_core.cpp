@@ -2,6 +2,8 @@
 #include "api/city_core.h"
 
 #include "api/buildings_loader.h"
+#include "api/interiors_loader.h"
+#include "api/models_loader.h"
 #include "api/catalog_loader.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -31,6 +33,7 @@ CityCore::~CityCore() {
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();
 	render_.reset();
+	render_.shutdown();
 }
 
 Object *CityCore::terrain3d() const {
@@ -58,6 +61,8 @@ PackedStringArray CityCore::setup_render(const Dictionary &tables, const Diction
 	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.
 	state_->buildings.designs = b40::Data{};
 	if (!load_buildings(tables.get("buildings", Dictionary()), state_->buildings.designs, errors)) return errors;
+	if (!load_models(tables.get("models", Dictionary()), state_->buildings.designs, errors)) return errors;
+	if (!load_interiors(tables.get("interiors", Dictionary()), state_->buildings.designs.interior, errors)) return errors;
 	RenderContext ctx;
 	ctx.scenario = get_world_3d()->get_scenario();
 	materials_ = materials;
@@ -92,6 +97,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city) {
 	d["segments"] = r.segments;
 	d["lots"] = r.lots;
 	d["buildings"] = r.buildings;
+	d["squares"] = r.squares;
 	d["seconds"] = r.seconds;
 	return d;
 }
@@ -106,6 +112,8 @@ void CityCore::set_speed(int speed) {
 }
 
 int CityCore::get_speed() const { return int(sim_.speed()); }
+
+void CityCore::set_day_hour(double hour) { state_->clock.set_hour(hour); }
 
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
@@ -130,6 +138,10 @@ void CityCore::_process(double delta) {
 	const PoseSample at = poses.sample(now - int64_t(state_->catalog.tune.render_pose_delay_ticks * double(poses.period_ns)));
 	note_pose(poses, fresh, at);
 	render_.update_agents(poses, cam_, at); // no map lock: the frame is the published snapshot
+	const int64_t published = poses.stamp_ns[POSE_TRAIL - 1];
+	const double ticks = fresh && poses.period_ns > 0 && wear_stamp_ns_ > 0 ? double(published - wear_stamp_ns_) / double(poses.period_ns) : 0;
+	if (fresh) wear_stamp_ns_ = published;
+	render_.update_wear(poses, fresh, float(ticks / state_->catalog.tune.sim_tick_hz), cam_, float(delta));
 	render_.update_signals(poses);
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {

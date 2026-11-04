@@ -61,7 +61,7 @@ void RoadRenderer::commit_one(BuiltMesh &b) {
 }
 
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
-	submit_job(s, pool, key * 4 + 0, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
+	submit_job(s, pool, JobKey{ JobLane::ROADS, key }, key, priority, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });
 }
 
 void RoadRenderer::drop_chunk(int64_t key) {

@@ -9,7 +9,6 @@ signal changed
 
 const PATH := "user://settings.cfg"
 const SECTION := "graphics"
-const MS_PER_S := 1000.0
 
 var preset := ""
 var kept: Dictionary = {} # shadows, ssao, smaa chosen over the tier
@@ -37,7 +36,7 @@ func _ready() -> void:
 	var cfg := ConfigFile.new()
 	if not GameFlow.tests_drive: # tests and captures run on the tables' defaults, whatever the player or another clone left in the file
 		cfg.load(PATH)
-	preset = known_preset(cfg.get_value(SECTION, "preset", t.default))
+	preset = known_preset(t.tests_preset if GameFlow.tests_drive else cfg.get_value(SECTION, "preset", t.default))
 	kept = cfg.get_value(SECTION, "kept", {})
 	dynamic_resolution = cfg.get_value(SECTION, "dynamic_resolution", false)
 	fps_limit = cfg.get_value(SECTION, "fps_limit", int(t.frame_cap.max_fps))
@@ -48,7 +47,7 @@ func _ready() -> void:
 	optimizations = cfg.get_value(SECTION, "optimizations", {})
 	layers = cfg.get_value(SECTION, "layers", t.layers.duplicate())
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
-	level = hardware if preset == "auto" else preset
+	level = QualityTier.level_of(preset, hardware)
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
 	_resolution = FrameGovernor.Resolution.new(t.dynamic_resolution)
 	Engine.max_fps = fps_limit
@@ -147,7 +146,7 @@ func apply_now() -> void:
 ## Auto or a tier; a tier chosen by hand forgets what was chosen over the last one.
 func set_preset(next: String) -> void:
 	preset = known_preset(next)
-	level = hardware if preset == "auto" else preset
+	level = QualityTier.level_of(preset, hardware)
 	kept = {}
 	_quality_governor.set_level(level)
 	_resolution.reset()
@@ -203,13 +202,6 @@ func switches_changed() -> void:
 	_save()
 
 
-## The GPU's last frame against the budget: the refresh rate or the player's limit.
-func _budget_ms() -> float:
-	var hz := DisplayServer.screen_get_refresh_rate()
-	var fps := float(fps_limit) if fps_limit > 0 else (hz if hz > 0.0 else float(DataTables.game("settings").frame_cap.max_fps))
-	return MS_PER_S / fps
-
-
 ## The detail cut-off: the camera crossing the tier's zoom, in either direction, redraws the mask; nothing else happens per frame.
 func _follow_zoom() -> void:
 	var rig := _viewport.get_camera_3d().get_parent() as CityCamera if _viewport.get_camera_3d() != null else null
@@ -236,7 +228,7 @@ func _process(delta: float) -> void:
 	if GameFlow.tests_drive:
 		return
 	var gpu := RenderingServer.viewport_get_measured_render_time_gpu(_viewport.get_viewport_rid())
-	var budget := _budget_ms()
+	var budget := QualityTier.budget_ms(fps_limit)
 	if preset == "auto":
 		var next := _quality_governor.sample(delta, gpu, budget)
 		if next != "" and next != level:
@@ -246,3 +238,11 @@ func _process(delta: float) -> void:
 			return
 	if dynamic_resolution and _resolution.sample(gpu, budget) > 0.0:
 		apply_now()
+
+
+## What a capture asks for on a world of its own: the preset in `preset`, with no window or layer of the player's.
+func apply(world: CityWorld, viewport: Viewport) -> void:
+	_world = world
+	_viewport = viewport
+	level = QualityTier.level_of(preset, hardware)
+	apply_now()

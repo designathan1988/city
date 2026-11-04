@@ -61,10 +61,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _terrain_key(k: InputEventKey) -> bool:
 	var ch := String.chr(k.unicode) if k.unicode > 0 else ""
 	if _terrain.has(ch):
-		hud.drawer.step_brush(_terrain[ch][0], _terrain[ch][1])
+		LandHands.step_brush(hud.drawer, _terrain[ch][0], _terrain[ch][1])
 		return true
 	if k.keycode >= KEY_1 and k.keycode <= KEY_9:
-		return hud.drawer.pick_relief(k.keycode - KEY_1)
+		return LandHands.pick_relief(hud.drawer, k.keycode - KEY_1)
 	return false
 
 

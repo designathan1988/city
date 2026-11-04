@@ -10,6 +10,7 @@ const PERCENT := 100.0
 var mode := 0
 var radius := 0.0
 var strength := 0.0
+var hardness := 0.0
 var _at := Vector3.INF
 var _held := 0.0
 
@@ -19,14 +20,16 @@ func enter() -> void:
 	mode = params.get("mode", 0)
 	radius = params.get("radius", spec.radius.default)
 	strength = params.get("strength", spec.strength.default) / PERCENT
+	hardness = params.get("hardness", spec.hardness.default) / PERCENT
 	ctl.hint.emit("", true)
 
 
 func _spec() -> Dictionary:
-	for c in DataTables.ui("drawers").categories:
-		if c.has("brush"):
-			return c.brush
-	return {}
+	var out := {}
+	for s in DataTables.ui("land_panels").TERRAIN.sliders:
+		if s.has("key"):
+			out[s.key] = s
+	return out
 
 
 func exit() -> void:
@@ -65,6 +68,10 @@ func release(_p: Vector3) -> void:
 
 
 func _dab(dt: float) -> void:
-	var r: Dictionary = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode])
+	var r: Dictionary
+	if mode < 0: # the gully brush: cut or wipe, on the light the land reads (sim/nature/ground_paint.h)
+		r = CityStore.dispatch(&"paint_brush", [_at, radius, strength * dt / DAB_S, 0.0, mode])
+	else:
+		r = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode, hardness])
 	if not r.get("ok", false):
 		ctl.hint.emit(refusal(r), false)

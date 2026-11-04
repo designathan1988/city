@@ -1,0 +1,64 @@
+{
+ "ELEMENTS": {
+  "switch": [
+   { "label_key": "terrain.trees", "tool": "TREES", "icon": "ls_tree" },
+   { "label_key": "terrain.elements", "tool": "ELEMENTS", "icon": "el_stones" }
+  ],
+  "groups": [
+   { "key": "kind", "default": 0, "cards": [
+     { "label_key": "el.kind.stones", "value": 0, "icon": "el_stones" },
+     { "label_key": "el.kind.pebbles", "value": 1, "icon": "el_pebbles" },
+     { "label_key": "el.kind.gravel", "value": 2, "icon": "el_gravel" },
+     { "label_key": "el.kind.leaves", "value": 3, "icon": "el_leaves" },
+     { "label_key": "el.kind.grass", "value": 4, "icon": "el_grass" },
+     { "label_key": "el.kind.tallGrass", "value": 5, "icon": "el_tallGrass" },
+     { "label_key": "el.kind.scrub", "value": 6, "icon": "el_scrub" },
+     { "label_key": "el.kind.fern", "value": 7, "icon": "el_fern" },
+     { "label_key": "el.kind.clover", "value": 8, "icon": "el_clover" },
+     { "label_key": "el.kind.flowers", "value": 9, "icon": "el_flowers" },
+     { "label_key": "el.kind.mushrooms", "value": 10, "icon": "el_mushrooms" },
+     { "label_key": "el.kind.smoke", "value": 11, "icon": "el_smoke" },
+     { "label_key": "el.kind.fire", "value": 12, "icon": "el_fire" },
+     { "label_key": "el.kind.steam", "value": 13, "icon": "el_steam" },
+     { "label_key": "el.kind.dust", "value": 14, "icon": "el_dust" },
+     { "label_key": "el.kind.soot", "value": 15, "icon": "el_soot" },
+     { "label_key": "el.kind.sparks", "value": 16, "icon": "el_sparks" },
+     { "label_key": "el.kind.spray", "value": 17, "icon": "el_spray" }
+    ] },
+   { "key": "mode", "default": 0, "cards": [
+     { "label_key": "el.mode.lay", "value": 0, "icon": "plus" },
+     { "label_key": "el.mode.eraseKind", "value": 1, "icon": "trash" },
+     { "label_key": "el.mode.eraseAll", "value": 2, "icon": "trash" }
+    ] }
+  ],
+  "sliders": [
+   { "key": "radius", "label_key": "terrain.radius", "min": 2, "max": 120, "step": 1, "default": 12, "unit": " m" },
+   { "key": "strength", "label_key": "el.strength", "min": 1, "max": 100, "step": 1, "default": 60 },
+   { "key": "variation", "label_key": "el.variation", "min": 0, "max": 100, "step": 1, "default": 40 },
+   { "key": "intensity", "label_key": "el.intensity", "min": 0, "max": 100, "step": 1, "default": 50 }
+  ],
+  "actions": [
+   { "label_key": "el.clear", "icon": "trash", "action": "clear_elements" }
+  ],
+  "kind_brush": [
+   { "density": 2, "size": 1.2, "variation": 60, "spacing": 2, "strength": 60, "intensity": 50 },
+   { "density": 30, "size": 0.3, "variation": 50, "spacing": 0.4, "strength": 60, "intensity": 50 },
+   { "density": 120, "size": 0.12, "variation": 40, "spacing": 0.15, "strength": 60, "intensity": 50 },
+   { "density": 6, "size": 1.6, "variation": 40, "spacing": 0.8, "strength": 60, "intensity": 50 },
+   { "density": 40, "size": 0.5, "variation": 40, "spacing": 0.3, "strength": 60, "intensity": 50 },
+   { "density": 20, "size": 0.9, "variation": 40, "spacing": 0.5, "strength": 60, "intensity": 50 },
+   { "density": 6, "size": 1.2, "variation": 50, "spacing": 1, "strength": 60, "intensity": 50 },
+   { "density": 4, "size": 1.1, "variation": 40, "spacing": 1, "strength": 60, "intensity": 50 },
+   { "density": 30, "size": 0.25, "variation": 40, "spacing": 0.2, "strength": 60, "intensity": 50 },
+   { "density": 12, "size": 0.5, "variation": 40, "spacing": 0.4, "strength": 60, "intensity": 50 },
+   { "density": 6, "size": 0.25, "variation": 50, "spacing": 0.3, "strength": 60, "intensity": 50 },
+   { "density": 0.3, "size": 3, "variation": 30, "spacing": 8, "strength": 100, "intensity": 60 },
+   { "density": 0.3, "size": 2, "variation": 30, "spacing": 4, "strength": 100, "intensity": 60 },
+   { "density": 0.3, "size": 2, "variation": 30, "spacing": 6, "strength": 100, "intensity": 50 },
+   { "density": 0.3, "size": 4, "variation": 30, "spacing": 8, "strength": 100, "intensity": 40 },
+   { "density": 0.3, "size": 3, "variation": 30, "spacing": 8, "strength": 100, "intensity": 50 },
+   { "density": 0.3, "size": 1, "variation": 30, "spacing": 4, "strength": 100, "intensity": 50 },
+   { "density": 0.5, "size": 2, "variation": 30, "spacing": 4, "strength": 100, "intensity": 50 }
+  ]
+ }
+}

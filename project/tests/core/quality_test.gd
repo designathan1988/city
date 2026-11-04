@@ -13,6 +13,7 @@ const PERSON_DISTANCE := 18.0
 const PERSON_FRAMES := 8
 const SETTLE_LIMIT := 1500
 const FAR_DISTANCE := 5000.0
+const OTHER_GPUS := ["NVIDIA GeForce RTX 4090", "NVIDIA GeForce RTX 3060", "AMD Radeon RX 6600", "Intel(R) UHD Graphics 630", "Unknown"]
 
 var failures := 0
 
@@ -171,10 +172,10 @@ func _options(world: CityWorld) -> void:
 	Settings.optimizations["agentShadows"] = true
 	Settings.optimizations["waterMaterial"] = true
 	Settings.switches_changed()
-	_check(world.water.material_override is StandardMaterial3D, "água plana pela opção")
+	_check(world.water.own.shader.resource_path == CityWater.PLAIN_SHADER, "água plana pela opção")
 	Settings.optimizations.clear()
 	Settings.switches_changed()
-	_check(world.water.material_override is ShaderMaterial, "água própria de volta")
+	_check(world.water.own.shader.resource_path == CityWater.WATER_SHADER, "água própria de volta")
 	Settings.optimizations["terrainLod"] = 2
 	Settings.switches_changed()
 	var half_size: int = world.terrain.get("mesh_size")
@@ -186,7 +187,12 @@ func _options(world: CityWorld) -> void:
 ## A run driven by tests starts on the tables, whatever the file says: the same picture on every machine and every clone.
 func _player_file_read() -> void:
 	var t: Dictionary = DataTables.game("settings")
-	_check(Settings.preset == t.default and Settings.kept.is_empty(), "teste começa no preset dos dados, não no do arquivo")
+	_check(Settings.preset == t.tests_preset and Settings.kept.is_empty(), "teste começa no preset dos dados, não no do arquivo")
+	_check(t.tests_preset != "auto" and t.tiers.has(t.tests_preset), "o preset dos testes é um nível, nunca auto")
+	for gpu: String in OTHER_GPUS:
+		var hardware := QualityTier.tier_for_gpu(t, gpu)
+		_check(QualityTier.level_of(Settings.preset, hardware) == t.tests_preset, "o nível dos testes não depende da placa: %s" % gpu)
+	_check(Settings.level == t.tests_preset, "o teste roda no nível dos dados")
 	_check(Settings.layers == t.layers, "teste começa nas camadas dos dados")
 
 
@@ -200,6 +206,7 @@ func _presets() -> void:
 	var before: String = Settings.preset
 	Settings.set_preset("nivel_antigo")
 	_check(Settings.preset == t.default and not Settings.current().is_empty(), "o diálogo não grava preset desconhecido")
+	_check(Settings.level == QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name()), "auto pedido por nome segue a placa")
 	Settings.set_preset(before)
 
 

@@ -9,6 +9,7 @@ const FILTER_LEVELS := [Viewport.ANISOTROPY_DISABLED, Viewport.ANISOTROPY_2X, Vi
 	Viewport.ANISOTROPY_16X]
 ## Screen pixels per inch of a 1:1 display (Windows' 96 DPI): what a device pixel ratio is measured against.
 const BASE_DPI := 96.0
+const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const SSAO_QUALITY := RenderingServer.ENV_SSAO_QUALITY_MEDIUM
@@ -25,6 +26,18 @@ static func tier_for_gpu(cfg: Dictionary, name: String) -> String:
 		if re != null and re.search(name) != null:
 			return rule[1]
 	return cfg.gpu_default
+
+
+## The tier a preset stands for: auto is the one the GPU gives.
+static func level_of(preset: String, hardware: String) -> String:
+	return hardware if preset == "auto" else preset
+
+
+## The GPU's last frame against the budget: the refresh rate or the player's limit.
+static func budget_ms(fps_limit: int) -> float:
+	var hz := DisplayServer.screen_get_refresh_rate()
+	var fps := float(fps_limit) if fps_limit > 0 else (hz if hz > 0.0 else float(DataTables.game("settings").frame_cap.max_fps))
+	return MS_PER_S / fps
 
 
 ## The tier's fields with the kept choices over them; `shadows` kept 0 is no shadows, ao and smaa force their pass.
@@ -63,8 +76,9 @@ static func cabin_reach(q: Dictionary, height_px: float) -> float:
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
 	world.sun.shadow_enabled = q.shadows
-	world.sun.directional_shadow_max_distance = q.shadow_distance_m
+	world.daylight.shadow_least_m = q.shadow_least_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
+	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	var smaa: bool = q.smaa and has_smaa()
 	viewport.msaa_3d = MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
@@ -81,5 +95,5 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	CityStore.dispatch(&"set_population", [float(q.population)])
 	CityStore.dispatch(&"set_upload_every", [int(q.upload_every)])
 	CityStore.set_sim_switch("crowd", q.crowd)
-	world.set_water_plain(q.water_plain)
+	world.water.set_plain(q.water_plain)
 	world.set_terrain_lod(int(q.terrain_lod))

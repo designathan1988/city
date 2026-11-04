@@ -105,8 +105,6 @@ func _on_changed(s: Dictionary) -> void:
 		return
 	var h: float = s.hour
 	var mph: float = CityStore.constants.minutes_per_hour
-	if world:
-		world.follow_clock(h)
 	_clock.text = "%02d:%02d" % [int(h), int(fmod(h * mph, mph))]
 	_money.text = Formatters.format_money(s.money)
 	_stats.text = "%s · %s" % [Formatters.count_label("status.vehicles", s.vehicles), Formatters.count_label("status.people", s.people)]

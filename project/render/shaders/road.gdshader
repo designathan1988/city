@@ -59,6 +59,7 @@ const float MEAN_FLOOR = 0.001;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/noise2d.gdshaderinc"
+#include "res://render/shaders/wear.gdshaderinc"
 
 // Coverage of the grout lines of a grid with cell size `cell` (fades out when a cell gets smaller than a few pixels).
 float joints(vec2 p, vec2 cell, vec2 width, float pix) {
@@ -104,15 +105,18 @@ void fragment() {
 		vec3 asphalt_avg = max(source_linear(mean_asphalt), vec3(MEAN_FLOOR));
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / asphalt_avg * blotch;
 		bend = (texture(asphalt_normal, uv / asphalt_m).xy - 0.5) * 2.0;
+		if (v_mat != M_PAINT) albedo = wear_asphalt(albedo, wear_at(v_world.xz).x, v_world.xz);
 		rough = v_mat == M_PAINT ? 0.62 : 0.92;
 	} else if (v_mat == M_FOOTPATH || v_mat == M_STONE) {
 		vec3 t = source_linear(texture(footway_map, uv.yx / footway_m).rgb);
 		albedo = t * base / max(source_linear(mean_footway), vec3(MEAN_FLOOR));
 		bend = (texture(footway_normal, uv.yx / footway_m).xy - 0.5) * 2.0;
+		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_PAVERS) {
 		vec2 q = vec2(uv.y, uv.x);
 		q.x += step(1.0, mod(floor(q.y / paver_h), 2.0)) * paver_w * 0.5;
 		albedo = base * (1.0 - 0.3 * joints(q, vec2(paver_w, paver_h), vec2(0.016), pix)) * blotch;
+		albedo = wear_paving(albedo, wear_at(v_world.xz).y, v_world.xz);
 	} else if (v_mat == M_KERB_FACE || v_mat == M_SHOULDER_EDGE || v_mat == M_GUTTER) {
 		vec2 kq = (v_mat == M_KERB_FACE) ? uv.yx : uv;
 		albedo = source_linear(texture(kerb_map, kq / kerb_m).rgb)

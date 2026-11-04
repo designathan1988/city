@@ -17,7 +17,7 @@ const DENSITIES := [[0, "zone.low", "low"], [1, "zone.medium", "medium"], [2, "z
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
 @onready var _head: HBoxContainer
-@onready var _strip: Container
+@onready var strip: Container
 @onready var _tabs: Dictionary = {}
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var _profile_ids: Dictionary = {}
@@ -44,7 +44,7 @@ func _ready() -> void:
 	options_panel.hide()
 	var col := HudWidgets.vbox(self)
 	_head = HudWidgets.hbox(col)
-	_strip = HudWidgets.hbox(col, &"Pad")
+	strip = HudWidgets.hbox(col, &"Pad")
 	for p in CityStore.query(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
@@ -99,15 +99,15 @@ func select_tab(tab: Dictionary) -> void:
 
 
 ## The tool in hand again with one parameter changed (a card or a slider of the strip).
-func _retool(value: Variant, tool: String, key: String) -> void:
+func retool(value: Variant, tool: String, key: String) -> void:
 	var params: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}).duplicate() if tools else {}
 	params[key] = value
 	tool_requested.emit(tool, params)
 	if key != "radius" and key != "strength":
-		DrawerStrips.light(_strip, value)
+		DrawerStrips.light(strip, value)
 
 
-func _param(tool: String, key: String, fallback: Variant) -> Variant:
+func param(tool: String, key: String, fallback: Variant) -> Variant:
 	return tools.last_param(ToolController.Tool[tool], key, fallback) if tools else fallback
 
 
@@ -127,21 +127,6 @@ func _density_row() -> void:
 		pick_zone(DrawerStrips.use_of(_zone())))
 
 
-## The Relief brush by key: `key` a step up or down, the sliders drawn again.
-func step_brush(key: String, dir: int) -> void:
-	var spec: Dictionary = category.brush[key]
-	_retool(clampf(_param("TERRAIN", key, spec.default) + spec.step * dir, spec.min, spec.max), "TERRAIN", key)
-	_build_strip(_tab)
-
-
-## The Relief brush's operation by the number row; false: no such operation.
-func pick_relief(index: int) -> bool:
-	if index >= category.cards.size():
-		return false
-	_retool(category.cards[index].mode, "TERRAIN", "mode")
-	return true
-
-
 ## The language changed: what the drawer shows, in the new one.
 func relabel() -> void:
 	catalog.relabel()
@@ -151,7 +136,7 @@ func relabel() -> void:
 
 
 func pick_zone(zone: int) -> void:
-	for c in _strip.get_children():
+	for c in strip.get_children():
 		if c is Button:
 			c.set_pressed_no_signal(c.get_meta(&"zone", -1) == DrawerStrips.use_of(zone))
 	tool_requested.emit("ZONE", {"zone": DrawerStrips.zone_at(DrawerStrips.use_of(zone), _density)})
@@ -180,29 +165,31 @@ func _build_head() -> void:
 func _build_strip(tab: Dictionary) -> void:
 	if catalog.get_parent():
 		catalog.get_parent().remove_child(catalog)
-	HudWidgets.clear(_strip)
+	HudWidgets.clear(strip)
 	HudWidgets.clear(_options)
 	var kind: String = category.get("strip", "")
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
-		_strip.add_child(catalog)
+		strip.add_child(catalog)
 	elif kind == "zone_cards" and tab.tool == "ZONE":
 		for c in category.cards:
-			_strip.add_child(_zone_card(c))
+			strip.add_child(_zone_card(c))
 		_density_row()
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
 		HudWidgets.range_row(_options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
-			DataTables.tuning("roundabout_radius_max_m"), ring.step, _param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
-			_retool.bind("ROUNDABOUT", "radius"))
-	elif kind == "relief_cards" and tab.get("tool", "") == "TERRAIN":
-		_relief_strip()
+			DataTables.tuning("roundabout_radius_max_m"), ring.step, param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
+			retool.bind("ROUNDABOUT", "radius"))
+	elif kind == "land_panels":
+		LandStrips.build(self, strip, tab.get("tool", ""))
+	elif tab.get("tool", "") == "BUILD":
+		BuilderStrip.fill(strip, tab.id, tools)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
 		for c in category.cards:
-			_strip.add_child(DrawerStrips.card(c, "fn", _param("LOT", "fn", 0), _retool.bind("LOT", "fn")))
-	var note := HudWidgets.label(_strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
+			strip.add_child(DrawerStrips.card(c, "fn", param("LOT", "fn", 0), retool.bind("LOT", "fn")))
+	var note := HudWidgets.label(strip, &"MutedLabel", tr(tab.get("note_key", "")) if tab.has("note_key") else "")
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = HudWidgets.px("note_w")
-	note.visible = note.text != "" and _strip.get_child_count() == 1 # a mode with nothing to pick says what it does
+	note.visible = note.text != "" and strip.get_child_count() == 1 # a mode with nothing to pick says what it does
 	options_panel.visible = _options.get_child_count() > 0
 	options_panel.reset_size()
 	options_panel.offset_top = -options_panel.size.y - HudWidgets.px("margin")
@@ -223,15 +210,6 @@ func _fit() -> void:
 	offset_left = left + (room - width) * 0.5 - vw * 0.5
 	offset_right = offset_left + width
 	offset_top = offset_bottom - need.y
-
-
-func _relief_strip() -> void:
-	for c in category.cards:
-		_strip.add_child(DrawerStrips.card(c, "mode", _param("TERRAIN", "mode", 0), _retool.bind("TERRAIN", "mode")))
-	for key in ["radius", "strength"]:
-		var spec: Dictionary = category.brush[key]
-		HudWidgets.range_row(_options, tr(spec.label_key), spec.min, spec.max, spec.step, _param("TERRAIN", key, spec.default),
-			Formatters.format_length if key == "radius" else Formatters.format_points, _retool.bind("TERRAIN", key))
 
 
 func _zone_card(c: Dictionary) -> Button:

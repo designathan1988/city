@@ -25,7 +25,6 @@ func _ready() -> void:
 	add_child(tools)
 	var hud := RoadcraftHud.new()
 	add_child(hud)
-	add_child(Thunder.new())
 	_title(hud, saved)
 	_maybe_screenshot()
 

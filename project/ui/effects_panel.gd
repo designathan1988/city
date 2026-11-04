@@ -122,7 +122,7 @@ func _optimizations() -> void:
 	for o: Dictionary in DataTables.game("optimizations").options:
 		HudWidgets.label(_body, &"MutedLabel", tr("opt." + o.id))
 		var items := []
-		for c: Variant in o.choices:
+		for c: Variant in o.offered:
 			items.append([c, tr("opt.tier") if c is String else (tr("gfx.on") if c is bool and c else tr("gfx.off") if c is bool else str(c))])
 		HudWidgets.choices(_body, items, Settings.optimizations.get(o.id, "tier"), func(v: Variant) -> void:
 			if v is String:

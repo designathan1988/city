@@ -14,7 +14,7 @@ constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT
 constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
-constexpr float RAIL_POST = 0.05f, RAIL_TOP = 0.05f, RAIL_MID = 0.45f, RAIL_EVERY = 1.5f, MACHINE_H = 3.f, MACHINE_IN = 0.3f;
+constexpr float MACHINE_H = 3.f, MACHINE_IN = 0.3f;
 constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
 constexpr uint32_t GOLDEN = 2654435761u;
 constexpr int ID_OFF = 7;
@@ -61,12 +61,8 @@ void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 		Point2 p{ sd.p0.x + dir.x * am - sd.n.x * TEST_OUT, sd.p0.y + dir.y * am - sd.n.y * TEST_OUT };
 		if (roof_covered(b, v, p)) continue;
 		if (terrace) {
-			Basis rf{ sd.f.at(a0, 0, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
-			Lin rail = paint_lin(pl.data->color("roof_railing"));
-			const float guard = pl.look->guard_h_m;
-			parts.box(rf, 0, W, guard - RAIL_TOP, guard, -RAIL_TOP, 0, rail, FIN_METAL);
-			parts.box(rf, 0, W, RAIL_MID - RAIL_POST / 2, RAIL_MID + RAIL_POST / 2, -RAIL_POST, 0, rail, FIN_METAL);
-			for (float a = 0; a < W; a += RAIL_EVERY) parts.box(rf, a, a + RAIL_POST, 0, guard, -RAIL_POST, 0, rail, FIN_METAL);
+			Basis rf{ sd.f.at(a0, eaves, -RAIL_IN), sd.f.e0, sd.f.e1, sd.f.e2 };
+			shell.card(rf, 0, W, 0, pl.look->guard_h_m, 0, paint_lin(pl.data->color("roof_railing")), CARD_ROOF_RAILING);
 			continue;
 		}
 		shell.grime_floor = -FAR_AWAY;
@@ -116,6 +112,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 	for (size_t i = 0; i < b.volumes.size(); i++) {
 		const Volume &v = b.volumes[i];
 		float eaves = b.level_z(v.top());
+		emit_roof_gear(shell, pl, v, eaves);
 		bool on_top = covered_by_above(b, v), terrace = v.roof == ROOF_TERRACE || on_top;
 		if (pl.coarse) {
 			if (!roof_flat(v.roof)) continue;

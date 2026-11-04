@@ -123,7 +123,7 @@ func _relief(e: Vector3) -> void:
 	await ui.drawn()
 	hud.open_category("landscape")
 	await ui.frames(4)
-	var cards := hud.drawer._strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
+	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
 	await ui.press(cards[4]) # mesa (chapada)
 	var h0 := ui.ground(hill.x, hill.z).y
 	await ui.hold(hill, HOLD_FRAMES)
@@ -156,7 +156,7 @@ func _build(a: Vector3, e: Vector3) -> void:
 	await ui.frames(4)
 	await ui.press(hud.drawer._tabs.draw)
 	await ui.frames(2)
-	var cards := hud.drawer._strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
+	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
 	var b0: int = CityStore.snapshot.buildings
 	await ui.press(cards[1]) # parque
 	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56))

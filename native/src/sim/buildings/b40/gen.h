@@ -15,6 +15,8 @@ struct Envelope {
 	bool back_door = false;
 	uint32_t character = 0;
 	int era = 0;
+	int cap = 0; // the most storeys its neighbours allow a middling block (0: no limit)
+	bool low = false; // a low-density commercial lot
 };
 
 LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r);
@@ -30,7 +32,8 @@ void compose_facades(const Data &data, Body &b, Xoshiro128 &r);
 void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, int front);
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
-// The whole body of a record: kind from use/floors, all steps, shifted to the lot frame (x from the lot's middle).
+// The whole body of a record: kind from the zone, all steps, shifted to the lot frame (x from the lot's middle). It chooses its own
+// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
 void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed);
 
 } // namespace city::b40

@@ -1,5 +1,5 @@
 // The facade part models, built straight into a mesh in the bay frame: unit models
-// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Frame bars, railings with balusters, panelled
+// scaled by (sx, sy, sz) along / up / out and centred at (a, h, -depth). Railings with balusters, panelled
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
 
@@ -12,10 +12,6 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float MULLION = 0.036f, TRANSOM_Y = 0.18f;
-constexpr float RAIL_TOP_Y = 0.97f, RAIL_TOP_H = 0.06f, RAIL_TOP_T = 0.05f, RAIL_BOT_Y = 0.12f, RAIL_BOT_H = 0.04f;
-constexpr float BALUSTER = 0.015f, BALUSTER_H = 0.94f;
-constexpr int BALUSTERS_FRONT = 11, BALUSTERS_SIDE = 3;
 constexpr float LEAF_Z = -0.2f, LEAF_D = 0.6f, PANEL_W = 0.36f, PANEL_TALL = 0.5f, PANEL_SHORT = 0.3f, PANEL_Y_HI = 0.2f;
 constexpr float PANEL_Y_LO = -0.3f, PANEL_X = 0.24f, PANEL_Z = 0.25f, PANEL_D = 0.35f, HANDLE_X = 0.4f, HANDLE_Y = -0.04f;
 constexpr float DOOR_HANDLE_W = 0.1f, HANDLE_D = 1.6f, HANDLE_Z = 0.9f, PANEL_SHADE = 0.92f;
@@ -39,41 +35,15 @@ void unit_box(Shell &s, const Part &p, float x0, float x1, float y0, float y1, f
 
 void part_box(Shell &s, const Part &p, const Lin &lin, int8_t fin) { unit_box(s, p, -HALF, HALF, -HALF, HALF, -HALF, HALF, lin, fin); }
 
-// Frame ring: front faces of the four bars, mullion and transom, and the ring's inner faces (no hidden backs).
-void part_frame(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
-	Basis m = centred(p);
-	float bx = p.look->part_frame_bar_m * p.sx, by = p.look->part_frame_bar_m * p.sx, hx = p.sx / 2, hy = p.sy / 2, hz = p.sz / 2;
-	if (2 * by > p.sy) by = p.sy / 4;
-	s.rect(m, -hx, -hx + bx, -hy, hy, hz, lin, fin);
-	s.rect(m, hx - bx, hx, -hy, hy, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, -hy, -hy + by, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, hy - by, hy, hz, lin, fin);
-	float mw = MULLION * p.sx / 2, ty = TRANSOM_Y * p.sy;
-	s.rect(m, -mw, mw, -hy + by, hy - by, hz, lin, fin);
-	s.rect(m, -hx + bx, hx - bx, ty - mw, ty + mw, hz, lin, fin);
-	s.box(m, -hx + bx, hx - bx, -hy + by, hy - by, -hz, hz, lin, fin, SKIP_E2_NEG | SKIP_E2_POS);
-}
-
 // Railing: y from 0 to 1 (bottom at the part's h), z from the wall (0) out to 1; the bottom rail and the balusters
 // are single front faces (a thin box seen from the street shows only its front).
-void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+void part_railing(Shell &s, const Part &p, const Lin &lin, int8_t) {
 	Basis m{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 };
-	float hx = p.sx / 2, z1 = p.sz, top0 = (RAIL_TOP_Y - RAIL_TOP_H / 2) * p.sy, top1 = (RAIL_TOP_Y + RAIL_TOP_H / 2) * p.sy;
-	s.box(m, -hx, hx, top0, top1, z1 - RAIL_TOP_T, z1, lin, fin, SKIP_E0_NEG | SKIP_E0_POS);
-	s.box(m, -hx, -hx + RAIL_TOP_T, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E2_NEG | SKIP_E2_POS | SKIP_E0_POS);
-	s.box(m, hx - RAIL_TOP_T, hx, top0, top1, 0, z1 - RAIL_TOP_T, lin, fin, SKIP_E2_NEG | SKIP_E2_POS | SKIP_E0_NEG);
-	s.rect(m, -hx, hx, (RAIL_BOT_Y - RAIL_BOT_H / 2) * p.sy, (RAIL_BOT_Y + RAIL_BOT_H / 2) * p.sy, z1, lin, fin);
-	float y0 = (HALF - BALUSTER_H / 2) * p.sy, y1 = top0;
-	for (int i = 0; i < BALUSTERS_FRONT; i++) {
-		float x = -hx + p.sx * float(i) / float(BALUSTERS_FRONT - 1);
-		s.rect(m, x - BALUSTER / 2, x + BALUSTER / 2, y0, y1, z1, lin, fin);
-	}
-	for (int k = 1; k <= BALUSTERS_SIDE; k++) {
-		float z = z1 * float(k) / float(BALUSTERS_SIDE + 1);
-		Basis side_l{ m.at(-hx, 0, 0), m.e2, m.e1, -m.e0 }, side_r{ m.at(hx, 0, 0), m.e2, m.e1, m.e0 };
-		s.rect(side_l, z - BALUSTER / 2, z + BALUSTER / 2, y0, y1, 0, lin, fin);
-		s.rect(side_r, z - BALUSTER / 2, z + BALUSTER / 2, y0, y1, 0, lin, fin);
-	}
+	const float hx = p.sx / 2, z1 = p.sz;
+	s.card(m, -hx, hx, 0, p.sy, z1, lin, CARD_RAILING_FRONT);
+	Basis left{ m.at(-hx, 0, 0), m.e2, m.e1, -m.e0 }, right{ m.at(hx, 0, 0), m.e2, m.e1, m.e0 };
+	s.card(left, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
+	s.card(right, 0, z1, 0, p.sy, 0, lin, CARD_RAILING_SIDE);
 }
 
 void part_door(Shell &s, const Part &p, const Lin &lin, int8_t fin) {

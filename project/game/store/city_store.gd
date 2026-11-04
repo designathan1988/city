@@ -9,7 +9,7 @@ signal command_failed(error_key: String)
 const SNAPSHOT_INTERVAL_S := 0.25
 ## Commands the UI/tools may send, with the CityCore method that executes each one.
 const COMMANDS := {
-	&"set_speed": "set_speed", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
+	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
 	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
@@ -17,15 +17,35 @@ const COMMANDS := {
 	&"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation",
 	&"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every",
 	&"set_lots_drawn": "set_lots_drawn",
+	&"set_weather": "set_weather",
+	&"add_cloud": "add_cloud", &"edit_cloud": "edit_cloud", &"remove_cloud": "remove_cloud",
+	&"scatter_clouds": "scatter_clouds", &"clear_clouds": "clear_clouds", &"fog_brush": "fog_brush",
+	&"clear_fog": "clear_fog", &"paint_brush": "paint_brush", &"clear_gullies": "clear_gullies",
+	&"tree_brush": "tree_brush", &"clear_trees": "clear_trees", &"element_brush": "element_brush", &"clear_elements": "clear_elements", &"set_biome": "set_biome",
+	&"clear_relief": "clear_relief",
+	&"body_storeys": "body_storeys",
+	&"body_insert_storey": "body_insert_storey", &"body_resize": "body_resize", &"body_add_wing": "body_add_wing",
+	&"body_add_setback": "body_add_setback", &"body_split": "body_split", &"body_remove_volume": "body_remove_volume",
+	&"body_heights": "body_heights", &"body_set_bay": "body_set_bay", &"body_set_zone": "body_set_zone",
+	&"body_set_pattern": "body_set_pattern", &"body_set_face": "body_set_face", &"body_set_relief": "body_set_relief",
+	&"body_set_roof": "body_set_roof", &"body_roof_shape": "body_roof_shape", &"body_paint": "body_paint",
+	&"body_add_gear": "body_add_gear", &"body_remove_gear": "body_remove_gear", &"body_turn_gear": "body_turn_gear",
+	&"body_add_part": "body_add_part", &"body_add_part_at": "body_add_part_at", &"body_remove_part": "body_remove_part",
+	&"body_turn_part": "body_turn_part", &"body_repeat_part": "body_repeat_part", &"place_model": "place_model",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
-	&"list_buildings": "list_buildings", &"city_bounds": "city_bounds", &"render_pending": "render_pending",
+	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "job_pool_probe", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
 	&"overlays": "overlays", &"save_status": "save_status", &"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path",
 	&"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
+	&"model_list": "model_list", &"model_bytes": "model_bytes", &"doc_body": "doc_body", &"building_bytes": "building_bytes", &"body_size": "body_size",
+	&"place_fit": "place_fit", &"place_check": "place_check", &"stage_show": "stage_show", &"stage_move": "stage_move", &"stage_free": "stage_free", &"stage_triangles": "stage_triangles",
+	&"landscape": "landscape", &"cloud_at": "cloud_at",
+	&"sky_revision": "sky_revision", &"fog_field": "fog_field", &"effects_near": "effects_near",
+	&"body_info": "body_info", &"body_bay": "body_bay", &"body_pick": "body_pick", &"body_outline": "body_outline",
 }
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
@@ -60,6 +80,11 @@ func new_map(map: int, seed: int, with_city: bool) -> Dictionary:
 	saves.new_city()
 	refresh()
 	return report
+
+
+## The core is up and holds a map (views that read it each frame wait for this).
+func ready_to_read() -> bool:
+	return _core != null and not snapshot.is_empty()
 
 
 func dispatch(command: StringName, args: Array = []) -> Variant:

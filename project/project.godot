@@ -25,6 +25,7 @@ timers/tooltip_delay_sec=3600.0
 
 [rendering]
 
+textures/default_filters/anisotropic_filtering_level=4
 renderer/rendering_method="forward_plus"
 renderer/rendering_method.mobile="forward_plus"
 anti_aliasing/quality/msaa_3d=0
@@ -51,7 +52,35 @@ map_grid={
 "type": "float",
 "value": 0.0
 }
+wind_x={
+"type": "float",
+"value": 0.86
+}
+wind_z={
+"type": "float",
+"value": -0.5
+}
+wind_ms={
+"type": "float",
+"value": 3.0
+}
+rain_wet={
+"type": "float",
+"value": 0.0
+}
 night={
 "type": "float",
 "value": 0.0
+}
+rooms_awake={
+"type": "float",
+"value": 0.63
+}
+room_daylight={
+"type": "float",
+"value": 0.2
+}
+outside_on={
+"type": "float",
+"value": 0.79
 }

@@ -91,7 +91,10 @@ func apply(world: CityWorld, viewport: Viewport, tier: Dictionary) -> void:
 	world.environment.ssao_enabled = tier.ssao and tier.post and is_on("ambientOcclusion")
 	if not is_on("smaa") or not tier.post:
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
-	world.set_light_switches(is_on("bloom") and tier.post, is_on("environmentMap"), is_on("ambient"))
+	world.daylight.glow_on = is_on("bloom") and tier.post
+	world.daylight.ambient_on = is_on("ambient")
+	world.environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if is_on("environmentMap") else Environment.REFLECTION_SOURCE_DISABLED
+	world.daylight.relight()
 	set_global(&"road_paint", 0.0 if far else 1.0)
 	for g: Dictionary in DataTables.game("render_switches").groups:
 		for item: Dictionary in g.items:

@@ -1,0 +1,9 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  }
+ },
+ "additional": {}
+}

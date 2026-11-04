@@ -4,7 +4,7 @@
   {
    "id": "shadowMapSize",
    "field": "shadow_px",
-   "choices": [
+   "offered": [
     "tier",
     4096,
     2048,
@@ -15,7 +15,7 @@
   {
    "id": "msaa",
    "field": "msaa",
-   "choices": [
+   "offered": [
     "tier",
     3,
     2,
@@ -26,7 +26,7 @@
   {
    "id": "aoResolution",
    "field": "ssao_half",
-   "choices": [
+   "offered": [
     "tier",
     false,
     true
@@ -35,7 +35,7 @@
   {
    "id": "anisotropy",
    "field": "anisotropy",
-   "choices": [
+   "offered": [
     "tier",
     4,
     3,
@@ -47,7 +47,7 @@
   {
    "id": "smaa",
    "field": "smaa",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]
@@ -55,7 +55,7 @@
   {
    "id": "detailProps",
    "field": "detail_props",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]
@@ -63,7 +63,7 @@
   {
    "id": "buildingLod",
    "field": "triangle_share",
-   "choices": [
+   "offered": [
     "tier",
     0.5,
     0.25,
@@ -73,7 +73,7 @@
   {
    "id": "postChain",
    "field": "post",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]
@@ -81,7 +81,7 @@
   {
    "id": "agentShadows",
    "field": "agent_shadows",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]
@@ -90,7 +90,7 @@
    "id": "vegetation",
    "field": "vegetation",
    "scale": true,
-   "choices": [
+   "offered": [
     "tier",
     0.5,
     0.25,
@@ -101,7 +101,7 @@
    "id": "detailCutoff",
    "field": "detail_cutoff_zoom",
    "scale": true,
-   "choices": [
+   "offered": [
     "tier",
     1.5,
     2,
@@ -111,7 +111,7 @@
   {
    "id": "pedestrianDetail",
    "field": "pedestrian_detail",
-   "choices": [
+   "offered": [
     "tier",
     2,
     1,
@@ -121,7 +121,7 @@
   {
    "id": "vehicleError",
    "field": "vehicle_error_px",
-   "choices": [
+   "offered": [
     "tier",
     1,
     2,
@@ -131,7 +131,7 @@
   {
    "id": "vehicleWhole",
    "field": "vehicle_whole_cap",
-   "choices": [
+   "offered": [
     "tier",
     100,
     50,
@@ -143,7 +143,7 @@
    "id": "occupants",
    "field": "occupant_zoom",
    "scale": true,
-   "choices": [
+   "offered": [
     "tier",
     2,
     1000
@@ -152,7 +152,7 @@
   {
    "id": "population",
    "field": "population",
-   "choices": [
+   "offered": [
     "tier",
     0.75,
     0.5,
@@ -162,7 +162,7 @@
   {
    "id": "focusDetail",
    "field": "crowd",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]
@@ -170,7 +170,7 @@
   {
    "id": "uploadEvery",
    "field": "upload_every",
-   "choices": [
+   "offered": [
     "tier",
     2,
     4
@@ -179,7 +179,7 @@
   {
    "id": "waterMaterial",
    "field": "water_plain",
-   "choices": [
+   "offered": [
     "tier",
     true
    ]
@@ -187,7 +187,7 @@
   {
    "id": "terrainLod",
    "field": "terrain_lod",
-   "choices": [
+   "offered": [
     "tier",
     2,
     4,
@@ -197,7 +197,7 @@
   {
    "id": "occlusion",
    "field": "occlusion",
-   "choices": [
+   "offered": [
     "tier",
     false
    ]

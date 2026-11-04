@@ -34,7 +34,7 @@ class Quality:
 		level = levels.find(start)
 		ceiling = levels.find(top)
 		skip = int(cfg.settle)
-		hold = cfg.hold_s
+		hold = cfg.undone_hold_s
 
 	## The tier changed (by this governor or the player): the windows start again once it has settled.
 	func set_level(name: String) -> void:

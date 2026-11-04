@@ -10,6 +10,7 @@ const CATALOG := {
 	"growth": "res://data/catalog/growth.json",
 	"traffic": "res://data/catalog/traffic.json",
 	"street_furniture": "res://data/catalog/street_furniture.json",
+	"nature": "res://data/catalog/nature.json",
 }
 ## Tables split only to keep each file small; merged under the same key they extend.
 const CATALOG_FRAGMENTS := {
@@ -18,38 +19,47 @@ const CATALOG_FRAGMENTS := {
 		"res://data/catalog/road_profiles_b.json",
 	],
 }
+static var _catalog_cache := {}
 const RENDER_TABLES := {
 	"palette": "res://data/render/palette.json",
 	"streets": "res://data/render/streets.json",
+	"cover": "res://data/render/cover.json",
 	"buildings": "res://data/render/buildings.json",
+	"interiors": "res://data/render/interiors.json",
+	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",
 }
 const UI := {
 	"tokens": "res://data/ui/tokens.json",
+	"land_panels": "res://data/ui/land_panels.json",
+	"land_elements": "res://data/ui/land_elements.json",
 	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
 	"keys": "res://data/ui/keys.json",
 	"help": "res://data/ui/help.json",
+	"builder": "res://data/ui/builder.json",
 }
 const GAME := {
 	"camera": "res://data/game/camera.json",
 	"settings": "res://data/game/settings.json",
 	"daylight": "res://data/game/daylight.json",
+	"sky": "res://data/game/sky.json",
 	"saves": "res://data/game/saves.json",
 	"render_switches": "res://data/game/render_switches.json",
 	"optimizations": "res://data/game/optimizations.json",
 	"health": "res://data/game/health.json",
 	"start": "res://data/game/start.json",
-	"thunder": "res://data/game/thunder.json",
 }
 const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
 	"res://data/i18n/strings_c.csv",
 	"res://data/i18n/strings_ui.csv",
+	"res://data/i18n/strings_d.csv",
+	"res://data/i18n/strings_e.csv",
 ]
 
 static var _cache: Dictionary = {}
@@ -74,6 +84,13 @@ static func _group(paths: Dictionary) -> Dictionary:
 	return out
 
 
+## One table of the catalog (kept once read).
+static func catalog_table(key: String) -> Dictionary:
+	if not _catalog_cache.has(key):
+		_catalog_cache[key] = _read(CATALOG[key])
+	return _catalog_cache[key]
+
+
 static func catalog() -> Dictionary:
 	var out := _group(CATALOG)
 	for key in CATALOG_FRAGMENTS:
@@ -94,7 +111,10 @@ static func render() -> Dictionary:
 
 
 static func ui(name: String) -> Dictionary:
-	return _read(UI[name])
+	var table: Dictionary = _read(UI[name])
+	if name == "land_panels" and not table.has("ELEMENTS"):
+		table.merge(_read(UI.land_elements)) # one panel, kept apart for the size of the file
+	return table
 
 
 static func game(name: String) -> Dictionary:

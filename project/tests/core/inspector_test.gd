@@ -58,14 +58,14 @@ func _save_time() -> void:
 
 ## The strike's entry point: late by the speed of sound, softer and duller far away. The sound itself is not heard here.
 func _thunder() -> void:
-	var t := Thunder.new()
+	var t := Thunder.new(DataTables.game("sky"))
 	add_child(t)
 	await get_tree().process_frame # a long frame before it would count in the timer
 	await get_tree().process_frame
 	var from := Time.get_ticks_msec()
 	await t.play(THUNDER_M, 1.0)
 	var late := float(Time.get_ticks_msec() - from) / MS_PER_S
-	var expected: float = THUNDER_M / DataTables.game("thunder").sound_ms
+	var expected: float = THUNDER_M / DataTables.game("sky").sound_ms
 	print("  trovão: %.2f s para %.0f m (%.2f s pelo som)" % [late, THUNDER_M, expected])
 	_check(late >= expected * 0.9, "o som chega depois do raio")
 	t.queue_free()
