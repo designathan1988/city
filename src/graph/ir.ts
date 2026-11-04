@@ -1,7 +1,7 @@
 // The intermediate representation every later stage reads: the source's declarations ("units"), the typed edges
 // between them, the external APIs they touch and the per-unit facts the classifier and the rule catalog decide on.
 
-export const IR_VERSION = 4;
+export const IR_VERSION = 5;
 
 export type UnitKind =
   | 'class'
@@ -141,8 +141,12 @@ export interface ExternalSummary {
 export interface GraphIR {
   readonly version: number;
   readonly sourceRoot: string;
-  readonly tsconfig: string;
-  readonly typescriptVersion: string;
+  /** `ts`: read through the TypeScript checker; `cpp`: through clangd. */
+  readonly language: 'ts' | 'cpp';
+  /** The project configuration read: a tsconfig, or a compile_commands.json. */
+  readonly config: string;
+  /** The analyser and its version, e.g. `typescript 5.9.3` or `clangd version 23.1.4`. */
+  readonly analyzer: string;
   readonly entries: readonly string[];
   readonly include: readonly string[];
   readonly exclude: readonly string[];

@@ -56,8 +56,9 @@ export function buildGraph(options: GraphOptions): GraphIR {
   return {
     version: IR_VERSION,
     sourceRoot: root,
-    tsconfig: sp.tsconfig,
-    typescriptVersion: ts.version,
+    language: 'ts',
+    config: sp.tsconfig,
+    analyzer: `typescript ${ts.version}`,
     entries: [...options.entries],
     include: include.map((d) => relativePath(root, d)),
     exclude: exclude.map((d) => relativePath(root, d)),

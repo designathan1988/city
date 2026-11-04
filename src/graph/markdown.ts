@@ -45,7 +45,7 @@ function code(ir: GraphIR): string[] {
   }
   for (const [file, units] of [...byFile].sort(([a], [b]) => a.localeCompare(b))) {
     const lines = fs.readFileSync(path.join(ir.sourceRoot, file), 'utf8').split(/\r?\n/);
-    out.push(`### ${file}`, '', '```ts');
+    out.push(`### ${file}`, '', '```' + ir.language);
     for (const unit of [...units].sort((a, b) => a.start.line - b.start.line)) {
       // A class head prints its declaration line(s) only; its members are units of their own.
       const last = unit.kind === 'class' ? Math.max(unit.start.line, (firstMemberLine.get(unit.id) ?? unit.end.line) - 1) : unit.end.line;
