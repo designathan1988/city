@@ -89,6 +89,7 @@ struct Shell {
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
+	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
 
 	bool empty() const { return idx.empty() && boxes.empty(); }
@@ -110,6 +111,7 @@ struct Shell {
 
 private:
 	int vert(const godot::Vector3 &p, const godot::Vector3 &n, const godot::Color &c, const godot::Vector2 &t, const godot::Vector2 &t2);
+	Lin far_tint(const Lin &lin, int8_t fin) const;
 	godot::Color shaded(const godot::Vector3 &p, const Lin &lin, bool wall, SurfaceKind kind) const;
 	void face(const godot::Vector3 *p, int count, const godot::Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind);
 };

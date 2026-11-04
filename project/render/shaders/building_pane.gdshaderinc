@@ -242,10 +242,10 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	float cosv = clamp(dot(-V, n), 0.0, 1.0);
 	float F = max(0.04 + 0.96 * pow(1.0 - cosv, 5.0), glass_reflect);
 	// The glass scatters next to nothing: what a pane shows is the room through it and the sky's reflection, as light leaving it.
-	vec3 refl = glass_reflection(V, n, F);
+	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
 	vec3 trim = to_linear(v_trim.rgb);
 	albedo = mix(mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open * (dark ? 0.7 : 1.0)) * (1.0 - max(frame, solid));
+	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);

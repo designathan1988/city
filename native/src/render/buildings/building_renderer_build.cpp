@@ -111,6 +111,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
+	far.far_tones = &look_.finish_far;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
