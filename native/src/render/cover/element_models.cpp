@@ -54,7 +54,7 @@ Ref<Mesh> scene_mesh(const String &path, PackedStringArray &errors) {
 	return mesh;
 }
 
-// A quad lying on the ground, wearing the texture cut at half cover.
+// A quad lying on the ground, wearing the texture with its cover kept at any distance.
 Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 	Ref<Texture2D> tex = ResourceLoader::get_singleton()->load(path);
 	if (tex.is_null()) {
@@ -64,7 +64,7 @@ Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 	Ref<StandardMaterial3D> mat;
 	mat.instantiate();
 	mat->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
-	mat->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA_SCISSOR);
+	mat->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA_HASH); // a cut at half cover loses the whole quad in the mips, where the mean alpha is under it
 	mat->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
 	Ref<PlaneMesh> plane;
 	plane.instantiate();

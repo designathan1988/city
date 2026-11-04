@@ -12,6 +12,7 @@ const GPU_STEP_MS := 0.01
 const FIELD_AT := Vector2(3000.0, 0.0) # the 4.0 runs' setView x and -y: the same ground in both games
 const PAINT_AT := Vector2(4500.0, -1500.0)
 const RIVER_AT := Vector2(3000.0, 2250.0)
+const CINT_STEP_M := 0.7 # under a pixel of the far ground: what changes between the two pictures is shimmer
 const SEA_AT := Vector3(3000.0, 0.0, 5400.0) # the open sea past the north edge
 const BARE_AT := Vector2(3160.0, -720.0)
 const VIEW_LINES := 1080.0
@@ -201,6 +202,10 @@ func _run() -> void:
 		CityStore.dispatch(&"element_brush", [at, 9.0, k, {"density": 30.0, "size": 1.0, "variation": 0.4, "spacing": 0.4, "strength": 1.0, "intensity": 0.8}, false])
 	CityStore.dispatch(&"end_stroke")
 	await shot("elementos", e, 90.0, 22.0, 24.0)
+	await shot("elementos_perto", e, 90.0, 12.0, 90.0)
+	await shot("elementos_longe", e, 90.0, 30.0, 6.0)
+	await shot("cint_a", e + Vector3(0, 0, 500.0), 45.0, 8.0, 5.0)
+	await shot("cint_b", e + Vector3(CINT_STEP_M, 0, 500.0), 45.0, 8.0, 5.0)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.tree"])
 	for i in 12:
 		CityStore.dispatch(&"tree_brush", [d + Vector3(i * 30.0 - 150.0, 0, 260.0), 40.0, 0, i % 4, {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}])

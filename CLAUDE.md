@@ -355,7 +355,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
-- `tools/assets/cook_people.py` · `tools/assets/export_builder_ui.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — pessoas cozidas
+- `tools/assets/bleed_alpha.py` · `tools/assets/cook_people.py` · `tools/assets/export_builder_ui.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — a cor sob os furos de uma textura recortada; pessoas cozidas
   (MakeHuman CC0 + caminhada Rocketbox MIT), ícones e textos do Construir, KTX2 do Roadcraft → PNG, ruído azul do início dos raios da atmosfera, road_profiles.json da fonte do Roadcraft
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
@@ -376,6 +376,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
+- `grass.detail` e `grass.detail-normal` sem mipmaps, e o shader pede mipmaps: importar com eles e reajustar os `detail_*` de `palette.json` contra o 4.0 (cintilado de longe). `Grass.png` sem mipmaps: fica pálido de longe.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
   24 km, 457.714 prédios — 601 estática, 1.435 de vídeo, 793 de buffers (camera_pan parada; nenhum quadro > 50 ms, GPU ≤ 44 %;
   maior HLOD de superchunk 8,1 MiB).
