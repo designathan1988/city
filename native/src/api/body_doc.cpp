@@ -2,6 +2,8 @@
 // lot frame until the fit at the end. Open blocks are the lot's own ground: a surface, none for plain grass.
 #include "api/body_doc.h"
 
+#include "api/function_names.h"
+
 #include "sim/commands/body_ops.h"
 #include "sim/commands/model_ops.h"
 
@@ -21,10 +23,6 @@ using namespace b40;
 namespace {
 constexpr float OPEN_SURFACE_H = 0.02f; // what an open block stands over the ground
 
-struct Named {
-	const char *name;
-	int value;
-};
 constexpr Named DOC_BAYS[] = { { "wall", BAY_WALL }, { "window", BAY_WINDOW }, { "sashWindow", BAY_SASH }, { "frenchWindow", BAY_FRENCH },
 	{ "bayWindow", BAY_BAY_WINDOW }, { "ribbon", BAY_RIBBON }, { "wideWindow", BAY_WIDE }, { "balcony", BAY_BALCONY }, { "door", BAY_DOOR },
 	{ "doubleDoor", BAY_DOUBLE_DOOR }, { "garageDoor", BAY_GARAGE_DOOR }, { "shopfront", BAY_SHOPFRONT }, { "loadingDoor", BAY_LOADING_DOOR },
@@ -225,10 +223,12 @@ void Reader::building(const Dictionary &doc) {
 }
 } // namespace
 
-bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &front_x, float &front_y, PackedStringArray &errors) {
+bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &front_x, float &front_y, int &function, PackedStringArray &errors) {
 	out = Body{};
 	const int before = int(errors.size());
-	Reader(data, out, errors).building(doc);
+	Reader reader(data, out, errors);
+	reader.building(doc);
+	function = doc.has("function") ? reader.named(FUNCTION_NAMES, doc["function"], "função") : int(FN_NONE);
 	if (int(errors.size()) != before || out.volumes.empty()) return false;
 	const V2 front = fit_plan(out);
 	front_x = front.x;

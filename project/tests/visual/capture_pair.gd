@@ -64,7 +64,7 @@ func _lay_buildings() -> void:
 			continue
 		var turn: float = doc.get("rotation", 0.0)
 		var front: Vector2 = Vector2(made.front).rotated(turn) + Vector2(doc.x, doc.y)
-		var done: Dictionary = CityStore.dispatch(&"place_model", [made.bytes, front.x, -front.y, turn, 0, ZONE_OF[doc.use]])
+		var done: Dictionary = CityStore.dispatch(&"place_model", [made.bytes, front.x, -front.y, turn, made.function, ZONE_OF[doc.use]])
 		if done.get("ok", false):
 			placed += 1
 		else:

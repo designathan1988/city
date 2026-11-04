@@ -2,6 +2,8 @@
 // unknown name is an error at startup, never a silent default.
 #include "api/models_loader.h"
 
+#include "api/function_names.h"
+
 #include "api/buildings_loader.h"
 #include "render/region_table.h"
 #include "sim/buildings/building_store.h"
@@ -26,19 +28,12 @@ constexpr float RING_TOLERANCE_M = 0.01f;
 constexpr int ZONE_RESIDENTIAL = 1, ZONE_COMMERCIAL = 2, ZONE_INDUSTRIAL = 3, ZONE_MIXED = 4;
 constexpr int SPEC_W = 1, SPEC_D = 2, SPEC_H = 3, RECT_WIDTH = 2, RECT_DEPTH = 3;
 
-struct Named {
-	const char *name;
-	int value;
-};
 constexpr Named ROOF_NAMES[] = { { "flat", ROOF_FLAT }, { "terrace", ROOF_TERRACE }, { "gable", ROOF_GABLE }, { "hip", ROOF_HIP }, { "shed", ROOF_SHED },
 	{ "sawtooth", ROOF_SAWTOOTH } };
 constexpr Named PATTERN_NAMES[] = { { "office", PATTERN_OFFICE }, { "gallery", PATTERN_GALLERY }, { "artDeco", PATTERN_ART_DECO }, { "artDecoCrown", PATTERN_ART_DECO_CROWN } };
 constexpr Named ELEMENT_NAMES[] = { { "tree", EL_TREE }, { "bench", EL_BENCH }, { "planter", EL_PLANTER }, { "flowers", EL_FLOWERS }, { "rocks", EL_ROCKS }, { "fence", EL_FENCE },
 	{ "wall", EL_WALL }, { "pavement", EL_PAVEMENT }, { "slab", EL_SLAB }, { "pillar", EL_PILLAR }, { "canopy", EL_CANOPY }, { "parking", EL_PARKING },
 	{ "railing", EL_RAILING }, { "clock", EL_CLOCK }, { "awning", EL_AWNING } };
-constexpr Named FUNCTION_NAMES[] = { { "school", FN_SCHOOL }, { "church", FN_CHURCH }, { "hospital", FN_HOSPITAL }, { "clinic", FN_CLINIC }, { "square", FN_SQUARE }, { "park", FN_PARK },
-	{ "gasStation", FN_GAS_STATION }, { "supermarket", FN_SUPERMARKET }, { "cityHall", FN_CITY_HALL }, { "policeStation", FN_POLICE }, { "fireStation", FN_FIRE_STATION },
-	{ "mall", FN_MALL }, { "sportsCourt", FN_SPORTS_COURT } };
 constexpr Named USE_NAMES[] = { { "residential", ZONE_RESIDENTIAL }, { "commercial", ZONE_COMMERCIAL }, { "industrial", ZONE_INDUSTRIAL }, { "mixed", ZONE_MIXED } };
 
 Variant at(const Dictionary &d, const Variant &k) { return d.get(k, Variant()); }
