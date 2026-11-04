@@ -4,7 +4,6 @@
 extends Node3D
 
 const SETTLE_FRAMES := 4
-const BUILD_FRAMES := 400
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
@@ -108,11 +107,7 @@ func _boot_world() -> bool:
 
 
 func _wait_render() -> void:
-	var waited := 0
-	await _frames(2)
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await _frames(1)
-		waited += 1
+	var waited: int = await CaptureWait.until_drawn(self, 2, "cidade")
 	print("quadros até desenhar tudo: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 	_memory("cidade desenhada")
 
@@ -179,11 +174,7 @@ func _shot(name: String, from: Vector3, at: Vector3) -> void:
 	camera.global_position = from
 	camera.look_at(at)
 	camera.near = clampf(from.distance_to(at) * NEAR_PER_M, MIN_NEAR_M, MAX_NEAR_M)
-	await _frames(SETTLE_FRAMES)
-	var waited := 0
-	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
-		await _frames(1)
-		waited += 1
+	await CaptureWait.until_drawn(self, SETTLE_FRAMES, name)
 	var img := get_viewport().get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
