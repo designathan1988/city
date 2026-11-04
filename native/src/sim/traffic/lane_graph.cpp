@@ -6,6 +6,8 @@
 
 #include "sim/traffic/traffic_system.h"
 
+#include "core/units.h"
+
 #include <cmath>
 
 namespace city {
@@ -13,7 +15,6 @@ namespace traffic {
 
 namespace {
 
-constexpr float KMH_PER_MS = 3.6f;
 constexpr float MIN_LANE_M = 0.5f;
 constexpr float UTURN_NODE_PAD_M = 3.f; // dead-end U-turn: the control point goes this far past the node, doubled
 

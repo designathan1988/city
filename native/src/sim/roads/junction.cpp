@@ -1,5 +1,6 @@
 // Port of Roadcraft src/roads/junction.ts (arms, setbacks, corners, bulbs).
 #include "core/math.h"
+#include "core/units.h"
 #include "sim/roads/junction.h"
 
 #include <algorithm>
@@ -9,7 +10,7 @@
 namespace city {
 
 namespace {
-constexpr double KERB_RADIUS_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / 180, ACUTE = 12 * PI_D / 180, CORNER_MITER = 2.5;
+constexpr double KERB_RADIUS_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / DEG_PER_HALF_TURN, ACUTE = 12 * PI_D / DEG_PER_HALF_TURN, CORNER_MITER = 2.5;
 constexpr double BULB_HALF_MAX = 6.5, BULB_LEN_MIN = 40, MOUTH_SHARE = 0.45, MAX_RETREAT = 60, BENT_RADIUS = 0.3;
 constexpr double BEVEL_PAD = 1.02, STRAIGHT_EPS = 1e-3, TAPER_MIN_STEP = 0.05, FILLET_SHARE = 0.5;
 constexpr double DEGENERATE_ARM_EPS = 1e-6;

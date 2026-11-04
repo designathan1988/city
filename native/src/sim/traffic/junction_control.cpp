@@ -238,15 +238,13 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	const Vehicle &me = t.vehicles[vid];
 	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
 	if (is_splice(s, c.node)) return true;
-	Light l = light_for(s, c.from_ds);
-	if (l == Light::RED) return false;
-	if (l == Light::AMBER && dist > me.v * me.v / (2 * tp.amber_decel)) return false;
+	const float line = dist - t.g.ds[c.from_ds].stop_back;
+	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m)) return false;
 	if (!has_exit(s, c, vid)) return false;
 	const float top = conn_speed(s, c) * me.vf;
-	if (peds_in_way(s, ci, front_time(s, me, dist - t.g.ds[c.from_ds].stop_back, top), front_time(s, me, dist + c.len, top))) return false;
+	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through
-	const float line = dist - t.g.ds[c.from_ds].stop_back;
 	const bool can_stop = line > me.v * me.v / (2 * tp.claim_brake) + 1;
 	for (size_t k = 0; k < c.conflicts.size(); k++) {
 		if (conflict_busy(s, c, k)) return false;
@@ -294,19 +292,23 @@ int lane_head(const CityState &s, int vid) {
 	return lane.empty() ? -1 : lane.back();
 }
 
-int pick_connector(const CityState &s, const Vehicle &v) {
-	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
+int connector_to(const CityState &s, int ds, int lane, int next) {
 	const LaneGraph &g = s.traffic.g;
-	const size_t key = size_t(v.ds) * MAX_LANES + v.lane;
-	if (key >= g.lane_conn.size()) return -1;
-	int next = route_at(s.traffic.route_pool, v.route, v.ri + 1), best = -1, bd = MAX_LANES * 2;
+	const size_t key = size_t(ds) * MAX_LANES + lane;
+	if (ds < 0 || key >= g.lane_conn.size()) return -1;
+	int best = -1, bd = MAX_LANES * 2;
 	for (int ci = g.lane_conn[key]; ci >= 0; ci = g.conns[size_t(ci)].next_from) {
 		const Conn &c = g.conns[size_t(ci)];
 		if (!c.alive || c.to_ds != next) continue;
-		int d = std::abs(c.from_lane - v.lane);
+		int d = std::abs(c.from_lane - lane);
 		if (d < bd) { bd = d; best = ci; }
 	}
 	return best;
+}
+
+int pick_connector(const CityState &s, const Vehicle &v) {
+	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
+	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
 }
 
 } // namespace traffic
