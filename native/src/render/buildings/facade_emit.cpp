@@ -44,8 +44,8 @@ void relief_faces(Shell &s, const BayCtx &c, float push, float left_push, float 
 void relief_caps(Shell &s, const BayCtx &c, float push, bool bottom, bool top) {
 	if (push > 0) {
 		Basis up{ c.f.o, c.f.e0, -c.f.e2, c.f.e1 };
-		if (top) s.rect(up, 0, c.W, 0, push, c.H, c.mould, c.trim_fin);
-		if (bottom) s.rect(up, 0, c.W, 0, push, 0, c.mould, c.trim_fin, true);
+		if (top) s.rect(up, 0, c.W, 0, push, c.H, c.mould, c.mould_fin);
+		if (bottom) s.rect(up, 0, c.W, 0, push, 0, c.mould, c.mould_fin, true);
 	} else if (push < 0) {
 		Basis up{ c.f.o, c.f.e0, c.f.e2, c.f.e1 };
 		if (top) s.rect(up, 0, c.W, 0, -push, c.H, c.wall * HALF, c.wall_fin, true);
@@ -91,7 +91,7 @@ void SideEmit::storey(const Side &sd, int k, float z) {
 	c.W = W; c.H = H; c.level = level; c.use = b.use; c.geo = &v.faces[sd.side];
 	c.trim = trim_lin(pl); c.trim_fin = b.paints[size_t(b.trim)].finish;
 	Paint mould = moulding_of(pl);
-	c.mould = paint_lin(mould);
+	c.mould = paint_lin(mould); c.mould_fin = mould.finish;
 	const Paint &wp = [&]() -> const Paint & {
 		auto it = v.storey_paint.find(side_key(k, sd.side));
 		return it != v.storey_paint.end() ? b.paints[size_t(it->second)] : b.wall_of(v);
