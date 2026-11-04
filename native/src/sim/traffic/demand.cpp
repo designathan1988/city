@@ -158,7 +158,7 @@ float day_factor(const TrafficParams &p, float h) {
 void spawn_vehicles(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	double target = std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * t.gov);
+	double target = std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * t.levels.traffic * t.levels.population * t.levels.demand * t.gov);
 	int attempts = 0;
 	if (t.vehicle_count < p.fill_share * target) {
 		attempts = int(p.spawn_fill_attempts);

@@ -92,6 +92,15 @@ void j_remove_segment(CityState &s, int seg) {
 	s.roads.remove_segment(seg);
 }
 
+void j_set_marking(CityState &s, int style) {
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::MARKING, 0);
+		op.from = s.marking_style.load();
+		op.to = style;
+	}
+	s.marking_style.store(style);
+}
+
 void j_set_profile(CityState &s, int seg, int profile) {
 	RoadSegment &g = s.roads.segs[seg];
 	if (g.profile == profile) return;
@@ -117,9 +126,11 @@ void j_set_zone(CityState &s, int seg, int side, int zone) {
 		op.side = side;
 		op.from = cur;
 		op.to = zone;
+		op.player = (g.flags & (side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT)) != 0;
 		grow_seg(s, g);
 	}
 	s.roads.set_zone(seg, side, zone);
+	s.roads.set_player_zone(seg, side, zone != 0);
 	mark_furniture(s, seg);
 }
 

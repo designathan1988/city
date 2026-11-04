@@ -55,7 +55,9 @@ void reset_traffic(CityState &s) {
 	TrafficState &t = s.traffic;
 	// a new map or a load: the whole traffic state starts over (fleet, counters, clock, governor, rng), so nothing of
 	// the old city survives in a field this list forgot; the old fleet is gone before the full graph build
+	const TrafficLevels levels = t.levels; // the panels' choices outlive the city
 	t = TrafficState();
+	t.levels = levels;
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
@@ -163,11 +165,13 @@ void step(CityState &s, float dt) {
 	check_window(s);
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
-	spawn_vehicles(s, dt);
-	meso_process(s);
-	change_lanes(s);
-	step_vehicles(s, dt);
-	step_pedestrians(s, dt);
+	if (t.levels.vehicles_on) {
+		spawn_vehicles(s, dt);
+		meso_process(s);
+		change_lanes(s);
+		step_vehicles(s, dt);
+	}
+	if (t.levels.people_on) step_pedestrians(s, dt);
 }
 
 } // namespace traffic

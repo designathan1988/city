@@ -54,15 +54,18 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	const double dt = 1.0 / s.catalog.tune.sim_tick_hz;
 	for (int k = 0; k < steps; k++) {
+		bool growing;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::step(s, float(dt));
+			growing = s.traffic.levels.growth_on;
 		}
 		{
 			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared
 			s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
-			if (map.owns_lock()) {
+			if (!growing) owed_ = 0;
+			else if (map.owns_lock()) {
 				grow_step(s, owed_ + dt);
 				owed_ = 0;
 			} else owed_ += dt;
