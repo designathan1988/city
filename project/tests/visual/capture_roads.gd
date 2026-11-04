@@ -21,6 +21,7 @@ const STROKE_SWING_M := 34.0
 
 var out_dir := "user://captures"
 var world: CityWorld
+var only := PackedStringArray()
 var rig: CityCamera
 var tools: ToolController
 var hud: RoadcraftHud
@@ -34,6 +35,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
+		if arg.begins_with("--only="):
+			only = arg.trim_prefix("--only=").split(",")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	world = CityWorld.new()
 	add_child(world)
@@ -74,7 +77,8 @@ func _run() -> void:
 	await _photo("curve_top", at(280, -80), [0.0, 70.0], WIDE_M * 0.5)
 	await _photo("layout_top", at(40, 0), [0.0, 70.0], WIDE_M)
 	await _night()
-	await _tool()
+	if only.is_empty():
+		await _tool()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -111,6 +115,8 @@ func _lay() -> void:
 
 
 func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
+	if not only.is_empty() and not only.has(name):
+		return
 	rig.jump(p, view[0], view[1], dist)
 	await ui.drawn()
 	await ui.shot(name)

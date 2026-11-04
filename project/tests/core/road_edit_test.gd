@@ -54,6 +54,7 @@ func _variants(e: Vector3) -> void:
 	var wide: int = CityStore.dispatch(&"road_variant", [urban, 0, WIDE_M, 0])
 	profiles = CityStore.query(&"road_profiles")
 	_check(profiles[four].lanes == 4 and profiles[four].width == URBAN_M + 2 * LANE_M, "quatro faixas: %s" % profiles[four].width)
+	_check(profiles[four].centre == "double", "duas faixas por sentido sem canteiro têm linha dupla: %s" % profiles[four].centre)
 	_check(profiles[bays].width == URBAN_M + 2 * BAY_M, "vagas dos dois lados: %s" % profiles[bays].width)
 	_check(profiles[wide].width == WIDE_M and profiles[wide].lanes == 2, "largura total: %s" % profiles[wide].width)
 	_check(CityStore.dispatch(&"road_variant", [urban, 4, 0.0, 0]) == four, "a mesma variante é o mesmo perfil")

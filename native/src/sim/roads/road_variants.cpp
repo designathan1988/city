@@ -119,7 +119,8 @@ int road_variant(Catalog &c, const RoadVariant &v) {
 	p.custom = true;
 	p.class_card = false;
 	p.strips = strips_of(b, s, lanes, bands, c.tune.road_bay_m);
-	if (lanes != s.lanes) p.centre = lanes <= 1 || s.median > 0 ? "none" : lanes == 2 ? "dashed" : "solid";
+	// more than one lane in a direction of a two-way road is a double line (MBST vol. IV, LFO-3)
+	if (lanes != s.lanes) p.centre = lanes <= 1 || s.median > 0 ? "none" : lanes == 2 ? "dashed" : "double";
 	derive_profile(p, c.prices);
 	c.profiles.push_back(std::move(p));
 	c.variants.push_back(v);
