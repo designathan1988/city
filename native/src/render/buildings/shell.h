@@ -77,6 +77,14 @@ struct BoxInstance {
 	float thick = 0;
 };
 
+// A piece of bay_props.h: which model, its axes with their scale and where it stands.
+struct PropInstance {
+	float basis[BOX_BASIS_FLOATS] = {};
+	float origin[3] = {};
+	uint32_t color = 0xffffffff;
+	uint8_t kind = 0;
+};
+
 constexpr int CUSTOM_ARRAYS = 4;
 
 struct Shell {
@@ -85,6 +93,7 @@ struct Shell {
 	std::vector<godot::Vector2> uv, uv2;
 	std::vector<int32_t> idx;
 	std::vector<BoxInstance> boxes; // box() collects instances instead of triangles when `instanced`
+	std::vector<PropInstance> props; // what hangs on the bays and stands on their balconies
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)

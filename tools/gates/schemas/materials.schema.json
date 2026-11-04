@@ -463,6 +463,7 @@
   "transit_glass": { "type": "object" },
   "transit_xray": { "type": "object" },
   "building_card": { "type": "object", "required": ["shader", "params"], "properties": { "shader": { "type": "string" }, "params": { "type": "object", "required": ["thin_bar_m", "thin_behind", "roughness", "metalness"], "properties": { "thin_bar_m": { "type": "number" }, "thin_behind": { "type": "number" }, "roughness": { "type": "number" }, "metalness": { "type": "number" } }, "strict": true } }, "strict": true },
+  "building_props": { "type": "object", "required": ["shader", "params"], "properties": { "shader": { "type": "string" }, "params": { "type": "object", "required": ["roughness"], "properties": { "roughness": { "type": "number" } } } } },
   "building_ghost": {
    "type": "object",
    "required": [

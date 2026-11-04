@@ -61,11 +61,13 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_glass_ = ctx.material("building_glass", errors);
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
+	material_props_ = ctx.material("building_props", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;
-	if (!look_.load(t, errors)) return false;
+	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors)) return false;
+	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();
@@ -109,6 +111,7 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 		float px = std::max(pb.px_min, MIN_SCREEN_PX);
 		band_end_[size_t(i)] = std::min(pb.thick_max * PROJECTION_HEIGHT / (2 * half_tan * px), far_end_);
 	}
+	for (int i = BAND_COUNT; i < BAND_DRAWS; i++) band_end_[size_t(i)] = band_end_[BAND_COUNT - 1];
 }
 
 // A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
@@ -136,7 +139,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		range(ch.parts[size_t(i)], 0, parts_end_);
 		range(ch.mid[size_t(i)], ch.built[LEVEL_NEAR] ? near_end_ : 0, 0);
 	}
-	for (int b = 0; b < BAND_COUNT; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
+	for (int b = 0; b < BAND_DRAWS; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)]);
 }
 
 float BuildingRenderer::near_reach() const { return near_end_ + CHUNK * REACH_PAD; }

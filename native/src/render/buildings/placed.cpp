@@ -10,6 +10,8 @@ namespace city::b40 {
 
 namespace {
 constexpr float MOULD_K = 1.1f, BAND_LOW = 0.45f, BAND_MID = 0.1f, LOW_TIER = 0.94f;
+constexpr uint32_t GOLDEN = 2654435761u;
+constexpr int ID_OFF = 7;
 } // namespace
 
 std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z) {
@@ -68,6 +70,18 @@ Paint moulding_of(const Placed &pl) {
 	const Paint &wall = b.paints[size_t(b.wall)];
 	if (wall.finish == FIN_GLASS) return pl.data->color("coping_metal");
 	return Paint{ FIN_PLASTER, scale_rgb(wall.rgb, MOULD_K) };
+}
+
+// The block's or the building's own roof, unless it is a pitched roof's or the generic slab: then one of the flat roofs, by the building.
+Paint flat_roof_of(const Placed &pl, const Volume &v) {
+	const Body &b = *pl.b;
+	const int own = v.roof_paint >= 0 ? v.roof_paint : b.roof;
+	if (own >= 0) {
+		const Paint &p = b.paints[size_t(own)];
+		const Paint slab = pl.data->color("office_roof");
+		if (p.finish != FIN_TILE && p.finish != FIN_SLATE && !(p.finish == slab.finish && p.rgb == slab.rgb)) return p;
+	}
+	return pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
 }
 
 void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush) {

@@ -36,11 +36,12 @@ Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;
 	Held far;
-	int64_t near_chunks = 0, mid_chunks = 0, instances = 0;
+	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0;
 	for (const auto &[key, ch] : chunks_) {
 		near_chunks += ch.built[LEVEL_NEAR] ? 1 : 0;
 		mid_chunks += ch.built[LEVEL_MID] ? 1 : 0;
 		instances += ch.built[LEVEL_NEAR] ? ch.instances : 0;
+		props += ch.built[LEVEL_NEAR] ? ch.props : 0;
 		for (int k = 0; k < HELD_KINDS; k++) {
 			if (!ch.built[k < HELD_MID_WALLS ? LEVEL_NEAR : LEVEL_MID]) continue;
 			sum[size_t(k)].triangles += ch.held[size_t(k)].triangles;
@@ -63,6 +64,7 @@ Dictionary BuildingRenderer::building_cost() const {
 	d["near_chunks"] = near_chunks;
 	d["mid_chunks"] = mid_chunks;
 	d["instances"] = instances;
+	d["props"] = props;
 	return d;
 }
 

@@ -11,10 +11,12 @@
 
 namespace city {
 
-// Civic functions (the ids saved with a record).
-constexpr uint8_t FN_COUNT_VALUE = 35; // the catalogue keeps unused function ids reserved for future civic kinds
+// What a building is for (the ids saved with a record, new ones at the end). FN_NONE: its kind and seed say.
 enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
-	FN_SUPERMARKET, FN_CITY_HALL, FN_POLICE, FN_FIRE_STATION, FN_MALL, FN_SPORTS_COURT, FN_COUNT = FN_COUNT_VALUE };
+	FN_SUPERMARKET, FN_CITY_HALL, FN_POLICE, FN_FIRE_STATION, FN_MALL, FN_SPORTS_COURT, FN_COUNCIL, FN_COURTHOUSE, FN_POST_OFFICE,
+	FN_UNIVERSITY, FN_LIBRARY, FN_MUSEUM, FN_PRISON, FN_CEMETERY, FN_BUS_STATION, FN_SHOP, FN_BANK, FN_PHARMACY, FN_BAKERY,
+	FN_RESTAURANT, FN_SNACK_BAR, FN_BAR, FN_NIGHTCLUB, FN_CINEMA, FN_HOTEL, FN_GYM, FN_CLUB, FN_OFFICE, FN_FACTORY, FN_WAREHOUSE,
+	FN_PLAYGROUND, FN_COUNT };
 
 struct Building {
 	float x = 0, z = 0, w = 0, d = 0, rot = 0; // lot centre, frontage, depth; local +z faces the street

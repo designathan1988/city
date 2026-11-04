@@ -125,6 +125,26 @@ Purpose purpose_of(const Body &b, int fn, uint32_t seed) {
 		case FN_POLICE: return PU_POLICE;
 		case FN_FIRE_STATION: return PU_FIRE_STATION;
 		case FN_MALL: return PU_MALL;
+		case FN_COUNCIL: return PU_COUNCIL;
+		case FN_COURTHOUSE: return PU_COURTHOUSE;
+		case FN_POST_OFFICE: return PU_POST_OFFICE;
+		case FN_UNIVERSITY: return PU_SCHOOL;
+		case FN_LIBRARY: return PU_LIBRARY;
+		case FN_MUSEUM: return PU_MUSEUM;
+		case FN_PRISON: return PU_PRISON;
+		case FN_BUS_STATION: return PU_BUS_STATION;
+		case FN_SHOP: case FN_PHARMACY: case FN_BAKERY: return PU_SHOP;
+		case FN_BANK: return PU_BANK;
+		case FN_RESTAURANT: case FN_SNACK_BAR: return PU_RESTAURANT;
+		case FN_BAR: return PU_BAR;
+		case FN_NIGHTCLUB: return PU_NIGHTCLUB;
+		case FN_CINEMA: return PU_CINEMA;
+		case FN_HOTEL: return PU_HOTEL;
+		case FN_GYM: return PU_GYM;
+		case FN_CLUB: return PU_CLUB;
+		case FN_OFFICE: return PU_OFFICE;
+		case FN_FACTORY: return PU_FACTORY;
+		case FN_WAREHOUSE: return PU_WAREHOUSE;
 		default: break;
 	}
 	switch (b.kind) {

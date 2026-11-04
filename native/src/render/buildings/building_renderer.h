@@ -68,7 +68,8 @@ private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
 	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
 	static constexpr int SUB_COUNT = SUBS * SUBS;
-	static constexpr int BAND_COUNT = 5;
+	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
+	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
 	// What the meshes hold, surface by surface (building_cost).
 	enum SurfaceKind { HELD_NEAR_WALLS, HELD_NEAR_PANES, HELD_NEAR_GUARDS, HELD_NEAR_CARDS, HELD_NEAR_PIECES, HELD_MID_WALLS, HELD_MID_PANES, HELD_MID_CARDS, HELD_KINDS };
 	struct Held {
@@ -80,9 +81,9 @@ private:
 	};
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
-		std::array<MultiMeshDraw, BAND_COUNT> bands;
+		std::array<MultiMeshDraw, BAND_DRAWS> bands;
 		std::array<Held, HELD_KINDS> held;
-		int64_t instances = 0; // the instanced parts of its bands
+		int64_t instances = 0, props = 0; // the instanced parts of its bands, and the bay props among them
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
@@ -123,10 +124,10 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
 		std::array<b40::Shell, SUB_COUNT> near_cards, mid_cards; // their railings: another
 		std::array<Surface, SUB_COUNT> near, parts, mid;
-		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
-		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
-		std::array<int, BAND_COUNT> band_count{};
-		godot::RID unit_box; // the parts' box mesh
+		std::array<godot::PackedFloat32Array, BAND_DRAWS> bands; // the instanced parts, MultiMesh layout (rs_util.h)
+		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
+		std::array<int, BAND_DRAWS> band_count{};
+		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
 		bool has_near = false, has_mid = false, baked = false;
 		std::array<Held, HELD_KINDS> held;
 		int64_t bytes() const;
@@ -162,6 +163,7 @@ private:
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown);
 	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
+	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
 	void submit_super(const CityState &s, int64_t super_key, float priority);
@@ -177,12 +179,13 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
-	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_far_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_parts_;
 	ViewNeed need_;
+	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
 	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
-	std::array<float, BAND_COUNT> band_end_{};
+	std::array<float, BAND_DRAWS> band_end_{};
 	mutable std::mutex queue_mutex_;
 	Results<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_; // key -> seq of the newest job

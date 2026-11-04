@@ -321,7 +321,8 @@
     "project/data/game/settings.json": "tools/gates/schemas/settings.schema.json",
     "project/data/game/daylight.json": "tools/gates/schemas/daylight.schema.json",
     "project/data/game/saves.json": "tools/gates/schemas/saves.schema.json",
-    "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json"
+    "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json",
+    "project/data/render/bay_props.json": "tools/gates/schemas/bay_props.schema.json"
   },
   "magic_numbers": {
     "paths": [
