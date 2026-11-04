@@ -321,7 +321,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos só com ciclo fixo (sem atuação nem botão de pedestre); rotas
-  síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos > 20 s por minuto, chegadas/perdidas).
+  síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos > 20 s no fim e em média por segundo de
+  cada minuto, chegadas/perdidas; parados no cruzamento somados por segundo: atrás de outro, por pedestres, partindo).
 - Pedestres: ciclistas, portas dos prédios e passageiros de ônibus; não desviam de árvores, postes e mobiliário da calçada
   (a colocação deles é do render: precisa passar para a simulação, dono único, para os dois lerem).
 - Pedestres: só a caminhada (sem parados, celular, guarda-chuva, sentados); o pacote precisa levar o texto MIT da animação Rocketbox

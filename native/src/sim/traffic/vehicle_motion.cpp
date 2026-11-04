@@ -14,6 +14,7 @@ namespace {
 constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f, SAFE_PAD_M = 0.3f;
 constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, DRIFT_RATE = 0.1f, LC_DECAY = 1.f;
 constexpr float KMH_PER_MS = 3.6f;
+constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
 
 struct Lead {
 	float gap = NO_LEADER, v = 0;
@@ -24,11 +25,12 @@ struct Lead {
 
 float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
 
-// Acceleration after the emergency cap and the jerk limit; also sets the brake light.
-float finish_accel(const CityState &s, Vehicle &v, float acc, const Lead &l, float dt) {
+// Acceleration after the emergency cap and the jerk limit.
+float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &l, float dt) {
 	const VehicleClass &c = s.catalog.traffic.classes[int(v.type)];
 	acc = clampf(acc, -c.b_emergency, c.a);
-	// jerk limit from the last acceleration as felt (an emergency cap can leave a huge negative one: drivers.ts foot)
+	// jerk limit from the last acceleration as felt, never harder than an emergency stop: a standing vehicle's is zero,
+	// so it moves off as soon as its way clears (as Roadcraft 4.0 drivers do)
 	const float foot = clampf(v.acc, -c.b_emergency, c.a);
 	if (acc > foot) acc = std::min(acc, foot + s.catalog.traffic.jerk_up * dt);
 	if (l.gap < NO_LEADER) {
@@ -36,14 +38,16 @@ float finish_accel(const CityState &s, Vehicle &v, float acc, const Lead &l, flo
 		float safe = -be * dt + std::sqrt(be * be * dt * dt + 2 * be * room);
 		if (v.v + acc * dt > safe) acc = (safe - v.v) / dt;
 	}
-	v.acc = acc;
 	return acc;
 }
 
+// Moves `v` by the commanded `acc`; keeps the acceleration that speed change really was (as Roadcraft 4.0 does): a
+// vehicle held at a standstill is not braking, whatever its driver asks for.
 void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) {
 	const TrafficParams &p = s.catalog.traffic;
 	float nv = std::max(0.f, v.v + acc * dt);
 	pos += (v.v + nv) * 0.5f * dt;
+	v.acc = (nv - v.v) / dt;
 	v.v = nv;
 	v.brake = acc < p.brake_light_accel || nv < p.brake_light_speed;
 	v.stuck = nv < STUCK_SPEED ? v.stuck + dt : 0.f;
@@ -204,6 +208,26 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 	leaving.clear();
 }
 
+// What the k-th vehicle on connector `ci` drives against, at its top speed `top` there: the one ahead (on the connector
+// or the exit lane's tail) and walkers on the exit crosswalk, a stop at the connector's end (the entry one is behind it).
+void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car, Lead &walkers) {
+	const TrafficState &t = s.traffic;
+	const auto &list = t.conn_vehicles[ci];
+	const Conn &c = t.g.conns[ci];
+	const Vehicle &v = t.vehicles[list[k]];
+	if (k > 0) {
+		const Vehicle &o = t.vehicles[list[k - 1]];
+		car.take(o.cs - body(s, o) - v.cs, o.v);
+	} else {
+		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
+		if (!lane.empty()) {
+			const Vehicle &o = t.vehicles[lane.front()];
+			car.take(c.len - v.cs + o.s - body(s, o), o.v);
+		}
+	}
+	if (v.cs < c.len && peds_in_way(s, ci, FRONT_PAST, front_time(s, v, c.len - v.cs, top))) walkers.take(c.len - v.cs, 0.f);
+}
+
 void step_connector(CityState &s, int ci, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
@@ -212,19 +236,9 @@ void step_connector(CityState &s, int ci, float dt) {
 	const float vt = conn_speed(s, c);
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
-		Lead l;
-		if (k > 0) {
-			const Vehicle &o = t.vehicles[list[k - 1]];
-			l.take(o.cs - body(s, o) - v.cs, o.v);
-		} else {
-			const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
-			if (!lane.empty()) {
-				const Vehicle &o = t.vehicles[lane.front()];
-				l.take(c.len - v.cs + o.s - body(s, o), o.v);
-			}
-		}
-		// walkers on the exit crosswalk; the entry one is behind it already
-		if (v.cs < c.len && peds_in_way(s, ci, FRONT_PAST, front_time(s, v, c.len - v.cs, vt * v.vf))) l.take(c.len - v.cs, 0.f);
+		Lead l, walkers;
+		connector_leads(s, ci, k, vt * v.vf, l, walkers);
+		l.take(walkers.gap, walkers.v);
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, vt * v.vf, l.gap, l.v), l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
@@ -242,6 +256,22 @@ void step_connector(CityState &s, int ci, float dt) {
 }
 
 } // namespace
+
+BoxHold box_hold(const CityState &s, int id) {
+	const TrafficState &t = s.traffic;
+	const Vehicle &v = t.vehicles[size_t(id)];
+	const auto &on = t.conn_vehicles[size_t(v.conn)];
+	const size_t k = size_t(std::find(on.begin(), on.end(), id) - on.begin());
+	if (k >= on.size()) return BoxHold::STARTING;
+	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
+	const float top = conn_speed(s, t.g.conns[size_t(v.conn)]) * v.vf;
+	Lead car, walkers;
+	connector_leads(s, v.conn, k, top, car, walkers);
+	// what takes most of its free-road acceleration holds it (creeping up to a standing leader is being held by it)
+	const float by_car = idm_accel(vc, v.v, top, car.gap, car.v), by_walkers = idm_accel(vc, v.v, top, walkers.gap, walkers.v);
+	if (std::min(by_car, by_walkers) > MOVING_OFF_SHARE * idm_accel(vc, v.v, top, NO_LEADER, 0.f)) return BoxHold::STARTING;
+	return by_walkers < by_car ? BoxHold::WALKERS : BoxHold::LEADER;
+}
 
 float conn_speed(const CityState &s, const Conn &c) {
 	return c.turn == Turn::STRAIGHT ? s.traffic.g.ds[c.to_ds].speed : s.catalog.traffic.turn_speed_kmh / KMH_PER_MS;

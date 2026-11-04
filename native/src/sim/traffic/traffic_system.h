@@ -98,6 +98,10 @@ void spawn_vehicles(CityState &s, float dt);
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
+// What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
+// ahead, walkers on its exit crosswalk, or neither holds it back (it is moving off).
+enum class BoxHold : uint8_t { LEADER = 0, WALKERS, STARTING, COUNT };
+BoxHold box_hold(const CityState &s, int id);
 float desired_speed(const CityState &s, const Vehicle &v, int ds);
 void step_vehicles(CityState &s, float dt);
 
