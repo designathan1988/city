@@ -11,10 +11,8 @@ const PX := 0.25
 const OPEN_GROUND_M := 420.0
 const TOP := [20.0, 62.0]
 const LOW := [30.0, 24.0]
-const PAIR_TOP := [-20.0, 62.0] # the 4.0's azimuth turns the other way round
-const PAIR_LOW := [-30.0, 24.0]
-const PAIR_TOP_M := 100.0
-const PAIR_LOW_M := 50.0
+const PAIR_LINES := 900.0 # the 4.0's zoom is pixels a metre, on the lines of its photos
+const RIGHT_ANGLE := 90.0
 const CLOSE_M := 90.0
 const NEAR_M := 42.0
 const WIDE_M := 520.0
@@ -83,9 +81,12 @@ func _run() -> void:
 	await _photo("road_end", at(0, -40), [200.0, 55.0], NEAR_M * 1.5)
 	await _photo("curve_top", at(280, -80), [0.0, 70.0], WIDE_M * 0.5)
 	await _photo("layout_top", at(40, 0), [0.0, 70.0], WIDE_M)
-	await _photo("pair_urban_top", at(0, -120), PAIR_TOP, PAIR_TOP_M)
-	await _photo("pair_urban_low", at(0, -120), PAIR_LOW, PAIR_LOW_M)
-	await _photo("bend_top", at(0, 300), [0.0, 62.0], PAIR_TOP_M)
+	await _pair("pair_avenue_top", at(-60, 100), 20.0, 62.0, 10.0)
+	await _pair("pair_avenue_low", at(-60, 100), 30.0, 24.0, 18.0)
+	await _pair("pair_urban_top", at(0, -120), 20.0, 62.0, 14.0)
+	await _pair("pair_t_top", at(90, 100), 20.0, 62.0, 12.0)
+	await _pair("pair_road_end", at(0, -20), 200.0, 55.0, 16.0)
+	await _photo("bend_top", at(0, 300), [0.0, 62.0], NEAR_M * 2.0)
 	await _photo("t_close", at(90, 100), [0.0, 90.0], CLOSE_M)
 	await _night()
 	if only.is_empty():
@@ -152,6 +153,11 @@ func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
 	rig.jump(p, view[0], view[1], dist)
 	await ui.drawn()
 	await ui.shot(name)
+
+
+## The camera of a 4.0 photo (`__roadcraft.setView`): its bearing runs from +X towards +Z, ours from +Z towards +X.
+func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -> void:
+	await _photo(name, p, [RIGHT_ANGLE - azimuth, tilt], CameraProfile.view_distance(rig.cfg, PAIR_LINES / (2.0 * zoom)))
 
 
 ## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.
