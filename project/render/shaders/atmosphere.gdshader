@@ -26,6 +26,7 @@ uniform float mist = 0.0;
 uniform float mist_height = 60.0;
 uniform float mist_beta;
 uniform float mist_reach = 2400.0;
+uniform float air_gain = 1.0; // daylight.json sky_gain: what the air gives off meets the curve as the sky does
 uniform float fog_on = 0.0;
 uniform float fog_density = 1.0;
 uniform vec2 fog_slab = vec2(0.0);
@@ -47,23 +48,28 @@ float ign(vec2 frag) { // interleaved gradient noise (Jimenez 2014): each pixel 
 	return fract(52.9829189 * fract(dot(frag, vec2(0.06711056, 0.00583715))));
 }
 
-// How much of the sun's direct light is left at a ground point under the clouds: the chord of the sun's ray through each
-// puff, in the cloud's own size (an analytic stand-in for marching: a puff is a sphere).
+// How much of the sun's direct light is left at a ground point under the clouds: five steps of the sun's ray through each
+// cloud's heap, eroded as its body is, so a shadow is the cloud's heart and not its whole reach.
+float shadow_density(int c, vec3 p) {
+	float life = cloud_look[c].y;
+	float shape = clamp(heap(c, p) * 3.2 - 0.5 * (0.55 + 0.4 * (1.0 - life)) - (1.0 - life) * 0.8, 0.0, 1.0);
+	float erode = 0.5 * (0.55 + 0.3 * (1.0 - life));
+	return clamp((shape - erode) / (1.0 - erode), 0.0, 1.0) * cloud_look[c].z;
+}
+
 float cloud_shade(vec3 hit) {
 	float through = 0.0;
 	for (int c = 0; c < MAX_CLOUDS; c++) {
 		if (c >= cloud_count) break;
 		vec2 span = sphere_span(hit, sun_dir, cloud[c]);
 		if (span.y <= 0.0) continue;
-		for (int k = 0; k < PUFFS; k++) {
-			vec4 s = puff[c * PUFFS + k];
-			vec3 o = s.xyz - hit;
-			float along = dot(o, sun_dir);
-			float miss2 = max(dot(o, o) - along * along, 0.0);
-			through += max(s.w * s.w - miss2, 0.0) / (s.w * cloud[c].w) * cloud_look[c].y * cloud_look[c].z;
+		float a = max(span.x, 0.0);
+		float len = (span.y - a) / 5.0;
+		for (int i = 0; i < 5; i++) {
+			through += shadow_density(c, hit + sun_dir * (a + (float(i) + 0.5) * len)) * len / cloud[c].w;
 		}
 	}
-	return 1.0 - shadow_strength * (1.0 - dark) * (1.0 - exp(-through * 2.2));
+	return 1.0 - shadow_strength * (1.0 - dark) * (1.0 - exp(-through * 7.0));
 }
 
 // The mist: exponential in height, along the ray to what the pixel sees.
@@ -74,13 +80,28 @@ float mist_amount(vec3 ro, vec3 rd, float t, float top) {
 	return clamp(1.0 - exp(-mist * mist_beta * dist * thick), 0.0, 0.95);
 }
 
-// The noise of a fog bank: the tile (which repeats) read at two sizes that share no period, the smaller turned, or its
-// repeats line up into a lattice over a bank wider than the tile.
+// Value noise by hash, no tile to repeat: a wide bank reads no lattice.
+float fog_hash(vec3 p) {
+	p = fract(p * 0.3183099 + 0.1);
+	p *= 17.0;
+	return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float fog_value(vec3 x) {
+	vec3 i = floor(x);
+	vec3 f = fract(x);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(
+		mix(mix(fog_hash(i), fog_hash(i + vec3(1.0, 0.0, 0.0)), f.x), mix(fog_hash(i + vec3(0.0, 1.0, 0.0)), fog_hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+		mix(mix(fog_hash(i + vec3(0.0, 0.0, 1.0)), fog_hash(i + vec3(1.0, 0.0, 1.0)), f.x), mix(fog_hash(i + vec3(0.0, 1.0, 1.0)), fog_hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+		f.z);
+}
+
+// The billows of a fog bank: 22 m and 9 m across, so the bank breaks into wisps with the ground showing between them.
 float fog_noise(vec3 q) {
-	vec3 p = vec3(q.x, q.y * 1.6, q.z);
-	float wide = texture(noise_volume, p / 137.0).r;
-	float fine = texture(noise_volume, vec3(0.8 * p.x - 0.6 * p.z, p.y, 0.6 * p.x + 0.8 * p.z) / 53.0).r;
-	return wide * 0.6 + fine * 0.4;
+	vec3 wide = vec3(q.x, q.y * 1.6, q.z) / 22.0;
+	vec3 fine = vec3(q.x, q.y * 2.0, q.z) / 9.2;
+	return fog_value(wide) * 0.6 + fog_value(wide * 2.1 + 4.1) * 0.15 + fog_value(fine) * 0.25;
 }
 
 // The painted fog along the ray: the slab it fills, read from its window; thickness thinning with height over the ground
@@ -201,5 +222,5 @@ void fragment() {
 	}
 	if (keep > 0.999) discard;
 	ALPHA = 1.0 - keep;
-	ALBEDO = linear_out(add / max(ALPHA, 0.0015));
+	ALBEDO = linear_out(add * air_gain / max(ALPHA, 0.0015));
 }

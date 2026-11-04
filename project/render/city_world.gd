@@ -168,9 +168,11 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.tonemap_exposure = day.exposure
 	environment.tonemap_white = day.tonemap_white
-	environment.ssao_enabled = false
+	environment.ssao_radius = day.occlusion.radius_m
+	environment.ssao_light_affect = day.occlusion.light_affect
 	environment.fog_enabled = true
 	environment.fog_sky_affect = 0.0
+	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	FilmLook.grade(environment, day.grade)
@@ -200,6 +202,7 @@ func follow_clock(hour: float) -> void:
 func _process(_delta: float) -> void:
 	if daylight.mode == "cycle" and CityStore.ready_to_read():
 		daylight.follow_clock(CityStore.snapshot.hour)
+	daylight.follow_view(get_viewport().get_camera_3d())
 
 
 func _build_terrain(palette: Dictionary) -> void:

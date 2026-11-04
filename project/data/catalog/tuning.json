@@ -5,8 +5,6 @@
   "speed_fast": 2,
   "speed_fastest": 4,
   "day_start_min": 390,
-  "day_light_hour": 16,
-  "night_light_hour": 22,
   "growth_per_s": 25,
   "growth_tries": 8
  },

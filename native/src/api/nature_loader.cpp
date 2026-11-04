@@ -125,7 +125,10 @@ Community community(const Dictionary &d, Read &r) {
 	return c;
 }
 
-void load_ecology(const Dictionary &t, const PaintDef &paint, EcologyDef &c, PackedStringArray &e) {
+// The regional style the landscape reads until the style lives in the CityState.
+const char *const STYLE = "roadcraft";
+
+void load_ecology(const Dictionary &t, const Dictionary &style, const PaintDef &paint, EcologyDef &c, PackedStringArray &e) {
 	static const char *const NAMES[FORMATIONS] = { "gallery", "vereda", "cerradao", "cerrado", "rupestre", "ombrophilous", "high_grassland",
 		"terra_firme", "varzea", "thorn_scrub", "caatinga_river", "campos", "capao", "flooded_field", "cordilheira", "outcrop" };
 	Read r{ e, "ecology" };
@@ -143,7 +146,7 @@ void load_ecology(const Dictionary &t, const PaintDef &paint, EcologyDef &c, Pac
 	c.riparian_far_m = r.num(t, "riparian_far_m"); c.riparian_far_patch_m = r.num(t, "riparian_far_patch_m");
 	c.forest_line_from_m = r.num(t, "forest_line_from_m"); c.forest_line_to_m = r.num(t, "forest_line_to_m");
 	c.canopy_wood = r.num(t, "canopy_wood"); c.trees_wood = r.num(t, "trees_wood"); c.emergent_wood = r.num(t, "emergent_wood");
-	std::string def = text(t.get("default_biome", ""));
+	std::string def = text(style.get("default_biome", ""));
 	c.default_biome = -1;
 	for (const PaintKindDef &k : paint.kinds)
 		if (k.cls == PaintClass::BIOME && k.id == def) c.default_biome = k.slot;
@@ -158,7 +161,7 @@ bool load_nature(const Dictionary &t, NatureDef &n, PackedStringArray &errors) {
 	load_fog(r.dict(t, "fog"), n.fog, errors);
 	load_paint(r.dict(t, "paint"), n.paint, errors);
 	load_trees(r.dict(t, "trees"), n.trees, errors);
-	load_ecology(r.dict(t, "ecology"), n.paint, n.ecology, errors);
+	load_ecology(r.dict(t, "ecology"), r.dict(r.dict(t, "styles"), STYLE), n.paint, n.ecology, errors);
 	Dictionary el = r.dict(t, "elements");
 	n.elements.max_items = r.integer(el, "max_items");
 	n.elements.max_per_dab = r.integer(el, "max_per_dab");

@@ -36,7 +36,25 @@
   "fill_elev_deg": { "type": "number" },
   "fill_turn_deg": { "type": "number" },
   "clock_step_h": { "type": "number" },
+  "shadow_reach_m": { "type": "number" },
+  "shadow_depth_max_m": { "type": "number" },
+  "shadow_view_least_dip": { "type": "number" },
+  "shadow_reach_step": { "type": "number" },
+  "occlusion": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "radius_m": { "type": "number" },
+    "light_affect": { "type": "number" }
+   }
+  },
+  "low_from_m": { "type": "number" },
+  "low_to_m": { "type": "number" },
   "overcast_sun": { "type": "number" },
+  "overcast_fill": { "type": "number" },
+  "air_high": { "type": "string", "pattern_prefix": "#" },
+  "air_night_cut": { "type": "number" },
+  "air_height_m": { "type": "number" },
   "overcast_ambient": { "type": "number" },
   "overcast_sky": { "type": "number" },
   "overcast_grey": { "type": "string", "pattern_prefix": "#" },

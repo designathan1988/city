@@ -39,6 +39,7 @@
   "trees": {
    "type": "object"
   },
+  "styles": { "type": "object" },
   "ecology": {
    "type": "object"
   },
