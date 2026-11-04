@@ -35,7 +35,8 @@ var _focus := true
 func _ready() -> void:
 	var t: Dictionary = DataTables.game("settings")
 	var cfg := ConfigFile.new()
-	cfg.load(PATH)
+	if not GameFlow.tests_drive: # tests and captures run on the tables' defaults, whatever the player or another clone left in the file
+		cfg.load(PATH)
 	preset = known_preset(cfg.get_value(SECTION, "preset", t.default))
 	kept = cfg.get_value(SECTION, "kept", {})
 	dynamic_resolution = cfg.get_value(SECTION, "dynamic_resolution", false)

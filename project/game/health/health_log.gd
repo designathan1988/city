@@ -133,6 +133,8 @@ func _save() -> void:
 
 
 func _restore() -> void:
+	if GameFlow.tests_drive: # what the player's last session logged is no part of a test's picture
+		return
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(KEPT_PATH)) if FileAccess.file_exists(KEPT_PATH) else null
 	if parsed is Array:
 		for e: Dictionary in parsed:

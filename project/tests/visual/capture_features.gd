@@ -171,7 +171,6 @@ func _build(a: Vector3, e: Vector3) -> void:
 func _layers(a: Vector3, e: Vector3) -> void:
 	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, 2])
 	_check(zoned.ok, "zoneou a via: %s" % zoned)
-	Settings.set_layer("zones", true) # what user://settings.cfg holds from an earlier run is no part of this
 	CityStore.dispatch(&"set_speed", [1])
 	for i in 120:
 		await get_tree().process_frame

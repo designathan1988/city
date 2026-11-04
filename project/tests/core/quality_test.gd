@@ -28,6 +28,8 @@ func _frames(n: int) -> void:
 
 
 func _ready() -> void:
+	_player_file_read()
+	var kept := FileAccess.get_file_as_bytes(Settings.PATH)
 	var world := CityWorld.new()
 	add_child(world)
 	var rig := CityCamera.new()
@@ -42,6 +44,7 @@ func _ready() -> void:
 	_options(world)
 	_entry()
 	_presets()
+	_check(FileAccess.get_file_as_bytes(Settings.PATH) == kept, "um teste não muda o settings.cfg do jogador")
 	print("quality_test: %d falhas" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -178,6 +181,13 @@ func _options(world: CityWorld) -> void:
 	Settings.optimizations.clear()
 	Settings.switches_changed()
 	_check(half_size * 2 <= int(world.terrain.get("mesh_size")), "malha do terreno pela opção (%d)" % half_size)
+
+
+## A run driven by tests starts on the tables, whatever the file says: the same picture on every machine and every clone.
+func _player_file_read() -> void:
+	var t: Dictionary = DataTables.game("settings")
+	_check(Settings.preset == t.default and Settings.kept.is_empty(), "teste começa no preset dos dados, não no do arquivo")
+	_check(Settings.layers == t.layers, "teste começa nas camadas dos dados")
 
 
 ## A settings file from another version, or with no sense in it, never reaches the tier table: it opens at the default.

@@ -45,6 +45,7 @@ A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda
   `tr("CHAVE")` com `data/i18n/strings*.csv`; botões, estatísticas e opções da HUD vêm de `data/ui/*.json`.
 - **Fluxo:** troca de tela, pausa e saída só por `GameFlow`. JSON de dados só é lido por `DataTables`.
 - **Testes conferem o que o jogador vê:** HUD, buffer de instâncias enviado à GPU, sondas do núcleo.
+- **Testes e capturas (`--no-flow`) rodam nos dados:** não leem nem gravam `settings.cfg`, nem leem `health.json`; saves ficam em `user://saves_tests`. O `user://` é um só para todo clone com o mesmo nome de projeto; para isolar um clone, `project/override.cfg` com `application/config/use_custom_user_dir=true` e `custom_user_dir_name`.
 - **Pendências** vão para a seção abaixo, nunca para comentários TODO/FIXME (`SEM_MARCADORES_SOLTOS`).
 
 ## Comandos
