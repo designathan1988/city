@@ -47,7 +47,7 @@
     "land_layers": { "type": "number" },
     "dirt_layer": { "type": "number" },
     "rock_layer": { "type": "number" },
-    "_slope_doc": { "type": "string" },
+    "_doc": { "type": "string" },
     "dirt_from": { "type": "number" },
     "dirt_to": { "type": "number" },
     "rock_slope": { "type": "number" }
