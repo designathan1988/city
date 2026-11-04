@@ -282,7 +282,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` — capturas da cidade real · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
-- `project/tests/visual/capture_street.gd` · `project/tests/visual/capture_street.tscn` — capturas da aba Rua dirigidas como o jogador: postes, peças, barreiras, de dia e à noite
+- `project/tests/visual/capture_street.gd` · `project/tests/visual/capture_street.tscn` · `project/tests/visual/capture_street_views.gd` — capturas da aba Rua dirigidas como o jogador: postes, peças e barreiras; placas e vistas de perto, de dia e à noite
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` — capturas da interface por cliques
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
@@ -339,7 +339,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
 - Tráfego: sem estacionar/docas/embarque, semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre nem coordenação; rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
-- Mobiliário da rua: colunas na mesma estação dos postes (o 4.0 alterna meia distância); o cone de luz só aparece com `haze` (chuva e tempestade do 4.0), que espera o clima; bancos, lixeiras e placas ainda no mesh do chunk; Pare sem parada obrigatória (o tráfego trata como preferência); o poste de semáforo não balança no vento; a linha derivada não cruza a rua.
+- Mobiliário da rua: colunas na mesma estação dos postes (o 4.0 alterna meia distância); o cone de luz só aparece com `haze` (chuva e tempestade do 4.0), que espera o clima; a defensa não tem o metal do aço galvanizado do 4.0 (sai mais clara); bancos, lixeiras e placas ainda no mesh do chunk; Pare sem parada obrigatória (o tráfego trata como preferência); o poste de semáforo não balança no vento; a linha derivada não cruza a rua.
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
   o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda
   não foram portados; muros de divisa entre prédios colados ainda não são desenhados.

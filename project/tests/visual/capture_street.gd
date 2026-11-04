@@ -100,7 +100,7 @@ func _run() -> void:
 	await _poles(a, b)
 	await _items(a, dir)
 	await _barriers(a, b)
-	await _views(a, b)
+	await CaptureStreetViews.views(self, a, b)
 	print("contagens: ", CityStore.query(&"street_counts"))
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -195,7 +195,7 @@ func _items(a: Vector3, dir: Vector3) -> void:
 	await ui.shot("rua_05_pecas")
 	var after: Dictionary = CityStore.query(&"street_counts")
 	_check(after.items == before.items + placed and placed >= list.size() - 2, "peças pelo mouse %d" % placed)
-	await _signs(a, dir)
+	await CaptureStreetViews.signs(self, a, dir)
 
 
 ## Each barrier on the footway across the street, away from the signs: the points go to its back, or to the kerb.
@@ -219,109 +219,6 @@ func _barriers(a: Vector3, b: Vector3) -> void:
 	await ui.drawn()
 	await ui.shot("rua_06_barreiras")
 	_check(built == names.size(), "barreiras pelo mouse %d" % built)
-
-
-## At a person's height along the street, from both ends and from above, by day and by night; the HUD off.
-func _views(a: Vector3, b: Vector3) -> void:
-	hud.visible = false
-	var dir := (b - a).normalized()
-	var side := dir.cross(Vector3.UP)
-	await _close_views(dir)
-	for hour: float in [DAY, NIGHT]:
-		world.set_hour(hour)
-		await ui.frames(int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1)
-		var tag := "dia" if hour == DAY else "noite"
-		await _eye("rua_10_rua_" + tag, a - dir * BACK_M + side * SIDE_M, a + dir * RUN_M * 0.5)
-		await _eye("rua_11_volta_" + tag, b + dir * BACK_M + side * SIDE_M, b - dir * RUN_M * 0.5)
-		await _eye("rua_13_ao_longo_" + tag, a - dir * ALONG_BACK_M + Vector3.UP * ALONG_UP_M, a + dir * RUN_M)
-		await _eye("rua_12_alto_" + tag, a + dir * RUN_M * 0.3 + Vector3.UP * TOP_M + side * TOP_M, a + dir * RUN_M * 0.3)
-
-
-## Each sign of the dropdown on the footway across the street, with its words where it carries them.
-func _signs(a: Vector3, dir: Vector3) -> void:
-	var side := dir.cross(Vector3.UP)
-	await _pick("streetscape.sign")
-	var across := a
-	for w in ACROSS_TRIES:
-		var q: Dictionary = CityStore.query(&"preview_item", [a + dir * ACROSS_ALONG_M + side * (ACROSS_FROM_M + w), ITEM_BIN, 1.0])
-		if q.get("ok", false):
-			across = q.position
-			break
-	_check(across != a, "calçada em frente")
-	_across = across
-	var count: int = DataTables.ui("drawers").street.signs.size()
-	var walked := 0.0
-	for i in count:
-		var kinds := _option()
-		kinds.select(i)
-		kinds.item_selected.emit(i)
-		await ui.frames(2)
-		var field := _field()
-		if field:
-			field.text = SIGN_WORDS
-			field.text_changed.emit(SIGN_WORDS)
-		var at: Dictionary = {}
-		while walked < RUN_M and not at.get("ok", false):
-			at = CityStore.query(&"preview_item", [across + dir * walked, ITEM_SIGN, 1.0])
-			walked += ITEM_STEP_M
-		if at.get("ok", false):
-			await ui.click(at.position)
-			walked += SIGN_GAP_M
-			print("placa ", i, " em ", at.position, " ", CityStore.query(&"street_counts").items)
-		if i == 0:
-			spots["placas"] = at.get("position", across)
-	await ui.shot("rua_07_placa_opcoes")
-
-
-func _option(under: Node = null) -> OptionButton:
-	for c in (under if under else hud.drawer._strip).get_children():
-		if c is OptionButton:
-			return c
-		var inside := _option(c)
-		if inside:
-			return inside
-	return null
-
-
-func _field(under: Node = null) -> LineEdit:
-	for c in (under if under else hud.drawer._strip).get_children():
-		if c is LineEdit:
-			return c
-		var inside := _field(c)
-		if inside:
-			return inside
-	return null
-
-
-## Close to each piece and barrier, from the road's side at a person's height, looking at it.
-func _close_views(dir: Vector3) -> void:
-	var side := dir.cross(Vector3.UP)
-	for key: String in spots:
-		var at: Vector3 = spots[key]
-		var toward := -side if key == "placas" or key.begins_with("barrier") else side
-		var name: String = key.get_slice(".", key.get_slice_count(".") - 1)
-		await _look("rua_20_" + name, at + toward * CLOSE_SIDE_M - dir * CLOSE_BACK_M, at + Vector3.UP * CLOSE_LOOK_M)
-	var signs: Vector3 = spots.get("placas", Vector3.ZERO)
-	await _look("rua_21_placas", signs - side * SIGNS_SIDE_M + dir * SIGNS_ALONG_M, signs + dir * SIGNS_ALONG_M + Vector3.UP * SIGN_LOOK_M)
-
-
-func _look(name: String, from: Vector3, at: Vector3) -> void:
-	rig.camera.global_position = ui.ground(from.x, from.z) + Vector3.UP * EYE_M
-	rig.camera.look_at(at)
-	await ui.drawn()
-	await ui.shot(name)
-
-
-func _eye(name: String, from: Vector3, at: Vector3) -> void:
-	var eye := ui.ground(from.x, from.z) + Vector3.UP * maxf(from.y - _floor(from), EYE_M)
-	rig.camera.global_position = eye
-	rig.camera.look_at(ui.ground(at.x, at.z) + Vector3.UP * LOOK_Y)
-	await ui.drawn()
-	await ui.shot(name)
-
-
-func _floor(p: Vector3) -> float:
-	return ui.ground(p.x, p.z).y
 
 
 func _check(ok: bool, what: String) -> void:
