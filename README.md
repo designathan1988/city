@@ -61,7 +61,17 @@ shape) are solved together to a fixpoint. The type mapper and the emitters only 
 member, which names are integers, the target's types and owned concepts (patterns), the names of literals the
 target's gates forbid, and what stays with other owners.
 
+## Feature
+
+`node src/cli.ts feature --source-root <4.0 root> --entry <file>... --out <dir>` cuts a feature from the whole
+program: its own declarations (by dominance: what the program reaches only through it), its slices of shared code
+(forward slicing in the program's functions that name it or the state that holds its values), the dictionary
+entries, style rules and non-code files it uses, the shared code it uses and where the program plugs it in. What a
+call runs comes from the call graph of Jelly (`@cs-au-dk/jelly`, a points-to analysis: `--jelly <package dir>` or
+`CONVERTER_JELLY`); style sheets are read with the source's PostCSS (`--postcss`).
+
 ## Tests
 
-`CONVERTER_TYPESCRIPT=<typescript package dir> node --test "test/**/*.test.ts"`; type check with
+`CONVERTER_TYPESCRIPT=<typescript package dir> CONVERTER_POSTCSS=<postcss package dir> CONVERTER_JELLY=<jelly package dir>
+CONVERTER_CLANGD=<clangd> CONVERTER_CXX=<clang++> node --test "test/**/*.test.ts"`; type check with
 `node scripts/typecheck.ts --typescript <dir> --types <node_modules/@types dir>`.

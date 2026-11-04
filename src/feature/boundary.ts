@@ -4,11 +4,10 @@
 // reach into the feature are where it plugs into the program.
 //
 // What the program runs: the scripts its HTML pages load (Vite's `<script type="module" src>`), and, for every file
-// it reaches, that file's top-level statements and static blocks (importing a module runs them). Dead code reaches
-// nothing, so it never makes a declaration shared.
-import fs from 'node:fs';
-import path from 'node:path';
+// it reaches, what runs when the file is loaded (its statements, its variables' initializers, its classes' static
+// parts: importing a module runs them). Dead code reaches nothing, so it never makes a declaration shared.
 import type { EdgeKind, GraphIR, UnitRecord } from '../graph/ir.ts';
+import type { Holds } from './holders.ts';
 
 export interface FeatureUse {
   /** The shared declaration used. */
@@ -31,23 +30,24 @@ export interface FeatureBoundary {
   readonly hooks: readonly FeatureUse[];
   /** External APIs (packages, the platform) the feature's own code uses, with how many uses. */
   readonly external: readonly { readonly key: string; readonly count: number }[];
+  /** The program's fields and variables that hold the feature's values (or values made from them, to a fixpoint). */
+  readonly holders: readonly string[];
+  /** The program's declarations, run by it, that name the feature or a holder: the feature has a slice of each. */
+  readonly sliced: readonly string[];
+  /** Every declaration the program runs without the feature (not written out: what the rest of the program is). */
+  readonly program: ReadonlySet<string>;
 }
 
-/** The scripts the source's HTML pages load as modules, relative to the source root. */
-export function htmlRoots(sourceRoot: string): string[] {
-  const roots: string[] = [];
-  for (const name of fs.readdirSync(sourceRoot).filter((f) => f.endsWith('.html')).sort()) {
-    const html = fs.readFileSync(path.join(sourceRoot, name), 'utf8');
-    for (const m of html.matchAll(/<script\b[^>]*\btype="module"[^>]*\bsrc="([^"]+)"/g)) roots.push(m[1]!.replace(/\\/g, '/').replace(/^\//, ''));
-  }
-  if (roots.length === 0) throw new Error(`no <script type="module" src> in the HTML pages of ${sourceRoot}: the program has no root`);
-  return roots;
-}
+/**
+ * What runs when a module is evaluated (ECMAScript): its statements, the initializers of its variables (one whose value
+ * is a function is a unit of kind function: it only makes the function), its classes' static blocks and static fields.
+ */
+const runsOnLoad = (u: UnitRecord): boolean => u.kind === 'statement' || u.kind === 'staticBlock'
+  || (u.kind === 'variable' && u.parent === null) || (u.kind === 'field' && u.facts.isStatic);
+/** Declarations that hold a value. */
+const HOLDS = new Set(['field', 'variable', 'getter']);
 
-/** Declarations that run when their file is loaded. */
-const RUNS_ON_LOAD = new Set(['statement', 'staticBlock']);
-
-export function featureBoundary(ir: GraphIR, entries: readonly string[], roots: readonly string[]): FeatureBoundary {
+export function featureBoundary(ir: GraphIR, entries: readonly string[], roots: readonly string[], holds: Holds): FeatureBoundary {
   const units = new Map(ir.units.map((u) => [u.id, u]));
   const out = new Map<string, { to: string; kind: EdgeKind }[]>();
   const into = new Map<string, { from: string; kind: EdgeKind }[]>();
@@ -79,14 +79,14 @@ export function featureBoundary(ir: GraphIR, entries: readonly string[], roots: 
       const file = units.get(id)!.file;
       if (!loaded.has(file)) {
         loaded.add(file);
-        for (const u of byFile.get(file)!) if (RUNS_ON_LOAD.has(u.kind)) push(u.id);
+        for (const u of byFile.get(file)!) if (runsOnLoad(u)) push(u.id);
       }
       for (const e of out.get(id) ?? []) push(e.to);
     }
     return seen;
   };
 
-  const rootUnits = roots.flatMap((f) => byFile.get(f)!.filter((u) => RUNS_ON_LOAD.has(u.kind)).map((u) => u.id));
+  const rootUnits = roots.flatMap((f) => byFile.get(f)!.filter(runsOnLoad).map((u) => u.id));
   const withoutFeature = reach(rootUnits, seed);
   const fromFeature = reach(seed, new Set());
   const own = new Set([...fromFeature].filter((id) => !withoutFeature.has(id)));
@@ -103,6 +103,23 @@ export function featureBoundary(ir: GraphIR, entries: readonly string[], roots: 
   const uses = group([...own].flatMap((id) => (out.get(id) ?? []).filter((e) => !own.has(e.to)).map((e) => ({ unit: e.to, kind: e.kind, by: id }))));
   // A hook is a place the running program reaches in from: dead code that names the feature plugs nothing in.
   const hooks = group([...own].flatMap((id) => (into.get(id) ?? []).filter((e) => withoutFeature.has(e.from)).map((e) => ({ unit: id, kind: e.kind, by: e.from }))));
+  // The program's state that holds the feature's values (holders.ts decides what a stored value is), to a fixpoint.
+  const feature = new Set(own);
+  const holders = new Set<string>();
+  const namesFeature = (id: string): boolean => (out.get(id) ?? []).some((e) => feature.has(e.to));
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const id of withoutFeature) {
+      if (holders.has(id) || !HOLDS.has(units.get(id)!.kind)) continue;
+      // What it is made from, or what an assignment to it is made from, names the feature; holders.ts decides.
+      const written = (into.get(id) ?? []).some((e) => e.kind === 'write' && namesFeature(e.from));
+      if (!(namesFeature(id) || written) || !holds(units.get(id)!, feature)) continue;
+      holders.add(id);
+      feature.add(id);
+      changed = true;
+    }
+  }
+  const sliced = [...withoutFeature].filter((id) => namesFeature(id));
   const external = new Map<string, number>();
   for (const id of own) for (const x of units.get(id)!.facts.external) external.set(x.key, (external.get(x.key) ?? 0) + x.count);
 
@@ -113,5 +130,8 @@ export function featureBoundary(ir: GraphIR, entries: readonly string[], roots: 
     uses,
     hooks,
     external: [...external].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count || a.key.localeCompare(b.key)),
+    holders: [...holders].sort(),
+    sliced: sliced.sort(),
+    program: withoutFeature,
   };
 }
