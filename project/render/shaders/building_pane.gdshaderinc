@@ -204,6 +204,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, vec3 n, vec3 V, ou
 // The mid level's window grid: `code` = opening width, sill, head (shares of the bay and the storey) and flags (shell.h). The
 // wall, the frame, the glass and the roller shutter by the share of the pixel each covers; what a bay picks for itself fades to
 // the share of bays that pick it as a bay drops under a few pixels, so the facades neither sparkle nor flatten.
+const float FAR_ROOM_LEVEL = 0.68; // a far window's lamp: the mean of pane_lamp's level (0.3 + 0.85 x two uniform lots)
 const float FAR_FRAME_SHARE = 0.027; // the frame read round a pane: 8 cm of a 3 m bay or storey
 void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, inout vec3 albedo, out vec3 emit, out float glass) {
 	emit = vec3(0.0);
@@ -236,5 +237,5 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, inout vec3 albedo
 	float far_sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));
 	float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, far_sub);
 	vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), far_sub);
-	emit = ((lamp * lit * night * window_glow + PANE_MEAN_SEEN * room_daylight) * mix(1.0, 0.64, dark) + glass_reflection(V, n, F)) * glass;
+	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + PANE_MEAN_SEEN * room_daylight) * mix(1.0, 0.64, dark) + glass_reflection(V, n, F)) * glass;
 }
