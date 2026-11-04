@@ -19,6 +19,8 @@ static func path(key: String) -> String:
 ## Every model saved, by name: {key, name, bytes, function, zone}.
 static func list() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if not DirAccess.dir_exists_absolute(dir()): # nothing saved yet
+		return out
 	for file in DirAccess.get_files_at(dir()):
 		if file.get_extension() != EXT:
 			continue

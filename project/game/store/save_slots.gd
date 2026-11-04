@@ -53,6 +53,8 @@ static func is_city_slot(slot: String) -> bool:
 ## The saved cities and map copies, newest first: [{slot, modified (unix seconds), size (bytes)}].
 static func list() -> Array:
 	var out := []
+	if not DirAccess.dir_exists_absolute(dir()): # nothing saved yet
+		return out
 	for f in DirAccess.get_files_at(dir()):
 		if f.get_extension() == EXT:
 			var file := "%s/%s" % [dir(), f]

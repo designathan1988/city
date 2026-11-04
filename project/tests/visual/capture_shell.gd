@@ -206,4 +206,6 @@ func _shot(name: String) -> void:
 	get_viewport().get_texture().get_image().save_png("%s/shell_%s.png" % [out_dir, name])
 	CityStore.dispatch(&"set_speed", [SPEED_PAUSED])
 	print("hora %s %.3f" % [name, CityStore.snapshot.hour])
+	print("vista %s: olho %s, cidade %s, %d veículos, %d pessoas" % [name, rig.camera.global_position, CityStore.query(&"city_bounds"),
+		CityStore.snapshot.vehicles, CityStore.snapshot.people])
 	shots += 1
