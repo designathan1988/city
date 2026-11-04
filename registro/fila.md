@@ -1,24 +1,28 @@
 # Fila do porte
 
-Base: `src/` do 4.0, Pendências de `fonte/CLAUDE.md` e `converter/out/features/`. Ordem por dependência; até 6 filhas ao mesmo tempo (ordem do usuário, 2026-11-04), cada funcionalidade no seu clone; conflito se resolve na integração. As filhas são sessões do app (o `claude -p` lançado do app responde "Not logged in").
+Recomeço de 2026-11-04 12:00: tudo o que havia em `ports/` foi apagado por ordem do usuário. A coordenadora prepara o ambiente (rastreamento, clone, fotos) antes de abrir as sessões. As filhas são sessões do app; o app só abre sessão em outra pasta num turno iniciado por mensagem do usuário. Seis sessões ao mesmo tempo, duas funcionalidades cada, em sequência, cada funcionalidade no seu clone.
 
-Estados: rastreada, em porte, entregue, verificada, integrada.
+Ambiente: base a11384a; fotos do 4.0 (28) em `ports/referencia/reference`, do jogo atual (46) em `ports/referencia/antes`, plano em `registro/look/look-tudo.json`. Clones sem DLL: cada filha compila no começo, em segundo plano.
 
-| Funcionalidade | Sessão | Estado | Observação |
+Estados: em porte, na fila da sessão, entregue, verificada, integrada.
+
+| Sessão | Funcionalidade | Estado | Absorve |
 |---|---|---|---|
-| roads | porte-roads | em porte | continua o trabalho sem commit do clone; donos: `sim/roads`, `sim/commands`, `sim/persistence` |
-| build | porte-build | em porte | continua o trabalho sem commit do clone; donos: `sim/buildings`, `render/buildings` |
-| landscape | porte-landscape | em porte | absorve `clouds`; donos: `render/trees`, shaders de vegetação; fotos feitas |
-| interface | porte-a-interface | em porte | 1ª da sessão A; absorve `start-menu`, `camera`, painel de gráficos e qualidade |
-| demolition | porte-a-interface | na fila da sessão | 2ª da sessão A; absorve `bulldozer` |
-| economy | porte-a-interface | na fila da sessão | 3ª da sessão A |
-| traffic | porte-b-traffic | em porte | 1ª da sessão B; estacionar, docas, embarque, coordenação, ciclistas |
-| street-furniture | porte-b-traffic | na fila da sessão | 2ª da sessão B; absorve `poles` e `barriers` |
-| people | porte-b-traffic | na fila da sessão | 3ª da sessão B; refazer a partir do master |
-| road-elevation | porte-c-elevacao | em porte | 1ª da sessão C; pontes, túneis, viadutos, greide |
-| transit | porte-c-elevacao | na fila da sessão | 2ª da sessão C; ônibus, linhas, metrô |
-| destruction | porte-c-elevacao | na fila da sessão | 3ª da sessão C; bomba, cratera, efeitos |
-| marcos | porte-c-elevacao | na fila da sessão | 4ª da sessão C; 38 projetos de `lots/*.json` por `lotLibrary.ts`; estádio a conferir: `stadium` não aparece em `src/` |
+| porte-1-vias | roads | em porte | `cityGen/streets.ts` |
+| porte-1-vias | road-elevation | na fila da sessão | |
+| porte-2-predios | build | em porte | `render/wear.ts` |
+| porte-2-predios | marcos | na fila da sessão | `lots/*.json`; estádio a conferir: `stadium` não aparece em `src/` |
+| porte-3-paisagem | landscape | em porte | `clouds`, `detailRecipes.ts` |
+| porte-3-paisagem | economy | na fila da sessão | |
+| porte-4-interface | interface | em porte | `start-menu`, `camera`, gráficos e qualidade |
+| porte-4-interface | demolition | na fila da sessão | `bulldozer`, `destruction` |
+| porte-5-transito | traffic | em porte | ciclistas |
+| porte-5-transito | transit | na fila da sessão | |
+| porte-6-rua-pessoas | street-furniture | em porte | `poles`, `barriers` |
+| porte-6-rua-pessoas | people | na fila da sessão | |
 
-## Cobertura medida (2026-11-04)
-Fora `src/lab` e `src/peopleLab`: 728 arquivos, 195.006 linhas; 80,4 % tocadas por algum rastreamento; 102 arquivos (9.284 linhas) sem nenhum, em boa parte infraestrutura do motor web (perfilador, cache, WebGPU). A conferir, por serem possivelmente visíveis ao jogador: `src/render/wear.ts`, `src/world/cityGen/streets.ts`, `src/render/bake/detailRecipes.ts`.
+## Cobertura medida
+Fora `src/lab` e `src/peopleLab`: 728 arquivos, 195.006 linhas; 81,8 % tocadas por algum rastreamento; 92 arquivos (7.291 linhas) sem nenhum, em boa parte infraestrutura do motor web (perfilador, cache, WebGPU).
+
+## Critério de aceite
+Cada entrega passa por: diff, `cobertura.md` contra `feature.md`, `verify`, `audit`, `pack`, `sandbox`, fotos lidas contra o antes e o 4.0. Só depois entra no master.
