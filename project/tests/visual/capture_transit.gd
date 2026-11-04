@@ -24,7 +24,7 @@ const TRAIN_NEAR_M := 40.0
 const CROSSING_OFF_M := 6.0
 # Along, out, up and lens of each view (the 4.0's __rec of each photo).
 const STOP_NEAR := [14.67, -18.49, 7.33, 40.0]
-const STOP_HIGH := [43.23, -54.48, 64.74, 35.0]
+const STOP_HIGH := [90.0, -8.0, 60.0, 35.0] # down the street: the 4.0's pose (43, -54, 65) stands inside a tower here
 const TERMINAL := [19.48, -24.55, 9.65, 37.7]
 const BUS := [15.83, 16.3, 7.55, 40.0]
 const TRACK_NEAR := [3.9, -7.67, 3.4, 47.9]

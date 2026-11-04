@@ -105,6 +105,15 @@ Dictionary CityCore::transit_run() {
 	d["stops_called"] = run.stops_called;
 	d["trains"] = trains;
 	d["trains_at_stations"] = run.trains_at_stations;
+	int crossings = 0, held = 0;
+	for (const RailLine &r : run.rails) crossings += int(r.crossings.size());
+	for (const Vehicle &v : state_->traffic.vehicles) {
+		if (!v.alive || !v.micro || v.conn >= 0) continue;
+		const float gap = transit::crossing_gap(*state_, v.ds * MAX_LANES + v.lane, v.s);
+		held += gap >= 0 && gap < state_->catalog.traffic.look_ahead_m ? 1 : 0;
+	}
+	d["crossings"] = crossings; // lanes crossed at grade
+	d["held_at_crossing"] = held; // vehicles with a closed crossing ahead of them
 	for (const Bus &b : run.buses) {
 		if (b.vehicle < 0) continue;
 		const Vehicle &v = state_->traffic.vehicles[size_t(b.vehicle)];

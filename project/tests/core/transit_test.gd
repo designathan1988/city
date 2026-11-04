@@ -11,6 +11,14 @@ const RUN_TICKS := 6000
 const SLOT := "teste_transporte"
 const TRACK_OUT_M := 80.0
 const TRACK_LONG_M := 400.0
+const CROSSING_STEP_M := 60.0
+const CROSSING_GRID := 10
+const CROSSING_HALVES := [120.0, 80.0]
+const CROSSING_REACH_M := 18.0
+const CROSSING_OFF_M := 6.0
+const CROSSING_STATION := 0.7
+const CROSSING_SAMPLES := 200
+const CROSSING_SAMPLE_TICKS := 20
 
 var failures := 0
 
@@ -23,6 +31,7 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	_buses()
 	_trains()
+	_level_crossing()
 	_undo_and_save()
 	print("transit_test: ", "ok" if failures == 0 else "FAIL %d" % failures)
 	get_tree().quit(failures)
@@ -53,6 +62,48 @@ func _buses() -> void:
 	CityStore.step_ticks(1)
 	var after: Dictionary = CityStore.query(&"transit_run")
 	_check(int(after.on_road) >= int(run.on_road), "buses go on after an edit of the plan: %d of %d" % [after.on_road, run.on_road])
+
+
+## A track across a street near the busiest junction: the lanes it crosses are found, and traffic waits as a train comes.
+func _level_crossing() -> void:
+	var ground: Vector3 = CityStore.query(&"traffic_probe", [1]).busy_crossing
+	var laid := false
+	for i in range(-CROSSING_GRID, CROSSING_GRID + 1):
+		for k in range(-CROSSING_GRID, CROSSING_GRID + 1):
+			if not laid:
+				laid = _lay_across(ground + Vector3(i, 0, k) * CROSSING_STEP_M)
+	_check(laid, "linha pela passagem de nível")
+	var most := 0
+	var seen := 0
+	for i in CROSSING_SAMPLES:
+		CityStore.step_ticks(CROSSING_SAMPLE_TICKS)
+		var run: Dictionary = CityStore.query(&"transit_run")
+		most = maxi(most, int(run.held_at_crossing))
+		seen = int(run.crossings)
+	print("passagem: faixas cruzadas ", seen, ", veículos parados no máximo ", most)
+	_check(seen > 0, "faixas cruzadas")
+	_check(most > 0, "veículo espera a passagem")
+
+
+## A track across the street nearest a point, if the core lets it through (a wide avenue it does not), two stations and a line.
+func _lay_across(at: Vector3) -> bool:
+	var way: Dictionary = CityStore.query(&"transit_footway", [at, CROSSING_REACH_M])
+	if way.is_empty():
+		return false
+	var road: Vector3 = way.at - way.out * CROSSING_OFF_M
+	for half: float in CROSSING_HALVES:
+		var run := PackedVector3Array([road - way.out * half, road + way.out * half])
+		if not CityStore.dispatch(&"transit_track", [run, TRAIN]).get("ok", false):
+			continue
+		var before: Array = CityStore.query(&"transit_plan").stops.map(func(q: Dictionary) -> int: return q.id)
+		for side: float in [-1.0, 1.0]:
+			CityStore.dispatch(&"transit_station", [road + way.out * side * half * CROSSING_STATION, TRAIN])
+		var ids := PackedInt32Array()
+		for q: Dictionary in CityStore.query(&"transit_plan").stops:
+			if not before.has(q.id):
+				ids.append(q.id)
+		return CityStore.dispatch(&"transit_line", [ids]).get("ok", false)
+	return false
 
 
 func _trains() -> void:
