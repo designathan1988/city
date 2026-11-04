@@ -96,7 +96,14 @@
   "step_run_m": 0.3,
   "ramp_run_per_rise": 12,
   "max_gear": 32,
-  "gear_turn_deg": 15
+  "gear_turn_deg": 15,
+  "road_probe_m": 2,
+  "world_margin_m": 3.2,
+  "max_plinth_m": 5.5,
+  "road_clearance_m": 0.01,
+  "snap_road_reach_m": 9.6,
+  "snap_building_reach_m": 12,
+  "snap_edge": 0.32
  },
  "zone": {
   "side_offset_m": 14,

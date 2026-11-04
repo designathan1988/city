@@ -29,6 +29,7 @@ Kind kind_of(int zone, int floors) {
 	if (commercial) return high ? KIND_OFFICE : KIND_SHOP;
 	return low ? KIND_HOUSE : high ? KIND_TOWER : KIND_FLATS;
 }
+} // namespace
 
 void membranes(const Data &data, Body &b, Xoshiro128 &r) {
 	if (b.roof < 0) return;
@@ -38,7 +39,6 @@ void membranes(const Data &data, Body &b, Xoshiro128 &r) {
 	for (Volume &v : b.volumes)
 		if (closed_roof(v.roof) && v.roof_paint < 0) v.roof_paint = m;
 }
-} // namespace
 
 int add_block(Body &b, const BlockSpec &s) {
 	Volume v;

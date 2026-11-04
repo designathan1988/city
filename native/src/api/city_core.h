@@ -33,6 +33,18 @@ public:
 	void set_day_hour(double hour);
 	godot::Dictionary body_info(int id) const;
 	godot::Dictionary body_pick(const godot::Vector3 &origin, const godot::Vector3 &dir) const;
+	// Build > Models (city_core_models.cpp): a body in hand travels as bytes.
+	godot::Array model_list() const;
+	godot::PackedByteArray model_bytes(const godot::String &id) const;
+	godot::Dictionary building_bytes(int id) const;
+	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
+	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
+	godot::String place_check(const godot::PackedByteArray &bytes, double x, double z, double rot) const;
+	godot::Dictionary place_model(const godot::PackedByteArray &bytes, double x, double z, double rot, int fn, int zone);
+	int stage_show(const godot::PackedByteArray &bytes, const godot::RID &scenario, bool ghost);
+	void stage_move(int handle, const godot::Transform3D &at);
+	void stage_free(int handle);
+	int stage_triangles(int handle) const;
 	godot::PackedVector3Array body_outline(int id, int vol) const;
 	godot::Dictionary body_storeys(int id, int vol, int count);
 	godot::Dictionary body_insert_storey(int id, int vol, int at, bool above);
@@ -115,6 +127,7 @@ public:
 
 protected:
 	static void _bind_methods();
+	static void bind_models();
 
 private:
 	godot::Object *terrain3d() const;

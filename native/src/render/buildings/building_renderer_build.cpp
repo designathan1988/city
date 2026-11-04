@@ -43,7 +43,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 		const float x0 = float(key_x(chunk_keys[k])) * CHUNK, z0 = float(key_y(chunk_keys[k])) * CHUNK;
 		s.buildings.query(x0, z0, x0 + CHUNK - b40::EPS, z0 + CHUNK - b40::EPS, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
-			if (b.floors == 0 && !b40::is_open_lot(b.fn)) return;
+			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
 			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
 			minx = std::min(minx, b.x - r);

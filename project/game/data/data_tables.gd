@@ -23,6 +23,7 @@ const RENDER_TABLES := {
 	"streets": "res://data/render/streets.json",
 	"buildings": "res://data/render/buildings.json",
 	"interiors": "res://data/render/interiors.json",
+	"models": "res://data/render/models.json",
 	"materials": "res://data/render/materials.json",
 	"agents": "res://data/render/agents.json",
 	"overlays": "res://data/render/overlays.json",

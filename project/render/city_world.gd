@@ -16,7 +16,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/props.gdshader", "res://render/shaders/agents.gdshader",
 	"res://render/shaders/people.gdshader", "res://render/shaders/overlay.gdshader",
 	"res://render/shaders/agent_glass.gdshader", "res://render/shaders/vegetation.gdshader",
-	"res://render/shaders/vegetation_cards.gdshader",
+	"res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 ]
 const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 

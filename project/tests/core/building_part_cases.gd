@@ -10,7 +10,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 	var landed := 0
 	var spec_of_last := {}
 	for section: Dictionary in DataTables.ui("builder").tabs.parts.sections:
-		for spec: Dictionary in section.tools:
+		for spec: Dictionary in section.get("tools", []):
 			var before: int = _count(id)
 			var r: Dictionary = CityStore.dispatch(&"body_add_part", [id, 0, 1, SIDE, 0, spec])
 			if r.get("ok", false):
@@ -45,7 +45,7 @@ static func _gear(id: int, made: int, check: Callable) -> void:
 	var middle: Vector3 = p.position + Vector3(s, 0, c) * (p.d * 0.5) + Vector3(c, 0, -s) * (v.x + v.w * 0.5) + Vector3(-s, 0, -c) * (v.y + v.d * 0.5)
 	var landed := 0
 	for section: Dictionary in DataTables.ui("builder").tabs.roof.sections:
-		for spec: Dictionary in section.tools:
+		for spec: Dictionary in section.get("tools", []):
 			if spec.do != "gear":
 				continue
 			var r: Dictionary = CityStore.dispatch(&"body_add_gear", [id, 0, middle, spec])

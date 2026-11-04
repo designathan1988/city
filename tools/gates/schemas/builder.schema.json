@@ -65,11 +65,16 @@
           ],
           "additionalProperties": false
          }
+        },
+        "shelf": {
+         "type": "string",
+         "enum": [
+          "models"
+         ]
         }
        },
        "required": [
-        "title_key",
-        "tools"
+        "title_key"
        ],
        "additionalProperties": false
       }
@@ -79,6 +84,12 @@
      "sections"
     ],
     "additionalProperties": false
+   }
+  },
+  "model_groups": {
+   "type": "array",
+   "items": {
+    "type": "string"
    }
   }
  },

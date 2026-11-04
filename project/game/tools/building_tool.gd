@@ -1,6 +1,7 @@
 ## Build (Massa, Fachada, Telhado, Cores): a click picks a block, its face and its bay; the strip's tools then act on the pick. With a
 ## component in hand a click puts it in the wall, at the scope chosen. Holds what is picked, never a number of the game: each edit
-## goes to the core, which answers, and undo is the game's own.
+## goes to the core, which answers, and undo is the game's own. A model in hand (Models shelf) follows the pointer as a ghost: R turns it,
+## a click sets it down and picks it.
 class_name BuildingTool
 extends ToolBase
 
@@ -15,7 +16,15 @@ var part := {}
 var scope := 0
 var paint_scope := 0
 
+## The model in hand: {bytes, function, zone}, {} for none.
+var hand := {}
+var turn := 0.0
+
 var _box: SelectionBox
+var _ghost := 0
+var _extent := Vector3.ZERO
+var _fit := {}
+var _last := Vector3.INF
 
 
 func enter() -> void:
@@ -25,10 +34,62 @@ func enter() -> void:
 
 
 func exit() -> void:
+	_put_down()
 	_box.queue_free()
 
 
+## A body in hand from the shelf: its ghost shows from the next pointer move.
+func take(entry: Dictionary) -> void:
+	_put_down()
+	hand = entry
+	_extent = CityStore.query(&"body_size", [entry.bytes])
+	_ghost = CityStore.query(&"stage_show", [entry.bytes, ctl.get_viewport().find_world_3d().scenario, true])
+	ctl.hint.emit(tr("hint.builder.place"), true)
+
+
+func _put_down() -> void:
+	if _ghost != 0:
+		CityStore.query(&"stage_free", [_ghost])
+	_ghost = 0
+	hand = {}
+	_fit = {}
+
+
+func hover(p: Vector3) -> void:
+	if hand.is_empty():
+		return
+	_last = p
+	_fit = CityStore.query(&"place_fit", [p, Vector2(_extent.x, _extent.y), turn])
+	var y: float = CityStore.query(&"height_at", [_fit.x, _fit.z])
+	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, _fit.rot), Vector3(_fit.x, y, _fit.z))])
+	var problem: String = CityStore.query(&"place_check", [hand.bytes, _fit.x, _fit.z, _fit.rot])
+	ctl.hint.emit(tr(problem) if problem != "" else tr("hint.builder.place"), problem == "")
+
+
+func key(code: Key) -> void:
+	if hand.is_empty() or code != KEY_R:
+		return
+	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else PI / 2.0
+	if _last != Vector3.INF:
+		hover(_last)
+
+
+func _set_down(p: Vector3) -> void:
+	hover(p)
+	var r: Dictionary = CityStore.dispatch(&"place_model", [hand.bytes, _fit.x, _fit.z, _fit.rot, hand.function, hand.zone])
+	if not r.get("ok", false):
+		_report(r)
+		return
+	_put_down()
+	picked = {"id": r.placed, "volume": 0, "side": -1, "storey": 0, "level": 0, "bay": NO_BAY}
+	_show()
+	ctl.hint.emit(tr("building.placed"), true)
+
+
 func click(p: Vector3) -> void:
+	if not hand.is_empty():
+		_set_down(p)
+		return
 	var cam: Camera3D = ctl.rig.camera
 	var screen := ctl.get_viewport().get_mouse_position()
 	var had := picked
@@ -55,7 +116,9 @@ func pick(origin: Vector3, dir: Vector3) -> void:
 
 
 func cancel() -> void:
-	if armed != NO_BAY or not part.is_empty():
+	if not hand.is_empty():
+		_put_down()
+	elif armed != NO_BAY or not part.is_empty():
 		armed = NO_BAY
 		part = {}
 	else:

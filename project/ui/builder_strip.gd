@@ -11,6 +11,9 @@ static func fill(strip: Container, tab_id: String, tools: ToolController) -> voi
 	for section: Dictionary in tab.get("sections", []):
 		var col := HudWidgets.vbox(strip)
 		HudWidgets.label(col, &"MutedLabel", TranslationServer.translate(section.title_key))
+		if section.has("shelf"):
+			ModelShelf.fill(col, tools)
+			continue
 		var row := HudWidgets.hbox(col)
 		for spec: Dictionary in section.tools:
 			row.add_child(_card(spec, row, tools))

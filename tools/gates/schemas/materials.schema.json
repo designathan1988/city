@@ -639,6 +639,40 @@
     "params"
    ],
    "strict": true
+  },
+  "building_ghost": {
+   "type": "object",
+   "required": [
+    "shader",
+    "params"
+   ],
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "required": [
+      "tint",
+      "glow",
+      "opacity"
+     ],
+     "properties": {
+      "tint": {
+       "type": "string"
+      },
+      "glow": {
+       "type": "string"
+      },
+      "opacity": {
+       "type": "number",
+       "minimum": 0,
+       "maximum": 1
+      }
+     }
+    }
+   },
+   "strict": true
   }
  },
  "required": [
@@ -653,7 +687,8 @@
   "overlay",
   "agent_glass",
   "vegetation",
-  "vegetation_cards"
+  "vegetation_cards",
+  "building_ghost"
  ],
  "strict": true
 }

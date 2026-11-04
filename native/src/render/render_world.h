@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_renderer.h"
+#include "render/buildings/body_stage.h"
 #include "render/buildings/building_renderer.h"
 #include "render/chunk_queue.h"
 #include "render/overlays/overlay_renderer.h"
@@ -54,6 +55,10 @@ public:
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
 	godot::Dictionary agent_cost() const { return agents_.cost(); }
+	// A body drawn apart from the city (body_stage.h).
+	int stage_show(const b40::Data &data, const b40::Body &body, const godot::RID &scenario, bool ghost) { return stage_.show(data, buildings_.look(), body, scenario, ghost); }
+	BodyStage &stage() { return stage_; }
+	const BodyStage &stage() const { return stage_; }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
@@ -69,6 +74,7 @@ private:
 	PropRenderer props_;
 	TreeRenderer trees_;
 	BuildingRenderer buildings_;
+	BodyStage stage_;
 	AgentRenderer agents_;
 	OverlayRenderer overlays_;
 	WearField wear_;

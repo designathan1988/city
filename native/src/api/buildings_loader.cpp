@@ -144,6 +144,10 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 }
 } // namespace
 
+uint8_t bay_named(const std::string &s, PackedStringArray &errors) { return uint8_t(index_of(BAY_NAMES, s, "componente", errors)); }
+Kind kind_named(const std::string &s, PackedStringArray &errors) { return Kind(index_of(KIND_NAMES, s, "tipo", errors)); }
+Paint paint_named(const Variant &pair, PackedStringArray &errors) { return paint_of(pair, errors); }
+
 bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors) {
 	const Dictionary t = region_table(table);
 	Array st = at(t, "architectures");

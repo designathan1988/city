@@ -38,6 +38,7 @@ namespace city {
 
 class BuildingRenderer {
 public:
+	const b40::BuildingLook &look() const { return look_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty

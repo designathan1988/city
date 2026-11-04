@@ -1,0 +1,144 @@
+{
+ "type": "object",
+ "required": [
+  "_doc",
+  "styles"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "styles": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "object",
+    "required": [
+     "module_m",
+     "ground_m",
+     "storey_m",
+     "ring_piece_m",
+     "surface_m",
+     "part_sizes",
+     "schemes",
+     "surfaces",
+     "models"
+    ],
+    "properties": {
+     "module_m": {
+      "type": "number"
+     },
+     "ground_m": {
+      "type": "number"
+     },
+     "storey_m": {
+      "type": "number"
+     },
+     "ring_piece_m": {
+      "type": "number"
+     },
+     "surface_m": {
+      "type": "number"
+     },
+     "part_sizes": {
+      "type": "array"
+     },
+     "schemes": {
+      "type": "array"
+     },
+     "surfaces": {
+      "type": "object"
+     },
+     "models": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "id",
+        "group",
+        "use",
+        "kind",
+        "scheme"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "group": {
+         "type": "string",
+         "enum": [
+          "homes",
+          "public",
+          "commerce",
+          "work",
+          "leisure",
+          "generic"
+         ]
+        },
+        "use": {
+         "type": "string",
+         "enum": [
+          "residential",
+          "commercial",
+          "industrial",
+          "mixed"
+         ]
+        },
+        "kind": {
+         "type": "string",
+         "enum": [
+          "house",
+          "flats",
+          "tower",
+          "shop",
+          "office",
+          "works"
+         ]
+        },
+        "function": {
+         "type": "string"
+        },
+        "ground_m": {
+         "type": "number"
+        },
+        "storey_m": {
+         "type": "number"
+        },
+        "wall": {
+         "type": "array"
+        },
+        "roof": {
+         "type": "array"
+        },
+        "trim": {
+         "type": "array"
+        },
+        "blocks": {
+         "type": "array"
+        },
+        "open": {
+         "type": "array"
+        },
+        "parts": {
+         "type": "array"
+        },
+        "rows": {
+         "type": "array"
+        },
+        "rings": {
+         "type": "array"
+        },
+        "cores": {
+         "type": "array"
+        },
+        "scheme": {
+         "type": "number",
+         "minimum": 0
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

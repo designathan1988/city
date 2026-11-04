@@ -70,7 +70,7 @@ func _every_tool(tool: BuildingTool, id: int) -> void:
 	var count := 0
 	for tab: String in tabs:
 		for section: Dictionary in tabs[tab].sections:
-			for spec: Dictionary in section.tools:
+			for spec: Dictionary in section.get("tools", []):
 				if BuilderStrip.CHOICES.has(spec.do):
 					tool.act(spec)
 					continue

@@ -111,7 +111,7 @@
     {
      "id": "models",
      "icon": "models",
-     "label_key": "builder.category.models"
+     "label_key": "builder.category.models", "tool": "BUILD"
     },
     {
      "id": "draw",

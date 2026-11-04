@@ -303,3 +303,64 @@ hint.builder.wideWindow,Clique nos vãos para janelas amplas,Click facade bays f
 hint.builder.window,Clique nos vãos da fachada para abrir janelas,Click facade bays to punch windows
 hint.builder.wing,Arraste um retângulo no terreno: um volume cresce contra a parede que ele encontra,Drag a rectangle on the ground: a volume grows against the wall it meets
 hint.builder.zone,"Zona: andares {s0}–{s1}, vãos {b0}–{b1} — solte para aplicar","Zone: floors {s0}–{s1}, bays {b0}–{b1} — release to apply"
+model.house,Casa,House
+model.townhouse,Sobrado,Townhouse
+model.apartments,Prédio residencial,Apartments
+model.residentialTower,Torre residencial,Residential tower
+model.cityHall,Prefeitura,City hall
+model.council,Câmara de Vereadores,City council
+model.courthouse,Fórum,Courthouse
+model.postOffice,Correios,Post office
+model.police,Delegacia,Police station
+model.fireStation,Bombeiros,Fire station
+model.hospital,Hospital,Hospital
+model.clinic,Posto de saúde,Clinic
+model.school,Escola,School
+model.university,Faculdade,University
+model.library,Biblioteca,Library
+model.museum,Museu,Museum
+model.prison,Presídio,Prison
+model.church,Igreja,Church
+model.cemetery,Cemitério,Cemetery
+model.busStation,Rodoviária,Bus station
+model.shop,Loja,Shop
+model.supermarket,Supermercado,Supermarket
+model.mall,Shopping,Shopping centre
+model.bank,Banco,Bank
+model.pharmacy,Farmácia,Pharmacy
+model.bakery,Padaria,Bakery
+model.restaurant,Restaurante,Restaurant
+model.snackBar,Lanchonete,Snack bar
+model.bar,Bar,Bar
+model.nightclub,Discoteca,Nightclub
+model.cinema,Cinema,Cinema
+model.hotel,Hotel,Hotel
+model.gym,Academia,Gym
+model.club,Clube,Club
+model.gasStation,Posto de gasolina,Petrol station
+model.office,Escritórios,Offices
+model.factory,Fábrica,Factory
+model.warehouse,Galpão,Warehouse
+model.park,Parque,Park
+model.square,Praça,Square
+model.playground,Parquinho,Playground
+model.sportsCourt,Quadra,Sports court
+model.block,Bloco,Block
+model.plainHouse,Casa,House
+model.rowhouse,Sobrado geminado,Row house
+model.plainApartments,Prédio residencial,Apartments
+model.tower,Torre com embasamento,Tower on podium
+model.plainShop,Loja,Shop
+model.plainOffice,Edifício de escritórios,Office block
+model.mixed,Prédio de uso misto,Mixed-use block
+model.courtyard,Prédio com pátio,Courtyard building
+model.plainWarehouse,Galpão,Warehouse
+model.plainFactory,Fábrica,Factory
+building.blueprintName,Nome deste modelo,Name for this blueprint
+building.blueprintSaved,Modelo salvo,Blueprint saved
+building.placed,Edifício posicionado: arraste as setas para moldá-lo,Building placed: drag the arrows to shape it
+building.blueprintNotSaved,Modelo não salvo: não foi possível gravar o arquivo,Model not saved: the file could not be written
+building.blueprintNotRemoved,Modelo não removido: não foi possível apagar o arquivo,Model not removed: the file could not be deleted
+builder.tool.saveModel,Salvar como modelo,Save as model
+builder.city.remove,Remover modelo,Remove model
+cmd.build.model,colocar prédio,place building
