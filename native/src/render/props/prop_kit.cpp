@@ -140,7 +140,21 @@ void light_mesh(MeshBuilder &b) {
 }
 } // namespace
 
-bool PropKit::build(const Dictionary &props, const Dictionary &wires, PackedStringArray &errors) {
+// A steel sheet bent along x, from -0.5 to 0.5: `section` its points across, [y, z] in the unit box; both faces seen.
+void sheet_mesh(MeshBuilder &b, const Array &section) {
+	const Vector2 t2(float(int(PropTag::FINISHED)), 0);
+	const float half = 0.5f;
+	for (int i = 0; i + 1 < section.size(); i++) {
+		const Array p = section[i], q = section[i + 1];
+		const Vector3 a(-half, float(p[0]), float(p[1])), c(-half, float(q[0]), float(q[1]));
+		const Vector3 d(half, c.y, c.z), e(half, a.y, a.z);
+		const Vector3 out = (c - a).cross(Vector3(1, 0, 0)).normalized();
+		b.quad(a, c, d, e, WHITE, out, nullptr, t2);
+		b.quad(a, c, d, e, WHITE, -out, nullptr, t2);
+	}
+}
+
+bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Array &beam_section, PackedStringArray &errors) {
 	meshes_[int(PropKind::SIGNAL)] = parts(props, "signal", errors);
 	meshes_[int(PropKind::HYDRANT)] = parts(props, "hydrant", errors);
 	meshes_[int(PropKind::BIN)] = parts(props, "bin", errors);
@@ -154,6 +168,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, PackedStri
 	wire_mesh(wire_near_, wires, int(wires["near_chords"]), int(wires["near_sides"]));
 	wire_mesh(wire_far_, wires, int(wires["far_chords"]), int(wires["far_sides"]));
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);
+	sheet_mesh(beam_, beam_section);
 	light_mesh(light_);
 	if (!props.has("signal")) return false;
 	const float dim = float(props.get("lens_dim", 0.f));

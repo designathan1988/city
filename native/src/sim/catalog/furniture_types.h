@@ -28,7 +28,7 @@ namespace city {
 #define CITY_BARRIER_FIELDS(X) X(min_run_m) X(footway_reach_m) X(kerb_gap_m) X(back_gap_m)
 #define CITY_SIGN_FIELDS(X) \
 	X(approach_reach_m) X(speed_past_mouth_m) X(speed_min_length_m) X(stop_past_line_m) X(name_past_mouth_m) X(speed_round_kmh) \
-	X(far_share) X(plate_kerb_m)
+	X(far_share) X(plate_kerb_m) X(plate_kerb_curve_m)
 #define CITY_ITEM_FIELDS(X) X(gap_m) X(stand_reach_m) X(meadow_apart_m) X(cut_reach_m) X(median_reach_m) X(demolish_reach_m)
 #define CITY_FURNITURE_DECLARE(name) float name = 0;
 

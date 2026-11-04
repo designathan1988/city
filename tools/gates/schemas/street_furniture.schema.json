@@ -582,6 +582,9 @@
     },
     "plate_kerb_m": {
      "type": "number"
+    },
+    "plate_kerb_curve_m": {
+     "type": "number"
     }
    },
    "required": [

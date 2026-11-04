@@ -40,7 +40,7 @@ public:
 private:
 	// What a chunk draws as instances.
 	struct Draws {
-		MultiMeshDraw poles, wires_near, wires_far, boxes, light;
+		MultiMeshDraw poles, wires_near, wires_far, boxes, beams, light;
 		MeshDraw pools;
 		int count = 0;
 		void free();
@@ -55,7 +55,7 @@ private:
 	SignLook signs_;
 	PropKit kit_;
 	mutable SignAtlas atlas_;
-	OwnedMesh pole_mesh_, wire_near_mesh_, wire_far_mesh_, box_mesh_, light_mesh_;
+	OwnedMesh pole_mesh_, wire_near_mesh_, wire_far_mesh_, box_mesh_, beam_mesh_, light_mesh_;
 	std::unordered_map<int64_t, MeshDraw> chunks_;
 	std::unordered_map<int64_t, Draws> draws_;
 	Draws preview_;

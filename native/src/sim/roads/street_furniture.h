@@ -49,8 +49,10 @@ LampRow lamp_row(const RoadNetwork &net, int sid);
 // The side has a sidewalk; the u `from_kerb` metres in from its kerb.
 bool sidewalk_on(const Profile &p, int side);
 float sidewalk_u(const Profile &p, int side, float from_kerb);
+// How far from the kerb a plate's post stands on segment `seg`: the plate clears the road by more in a curve.
+float plate_kerb(const RoadNetwork &net, int seg);
 // Where a piece of kind `k` stands on `side`, its face kerb_clear_m from the kerb; false when it would leave no free width.
-bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, FurnitureKind k, float &u);
+bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u);
 
 constexpr uint32_t furniture_bit(FurnitureKind k) { return 1u << uint32_t(k); }
 constexpr uint32_t FURNITURE_ALL = (1u << FURNITURE_KINDS) - 1u;

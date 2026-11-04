@@ -566,7 +566,8 @@
     "bar_foot_m": {"type": "number"},
     "finishes": {"type": "object"},
     "piece_min_m": {"type": "number"},
-    "guard_beam_m": {"type": "number"}
+    "guard_beam_m": {"type": "number"},
+    "beam_section": {"type": "array"}
    },
    "required": [
     "_doc",
@@ -595,7 +596,8 @@
     "bar_foot_m",
     "finishes",
     "piece_min_m",
-    "guard_beam_m"
+    "guard_beam_m",
+    "beam_section"
    ],
    "strict": true
   },

@@ -44,6 +44,8 @@ static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
 		for name: String in poses:
 			if name.ends_with("noite") != night:
 				continue
+			if not night:
+				cap.world.set_hour(poses[name].get("hour", cap.DAY))
 			var thing := name.trim_suffix("-noite").trim_suffix("-perto")
 			if thing in ["semaforo", "esquina"]:
 				var arm: Array = probe.crossing_kerb

@@ -60,6 +60,8 @@ func _styles() -> void:
 		_check(signs.plates.size() == signs.drawings.size(), "estilo %s: uma figura por placa" % id)
 		for d: Dictionary in signs.drawings:
 			_check(signs.plates.has(d.plate), "estilo %s: placa %s" % [id, d.plate])
+		var kerb: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).signs
+		_check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "estilo %s: placa em curva não mais perto da pista" % id)
 		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
 		_check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "estilo %s: faixa antes da retenção" % id)
 

@@ -17,6 +17,7 @@ void PropRenderer::Draws::free() {
 	wires_near.free();
 	wires_far.free();
 	boxes.free();
+	beams.free();
 	light.free();
 	pools.free();
 	count = 0;
@@ -33,7 +34,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 		errors.push_back("streets.json: falta props");
 		return false;
 	}
-	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], errors)) return false;
+	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;
 	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.blade_w, signs_.blade_h);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(glow_material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
@@ -42,6 +43,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	wire_near_mesh_ = kit_.wire(true).bake();
 	wire_far_mesh_ = kit_.wire(false).bake();
 	box_mesh_ = kit_.unit_box().bake();
+	beam_mesh_ = kit_.w_beam().bake();
 	light_mesh_ = kit_.light().bake();
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
@@ -66,7 +68,7 @@ void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 	std::vector<PropPlace> props;
 	StreetInstances inst;
 	place_street_props(s, *look_, furniture_, key, props, inst);
-	place_barriers(s, *look_, barriers_, key, inst.boxes);
+	place_barriers(s, *look_, barriers_, key, inst.boxes, inst.beams);
 	place_signs(s, *look_, signs_, atlas_, key, mb);
 	for (const PropPlace &p : props) PropKit::append(mb, kit_.mesh(p.kind), p.basis, p.origin);
 	for (const SignalHead &h : inst.heads) PropKit::append(mb, kit_.mesh(PropKind::SIGNAL), h.basis, h.origin);
@@ -77,12 +79,13 @@ void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 
 void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
-	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + inst.boxes.size() / MM_STRIDE);
+	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + (inst.boxes.size() + inst.beams.size()) / MM_STRIDE);
 	instances_ += d.count;
 	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, false);
 	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, false);
 	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, false);
 	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true);
+	d.beams.set(scenario_, beam_mesh_.rid, material_, inst.beams, box, true);
 	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false, false);
 	d.pools.adopt(scenario_, glow_material_, false, inst.pool_mesh.release());
 	if (d.pools.inst.is_valid()) RenderingServer::get_singleton()->instance_set_custom_aabb(d.pools.inst, box);

@@ -91,7 +91,7 @@ ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double
 		return out;
 	}
 	float u;
-	if (!kerbside_place(net, net.profile_of(hit.seg), hit.side, piece, u)) {
+	if (!kerbside_place(net, hit.seg, net.profile_of(hit.seg), hit.side, piece, u)) {
 		out.reason = NARROW;
 		return out;
 	}

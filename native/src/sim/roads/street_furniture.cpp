@@ -20,6 +20,7 @@ constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many 
 // Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
 // in the way again through the rounding of the sum it was moved by.
 constexpr double TOUCH_EPS_M = 1e-3;
+constexpr double STRAIGHT_SLACK_M = 0.01; // a segment this much longer than its chord bends
 
 int side_of(const Profile &p, float u) {
 	const StripEdge &r = p.edges.front(), &l = p.edges.back();
@@ -257,7 +258,14 @@ bool sidewalk_on(const Profile &p, int side) { return !p.edges.empty() && walk_o
 
 float sidewalk_u(const Profile &p, int side, float from_kerb) { return kerb_in(p, side, from_kerb); }
 
-bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, FurnitureKind k, float &u) {
+float plate_kerb(const RoadNetwork &net, int seg) {
+	const RoadSegment &g = net.segs[size_t(seg)];
+	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
+	const SignDef &d = defs(net).signs;
+	return g.len > std::hypot(b.x - a.x, b.z - a.z) + STRAIGHT_SLACK_M ? d.plate_kerb_curve_m : d.plate_kerb_m;
+}
+
+bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u) {
 	const StreetFurnitureDef &d = defs(net);
 	if (!sidewalk_on(p, side)) return false;
 	if (k == FurnitureKind::DRAIN) {
@@ -269,7 +277,7 @@ bool kerbside_place(const RoadNetwork &net, const Profile &p, int side, Furnitur
 		return fits_walk(net, p, side, d.trees.kerb_clear_m + d.trees.pit_m);
 	}
 	if (k == FurnitureKind::SIGN) {
-		u = kerb_in(p, side, d.signs.plate_kerb_m);
+		u = kerb_in(p, side, plate_kerb(net, seg));
 		return true;
 	}
 	const float across = d.footprint[int(k)].z_m;

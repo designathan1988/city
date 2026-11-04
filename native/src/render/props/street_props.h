@@ -41,7 +41,7 @@ struct TreeSpot {
 
 // What a chunk draws as instances, each list one MultiMesh (rs_util.h layout).
 struct StreetInstances {
-	godot::PackedFloat32Array poles, wires, boxes, light;
+	godot::PackedFloat32Array poles, wires, boxes, beams, light;
 	// The lamps' pools: every one has its own shape, so nothing repeats, and four corners cost less than an instance.
 	MeshBuilder pools;
 	OwnedMesh pool_mesh; // `pools` baked (a job's work; the main thread only shows it)

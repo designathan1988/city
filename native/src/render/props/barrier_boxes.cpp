@@ -32,7 +32,7 @@ struct Run {
 	const StreetLook &L;
 	const BarrierLook &B;
 	int64_t key;
-	PackedFloat32Array &buf;
+	PackedFloat32Array &buf, &beams; // boxes, and the guardrail's beams
 	float ground(float x, float z) const { return street_ground(s, L, x, z); }
 };
 
@@ -53,7 +53,7 @@ void solid_piece(const Run &r, BarrierKind kind, const Piece &p, float g0, float
 void kerb_piece(const Run &r, bool guard, const Piece &p, float g) {
 	const BarrierLook &B = r.B;
 	if (guard) {
-		box(r.buf, r.key, p, g + B.beam_foot_m, p.length + B.lap_m, B.beam_thick_m, B.guard_beam_m, B.beam);
+		box(r.beams, r.key, p, g + B.beam_foot_m, p.length + B.lap_m, B.beam_thick_m, B.guard_beam_m, B.beam);
 		return;
 	}
 	box(r.buf, r.key, p, g + B.bar_top_m, p.length + B.lap_m, B.bar_m, B.bar_m, B.railing);
@@ -127,9 +127,9 @@ bool BarrierLook::load(const Dictionary &t, PackedStringArray &errors) {
 	return true;
 }
 
-void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf) {
+void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf, PackedFloat32Array &beams) {
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	const Run run{ s, L, B, key, buf };
+	const Run run{ s, L, B, key, buf, beams };
 	s.street.barriers_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) { place_run(run, s.street.barriers.items[size_t(id)]); });
 }
 

@@ -1,11 +1,13 @@
 ## The sheets of plate pictures: the core asks for a cell the moment a chunk needs a plate (render/props/sign_atlas.h); here the
 ## cells waiting are painted, the words with the canvas's font, into a viewport, and the viewport's picture goes into its layer
 ## of the array the "prop" material reads (sign_atlas). The array grows by a layer when the core opens one, so a city has as many
-## names as it has streets. A picture read back stalls the frame a moment: at most one a round (sheet_round_s).
+## names as it has streets. A picture read back stalls the frame a moment: at most one a round (sheet_round_s). Between rounds
+## the viewport shrinks to nothing, and a round on a layer begun lays what the layer holds under the new cells.
 class_name SignSheet
 extends SubViewport
 
 const LAYER_FORMAT := Image.FORMAT_RGBA8
+const IDLE_SIZE := Vector2i.ONE
 
 var drawn: Array = [] ## Every cell painted so far: [type, words, rectangle in its layer, layer].
 var layers := Texture2DArray.new()
@@ -14,7 +16,7 @@ var _paper := _Paper.new()
 var _look: Dictionary
 var _material: ShaderMaterial
 var _waiting: Array = []
-var _held := -1 ## The layer the viewport holds the picture of.
+var _begun := -1 ## The last layer painted: the only one with cells to keep.
 var _busy := false
 var _since := 0.0
 
@@ -22,12 +24,13 @@ var _since := 0.0
 func _init(look: Dictionary, material: ShaderMaterial) -> void:
 	_look = look
 	_material = material
-	size = Vector2i(int(look.sheet_w_px), int(look.sheet_h_px))
+	size = IDLE_SIZE
 	transparent_bg = false
 	disable_3d = true
-	render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
 	render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_paper.look = look
+	_paper.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(_paper)
 	_grow(1)
 
@@ -44,9 +47,10 @@ func _process(delta: float) -> void:
 	var batch := _waiting.slice(0, cut)
 	_waiting = _waiting.slice(cut)
 	drawn.append_array(batch)
-	_paper.begin(batch)
-	render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER if layer == _held else SubViewport.CLEAR_MODE_ONCE
-	_held = layer
+	var kept := layers.get_layer_data(layer) if layer == _begun and layer < layers.get_layers() else null
+	_paper.begin(batch, ImageTexture.create_from_image(kept) if kept else null)
+	_begun = layer
+	size = _layer_size()
 	_busy = true
 	render_target_update_mode = SubViewport.UPDATE_ONCE
 	RenderingServer.frame_post_draw.connect(_upload.bind(layer), CONNECT_ONE_SHOT)
@@ -60,8 +64,13 @@ func _upload(layer: int) -> void:
 		_grow(layer + 1)
 	layers.update_layer(image, layer)
 	_paper.end()
+	size = IDLE_SIZE
 	_busy = false
 	_since = 0.0
+
+
+func _layer_size() -> Vector2i:
+	return Vector2i(int(_look.sheet_w_px), int(_look.sheet_h_px))
 
 
 ## The array with `count` layers: a texture's layers are fixed when made, so the ones painted are carried over.
@@ -70,7 +79,7 @@ func _grow(count: int) -> void:
 	for i in layers.get_layers():
 		images.append(layers.get_layer_data(i))
 	for i in count - images.size():
-		images.append(Image.create_empty(size.x, size.y, false, LAYER_FORMAT))
+		images.append(Image.create_empty(_layer_size().x, _layer_size().y, false, LAYER_FORMAT))
 	layers = Texture2DArray.new()
 	layers.create_from_images(images)
 	_material.set_shader_parameter("sign_atlas", layers)
@@ -83,13 +92,15 @@ class _Paper:
 
 	var look: Dictionary
 	var cells: Array = []
+	var under: Texture2D ## What the layer holds already.
 	var font := FontVariation.new()
 	var _origin := Vector2.ZERO # the cell being painted, and how a plate's proportions stretch over it
 	var _stretch := 1.0
 	var _face: FontFile # its own, for a batch only: the big glyphs of the shared font's cache would stay for good
 
-	func begin(batch: Array) -> void:
+	func begin(batch: Array, picture: Texture2D) -> void:
 		cells = batch
+		under = picture
 		if _face == null:
 			_face = ThemeDB.fallback_font.duplicate()
 			font.base_font = _face
@@ -101,9 +112,12 @@ class _Paper:
 		cells = []
 		font.base_font = null
 		_face = null
+		under = null
 		queue_redraw()
 
 	func _draw() -> void:
+		if under:
+			draw_texture(under, Vector2.ZERO)
 		for c: Array in cells:
 			_plate(c[0], c[1], c[2])
 		draw_set_transform(Vector2.ZERO)
