@@ -4,6 +4,7 @@
 
 #include "core/job_pool.h"
 #include "sim/buildings/building_store.h"
+#include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/lots/lot_cache.h"
@@ -35,6 +36,7 @@ struct CityState {
 	RoadNetwork roads;
 	LotCache lots;
 	BuildingStore buildings;
+	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::unique_ptr<JobPool> jobs{ std::make_unique<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)

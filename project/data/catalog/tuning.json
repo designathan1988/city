@@ -91,6 +91,9 @@
   "min_pitch_deg": 5,
   "max_pitch_deg": 60
  },
+ "interior": {
+  "max_radius_m": 150
+ },
  "zone": {
   "side_offset_m": 14,
   "sample_m": 8

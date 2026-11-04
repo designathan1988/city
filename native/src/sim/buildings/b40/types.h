@@ -151,6 +151,9 @@ struct Body {
 	std::vector<Core> cores;
 	float entrance_x = 0;
 	int entrance_volume = 0;
+	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
+	int cut_level = -1;
+	Point2 cut_view;
 	int add_paint(const Paint &p) {
 		paints.push_back(p);
 		return int(paints.size()) - 1;

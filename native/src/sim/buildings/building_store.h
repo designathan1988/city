@@ -49,6 +49,7 @@ public:
 	// Does the point stand on the building's lot (its rectangle grown by pad)?
 	static bool covers(const Building &b, float x, float z, float pad);
 	void mark(int id) const;
+	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
 	template <typename F>
 	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
 		hash.query(minx, minz, maxx, maxz, [&](int id) {
@@ -61,6 +62,7 @@ public:
 
 private:
 	void place(int id, const Building &b);
+	void mark_into(int id, std::vector<int64_t> &out) const;
 };
 
 constexpr float BUILDING_HASH_CELL = 64.f;

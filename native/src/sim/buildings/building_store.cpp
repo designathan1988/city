@@ -81,11 +81,18 @@ void BuildingStore::place(int id, const Building &b) {
 }
 
 void BuildingStore::mark(int id) const {
-	if (!log) return;
+	if (log) mark_into(id, log->building_chunks);
+}
+
+void BuildingStore::mark_look(int id) const {
+	if (log) mark_into(id, log->view_chunks);
+}
+
+void BuildingStore::mark_into(int id, std::vector<int64_t> &out) const {
 	const Building &b = items[id];
 	float r = std::max(b.w, b.d) * 0.5f;
 	for (int j = int(std::floor((b.z - r) / CHUNK)); j <= int(std::floor((b.z + r) / CHUNK)); j++)
-		for (int i = int(std::floor((b.x - r) / CHUNK)); i <= int(std::floor((b.x + r) / CHUNK)); i++) log->building_chunks.push_back(cell_key(i, j));
+		for (int i = int(std::floor((b.x - r) / CHUNK)); i <= int(std::floor((b.x + r) / CHUNK)); i++) out.push_back(cell_key(i, j));
 }
 
 void BuildingStore::occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs) {
