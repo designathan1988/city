@@ -91,14 +91,16 @@ func _mean_color(tex: Texture2D) -> Color:
 	if img.is_compressed():
 		if img.decompress() != OK:
 			return Color(1, 1, 1)
-	img.resize(MEAN_PX, MEAN_PX, Image.INTERPOLATE_BILINEAR)
+	# Trilinear reads the mipmaps, so every pixel of the map counts: bilinear only looks at a few, and on a map of pavers
+	# those missed the dark joints. The mean of light is taken in linear, and the result goes back as a colour.
+	img.resize(MEAN_PX, MEAN_PX, Image.INTERPOLATE_TRILINEAR)
 	var sum := Vector3.ZERO
 	for y in MEAN_PX:
 		for x in MEAN_PX:
-			var c := img.get_pixel(x, y)
+			var c := img.get_pixel(x, y).srgb_to_linear()
 			sum += Vector3(c.r, c.g, c.b)
 	var n := float(MEAN_PX * MEAN_PX)
-	return Color(sum.x / n, sum.y / n, sum.z / n)
+	return Color(sum.x / n, sum.y / n, sum.z / n).linear_to_srgb()
 
 
 func _param(v: Variant) -> Variant:
