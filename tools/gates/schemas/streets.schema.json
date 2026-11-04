@@ -5,32 +5,13 @@
   "surface_colors": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
   "strip_colors": {
    "type": "object",
-   "properties": {
-    "parking": {"type": "string", "pattern_prefix": "#"},
-    "bike": {"type": "string", "pattern_prefix": "#"},
-    "shoulder": {"type": "string", "pattern_prefix": "#"},
-    "curb": {"type": "string", "pattern_prefix": "#"},
-    "barrier": {"type": "string", "pattern_prefix": "#"},
-    "gutter": {"type": "string", "pattern_prefix": "#"}
-   },
+   "properties": {"parking": {"type": "string", "pattern_prefix": "#"}, "bike": {"type": "string", "pattern_prefix": "#"}, "shoulder": {"type": "string", "pattern_prefix": "#"}, "curb": {"type": "string", "pattern_prefix": "#"}, "barrier": {"type": "string", "pattern_prefix": "#"}, "gutter": {"type": "string", "pattern_prefix": "#"}},
    "required": ["parking", "bike", "shoulder", "curb", "barrier", "gutter"],
    "strict": true
   },
   "paving_colors": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
   "median_colors": {"type": "array", "items": {"type": "string", "pattern_prefix": "#"}},
-  "heights": {
-   "type": "object",
-   "properties": {
-    "curb": {"type": "number"},
-    "curb_by_median": {"type": "number"},
-    "sidewalk": {"type": "number"},
-    "median": {"type": "number"},
-    "barrier": {"type": "number"},
-    "skirt": {"type": "number"}
-   },
-   "required": ["curb", "curb_by_median", "sidewalk", "median", "barrier", "skirt"],
-   "strict": true
-  },
+  "heights": {"type": "object", "properties": {"curb": {"type": "number"}, "curb_by_median": {"type": "number"}, "sidewalk": {"type": "number"}, "median": {"type": "number"}, "barrier": {"type": "number"}, "skirt": {"type": "number"}}, "required": ["curb", "curb_by_median", "sidewalk", "median", "barrier", "skirt"], "strict": true},
   "sample_step_m": {"type": "integer"},
   "face_eps_m": {"type": "number"},
   "markings": {
@@ -51,44 +32,12 @@
     "dash_m": {"type": "array", "items": {"type": "integer"}},
     "gap_m": {"type": "array", "items": {"type": "integer"}}
    },
-   "required": [
-    "white",
-    "yellow",
-    "lift_m",
-    "line_clear_m",
-    "zebra_period_m",
-    "zebra_bar_m",
-    "double_gap_m",
-    "line_m",
-    "line_fast_m",
-    "line_fast_kmh",
-    "exclusive_line_m",
-    "dash_kmh",
-    "dash_m",
-    "gap_m"
-   ],
+   "required": ["white", "yellow", "lift_m", "line_clear_m", "zebra_period_m", "zebra_bar_m", "double_gap_m", "line_m", "line_fast_m", "line_fast_kmh", "exclusive_line_m", "dash_kmh", "dash_m", "gap_m"],
    "strict": true
   },
   "gutter_width_m": {"type": "number"},
-  "dropped_kerb": {
-   "type": "object",
-   "properties": {
-    "full_m": {"type": "number"},
-    "flat_m": {"type": "number"},
-    "flare_m": {"type": "number"},
-    "low_m": {"type": "number"},
-    "run_m": {"type": "number"},
-    "min_walk_m": {"type": "number"}
-   },
-   "required": ["full_m", "flat_m", "flare_m", "low_m", "run_m", "min_walk_m"],
-   "strict": true
-  },
-  "junction": {
-   "type": "object",
-   "properties": {"arc_step_rad": {"type": "number"}, "bevel_steps": {"type": "integer"}, "bulb_steps": {"type": "integer"}, "dead_end_depth_m": {"type": "integer"}},
-   "required": ["arc_step_rad", "bevel_steps", "bulb_steps", "dead_end_depth_m"],
-   "strict": true
-  },
+  "dropped_kerb": {"type": "object", "properties": {"full_m": {"type": "number"}, "flat_m": {"type": "number"}, "flare_m": {"type": "number"}, "low_m": {"type": "number"}, "run_m": {"type": "number"}, "min_walk_m": {"type": "number"}}, "required": ["full_m", "flat_m", "flare_m", "low_m", "run_m", "min_walk_m"], "strict": true},
+  "junction": {"type": "object", "properties": {"arc_step_rad": {"type": "number"}, "bevel_steps": {"type": "integer"}, "bulb_steps": {"type": "integer"}, "dead_end_depth_m": {"type": "integer"}}, "required": ["arc_step_rad", "bevel_steps", "bulb_steps", "dead_end_depth_m"], "strict": true},
   "props": {
    "type": "object",
    "properties": {
@@ -397,23 +346,7 @@
     "color": {"type": "string"},
     "tube_end_m": {"type": "number"}
    },
-   "required": [
-    "_doc",
-    "y_m",
-    "z_m",
-    "radius_m",
-    "sag",
-    "max_sag_m",
-    "min_span_m",
-    "max_span_m",
-    "near_chords",
-    "near_sides",
-    "far_chords",
-    "far_sides",
-    "tube_end_m",
-    "far_end_m",
-    "color"
-   ],
+   "required": ["_doc", "y_m", "z_m", "radius_m", "sag", "max_sag_m", "min_span_m", "max_span_m", "near_chords", "near_sides", "far_chords", "far_sides", "tube_end_m", "far_end_m", "color"],
    "strict": true
   },
   "trees": {
@@ -446,29 +379,7 @@
       "seed": {"type": "integer"},
       "_doc": {"type": "string"}
      },
-     "required": [
-      "px",
-      "leaves",
-      "leaf_len_px",
-      "leaf_wid_px",
-      "spread",
-      "squash",
-      "heart_bias",
-      "leaf_tone_min",
-      "lit_lift",
-      "rim",
-      "rim_share",
-      "leaflets",
-      "leaflet_px",
-      "leaflet_reach",
-      "leaflet_vary",
-      "leaflet_rise",
-      "leaflet_tilt",
-      "rachis_px",
-      "rachis_tone",
-      "frond_tone_min",
-      "seed"
-     ],
+     "required": ["px", "leaves", "leaf_len_px", "leaf_wid_px", "spread", "squash", "heart_bias", "leaf_tone_min", "lit_lift", "rim", "rim_share", "leaflets", "leaflet_px", "leaflet_reach", "leaflet_vary", "leaflet_rise", "leaflet_tilt", "rachis_px", "rachis_tone", "frond_tone_min", "seed"],
      "strict": true
     },
     "species": {
@@ -480,40 +391,13 @@
       "properties": {
        "name": {"type": "string"},
        "seed": {"type": "integer"},
-       "trunk": {
-        "type": "object",
-        "properties": {
-         "top": {"type": "number"},
-         "r0": {"type": "number"},
-         "r1": {"type": "number"},
-         "facets": {"type": "integer"},
-         "color": {"type": "string", "pattern_prefix": "#"},
-         "lean": {"type": "number"},
-         "rings": {"type": "integer"}
-        },
-        "required": ["top", "r0", "r1", "facets", "color", "lean", "rings"],
-        "strict": true
-       },
-       "limbs": {
-        "type": "object",
-        "properties": {"count": {"type": "integer"}, "reach": {"type": "number"}, "rise": {"type": "number"}, "r": {"type": "number"}},
-        "required": ["count", "reach", "rise", "r"],
-        "strict": true
-       },
+       "trunk": {"type": "object", "properties": {"top": {"type": "number"}, "r0": {"type": "number"}, "r1": {"type": "number"}, "facets": {"type": "integer"}, "color": {"type": "string", "pattern_prefix": "#"}, "lean": {"type": "number"}, "rings": {"type": "integer"}}, "required": ["top", "r0", "r1", "facets", "color", "lean", "rings"], "strict": true},
+       "limbs": {"type": "object", "properties": {"count": {"type": "integer"}, "reach": {"type": "number"}, "rise": {"type": "number"}, "r": {"type": "number"}}, "required": ["count", "reach", "rise", "r"], "strict": true},
        "crowns": {
         "type": "array",
         "items": {
          "type": "object",
-         "properties": {
-          "center": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-          "radius": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-          "rough": {"type": "number"},
-          "seed": {"type": "integer"},
-          "subdiv": {"type": "integer"},
-          "cards": {"type": "integer"},
-          "card": {"type": "number"},
-          "taper": {"type": "number"}
-         },
+         "properties": {"center": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "radius": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}, "rough": {"type": "number"}, "seed": {"type": "integer"}, "subdiv": {"type": "integer"}, "cards": {"type": "integer"}, "card": {"type": "number"}, "taper": {"type": "number"}},
          "required": ["center", "radius", "rough", "seed", "subdiv", "cards", "card", "taper"],
          "strict": true
         }
@@ -527,12 +411,7 @@
        "crown_reach": {"type": "number"},
        "far_width": {"type": "number"},
        "cards_cast": {"type": "boolean"},
-       "bloom": {
-        "type": "object",
-        "properties": {"dark": {"type": "string", "pattern_prefix": "#"}, "lit": {"type": "string", "pattern_prefix": "#"}, "above": {"type": "number"}},
-        "required": ["dark", "lit", "above"],
-        "strict": true
-       },
+       "bloom": {"type": "object", "properties": {"dark": {"type": "string", "pattern_prefix": "#"}, "lit": {"type": "string", "pattern_prefix": "#"}, "above": {"type": "number"}}, "required": ["dark", "lit", "above"], "strict": true},
        "fronds": {
         "type": "object",
         "properties": {
@@ -552,22 +431,7 @@
         "strict": true
        }
       },
-      "required": [
-       "name",
-       "seed",
-       "trunk",
-       "limbs",
-       "crowns",
-       "dark",
-       "lit",
-       "jitter",
-       "shade_bottom",
-       "heart_shade",
-       "heart_shrink",
-       "crown_reach",
-       "far_width",
-       "cards_cast"
-      ],
+      "required": ["name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade", "heart_shrink", "crown_reach", "far_width", "cards_cast"],
       "strict": true
      }
     },
@@ -610,35 +474,9 @@
       "bands": {
        "type": "object",
        "properties": {
-        "inner": {
-         "type": "object",
-         "properties": {
-          "crown_cover": {"type": "number"},
-          "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-          "mix": {"type": "object", "additional": {"type": "number"}}
-         },
-         "required": ["crown_cover", "height_m", "mix"],
-         "strict": true
-        },
-        "edge": {
-         "type": "object",
-         "properties": {
-          "crown_cover": {"type": "number"},
-          "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-          "mix": {"type": "object", "additional": {"type": "number"}}
-         },
-         "required": ["crown_cover", "height_m", "mix"],
-         "strict": true
-        },
-        "open": {
-         "type": "object",
-         "properties": {
-          "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
-          "mix": {"type": "object", "additional": {"type": "number"}}
-         },
-         "required": ["height_m", "mix"],
-         "strict": true
-        }
+        "inner": {"type": "object", "properties": {"crown_cover": {"type": "number"}, "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["crown_cover", "height_m", "mix"], "strict": true},
+        "edge": {"type": "object", "properties": {"crown_cover": {"type": "number"}, "height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["crown_cover", "height_m", "mix"], "strict": true},
+        "open": {"type": "object", "properties": {"height_m": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}, "mix": {"type": "object", "additional": {"type": "number"}}}, "required": ["height_m", "mix"], "strict": true}
        },
        "required": ["inner", "edge", "open"],
        "strict": true
@@ -694,15 +532,7 @@
   },
   "lamp_light": {
    "type": "object",
-   "properties": {
-    "_doc": {"type": "string"},
-    "pool_radius_m": {"type": "number"},
-    "beam_radius_m": {"type": "number"},
-    "lamp_height_m": {"type": "number"},
-    "lamp_reach_m": {"type": "number"},
-    "column_height_m": {"type": "number"},
-    "column_reach_m": {"type": "number"}
-   },
+   "properties": {"_doc": {"type": "string"}, "pool_radius_m": {"type": "number"}, "beam_radius_m": {"type": "number"}, "lamp_height_m": {"type": "number"}, "lamp_reach_m": {"type": "number"}, "column_height_m": {"type": "number"}, "column_reach_m": {"type": "number"}},
    "required": ["_doc", "pool_radius_m", "beam_radius_m", "lamp_height_m", "lamp_reach_m", "column_height_m", "column_reach_m"],
    "strict": true
   },
@@ -782,40 +612,11 @@
   },
   "signs": {
    "type": "object",
-   "properties": {
-    "_doc": {"type": "string"},
-    "post_radius_m": {"type": "number"},
-    "post_sides": {"type": "number"},
-    "post_color": {"type": "string"},
-    "back_color": {"type": "string"},
-    "face_out_m": {"type": "number"},
-    "blade_half_m": {"type": "number"},
-    "plates": {"type": "object"},
-    "drawings": {"type": "array", "items": {"type": "object"}}
-   },
+   "properties": {"_doc": {"type": "string"}, "post_radius_m": {"type": "number"}, "post_sides": {"type": "number"}, "post_color": {"type": "string"}, "back_color": {"type": "string"}, "face_out_m": {"type": "number"}, "blade_half_m": {"type": "number"}, "plates": {"type": "object"}, "drawings": {"type": "array", "items": {"type": "object"}}},
    "required": ["_doc", "post_radius_m", "post_sides", "post_color", "back_color", "face_out_m", "blade_half_m", "plates", "drawings"],
    "strict": true
   }
  },
- "required": [
-  "_doc",
-  "surface_colors",
-  "strip_colors",
-  "paving_colors",
-  "median_colors",
-  "heights",
-  "sample_step_m",
-  "face_eps_m",
-  "markings",
-  "gutter_width_m",
-  "dropped_kerb",
-  "junction",
-  "props",
-  "wires",
-  "trees",
-  "lamp_light",
-  "barriers",
-  "signs"
- ],
+ "required": ["_doc", "surface_colors", "strip_colors", "paving_colors", "median_colors", "heights", "sample_step_m", "face_eps_m", "markings", "gutter_width_m", "dropped_kerb", "junction", "props", "wires", "trees", "lamp_light", "barriers", "signs"],
  "strict": true
 }

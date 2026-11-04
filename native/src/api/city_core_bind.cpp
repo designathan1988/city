@@ -33,6 +33,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("build_pole_run", "from", "to", "reach", "lamps"), &CityCore::build_pole_run);
 	ClassDB::bind_method(D_METHOD("show_pole_preview", "poles"), &CityCore::show_pole_preview);
 	ClassDB::bind_method(D_METHOD("set_road_furniture", "level"), &CityCore::set_road_furniture);
+	ClassDB::bind_method(D_METHOD("road_furniture"), &CityCore::road_furniture);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityCore::sign_cells);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityCore::street_counts);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);

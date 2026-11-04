@@ -481,3 +481,34 @@ save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes."
 refuse.lot.small,o lote é pequeno demais,the lot is too small
 refuse.lot.road,o lote cobre uma via,the lot covers a road
 tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
+hint.pole.offFootway,Postes só nas calçadas,Poles on footways only
+hint.pole.noPath,Não há calçada ligando esses pontos,No footway joins these points
+hint.pole.removed,Poste removido,Pole removed
+hint.barrier.built,Construído,Built
+hint.barrier.removed,Removido,Removed
+hint.barrier.road,Muro e cerca não podem ficar sobre a via nem sobre a calçada,A wall or fence cannot stand on a road or its pavement
+hint.barrier.short,Curto demais para construir,Too short to build
+hint.barrier.nothing,"Não há muro, cerca nem sebe aqui para remover","No wall, fence or hedge here to remove"
+hint.streetscape.rule.stop,Placa de Pare: esta via agora para no cruzamento,Stop sign: this road now stops at the junction
+hint.streetscape.rule.yield,Placa de Dê a preferência: esta via agora dá a preferência no cruzamento,Give-way sign: this road now gives way at the junction
+hint.streetscape.removed,Item removido,Item removed
+hint.streetscape.offFootway,Só nas calçadas,On footways only
+hint.streetscape.narrow,A calçada é estreita demais para isso,The footway is too narrow for this
+hint.streetscape.occupied,Já há algo aqui,Something stands here already
+hint.streetscape.crossing,Não na saída de uma faixa de pedestres,Not at the end of a crossing
+streetscape.meadow,Mato (no gramado),Long grass (on the lawn)
+streetscape.streetname,Nome da rua,Street name
+tool.barrier,Muros,Walls
+cmd.place.streetItem,Colocar peça,Place item
+cmd.place.poleRun,Construir rede,String a line
+sign.text,Texto da placa,Words on the plate
+sign.stop,Pare,Stop
+sign.yield,Dê a preferência,Give way
+sign.speed,Velocidade,Speed
+sign.noParking,Proibido estacionar,No parking
+sign.noEntry,Sentido proibido,No entry
+sign.pedestrian,Pedestres,Pedestrians
+sign.school,Escola,School
+sign.direction,Direção,Direction
+sign.street,Rua,Street
+sign.info,Informação,Information

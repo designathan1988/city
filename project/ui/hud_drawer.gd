@@ -75,7 +75,11 @@ func select_tab(tab: Dictionary) -> void:
 		params.zone = _zone()
 	elif tools and ToolController.Tool.has(tab.tool):
 		params = tools.remembered.get(ToolController.Tool[tab.tool], {}).duplicate()
+	if tab.get("id", "") == "street" and params.is_empty():
+		params = StreetStrip.first_piece(DataTables.ui("drawers").street)
 	tool_requested.emit(tab.tool, params)
+	if tab.get("id", "") == "street":
+		_street_strip()
 
 
 ## The tool in hand again with one parameter changed (a card or a slider of the strip).
@@ -131,6 +135,8 @@ func _build_strip(tab: Dictionary) -> void:
 	var kind: String = category.get("strip", "")
 	if kind == "road_catalog" and (tab.tool == "ROAD" or tab.tool == "UPGRADE"):
 		_strip.add_child(catalog)
+		if tab.tool == "ROAD" and category.has("furniture"):
+			_furniture_row(category.furniture)
 	elif kind == "zone_cards" and tab.tool == "ZONE":
 		for c in category.cards:
 			_strip.add_child(_zone_card(c))
@@ -148,6 +154,35 @@ func _build_strip(tab: Dictionary) -> void:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = HudWidgets.px("side_w")
 	note.visible = note.text != ""
+
+
+## What a new road is laid with (Roadcraft roadFurniture): complete, basic or none.
+func _furniture_row(sets: Array) -> void:
+	var col := HudWidgets.vbox(_strip)
+	var held: int = CityStore.query(&"road_furniture")
+	for c: Dictionary in sets:
+		col.add_child(DrawerStrips.card(c, "level", held, func(level: int) -> void:
+			CityStore.dispatch(&"set_road_furniture", [level])
+			DrawerStrips.light(col, level)))
+
+
+## A card of the Street tab: that tool in hand, and the strip again (its options follow what is in hand).
+func _use_street(tool: String, params: Dictionary, rebuild: bool = true) -> void:
+	tool_requested.emit(tool, params)
+	if rebuild:
+		_street_strip()
+
+
+func _street_strip() -> void:
+	HudWidgets.clear(_strip)
+	var in_hand: String = ToolController.Tool.find_key(tools.tool) if tools else ""
+	StreetStrip.build(_strip, DataTables.ui("drawers").street, in_hand, _use_street, _street_last)
+
+
+## What a tool of the Street tab was last used with: one parameter, or all of them (key "").
+func _street_last(tool: String, key: String, fallback: Variant) -> Variant:
+	var held: Dictionary = tools.remembered.get(ToolController.Tool[tool], {}) if tools else {}
+	return held.duplicate() if key.is_empty() else held.get(key, fallback)
 
 
 func _relief_strip() -> void:

@@ -61,11 +61,11 @@ Dictionary CityCore::preview_barrier(const PackedVector3Array &pts, const Vector
 }
 
 Dictionary CityCore::build_barrier(const PackedVector3Array &pts, int kind) {
-	return run_edit(*state_, "cmd.place.barrier", [&](CityState &s) { return city::build_barrier(s, BarrierKind(kind), flat(pts)); });
+	return run_edit(*state_, "cmd.build.wall", [&](CityState &s) { return city::build_barrier(s, BarrierKind(kind), flat(pts)); });
 }
 
 Dictionary CityCore::remove_street(const Vector3 &p, float reach) {
-	return run_edit(*state_, "cmd.demolish.street", [&](CityState &s) {
+	return run_edit(*state_, "cmd.demolish.item", [&](CityState &s) {
 		EditResult r;
 		r.ok = remove_street_at(s, p.x, p.z, reach);
 		if (!r.ok) r.error = "hint.barrier.nothing";
@@ -114,6 +114,11 @@ void CityCore::show_pole_preview(const Array &poles) {
 void CityCore::set_road_furniture(int level) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	state_->new_road_flags = uint16_t(level << SEG_FURNITURE_SHIFT) & SEG_FURNITURE_MASK;
+}
+
+int CityCore::road_furniture() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return (state_->new_road_flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT;
 }
 
 Array CityCore::sign_cells() { return render_.take_sign_cells(); }

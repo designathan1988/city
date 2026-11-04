@@ -55,6 +55,7 @@ public:
 	godot::Dictionary build_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps);
 	void show_pole_preview(const godot::Array &poles);
 	void set_road_furniture(int level); // what new roads are laid with: 0 complete, 1 basic, 2 none
+	int road_furniture();
 	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
 	godot::Dictionary street_counts();
 
