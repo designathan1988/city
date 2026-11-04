@@ -6,7 +6,9 @@ extends RefCounted
 const CAMERA_CLEAR_M := 0.5
 const SAMPLE := 800
 const MID_BLOCK_M := 25.0 # well clear of a junction's posts and of the cars queued at it
+const STOPPED_MS := 0.5 # a moving vehicle is drawn behind where the sample has it
 const SIGHT_CLEAR_M := 2.5 # no other vehicle this near the line from the camera to the vehicle
+const SIGHT_SHARES := [0.2, 0.4]
 const WINDOW_TICKS := 2 # the near model and the poses follow the camera only as the simulation steps
 
 
@@ -43,19 +45,24 @@ static func _eye(probe: Dictionary, k: int, pair: Dictionary) -> Vector3:
 	return at + ahead * pair.eye[0] + left * pair.eye[1] + Vector3.UP * pair.eye[2]
 
 
-## The sample's vehicle of the pair's class whose camera point has room and sees it, in the middle of a block if one is.
-static func _pick(probe: Dictionary, pair: Dictionary, mid := MID_BLOCK_M) -> int:
+## The sample's vehicle of the pair's class whose camera point has room and sees it: standing, in the middle of a block, if one is.
+static func _pick(probe: Dictionary, pair: Dictionary, mid := MID_BLOCK_M, top := STOPPED_MS) -> int:
 	for i in probe.sample.size():
-		if int(probe.sample_type[i]) != int(pair.type) or float(probe.sample_mid_m[i]) < mid:
+		if int(probe.sample_type[i]) != int(pair.type) or float(probe.sample_mid_m[i]) < mid or float(probe.sample_speed[i]) > top:
 			continue
 		var eye := _eye(probe, i, pair)
 		if CityStore.query(&"camera_clear", [eye, CAMERA_CLEAR_M]) and _sees(probe, i, eye):
 			return i
-	return -1 if mid == 0.0 else _pick(probe, pair, 0.0)
+	if mid > 0.0:
+		return _pick(probe, pair, 0.0, top)
+	return -1 if top > STOPPED_MS else _pick(probe, pair, MID_BLOCK_M, INF)
 
 
 static func _sees(probe: Dictionary, k: int, eye: Vector3) -> bool:
 	var at: Vector3 = probe.sample[k]
+	for share in SIGHT_SHARES: # a wall or a parked car between them, up to where the vehicle itself begins
+		if not CityStore.query(&"camera_clear", [eye.lerp(at, share), CAMERA_CLEAR_M]):
+			return false
 	for j in probe.sample.size():
 		if j == k:
 			continue

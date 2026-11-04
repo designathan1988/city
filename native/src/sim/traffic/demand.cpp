@@ -1,7 +1,7 @@
 // Demand and spawning (Roadcraft traffic.ts:954-1047): the fleet target follows lane-metres x density x the day
 // profile; trips start and end on directed segments weighted by the zones painted beside them (home -> work in the
 // morning, work -> home in the evening), 200-7000 m apart with an exponential preference for short trips.
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/kerb_stops.h"
 
 #include "core/units.h"
 
@@ -110,6 +110,7 @@ bool spawn_one(CityState &s, int &routes) {
 	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;
 	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
 	Vehicle &v = t.vehicles[size_t(id)];
+	assign_errand(s, v, id);
 	v.ds = from;
 	v.lane = lane;
 	v.s = at;

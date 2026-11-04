@@ -2,6 +2,8 @@
 // and who stands near a point (the walkers by cell, filed at most once a tick).
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/buildings/b40/record.h"
+#include "sim/buildings/lot_access.h"
 #include "sim/roads/parking_layout.h"
 
 #include <algorithm>
@@ -100,6 +102,55 @@ bool walker_within(CityState &s, float x, float z, float r) {
 			}
 		}
 	return false;
+}
+
+// Through the gate square on: a curve cut across the wall's line would swing the car's corners into the posts. The way's end is
+// replaced by a straight run along the gate's axis, a car's half length either side, and a point beyond each end so the curves
+// (manoeuvre.cpp) leave it in line.
+static void through_gate(const TrafficParams &tp, const LotGate &gate, std::vector<V2> &via) {
+	float half = 0;
+	for (int t = int(VehicleType::SEDAN); t <= int(VehicleType::PICKUP); t++) half = std::max(half, tp.classes[t].length * 0.5f);
+	const float run = half + tp.parker_gate_margin_m, beyond = run + tp.parker_gate_lead_m;
+	while (via.size() > 1 && (via.back() - gate.at).len() < beyond + tp.parker_gate_lead_m) via.pop_back();
+	via.push_back(gate.at + gate.in * beyond);
+	via.push_back(gate.at + gate.in * run);
+	via.push_back(gate.at - gate.in * run);
+	via.push_back(gate.at - gate.in * beyond);
+}
+
+bool read_bay_way(CityState &s, int b) {
+	ParkingState &p = s.traffic.park;
+	if (p.bays[size_t(b)].way_read) return p.bays[size_t(b)].reached;
+	const int source = p.bays[size_t(b)].source;
+	const Building &rec = s.buildings.items[size_t(source)];
+	b40::Body body;
+	b40::record_body(s.buildings.designs, rec, body);
+	LotAccess acc;
+	const TrafficParams &tp = s.catalog.traffic;
+	// room to spare along the way: its curves stray from the grid's line and a car's corners swing wider than its sides. Each bay
+	// keeps the most room that still reaches a gate; a lot too tight for any keeps its exact fit.
+	const float half = car_half_width(tp), lorry = lorry_half_width(tp);
+	lot_access(s.buildings.designs, body, b40::lot_frame(rec), half + tp.parker_way_wide_m, lorry, acc);
+	for (float room : { tp.parker_way_room_m, 0.f }) {
+		if (acc.reached() == int(acc.bays.size())) break;
+		LotAccess tighter;
+		lot_access(s.buildings.designs, body, b40::lot_frame(rec), half + room, lorry, tighter);
+		for (size_t i = 0; i < acc.bays.size() && i < tighter.bays.size(); i++)
+			if (acc.bays[i].gate < 0) acc.bays[i] = tighter.bays[i];
+	}
+	const std::vector<int> &ours = p.lots[source].bays;
+	for (size_t i = 0; i < ours.size() && i < acc.bays.size(); i++) {
+		Bay &o = p.bays[size_t(ours[i])];
+		const LotBay &lb = acc.bays[i];
+		o.way_read = true;
+		o.reached = lb.gate >= 0 && !lb.way.empty() && gate_lane(s, acc.gates[size_t(lb.gate)].at, o.lane);
+		if (o.reached) {
+			o.via = lb.way;
+			if (!o.dock) through_gate(tp, acc.gates[size_t(lb.gate)], o.via);
+		}
+		refile_bay(s, ours[i], false);
+	}
+	return p.bays[size_t(b)].reached;
 }
 
 } // namespace traffic

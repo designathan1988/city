@@ -246,11 +246,12 @@ void park_probe(const TrafficState &t, Dictionary &d) {
 }
 } // namespace
 
-static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids) {
+static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids, Array &speeds) {
 	poses.push_back(Vector3(v.cur.x, v.cur.y, v.cur.z));
 	dirs.push_back(Vector3(v.cur.fx, 0, v.cur.fz));
 	types.push_back(int(v.type));
 	mids.push_back(v.off || v.conn >= 0 ? 0.f : std::min(v.s, t.g.ds[size_t(v.ds)].len - v.s));
+	speeds.push_back(v.v);
 }
 
 Dictionary CityCore::traffic_probe(int sample) {
@@ -264,6 +265,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
 	d["lost_stuck"] = t.stuck_lost; // of which: removed after standing stuck_despawn_s
+	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
@@ -281,7 +283,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
 	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
 	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
-	Array poses, dirs, types, mids, held, jams, jam_info, behind, box;
+	Array poses, dirs, types, mids, speeds, held, jams, jam_info, behind, box;
 	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
 	held.resize(int(Hold::COUNT));
@@ -310,7 +312,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 			const int k = int(traffic::box_hold(*state_, id));
 			box[k] = int(box[k]) + 1;
 		}
-		if (poses.size() < sample) push_sample(t, v, poses, dirs, types, mids);
+		if (poses.size() < sample) push_sample(t, v, poses, dirs, types, mids, speeds);
 	}
 	d["signals"] = signals;
 	const int busy = busy_node(*state_);
@@ -328,6 +330,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["sample_dir"] = dirs;
 	d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
 	d["sample_mid_m"] = mids; // how far along its lane from either end; 0 on a connector or off the lanes
+	d["sample_speed"] = speeds;
 	Array walkers, walker_dirs; // pedestrians, for close looks in the visual captures
 	for (const Pedestrian &w : t.peds)
 		if (w.alive && walkers.size() < sample) {

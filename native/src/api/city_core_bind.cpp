@@ -55,6 +55,7 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityCore::park_sample);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius"), &CityCore::camera_clear);
+	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityCore::kerb_busy);
 	ClassDB::bind_method(D_METHOD("set_clock_hour", "hour"), &CityCore::set_clock_hour);
 	ClassDB::bind_method(D_METHOD("dock_count"), &CityCore::dock_count);
 	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityCore::lot_clearance);

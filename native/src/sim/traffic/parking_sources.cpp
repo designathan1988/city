@@ -283,28 +283,6 @@ void forget_parking_lot(CityState &s, int id) {
 	}
 }
 
-bool read_bay_way(CityState &s, int b) {
-	ParkingState &p = s.traffic.park;
-	if (p.bays[size_t(b)].way_read) return p.bays[size_t(b)].reached;
-	const int source = p.bays[size_t(b)].source;
-	const Building &rec = s.buildings.items[size_t(source)];
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
-	LotAccess acc;
-	const TrafficParams &tp = s.catalog.traffic;
-	lot_access(s.buildings.designs, body, b40::lot_frame(rec), car_half_width(tp), lorry_half_width(tp), acc);
-	const std::vector<int> &ours = p.lots[source].bays;
-	for (size_t i = 0; i < ours.size() && i < acc.bays.size(); i++) {
-		Bay &o = p.bays[size_t(ours[i])];
-		const LotBay &lb = acc.bays[i];
-		o.way_read = true;
-		o.reached = lb.gate >= 0 && !lb.way.empty() && gate_lane(s, acc.gates[size_t(lb.gate)].at, o.lane);
-		if (o.reached) o.via = lb.way;
-		refile_bay(s, ours[i], false);
-	}
-	return p.bays[size_t(b)].reached;
-}
-
 void publish_parked(CityState &s, PoseFrame &f) {
 	ParkingState &p = s.traffic.park;
 	if (p.rows_dirty) {

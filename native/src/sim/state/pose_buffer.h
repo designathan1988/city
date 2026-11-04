@@ -35,7 +35,7 @@ struct PoseTrail {
 };
 
 // AgentRecord::look of a vehicle: type in the low byte, then its paint, the brake light and whether anybody is in it.
-constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17;
+constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u;
 
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail

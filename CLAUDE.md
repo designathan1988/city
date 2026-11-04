@@ -171,6 +171,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/green_wave.cpp` — onda verde: ciclo comum e defasagens pelo tempo de viagem na via principal
 - `native/src/sim/traffic/lorry_traffic.cpp` · `native/src/sim/traffic/lane_closures.cpp` · `native/src/sim/traffic/lane_closures.h` · `native/src/sim/traffic/yard.cpp` · `native/src/sim/traffic/yard.h` · `native/src/sim/traffic/yard_input.cpp` — caminhões às docas: chamada, ré para a doca, descarga e volta à via, com a rua fechada enquanto passam; o pátio, planejado num worker a partir de uma cópia
 - `native/src/sim/traffic/way_search.cpp` · `native/src/sim/traffic/way_field.cpp` · `native/src/sim/traffic/way_search.h` · `native/src/sim/traffic/reeds_shepp.cpp` · `native/src/sim/traffic/reeds_shepp.h` — A* híbrido (Dolgov 2008) sobre a grade e a clearance do pátio; curvas de Reeds-Shepp
+- `native/src/sim/traffic/kerb_stops.cpp` · `native/src/sim/traffic/kerb_stops.h` — recados na guia: quem desce, quem sobe, entrega do caminhão (porta, calçada, quem a pé vai ao carro)
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
@@ -319,7 +320,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Água: cores medidas são cor de tela usadas como albedo; a calibração espera um mapa com água (o mapa 0 não tem). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Ônibus/linhas de transporte, metrô e escolas com alunos ainda não são simulados (ônibus só aparecem como veículos, a
-  lotação só desenhada, pela semente). Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
+  lotação só desenhada, pela semente). Veículos: portas e vidros não abrem (no embarque o tempo da porta corre, a folha não gira), sem pisca, e quem vai dentro, o motociclista e o ciclista são de blocos, não o corpo dos pedestres sentado (o 4.0 cozinha poses sentadas: faltam o clipe em people.bin e uma instância por ocupante perto da câmera).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.
 - Memória (Forward+ 1600x900, cidade toda desenhada): 10 km, 3.169 prédios — 185 MiB estática, 507 de vídeo, 308 de buffers;
@@ -334,8 +335,9 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, talude/muro);
   modo Livre e Quarteirões ainda não; demolir via deixa o corredor de terreno.
-- Tráfego: sem embarque; o mapa 0 não tem indústria (zona industrial só perto de via expressa), logo nenhuma doca até o jogador pintar a zona; semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre, coordenação só por plano fixo (onda verde num sentido, verdes partindo do mínimo, sem fluxo medido); rotas
+- Tráfego: o mapa 0 não tem indústria (zona industrial só perto de via expressa), logo nenhuma doca até o jogador pintar a zona; semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre, coordenação só por plano fixo (onda verde num sentido, verdes partindo do mínimo, sem fluxo medido); sem controle automático do cruzamento pelo fluxo medido (o 4.0: flowStats e controlAdvisor; aqui o semáforo vem da geometria do nó, control_of); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
+- Carros de lote: 115 de 175 raspam algo no caminho, mediana 8 cm (muro em 91), pior 83 cm (pilar, picape em lote pequeno): a curva de Hermite segue o centro e o canto da carroceria abre na curva dos acessos estreitos. Solução: o A* híbrido do pátio (way_search) também para os carros, no worker. Medir com `capture.tscn -- --only=trafego`.
 - Mobiliário da rua: postes opostos em rua de 8–12 m (NPIP-1 aceita alternados, sem pool em `road.gdshader`); peças sem instâncias (+19 MiB de vídeo).
 - Pedestres: só a caminhada (sem ciclistas, portas dos prédios, passageiros de ônibus, parados, celular, guarda-chuva, sentados); o pacote precisa levar
   o texto MIT da animação Rocketbox (`project/assets/people/LICENSES.json`). Os 38 projetos de marcos do Roadcraft (`data/lots-roadcraft`) e o estádio ainda

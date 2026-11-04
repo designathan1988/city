@@ -23,7 +23,8 @@ struct Waypoint {
 };
 constexpr int MAX_WAYS = 12; // two per arm crossed (at most 3 at a 6-arm node) and the exit sidewalk start
 
-enum class PedMode : uint8_t { SIDEWALK = 0, WAY = 1, WAIT = 2 };
+// KERB: under a kerb stop's hand (kerb_stops.cpp), between a door and the footway.
+enum class PedMode : uint8_t { SIDEWALK = 0, WAY = 1, WAIT = 2, KERB = 3 };
 
 // A piece of street furniture as a body standing on a sidewalk: its footprint along the segment's arc (s0..s1) and
 // across from the sidewalk's middle (u0..u1), and in the world (centre, the arc's direction there, half sizes).

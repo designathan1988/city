@@ -20,6 +20,9 @@ constexpr float WAY_STEP_M = 0.25f; // poses looked at along a way
 constexpr float LOOK_M = 20.f; // what is solid is read this far round a way's pose
 constexpr float FOOT_NO_ROOF_M = 2.f; // what stands over a car's roof is no obstacle
 constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f;
+constexpr float NEAR_BAY_M = 3.f, NEAR_GATE_M = 5.f; // what counts as in its bay and at its gate
+constexpr size_t GATE_POINTS = 4;
+constexpr int CASES = 8;
 
 using Ring = std::vector<V2>;
 
@@ -67,7 +70,7 @@ void solids_near(const CityState &s, float x, float z, std::vector<Ring> &out, s
 }
 
 // The least gap along a car's whole way.
-float way_gap(const CityState &s, const LotCar &car, Vector3 &worst, int &kind) {
+float way_gap(const CityState &s, const LotCar &car, Vector3 &worst, int &kind, Dictionary *what = nullptr) {
 	const TrafficParams &p = s.catalog.traffic;
 	const Vehicle &v = s.traffic.vehicles[size_t(car.id)];
 	const float half_len = p.classes[int(v.type)].length * HALF, half_w = p.classes[int(v.type)].half_width;
@@ -85,6 +88,13 @@ float way_gap(const CityState &s, const LotCar &car, Vector3 &worst, int &kind) 
 				best = g;
 				worst = Vector3(q.x, 0, q.z);
 				kind = kinds[i];
+				if (what) {
+					const Ring &r = solids[i];
+					(*what)["solid_w"] = (r[1] - r[0]).len();
+					(*what)["solid_d"] = (r[2] - r[1]).len();
+					(*what)["heading"] = q.angle;
+					(*what)["along"] = at / std::max(1.f, car.path.length());
+				}
 			}
 		}
 	}
@@ -100,16 +110,32 @@ Dictionary CityCore::lot_clearance() {
 	int cars = 0, touching = 0;
 	float worst = FAR_GAP_M;
 	Vector3 where;
-	Dictionary by_kind, depth_of_kind;
-	Array depths;
+	Dictionary by_kind, depth_of_kind, by_place;
+	Array depths, cases;
 	for (const LotCar &car : s.traffic.park.cars) {
 		if (car.path.length() <= 0) continue;
 		Vector3 at;
 		int kind = 0;
-		const float g = way_gap(s, car, at, kind);
+		Dictionary what;
+		const float g = way_gap(s, car, at, kind, &what);
 		cars++;
+		if (g <= 0 && cases.size() < CASES) {
+			what["gap"] = g;
+			what["kind"] = kind;
+			what["at"] = at;
+			what["type"] = int(s.traffic.vehicles[size_t(car.id)].type);
+			what["length"] = car.path.length();
+			cases.push_back(what);
+		}
 		touching += g <= 0 ? 1 : 0;
 		if (g <= 0) {
+			const Bay &bay = s.traffic.park.bays[size_t(car.bay)];
+			const V2 here(at.x, at.z);
+			// the way's end runs square through the gate: its last points stand either side of it
+			const size_t n = bay.via.size();
+			const V2 gate = n >= GATE_POINTS ? (bay.via[n - 2] + bay.via[n - 3]) * HALF : here;
+			const char *place = (here - bay.at).len() < NEAR_BAY_M ? "bay" : n >= GATE_POINTS && (here - gate).len() < NEAR_GATE_M ? "gate" : "way";
+			by_place[place] = int(by_place.get(place, 0)) + 1;
 			by_kind[kind] = int(by_kind.get(kind, 0)) + 1;
 			depth_of_kind[kind] = std::min(float(depth_of_kind.get(kind, 0.f)), g);
 			depths.push_back(g);
@@ -123,10 +149,12 @@ Dictionary CityCore::lot_clearance() {
 	d["touching"] = touching;
 	d["worst_gap_m"] = worst;
 	d["touching_by_kind"] = by_kind; // element kind (-1 a volume): how many cars
+	d["touching_by_place"] = by_place; // in its bay, at its gate, or on the way between
 	d["deepest_by_kind_m"] = depth_of_kind;
 	depths.sort();
 	d["median_depth_m"] = depths.is_empty() ? Variant(0) : depths[depths.size() / 2];
 	d["worst_at"] = where;
+	d["cases"] = cases; // the first cars touching: what, how deep, where along the way
 	return d;
 }
 

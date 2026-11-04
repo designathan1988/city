@@ -263,6 +263,10 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		if (flat2 > r2) continue;
 		float passengers, order;
 		riders(type, rec.id, passengers, order);
+		const uint32_t aboard = (rec.look >> LOOK_ABOARD_SHIFT) & LOOK_ABOARD_MASK;
+		if (aboard == ABOARD_TO_SET_DOWN) passengers = std::max(passengers, 1.f);
+		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
+		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
 		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
 		push_agent(bufs[model_of(type, paint)][level], p, 1.f, float(paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));

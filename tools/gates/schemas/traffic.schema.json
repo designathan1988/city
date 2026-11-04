@@ -4,6 +4,7 @@
   "_doc": { "type": "string" },
   "_classes_doc": { "type": "string" },
   "_lorry_doc": { "type": "string" },
+  "_kerb_doc": { "type": "string" },
   "styles": { "type": "object" },
   "_zones_doc": { "type": "string" },
   "params": { "type": "object", "additional": { "type": "number" } },

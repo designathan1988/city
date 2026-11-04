@@ -8,6 +8,9 @@ const CAMERA_UP := 24.0
 const CAMERA_BACK := 2.0
 const SHOTS := [["30_vaga_rua", "kerb"], ["31_vaga_lote", "lot"], ["32_carro_manobra", "moving"], ["33_bicicleta", "bike"]]
 const BAND_SHOT := "35_ciclofaixa"
+const KERB_WAIT_S := 300
+const KERB_TICKS := 10
+const KERB_FROM := Vector3(5, 3.5, 7)
 const NEAR_M := 30.0
 const BAND_STEP_TICKS := 100 # the camera stands over the cycle lane while the traffic runs, this much at a time
 const BAND_STEPS := 60
@@ -21,12 +24,30 @@ static func directed(cap: Node, probe: Dictionary, ground: Vector3) -> bool:
 		await CaptureLorry.shots(cap)
 	elif cap.only.has("paridade"):
 		await CaptureParity.shots(cap, cap.pairs)
+	elif cap.only.has("embarque"):
+		await kerb_shot(cap)
 	elif cap.only.has("trafego"):
 		await CaptureVehicles.car_shots(cap, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
 		await shots(cap)
 	else:
 		return false
 	return true
+
+
+## Somebody between a door and the footway, the first the traffic shows, a bounded wait.
+static func kerb_shot(cap: Node) -> void:
+	for i in KERB_WAIT_S:
+		CityStore.step_ticks(KERB_TICKS)
+		var at: Variant = CityStore.query(&"kerb_busy", [])
+		if at == null:
+			continue
+		cap.camera.global_position = at + KERB_FROM
+		await cap._frames(1)
+		CityStore.step_ticks(1)
+		var now: Variant = CityStore.query(&"kerb_busy", [])
+		await cap._shot("37_embarque", (now if now != null else at) + KERB_FROM, now if now != null else at)
+		return
+	print("captura: ninguém na guia na espera")
 
 
 ## `cap` is the capture scene (its _shot and _frames).

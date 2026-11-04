@@ -134,6 +134,17 @@ int CityCore::dock_count() {
 	return docks;
 }
 
+Variant CityCore::kerb_busy() {
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	const TrafficState &t = state_->traffic;
+	for (const KerbStop &k : t.kerb_stops)
+		if (k.vehicle >= 0 && k.phase == KerbPhase::TRANSFER && k.ped >= 0) {
+			const Pose &q = t.peds[size_t(k.ped)].cur;
+			return Vector3(q.x, q.y, q.z);
+		}
+	return Variant();
+}
+
 bool CityCore::camera_clear(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
@@ -146,6 +157,12 @@ bool CityCore::camera_clear(const Vector3 &at, float radius) {
 		const float reach = s.catalog.traffic.classes[int(v.type)].length * 0.5f + radius;
 		const float dx = v.cur.x - at.x, dz = v.cur.z - at.z;
 		clear = dx * dx + dz * dz >= reach * reach;
+	}
+	const float room = s.catalog.traffic.classes[int(VehicleType::PICKUP)].length * 0.5f + radius; // the longest car standing in a bay
+	for (int b : s.traffic.park.rows) {
+		if (!clear) break;
+		const V2 &q = s.traffic.park.bays[size_t(b)].at;
+		clear = (q.x - at.x) * (q.x - at.x) + (q.y - at.z) * (q.y - at.z) >= room * room;
 	}
 	return clear;
 }

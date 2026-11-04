@@ -1,7 +1,7 @@
 // Vehicle motion: improved IDM with an emergency cap, a jerk limit and a speed drift; the head of each lane follows whoever is on its connector or at the tail of the
 // next lane, and stops at the line while the junction does not let it in; every vehicle stops for the lights it sees
 // down its route (Roadcraft 4.0 signals). Vehicles cross nodes on connectors.
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
 
@@ -146,6 +146,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			const float shut = closure_ahead(t, ds * MAX_LANES + v.lane, v.s);
 			if (shut >= 0) l.take(shut, 0.f);
 		}
+		if (v.kerb >= 0) l.take(kerb_stop_gap(t, v) + p.classes[int(v.type)].min_gap, 0.f); // the IDM stops s0 short
 		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
 		if (!through) {

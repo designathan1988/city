@@ -3,6 +3,7 @@
 // Pure C++ (no Godot types); written only by sim/traffic, read by render/agents.
 #pragma once
 
+#include "core/math.h"
 #include "core/random.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
@@ -98,6 +99,20 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 	}
 }
 
+// An errand at the kerb (kerb_stops.cpp): somebody set down, somebody picked up, a truck's mate away with a delivery.
+enum class Errand : uint8_t { NONE = 0, DROP, PICK, DELIVER };
+enum class KerbPhase : uint8_t { APPROACH, HALT, FETCH, OPEN, TRANSFER, AWAY, CLOSE };
+// Vehicle::aboard, what the render does to its passengers: as drawn, at least one to set down, one less, one more.
+constexpr uint8_t ABOARD_AS_DRAWN = 0, ABOARD_TO_SET_DOWN = 1, ABOARD_SET_DOWN = 2, ABOARD_PICKED_UP = 3;
+struct KerbStop {
+	int vehicle = -1, ds = -1, lane = 0, ped = -1;
+	Errand errand = Errand::NONE;
+	KerbPhase phase = KerbPhase::APPROACH;
+	bool back = false; // the mate is on the way back
+	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
+	V2 from; // where the person to pick up set off from
+};
+
 struct Vehicle {
 	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
@@ -120,6 +135,9 @@ struct Vehicle {
 	int lorry = -1; // its index in ParkingState::lorries
 	float stop_at = -1; // called to a gate: on its last lane it stops with its front here, on lane stop_lane
 	int stop_lane = 0;
+	Errand errand = Errand::NONE; // still to do on this trip
+	int kerb = -1; // its stop in TrafficState::kerb_stops
+	uint8_t aboard = ABOARD_AS_DRAWN;
 	bool stood = false; // stood at the stop line of the lane it is on (traffic_probe: a red entry from a standstill)
 	float goal_s = 0;
 	RouteRef route; // directed segments, in TrafficState::route_pool
@@ -199,6 +217,9 @@ struct TrafficState {
 	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
 	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
 	double step_ms[TIMED_STAGES] = {};
+	std::vector<KerbStop> kerb_stops; // few: the vehicles pulling up or standing at the kerb
+	std::vector<int> free_kerb_stops;
+	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
 	std::vector<int> pub_count;
