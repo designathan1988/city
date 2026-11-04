@@ -72,7 +72,6 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.white = hexc(m["white"]);
 	L.yellow = hexc(m["yellow"]);
 	L.paint_lift = float(m["lift_m"]);
-	L.line_clear = float(m["line_clear_m"]);
 	Dictionary styles = sub(m, "styles", errors);
 	Dictionary st = sub(styles, String(m["style"]).utf8().get_data(), errors);
 	L.centre_w = float(st["centre_m"]);

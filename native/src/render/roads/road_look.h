@@ -44,7 +44,7 @@ struct StreetLook {
 	float arc_step = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
-	float paint_lift = 0, line_clear = 0, zebra_period = 1, zebra_bar = 0, zebra_edge = 0, double_gap = 0;
+	float paint_lift = 0, zebra_period = 1, zebra_bar = 0, zebra_edge = 0, double_gap = 0;
 	// Longitudinal lines of the chosen paint style (streets.json markings.styles): the centre and lane widths, wider from
 	// fast_kmh on where the style says so, a bus lane's `exclusive_w`, a double line's `double_w`; dashes `dash[k]` long and
 	// `gap[k]` apart below dash_kmh[k]. multi_lane_double: the norm's double line where a direction has more than one lane.
