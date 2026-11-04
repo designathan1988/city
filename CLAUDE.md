@@ -90,6 +90,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
+- `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
 
@@ -119,6 +120,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
   — corpos cívicos (escola, igreja, hospital; posto, mercado, prefeitura, polícia, bombeiros) e lotes abertos (praça, parque, quadra, vazio)
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
+- `native/src/sim/catalog/nature_types.h` — tipos do clima, nuvens, neblina, pintura, pincel de árvores e comunidades de plantas (X-macro do clima)
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
 - `native/src/sim/catalog/tuning_fields.h` — nomes de todo tunable escalar (X-macro)
@@ -135,6 +137,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
+- `native/src/sim/commands/nature_commands.cpp` — clima, nuvens, neblina, pintura, árvores plantadas, bioma e relevo de volta ao original
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
@@ -142,7 +145,13 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/roundabout.cpp` — rotatória
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
+- `native/src/sim/nature/ecology.cpp` · `native/src/sim/nature/ecology.h` — o que cresce onde por bioma (fitofisionomias), calculado por chunk onde é lido
+- `native/src/sim/nature/ground_paint.cpp` · `native/src/sim/nature/ground_paint.h` — chão pintado em ladrilhos: superfície, bioma, coberturas e ravinas
+- `native/src/sim/nature/nature_state.cpp` · `native/src/sim/nature/nature_state.h` — estado da paisagem no CityState e neblina num ponto
+- `native/src/sim/nature/planted_trees.cpp` · `native/src/sim/nature/planted_trees.h` — árvores plantadas e clareiras
+- `native/src/sim/nature/sky.cpp` · `native/src/sim/nature/sky.h` — clima do mapa e nuvens colocadas (deriva, escolha pelo raio, espalhar)
 - `native/src/sim/persistence/save_format.h` — formato do save da cidade
+- `native/src/sim/persistence/save_nature.cpp` — gravar e abrir a paisagem
 - `native/src/sim/persistence/save_read.cpp` — abrir: terreno do seed, ladrilhos esculpidos, modificadores e grafo
 - `native/src/sim/persistence/save_write.cpp` — gravar: cabeçalho, terreno, modificadores, vias e prédios
 - `native/src/sim/roads/geometry.cpp` · `native/src/sim/roads/geometry.h` — geometria pura das vias (Bézier, tabelas, interseções)
@@ -285,7 +294,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
-- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
+- `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/nature.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, paisagem, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
 - `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
 - `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render

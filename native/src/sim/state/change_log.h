@@ -18,6 +18,9 @@ struct ChangeLog {
 	std::vector<int64_t> lot_cells; // CHUNK keys whose proposed lots must be recomputed (streets or zones changed)
 	std::vector<int64_t> building_chunks; // CHUNK keys whose building meshes must be rebuilt
 	std::vector<int> terrain_rects; // x0, z0, x1, z1 height-sample rectangles (inclusive)
+	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
+	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
+	std::vector<int64_t> water_chunks; // CHUNK keys whose water surface must be built again
 	bool network_changed = false; // lanes and routes must be refreshed
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
@@ -47,6 +50,9 @@ struct ChangeLog {
 		road_chunks.clear();
 		building_chunks.clear();
 		terrain_rects.clear();
+		paint_rects.clear();
+		nature_chunks.clear();
+		water_chunks.clear();
 	}
 };
 

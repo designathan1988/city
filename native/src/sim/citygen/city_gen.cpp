@@ -150,6 +150,8 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.clock.minutes.store(0);
 	s.clock.day_shift = c.tune.sim_day_start_min;
 	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune);
+	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
+	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed);
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }

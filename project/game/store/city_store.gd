@@ -13,7 +13,12 @@ const COMMANDS := {
 	&"preview_road": "preview_road", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"upgrade_road": "upgrade_road",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
-	&"set_building": "set_building", &"set_overlay": "set_overlay",
+	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_weather": "set_weather",
+	&"add_cloud": "add_cloud", &"edit_cloud": "edit_cloud", &"remove_cloud": "remove_cloud",
+	&"scatter_clouds": "scatter_clouds", &"clear_clouds": "clear_clouds", &"fog_brush": "fog_brush",
+	&"clear_fog": "clear_fog", &"paint_brush": "paint_brush", &"clear_gullies": "clear_gullies",
+	&"tree_brush": "tree_brush", &"clear_trees": "clear_trees", &"set_biome": "set_biome",
+	&"clear_relief": "clear_relief",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -21,7 +26,7 @@ const QUERIES := {
 	&"render_cost": "render_cost", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost",
 	&"traffic_probe": "traffic_probe", &"snap_road": "snap_road", &"road_profiles": "road_profiles",
 	&"segment_at": "segment_at", &"preview_roundabout": "preview_roundabout", &"preview_lot": "preview_lot",
-	&"overlays": "overlays", &"save_status": "save_status",
+	&"overlays": "overlays", &"save_status": "save_status", &"landscape": "landscape", &"cloud_at": "cloud_at",
 }
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every

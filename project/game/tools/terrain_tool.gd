@@ -10,6 +10,7 @@ const PERCENT := 100.0
 var mode := 0
 var radius := 0.0
 var strength := 0.0
+var hardness := 0.0
 var _at := Vector3.INF
 var _held := 0.0
 
@@ -19,6 +20,7 @@ func enter() -> void:
 	mode = params.get("mode", 0)
 	radius = params.get("radius", spec.radius.default)
 	strength = params.get("strength", spec.strength.default) / PERCENT
+	hardness = params.get("hardness", spec.hardness.default) / PERCENT
 	ctl.hint.emit(tr("hint.terrain"), true)
 
 
@@ -65,6 +67,6 @@ func release(_p: Vector3) -> void:
 
 
 func _dab(dt: float) -> void:
-	var r: Dictionary = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode])
+	var r: Dictionary = CityStore.dispatch(&"terrain_brush", [_at, radius, strength, dt, mode, hardness])
 	if not r.get("ok", false):
 		ctl.hint.emit(refusal(r), false)

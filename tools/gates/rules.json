@@ -287,6 +287,7 @@
   "schemas": {
     "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
     "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
+    "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
     "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
     "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
     "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",

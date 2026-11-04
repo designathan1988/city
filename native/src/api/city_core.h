@@ -44,6 +44,24 @@ public:
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
 
+	// --- the Landscape drawer (city_core_nature.cpp)
+	godot::Dictionary set_weather(const godot::Dictionary &change);
+	godot::Dictionary add_cloud(const godot::Dictionary &c);
+	godot::Dictionary edit_cloud(int id, const godot::Dictionary &c);
+	godot::Dictionary remove_cloud(int id);
+	godot::Dictionary scatter_clouds(int count, const godot::Dictionary &like, float variation);
+	godot::Dictionary clear_clouds();
+	int cloud_at(const godot::Vector3 &origin, const godot::Vector3 &direction, float drift_x, float drift_z) const;
+	godot::Dictionary fog_brush(const godot::Vector3 &p, float radius, float strength, float height, float speed, bool erase);
+	godot::Dictionary clear_fog();
+	godot::Dictionary paint_brush(const godot::Vector3 &p, float radius, float strength, float hardness, int kind);
+	godot::Dictionary clear_gullies();
+	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
+	godot::Dictionary clear_trees();
+	godot::Dictionary set_biome(int region);
+	godot::Dictionary clear_relief();
+	godot::Dictionary landscape() const;
+
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
 	bool redo();
@@ -54,7 +72,7 @@ public:
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary segment_at(const godot::Vector3 &p); // the segment a click there edits (preview)
-	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode);
+	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode, float hardness);
 	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone);
 	godot::Dictionary preview_lot(const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary set_building(int id, int fn, int floors);
