@@ -172,5 +172,34 @@
   "params": {
    "opacity": 0.6
   }
+ },
+ "vegetation": {
+  "shader": "res://render/shaders/vegetation.gdshader",
+  "params": {
+   "wind_dir": [0.8,  -0.6],
+   "wind_speed_ms": 3.0,
+   "wind_ref_ms": 3.0,
+   "gust_m": 40.0,
+   "gust_period_s": 9.0,
+   "gust_floor": 0.45,
+   "sway_period_s": 4.6,
+   "flutter_period_s": 0.9,
+   "roughness": 0.85
+  }
+ },
+ "vegetation_cards": {
+  "shader": "res://render/shaders/vegetation_cards.gdshader",
+  "params": {
+   "wind_dir": [0.8,  -0.6],
+   "wind_speed_ms": 3.0,
+   "wind_ref_ms": 3.0,
+   "gust_m": 40.0,
+   "gust_period_s": 9.0,
+   "gust_floor": 0.45,
+   "sway_period_s": 4.6,
+   "flutter_period_s": 0.9,
+   "roughness": 0.85,
+   "cover_per_mip": 0.25
+  }
  }
 }

@@ -512,6 +512,134 @@
     "params"
    ],
    "strict": true
+  },
+  "vegetation": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "wind_dir": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 2,
+       "maxItems": 2
+      },
+      "wind_speed_ms": {
+       "type": "number"
+      },
+      "wind_ref_ms": {
+       "type": "number"
+      },
+      "gust_m": {
+       "type": "number"
+      },
+      "gust_period_s": {
+       "type": "number"
+      },
+      "gust_floor": {
+       "type": "number"
+      },
+      "sway_period_s": {
+       "type": "number"
+      },
+      "flutter_period_s": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "wind_dir",
+      "wind_speed_ms",
+      "wind_ref_ms",
+      "gust_m",
+      "gust_period_s",
+      "gust_floor",
+      "sway_period_s",
+      "flutter_period_s",
+      "roughness"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
+  },
+  "vegetation_cards": {
+   "type": "object",
+   "properties": {
+    "shader": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object",
+     "properties": {
+      "wind_dir": {
+       "type": "array",
+       "items": {
+        "type": "number"
+       },
+       "minItems": 2,
+       "maxItems": 2
+      },
+      "wind_speed_ms": {
+       "type": "number"
+      },
+      "wind_ref_ms": {
+       "type": "number"
+      },
+      "gust_m": {
+       "type": "number"
+      },
+      "gust_period_s": {
+       "type": "number"
+      },
+      "gust_floor": {
+       "type": "number"
+      },
+      "sway_period_s": {
+       "type": "number"
+      },
+      "flutter_period_s": {
+       "type": "number"
+      },
+      "roughness": {
+       "type": "number"
+      },
+      "cover_per_mip": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "wind_dir",
+      "wind_speed_ms",
+      "wind_ref_ms",
+      "gust_m",
+      "gust_period_s",
+      "gust_floor",
+      "sway_period_s",
+      "flutter_period_s",
+      "roughness",
+      "cover_per_mip"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "shader",
+    "params"
+   ],
+   "strict": true
   }
  },
  "required": [
@@ -524,7 +652,9 @@
   "agent",
   "people",
   "overlay",
-  "agent_glass"
+  "agent_glass",
+  "vegetation",
+  "vegetation_cards"
  ],
  "strict": true
 }

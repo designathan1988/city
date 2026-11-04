@@ -228,9 +228,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento a partir do perfil
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
-- `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` — malhas das espécies de árvore
-- `native/src/render/trees/tree_place.cpp` · `native/src/render/trees/tree_place.h` — colocação de árvores por chunk
-- `native/src/render/trees/tree_renderer.cpp` · `native/src/render/trees/tree_renderer.h` — streaming dos chunks de árvore
+- `native/src/render/trees/leaf_atlas.cpp` · `native/src/render/trees/leaf_atlas.h` · `native/src/render/trees/tree_kit.cpp` · `native/src/render/trees/tree_kit.h` · `native/src/render/trees/tree_parts.cpp` · `native/src/render/trees/tree_parts.h` — folhas e espécies (corpo facetado, cartões, frondes, cartão distante)
+- `native/src/render/trees/tree_look.cpp` · `native/src/render/trees/tree_place.cpp` · `native/src/render/trees/tree_place.h` · `native/src/render/trees/tree_renderer.cpp` · `native/src/render/trees/tree_renderer.h` — manchas de mato, parques e ruas; modelos perto por chunk, cartões longe por superchunk
 
 **Godot — project/**
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
@@ -263,7 +262,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
   — prédio (interior mapping), massas distantes/HLOD, peças de fachada instanciadas; hash, ruído, acabamento e intemperismo
 - `project/render/shaders/road.gdshader` · `project/render/shaders/water.gdshader` · `project/render/shaders/noise2d.gdshaderinc` — vias, meios-fios e pintura; água (ondas, Fresnel,
   espuma); ruído de valor de ambos
-- `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D)
+- `project/render/shaders/overlay.gdshader` · `project/render/shaders/sky.gdshader` · `project/render/shaders/terrain.gdshader` — camadas de zonas e congestionamento, céu em gradiente, terreno toon (override do Terrain3D); `project/render/shaders/vegetation.gdshader` · `project/render/shaders/vegetation_cards.gdshader` · `project/render/shaders/vegetation.gdshaderinc` — árvores: corpo, cartões, vento e troca perto/longe
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` — câmera por entrada real
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade
