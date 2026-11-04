@@ -5,6 +5,8 @@
 namespace city::b40 {
 
 namespace {
+// The hall clears the 3.50 m a lorry needs (Sao Paulo COE, Decreto 57.776/2017 Anexo I 8.D.II); its 7-9 m has no primary
+// source yet. The office annex storey leaves the 2.50 m clear of a workplace (5.A.6) over its slab.
 constexpr int PALETTES = 7;
 constexpr float HALL_LO = 7.f, HALL_HI = 9.f, OFFICE_STOREY = 3.4f, ANNEX_D = 20.f, ANNEX_W = 12.f, ANNEX_ROOM = 4.f;
 constexpr float ANNEX_W_LO = 6.f, ANNEX_W_HI = 9.f, ANNEX_D_LO = 5.f, ANNEX_D_HI = 7.f, HALF = 0.5f;

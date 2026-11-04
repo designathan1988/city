@@ -5,6 +5,9 @@
 namespace city::b40 {
 
 namespace {
+// Floor-to-floor heights (m). The lowest leaves the 2.50 m clear a living room or bedroom needs (Sao Paulo COE, Decreto
+// 57.776/2017 Anexo I 5.A.6) over a floor slab of at least 0.08 m (ABNT NBR 6118:2014 13.2.4.1) and its finish; the
+// spread above it has no primary source yet (pending: storeys measured on photographed houses).
 constexpr float STOREY_MIN_H = 2.8f, GROUND_HI = 3.3f, STOREY_LO = 2.8f, STOREY_HI = 3.1f, HALF = 0.5f;
 constexpr int PALETTES = 7;
 constexpr float WIDE_LOT = 10.f, BUNGALOW_W = 12.f, BUNGALOW_D = 14.f;
