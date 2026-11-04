@@ -421,7 +421,7 @@
    "heart_bias": 0.7,
    "leaf_tone_min": 0.6,
    "lit_lift": 0.12,
-   "rim": 0.72,
+   "rim": 0.275,
    "rim_share": 0.78,
    "leaflets": 40,
    "leaflet_px": 5.2,

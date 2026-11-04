@@ -41,7 +41,7 @@ struct Canvas {
 	// One lens of length `len` and width `wid` centred at (cx, cy), turned by `ang`; `tone` 0..1 before its lit half
 	// and rim.
 	void lens(const Look &L, float cx, float cy, float len, float wid, float ang, float tone) {
-		float a = len * HALF_F, b = wid * HALF_F, c = std::cos(ang), s = std::sin(ang), reach = std::max(a, b);
+		float a = len * HALF_F, b = wid * HALF_F, c = std::cos(ang), s = std::sin(ang), reach = std::max(a, b) + 1.f;
 		int x0 = std::max(0, int(cx - reach)), x1 = std::min(w - 1, int(cx + reach) + 1);
 		int y0 = std::max(0, int(cy - reach)), y1 = std::min(h - 1, int(cy + reach) + 1);
 		uint8_t *d = px.ptrw();
@@ -50,12 +50,15 @@ struct Canvas {
 				float dx = x + HALF_F - cx, dy = y + HALF_F - cy;
 				float u = dx * c + dy * s, v = -dx * s + dy * c;
 				float e = (u * u) / (a * a) + (v * v) / (b * b);
-				if (e > 1.f) continue;
-				float t = tone * (v < 0 ? 1.f + L.lit_lift : 1.f) * (e > L.rim_share * L.rim_share ? L.rim : 1.f);
-				uint8_t g = uint8_t(std::clamp(t, 0.f, 1.f) * BYTE);
+				// The edge in pixels from the rim, so a leaf seen close is cut along a smooth line and not along the atlas's steps.
+				float cover = std::clamp((1.f - std::sqrt(e)) * std::min(a, b) + HALF_F, 0.f, 1.f);
+				if (cover <= 0.f) continue;
+				float t = e > L.rim_share * L.rim_share ? tone - L.rim : tone * (v < 0 ? 1.f + L.lit_lift : 1.f);
+				uint8_t g = uint8_t(std::clamp(t, 0.f, 1.f) * BYTE), alpha = uint8_t(cover * BYTE);
 				uint8_t *p = d + size_t((y * w + x) * RGBA);
+				if (alpha < p[ALPHA]) continue; // the edge of a leaf does not cut into the one under it
 				p[0] = p[1] = p[2] = g;
-				p[ALPHA] = uint8_t(BYTE);
+				p[ALPHA] = alpha;
 			}
 	}
 };
