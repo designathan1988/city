@@ -85,6 +85,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city) {
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->growth.clear();
+		state_->interior = InteriorView(); // the layer closes with the city it showed
 		r = generate_map(*state_, map, uint32_t(seed), with_city);
 		traffic::reset_traffic(*state_); // a new map: full lane graph and an empty fleet
 	}

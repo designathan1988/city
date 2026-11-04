@@ -97,6 +97,10 @@ public:
 	float amber_wanted(float kmh) const;
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	void set_overlay(const godot::String &name, bool on); // Layers popover: "zones", "congestion"
+	// The Interior layer (city_core_interior.cpp): buildings cut open at a floor, for a camera looking along step `dir`.
+	godot::Dictionary set_interior(bool on, int target, int level, int dir, const godot::Vector3 &around, float radius);
+	godot::Dictionary interior() const; // on, target, level, dir, floors, lamps of the floor seen
+	godot::Dictionary interior_cost(int id, int level, int dir) const; // triangles, boxes and bytes of a building's inside (tests, render_cost)
 	godot::Dictionary overlays() const;
 	int render_pending() const { return render_.pending(); } // chunks still waiting to be drawn
 	godot::Dictionary render_cost() const; // where the last frame's _process went, in ms (tests tell a hitch's cause)

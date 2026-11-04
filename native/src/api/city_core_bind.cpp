@@ -74,6 +74,9 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
 	ClassDB::bind_method(D_METHOD("overlays"), &CityCore::overlays);
+	ClassDB::bind_method(D_METHOD("set_interior", "on", "target", "level", "dir", "around", "radius"), &CityCore::set_interior);
+	ClassDB::bind_method(D_METHOD("interior"), &CityCore::interior);
+	ClassDB::bind_method(D_METHOD("interior_cost", "id", "level", "dir"), &CityCore::interior_cost);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);

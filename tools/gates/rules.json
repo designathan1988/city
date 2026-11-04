@@ -297,6 +297,8 @@
     "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
     "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
     "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
+    "project/data/render/furniture.json": "tools/gates/schemas/furniture.schema.json",
+    "project/data/game/interior.json": "tools/gates/schemas/interior.schema.json",
     "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
@@ -344,7 +346,7 @@
       "project/ui/",
       "project/render/"
     ],
-    "data_copy_allow": [
+    "data_copy_ignore_files": ["project/data/render/furniture.json"], "_data_copy_ignore_doc": "furniture.json holds the coordinates of each piece's parts (modelling), not values any code owns.", "data_copy_allow": [
       "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
       "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
       "native/src/sim/terrain/heightfield.cpp:BANK_START",

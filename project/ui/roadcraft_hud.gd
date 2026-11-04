@@ -30,6 +30,7 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 
 
 func _ready() -> void:
+	add_to_group(&"hud")
 	root = Control.new()
 	root.theme = ThemeBuilder.theme()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE

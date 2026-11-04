@@ -88,6 +88,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
+- `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio (ou os de um raio) num andar, ler o estado com os andares e as lâmpadas, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses e tráfego
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
@@ -123,6 +124,8 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/buildings/interior/interior.cpp` · `native/src/sim/buildings/interior/interior.h` · `native/src/sim/buildings/interior/tables.h` — o que há dentro de um prédio, andar por andar: tipo de andar (iguais mobiliados uma vez), uso do prédio, receitas de `project/data/render/interiors.json`, luz por cômodo, casas e lojas do andar
 - `native/src/sim/buildings/interior/plan.cpp` · `native/src/sim/buildings/interior/plan.h` · `native/src/sim/buildings/interior/interior_homes.cpp` · `native/src/sim/buildings/interior/interior_rooms.cpp` — o andar sendo mobiliado (o que cabe onde) e a planta em apartamentos; apartamentos, casas e saguão; salas, aulas, enfermarias, hotel, lojas, restaurantes, celas e shopping
+- `native/src/sim/buildings/interior/cut.cpp` · `native/src/sim/buildings/interior/cut.h` — o prédio cortado num andar (dono único do corte): volumes acima saem, os demais perdem os andares de cima; a direção da câmera em 8 passos
+- `native/src/sim/buildings/interior/view.h` — o que a camada Interior mostra: quais prédios estão cortados, em que andar e para que direção da câmera (vista, não é salva)
 - `native/src/sim/catalog/catalog.h` · `native/src/sim/catalog/furniture_types.h` — tipos do catálogo (sem valores); mobiliário da rua e travessia
 - `native/src/sim/catalog/profile_types.h` — formas da seção de via que road_profiles.json preenche
 - `native/src/sim/catalog/traffic_params.h` — parâmetros de tráfego e pedestres
@@ -141,6 +144,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/land_commands.cpp` — relevo, prédio desenhado e edição de prédio
+- `native/src/sim/commands/interior_commands.cpp` · `native/src/sim/commands/interior_commands.h` — a camada Interior: valida o prédio e o andar, grava a vista em CityState e marca os chunks a redesenhar (sem desfazer, sem salvar)
 - `native/src/sim/commands/road_commands.cpp` — construir e demolir vias
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
@@ -209,6 +213,10 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/buildings/far_mass.cpp` — nível distante de um corpo colocado
 - `native/src/render/buildings/lot_emit.cpp` · `native/src/render/buildings/lot_props.cpp` — chão, muros, cercas e portões do lote; peças (vagas, docas, ralos, arbustos, flores, piscina, móveis, galpões, varal)
 - `native/src/render/buildings/pane_rooms.cpp` · `native/src/render/buildings/pane_rooms.h` — o que cada vidro desenha: semente do cômodo, cômodo atrás dele pela planta do andar, maior móvel visto e caixilho
+- `native/src/render/buildings/interior_emit.cpp` · `native/src/render/buildings/interior_emit.h` — o interior de um prédio cortado (dono único do desenho): piso do andar visto, poço do elevador com a cabine, paredes da planta que descem a 0,9 m do lado da câmera, móveis
+- `native/src/render/buildings/interior_cut.cpp` — as paredes externas do andar visto: descem a um rodapé do lado da câmera, as outras ganham a face interna de reboco
+- `native/src/render/buildings/furniture_emit.cpp` · `native/src/render/buildings/furniture_look.cpp` · `native/src/render/buildings/furniture_look.h` — um móvel do prédio cortado: as partes do modelo (caixas instanciadas, cilindros e esferas em geometria fina) postas no quadro da peça; furniture.json → paleta e modelos
+- `native/src/render/buildings/interior_lamps.cpp` · `native/src/render/buildings/interior_lamps.h` — onde ficam, no mundo, as lâmpadas do andar visto (para as luzes de cômodo)
 - `native/src/render/buildings/part_models.cpp` — modelos de peça de fachada no referencial da bay
 - `native/src/render/buildings/placed.cpp` — consultas de geometria e tinta de um corpo colocado
 - `native/src/render/buildings/roof_emit.cpp` — telhados de um corpo colocado
@@ -246,6 +254,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_profile.gd` — lente, inclinação e altura do olho pela distância
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
+- `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos, o enquadramento e as luzes
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
@@ -266,6 +275,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/zone_tool.gd` — pincel de zona
 - `project/render/city_world.gd` — Terrain3D, céu, sol, água e materiais (inclui meios das texturas e parâmetros da água)
 - `project/render/daylight.gd` — dia/noite
+- `project/render/interior_lights.gd` — as luzes de cômodo do andar visto: poucas luzes de ponto, sem sombra, sobre as lâmpadas mais próximas do foco, mais fortes à noite
 - `project/render/preview_line.gd` · `project/render/tone_map.gd` · `project/render/shaders/color_space.gdshaderinc` — prévias das ferramentas; o ACES do Godot e o inverso (lentes acesas); espaço de cor de cada renderizador (shaders em linear nos dois)
 - `project/render/shaders/agent_glass.gdshader` · `project/render/shaders/agents.gdshader` · `project/render/shaders/people.gdshader` · `project/render/shaders/props.gdshader` — vidro dos veículos, veículos e ocupantes, pedestres cozidos, mobiliário, árvores e lentes dos semáforos
 - `project/render/shaders/building.gdshader` · `project/render/shaders/building_far.gdshader` · `project/render/shaders/building_parts.gdshader` · `project/render/shaders/building_common.gdshaderinc` · `project/render/shaders/building_colour.gdshaderinc` · `project/render/shaders/building_hash.gdshaderinc` · `project/render/shaders/building_lamps.gdshaderinc` · `project/render/shaders/building_pane.gdshaderinc`
@@ -280,6 +290,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` — edições do Construir pelo store: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
 - `project/tests/core/save_undo_test.gd` · `project/tests/core/save_undo_test.tscn` — desfazer/refazer e ida e volta do save
+- `project/tests/core/interior_test.gd` · `project/tests/core/interior_test.tscn` — a camada Interior pelo store: o andar limitado ao topo, prédio que não existe recusado, lâmpadas, custo do interior estável e a vista em volta de um ponto
 - `project/tests/visual/capture.gd` · `project/tests/visual/capture.tscn` · `project/tests/visual/capture_views.gd` — capturas da cidade real e suas vistas fixas · `project/tests/visual/capture_kerb.gd` · `project/tests/visual/capture_memory.gd` · `project/tests/visual/capture_signals.gd` · `project/tests/visual/capture_soak.gd` — rebaixo da guia, memória, semáforos e tráfego (soak) das capturas
 - `project/tests/visual/capture_features.gd` · `project/tests/visual/capture_features.tscn` — capturas de recursos dirigidas como o jogador
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
@@ -291,21 +302,23 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_popover.gd` — camadas, simulação, câmera, ajuda e menu
 - `project/ui/hud_widgets.gd` — fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` — inspetor
+- `project/ui/interior_bar.gd` — a barra do andar da camada Interior: andar abaixo, nome do andar, andar acima; só aparece com um prédio aberto
 - `project/ui/road_catalog.gd` — catálogo de vias
 - `project/ui/road_swatch.gd` — figura do perfil visto de cima
 - `project/ui/roadcraft_hud.gd` — barra de cima, dock, dica e bússola
 - `project/ui/theme/theme_builder.gd` — único dono dos estilos (tokens → Theme)
 - `project/ui/icons/**` — ícones SVG do Roadcraft (brancos; a cor vem do tema)
 - `project/data/catalog/growth.json` · `project/data/catalog/maps.json` · `project/data/catalog/road_profiles.json` · `project/data/catalog/road_profiles_a.json` · `project/data/catalog/road_profiles_b.json` · `project/data/catalog/street_furniture.json` · `project/data/catalog/traffic.json` · `project/data/catalog/tuning.json` · `project/data/catalog/zones.json` — catálogo: crescimento, mapas, perfis de via, mobiliário da rua e travessias, tráfego, tuning e zonas
-- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
+- `project/data/game/camera.json` · `project/data/game/daylight.json` · `project/data/game/interior.json` · `project/data/game/saves.json` · `project/data/game/settings.json` — câmera, dia/noite, saves e qualidade
 - `project/data/i18n/strings.csv` · `project/data/i18n/strings_b.csv` · `project/data/i18n/strings_c.csv` — textos (partes do mesmo catálogo)
-- `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/interiors.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
+- `project/data/render/agents.json` · `project/data/render/buildings.json` · `project/data/render/interiors.json` · `project/data/render/furniture.json` · `project/data/render/materials.json` · `project/data/render/overlays.json` · `project/data/render/palette.json` · `project/data/render/streets.json` — tabelas do render
 - `project/data/ui/drawers.json` · `project/data/ui/hud.json` · `project/data/ui/tokens.json` · `project/data/ui/toolbar.json` — tabelas da interface
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
 - `tools/assets/cook_people.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_road_profiles.py` — pessoas cozidas
   (MakeHuman CC0 + caminhada Rocketbox MIT), KTX2 do Roadcraft → PNG, road_profiles.json da fonte do Roadcraft
+- `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
@@ -316,6 +329,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 ## Pendências
 Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho B/C/D, que está concluído e testado).
+- Interior (vista de dentro): o corte, o piso, o poço do elevador, as paredes da planta e os móveis existem; faltam o meio-nível (`Volume.lift`, lances entre blocos: o modelo da Porte 2 não tem `lift`), a escada de núcleo (`Core` não tem tipo), as arestas arredondadas dos móveis e a largura variada dos livros, e o interior de prédios assinatura. A cabine do elevador não tem fonte primária (NBR NM 313 não é aberta). A energia das luzes de cômodo é calibrada em foto, sem fonte de lux. Custo medido (mapa 0): casa 1.826 triângulos e 284 a 525 caixas, torre no térreo 884 triângulos e 10 caixas, 115 a 275 KB por prédio; os 79 prédios a 150 m do centro somam cerca de 21 MB, a cidade inteira passaria de 350 MB: por isso `interior.max_radius_m`.
 - Porte build: o que falta está em `ports/build/cobertura.md` (estado `a portar`) e o plano em `ports/build/plano.md`. O corpo editável e a aba Massa existem por comando; falta a interface do Construir e as outras abas.
 - Noite: as paredes ficam ~5x mais escuras que no 4.0 (mediana de luminância da foto 0,004 contra 0,019) e as janelas distantes se fundem em blocos maiores; o desgaste não tem foto de trilha fina (célula de 5 m pega a faixa inteira).
 - Árvores: de perto o coração facetado da copa aparece entre os cartões (foto 05_transito), e parte do corpo, do atlas e da colocação é escolha de modelagem, dita no _doc de `trees`.
