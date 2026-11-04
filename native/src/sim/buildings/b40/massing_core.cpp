@@ -2,13 +2,15 @@
 // (jobs/building40.ts building40): kind from use and floors, plan, massing, lot furnishing, shift to the lot frame.
 #include "sim/buildings/b40/massing.h"
 
+#include "core/units.h"
+
 #include <algorithm>
 #include <cmath>
 
 namespace city::b40 {
 
 namespace {
-constexpr float MIN_PITCH = 5.f, FLAT_BELOW = 0.66f, RIDGE_TO_STREET = 0.33f, SAWTOOTH_RUN = 6.f, DEG = 180.f / 3.14159265f;
+constexpr float MIN_PITCH = 5.f, FLAT_BELOW = 0.66f, RIDGE_TO_STREET = 0.33f, SAWTOOTH_RUN = 6.f;
 constexpr float RISE_GABLE = 3.2f, RISE_SHED = 1.2f, RISE_SAWTOOTH = 2.f, RISE_OTHER = 3.f;
 constexpr float PITCH_GABLE[2] = { 20, 35 }, PITCH_HIP[2] = { 20, 32 }, PITCH_SHED[2] = { 5, 14 }, PITCH_SAW[2] = { 22, 30 };
 constexpr float PITCH_OTHER[2] = { 20, 30 }, TINY = 1e-6f, HALF = 0.5f, SECOND_SKIN_LIGHT = 0.04f, SECOND_SKIN_NUDGE = 3.f;
@@ -62,7 +64,7 @@ void roof_shape(Volume &v, Xoshiro128 &r, int ridge_to_street) {
 	if (v.roof == ROOF_SHED) run = (std::max(0, v.fall) % 2 == 0) ? v.d : v.w;
 	else if (v.roof == ROOF_SAWTOOTH) run = std::min(SAWTOOTH_RUN, v.d) / 2;
 	else run = ((v.ridge >= 0 ? v.ridge == 0 : v.w >= v.d) ? v.d : v.w) / 2;
-	float cap = std::atan(rise / std::max(run, TINY)) * DEG;
+	float cap = std::atan(rise / std::max(run, TINY)) * RAD_TO_DEG;
 	if (cap < MIN_PITCH * FLAT_BELOW) {
 		v.roof = ROOF_FLAT; v.pitch = -1; v.ridge = -1; v.fall = -1;
 		return;

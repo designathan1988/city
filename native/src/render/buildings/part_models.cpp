@@ -3,6 +3,8 @@
 // doors, louvred shutters, brise fins, awnings, split AC condensers and porch lamps.
 #include "render/buildings/facade_bay.h"
 
+#include "core/math.h"
+
 #include <cmath>
 
 using namespace godot;
@@ -23,7 +25,7 @@ constexpr int BRISE_FINS = 6;
 constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
 constexpr float AC_LID = 0.06f, AC_FAN_R = 0.19f, AC_FAN_X = -0.09f, AC_GRILLE = 0.6f, BRACKET = 0.04f;
 constexpr int AC_SIDES = 6;
-constexpr float HALF = 0.5f, FACE_OUT = 0.005f, TAU = 6.2831853f;
+constexpr float HALF = 0.5f, FACE_OUT = 0.005f;
 constexpr uint32_t BRASS = 0xb08d57, LAMP_WARM = 0xffefcf;
 
 Basis centred(const Part &p) { return Basis{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 }; }
@@ -128,7 +130,7 @@ void part_ac(Shell &s, const Part &p, const Lin &lin, const Lin &dark) {
 	Vector3 c = m.at(AC_FAN_X, 0, fz);
 	float r = AC_FAN_R;
 	for (int i = 0; i < AC_SIDES; i++) {
-		float a0 = TAU * float(i) / AC_SIDES, a1 = TAU * float(i + 1) / AC_SIDES;
+		float a0 = TAU_F * float(i) / AC_SIDES, a1 = TAU_F * float(i + 1) / AC_SIDES;
 		s.tri(c, c + m.e0 * (r * std::cos(a0)) + m.e1 * (r * std::sin(a0)), c + m.e0 * (r * std::cos(a1)) + m.e1 * (r * std::sin(a1)), m.e2, dark, FIN_METAL);
 	}
 	s.box(m, -p.sx / 2, p.sx / 2, p.sy / 2, p.sy / 2 + AC_LID * p.sy, -p.sz / 2, p.sz / 2, lin, FIN_METAL, SKIP_E2_NEG);

@@ -55,10 +55,15 @@ void materialize(CityState &s, int key) {
 	TrafficState &t = s.traffic;
 	const int ds = key / MAX_LANES;
 	if (key < 0 || ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok || key >= int(t.meso_head.size())) return;
-	const float L = t.g.ds[size_t(ds)].len, free_speed = t.g.ds[size_t(ds)].speed;
-	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].back();
+	const DirSeg &d = t.g.ds[size_t(ds)];
+	const float L = d.len, free_speed = d.speed, margin = s.catalog.traffic.stop_margin_m;
+	// the far model waits for green at any other light (meso.cpp): out of it, a vehicle is at most where it stops for
+	// that light and slow enough to stop there comfortably, as the near model would have it
+	const bool held = light_for(s, ds) != Light::GREEN;
+	const float stop = held ? L - d.stop_back - margin : L - margin;
+	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].front(); // the rearmost drawn one
 	const float tail_len = tail >= 0 ? s.catalog.traffic.classes[int(t.vehicles[size_t(tail)].type)].length : 0.f;
-	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - MAT_TAIL_PAD_M : L - MAT_END_PAD_M;
+	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - MAT_TAIL_PAD_M : held ? stop : L - MAT_END_PAD_M;
 	int id = t.meso_head[size_t(key)];
 	while (id >= 0) {
 		Vehicle &v = t.vehicles[size_t(id)];
@@ -74,11 +79,13 @@ void materialize(CityState &s, int key) {
 		v.s = at;
 		v.conn = -1;
 		v.pass = -1;
+		v.amber_hold = -1;
+		v.stood = false;
 		v.held = 0;
 		v.wait = 0;
 		const float b = std::max(s.catalog.traffic.classes[int(v.type)].b, 0.f);
 		v.v = at < est - 1 ? 0.f : std::min(free_speed * v.vf, free_speed * MAT_SPEED_SHARE);
-		v.v = std::min(v.v, std::sqrt(2 * b * std::max(0.f, L - at - 1)));
+		v.v = std::min(v.v, std::sqrt(2 * b * std::max(0.f, stop - at)));
 		v.acc = 0;
 		micro_add(t, id);
 		lane_add(s, key, id);

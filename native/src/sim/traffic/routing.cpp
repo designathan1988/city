@@ -5,6 +5,7 @@
 // reconsiderations are short searches that rejoin the old route a few segments on.
 #include "sim/traffic/traffic_system.h"
 
+#include "core/units.h"
 #include "sim/traffic/astar.h"
 
 #include <algorithm>
@@ -14,8 +15,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-
-constexpr float KMH_PER_MS = 3.6f;
 
 // BPR congestion factor of a directed segment (routing.ts: cap = max(1, len * lanes / slot)).
 float load_factor(const CityState &s, int ds) {

@@ -5,6 +5,7 @@
 #include "render/buildings/building_renderer.h"
 
 #include "core/laps.h"
+#include "core/units.h"
 
 #include "render/buildings/facade.h"
 #include "render/mesh_builder.h"
@@ -19,7 +20,7 @@ namespace city {
 namespace {
 constexpr float HALF = 0.5f, REACH_PAD = 0.25f, DROP_K = 1.25f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
-constexpr float VIEW_ANGLE_FALLBACK = 90.f, FULL_TURN_DEG = 360.f, MIN_SCREEN_PX = 1e-3f;
+constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
 constexpr int64_t SUPER_JOB_OFFSET = 1 << 20; // keeps superchunk job keys clear of every 256 m chunk key
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
@@ -104,7 +105,7 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 	mid_end_ = s.catalog.tune.render_building_mid_end_m;
 	far_end_ = s.catalog.tune.render_building_far_end_m;
 	float fov = look_.far_fov_deg > 0 ? look_.far_fov_deg : VIEW_ANGLE_FALLBACK;
-	float half_tan = std::tan(fov * PI_F / FULL_TURN_DEG);
+	float half_tan = std::tan(fov * PI_F / float(DEG_PER_TURN));
 	for (int i = 0; i < BAND_COUNT; i++) {
 		const b40::PartBand &pb = look_.part_bands[size_t(std::min(i, int(look_.part_bands.size()) - 1))];
 		float px = std::max(pb.px_min, MIN_SCREEN_PX);
