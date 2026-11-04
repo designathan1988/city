@@ -17,6 +17,7 @@ const PX := 0.25
 const FREE_OFFSET_M := 200.0
 const LOOSE_M := 0.01
 const TANGENT_DOT := 0.999
+const COST_RUNS := 20
 
 var failures := 0
 
@@ -122,8 +123,22 @@ func _freehand(e: Vector3) -> void:
 	var bad := PackedVector3Array([base, base.lerp(b, 0.5), b, b, b + Vector3(1, 0, 0), b + Vector3(2, 0, 0)])
 	r = CityStore.dispatch(&"build_road_path", [bad, PROFILE, PX])
 	_check(not r.ok and r.error == "refuse.road.tooShort" and CityStore.snapshot.segments == seg0, "peça recusada recusa a via inteira: %s" % r)
+	_plan_cost(base)
 	var tight: PackedVector3Array = CityStore.query(&"road_pieces", [base, base + Vector3(20, 0, 0), 1, true, base + Vector3(10, 0, 60), PackedVector3Array(), PROFILE, PX])
 	_check(tight.size() == 3 and tight[1].z - base.z < 60.0, "curva apertada é aberta até o raio da via: %s" % tight[1])
+
+
+## What a preview costs at the most pieces a stroke may have (road_free_max_controls): it runs on every pointer move.
+func _plan_cost(base: Vector3) -> void:
+	var samples := PackedVector3Array()
+	for i in 400:
+		samples.push_back(base + Vector3(i * 4.0, 0, 60.0 * sin(i * 0.25)))
+	var pieces: PackedVector3Array = CityStore.query(&"road_pieces", [samples[0], samples[-1], 2, false, Vector3.ZERO, samples, PROFILE, PX])
+	var t0 := Time.get_ticks_usec()
+	for i in COST_RUNS:
+		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
+	print("prévia: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
+	_check(pieces.size() / 3 < DataTables.tuning("road_free_max_controls"), "peças dentro do limite (%d)" % [pieces.size() / 3])
 
 
 func _check(ok: bool, what: String) -> void:

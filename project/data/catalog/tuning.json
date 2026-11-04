@@ -58,7 +58,7 @@
   "snap_step_deg": 15,
   "grid_m": 1,
   "verge_m": 1,
-  "free_tolerance_m": 5,
+  "free_tolerance_m": 2,
   "free_max_controls": 48,
   "click_px": 7
  },
