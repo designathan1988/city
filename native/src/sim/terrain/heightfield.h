@@ -9,9 +9,12 @@
 #include "sim/terrain/height_patch.h"
 #include "sim/terrain/road_shape.h"
 
+#include <unordered_map>
 #include <vector>
 
 namespace city {
+
+class JobPool;
 
 constexpr int TERRAIN_REGION_SIZE = 256; // samples per Terrain3D region side
 constexpr int TERRAIN_MAX_REGIONS = 32; // Terrain3D limit per side
@@ -35,6 +38,11 @@ enum class BrushMode : int { RAISE = 0, LOWER, SMOOTH, FLATTEN, MESA, CANYON, ES
 struct BrushDab {
 	float x = 0, z = 0, radius = 0, strength = 0, dt = 0, h0 = 0, hardness = 0;
 	BrushMode mode = BrushMode::RAISE;
+};
+
+// What a sample learns from a polyline: its distance to the nearest piece and the height there.
+struct NearSample {
+	float d = BIG, surface = 0;
 };
 
 // A rectangle of height samples (inclusive).
@@ -67,12 +75,20 @@ public:
 	ChangeLog *log = nullptr;
 
 	std::vector<float> water; // water level per water sample (TerrainGen::NO_WATER where dry)
+	// The generated level of every water sample an edit or a file changed, kept at its first change: what a save
+	// writes and what Relief's "back to the original" restores, with no land generated again.
+	std::unordered_map<uint32_t, float> water_original;
+	void set_water(uint32_t i, float level) {
+		water_original.emplace(i, water[i]);
+		water[i] = level;
+	}
+	JobPool *jobs = nullptr; // the city's pool: filling and composing split over it
 	int water_n = 0;
 	float water_spacing_m = 0;
 
 	// One Terrain3D region per map tile (tiles from data/catalog/maps.json, sizes from tuning "world").
-	void init(int tiles, float tile_m, float spacing_m, uint32_t p_seed, ChangeLog *p_log, const Tuning *p_tune);
-	// Heights and water of a generated map.
+	void init(int tiles, float tile_m, float spacing_m, uint32_t p_seed, ChangeLog *p_log, const Tuning *p_tune, JobPool *p_jobs);
+	// Heights and water of a generated map, split over the pool.
 	void fill(TerrainGen &gen, float water_spacing);
 	float water_at(float x, float z) const; // nearest water sample's level
 	float half_size() const { return N * spacing * 0.5f; }
@@ -113,15 +129,37 @@ public:
 	void put_modifier(int id, const TerrainModifier &m); // undo / redo / load: the same id again
 	std::vector<uint8_t> tile_dirty; // per region: base heights differ from the generated land (saved)
 	void mark_tile(size_t sample) { tile_dirty[(sample / N / region_size) * regions + (sample % N) / region_size] = 1; }
+	// The final heights of the rectangle composed again (compose.cpp); while a hold is open it waits for the release.
 	void recompose(int x0, int z0, int x1, int z1);
 	void recompose_world_rect(float minx, float minz, float maxx, float maxz);
+	// A bulk edit (a city read, every road shaped again): the rectangles wait and are composed once, merged, when the last
+	// hold is let go; nothing reads the final heights meanwhile. `compose` false drops them (a file that is only checked).
+	void hold();
+	void release(bool compose = true);
 	void finish_load(); // rebuild final heights after base_q was loaded
 
 private:
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
+	int held = 0;
+	std::vector<SampleRect> waiting;
+	// Distance to the nearest piece of a polyline (x, height, z triples) for the samples of the box within `reach` of it.
+	const std::vector<NearSample> &nearest(const std::vector<float> &pts, float reach, int ax0, int az0, int ax1, int az1) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
 	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w); // road_shape.cpp
+};
+
+// A held composition for the length of a scope (Heightfield::hold): composed when it ends, or dropped with `compose` false.
+class ComposeHold {
+public:
+	explicit ComposeHold(Heightfield &t, bool compose = true) : t_(t), compose_(compose) { t_.hold(); }
+	~ComposeHold() { t_.release(compose_); }
+	ComposeHold(const ComposeHold &) = delete;
+	ComposeHold &operator=(const ComposeHold &) = delete;
+
+private:
+	Heightfield &t_;
+	bool compose_;
 };
 
 } // namespace city

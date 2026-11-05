@@ -84,20 +84,18 @@ EditResult terrain_dab(CityState &s, double x, double z, double radius, double s
 void unflood(CityState &s) {
 	Heightfield &t = s.terrain;
 	if (t.water.empty()) return;
-	TerrainGen gen(s.seed, s.map_half, s.catalog.tune.world_water_spacing_m);
-	std::vector<uint32_t> index;
+	std::vector<uint32_t> changed, index;
 	std::vector<float> before, after;
-	for (int gz = 0; gz < t.water_n; gz++)
-		for (int gx = 0; gx < t.water_n; gx++) {
-			size_t i = size_t(gz) * t.water_n + gx;
-			if (t.water[i] == TerrainGen::NO_WATER) continue;
-			float was = gen.flat() ? TerrainGen::NO_WATER : gen.water_at_sample(gx, gz);
-			if (was == t.water[i]) continue;
-			index.push_back(uint32_t(i));
-			before.push_back(t.water[i]);
-			after.push_back(was);
-			t.water[i] = was;
-		}
+	for (const auto &kv : t.water_original) changed.push_back(kv.first); // only what changed can differ from the land
+	std::sort(changed.begin(), changed.end());
+	for (uint32_t i : changed) {
+		const float was = t.water_original.at(i);
+		if (t.water[i] == TerrainGen::NO_WATER || was == t.water[i]) continue;
+		index.push_back(i);
+		before.push_back(t.water[i]);
+		after.push_back(was);
+		t.water[i] = was;
+	}
 	if (index.empty()) return;
 	float h = s.map_half;
 	auto mark = [h](CityState &st) { for_chunks(-h, -h, h, h, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };

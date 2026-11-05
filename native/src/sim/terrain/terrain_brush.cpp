@@ -118,7 +118,7 @@ void Heightfield::flood(float x, float z, float radius, float level, std::vector
 			if (std::hypot(wx - x, wz - z) >= radius || water[i] >= level || base_height_at(wx, wz) >= level) continue;
 			index.push_back(uint32_t(i));
 			before.push_back(water[i]);
-			water[i] = level;
+			set_water(uint32_t(i), level);
 		}
 	if (!index.empty()) ground_moved.insert(ground_moved.end(), { x - radius, z - radius, x + radius, z + radius }); // water is a road's floor
 }

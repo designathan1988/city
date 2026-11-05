@@ -66,6 +66,7 @@ void sync_grade(CityState &s) {
 	if (!net.grade.pending()) return;
 	std::vector<int> moved, gone;
 	net.grade.solve(net, ground_of(s.terrain), moved, gone);
+	ComposeHold hold(s.terrain); // every road moved, shaped once where they overlap
 	for (int seg : gone) s.terrain.drop_road_shape(seg);
 	for (int seg : moved) {
 		const RoadShape shape = shape_of(net, seg);

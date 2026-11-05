@@ -1,5 +1,5 @@
 # Generic stack sampler (Windows x64): any process, any compiled language, no name of the program. On every interval it freezes
-# each thread of the process, walks its stack (dbghelp StackWalk64, the binary's own unwind tables), lets it go and sums: where
+# each thread of the process, walks its stack (dbghelp StackWalk64 over each module's own unwind tables: unwind.py), lets it go and sums: where
 # each thread spends time and where it waits (told by the thread's own CPU time, not by names), the hot functions and chains,
 # and the code that triggered engine or driver time (the first frame with symbols). Symbols by llvm-symbolizer for DWARF
 # (clang/mingw) builds; a module without debug information is named so it can be rebuilt with it. The timeline in windows shows
@@ -18,17 +18,22 @@ import time
 from collections import defaultdict
 
 from sampler_report import report
+from unwind import UnwindTables
 
 k32 = C.WinDLL("kernel32", use_last_error=True)
 dbg = C.WinDLL("dbghelp", use_last_error=True)
 psapi = C.WinDLL("psapi", use_last_error=True)
+k32.GetCurrentThread.restype = C.c_void_p  # a pseudo-handle (-2): 64 bits, never an int
+k32.QueryThreadCycleTime.argtypes = [C.c_void_p, C.POINTER(C.c_uint64)]
 PROCESS_ALL = 0x1F0FFF
 THREAD_ACCESS = 0x0002 | 0x0008 | 0x0010 | 0x0040  # suspend/resume, get context, query information
 CONTEXT_FULL = 0x10000B
 IMAGE_FILE_MACHINE_AMD64 = 0x8664
 TH32CS_SNAPTHREAD = 0x4
 MAX_FRAMES = 96
+STACK_COPY = 256 * 1024  # bytes of the live stack copied while a thread is frozen (deeper frames are read live)
 STILL_ACTIVE = 259
+CALIBRATE_S = 0.1  # spin that long to learn the cycle counter's rate
 REFRESH_S = 0.5  # threads and modules listed again this often
 DESKTOP = os.environ.get("SAMPLER_DESKTOP", "sampler")
 
@@ -84,6 +89,18 @@ def modules_of(hp):
     return out
 
 
+def cycles_per_ns():
+    """The cycle counter's rate, measured on this thread spinning for CALIBRATE_S: QueryThreadCycleTime counts every cycle
+    a thread runs, so the CPU time of a thread between two samples is exact."""
+    me, c0, c1 = k32.GetCurrentThread(), C.c_uint64(), C.c_uint64()
+    k32.QueryThreadCycleTime(me, C.byref(c0))
+    t0 = time.perf_counter()
+    while time.perf_counter() - t0 < CALIBRATE_S:
+        pass
+    k32.QueryThreadCycleTime(me, C.byref(c1))
+    return (c1.value - c0.value) / ((time.perf_counter() - t0) * 1e9)
+
+
 def start_hidden(cmd):
     """CreateProcess on a desktop of its own (WinSta0\\sampler): the program's windows never show to the user."""
     u32 = C.WinDLL("user32", use_last_error=True)
@@ -110,45 +127,53 @@ class Sampler:
         self.hp = k32.OpenProcess(PROCESS_ALL, False, pid)
         dbg.SymSetOptions(0x2 | 0x10)  # UNDNAME | DEFERRED_LOADS
         dbg.SymInitializeW(self.hp, None, True)
-        self.table = C.cast(dbg.SymFunctionTableAccess64, C.c_void_p)
-        self.base = C.cast(dbg.SymGetModuleBase64, C.c_void_p)
         self.opened = {}
+        self.cycles_per_ns = cycles_per_ns()
+        self.last = {}  # tid -> (cycles, stack, cpu) of its last walk: a thread that has not run since has the same stack
         self.main = None  # the first thread seen: the program's main loop
         self.modules = {}  # base -> (end, path), gathered while sampling: the process may be gone at the end
+        self.unwind = UnwindTables(self.hp, self.modules)  # every module's own unwind tables, symbols or not
 
     def stack(self, tid):
         """(the thread's stack, its CPU ns so far)."""
         h = self.opened.get(tid)
         if h is None:
             h = self.opened[tid] = k32.OpenThread(THREAD_ACCESS, False, tid)
-        if not h or k32.SuspendThread(h) == 0xFFFFFFFF:
+        if not h:
             return None, 0
-        made, ended, kernel, user = W.FILETIME(), W.FILETIME(), W.FILETIME(), W.FILETIME()
-        k32.GetThreadTimes(h, C.byref(made), C.byref(ended), C.byref(kernel), C.byref(user))
-        cpu = sum((f.dwHighDateTime << 32 | f.dwLowDateTime) * 100 for f in (kernel, user))
-        try:
-            buf = (C.c_byte * (C.sizeof(ContextX64) + 16))()
-            aligned = (C.addressof(buf) + 15) & ~15  # CONTEXT wants 16-byte alignment
-            ctx = ContextX64.from_address(aligned)
-            ctx.ContextFlags = CONTEXT_FULL
+        cycles = C.c_uint64()
+        k32.QueryThreadCycleTime(h, C.byref(cycles))
+        cpu = cycles.value / self.cycles_per_ns  # exact: the thread times of the OS move in clock ticks (~15.6 ms)
+        seen = self.last.get(tid)
+        if seen and seen[0] == cycles.value:
+            return seen[1], seen[2]  # not one cycle run since: same stack, same CPU time, no walk
+        if k32.SuspendThread(h) == 0xFFFFFFFF:
+            return None, 0
+        buf = (C.c_byte * (C.sizeof(ContextX64) + 16))()
+        aligned = (C.addressof(buf) + 15) & ~15  # CONTEXT wants 16-byte alignment
+        ctx = ContextX64.from_address(aligned)
+        ctx.ContextFlags = CONTEXT_FULL
+        try:  # frozen only for the context and a copy of the live stack: the walk runs after the thread goes on
             if not k32.GetThreadContext(h, C.c_void_p(aligned)):
                 return None, cpu
-            f = Frame()
-            f.AddrPC.Offset, f.AddrFrame.Offset, f.AddrStack.Offset = ctx.Rip, ctx.Rbp, ctx.Rsp
-            f.AddrPC.Mode = f.AddrFrame.Mode = f.AddrStack.Mode = 3  # AddrModeFlat
-            out = []
-            while len(out) < MAX_FRAMES and dbg.StackWalk64(IMAGE_FILE_MACHINE_AMD64, self.hp, h, C.byref(f), C.c_void_p(aligned), None,
-                                                            self.table, self.base, None):
-                if not f.AddrPC.Offset:
-                    break
-                out.append(f.AddrPC.Offset)
-            return tuple(out), cpu
+            self.unwind.copy_stack(ctx.Rsp, STACK_COPY)
         finally:
             k32.ResumeThread(h)
+        f = Frame()
+        f.AddrPC.Offset, f.AddrFrame.Offset, f.AddrStack.Offset = ctx.Rip, ctx.Rbp, ctx.Rsp
+        f.AddrPC.Mode = f.AddrFrame.Mode = f.AddrStack.Mode = 3  # AddrModeFlat
+        out = []
+        while len(out) < MAX_FRAMES and dbg.StackWalk64(IMAGE_FILE_MACHINE_AMD64, self.hp, h, C.byref(f), C.c_void_p(aligned),
+                                                        self.unwind.read_memory, self.unwind.table_access, self.unwind.module_base, None):
+            if not f.AddrPC.Offset:
+                break
+            out.append(f.AddrPC.Offset)
+        self.last[tid] = (cycles.value, tuple(out), cpu)
+        return tuple(out), cpu
 
     def run(self, seconds, interval):
         samples = []  # (t, tid, stack, CPU ns since the thread's previous sample, wall ns since it)
-        before, t0, listed, ids, code = {}, time.perf_counter(), 0.0, [], W.DWORD()
+        before, t0, listed, ids, code, turn = {}, time.perf_counter(), 0.0, [], W.DWORD(), 0
         while time.perf_counter() - t0 < seconds:
             now = time.perf_counter() - t0
             if now - listed > REFRESH_S or not ids:
@@ -160,13 +185,22 @@ class Sampler:
                     self.main = ids[0]
             if not ids or (k32.GetExitCodeProcess(self.hp, C.byref(code)) and code.value != STILL_ACTIVE):
                 break
-            for tid in ids:
+            # the main thread on every sweep; the others take turns while the sweep is within its interval, so a busy pool
+            # never starves the main thread of samples (each skipped one is walked first on the next sweep)
+            sweep = time.perf_counter()
+            others = [x for x in ids if x != self.main]
+            turn %= max(1, len(others))
+            order = ([self.main] if self.main in ids else []) + others[turn:] + others[:turn]
+            for n, tid in enumerate(order):
+                if n and time.perf_counter() - sweep > interval:
+                    turn += n - 1
+                    break
                 stack, cpu = self.stack(tid)
                 prev = before.get(tid)
                 before[tid] = (cpu, now)
                 if stack and prev:
                     samples.append((now, tid, stack, cpu - prev[0], (now - prev[1]) * 1e9))
-            time.sleep(interval)
+            time.sleep(max(0.0, interval - (time.perf_counter() - sweep)))  # one sweep per interval, the walk included
         return samples
 
 

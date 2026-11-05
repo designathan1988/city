@@ -2,6 +2,7 @@
 #include "core/math.h"
 #include "sim/terrain/terrain_gen.h"
 
+#include "core/job_pool.h"
 #include "core/seeded.h"
 
 #include <algorithm>
@@ -120,7 +121,7 @@ TerrainGen::River TerrainGen::river_at(double x, double z) const {
 	return r;
 }
 
-double TerrainGen::base_height(double x, double z) {
+double TerrainGen::base_height(double x, double z) const {
 	if (flat()) return PLAIN_Y;
 	double h = land(x, z);
 	River r = river_at(x, z);
@@ -132,6 +133,29 @@ const TerrainGen::Lake *TerrainGen::lake_of(int i, int j) {
 	int64_t key = int64_t(i + LAKE_KEY) * LAKE_ROW + (j + LAKE_KEY);
 	auto it = lakes_.find(key);
 	if (it != lakes_.end()) return it->second.get();
+	std::unique_ptr<Lake> lake = make_lake(i, j);
+	const Lake *out = lake.get();
+	lakes_[key] = std::move(lake);
+	return out;
+}
+
+void TerrainGen::plan_lakes(int water_n, JobPool *jobs) {
+	if (flat() || water_n <= 0) return;
+	// the squares water_at_sample looks at: those of the grid's first and last samples, and one more on each side
+	const int lo = int(std::floor(-half_ / LAKE_GRID)) - 1, hi = int(std::floor(((water_n - 1) * water_spacing_ - half_) / LAKE_GRID)) + 1;
+	const int side = hi - lo + 1;
+	std::vector<std::unique_ptr<Lake>> made(size_t(side) * size_t(side));
+	auto one = [&](size_t k) { made[k] = make_lake(lo + int(k % size_t(side)), lo + int(k / size_t(side))); };
+	if (jobs) {
+		jobs->parallel_for(made.size(), one);
+	} else {
+		for (size_t k = 0; k < made.size(); k++) one(k);
+	}
+	for (size_t k = 0; k < made.size(); k++)
+		lakes_[int64_t(lo + int(k % size_t(side)) + LAKE_KEY) * LAKE_ROW + (lo + int(k / size_t(side)) + LAKE_KEY)] = std::move(made[k]);
+}
+
+std::unique_ptr<TerrainGen::Lake> TerrainGen::make_lake(int i, int j) const {
 	std::unique_ptr<Lake> lake;
 	double bx, bz;
 	if (basin_of(i, j, bx, bz)) {
@@ -152,15 +176,13 @@ const TerrainGen::Lake *TerrainGen::lake_of(int i, int j) {
 		flood(*lake, gx, gz, h_of(gx, gz));
 		if (lake->flooded.empty()) lake.reset();
 	}
-	const Lake *out = lake.get();
-	lakes_[key] = std::move(lake);
-	return out;
+	return lake;
 }
 
 // 4.0's flood (render/terrain.ts:2338-2401): from the basin's lowest sample the water rises, lowest ground first
 // (a binary heap with the same sift order as the TypeScript), until it would spill over the rim; it stands at the rim
 // less WATER_FILL of the depth and covers the ground under that level joined to the bottom, plus one ring of shore.
-void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) {
+void TerrainGen::flood(Lake &lake, int gx, int gz, double bottom) const {
 	auto h_of = [&](int x, int z) { return base_height(x * water_spacing_ - half_, z * water_spacing_ - half_); };
 	auto key_of = [](int x, int z) { return int64_t(z) * SAMPLE_ROW + x; };
 	std::vector<int64_t> heap;

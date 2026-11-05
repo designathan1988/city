@@ -63,7 +63,7 @@ void mark_all_lot_cells(CityState &s) {
 		for (int i = first; i < first + cells; i++) s.log.lot_cells.push_back(cell_key(i, j));
 }
 
-void found_land(CityState &s, int map_index, uint32_t exact_seed) {
+void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate) {
 	s.transit = TransitData(); // a new map has no public transport; a save reads its own after this
 	s.transit_revision++;
 	const Catalog &c = s.catalog;
@@ -84,9 +84,10 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.unlimited_money = false;
 	s.clock.minutes.store(0);
 	s.clock.day_shift = c.tune.sim_day_start_min;
-	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune);
+	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
 	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
 	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
+	if (!generate) return;
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }

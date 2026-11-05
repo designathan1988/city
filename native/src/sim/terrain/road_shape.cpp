@@ -26,10 +26,6 @@ float smoothstep(float a, float b, float v) {
 	const float u = std::min(1.f, std::max(0.f, (v - a) / std::max(1e-6f, b - a)));
 	return u * u * (3.f - 2.f * u);
 }
-
-struct Near {
-	float d = BIG, surface = 0;
-};
 } // namespace
 
 float road_shape_reach() { return SHAPE_INNER_M + SHAPE_SHOULDER_MAX_M; }
@@ -39,22 +35,7 @@ void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, i
 	const int az0 = std::max(z0, ix_of(r.minz)), az1 = std::min(z1, ix_of(r.maxz) + 1);
 	if (ax0 > ax1 || az0 > az1) return;
 	const int W = ax1 - ax0 + 1;
-	thread_local std::vector<Near> near;
-	near.assign(size_t(W) * size_t(az1 - az0 + 1), Near());
-	const float reach = r.half + road_shape_reach();
-	const size_t np = r.pts.size() / 3;
-	for (size_t i = 0; i + 1 < np; i++) {
-		const float *a = &r.pts[i * 3], *b = a + 3;
-		const int px0 = std::max(ax0, ix_of(std::min(a[0], b[0]) - reach)), px1 = std::min(ax1, ix_of(std::max(a[0], b[0]) + reach) + 1);
-		const int pz0 = std::max(az0, ix_of(std::min(a[2], b[2]) - reach)), pz1 = std::min(az1, ix_of(std::max(a[2], b[2]) + reach) + 1);
-		for (int z = pz0; z <= pz1; z++)
-			for (int x = px0; x <= px1; x++) {
-				float t;
-				const float d = dist_point_segment(V2(x_of(x), x_of(z)), V2(a[0], a[2]), V2(b[0], b[2]), &t);
-				Near &n = near[size_t(z - az0) * size_t(W) + size_t(x - ax0)];
-				if (d < n.d) { n.d = d; n.surface = lerpf(a[1], b[1], t); }
-			}
-	}
+	const std::vector<NearSample> &near = nearest(r.pts, r.half + road_shape_reach(), ax0, az0, ax1, az1);
 	const float close = tune->grade_tunnel_headroom_m + tune->grade_tunnel_arch_m + TUNNEL_CLOSE_PAD_M;
 	const float roof = close - TUNNEL_BAND_M, bore = close + TUNNEL_BAND_M;
 	const float lift_on = tune->grade_lift_on_m, lift_off = tune->economy_on_piers_from_m;
@@ -62,7 +43,7 @@ void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, i
 	const int BW = x1 - x0 + 1;
 	for (int z = az0; z <= az1; z++)
 		for (int x = ax0; x <= ax1; x++) {
-			const Near &n = near[size_t(z - az0) * size_t(W) + size_t(x - ax0)];
+			const NearSample &n = near[size_t(z - az0) * size_t(W) + size_t(x - ax0)];
 			if (n.d >= inner + SHAPE_SHOULDER_MAX_M) continue;
 			const size_t gi = size_t(z) * size_t(N) + size_t(x);
 			const float natural = dequant(base_q[gi]), surface = n.surface;

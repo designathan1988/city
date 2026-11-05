@@ -193,9 +193,9 @@ void drop_baked_road_ground(CityState &s) {
 	}
 }
 
-// Everything the file holds, read into `s` (the land founded again from its seed first): false at the first thing that is
-// not a city, with `s` left half replaced.
-bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
+// Everything the file holds, read into `s` (the land founded again from its seed first, or only sized when `checking`):
+// false at the first thing that is not a city, with `s` left half replaced.
+bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error, bool checking) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
@@ -207,7 +207,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	int map = r.get<int32_t>();
 	uint32_t seed = r.get<uint32_t>();
 	if (!r.ok || map < 0 || size_t(map) >= s.catalog.maps.size()) return false;
-	found_land(s, map, seed);
+	found_land(s, map, seed, !checking);
 	s.money = r.get<double>();
 	if (!std::isfinite(s.money)) return false;
 	s.unlimited_money = r.get<uint8_t>() != 0;
@@ -240,15 +240,19 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error) {
 	auto scratch = std::make_unique<CityState>();
 	scratch->catalog = std::move(catalog);
-	if (!read_city(*scratch, data, size, error)) return false;
+	ComposeHold hold(scratch->terrain, false); // only checked: its final heights are never read
+	if (!read_city(*scratch, data, size, error, true)) return false;
 	error.clear();
 	return true;
 }
 
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
-	if (!read_city(s, data, size, error)) return false;
-	s.roads.grade.everything(); // every road's height solved on the ground read, and the ground shaped to them
-	sync_grade(s);
+	{
+		ComposeHold hold(s.terrain); // the modifiers read (and the old ones dropped) and every road shaped: composed once
+		if (!read_city(s, data, size, error, false)) return false;
+		s.roads.grade.everything(); // every road's height solved on the ground read, and the ground shaped to them
+		sync_grade(s);
+	}
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

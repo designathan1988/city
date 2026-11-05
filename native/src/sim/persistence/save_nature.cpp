@@ -1,11 +1,13 @@
 // The landscape in the save file: the weather by name order of its X-macro, the clouds, the fog dabs, the painted tiles
 // that exist, the planted trees and clearings with their slots, and the map's ecosystem. Corners of water the river
-// brush laid are written as the difference from what the seed regenerates.
+// brush laid are written as the difference from the generated level (Heightfield::water_original).
 #include "sim/persistence/save_format.h"
 
 #include "core/bytes.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/terrain_gen.h"
+
+#include <algorithm>
 
 namespace city {
 
@@ -58,15 +60,10 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	const Heightfield &t = s.terrain;
 	std::vector<uint32_t> index;
 	std::vector<float> level;
-	TerrainGen gen(s.seed, s.map_half, s.catalog.tune.world_water_spacing_m);
-	for (int gz = 0; gz < t.water_n; gz++)
-		for (int gx = 0; gx < t.water_n; gx++) {
-			size_t i = size_t(gz) * t.water_n + gx;
-			if (t.water[i] == TerrainGen::NO_WATER) continue;
-			if (!gen.flat() && gen.water_at_sample(gx, gz) == t.water[i]) continue;
-			index.push_back(uint32_t(i));
-			level.push_back(t.water[i]);
-		}
+	for (const auto &kv : t.water_original) // only what changed can differ from the generated land
+		if (t.water[kv.first] != TerrainGen::NO_WATER && t.water[kv.first] != kv.second) index.push_back(kv.first);
+	std::sort(index.begin(), index.end()); // in sample order, as the file always had them
+	for (uint32_t i : index) level.push_back(t.water[i]);
 	w.put_vec(index);
 	w.put_vec(level);
 	w.put_vec(n.elements.all());
@@ -99,7 +96,7 @@ bool read_nature(ByteReader &r, CityState &s) {
 	r.get_vec(level);
 	if (!r.ok || index.size() != level.size()) return false;
 	for (size_t i = 0; i < index.size(); i++)
-		if (index[i] < s.terrain.water.size()) s.terrain.water[index[i]] = level[i];
+		if (index[i] < s.terrain.water.size()) s.terrain.set_water(index[i], level[i]);
 	std::vector<ElementItem> elements;
 	r.get_vec(elements, size_t(s.catalog.nature.elements.max_items));
 	if (!r.ok) return false;

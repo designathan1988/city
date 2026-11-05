@@ -1,12 +1,12 @@
 // Terrain generation, height queries, raycast, sculpt brush and modifier composition.
 #include "sim/terrain/heightfield.h"
 
+#include "core/job_pool.h"
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
 #include <cmath>
 
-#include <thread>
 
 namespace city {
 
@@ -15,8 +15,9 @@ constexpr float RAY_STEP = 0.75f, RAY_FAST_ABOVE = 40.f, RAY_FAST_MAX = 60.f;
 constexpr int RAY_REFINE = 18;
 } // namespace
 
-void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed, ChangeLog *p_log, const Tuning *p_tune) {
+void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed, ChangeLog *p_log, const Tuning *p_tune, JobPool *p_jobs) {
 	log = p_log;
+	jobs = p_jobs;
 	tune = p_tune;
 	seed = p_seed;
 	spacing = spacing_m;
@@ -33,35 +34,34 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	shape_hash.clear();
 	shape_hash.cell = SUBCHUNK;
 	ground_moved.clear();
+	waiting.clear(); // rectangles of the land before: a hold open around the founding stays open
 	water.clear();
+	water_original.clear();
 	water_n = 0;
 	tile_dirty.assign(size_t(regions) * regions, 0);
 }
 
 void Heightfield::fill(TerrainGen &gen, float water_spacing) {
-	auto rows = [&](int z0, int z1) {
-		for (int iz = z0; iz < z1; iz++)
-			for (int ix = 0; ix < N; ix++) {
-				size_t i = size_t(iz) * N + ix;
-				base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(iz))));
-				final_h[i] = dequant(base_q[i]);
-			}
+	auto rows = [&](size_t n, const std::function<void(size_t)> &row) {
+		if (jobs) jobs->parallel_for(n, row);
+		else for (size_t k = 0; k < n; k++) row(k);
 	};
-	unsigned hw = std::max(1u, std::thread::hardware_concurrency());
-	std::vector<std::thread> threads;
-	int per = N / int(hw) + 1;
-	for (unsigned t = 0; t < hw; t++) {
-		int z0 = int(t) * per, z1 = std::min(N, z0 + per);
-		if (z0 < z1) threads.emplace_back(rows, z0, z1);
-	}
-	for (auto &t : threads) t.join();
-	// water: one sample per water_spacing, the river and lakes of the generator (its lake cache is not shared)
+	rows(size_t(N), [&](size_t iz) {
+		for (int ix = 0; ix < N; ix++) {
+			size_t i = iz * N + ix;
+			base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(int(iz)))));
+			final_h[i] = dequant(base_q[i]);
+		}
+	});
+	// water: one sample per water_spacing, the river and lakes of the generator (the lakes made first: then it only reads)
 	water_spacing_m = water_spacing;
 	water_n = int(std::lround(N * spacing / water_spacing));
 	water.assign(size_t(water_n) * water_n, TerrainGen::NO_WATER);
 	if (gen.flat()) return;
-	for (int gz = 0; gz < water_n; gz++)
-		for (int gx = 0; gx < water_n; gx++) water[size_t(gz) * water_n + gx] = gen.water_at_sample(gx, gz);
+	gen.plan_lakes(water_n, jobs);
+	rows(size_t(water_n), [&](size_t gz) {
+		for (int gx = 0; gx < water_n; gx++) water[gz * water_n + gx] = gen.water_at_sample(gx, int(gz));
+	});
 }
 
 float Heightfield::water_at(float x, float z) const {
@@ -206,69 +206,6 @@ void Heightfield::remove_modifier(int id) {
 	m.pts.clear();
 	free_mods.push_back(id);
 	recompose_world_rect(m.minx, m.minz, m.maxx, m.maxz);
-}
-
-void Heightfield::recompose_world_rect(float minx, float minz, float maxx, float maxz) {
-	recompose(ix_of(minx) - 1, ix_of(minz) - 1, ix_of(maxx) + 1, ix_of(maxz) + 1);
-}
-
-void Heightfield::apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w) {
-	const int W = x1 - x0 + 1;
-	int ax0 = std::max(x0, ix_of(m.minx)), ax1 = std::min(x1, ix_of(m.maxx) + 1);
-	int az0 = std::max(z0, ix_of(m.minz)), az1 = std::min(z1, ix_of(m.maxz) + 1);
-	const size_t np = m.pts.size() / 3;
-	for (int z = az0; z <= az1; z++)
-		for (int x = ax0; x <= ax1; x++) {
-			V2 p(x_of(x), x_of(z));
-			float best_d = BIG, th = 0.f;
-			if (np == 1) {
-				best_d = (p - V2(m.pts[0], m.pts[2])).len();
-				th = m.pts[1];
-			}
-			for (size_t i = 0; i + 1 < np; i++) {
-				const float *a = &m.pts[i * 3], *b = a + 3;
-				float t;
-				float d = dist_point_segment(p, V2(a[0], a[2]), V2(b[0], b[2]), &t);
-				if (d < best_d) {
-					best_d = d;
-					th = lerpf(a[1], b[1], t);
-				}
-			}
-			size_t gi = size_t(z) * N + x;
-			float base = dequant(base_q[gi]);
-			float run = clampf(std::fabs(base - th) * tune->terrain_embankment_ratio, tune->terrain_min_run_m, m.max_run);
-			float w = best_d <= m.flat ? 1.f : 1.f - (best_d - m.flat) / run;
-			if (w <= 0.f) continue;
-			w = smooth01(w);
-			size_t li = size_t(z - z0) * W + (x - x0);
-			if (w > best_w[li]) {
-				best_w[li] = w;
-				final_h[gi] = lerpf(base, th - tune->terrain_road_sink_m, w); // terrain sits just under the road surface
-			}
-		}
-}
-
-void Heightfield::recompose(int x0, int z0, int x1, int z1) {
-	x0 = clampi(x0, 0, N - 1); x1 = clampi(x1, 0, N - 1);
-	z0 = clampi(z0, 0, N - 1); z1 = clampi(z1, 0, N - 1);
-	if (x0 > x1 || z0 > z1) return;
-	for (int z = z0; z <= z1; z++)
-		for (int x = x0; x <= x1; x++) final_h[size_t(z) * N + x] = dequant(base_q[size_t(z) * N + x]);
-	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f);
-	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
-	std::vector<int> ids;
-	mod_hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
-	std::sort(ids.begin(), ids.end());
-	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-	for (int id : ids)
-		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
-	ids.clear();
-	shape_hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
-	std::sort(ids.begin(), ids.end());
-	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-	for (int id : ids)
-		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w);
-	if (log) log->terrain_rects.insert(log->terrain_rects.end(), { x0, z0, x1, z1 });
 }
 
 void Heightfield::finish_load() {

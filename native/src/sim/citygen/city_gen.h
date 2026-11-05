@@ -17,7 +17,8 @@ struct CityGenReport {
 
 // map_index: entry of data/catalog/maps.json; with_city = false makes an empty map.
 // The land of a map from its exact seed (flat bit included) with nothing on it: empty roads, buildings, history.
-void found_land(CityState &s, int map_index, uint32_t exact_seed);
+// `generate` false only sizes the land (a file being checked: nothing reads its heights or water).
+void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate = true);
 // Queues every lot cell of the map for the lot cache (a generated or loaded city).
 void mark_all_lot_cells(CityState &s);
 CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with_city);

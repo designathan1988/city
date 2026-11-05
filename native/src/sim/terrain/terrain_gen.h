@@ -10,6 +10,8 @@
 
 namespace city {
 
+class JobPool;
+
 class TerrainGen {
 public:
 	static constexpr uint32_t FLAT_BIT = 0x80000000U;
@@ -22,7 +24,10 @@ public:
 	TerrainGen(uint32_t seed, double map_half, double water_spacing);
 	bool flat() const { return (seed_ & FLAT_BIT) != 0; }
 	// Ground height at (x, z): the land cut by the canal's bed.
-	double base_height(double x, double z);
+	double base_height(double x, double z) const;
+	// Every lake the water grid of `water_n` samples a side can see, made at once on the pool (each lake is its own
+	// square's): after it water_at_sample only reads, and several threads may ask it at the same time.
+	void plan_lakes(int water_n, JobPool *jobs);
 	// Water level at the water-grid sample (gx, gz) (river or lake), or NO_WATER.
 	float water_at_sample(int gx, int gz);
 	// The nearest water sample's level (the city generator's test).
@@ -47,7 +52,8 @@ private:
 	void plan_river();
 	River river_at(double x, double z) const;
 	const Lake *lake_of(int i, int j);
-	void flood(Lake &lake, int gx, int gz, double bottom);
+	std::unique_ptr<Lake> make_lake(int i, int j) const; // the lake of square (i, j), or null
+	void flood(Lake &lake, int gx, int gz, double bottom) const;
 };
 
 } // namespace city
