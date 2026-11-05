@@ -295,8 +295,9 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     // Translated means written: a function is done only if an accepted output holds it; a type travels with its module.
     const emitted = new Set(outcomes.flatMap((o) => o.emitted));
     const acceptedModules = new Set(outcomes.filter((o) => o.accepted).map((o) => o.module));
+    const declared = new Set(outcomes.filter((o) => o.accepted).flatMap((o) => o.declared ?? []));
     const isDone = (u: LedgerUnit): boolean => u.disposition === 'translate'
-      && (u.kind === 'function' || u.kind === 'variable' ? emitted.has(u.id) || emitted.has(u.id.slice(u.id.indexOf('#') + 1)) : acceptedModules.has(u.file));
+      && (u.kind === 'function' || u.kind === 'variable' ? emitted.has(u.id) || declared.has(u.id) : declared.has(u.id) || acceptedModules.has(u.file));
     const done = new Set(ledger.units.filter(isDone).map((u) => u.id));
     const open = ledger.units.filter((u) => u.disposition !== 'exists' && !done.has(u.id));
     const unsourced = constantsIn(accepted).filter((k) => !known[k]);

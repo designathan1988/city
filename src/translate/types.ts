@@ -80,6 +80,10 @@ export function membershipOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: T
   return reader && !reader.value ? reader.key : null;
 }
 
+/** The longest name a shape's fields may give its struct; past it, the first fields and how many there are. */
+const MAX_NAME = 48;
+const FIELDS_IN_NAME = 3;
+
 export class TypeMapper {
   readonly structs = new Map<string, CppStruct>();
   readonly enums = new Map<string, CppEnum>();
@@ -99,6 +103,8 @@ export class TypeMapper {
 
   /** The target's own type names: a translated struct that would take one is named after its module too. */
   readonly #reserved: ReadonlySet<string>;
+  /** The unit being written: its refusals name it. */
+  unit: string | null = null;
 
   constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[], relative: (file: TS.SourceFile) => string, reserved: ReadonlySet<string> = new Set()) {
     this.#reserved = reserved;
@@ -141,6 +147,11 @@ export class TypeMapper {
     const under = this.#flow.underlying(type);
     if (under !== type) return this.ofType(under, use, slot);
     const f = type.flags;
+    // a function's own type parameter: the function is a template, T its caller's (a class's T has no such place)
+    if (f & ts.TypeFlags.TypeParameter) {
+      const decl = type.getSymbol()?.declarations?.[0];
+      if (decl && ts.isTypeParameterDeclaration(decl) && ts.isFunctionLike(decl.parent)) return { k: 'tparam', name: type.getSymbol()!.name };
+    }
     if (f & ts.TypeFlags.NumberLike) return this.number(slot ? this.#flow.numberOf(slot) : Num.Float, use);
     if (f & ts.TypeFlags.BooleanLike) return BOOL;
     if (f & ts.TypeFlags.Void) return VOID;
@@ -183,8 +194,11 @@ export class TypeMapper {
     if (/^Float(32|64)Array$/.test(name)) return this.#vector({ k: 'real', name: this.#spec.number });
     const typed = /^(Ui|I)nt(8|16|32)Array$/.exec(name);
     if (typed) return this.#vector({ k: 'int', name: `${typed[1] === 'Ui' ? 'u' : ''}int${typed[2]}_t` as IntName });
-    if (checker.isArrayType(type) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet)$/.test(name)) {
-      if (/Set$/.test(name)) this.includes.add('unordered_set');
+    if (/^(Set|ReadonlySet)$/.test(name)) {
+      const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
+      return { k: 'set', of: this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null) };
+    }
+    if (checker.isArrayType(type) || /^(ReadonlyArray|ArrayLike|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name)) {
       const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
       return this.#vector(this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null));
     }
@@ -241,7 +255,7 @@ export class TypeMapper {
     const stem = pascal((symbol?.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'));
     const own = declared && this.#reserved.has(declared) && declared !== this.#spec.state.source ? `${stem}${declared}` : declared;
     const name = declared === this.#spec.state.source ? this.#spec.state.target
-      : (declared ? this.#spec.typeNames[declared] : undefined) ?? own ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? pascal(hint);
+      : (declared ? this.#spec.typeNames[declared] : undefined) ?? own ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? this.#freshName(type, hint);
     const known = this.structs.get(name);
     if (known) {
       this.#seen(known);
@@ -292,6 +306,19 @@ export class TypeMapper {
       made.fields.push({ source: String(i), name: FIELDS[i] ?? `v${i}`, type: cpp, init: this.#init(cpp), comment: null });
     });
     return { k: 'struct', name };
+  }
+
+  /**
+   * The name of an anonymous shape, from what holds it. Two shapes under one hint (every function has a `return`) are
+   * two structs: the second is named by its fields too, the same way for the same fields whatever the order they came.
+   */
+  #freshName(type: TS.Type, hint: string): string {
+    const word = pascal(hint.replace(/[^A-Za-z0-9]+/g, ' ').trim().replace(/\s+/g, '_')).replace(/_/g, '') || 'Value';
+    const fields = this.#checker.getPropertiesOfType(type).map((p) => p.name).sort();
+    const known = this.structs.get(word);
+    if (!known || known.fields.map((f) => f.source).sort().join() === fields.join()) return word;
+    const named = `${word}${fields.map((f) => pascal(f.replace(/[^A-Za-z0-9]+/g, ''))).join('')}`;
+    return named.length <= MAX_NAME ? named : `${word}${fields.slice(0, FIELDS_IN_NAME).map((f) => pascal(f.replace(/[^A-Za-z0-9]+/g, ''))).join('')}${fields.length}`;
   }
 
   /** The enum holding a string-literal union: its alias, or the declared enum holding all its values. */
@@ -348,7 +375,7 @@ export class TypeMapper {
   }
 
   #unsupported(type: TS.Type, slot: Slot | null, why: string): CppType {
-    this.#errors.push(`type of ${slot?.name ?? 'a value'} (${this.#checker.typeToString(type)}): ${why}`);
+    this.#errors.push(`type of ${slot?.name ?? 'a value'} (${this.#checker.typeToString(type)}): ${why}${this.unit ? ` [unit ${this.unit}]` : ''}`);
     return VOID;
   }
 }

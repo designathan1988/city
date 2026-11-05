@@ -7,7 +7,7 @@
 // state's vectors, which an edit may reallocate, so no edit may read an index: that is checked, not assumed.
 import type * as TS from 'typescript';
 import type { FunctionPlan, MemoPlan, TranslateContext } from './context.ts';
-import { paramType, render, type CppType } from './cpptype.ts';
+import { holdsTypeParameter, paramType, render, type CppType } from './cpptype.ts';
 import { pascal, snake, upper } from './names.ts';
 import { Emitter } from './statements.ts';
 
@@ -48,6 +48,15 @@ export class Translator extends Emitter {
           }
         }
       }
+    }
+  }
+
+  /** A unit the translator itself cannot write refuses that unit, never its module. */
+  #guarded(node: TS.Node, write: () => void): void {
+    try {
+      write();
+    } catch (error) {
+      this.fail(node, `the translator stopped: ${(error as Error).message.split('\n')[0]}`);
     }
   }
 
@@ -104,16 +113,18 @@ export class Translator extends Emitter {
     const ts = this.c.ts;
     for (const node of units) {
       const line = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart()).line + 1;
-      if (ts.isFunctionDeclaration(node)) {
-        this.#planFunction(node, node.name!.text, line, node);
-        continue;
-      }
-      const d = node as TS.VariableDeclaration;
-      const name = (d.name as TS.Identifier).text;
-      const init = d.initializer;
-      if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) this.#planFunction(init, name, line, d);
-      else if (init && ts.isCallExpression(init) && ts.isIdentifier(init.expression) && this.c.spec.memoizers.includes(init.expression.text)) this.#planMemo(d, init, name, line);
-      else this.#planConstant(d, name, line);
+      this.#guarded(node, () => {
+        if (ts.isFunctionDeclaration(node)) {
+          this.#planFunction(node, node.name!.text, line, node);
+          return;
+        }
+        const d = node as TS.VariableDeclaration;
+        const name = (d.name as TS.Identifier).text;
+        const init = d.initializer;
+        if (init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) this.#planFunction(init, name, line, d);
+        else if (init && ts.isCallExpression(init) && ts.isIdentifier(init.expression) && this.c.spec.memoizers.includes(init.expression.text)) this.#planMemo(d, init, name, line);
+        else this.#planConstant(d, name, line);
+      });
     }
     this.#propagateMutability();
     this.#propagateContext();
@@ -289,7 +300,7 @@ export class Translator extends Emitter {
     });
     const ret = edit ? edit.result ?? { k: 'void' as const } : this.c.types.slot(flow.returnSlot(fn), 'return');
     this.c.functions.set(this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!, {
-      source: name, cpp: snake(name), decl: fn, params, ret, edit, exported: this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
+      source: name, cpp: snake(name), decl: fn, params, ret, typeParams: (fn.typeParameters ?? []).map((t) => t.name.text), edit, exported: this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
       doc: this.#doc(this.c.ts.isVariableDeclaration(holder) ? holder.parent.parent : holder),
     });
   }
@@ -405,7 +416,7 @@ export class Translator extends Emitter {
   emit(): void {
     for (const plan of this.c.functions.values()) {
       const from = this.emitted.length;
-      const uses = this.#recording(() => this.#emitFunction(plan));
+      const uses = this.#recording(() => this.#guarded(plan.decl, () => this.#emitFunction(plan)));
       for (const e of this.emitted.slice(from)) for (const u of uses) e.uses.add(u);
     }
     for (const memo of this.c.memos.values()) {
@@ -491,11 +502,14 @@ export class Translator extends Emitter {
         return `${plan.edit ? '' : 'const '}${render(p.type)} &${p.name}`;
       }
       if (p.mutable) return `${render(p.type)} &${p.name}`;
+      // a callback says nothing of T: T comes from the other arguments (a lambda is not a std::function to deduce from)
+      if (p.type.k === 'function' && holdsTypeParameter(p.type)) return `const js::same<${render(p.type)}> &${p.name}`;
       return p.byValue ? `${render(p.type)} ${p.name}` : `${paramType(p.type)}${paramType(p.type).endsWith('&') ? '' : ' '}${p.name}`;
     });
     // context parameters after its own (const Tuning &tn)
     for (const c of plan.context ?? []) params.push(`${c.type}${c.type.endsWith('&') || c.type.endsWith('*') ? '' : ' '}${c.name}`);
-    return `${render(plan.ret)} ${name}(${params.join(', ')})`;
+    const head = plan.typeParams.length > 0 ? `template <${plan.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '';
+    return `${head}${render(plan.ret)} ${name}(${params.join(', ')})`;
   }
 
   #emitFunction(plan: FunctionPlan): void {

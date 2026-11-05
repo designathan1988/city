@@ -15,7 +15,7 @@ import { upper } from './names.ts';
 import type { ApiFunction, TranslationResult } from './run.ts';
 import type { CppEnum, CppStruct } from './types.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
-import { RUNTIME_FILE, RUNTIME_SOURCE } from './files.ts';
+import { runtimeFiles } from './files.ts';
 
 export interface DifferentialInput {
   readonly ts: TypeScriptApi;
@@ -242,7 +242,8 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
   lines.push(`template <class T> void put(std::ostream &o, const std::vector<T> &v);`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
     `template <class T> void put(std::ostream &o, const T *v);`,
-    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`);
+    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`,
+    `template <class T> void put(std::ostream &o, const js::Set<T> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
   for (const [name, fields] of Object.entries(values)) {
     const sorted = Object.entries(fields).sort((a, b) => (a[1] < b[1] ? -1 : 1));
@@ -252,6 +253,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::vector<T> &v) { o << "["; for (size_t i = 0; i < v.size(); i++) { if (i) o << ","; put(o, v[i]); } o << "]"; }`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
+    `template <class T> void put(std::ostream &o, const js::Set<T> &v) { o << "["; bool first = true; for (const auto &x : v) { if (!first) o << ","; first = false; put(o, x); } o << "]"; }`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v) {`,
     // in insertion order, as JavaScript keeps a Map and js::Map keeps it
     `\to << "["; bool first = true; for (const auto &kv : v) { if (!first) o << ","; first = false; o << "["; put(o, kv.first); o << ","; put(o, kv.second); o << "]"; } o << "]";`,
@@ -409,9 +411,10 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
     fs.writeFileSync(out, text);
   }
   // the runtime of the built-ins, which the printer of a Map names, whether or not the translation calls it
-  const runtime = path.join(cppDir, RUNTIME_FILE);
-  fs.mkdirSync(path.dirname(runtime), { recursive: true });
-  if (!t.files.has(RUNTIME_FILE)) fs.copyFileSync(RUNTIME_SOURCE, runtime);
+  for (const [file, text] of runtimeFiles()) {
+    fs.mkdirSync(path.dirname(path.join(cppDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(cppDir, file), text);
+  }
   // Every module's public header: the scenario calls the feature's functions, whatever module they are in.
   const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [

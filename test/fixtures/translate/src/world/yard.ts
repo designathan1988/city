@@ -163,3 +163,80 @@ export function litHeight(t: YardData, kind: number): number {
   const look = lookOf(kind | 0);
   return look.lit ? look.height * t.posts.length : 0;
 }
+
+/** What only reads a place: a post and a look at one are both a { x, y }, and stay two types. */
+function spot(p: { readonly x: number; readonly y: number }): number {
+  return p.x + p.y;
+}
+
+/** The spots of many: a list of posts read as a list of places. */
+function spots(list: readonly { readonly x: number }[]): number {
+  let n = 0;
+  for (const p of list) n += p.x;
+  return n;
+}
+
+/** A template: each call its own T, with a callback and a container. */
+function keptOf<T>(list: readonly T[], keep: (item: T) => boolean): T[] {
+  const out: T[] = [];
+  for (const item of list) if (keep(item)) out.push(item);
+  return out;
+}
+
+/** A template over what has an id. */
+function highestId<T extends { readonly id: number }>(list: readonly T[]): number {
+  let best = -1;
+  for (const item of list) if (item.id > best) best = item.id;
+  return best;
+}
+
+/** Posts and plain numbers through the same templates, and two different types through the same place. */
+export function placesAndIds(t: YardData, p: Vec2): number {
+  const near = keptOf(t.posts, (q) => q.x > 0);
+  const big = keptOf([1, 2, 3], (n) => n > 1);
+  return spot(p) + spot(t.posts[0]!) + spots(t.posts) + near.length + big.length + highestId(t.posts);
+}
+
+/** A constant of its own, a root even if nothing here reads it. */
+export const TURN = Math.PI * 2;
+
+/** A kind by name: a switch with clauses that share a body, a default in the middle of nothing. */
+export function kindCost(label: string, n: number): number {
+  switch (label) {
+    case 'Alpha':
+    case 'Beta':
+      return n + 1;
+    case 'Gamma': {
+      const twice = n * 2;
+      return twice;
+    }
+    case '':
+      n = n - 1;
+      break;
+    default:
+      n = n + TURN;
+  }
+  return n;
+}
+
+/** A promise of the program: a negative count never comes. */
+export function checkedCount(t: YardData): number {
+  if (t.posts.length < 0) throw new Error(`no count ${t.nextId}`);
+  return t.posts.length;
+}
+
+/** Ids walked as a Set and a Map keep JavaScript's order: insertion, the first place of a member. */
+export function idOrder(t: YardData): number[] {
+  const seen = new Set<number>();
+  const sizes = new Map<number, number>();
+  for (const p of t.posts) {
+    seen.add(p.id % 3);
+    sizes.set(p.id % 5, p.id);
+  }
+  seen.delete(1);
+  const out = [...seen];
+  for (const [k, v] of sizes) out.push(k + v);
+  sizes.forEach((v, k) => { out.push(v - k); });
+  for (const v of sizes.values()) out.push(v);
+  return out;
+}

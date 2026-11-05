@@ -27,6 +27,8 @@ export interface FunctionPlan {
   readonly cpp: string;
   readonly decl: TS.SignatureDeclaration & { readonly body?: TS.ConciseBody | undefined };
   readonly params: readonly Param[];
+  /** Its type parameters: a template, written whole where its callers see it. */
+  readonly typeParams: readonly string[];
   /** Context parameters it takes after its own (a context pattern used, directly or through a call). */
   readonly context?: readonly { readonly type: string; readonly name: string }[];
   readonly ret: CppType;
@@ -72,8 +74,6 @@ export interface ConstantPlan {
 export interface Local {
   readonly cpp: string;
   readonly type: CppType;
-  /** A Set: the hash set that keeps each member once (the vector keeps their order). */
-  readonly set?: string;
   /** A companion the spec gives a class (a heap's arrival counter). */
   readonly companion?: string;
 }

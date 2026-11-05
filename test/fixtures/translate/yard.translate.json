@@ -27,7 +27,12 @@
     "summed",
     "shortLabel",
     "heightHash",
-    "litHeight"
+    "litHeight",
+    "placesAndIds",
+    "TURN",
+    "kindCost",
+    "checkedCount",
+    "idOrder"
   ],
   "pending": [],
   "number": "float",

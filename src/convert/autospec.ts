@@ -105,7 +105,11 @@ export function moduleSpecs(ts: TypeScriptApi, sp: SourceProgram, sourceRoot: st
     const placed = placement.of(module);
     if (!file || 'error' in placed) continue;
     const functions = topLevelFunctions(ts, file);
+    // what the ledger gave the machine: its functions and its constants, each a root of its own
     const known = new Set(functions.map((f) => f.name));
+    for (const st of file.statements) {
+      if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name)) known.add(d.name.text);
+    }
     const names = roots.map((r) => r.id.slice(r.id.indexOf('#') + 1)).filter((n) => known.has(n));
     if (names.length === 0) continue;
     const state = stateType(ts, sp.checker, file, functions);

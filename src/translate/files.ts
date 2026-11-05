@@ -11,9 +11,14 @@ import type { TranslateContext } from './context.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
 
 /** The runtime of the ECMAScript built-ins (each checked against JavaScript: test/js-runtime.test.ts). */
-export const RUNTIME_SOURCE = path.join(import.meta.dirname, '..', '..', 'cpp', 'js', 'js_runtime.h');
+const RUNTIME_DIR = path.join(import.meta.dirname, '..', '..', 'cpp', 'js');
 /** Where the translation writes it in the target. */
-export const RUNTIME_FILE = `native/src/${RUNTIME_INCLUDE}`;
+const RUNTIME_ROOT = path.posix.dirname(`native/src/${RUNTIME_INCLUDE}`);
+/** Its files as the target holds them, each with its text (a header of each subject: the target's file limits). */
+export function runtimeFiles(): Map<string, string> {
+  return new Map(fs.readdirSync(RUNTIME_DIR).sort().map((f) => [`${RUNTIME_ROOT}/${f}`, fs.readFileSync(path.join(RUNTIME_DIR, f), 'utf8')]));
+}
+export const isRuntimeFile = (file: string): boolean => path.posix.dirname(file) === RUNTIME_ROOT && /^js_\w+\.h$/.test(path.posix.basename(file));
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
@@ -112,6 +117,7 @@ function namesIn(t: CppType): string[] {
     case 'vector':
     case 'deque':
     case 'list':
+    case 'set':
       return namesIn(t.of);
     case 'ptr':
       return namesIn(t.to);
@@ -266,6 +272,11 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     for (const d of depsOf(apiRefs, m)) api.push(`#include "${header(d, 'types')}"`);
     api.push('', `namespace ${ns} {`, '');
     for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
+    // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
+    const templates = visible.filter((x) => x.exported && x.plan.typeParams.length > 0);
+    for (const f of templates) api.push(`${f.signature} {`, ...f.lines, '}', '');
+    const templateUses = [...new Set(templates.flatMap((f) => [...f.uses]))].filter((u) => u !== m && placed.has(u)).sort();
+    if (templateUses.length > 0) api.splice(api.indexOf(''), 0, ...templateUses.map((u) => `#include "${header(u, 'api')}"`));
     const raw = visible.filter((x) => !x.exported);
     if (raw.length > 0) {
       api.push('// The edits without the rebuild of the indexes, for other edits of the state (the public ones rebuild once).');
@@ -292,7 +303,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
         for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
         out.push('} // namespace', '');
       }
-      for (const f of fns.filter((x) => x.exported || x.plan.edit)) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      for (const f of fns.filter((x) => (x.exported || x.plan.edit) && !(x.exported && x.plan.typeParams.length > 0))) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
       out.push(`} // namespace ${ns}`, '');
       return out.join('\n');
     };
@@ -331,7 +342,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
   }
   // the runtime of the built-ins, written beside the translation when its text calls it (core/js_runtime.h)
-  if ([...files.values()].some((text) => /\bjs::/.test(text))) files.set(RUNTIME_FILE, fs.readFileSync(RUNTIME_SOURCE, 'utf8'));
+  if ([...files.values()].some((text) => /\bjs::/.test(text))) for (const [name, text] of runtimeFiles()) files.set(name, text);
   return files;
 }
 
