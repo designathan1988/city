@@ -40,7 +40,7 @@ const COMMANDS := {
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
-	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
+	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"flow_replay": "probes/flow_replay", &"flow_junction": "probes/flow_junction", &"flow_push": "probes/flow_push", &"flow_state": "probes/flow_state", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"wear_probe": "wear_probe", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",
 	&"traffic_probe": "traffic_probe", &"road_start": "road_start", &"road_end": "road_end",
 	&"road_pieces": "road_pieces", &"road_profiles": "road_profiles", &"node_at": "node_at", &"junctions": "junctions", &"moved_roads": "moved_roads",

@@ -15,6 +15,7 @@ namespace {
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
+constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
@@ -69,6 +70,7 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 	if (arms.size() < 3) return Control::NONE;
 	if (node.ctl == CTL_SIGNAL) return Control::SIGNAL;
 	if (node.ctl != CTL_AUTO) return Control::PRIORITY; // stop, yield, none and mini still drive as a priority junction
+	if (node.auto_signal > 0) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
 	std::vector<int> high;
 	int lo = arms[0].priority, hi = lo;
 	for (size_t i = 0; i < arms.size(); i++) {
@@ -76,6 +78,7 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 		lo = std::min(lo, arms[i].priority);
 		hi = std::max(hi, arms[i].priority);
 	}
+	if (node.auto_signal == 0) return hi > lo ? Control::PRIORITY : Control::NONE;
 	if (int(arms.size()) >= SIGNAL_ARMS || int(high.size()) >= SIGNAL_MAIN_ARMS) return Control::SIGNAL;
 	if (high.size() == 2 && arms[high[0]].out.dot(arms[high[1]].out) > tp.through_pair_dot) return Control::SIGNAL;
 	return hi > lo ? Control::PRIORITY : Control::NONE;
@@ -202,6 +205,14 @@ int plate_rule(const RoadNetwork &net, int seg, int n) {
 	const RoadSegment &g = net.segs[size_t(seg)];
 	const int end = g.a == n ? 0 : 1;
 	return (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
+}
+
+std::vector<int> main_legs(const CityState &s, int n) {
+	std::vector<Arm> arms = network_arms(s, n); // build_junction's ranking of arms_of, without the lane graph
+	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
+	std::vector<int> out;
+	for (size_t k = 0; k < arms.size() && k < MAIN_LEGS; k++) out.push_back(arms[k].seg);
+	return out;
 }
 
 int approach_rule(const CityState &s, int n, int seg) {

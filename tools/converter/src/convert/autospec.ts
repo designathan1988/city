@@ -94,7 +94,7 @@ export function moduleSpecs(ts: TypeScriptApi, sp: SourceProgram, sourceRoot: st
   const placement = new ModulePlacement(sources);
   const byFile = new Map<string, LedgerUnit[]>();
   for (const u of units) {
-    if (u.disposition !== 'translate' || (u.kind !== 'function' && u.kind !== 'variable')) continue;
+    if (u.disposition !== 'translate' || (u.kind !== 'function' && u.kind !== 'variable' && u.kind !== 'class')) continue;
     const list = byFile.get(u.file);
     if (list) list.push(u);
     else byFile.set(u.file, [u]);
@@ -105,13 +105,21 @@ export function moduleSpecs(ts: TypeScriptApi, sp: SourceProgram, sourceRoot: st
     const placed = placement.of(module);
     if (!file || 'error' in placed) continue;
     const functions = topLevelFunctions(ts, file);
+    // what the ledger gave the machine: its functions and its constants, each a root of its own
     const known = new Set(functions.map((f) => f.name));
+    for (const st of file.statements) {
+      if (ts.isClassDeclaration(st) && st.name) known.add(st.name.text);
+      if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name)) known.add(d.name.text);
+    }
     const names = roots.map((r) => r.id.slice(r.id.indexOf('#') + 1)).filter((n) => known.has(n));
     if (names.length === 0) continue;
-    const state = stateType(ts, sp.checker, file, functions);
+    // the state is what the module makes from nothing: a pure function of a value (expand(box): Aabb) edits no state, and
+    // written in place it would change what the caller keeps
+    const candidate = stateType(ts, sp.checker, file, functions);
+    const empty = candidate ? emptyMaker(ts, sp.checker, functions, candidate) : undefined;
+    const state = empty ? candidate : null;
     const target = state ? `${state.replace(/(Data|Doc|State)$/, '')}State` : '';
     const member = snake(target.replace(/State$/, ''));
-    const empty = state ? emptyMaker(ts, sp.checker, functions, state) : undefined;
     const relative = placed.owner.replace(/^native\/src\//, '');
     const summary = summaryOf(ts, file);
     out.push({

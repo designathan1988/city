@@ -97,6 +97,7 @@ std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s,
 // The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
 // read by build_junction and by the render's signal posts (which hold just the map lock, not the lane graph).
 Control control_of(const CityState &s, int n);
+std::vector<int> main_legs(const CityState &s, int n); // the two legs a junction's main road comes and goes by
 // The plate the player put on arm `seg` of node `n` (SegRule), and the rule its traffic meets there, by plate or by rank:
 // both from the road network alone, like control_of (the render's plates read them under the map lock only).
 int plate_rule(const RoadNetwork &net, int seg, int n);

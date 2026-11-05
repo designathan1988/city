@@ -78,6 +78,16 @@
   "bay_m": 2,
   "max_variants": 256
  },
+ "flow": {
+  "stop_major": 300,
+  "stop_minor": 200,
+  "signal_major": 500,
+  "signal_minor": 150,
+  "signal_major_b": 750,
+  "signal_minor_b": 75,
+  "step_down": 0.8,
+  "trend_window": 900
+ },
  "grade": {
   "ground": 0.12,
   "authored": 0.12,

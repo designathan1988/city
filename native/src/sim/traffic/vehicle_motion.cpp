@@ -227,6 +227,7 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 		lane_del(s, key, id);
 		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
+		count_entry(s, ci);
 		v.pass = -1;
 		v.stood = false;
 		v.ds = -1;

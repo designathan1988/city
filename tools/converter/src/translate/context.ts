@@ -22,17 +22,32 @@ export interface Param {
 }
 
 /** A source function and its C++ form. */
+export interface MemberOwner {
+  readonly struct: string;
+  /** The class's name in the source: the unit a refusal of the member belongs to. */
+  readonly source: string;
+  readonly kind: 'method' | 'getter' | 'constructor';
+  readonly isStatic: boolean;
+  readonly node: TS.ClassDeclaration;
+}
+
 export interface FunctionPlan {
   readonly source: string;
   readonly cpp: string;
   readonly decl: TS.SignatureDeclaration & { readonly body?: TS.ConciseBody | undefined };
   readonly params: readonly Param[];
+  /** Its type parameters: a template, written whole where its callers see it. */
+  readonly typeParams: readonly string[];
   /** Context parameters it takes after its own (a context pattern used, directly or through a call). */
   readonly context?: readonly { readonly type: string; readonly name: string }[];
   readonly ret: CppType;
   /** An edit takes the feature's state first and changes it in place; `result` is what it returns besides. */
   readonly edit: { readonly result: CppType | null; readonly resultField: string | null } | null;
   readonly exported: boolean;
+  /** A member of a class: written in its struct, not as a free function. */
+  readonly owner?: MemberOwner;
+  /** A constructor the source does not write: no unit of the program. */
+  readonly implicit?: boolean;
   /** The source file it comes from, relative to the source root: its module. */
   readonly module: string;
   readonly line: number;
@@ -67,13 +82,15 @@ export interface ConstantPlan {
   readonly line: number;
   readonly doc: string | null;
   readonly constexpr: boolean;
+  /** Its value calls a function: it is written after the module's functions are declared, in the module's header. */
+  readonly calling?: boolean;
+  /** The modules its value names. */
+  readonly uses?: ReadonlySet<string>;
 }
 
 export interface Local {
   readonly cpp: string;
   readonly type: CppType;
-  /** A Set: the hash set that keeps each member once (the vector keeps their order). */
-  readonly set?: string;
   /** A companion the spec gives a class (a heap's arrival counter). */
   readonly companion?: string;
 }
@@ -94,6 +111,10 @@ export interface TranslateContext {
   readonly types: TypeMapper;
   readonly patterns: Patterns;
   readonly errors: string[];
+  /** The class members that could not be written, with why: their class stands without them. */
+  readonly dropped: Map<FunctionPlan, string>;
+  /** What a whole translation found it cannot write, `module#name`, with why. */
+  readonly fallen: Map<string, string>;
   readonly includes: Set<string>;
   readonly functions: Map<TS.Symbol, FunctionPlan>;
   readonly memos: Map<TS.Symbol, MemoPlan>;

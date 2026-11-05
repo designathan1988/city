@@ -73,9 +73,9 @@ describe('convert: the ledger', () => {
     assert.equal(disposition(holey), 'translate');
   });
 
-  it('never gives drawing or class members to the machine', () => {
+  it('never gives drawing to the machine, and gives it a class with its members', () => {
     assert.equal(disposition(drawn), 'write');
-    assert.equal(disposition(method), 'write');
+    assert.equal(disposition(method), 'translate');
   });
 
   it('does not stop a function for reading a field of a plain type', () => {

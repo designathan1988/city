@@ -167,6 +167,94 @@
     "name": "tn"
    },
    "reason": "world/structures.ts ROAD_STRUCTURES and roadStructure are the game's structure_spec (sim/roads/road_grade.h): one owner of a structure's clearance, deck and supports, read from the tuning; RoadStructure 'ground' | 'elevated' | 'bridge' | 'tunnel' is Structure 0..3 in that order"
+  },
+  {
+   "source": "ROAD_TUNING.flow.stopMajor",
+   "target": "tn.flow_stop_major",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.stopMinor",
+   "target": "tn.flow_stop_minor",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.signalMajor",
+   "target": "tn.flow_signal_major",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.signalMinor",
+   "target": "tn.flow_signal_minor",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.signalMajorB",
+   "target": "tn.flow_signal_major_b",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.signalMinorB",
+   "target": "tn.flow_signal_minor_b",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.stepDown",
+   "target": "tn.flow_step_down",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
+  },
+  {
+   "source": "ROAD_TUNING.flow.trendWindow",
+   "target": "tn.flow_trend_window",
+   "include": "sim/catalog/catalog.h",
+   "type": "float",
+   "context": {
+    "type": "const Tuning &",
+    "name": "tn"
+   },
+   "reason": "the control the flows warrant: the game's tuning (data/catalog/tuning.json flow)"
   }
  ],
  "types": {
