@@ -4,6 +4,7 @@
   "_doc": {"type": "string"},
   "vehicle_radius_m": {"type": "number"},
   "cabin_radius_m": {"type": "number"},
+  "far_radius_m": {"type": "number"},
   "people_radius_m": {"type": "number"},
   "exhaust": {"type": "object"},
   "styles": {"type": "object"},
@@ -403,6 +404,6 @@
    "strict": true
   }
  },
- "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "people_radius_m", "styles", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
+ "required": ["_doc", "vehicle_radius_m", "cabin_radius_m", "far_radius_m", "people_radius_m", "styles", "trim", "cars", "car_body", "cars_cabin", "cabin", "occupants", "moto", "bus", "truck", "wheel_jump_m", "people"],
  "strict": true
 }

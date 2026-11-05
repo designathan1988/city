@@ -32,9 +32,6 @@ constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 constexpr int HAIR_MAX = 8, SKIN_MAX = 8, PAINT_MAX = 16, LINE_PAINTS = 8, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
 constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
-// A draw's room in instances grows past what it holds, in these steps, and shrinks only two steps below: vehicles
-// coming and going do not reallocate its buffers every frame (the rest of the room is not drawn).
-constexpr int ROOM_STEP = 32;
 
 PackedColorArray palette(const Variant &list, int max, const char *name, PackedStringArray &errors) {
 	PackedColorArray out;
@@ -74,6 +71,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
 	vehicle_r_ = float(t["vehicle_radius_m"]);
 	cabin_r_ = float(t["cabin_radius_m"]);
+	far_r_ = float(t["far_radius_m"]);
 	people_r_ = float(t["people_radius_m"]);
 	jump_m_ = float(t["wheel_jump_m"]);
 	return people_.init(ctx, t["people"], errors);
@@ -89,14 +87,17 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	if (!errors.is_empty()) return false;
 	const Array wheel_sides = body["wheel_sides"];
 	RenderingServer *rs = RenderingServer::get_singleton();
+	for (const char *key : { "wheel_sides", "stations", "arch_steps", "end_steps", "end_roll_steps" }) // one entry per level (agent_meshes.h)
+		if (Array(body[key]).size() != LEVELS) errors.push_back(String("agents.json: car_body.") + key + " precisa de um valor por nível");
+	if (!errors.is_empty()) return false;
 	for (int i = 0; i < AGENT_MODELS; i++)
-		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
+		for (int level = 0; level < LEVELS; level++) {
 			MeshBuilder mb;
 			Dictionary d;
 			const int sides = int(wheel_sides[level]);
 			const CabinLook *l = level == CABIN_LEVEL ? &look : nullptr;
 			int seats = 0;
-			if (i < CAR_MODELS || i == WAGON_MODEL) seats = build_car(mb, d = cars[i == WAGON_MODEL ? CAR_MODELS : i], body, inside, l, trim);
+			if (i < CAR_MODELS || i == WAGON_MODEL) seats = build_car(mb, d = cars[i == WAGON_MODEL ? CAR_MODELS : i], body, inside, l, trim, level);
 			else if (i == int(VehicleType::MOTO)) seats = build_moto(mb, d = t["moto"], sides, look.person, trim);
 			else if (i == int(VehicleType::BICYCLE)) seats = build_bicycle(mb, d = t["bicycle"], sides, look.person, trim);
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
@@ -214,11 +215,11 @@ void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &orde
 
 Dictionary AgentRenderer::cost() const {
 	static const char *const NAMES[AGENT_MODELS] = { "sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck", "bicycle", "wagon" };
-	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body" };
+	static const char *const LEVEL_NAMES[LEVELS] = { "cabin", "body", "far" };
 	Dictionary out;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)
-		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
+		for (int level = 0; level < LEVELS; level++) {
 			Dictionary d;
 			d["body_tris"] = body_tris_[i][level];
 			d["glass_tris"] = glass_tris_[i][level];
@@ -255,7 +256,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	if (!material_.is_valid() || !meshes_[0][CABIN_LEVEL].valid()) return;
 	PackedFloat32Array bufs[AGENT_MODELS][LEVELS];
 	const auto model_of = [](int type, int paint) { return type == int(VehicleType::SEDAN) && paint % WAGON_EVERY == 1 ? WAGON_MODEL : type; };
-	const float r2 = vehicle_r_ * vehicle_r_, near2 = cabin_r_ * cabin_r_;
+	const float r2 = vehicle_r_ * vehicle_r_;
 	drawn_vehicles_ = 0;
 	for (const AgentRecord &rec : f.vehicles) {
 		Pose p = record_pose(rec, at);
@@ -272,7 +273,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		else if (aboard == ABOARD_SET_DOWN) passengers = std::max(passengers, 1.f) - 1;
 		else if (aboard == ABOARD_PICKED_UP) passengers += 1;
 		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
-		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		const int level = level_of(flat2 + dy * dy);
 		push_agent(bufs[model_of(type, paint)][level], p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
@@ -280,24 +281,18 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
-		const int level = flat2 + dy * dy > near2 ? BODY_LEVEL : CABIN_LEVEL;
+		const int level = level_of(flat2 + dy * dy);
 		push_agent(bufs[model_of(type, paint)][level], rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
-	// no override: each surface carries its material (the body and the near level's glass)
-	RenderingServer *rs = RenderingServer::get_singleton();
+	// no override: each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
 	for (int i = 0; i < AGENT_MODELS; i++)
-		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
+		for (int level = 0; level < LEVELS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			PackedFloat32Array &buf = bufs[i][level];
-			const int n = int(buf.size() / MM_STRIDE);
-			const int room = n > d.capacity || n + 2 * ROOM_STEP < d.capacity ? (n + ROOM_STEP - 1) / ROOM_STEP * ROOM_STEP : d.capacity;
-			buf.resize(int64_t(room) * MM_STRIDE);
-			d.set(scenario_, meshes_[i][level].rid, RID(), buf, box, true);
-			if (d.mm.is_valid()) rs->multimesh_set_visible_instances(d.mm, n);
-			shown_[i][level] = n;
+			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, true);
+			shown_[i][level] = d.count;
 		}
 }
 

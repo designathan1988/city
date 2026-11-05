@@ -1,10 +1,13 @@
-// Vehicles and pedestrians near the camera: per vehicle type two MultiMeshes, near (the cabin behind see-through glass)
-// and far (no cabin, the glass opaque), refilled every frame from CityState::traffic and interpolated between the last
-// two simulation ticks (wheels roll by a render-side odometer); pedestrians through PeopleRenderer. Materials "agent"
-// and, on the near glass, "agent_glass" (data/render/materials.json); meshes, paints, palettes and how full each type
-// runs from data/render/agents.json.
+// Vehicles and pedestrians near the camera: per vehicle type three MultiMeshes, near (the cabin behind see-through glass),
+// the body (no cabin, the glass opaque) and far (the body's outline alone), each vehicle at the level its distance asks
+// (cabin_radius_m, far_radius_m: the detail a camera-sized MultiMesh cannot choose per instance, nor the engine's mesh LOD,
+// which picks one level per node, and which every shadow cascade the box touches draws again), refilled every frame from
+// CityState::traffic and interpolated between the last two simulation ticks (wheels roll by a render-side odometer);
+// pedestrians through PeopleRenderer. Materials "agent" and, on the near glass, "agent_glass" (data/render/materials.json);
+// meshes, paints, palettes and how full each type runs from data/render/agents.json.
 #pragma once
 
+#include "render/agents/agent_meshes.h"
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -28,7 +31,9 @@ public:
 	godot::Dictionary cost() const;
 
 private:
-	static constexpr int CABIN_LEVEL = 0, BODY_LEVEL = 1, LEVELS = 2;
+	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
+	// The level a vehicle `dist2` (square metres) from the camera is drawn at.
+	int level_of(float dist2) const { return dist2 > far_r_ * far_r_ ? FAR_LEVEL : (dist2 > cabin_r_ * cabin_r_ ? BODY_LEVEL : CABIN_LEVEL); }
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
 	// run, and the strides its seats may fill in (1 alone: in their own order, front first).
 	struct Load {
@@ -59,7 +64,7 @@ private:
 	};
 	std::vector<Odometer> odo_;
 	PeopleRenderer people_;
-	float vehicle_r_ = 0, cabin_r_ = 0, people_r_ = 0, jump_m_ = 0;
+	float vehicle_r_ = 0, cabin_r_ = 0, far_r_ = 0, people_r_ = 0, jump_m_ = 0;
 	int drawn_vehicles_ = 0, drawn_people_ = 0;
 };
 
