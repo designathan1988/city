@@ -15,6 +15,7 @@ const GRADE := 0.12 # the steepest grade a road is drawn at (tuning grade.author
 const NEAR_M := 0.7 # the deck stands the road's build-up off the height asked
 const RAY_FROM_M := 400.0
 const NO_NODE := -1
+const MONEY_ROUNDING := 1.0 # each piece of a road is priced to the unit
 
 var _check: Callable
 
@@ -30,6 +31,7 @@ func run(b: Dictionary) -> void:
 	_landing(a)
 	_steepest(a + Vector3(0, 0, LEG_M * 2))
 	_walls(a + Vector3(0, 0, LEG_M * 4))
+	_price(a + Vector3(0, 0, LEG_M * 6))
 	_set_height(0)
 
 
@@ -96,6 +98,18 @@ func _steepest(a: Vector3) -> void:
 	var tip := points[-1]
 	var reached: float = tip.y - float(CityStore.query(&"height_at", [tip.x, tip.z]))
 	_check.call(absf(reached - SHORT_M * GRADE) < NEAR_M, "the end is held to the steepest grade (%.2f m)" % reached)
+
+
+## A road on piers costs what it is built as: more than the same road on the ground, the preview's price paid, a quarter back when it goes.
+func _price(a: Vector3) -> void:
+	var e := a + Vector3(LEG_M, 0, 0)
+	_set_height(0)
+	var flat: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX, 0.0])
+	_set_height(DECK_M)
+	var high: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX, DECK_M])
+	_check.call(high.price > flat.price, "on piers it costs more: %s against %s" % [high.price, flat.price])
+	var r := _road(a, e, DECK_M)
+	_check.call(r.ok and absf(r.money - high.price) <= MONEY_ROUNDING, "the preview's price is paid: %s against %s" % [r.money, high.price])
 
 
 ## The sides of a cutting are the road tool's choice, and the furniture set leaves it alone.

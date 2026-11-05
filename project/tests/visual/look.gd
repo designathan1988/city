@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, z, zoom, azimuth, elevation]} (degrees, the 4.0's), {"shot": name} (after the world is drawn),
 ## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -92,6 +92,11 @@ func _step(step: Dictionary) -> void:
 		await ui.key(OS.find_keycode_from_string(step.key), false)
 	elif step.has("click"):
 		await ui.click(_point(step.click))
+	elif step.has("tap"):
+		var at := Vector2(step.tap[0], step.tap[1])
+		await ui.move(at)
+		await ui.button(at, true)
+		await ui.button(at, false)
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
 	elif step.has("record"):

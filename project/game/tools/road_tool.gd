@@ -3,7 +3,7 @@
 ## the next click; with Free the road follows the stroke. Where the pointer lands comes from the core (road_end: the
 ## network, the angles, the grid), and the road in hand from road_pieces; preview and build read the same pieces, so
 ## what shows green is what gets built. Each road laid ends the gesture. V cycles the alignment, Esc or a right click
-## drops it. Page Up and Page Down draw the road a metre higher or lower, landing on whole metres; a road starts at the
+## drops it. Its keys are the player's (RoadKeys); by default Page Up and Page Down draw the road a metre higher or lower, landing on whole metres; a road starts at the
 ## height it was begun at and climbs to the one in hand, and the pointer holds the road at that height, not the ground under it.
 extends ToolBase
 
@@ -13,8 +13,6 @@ enum Alignment { STRAIGHT, CURVE, FREE }
 const DENSE_SAMPLES := 256
 const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0
-## The keys of the height, and the metres each moves it.
-const HEIGHT_KEYS := {KEY_PAGEUP: 1, KEY_PAGEDOWN: -1}
 const WHOLE_M := 0.000001 # a height this near a whole metre is on it
 
 var alignment: Alignment = Alignment.STRAIGHT
@@ -44,6 +42,7 @@ func enter() -> void:
 		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
+	CityStore.dispatch(&"set_road_walls", [Settings.road_walls])
 	ctl.hint.emit("", true)
 
 
@@ -125,14 +124,17 @@ func cancel() -> void:
 
 
 func key(keycode: Key) -> void:
-	if keycode == KEY_V:
-		ctl.set_tool(ToolController.Tool.ROAD, params.merged({"alignment": (alignment + 1) % Alignment.size()}, true))
-	elif HEIGHT_KEYS.has(keycode):
-		step_height(HEIGHT_KEYS[keycode])
+	match RoadKeys.action_of(keycode):
+		RoadKeys.ALIGNMENT:
+			ctl.set_tool(ToolController.Tool.ROAD, params.merged({"alignment": (alignment + 1) % Alignment.size()}, true))
+		RoadKeys.HEIGHT_UP:
+			step_height(1)
+		RoadKeys.HEIGHT_DOWN:
+			step_height(-1)
 
 
 func keeps_key(keycode: Key) -> bool:
-	return HEIGHT_KEYS.has(keycode)
+	return RoadKeys.action_of(keycode) != ""
 
 
 ## The road a metre higher or lower, landing on whole metres (roadTool.ts stepHeight); the road in hand goes with it.

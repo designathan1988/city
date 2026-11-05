@@ -11,6 +11,7 @@ signal option_picked(key: String, value: Variant)
 signal road_picked(id: String)
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
+var _keys_panel: RoadKeysPanel
 
 
 func _ready() -> void:
@@ -46,6 +47,7 @@ func refresh() -> void:
 		_class_rows(spec)
 	_height_rows()
 	_furniture_row(spec.furniture)
+	_keys_row()
 	if class_card:
 		_parking_row(spec)
 
@@ -96,7 +98,8 @@ func _height_rows() -> void:
 	HudWidgets.label(row, &"BodyLabel", Formatters.format_length(metres) if whole else Formatters.format_length_tenths(metres))
 	_height_step(row, "plus", 1)
 	row = _row("cutSides.row")
-	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], CityStore.query(&"road_walls"), func(on: bool) -> void:
+	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], Settings.road_walls, func(on: bool) -> void:
+		Settings.set_road_walls(on)
 		CityStore.dispatch(&"set_road_walls", [on]))
 
 
@@ -123,6 +126,24 @@ func _parking_row(spec: Dictionary) -> void:
 	var parking: int = _param("parking", 0)
 	for i in spec.parking.choices.size():
 		_toggle(row, spec.parking.choices[i], i == parking, true, func() -> void: option_picked.emit("parking", i))
+
+
+## The tool's keys, and the panel that changes them.
+func _keys_row() -> void:
+	var row := _row("roadKeys.row")
+	var b := HudWidgets.button(&"Choice", "keyboard", RoadKeys.summary(), "roadKeys.title", "icon_btn", "icon_btn")
+	b.pressed.connect(func() -> void: _open_keys(b))
+	row.add_child(b)
+
+
+func _open_keys(anchor: Control) -> void:
+	if _keys_panel == null:
+		_keys_panel = RoadKeysPanel.new()
+		_keys_panel.theme = ThemeBuilder.theme()
+		add_child(_keys_panel)
+		_keys_panel.keys_changed.connect(refresh)
+	var box := anchor.get_global_rect()
+	_keys_panel.popup(Rect2i(Vector2i(box.end.x, box.position.y), Vector2i.ZERO))
 
 
 ## A step of the total width, from the class's own while none is chosen.

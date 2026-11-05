@@ -210,7 +210,7 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	}
 	if (p.len - prev < tn.road_fixed_gap_m) p.reason = "refuse.road.junctionsClose";
 	if (!p.reason.empty()) return p;
-	p.price = std::round(road_value(s, profile, p.len));
+	p.price = std::round(build_value(s, profile, p.len, RoadBuild{ Structure::GROUND, p.lift_a, p.lift_b }));
 	p.ok = true;
 	return p;
 }

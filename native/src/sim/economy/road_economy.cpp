@@ -17,11 +17,13 @@ constexpr double MIN_CHARGE = 1; // an edit worth less than this moves no money
 constexpr double ANY_HEIGHT = std::numeric_limits<double>::infinity();
 constexpr double ANY_BALANCE = std::numeric_limits<double>::infinity();
 
-// How a recorded road stands. Every road is at grade until the game has grade lines: this is the only place that changes.
-RoadBuild built(const RoadSegment &) { return {}; }
+// How a recorded road stands: its structure and the heights authored at its ends.
+RoadBuild built(const RoadNetwork &net, const RoadSegment &g) {
+	return { structure_of(g.flags), net.nodes[size_t(g.a)].lift, net.nodes[size_t(g.b)].lift };
+}
 
 double recorded_value(const CityState &s, const RoadSegment &g, int profile) {
-	return build_value(s, profile, g.len, built(g));
+	return build_value(s, profile, g.len, built(s.roads, g));
 }
 } // namespace
 

@@ -416,8 +416,8 @@ roadFurniture.none,Nenhum,None
 roadFurniture.row,Mobiliário,Furniture
 roadFurniture.tip,"Com o que as vias novas são construídas: postes, lixeiras, hidrantes, bancos e árvores nas calçadas (faixa livre de 1,20 m mantida)","What new roads are built with: lamps, bins, hydrants, benches and trees on the footways (clear walk of 1.20 m kept)"
 roadKeys.alignment,Trocar o traçado,Change the plan
-roadKeys.heightDown,Descer a via 4 m,Lower the road 4 m
-roadKeys.heightUp,Subir a via 4 m,Raise the road 4 m
+roadKeys.heightDown,Descer a via 1 m,Lower the road 1 m
+roadKeys.heightUp,Subir a via 1 m,Raise the road 1 m
 roadKeys.press,Aperte uma tecla…,Press a key…
 roadKeys.reserved,{key} já é usada pelo jogo. Escolha outra.,{key} is already used by the game. Pick another.
 roadKeys.reset,Restaurar padrão,Restore defaults

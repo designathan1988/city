@@ -190,6 +190,22 @@ func _height_keys() -> void:
 	await _hold_key(KEY_PAGEDOWN, false, 0.05)
 	_check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "Page Down pousa no metro inteiro (%.1f m)" % CityStore.query(&"road_height"))
 	CityStore.dispatch(&"set_road_height", [0.0])
+	tools.active.height = 0.0
+	await _rebound_keys()
+
+
+## A key of the road's can be changed, and then it is that key that works; one the game keeps is refused; two actions swap.
+func _rebound_keys() -> void:
+	_check(not RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_W), "a camera key is refused")
+	_check(not RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_Z), "a tool's key is refused")
+	_check(RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_N), "a free key is taken")
+	await _hold_key(KEY_N, false, 0.05)
+	_check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "the new key raises the road")
+	_check(RoadKeys.bind(RoadKeys.HEIGHT_DOWN, KEY_N), "a key of another action is taken")
+	_check(RoadKeys.key_of(RoadKeys.HEIGHT_UP) == KEY_PAGEDOWN, "and that action takes the old key")
+	RoadKeys.reset()
+	_check(RoadKeys.key_of(RoadKeys.HEIGHT_UP) == KEY_PAGEUP, "the defaults come back")
+	CityStore.dispatch(&"set_road_height", [0.0])
 
 
 func _drag(button: MouseButton, from: Vector2, to: Vector2, shift: bool, still: bool) -> void:

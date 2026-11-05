@@ -43,6 +43,8 @@ scenes="$(echo "$scenes" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//; s/
 case ",$scenes," in *,ALL,*) all=1 ;; esac
 
 bash tools/build/gates_changed.sh "$ROOT" > "$OUT/gates.txt" 2>&1 & gates=$!
+# A class new to the project is known only after an import.
+git status --short | grep -q '^?? .*\.gd$' && "$GODOT" --headless --path project --import > "$OUT/import.txt" 2>&1
 "$GODOT" --headless --path project -s "$(cygpath -m "$ROOT/tools/build/check_scripts.gd")" > "$OUT/scripts.txt" 2>&1 & scripts=$!
 if [ -n "$all" ]; then
 	bash tools/build/build.sh core-windows > "$OUT/build.txt" 2>&1
