@@ -6,16 +6,13 @@ Para outra sessão continuar o trabalho do conversor e tradutor do Roadcraft 4.0
 recebe uma linha por acontecimento (data, hora, o quê, commit); "Estado atual" e "A fazer" são reescritos para ficar
 sempre verdadeiros.
 
-## Estado atual (2026-11-05 15:55, sessão encerrada)
+## Estado atual (2026-11-05, sessão retomada)
 
-- `tools/converter` (master `9499eac`) e `tools/converter-slice` (slice-envelope `564a35d`): limpos, tudo commitado.
-- Tradutor com runtime C++ dos built-ins do ECMAScript (regra única `js::<nome>`). A suíte inteira passa (105 testes;
-  o cppgraph pede `CONVERTER_CLANGD=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/clangd.exe`), e os
-  6.449 casos do runtime dão o mesmo que o Node.
-- Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly prontos em `out/city40`; as features e as
-  conversões ainda não foram refeitas nela.
-- Últimos números (cópia antiga, mesmos insumos): road-elevation 30 traduzidas de 1.028 unidades; lab 32 de 240;
-  passadas por área da sessão parceira com `5673af1`: sim 282/3.325, core 95/4.586, lab 66/1.111, people 8, ui 2.
+- `tools/converter` (master `9ccbdaf`) e `tools/converter-slice` limpos. O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
+- Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
+  Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
+- Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly em `out/city40`. As passadas por área usam as
+  fronteiras que a sessão do porte cortou (`<scratchpad dela>/converter-snap/out/features/area-*`).
 
 ## Onde está cada coisa
 
@@ -38,9 +35,10 @@ sempre verdadeiros.
 ## Comandos
 
 - Typecheck: `node scripts/typecheck.ts --typescript ../oracle-4.0/node_modules/typescript --types ../oracle-4.0/node_modules/@types`
-- Testes (precisam das variáveis):
-  `CONVERTER_TYPESCRIPT=../oracle-4.0/node_modules/typescript CONVERTER_CXX=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/x86_64-w64-mingw32-clang++.exe node --test test/translate.test.ts test/js-runtime.test.ts test/convert.test.ts test/convert-shared.test.ts test/godot-shader.test.ts test/platform.test.ts`
-  (48 testes; o de translate compila o C++ gerado e roda o diferencial contra a fonte).
+- Testes, todos (sem as variáveis, um teste que depende delas não roda, e o resumo pode dizer "fail 0" assim mesmo; conferir
+  se não sobrou nenhum `✖`):
+  `CONVERTER_TYPESCRIPT=../oracle-4.0/node_modules/typescript CONVERTER_CXX=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/x86_64-w64-mingw32-clang++.exe CONVERTER_CLANGD=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/clangd.exe CONVERTER_JELLY=C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly CONVERTER_POSTCSS=C:/Users/Jonathan/Documents/Projects/city/roadcraft/node_modules/postcss node --test "test/**/*.test.ts"`
+  (o de translate compila o C++ gerado e roda o diferencial contra a fonte; `js-runtime` compara o runtime com o Node).
 - Grafo de uma referência: `node --max-old-space-size=12288 src/cli.ts graph --source-root <ref> --typescript <ref>/node_modules/typescript --out <arquivo>`
 - Feature (fatia e Jelly): `src/cli.ts feature --source-root <ref> --graph <program.json> --analysis <pasta jelly> --entry <src/...> --out out/features/<nome>`
   (`--jelly C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly` em vez de `--analysis` para refazer a análise).
@@ -85,21 +83,24 @@ A correção é um runtime C++ dos built-ins, com uma regra só no tradutor:
 
 ## A fazer, em ordem
 
-Nada está pela metade: tudo o que foi começado está commitado nos dois repositórios, que estão limpos. O que segue são
-trabalhos novos, em ordem.
-
-1. Rodar o censo dos built-ins na referência nova (`scripts/builtins-census.ts`) e acrescentar ao runtime o que falta,
-   cada um com casos no `test/js-runtime.test.ts` contra o Node. Num built-in que falta, a tradução não compila e o
-   erro diz o nome (`js::<nome>`).
-2. Refazer as features e as conversões na referência nova (`--graph out/city40/program.json --analysis
-   out/city40/whole/jelly`). A parceira passa por área: world, render, editor, sim, lab, core, ui, people, view, jobs.
-   Entradas que só reexportam já funcionam (`9499eac`).
-3. Gates do jogo sobre `native/src/core/js_runtime.h` (números mágicos etc.): o runtime precisa nomear as constantes
-   que ainda estão nuas (0x80, 0xD800...) para passar no `NUMERO_MAGICO`.
-4. Diferencial por unidade contra o dono do jogo: precisa do mapeamento de chamada da library. Hoje o
+1. Seguir a contagem de recusas por causa no programa inteiro (método abaixo) e tratar sempre a maior causa geral. Das 8.114
+   unidades traduzíveis das 8 áreas, 3.262 saem. As demais, pela última contagem (`p5`):
+   - 3.026 em módulos recusados inteiros: entender por que a recusa por unidade ainda não separa esses módulos é o próximo
+     passo (253 unidades em "values of different shapes meet" de `{ x, y }` e 90 em `nodes[]`; 126 em `ArrayBufferLike`; 77 em
+     `never[]`; 64 em `typeof location`);
+   - 939 em módulos aceitos, fora do que os roots alcançam (741 funções, 198 constantes);
+   - 887 em módulos sem spec (295 constantes, 255 interfaces, 248 funções, 89 tipos).
+   Recusas corretas, que não são defeito: os ~1.100 `Node<"vec4">` etc. são shaders TSL, que têm o caminho three.js → Godot.
+2. Integrar ao jogo o que compila, área por área (`log/work-log.md`, passo 1). O runtime entra em `native/src/core/js_*.h`:
+   a pasta `core` é isenta do `NUMERO_MAGICO`, e cada header tem menos de 250 linhas, o limite do gate.
+3. Diferencial por unidade contra o dono do jogo: precisa do mapeamento de chamada da library. Hoje o
    `--coverage-proof shown` só prova que o dono existe e cita a unidade.
-5. Abertos na sessão parceira: noGround (pattern `new Error($m)` na library), buildMode no coverage,
-   toLocaleString / performance / window / Promise / try-catch (do lado da interface, method).
+4. Fica do lado da interface (`method`): toLocaleString, performance, window, Promise, try/catch.
+
+**Método para achar a próxima causa:** rodar todas as áreas (47 s a 4 min cada, 4 ao mesmo tempo) e somar o `ledger.json` de
+cada uma: as recusas por categoria e onde as unidades `translate` ficaram presas (módulo recusado, unidade fora dos roots, sem
+spec). Nunca escolher pelo que a sessão do porte encontrou primeiro: a contagem mostrou que uma única causa respondia por
+55% das recusas.
 
 ## Regras desta sessão (do usuário)
 
@@ -206,3 +207,36 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
   README, GOAL-LOG, catálogos, `cpp/runtime`, scripts de replay, oráculo e paridade). Todos iguais aos do master, menos
   a config, que foi atualizada; commitados. Os dois repositórios ficaram limpos.
 - 15:55 O usuário pediu encerrar: este registro atualizado e commitado no repositório do jogo; sessão encerrada.
+
+### 2026-11-05 (tarde) — sessão retomada: a causa pela contagem
+
+- Registros de `log/` lidos, como o `CLAUDE.md` agora pede.
+- Contagem das recusas de todas as áreas (passada da sessão do porte, 7.522): 4.126 eram "values of different shapes meet".
+  O fluxo tratava a subtipagem do TypeScript como igualdade: tudo o que passava por um genérico ou por um parâmetro
+  estreito virava um slot só, e `Building` "encontrava" o programa inteiro.
+- Correção no modelo: argumento → parâmetro é fluxo de um sentido; função genérica é template C++ instanciado no ponto da
+  chamada. Recusas de forma: 4.126 → 182.
+- Segunda contagem: das 8.114 unidades traduzíveis só 1.958 saíam: 2.519 fora dos roots (1.746 constantes), 1.677 em
+  módulos sem spec, 1.960 em módulos recusados (239 num crash do tradutor).
+- Corrigido em seguida: constantes como roots, recusa por unidade (crash e erro de tipo dizem a unidade), `Math.PI`,
+  tuplas por posição, `switch`, `throw` como `js::fail`, `js::Set`, iteração de Map e Set, nome próprio de struct anônima.
+- Bug de correção achado pelo diferencial: `n + TURN` truncava para inteiro, porque um número de fora do fluxo contava
+  como "sem evidência".
+- Correções deste registro: "105 testes" estava errado, porque os 10 de `feature` não rodavam (faltavam `CONVERTER_JELLY` e
+  `CONVERTER_POSTCSS`, e o resumo dizia "fail 0"); a pendência do `NUMERO_MAGICO` não existia (`native/src/core/` é isenta),
+  mas havia outra: o runtime passava de 250 linhas num header, por isso foi dividido em `js_number`, `js_string`, `js_array`,
+  `js_map` e `js_runtime`.
+- Commit do master na linha acima de "translate: subtyping and templates".
+- `8ff985b` (slice `ed93bf8`) Subtipagem, templates, constantes como roots, recusa por unidade, `switch`, `throw`, `Set`, `Map`.
+  Traduzidas: 1.958 → 3.094.
+- `48a5370` (slice `719171a`) Constantes escritas depois que todo nome existe, com acessor para as que chamam função ou leem
+  outra não constexpr: o C++ não inicializa constantes de arquivos diferentes na ordem da fonte, e o diferencial pegou 0 no
+  lugar de 10. `a?.b` não tinha guarda (`->` direto, comportamento indefinido): agora fica ausente quando o receptor está.
+  `xs[i] ?? d`, `Record<string, V>` como mapa. A quarentena lia a palavra "new" em comentário como alocação.
+  "name outside" 229 → 45, "call unknown" 123 → 20.
+- `9ccbdaf` O slot que declara um tipo lê por ele os valores mais largos; `unique symbol` não é constante; literal em posição de
+  tupla é string. Traduzidas: 3.262 (de 8.114; core 145, lab 327, sim 423, editor 67, ui 9, people 6, world 710, render 1.575).
+  Suíte: 114 testes.
+- Hook: `git add` e `git commit` no mesmo comando fazem o hook contar as mudanças de `native/` de outra sessão, mesmo num commit
+  do conversor. Sempre em comandos separados (regra do `CLAUDE.md`).
+- Contagem por causa: `python scripts/open-causes.py <pasta com <área>/conversion/ledger.json>`.
