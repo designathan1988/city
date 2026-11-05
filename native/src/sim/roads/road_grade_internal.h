@@ -16,14 +16,10 @@ struct GradeTune {
 	float deck_tie = 0; // grade.deckTie: steepest a deck is carried up to a higher deck it meets
 	float tunnel = 0; // grade.tunnel: a tunnel's approach ramps
 	float clearance = 0; // ROAD_GROUND_CLEARANCE: a road at grade over the ground it is laid on
-	float clear_elevated = 0, clear_bridge = 0; // clearance.elevated / .bridge: deck surface over the ground under it
-	float deck_elevated = 0, deck_bridge = 0; // ROAD_STRUCTURES deck: the structure under the asphalt
-	float tunnel_depth = 0; // TUNNEL_DEPTH: headroom, arch and the depth past them, under the lowest ground
+	std::array<StructureSpec, STRUCTURE_COUNT> structure{}; // structure_spec of each Structure, by its value
+	const StructureSpec &of(Structure s) const { return structure[size_t(s)]; }
 };
 GradeTune grade_tune(const Tuning &t);
-// The clearance (negative: depth) and deck thickness of a structure.
-float structure_clearance(const GradeTune &t, Structure s);
-float structure_deck(const GradeTune &t, Structure s);
 
 // Segment s's profile made ready for the solve (road_grade.cpp): stations, the ground under them (read again only when its
 // curve, casing or ground changed), plates and structure.

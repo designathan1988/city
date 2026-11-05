@@ -188,7 +188,7 @@
    },
    "furniture": {"bin_every_m": 60, "bin_first_m": 9, "bench_every_m": 60, "bench_first_m": 24, "row_end_m": 4},
    "trees": {"in_generated_city": 0},
-   "poles": {"height_m": 8.4},
+   "poles": {"height_m": 8.5},
    "signs": {"plate_kerb_m": 0.75, "plate_kerb_curve_m": 0.75}
   },
   "brasil": {

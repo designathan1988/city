@@ -246,12 +246,12 @@ void solve_variable(GradeProfile &p, float ha, float hb, const GradeTune &t) {
 }
 
 void solve_raised(GradeProfile &p, float ha, float hb, const RaisedEnds &e, const GradeTune &t) {
-	const float clearance = structure_clearance(t, p.structure), crest = RAMP_CREST_RUN_M * t.ramp;
+	const float clearance = t.of(p.structure).clearance, crest = RAMP_CREST_RUN_M * t.ramp;
 	const bool near_landing = e.cap_a || e.cap_b;
 	const float edge_b = p.len - p.plate_b, run = std::max(TINY_RUN, edge_b - p.plate_a);
 	// The straight deck from end to end, nothing under it closer than its structure.
 	const float start_h = e.land_a ? ha + clearance + crest * 0.25f : ha, end_h = e.land_b ? hb + clearance + crest * 0.25f : hb;
-	const float underside = structure_deck(t, p.structure) + FOOTWAY_RISE_M + UNDER_DECK_ROOM_M;
+	const float underside = t.of(p.structure).deck + FOOTWAY_RISE_M + UNDER_DECK_ROOM_M;
 	for (size_t i = 0; i < p.h.size(); i++) {
 		const float u = std::min(1.f, std::max(0.f, (p.step * float(i) - p.plate_a) / run));
 		p.h[i] = std::max(start_h + (end_h - start_h) * u, p.ceil[i] + underside);
@@ -323,26 +323,20 @@ GradeTune grade_tune(const Tuning &tn) {
 	t.deck_tie = tn.grade_deck_tie;
 	t.tunnel = tn.grade_tunnel;
 	t.clearance = tn.grade_clearance_m;
-	t.clear_elevated = tn.grade_clear_elevated_m;
-	t.clear_bridge = tn.grade_clear_bridge_m;
-	t.deck_elevated = tn.grade_deck_elevated_m;
-	t.deck_bridge = tn.grade_deck_bridge_m;
-	t.tunnel_depth = tn.grade_tunnel_headroom_m + tn.grade_tunnel_arch_m + tn.grade_tunnel_floor_m;
+	for (size_t s = 0; s < STRUCTURE_COUNT; s++) t.structure[s] = structure_spec(Structure(s), tn);
 	return t;
 }
 
-float structure_clearance(const GradeTune &t, Structure s) {
+StructureSpec structure_spec(Structure s, const Tuning &tn) {
 	switch (s) {
-		case Structure::ELEVATED: return t.clear_elevated;
-		case Structure::BRIDGE: return t.clear_bridge;
-		case Structure::TUNNEL: return -t.tunnel_depth;
+		case Structure::ELEVATED: return { tn.grade_clear_elevated_m, tn.grade_deck_elevated_m, true };
+		case Structure::BRIDGE: return { tn.grade_clear_bridge_m, tn.grade_deck_bridge_m, true };
+		case Structure::TUNNEL:
+			// TUNNEL_DEPTH: headroom, arch and the depth past them, under the lowest ground.
+			return { -(tn.grade_tunnel_headroom_m + tn.grade_tunnel_arch_m + tn.grade_tunnel_floor_m), tn.grade_deck_tunnel_m, false };
 		case Structure::GROUND: break;
 	}
-	return 0.f;
-}
-
-float structure_deck(const GradeTune &t, Structure s) {
-	return s == Structure::BRIDGE ? t.deck_bridge : t.deck_elevated;
+	return { 0.f, tn.grade_deck_ground_m, false };
 }
 
 } // namespace city

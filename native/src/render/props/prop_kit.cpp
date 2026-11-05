@@ -94,9 +94,10 @@ MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &
 }
 
 // A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side. UV is the
-// wire's place in the span, which props.gdshader hangs from the poles.
-void wire_tube(MeshBuilder &b, const Vector2 &place, const Color &colour, float radius, int chords, int sides) {
-	const Vector2 t2(float(int(PropTag::WIRE)), 0);
+// wire's height and its seat along an urban pole's arm, UV2.y its seat along a rural pole's (or WIRE_SECONDARY_MARK), which
+// props.gdshader hangs from the poles by their kinds.
+void wire_tube(MeshBuilder &b, const Vector2 &place, float rural_seat, const Color &colour, float radius, int chords, int sides) {
+	const Vector2 t2(float(int(PropTag::WIRE)), rural_seat);
 	const Vector2 uvs[4] = { place, place, place, place };
 	for (int s = 0; s < chords; s++) {
 		const float t0 = float(s) / chords, t1 = float(s + 1) / chords;
@@ -108,12 +109,14 @@ void wire_tube(MeshBuilder &b, const Vector2 &place, const Color &colour, float 
 	}
 }
 
-// Every wire of a span: each course (y_m, up the pole) at each offset along the arm (z_m).
+// Every wire of a span (streets.json wires): the primary ones at y_m[0], the i-th on seat i along the arm (z_m on an urban pole,
+// rural_z_m on a rural one), then the secondary ones at the rest of y_m, on the urban rack (secondary_z_m).
 void wire_mesh(MeshBuilder &b, const Dictionary &wires, int chords, int sides) {
-	const Array ys = wires["y_m"], zs = wires["z_m"];
+	const Array ys = wires["y_m"], urban = wires["z_m"], rural = wires["rural_z_m"];
 	const Color colour = rgba8_to_color(parse_hex_color(String(wires["color"]).utf8().get_data()));
-	for (int i = 0; i < ys.size(); i++)
-		for (int k = 0; k < zs.size(); k++) wire_tube(b, Vector2(float(ys[i]), float(zs[k])), colour, float(wires["radius_m"]), chords, sides);
+	const float radius = wires["radius_m"];
+	for (int k = 0; k < urban.size(); k++) wire_tube(b, Vector2(float(ys[0]), float(urban[k])), float(rural[k]), colour, radius, chords, sides);
+	for (int i = 1; i < ys.size(); i++) wire_tube(b, Vector2(float(ys[i]), float(wires["secondary_z_m"])), WIRE_SECONDARY_MARK, colour, radius, chords, sides);
 }
 
 void light_mesh(MeshBuilder &b) {
@@ -165,6 +168,13 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
 	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
 	pole_ = parts(props, "pole", errors);
+	for (const char *key : { "y_m", "z_m", "rural_z_m", "secondary_z_m" })
+		if (!wires.has(key)) errors.push_back(String("streets.json wires: falta ") + key);
+	if (!errors.is_empty()) return false;
+	if (Array(wires["z_m"]).size() != Array(wires["rural_z_m"]).size() || Array(wires["y_m"]).is_empty()) {
+		errors.push_back("streets.json wires: z_m e rural_z_m com tamanhos diferentes, ou y_m vazio");
+		return false;
+	}
 	wire_mesh(wire_near_, wires, int(wires["near_chords"]), int(wires["near_sides"]));
 	wire_mesh(wire_far_, wires, int(wires["far_chords"]), int(wires["far_sides"]));
 	box_.box(Vector3(-0.5f, -0.5f, -0.5f), Vector3(0.5f, 0.5f, 0.5f), WHITE, Vector2(float(int(PropTag::FINISHED)), 0), true);

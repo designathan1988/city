@@ -8,7 +8,7 @@ const OTHER_SEED := 7
 const SLOT := "teste_rua"
 const TAG_BYTES := [0x53, 0x54, 0x52, 0x54] # save_street.h SAVE_TAG_STREET: STRT
 const SIZE_BYTES := 4
-const KEYS := ["items", "poles", "spans", "barriers", "cuts"]
+const KEYS := ["items", "poles", "rural_poles", "spans", "barriers", "cuts"]
 
 var _host: Node
 var _check: Callable
@@ -33,7 +33,7 @@ func run() -> void:
 	var after: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
 		_check.call(after[key] == before[key], "save guarda " + key)
-	_check.call(after.poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "algo foi salvo e aberto")
+	_check.call(after.poles > 0 and after.rural_poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "algo foi salvo e aberto")
 	await _old_save(before)
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 	DirAccess.remove_absolute(Session.path(SLOT)) # and the session the save wrote beside it

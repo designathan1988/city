@@ -8,6 +8,8 @@ const TOWN_MAP := 0
 const SEED := 1
 const REACH := 6.0
 const LAMPS_ALL := 2
+const URBAN := 0 # drawers.json pole_kinds
+const RURAL := 1
 const ITEM_BENCH := 2
 const ITEM_BIN := 3
 const ITEM_SIGN := 10
@@ -69,7 +71,7 @@ func _counts() -> Dictionary:
 func _run_from(a: Vector3) -> Vector3:
 	for i in RUN_TRIES:
 		var dir := Vector3.RIGHT.rotated(Vector3.UP, TAU * i / RUN_TRIES)
-		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, a + dir * RUN_M, REACH, LAMPS_ALL])
+		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, a + dir * RUN_M, REACH, LAMPS_ALL, URBAN])
 		if plan.get("ok", false) and plan.poles.size() >= MIN_RUN_POLES:
 			return a + dir * RUN_M
 	return Vector3.INF
@@ -80,9 +82,9 @@ func _poles(a: Vector3) -> void:
 	_check(b != Vector3.INF, "plano de postes")
 	if b == Vector3.INF:
 		return
-	var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, b, REACH, LAMPS_ALL])
+	var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, b, REACH, LAMPS_ALL, URBAN])
 	var before := _counts()
-	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [a, b, REACH, LAMPS_ALL])
+	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [a, b, REACH, LAMPS_ALL, URBAN])
 	_check(r.get("ok", false), "linha construída")
 	var after := _counts()
 	var fresh: int = plan.poles.filter(func(p: Dictionary) -> bool: return not p.standing).size()
@@ -92,12 +94,29 @@ func _poles(a: Vector3) -> void:
 	CityStore.dispatch(&"redo")
 	_check(_counts().poles == after.poles and _counts().spans == after.spans, "refazer a linha")
 	var far := a + Vector3(AWAY_M, 0, AWAY_M)
-	var refused: Dictionary = CityStore.query(&"preview_pole_run", [far, far + Vector3(10, 0, 0), REACH, LAMPS_ALL])
+	var refused: Dictionary = CityStore.query(&"preview_pole_run", [far, far + Vector3(10, 0, 0), REACH, LAMPS_ALL, URBAN])
 	_check(refused.get("error", "") == "hint.pole.offFootway", "fora da calçada recusa")
 	var gone: Dictionary = CityStore.dispatch(&"remove_street", [plan.poles[0].position, 1.0])
 	_check(gone.get("ok", false) and _counts().poles == after.poles - 1 and _counts().spans == after.spans - 1, "poste sai com seu fio")
 	CityStore.dispatch(&"undo")
 	_check(_counts().poles == after.poles and _counts().spans == after.spans, "desfazer a remoção")
+	_rural(b)
+
+
+## A rural run strung on from the urban one's end: its new poles are rural, the urban pole it starts from stays urban.
+func _rural(a: Vector3) -> void:
+	var b := _run_from(a)
+	_check(b != Vector3.INF, "plano rural")
+	if b == Vector3.INF:
+		return
+	var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, b, REACH, LAMPS_ALL, RURAL])
+	var before := _counts()
+	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [a, b, REACH, LAMPS_ALL, RURAL])
+	_check(r.get("ok", false), "linha rural construída")
+	var fresh: Array = plan.poles.filter(func(p: Dictionary) -> bool: return not p.standing)
+	_check(fresh.all(func(p: Dictionary) -> bool: return p.kind == RURAL), "postes novos rurais")
+	_check(plan.poles.filter(func(p: Dictionary) -> bool: return p.standing).all(func(p: Dictionary) -> bool: return p.kind == URBAN), "poste reaproveitado continua urbano")
+	_check(_counts().rural_poles == before.rural_poles + fresh.size(), "contagem dos rurais %s" % _counts())
 
 
 ## A place on the footway where `kind` can stand, walking along from `a`.

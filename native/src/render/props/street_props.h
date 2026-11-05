@@ -14,6 +14,15 @@
 
 namespace city {
 
+// A pole of the run under the pointer (the pole tool's preview): where, whether it carries a lamp, whether it already stands
+// (only its wires are drawn) and what it is built as.
+struct PreviewPole {
+	godot::Vector3 at;
+	bool lamp = false;
+	bool standing = false;
+	PoleKind kind = PoleKind::URBAN;
+};
+
 struct WireLook {
 	float sag = 0, max_sag = 0, min_span = 0, max_span = 0, near_end = 0, far_end = 0;
 };
@@ -54,8 +63,7 @@ float street_ground(const CityState &s, const StreetLook &L, double x, double z)
 // Props, poles, wires and signal posts of everything owned by chunk `key` (segments by midpoint, nodes and records by place).
 void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst);
 // A planned run (Roadcraft poleLayer.ts buildPolePreview): the new poles and every span, as they will stand.
-void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp,
-		const std::vector<bool> &standing, StreetInstances &inst);
+void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst);
 // Street trees on the footways of the segments owned by chunk `key`.
 void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out);
 

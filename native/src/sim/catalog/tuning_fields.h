@@ -13,7 +13,7 @@
 	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
 	X(road, bay_m) X(road, max_variants) \
 	X(grade, ground) X(grade, ramp) X(grade, deck) X(grade, deck_tie) X(grade, tunnel) X(grade, clearance_m) \
-	X(grade, clear_elevated_m) X(grade, clear_bridge_m) X(grade, deck_elevated_m) X(grade, deck_bridge_m) \
+	X(grade, clear_elevated_m) X(grade, clear_bridge_m) X(grade, deck_ground_m) X(grade, deck_elevated_m) X(grade, deck_bridge_m) X(grade, deck_tunnel_m) \
 	X(grade, tunnel_headroom_m) X(grade, tunnel_arch_m) X(grade, tunnel_floor_m) X(grade, lift_on_m) \
 	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) X(economy, fill_from_m) X(economy, on_piers_from_m) \

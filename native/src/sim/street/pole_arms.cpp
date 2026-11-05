@@ -72,4 +72,14 @@ PoleArms pole_arms(const StreetWorks &w, const PoleDef &def, int pole, ArmDir id
 	return out;
 }
 
+ArmDir pole_toward(const ArmDir *kerb, ArmDir arm) {
+	if (kerb) return *kerb;
+	const bool back = std::abs(arm.x) >= std::abs(arm.z) ? arm.x < 0 : arm.z < 0;
+	return back ? ArmDir{ -arm.x, -arm.z } : arm;
+}
+
+ArmDir street_arm(ArmDir arm, ArmDir toward) {
+	return arm.x * toward.x + arm.z * toward.z >= 0 ? arm : ArmDir{ -arm.x, -arm.z };
+}
+
 } // namespace city

@@ -95,7 +95,7 @@ struct Solve {
 
 	// The deck a raised span wants at its a or b end: its clearance over the ground of the plate.
 	float wanted_end(const GradeProfile &p, bool at_a) const {
-		const float clearance = structure_clearance(t, p.structure);
+		const float clearance = t.of(p.structure).clearance;
 		float top = -NONE;
 		const float from = at_a ? 0.f : p.len - p.plate_b, to = at_a ? p.plate_a : p.len;
 		for (float s = from; s <= to + RISE_EPS; s += p.step) top = std::max(top, p.ceil[size_t(station_index(p, s))] + clearance);
@@ -128,7 +128,7 @@ struct Solve {
 	// The free height a sunken span wants: a tunnel's depth under the lowest of its ground and its ends.
 	float wanted_of(const GradeProfile &p) const {
 		const float floor = *std::min_element(p.ceil.begin(), p.ceil.end());
-		return std::min(floor, std::min(grade_of(p.a), grade_of(p.b))) + structure_clearance(t, p.structure);
+		return std::min(floor, std::min(grade_of(p.a), grade_of(p.b))) + t.of(p.structure).clearance;
 	}
 
 	void solve_profile(int s) {

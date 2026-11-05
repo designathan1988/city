@@ -168,7 +168,7 @@ Route route_between(const CityState &s, RouteGraph &g, const Snap &a, const Snap
 }
 } // namespace
 
-PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps) {
+PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind) {
 	PoleRunPlan plan;
 	const PoleDef &d = s.catalog.furniture.poles;
 	RouteGraph g;
@@ -202,6 +202,7 @@ PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, d
 		q.x = existing >= 0 ? s.street.poles.items[size_t(existing)].x : p.x;
 		q.z = existing >= 0 ? s.street.poles.items[size_t(existing)].z : p.z;
 		q.lamp = existing >= 0 ? s.street.poles.items[size_t(existing)].lamp : lamp_for(int(i), lamps);
+		q.kind = existing >= 0 ? s.street.poles.items[size_t(existing)].kind : kind;
 		if (!plan.poles.empty() && existing >= 0 && plan.poles.back().existing == existing) continue; // the same pole twice in a row is one
 		plan.poles.push_back(q);
 	}
@@ -209,9 +210,9 @@ PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, d
 	return plan;
 }
 
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps) {
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind) {
 	EditResult r;
-	const PoleRunPlan plan = plan_pole_run(s, ax, az, bx, bz, reach, lamps);
+	const PoleRunPlan plan = plan_pole_run(s, ax, az, bx, bz, reach, lamps, kind);
 	r.error = plan.refused;
 	if (!plan.refused.empty() || plan.poles.size() < 2) return r;
 	std::vector<int> ids;
@@ -224,6 +225,7 @@ EditResult build_pole_run(CityState &s, double ax, double az, double bx, double 
 		pole.x = float(p.x);
 		pole.z = float(p.z);
 		pole.lamp = p.lamp;
+		pole.kind = p.kind;
 		ids.push_back(j_add_pole(s, pole));
 	}
 	for (size_t i = 1; i < ids.size(); i++) {

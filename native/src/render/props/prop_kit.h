@@ -18,7 +18,12 @@ enum class PropKind : int { SIGNAL = 0, HYDRANT, BIN, BENCH, POSTBOX, PHONE, DRA
 // The signal's lenses (streets.json props.signal "lens"): the cars' red, amber and green, the walkers' stop and walk.
 enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
 // The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits.
-enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1 };
+// ARM and CAN are an urban pole's (the arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL
+// a rural pole's (the arm across the crown, the transformer toward the street): streets.json, tools/assets/make_pole_parts.py.
+enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
+// A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y): props.gdshader draws it only between two
+// urban poles.
+constexpr float WIRE_SECONDARY_MARK = 10000.f;
 
 // A placed prop: which mesh, where, facing.
 struct PropPlace {
