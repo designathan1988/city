@@ -24,6 +24,7 @@ class CityLandscape;
 class CityProbes;
 class CityStreet;
 class CityTransit;
+class CityLab;
 
 class CityCore : public godot::Node3D {
 	GDCLASS(CityCore, godot::Node3D)
@@ -180,6 +181,7 @@ private:
 	CityTransit *transit_ = nullptr;
 	CityProbes *probes_ = nullptr;
 	CityStreet *street_ = nullptr;
+	CityLab *lab_ = nullptr;
 	void make_areas(), free_areas();
 };
 

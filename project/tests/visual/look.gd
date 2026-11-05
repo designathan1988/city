@@ -9,7 +9,7 @@
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
 ## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
-## {"passes": true} (the GPU's passes), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
+## {"clock": true} (the stages' stamps on the camera), {"switch": [key, on]} (an F7 switch), {"passes": true} (the GPU's stamps), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
 ## {"until": query, "args": [...], "equals": value, "timeout": ms}.
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
@@ -112,8 +112,13 @@ func _step(step: Dictionary) -> void:
 		print("usage: %s" % await measure.usage(self, float(step.usage) if step.usage is float else LookMeasure.USAGE_SECONDS))
 	elif step.has("info"):
 		print("info: %s" % measure.info())
+	elif step.has("clock"):
+		measure.clock_on(get_viewport().get_camera_3d(), DataTables.game("render_switches").doctor.stages)
+	elif step.has("switch"):
+		Settings.switches.set_on(str(step.switch[0]), bool(step.switch[1]))
+		Settings.switches_changed()
 	elif step.has("passes"):
-		print("passes: %s" % measure.passes())
+		print("passes: %s" % [measure.passes()])
 	elif step.has("view"):
 		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(step.view)).to_upper())
 	elif step.has("until"):

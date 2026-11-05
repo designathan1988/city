@@ -1,6 +1,6 @@
 ## StoreApi: the names of the C++ core's methods the script side may call. The store sends a command (dispatch) or asks a
 ## question (query) only through these names; the value is the method that runs it, after "<area>/" when an area of the core
-## owns it (builder, landscape, transit, probes, street: api/city_core_areas.cpp) and bare when the core itself does.
+## owns it (builder, landscape, transit, probes, street, lab: api/city_core_areas.cpp) and bare when the core itself does.
 class_name StoreApi
 extends RefCounted
 
@@ -57,5 +57,5 @@ const QUERIES := {
 	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
 	&"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path", &"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
 	&"preview_item": "street/preview_item", &"preview_barrier": "street/preview_barrier", &"preview_pole_run": "street/preview_pole_run",
-	&"state_hash": "probes/state_hash", &"bay_census": "probes/bay_census", &"traffic_hashes": "probes/traffic_hashes", &"graph_fault": "probes/graph_fault", &"undo_steps": "probes/undo_steps", &"road_height": "street/road_height", &"road_walls": "street/road_walls", &"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
+	&"lab_diagnose": "lab/diagnose", &"lab_compare": "lab/compare", &"state_hash": "probes/state_hash", &"bay_census": "probes/bay_census", &"traffic_hashes": "probes/traffic_hashes", &"graph_fault": "probes/graph_fault", &"undo_steps": "probes/undo_steps", &"road_height": "street/road_height", &"road_walls": "street/road_walls", &"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
 }
