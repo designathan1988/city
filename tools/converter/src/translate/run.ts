@@ -27,6 +27,7 @@ export interface TranslationResult {
   /** Every declaration of the source the files hold, `module#name`: functions, constants and declared types. */
   readonly declared: readonly string[];
   readonly pending: readonly Pending[];
+  readonly classes: readonly ApiClass[];
   readonly errors: readonly string[];
   /** Why each class member left out was left out: its class is written without it. */
   readonly dropped: readonly string[];
@@ -45,6 +46,15 @@ export interface TranslationResult {
   readonly stateHeader: string;
   /** The source files the translation read (the feature's file and the modules it imports), relative to the root. */
   readonly sourcesRead: readonly string[];
+}
+
+/** A class other modules can make, and what can be asked of it: what the light check calls. */
+export interface ApiClass {
+  readonly source: string;
+  readonly module: string;
+  readonly struct: string;
+  readonly made: Pick<ApiFunction, 'params' | 'context'>;
+  readonly members: readonly (Pick<ApiFunction, 'source' | 'cpp' | 'params' | 'context' | 'ret'> & { readonly getter: boolean })[];
 }
 
 export interface ApiFunction {
@@ -154,7 +164,7 @@ export function translate(input: TranslateInput): TranslationResult {
   // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
   flow.errors.length = 0;
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative, targetTypes);
-  const c: TranslateContext = { dropped: new Map(), fallen: new Map(), ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
+  const c: TranslateContext = { dropped: new Map(), fallen: new Map(), setters: new Map(), ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
@@ -182,17 +192,27 @@ export function translate(input: TranslateInput): TranslationResult {
   const listed = [
     ...[...c.functions.values()].filter((f) => !c.dropped.has(f) && !f.implicit).map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
     ...[...c.memos.values()].map((m) => ({ source: m.source, cpp: `${m.struct} (index)`, kind: 'index' as const, line: m.line })),
-    ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
+    ...[...c.constants.values()].map((k) => ({ source: k.module ? `${k.module}#${k.source}` : k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
   const api = [...c.functions.values()].filter((f) => f.exported && !f.owner)
-    .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
+    .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null, ...(f.context ? { context: f.context } : {}) }));
   const declared = [...new Set([
     ...[...c.functions.values()].filter((f) => !c.dropped.has(f)).map((f) => `${f.module}#${f.source}`),
     ...[...c.constants.values()].filter((k) => k.module).map((k) => `${k.module}#${k.source}`),
     ...[...types.structs.values()].filter((s) => s.declared && s.module && !types.indexStructs.has(s.name)).map((s) => `${s.module}#${s.declared}`),
   ])].sort();
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, dropped: [...c.dropped.values()], fallen: [...c.fallen, ...[...c.dropped].map(([f, why]) => [`${f.module}#${f.source}`, why] as const)], pending: spec.pending,
+  const exportedClass = (node: TS.ClassDeclaration): boolean => (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword) && !node.typeParameters?.length;
+  const classes = new Map<TS.ClassDeclaration, ApiClass & { members: ApiClass['members'][number][] }>();
+  for (const f of c.functions.values()) {
+    if (!f.owner || !exportedClass(f.owner.node) || c.dropped.has(f)) continue;
+    const row = classes.get(f.owner.node) ?? { source: f.owner.source, module: f.module, struct: f.owner.struct, made: { params: [] }, members: [] };
+    classes.set(f.owner.node, row);
+    const name = f.source.slice(f.source.indexOf('.') + 1);
+    if (f.owner.kind === 'constructor') (row as { made: ApiClass['made'] }).made = { params: f.params, ...(f.context ? { context: f.context } : {}) };
+    else if (!f.owner.isStatic) row.members.push({ source: name, cpp: f.cpp, params: f.params, ret: f.ret, getter: f.owner.kind === 'getter', ...(f.context ? { context: f.context } : {}) });
+  }
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, classes: [...classes.values()], dropped: [...c.dropped.values()], fallen: [...c.fallen, ...[...c.dropped].map(([f, why]) => [`${f.module}#${f.source}`, why] as const)], pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
     valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),

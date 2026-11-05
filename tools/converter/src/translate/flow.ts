@@ -35,6 +35,8 @@ export function join<T extends number>(...facts: T[]): T {
 export type SlotRole = 'field' | 'param' | 'local' | 'return' | 'element' | 'key' | 'literal';
 
 export class Slot {
+  /** Values of shapes no one struct holds meet here: a value only the running program knows. */
+  mixed = false;
   parent: Slot = this;
   num: Num = Num.None;
   own: Own = Own.None;
@@ -183,6 +185,8 @@ export class FlowGraph {
   #declare(s: Slot, type: TS.Type): void {
     const ts = this.#ts;
     if (this.isId(this.#checker.getNonNullableType(type))) s.num = Num.Int64;
+    // a number read out of a running value is JavaScript's number: nothing proves it whole
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) s.num = Num.Float;
     if (type.isUnion() && type.types.some((t) => t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))) s.nullable = true;
     const t = this.underlying(this.#checker.getNonNullableType(type));
     if (this.isObject(t)) s.shapes.set(this.#shapeKey(t), t);
@@ -952,6 +956,12 @@ export class FlowGraph {
 
   // ---- reading the solution
 
+  /** Whether values of shapes no one struct holds meet in this slot. */
+  isMixed(s: Slot): boolean {
+    this.shapeOf(s);
+    return this.find(s).mixed;
+  }
+
   /** The struct type a slot holds: the widest shape that reached it; every other must be a subset of it. */
   shapeOf(s: Slot): TS.Type | null {
     const r = this.find(s);
@@ -972,8 +982,8 @@ export class FlowGraph {
       if (this.#checker.isTupleType(t) && this.#checker.isTupleType(widest)) continue; // a tuple's type is its positions (readonly or not)
       const extra = this.#checker.getPropertiesOfType(t).map((p) => p.name).filter((n) => !fields.has(n));
       if (extra.length > 0) {
-        const msg = `${r.name}: values of different shapes meet (${this.#checker.typeToString(widest)} and ${this.#checker.typeToString(t)})${this.unit ? ` [unit ${this.unit}]` : ''}`;
-        if (!this.errors.includes(msg)) this.errors.push(msg);
+        r.mixed = true;
+        return null;
       }
     }
     return widest;

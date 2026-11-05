@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { removeTree } from '../src/common/files.ts';
-import { runDifferential } from '../src/translate/differential.ts';
+import { runDifferential, runObjectDifferential } from '../src/translate/differential.ts';
 import { translate } from '../src/translate/run.ts';
 import { loadTypeScript } from '../src/graph/typescript.ts';
 import { readTranslationSpec } from '../src/translate/spec.ts';
@@ -29,7 +29,7 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_runtime.h', 'js_string.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
@@ -117,6 +117,24 @@ describe('translate', () => {
     assert.equal(result.dropped.length, 2, result.dropped.join('; '));
     assert.match(file('yard_types.h'), /\bdoubled\(\);/);
     assert.doesNotMatch(file('yard_types.h'), /\bnamed\(\);/);
+  });
+
+  it('checks classes against the source with no game, and catches a wrong member', (t) => {
+    const cxx = process.env['CONVERTER_CXX'];
+    if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-objects-'));
+    after(() => removeTree(work));
+    const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceRoot: root, includes: [path.join(target, 'native/src')], cxx, steps: 300, seed: 7,
+      tolerance: 1e-4, valueTypes: { V2: { x: 'x', y: 'y' } } };
+    const same = runObjectDifferential({ ...base, translation: result, work: path.join(work, 'same') });
+    assert.deepEqual(same.mismatches, []);
+    assert.ok(same.calls['Tally.add']! > 0, 'a member of a class was called');
+    const query = 'native/src/sim/yard/yard_query.cpp';
+    const mutated = new Map(result.files);
+    mutated.set(query, mutated.get(query)!.replace('this->total += n;', 'this->total -= n;'));
+    assert.notEqual(mutated.get(query), result.files.get(query));
+    const wrong = runObjectDifferential({ ...base, translation: { ...result, files: mutated }, work: path.join(work, 'wrong') });
+    assert.ok(wrong.mismatches.length > 0, 'the mutation must be found');
   });
 
   it('writes C++ that compiles without a warning against the target headers', (t) => {

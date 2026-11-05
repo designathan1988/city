@@ -26,7 +26,7 @@ export interface MemberOwner {
   readonly struct: string;
   /** The class's name in the source: the unit a refusal of the member belongs to. */
   readonly source: string;
-  readonly kind: 'method' | 'getter' | 'constructor';
+  readonly kind: 'method' | 'getter' | 'setter' | 'constructor';
   readonly isStatic: boolean;
   readonly node: TS.ClassDeclaration;
 }
@@ -113,6 +113,8 @@ export interface TranslateContext {
   readonly errors: string[];
   /** The class members that could not be written, with why: their class stands without them. */
   readonly dropped: Map<FunctionPlan, string>;
+  /** A property's setter: written `set_x`, what an assignment to the property calls. */
+  readonly setters: Map<TS.Node, FunctionPlan>;
   /** What a whole translation found it cannot write, `module#name`, with why. */
   readonly fallen: Map<string, string>;
   readonly includes: Set<string>;

@@ -21,6 +21,7 @@ export function runtimeFiles(): Map<string, string> {
 export const isRuntimeFile = (file: string): boolean => path.posix.dirname(file) === RUNTIME_ROOT && /^js_\w+\.h$/.test(path.posix.basename(file));
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
+import { upper } from './names.ts';
 import type { CppStruct } from './types.ts';
 import type { EmittedFunction, EmittedMemo } from './translator.ts';
 
@@ -227,6 +228,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const typeRefs: CppType[] = [...structs.flatMap((s) => [...s.fields.map((f) => f.type), ...(s.methodTypes ?? [])]), ...constants.map((k) => k.type),
       ...memoStructs.flatMap((b) => b.plan.fields.map((f) => f.type))];
     const stateStruct = isState ? c.types.structs.get(state) : undefined;
+    const boxed = boxedNames(c);
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
@@ -257,7 +259,11 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if (early.length > 0) types.push('');
     // a class may hold itself, or one declared after it: named first
     for (const s of structs.filter((x) => x.isClass)) types.push(`${templateHead(s)}struct ${s.name};`);
-    for (const s of structs) types.push(...structLines(s, m));
+    for (const e of enums.filter((x) => boxed.has(x.name))) types.push(...enumBoxLines(e));
+    for (const s of structs) {
+      types.push(...structLines(s, m));
+      if (boxed.has(s.name) && !s.isClass) types.push(...boxLines(s));
+    }
     types.push(...constantLines(late));
     if (late.length > 0) types.push('');
     for (const b of memoStructs) {
@@ -369,6 +375,36 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
   return files;
 }
 
+/** What is read into or out of a js::Value, with what those hold. */
+function boxedNames(c: TranslateContext): Set<string> {
+  const out = new Set<string>();
+  const queue = [...c.types.boxed];
+  while (queue.length > 0) {
+    const name = queue.pop()!;
+    if (out.has(name)) continue;
+    out.add(name);
+    for (const f of c.types.structs.get(name)?.fields ?? []) for (const n of namesIn(f.type)) queue.push(n);
+  }
+  return out;
+}
+
+const boxable = (t: CppType): boolean => t.k !== 'ref' && t.k !== 'function' && t.k !== 'lambda' && t.k !== 'ptr' && t.k !== 'class'
+  && !((t.k === 'vector' || t.k === 'optional' || t.k === 'set' || t.k === 'map') && !boxable(t.of));
+
+/** A struct into and out of a js::Value, field by field. */
+function boxLines(s: CppStruct): string[] {
+  const fields = s.fields.filter((f) => boxable(f.type));
+  return [`inline js::Value to_value(const ${s.name} &v) {`, '\tjs::Value out = js::Value::object();', ...fields.map((f) => `\tout.set(${JSON.stringify(f.source)}, js::Value(v.${f.name}));`), '\treturn out;', '}',
+    `inline void read(const js::Value &x, ${s.name} &out) {`, '\tusing js::read;', ...fields.map((f) => `\tread(x.get(${JSON.stringify(f.source)}), out.${f.name});`), '}', ''];
+}
+
+/** An enum of strings as the strings the source writes. */
+function enumBoxLines(e: { readonly name: string; readonly values: readonly string[] }): string[] {
+  const cpp = (v: string): string => `${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}`;
+  return [`inline js::Value to_value(${e.name} v) {`, ...e.values.map((v) => `\tif (v == ${cpp(v)}) return js::Value(std::string(${JSON.stringify(v)}));`), '\treturn js::Value();', '}',
+    `inline void read(const js::Value &x, ${e.name} &out) {`, '\tconst std::string text = x.text();', ...e.values.map((v) => `\tif (text == ${JSON.stringify(v)}) out = ${cpp(v)};`), '}', ''];
+}
+
 const templateHead = (s: CppStruct): string => (s.typeParams?.length ? `template <${s.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '');
 
 function structLines(s: CppStruct, source: string): string[] {
@@ -376,6 +412,7 @@ function structLines(s: CppStruct, source: string): string[] {
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
   const self = s.typeParams?.length ? `${s.name}<${s.typeParams.join(', ')}>` : s.name;
-  const base = s.isClass ? ` : std::enable_shared_from_this<${self}>` : '';
-  return [...head, `${templateHead(s)}struct ${s.name}${base} {`, ...fields, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
+  const base = s.base ? ` : ${s.base}` : s.isClass ? ` : std::enable_shared_from_this<${self}>` : '';
+  const destructor = s.polymorphic ? [`\tvirtual ~${s.name}() = default;`] : [];
+  return [...head, `${templateHead(s)}struct ${s.name}${base} {`, ...fields, ...destructor, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
 }
