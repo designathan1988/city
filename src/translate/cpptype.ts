@@ -66,7 +66,7 @@ export function render(t: CppType): string {
     case 'list':
       return `std::initializer_list<${render(t.of)}>`;
     case 'map':
-      return `std::unordered_map<${render(t.key)}, ${render(t.of)}>`;
+      return `js::Map<${render(t.key)}, ${render(t.of)}>`;
     case 'optional':
       return `std::optional<${render(t.of)}>`;
     case 'ptr':

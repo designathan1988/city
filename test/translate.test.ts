@@ -29,7 +29,7 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_runtime.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
@@ -77,7 +77,7 @@ describe('translate', () => {
   it('keeps integers integers, through cycles, callbacks and helpers called with integers', () => {
     assert.match(file('yard_query.cpp'), /\bint n = 0;/);
     assert.match(file('yard_types.h'), /struct Nearest \{\n\tint32_t i = 0;\n\tfloat d = 0;\n\tV2 at;\n\};/);
-    assert.match(file('yard_query.cpp'), /std::unordered_map<int64_t, std::vector<int>> at;/);
+    assert.match(file('yard_query.cpp'), /js::Map<int64_t, std::vector<int>> at;/);
     assert.match(file('yard_query.cpp'), /auto link = \[&\]\(int32_t a, int32_t b\) -> void/);
     assert.match(file('yard_types.h'), /int32_t next_id = 1;/, 'the empty state starts ids at 1');
   });
@@ -98,7 +98,7 @@ describe('translate', () => {
   it('shares what the source shares: references, and an index that holds pointers into the state', () => {
     assert.match(file('yard_query.cpp'), /const auto &cells = t\.index\.post_cells\.cells;/);
     assert.match(file('yard_query.cpp'), /const auto &first = t\.posts\[0\];/);
-    assert.match(file('yard_types.h'), /std::unordered_map<int64_t, std::vector<const Post \*>> cells;/);
+    assert.match(file('yard_types.h'), /js::Map<int64_t, std::vector<const Post \*>> cells;/);
     assert.match(file('yard_index.cpp'), /index\.cells\[key\]\.push_back\(&p\);/, 'one lookup makes the entry when absent');
   });
 

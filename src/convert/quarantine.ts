@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
+import { RUNTIME_FILE } from '../translate/files.ts';
 
 export interface QuarantineFinding {
   readonly file: string;
@@ -51,6 +52,8 @@ function longestFunction(text: string): number {
 export function scanFiles(files: ReadonlyMap<string, string>, limits: TargetLimits): QuarantineFinding[] {
   const out: QuarantineFinding[] = [];
   for (const [file, text] of files) {
+    // the runtime of the built-ins is the converter's own, checked against JavaScript by its differential
+    if (file === RUNTIME_FILE) continue;
     for (const { rule, form, detail } of WRONG_FORMS) if (form.test(text)) out.push({ file, rule, detail });
     const extension = path.extname(file);
     const lines = text.split('\n').length;

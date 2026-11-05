@@ -13,6 +13,9 @@ import {
 import { Num } from './flow.ts';
 import { snake } from './names.ts';
 
+/** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
+export const RUNTIME_INCLUDE = 'core/js_runtime.h';
+
 export interface Value {
   readonly code: string;
   readonly type: CppType;
@@ -246,7 +249,10 @@ export abstract class ExpressionEmitter {
       if (isInt(v.type)) parts.push(`std::to_string(${v.code})`);
       else if (v.type.k === 'string') parts.push(v.code);
       else if (v.type.k === 'literal') parts.push(`std::string(${v.code})`);
-      else return this.fail(span.expression, 'a template part that is not an integer or a string (JavaScript formats numbers its own way)');
+      else {
+        this.c.includes.add(RUNTIME_INCLUDE);
+        parts.push(`js::to_string(${v.code})`);
+      }
       if (span.literal.text) parts.push(JSON.stringify(span.literal.text));
     }
     if (parts.length === 0) return { code: 'std::string()', type: STRING };
@@ -315,6 +321,7 @@ export abstract class ExpressionEmitter {
       if (!field) return this.fail(e, `${t.name} has no field ${name}`);
       return { code: `${obj.code}${access}${field.name}`, type: field.type };
     }
+    if (this.#isBuiltin(e.name)) return this.builtin(e, obj);
     return this.fail(e, `a member of ${render(obj.type)} the translator does not know`);
   }
 
@@ -337,6 +344,8 @@ export abstract class ExpressionEmitter {
       const receiver = callee.expression;
       const method = callee.name.text;
       if (ts.isIdentifier(receiver) && receiver.text === 'Math') return this.#math(e, method);
+      // a static built-in (Number.isInteger, String.fromCharCode, Array.isArray): the runtime's
+      if (ts.isIdentifier(receiver) && this.#isBuiltin(receiver) && !(receiver.text === 'Number' && method === 'isFinite')) return this.builtin(e, null);
       if (ts.isIdentifier(receiver) && receiver.text === 'Number' && method === 'isFinite') {
         this.c.includes.add('cmath');
         return { code: `std::isfinite(${this.expr(e.arguments[0]!)})`, type: BOOL };
@@ -361,6 +370,7 @@ export abstract class ExpressionEmitter {
       }
       if (t.k === 'vector') return this.arrayMethod(e, obj, method, want);
       if (t.k === 'string' || t.k === 'literal') return this.#stringMethod(e, obj, method);
+      if (this.#isBuiltin(callee.name)) return this.builtin(e, obj);
       return this.fail(e, `a method ${method} of ${render(obj.type)}`);
     }
     if (ts.isIdentifier(callee)) {
@@ -398,6 +408,7 @@ export abstract class ExpressionEmitter {
         return { code: `${local.cpp}(${e.arguments.map((a, i) => this.expr(a, fnType.params[i])).join(', ')})`, type: fnType.ret };
       }
     }
+    if (ts.isIdentifier(callee) && this.#isBuiltin(callee)) return this.builtin(e, null);
     return this.fail(e, 'a call the translator does not know');
   }
 
@@ -405,8 +416,49 @@ export abstract class ExpressionEmitter {
   #ownedType(e: TS.Expression): CppType {
     const t = this.c.checker.getNonNullableType(this.c.checker.getTypeAtLocation(e));
     if (t.flags & this.c.ts.TypeFlags.BooleanLike) return BOOL;
+    if (t.flags & this.c.ts.TypeFlags.StringLike) return STRING;
+    if (t.flags & (this.c.ts.TypeFlags.Void | this.c.ts.TypeFlags.Undefined)) return VOID;
     if (t.flags & this.c.ts.TypeFlags.Object) return this.c.types.ofType(t, 'local', null);
     return this.numberType(e);
+  }
+
+  /** Whether a name resolves to a declaration of TypeScript's own library (an ECMAScript built-in). */
+  #isBuiltin(node: TS.Node): boolean {
+    const decl = this.c.checker.getSymbolAtLocation(node)?.declarations?.[0];
+    return decl !== undefined && /[\\/]typescript[\\/]lib[\\/]lib\.[^\\/]*\.d\.ts$/.test(decl.getSourceFile().fileName);
+  }
+
+  /**
+   * A built-in the translator does not lower itself, written the one way every built-in is: the runtime's function
+   * (cpp/js/js_runtime.h, each checked against JavaScript) named mechanically from ECMAScript's: x.toFixed(2) is
+   * js::to_fixed(x, 2), Number.isInteger(x) js::number_is_integer(x), String(x) js::to_string(x). C++ overloads pick
+   * the version; the value has the C++ form of its TypeScript type. A callback is a lambda; an absent argument is the
+   * runtime's default.
+   */
+  protected builtin(e: TS.CallExpression | TS.PropertyAccessExpression, receiver: Value | null): Value {
+    const ts = this.c.ts;
+    const call = ts.isCallExpression(e) ? e : null;
+    const callee = call ? call.expression : e;
+    let name: string;
+    if (ts.isPropertyAccessExpression(callee)) {
+      const host = callee.expression;
+      const statics = receiver === null && ts.isIdentifier(host) ? host.text : null;
+      name = statics && statics !== 'Math' ? `${snake(statics)}_${snake(callee.name.text)}` : snake(callee.name.text);
+    } else if (ts.isIdentifier(callee)) name = callee.text === 'String' ? 'to_string' : snake(callee.text);
+    else return this.fail(e, 'a built-in called through an expression');
+    const args: string[] = receiver ? [receiver.type.k === 'literal' ? `std::string(${receiver.code})` : receiver.code] : [];
+    for (const a of call?.arguments ?? []) {
+      if (ts.isArrowFunction(a) || ts.isFunctionExpression(a)) args.push(this.lambda(a).code);
+      else if (ts.isSpreadElement(a)) return this.fail(a, 'a spread argument to a built-in');
+      else {
+        const v = this.value(a);
+        args.push(v.type.k === 'literal' ? `std::string(${v.code})` : v.code);
+      }
+    }
+    this.c.includes.add(RUNTIME_INCLUDE);
+    const code = `js::${name}(${args.join(', ')})`;
+    const type = this.#ownedType(call ?? e);
+    return { code: isNumber(type) ? `${render(type)}(${code})` : code, type };
   }
 
   #memoRead(e: TS.CallExpression, memo: MemoPlan): Value {
@@ -449,13 +501,13 @@ export abstract class ExpressionEmitter {
       });
       return { code: code.reduce((acc, x) => `std::${method}(${acc}, ${x})`), type };
     }
-    return this.fail(e, `Math.${method}`);
+    return this.builtin(e, null);
   }
 
   /** A string's prefix, suffix and part tests (the same answer as JavaScript's for every string). */
   #stringMethod(e: TS.CallExpression, obj: Value, method: string): Value {
     if (method === 'replace' || method === 'replaceAll') return this.#replace(e, obj, method === 'replaceAll');
-    if (e.arguments.length !== 1) return this.fail(e, `String.${method} with ${e.arguments.length} arguments`);
+    if (e.arguments.length !== 1 || !['startsWith', 'endsWith', 'includes'].includes(method)) return this.builtin(e, obj);
     this.c.includes.add('string');
     const s = this.temp('s');
     const p = this.temp('p');
@@ -463,7 +515,7 @@ export abstract class ExpressionEmitter {
     if (method === 'startsWith') return { code: `[&] { ${bind} return ${s}.compare(0, ${p}.size(), ${p}) == 0; }()`, type: BOOL };
     if (method === 'endsWith') return { code: `[&] { ${bind} return ${s}.size() >= ${p}.size() && ${s}.compare(${s}.size() - ${p}.size(), ${p}.size(), ${p}) == 0; }()`, type: BOOL };
     if (method === 'includes') return { code: `[&] { ${bind} return ${s}.find(${p}) != std::string::npos; }()`, type: BOOL };
-    return this.fail(e, `String.${method}`);
+    return this.builtin(e, obj);
   }
 
   /**
@@ -553,7 +605,7 @@ export abstract class ExpressionEmitter {
     if (method === 'set') return { code: `${obj.code}[${key()}] = ${this.expr(e.arguments[1]!, map.of)}`, type: { k: 'void' } };
     if (method === 'has') return { code: `(${obj.code}.count(${key()}) != 0)`, type: BOOL };
     if (method === 'delete') return { code: `${obj.code}.erase(${key()})`, type: { k: 'void' } };
-    return this.fail(e, `Map.${method}`);
+    return this.builtin(e, obj);
   }
 
   // ---- callbacks
@@ -739,7 +791,7 @@ export abstract class ExpressionEmitter {
         };
       }
       default:
-        return this.fail(e, `Array.${method}`);
+        return this.builtin(e, obj);
     }
   }
 
