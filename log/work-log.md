@@ -214,6 +214,16 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
 
 - 16:57 Variedade dos prédios (`sim/buildings/likeness`): o `record_for` testa 4 sementes em paralelo no `JobPool` e fica com o corpo menos parecido com o que está em 100 m (forma, cor, telhado, andares, pesos do 4.0); `BuildingStore::looks` guarda a aparência por `body_key`. `city_mass_test`: 1 de 1.350 pares de vizinhos parecidos (sonda `look_twins`), cidade abre em 0,14 s. Suíte 25/25, gates dos mudados OK.
 
+- 17:30 Elevação, editor e estruturas (ainda sem commit no início desta linha):
+  - faixa escura gigante: causa confirmada em foto. O `wire_min_px` do fio engordava sob a projeção do sol; no passe de sombra o fio fica em repouso e na largura real (`IN_SHADOW_PASS`);
+  - tabuleiro: só projetava uma linha fina, porque a pista não lança sombra e o sol vê a face de baixo pelas costas. O tabuleiro ganhou a face de cima, 4 cm sob a pista; a sombra larga apareceu;
+  - editor: PageUp/PageDown e a linha Altura (um metro por vez, pousa em metro inteiro), a via sai da altura em que foi começada, a prévia sobe a rampa, o ponteiro segura a via na altura, o encaixe só pega o que está na mesma altura (`anchorForHeight`), a linha Corte (talude ou muro);
+  - `ToolController._unhandled_key_input` vem antes de todo `_unhandled_input`: é assim que a tecla da ferramenta não chega à câmera (`keeps_key`);
+  - muros de arrimo (`road_walls.cpp`) com aterro, e o talude agora é por lado;
+  - só a estrutura túnel poupa o prédio de cima (`touchesRoad`);
+  - `road_height_cases.gd` e as teclas no `camera_input_test`: passam.
+- 17:30 Par com o 4.0: **não foi possível fotografar a via nova.** Pelo `look.mjs`, na cópia `city\roadcraft`, a via entra no documento e os carros andam nela, mas nada é desenhado (cidade e mapa vazio; 25 s de espera). O console diz `[roads] a road tile worker has been silent ... still waiting`. Causa não investigada a fundo: parei por custo. Nesse mapa vazio só a primeira via foi feita, porque o Escape do plano fecha a ferramenta. As medidas das estruturas vêm do `render/structures.ts`, não de foto.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
@@ -222,7 +232,7 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
    - escrever as unidades abertas nos donos pelo método indicado;
    - o registro do conversor está em `log/conversor.md`.
 2. **Par de um vão urbano-rural** (a foto ainda não foi tirada).
-3. **Elevação:** editor (camada 3), render por estação (camada 4: tabuleiro, pilares, encontros, guarda-corpos, emboques; par `look-pair16` "viaduto") e consumidores (camada 5).
+3. **Elevação:** falta o que está em Pendências no `CLAUDE.md`; o par do viaduto depende de o 4.0 desenhar a via nova no `look.mjs`.
 4. **Laboratório F7, portão `verify`, cantos das junções** (`corners.ts`, raio 4,5) e a chave de tuning ausente que derruba o jogo.
 5. **Nomes ainda em português:** as chaves `sementes` do `features.json`, as mensagens dos testes e capturas.
 

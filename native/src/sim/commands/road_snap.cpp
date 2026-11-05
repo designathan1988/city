@@ -116,13 +116,14 @@ SnappedEnd end_at(const Anchor &start, double x, double z, SnapGuide guide) {
 }
 } // namespace
 
-Anchor find_anchor(const CityState &s, double x, double z, double px) {
+Anchor find_anchor(const CityState &s, double x, double z, double px, std::optional<float> lift) {
 	const RoadNetwork &net = s.roads;
 	const Tuning &tn = s.catalog.tune;
 	Anchor a;
 	a.x = x;
 	a.z = z;
-	int n = net.find_node_near(x, z, tn.road_snap_node_px * px);
+	const auto level = [&](float there) { return !lift || std::fabs(there - *lift) <= tn.grade_join_m; };
+	int n = net.find_node_near(x, z, tn.road_snap_node_px * px, level);
 	if (n >= 0) {
 		a.node = n;
 		a.x = net.nodes[n].x;
@@ -137,7 +138,7 @@ Anchor find_anchor(const CityState &s, double x, double z, double px) {
 	net.for_segments_near(x - reach, z - reach, x + reach, z + reach, [&](int id) {
 		double t, d;
 		closest_t(net.segs[id].q, x, z, t, d);
-		if (d > std::max(pick, double(net.profile_of(id).half()))) return;
+		if (d > std::max(pick, double(net.profile_of(id).half())) || !level(net.lift_on(id, t))) return;
 		if (d < best || (d == best && id < seg)) {
 			best = d;
 			best_t = t;
@@ -147,7 +148,7 @@ Anchor find_anchor(const CityState &s, double x, double z, double px) {
 	if (seg < 0) return a;
 	const RoadSegment &g = net.segs[seg];
 	double end = tn.road_snap_end_m;
-	if (best_t * g.len < end || (1 - best_t) * g.len < end) {
+	if ((best_t * g.len < end || (1 - best_t) * g.len < end) && level(net.nodes[size_t(best_t < HALF ? g.a : g.b)].lift)) {
 		a.node = best_t < HALF ? g.a : g.b;
 		a.x = net.nodes[a.node].x;
 		a.z = net.nodes[a.node].z;
@@ -168,7 +169,7 @@ Anchor snap_road_start(const CityState &s, const Anchor &a, const SnapOptions &o
 }
 
 SnappedEnd snap_road_end(const CityState &s, const Anchor &start, double x, double z, const SnapOptions &o) {
-	Anchor hit = find_anchor(s, x, z, o.px);
+	Anchor hit = find_anchor(s, x, z, o.px, s.new_road_lift);
 	bool free = hit.node < 0 && hit.seg < 0;
 	if (!o.on || (!o.angles && !o.grid)) return end_at(start, hit.x, hit.z, free ? SnapGuide::NONE : SnapGuide::NETWORK);
 	// Landing on a node takes the node, exactly: no angle can be negotiated.

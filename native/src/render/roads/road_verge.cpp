@@ -59,17 +59,30 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 	if (p.edges.empty() || p.rail || v1 <= v0) return;
 	const std::vector<Piece> ps = pieces_of(e.L, p);
 	// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
-	const int n = g.q.is_straight(STRAIGHT_TOL) ? 1 : std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
-	std::vector<Vector3> right, right_out, left, left_out;
-	for (int k = 0; k <= n; k++) {
-		const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
-		right.push_back(f.c + f.left * ps.front().u0 + Vector3(0, ps.front().h, 0));
-		right_out.push_back(-f.left);
-		left.push_back(f.c + f.left * ps.back().u1 + Vector3(0, ps.back().h, 0));
-		left_out.push_back(f.left);
+	const int n = surface_steps(e, sid, v0, v1);
+	const float raised = e.s.catalog.tune.structure_raised_m;
+	for (const float side : { -1.f, 1.f }) {
+		const Piece &edge_piece = side < 0 ? ps.front() : ps.back();
+		const float across = side < 0 ? edge_piece.u0 : edge_piece.u1;
+		std::vector<Vector3> edge, out;
+		auto flush = [&]() {
+			if (edge.size() > 1) verge_ribbon(e, edge, out);
+			edge.clear();
+			out.clear();
+		};
+		for (int k = 0; k <= n; k++) {
+			const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
+			// Nothing runs down to the ground from a deck in the air, nor from a road against its wall: the runs of open road only.
+			if (f.c.y - e.s.terrain.height_at(f.c.x, f.c.z) > raised || walled_at(e, g, f, side)) {
+				flush();
+				continue;
+			}
+			edge.push_back(f.c + f.left * across + Vector3(0, edge_piece.h, 0));
+			out.push_back(f.left * side);
+		}
+		flush();
 	}
-	verge_ribbon(e, right, right_out);
-	verge_ribbon(e, left, left_out);
+	emit_wall_backfill(e, sid);
 }
 
 } // namespace city

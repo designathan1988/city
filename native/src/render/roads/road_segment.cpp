@@ -36,26 +36,9 @@ struct Sample {
 	float tex = 0; // how far along its street, what the maps read
 };
 
-// How far along its street a segment starts: a road is laid in pieces (road_max_seg_m) joined in line, and its maps run on across them.
-double street_start(const RoadNetwork &net, int sid) {
-	double run = 0;
-	for (int at = sid, left = int(net.segs.size()); left > 0; left--) {
-		const RoadNode &n = net.nodes[net.segs[at].a];
-		if (!n.joint || n.segs.size() != 2) break;
-		const int back = n.segs[0] == at ? n.segs[1] : n.segs[0];
-		if (back == sid || net.segs[back].b != net.segs[at].a) break; // a ring, or a piece laid the other way
-		run += net.segs[back].len;
-		at = back;
-	}
-	return run;
-}
-
 std::vector<Sample> samples(const RoadEmit &e, int sid, double v0, double v1, bool ca, bool cb, double lo, double hi) {
-	const RoadSegment &g = e.s.roads.segs[sid];
-	// a straight segment is linear in position, height, texture and pool coordinates: its two mouths are enough
-	bool straight = g.q.is_straight(STRAIGHT_TOL);
 	std::vector<double> at;
-	int n = straight ? 1 : std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
+	const int n = surface_steps(e, sid, v0, v1);
 	for (int k = 0; k <= n; k++) at.push_back(v0 + (v1 - v0) * k / n);
 	const float marks[3] = { e.L.ramp_full, e.L.ramp_flat, e.L.ramp_flat + e.L.ramp_flare };
 	for (float m : marks) {

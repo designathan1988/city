@@ -80,6 +80,8 @@
  },
  "grade": {
   "ground": 0.12,
+  "authored": 0.12,
+  "join_m": 0.3,
   "ramp": 0.16,
   "deck": 0.05,
   "deck_tie": 0.05,
@@ -153,6 +155,15 @@
   "snap_road_reach_m": 9.6,
   "snap_building_reach_m": 12,
   "snap_edge": 0.32
+ },
+ "structure": {
+  "raised_m": 2, "buried_m": 0.5, "wall_thick_m": 0.32, "wall_coping_m": 0.18, "wall_foot_m": 0.24, "wall_step_m": 0.8, "bore_over_m": 0.56, "pier_spacing_elevated_m": 29.6, "pier_spacing_bridge_m": 38.4,
+  "pier_radius_elevated_m": 1.04, "pier_radius_bridge_m": 1.28, "bearing_m": 0.08, "pier_slenderness": 8,
+  "pier_max_width": 1.8, "min_support_m": 0.36, "bent_spread": 0.55, "cap_depth": 2.2, "cap_height_m": 0.72,
+  "cap_overhang_m": 0.64, "parapet_height_m": 0.88, "parapet_foot_m": 0.36, "parapet_top_m": 0.2,
+  "parapet_step_m": 1.2, "parapet_from_m": 0.64, "parapet_full_m": 1.28, "abutment_lift_m": 0.48,
+  "abutment_depth_m": 1.6, "pier_abutment_gap_m": 10.4, "portal_wing_m": 5.6, "portal_thickness_m": 1.6,
+  "portal_slice_m": 1.2, "portal_coping_m": 0.24, "portal_cover_m": 0.6
  },
  "zone": {
   "side_offset_m": 14,

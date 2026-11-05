@@ -53,8 +53,9 @@ int crossing_node(CityState &s, const Quad &q, const Crossing &c) {
 }
 
 // Lays the road from stop a to stop b in pieces no longer than road_max_seg_m (execute.ts refine, at grade).
-void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, const Stop &a, const Stop &b, int profile,
+void lay_pieces(CityState &s, const RoadPlan &plan, const std::vector<double> &table, const Stop &a, const Stop &b, int profile,
 		const RoadKeeps &keeps, std::vector<int> &out) {
+	const Quad &q = plan.q;
 	RoadNetwork &net = s.roads;
 	double sa = arc_at(table, a.t), sb = arc_at(table, b.t);
 	int pieces = std::max(1, int(std::ceil((sb - sa) / s.catalog.tune.road_max_seg_m)));
@@ -62,7 +63,8 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 	for (int k = 1; k <= pieces; k++) {
 		double t0 = t_at_length(table, sa + (sb - sa) * (k - 1) / pieces), t1 = k == pieces ? b.t : t_at_length(table, sa + (sb - sa) * k / pieces);
 		Quad sub = sub_quad(q, t0, t1);
-		int next = k == pieces ? b.node : j_add_node(s, sub.x1, sub.z1, s.terrain.height_at(float(sub.x1), float(sub.z1)));
+		const float lift = plan.lift_at(t1);
+		int next = k == pieces ? b.node : j_add_node(s, sub.x1, sub.z1, s.terrain.height_at(float(sub.x1), float(sub.z1)) + lift, lift);
 		const RoadNode &np = net.nodes[prev], &nn = net.nodes[next];
 		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
@@ -166,16 +168,16 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 		return r;
 	}
 	std::vector<Stop> stops;
-	stops.push_back({ 0, anchor_node(s, a) });
+	stops.push_back({ 0, anchor_node(s, a, plan.lift_a) });
 	for (const Crossing &c : plan.crossings) {
 		int n = crossing_node(s, plan.q, c);
 		if (n >= 0 && n != stops.back().node) stops.push_back({ c.t_new, n });
 	}
-	stops.push_back({ 1, anchor_node(s, b) });
+	stops.push_back({ 1, anchor_node(s, b, plan.lift_b) });
 	std::vector<double> table = arc_table(plan.q, ARC_STEPS);
 	std::vector<int> made;
 	for (size_t i = 0; i + 1 < stops.size(); i++)
-		if (stops[i].node != stops[i + 1].node) lay_pieces(s, plan.q, table, stops[i], stops[i + 1], profile, keeps, made);
+		if (stops[i].node != stops[i + 1].node) lay_pieces(s, plan, table, stops[i], stops[i + 1], profile, keeps, made);
 	double minx = BIG, minz = BIG, maxx = -BIG, maxz = -BIG;
 	for (int sg : made) {
 		const RoadSegment &g = s.roads.segs[sg];

@@ -10,6 +10,7 @@
 #include "sim/roads/road_grade.h"
 #include "sim/state/change_log.h"
 
+#include <functional>
 #include <vector>
 
 namespace city {
@@ -116,6 +117,9 @@ public:
 	void set_zone(int s, int side, int zone);
 	void set_player_zone(int seg, int side, bool on);
 	int find_node_near(double x, double z, double radius) const;
+	// The nearest whose height over the grade line `level` takes.
+	int find_node_near(double x, double z, double radius, const std::function<bool(float)> &level) const;
+	float lift_on(int seg, double t) const; // the height over the grade line at share t of a segment
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// Height of segment s at arc length `at` from node a: its solved profile (linear between its nodes until solved).
 	double seg_y(int s, double at) const;

@@ -31,6 +31,10 @@ public:
 	void show_pole_preview(const godot::Array &poles);
 	void set_road_furniture(int level); // what new roads are laid with: 0 complete, 1 basic, 2 none
 	int road_furniture();
+	void set_road_height(float metres); // what the road tool draws at, over the grade line (Roadcraft roadHeightOffset)
+	float road_height();
+	void set_road_walls(bool on); // the sides of the cuttings of new roads: retaining walls, or a batter
+	bool road_walls();
 	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
 	godot::Dictionary street_counts();
 	godot::PackedVector3Array street_poles(); // where the player's poles stand (tests)

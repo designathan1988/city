@@ -45,7 +45,9 @@ void intersect_quads(const Quad &a, const Quad &b, std::vector<std::pair<double,
 		}
 }
 
-bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> &table, int profile, const Anchor &a, const Anchor &b) {
+bool overlaps_road(const CityState &s, const RoadPlan &plan, const std::vector<double> &table, int profile, const Anchor &a, const Anchor &b) {
+	const Quad &q = plan.q;
+	const auto lift_at = [&](double t) { return plan.lift_at(t); };
 	const RoadNetwork &net = s.roads;
 	const Tuning &tn = s.catalog.tune;
 	const EndMouth from = end_mouth(s, a, q, 0, profile), to_end = end_mouth(s, b, q, 1, profile);
@@ -65,7 +67,7 @@ bool overlaps_road(const CityState &s, const Quad &q, const std::vector<double> 
 			if (dist >= (half + net.profile_of(o).right) * tn.road_overlap_share) continue;
 			if (dir_cos(q, t, net.segs[o].q, to) < tn.road_parallel_cos) continue;
 			if (from.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M) || to_end.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M)) continue;
-			if (std::fabs(s.terrain.height_at(float(px), float(pz)) - net.seg_y(o, to * net.segs[o].len)) >= tn.road_level_dy_m) continue;
+			if (std::fabs(s.terrain.height_at(float(px), float(pz)) + lift_at(t) - net.seg_y(o, to * net.segs[o].len)) >= tn.road_level_dy_m) continue;
 			over = true;
 			break;
 		}
@@ -93,7 +95,13 @@ bool find_crossings(const CityState &s, const Anchor &a, const Anchor &b, RoadPl
 				for (auto &h : hits) {
 					double px, pz;
 					q.at(h.first, px, pz);
-					if (std::fabs(s.terrain.height_at(float(px), float(pz)) - net.seg_y(o, h.second * net.segs[o].len)) >= tn.road_level_dy_m) continue;
+					if (std::fabs(s.terrain.height_at(float(px), float(pz)) + p.lift_at(h.first) - net.seg_y(o, h.second * net.segs[o].len)) >= tn.road_level_dy_m) continue;
+					// Heights authored apart: past the clearance one passes over the other, under the join's they meet, and between them neither can (commit.ts).
+					const RoadSegment &og = net.segs[size_t(o)];
+					const float theirs = net.nodes[size_t(og.a)].lift + (net.nodes[size_t(og.b)].lift - net.nodes[size_t(og.a)].lift) * float(h.second);
+					const float gap = std::fabs(p.lift_at(h.first) - theirs);
+					if (gap > tn.grade_clear_elevated_m) continue;
+					if (gap > tn.grade_join_m) { p.reason = "hint.road.clearance"; return; }
 					if (dir_cos(q, h.first, net.segs[o].q, h.second) > tn.road_sharp_cos) { p.reason = "refuse.road.sharpAngle"; return; }
 					p.crossings.push_back({ h.first, o, h.second });
 				}
@@ -183,9 +191,15 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	if (profile < 0 || profile >= int(s.catalog.profiles.size())) p.reason = "tool.failed";
 	else if (p.len < tn.road_min_len_m) p.reason = "refuse.road.tooShort";
 	else if (a.node >= 0 && a.node == b.node) p.reason = "refuse.road.selfLoop";
+	// The end is held to the steepest grade a road is drawn at: a free end stops short of the height asked, a connection cannot move.
+	p.lift_a = anchor_lift(s, a);
+	p.lift_b = anchor_lift(s, b);
+	const float rise = float(p.len) * tn.grade_authored, want = p.lift_b;
+	p.lift_b = std::max(p.lift_a - rise, std::min(p.lift_a + rise, want));
+	if (p.reason.empty() && p.lift_b != want && (b.node >= 0 || b.seg >= 0)) p.reason = "refuse.road.tooShort";
 	if (!p.reason.empty() || !find_crossings(s, a, b, p)) return p;
 	if (sharp_at(s, a, p.q.cx - a.x, p.q.cz - a.z) || sharp_at(s, b, p.q.cx - b.x, p.q.cz - b.z)) p.reason = "refuse.road.sharpAngle";
-	else if (overlaps_road(s, p.q, table, profile, a, b)) p.reason = "road.reason.overlap";
+	else if (overlaps_road(s, p, table, profile, a, b)) p.reason = "road.reason.overlap";
 	else if (!degrees_fit(s, a, b, p)) p.reason = "road.reason.fullNode";
 	if (!p.reason.empty()) return p;
 	double prev = 0;

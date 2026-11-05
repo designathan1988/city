@@ -18,7 +18,9 @@ namespace city {
 int split_segment(CityState &s, int seg, double t);
 // The node an anchor stands for: its node, a split of its segment (searched again when an earlier split took it) or a
 // new node on the ground.
-int anchor_node(CityState &s, const Anchor &a);
+int anchor_node(CityState &s, const Anchor &a, float lift = 0); // lift: of a new node
+// How high over the grade line a road's end stands: a node's own, the road's it lands on, or the height being drawn at.
+float anchor_lift(const CityState &s, const Anchor &a);
 // Removes the buildings whose lot the segment's surface covers; returns how many.
 int clear_under(CityState &s, int seg);
 // Removes the segment and the nodes it leaves alone; the command settles what comes back (road_economy.h settle_road_edit).

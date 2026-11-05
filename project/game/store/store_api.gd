@@ -36,7 +36,7 @@ const COMMANDS := {
 	&"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
 	&"show_every_zone": "show_every_zone", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
 	&"place_item": "street/place_item", &"place_item_row": "street/place_item_row", &"build_barrier": "street/build_barrier", &"remove_street": "street/remove_street",
-	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture",
+	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture", &"set_road_height": "street/set_road_height", &"set_road_walls": "street/set_road_walls",
 }
 const QUERIES := {
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
@@ -57,5 +57,5 @@ const QUERIES := {
 	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
 	&"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path", &"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
 	&"preview_item": "street/preview_item", &"preview_barrier": "street/preview_barrier", &"preview_pole_run": "street/preview_pole_run",
-	&"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
+	&"road_height": "street/road_height", &"road_walls": "street/road_walls", &"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
 }

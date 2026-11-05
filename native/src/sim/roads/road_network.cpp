@@ -174,13 +174,22 @@ void RoadNetwork::set_player_zone(int s, int side, bool on) {
 }
 
 int RoadNetwork::find_node_near(double x, double z, double radius) const {
+	return find_node_near(x, z, radius, [](float) { return true; });
+}
+
+int RoadNetwork::find_node_near(double x, double z, double radius, const std::function<bool(float)> &level) const {
 	int best = -1;
 	double bd = radius;
 	node_hash.query(float(x - radius), float(z - radius), float(x + radius), float(z + radius), [&](int n) {
 		double d = std::hypot(nodes[n].x - x, nodes[n].z - z);
-		if (nodes[n].alive && d <= bd) { bd = d; best = n; }
+		if (nodes[n].alive && d <= bd && level(nodes[n].lift)) { bd = d; best = n; }
 	});
 	return best;
+}
+
+float RoadNetwork::lift_on(int seg, double t) const {
+	const RoadSegment &g = segs[size_t(seg)];
+	return nodes[size_t(g.a)].lift + (nodes[size_t(g.b)].lift - nodes[size_t(g.a)].lift) * float(t);
 }
 
 int RoadNetwork::find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const {

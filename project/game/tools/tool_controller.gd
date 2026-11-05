@@ -14,6 +14,7 @@ signal hint(text: String, ok: bool)
 ## The text beside the road in hand (ui/preview_tag.gd): empty hides it.
 signal tagged(text: String, at: Vector3, ok: bool)
 signal plan_changed # the transport tool laid something the drawer lists
+signal road_height_changed # the road tool draws at another height
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.
 signal inspected(info: Dictionary)
 signal hovered(info: Dictionary)
@@ -115,6 +116,20 @@ func hover_world(p: Vector3) -> void:
 func _process(delta: float) -> void:
 	if active and _dragging:
 		active.tick(delta)
+
+
+## Before any _unhandled_input: a key the tool in hand keeps from the camera (Page Up and Page Down, the road's height).
+func _unhandled_key_input(event: InputEvent) -> void:
+	if active != null and event.pressed and active.keeps_key(event.keycode):
+		if not event.echo:
+			active.key(event.keycode)
+		get_viewport().set_input_as_handled()
+
+
+## A step of the height the road tool draws at, from its options.
+func step_road_height(metres: int) -> void:
+	if tool == Tool.ROAD:
+		active.step_height(metres)
 
 
 func _unhandled_input(event: InputEvent) -> void:

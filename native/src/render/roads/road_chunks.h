@@ -24,6 +24,7 @@ public:
 protected:
 	void commit_one(BuiltMesh &b) override;
 	godot::RID scenario_, material_;
+	bool casts_ = false; // the road and its verge lie on the ground: only a structure stands to throw a shadow
 
 private:
 	struct Chunk {

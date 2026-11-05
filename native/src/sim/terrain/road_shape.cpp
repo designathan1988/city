@@ -30,6 +30,8 @@ float smoothstep(float a, float b, float v) {
 
 float road_shape_reach() { return SHAPE_INNER_M + SHAPE_SHOULDER_MAX_M; }
 
+float cut_wall_reach() { return SHAPE_INNER_M + CUT_SHOULDER_M; }
+
 void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w) {
 	const int ax0 = std::max(x0, ix_of(r.minx)), ax1 = std::min(x1, ix_of(r.maxx) + 1);
 	const int az0 = std::max(z0, ix_of(r.minz)), az1 = std::min(z1, ix_of(r.maxz) + 1);

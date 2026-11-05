@@ -164,6 +164,9 @@ palette.blocks.cols,Colunas,Columns
 palette.blocks.rows,Linhas,Rows
 palette.blocks.size,Quadra,Block size
 palette.height,Altura da via,Road height
+palette.height.above,Elevada: rampa ou ponte,Raised: ramp or bridge
+palette.height.below,Rebaixada: corte ou túnel,Lowered: cutting or tunnel
+palette.height.ground,No nível do terreno,At terrain level
 palette.kind,Tipo de via,Road type
 palette.lanes.count.one,{count} faixa,{count} lane
 palette.lanes.count.other,{count} faixas,{count} lanes
@@ -351,6 +354,7 @@ refuse.lot.twoDifferent,escolha dois lotes diferentes,choose two different lots
 refuse.lot.wouldCross,os lados do lote se cruzariam,the sides of the lot would cross
 refuse.move.roundabout,nó de rotatória não se move,a roundabout node does not move
 refuse.move.tooShort,uma via ali ficaria curta demais,a road there would be too short
+hint.road.clearance,Não construída: cruzaria uma via com diferença de altura pequena demais para se unir a ela ou passar sobre ela,Not built: it would cross a road too close in height to join it or to pass over it
 refuse.road.junctionsClose,cruzamentos muito próximos,junctions too close
 refuse.road.selfLoop,liga o nó a ele mesmo,it links the node to itself
 refuse.road.sharpAngle,ângulo fechado demais com outra via,too sharp an angle with another road

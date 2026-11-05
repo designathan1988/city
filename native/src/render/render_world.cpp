@@ -20,6 +20,7 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
 	ok = ok && verges_.init(ctx, roads_.look(), errors);
+	ok = ok && structures_.init(ctx, roads_.look(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
 	ok = ok && cover_.init(ctx, errors);
@@ -38,6 +39,7 @@ void RenderWorld::reset() {
 	wear_.reset();
 	roads_.reset();
 	verges_.reset();
+	structures_.reset();
 	props_.reset();
 	trees_.reset();
 	cover_.reset();
@@ -150,7 +152,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
 	const int64_t window = int64_t(t.render_upload_budget_mb * BYTES_PER_MIB);
-	const bool backlog = roads_.waiting() + verges_.waiting() + props_.waiting() + buildings_.waiting() > window * BACKLOG_WINDOWS;
+	const bool backlog = roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() > window * BACKLOG_WINDOWS;
 	BuildBudget budget(backlog ? 0 : std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
 	Laps laps;
 	{
@@ -169,10 +171,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) {
 					roads_.submit(s, k, *s.jobs, 0.f);
 					verges_.submit(s, k, *s.jobs, 0.f);
+					structures_.submit(s, k, *s.jobs, 0.f);
 				},
 				[&](int64_t k) {
 					roads_.drop_chunk(k);
 					verges_.drop_chunk(k);
+					structures_.drop_chunk(k);
 				});
 		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) { props_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { props_.drop_chunk(k); });
@@ -199,11 +203,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	const bool uploads_due = ++upload_frame_ >= upload_every_;
 	if (uploads_due) upload_frame_ = 0;
-	UploadBudget upload(uploads_due ? window : 0, roads_.baking() + verges_.baking() + props_.baking() + buildings_.baking());
+	UploadBudget upload(uploads_due ? window : 0, roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking());
 	RenderingServer::get_singleton()->get_video_adapter_name(); // a wrapped call: runs the queued commands first
 	cost_.flush = laps.lap();
 	roads_.commit(*s.jobs, upload, until);
 	verges_.commit(*s.jobs, upload, until);
+	structures_.commit(*s.jobs, upload, until);
 	cost_.roads = laps.lap();
 	props_.commit(*s.jobs, upload, until);
 	cost_.props = laps.lap();

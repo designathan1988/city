@@ -22,5 +22,7 @@ struct RoadShape {
 
 // The farthest past its casing any road can shape: the casing's hold and the widest batter (SHAPE_INNER + SHAPE_SHOULDER_MAX).
 float road_shape_reach();
+// How far past its casing a cutting held by retaining walls is dug.
+float cut_wall_reach();
 
 } // namespace city

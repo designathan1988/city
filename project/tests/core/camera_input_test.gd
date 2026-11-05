@@ -173,7 +173,23 @@ func _tool_tests() -> void:
 	_check(road.chain != Vector3.INF, "arrastar com o direito não cancela a via")
 	await _click(MOUSE_BUTTON_RIGHT, c)
 	_check(road.chain == Vector3.INF, "clique direito cancela a via")
+	await _height_keys()
 	tools.set_tool(ToolController.Tool.NONE)
+
+
+## With the road tool in hand Page Up and Down are the road's height, landing on whole metres, and the camera does not tilt.
+func _height_keys() -> void:
+	var pitch0 := rig.pitch
+	await _hold_key(KEY_PAGEUP, false, 0.05)
+	await _hold_key(KEY_PAGEUP, false, 0.05)
+	await get_tree().create_timer(SETTLE_S).timeout
+	_check(is_equal_approx(CityStore.query(&"road_height"), 2.0), "Page Up sobe a via (%.1f m)" % CityStore.query(&"road_height"))
+	_check(is_equal_approx(rig.pitch, pitch0), "a câmera não inclina com a via na mão")
+	CityStore.dispatch(&"set_road_height", [1.5])
+	tools.active.height = 1.5
+	await _hold_key(KEY_PAGEDOWN, false, 0.05)
+	_check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "Page Down pousa no metro inteiro (%.1f m)" % CityStore.query(&"road_height"))
+	CityStore.dispatch(&"set_road_height", [0.0])
 
 
 func _drag(button: MouseButton, from: Vector2, to: Vector2, shift: bool, still: bool) -> void:

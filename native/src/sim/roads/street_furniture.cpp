@@ -293,6 +293,17 @@ void hydrant_square(const RoadNetwork &net, double x, double z, double &x0, doub
 	z1 = z0 + cell;
 }
 
+bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, float &to) {
+	const float a = net.nodes[size_t(g.a)].lift, b = net.nodes[size_t(g.b)].lift, buried = -net.cat->tune.structure_buried_m;
+	from = 0;
+	to = 1;
+	if (is_sunken(structure_of(g.flags)) || (a < buried && b < buried)) return false;
+	if (a >= buried && b >= buried) return true;
+	const float t = (buried - a) / (b - a);
+	(a < buried ? from : to) = t;
+	return true;
+}
+
 void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	thread_local std::vector<FurnitureSpot> all;
 	all.clear();
@@ -315,8 +326,14 @@ void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2],
 		if (level == FURN_FULL) bins_and_benches(c);
 		trees(c);
 	}
-	for (const FurnitureSpot &s : all)
+	float open0 = 0, open1 = 1;
+	const bool open = open_stretch(net, g, open0, open1);
+	for (const FurnitureSpot &s : all) {
+		// Nothing stands on a road under the ground but its junction's signals.
+		const double share = g.len > 0 ? s.v / g.len : 0;
+		if (s.kind != FurnitureKind::SIGNAL && (!open || share < open0 || share > open1)) continue;
 		if (kinds & furniture_bit(s.kind)) out.push_back(s);
+	}
 }
 
 } // namespace city

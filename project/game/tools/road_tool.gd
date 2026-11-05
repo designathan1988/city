@@ -3,7 +3,8 @@
 ## the next click; with Free the road follows the stroke. Where the pointer lands comes from the core (road_end: the
 ## network, the angles, the grid), and the road in hand from road_pieces; preview and build read the same pieces, so
 ## what shows green is what gets built. Each road laid ends the gesture. V cycles the alignment, Esc or a right click
-## drops it.
+## drops it. Page Up and Page Down draw the road a metre higher or lower, landing on whole metres; a road starts at the
+## height it was begun at and climbs to the one in hand, and the pointer holds the road at that height, not the ground under it.
 extends ToolBase
 
 enum Alignment { STRAIGHT, CURVE, FREE }
@@ -12,18 +13,26 @@ enum Alignment { STRAIGHT, CURVE, FREE }
 const DENSE_SAMPLES := 256
 const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0
+## The keys of the height, and the metres each moves it.
+const HEIGHT_KEYS := {KEY_PAGEUP: 1, KEY_PAGEDOWN: -1}
+const WHOLE_M := 0.000001 # a height this near a whole metre is on it
 
 var alignment: Alignment = Alignment.STRAIGHT
 var profile := 0
-## The start held by a click, while the next stretch is previewed.
+## The start held by a click, while the next stretch is previewed, and the height it was begun at.
 var chain := Vector3.INF
+var chain_lift := 0.0
+## The height the road in hand is drawn at, over the grade line (the core's: road_height).
+var height := 0.0
+## The ground under the pointer, the last it was heard of: a change of height moves the road in hand under it.
+var pointer := Vector3.INF
 const ROUND_TO_M := 10
 
 ## The profile the road is laid with: `profile` under the options of the class (road_variant).
 var drawn := 0
-## The drag in progress: start, chained, pressed (where the press fell), samples, dragged, end (road_end's answer).
+## The drag in progress: start, lift (the height it was begun at), chained, pressed (where the press fell), samples, dragged, end (road_end's answer).
 var draft: Dictionary = {}
-## The curve with its end down, waiting for the click that sets its bend: start, end, control.
+## The curve with its end down, waiting for the click that sets its bend: start, lift, end, control.
 var bend: Dictionary = {}
 var _last_plan: Dictionary = {}
 
@@ -34,6 +43,7 @@ func enter() -> void:
 	if drawn < 0:
 		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
+	height = CityStore.query(&"road_height")
 	ctl.hint.emit("", true)
 
 
@@ -46,42 +56,46 @@ func exit() -> void:
 	_clear_preview()
 
 
-func click(p: Vector3) -> void:
+func click(ground: Vector3) -> void:
+	var p := _aim(ground)
 	if not bend.is_empty():
 		var b := bend
 		bend = {}
-		_lay(_pieces(b.start, b.end, true, p, PackedVector3Array()))
+		_lay(_pieces(b.start, b.end, true, p, PackedVector3Array()), b.lift)
 		return
 	var chained := chain != Vector3.INF
 	var start: Vector3 = chain if chained else _start_at(p)
-	draft = {"start": start, "chained": chained, "pressed": p, "samples": PackedVector3Array([start]), "dragged": false,
-		"end": _end_at(start, p)}
+	draft = {"start": start, "lift": chain_lift if chained else height, "chained": chained, "pressed": p,
+		"samples": PackedVector3Array([start]), "dragged": false, "end": _end_at(start, p)}
 
 
-func drag(p: Vector3) -> void:
+func drag(ground: Vector3) -> void:
+	var p := _aim(ground)
 	if not bend.is_empty():
 		_bend_to(p)
 	elif not draft.is_empty():
 		draft.end = _end_at(draft.start, p)
 		_sample(p)
 		draft.dragged = draft.dragged or p.distance_to(draft.pressed) > ctl.px_at(p) * DataTables.tuning("road_click_px")
-		_preview(_draft_pieces())
+		_preview(_draft_pieces(), draft.lift)
 
 
-func hover(p: Vector3) -> void:
+func hover(ground: Vector3) -> void:
+	var p := _aim(ground)
 	if not bend.is_empty():
 		_bend_to(p)
 	elif chain != Vector3.INF:
 		var end := _end_at(chain, p)
-		_preview(_pieces(chain, end.position, false, Vector3.ZERO, PackedVector3Array([chain])))
+		_preview(_pieces(chain, end.position, false, Vector3.ZERO, PackedVector3Array([chain])), chain_lift)
 	else:
 		_clear_preview()
 
 
 ## The button let go: a click holds the start, a click on a curve's end waits for its bend, a drag is laid.
-func release(p: Vector3) -> void:
+func release(ground: Vector3) -> void:
 	if draft.is_empty():
 		return
+	var p := ground if ground == Vector3.INF else _aim(ground)
 	var d := draft
 	var click_m: float = ctl.px_at(d.pressed) * DataTables.tuning("road_click_px")
 	var traveled := _traveled(d)
@@ -90,11 +104,12 @@ func release(p: Vector3) -> void:
 	draft = {}
 	if not d.chained and (traveled < click_m or clicked):
 		chain = d.start
+		chain_lift = d.lift
 	elif d.chained and alignment == Alignment.CURVE and not d.dragged:
 		var e: Vector3 = d.end.position
-		bend = {"start": d.start, "end": e, "control": d.start.lerp(e, 0.5)}
+		bend = {"start": d.start, "lift": d.lift, "end": e, "control": d.start.lerp(e, 0.5)}
 	elif traveled >= DataTables.tuning("road_min_len_m"):
-		_lay(pieces)
+		_lay(pieces, d.lift)
 
 
 func in_progress() -> bool:
@@ -112,6 +127,34 @@ func cancel() -> void:
 func key(keycode: Key) -> void:
 	if keycode == KEY_V:
 		ctl.set_tool(ToolController.Tool.ROAD, params.merged({"alignment": (alignment + 1) % Alignment.size()}, true))
+	elif HEIGHT_KEYS.has(keycode):
+		step_height(HEIGHT_KEYS[keycode])
+
+
+func keeps_key(keycode: Key) -> bool:
+	return HEIGHT_KEYS.has(keycode)
+
+
+## The road a metre higher or lower, landing on whole metres (roadTool.ts stepHeight); the road in hand goes with it.
+func step_height(metres: int) -> void:
+	height = (floorf(height + WHOLE_M) if metres > 0 else ceilf(height - WHOLE_M)) + metres
+	CityStore.dispatch(&"set_road_height", [height])
+	ctl.road_height_changed.emit()
+	if pointer == Vector3.INF:
+		return
+	if draft.is_empty():
+		hover(pointer)
+	else:
+		drag(pointer)
+
+
+## Where the pointer stands at the height in hand: along its ray, the ground point seen through the road drawn over it.
+func _aim(ground: Vector3) -> Vector3:
+	pointer = ground
+	var eye: Vector3 = ctl.rig.camera.global_position
+	if is_zero_approx(height) or is_zero_approx(ground.y - eye.y):
+		return ground
+	return eye + (ground - eye) * ((ground.y + height - eye.y) / (ground.y - eye.y))
 
 
 func _snap() -> Dictionary:
@@ -156,14 +199,14 @@ func _pieces(a: Vector3, b: Vector3, has_control: bool, control: Vector3, sample
 
 func _bend_to(p: Vector3) -> void:
 	bend.control = p
-	_preview(_pieces(bend.start, bend.end, true, p, PackedVector3Array()))
+	_preview(_pieces(bend.start, bend.end, true, p, PackedVector3Array()), bend.lift)
 
 
-func _preview(pieces: PackedVector3Array) -> void:
+func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 	if pieces.is_empty():
 		_clear_preview()
 		return
-	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
+	_last_plan = CityStore.dispatch(&"preview_road_path", [pieces, drawn, ctl.px_at(pieces[-1]), from_lift])
 	if _last_plan.is_empty():
 		_clear_preview()
 		return
@@ -191,11 +234,11 @@ func _measure() -> String:
 	return "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(_last_plan.price)]
 
 
-func _lay(pieces: PackedVector3Array) -> void:
+func _lay(pieces: PackedVector3Array, from_lift: float) -> void:
 	_clear_preview()
 	if pieces.is_empty():
 		return
-	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
+	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1]), from_lift])
 	if r.is_empty() or not r.ok:
 		ctl.hint.emit(refusal(r), false)
 		return

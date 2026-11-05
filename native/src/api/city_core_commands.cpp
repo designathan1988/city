@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -46,6 +47,20 @@ std::vector<Quad> quads_of(const PackedVector3Array &p) {
 	return out;
 }
 
+// The height of the road in hand at share t of a piece, as the plan solved its joints.
+float lift_along(const RoadPlan &p, size_t piece, double t) {
+	if (piece + 1 >= p.lifts.size()) return 0;
+	return p.lifts[piece] + (p.lifts[piece + 1] - p.lifts[piece]) * float(t);
+}
+
+// The start of a road is at the height it was begun at (`from_lift`), its end at the one in hand; a NaN says no height was given.
+void road_ends(const CityState &s, const std::vector<Quad> &q, double px, float from_lift, Anchor &a, Anchor &b) {
+	const float start = std::isnan(from_lift) ? s.new_road_lift : from_lift;
+	a = find_anchor(s, q.front().x0, q.front().z0, px, start);
+	b = find_anchor(s, q.back().x1, q.back().z1, px, s.new_road_lift);
+	a.lift = start;
+}
+
 Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const RoadPlan &p, const Anchor &a, const Anchor &b, int profile) {
 	Dictionary d;
 	PackedVector3Array pts;
@@ -53,7 +68,7 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 		for (int i = pts.is_empty() ? 0 : 1; i <= PREVIEW_STEPS; i++) {
 			double x, z;
 			q.at(double(i) / PREVIEW_STEPS, x, z);
-			pts.push_back(Vector3(float(x), s.terrain.height_at(float(x), float(z)), float(z)));
+			pts.push_back(Vector3(float(x), s.terrain.height_at(float(x), float(z)) + lift_along(p, size_t(&q - pieces.data()), double(i) / PREVIEW_STEPS), float(z)));
 		}
 	d["ok"] = p.ok;
 	d["error"] = String(p.reason.c_str());
@@ -79,7 +94,7 @@ Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid)
 	o.on = on;
 	o.grid = grid;
 	o.px = px;
-	return anchor_dict(s, snap_road_start(s, find_anchor(s, p.x, p.z, px), o));
+	return anchor_dict(s, snap_road_start(s, find_anchor(s, p.x, p.z, px, s.new_road_lift), o));
 }
 
 Dictionary CityCore::road_end(const Vector3 &start, const Vector3 &p, double px, bool on, bool angles, bool grid) {
@@ -119,16 +134,17 @@ PackedVector3Array CityCore::road_pieces(const Vector3 &a, const Vector3 &b, int
 	return out;
 }
 
-Dictionary CityCore::preview_road_path(const PackedVector3Array &pieces, int profile, double px) {
+Dictionary CityCore::preview_road_path(const PackedVector3Array &pieces, int profile, double px, float from_lift) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	std::vector<Quad> q = quads_of(pieces);
 	if (!s.ready || q.empty()) return Dictionary();
-	Anchor a = find_anchor(s, q.front().x0, q.front().z0, px), b = find_anchor(s, q.back().x1, q.back().z1, px);
+	Anchor a, b;
+	road_ends(s, q, px, from_lift, a, b);
 	return plan_dict(s, q, plan_path(s, q, a, b, profile), a, b, profile);
 }
 
-Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profile, double px) {
+Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profile, double px, float from_lift) {
 	return run_edit(*state_, "cmd.build.road", [&](CityState &s) {
 		std::vector<Quad> q = quads_of(pieces);
 		if (q.empty()) {
@@ -136,25 +152,26 @@ Dictionary CityCore::build_road_path(const PackedVector3Array &pieces, int profi
 			none.error = "refuse.road.tooShort";
 			return none;
 		}
-		Anchor a = find_anchor(s, q.front().x0, q.front().z0, px), b = find_anchor(s, q.back().x1, q.back().z1, px);
+		Anchor a, b;
+		road_ends(s, q, px, from_lift, a, b);
 		return build_path(s, q, a, b, profile);
 	});
 }
 
-Dictionary CityCore::preview_road(const Vector3 &a, const Vector3 &b, bool has_control, const Vector3 &c, int profile, double px) {
+Dictionary CityCore::preview_road(const Vector3 &a, const Vector3 &b, bool has_control, const Vector3 &c, int profile, double px, float from_lift) {
 	PackedVector3Array one;
 	one.push_back(a);
 	one.push_back(has_control ? c : (a + b) / 2);
 	one.push_back(b);
-	return preview_road_path(one, profile, px);
+	return preview_road_path(one, profile, px, from_lift);
 }
 
-Dictionary CityCore::build_road(const Vector3 &a, const Vector3 &b, bool has_control, const Vector3 &c, int profile, double px) {
+Dictionary CityCore::build_road(const Vector3 &a, const Vector3 &b, bool has_control, const Vector3 &c, int profile, double px, float from_lift) {
 	PackedVector3Array one;
 	one.push_back(a);
 	one.push_back(has_control ? c : (a + b) / 2);
 	one.push_back(b);
-	return build_road_path(one, profile, px);
+	return build_road_path(one, profile, px, from_lift);
 }
 
 Dictionary CityCore::demolish_box(const Vector3 &a, const Vector3 &b) {

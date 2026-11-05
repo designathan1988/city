@@ -64,9 +64,10 @@ public:
 	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid);
 	godot::PackedVector3Array road_pieces(const godot::Vector3 &a, const godot::Vector3 &b, int alignment, bool has_control, const godot::Vector3 &c,
 			const godot::PackedVector3Array &samples, int profile, double px);
-	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px), build_road_path(const godot::PackedVector3Array &pieces, int profile, double px);
-	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
-	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px);
+	// from_lift: the height the road was begun at, over the grade line; HEIGHT_IN_HAND for the one the tool draws at now.
+	godot::Dictionary preview_road_path(const godot::PackedVector3Array &pieces, int profile, double px, float from_lift), build_road_path(const godot::PackedVector3Array &pieces, int profile, double px, float from_lift);
+	godot::Dictionary preview_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px, float from_lift);
+	godot::Dictionary build_road(const godot::Vector3 &a, const godot::Vector3 &b, bool has_control, const godot::Vector3 &c, int profile, double px, float from_lift);
 	godot::Dictionary demolish(const godot::Vector3 &p);
 	godot::Dictionary demolish_box(const godot::Vector3 &a, const godot::Vector3 &b); // everything in the box, one undo step
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);

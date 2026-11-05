@@ -3,7 +3,13 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
+#include <limits>
+
 using namespace godot;
+
+namespace {
+constexpr float HEIGHT_IN_HAND = std::numeric_limits<float>::quiet_NaN(); // a road begun at the height the tool draws at now
+}
 
 namespace city {
 
@@ -39,10 +45,10 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid"), &CityCore::road_start);
 	ClassDB::bind_method(D_METHOD("road_end", "start", "position", "px", "on", "angles", "grid"), &CityCore::road_end);
 	ClassDB::bind_method(D_METHOD("road_pieces", "start", "end", "alignment", "has_control", "control", "samples", "profile", "px"), &CityCore::road_pieces);
-	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px"), &CityCore::preview_road_path);
-	ClassDB::bind_method(D_METHOD("build_road_path", "pieces", "profile", "px"), &CityCore::build_road_path);
-	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::preview_road);
-	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px"), &CityCore::build_road);
+	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px", "from_lift"), &CityCore::preview_road_path, DEFVAL(HEIGHT_IN_HAND));
+	ClassDB::bind_method(D_METHOD("build_road_path", "pieces", "profile", "px", "from_lift"), &CityCore::build_road_path, DEFVAL(HEIGHT_IN_HAND));
+	ClassDB::bind_method(D_METHOD("preview_road", "start", "end", "has_control", "control", "profile", "px", "from_lift"), &CityCore::preview_road, DEFVAL(HEIGHT_IN_HAND));
+	ClassDB::bind_method(D_METHOD("build_road", "start", "end", "has_control", "control", "profile", "px", "from_lift"), &CityCore::build_road, DEFVAL(HEIGHT_IN_HAND));
 	ClassDB::bind_method(D_METHOD("demolish", "position"), &CityCore::demolish);
 	ClassDB::bind_method(D_METHOD("paint_zone", "position", "radius", "zone"), &CityCore::paint_zone);
 	ClassDB::bind_method(D_METHOD("road_profiles"), &CityCore::road_profiles);

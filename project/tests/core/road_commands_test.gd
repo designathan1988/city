@@ -79,6 +79,7 @@ func _ready() -> void:
 	print("demolir: ", d, " dinheiro ", m0, " -> ", CityStore.snapshot.money)
 	_check(d.ok, "demoliu")
 	RoadMoneyCases.new(_check).run(b)
+	RoadHeightCases.new(_check).run(b)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 

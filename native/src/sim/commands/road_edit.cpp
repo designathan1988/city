@@ -44,7 +44,14 @@ int split_segment(CityState &s, int seg, double t) {
 	return n;
 }
 
-int anchor_node(CityState &s, const Anchor &a) {
+float anchor_lift(const CityState &s, const Anchor &a) {
+	const RoadNetwork &net = s.roads;
+	if (a.node >= 0 && a.node < int(net.nodes.size()) && net.nodes[size_t(a.node)].alive) return net.nodes[size_t(a.node)].lift;
+	if (a.seg >= 0 && a.seg < int(net.segs.size()) && net.segs[size_t(a.seg)].alive) return net.lift_on(a.seg, a.t);
+	return a.lift.value_or(s.new_road_lift);
+}
+
+int anchor_node(CityState &s, const Anchor &a, float lift) {
 	RoadNetwork &net = s.roads;
 	if (a.node >= 0 && a.node < int(net.nodes.size()) && net.nodes[a.node].alive) return a.node;
 	if (a.seg >= 0 && still_there(s, a.seg, a.x, a.z)) {
@@ -52,14 +59,17 @@ int anchor_node(CityState &s, const Anchor &a) {
 		closest_t(net.segs[a.seg].q, a.x, a.z, t, d);
 		return split_segment(s, a.seg, t);
 	}
-	Anchor again = snap_point(s, a.x, a.z, s.catalog.tune.road_merge_m);
-	if (again.node >= 0) return again.node;
-	if (again.seg >= 0) return split_segment(s, again.seg, again.t);
-	return j_add_node(s, a.x, a.z, s.terrain.height_at(float(a.x), float(a.z)));
+	// What stands at another height there is passed, not joined (commit.ts materializeFree).
+	const Anchor again = snap_point(s, a.x, a.z, s.catalog.tune.road_merge_m);
+	const float join = s.catalog.tune.grade_join_m;
+	if (again.node >= 0 && std::fabs(net.nodes[size_t(again.node)].lift - lift) <= join) return again.node;
+	if (again.seg >= 0 && std::fabs(net.lift_on(again.seg, again.t) - lift) <= join) return split_segment(s, again.seg, again.t);
+	return j_add_node(s, a.x, a.z, s.terrain.height_at(float(a.x), float(a.z)) + lift, lift);
 }
 
 int clear_under(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[seg];
+	if (structure_of(g.flags) == Structure::TUNNEL) return 0; // what stands over a bore stays (validate.ts touchesRoad)
 	double half = s.catalog.profile(g.profile).right;
 	int n = std::max(2, int(std::ceil(g.len / CLEAR_STEP_M)) + 1);
 	std::vector<double> px(static_cast<size_t>(n)), pz(static_cast<size_t>(n));

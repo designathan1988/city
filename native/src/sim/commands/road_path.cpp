@@ -128,7 +128,10 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor from = i == 0 ? a : free_anchor(q.x0, q.z0), to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
+		if (i > 0) from.lift = total.lifts.back();
 		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
+		if (i == 0) total.lifts.push_back(p.lift_a);
+		total.lifts.push_back(p.lift_b);
 		total.len += p.len;
 		total.price += p.price;
 		total.crossings.insert(total.crossings.end(), p.crossings.begin(), p.crossings.end());

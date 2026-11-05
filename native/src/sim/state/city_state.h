@@ -57,7 +57,8 @@ struct CityState {
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time
 	CityClock clock;
 	EditHistory history; // undo / redo of the player's commands (sim/commands/edit_history.cpp)
-	uint16_t new_road_flags = 0; // the furniture set the road tool lays new roads with (SEG_FURNITURE_MASK)
+	float new_road_lift = 0; // the height over the grade line the road tool draws at, metres (Roadcraft 4.0 roadHeightOffset)
+	uint16_t new_road_flags = 0; // what the road tool lays new roads with: the furniture set (SEG_FURNITURE_MASK) and SEG_CUT_WALLS
 	double money = 0;
 	bool unlimited_money = false;
 	uint32_t seed = 0;

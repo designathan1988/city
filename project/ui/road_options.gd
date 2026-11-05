@@ -19,6 +19,9 @@ func _ready() -> void:
 		tools.tool_changed.connect(func(_tool: int, _params: Dictionary) -> void:
 			if is_inside_tree():
 				refresh())
+		tools.road_height_changed.connect(func() -> void:
+			if is_inside_tree():
+				refresh())
 
 
 ## The rows again from the tool's parameters and the player's settings.
@@ -41,6 +44,7 @@ func refresh() -> void:
 	var class_card: bool = _base().class_card
 	if class_card:
 		_class_rows(spec)
+	_height_rows()
 	_furniture_row(spec.furniture)
 	if class_card:
 		_parking_row(spec)
@@ -79,6 +83,27 @@ func _class_rows(spec: Dictionary) -> void:
 		var back := HudWidgets.button(&"IconButton", "undo", "", "palette.width.auto", "icon_btn", "icon_btn")
 		back.pressed.connect(func() -> void: option_picked.emit("width", 0.0))
 		row.add_child(back)
+
+
+## The height the road is drawn at, a bridge above and a cutting or tunnel below, and the sides of a cutting (shell.ts).
+func _height_rows() -> void:
+	var metres: float = CityStore.query(&"road_height")
+	var row := _row("v2.row.height")
+	var where := "palette.height.above" if metres > 0 else "palette.height.below" if metres < 0 else "palette.height.ground"
+	row.tooltip_text = "%s: %s" % [tr("palette.height"), tr(where)]
+	_height_step(row, "minus", -1)
+	var whole := is_equal_approx(metres, roundf(metres))
+	HudWidgets.label(row, &"BodyLabel", Formatters.format_length(metres) if whole else Formatters.format_length_tenths(metres))
+	_height_step(row, "plus", 1)
+	row = _row("cutSides.row")
+	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], CityStore.query(&"road_walls"), func(on: bool) -> void:
+		CityStore.dispatch(&"set_road_walls", [on]))
+
+
+func _height_step(row: Control, icon: String, metres: int) -> void:
+	var b := HudWidgets.button(&"IconButton", icon, "", "palette.height", "icon_btn", "icon_btn")
+	b.pressed.connect(func() -> void: tools.step_road_height(metres))
+	row.add_child(b)
 
 
 ## What new roads are laid with (Roadcraft shell.ts, roadFurniture): every road's choice, after the class's own size and before its

@@ -11,6 +11,7 @@
 #include "sim/street/street_works.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@ struct Anchor {
 	double x = 0, z = 0;
 	int node = -1, seg = -1;
 	double t = 0;
+	std::optional<float> lift; // a free end's height over the grade line, when it is not the one being drawn at
 };
 
 // A crossing of the new road with an existing segment at grade: t on the new road, the segment and t on it.
@@ -41,6 +43,9 @@ struct RoadPlan {
 	double len = 0;
 	double price = 0; // what building it costs (R$)
 	std::vector<Crossing> crossings;
+	float lift_a = 0, lift_b = 0; // its ends' height over the grade line, the end held to the steepest grade drawn
+	std::vector<float> lifts; // of a path: the height at each joint of its pieces
+	float lift_at(double t) const { return lift_a + (lift_b - lift_a) * float(t); }
 };
 
 // What a command did. `error` is a strings.csv key (empty when ok); `money` > 0 charged, < 0 refunded.
@@ -87,7 +92,8 @@ struct RoadStroke {
 
 // --- Where a road lands and what it is laid as (road_snap.cpp, road_path.cpp)
 // What is under the pointer: a node, a point on a road (anywhere on its surface) or open ground.
-Anchor find_anchor(const CityState &s, double x, double z, double px);
+// `lift`: only what stands at that height over the grade line is taken (Roadcraft editor/snap.ts anchorForHeight); none takes any.
+Anchor find_anchor(const CityState &s, double x, double z, double px, std::optional<float> lift = {});
 // Where a road starts: a junction or road keeps its exact point, open ground goes on the grid.
 Anchor snap_road_start(const CityState &s, const Anchor &a, const SnapOptions &o);
 // The end the pointer asks for from `start`, after the network, the angles and the grid.

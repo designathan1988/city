@@ -115,9 +115,29 @@ void CityStreet::show_pole_preview(const Array &poles) {
 	render_->set_pole_preview(*state_, shown);
 }
 
+void CityStreet::set_road_walls(bool on) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->new_road_flags = uint16_t(on ? state_->new_road_flags | SEG_CUT_WALLS : state_->new_road_flags & ~SEG_CUT_WALLS);
+}
+
+bool CityStreet::road_walls() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return (state_->new_road_flags & SEG_CUT_WALLS) != 0;
+}
+
+void CityStreet::set_road_height(float metres) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	state_->new_road_lift = metres;
+}
+
+float CityStreet::road_height() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return state_->new_road_lift;
+}
+
 void CityStreet::set_road_furniture(int level) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-	state_->new_road_flags = uint16_t(level << SEG_FURNITURE_SHIFT) & SEG_FURNITURE_MASK;
+	state_->new_road_flags = uint16_t((state_->new_road_flags & ~SEG_FURNITURE_MASK) | (uint16_t(level << SEG_FURNITURE_SHIFT) & SEG_FURNITURE_MASK));
 }
 
 int CityStreet::road_furniture() {
@@ -217,6 +237,10 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("show_pole_preview", "poles"), &CityStreet::show_pole_preview);
 	ClassDB::bind_method(D_METHOD("set_road_furniture", "level"), &CityStreet::set_road_furniture);
 	ClassDB::bind_method(D_METHOD("road_furniture"), &CityStreet::road_furniture);
+	ClassDB::bind_method(D_METHOD("set_road_height", "metres"), &CityStreet::set_road_height);
+	ClassDB::bind_method(D_METHOD("road_height"), &CityStreet::road_height);
+	ClassDB::bind_method(D_METHOD("set_road_walls", "on"), &CityStreet::set_road_walls);
+	ClassDB::bind_method(D_METHOD("road_walls"), &CityStreet::road_walls);
 	ClassDB::bind_method(D_METHOD("sign_cells"), &CityStreet::sign_cells);
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityStreet::street_counts);
 	ClassDB::bind_method(D_METHOD("street_poles"), &CityStreet::street_poles);

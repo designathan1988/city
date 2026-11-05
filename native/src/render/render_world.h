@@ -20,6 +20,7 @@
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/road_renderer.h"
+#include "render/roads/structure_renderer.h"
 #include "render/roads/verge_renderer.h"
 #include "render/terrain_bridge.h"
 #include "render/cover/cover_renderer.h"
@@ -130,6 +131,7 @@ private:
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	VergeRenderer verges_;
+	StructureRenderer structures_;
 	PropRenderer props_;
 	TreeRenderer trees_;
 	CoverRenderer cover_;

@@ -45,6 +45,8 @@ struct LampRow {
 	}
 };
 LampRow lamp_row(const RoadNetwork &net, int sid);
+// The share of a road (0 at a, 1 at b) that is not buried, by its ends' authored heights (Roadcraft 4.0 powerLine.ts openStretch): false when none is.
+bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, float &to);
 
 // The side has a sidewalk; the u `from_kerb` metres in from its kerb.
 bool sidewalk_on(const Profile &p, int side);

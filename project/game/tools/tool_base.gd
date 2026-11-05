@@ -52,6 +52,11 @@ func in_progress() -> bool:
 	return false
 
 
+## Keeps a key from the camera, which takes it otherwise.
+func keeps_key(_keycode: Key) -> bool:
+	return false
+
+
 func key(_keycode: Key) -> void:
 	pass
 

@@ -12,9 +12,16 @@
 	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, inner_radius_m) X(road, bend_limit) X(road, bend_gain) \
 	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
 	X(road, bay_m) X(road, max_variants) \
-	X(grade, ground) X(grade, ramp) X(grade, deck) X(grade, deck_tie) X(grade, tunnel) X(grade, clearance_m) \
+	X(grade, ground) X(grade, authored) X(grade, join_m) X(grade, ramp) X(grade, deck) X(grade, deck_tie) X(grade, tunnel) X(grade, clearance_m) \
 	X(grade, clear_elevated_m) X(grade, clear_bridge_m) X(grade, deck_ground_m) X(grade, deck_elevated_m) X(grade, deck_bridge_m) X(grade, deck_tunnel_m) \
 	X(grade, tunnel_headroom_m) X(grade, tunnel_arch_m) X(grade, tunnel_floor_m) X(grade, lift_on_m) \
+	X(structure, raised_m) X(structure, buried_m) X(structure, wall_thick_m) X(structure, wall_coping_m) X(structure, wall_foot_m) X(structure, wall_step_m) X(structure, bore_over_m) X(structure, pier_spacing_elevated_m) X(structure, pier_spacing_bridge_m) \
+	X(structure, pier_radius_elevated_m) X(structure, pier_radius_bridge_m) X(structure, bearing_m) X(structure, pier_slenderness) \
+	X(structure, pier_max_width) X(structure, min_support_m) X(structure, bent_spread) X(structure, cap_depth) X(structure, cap_height_m) \
+	X(structure, cap_overhang_m) X(structure, parapet_height_m) X(structure, parapet_foot_m) X(structure, parapet_top_m) \
+	X(structure, parapet_step_m) X(structure, parapet_from_m) X(structure, parapet_full_m) X(structure, abutment_lift_m) \
+	X(structure, abutment_depth_m) X(structure, pier_abutment_gap_m) X(structure, portal_wing_m) X(structure, portal_thickness_m) \
+	X(structure, portal_slice_m) X(structure, portal_coping_m) X(structure, portal_cover_m) \
 	X(zone, side_offset_m) X(zone, sample_m) \
 	X(economy, start_money) X(economy, refund_share) X(economy, fill_from_m) X(economy, on_piers_from_m) \
 	X(world, tile_m) X(world, height_spacing_m) X(world, water_spacing_m) \
