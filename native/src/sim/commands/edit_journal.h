@@ -114,7 +114,7 @@ void apply_entry(CityState &s, const EditEntry &e, bool forward);
 
 // Journalled mutations: the only way sim/commands change roads, buildings, terrain and money. Each records its op in
 // s.history.open while a command is recording.
-int j_add_node(CityState &s, double x, double z, double y);
+int j_add_node(CityState &s, double x, double z, double y, float lift = 0); // lift: its authored height (RoadNode.lift)
 void j_remove_node_if_orphan(CityState &s, int n);
 void j_set_plain(CityState &s, int n, bool plain);
 void j_set_control(CityState &s, int n, uint8_t ctl);

@@ -21,7 +21,7 @@ void CityProbes::probe_set_money(double money) {
 
 Dictionary CityProbes::probe_road_build(int profile, int structure, double height_a, double height_b, double len) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const RoadBuild b{ RoadStructure(structure), height_a, height_b };
+	const RoadBuild b{ Structure(structure), height_a, height_b };
 	const BuildLengths l = build_lengths(state_->catalog.tune, b, len);
 	Dictionary d;
 	d["ground"] = l.ground;

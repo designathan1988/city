@@ -100,8 +100,10 @@ bool Heightfield::brush(const BrushDab &d) {
 			mark_tile(i);
 			changed = true;
 		}
-	if (changed) recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
-	return changed;
+	if (!changed) return false;
+	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there are read again
+	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
+	return true;
 }
 
 void Heightfield::flood(float x, float z, float radius, float level, std::vector<uint32_t> &index, std::vector<float> &before) {
@@ -118,6 +120,7 @@ void Heightfield::flood(float x, float z, float radius, float level, std::vector
 			before.push_back(water[i]);
 			water[i] = level;
 		}
+	if (!index.empty()) ground_moved.insert(ground_moved.end(), { x - radius, z - radius, x + radius, z + radius }); // water is a road's floor
 }
 
 } // namespace city

@@ -3,6 +3,8 @@
 // of the price back, generated roads included.
 #pragma once
 
+#include "sim/roads/road_grade.h"
+
 #include <cstdint>
 
 namespace city {
@@ -14,11 +16,9 @@ struct Tuning;
 // The strings.csv key of an edit refused for lack of money.
 constexpr const char *REFUSED_FUNDS = "hint.rule.funds";
 
-enum class RoadStructure : uint8_t { GROUND, ELEVATED, BRIDGE, TUNNEL };
-
 // How a road stands: its structure and its authored height over the ground at each end (metres).
 struct RoadBuild {
-	RoadStructure structure = RoadStructure::GROUND;
+	Structure structure = Structure::GROUND; // the segment's (sim/roads/road_grade.h, the one owner)
 	double height_a = 0, height_b = 0;
 };
 

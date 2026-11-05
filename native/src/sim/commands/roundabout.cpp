@@ -191,10 +191,7 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	j_add_modifier(s, { float(cx), float(b.y), float(cz) }, disc, float(tn.roundabout_disc_pad_m));
 	for (int sg : ring_segs) r.buildings_removed += clear_under(s, sg);
 	for (int sg : b.approaches)
-		if (s.roads.segs[sg].alive) {
-			r.buildings_removed += clear_under(s, sg);
-			conform_under(s, sg);
-		}
+		if (s.roads.segs[sg].alive) r.buildings_removed += clear_under(s, sg);
 	double reach = disc + tn.roundabout_approach_m;
 	finish_edit(s, cx - reach, cz - reach, cx + reach, cz + reach);
 	r.ok = true;

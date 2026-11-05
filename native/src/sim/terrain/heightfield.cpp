@@ -29,6 +29,10 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	free_mods.clear();
 	mod_hash.clear();
 	mod_hash.cell = SUBCHUNK;
+	road_shapes.clear();
+	shape_hash.clear();
+	shape_hash.cell = SUBCHUNK;
+	ground_moved.clear();
 	water.clear();
 	water_n = 0;
 	tile_dirty.assign(size_t(regions) * regions, 0);
@@ -159,7 +163,39 @@ void Heightfield::write_samples(const std::vector<uint32_t> &idx, const std::vec
 		r.x0 = std::min(r.x0, x); r.x1 = std::max(r.x1, x);
 		r.z0 = std::min(r.z0, z); r.z1 = std::max(r.z1, z);
 	}
-	if (!r.empty()) recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
+	if (r.empty()) return;
+	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there read it again
+	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
+}
+
+void Heightfield::put_road_shape(int id, const RoadShape &r) {
+	if (id >= int(road_shapes.size())) road_shapes.resize(size_t(id) + 1);
+	RoadShape &old = road_shapes[size_t(id)];
+	float minx = r.minx, minz = r.minz, maxx = r.maxx, maxz = r.maxz;
+	if (old.alive) {
+		shape_hash.remove_aabb(id, old.minx, old.minz, old.maxx, old.maxz);
+		minx = std::min(minx, old.minx); minz = std::min(minz, old.minz);
+		maxx = std::max(maxx, old.maxx); maxz = std::max(maxz, old.maxz);
+	}
+	old = r;
+	old.alive = true;
+	shape_hash.insert_aabb(id, r.minx, r.minz, r.maxx, r.maxz);
+	recompose_world_rect(minx, minz, maxx, maxz);
+}
+
+void Heightfield::drop_road_shape(int id) {
+	if (id < 0 || id >= int(road_shapes.size()) || !road_shapes[size_t(id)].alive) return;
+	RoadShape &r = road_shapes[size_t(id)];
+	shape_hash.remove_aabb(id, r.minx, r.minz, r.maxx, r.maxz);
+	r.alive = false;
+	r.pts.clear();
+	recompose_world_rect(r.minx, r.minz, r.maxx, r.maxz);
+}
+
+std::vector<float> Heightfield::take_ground_moved() {
+	std::vector<float> out;
+	out.swap(ground_moved);
+	return out;
 }
 
 void Heightfield::remove_modifier(int id) {
@@ -226,6 +262,12 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
 	for (int id : ids)
 		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
+	ids.clear();
+	shape_hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
+	std::sort(ids.begin(), ids.end());
+	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+	for (int id : ids)
+		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w);
 	if (log) log->terrain_rects.insert(log->terrain_rects.end(), { x0, z0, x1, z1 });
 }
 
@@ -236,6 +278,10 @@ void Heightfield::finish_load() {
 	free_mods.clear();
 	mod_hash.clear();
 	mod_hash.cell = SUBCHUNK;
+	road_shapes.clear(); // derived again from the roads read after (sim/commands/road_grade_sync.cpp)
+	shape_hash.clear();
+	shape_hash.cell = SUBCHUNK;
+	ground_moved.clear();
 }
 
 } // namespace city

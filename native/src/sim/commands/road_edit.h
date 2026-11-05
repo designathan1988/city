@@ -22,8 +22,6 @@ int split_segment(CityState &s, int seg, double t);
 int anchor_node(CityState &s, const Anchor &a);
 // Removes the buildings whose lot the segment's surface covers; returns how many.
 int clear_under(CityState &s, int seg);
-// The ground follows the new segment (a terrain corridor modifier, as the generated city's streets).
-void conform_under(CityState &s, int seg);
 // Removes the segment and the nodes it leaves alone; the command settles what comes back (road_economy.h settle_road_edit).
 void demolish_segment(CityState &s, int seg);
 // The ground moved under the box: its roads, buildings and lots are drawn / derived again (brush.ts touchSamples).

@@ -36,8 +36,9 @@ void EditEntry::grow(double x0, double z0, double x1, double z1) {
 	maxx = std::max(maxx, x1); maxz = std::max(maxz, z1);
 }
 
-int j_add_node(CityState &s, double x, double z, double y) {
+int j_add_node(CityState &s, double x, double z, double y, float lift) {
 	int id = s.roads.add_node(x, z, y);
+	s.roads.nodes[size_t(id)].lift = lift; // in the record the journal keeps: a redo lays it at the same height
 	s.roads.nodes[id].plain = true; // a road the player lays ends in a straight cut: the bulb is chosen (set_road_end)
 	s.log.net_node(id);
 	if (s.history.recording) {

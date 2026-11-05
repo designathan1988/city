@@ -38,7 +38,6 @@
   "embankment_ratio": 1.8,
   "min_run_m": 7,
   "road_sink_m": 0.1,
-  "road_hold_m": 2.2,
   "rough_reach_min": 0.78,
   "min_hard_rim": 0.08,
   "min_hard_wall_m": 8,
@@ -78,6 +77,22 @@
   "variant_walk_hi_m": 12,
   "bay_m": 2,
   "max_variants": 256
+ },
+ "grade": {
+  "ground": 0.12,
+  "ramp": 0.16,
+  "deck": 0.05,
+  "deck_tie": 0.05,
+  "tunnel": 0.13,
+  "clearance_m": 0.12,
+  "clear_elevated_m": 5.6,
+  "clear_bridge_m": 3,
+  "deck_elevated_m": 1.04,
+  "deck_bridge_m": 0.96,
+  "tunnel_headroom_m": 4.4,
+  "tunnel_arch_m": 0.6,
+  "tunnel_floor_m": 2,
+  "lift_on_m": 0.6
  },
  "history": {
   "max_entries": 500,

@@ -7,6 +7,7 @@
 #include "sim/catalog/catalog.h"
 #include "sim/state/change_log.h"
 #include "sim/terrain/height_patch.h"
+#include "sim/terrain/road_shape.h"
 
 #include <vector>
 
@@ -58,6 +59,11 @@ public:
 	std::vector<TerrainModifier> mods;
 	std::vector<int> free_mods;
 	SpatialHash mod_hash;
+	// The ground shaped to each road, by segment id: derived from the roads' heights, never journaled nor saved.
+	std::vector<RoadShape> road_shapes;
+	SpatialHash shape_hash;
+	// World rectangles (x0, z0, x1, z1) where the natural ground or its water changed since the roads last read it.
+	std::vector<float> ground_moved;
 	ChangeLog *log = nullptr;
 
 	std::vector<float> water; // water level per water sample (TerrainGen::NO_WATER where dry)
@@ -97,6 +103,11 @@ public:
 	void flood(float x, float z, float radius, float level, std::vector<uint32_t> &index, std::vector<float> &before);
 	// Writes base samples back (undo / redo / load) and recomposes around them.
 	void write_samples(const std::vector<uint32_t> &idx, const std::vector<uint16_t> &values);
+	// The ground under segment `id` shaped to it again (or no more), recomposed where it was and where it is.
+	void put_road_shape(int id, const RoadShape &r);
+	void drop_road_shape(int id);
+	// Where the natural ground moved since the last call (the roads there read it again), and forgets it.
+	std::vector<float> take_ground_moved();
 	int add_modifier(const std::vector<float> &pts, float flat, float max_run);
 	void remove_modifier(int id);
 	void put_modifier(int id, const TerrainModifier &m); // undo / redo / load: the same id again
@@ -110,6 +121,7 @@ private:
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
+	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w); // road_shape.cpp
 };
 
 } // namespace city

@@ -29,6 +29,7 @@ void RoadNetwork::clear() {
 	seg_hash.clear();
 	node_hash.clear();
 	seg_hash.cell = node_hash.cell = ROAD_HASH_CELL;
+	grade = RoadGrade();
 	version++;
 }
 
@@ -41,6 +42,7 @@ int RoadNetwork::add_node(double x, double z, double y) {
 	n.alive = true;
 	n.x = x; n.z = z; n.y = y;
 	node_hash.insert_aabb(id, float(x), float(z), float(x), float(z));
+	grade.node_changed(id);
 	version++;
 	return id;
 }
@@ -70,6 +72,7 @@ int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, i
 	seg_hash.insert_aabb(id, g.minx, g.minz, g.maxx, g.maxz);
 	nodes[a].segs.push_back(id);
 	nodes[b].segs.push_back(id);
+	grade.seg_changed(id);
 	version++;
 	if (log) log->network_changed = true;
 	return id;
@@ -87,6 +90,8 @@ void RoadNetwork::remove_segment(int s) {
 	}
 	g.alive = false;
 	free_segs.push_back(s);
+	grade.seg_changed(s);
+	for (int n : { g.a, g.b }) grade.node_changed(n); // its nodes' other roads settle again
 	version++;
 	if (log) log->network_changed = true;
 }
@@ -116,6 +121,7 @@ void RoadNetwork::put_node(int id, const RoadNode &rec) {
 	n.alive = true;
 	n.segs.clear();
 	node_hash.insert_aabb(id, float(n.x), float(n.z), float(n.x), float(n.z));
+	grade.node_changed(id);
 	version++;
 }
 
@@ -132,6 +138,7 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	nodes[g.a].segs.push_back(id);
 	nodes[g.b].segs.push_back(id);
 	mark_segment(id);
+	grade.seg_changed(id);
 	version++;
 	if (log) log->network_changed = true;
 }
@@ -144,6 +151,7 @@ void RoadNetwork::set_profile(int s, int profile) {
 	update_bounds(s);
 	seg_hash.insert_aabb(s, g.minx, g.minz, g.maxx, g.maxz);
 	mark_segment(s);
+	grade.seg_changed(s); // its casing, so the ground read under it and its plates
 	version++;
 	if (log) log->network_changed = true;
 }
@@ -197,9 +205,36 @@ bool RoadNetwork::has_crosswalks(int node) const {
 }
 
 double RoadNetwork::seg_y(int s, double at) const {
+	if (grade.has(s)) return grade.at(s, at);
 	const RoadSegment &g = segs[s];
 	double ya = nodes[g.a].y, yb = nodes[g.b].y;
 	return g.len > 0 ? ya + (yb - ya) * std::max(0.0, std::min(1.0, at / g.len)) : ya;
+}
+
+void RoadNetwork::set_lift(int n, float lift) {
+	if (nodes[size_t(n)].lift == lift) return;
+	nodes[size_t(n)].lift = lift;
+	grade.node_changed(n);
+	for (int s : nodes[size_t(n)].segs) grade.seg_changed(s); // an authored alignment, or no more
+}
+
+void RoadNetwork::set_structure(int s, Structure st) {
+	RoadSegment &g = segs[size_t(s)];
+	if (structure_of(g.flags) == st) return;
+	g.flags = with_structure(g.flags, st);
+	grade.seg_changed(s);
+	mark_segment(s);
+}
+
+void RoadNetwork::mark_heights(int s) {
+	if (!log) return;
+	const RoadSegment &g = segs[size_t(s)];
+	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
+		for (int i = int(std::floor(g.minx / CHUNK)); i <= int(std::floor(g.maxx / CHUNK)); i++) log->road_chunks.push_back(cell_key(i, j));
+	log->net_seg(s);
+	log->net_node(g.a);
+	log->net_node(g.b);
+	log->furniture_segs.push_back(s);
 }
 
 bool RoadNetwork::bulb_clear(int n) const {
@@ -223,6 +258,7 @@ void RoadNetwork::refresh_node(int n) {
 	RoadNode &nd = nodes[n];
 	if (!nd.alive) return;
 	size_t k = nd.segs.size();
+	const bool was_joint = nd.joint;
 	nd.bulb = k == 1 && !nd.plain && bulb_clear(n);
 	nd.joint = false;
 	std::vector<Arm> arms;
@@ -233,10 +269,13 @@ void RoadNetwork::refresh_node(int n) {
 		lens.push_back(segs[s].len);
 	}
 	if (k == 2) nd.joint = arms[0].dx * arms[1].dx + arms[0].dz * arms[1].dz < STRAIGHT_ANGLE_COS;
+	if (nd.joint != was_joint) grade.node_changed(n); // a plate there, or none
 	junction_retreats(arms, lens, out, order, nd.bulb);
 	for (size_t i = 0; i < k; i++) {
 		RoadSegment &g = segs[nd.segs[i]];
-		(g.a == n ? g.retreat_a : g.retreat_b) = out[i];
+		double &mouth = g.a == n ? g.retreat_a : g.retreat_b;
+		if (mouth != out[i]) grade.seg_changed(nd.segs[i]); // its plate there moved
+		mouth = out[i];
 		mark_segment(nd.segs[i]);
 		// the mouths moved: the lane graph rebuilds this arm and its node on the next traffic step
 		if (log) {

@@ -36,8 +36,10 @@ public:
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
 	void probe_set_money(double money); // tests: a balance to reach the refusal without spending it
-	// Tests: how a road would be built and what it would cost (structure: RoadStructure).
+	// Tests: how a road would be built and what it would cost (structure: Structure, sim/roads/road_grade.h).
 	godot::Dictionary probe_road_build(int profile, int structure, double height_a, double height_b, double len);
+	// Tests: the road heights solved on a scene of its own (city_core_grade_probe.cpp), the 4.0's elevation.spec cases.
+	godot::Dictionary grade_probe(const godot::Dictionary &scene);
 
 protected:
 	static void _bind_methods();

@@ -49,7 +49,8 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 	for (const RoadNode &n : net.nodes) {
 		w.put<uint8_t>(n.alive ? 1 : 0);
 		if (!n.alive) continue;
-		for (double v : { n.x, n.z, n.y }) w.put<double>(v);
+		for (double v : { n.x, n.z }) w.put<double>(v);
+		w.put<float>(n.lift); // its height is solved again from the roads and the ground on load
 		w.put<uint8_t>(n.ctl);
 		w.put<uint8_t>(n.signal.fixed ? 1 : 0);
 		w.put<float>(n.signal.offset);

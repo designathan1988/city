@@ -27,11 +27,11 @@ double recorded_value(const CityState &s, const RoadSegment &g, int profile) {
 
 BuildLengths build_lengths(const Tuning &tn, const RoadBuild &b, double len) {
 	BuildLengths out;
-	if (b.structure == RoadStructure::TUNNEL) {
+	if (b.structure == Structure::TUNNEL) {
 		out.tunnel = len;
 		return out;
 	}
-	if (b.structure != RoadStructure::GROUND) {
+	if (b.structure != Structure::GROUND) {
 		out.bridge = len;
 		return out;
 	}

@@ -1,6 +1,7 @@
 // Shared steps of the road commands (Roadcraft construction/execute.ts splitSeg, anchorNode, clearAndConform).
 #include "sim/commands/road_edit.h"
 
+#include "sim/commands/road_grade_sync.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
@@ -14,7 +15,6 @@ namespace {
 constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is still on the segment, away from its ends
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
-constexpr double CONFORM_STEP_M = 16; // terrain corridor points along a curved segment
 constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
 constexpr float NODE_REFRESH_PAD_M = 60; // nodes this far past the edit may change shape (bulbs see their neighbours)
 
@@ -41,8 +41,11 @@ int split_segment(CityState &s, int seg, double t) {
 	RoadSegment rec = net.segs[seg];
 	auto halves = split_quad(rec.q, t);
 	double y = net.seg_y(seg, t * rec.len);
+	// The new node keeps the road where it was: its authored height the ends' along the road (the crossing reads it so).
+	const double along = rec.len > 0 ? arc_at(rec.table, t) / rec.len : 0; // by length, as the 4.0's segmentOffsetAt
+	const float lift = net.nodes[size_t(rec.a)].lift + (net.nodes[size_t(rec.b)].lift - net.nodes[size_t(rec.a)].lift) * float(along);
 	j_remove_segment(s, seg);
-	int n = j_add_node(s, halves[0].x1, halves[0].z1, y);
+	int n = j_add_node(s, halves[0].x1, halves[0].z1, y, lift);
 	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, rec.flags);
 	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, rec.flags);
 	return n;
@@ -83,18 +86,6 @@ int clear_under(CityState &s, int seg) {
 	});
 	for (int id : doomed) j_remove_building(s, id);
 	return int(doomed.size());
-}
-
-void conform_under(CityState &s, int seg) {
-	const RoadSegment &g = s.roads.segs[seg];
-	int n = std::max(1, int(std::ceil(g.len / CONFORM_STEP_M)));
-	std::vector<float> pts;
-	for (int i = 0; i <= n; i++) {
-		double x, z;
-		g.q.at(double(i) / n, x, z);
-		pts.insert(pts.end(), { float(x), float(s.roads.seg_y(seg, g.len * i / n)), float(z) });
-	}
-	j_add_modifier(s, pts, s.catalog.profile(g.profile).half() + s.catalog.tune.terrain_road_hold_m, s.catalog.tune.terrain_min_run_m);
 }
 
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz) {
@@ -156,6 +147,7 @@ void finish_edit(CityState &s, double minx, double minz, double maxx, double max
 		if (net.nodes[n].alive && std::find(nodes.begin(), nodes.end(), n) == nodes.end()) nodes.push_back(n);
 	});
 	for (int n : nodes) net.refresh_node(n);
+	sync_grade(s); // the heights of what the edit changed (its plates included), and the ground under them
 	std::vector<int64_t> cells = s.log.lot_cells;
 	ChangeLog::dedup(cells);
 	s.lots.process_dirty(s);

@@ -1,11 +1,13 @@
 // Road graph (Roadcraft src/roads/network.ts): nodes and quadratic-Bézier segments, each with a profile and the
-// zone painted on each side. Heights are linear between the two nodes by arc length. Node shape (arm setbacks,
-// dead-end bulbs, straight joints) is refreshed here; every change marks its chunks in the ChangeLog.
+// zone painted on each side. A segment's height along it is its solved profile (sim/roads/road_grade.h, Roadcraft 4.0
+// world/elevation.ts): every edit tells the grade what changed. Node shape (arm setbacks, dead-end bulbs, straight
+// joints) is refreshed here; every change marks its chunks in the ChangeLog.
 #pragma once
 
 #include "core/grid.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
+#include "sim/roads/road_grade.h"
 #include "sim/state/change_log.h"
 
 #include <vector>
@@ -20,10 +22,16 @@ enum SegFlag : uint16_t {
 	// carry this bit as SEG_FREE, with the same meaning)
 	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
 	SEG_ZONED_RIGHT = 0x200,
+	SEG_CUT_WALLS = 0x40, // its cutting is held by retaining walls (Roadcraft 4.0 RoadSegment.cutWalls)
 	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
 	SEG_RULE_B_MASK = 0x3000,
+	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
 };
-constexpr int SEG_FURNITURE_SHIFT = 1;
+constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
+constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT); }
+constexpr uint16_t with_structure(uint16_t flags, Structure s) {
+	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
+}
 constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12;
 enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
 constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
@@ -49,7 +57,9 @@ struct SignalSettings {
 
 struct RoadNode {
 	bool alive = false;
-	double x = 0, z = 0, y = 0;
+	double x = 0, z = 0;
+	double y = 0; // the height it was solved to (road_grade.h): derived, never saved
+	float lift = 0; // the height the player gave it over the grade line, metres (Roadcraft 4.0 RoadNode.heightOffset)
 	std::vector<int> segs;
 	uint8_t ctl = CTL_AUTO; // NodeControl
 	SignalSettings signal;
@@ -85,6 +95,7 @@ public:
 	int player_sides = 0; // road sides the player zoned
 	const Catalog *cat = nullptr;
 	ChangeLog *log = nullptr;
+	RoadGrade grade; // the solved heights (sim/commands/road_grade_sync.cpp solves what each edit told it)
 
 	void init(const Catalog *c, ChangeLog *l);
 	void clear();
@@ -101,8 +112,13 @@ public:
 	void set_player_zone(int seg, int side, bool on);
 	int find_node_near(double x, double z, double radius) const;
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
-	// Height of segment s at arc length `at` from node a.
+	// Height of segment s at arc length `at` from node a: its solved profile (linear between its nodes until solved).
 	double seg_y(int s, double at) const;
+	// The height the player gave node n over its grade line, and how segment s is built: both solved again.
+	void set_lift(int n, float lift);
+	void set_structure(int s, Structure st);
+	// Segment s stands at other heights: its road chunks, its lanes and its street furniture are made again.
+	void mark_heights(int s);
 	// A node whose mouths get crosswalks, stop lines and dropped kerbs: three or more arms, no roundabout, no rails.
 	bool has_crosswalks(int node) const;
 	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).

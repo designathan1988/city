@@ -53,6 +53,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("probe_set_money", "money"), &CityProbes::probe_set_money);
 	ClassDB::bind_method(D_METHOD("probe_road_build", "profile", "structure", "height_a", "height_b", "len"), &CityProbes::probe_road_build);
+	ClassDB::bind_method(D_METHOD("grade_probe", "scene"), &CityProbes::grade_probe);
 }
 
 } // namespace city

@@ -8,6 +8,7 @@
 #include "sim/persistence/save_blocks.h"
 #include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
+#include "sim/commands/road_grade_sync.h"
 #include "sim/state/city_state.h"
 
 #include <cmath>
@@ -58,7 +59,9 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		RoadNode n;
-		n.x = r.get<double>(); n.z = r.get<double>(); n.y = r.get<double>();
+		n.x = r.get<double>(); n.z = r.get<double>();
+		if (version >= GRADE_SAVE_VERSION) n.lift = r.get<float>();
+		else n.y = r.get<double>(); // an older file kept the height: solved again now, with no lift
 		n.ctl = r.get<uint8_t>();
 		if (version >= SIGNAL_SAVE_VERSION) {
 			n.signal.fixed = r.get<uint8_t>() != 0;
@@ -173,6 +176,23 @@ bool get_building(ByteReader &r, Building &b) {
 }
 
 namespace {
+constexpr double PAD_ON_NODE_M = 0.5; // a round pad this near a node is that junction's (city_gen's), not a roundabout's disc
+
+// A file older than the solved road heights kept, as terrain modifiers, the ground the old linear heights were laid on:
+// a corridor along every road and a round pad under every junction. The ground is shaped to the roads from their solved
+// heights now (sim/commands/road_grade_sync.cpp): those are dropped; what the player made of the ground otherwise (a
+// roundabout's disc, centred where no node stands) stays.
+void drop_baked_road_ground(CityState &s) {
+	Heightfield &t = s.terrain;
+	for (int id = 0; id < int(t.mods.size()); id++) {
+		const TerrainModifier &m = t.mods[size_t(id)];
+		if (!m.alive) continue;
+		const bool corridor = m.pts.size() > 3;
+		const bool pad = m.pts.size() == 3 && s.roads.find_node_near(m.pts[0], m.pts[2], PAD_ON_NODE_M) >= 0;
+		if (corridor || pad) t.remove_modifier(id);
+	}
+}
+
 // Everything the file holds, read into `s` (the land founded again from its seed first): false at the first thing that is
 // not a city, with `s` left half replaced.
 bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
@@ -197,6 +217,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
 	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
+	if (version < GRADE_SAVE_VERSION) drop_baked_road_ground(s);
 	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
 	r.get_vec(growth_cells);
@@ -226,6 +247,8 @@ bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &
 
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	if (!read_city(s, data, size, error)) return false;
+	s.roads.grade.everything(); // every road's height solved on the ground read, and the ground shaped to them
+	sync_grade(s);
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

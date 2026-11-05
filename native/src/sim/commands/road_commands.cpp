@@ -3,6 +3,7 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_grade_sync.h"
 #include "sim/commands/street_journal.h"
 #include "sim/street/footway.h"
 #include "sim/street/street_names.h"
@@ -66,7 +67,9 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
 		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
-		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, keeps.flags));
+		// A road laid at grade over water is a bridge, decided as it is laid so the journal keeps it (road_grade_sync.h).
+		const uint16_t flags = structure_of(keeps.flags) == Structure::GROUND && crosses_water(s, sub) ? with_structure(keeps.flags, Structure::BRIDGE) : keeps.flags;
+		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, flags));
 		prev = next;
 	}
 }
@@ -150,7 +153,6 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 		made.erase(std::remove_if(made.begin(), made.end(), [&](int m) { return m == seg || m == other; }), made.end());
 		if (made.size() != was) made.push_back(merged);
 		j_remove_node_if_orphan(s, far);
-		conform_under(s, merged);
 		net.mark_segment(merged);
 	}
 }
@@ -178,7 +180,6 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	for (int sg : made) {
 		const RoadSegment &g = s.roads.segs[sg];
 		r.buildings_removed += clear_under(s, sg);
-		conform_under(s, sg);
 		s.roads.mark_segment(sg);
 		minx = std::min(minx, double(g.minx)); minz = std::min(minz, double(g.minz));
 		maxx = std::max(maxx, double(g.maxx)); maxz = std::max(maxz, double(g.maxz));
