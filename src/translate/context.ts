@@ -16,6 +16,9 @@ export interface Param {
   readonly type: CppType;
   /** Taken by value even though it is an object (an Omit<T> the function fills in). */
   readonly byValue: boolean;
+  /** The function changes its contents (an element written, a mutating method): taken by mutable reference, so the
+   *  caller sees the change, as JavaScript's shared array does. */
+  readonly mutable?: boolean;
 }
 
 /** A source function and its C++ form. */
@@ -24,6 +27,8 @@ export interface FunctionPlan {
   readonly cpp: string;
   readonly decl: TS.SignatureDeclaration & { readonly body?: TS.ConciseBody | undefined };
   readonly params: readonly Param[];
+  /** Context parameters it takes after its own (a context pattern used, directly or through a call). */
+  readonly context?: readonly { readonly type: string; readonly name: string }[];
   readonly ret: CppType;
   /** An edit takes the feature's state first and changes it in place; `result` is what it returns besides. */
   readonly edit: { readonly result: CppType | null; readonly resultField: string | null } | null;
@@ -93,6 +98,9 @@ export interface TranslateContext {
   readonly functions: Map<TS.Symbol, FunctionPlan>;
   readonly memos: Map<TS.Symbol, MemoPlan>;
   readonly constants: Map<TS.Symbol, ConstantPlan>;
+  /** Module constants whose value is a context pattern (RAMP_GRADE = ROAD_TUNING.grade.ramp): each reference is the
+   *  target expression (tn.grade_ramp), read through the context parameter; nothing is written as a constant. */
+  readonly contextConstants: Map<TS.Symbol, { readonly code: string; readonly type: CppType; readonly include: string; readonly context: { readonly type: string; readonly name: string } }>;
   /** Names the literals the target does not allow bare. */
   readonly literals: LiteralNames;
   /** The constants those literals became, by module and name (written in their module's types header). */

@@ -8,6 +8,8 @@ export interface Pattern {
   readonly expr: TS.Expression;
   readonly target: string;
   readonly include: string;
+  readonly type: 'int' | 'int64' | 'float' | 'bool';
+  readonly context: { readonly type: string; readonly name: string } | null;
 }
 
 export interface PatternMatch {
@@ -23,7 +25,7 @@ export class Patterns {
     this.#ts = ts;
     this.#patterns = mappings.map((p) => {
       const parsed = ts.createSourceFile('pattern.ts', `(${p.source});`, ts.ScriptTarget.Latest, true);
-      return { expr: (parsed.statements[0] as TS.ExpressionStatement).expression, target: p.target, include: p.include };
+      return { expr: (parsed.statements[0] as TS.ExpressionStatement).expression, target: p.target, include: p.include, type: p.type ?? 'int64', context: p.context ?? null };
     });
   }
 

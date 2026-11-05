@@ -102,6 +102,12 @@ export class TypeMapper {
     if (type.isUnion()) {
       const present = type.types.filter((t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null)));
       if (present.every((t) => t.flags & ts.TypeFlags.BooleanLike)) return BOOL;
+      // numeric literals (a direction `1 | -1`, a sign, a code) are one number: its kind is the flow's (integers stay
+      // int), optional when undefined or null may be in it
+      if (present.length > 0 && present.every((t) => t.flags & ts.TypeFlags.NumberLike)) {
+        const n = this.number(slot ? this.#flow.numberOf(slot) : Num.Float, use);
+        return present.length === type.types.length ? n : { k: 'optional', of: n };
+      }
       if (present.length > 0 && present.every((t) => t.flags & ts.TypeFlags.StringLiteral)) {
         const e: CppType = { k: 'enum', name: this.#enumOf(present, type.aliasSymbol, slot?.name ?? 'value').name };
         return present.length === type.types.length ? e : { k: 'optional', of: e };

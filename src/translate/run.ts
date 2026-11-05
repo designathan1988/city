@@ -46,7 +46,9 @@ export interface ApiFunction {
   /** The source file that exports it (relative to the source root). */
   readonly module: string;
   readonly cpp: string;
-  readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean }[];
+  readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean; readonly mutable?: boolean }[];
+  /** Context parameters it takes after its own (a context pattern used, directly or through a call). */
+  readonly context?: readonly { readonly type: string; readonly name: string }[];
   readonly ret: CppType;
   /** An edit changes the state (its first parameter); `ret` is what it returns besides. */
   readonly edit: boolean;
@@ -138,7 +140,7 @@ export function translate(input: TranslateInput): TranslationResult {
   flow.errors.length = 0;
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
-    functions: new Map(), memos: new Map(), constants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
+    functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
   // A module of pure functions has no state: its spec's state source is empty.

@@ -1,8 +1,10 @@
 // `converter convert`: a feature carried as far as facts allow. Its ledger decides each unit, the machine translates
 // what is clean, the quarantine judges every output, and the report lists what stays open with its correct method.
 // Nothing is written to the target: accepted files go to --out/files. Exit 0 only when nothing is open.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import type * as TS from 'typescript';
 import { runAudit } from '../audit/run.ts';
 import { parseFlags, type FlagSpec } from '../common/args.ts';
 import { removeTree } from '../common/files.ts';
@@ -110,22 +112,130 @@ interface Judged {
   readonly outcome: ModuleOutcome;
   readonly files: Map<string, string>;
   readonly registration: Registration | null;
+  /** What a refusal is made of, for attributing it to roots: the translator's errors, the quarantine's findings,
+   *  the files written and the units emitted (their C++ names). */
+  readonly attempt?: { readonly errors: readonly string[]; readonly findings: readonly QuarantineFinding[]; readonly files: ReadonlyMap<string, string>; readonly units: readonly { readonly source: string; readonly cpp: string }[] };
+}
+
+/**
+ * Each root of a module and the module's declarations it reaches (itself included): a function, a constant or an
+ * index of the same file it names, at any depth. A refusal of a unit is a refusal of every root that reaches it.
+ */
+function reachOf(spec: TranslationSpec, input: JudgeInput): Map<string, Set<string>> | null {
+  const { ts, sp, sources, relative } = input.prepared;
+  const file = sources.find((f) => relative(f) === spec.source);
+  if (!file) return null;
+  const top = new Map<string, TS.Node>();
+  for (const st of file.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name) top.set(st.name.text, st);
+    if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name)) top.set(d.name.text, d);
+    if ((ts.isClassDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isEnumDeclaration(st)) && st.name) top.set(st.name.text, st);
+  }
+  const uses = new Map<string, Set<string>>();
+  for (const [name, node] of top) {
+    const set = new Set<string>();
+    const visit = (n: TS.Node): void => {
+      if (ts.isIdentifier(n) && top.has(n.text) && n.text !== name) {
+        const decl = sp.checker.getSymbolAtLocation(n)?.declarations?.[0];
+        if (decl && decl.getSourceFile() === file) set.add(n.text);
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(node);
+    uses.set(name, set);
+  }
+  const reach = new Map<string, Set<string>>();
+  for (const root of spec.units) {
+    const seen = new Set<string>([root]);
+    const stack = [root];
+    while (stack.length > 0) for (const next of uses.get(stack.pop()!) ?? []) if (!seen.has(next)) { seen.add(next); stack.push(next); }
+    reach.set(root, seen);
+  }
+  return reach;
+}
+
+/** The C++ function a line of a generated file is in (its definition's name), or null (a header line, a type). */
+function functionAt(text: string, line: number): string | null {
+  const lines = text.split('\n');
+  for (let i = Math.min(line, lines.length) - 1; i >= 0; i--) {
+    const l = lines[i]!;
+    if (/^}/.test(l) && i < line - 1) return null; // a function closed before the line: the line is outside one
+    const m = /^(?!\s|\/\/|#|namespace\b|struct\b|enum\b|using\b|template\b)[^;]*?\b([A-Za-z_]\w*)\s*\([^;]*$/.exec(l);
+    if (m) return m[1]!;
+  }
+  return null;
+}
+
+/** The units a refused judgment's findings belong to (unit → the first reason), or null when one cannot be placed. */
+function failingUnits(judged: Judged): Map<string, string> | null {
+  const a = judged.attempt;
+  if (!a) return null;
+  const out = new Map<string, string>();
+  const bySource = new Map(a.units.map((u) => [u.cpp, u.source]));
+  for (const e of a.errors) {
+    const unit = /\[unit ([^\]]+)\]$/.exec(e)?.[1];
+    if (!unit) return null;
+    if (!out.has(unit)) out.set(unit, e.replace(/ \[unit [^\]]+\]$/, ''));
+  }
+  for (const f of a.findings) {
+    if (f.rule === 'stopped-unit') { const u = f.file.slice(f.file.indexOf('#') + 1); if (!out.has(u)) out.set(u, `${f.rule}: ${f.detail}`); continue; }
+    if (f.rule !== 'does-not-compile') return null; // a file-wide finding (a wrong form, a long file): no one unit
+    const text = a.files.get(f.file);
+    if (!text) return null;
+    const lines = [...f.detail.matchAll(/:(\d+):\d+: error:/g)].map((m) => Number(m[1]));
+    if (lines.length === 0) return null;
+    for (const line of lines) {
+      const cpp = functionAt(text, line);
+      const unit = cpp ? bySource.get(cpp) : undefined;
+      if (!unit) return null;
+      if (!out.has(unit)) out.set(unit, `${f.rule} ${f.file}: ${f.detail}`);
+    }
+  }
+  return out;
+}
+
+/**
+ * The roots of a refused module by attribution: each finding belongs to a unit, a root that reaches a failing unit
+ * is refused with its reason, the others are judged together again (a judgment that may show the next finding), to
+ * the fixed point. One translation and one compile per round instead of one per root; null when a finding cannot be
+ * placed (then the module is judged root by root).
+ */
+async function attributeByRoot(spec: TranslationSpec, input: JudgeInput, first: Judged): Promise<Judged | null> {
+  const reach = reachOf(spec, input);
+  if (!reach) return null;
+  const blocked = new Map<string, string>();
+  let roots = [...spec.units];
+  let judged = first;
+  for (;;) {
+    const bad = failingUnits(judged);
+    if (!bad || bad.size === 0) return null;
+    for (const root of roots) for (const [unit, why] of bad) if (reach.get(root)?.has(unit)) { blocked.set(root, unit === root ? why : `reaches ${unit}: ${why}`); break; }
+    const next = roots.filter((r) => !blocked.has(r));
+    if (next.length === roots.length) return null; // the findings reach no root: not placed
+    if (next.length === 0) return { ...first, outcome: { ...first.outcome, refusals: [...blocked].map(([u, w]) => `${u}: ${w}`) } };
+    roots = next;
+    judged = await judge({ ...spec, units: roots }, input);
+    if (judged.outcome.accepted) return { ...judged, outcome: { ...judged.outcome, refusals: [...blocked].map(([u, w]) => `${u}: ${w}`) } };
+  }
 }
 
 /** A refusal belongs to the root that caused it: a refused module is judged root by root and written again with those that pass. */
-function judgeByRoot(spec: TranslationSpec, input: JudgeInput): Judged {
-  const whole = judge(spec, input);
+async function judgeByRoot(spec: TranslationSpec, input: JudgeInput): Promise<Judged> {
+  const whole = await judge(spec, input);
   if (whole.outcome.accepted || spec.units.length < 2) return whole;
-  const alone = spec.units.map((unit) => ({ unit, judged: judge({ ...spec, units: [unit] }, input) }));
+  const attributed = await attributeByRoot(spec, input, whole);
+  if (attributed) return attributed;
+  // the roots judged at the same time (each its own overlay; the compiles run together)
+  const alone = await Promise.all(spec.units.map(async (unit) => ({ unit, judged: await judge({ ...spec, units: [unit] }, input) })));
   const passed = alone.filter((a) => a.judged.outcome.accepted).map((a) => a.unit);
   if (passed.length === 0) return whole;
-  const kept = judge({ ...spec, units: passed }, input);
+  const kept = await judge({ ...spec, units: passed }, input);
   if (!kept.outcome.accepted) return whole;
   const left = alone.filter((a) => !a.judged.outcome.accepted).map((a) => `${a.unit}: ${a.judged.outcome.refusals[0] ?? 'refused'}`);
   return { ...kept, outcome: { ...kept.outcome, refusals: left } };
 }
 
-function judge(spec: TranslationSpec, input: JudgeInput): Judged {
+async function judge(spec: TranslationSpec, input: JudgeInput): Promise<Judged> {
   const module = spec.source;
   const refused = (refusals: readonly string[]): Judged => ({ outcome: { module, accepted: false, files: [], emitted: [], refusals }, files: new Map(), registration: null });
   let result: ReturnType<typeof translate>;
@@ -135,19 +245,20 @@ function judge(spec: TranslationSpec, input: JudgeInput): Judged {
   } catch (error) {
     return refused([`the translator stopped: ${(error as Error).message.split('\n')[0]}`]);
   }
-  if (result.errors.length > 0) return refused(result.errors);
-  const overlay = path.join(input.candidate, module.replace(/[^\w.-]+/g, '_'));
+  if (result.errors.length > 0) return { ...refused(result.errors), attempt: { errors: result.errors, findings: [], files: result.files, units: result.units } };
+  // one overlay per judgment (its units in the name): judgments of one module may run together
+  const overlay = path.join(input.candidate, module.replace(/[^\w.-]+/g, '_'), createHash('sha256').update(spec.units.join('\0')).digest('hex').slice(0, 12));
   removeTree(overlay);
   writeTree(overlay, result.files);
   const findings: QuarantineFinding[] = [...scanUnits(input.stopOf, result.units), ...scanFiles(result.files, targetLimits(input.rules)),
-    ...compileFiles(input.cxx, overlay, input.targetRoot, result.files)];
-  if (findings.length > 0) return refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`));
+    ...(await compileFiles(input.cxx, overlay, input.targetRoot, result.files))];
+  if (findings.length > 0) return { ...refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`)), attempt: { errors: [], findings, files: result.files, units: result.units } };
   const registration: Registration = { subsystem: spec.subsystem, includes: spec.layer.includes, mapLine: spec.registry?.mapLine ?? '',
     state: spec.state.source ? { header: result.stateHeader, anchor: spec.state.anchor ?? '', member: spec.state.memberLine ?? '', root: spec.state.root } : null };
   return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), refusals: [] }, files: result.files, registration };
 }
 
-export function runConvertCommand(argv: readonly string[]): void {
+export async function runConvertCommand(argv: readonly string[]): Promise<void> {
   const flags = parseFlags(argv, CONVERT_FLAGS);
   const feature = flags.require('feature');
   const sourceRoot = path.resolve(flags.require('source-root'));
@@ -192,7 +303,7 @@ export function runConvertCommand(argv: readonly string[]): void {
     const targetGraph = path.resolve(flags.require('target-graph'));
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
     for (const spec of specs) {
-      const judged = judgeByRoot(spec, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+      const judged = await judgeByRoot(spec, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
         stopOf: (id) => ledger.stopOf(id), prepared });
       const clash = [...judged.files].find(([file, text]) => accepted.has(file) && accepted.get(file) !== text);
       if (clash) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
