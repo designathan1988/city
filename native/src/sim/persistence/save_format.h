@@ -20,7 +20,11 @@ constexpr uint32_t SAVE_VERSION = 6; // 2: the landscape after the buildings; 3:
 constexpr uint32_t SIGNAL_SAVE_VERSION = 4, TRANSIT_SAVE_VERSION = 5, GRADE_SAVE_VERSION = 6;
 
 // The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).
-std::vector<uint8_t> encode_city(const CityState &s);
+struct SavePart { // where a part of the save ends in its bytes (api/city_core_state_probe.cpp)
+	const char *name;
+	size_t end;
+};
+std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts = nullptr);
 // Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
 // open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
 // Where the opening of a city went, in milliseconds.

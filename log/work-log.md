@@ -227,6 +227,12 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
 - 17:35 Cantos das junções: medidos no oráculo (`tests/world`, teste descartado). Avenida com boulevard: raio 4,5, recuos 13,65 e 11,65 no nível da guia; rua com rua: 3 e 7,15; 60°: 15,85 e 14,12. A fórmula do `junction.cpp` dá os mesmos valores (o jogo mede no nível do asfalto, 0,15 m a menos, como o nível asfalto do 4.0). A pendência "raio 5 m" estava errada e saiu. Faltava só a cunha comprida: agora é arredondada pelo raio que o recuo pede, como no `corners.ts`, antes de virar chanfro.
 - 17:35 Chave de tuning ausente: no caminho do jogo ela é recusada pelo nome e o jogo fica de pé (`boot_refusal_test`). O crash vinha do `grade_probe`, que lia `profiles[0]` num catálogo vazio quando um teste seguia depois do boot recusado. Corrigido.
 
+- 17:50 Inventário e modernização (ordem do usuário):
+  - duas sessões consultadas. Roteiro do conversor em `log/conversor.md` ("Roteiro: portar com o conversor"); ferramentas de diagnóstico em `log/causa-raiz.md`. Nada do tradutor foi integrado ao jogo ainda;
+  - o relatório do 4.0 "Verificação rápida sem suítes" diz: trocar o oráculo, não só acelerar. Portado o hash de estado (`state_hash`, os bytes do save; dead slots fora) e o `edit_fuzz_test` (3 sementes, ~67 edições, desfazer, refazer, salvar e abrir, 9 s);
+  - `tools/build/quick.sh`: um comando, tudo em paralelo; as duas DLLs agora compilam ao mesmo tempo;
+  - par do viaduto com o 4.0: a via segue sem aparecer no `look.mjs`, mesmo com ferramenta e PageUp reais; a causa não é o pool de workers (a regra de pista sozinha só vale no desktop). Sem resposta ainda.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

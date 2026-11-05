@@ -25,10 +25,9 @@ void write_terrain(ByteWriter &w, const Heightfield &t) {
 		int x0 = (r % t.regions) * t.region_size, z0 = (r / t.regions) * t.region_size;
 		for (int z = z0; z < z0 + t.region_size; z++) w.put_bytes(&t.base_q[size_t(z) * t.N + x0], size_t(t.region_size) * sizeof(uint16_t));
 	}
-	w.put<uint32_t>(uint32_t(t.mods.size()));
+	w.put_slots(t.mods.size());
 	for (const TerrainModifier &m : t.mods) {
-		w.put<uint8_t>(m.alive ? 1 : 0);
-		if (!m.alive) continue;
+		if (!w.put_alive(m.alive)) continue;
 		for (float v : { m.flat, m.max_run, m.minx, m.minz, m.maxx, m.maxz }) w.put<float>(v);
 		w.put_vec(m.pts);
 	}
@@ -45,10 +44,9 @@ void write_variants(ByteWriter &w, const std::vector<RoadVariant> &list) {
 }
 
 void write_roads(ByteWriter &w, const RoadNetwork &net) {
-	w.put<uint32_t>(uint32_t(net.nodes.size()));
+	w.put_slots(net.nodes.size());
 	for (const RoadNode &n : net.nodes) {
-		w.put<uint8_t>(n.alive ? 1 : 0);
-		if (!n.alive) continue;
+		if (!w.put_alive(n.alive)) continue;
 		for (double v : { n.x, n.z }) w.put<double>(v);
 		w.put<float>(n.lift); // its height is solved again from the roads and the ground on load
 		w.put<uint8_t>(n.ctl);
@@ -57,10 +55,9 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 		w.put_vec(n.signal.greens);
 		w.put<uint8_t>(n.plain ? 1 : 0);
 	}
-	w.put<uint32_t>(uint32_t(net.segs.size()));
+	w.put_slots(net.segs.size());
 	for (const RoadSegment &g : net.segs) {
-		w.put<uint8_t>(g.alive ? 1 : 0);
-		if (!g.alive) continue;
+		if (!w.put_alive(g.alive)) continue;
 		w.put<int32_t>(g.a);
 		w.put<int32_t>(g.b);
 		put_quad(w, g.q);
@@ -72,10 +69,9 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 }
 
 void write_buildings(ByteWriter &w, const BuildingStore &bs) {
-	w.put<uint32_t>(uint32_t(bs.items.size()));
+	w.put_slots(bs.items.size());
 	for (const Building &b : bs.items) {
-		w.put<uint8_t>(b.alive ? 1 : 0);
-		if (b.alive) put_building(w, b);
+		if (w.put_alive(b.alive)) put_building(w, b);
 	}
 }
 void write_transit(ByteWriter &w, const TransitData &t) {
@@ -123,8 +119,12 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<double>(b.built);
 }
 
-std::vector<uint8_t> encode_city(const CityState &s) {
+std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts) {
 	ByteWriter w;
+	w.canonical = parts != nullptr;
+	const auto mark = [&](const char *name) {
+		if (parts) parts->push_back({ name, w.buf.size() });
+	};
 	w.put<uint32_t>(SAVE_MAGIC);
 	w.put<uint32_t>(SAVE_VERSION);
 	w.put<int32_t>(s.map_index);
@@ -133,18 +133,28 @@ std::vector<uint8_t> encode_city(const CityState &s) {
 	w.put<uint8_t>(s.unlimited_money ? 1 : 0);
 	w.put<double>(s.clock.minutes.load());
 	w.put<double>(s.clock.day_shift.load());
+	mark("header");
 	write_terrain(w, s.terrain);
+	mark("terrain");
 	write_variants(w, s.catalog.variants);
+	mark("variants");
 	write_roads(w, s.roads);
+	mark("roads");
 	write_buildings(w, s.buildings);
+	mark("buildings");
 	write_nature(w, s);
+	mark("nature");
 	w.put_vec(s.growth.cells);
 	w.put<int32_t>(s.growth.grown);
+	mark("growth");
 	write_transit(w, s.transit);
+	mark("transit");
 	w.put<uint32_t>(SAVE_BODIES);
 	write_edited_bodies(w, s.buildings);
+	mark("bodies");
 	write_extra_blocks(w, s);
 	w.put<uint32_t>(SAVE_END);
+	mark("blocks");
 	return std::move(w.buf);
 }
 

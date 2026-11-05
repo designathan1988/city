@@ -13,10 +13,9 @@ constexpr uint32_t MAX_RECORDS = 50000000; // a corrupt count stops here, before
 constexpr uint8_t POLE_LAMP_BIT = 1, POLE_RURAL_BIT = 2;
 
 void write_records(ByteWriter &w, const StreetWorks &k) {
-	w.put<uint32_t>(uint32_t(k.items.items.size()));
+	w.put_slots(k.items.items.size());
 	for (const StreetItem &i : k.items.items) {
-		w.put<uint8_t>(i.alive ? 1 : 0);
-		if (!i.alive) continue;
+		if (!w.put_alive(i.alive)) continue;
 		w.put<uint8_t>(uint8_t(i.kind));
 		w.put<uint8_t>(uint8_t(i.sign));
 		w.put<float>(i.x);
@@ -24,32 +23,28 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 		std::vector<uint8_t> text(i.text.begin(), i.text.end());
 		w.put_vec(text);
 	}
-	w.put<uint32_t>(uint32_t(k.poles.items.size()));
+	w.put_slots(k.poles.items.size());
 	for (const UtilityPole &p : k.poles.items) {
-		w.put<uint8_t>(p.alive ? 1 : 0);
-		if (!p.alive) continue;
+		if (!w.put_alive(p.alive)) continue;
 		w.put<float>(p.x);
 		w.put<float>(p.z);
 		w.put<uint8_t>(uint8_t((p.lamp ? POLE_LAMP_BIT : 0) | (p.kind == PoleKind::RURAL ? POLE_RURAL_BIT : 0)));
 	}
-	w.put<uint32_t>(uint32_t(k.spans.items.size()));
+	w.put_slots(k.spans.items.size());
 	for (const UtilitySpan &p : k.spans.items) {
-		w.put<uint8_t>(p.alive ? 1 : 0);
-		if (!p.alive) continue;
+		if (!w.put_alive(p.alive)) continue;
 		w.put<int32_t>(p.a);
 		w.put<int32_t>(p.b);
 	}
-	w.put<uint32_t>(uint32_t(k.barriers.items.size()));
+	w.put_slots(k.barriers.items.size());
 	for (const Barrier &b : k.barriers.items) {
-		w.put<uint8_t>(b.alive ? 1 : 0);
-		if (!b.alive) continue;
+		if (!w.put_alive(b.alive)) continue;
 		w.put<uint8_t>(uint8_t(b.kind));
 		w.put_vec(b.pts);
 	}
-	w.put<uint32_t>(uint32_t(k.cuts.items.size()));
+	w.put_slots(k.cuts.items.size());
 	for (const StreetCut &c : k.cuts.items) {
-		w.put<uint8_t>(c.alive ? 1 : 0);
-		if (!c.alive) continue;
+		if (!w.put_alive(c.alive)) continue;
 		w.put<float>(c.x);
 		w.put<float>(c.z);
 	}

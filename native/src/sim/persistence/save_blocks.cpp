@@ -14,6 +14,7 @@ namespace {
 template <typename F>
 void put_framed(ByteWriter &w, uint32_t tag, F &&fill) {
 	ByteWriter block;
+	block.canonical = w.canonical;
 	if (!fill(block)) return;
 	w.put<uint32_t>(tag);
 	w.put<uint32_t>(uint32_t(block.buf.size()));

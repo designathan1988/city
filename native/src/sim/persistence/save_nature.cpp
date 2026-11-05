@@ -18,7 +18,7 @@ template <typename T>
 void put_slots(ByteWriter &w, const std::vector<T> &list) {
 	uint32_t n = 0;
 	for (const T &v : list) n += v.alive ? 1 : 0;
-	w.put<uint32_t>(uint32_t(list.size()));
+	w.put_slots(list.size());
 	w.put<uint32_t>(n);
 	for (uint32_t i = 0; i < list.size(); i++)
 		if (list[i].alive) {

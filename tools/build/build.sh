@@ -14,13 +14,14 @@ core_linux() {
 }
 
 core_windows() { # template_release ships in the export; template_debug is what the editor, tests and captures load
-	local dir target
-	for target in template_release template_debug; do
+	local dir target failed=0
+	for target in template_release template_debug; do # at once: the link of one runs beside the compile of the other
 		dir="$ROOT/native/build-win"; [ "$target" = template_debug ] && dir="$dir-debug"
-		cmake -S "$ROOT/native" -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
-			-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake"
-		cmake --build "$dir" --target citycore -j "$JOBS"
+		(cmake -S "$ROOT/native" -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
+			-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" && cmake --build "$dir" --target citycore -j "$JOBS") &
 	done
+	for target in $(jobs -p); do wait "$target" || failed=1; done
+	return $failed
 }
 
 gates() { python3 "$ROOT/tools/gates/run_gates.py"; }

@@ -57,6 +57,7 @@ commit, e commite-o junto.
   `tr("CHAVE")` com `data/i18n/strings*.csv`; botões, estatísticas e opções da HUD vêm de `data/ui/*.json`.
 - **Fluxo:** troca de tela, pausa e saída só por `GameFlow`. JSON de dados só é lido por `DataTables`.
 - **Testes conferem o que o jogador vê:** HUD, buffer de instâncias enviado à GPU, sondas do núcleo.
+- **Hash do estado:** `probes/state_hash` é a cidade como um número (os bytes do save, inteiros e por parte). O `edit_fuzz_test` sorteia edições e exige que desfazer, refazer, salvar e abrir passem pelos mesmos hashes: toda edição nova entra no sorteio dele, e toda coisa nova salva já é coberta.
 - **Testes e capturas (`--no-flow`) rodam nos dados:** não leem nem gravam `settings.cfg`, nem leem `health.json`; abrem no nível `tests_preset` (nunca `auto`, para não depender da placa de vídeo; outro nível é pedido pelo nome, `--preset=`); saves ficam em `user://saves_tests`. O `user://` é um só para todo clone com o mesmo nome de projeto; para isolar um clone, `project/override.cfg` com `application/config/use_custom_user_dir=true` e `custom_user_dir_name`.
 - **Pendências** vão para a seção abaixo, nunca para comentários TODO/FIXME (`SEM_MARCADORES_SOLTOS`).
 
@@ -70,6 +71,7 @@ commit, e commite-o junto.
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
+| Verificação de uma mudança, de uma vez | `tools/build/quick.sh [cena,cena]`: gates dos mudados, scripts e DLL de debug ao mesmo tempo, depois as cenas que os arquivos tocam e o `edit_fuzz_test`; `--all` refaz as duas DLLs e roda toda a suíte, a checagem antes do commit (~80 s; logs em `dist/quick`) |
 | Ciclo rápido (iteração) | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>`: scripts → DLL de debug (`-j` = núcleos) → o teste; cada job vigiado (log parado 180 s = travado, morto pelo PID), eventos em `<pasta>/events.log`. Jobs: `scripts`, `import`, `build`, `fast`, `gates`, `test:<cena>[@renderizador]`, `scene:<nome>:<cena>[:args]` |
 | Suíte inteira em paralelo | `python tools/analysis/suite.py [--root <cópia>] [--only=nomes] [--parallel N]` (logs em `dist/tests`, os que o hook de commit confere) |
 | Gates dos arquivos mudados | `tools/build/gates_changed.sh <cópia>` (`run_gates.py --file` de cada arquivo do `git status`) |
@@ -189,6 +191,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio num andar, ler o estado (andares e lâmpadas: leitura pesada, só depois de um comando), a revisão barata que avisa quando reler, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
+- `native/src/api/city_core_state_probe.cpp` — a cidade como um número (`state_hash`): os bytes do save, inteiros e por parte
 - `native/src/api/city_probes.h` · `native/src/api/city_core_clearance_probe.cpp` · `native/src/api/city_core_park_probe.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` · `native/src/api/city_core_economy_probe.cpp` · `native/src/api/city_core_grade_probe.cpp` — área `probes` (CityProbes), o que testes e capturas perguntam: folga dos carros de lote e onde cada veículo está na faixa, a regra do âmbar; vagas, lotes, ciclofaixas, docas e câmera livre; quem anda a pé; a regra da fila de jobs; o saldo posto à mão e quanto de uma via sai em cada modo de construir; o greide resolvido numa cena própria (chão por nome, rede de rascunho)
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas do núcleo: custo do quadro, chegada das poses e tráfego
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
@@ -498,6 +501,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/shell_test.gd` · `project/tests/core/shell_test.tscn` — níveis gráficos, governador, chaves de render, painéis e Esc
 - `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
 - `project/tests/core/boot_refusal_test.gd` · `project/tests/core/boot_refusal_test.tscn` — catálogo sem uma chave: recusado pelo nome, e o jogo de pé atrás da recusa
+- `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
@@ -554,6 +558,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 **Ferramentas — tools/**
 - `tools/analysis/sampler.py` · `tools/analysis/sampler_report.py` · `tools/analysis/unwind.py` — amostrador de pilhas genérico (qualquer processo Windows x64, nenhum nome do programa): onde cada thread gasta e onde espera (pelo tempo de CPU da própria thread), funções e cadeias quentes, o código que disparou o tempo do motor/driver (1º quadro com símbolo), linha do tempo da thread principal (abertura, trechos piores); símbolos pelo llvm-symbolizer (compile com informação de depuração)
+- `tools/analysis/live40.mjs` — o 4.0 aberto: cada pergunta em milissegundos, sem abrir navegador, jogo e cidade de novo (`/eval`, `/shot`, `/click`, `/key`, `/console`)
 - `tools/analysis/suite.py` — a suíte de `tools/build/run_tests.sh` (mesma lista, regra de falha e logs em `dist/tests`) com todas as cenas ao mesmo tempo na área de trabalho oculta; uma falha sob carga é repetida sozinha e relatada como instável; `--only=` filtra, `--root` aponta outra cópia
 - `tools/analysis/causes.py` · `tools/analysis/detectors.py` — analisador genérico de causas pela forma do código (qualquer versão, a árvore inteira menos builds e dependências): trava de thread de trabalho tomada fora do laço, realocação de buffer por quadro, mapa sem poda, thread que acorda sem trabalho, regra repetida ou divergente, chamada ao motor dentro de laço, consulta com efeito, cache com chave incompleta, consulta por quadro; `--build` traz os warnings
 - `tools/assets/bleed_alpha.py` · `tools/assets/cook_people.py` · `tools/assets/people_clean.py` · `tools/assets/rider_poses.py` · `tools/assets/export_builder_ui.py` · `tools/assets/make_flag_icons.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — a cor sob os furos de uma textura recortada; pessoas cozidas
@@ -561,7 +566,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/assets/make_pole_parts.py` — os postes de cada estilo em streets.json: o urbano (cruzeta sobre a rua, B1, e o rack S1) e o rural (cruzeta no topo, N1), os assentos dos fios e a altura da luz, das medidas do 4.0 (CELESC E-313.0002)
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
-- `tools/build/runq.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
+- `tools/build/quick.sh` · `tools/build/runq.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a verificação de uma mudança num comando; fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,

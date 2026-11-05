@@ -57,5 +57,5 @@ const QUERIES := {
 	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
 	&"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path", &"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
 	&"preview_item": "street/preview_item", &"preview_barrier": "street/preview_barrier", &"preview_pole_run": "street/preview_pole_run",
-	&"road_height": "street/road_height", &"road_walls": "street/road_walls", &"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
+	&"state_hash": "probes/state_hash", &"road_height": "street/road_height", &"road_walls": "street/road_walls", &"sign_cells": "street/sign_cells", &"street_counts": "street/street_counts", &"street_poles": "street/street_poles", &"furniture_census": "street/furniture_census", &"furniture_spots": "street/furniture_spots", &"road_furniture": "street/road_furniture",
 }

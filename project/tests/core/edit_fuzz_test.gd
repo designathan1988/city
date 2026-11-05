@@ -1,0 +1,142 @@
+## Random edits against what must hold for any of them, on the state hash (probes/state_hash: the save's bytes): undoing every step
+## walks back through the same hashes, redoing walks forward through them, a save opened again is the same city, and the same seed
+## makes the same city. A failure prints its seed and step; `--seed=N` and `--steps=N` run that one again.
+extends Node
+
+const MAP := 0
+const CITY_SEED := 7
+const SEEDS := [1, 2, 3]
+const STEPS := 40
+const GRID_M := 40.0
+const CELLS := 12
+const FIELD_OUT := Vector3(1600, 0, 900)
+const PX := 0.25
+const LIFTS := [0.0, 0.0, 0.0, 6.0, 8.0, -4.0, -12.0]
+const ZONE_RADIUS := 30.0
+const ZONE_KIND := 1
+const SLOT := "edit_fuzz"
+const SHOWN_PARTS := 6
+## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
+const GROWTH_QUEUE := "growth"
+
+var failures := 0
+var rng := RandomNumberGenerator.new()
+var roads: Array[Vector3] = [] # the middles of what was laid, for the edits that need a road
+
+
+func _ready() -> void:
+	var world := CityWorld.new()
+	add_child(world)
+	var errors := CityStore.boot(world.terrain, world.materials())
+	_check(errors.is_empty(), "boot %s" % [errors])
+	var seeds: Array = SEEDS
+	var steps := STEPS
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--seed="):
+			seeds = [arg.trim_prefix("--seed=").to_int()]
+		if arg.begins_with("--steps="):
+			steps = arg.trim_prefix("--steps=").to_int()
+	for s: int in seeds:
+		await _run(s, steps)
+	print("FALHAS: ", failures)
+	get_tree().quit(1 if failures > 0 else 0)
+
+
+func _hash() -> Dictionary:
+	return CityStore.query(&"state_hash")
+
+
+## `ignoring`: a part that may differ, said by the caller.
+func _same(a: Dictionary, b: Dictionary, what: String, ignoring := "") -> void:
+	var differ := []
+	for part: String in a.parts:
+		if a.parts[part] != b.parts.get(part) and part != ignoring:
+			differ.push_back(part)
+	if not differ.is_empty():
+		_check(false, "%s: differs in %s (%d -> %d bytes)" % [what, differ.slice(0, SHOWN_PARTS), a.bytes, b.bytes])
+
+
+func _run(seed: int, steps: int) -> void:
+	var trail := _walk(seed, steps)
+	print("seed %d: %d edits kept of %d" % [seed, trail.size() - 1, steps])
+	var last := trail.size() - 1
+	for i in range(last, 0, -1):
+		CityStore.dispatch(&"undo")
+		_same(trail[i - 1], _hash(), "seed %d undo to step %d" % [seed, i - 1], GROWTH_QUEUE)
+	for i in range(1, last + 1):
+		CityStore.dispatch(&"redo")
+		_same(trail[i], _hash(), "seed %d redo to step %d" % [seed, i], GROWTH_QUEUE)
+	await _reopened(seed, trail[last])
+	var again := _walk(seed, steps)
+	_same(trail[last], again[-1], "seed %d the same edits again" % seed)
+
+
+func _reopened(seed: int, before: Dictionary) -> void:
+	CityStore.saves.save_game(SLOT)
+	while CityStore.saves.save_busy():
+		await get_tree().process_frame
+	var r: Dictionary = CityStore.saves.load_game(SLOT)
+	_check(r.get("ok", false), "seed %d opens: %s" % [seed, r])
+	CityStore.dispatch(&"set_speed", [0])
+	_same(before, _hash(), "seed %d save and open" % seed)
+	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
+
+
+## A new map and the seed's edits; the hash after each edit that took.
+func _walk(seed: int, steps: int) -> Array:
+	CityStore.new_map(MAP, CITY_SEED, false, true)
+	rng.seed = seed
+	roads.clear()
+	var trail := [_hash()]
+	for i in steps:
+		var before: String = trail[-1].whole
+		_edit()
+		CityStore.dispatch(&"set_road_height", [0.0])
+		var now := _hash()
+		if now.whole != before:
+			trail.push_back(now)
+	return trail
+
+
+func _point() -> Vector3:
+	return FIELD_OUT + Vector3(rng.randi_range(0, CELLS) * GRID_M, 0, rng.randi_range(0, CELLS) * GRID_M)
+
+
+func _edit() -> void:
+	var kind := rng.randi_range(0, 9)
+	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
+	if kind < 5 or roads.is_empty():
+		_lay()
+	elif kind == 5:
+		CityStore.dispatch(&"demolish", [road])
+	elif kind == 6:
+		CityStore.dispatch(&"split_road", [road])
+	elif kind == 7:
+		CityStore.dispatch(&"upgrade_road", [road, rng.randi_range(0, 3), false])
+	elif kind == 8:
+		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
+		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, ZONE_KIND])
+		CityStore.dispatch(&"end_stroke")
+	else:
+		var seg: Dictionary = CityStore.query(&"segment_at", [road])
+		if seg.get("id", -1) >= 0:
+			CityStore.dispatch(&"reverse_road", [seg.id])
+
+
+func _lay() -> void:
+	var a := _point()
+	var b := _point()
+	if a.is_equal_approx(b):
+		return
+	var lift: float = LIFTS[rng.randi_range(0, LIFTS.size() - 1)]
+	CityStore.dispatch(&"set_road_walls", [rng.randf() < 0.5])
+	CityStore.dispatch(&"set_road_height", [LIFTS[rng.randi_range(0, LIFTS.size() - 1)]])
+	var r: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, rng.randi_range(0, 3), PX, lift])
+	if r.get("ok", false):
+		roads.push_back((a + b) * 0.5)
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("ok   " if ok else "FAIL ") + what)
+	if not ok:
+		failures += 1

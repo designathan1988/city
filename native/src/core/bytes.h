@@ -9,6 +9,14 @@ namespace city {
 
 struct ByteWriter {
 	std::vector<uint8_t> buf;
+	bool canonical = false; // the city as a number: what a save keeps for its ids, dead slots and their count, is left out
+	void put_slots(size_t n) {
+		if (!canonical) put<uint32_t>(uint32_t(n));
+	}
+	bool put_alive(bool alive) {
+		if (!canonical) put<uint8_t>(alive ? 1 : 0);
+		return alive;
+	}
 	template <typename T>
 	void put(const T &v) {
 		size_t o = buf.size();
