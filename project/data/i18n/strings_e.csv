@@ -364,3 +364,9 @@ building.blueprintNotRemoved,Modelo não removido: não foi possível apagar o a
 builder.tool.saveModel,Salvar como modelo,Save as model
 builder.city.remove,Remover modelo,Remove model
 cmd.build.model,colocar prédio,place building
+builder.field.flagColour0,Cor do campo,Field colour
+builder.field.flagColour1,Segunda cor,Second colour
+builder.field.flagColour2,Terceira cor,Third colour
+builder.section.flagColours,Cores da bandeira,Flag colours
+building.problem.noMast,Não há mastro aí: clique numa agulha ou num farol,No mast there: click a spire or a lantern
+hint.builder.flag,Clique numa agulha ou num farol para trocar a bandeira,Click a spire or a lantern to change its flag

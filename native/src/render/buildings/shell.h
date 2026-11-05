@@ -6,6 +6,7 @@
 #pragma once
 
 #include "sim/buildings/b40/paint.h"
+#include "sim/buildings/b40/types.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/rid.hpp>
@@ -79,12 +80,21 @@ struct BoxInstance {
 
 constexpr int CUSTOM_ARRAYS = 4;
 
+// A flag flown from a mast, collected by a shell like its boxes: the top of its hoist in the world, its size and its design,
+// drawn as one cloth instance of the chunk (flag_cloth.h, building_parts.gdshader).
+struct FlagInstance {
+	godot::Vector3 top;
+	float width = 0, height = 0;
+	FlagDesign design;
+};
+
 struct Shell {
 	std::vector<godot::Vector3> pos, nrm;
 	std::vector<godot::Color> col;
 	std::vector<godot::Vector2> uv, uv2;
 	std::vector<int32_t> idx;
 	std::vector<BoxInstance> boxes; // box() collects instances instead of triangles when `instanced`
+	std::vector<FlagInstance> flags; // the flags of the masts it drew (roof_gear.cpp)
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)

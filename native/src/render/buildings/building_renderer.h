@@ -81,6 +81,7 @@ private:
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MultiMeshDraw, BAND_COUNT> bands;
+		MultiMeshDraw flags; // the cloths of its masts (flag_cloth.h), with the near level
 		std::array<Held, HELD_KINDS> held;
 		int64_t instances = 0; // the instanced parts of its bands
 		bool built[LEVELS] = {};
@@ -126,7 +127,10 @@ private:
 		std::array<godot::PackedFloat32Array, BAND_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<OwnedMesh, BAND_COUNT> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_COUNT> band_count{};
-		godot::RID unit_box; // the parts' box mesh
+		godot::PackedFloat32Array flags; // the flags, MultiMesh layout (flag_cloth.h bake_flags)
+		OwnedMesh flag_mm;
+		int flag_count = 0;
+		godot::RID unit_box, unit_flag; // the parts' box mesh, the flags' cloth
 		bool has_near = false, has_mid = false, baked = false;
 		std::array<Held, HELD_KINDS> held;
 		int64_t bytes() const;
@@ -179,7 +183,7 @@ private:
 	BuildingBodies bodies_;
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_far_, material_parts_;
 	ViewNeed need_;
-	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
+	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_COUNT> band_end_{};

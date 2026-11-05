@@ -15,6 +15,7 @@ namespace {
 constexpr const char *NO_TARGET = "tool.failed";
 constexpr int RIDGE_ALONG_Y = 1;
 constexpr const char *NO_FIT = "building.problem.roofPart";
+constexpr const char *NO_MAST = "building.problem.noMast";
 
 Volume *volume_at(Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()) ? &b.volumes[size_t(vol)] : nullptr; }
 
@@ -41,6 +42,21 @@ bool fits(const Volume &v, const RoofPart &p) {
 
 void clear_side_paints(Volume &v, int side) {
 	for (int k = 0; k < v.storeys; k++) v.storey_paint.erase(side_key(k, side));
+}
+
+// The mast the point of the plan is at: the nearest spire or lantern within its own size, or none.
+RoofPart *mast_at(Volume &v, float x, float y) {
+	RoofPart *best = nullptr;
+	float best_d = 0;
+	for (RoofPart &p : v.gear) {
+		if (p.kind != GEAR_SPIRE && p.kind != GEAR_LANTERN) continue;
+		const float d = std::hypot(p.x - x, p.y - y);
+		if (d <= std::max(p.w, p.d) && (!best || d < best_d)) {
+			best = &p;
+			best_d = d;
+		}
+	}
+	return best;
 }
 } // namespace
 
@@ -71,8 +87,28 @@ std::string op_add_gear(Body &b, const Tuning &t, int vol, int kind, float x, fl
 	p.w = w;
 	p.d = d;
 	p.h = h;
+	if (kind == GEAR_LANTERN) p.flag = DEFAULT_FLAG;
 	if (!fits(*v, p)) return NO_FIT;
 	v->gear.push_back(p);
+	return "";
+}
+
+std::string op_set_flag(Body &b, int vol, float x, float y, int pattern) {
+	Volume *v = volume_at(b, vol);
+	if (!v || pattern < FLAG_NONE || pattern >= FLAG_COUNT) return NO_TARGET;
+	RoofPart *mast = mast_at(*v, x, y);
+	if (!mast) return NO_MAST;
+	mast->flag.pattern = int8_t(pattern);
+	return "";
+}
+
+std::string op_flag_colour(Body &b, int vol, float x, float y, int slot, uint32_t rgb) {
+	Volume *v = volume_at(b, vol);
+	if (!v || slot < 0 || slot >= FLAG_COLOURS) return NO_TARGET;
+	RoofPart *mast = mast_at(*v, x, y);
+	if (!mast) return NO_MAST;
+	mast->flag.rgb[slot] = rgb;
+	if (mast->flag.pattern == FLAG_NONE) mast->flag.pattern = DEFAULT_FLAG.pattern;
 	return "";
 }
 

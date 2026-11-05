@@ -82,6 +82,9 @@ Dictionary CityCore::body_info(int id) const {
 		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
 		e["bays"] = bays;
 		e["gear"] = int(v.gear.size());
+		int flags = 0;
+		for (const b40::RoofPart &p : v.gear) flags += p.flag.pattern != b40::FLAG_NONE ? 1 : 0;
+		e["flags"] = flags;
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
@@ -222,6 +225,17 @@ Dictionary CityCore::body_remove_gear(int id, int vol, int gear) {
 
 Dictionary CityCore::body_turn_gear(int id, int vol, int gear) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_turn_gear(b, t, vol, gear); });
+}
+
+Dictionary CityCore::body_set_flag(int id, int vol, const Vector3 &at, int pattern) {
+	V2 local = lot_point(*state_, id, at);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_flag(b, vol, local.x, local.y, pattern); });
+}
+
+Dictionary CityCore::body_flag_colour(int id, int vol, const Vector3 &at, int slot, const String &colour) {
+	V2 local = lot_point(*state_, id, at);
+	uint32_t rgb = parse_hex_color(colour.utf8().get_data()) >> ALPHA_BITS;
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_flag_colour(b, vol, local.x, local.y, slot, rgb); });
 }
 
 Dictionary CityCore::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {

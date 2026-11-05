@@ -102,6 +102,7 @@ int64_t BuildingRenderer::Built::bytes() const {
 				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true) + near_sheer[size_t(i)].bytes(true) +
 				near_cards[size_t(i)].bytes(true) + mid_cards[size_t(i)].bytes(true);
 	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
+	n += flags.size() * int64_t(sizeof(float));
 	return n;
 }
 
@@ -137,6 +138,9 @@ void BuildingRenderer::Built::bake() {
 		band_mm[size_t(b)] = bake_multimesh(unit_box, bands[size_t(b)], chunk_box(key));
 		bands[size_t(b)] = PackedFloat32Array();
 	}
+	flag_count = int(flags.size() / MM_PLAIN_STRIDE);
+	flag_mm = bake_multimesh(unit_flag, flags, chunk_box(key));
+	flags = PackedFloat32Array();
 	baked = true;
 }
 
@@ -160,8 +164,9 @@ void BuildingRenderer::commit_one(Built &b) {
 		for (int band = 0; band < BAND_COUNT; band++)
 			ch.bands[size_t(band)].adopt(scenario_, material_parts_, false, b.band_mm[size_t(band)].release(), b.band_count[size_t(band)],
 					chunk_box(b.key));
+		ch.flags.adopt(scenario_, material_parts_, true, b.flag_mm.release(), b.flag_count, chunk_box(b.key)); // a cloth throws a shadow
 		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
-		ch.instances = 0;
+		ch.instances = b.flag_count;
 		for (int count : b.band_count) ch.instances += count;
 		ch.built[LEVEL_NEAR] = true;
 		ch.stale[LEVEL_NEAR] = !current;
@@ -193,6 +198,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 		for (MeshDraw *d : { &ch.near[size_t(i)], &ch.parts[size_t(i)], &ch.mid[size_t(i)] }) d->visible(on && d->mesh.is_valid());
 	}
 	for (const MultiMeshDraw &d : ch.bands) d.visible(on);
+	ch.flags.visible(on);
 }
 
 void BuildingRenderer::send_mask(Super &sp) {
