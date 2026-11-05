@@ -6,7 +6,7 @@
 // owns, a value. Anonymous shapes get the spec's name, or the name of the type they are the same as (V2).
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
-import { BOOL, STRING, VOID, type CppType, type IntName, isHandle } from './cpptype.ts';
+import { BOOL, STRING, VOID, type CppType, type IntName, isHandle, INT64 } from './cpptype.ts';
 import { Num, Own, type FlowGraph, type Slot } from './flow.ts';
 import { pascal, snake, upper } from './names.ts';
 import type { TranslationSpec } from './spec.ts';
@@ -164,6 +164,7 @@ export class TypeMapper {
   ofType(type: TS.Type, use: Use, slot: Slot | null): CppType {
     const ts = this.#ts;
     const checker = this.#checker;
+    if (this.#flow.isId(type)) return INT64;
     // Omit<T>, Readonly<T> and branded primitives are what the flow says they are underneath (one rule, one owner).
     const under = this.#flow.underlying(type);
     if (under !== type) return this.ofType(under, use, slot);
@@ -229,7 +230,7 @@ export class TypeMapper {
     if (lookup || /^(Map|ReadonlyMap)$/.test(name)) {
       const [k, v] = lookup ?? checker.getTypeArguments(type as TS.TypeReference);
       this.includes.add('unordered_map');
-      const key: CppType = k!.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
+      const key: CppType = this.#flow.underlying(k!).flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
     }
     // a type that extends Array (interface Path extends Array<Point>): a list
@@ -246,7 +247,7 @@ export class TypeMapper {
     if (member) {
       this.includes.add('functional');
       // a number key as a Map's (an id may pass 2^31: int64_t)
-      const key: CppType = member.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(member, 'param', null);
+      const key: CppType = this.#flow.underlying(member).flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(member, 'param', null);
       return { k: 'function', params: [key], ret: BOOL };
     }
     const call = type.getCallSignatures()[0];

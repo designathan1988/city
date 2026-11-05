@@ -175,8 +175,14 @@ export class FlowGraph {
     return type;
   }
 
+  /** A branded id (`type NodeId = number & {...}`): an integer whatever the arithmetic around it. A brand of a measure (Metres) stays a real. */
+  isId(type: TS.Type): boolean {
+    return type.isIntersection() && /Id$/.test(type.aliasSymbol?.name ?? '') && this.underlying(type).flags & this.#ts.TypeFlags.NumberLike ? true : false;
+  }
+
   #declare(s: Slot, type: TS.Type): void {
     const ts = this.#ts;
+    if (this.isId(this.#checker.getNonNullableType(type))) s.num = Num.Int64;
     if (type.isUnion() && type.types.some((t) => t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))) s.nullable = true;
     const t = this.underlying(this.#checker.getNonNullableType(type));
     if (this.isObject(t)) s.shapes.set(this.#shapeKey(t), t);
@@ -185,7 +191,11 @@ export class FlowGraph {
     if (/^(Ui|I)nt(8|16|32)Array$/.test(name)) this.elemOf(s).num = Num.Int;
     if (/^(Map|ReadonlyMap)$/.test(name)) {
       const k = this.#checker.getTypeArguments(t as TS.TypeReference)[0];
-      if (k && k.flags & ts.TypeFlags.NumberLike) this.keyOf(s).num = Num.Int64;
+      if (k && this.underlying(k).flags & ts.TypeFlags.NumberLike) this.keyOf(s).num = Num.Int64;
+    }
+    if (/^(Set|ReadonlySet)$/.test(name)) {
+      const k = this.#checker.getTypeArguments(t as TS.TypeReference)[0];
+      if (k && this.isId(k)) this.elemOf(s).num = Num.Int64;
     }
   }
 

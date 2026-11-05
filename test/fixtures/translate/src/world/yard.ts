@@ -375,3 +375,48 @@ class Mixed {
 export function mixed(k: number): number {
   return new Mixed().doubled() + k;
 }
+
+type TagId = number & { readonly tagBrand: true };
+
+/** Per tag and per leg: entries made on first use, and what is read out of a map changed where it lies. */
+class Legs {
+  counts = new Map<TagId, Map<TagId, number>>();
+  rates = new Map<TagId, Map<TagId, { r: number }>>();
+
+  record(a: TagId, b: TagId): void {
+    let legs = this.counts.get(a);
+    if (!legs) this.counts.set(a, legs = new Map());
+    legs.set(b, (legs.get(b) ?? 0) + 1);
+  }
+
+  bump(a: TagId, b: TagId): void {
+    let legs = this.rates.get(a);
+    if (!legs) this.rates.set(a, legs = new Map());
+    const known = legs.get(b);
+    if (!known) { legs.set(b, { r: 1 }); return; }
+    known.r += 2;
+  }
+
+  raise(a: TagId): void {
+    for (const known of this.rates.get(a)?.values() ?? []) known.r += 10;
+  }
+
+  dropAll(keep: TagId): void {
+    for (const a of [...this.counts.keys()]) if (a !== keep) this.counts.delete(a);
+  }
+}
+
+/** Ids past what a float holds: 2^25 and 2^25 + 1 are two keys. */
+export function legsOf(n: number): number {
+  const big = 33554432 as TagId;
+  const next = 33554433 as TagId;
+  const legs = new Legs();
+  legs.record(big, next);
+  legs.record(big, next);
+  legs.record(next, big);
+  legs.bump(big, next);
+  legs.bump(big, next);
+  legs.raise(big);
+  legs.dropAll(big);
+  return legs.counts.size * 100 + (legs.counts.get(big)?.get(next) ?? 0) * 10 + (legs.rates.get(big)?.get(next)?.r ?? 0) + (n > 0 ? 1 : 0);
+}

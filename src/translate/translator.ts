@@ -329,7 +329,7 @@ export class Translator extends Emitter {
       else if (ts.isGetAccessorDeclaration(m)) planned(() => this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('getter', m)));
       else if (ts.isSetAccessorDeclaration(m)) this.fail(m, 'a setter');
       else if (ts.isClassStaticBlockDeclaration(m)) this.fail(m, 'a static block');
-      else if (ts.isPropertyDeclaration(m) && owner('method', m).isStatic) this.fail(m, 'a static field');
+      else if (ts.isPropertyDeclaration(m) && owner('method', m).isStatic) this.#statics.push({ field: m, struct });
     }
     this.unit = source;
     if (made) return;
@@ -337,7 +337,7 @@ export class Translator extends Emitter {
     const empty = ts.factory.createConstructorDeclaration(undefined, [], ts.factory.createBlock([]));
     (empty as { parent: TS.Node }).parent = node;
     ts.setTextRange(empty, node);
-    const plan: FunctionPlan = { source: `${source}.constructor`, cpp: struct, decl: empty, params: [], ret: { k: 'void' }, typeParams: [], edit: null, exported: true,
+    const plan: FunctionPlan = { source: `${source}.constructor`, cpp: struct, decl: empty, params: [], ret: { k: 'void' }, typeParams: [], edit: null, exported: true, implicit: true,
       owner: { struct, source, kind: 'constructor', isStatic: false, node }, module: this.c.relative(node.getSourceFile()), line, doc: null };
     this.c.functions.set(this.symbolOf(node.name!)!, plan);
   }
@@ -449,6 +449,7 @@ export class Translator extends Emitter {
         return;
       }
       this.c.contextConstants.set(symbol, { code: `(${this.expr(d.initializer!, type)})`, type, include: inner.include, context: inner.context });
+      if (this.#exported(d)) this.#accessors.push({ symbol, name, line, d });
       return;
     }
     // its value is written when every name exists: a constant may read one of a module planned later, or call a function
@@ -538,7 +539,36 @@ export class Translator extends Emitter {
         s.methods = [];
         s.methodTypes = [];
       }
+      this.#emitStatics();
+      this.#emitAccessors();
       if (this.#emitAll() === 0) return;
+    }
+  }
+
+  /** The classes' static fields: written in their struct, with the value the source gives. */
+  readonly #statics: { readonly field: TS.PropertyDeclaration; readonly struct: string }[] = [];
+  #emitStatics(): void {
+    for (const { field, struct } of this.#statics) {
+      this.unit = (field.parent as TS.ClassDeclaration).name?.text ?? '';
+      this.module = this.c.relative(field.getSourceFile());
+      const symbol = this.symbolOf(field.name);
+      if (!symbol || !field.initializer) { this.fail(field, 'a static field with no value'); continue; }
+      const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
+      this.c.types.structs.get(struct)!.methods!.push(`static inline const ${render(type)} ${snake(field.name.getText().replace(/^#/, ''))} = ${this.expr(field.initializer, type)};`);
+    }
+  }
+
+  /** An exported constant read through a context has no value of its own: other owners call it, a function of that context. */
+  readonly #accessors: { readonly symbol: TS.Symbol; readonly name: string; readonly line: number; readonly d: TS.VariableDeclaration }[] = [];
+  #emitAccessors(): void {
+    for (const { symbol, name, line, d } of this.#accessors) {
+      const k = this.c.contextConstants.get(symbol)!;
+      const context = { type: k.context.type, name: k.context.name };
+      const decl = this.c.ts.factory.createFunctionDeclaration(undefined, undefined, name, undefined, [], undefined, undefined);
+      const plan: FunctionPlan = { source: name, cpp: snake(name), decl, params: [], typeParams: [], context: [context], ret: k.type, edit: null, exported: true,
+        module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent) };
+      this.c.includes.add(k.include);
+      this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: [`\treturn ${k.code};`], exported: true, role: 'query', uses: new Set() });
     }
   }
 

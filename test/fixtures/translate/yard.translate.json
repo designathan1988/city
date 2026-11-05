@@ -37,7 +37,8 @@
   "tallied",
   "chainSum",
     "shelved",
-    "mixed"
+    "mixed",
+    "legsOf"
   ],
   "pending": [],
   "number": "float",

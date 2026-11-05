@@ -10,7 +10,7 @@
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { FunctionPlan } from './context.ts';
-import { INT, STRING, declare, elementOf, isNumber, paramDecl, render, target, type CppType, arrow } from './cpptype.ts';
+import { INT, STRING, declare, elementOf, isNumber, paramDecl, render, target, type CppType, arrow, isHandle } from './cpptype.ts';
 import { ExpressionEmitter, RUNTIME_INCLUDE } from './expressions.ts';
 import { Own } from './flow.ts';
 import { snake } from './names.ts';
@@ -52,8 +52,9 @@ export class Emitter extends ExpressionEmitter {
     const out: string[] = [];
     for (let i = 0; i < statements.length; i++) {
       const merged = this.#getOrInsert(statements[i]!, statements[i + 1]);
-      if (merged) {
-        out.push(...merged);
+      const entry = merged ?? this.#entryOrMade(statements[i]!, statements[i + 1]);
+      if (entry) {
+        out.push(...entry);
         i++;
         continue;
       }
@@ -189,6 +190,8 @@ export class Emitter extends ExpressionEmitter {
     const code = this.coerce(v, type, init);
     // An empty container needs no initializer.
     if (code === `${render(type)}{}`) return [`${at}${declare(type, name)};`];
+    // a pointer to what the code goes on to change: the entry itself, written through
+    if (type.k === 'ptr' && this.#mutated(symbol)) return [`${at}${render(type.to)} *${name} = const_cast<${render(type.to)} *>(${code});`];
     const constant = isConst && !this.#mutated(symbol) && (isNumber(type) || type.k === 'bool' || type.k === 'enum' || this.#isValueType(type) || type.k === 'ptr');
     return [`${at}${constant && type.k !== 'ptr' ? 'const ' : ''}${declare(type, name)} = ${code};`];
   }
@@ -279,6 +282,42 @@ export class Emitter extends ExpressionEmitter {
    * `const l = m.get(k); if (l) l.push(v); else m.set(k, [v]);` is one lookup that makes the entry when absent:
    * `m[k].push_back(v)`.
    */
+  /**
+   * `let x = m.get(k); if (!x) m.set(k, x = new Map());` (or the two written apart): the entry of k, made empty if it is not there, and
+   * x that entry itself, as a JavaScript reference to it is. A map of handles keeps the written form: its empty value is no instance.
+   */
+  #entryOrMade(first: TS.Statement, second: TS.Statement | undefined): string[] | null {
+    const ts = this.c.ts;
+    if (!second || !ts.isVariableStatement(first) || !ts.isIfStatement(second) || second.elseStatement) return null;
+    const d = first.declarationList.declarations[0];
+    if (first.declarationList.declarations.length !== 1 || !d || !ts.isIdentifier(d.name) || !d.initializer) return null;
+    const get = d.initializer;
+    if (!ts.isCallExpression(get) || !ts.isPropertyAccessExpression(get.expression) || get.expression.name.text !== 'get' || get.arguments.length !== 1) return null;
+    const name = d.name.text;
+    const owner = get.expression.expression;
+    const test = second.expression;
+    if (!ts.isPrefixUnaryExpression(test) || test.operator !== ts.SyntaxKind.ExclamationToken || test.operand.getText() !== name) return null;
+    let set = false;
+    let made = false;
+    const empty = (e: TS.Expression): boolean => (ts.isNewExpression(e) && (e.arguments?.length ?? 0) === 0) || (ts.isArrayLiteralExpression(e) && e.elements.length === 0)
+      || (ts.isObjectLiteralExpression(e) && e.properties.length === 0);
+    const visit = (n: TS.Node): void => {
+      if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'set' && n.arguments.length === 2
+        && n.expression.expression.getText() === owner.getText() && n.arguments[0]!.getText() === get.arguments[0]!.getText()) set = true;
+      if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && n.left.getText() === name && empty(n.right)) made = true;
+      ts.forEachChild(n, visit);
+    };
+    visit(second.thenStatement);
+    if (!set || !made) return null;
+    const map = this.value(owner);
+    const mapType = target(map.type);
+    if (mapType.k !== 'map' || isHandle(mapType.of)) return null;
+    const cpp = snake(name);
+    const key = this.expr(get.arguments[0]!, mapType.key);
+    this.bind(this.symbolOf(d.name)!, { cpp, type: mapType.of });
+    return [...this.#flush(), `${this.indent}auto &${cpp} = ${map.code}[${key}];`];
+  }
+
   #getOrInsert(first: TS.Statement, second: TS.Statement | undefined): string[] | null {
     const ts = this.c.ts;
     if (!second || !ts.isVariableStatement(first) || !ts.isIfStatement(second) || !second.elseStatement) return null;
@@ -455,6 +494,20 @@ export class Emitter extends ExpressionEmitter {
           return [...pre, ...this.#loop(s, decl, { code: `${it}->second`, type: mapType.of }, guard)];
         }
       }
+      // for (x of m.get(k)?.values() ?? []): the values of the entry, only when it exists
+      if (ts.isCallExpression(left) && ts.isPropertyAccessExpression(left.expression) && left.expression.name.text === 'values') {
+        const entry = left.expression.expression;
+        if (ts.isCallExpression(entry) && ts.isPropertyAccessExpression(entry.expression) && entry.expression.name.text === 'get') {
+          const map = this.value(entry.expression.expression);
+          const mapType = target(map.type);
+          if (mapType.k === 'map' && mapType.of.k === 'map') {
+            const it = this.temp('it');
+            const guard = `if (auto ${it} = ${map.code}.find(${this.expr(entry.arguments[0]!, mapType.key)}); ${it} != ${map.code}.end())`;
+            const pre = this.#flush();
+            return [...pre, ...this.#loop(s, decl, { code: `js::values_of(${it}->second)`, type: { k: 'vector', of: mapType.of.of } }, guard)];
+          }
+        }
+      }
       return [this.fail(iterable, 'a loop over `?? []` of something other than a map entry').code];
     }
     let source = this.value(iterable);
@@ -464,7 +517,7 @@ export class Emitter extends ExpressionEmitter {
       this.prelude.push(`const ${render(target(source.type))} ${snapshot} = ${source.code};`);
       source = { code: snapshot, type: target(source.type) };
     }
-    if (ts.isArrayLiteralExpression(iterable)) {
+    if (ts.isArrayLiteralExpression(iterable) && !iterable.elements.some((x) => ts.isSpreadElement(x))) {
       const element = elementOf(source.type)!;
       source = { code: `{${iterable.elements.map((x) => this.expr(x, element)).join(', ')}}`, type: { k: 'list', of: element } };
     }
@@ -483,7 +536,8 @@ export class Emitter extends ExpressionEmitter {
     if (ts.isIdentifier(decl.name)) {
       const name = snake(decl.name.text);
       this.bind(this.symbolOf(decl.name)!, { cpp: name, type: element });
-      head = `for (${paramDecl(element, name)} : ${source.code})`;
+      const changed = target(element).k === 'struct' && !isHandle(element) && this.#mutated(this.symbolOf(decl.name)!);
+      head = changed ? `for (auto &${name} : ${source.code})` : `for (${paramDecl(element, name)} : ${source.code})`;
     } else if (target(source.type).k === 'map') {
       // for (const [key, value] of map): its entries, in insertion order
       const item = this.temp('item');

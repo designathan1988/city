@@ -125,6 +125,11 @@ export function prepareTranslation(input: TranslateInput): PreparedProgram {
   };
   for (const f of sources) visit(f);
   const patterns = new Patterns(ts, spec.patterns);
+  patterns.alias = (name) => {
+    const decl = sp.checker.getSymbolAtLocation(name)?.valueDeclaration;
+    const value = decl && ts.isVariableDeclaration(decl) && (ts.getCombinedNodeFlags(decl) & ts.NodeFlags.Const) !== 0 ? decl.initializer : undefined;
+    return value && ts.isPropertyAccessExpression(value) ? value : null;
+  };
   const flow = new FlowGraph(ts, sp.checker, sources, spec, patterns, memoBodies);
   const rules = targetRules(input.targetRoot, spec.layer.rules);
   const target = JSON.parse(fs.readFileSync(input.targetGraph, 'utf8')) as GraphIR;
@@ -175,7 +180,7 @@ export function translate(input: TranslateInput): TranslationResult {
   translator.emit();
   const files = translationFiles(c, translator.emitted, translator.builders);
   const listed = [
-    ...[...c.functions.values()].filter((f) => !c.dropped.has(f)).map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
+    ...[...c.functions.values()].filter((f) => !c.dropped.has(f) && !f.implicit).map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
     ...[...c.memos.values()].map((m) => ({ source: m.source, cpp: `${m.struct} (index)`, kind: 'index' as const, line: m.line })),
     ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);

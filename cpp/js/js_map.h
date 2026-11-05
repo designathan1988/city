@@ -185,6 +185,42 @@ std::vector<std::pair<std::string, V>> object_entries(const Map<std::string, V> 
 	for (const auto &e : m) out.push_back(e);
 	return out;
 }
+/** map.keys(): a list of them, so the map may change while it is walked. */
+template <class K, class V>
+std::vector<K> keys_of(const Map<K, V> &m) {
+	std::vector<K> out;
+	for (const auto &e : m) out.push_back(e.first);
+	return out;
+}
+
+/** map.values(): each value itself, as JavaScript hands an object out, in insertion order; a list when kept. */
+template <class K, class V>
+class ValuesOf {
+public:
+	explicit ValuesOf(const Map<K, V> &m) : m_(m) {}
+	class iterator {
+	public:
+		explicit iterator(typename Map<K, V>::iterator at) : at_(at) {}
+		V &operator*() const { return at_->second; }
+		iterator &operator++() { ++at_; return *this; }
+		bool operator!=(const iterator &o) const { return at_ != o.at_; }
+	private:
+		typename Map<K, V>::iterator at_;
+	};
+	iterator begin() const { return iterator(m_.begin()); }
+	iterator end() const { return iterator(m_.end()); }
+	int size() const { return m_.size(); }
+	operator std::vector<V>() const {
+		std::vector<V> out;
+		for (const auto &e : m_) out.push_back(e.second);
+		return out;
+	}
+private:
+	const Map<K, V> &m_;
+};
+template <class K, class V>
+ValuesOf<K, V> values_of(const Map<K, V> &m) { return ValuesOf<K, V>(m); }
+
 /** map.clear(), set.clear(). */
 template <class C>
 void clear(C &c) {

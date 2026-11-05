@@ -20,6 +20,8 @@ export interface PatternMatch {
 export class Patterns {
   readonly #ts: TypeScriptApi;
   readonly #patterns: readonly Pattern[];
+  /** What a constant's name stands for, when it is a plain path of properties. */
+  alias: ((name: TS.Identifier) => TS.Expression | null) | null = null;
 
   constructor(ts: TypeScriptApi, mappings: readonly PatternMapping[]) {
     this.#ts = ts;
@@ -56,6 +58,11 @@ export class Patterns {
       if (prior) return prior.getText() === n.getText();
       bound.set(p.text, n as TS.Expression);
       return true;
+    }
+    // a constant that only names a part of what the pattern reads (`const F = ROAD_TUNING.flow`): read as what it names
+    if (p.kind !== n.kind && ts.isIdentifier(n)) {
+      const named = this.alias?.(n);
+      if (named) return this.#match(p, named, bound);
     }
     if (p.kind !== n.kind) return false;
     if (ts.isIdentifier(p) || ts.isNumericLiteral(p)) return p.text === (n as TS.Identifier).text;

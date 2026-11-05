@@ -46,6 +46,8 @@ export interface FunctionPlan {
   readonly exported: boolean;
   /** A member of a class: written in its struct, not as a free function. */
   readonly owner?: MemberOwner;
+  /** A constructor the source does not write: no unit of the program. */
+  readonly implicit?: boolean;
   /** The source file it comes from, relative to the source root: its module. */
   readonly module: string;
   readonly line: number;

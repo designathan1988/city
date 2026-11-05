@@ -217,7 +217,7 @@ export abstract class ExpressionEmitter {
     if (e.kind === ts.SyntaxKind.TrueKeyword) return { code: 'true', type: BOOL };
     if (e.kind === ts.SyntaxKind.FalseKeyword) return { code: 'false', type: BOOL };
     if (e.kind === ts.SyntaxKind.NullKeyword) return { code: 'nullptr', type: NULL };
-    if (ts.isIdentifier(e)) return this.#identifier(e);
+    if (ts.isIdentifier(e)) return this.#narrowed(e, this.#identifier(e));
     // an enum's member is the value the checker knows
     if (ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)) {
       const member = this.symbolOf(ts.isPropertyAccessExpression(e) ? e.name : e.argumentExpression)?.valueDeclaration;
@@ -225,7 +225,15 @@ export abstract class ExpressionEmitter {
       if (typeof constant === 'number') return Number.isInteger(constant) ? { code: String(constant), type: INT } : { code: realLiteral(String(constant), this.c.spec.number), type: this.c.types.number(Num.Float, 'local') };
       if (typeof constant === 'string') return { code: JSON.stringify(constant), type: LITERAL };
     }
-    if (ts.isPropertyAccessExpression(e)) return this.#property(e);
+    if (ts.isPropertyAccessExpression(e)) {
+      const field = this.symbolOf(e.name);
+      const decl = field?.valueDeclaration;
+      if (field && decl && ts.isPropertyDeclaration(decl) && (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) !== 0) {
+        const owner = target(this.c.types.ofType(this.c.checker.getTypeAtLocation(decl.parent), 'local', null));
+        return { code: `${owner.k === 'struct' ? owner.name : render(owner)}::${snake(e.name.text.replace(/^#/, ''))}`, type: this.c.types.slot(this.c.flow.symbolSlot(field), 'local') };
+      }
+      return this.#property(e);
+    }
     if (ts.isElementAccessExpression(e)) {
       const obj = this.value(e.expression);
       const dictionary = target(obj.type);
@@ -380,8 +388,18 @@ export abstract class ExpressionEmitter {
 
   /** a?.b: absent when a is, the receiver read once. What holds no absence of its own (a number) becomes optional. */
   #optionalMember(e: TS.PropertyAccessExpression, obj: Value): Value {
+    return this.#unlessAbsent(obj, (held) => this.#member(e, { code: held, type: obj.type }));
+  }
+
+  /** `a?.b`, `a?.m()`: what `read` makes of a, or absent when a is; a itself read once. */
+  #unlessAbsent(obj: Value, read: (held: string) => Value): Value {
     const held = this.temp('from');
-    const read = this.#member(e, { code: held, type: obj.type });
+    const made = read(held);
+    if (made.type.k === 'void') return { code: `[&]() { const auto &${held} = ${obj.code}; if (${held}) ${made.code}; }()`, type: made.type };
+    return this.#absentOr(obj, held, made);
+  }
+
+  #absentOr(obj: Value, held: string, read: Value): Value {
     const type: CppType = isHandle(read.type) || read.type.k === 'optional' || read.type.k === 'bool' ? read.type : { k: 'optional', of: read.type };
     const absent = isHandle(type) ? 'nullptr' : type.k === 'bool' ? 'false' : 'std::nullopt';
     this.c.includes.add('optional');
@@ -453,9 +471,24 @@ export abstract class ExpressionEmitter {
         if (regex) return this.#regexTest(regex, e.arguments[0]!);
       }
       const member = this.#memberPlan(callee.name);
-      if (member) return this.#memberCall(e, member, receiver);
+      const absentable = callee.questionDotToken !== undefined;
+      if (member && !absentable) return this.#memberCall(e, member, receiver);
       const obj = this.value(receiver);
-      const t = target(obj.type);
+      if (member) return this.#unlessAbsent(obj, (held) => this.#memberCall(e, member, receiver, held));
+      if (absentable && (isHandle(obj.type) || obj.type.k === 'optional')) {
+        return this.#unlessAbsent(obj, (held) => this.#method(e, { code: `(*${held})`, type: target(obj.type) }, method, callee, want));
+      }
+      return this.#method(e, obj, method, callee, want);
+    }
+    return this.#plainCall(e, callee);
+  }
+
+  /** A method of a value of the target's or the runtime's: what it is called on decides. */
+  #method(e: TS.CallExpression, held: Value, method: string, callee: TS.PropertyAccessExpression, want?: CppType): Value {
+    {
+      const t = target(held.type);
+      // a container behind a pointer is read through it
+      const obj: Value = held.type.k === 'ptr' && t.k !== 'class' ? { code: `(*${held.code})`, type: t } : held;
       if (t.k === 'class') return this.#classMember(e, t.name, obj, method, e.arguments);
       if (t.k === 'map') return this.#mapMethod(e, obj, method);
       if (t.k === 'function' && method === 'has' && t.params.length === 1 && e.arguments.length === 1) {
@@ -467,6 +500,11 @@ export abstract class ExpressionEmitter {
       if (this.#isBuiltin(callee.name)) return this.builtin(e, obj);
       return this.fail(e, `a method ${method} of ${render(obj.type)}`);
     }
+  }
+
+  /** A call of a name: a function of the feature, the target's, a local callback, a built-in. */
+  #plainCall(e: TS.CallExpression, callee: TS.Expression): Value {
+    const ts = this.c.ts;
     if (ts.isIdentifier(callee)) {
       const symbol = this.symbolOf(callee);
       const decl = symbol?.valueDeclaration;
@@ -531,14 +569,14 @@ export abstract class ExpressionEmitter {
   }
 
   /** A method called: on its instance, or on its class when it is static. */
-  #memberCall(e: TS.CallExpression, plan: FunctionPlan, receiver: TS.Expression): Value {
+  #memberCall(e: TS.CallExpression, plan: FunctionPlan, receiver: TS.Expression, on?: string): Value {
     if (this.c.dropped.has(plan)) return this.fail(e, `${plan.source} was left out of its class`);
     this.uses?.add(plan.module);
     this.calledFunction = true;
     const args = this.#argumentsOf(plan, e.arguments, new Map()).join(', ');
     const type = holdsTypeParameter(plan.ret) ? this.#typeOf(e) : plan.ret;
     if (plan.owner!.isStatic) return { code: `${plan.owner!.struct}::${plan.cpp}(${args})`, type };
-    return { code: `${this.value(receiver).code}->${plan.cpp}(${args})`, type };
+    return { code: `${on ?? this.value(receiver).code}->${plan.cpp}(${args})`, type };
   }
 
   /** `this`: read through inside a member; as a value, the shared instance (never in a constructor: nothing holds it yet). */
@@ -550,6 +588,18 @@ export abstract class ExpressionEmitter {
     if (this.c.ts.isPropertyAccessExpression(e.parent) && e.parent.expression === e) return { code: 'this', type };
     if (owner.kind === 'constructor') return this.fail(e, '`this` given away by a constructor');
     return { code: 'shared_from_this()', type };
+  }
+
+  /** An optional the source has already proved present here (`if (x === undefined) return;`) is its value. The checker knows; the written side of an assignment stays the optional. */
+  #narrowed(e: TS.Identifier, v: Value): Value {
+    if (v.type.k !== 'optional') return v;
+    const ts = this.c.ts;
+    const p = e.parent;
+    if (ts.isBinaryExpression(p) && p.left === e && p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && p.operatorToken.kind <= ts.SyntaxKind.LastAssignment) return v;
+    const here = this.c.checker.getTypeAtLocation(e);
+    const absent = ts.TypeFlags.Undefined | ts.TypeFlags.Null;
+    const mayBeAbsent = here.isUnion() ? here.types.some((t) => t.flags & absent) : (here.flags & (absent | ts.TypeFlags.Any | ts.TypeFlags.Unknown)) !== 0;
+    return mayBeAbsent ? v : { code: `(*${v.code})`, type: v.type.of };
   }
 
   /** The type of an expression as the flow solved it (an expression with no slot: the form of its TypeScript type). */
@@ -758,6 +808,7 @@ export abstract class ExpressionEmitter {
     if (method === 'add') return { code: `${obj.code}.insert(${member()})`, type: { k: 'void' } };
     if (method === 'has') return { code: `(${obj.code}.count(${member()}) != 0)`, type: BOOL };
     if (method === 'delete') return { code: `${obj.code}.remove(${member()})`, type: BOOL };
+    if (method === 'clear') return { code: `${obj.code}.clear()`, type: { k: 'void' } };
     return this.builtin(e, obj);
   }
 
@@ -775,6 +826,15 @@ export abstract class ExpressionEmitter {
     if (method === 'set') return { code: `${obj.code}[${key()}] = ${this.expr(e.arguments[1]!, map.of)}`, type: { k: 'void' } };
     if (method === 'has') return { code: `(${obj.code}.count(${key()}) != 0)`, type: BOOL };
     if (method === 'delete') return { code: `${obj.code}.erase(${key()})`, type: { k: 'void' } };
+    if (method === 'clear') return { code: `${obj.code}.clear()`, type: { k: 'void' } };
+    if (method === 'keys') {
+      this.c.includes.add(RUNTIME_INCLUDE);
+      return { code: `js::keys_of(${obj.code})`, type: { k: 'vector', of: map.key } };
+    }
+    if (method === 'values') {
+      this.c.includes.add(RUNTIME_INCLUDE);
+      return { code: `js::values_of(${obj.code})`, type: { k: 'vector', of: map.of } };
+    }
     return this.builtin(e, obj);
   }
 
