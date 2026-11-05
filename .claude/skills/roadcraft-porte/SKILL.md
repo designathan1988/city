@@ -28,6 +28,7 @@ atual (`core` → `sim` → `render` → `api`, `CityState`, `ChangeLog`, `JobPo
 - Leia inteiro o que vai portar (skill `roadcraft-leitura`): `feature.md`, `source/` e os arquivos próprios listados.
 
 ## 2. Processo (inegociável, nesta ordem)
+O portão de processo (`CLAUDE.md` da raiz, `ferramentas/processo/`) impõe estes passos: cada um se registra por `processo.py passo N`, fora de ordem o programa nega, e o passo 5 para a sessão.
 1. Análise com medição no jogo atual (sondas, `camera_pan`, capturas) até a causa.
 2. Pesquisa na documentação oficial (Godot 4.7, godot-cpp, Terrain3D) e fontes primárias; cada constante com fonte ou medida.
 3. Plano completo em `ports/<feature>/plano.md` e `cobertura.md` (uma linha por declaração própria) antes do código.
