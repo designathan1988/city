@@ -42,6 +42,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityProbes::kerb_busy);
 	ClassDB::bind_method(D_METHOD("dock_count"), &CityProbes::dock_count);
+	ClassDB::bind_method(D_METHOD("look_twins", "reach_m", "alike"), &CityProbes::look_twins);
 	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityProbes::lot_clearance);
 	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityProbes::vehicles_near);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);

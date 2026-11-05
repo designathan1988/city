@@ -4,9 +4,11 @@
 
 #include "core/grid.h"
 #include "sim/buildings/b40/data.h"
+#include "sim/buildings/likeness.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -45,6 +47,8 @@ public:
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
 	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
+	// How each body looks (likeness.h), by b40::body_key: derived, never saved. Only growth writes it, under the map's exclusive lock.
+	std::unordered_map<uint64_t, BodyLook> looks;
 
 	void init(ChangeLog *l, const OccupancyDef *occupancy);
 	void clear();

@@ -3,6 +3,7 @@
 #include "api/city_probes.h"
 
 #include "sim/buildings/b40/record.h"
+#include "sim/buildings/growth.h"
 #include "sim/traffic/traffic_system.h"
 #include "sim/traffic/yard.h"
 #include "sim/state/city_state.h"
@@ -240,6 +241,33 @@ Dictionary CityProbes::park_sample() {
 	d["yard_costs"] = yard_costs(pk);
 	for (const Lorry &l : pk.lorries)
 		if (l.phase != LorryPhase::COMING) d["lorry"] = Vector3(s.traffic.vehicles[size_t(l.id)].cur.x, s.traffic.vehicles[size_t(l.id)].cur.y, s.traffic.vehicles[size_t(l.id)].cur.z);
+	return d;
+}
+
+Dictionary CityProbes::look_twins(float reach_m, float alike) {
+	std::unique_lock<std::shared_mutex> lk(state_->map_mutex); // a look not yet read is kept
+	CityState &s = *state_;
+	int pairs = 0, twins = 0;
+	for (int id = 0; id < int(s.buildings.items.size()); id++) {
+		const Building &b = s.buildings.items[size_t(id)];
+		if (!b.alive || b.fn != FN_NONE) continue;
+		int nearest = -1;
+		float best = reach_m;
+		s.buildings.query(b.x - reach_m, b.z - reach_m, b.x + reach_m, b.z + reach_m, [&](int other) {
+			const Building &o = s.buildings.items[size_t(other)];
+			const float d = std::hypot(o.x - b.x, o.z - b.z);
+			if (other != id && o.fn == FN_NONE && d < best) {
+				best = d;
+				nearest = other;
+			}
+		});
+		if (nearest < 0) continue;
+		pairs++;
+		twins += look_distance(look_of(s, b), look_of(s, s.buildings.items[size_t(nearest)])) < alike ? 1 : 0;
+	}
+	Dictionary d;
+	d["pairs"] = pairs;
+	d["twins"] = twins;
 	return d;
 }
 

@@ -14,6 +14,9 @@ const CORE_TOWERS := 0.6 # the 4.0, seed 7: 88% and 78% in the two inner bands
 const RIM_TOWERS := 0.05 # 0.2% from half the radius out
 const CORE_BANDS := 2
 const RIM_BAND := 3
+const TWIN_REACH_M := 32.0 # the 4.0's tests/world/variety.spec.ts: a building and the nearest other one
+const TWIN_ALIKE := 1.2
+const TWINS_MOST := 0.05
 
 var failures := 0
 
@@ -50,6 +53,10 @@ func _ready() -> void:
 			_check(towers > CORE_TOWERS, "miolo: %.2f das torres na faixa %d" % [towers, i])
 		elif i >= RIM_BAND:
 			_check(towers < RIM_TOWERS, "borda: %.2f de torres na faixa %d" % [towers, i])
+	var look: Dictionary = CityStore.query(&"look_twins", [TWIN_REACH_M, TWIN_ALIKE])
+	print("vizinhos parecidos: %d de %d pares" % [look.twins, look.pairs])
+	if map == TOWN_MAP:
+		_check(float(look.twins) / look.pairs < TWINS_MOST, "vizinhos não se repetem: %d de %d pares parecidos" % [look.twins, look.pairs])
 	var f := FileAccess.open(OUT_FILE, FileAccess.WRITE)
 	f.store_string(JSON.stringify(rows))
 	if map == TOWN_MAP:

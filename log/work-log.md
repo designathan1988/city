@@ -212,6 +212,8 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
   - `render/buildings/civic.h` (repasse) removido; e2e confere `plants_near`.
 - 16:48 DLLs refeitas, gates dos mudados OK, suíte 25/25 sem instáveis.
 
+- 16:57 Variedade dos prédios (`sim/buildings/likeness`): o `record_for` testa 4 sementes em paralelo no `JobPool` e fica com o corpo menos parecido com o que está em 100 m (forma, cor, telhado, andares, pesos do 4.0); `BuildingStore::looks` guarda a aparência por `body_key`. `city_mass_test`: 1 de 1.350 pares de vizinhos parecidos (sonda `look_twins`), cidade abre em 0,14 s. Suíte 25/25, gates dos mudados OK.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
@@ -219,7 +221,7 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
    - levar ao jogo o que compila, área por área, conferindo com `differential --hand` contra o 4.0;
    - escrever as unidades abertas nos donos pelo método indicado;
    - o registro do conversor está em `log/conversor.md`.
-2. **Variedade dos prédios:** o 4.0 faz 4 candidatos por lote e fica com o menos parecido com os vizinhos em 100 m (`zoning.ts unlikeness`, `procedural.ts bodySignature`); o jogo pega o primeiro.
+2. **Par de um vão urbano-rural** (a foto ainda não foi tirada).
 3. **Elevação:** editor (camada 3), render por estação (camada 4: tabuleiro, pilares, encontros, guarda-corpos, emboques; par `look-pair16` "viaduto") e consumidores (camada 5).
 4. **Laboratório F7, portão `verify`, cantos das junções** (`corners.ts`, raio 4,5) e a chave de tuning ausente que derruba o jogo.
 5. **Nomes ainda em português:** as chaves `sementes` do `features.json`, as mensagens dos testes e capturas.
