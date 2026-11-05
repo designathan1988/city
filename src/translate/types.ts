@@ -26,6 +26,8 @@ export interface CppStruct {
   /** The source file that declares it (its module), null when it has no declaration of its own. */
   readonly module: string | null;
   readonly line: number;
+  /** The source's name of the type it is made from (null: an anonymous shape, a tuple, a library type). */
+  readonly declared?: string | null;
 }
 
 export interface CppEnum {
@@ -225,7 +227,10 @@ export class TypeMapper {
   structFor(type: TS.Type, hint: string): CppType {
     if (this.#checker.isTupleType(type)) return this.#tuple(type as TS.TypeReference);
     const symbol = type.aliasSymbol ?? type.getSymbol();
-    const declared = symbol && symbol.name !== '__type' && symbol.name !== '__object' ? symbol.name : null;
+    // a type TypeScript's own library declares (Pick, Partial, Record, Omit): no name of the program; named by its
+    // shape, like an object literal's type
+    const inLib = symbol?.declarations?.some((d) => /[\\/]typescript[\\/]lib[\\/]lib\.[^\\/]*\.d\.ts$/.test(d.getSourceFile().fileName)) ?? false;
+    const declared = symbol && !inLib && symbol.name !== '__type' && symbol.name !== '__object' ? symbol.name : null;
     if (!declared) {
       const same = this.#sameAs(type);
       if (same) return same;
@@ -233,7 +238,7 @@ export class TypeMapper {
     const shape = this.#checker.typeToString(type, undefined, this.#ts.TypeFormatFlags.NoTruncation | this.#ts.TypeFormatFlags.InTypeAlias);
     // a declared name the target already uses for its own type (city::Profile): the module's name in front
     // (ElevationProfile), so both live in one namespace; a name the spec gives (typeNames) wins
-    const stem = pascal((symbol?.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, ''));
+    const stem = pascal((symbol?.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'));
     const own = declared && this.#reserved.has(declared) && declared !== this.#spec.state.source ? `${stem}${declared}` : declared;
     const name = declared === this.#spec.state.source ? this.#spec.state.target
       : (declared ? this.#spec.typeNames[declared] : undefined) ?? own ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? pascal(hint);
@@ -243,9 +248,10 @@ export class TypeMapper {
       return { k: 'struct', name };
     }
     if (!declared) this.#anonymous.set(shape, name);
-    const decl = symbol?.declarations?.[0];
+    // a library type has no declaration of the program: its module is where it is used, its line none
+    const decl = inLib ? undefined : symbol?.declarations?.[0];
     const made: CppStruct = { name, comment: symbol && declared ? this.#doc(symbol) : null, fields: [], module: this.#moduleOf(decl),
-      line: decl ? decl.getSourceFile().getLineAndCharacterOfPosition(decl.getStart()).line + 1 : 0 };
+      line: decl ? decl.getSourceFile().getLineAndCharacterOfPosition(decl.getStart()).line + 1 : 0, declared };
     this.#seen(made);
     // Registered before its fields: a type that holds itself stops here. The files order structs by what they hold.
     this.structs.set(name, made);

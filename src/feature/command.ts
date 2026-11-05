@@ -14,6 +14,7 @@ import { holdsFeature } from './holders.ts';
 import { htmlRoots } from './html.ts';
 import { writeInterface, type InterfaceOut } from './interface.ts';
 import { CallTargets, readJelly, runJelly } from './callgraph.ts';
+import { castExternals, platformHooks, type CastExternal, type PlatformHook } from './platform.ts';
 import { PointsTo } from './pointsto.ts';
 import { featureResources, type FeatureResource } from './resources.ts';
 import { sliceShared, type FeatureSlice } from './slice.ts';
@@ -62,19 +63,21 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const calls = new CallTargets(ts, analysis.callGraph, base, (file) => sp.sourceFile(file));
   const pts = new PointsTo(ts, analysis.tokens, base);
   const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, pts, flags.one('postcss'));
+  const platform = platformHooks(ts, sp.checker, index, boundary, sp.root);
+  const castExternal = castExternals(ts, sp.checker, index, boundary, sp.root);
   const sources = writeSources(ir, boundary, slices, resources, sourceRoot, path.join(out, 'source'));
   const shared = writeInterface(ts, sp.checker, index, boundary, slices, path.join(out, 'interface'));
   const { program: _program, ...written } = boundary;
-  fs.writeFileSync(path.join(out, 'boundary.json'), JSON.stringify({ ...written, slices, resources }, null, 1), 'utf8');
-  fs.writeFileSync(path.join(out, 'feature.md'), renderFeature(index, boundary, slices, resources, sources, shared), 'utf8');
+  fs.writeFileSync(path.join(out, 'boundary.json'), JSON.stringify({ ...written, slices, resources, platform, castExternal }, null, 1), 'utf8');
+  fs.writeFileSync(path.join(out, 'feature.md'), renderFeature(index, boundary, slices, resources, sources, shared, platform, castExternal), 'utf8');
   const lines = sources.reduce((n, s) => n + s.lines, 0);
   console.log(`feature ${boundary.entries.join(', ')}: ${boundary.own.length} own declarations, ${slices.length} slices of shared code, ` +
     `${resources.length} resources; ${lines} lines in ${sources.length} files; uses ${boundary.uses.length} shared (interface: ${shared.length} files), ${boundary.hooks.length} hooks, ` +
-    `${boundary.external.length} external APIs -> ${out}`);
+    `${boundary.external.length} external APIs, ${platform.length} entries from the platform -> ${out}`);
 }
 
 function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly FeatureSlice[], resources: readonly FeatureResource[], sources: readonly SourceOut[],
-  shared: readonly InterfaceOut[]): string {
+  shared: readonly InterfaceOut[], platform: readonly PlatformHook[], castExternal: readonly CastExternal[]): string {
   const where = (id: string): string => {
     const u = index.units.get(id)!;
     return `\`${id}\` (${u.kind}, line ${u.start.line})`;
@@ -118,6 +121,18 @@ function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly Fe
     '## Where the program plugs the feature in',
     '',
     ...list(b.hooks, 'by'),
+    '## Where the platform calls the feature',
+    '',
+    'Code of the feature a package or the platform calls (no declaration of the program does): an override of a member its bases declare, or a function stored in or given to one of its declarations.',
+    '',
+    ...platform.map((p) => `- ${where(p.unit)} — ${p.how} of \`${p.by}\` (${p.at})`),
+    '',
+    '## External APIs reached through a cast',
+    '',
+    'A package\'s object seen through a type of the program: each member of that type is the package\'s.',
+    '',
+    ...castExternal.map((c) => `- \`${c.key}\` (${c.at})`),
+    '',
     '## Shared declarations the feature uses',
     '',
     ...list(b.uses, 'unit'),

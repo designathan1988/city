@@ -41,6 +41,8 @@ interface ModuleOutcome {
   readonly accepted: boolean;
   readonly files: readonly string[];
   readonly emitted: readonly string[];
+  /** The source declarations its files hold (`module#name`), for a later module that shares one of them. */
+  readonly declared?: readonly string[];
   readonly refusals: readonly string[];
 }
 
@@ -255,7 +257,7 @@ async function judge(spec: TranslationSpec, input: JudgeInput): Promise<Judged> 
   if (findings.length > 0) return { ...refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`)), attempt: { errors: [], findings, files: result.files, units: result.units } };
   const registration: Registration = { subsystem: spec.subsystem, includes: spec.layer.includes, mapLine: spec.registry?.mapLine ?? '',
     state: spec.state.source ? { header: result.stateHeader, anchor: spec.state.anchor ?? '', member: spec.state.memberLine ?? '', root: spec.state.root } : null };
-  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), refusals: [] }, files: result.files, registration };
+  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), declared: result.declared, refusals: [] }, files: result.files, registration };
 }
 
 export async function runConvertCommand(argv: readonly string[]): Promise<void> {
@@ -303,10 +305,22 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     const targetGraph = path.resolve(flags.require('target-graph'));
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
     for (const spec of specs) {
-      const judged = await judgeByRoot(spec, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
-        stopOf: (id) => ledger.stopOf(id), prepared });
-      const clash = [...judged.files].find(([file, text]) => accepted.has(file) && accepted.get(file) !== text);
-      if (clash) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
+      const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+        stopOf: (id: string) => ledger.stopOf(id), prepared };
+      let judged = await judgeByRoot(spec, judgeInput);
+      const clashes = (j: Judged): string[] => [...j.files].filter(([file, text]) => accepted.has(file) && accepted.get(file) !== text).map(([file]) => file);
+      let clash = clashes(judged);
+      // a module another accepted one shares, written with a different part of it: translated again rooting what the
+      // earlier ones wrote, so the shared files are their union (a superset each earlier module's files compile with)
+      if (clash.length > 0) {
+        const shared = [...new Set(outcomes.filter((o) => o.accepted && o.files.some((f) => clash.includes(f))).flatMap((o) => o.declared ?? []))].sort();
+        const merged = await judgeByRoot({ ...spec, shared }, judgeInput);
+        if (merged.outcome.accepted) {
+          judged = merged;
+          clash = [];
+        }
+      }
+      if (clash.length > 0) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
       else {
         outcomes.push(judged.outcome);
         for (const [file, text] of judged.files) accepted.set(file, text);

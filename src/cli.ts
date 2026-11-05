@@ -2,6 +2,7 @@
 import { AUDIT_FLAGS, runAuditCommand } from './audit/command.ts';
 import { CLASSIFY_FLAGS, runClassifyCommand } from './classify/command.ts';
 import { ArgsError, usage } from './common/args.ts';
+import { CONVERT_FLAGS, runConvertCommand } from './convert/command.ts';
 import { CPPGRAPH_FLAGS, runCppGraph } from './cppgraph/command.ts';
 import { FEATURE_FLAGS, runFeatureCommand } from './feature/command.ts';
 import { GRAPH_FLAGS, runGraph } from './graph/command.ts';
@@ -18,6 +19,7 @@ const COMMANDS: Record<string, { run: (argv: readonly string[]) => void | Promis
   cppgraph: { run: runCppGraph, help: usage('cppgraph', CPPGRAPH_FLAGS) },
   classify: { run: runClassifyCommand, help: usage('classify', CLASSIFY_FLAGS) },
   feature: { run: runFeatureCommand, help: usage('feature', FEATURE_FLAGS) },
+  convert: { run: runConvertCommand, help: usage('convert', CONVERT_FLAGS) },
   translate: { run: runTranslateCommand, help: usage('translate', TRANSLATE_FLAGS) },
   differential: { run: runDifferentialCommand, help: usage('differential', DIFFERENTIAL_FLAGS) },
   package: { run: runPackageCommand, help: usage('package', PACKAGE_FLAGS) },

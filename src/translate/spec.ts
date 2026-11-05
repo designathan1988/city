@@ -65,6 +65,11 @@ export interface TranslationSpec {
   readonly registry?: { readonly doc: string; readonly mapLine: string };
   /** Declarations of the source file to translate, by name (types follow from what they use). */
   readonly units: readonly string[];
+  /**
+   * Declarations of other modules this translation also roots (`src/core/polyline.ts#Frame`): what earlier accepted
+   * translations wrote into a module this one shares, so the shared module's files are the same union for both.
+   */
+  readonly shared?: readonly string[];
   readonly pending: readonly Pending[];
   /** The C++ type of a TypeScript number (the target's convention for world values). */
   readonly number: string;

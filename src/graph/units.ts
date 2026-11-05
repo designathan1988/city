@@ -150,7 +150,10 @@ export function ownerOf(ts: TypeScriptApi, ref: UnitRef): UnitRef | null {
   const n = ref.node;
   if (ref.head) return null;
   if (isNestedUnitNode(ts, n)) return n.parent ? unitOf(ts, n.parent) : null;
-  if (!ts.isClassElement(n) || !n.parent || !ts.isClassDeclaration(n.parent)) return null;
+  if (!ts.isClassElement(n) || !n.parent || !ts.isClassLike(n.parent)) return null;
   const cls = n.parent;
-  return cls.parent && (ts.isSourceFile(cls.parent) || ts.isModuleBlock(cls.parent)) ? { node: cls, head: true } : null;
+  if (ts.isClassDeclaration(cls) && cls.parent && (ts.isSourceFile(cls.parent) || ts.isModuleBlock(cls.parent))) return { node: cls, head: true };
+  // A class written inside code (`function watch() { class Watched extends Worker {…} }`, `const A = class {…}`) is
+  // not a unit: its members belong to the unit around it, which is what makes and hands out the class.
+  return cls.parent ? unitOf(ts, cls.parent) : null;
 }

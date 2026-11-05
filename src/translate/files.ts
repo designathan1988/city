@@ -11,17 +11,15 @@ import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
 import type { EmittedFunction, EmittedMemo } from './translator.ts';
 
-const STD = new Set(['algorithm', 'cmath', 'cstdint', 'deque', 'functional', 'iterator', 'limits', 'optional', 'queue', 'regex', 'string', 'tuple',
-  'unordered_map', 'unordered_set', 'utility', 'vector']);
-
 /**
- * The standard header of each std:: name the translation writes. The headers come from the text written, every
- * module's, not from the places that remembered to ask for one: a name written is a header included.
+ * The standard header of each std:: name the translation writes. The headers come from the text written, the
+ * module's own, not from the places that remembered to ask for one: a name written is a header included.
  */
 const STD_HEADER: Readonly<Record<string, string>> = {
-  optional: 'optional', nullopt: 'optional', function: 'functional', vector: 'vector', deque: 'deque', string: 'string',
-  to_string: 'string', unordered_map: 'unordered_map', unordered_set: 'unordered_set', numeric_limits: 'limits', regex: 'regex',
-  regex_search: 'regex', back_inserter: 'iterator', pair: 'utility', move: 'utility', swap: 'utility', tuple: 'tuple', queue: 'queue',
+  optional: 'optional', nullopt: 'optional', function: 'functional', greater: 'functional', less: 'functional', vector: 'vector',
+  deque: 'deque', string: 'string', to_string: 'string', unordered_map: 'unordered_map', unordered_set: 'unordered_set',
+  numeric_limits: 'limits', regex: 'regex', regex_search: 'regex', regex_replace: 'regex', regex_constants: 'regex', back_inserter: 'iterator',
+  get: 'tuple', array: 'array', pair: 'utility', move: 'utility', swap: 'utility', tuple: 'tuple', queue: 'queue',
   priority_queue: 'queue', initializer_list: 'initializer_list', size_t: 'cstddef', int64_t: 'cstdint', int32_t: 'cstdint', uint32_t: 'cstdint',
   ...Object.fromEntries(['sort', 'stable_sort', 'find', 'find_if', 'count_if', 'copy_if', 'any_of', 'all_of', 'none_of', 'min', 'max',
     'reverse', 'fill', 'clamp', 'lower_bound', 'upper_bound', 'remove_if'].map((n) => [n, 'algorithm'])),
@@ -36,6 +34,8 @@ function stdHeadersIn(text: string): Set<string> {
     const h = STD_HEADER[m[1]!];
     if (h) out.add(h);
   }
+  // the fixed-width integers are written without std::
+  if (/\bu?int(8|16|32|64)_t\b/.test(text)) out.add('cstdint');
   return out;
 }
 
@@ -49,6 +49,30 @@ function typesNamedIn(text: string, nameModule: ReadonlyMap<string, string>): Se
   }
   return out;
 }
+
+/**
+ * Each target header the spec names, with the names it declares there: a value type's (V2), a class mapping's type,
+ * the names a pattern writes and its context's type (Tuning). A module that writes one of them includes the header.
+ */
+function projectHeaderNames(c: TranslateContext): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  const add = (include: string, text: string): void => {
+    if (!include.endsWith('.h')) return;
+    const names = out.get(include) ?? new Set<string>();
+    for (const w of text.replace(/\$\w+/g, ' ').replace(/std::\w+/g, ' ').match(/\b[A-Za-z_]\w*\b/g) ?? []) if (!CPP_WORDS.has(w)) names.add(w);
+    out.set(include, names);
+  };
+  for (const t of Object.values(c.spec.types)) add(t.include, t.type);
+  for (const k of Object.values(c.spec.classes)) add(k.include, k.type);
+  for (const p of c.spec.patterns) add(p.include, `${p.target} ${p.context?.type ?? ''}`);
+  return out;
+}
+
+const CPP_WORDS = new Set(['const', 'int', 'float', 'double', 'bool', 'auto', 'unsigned', 'return', 'true', 'false', 'nullptr', 'int32_t',
+  'int64_t', 'uint32_t', 'uint8_t', 'size_t']);
+
+/** The marker the types header holds where the target's headers go. */
+const PROJECT_MARK = '@@project-includes@@';
 
 /** The marker the types header holds where its standard includes go, filled once every file is written. */
 const STD_MARK = '@@std-includes@@';
@@ -164,9 +188,6 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const id = placed.get(m)!;
     return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'types' ? '_types' : ''}.h`;
   };
-  const projectIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => i.endsWith('.h')).sort();
-  const stdIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => STD.has(i));
-  if (builders.some((b) => b.plan.stores.size > 0)) stdIncludes.push('deque');
   const depsOf = (types: readonly CppType[], self: string): string[] =>
     [...new Set(types.flatMap(namesIn).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
 
@@ -188,7 +209,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
-    for (const p of projectIncludes) types.push(`#include "${p}"`);
+    types.push(PROJECT_MARK);
     for (const d of depsOf(typeRefs, m)) types.push(`#include "${header(d, 'types')}"`);
     types.push('', STD_MARK, '', `namespace ${ns} {`, '');
     for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
@@ -283,12 +304,22 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       files.set(`${id.owner}/${id.stem}_index.cpp`, index.join('\n'));
     }
   }
-  // every module's types header includes the standard headers the whole translation names (each file includes its
-  // module's types header first)
-  const std = new Set(stdIncludes);
-  for (const text of files.values()) for (const h of stdHeadersIn(text)) std.add(h);
-  const block = [...std].sort().map((s) => `#include <${s}>`).join('\n');
-  for (const [name, text] of files) if (text.includes(STD_MARK)) files.set(name, text.replace(STD_MARK, block));
+  // a module's types header includes what the module's own files name (each of them includes it first): the standard
+  // headers of the std:: names written, the target headers of the names the spec says they declare. From the text,
+  // so a module shared by two translations is written the same by both
+  const owners = projectHeaderNames(c);
+  for (const id of placed.values()) {
+    const prefix = `${id.owner}/${id.stem}`;
+    const own = [`${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
+    const text = own.map((f) => files.get(f)!).join('\n');
+    const std = stdHeadersIn(text);
+    const words = new Set(text.match(/\b[A-Za-z_]\w*\b/g) ?? []);
+    const project = [...owners].filter(([, names]) => [...names].some((n) => words.has(n))).map(([h]) => h).sort();
+    const types = `${prefix}_types.h`;
+    files.set(types, files.get(types)!
+      .replace(`${PROJECT_MARK}\n`, project.map((h) => `#include "${h}"\n`).join(''))
+      .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
+  }
   return files;
 }
 

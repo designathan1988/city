@@ -24,6 +24,8 @@ export interface TranslationResult {
   readonly subsystem: string;
   readonly files: Map<string, string>;
   readonly units: { readonly source: string; readonly cpp: string; readonly kind: 'edit' | 'query' | 'index' | 'constant'; readonly line: number }[];
+  /** Every declaration of the source the files hold, `module#name`: functions, constants and declared types. */
+  readonly declared: readonly string[];
   readonly pending: readonly Pending[];
   readonly errors: readonly string[];
   /** What other owners call, and the types they see: what a harness needs to drive the translation. */
@@ -156,6 +158,15 @@ export function translate(input: TranslateInput): TranslationResult {
   }
   const translator = new Translator(c);
   const units = translator.trace();
+  // the types an earlier translation wrote into a module this one shares (spec.shared): declared here too, so the
+  // shared module's types header is the same for both
+  for (const id of spec.shared ?? []) {
+    const at = id.indexOf('#');
+    const shared = sp.sourceFile(path.join(input.sourceRoot, id.slice(0, at)));
+    const name = id.slice(at + 1);
+    const decl = shared?.statements.find((st) => (ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st)) && st.name.text === name) as TS.InterfaceDeclaration | TS.TypeAliasDeclaration | undefined;
+    if (decl) types.structFor(sp.checker.getTypeAtLocation(decl.name), name);
+  }
   translator.plan(units);
   translator.emit();
   const files = translationFiles(c, translator.emitted, translator.builders);
@@ -167,7 +178,12 @@ export function translate(input: TranslateInput): TranslationResult {
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
   const api = [...c.functions.values()].filter((f) => f.exported)
     .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
+  const declared = [...new Set([
+    ...[...c.functions.values()].map((f) => `${f.module}#${f.source}`),
+    ...[...c.constants.values()].filter((k) => k.module).map((k) => `${k.module}#${k.source}`),
+    ...[...types.structs.values()].filter((s) => s.declared && s.module && !types.indexStructs.has(s.name)).map((s) => `${s.module}#${s.declared}`),
+  ])].sort();
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
     valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),
