@@ -224,8 +224,11 @@ func _ask_tilt(next: float) -> void:
 	far_tilt = now - CameraProfile.profile_tilt(cfg, half) + deg_to_rad(cfg.far_tilt_deg)
 
 
+## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
+## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map).
 func _ground_height(x: float, z: float) -> float:
-	return CityStore.query(&"height_at", [x, z])
+	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
+	return hit.position.y if hit.get("hit", false) else CityStore.query(&"height_at", [x, z])
 
 
 func _apply() -> void:

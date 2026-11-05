@@ -177,8 +177,19 @@ Dictionary CityCore::raycast(const Vector3 &origin, const Vector3 &dir) {
 	V2 d2(dir.x, dir.z);
 	float l2 = d2.len();
 if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
+	// What the player sees under the ray (the 4.0's worldAtScreen): the ground, or a road deck the ray meets before it.
 	float hx, hy, hz;
-	if (!state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz)) return d;
+	const bool ground = state_->terrain.raycast(V2(origin.x, origin.z), origin.y, d2, dir.y, RAY_MAX_M, hx, hy, hz);
+	double t_ground = RAY_MAX_M;
+	if (ground) t_ground = l2 >= RAY_DIR_MIN ? V2(hx - origin.x, hz - origin.z).len() / l2 : (origin.y - hy) / -dir.y;
+	double t_deck;
+	if (state_->roads.ray_deck(origin.x, origin.y, origin.z, dir.x, dir.y, dir.z, t_ground, t_deck)) {
+		hx = float(origin.x + dir.x * t_deck);
+		hy = float(origin.y + dir.y * t_deck);
+		hz = float(origin.z + dir.z * t_deck);
+	} else if (!ground) {
+		return d;
+	}
 	d["hit"] = true;
 	d["position"] = Vector3(hx, hy, hz);
 	return d;

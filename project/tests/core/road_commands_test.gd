@@ -23,6 +23,11 @@ const TOWN_STEPS := 400
 const TOWN_SWING_M := 60.0
 const FILLED_STYLES := ["roadcraft", "brasil"] # session-rules.md, section 10
 
+const RAY_FROM_M := 400.0
+const DECK_OVER_GROUND_M := 0.3 # the ground under a road is dropped 0.6 m below its deck (road_shape.cpp)
+const OFF_ROAD_M := 120.0
+const GROUND_EPS_M := 0.01
+
 var failures := 0
 
 
@@ -48,6 +53,7 @@ func _ready() -> void:
 	_check(s1.segments > s0.segments, "segmentos %d -> %d" % [s0.segments, s1.segments])
 	var bad: Dictionary = CityStore.dispatch(&"build_road", [e, e + Vector3(2, 0, 0), false, Vector3.ZERO, PROFILE, PX])
 	_check(not bad.ok and bad.error == "refuse.road.tooShort", "recusa via curta: %s" % bad.error)
+	_surface((a + e) * 0.5)
 	_road_end(e)
 	_snapping(a, e)
 	_freehand(e)
@@ -75,6 +81,18 @@ func _ready() -> void:
 	RoadMoneyCases.new(_check).run(b)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The pointer lands on what the player sees (the 4.0's worldAtScreen): on a road, its deck, above the ground dropped under
+## it; off the roads, the ground.
+func _surface(mid: Vector3) -> void:
+	var on: Dictionary = CityStore.query(&"raycast", [Vector3(mid.x, RAY_FROM_M, mid.z), Vector3.DOWN])
+	var under: float = CityStore.query(&"height_at", [mid.x, mid.z])
+	_check(on.hit and on.position.y > under + DECK_OVER_GROUND_M, "the ray lands on the road's deck (%.3f) above the ground under it (%.3f)" % [on.position.y, under])
+	var away := mid + Vector3(0, 0, OFF_ROAD_M)
+	var off: Dictionary = CityStore.query(&"raycast", [Vector3(away.x, RAY_FROM_M, away.z), Vector3.DOWN])
+	var ground: float = CityStore.query(&"height_at", [away.x, away.z])
+	_check(off.hit and absf(off.position.y - ground) < GROUND_EPS_M, "off the road the ray lands on the ground (%.3f against %.3f)" % [off.position.y, ground])
 
 
 ## A road the player lays ends in a straight cut; the bulb is a choice, undone like any edit.

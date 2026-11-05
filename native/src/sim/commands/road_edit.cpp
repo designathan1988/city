@@ -29,13 +29,6 @@ bool still_there(const CityState &s, int seg, double x, double z) {
 }
 } // namespace
 
-double arc_at(const std::vector<double> &table, double t) {
-	int n = int(table.size()) - 1;
-	double f = std::max(0.0, std::min(1.0, t)) * n;
-	int i = std::min(n - 1, int(std::floor(f)));
-	return table[i] + (table[i + 1] - table[i]) * (f - i);
-}
-
 int split_segment(CityState &s, int seg, double t) {
 	RoadNetwork &net = s.roads;
 	RoadSegment rec = net.segs[seg];

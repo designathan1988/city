@@ -28,6 +28,8 @@ double quad_length(const Quad &q, int steps = ARC_STEPS_DEFAULT);
 // Cumulative chord lengths at t = i / steps (size steps + 1).
 std::vector<double> arc_table(const Quad &q, int steps);
 double t_at_length(const std::vector<double> &table, double s);
+// Arc length at curve parameter t (the inverse of t_at_length), read off the same table.
+double arc_at(const std::vector<double> &table, double t);
 std::array<Quad, 2> split_quad(const Quad &q, double t);
 Quad sub_quad(const Quad &q, double t0, double t1);
 // The tightest radius of the curve (infinite when straight).

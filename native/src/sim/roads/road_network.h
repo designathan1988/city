@@ -28,6 +28,11 @@ enum SegFlag : uint16_t {
 	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
 };
 constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
+// ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
+constexpr double DECK_RAY_STEP_M = 0.5;
+constexpr int DECK_RAY_REFINE = 16;
+constexpr double RAY_PARALLEL_EPS = 1e-12; // a ray this near parallel to a slab never crosses it
+constexpr double RAY_RUN_EPS = 1e-9; // a ray whose ground run is shorter is vertical
 constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT); }
 constexpr uint16_t with_structure(uint16_t flags, Structure s) {
 	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
@@ -114,6 +119,9 @@ public:
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// Height of segment s at arc length `at` from node a: its solved profile (linear between its nodes until solved).
 	double seg_y(int s, double at) const;
+	// Where a ray (origin o, direction d, up to max_t) first comes down onto a road deck: the surface the player sees there
+	// (the 4.0's worldAtScreen and sceneHeightAt). A road in a tunnel is under the ground, never met. False: no deck before max_t.
+	bool ray_deck(double ox, double oy, double oz, double dx, double dy, double dz, double max_t, double &t_hit) const;
 	// The height the player gave node n over its grade line, and how segment s is built: both solved again.
 	void set_lift(int n, float lift);
 	void set_structure(int s, Structure st);
