@@ -463,6 +463,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/schemas/**` — um schema por tabela de dados
 
 **Ferramentas — tools/**
+- `tools/analise/causas.py` · `tools/analise/detectores.py` — analisador genérico de causas-raiz (qualquer versão): travas de trabalho em leituras da UI, realocação de buffers por quadro, mapas sem poda, threads que acordam sem trabalho, regra sem dono único/divergente, consulta com efeito, cache com chave incompleta, polling por quadro; `--compilar` (warnings) e `--medir` (sondas de `project/tests/perf`)
 - `tools/assets/bleed_alpha.py` · `tools/assets/cook_people.py` · `tools/assets/people_clean.py` · `tools/assets/rider_poses.py` · `tools/assets/export_builder_ui.py` · `tools/assets/make_flag_icons.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — a cor sob os furos de uma textura recortada; pessoas cozidas
   (MakeHuman CC0 + clipes Rocketbox MIT), pele da cabeça e da cintura, poses de quem vai em veículo por cinemática inversa, ícones e textos do Construir, cartões das bandeiras, KTX2 do Roadcraft → PNG, ruído azul do início dos raios da atmosfera, road_profiles.json da fonte do Roadcraft
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
