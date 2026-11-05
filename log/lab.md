@@ -100,3 +100,7 @@ Desvio do plano: o plano previa `lab.json` com schema próprio; uma tabela nova 
 Refeita sobre o `origin/main` com as DLLs refeitas das fontes: `quick.sh --all` com saída 0, suíte inteira, `lab_test` sem falha nos dois renderizadores. A sombra medida pelo A/B sem carga: GPU 10,3 → 5,4 ms, primitivas 12,7 M → 3,7 M. Erro de método registrado: restaurar uma DLL do git sem apagá-la deixa o build achar que nada mudou; o jogo abre sem a área nova e trava no `assert` do store. Antes de medir, apagar as DLLs. O crash do `edit_fuzz_test` foi achado pela sessão de causa-raiz (`j_set_profile`, índice -1).
 
 Próximo no laboratório: Recursos, Inspector, GPU, Gravador, Testes e Otimizações.
+
+### Instabilidade do `lab_test`, fechada
+
+A sessão de migração viu 25,10 de 29,68 ms sob carga. Causa: a soma das médias dos estágios que pesam contra a mediana da GPU. Agora a mesma janela, a mesma estatística e todos os estágios: 31,95 de 31,95 ms com a suíte ao lado.
