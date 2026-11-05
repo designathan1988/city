@@ -1,0 +1,49 @@
+{
+ "_doc": "Pessoas no 4.0, relógio 16:00: quem espera na guia e a multidão longe, pares das fotos 36 e 37.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "viewport": [
+  1600,
+  900
+ ],
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => !document.querySelector('.v2-start'))()",
+   "name": "title closed",
+   "timeout": 60000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(960); window.__roadcraft.scene().setSkyMode('day'); Object.keys(window.__roadcraft).join(',') + ' | ' + Object.keys(window.__roadcraft.sim).join(',')"
+  },
+  {
+   "wait": 30000
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.kerbWait || (!p.walking && p.ground === 'footway'))); if (!p) return 'nenhum espera'; r.setView({ x: p.x, y: p.y, zoom: 70, azimuth: p.heading + 2.2, elevation: 9 * Math.PI / 180 }); return JSON.stringify({ n: 'espera', g: p.ground, wait: p.kerbWait, v: p.v, walking: p.walking }); })()"
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "shot": "espera2"
+  },
+  {
+   "eval": "(() => { const r = window.__roadcraft; const L = [...r.sim.pedViews.values ? r.sim.pedViews.values() : r.sim.pedViews]; const p = (L.find((p) => p.ground === 'footway')); if (!p) return 'nenhum multidao'; r.setView({ x: p.x, y: p.y, zoom: 9, azimuth: p.heading + 2.2, elevation: 4 * Math.PI / 180 }); return JSON.stringify({ n: 'multidao', g: p.ground, wait: p.kerbWait, v: p.v, walking: p.walking }); })()"
+  },
+  {
+   "wait": 1500
+  },
+  {
+   "shot": "multidao"
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+ "_doc": "O rio como o pincel do 4.0 faz: carimbo e corte das arvores no raio.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()",
+   "name": "menu closed",
+   "timeout": 30000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(960); window.__roadcraft.scene().setSkyMode('day'); 1"
+  },
+  {
+   "eval": "const d = window.__roadcraft.doc; for (let i = 0; i < 60; i++) { const x = 3000 + i * 20 - 600, y = -2250 + Math.sin(i / 12) * 150; d.addTerrainStamp({ x, y, radius: 125, strength: 1, mode: 'river', rough: true, level: undefined, ox: 3000, oy: -2250 }); d.cutTrees(x, y, 125); } 1"
+  },
+  {
+   "setView": [
+    3000,
+    -2250,
+    3,
+    30,
+    24
+   ]
+  },
+  {
+   "wait": 9000
+  },
+  {
+   "shot": "rio_corte"
+  }
+ ]
+}

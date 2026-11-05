@@ -1,0 +1,105 @@
+{
+ "_doc": "A ordem da camera muda a sombra do 4.0? Mesmas poses de campo_meio e horizonte depois das poses arv_*.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()",
+   "name": "menu closed",
+   "timeout": 30000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(960); window.__roadcraft.scene().setSkyMode('day'); 1"
+  },
+  {
+   "eval": "(()=>{const d=window.__roadcraft.doc;const H=14;const t=[{x:2980,y:0,height:H,yaw:0,seed:0.08},{x:3000,y:0,height:H,yaw:0,seed:0.42},{x:3020,y:0,height:H,yaw:0,seed:0.75}];return d.plantTrees(t)})()"
+  },
+  {
+   "wait": 3000
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    25,
+    45,
+    12
+   ]
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "ord_arv_perto"
+  },
+  {
+   "setView": [
+    2980,
+    0,
+    50,
+    45,
+    8
+   ]
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "ord_arv_copa"
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    8,
+    45,
+    30
+   ]
+  },
+  {
+   "wait": 5000
+  },
+  {
+   "shot": "ord_arv_media"
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    8,
+    45,
+    12
+   ]
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "ord_campo_meio"
+  },
+  {
+   "setView": [
+    3000,
+    0,
+    20,
+    120,
+    4
+   ]
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "ord_horizonte"
+  }
+ ]
+}

@@ -1,0 +1,214 @@
+{
+ "_doc": "Canteiro: ponta junto de um cruzamento e canteiro pavimentado de rodovia, para os pares da via.",
+ "viewport": [
+  1600,
+  900
+ ],
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => !document.querySelector('.v2-start'))()",
+   "name": "title closed",
+   "timeout": 60000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene && window.__roadcraft.scene().setSkyMode('day'); const r = window.__roadcraft; const all = [...r.doc.nodes.values()]; const ty = (n) => (n.incident ?? []).map((s) => r.doc.segment(s).type); window.__far = Math.max(...all.map((n) => n.x)) + 260; window.__v = (n, zoom, az, el) => { r.setView({ x: n.x, y: n.y, zoom, azimuth: az * Math.PI / 180, elevation: el * Math.PI / 180 }); return [n.id, n.x, n.y, (n.incident ?? []).length, ty(n)]; }; window.__n0 = Math.max(...all.map((n) => n.id)); window.__mine = () => [...r.doc.nodes.values()].filter((n) => n.id > window.__n0); window.__ty = ty; const loc = all.sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y)).find((n) => n.incident.length === 4 && Math.max(...ty(n)) <= 1); window.__loc = loc; loc.id"
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 900
+  },
+  {
+   "eval": "window.__v({ x: window.__far, y: 0 }, 2.2, 0, 70)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "eval": "const c=[...document.querySelectorAll('.rc-card-main')]; const k=[...document.querySelectorAll('.rc-card')].findIndex((e)=>/canteiro/i.test(e.textContent)); (c[k]||c[0]).click(); String(k)"
+  },
+  {
+   "wait": 600
+  },
+  {
+   "click": [
+    420,
+    220
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    980,
+    220
+   ]
+  },
+  {
+   "wait": 2200
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "window.__c1 = window.__mine().length; const c=[...document.querySelectorAll('.rc-card-main')]; c[0].click(); String(c.length)"
+  },
+  {
+   "wait": 600
+  },
+  {
+   "click": [
+    700,
+    110
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    700,
+    340
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    700,
+    340
+   ]
+  },
+  {
+   "wait": 2200
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "press": "Rodovias"
+  },
+  {
+   "wait": 600
+  },
+  {
+   "eval": "window.__c2 = window.__mine().length; 1"
+  },
+  {
+   "eval": "const c=[...document.querySelectorAll('.rc-card-main')]; const k=[...document.querySelectorAll('.rc-card')].findIndex((e)=>/6 faixas/i.test(e.textContent)); (c[k]||c[0]).click(); String(k)"
+  },
+  {
+   "wait": 600
+  },
+  {
+   "click": [
+    420,
+    540
+   ]
+  },
+  {
+   "wait": 300
+  },
+  {
+   "move": [
+    980,
+    540
+   ]
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": [
+    980,
+    540
+   ]
+  },
+  {
+   "wait": 2200
+  },
+  {
+   "eval": "document.querySelector('[data-cat=roads]').click(); 1"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "const m=window.__mine(); const j=m.find((n)=>n.incident.length>=3); window.__j=j; window.__v(j,14,20,62); JSON.stringify([m.length, j&&j.incident.length, window.__ty(j)])"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "median-nose-top"
+  },
+  {
+   "eval": "window.__v(window.__j,30,30,30)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "median-nose-low"
+  },
+  {
+   "eval": "const m=window.__mine().slice(window.__c2); const a=m[0], b=m[m.length-1]; window.__h={x:(a.x+b.x)/2,y:(a.y+b.y)/2,incident:[]}; window.__v(window.__h,30,30,30); JSON.stringify([m.length,window.__ty(a)])"
+  },
+  {
+   "wait": 4500
+  },
+  {
+   "shot": "median-paved-low"
+  },
+  {
+   "eval": "window.__v(window.__h,14,20,62)"
+  },
+  {
+   "wait": 3500
+  },
+  {
+   "shot": "median-paved-top"
+  }
+ ]
+}

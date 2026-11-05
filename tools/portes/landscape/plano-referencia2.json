@@ -1,0 +1,60 @@
+{
+ "_doc": "Fotos do 4.0 para o porte landscape, cidade pequena semente 7, nos ângulos de capture_landscape.tscn: campo aberto a 3000 unidades da cidade.",
+ "city": {
+  "size": "small",
+  "seed": 7
+ },
+ "steps": [
+  {
+   "wait": 1500
+  },
+  {
+   "press": "Começar a construir"
+  },
+  {
+   "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()",
+   "name": "menu closed",
+   "timeout": 30000,
+   "polling": 250
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene().setSkyMode('day'); 1"
+  },
+  {
+   "eval": "const d = window.__roadcraft.doc; const kinds = ['sand', 'soil', 'meadow', 'snow', 'gravel', 'asphalt', 'concrete']; kinds.forEach((kind, k) => { for (let n = 0; n < 6; n++) d.addPaintDab({ kind, x: 4500 + (k - 3) * 275, y: 1500, radius: 112, strength: 1 }); }); 1"
+  },
+  {
+   "setView": [
+    4500,
+    1500,
+    0.7,
+    0,
+    50
+   ]
+  },
+  {
+   "wait": 4000
+  },
+  {
+   "shot": "chao_pintado2"
+  },
+  {
+   "eval": "window.__roadcraft.sim.setClock(1320); window.__roadcraft.scene().setSkyMode('night'); 1"
+  },
+  {
+   "setView": [
+    0,
+    0,
+    6,
+    30,
+    26
+   ]
+  },
+  {
+   "wait": 4000
+  },
+  {
+   "shot": "noite_cidade2"
+  }
+ ]
+}

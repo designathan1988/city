@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "feature": "street-furniture",
+  "game": "C:/Projects/Roadcraft-windows/fonte",
+  "base": "a11384aa2303e1913636063f5ffff7e6d12b98ed",
+  "branch": "convert/street-furniture",
+  "workspace": "C:/Projects/Roadcraft-windows/ports/street-furniture/workspace"
+}
