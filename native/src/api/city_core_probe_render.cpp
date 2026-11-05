@@ -13,12 +13,18 @@ namespace city {
 
 Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }
 
+// The wear field counted cell by cell: a scan of the whole field, for the captures only (never per frame).
+Dictionary CityCore::wear_probe() const {
+	Dictionary d;
+	d["worn_cells"] = render_.worn_cells();
+	d["wear_publications"] = render_.wear_publications();
+	return d;
+}
+
 Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
-	d["process"] = process_ms_;
-	d["worn_cells"] = render_.worn_cells();
-	d["wear_publications"] = render_.wear_publications();
+	d["process"] = process_ms_; // constant time: the game reads it on every long frame (health log), so it must not make one
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;
 	d["stream"] = c.stream;

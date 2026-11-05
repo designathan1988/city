@@ -137,7 +137,8 @@ int64_t WearField::worn_cells() const {
 	int64_t n = 0;
 	for (const PackedByteArray &tile : tiles_) {
 		const uint8_t *b = tile.ptr();
-		for (int64_t i = 0; i < tile.size(); i += CHANNELS) n += (b[i] | b[i + 1]) != 0 ? 1 : 0;
+		const int64_t size = tile.size(); // once: each size() is a call into the engine
+		for (int64_t i = 0; i < size; i += CHANNELS) n += (b[i] | b[i + 1]) != 0 ? 1 : 0;
 	}
 	return n;
 }
