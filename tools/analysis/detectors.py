@@ -14,7 +14,7 @@ SIGNATURE_LINES = 4  # the longest signature that wraps over lines
 TRIVIAL = re.compile(r"^(HALF\w*|BYTE\w*|PI\w*|TAU\w*|RGBA\w*|CHANNELS|CORNERS|DEG_TO_RAD|RAD_TO_DEG|GOLDEN|NS_PER_\w+|QUARTER|\w*AXES|"
                      r"\w*EPS\w*|DEGENERATE|FULL_TURN|\w*_SHIFT|\w*_BITS|\w*_MASK)$")
 ENGINE_TYPE = r"(?:godot::)?(?:Packed\w+Array|TypedArray<[^>]+>|Array|Dictionary|String)"
-FRAME_ROOTS = re.compile(r"^(_process|_physics_process|update\w*|sync\w*|tick|step\w*|run)$")  # what a frame or a step enters by
+FRAME_ROOTS = re.compile(r"^(_process|_physics_process|update|sync|tick|step)$")  # what a frame or a step enters by
 BOUNDED = "bounded:"  # on a member's own line: the code states what ends it (the owner's life, a reset)
 
 

@@ -38,7 +38,7 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
   - `Heightfield::water_original`/`set_water`: save e "voltar ao original" não regeneram a água (antes: a cada save, sob a trava).
 
 ## Em andamento / a fazer (em ordem)
-0. Cache de cascata: a API do Godot 4.7 não tem; pediria motor próprio. `run_tests.sh` ainda só olha o código de saída.
+0. Cache de cascata: a API do Godot 4.7 não tem; pediria motor próprio.
 1. Abertura: leitura 0,9 s, rodadas do greide 1 s (seriais, dependem da ordem), lotes 2,1 s (limite de 24 threads lógicas).
 2. CPU de render +0,5 a 1,5 ms pelas instâncias só de sombra (GPU -1 ms; o quadro é limitado pela GPU): medir com a máquina quieta.
 3. Backlog do CLAUDE.md "Pendências": são recursos de outras linhas (porte), não causas desta.
@@ -203,6 +203,11 @@ Correção do usuário (18:50): uma foto que não mostra o detalhe não prova na
 - Passo 6, primeira rodada. ERRO: quase toda cena parou em 30 s, e a suíte disse 28/28, porque crash saía com código 0. O hardening achou `band[size_t(b) - 1]` com `INNER` em `TreeLook::keep_at` (lê `band[-1]`), bug antigo em toda abertura; sem efeito no jogo, porque aquela banda tem `keep` igual nas pontas. Corrigido e reproduzido em 5 s com a menor cena.
 - Passo 6, segunda rodada: `quick.sh --all`: digest igual, 4 de 4 fotos, 28/28, gates OK, 69 s.
 - Passo 7. PASSOU. Método novo: pilha lida e hardening no lugar de carga; dois bugs de memória e um de câmera achados em segundos.
+
+## Fechamento da linha (2026-11-05, 19:00)
+`d6e1c295` no `origin/main`. `causes.py`: raiz de quadro estreita e a revisão lida dos dois lados. O que resta nesta linha não é defeito: abertura em 5,6 s
+com lotes 2,1 s (limite de 24 threads lógicas), leitura 0,9 s, rodadas seriais do greide 1 s; sombra de prédio espera a entrega da sessão de migração.
+Backlog do CLAUDE.md "Pendências": recursos do porte, de outras linhas. `run_tests.sh` agora conta crash como falha, como `suite.py`.
 
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.

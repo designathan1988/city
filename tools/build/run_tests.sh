@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs every test scene (core + e2e) through the layer the player sees (tools/build/build.sh e2e), on Compatibility and, for
 # what the screen shows, on Forward+ too. A test fails when it exits non-zero, hangs past TEST_TIMEOUT_S (a script that
-# failed to load never quits) or logs a SCRIPT ERROR.
+# failed to load never quits), logs a SCRIPT ERROR or crashed (a crash can leave exit code 0).
 # Usage: run_tests.sh <godot binary> <project dir> <log dir> [wrapper...] (the wrapper is xvfb-run when there is one).
 set -uo pipefail
 GODOT="$1"; PROJECT="$2"; LOGS="$3"; shift 3
@@ -14,9 +14,9 @@ run_one() { # <test> <rendering method>
 	local log="$LOGS/$(basename "$1")_$2.log"
 	"${WRAP[@]}" timeout "$TEST_TIMEOUT_S" "$GODOT" --path "$PROJECT" --rendering-method "$2" "res://$1.tscn" -- --no-flow >"$log" 2>&1
 	local code=$?
-	if [ "$code" -ne 0 ] || grep -q "SCRIPT ERROR" "$log"; then
+	if [ "$code" -ne 0 ] || grep -qE "SCRIPT ERROR|Program crashed" "$log"; then
 		echo "FALHOU $1 em $2 (saída $code): $log"
-		grep -E "FAIL|SCRIPT ERROR" "$log" | head -5
+		grep -E "FAIL|SCRIPT ERROR|Program crashed" "$log" | head -5
 		failed=1
 	else
 		echo "ok $1 ($2)"
