@@ -79,8 +79,8 @@ def incomplete_cache_keys(root, sources):
                 if re.search(rf"[.>]{f}\s*\(", body):
                     bumps.setdefault(r, set()).add(name.split("::")[-1])
     for p, t in sources.items():
-        for m in re.finditer(r"if\s*\(\s*[\w.>-]*?(\w*revision)\s*!=\s*([\w.]+)\s*\)", t):
-            who = bumps.get(m.group(1), set())
+        for m in re.finditer(r"if\s*\(\s*[\w.>-]*?(\w*revision)\s*!=\s*([\w.>-]+)\s*\)", t):
+            who = bumps.get(m.group(1), set()) | bumps.get(m.group(2).split(".")[-1].split(">")[-1], set())  # the kept copy and the source
             if not any(re.search(r"found|load|reset|new|generate|clear|init", f, re.I) for f in who):
                 out.append(d.finding("INCOMPLETE_CACHE_KEY", f"a cache kept by '{m.group(1)}', which only moves in: {', '.join(sorted(who)) or 'nowhere'}",
                                      "stale values after a new world, a load or a change outside the commands",
