@@ -3,7 +3,8 @@
 # while the gates of the changed files run; then the scenes the change touches and the edit fuzz run in parallel.
 # --all also rebuilds both DLLs and runs every scene: the check before a commit. Each step prints its seconds; any failure ends in exit 1.
 # Beside the scenes, a fixed city is hashed (open_probe --digest) and held to the golden in dist/quick: an optimisation leaves it
-# equal, with no dump and no photograph; --bless says the change means to move it. Only what it cannot see needs a picture.
+# equal, with no dump and no photograph; --bless says the change means to move it. The still world is photographed frozen (look
+# --frozen: no clock, no TIME, waits by frames) against its golden too: bit for bit when nothing moved, past 0.1 % it is told.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
 GODOT="C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe"
@@ -36,7 +37,7 @@ scenes_of() {
 	esac
 }
 
-scenes="edit_fuzz_test"
+scenes="edit_fuzz_test traffic_hash_test"
 for f in $changed; do scenes="$scenes $(scenes_of "$f")"; done
 [ -n "$picked" ] && scenes="$scenes ${picked//,/ }"
 scenes="$(echo "$scenes" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//; s/^,//')"
@@ -58,6 +59,9 @@ echo "build $built, scripts $scripted: $((SECONDS - started)) s"
 [ "$scripted" = 0 ] || { grep -m12 "ERROR\|FALHA" "$OUT/scripts.txt"; exit 1; }
 
 "$GODOT" --headless --path project res://tests/perf/open_probe.tscn -- --no-flow --digest 2>&1 | grep -a "^DIGEST" > "$OUT/digest.txt" & digest=$!
+rm -rf "$OUT/photos"; mkdir -p "$OUT/photos"
+WIN="$(cygpath -m "$ROOT")"
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/build/hidden_run.ps1 -Command "\"$GODOT\" --path \"$WIN/project\" --resolution 1280x720 res://tests/visual/look.tscn -- --no-flow --frozen --plan=res://tests/visual/frozen_plan.json --capture-dir=$WIN/dist/quick/photos > \"$WIN/dist/quick/photos.txt\" 2>&1" -TimeoutS 90 -WorkDir . > /dev/null & photos=$!
 if [ -n "$all" ]; then only=""; else only="--only=$scenes"; fi
 "$PY" tools/analysis/suite.py --parallel 8 --godot "$GODOT" $only > "$OUT/suite.txt" 2>&1
 suite=$?
@@ -72,4 +76,8 @@ fi
 tail -1 "$OUT/suite.txt"
 tail -1 "$OUT/gates.txt"
 echo "total $((SECONDS - started)) s"
+wait $photos
+if [ -n "$bless" ] || [ ! -d "$OUT/golden_photos" ]; then rm -rf "$OUT/golden_photos"; cp -r "$OUT/photos" "$OUT/golden_photos"; echo "photos: golden written"
+else "$PY" tools/build/photodiff.py "$OUT/golden_photos" "$OUT/photos" "$OUT/photos_diff" 0.1 || same=1
+fi
 [ "$suite" = 0 ] && [ "$gated" = 0 ] && [ "$same" = 0 ]

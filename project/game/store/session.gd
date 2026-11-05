@@ -50,14 +50,15 @@ static func _nearest(v: float, among: Array) -> float:
 	return best
 
 
-static func read(slot: String, rig: CityCamera) -> void:
+static func read(slot: String, rig: CityCamera, paused := false) -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(path(slot)) != OK:
 		return
 	var n := normalized(cfg.get_value(SECTION, "traffic", 1.0), cfg.get_value(SECTION, "people", 1.0), cfg.get_value(SECTION, "demand", 1.0),
 			cfg.get_value(SECTION, "speed", 1))
 	CityStore.set_levels(n.traffic, n.people, n.demand)
-	CityStore.dispatch(&"set_speed", [n.speed])
+	if not paused:
+		CityStore.dispatch(&"set_speed", [n.speed])
 	CityStore.dispatch(&"set_marking_style", [int(cfg.get_value(SECTION, "marking_style", 0)), false])
 	CityStore.dispatch(&"set_style", [str(cfg.get_value(SECTION, "style", ""))])
 	var pose: Dictionary = cfg.get_value(SECTION, "camera", {})

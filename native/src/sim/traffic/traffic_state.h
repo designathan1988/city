@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <string>
 #include <vector>
 
 namespace city {
@@ -85,6 +86,7 @@ struct TrafficState {
 	std::vector<int> route_pool; // vehicle routes, kept in one block
 	std::vector<int> ped_pool; // pedestrian routes
 	size_t route_waste = 0, ped_waste = 0;
+	std::string graph_fault; // the debug DLL: the first broken rule of the lane graph (lane_graph_check.cpp)
 	std::vector<Pedestrian> peds;
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.

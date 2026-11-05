@@ -230,7 +230,10 @@ void j_terrain_touch(CityState &s, const SampleRect &r) {
 	for (int z = r.z0; z <= r.z1; z++)
 		for (int x = r.x0; x <= r.x1; x++) {
 			uint32_t i = uint32_t(z) * uint32_t(t.N) + uint32_t(x);
-			e.terrain_open.emplace(i, t.base_q[i]);
+			if (!e.terrain_open.emplace(i, t.base_q[i]).second) continue;
+			const int tile = (z / t.region_size) * t.regions + x / t.region_size;
+			if (!t.tile_dirty[size_t(tile)] && std::find(e.clean_tiles.begin(), e.clean_tiles.end(), tile) == e.clean_tiles.end())
+				e.clean_tiles.push_back(tile);
 		}
 	e.grow(t.x_of(r.x0), t.x_of(r.z0), t.x_of(r.x1), t.x_of(r.z1));
 }

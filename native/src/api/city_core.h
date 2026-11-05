@@ -110,7 +110,7 @@ public:
 	// --- save / open (city_core_persist.cpp)
 	godot::Dictionary save_city(const godot::String &path);
 	godot::Dictionary save_status(); // { busy, ok, error, bytes } of the background save
-	godot::Dictionary load_city(const godot::String &path); // the catalogue as the drawer shows it (derived width and price per metre)
+	godot::Dictionary load_city(const godot::String &path, bool paused = false); // the catalogue as the drawer shows it (derived width and price per metre)
 
 	// --- queries (city_core_query.cpp)
 	godot::Dictionary snapshot();

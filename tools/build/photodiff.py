@@ -1,4 +1,5 @@
-# photodiff.py <before dir> <after dir> <out dir>: every photo present in both, compared pixel by pixel.
+# photodiff.py <before dir> <after dir> <out dir> [limit %]: every photo present in both, compared pixel by pixel. With a limit
+# only the photos past it are told, and any of them ends in exit 1.
 # Per pair: mean absolute difference (0..255), the share of pixels changed by more than 24 levels, and the box of the
 # changed pixels; a diff image (changes in red over the after photo, greyed) for every pair that changed.
 # The HUD bar (top 60 px) and the dock (bottom 80 px) carry live numbers (clock, vehicles): masked.
@@ -9,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 before, after, out = map(Path, sys.argv[1:4])
+limit = float(sys.argv[4]) if len(sys.argv) > 4 else None
 out.mkdir(parents=True, exist_ok=True)
 CHANGED = 24
 HUD_TOP, HUD_BOTTOM = 60, 80
@@ -36,10 +38,14 @@ for a in sorted(after.glob("*.png")):
         grey[mask] = [255, 0, 0]
         Image.fromarray(grey.astype(np.uint8)).save(out / a.name)
     rows.append((a.name, float(d.mean()), float(share), box))
-for name, mean, share, box in sorted(rows, key=lambda r: -(r[2] or 0) if isinstance(r[2], float) else 1):
+over = [r for r in rows if not isinstance(r[2], float) or r[2] * 100 > (limit or 0)] if limit is not None else rows
+for name, mean, share, box in sorted(over, key=lambda r: -(r[2] or 0) if isinstance(r[2], float) else 1):
     if mean is None:
         print(f"{name:32s} no pair")
     elif mean == "size":
         print(f"{name:32s} different size")
     else:
         print(f"{name:32s} mean {mean:6.2f}  changed {share * 100:6.2f}%  box {box}")
+if limit is not None:
+    print(f"{len(rows) - len(over)} of {len(rows)} photos equal")
+    sys.exit(1 if over else 0)

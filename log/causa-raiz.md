@@ -38,6 +38,7 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
   - `Heightfield::water_original`/`set_water`: save e "voltar ao original" não regeneram a água (antes: a cada save, sob a trava).
 
 ## Em andamento / a fazer (em ordem)
+0. **Orçamento de sombra por tamanho e distância** para o resto (mobiliário 2,9 M, casca 1,9 M, detalhes 1,4 M de triângulos), e ver no motor se cabe cache de cascata.
 1. Abertura: leitura 0,9 s, rodadas do greide 1 s (seriais, dependem da ordem), lotes 2,1 s (limite de 24 threads lógicas).
 2. CPU de render +0,5 a 1,5 ms pelas instâncias só de sombra (GPU -1 ms; o quadro é limitado pela GPU): medir com a máquina quieta.
 3. Backlog do CLAUDE.md "Pendências": são recursos de outras linhas (porte), não causas desta.
@@ -119,6 +120,16 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
 14. **Método (2026-11-05, 18:30, pedido do usuário)**: `tools/build/quick.sh` (da outra sessão; meu `verify.py` saiu para não haver dois donos) ganhou o golden do digest: um
     comando no lugar de build, dumps, fotos e suíte em idas e vindas. o `state_hash`, parte `derived` (12 ms), troca os dumps de `height_at`. Bug achado pelo `causes.py`:
     `generate_map` não movia `revision`, e a câmera usava os volumes de prédio da cidade anterior; corrigido em `found_land`.
+
+15. **Verificação (2026-11-05, 18:40, com a sessão de migração)**: hash da frota por tick (`traffic_hashes`, `traffic_hash_test`:
+    determinístico; a série entra no golden), foto congelada (`look --frozen`: `Engine.time_scale` 0 para o relógio e o `TIME`,
+    4 vistas iguais bit a bit em 8 s; no `quick.sh`, limite 0,1 %), invariantes do grafo na DLL de debug (`lane_graph_check.cpp`),
+    fuzz com relevo, rua, barreira, prédio, parada, bomba e caixa. O fuzz achou e foi corrigido: `tile_dirty` que nunca voltava
+    (save +130 KB depois de um relevo desfeito), `strikes` fora do diário, abrir cidade com o relógio e a `Session` religando a
+    velocidade (`load_city(path, paused)`), passo de desfazer que não muda nada. Este último, pela causa: `EditEntry::reduce`
+    leva a edição ao efeito líquido (o `isObsolete` do Qt), não um `if` no comando. Seis sementes de 300 passos limpas.
+    Pesquisa para o próximo passo: Cities Skylines 2 teve o mesmo quadro (metade do tempo em sombra, sem orçamento por tamanho e
+    distância); estado da arte é cache de cascata com rolagem (Insomniac, SIGGRAPH 2012), a conferir no código do motor.
 
 ## Como trabalhar (o que funcionou)
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.

@@ -1,0 +1,55 @@
+{
+ "_doc": "The frozen views of tools/build/quick.sh (look.gd --frozen): the still world, no fleet; the traffic is held by its hash.",
+ "city": {
+  "map": 0,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {
+   "hour": 16
+  },
+  {
+   "setView": [
+    0,
+    0,
+    2,
+    30,
+    35
+   ]
+  },
+  {
+   "shot": "cidade"
+  },
+  {
+   "setView": [
+    0,
+    0,
+    8,
+    120,
+    25
+   ]
+  },
+  {
+   "shot": "bairro"
+  },
+  {
+   "setView": [
+    80,
+    40,
+    20,
+    210,
+    15
+   ]
+  },
+  {
+   "shot": "rua"
+  },
+  {
+   "hour": 22
+  },
+  {
+   "shot": "rua_noite"
+  }
+ ]
+}

@@ -16,12 +16,21 @@ const ZONE_RADIUS := 30.0
 const ZONE_KIND := 1
 const SLOT := "edit_fuzz"
 const SHOWN_PARTS := 6
+const BRUSH_M := 30.0
+const BRUSH_DT := 0.2
+const BRUSH_MODES := 3
+const ITEM_KINDS := 7
+const REACH_M := 12.0
+const STRIKE_MAX := 12
 ## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
 const GROWTH_QUEUE := "growth"
 
 var failures := 0
 var rng := RandomNumberGenerator.new()
 var roads: Array[Vector3] = [] # the middles of what was laid, for the edits that need a road
+
+
+var last_kind := 0
 
 
 func _ready() -> void:
@@ -69,17 +78,21 @@ func _run(seed: int, steps: int) -> void:
 	await _reopened(seed, trail[last])
 	var again := _walk(seed, steps)
 	_same(trail[last], again[-1], "seed %d the same edits again" % seed)
+	CityStore.query(&"traffic_hashes", [1]) # the graph takes the edits
+	var fault: String = CityStore.query(&"graph_fault")
+	_check(fault.is_empty(), "seed %d lane graph: %s" % [seed, fault])
 
 
 func _reopened(seed: int, before: Dictionary) -> void:
-	CityStore.saves.save_game(SLOT)
+	var slot := "%s_%d" % [SLOT, seed]
+	CityStore.saves.save_game(slot)
 	while CityStore.saves.save_busy():
 		await get_tree().process_frame
-	var r: Dictionary = CityStore.saves.load_game(SLOT)
+	var r: Dictionary = CityStore.saves.load_game(slot, true)
 	_check(r.get("ok", false), "seed %d opens: %s" % [seed, r])
 	CityStore.dispatch(&"set_speed", [0])
 	_same(before, _hash(), "seed %d save and open" % seed)
-	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
+	DirAccess.remove_absolute(CityStore.saves.save_path(slot))
 
 
 ## A new map and the seed's edits; the hash after each edit that took.
@@ -90,9 +103,12 @@ func _walk(seed: int, steps: int) -> Array:
 	var trail := [_hash()]
 	for i in steps:
 		var before: String = trail[-1].whole
+		var steps_before: int = CityStore.query(&"undo_steps")
 		_edit()
 		CityStore.dispatch(&"set_road_height", [0.0])
 		var now := _hash()
+		if int(CityStore.query(&"undo_steps")) != steps_before and now.whole == before:
+			_check(false, "seed %d an edit of kind %d left an undo step that changes nothing" % [seed, last_kind])
 		if now.whole != before:
 			trail.push_back(now)
 	return trail
@@ -103,10 +119,13 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 9)
+	var kind := rng.randi_range(0, 15)
+	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
 		_lay()
+	elif kind >= 10:
+		_other(kind, road)
 	elif kind == 5:
 		CityStore.dispatch(&"demolish", [road])
 	elif kind == 6:
@@ -121,6 +140,30 @@ func _edit() -> void:
 		var seg: Dictionary = CityStore.query(&"segment_at", [road])
 		if seg.get("id", -1) >= 0:
 			CityStore.dispatch(&"reverse_road", [seg.id])
+
+
+## What is not a road: relief, street pieces, a barrier, a drawn building, a stop, a bomb, the demolish box.
+func _other(kind: int, road: Vector3) -> void:
+	var a := _point()
+	var b := a + Vector3(GRID_M, 0, GRID_M)
+	match kind:
+		10:
+			CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])
+			CityStore.dispatch(&"terrain_brush", [a, BRUSH_M, 1.0, BRUSH_DT, rng.randi_range(0, BRUSH_MODES), 0.5])
+			CityStore.dispatch(&"end_stroke")
+		11:
+			CityStore.dispatch(&"place_item", [road, rng.randi_range(0, ITEM_KINDS), 0, "", REACH_M])
+		12:
+			CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, b]), rng.randi_range(0, 1)])
+		13:
+			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND])
+		14:
+			CityStore.dispatch(&"transit_stop", [road])
+		_:
+			if rng.randf() < 0.5:
+				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
+			else:
+				CityStore.dispatch(&"demolish_box", [a, b])
 
 
 func _lay() -> void:

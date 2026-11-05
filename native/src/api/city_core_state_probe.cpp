@@ -8,8 +8,10 @@
 #include "sim/persistence/save_format.h"
 #include "sim/roads/road_grade.h"
 #include "sim/state/city_state.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 #include <algorithm>
@@ -47,6 +49,22 @@ uint64_t fold(uint64_t h, const void *data, size_t bytes) {
 	return h;
 }
 
+// The fleet and the walkers as a number: what each one is and where, in slot order.
+uint64_t fleet_hash(const TrafficState &t) {
+	uint64_t h = FNV_BASIS;
+	for (const Vehicle &v : t.vehicles) {
+		if (!v.alive) continue;
+		const float f[] = { float(v.ds), float(v.lane), float(v.conn), v.s, v.v, v.cs, float(v.micro), float(v.type) };
+		h = fold(h, f, sizeof(f));
+	}
+	for (const Pedestrian &p : t.peds) {
+		if (!p.alive) continue;
+		const float f[] = { float(p.seg), float(p.dir), float(p.side), p.s, p.speed, p.track, float(p.mode) };
+		h = fold(h, f, sizeof(f));
+	}
+	return h;
+}
+
 Dictionary derived_of(const CityState &s) {
 	Dictionary d;
 	d["heights"] = String::num_uint64(fold(FNV_BASIS, s.terrain.final_h.data(), s.terrain.final_h.size() * sizeof(float)), 16);
@@ -74,6 +92,30 @@ Dictionary derived_of(const CityState &s) {
 	return d;
 }
 } // namespace
+
+// The determinism check of a lockstep game (Factorio's map CRC): two runs from the same map must give the same series, and the
+// first tick that differs says where the cause is. Steps run here, with the simulation thread paused: no clock in the way.
+int CityProbes::undo_steps() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return int(state_->history.undo_stack.size());
+}
+
+String CityProbes::graph_fault() {
+	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
+	return String(state_->traffic.graph_fault.c_str());
+}
+
+PackedStringArray CityProbes::traffic_hashes(int ticks) {
+	std::shared_lock<std::shared_mutex> map(state_->map_mutex);
+	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
+	const float dt = float(1.0 / state_->catalog.tune.sim_tick_hz);
+	PackedStringArray out;
+	for (int k = 0; k < ticks; k++) {
+		traffic::step(*state_, dt);
+		out.push_back(String::num_uint64(fleet_hash(state_->traffic), 16));
+	}
+	return out;
+}
 
 Dictionary CityProbes::state_hash() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);

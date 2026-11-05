@@ -74,7 +74,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("set_building", "id", "function", "floors"), &CityCore::set_building);
 	ClassDB::bind_method(D_METHOD("save_city", "path"), &CityCore::save_city);
 	ClassDB::bind_method(D_METHOD("save_status"), &CityCore::save_status);
-	ClassDB::bind_method(D_METHOD("load_city", "path"), &CityCore::load_city);
+	ClassDB::bind_method(D_METHOD("load_city", "path", "paused"), &CityCore::load_city, DEFVAL(false));
 }
 
 // What the UI and the tests read: the snapshot, the ground and its inspector, the traffic, the layers and the render's costs.

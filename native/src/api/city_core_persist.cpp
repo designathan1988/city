@@ -102,7 +102,7 @@ Dictionary CityCore::save_city(const String &path) {
 	return d;
 }
 
-Dictionary CityCore::load_city(const String &path) {
+Dictionary CityCore::load_city(const String &path, bool paused) {
 	join_save();
 	Dictionary d;
 	d["ok"] = false;
@@ -144,7 +144,7 @@ Dictionary CityCore::load_city(const String &path) {
 	spent["lots"] = times.lots;
 	d["ms"] = spent;
 	need_full_rebuild_ = true;
-	sim_.start(*state_);
+	sim_.start(*state_, paused); // paused: no tick between the opening and whoever looks at the city
 	d["ok"] = ok;
 	d["error"] = String(error.c_str());
 	return d;
