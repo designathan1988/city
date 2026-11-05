@@ -14,7 +14,7 @@ goes to an output folder. Paths are always given on the command line or in a con
 | `classify` | What a feature becomes in the target: roles from facts, mapped dependencies, what still blocks it. |
 | `convert` | A feature carried as far as facts allow: a ledger decides every unit, the clean ones are translated with a spec found in the program, each output is judged, and the rest is listed with its correct method. Exit 1 while anything is open. |
 | `translate` | Writes a feature as C++ in its owner folder (types, API, edits, queries, indexes); refuses when anything cannot be translated. |
-| `differential` | Runs the translation and its source on the same random scenario and compares them (a double build that must agree exactly, and the target's float build). |
+| `differential` | Runs the translation and its source on the same random scenario and compares them (a double build that must agree exactly, and the target's float build). `--hand <native/src/...>` (repeatable) puts C++ written by hand in place of the translation's file of that path: the scenario still calls the API the spec's translation declares, so the hand-written code declares it in the same headers; only the float build runs. |
 | `package` | The translation as a conversion package: its files, its registration where the target's gates look, its state member. |
 | `sandbox` | Tests a conversion package in an isolated clone of the target: the target's own setup and verification before and after the package; prints the manual integration. |
 | `baseline` | The target's own setup and verification on its base alone, which proves a sandbox configuration. |
