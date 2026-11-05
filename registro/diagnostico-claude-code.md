@@ -18,6 +18,7 @@ Fontes: leitura integral de `regras-sessoes.md`, `registro/*.md`, `ports/*/relat
 | 10 | Erros de ferramenta recorrentes nos transcritos: `File has not been read yet` (20), heredoc com `'` não fechado (10), `command_note` parâmetro inválido (3), `Author identity unknown` (2), NMake escolhido pelo CMake (1) | Uso incorreto das ferramentas e ambiente (sem `user.email` no git dos clones; CMake sem `-G Ninja`, já corrigido em `build.sh`) | Registrado aqui; identidade do git é do usuário |
 
 | 11 | Tentativa e erro sem limite e escolha barata, a falha que o usuário nomeou desde o início e que esta tabela deixou de fora. Medido nas 19 transcrições: 149 ciclos de editar e rodar de novo o mesmo alvo, 107 deles sem nenhuma pesquisa no meio; nesta sessão, 3 capturas seguidas chutando a câmera sem ler `capture.gd` | Todo hook existente age depois da ação (leitura registrada, gates no fim do turno, teste no commit). Nada se interpunha entre o palpite e a escrita, e nenhum hook conhecia a ordem dos passos | `ferramentas/processo/`: máquina de fases em `PreToolUse` que nega código e execução fora do passo, confere leitura, URL e citação contra o que foi visto, julga plano e teste por `type: agent`, invalida o ciclo por varredura do git e para a sessão por `continue:false` |
+| 12 | O agente parou para pedir aprovação já dada e respondeu à meta só com texto até o teto encerrar a cobrança; a sessão do conversor travou igual, no passo 4 | O portão era beco sem saída: "só o usuário altera" sem caminho autônomo, `repos_de` por lista que não via `converter/`, nenhuma volta da fase 4 ao passo 1, proteção por lista de leitura que negava `grep`, `cd` e `Get-Content` (até aos juízes), juiz que não lia o pedido do usuário, `if` que disparava em todo `$`. E responder só com texto não custava nada | Repositório achado por `.git`; `portao passo 1` recomeça de qualquer fase; proteção detecta escrita, ler nunca é negado; o portão muda como código, na fase 4 com juiz; juiz lê a transcrição e vale nos 5 passos; `if: Bash(portao *)`; hook de Stop devolve o turno sem ferramenta e o pedido de aprovação, nega pergunta de aprovação na caixa do app, teto de continuações em 50 |
 
 ## 2. O que a documentação oficial diz e que muda a prática
 
@@ -30,11 +31,6 @@ Fontes: leitura integral de `regras-sessoes.md`, `registro/*.md`, `ports/*/relat
 - **Desktop**: cada sessão lê os settings do cwd; worktrees leem os da raiz do checkout; mensagens entre sessões só para sessões do desktop; `/permissions` e `/hooks` não abrem no app (editar os arquivos).
 
 ## 3. O que fica para o usuário (não posso fazer)
-
-0. Dois defeitos do portão, achados no teste ao vivo; a correção está em arquivos que o portão protege da sessão:
-   - `~/.claude/settings.json`, os dois hooks `type: agent`: a doc diz que `if` com padrão além do nome do comando roda "anyway on `$()`, backticks, or `$VAR`", então todo Bash com `$` aciona os juízes, que podem negá-lo. Acrescentar no início dos dois `prompt`: "Se tool_input.command não começar exatamente por `python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py passo`, responda {\"ok\": true} sem ler nada."
-   - `ferramentas/processo/passos.py`, em `_p1`, `_p3`, `_p5`: caminho relativo no registro resolve contra a raiz do projeto, não contra o cwd da sessão; passar `dados.get("cwd")` a `L.normalizar` e a `E.cobre`.
-   - Limite conhecido: a resposta de um curl maior que a saída do Bash chega cortada ao hook, então a citação precisa vir de um trecho que caiba nela.
 
 1. Aplicar `registro/hooks/fonte-settings.proposto.json` em `fonte/.claude/settings.json` (o hook nega a minha edição).
 2. Corrigir os falsos positivos de `hook_protect.py` (item 2 da tabela): tokenização com aspas; `GIT_COMMIT` só em segmento que começa por `git`.

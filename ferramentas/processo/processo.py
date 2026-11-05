@@ -1,11 +1,11 @@
 """Portão de processo: bloqueia ANTES a tentativa e erro, a escolha barata e a escrita sem leitura, nos 5 passos pedidos pelo usuário
 (compreender, pesquisar, estudar, codificar, testar) e PARA ao fim do teste.
 
-Uso pelo modelo (só estas formas, pelo Bash, com o caminho absoluto):
-  python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py passo <1-5> <registro.json>
-  python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py modelo <1-5>
-  python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py estado
-Uso pelos hooks: processo.py hook (lê o JSON do evento em stdin). Ligado em ~/.claude/settings.json; só o usuário altera.
+Uso pelo modelo, pelo Bash: `portao passo <1-5> <registro.json>`, `portao-ver modelo <1-5>`, `portao-ver estado` (~/bin). O nome próprio
+existe porque o `if` de um hook só escapa de disparar em todo comando com `$` quando cita apenas o nome do comando.
+Uso pelos hooks: processo.py hook (lê o JSON do evento em stdin). Ligado em ~/.claude/settings.json. Nenhuma recusa daqui é beco sem saída:
+o passo 1 recomeça o ciclo de qualquer fase, e o próprio portão muda como código, na fase 4, no plano julgado. Por isso nada aqui obriga a
+parar e pedir, e o hook de Stop não deixa: turno só de texto depois de cobrado e pedido de aprovação voltam para o agente agir.
 """
 import json
 import os
@@ -20,13 +20,21 @@ import passos as P  # noqa: E402
 import simbolos as S  # noqa: E402
 
 L = E.L
-FORMA = "python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py"
+FORMA = "portao"
+VER = "portao-ver"
 PASSO = re.compile(r"^" + re.escape(FORMA) + r" passo ([1-5]) (\S+)\s*$")
-CONSULTA = re.compile(r"^" + re.escape(FORMA) + r" (?:modelo [1-5]|estado)\s*$")
+CONSULTA = re.compile(r"^" + re.escape(FORMA) + r"-ver (?:modelo [1-5]|estado)\s*$")
 EDICAO = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 SHELL = ("Bash", "PowerShell")
 MAX_COMPILA = 3  # compilar de novo só depois de editar; passou disso, o erro não é de digitação: o plano está errado
 TURNO_AUTOMATICO = re.compile(r"^\s*<(?!pasted_content)")
+PERGUNTAS = ("AskUserQuestion", "mcp__ccd_turn__wrap_up")
+PEDE = re.compile(r"aguard\w*\s+(?:a\s+|sua\s+|você|o\s+usu)|sua\s+(?:resposta|decisão|autoriza|aprova)|me\s+autoriz|você\s+autoriza|preciso\s+(?:de\s+|que\s+você)|"
+                  r"só\s+(?:você|o\s+usuário)\s+pode|(?:sigo|continuo|fico)\s+(?:parado|bloqueado|aguardando)|posso\s+(?:prosseguir|continuar|aplicar|seguir)|"
+                  r"quer\s+que\s+eu|deseja\s+que\s+eu|vou\s+parar\s+aqui|até\s+você\s+responder", re.I)
+APROVA = re.compile(r"autoriz|aprov|permiss|posso\b|devo\b|prosseguir", re.I)
+DESTRUTIVO = re.compile(r"irrevers|destrutiv", re.I)
+ORDEM_DE_PARAR = re.compile(r"^\s*(?:então\s+)?(?:chega|para|pare)\b", re.I)
 NOME_FASE = {1: "compreender", 2: "pesquisar", 3: "estudar", 4: "codificar", 5: "testar", 6: "parado"}
 
 
@@ -49,20 +57,20 @@ def fase_txt(est):
 
 def faltou_passo(est, o_que):
     return (f"{o_que} não é permitido na {fase_txt(est)}. Registre o passo {est['fase']}: `{FORMA} passo {est['fase']} <registro.json>` "
-            f"(formato: `{FORMA} modelo {est['fase']}`).")
+            f"(formato: `{VER} modelo {est['fase']}`).")
 
 
 def pre_edicao(est, dados, inp):
     caminho = inp.get("file_path") or inp.get("notebook_path") or ""
-    if C.protegido(caminho):
-        return f"{caminho} define o portão: só o usuário altera."
-    if not C.eh_codigo(caminho):
-        return None
     alvo = L.normalizar(caminho)
+    if "registro/processo" in alvo.lower():
+        return "o estado do portão é escrito só pelos hooks."
+    if not C.protegido(caminho) and not C.eh_codigo(caminho):
+        return None
     if est["fase"] != 4:
         return faltou_passo(est, "Alterar código")
     if alvo not in est["plano"]:
-        return f"{L.relativo(alvo)} não está no plano do passo 3. Um plano errado se refaz do passo 1, não se remenda."
+        return f"{L.relativo(alvo)} não está no plano do passo 3. Um plano errado se refaz: `{FORMA} passo 1 <registro.json>` recomeça o ciclo de qualquer fase."
     antigo = S.texto_antigo(alvo)
     novo = inp.get("content") if "content" in inp else inp.get("new_string", "")
     faltam = S.faltam(est, alvo, novo or "", antigo)
@@ -82,7 +90,7 @@ def pre_shell(est, dados, inp):
         return None
     viola = C.viola_protecao(comando)
     if viola:
-        return f"este comando toca o portão (`{viola}`): só o usuário altera. Leitura é livre; registrar passo: `{FORMA} passo N arquivo`."
+        return f"este comando escreve no portão (`{viola}`). O portão muda pelo Edit, na fase 4, com ele no plano. Ler é livre."
     for alvo in C.escritas(comando, cwd):
         if C.eh_codigo(alvo) and (est["fase"] != 4 or alvo not in est["plano"]):
             return faltou_passo(est, f"Escrever {L.relativo(alvo)} por shell") if est["fase"] != 4 else f"{L.relativo(alvo)} não está no plano."
@@ -101,7 +109,7 @@ def pre_shell(est, dados, inp):
         if c and c["edicoes"] == est["edicoes"]:
             return "nada mudou desde a última execução deste comando: repetir não traz informação nova."
         if c and c["n"] >= MAX_COMPILA:
-            return f"{MAX_COMPILA} execuções deste comando neste ciclo: o plano está errado. Volte ao passo 1 (`{FORMA} modelo 1`)."
+            return f"{MAX_COMPILA} execuções deste comando neste ciclo: o plano está errado. Recomece: `{FORMA} passo 1 <registro.json>`."
     return None
 
 
@@ -111,7 +119,13 @@ def pre(dados):
         est = E.carregar(sessao)
         if not est.get("base_pronta"):  # o que já estava sujo quando a sessão chegou não é obra dela
             est["linha_base"], est["base_pronta"] = C.varrer(est, dados.get("cwd")), True
+            est["repos_vistos"] = C.repos_de(est, dados.get("cwd"))
             E.gravar(est)
+    if tool in PERGUNTAS:
+        pergunta = inp.get("ask", "") if tool != "AskUserQuestion" else json.dumps(inp.get("questions", ""), ensure_ascii=False)
+        if APROVA.search(pergunta) and not DESTRUTIVO.search(pergunta):
+            return negar("o usuário já deu autorização permanente (CLAUDE.md da raiz). Execute; não peça aprovação.")
+        return 0
     if est["fase"] == E.PARADO:
         return negar("sessão parada depois do passo 5, para avaliação. Só uma mensagem do usuário abre o próximo ciclo.")
     motivo = pre_edicao(est, dados, inp) if tool in EDICAO else pre_shell(est, dados, inp) if tool in SHELL else None
@@ -169,6 +183,11 @@ def conferir_disco(est, dados):
     atual = C.varrer(est, dados.get("cwd"))
     novos = C.novidades(est, atual)
     est["linha_base"] = atual
+    repos = C.repos_de(est, dados.get("cwd"))
+    estreantes = [r.lower() + "/" for r in repos if r not in est.get("repos_vistos", [])]
+    est["repos_vistos"] = sorted(set(est.get("repos_vistos", [])) | set(repos))
+    # O que já estava sujo num repositório que entra agora na varredura não é obra de agora; do plano, conta como alterado.
+    novos = [c for c in novos if c in est["plano"] or not any(c.lower().startswith(r) for r in estreantes)]
     fora = [c for c in novos if est["fase"] != 4 or c not in est["plano"]]
     est["alterados"] = sorted(set(est["alterados"]) | set(novos))
     est["edicoes"] += len(novos)
@@ -187,6 +206,9 @@ def pos(dados):
     with E.Trava(sessao):
         est = E.carregar(sessao)
         pos_leituras(est, dados, tool, inp, dados.get("tool_response"))
+        est["ferramentas"] = est.get("ferramentas", 0) + 1
+        if tool in EDICAO and L.normalizar(inp.get("file_path", "")) in est["plano"]:
+            est["alterados"] = sorted(set(est["alterados"]) | {L.normalizar(inp["file_path"])})
         m = PASSO.match(inp.get("command", "").strip()) if tool == "Bash" else None
         if m:
             n = int(m.group(1))
@@ -205,6 +227,27 @@ def pos(dados):
     return 0
 
 
+def parada(dados):
+    """O turno só acaba agindo: responder só com texto a uma cobrança, ou parar para pedir o que já está autorizado, volta para o agente."""
+    sessao, msg = dados.get("session_id", "sem"), dados.get("last_assistant_message") or ""
+    with E.Trava(sessao):
+        est = E.carregar(sessao)
+        sem_acao = dados.get("stop_hook_active") and est.get("ferramentas", 0) == est.get("ferramentas_no_stop", -1)
+        est["ferramentas_no_stop"] = est.get("ferramentas", 0)
+        E.gravar(est)
+    ultima = est["pedidos"][-1] if est["pedidos"] else ""
+    if est["fase"] == E.PARADO or dados.get("background_tasks") or ORDEM_DE_PARAR.match(ultima) or DESTRUTIVO.search(msg):
+        return 0
+    if sem_acao or PEDE.search(msg):
+        motivo = ("Cobrança respondida só com texto: chame uma ferramenta e avance." if sem_acao else
+                  "Esta mensagem para e pede o que já está autorizado.")
+        E.historico(est, "turno_segurado", motivo=motivo)
+        print(json.dumps({"decision": "block", "reason": motivo + f" Autorização permanente do usuário vale. Se o portão recusou, leia a recusa, "
+                          f"corrija a causa, inclusive no próprio portão, ou recomece com `{FORMA} passo 1 <registro.json>`. Situação: {fase_txt(est)}."},
+                         ensure_ascii=False))
+    return 0
+
+
 def prompt(dados):
     sessao, texto = dados.get("session_id", "sem"), dados.get("prompt", "")
     if TURNO_AUTOMATICO.match(texto):  # aviso de tarefa em segundo plano, evento do app: não é o usuário
@@ -217,7 +260,7 @@ def prompt(dados):
         E.gravar(est)
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext":
                       f"Portão de processo do Roadcraft: {fase_txt(est)}. Código só muda na fase 4 e o jogo só roda nas fases 1 e 5. "
-                      f"Os passos se registram com `{FORMA} passo N arquivo.json`; o formato de cada um sai de `{FORMA} modelo N`."}},
+                      f"Os passos se registram com `{FORMA} passo N arquivo.json`; o formato de cada um sai de `{VER} modelo N`."}},
                      ensure_ascii=False))
     return 0
 
@@ -238,6 +281,8 @@ def hook():
         return pre(dados)
     if evento in ("PostToolUse", "PostToolUseFailure"):
         return pos(dados)
+    if evento == "Stop":
+        return parada(dados)
     return 0
 
 

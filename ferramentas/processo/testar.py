@@ -14,7 +14,8 @@ import time
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.abspath(os.path.join(AQUI, "..", ".."))
 CLONE = os.path.join(RAIZ, "ports", "_portao_teste", "workspace").replace("\\", "/")
-FORMA = "python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py"
+FORMA = "portao"
+AJUSTE = "C:/Users/Jonathan/.claude/settings.json"
 PEDIDO = "resolva a queda da bandeira com pesquisa de verdade"
 falhas = []
 
@@ -108,6 +109,10 @@ def ordem_e_bloqueio(p):
     caso("settings do usuário é negado", negado(edita(p, "C:/Users/Jonathan/.claude/settings.json", "y")))
     caso("apagar o estado por shell é negado", negado(shell(p, "rm C:/Projects/Roadcraft-windows/registro/processo/t.json")))
     caso("ler o portão passa", not negado(shell(p, "cat C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py")))
+    caso("grep com barra em aspas no portão passa", not negado(shell(p, 'grep -n "def cobre\\|faltam" ferramentas/processo/estado.py')))
+    caso("cd para a pasta do portão passa", not negado(shell(p, 'cd "C:/Projects/Roadcraft-windows/ferramentas/processo" && ls')))
+    caso("Get-Content do portão passa", not negado(shell(p, '(Get-Content "C:/Projects/Roadcraft-windows/ferramentas/processo/comandos.py")')))
+    caso("redirecionar para o portão é negado", negado(shell(p, "echo x > ferramentas/processo/processo.py")))
     caso("passo fora de ordem é negado", "fora de ordem" in motivo(passo(p, 3, "x.json")[0]))
     ruim = registro("r1.json", {"pedido": ["algo que ninguém pediu aqui"], "problema": "p" * 50, "causa": "c" * 50, "evidencias": [{"arquivo": a}]})
     m = motivo(passo(p, 1, ruim)[0])
@@ -115,7 +120,7 @@ def ordem_e_bloqueio(p):
     caso("evidência não lida é recusada", "não lida" in m, m)
     ler(p, a)
     ler(p, gd)
-    bom = registro("r1b.json", {"pedido": ["queda da bandeira"], "problema": "p" * 50, "causa": "c" * 50, "evidencias": [{"arquivo": a}]})
+    bom = registro("r1b.json", {"pedido": ["queda da bandeira"], "problema": "p" * 50, "causa": "c" * 50, "evidencias": [{"arquivo": "native/src/a.cpp"}]})
     caso("passo 1 com prova é aceito", not negado(passo(p, 1, bom)[0]))
     caso("rodar o jogo na fase 2 é negado", negado(shell(p, "godot_console.exe --path project res://x.tscn")))
 
@@ -142,10 +147,15 @@ def estudo_e_codigo(p, url):
     r3 = registro("r3.json", {**base, "plano": [{"arquivo": outro, "mudanca": "m"}], "simbolos": []})
     m = motivo(passo(p, 3, r3)[0])
     caso("plano com arquivo não lido é recusado", "não lido inteiro" in m, m)
-    r3 = registro("r3b.json", {**base, "plano": [{"arquivo": gd, "mudanca": "m"}, {"arquivo": novo, "mudanca": "n"}], "simbolos": [{"nome": "jump", "arquivo": gd}]})
+    r3 = registro("r3b.json", {**base, "plano": [{"arquivo": gd, "mudanca": "m"}, {"arquivo": novo, "mudanca": "n"}, {"arquivo": AJUSTE, "mudanca": "s"}], "simbolos": [{"nome": "jump", "arquivo": gd}]})
     ler(p, gd)
+    ler(p, AJUSTE)
     caso("passo 3 aceito", not negado(passo(p, 3, r3)[0]))
     caso("arquivo fora do plano é negado", negado(edita(p, a, "y")))
+    caso("portão no plano muda na fase 4", not negado(edita(p, AJUSTE, "y")))
+    caso("portão fora do plano segue negado", negado(edita(p, "C:/Projects/Roadcraft-windows/ferramentas/processo/passos.py", "y")))
+    caso("estado do portão nunca", negado(edita(p, "C:/Projects/Roadcraft-windows/registro/processo/t.json", "y")))
+    depois(p, "Edit", {"file_path": AJUSTE}, {})
     m = motivo(edita(p, gd, "func nova():\n\thelper_distante(1)\n"))
     caso("chamar função de arquivo não lido é negado", "helper_distante" in m, m)
     caso("chamar função já lida passa", not negado(edita(p, gd, "func nova2():\n\tjump(1)\n")))
@@ -188,6 +198,38 @@ def teste_e_parada(p, gd, novo):
     caso("aviso de tarefa não destrava", negado(shell(p, "ls")))
     hook(p, "UserPromptSubmit", prompt="agora faça outra coisa de verdade")
     caso("mensagem do usuário abre o ciclo seguinte", not negado(shell(p, "ls")))
+
+
+def recomeco():
+    p = tempfile.mkdtemp()
+    a = CLONE + "/native/src/a.cpp"
+    hook(p, "UserPromptSubmit", prompt=PEDIDO)
+    ler(p, a)
+    r = registro("r1c.json", {"pedido": ["queda da bandeira"], "problema": "p" * 50, "causa": "c" * 50, "evidencias": [{"arquivo": a}]})
+    passo(p, 1, r)
+    caso("passo 1 recomeça de outra fase", not negado(passo(p, 1, r)[0]))
+    shutil.rmtree(p, ignore_errors=True)
+
+
+def turno():
+    p = tempfile.mkdtemp()
+    hook(p, "UserPromptSubmit", prompt=PEDIDO)
+    def stop(msg, ativo=False, **extra):
+        return hook(p, "Stop", last_assistant_message=msg, stop_hook_active=ativo, **extra)
+    caso("resposta normal termina", stop("Pronto, feito e verificado.").get("decision") != "block")
+    caso("aguardar sua resposta é segurado", stop("Aguardando sua resposta.").get("decision") == "block")
+    caso("pedir autorização é segurado", stop("Preciso que você faça uma destas duas coisas").get("decision") == "block")
+    stop("primeira")
+    caso("texto repetido depois de cobrado é segurado", stop("Sem novidade nenhuma.", True).get("decision") == "block")
+    depois(p, "Read", {"file_path": CLONE + "/native/src/a.cpp"}, "x")
+    caso("depois de agir, passa", stop("Corrigido.", True).get("decision") != "block")
+    caso("com tarefa em segundo plano, pode esperar", stop("Aguardando sua resposta.", background_tasks=[{"id": "1"}]).get("decision") != "block")
+    caso("ação destrutiva pode perguntar", stop("Isto é irreversível: aguardando sua decisão.").get("decision") != "block")
+    caso("wrap_up pedindo autorização é negado", negado(hook(p, "PreToolUse", tool_name="mcp__ccd_turn__wrap_up", tool_input={"ask": "Você autoriza?"})))
+    caso("wrap_up sem pergunta passa", not negado(hook(p, "PreToolUse", tool_name="mcp__ccd_turn__wrap_up", tool_input={"recap": "x"})))
+    hook(p, "UserPromptSubmit", prompt="chega. para.")
+    caso("ordem do usuário de parar é obedecida", stop("Aguardando sua resposta.").get("decision") != "block")
+    shutil.rmtree(p, ignore_errors=True)
 
 
 def invalidacao(p):
@@ -233,6 +275,8 @@ def main():
         teste_e_parada(pasta, gd, novo)
         invalidacao(pasta)
         sujo_de_antes()
+        recomeco()
+        turno()
         fora_do_projeto()
     finally:
         shutil.rmtree(pasta, ignore_errors=True)

@@ -13,12 +13,14 @@ import estado as E
 L = E.L
 EXT_CODIGO = {".cpp", ".h", ".hpp", ".c", ".gd", ".gdshader", ".gdshaderinc", ".glsl", ".py", ".cjs", ".mjs", ".js", ".ts", ".ps1",
               ".sh", ".cmake", ".tscn", ".json", ".csv"}
-RAIZES_CODIGO = re.compile(r"^(?:fonte/|ports/[^/]+/workspace/)(?:native|project|tools)/|^ferramentas/|^converter/(?:scripts|src)/")
+RAIZES_CODIGO = re.compile(r"^(?:fonte/|ports/[^/]+/workspace/)(?:native|project|tools)/|^ferramentas/|^converter/(?:scripts|src|test|configs)/")
 FORA = re.compile(r"(?:^|/)(?:node_modules|out|\.godot|build-[\w-]+|godot-cpp|__pycache__)/")
 # Só o que é deste projeto e o settings do usuário: o `.claude/` de outro projeto não é da conta do portão.
-ABSOLUTOS = re.compile(r"(?:Roadcraft-windows[/\\](?:ferramentas[/\\]processo|registro[/\\]processo|\.claude[/\\])|Jonathan[/\\]\.claude[/\\](?:settings|skills[/\\]roadcraft)|~[/\\]\.claude[/\\]settings)", re.I)
+ABSOLUTOS = re.compile(r"(?:Roadcraft-windows[/\\](?:ferramentas[/\\]processo|registro[/\\]processo|\.claude[/\\])|Jonathan[/\\]\.claude[/\\](?:settings|skills[/\\]roadcraft)|Jonathan[/\\]bin[/\\]portao|~[/\\]\.claude[/\\]settings)", re.I)
 PROTEGIDOS = re.compile(ABSOLUTOS.pattern + r"|ferramentas[/\\]processo|registro[/\\]processo|\.claude[/\\]settings", re.I)
 SEGMENTO = re.compile(r"\|\||&&|\||;|\n")
+# Proteger é negar escrita, não listar o que pode ler: uma lista de leitura negou grep, cd e Get-Content, e nem os juízes conseguiam ler.
+ALTERA = re.compile(r"(?:^|[\s;&|(])(?:rm|rmdir|mv|cp|tee|truncate|chmod|sed\s+-i\S*|Remove-Item|Move-Item|Copy-Item|Rename-Item|Set-Content|Add-Content|Out-File|Clear-Content|git\s+(?:checkout|restore|rm|mv|reset|clean))(?:\s|$)", re.I)
 LEITOR = re.compile(r"^\s*(?:cd\s+\S+\s*$|cat|head|tail|less|more|wc|grep|rg|egrep|fgrep|findstr|diff|cmp|file|stat|ls|dir|sha\w*sum|echo|printf|"
                     r"Get-Content|gc|Select-String|sls|Test-Path|sed\s+-n|awk|cut|sort|uniq|"
                     r"git(?:\s+-C\s+\S+)?\s+(?:diff|log|show|status|blame|ls-files|grep|add|commit|check-ignore|rev-parse))\b")
@@ -67,10 +69,32 @@ def segmentos(comando):
     return [s for s in SEGMENTO.split(ASPAS.sub('""', sem_heredocs(comando))) if s.strip()]
 
 
+def partir(comando):
+    """Os segmentos de um comando, sem cortar dentro de aspas: `grep "a\\|b" arquivo` é um segmento só."""
+    saida, atual, aspa, i = [], [], "", 0
+    while i < len(comando):
+        c = comando[i]
+        if aspa:
+            aspa = "" if c == aspa else aspa
+        elif c in "\"'":
+            aspa = c
+        elif c in ";\n|&":
+            saida.append("".join(atual))
+            atual = []
+            i += 1
+            continue
+        atual.append(c)
+        i += 1
+    saida.append("".join(atual))
+    return [s for s in saida if s.strip()]
+
+
 def viola_protecao(comando):
-    """Segmento que cita um arquivo do portão sem ser uma leitura."""
-    for seg in SEGMENTO.split(sem_heredocs(comando)):
-        if PROTEGIDOS.search(seg) and (not LEITOR.match(seg) or re.search(r"(?<![0-9&])>", seg)):
+    """Segmento que escreve num arquivo do portão. Ler nunca é negado; um programa que escreve por dentro cai na varredura."""
+    for seg in partir(sem_heredocs(comando)):
+        if not PROTEGIDOS.search(seg):
+            continue
+        if ALTERA.search(seg) or any(PROTEGIDOS.search(t) for t in REDIRECAO.findall(seg)):
             return seg.strip()[:160]
     return None
 
@@ -117,15 +141,27 @@ def urls_baixadas(comando):
     return TOKEN_URL.findall(comando) if BAIXA.search(comando) else []
 
 
+def raiz_git(caminho):
+    """O repositório de um caminho do projeto, subindo até achar `.git`: `converter/` e todo clone sem lista à mão."""
+    c = L.normalizar(caminho)
+    raiz = L.RAIZ.replace("\\", "/").lower()
+    if not c.lower().startswith(raiz):
+        return None
+    while len(c) >= len(raiz):
+        if os.path.exists(c + "/.git"):
+            return c
+        c = os.path.dirname(c)
+    return None
+
+
 def repos_de(est, cwd):
     """Os repositórios que a varredura olha: a raiz, o do cwd e os dos arquivos do plano."""
     achados = {L.RAIZ.replace("\\", "/")}
     for c in [cwd or ""] + est.get("plano", []):
-        r = relativo(c) if c else ""
-        m = re.match(r"^(fonte|ports/[^/]+/workspace)(?:/|$)", r)
-        if m:
-            achados.add(L.RAIZ.replace("\\", "/") + "/" + m.group(1))
-    return sorted(r for r in achados if os.path.isdir(os.path.join(r, ".git")))
+        r = raiz_git(c) if c else None
+        if r:
+            achados.add(r)
+    return sorted(achados)
 
 
 def varrer(est, cwd):

@@ -78,7 +78,7 @@ def _p1(est, r, dados, erros):
         m = re.match(r"^(\d+)-(\d+)$", str(ev.get("linhas", "")))
         if m:
             a, b = int(m.group(1)), int(m.group(2))
-        if not E.cobre(est, ev.get("arquivo", ""), a, b):
+        if not E.cobre(est, L.normalizar(ev.get("arquivo", ""), dados.get("cwd")), a, b):
             erros.append(f"evidência não lida nesta versão: {ev.get('arquivo')} {ev.get('linhas', 'inteiro')} (busca textual não é leitura)")
 
 
@@ -98,14 +98,14 @@ def _p3(est, r, dados, erros):
     _texto(r, "solucao", erros)
     _texto(r, "causa_tratada", erros)
     for p in _lista(r, "plano", erros):
-        c = L.normalizar(p.get("arquivo", ""))
+        c = L.normalizar(p.get("arquivo", ""), dados.get("cwd"))
         if os.path.isfile(c):
             if not E.cobre(est, c):
                 erros.append(f"arquivo do plano não lido inteiro nesta versão: {L.relativo(c)}")
         elif not os.path.isdir(os.path.dirname(c)):
             erros.append(f"arquivo novo em pasta que não existe: {L.relativo(c)}")
     for s in r.get("simbolos") or []:
-        c = L.normalizar(s.get("arquivo", ""))
+        c = L.normalizar(s.get("arquivo", ""), dados.get("cwd"))
         if not E.cobre(est, c):
             erros.append(f"declarador não lido inteiro: {L.relativo(c)} ({s.get('nome')})")
         elif str(s.get("nome")) not in open(c, encoding="utf8", errors="replace").read():
@@ -133,7 +133,7 @@ def _p5(est, r, dados, erros):
         erros.append("nada rodou no passo 5: o teste é a execução real, não a conclusão")
     marco = est["marcos"].get("4", 0)
     for a in _lista(r, "artefatos", erros):
-        c = L.normalizar(a)
+        c = L.normalizar(a, dados.get("cwd"))
         if not os.path.isfile(c):
             erros.append(f"artefato não existe: {a}")
             continue
@@ -155,7 +155,7 @@ REGRAS = {1: _p1, 2: _p2, 3: _p3, 4: _p4, 5: _p5}
 
 def conferir(est, n, caminho, dados):
     """Lista de erros do registro do passo `n` no arquivo `caminho`; vazia: aceito."""
-    if n != est["fase"]:
+    if n != est["fase"] and not (n == 1 and est["fase"] < E.PARADO):  # recomeçar é sempre possível: nenhuma recusa é beco sem saída
         return [f"fora de ordem: o passo que falta é o {est['fase']}, não o {n}"]
     c = L.normalizar(caminho, dados.get("cwd"))
     try:
@@ -173,11 +173,13 @@ def aplicar(est, n, caminho, dados):
     c = L.normalizar(caminho, dados.get("cwd"))
     with open(c, encoding="utf8") as f:
         r = json.load(f)
+    if n == 1 and est["fase"] > 1:
+        E.novo_ciclo(est)
     est["registros"][str(n)] = r
     est["marcos"][str(n)] = time.time()
     est["fase"] = n + 1
     if n == 3:
-        est["plano"] = [L.normalizar(p["arquivo"]) for p in r["plano"]]
+        est["plano"] = [L.normalizar(p["arquivo"], dados.get("cwd")) for p in r["plano"]]
         est["alterados"] = []
     return r
 
