@@ -12,3 +12,8 @@ ferramentas/estado/
 __pycache__/
 *.pyc
 shot.png
+
+# derivados grandes das ferramentas (regeram-se com os scripts)
+registro/mapa40/grafo.json
+registro/mapa40/grafo.log
+registro/leitura/*.tmp

@@ -1,0 +1,41 @@
+# world:footway
+
+Grupo: world. Entrada: subsistema. Gerado de `registro/mapa40/grafo.json` (commit do 4.0 22357c928fb9) por `ferramentas/mapa40/funcionalidades.cjs`: cada declaração própria abaixo tem arquivo e linhas no 4.0.
+
+- Sementes: `src/world/footwayPath.ts`
+- Unidades próprias (só esta funcionalidade alcança): 0 em 0 arquivo(s), 0 linhas
+- Alcance total: 107 unidades; usa 102 compartilhadas de outras; é dona principal de 5 compartilhadas
+
+## O que o jogador vê e faz
+- Textos da interface (`t()`): -
+- Eventos de entrada: -
+- Chaves de localStorage: -
+
+## Onde o programa a liga (raiz: main.ts e wiring)
+- nenhuma chamada direta da raiz: chega por outra funcionalidade
+
+## Entradas, saídas e interações
+- Mensagens de worker (envia/recebe): -
+- Workers: -
+- Ganchos do three.js: -
+- Timers: 0
+- Usa: -
+- É usada por: -
+
+## Estado (campos do documento/estado da simulação)
+- Lê: -
+- Escreve: -
+
+## Dados e recursos
+- Recursos (JSON, modelos, texturas, fetch): -
+- Bibliotecas externas: -
+
+## Testes do 4.0 que a exercitam
+- `tests/world/transitNear.spec.ts`
+
+## Estado no jogo (lido de ports/*/cobertura.md)
+- porte `people`: já existia 1
+- porte `roads`: não portado 5
+- porte `transit`: não se aplica 1, portado 1
+
+## Código próprio (linhas — declaração — comentário)

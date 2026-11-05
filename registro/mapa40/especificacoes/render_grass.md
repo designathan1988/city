@@ -1,0 +1,41 @@
+# render:grass
+
+Grupo: render. Entrada: desenho. Gerado de `registro/mapa40/grafo.json` (commit do 4.0 22357c928fb9) por `ferramentas/mapa40/funcionalidades.cjs`: cada declaração própria abaixo tem arquivo e linhas no 4.0.
+
+- Sementes: `src/render/grass.ts`
+- Unidades próprias (só esta funcionalidade alcança): 0 em 0 arquivo(s), 0 linhas
+- Alcance total: 34 unidades; usa 22 compartilhadas de outras; é dona principal de 12 compartilhadas
+
+## O que o jogador vê e faz
+- Textos da interface (`t()`): -
+- Eventos de entrada: -
+- Chaves de localStorage: -
+
+## Onde o programa a liga (raiz: main.ts e wiring)
+- nenhuma chamada direta da raiz: chega por outra funcionalidade
+
+## Entradas, saídas e interações
+- Mensagens de worker (envia/recebe): -
+- Workers: -
+- Ganchos do three.js: -
+- Timers: 0
+- Usa: -
+- É usada por: -
+
+## Estado (campos do documento/estado da simulação)
+- Lê: -
+- Escreve: -
+
+## Dados e recursos
+- Recursos (JSON, modelos, texturas, fetch): -
+- Bibliotecas externas: `three`
+
+## Testes do 4.0 que a exercitam
+- `tests/render/grassPlacement.spec.ts`
+
+## Estado no jogo (lido de ports/*/cobertura.md)
+- porte `landscape`: portado em parte 13
+- porte `roads`: não portado 12
+- porte `street-furniture`: portado 13
+
+## Código próprio (linhas — declaração — comentário)
