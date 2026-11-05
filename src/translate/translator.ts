@@ -355,6 +355,8 @@ export class Translator extends Emitter {
     this.module = this.c.relative(d.getSourceFile());
     // a regular expression: no C++ constant; each use compiles it once where it is tested (#regexTest)
     if (d.initializer?.kind === this.c.ts.SyntaxKind.RegularExpressionLiteral) return;
+    // `declare const brand: unique symbol`: a type's mark, no value of the program
+    if (!d.initializer) return;
     const symbol = this.symbolOf(d.name)!;
     const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
     // a constant whose value is a context pattern (RAMP_GRADE = ROAD_TUNING.grade.ramp, the game's tuning): no C++

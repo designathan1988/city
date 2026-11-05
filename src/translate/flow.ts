@@ -922,6 +922,14 @@ export class FlowGraph {
     const named = shapes.filter((t) => this.#isNamed(t));
     const widest = (named.length > 0 ? named : shapes).reduce((a, b) => (this.#checker.getPropertiesOfType(b).length > this.#checker.getPropertiesOfType(a).length ? b : a));
     const fields = new Set(this.#checker.getPropertiesOfType(widest).map((p) => p.name));
+    // what the slot declares, when every value that reached it has its fields: wider values are read through it (the
+    // emitter builds the declared value), as an argument is read through its parameter
+    const declared = r.type ? this.underlying(this.#checker.getNonNullableType(r.type)) : null;
+    if (declared && this.isObject(declared) && !this.#checker.isTupleType(declared)) {
+      const asked = this.#checker.getPropertiesOfType(declared);
+      const wider = shapes.some((t) => this.#checker.getPropertiesOfType(t).some((p) => !fields.has(p.name)));
+      if (wider && shapes.every((t) => asked.every((p) => t.getProperty(p.name) || (p.flags & this.#ts.SymbolFlags.Optional) !== 0))) return declared;
+    }
     for (const t of shapes) {
       if (this.#checker.isTupleType(t) && this.#checker.isTupleType(widest)) continue; // a tuple's type is its positions (readonly or not)
       const extra = this.#checker.getPropertiesOfType(t).map((p) => p.name).filter((n) => !fields.has(n));
