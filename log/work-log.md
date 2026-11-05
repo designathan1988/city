@@ -416,6 +416,25 @@ Ressalvas abertas:
 - **P12, achado na foto:** faixas de vaga sobre a grama. Causa: `LotEmit::surface` usa um quad pelos quatro cantos; em declive, superfícies sobrepostas dobram em diagonais diferentes e se cruzam. Correção: em chão não plano, a superfície segue o chão em células de 3 m; em chão plano continua um quad.
   Foto `lot_a` depois: estacionamento limpo, grama não atravessa mais. Aprovado.
 
+### Ciclo 5 (o par com os mesmos prédios)
+
+- **Passo 1.** O nível real: as regras dão `ultra` numa RTX 3060 (com oclusão). Em `ultra`, o bairro `low3` mede GPU 9,2 ms, 0 engasgos, 0 % de carga externa. Fotos: parecia haver asfalto escuro demais, sombra escura demais e cerca solta. Para julgar, um par com o 4.0 sem ele ficar aberto (`reference40.mjs`, ~50 s por plano novo).
+  - Asfalto, grama e calçada ao sol, mesma cena: iguais (urbana 52,56,66 contra 54,58,68; grama 73,105,47 contra 76,103,49). Não há defeito. As amostras que indicavam calçada mais clara caíram fora do alvo: recortes lado a lado desmentiram.
+  - Parede na sombra, mesmo prédio: igual ao 4.0. O escuro do chão entre prédios não é defeito de luz.
+  - `predios-40.json` estava velho (outra cidade): relidos do 4.0 de agora (`predios.js`, 441 documentos). `place_model` funde prédios cujos lotes encostam: **o caixilho escuro e a aleta cinza do par vinham da fusão, não do render**. Cada foto de par precisa de prédios que não se fundam.
+  - P13: janelas ~40 % menores que o documento pede. Prédio teal: 0,749 da baia e 0,567 do andar; a foto do jogo mede 0,63 e 0,41.
+  - P14: peça na cor da guarnição metálica fica escura até no sol (brise `fin 7`, medido com uma linha temporária; vista `unshaded` 85-105).
+- **Passo 2.** Fontes: `buildingMesh.ts` `openingOf` (sem teto para janela dimensionada), `kit.ts` (frame metalness 0,05; fin e brise 0, sem mapa), `architecture.ts` (peitoris 0,8 e 0,85). Godot, Standard Material 3D: quanto mais refletivo, menos a luz difusa e ambiente afeta o material. Regra do usuário (Steam): nada de padrão só brasileiro.
+- **Passo 3.** P13: o commit `2414d2ef` (sessão anterior, sem pedido do usuário nos registros) pôs tetos SINAPI em `opening_of` e na tabela. Previsão pela conta: teal 2,00 m de 3,39 (0,59) e verga 2,10 (1,30 m de altura): bate com a foto, então a causa é essa. P14: o jogo passa o acabamento da guarnição às peças; no 4.0 a guarnição só colore, e a peça tem material próprio. A cor sai multiplicada pelo mapa do metal (média 0,61) e com metalness 0,55, que tira difuso: fica escura.
+- **Passo 4.** Tirar os tetos da janela dimensionada, voltar a tabela e os peitoris do 4.0, `PART_PAINT` para as peças. Moldura da janela com veneziana passa à cor da guarnição, como `tc` no 4.0. Previsão: mesmo número de triângulos; mais pixels de vidro, GPU sobe pouco.
+- **Passo 5.** `facade_bay.cpp`, `facade_bay.h`, `facade_parts.cpp`, `buildings.json`; `capture_pair.gd` ganhou `draw` (vista de depuração por foto).
+
+- **Passo 6.** Uma rodada: `quick.sh --all --bless` 30/30, 0 instáveis, em 56 s; fotos do par sem fusão (`a1`, `a2`). `low3` em `ultra`: GPU 9,15 ms (antes 9,22), 0 engasgos.
+- **Passo 7.** Aprovado. Aletas brancas como no 4.0; janela do prédio teal na proporção dele; cidade gerada com janelas mais altas, como o estilo pede.
+- **P15, achado, para o próximo ciclo:** cerca do lote é faixa opaca flutuante. Causa em `lot_emit.cpp` `fence`: um painel inventado entre os trilhos; no 4.0 (`emitFence`) cerca é só postes e dois trilhos. É a pendência das "colunas": conferir depois.
+- A foto `cmp_b` (prédio bege) não vale de par: o 4.0 mostra um vizinho na frente. Nada se conclui dela.
+- **Ordem do usuário (19:5x):** não usar a ferramenta de porte e tradução, incluindo `reference40.mjs` e `call40.mjs`, até a sessão dona resolver. Cobrada por mensagem. Sem ela não há foto nova do 4.0: valem as do arquivo já tiradas e a leitura da fonte.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

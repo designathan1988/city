@@ -46,7 +46,7 @@ struct Ctx {
 		part_box(shell, at(am, cz, -out / 2, w + pad, t, out), paint("sill"), FIN_CONCRETE);
 		part_box(shell, at(am, cz - FASCIA_DROP, -out + FASCIA_T / 2, w + pad, fascia, FASCIA_T), paint("sill"), FIN_CONCRETE);
 		for (float s : { -1.f, 1.f })
-			part_box(parts, at(am + s * (w / 2 + BRACKET_OFF), cz - BRACKET_H * HALF - CANOPY_RISE * HALF, -BRACKET_D / 2, BRACKET_W, BRACKET_H, BRACKET_D), c.trim, c.trim_fin);
+			part_box(parts, at(am + s * (w / 2 + BRACKET_OFF), cz - BRACKET_H * HALF - CANOPY_RISE * HALF, -BRACKET_D / 2, BRACKET_W, BRACKET_H, BRACKET_D), c.trim, PART_PAINT);
 	}
 	// The leaves are parts, drawn only to parts_end: a door-coloured panel behind them (at the back of the leaf
 	// box, so it never covers a leaf) closes the opening when they are culled.
@@ -58,7 +58,7 @@ struct Ctx {
 	void glass_guard(float a, float floor, float depth, float width) const {
 		const float pane = pl.look->guard_h_m - CAP_H;
 		part_box(shell.sheer ? *shell.sheer : shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
-		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, c.trim_fin);
+		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, PART_PAINT);
 	}
 	void door();
 	void double_door();
@@ -84,7 +84,7 @@ void Ctx::double_door() {
 	if (fanlight) { // glass over the leaves (a double door's fanlight: the opening's only glass)
 		float fan = h - leaf - FAN_GAP, fy = o.h0 + leaf + FAN_GAP + fan / 2;
 		shell.pane(c.f, o.a0, o.a1, fy - fan / 2, o.h1, -o.depth, pane_look(pl, c, o.a0, o.a1, fy - fan / 2, o.h1, false, FRAME_THIN));
-		part_box(parts, at(am, o.h0 + leaf + FAN_GAP / 2, o.depth - FRAME_IN, w, FAN_GAP, TRANSOM_T), c.trim, c.trim_fin);
+		part_box(parts, at(am, o.h0 + leaf + FAN_GAP / 2, o.depth - FRAME_IN, w, FAN_GAP, TRANSOM_T), c.trim, PART_PAINT);
 	}
 	if (c.level == 0) { canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM); lamp(); }
 }
@@ -97,12 +97,12 @@ void Ctx::gourmet() {
 	glass_guard((r0 + r1) / 2, 0, G_RAIL_OUT, r1 - r0);
 	if (!c.open_left) part_box(shell, at(G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
 	if (!c.open_right) part_box(shell, at(c.W - G_END, c.H / 2 - G_WALL_DROP, -GARDEN_WALL_U, G_WALL_T, c.H, G_WALL_D), slab, c.wall_fin);
-	else part_box(parts, at(c.W, pl.look->guard_h_m / 2, -G_POST_OUT, FRAME_D, pl.look->guard_h_m, G_POST_D), c.trim, c.trim_fin);
+	else part_box(parts, at(c.W, pl.look->guard_h_m / 2, -G_POST_OUT, FRAME_D, pl.look->guard_h_m, G_POST_D), c.trim, PART_PAINT);
 }
 
 void Ctx::shuttered() {
-	part_box(shell, at(am, o.h1 + SURROUND / 2, SURROUND_OUT, w + 2 * SURROUND, SURROUND, SURROUND_T), c.mould, c.trim_fin);
-	for (float s : { -1.f, 1.f }) part_box(shell, at(am + s * (w / 2 + SURROUND / 2), hm, SURROUND_OUT, SURROUND, h, SURROUND_T), c.mould, c.trim_fin);
+	part_box(shell, at(am, o.h1 + SURROUND / 2, SURROUND_OUT, w + 2 * SURROUND, SURROUND, SURROUND_T), c.trim, PART_PAINT);
+	for (float s : { -1.f, 1.f }) part_box(shell, at(am + s * (w / 2 + SURROUND / 2), hm, SURROUND_OUT, SURROUND, h, SURROUND_T), c.trim, PART_PAINT);
 	if (o.a0 >= w / 2 + SURROUND) {
 		const Paint &lv = pl.data->color("louvre_default");
 		Lin tc = c.trim;
@@ -137,7 +137,7 @@ void emit_bay_relief(Shell &shell, Shell &parts, const Placed &pl, const BayCtx 
 			if (c.level == 0) x.canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM);
 			break;
 		case BAY_LOGGIA: x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w); break;
-		case BAY_BRISE: part_brise(parts, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, c.trim_fin); break;
+		case BAY_BRISE: part_brise(parts, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, PART_PAINT); break;
 		case BAY_SHUTTERED: x.shuttered(); break;
 		case BAY_GOURMET: x.gourmet(); break;
 		default: break;
@@ -166,12 +166,12 @@ void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &
 			x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w);
 			break;
 		case BAY_BRISE:
-			part_brise(shell, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, c.trim_fin);
+			part_brise(shell, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, PART_PAINT);
 			break;
 		case BAY_SHUTTERED: x.shuttered(); break;
 		case BAY_GOURMET: x.gourmet(); break;
 		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON:
-			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, c.trim_fin);
+			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, PART_PAINT);
 			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);
 			break;
 		default: break;

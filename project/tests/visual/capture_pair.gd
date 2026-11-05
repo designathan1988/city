@@ -2,7 +2,8 @@
 ## bearing and tilt, at the 4.0's fixed day sun (16:00). The list: [{"name", "x", "y", "zoom", "azimuth", "elevation"}], the 4.0's setView.
 ## A view may carry "inside": {"id": the 4.0's building, "level": a floor}: that building (laid from --buildings) is cut open there, as
 ## the layer's switch does it, for the camera of the view. Only the buildings the views name are laid (placing welds the neighbours a lot
-## lands on). "hour" sets the clock and the sky together (the 4.0's night mode is 22:00).
+## lands on). "hour" sets the clock and the sky together (the 4.0's night mode is 22:00). "draw": a Viewport.DEBUG_DRAW_* by its name,
+## as "unshaded": what a material gives before any light.
 ## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_pair.tscn -- --no-flow --views=FILE --capture-dir=DIR
 extends Node3D
 
@@ -59,6 +60,7 @@ func _ready() -> void:
 			UiDriver.at_hour(world, v.hour)
 		if v.has("inside"):
 			_open_inside(v.inside)
+		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(v.get("draw", "disabled"))).to_upper())
 		await ui.drawn()
 		lights.set_night(world.daylight.night)
 		if v.has("inside"):

@@ -10,6 +10,10 @@
 
 namespace city::b40 {
 
+// A part in the trim's colour (frame, fin, brise) is paint over no finish, whatever the trim's own finish: a metal finish has no diffuse,
+// and a thin part would read as the sky it reflects.
+constexpr int8_t PART_PAINT = FIN_NONE;
+
 struct BayCtx {
 	Basis f; // origin at the bay's left end on the storey floor, in the wall plane; e2 out of the wall
 	float W = 3, H = 3;
@@ -17,7 +21,7 @@ struct BayCtx {
 	int level = 0;
 	uint32_t hash = 0;
 	Lin wall, trim, mould;
-	int8_t wall_fin = FIN_PLASTER, trim_fin = FIN_PLASTER, mould_fin = FIN_PLASTER;
+	int8_t wall_fin = FIN_PLASTER, trim_fin = FIN_PLASTER, mould_fin = FIN_PLASTER; // trim_fin: the reveals and fascias, faces of the shell
 	const FaceGeometry *geo = nullptr;
 	bool open_left = false, open_right = false; // the neighbouring bay is also a gourmet balcony
 	Use use = USE_RESIDENTIAL;
