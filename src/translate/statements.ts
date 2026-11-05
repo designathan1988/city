@@ -508,9 +508,18 @@ export class Emitter extends ExpressionEmitter {
           }
         }
       }
-      return [this.fail(iterable, 'a loop over `?? []` of something other than a map entry').code];
+      // for (x of a ?? []) of anything else: over a when it is there
+      const list = this.value(left);
+      const pre = this.#flush();
+      if (list.type.k === 'dynamic') return [...pre, ...this.#loop(s, decl, { code: `${list.code}.items()`, type: { k: 'vector', of: list.type } }, null)];
+      if (list.type.k === 'optional' || list.type.k === 'ptr') {
+        const held = this.temp('list');
+        return [...pre, ...this.#loop(s, decl, { code: `(*${held})`, type: target(list.type) }, `if (const auto &${held} = ${list.code}; ${held})`)];
+      }
+      return [...pre, ...this.#loop(s, decl, list, null)];
     }
     let source = this.value(iterable);
+    if (source.type.k === 'dynamic') source = { code: `${source.code}.items()`, type: { k: 'vector', of: source.type } };
     // The state walked while the body edits it: walk what it was when the loop began.
     if (this.state && this.#readsState(iterable) && this.#editsState(s.statement)) {
       const snapshot = this.temp('snapshot');

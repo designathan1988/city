@@ -5,11 +5,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { removeTree, writeTree } from '../common/files.ts';
-import { compileFiles, scanUnits } from './quarantine.ts';
+import { compileFiles, compileHeaders, scanUnits } from './quarantine.ts';
 import { translate, type PreparedProgram, type TranslationResult } from '../translate/run.ts';
 import type { TranslationSpec } from '../translate/spec.ts';
 
-const MOST_ROUNDS = 40;
+const MOST_ROUNDS = 80;
+/** Errors taken from one header in a round: the later ones are often what the first one broke. */
+const FIRST_IN_A_HEADER = 3;
 
 export interface WholeInput {
   readonly sourceRoot: string;
@@ -28,6 +30,8 @@ export interface WholeResult {
   readonly left: ReadonlyMap<string, string>;
   /** What still does not compile, by file: its units are not counted as written. */
   readonly failing: readonly string[];
+  /** The units in files that compile. */
+  readonly written: readonly string[];
 }
 
 type Unit = TranslationResult['units'][number];
@@ -135,6 +139,22 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
     }
     removeTree(overlay);
     writeTree(overlay, result.files);
+    // the headers first, in one compile: a broken one fails everything that includes it
+    const headerErrors = await compileHeaders(input.cxx, overlay, input.targetRoot, result.files);
+    if (headerErrors.length > 0) {
+      const seen = new Map<string, number>();
+      const first = headerErrors.filter((l) => {
+        const file = /native[\\/]src[\\/][^\s:]+/.exec(l)?.[0] ?? l;
+        seen.set(file, (seen.get(file) ?? 0) + 1);
+        return seen.get(file)! <= FIRST_IN_A_HEADER;
+      });
+      const placed = attribute([{ file: 'all_headers.cpp', detail: first.join(' | ') }], result, input.prepared);
+      for (const [id, why] of placed.left) left.set(id, why);
+      log(`round ${round}: ${headerErrors.length} header errors in ${seen.size} files, ${left.size} left out (${translated - started} + ${Date.now() - translated} ms)`);
+      if (left.size > before) continue;
+      failing = [...seen.keys()];
+      break;
+    }
     const findings = await compileFiles(input.cxx, overlay, input.targetRoot, result.files);
     const placed = attribute(findings, result, input.prepared);
     for (const [id, why] of placed.left) left.set(id, why);
@@ -143,5 +163,9 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
     if (findings.length === 0 || left.size === before) break;
   }
   fs.mkdirSync(input.candidate, { recursive: true });
-  return { result: last!, left, failing };
+  const broken = (id: string): boolean => {
+    const placed = input.prepared.placement.of(id.slice(0, id.indexOf('#')));
+    return !('error' in placed) && failing.some((f) => f.replace(/\\/g, '/').includes(`${placed.owner}/${placed.stem}`));
+  };
+  return { result: last!, left, failing, written: last!.units.map((u) => u.source).filter((id) => !broken(id)) };
 }

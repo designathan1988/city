@@ -83,13 +83,35 @@ export function scanUnits(stopOf: (id: string) => string | null, emitted: readon
  *  input gives the identical result: a file the judgments meet again is not compiled again). Lives for the run. */
 const compiled = new Map<string, QuarantineFinding | null>();
 
+/** Every generated header in one compile: one broken header would otherwise fail each file that includes it, compiled one by one. */
+export async function compileHeaders(cxx: string, overlay: string, targetRoot: string, files: ReadonlyMap<string, string>): Promise<string[]> {
+  const all = path.join(overlay, 'all_headers.cpp');
+  fs.writeFileSync(all, [...files.keys()].filter((f) => f.endsWith('.h')).sort().map((f) => `#include "${f.replace(/^native\/src\//, '')}"`).join('\n') + '\n');
+  const stderr = await new Promise<string>((resolve) => {
+    execFile(cxx, ['-std=c++17', '-fsyntax-only', '-ferror-limit=0', '-I', path.join(overlay, 'native', 'src'), '-I', path.join(targetRoot, 'native', 'src'), all],
+      { encoding: 'utf8', windowsHide: true, maxBuffer: MAX_CHILD_OUTPUT_BYTES }, (_error, _stdout, err) => resolve(err));
+  });
+  return stderr.split(/\r?\n/).filter((l) => l.includes(': error:'));
+}
+
 export async function compileFiles(cxx: string, overlay: string, targetRoot: string, files: ReadonlyMap<string, string>): Promise<QuarantineFinding[]> {
-  const headers = createHash('sha256');
-  for (const [file, text] of [...files].sort(([a], [b]) => a.localeCompare(b))) if (!file.endsWith('.cpp')) headers.update(file).update('\0').update(text).update('\0');
-  const headerKey = headers.update(cxx).update(targetRoot).digest('hex');
+  // what a file's result depends on: itself and the generated headers it reaches, so a change recompiles only who includes it
+  const reached = (file: string): string => {
+    const seen = new Set<string>([file]);
+    const queue = [file];
+    while (queue.length > 0) {
+      for (const m of (files.get(queue.pop()!) ?? '').matchAll(/#include "([^"]+)"/g)) {
+        const next = `native/src/${m[1]}`;
+        if (files.has(next) && !seen.has(next)) { seen.add(next); queue.push(next); }
+      }
+    }
+    const hash = createHash('sha256').update(cxx).update(targetRoot);
+    for (const f of [...seen].sort()) hash.update(f).update('\0').update(files.get(f)!).update('\0');
+    return hash.digest('hex');
+  };
   // every .cpp at once, each its own compiler process
-  const results = await Promise.all([...files].filter(([file]) => file.endsWith('.cpp')).map(async ([file, text]) => {
-    const key = createHash('sha256').update(headerKey).update(file).update('\0').update(text).digest('hex');
+  const results = await Promise.all([...files].filter(([file]) => file.endsWith('.cpp')).map(async ([file]) => {
+    const key = reached(file);
     if (compiled.has(key)) return compiled.get(key)!;
     const run = await new Promise<{ status: number | null; stderr: string; error?: Error }>((resolve) => {
       execFile(cxx, ['-std=c++17', '-fsyntax-only', '-ferror-limit=0', '-I', path.join(overlay, 'native', 'src'), '-I', path.join(targetRoot, 'native', 'src'), path.join(overlay, file)],

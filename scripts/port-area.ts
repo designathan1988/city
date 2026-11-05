@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { writeTree } from '../src/common/files.ts';
 import { readLibrary } from '../src/convert/autospec.ts';
+import { loadTypeScript } from '../src/graph/typescript.ts';
+import { runObjectDifferential } from '../src/translate/differential.ts';
 import { translate } from '../src/translate/run.ts';
 import type { TranslationSpec } from '../src/translate/spec.ts';
 
@@ -28,3 +30,15 @@ console.log(result.errors.length === 0 ? 'no errors' : result.errors.join('\n'))
 if (result.dropped.length > 0) console.log(`left out: ${result.dropped.join('\n')}`);
 writeTree(out, result.files);
 console.log([...result.files.keys()].join('\n'));
+// The light check: the area against the source, nothing of the game compiled but its headers.
+if (result.errors.length === 0 && process.env['CXX']) {
+  const tuning = JSON.parse(fs.readFileSync(path.join(plan.targetRoot, 'project/data/catalog/tuning.json'), 'utf8')) as Record<string, Record<string, number>>;
+  const context = Object.fromEntries(Object.entries(tuning).flatMap(([section, rows]) => Object.entries(rows).filter(([, v]) => typeof v === 'number').map(([k, v]) => [`${section}_${k}`, v])));
+  const typescriptDir = path.join(machine.source, 'node_modules', 'typescript');
+  const started = Date.now();
+  const check = runObjectDifferential({ ts: loadTypeScript(machine.source, typescriptDir), tsconfig: path.join(machine.source, 'tsconfig.json'), sourceRoot: machine.source, translation: result,
+    includes: [path.join(plan.targetRoot, 'native/src')], cxx: process.env['CXX'], work: path.join(out, 'check'), steps: Number(process.env['STEPS'] ?? 3000), seed: 7, tolerance: 2e-5, valueTypes: {}, context });
+  console.log(`checked in ${Date.now() - started} ms: ${check.steps} calls, ${check.mismatches.length} mismatches; ${JSON.stringify(check.calls)}`);
+  for (const m of check.mismatches.slice(0, 12)) console.log(`step ${m.step} ${m.call}${m.path}: source ${JSON.stringify(m.source)}, translation ${JSON.stringify(m.translation)}`);
+  process.exitCode = check.mismatches.length > 0 ? 1 : 0;
+}

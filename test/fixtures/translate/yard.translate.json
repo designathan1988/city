@@ -38,7 +38,11 @@
   "chainSum",
     "shelved",
     "mixed",
-    "legsOf"
+    "legsOf",
+    "rawRead",
+    "inherited",
+    "sized",
+    "filled"
   ],
   "pending": [],
   "number": "float",
