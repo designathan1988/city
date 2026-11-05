@@ -9,7 +9,7 @@ import { compileFiles, compileHeaders, scanUnits } from './quarantine.ts';
 import { translate, type PreparedProgram, type TranslationResult } from '../translate/run.ts';
 import type { TranslationSpec } from '../translate/spec.ts';
 
-const MOST_ROUNDS = 80;
+const MOST_ROUNDS = 200;
 /** Errors taken from one header in a round: the later ones are often what the first one broke. */
 const FIRST_IN_A_HEADER = 3;
 
@@ -142,17 +142,25 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
     // the headers first, in one compile: a broken one fails everything that includes it
     const headerErrors = await compileHeaders(input.cxx, overlay, input.targetRoot, result.files);
     if (headerErrors.length > 0) {
-      const seen = new Map<string, number>();
-      const first = headerErrors.filter((l) => {
-        const file = /native[\\/]src[\\/][^\s:]+/.exec(l)?.[0] ?? l;
-        seen.set(file, (seen.get(file) ?? 0) + 1);
-        return seen.get(file)! <= FIRST_IN_A_HEADER;
-      });
-      const placed = attribute([{ file: 'all_headers.cpp', detail: first.join(' | ') }], result, input.prepared);
+      const byFile = new Map<string, string[]>();
+      for (const l of headerErrors) {
+        const file = (/native[\\/]src[\\/][^\s:]+/.exec(l)?.[0] ?? l).replace(/\\/g, '/');
+        const rows = byFile.get(file) ?? [];
+        if (rows.length < FIRST_IN_A_HEADER) rows.push(l);
+        byFile.set(file, rows);
+      }
+      const placed = attribute([...byFile].map(([file, rows]) => ({ file, detail: rows.join(' | ') })), result, input.prepared);
       for (const [id, why] of placed.left) left.set(id, why);
-      log(`round ${round}: ${headerErrors.length} header errors in ${seen.size} files, ${left.size} left out (${translated - started} + ${Date.now() - translated} ms)`);
+      // an error no unit owns: the units of its module leave, never the whole translation
+      if (left.size === before) {
+        for (const file of placed.lost) {
+          const module = moduleOfFile(file, result, input.prepared);
+          for (const u of result.units) if (module && u.source.startsWith(`${module}#`)) left.set(u.source, `its header does not compile: ${(byFile.get(file) ?? [])[0]?.slice(0, 200)}`);
+        }
+      }
+      log(`round ${round}: ${headerErrors.length} header errors in ${byFile.size} files, ${left.size} left out (${translated - started} + ${Date.now() - translated} ms)`);
       if (left.size > before) continue;
-      failing = [...seen.keys()];
+      failing = [...byFile.keys()];
       break;
     }
     const findings = await compileFiles(input.cxx, overlay, input.targetRoot, result.files);

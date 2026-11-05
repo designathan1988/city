@@ -322,7 +322,7 @@ export abstract class ExpressionEmitter {
     if (this.#inConstant(e) || this.c.allowedNumbers.includes(value)) return { code: text, type };
     // A number the target's gates do not allow bare: a constant of this module, named from what receives it.
     const named = this.c.literals.name(e, value, this.module);
-    const name = this.c.spec.whole ? `${named}_${upper(this.module.replace(/^.*\//, '').replace(/\.tsx?$/, ''))}` : named;
+    const name = this.c.spec.whole ? `${named}_${upper(this.module.replace(/^src\//, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'))}` : named;
     const key = `${this.module}|${name}`;
     if (!this.c.literalConstants.has(key)) {
       const line = e.getSourceFile().getLineAndCharacterOfPosition(e.getStart()).line + 1;

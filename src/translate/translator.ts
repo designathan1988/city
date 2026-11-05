@@ -451,7 +451,7 @@ export class Translator extends Emitter {
       this.#constantNames.set(cpp, module);
       return cpp;
     }
-    return `${cpp}_${upper(module.replace(/^.*\//, '').replace(/\.tsx?$/, ''))}`;
+    return `${cpp}_${upper(module.replace(/^src\//, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'))}`;
   }
 
   #planConstant(d: TS.VariableDeclaration, name: string, line: number): void {

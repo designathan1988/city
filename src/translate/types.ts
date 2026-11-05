@@ -6,7 +6,7 @@
 // owns, a value. Anonymous shapes get the spec's name, or the name of the type they are the same as (V2).
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
-import { BOOL, STRING, VOID, type CppType, type IntName, isHandle, INT64, DYNAMIC } from './cpptype.ts';
+import { BOOL, STRING, VOID, type CppType, type IntName, isHandle, INT64, DYNAMIC, holdsTypeParameter } from './cpptype.ts';
 import { Num, Own, type FlowGraph, type Slot } from './flow.ts';
 import { pascal, snake, upper } from './names.ts';
 import type { TranslationSpec } from './spec.ts';
@@ -235,7 +235,9 @@ export class TypeMapper {
     if (lookup || /^(Map|ReadonlyMap|WeakMap)$/.test(name)) {
       const [k, v] = lookup ?? checker.getTypeArguments(type as TS.TypeReference);
       this.includes.add('unordered_map');
-      const key: CppType = this.#flow.underlying(k!).flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
+      const asKey = this.#flow.underlying(k!).flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } as const : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
+      // an object as a key is the object itself, as in JavaScript: its identity, never its fields
+      const key: CppType = asKey.k === 'struct' || asKey.k === 'vector' ? { k: 'ptr', to: asKey } : asKey;
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
     }
     // a type that extends Array (interface Path extends Array<Point>): a list
@@ -263,6 +265,9 @@ export class TypeMapper {
     }
     if (f & ts.TypeFlags.Object) {
       if (this.isClass(type)) return this.#instance(type, slot);
+      // what the platform or a library declares is no type of the program: never rebuilt field by field
+      const foreign = type.getSymbol()?.declarations?.[0];
+      if (foreign && !type.aliasSymbol && !this.#flow.inProgram(foreign) && !/^__(type|object)$/.test(type.getSymbol()!.name)) return this.#unsupported();
       if (slot && this.#flow.isMixed(slot)) return this.#unsupported();
       const shape = (slot ? this.#flow.shapeOf(slot) : null) ?? type;
       const struct = this.structFor(shape, slot?.name ?? 'value');
@@ -324,6 +329,7 @@ export class TypeMapper {
     const home = this.#moduleOf(inLib ? undefined : symbol?.declarations?.[0]);
     const namesake = declared ? this.structs.get(name) : undefined;
     if (namesake && namesake.declared === declared && namesake.module !== home) name = `${stem}${declared}`;
+    if (declared && this.enums.has(name)) name = `${stem}${declared}`;
     const known = this.structs.get(name);
     if (known) {
       this.#seen(known);
@@ -352,6 +358,8 @@ export class TypeMapper {
       const flowErrors = this.#flow.errors.length;
       if (this.#spec.left?.includes(`${made.module}#${name}.${snake(prop.name.replace(/^(__#\d+@)?#/, ''))}`)) continue;
       let cpp = this.ofType(propType, 'field', this.#flow.symbolSlot(prop));
+      // an interface's T has no template to belong to: what reads the field falls
+      if (home === undefined && holdsTypeParameter(cpp)) continue;
       if (this.#spec.whole && (this.#errors.length > errors || this.#flow.errors.length > flowErrors)) {
         this.#errors.length = errors;
         this.#flow.errors.length = flowErrors;
