@@ -35,6 +35,10 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
 ];
 
 const AUDIT_EXTENSION = '.cpp';
+/** Modules judged ahead of the one being taken: their compiles overlap the next translations. */
+const JUDGED_AHEAD = 16;
+/** How often a long run writes down what it has decided (a run stopped halfway keeps it). */
+const REPORT_EVERY_MS = 30_000;
 const DEFAULT_MAX_SCATTERING = 0.5;
 const DEFAULT_MIN_CONSTANT_FILES = 3;
 
@@ -311,10 +315,18 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
   if (first) {
     const targetGraph = path.resolve(flags.require('target-graph'));
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
-    for (const spec of specs) {
-      const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
-        stopOf: (id: string) => ledger.stopOf(id), prepared };
-      let judged = await judgeByRoot(spec, judgeInput);
+    const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+      stopOf: (id: string) => ledger.stopOf(id), prepared };
+    // modules are judged ahead, their compiles running while the next is translated; the results are taken in order,
+    // so what a module shares with earlier ones is decided as a run in sequence decides it
+    const ahead: Promise<Judged>[] = [];
+    const start = (i: number): void => {
+      while (ahead.length <= i + JUDGED_AHEAD && ahead.length < specs.length) ahead.push(judgeByRoot(specs[ahead.length]!, judgeInput));
+    };
+    let reported = Date.now();
+    for (const [i, spec] of specs.entries()) {
+      start(i);
+      let judged = await ahead[i]!;
       const clashes = (j: Judged): string[] => [...j.files].filter(([file, text]) => accepted.has(file) && accepted.get(file) !== text).map(([file]) => file);
       let clash = clashes(judged);
       // a module another accepted one shares, written with a different part of it: translated again rooting what the
@@ -340,8 +352,12 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
       }
       const last = outcomes[outcomes.length - 1]!;
       console.log(`  ${last.module}: ${last.accepted ? `accepted, ${last.refusals.length} root(s) left open` : `refused (${last.refusals.length})`}`);
-      totals = report();
+      if (Date.now() - reported > REPORT_EVERY_MS) {
+        totals = report();
+        reported = Date.now();
+      }
     }
+    totals = report();
   }
   console.log(`convert ${feature}: ${ledger.units.length} units; in the game ${counts(ledger.units).exists}; translated ${totals.done}; open ${totals.open}; ` +
     `constants without a source ${totals.unsourced}; ${accepted.size} files -> ${out}`);

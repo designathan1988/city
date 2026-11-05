@@ -29,12 +29,22 @@ export class Patterns {
     });
   }
 
+  /** What each expression matched: the program does not change while it is read, and the flow asks many times. */
+  readonly #matched = new WeakMap<TS.Expression, PatternMatch | null>();
+
   match(e: TS.Expression): PatternMatch | null {
+    const known = this.#matched.get(e);
+    if (known !== undefined) return known;
+    let found: PatternMatch | null = null;
     for (const pattern of this.#patterns) {
       const bound = new Map<string, TS.Expression>();
-      if (this.#match(pattern.expr, e, bound)) return { pattern, bound };
+      if (this.#match(pattern.expr, e, bound)) {
+        found = { pattern, bound };
+        break;
+      }
     }
-    return null;
+    this.#matched.set(e, found);
+    return found;
   }
 
   #match(p: TS.Node, n: TS.Node, bound: Map<string, TS.Expression>): boolean {

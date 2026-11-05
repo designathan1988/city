@@ -349,6 +349,17 @@ export class FlowGraph {
 
   /** The function a call runs, when it is the feature's (an index read runs its builder). */
   calleeOf(e: TS.CallExpression): TS.SignatureDeclaration | null {
+    const known = this.#callees.get(e);
+    if (known !== undefined) return known;
+    const callee = this.#resolveCallee(e);
+    this.#callees.set(e, callee);
+    return callee;
+  }
+
+  /** Each call's function, resolved once: the checker's answer does not change, and the flows ask at every run. */
+  readonly #callees = new Map<TS.CallExpression, TS.SignatureDeclaration | null>();
+
+  #resolveCallee(e: TS.CallExpression): TS.SignatureDeclaration | null {
     const ts = this.#ts;
     if (ts.isIdentifier(e.expression)) {
       const s = this.symbolOf(e.expression);
