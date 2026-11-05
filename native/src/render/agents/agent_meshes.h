@@ -22,6 +22,7 @@ namespace city {
 
 // The levels a vehicle is built at, nearest first; agents.json car_body detail arrays and wheel_sides hold one entry each.
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
+constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
 enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN, ROOF, GLOSS };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.

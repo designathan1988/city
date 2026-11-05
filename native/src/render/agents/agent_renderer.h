@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/fleet_shadow.h"
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -61,7 +62,8 @@ private:
 	godot::RID scenario_, material_, glass_, shadow_;
 	OwnedMesh meshes_[AGENT_MODELS][LEVELS]; // the body surface, and the near level's glass surface
 	MultiMeshDraw draws_[AGENT_MODELS][LEVELS];
-	MultiMeshDraw shadow_draws_[AGENT_MODELS][LEVELS - 1]; // a level's instances with the next level's mesh; the last casts its own
+	MultiMeshDraw shadow_draws_[AGENT_MODELS][LEVELS - 1]; // a level's instances with the next level's mesh
+	FleetShadow fleet_shadow_; // what the far level casts
 	int body_tris_[AGENT_MODELS][LEVELS] = {}, glass_tris_[AGENT_MODELS][LEVELS] = {}, shown_[AGENT_MODELS][LEVELS] = {};
 	Load load_[AGENT_MODELS];
 	int paints_ = 0;

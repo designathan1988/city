@@ -6,7 +6,8 @@
 ## the triangles and draw calls of the visible and shadow passes, and the memory (static, video, buffers). The slowest
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
-## Analysis knobs: --shadows=0 (no sun shadows), --casters=MASK (only these render layers cast them), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
+## Analysis knobs: --shadows=0 (no sun shadows), --casters=MASK (only these render layers cast them), --casters-cycle=all,0,2,-64
+## (A/B in one run, turn by turn: all, no shadows, 2 splits, every layer but 64: a busy machine weighs on each alike; --uncapped), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
 ## read), to see what a feature costs; --moves=a,b runs
 ## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
 ## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
@@ -33,6 +34,9 @@ const STILL_S := 10.0
 const SLOW_MS := [33.0, 50.0]
 const MIB := 1024.0 * 1024.0
 const WORST := 10
+const CYCLE_FRAMES := 12
+const CYCLE_SKIP := 4
+const ALL_LAYERS := 0xFFFFFFFF
 const US_PER_MS := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
 const BROKEN_DOWN := 3
@@ -44,6 +48,11 @@ var rig: CityCamera
 var map := 0
 var centre := Vector3.ZERO
 var shot_dir := ""
+var cycle: PackedStringArray
+var cycle_sun: DirectionalLight3D
+var cycle_sum := {}
+var cycle_at := 0
+var cycle_frame := 0
 var moves := PackedStringArray()
 var frames: Array[float] = []
 var gpu_ms: Array[float] = []
@@ -53,6 +62,25 @@ var costs: Array[Dictionary] = []
 
 
 ## The analysis knobs (header).
+## One frame of --casters-cycle: its time goes to the setting on, the first frames of a turn left out, and every CYCLE_FRAMES the next.
+func _cycle_step(gpu: float) -> void:
+	if cycle.is_empty():
+		return
+	cycle_frame += 1
+	var key := cycle[cycle_at]
+	if cycle_frame > CYCLE_SKIP:
+		var sum: Array = cycle_sum.get(key, [0.0, 0])
+		cycle_sum[key] = [sum[0] + gpu, sum[1] + 1]
+	if cycle_frame < CYCLE_FRAMES:
+		return
+	cycle_frame = 0
+	cycle_at = (cycle_at + 1) % cycle.size()
+	var next := cycle[cycle_at]
+	cycle_sun.shadow_enabled = next != "0"
+	cycle_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if next == "2" else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	cycle_sun.shadow_caster_mask = ALL_LAYERS & ~(-next.to_int()) if next.begins_with("-") else ALL_LAYERS
+
+
 func _knobs(world: CityWorld) -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--shadows=0":
@@ -60,6 +88,9 @@ func _knobs(world: CityWorld) -> void:
 		elif arg.begins_with("--casters="):
 			for sun: Node in world.find_children("*", "DirectionalLight3D", true, false):
 				(sun as Light3D).shadow_caster_mask = arg.trim_prefix("--casters=").to_int()
+		elif arg.begins_with("--casters-cycle="):
+			cycle = arg.trim_prefix("--casters-cycle=").split(",")
+			cycle_sun = world.sun
 		elif arg == "--msaa=0":
 			get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 		elif arg == "--uncapped":
@@ -149,6 +180,7 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 		last = now
 		frames.append(dt * US_PER_MS)
 		gpu_ms.append(RenderingServer.viewport_get_measured_render_time_gpu(vp))
+		_cycle_step(gpu_ms[-1])
 		cpu_ms.append(RenderingServer.viewport_get_measured_render_time_cpu(vp) + RenderingServer.get_frame_setup_time_cpu())
 		var cost: Dictionary = CityStore.query(&"render_cost") # the frame that just ended (frames[-1])
 		costs.append(cost)
@@ -181,6 +213,9 @@ func _report(name: String) -> void:
 		print("    quadro %d de %d: %.0f ms | núcleo %.1f ms (%s; envios %.1f MiB) | gpu %.1f ms, cpu de render %.1f ms" % [i,
 			frames.size(), frames[i], process_ms[i], ", ".join(parts), costs[i].uploads, gpu_ms[i], cpu_ms[i]])
 	print("  gpu %s | cpu de render %s | núcleo %s" % [_stats(gpu_ms), _stats(cpu_ms), _stats(process_ms)])
+	for key: String in cycle_sum:
+		print("  gpu de %s: %.2f ms" % [key, cycle_sum[key][0] / maxf(1.0, cycle_sum[key][1])])
+	cycle_sum.clear()
 	var vp := get_viewport().get_viewport_rid()
 	var info := func(kind: int, what: int) -> int: return RenderingServer.viewport_get_render_info(vp, kind, what)
 	print("  visível: %d mil triângulos, %d draw calls | sombra: %d mil triângulos, %d draw calls" % [
