@@ -51,7 +51,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 ## Comandos
 | O quê | Comando |
 |---|---|
-| Dependência do núcleo (uma vez) | `git clone https://github.com/godotengine/godot-cpp native/godot-cpp && git -C native/godot-cpp checkout e103d348c4b2d8df7b819126d855e19381cb9a87` (API 4.7, o commit com que o núcleo compila) |
+| O que um clone precisa | O `godot-cpp` já vem em `native/godot-cpp` (commit e103d348 do oficial, API 4.7) e as DLLs do núcleo em `project/bin` (refeitas e versionadas a cada mudança no C++): o jogo abre no Godot sem compilar. Instalados à parte: Godot 4.7.2 (`winget install GodotEngine.GodotEngine`), llvm-mingw `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+ (o tradutor e a cópia do 4.0), Python 3.12 (gates) e, para o oráculo, `npm install` em `tools/oracle-4.0` |
 | Gates | `python3 tools/gates/run_gates.py` (`--file X` para um arquivo, `--summary` resumo) |
 | Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` (DLL de release e de debug, a que o editor e os testes carregam) |
 | Testes core + e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
