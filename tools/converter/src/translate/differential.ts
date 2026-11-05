@@ -15,7 +15,7 @@ import { upper } from './names.ts';
 import type { ApiFunction, TranslationResult } from './run.ts';
 import type { CppEnum, CppStruct } from './types.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
-import { RUNTIME_FILE, RUNTIME_SOURCE } from './files.ts';
+import { runtimeFiles } from './files.ts';
 
 export interface DifferentialInput {
   readonly ts: TypeScriptApi;
@@ -230,19 +230,21 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     // a tuple prints as the JavaScript array it is
     if (isTuple(s)) {
       const items = s.fields.map((f, i) => `\t${i ? 'o << ","; ' : ''}put(o, v.${f.name});`);
-      return `void put(std::ostream &o, const ${s.name} &v) {\n\to << "[";\n${items.join('\n')}\n\to << "]";\n}`;
+      return `${putHead(s)} {\n\to << "[";\n${items.join('\n')}\n\to << "]";\n}`;
     }
     const fields = [...s.fields].sort((a, b) => (a.source < b.source ? -1 : 1));
     const body = fields.map((f) => `\tif (present(v.${f.name})) { o << (first ? "" : ",") << ${JSON.stringify(JSON.stringify(f.source) + ':')}; put(o, v.${f.name}); first = false; }`);
-    return `void put(std::ostream &o, const ${s.name} &v) {\n\tbool first = true;\n\to << "{";\n${body.join('\n')}\n\to << "}";\n}`;
+    return `${putHead(s)} {\n\tbool first = true;\n\to << "{";\n${body.join('\n')}\n\to << "}";\n}`;
   };
   for (const e of t.enums) lines.push(`void put(std::ostream &o, ${e.name} v);`);
-  for (const s of t.structs) lines.push(`void put(std::ostream &o, const ${s.name} &v);`);
+  for (const s of t.structs) lines.push(`${putHead(s)};`);
   for (const name of Object.keys(values)) lines.push(`void put(std::ostream &o, const ${name} &v);`);
   lines.push(`template <class T> void put(std::ostream &o, const std::vector<T> &v);`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
     `template <class T> void put(std::ostream &o, const T *v);`,
-    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`);
+    `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v);`,
+    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`,
+    `template <class T> void put(std::ostream &o, const js::Set<T> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
   for (const [name, fields] of Object.entries(values)) {
     const sorted = Object.entries(fields).sort((a, b) => (a[1] < b[1] ? -1 : 1));
@@ -252,11 +254,20 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::vector<T> &v) { o << "["; for (size_t i = 0; i < v.size(); i++) { if (i) o << ","; put(o, v[i]); } o << "]"; }`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
+    `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v) { if (v) put(o, *v); else o << "null"; }`,
+    `template <class T> void put(std::ostream &o, const js::Set<T> &v) { o << "["; bool first = true; for (const auto &x : v) { if (!first) o << ","; first = false; put(o, x); } o << "]"; }`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v) {`,
     // in insertion order, as JavaScript keeps a Map and js::Map keeps it
     `\to << "["; bool first = true; for (const auto &kv : v) { if (!first) o << ","; first = false; o << "["; put(o, kv.first); o << ","; put(o, kv.second); o << "]"; } o << "]";`,
     `}`);
   return lines.join('\n');
+}
+
+/** How a struct is printed; of a generic class, for any of its instances. */
+function putHead(s: { readonly name: string; readonly typeParams?: readonly string[] }): string {
+  const params = s.typeParams ?? [];
+  if (params.length === 0) return `void put(std::ostream &o, const ${s.name} &v)`;
+  return `template <${params.map((p) => `class ${p}`).join(', ')}> void put(std::ostream &o, const ${s.name}<${params.join(', ')}> &v)`;
 }
 
 const CPP_HEAD = `#include <algorithm>
@@ -287,6 +298,7 @@ inline void put(std::ostream &o, const std::string &s) {
 }
 template <class T> bool present(const std::optional<T> &v) { return v.has_value(); }
 template <class T> bool present(const T *v) { return v != nullptr; }
+template <class T> bool present(const std::shared_ptr<T> &v) { return v != nullptr; }
 inline bool present(bool v) { return v; }
 template <class T> bool present(const T &) { return true; }
 `;
@@ -409,9 +421,10 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
     fs.writeFileSync(out, text);
   }
   // the runtime of the built-ins, which the printer of a Map names, whether or not the translation calls it
-  const runtime = path.join(cppDir, RUNTIME_FILE);
-  fs.mkdirSync(path.dirname(runtime), { recursive: true });
-  if (!t.files.has(RUNTIME_FILE)) fs.copyFileSync(RUNTIME_SOURCE, runtime);
+  for (const [file, text] of runtimeFiles()) {
+    fs.mkdirSync(path.dirname(path.join(cppDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(cppDir, file), text);
+  }
   // Every module's public header: the scenario calls the feature's functions, whatever module they are in.
   const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [

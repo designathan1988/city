@@ -68,6 +68,7 @@ struct RoadNode {
 	float lift = 0; // the height the player gave it over the grade line, metres (Roadcraft 4.0 RoadNode.heightOffset)
 	std::vector<int> segs;
 	uint8_t ctl = CTL_AUTO; // NodeControl
+	int8_t auto_signal = -1; // what the flows chose on automatic (sim/traffic/flow_control.h): -1 nothing yet, 0 none, 1 a signal; derived, never saved
 	SignalSettings signal;
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on

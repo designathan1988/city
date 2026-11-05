@@ -195,6 +195,7 @@ void step(CityState &s, float dt) {
 		meso_process(s);
 		change_lanes(s);
 		step_vehicles(s, dt);
+		step_flow_control(s, dt);
 		step_kerb_stops(s, dt);
 	}
 	t.step_ms[STAGE_FLEET] += lap.lap();

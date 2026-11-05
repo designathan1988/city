@@ -17,7 +17,7 @@ import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
-import { lookupOf } from './types.ts';
+import { dictionaryOf, listOf, lookupOf } from './types.ts';
 import { integerLiteral } from './cpptype.ts';
 
 /** none < int < int64 < float. */
@@ -43,7 +43,7 @@ export class Slot {
   readonly id: number;
   readonly role: SlotRole;
   readonly name: string;
-  readonly type: TS.Type | null;
+  type: TS.Type | null;
   #elem: Slot | null = null;
   #key: Slot | null = null;
   constructor(id: number, role: SlotRole, name: string, type: TS.Type | null) {
@@ -69,7 +69,7 @@ export class Slot {
 const INT_MATH = new Set(['floor', 'ceil', 'round', 'trunc', 'sign', 'imul']);
 const JOIN_MATH = new Set(['max', 'min', 'abs']);
 const CALLBACK_METHODS = new Set(['forEach', 'map', 'filter', 'some', 'every', 'find', 'findIndex']);
-const SAME_ELEMENTS = new Set(['filter', 'slice', 'sort', 'reverse', 'concat']);
+const SAME_ELEMENTS = new Set(['filter', 'slice', 'sort', 'reverse', 'concat', 'values']);
 
 export class FlowGraph {
   readonly #ts: TypeScriptApi;
@@ -78,6 +78,8 @@ export class FlowGraph {
   readonly #patterns: Patterns;
   /** Every file of the source program (tests left out): facts come from every caller and every use. */
   readonly #files: ReadonlySet<TS.SourceFile>;
+  /** The unit being written: its refusals name it. */
+  unit: string | null = null;
   readonly #memoBodies: readonly TS.Node[];
   readonly #slots: Slot[] = [];
   readonly #bySymbol = new Map<TS.Node | TS.Symbol, Slot>();
@@ -173,8 +175,14 @@ export class FlowGraph {
     return type;
   }
 
+  /** A branded id (`type NodeId = number & {...}`): an integer whatever the arithmetic around it. A brand of a measure (Metres) stays a real. */
+  isId(type: TS.Type): boolean {
+    return type.isIntersection() && /Id$/.test(type.aliasSymbol?.name ?? '') && this.underlying(type).flags & this.#ts.TypeFlags.NumberLike ? true : false;
+  }
+
   #declare(s: Slot, type: TS.Type): void {
     const ts = this.#ts;
+    if (this.isId(this.#checker.getNonNullableType(type))) s.num = Num.Int64;
     if (type.isUnion() && type.types.some((t) => t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))) s.nullable = true;
     const t = this.underlying(this.#checker.getNonNullableType(type));
     if (this.isObject(t)) s.shapes.set(this.#shapeKey(t), t);
@@ -183,7 +191,11 @@ export class FlowGraph {
     if (/^(Ui|I)nt(8|16|32)Array$/.test(name)) this.elemOf(s).num = Num.Int;
     if (/^(Map|ReadonlyMap)$/.test(name)) {
       const k = this.#checker.getTypeArguments(t as TS.TypeReference)[0];
-      if (k && k.flags & ts.TypeFlags.NumberLike) this.keyOf(s).num = Num.Int64;
+      if (k && this.underlying(k).flags & ts.TypeFlags.NumberLike) this.keyOf(s).num = Num.Int64;
+    }
+    if (/^(Set|ReadonlySet)$/.test(name)) {
+      const k = this.#checker.getTypeArguments(t as TS.TypeReference)[0];
+      if (k && this.isId(k)) this.elemOf(s).num = Num.Int64;
     }
   }
 
@@ -241,6 +253,8 @@ export class FlowGraph {
     if (x === y) return false;
     const [keep, drop] = x.id < y.id ? [x, y] : [y, x];
     drop.parent = keep;
+    // an empty literal's `never[]` says nothing: the slot is what the other side declares
+    if (drop.type && (!keep.type || this.#saysNothing(keep.type))) keep.type = drop.type;
     keep.num = join(keep.num, drop.num);
     keep.own = join(keep.own, drop.own);
     keep.nullable ||= drop.nullable;
@@ -261,6 +275,13 @@ export class FlowGraph {
     if (drop.elem) keep.elem ? this.unify(keep.elem, drop.elem) : (keep.elem = drop.elem);
     if (drop.key) keep.key ? this.unify(keep.key, drop.key) : (keep.key = drop.key);
     return true;
+  }
+
+  /** `never[]`: the type of an empty array literal, which holds no fact about its elements. */
+  #saysNothing(t: TS.Type): boolean {
+    if (!this.#checker.isArrayType(t)) return false;
+    const element = this.#checker.getTypeArguments(t as TS.TypeReference)[0];
+    return element !== undefined && (element.flags & this.#ts.TypeFlags.Never) !== 0;
   }
 
   /**
@@ -338,6 +359,17 @@ export class FlowGraph {
 
   /** The function a call runs, when it is the feature's (an index read runs its builder). */
   calleeOf(e: TS.CallExpression): TS.SignatureDeclaration | null {
+    const known = this.#callees.get(e);
+    if (known !== undefined) return known;
+    const callee = this.#resolveCallee(e);
+    this.#callees.set(e, callee);
+    return callee;
+  }
+
+  /** Each call's function, resolved once: the checker's answer does not change, and the flows ask at every run. */
+  readonly #callees = new Map<TS.CallExpression, TS.SignatureDeclaration | null>();
+
+  #resolveCallee(e: TS.CallExpression): TS.SignatureDeclaration | null {
     const ts = this.#ts;
     if (ts.isIdentifier(e.expression)) {
       const s = this.symbolOf(e.expression);
@@ -401,7 +433,10 @@ export class FlowGraph {
       }
     }
     const slot = this.slotOfExpr(e);
-    return slot ? this.find(slot).num : Num.None;
+    if (slot) return this.find(slot).num;
+    // a number from outside the program's flow (Math.PI, a built-in's result): JavaScript's number, a real, as a slot
+    // no flow reaches is; "no evidence" here would let an integer on the other side of an operator win
+    return (this.#checker.getNonNullableType(this.#typeAt(e)).flags & this.#ts.TypeFlags.NumberLike) !== 0 ? Num.Float : Num.None;
   }
 
   ownOf(e: TS.Expression): Own {
@@ -522,6 +557,12 @@ export class FlowGraph {
       }
       if (ts.isFunctionLike(n)) this.#parameters(n);
       if (ts.isCallExpression(n)) this.#call(n);
+      if (ts.isNewExpression(n)) this.#construction(n);
+      if (ts.isPropertyDeclaration(n) && n.initializer) {
+        const declared = this.symbolOf(n.name);
+        const value = n.initializer;
+        if (declared) this.#flow(() => this.symbolSlot(declared), value);
+      }
       if (ts.isArrayLiteralExpression(n)) {
         for (const x of n.elements) {
           if (ts.isSpreadElement(x)) this.#add(() => this.#sameElements(this.nodeSlot(n, 'literal', this.#typeAt(n)), x.expression));
@@ -587,6 +628,17 @@ export class FlowGraph {
   }
 
   /** Parameters: an object parameter refers to its caller's object; a callback's parameters come from its receiver. */
+  /** `new C(a)`: its arguments reach the constructor's parameters, as a call's do. */
+  #construction(e: TS.NewExpression): void {
+    const decl = this.#checker.getResolvedSignature(e)?.declaration as TS.SignatureDeclaration | undefined;
+    if (!decl || !this.#ts.isConstructorDeclaration(decl) || !this.inProgram(decl)) return;
+    (e.arguments ?? []).forEach((a, i) => {
+      const p = decl.parameters[i];
+      const symbol = p ? this.symbolOf(p.name) : undefined;
+      if (symbol) this.#argument(symbol, a);
+    });
+  }
+
   #parameters(fn: TS.SignatureDeclaration): void {
     const ts = this.#ts;
     fn.parameters.forEach((p, i) => {
@@ -666,8 +718,9 @@ export class FlowGraph {
       e.arguments.forEach((a, i) => {
         const p = fn.parameters[i];
         const symbol = p ? this.symbolOf(p.name) : undefined;
-        if (symbol) this.#flow(() => this.symbolSlot(symbol), a);
+        if (symbol) this.#argument(symbol, a);
       });
+      this.#sameTypeParameter(fn, e);
       return;
     }
     if (ts.isPropertyAccessExpression(callee)) {
@@ -693,6 +746,98 @@ export class FlowGraph {
             return changed;
           });
         }
+      }
+    }
+  }
+
+  /**
+   * An argument moves into its parameter. TypeScript is structural: the argument's type is a subtype of the parameter's,
+   * and one function takes many. So what it brings goes one way, into what the parameter declares: its numbers, field by
+   * field; the shapes stay apart (a Building and a Lot passed as { corners } are not one type). A parameter whose type
+   * holds a type parameter is a template: each call has its own T, and nothing of a caller reaches it.
+   */
+  #argument(symbol: TS.Symbol, value: TS.Expression): void {
+    if (this.#mentionsTypeParameter(this.#checker.getTypeOfSymbol(symbol))) return;
+    const ts = this.#ts;
+    this.#add(() => {
+      const r = this.find(this.symbolSlot(symbol));
+      if (value.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(value) && value.text === 'undefined')) return this.#markNullable(r);
+      let changed = this.#raiseNum(r, this.numOf(value));
+      changed = this.#raiseOwn(r, this.ownOf(value)) || changed;
+      const seen = new Set<string>();
+      for (const shape of this.shapesOf(value)) changed = this.#narrowShape(r, shape, seen) || changed;
+      const source = this.slotOfExpr(value);
+      if (source && this.#isContainerSlot(r) && this.#isContainerSlot(this.find(source))) {
+        // the same elements are one storage, as a shared container is; a wider element is read through the declared one
+        const elem = this.find(this.elemOf(r));
+        const from = this.find(this.elemOf(source));
+        const sameElements = [...from.shapes.keys()].every((k) => elem.shapes.has(k));
+        changed = (sameElements ? this.#alias(r, source) : this.#narrowInto(elem, from, seen)) || changed;
+      }
+      return changed;
+    });
+  }
+
+  /** A shape reaches a parameter: kept when the parameter declares none (a union), else read through what it declares. */
+  #narrowShape(s: Slot, reached: TS.Type, seen: Set<string>): boolean {
+    const shape = this.underlying(reached);
+    if (s.shapes.has(this.#shapeKey(shape))) return false;
+    if (s.shapes.size === 0) return this.#meetShape(s, shape);
+    let changed = false;
+    for (const declared of s.shapes.values()) {
+      for (const p of this.#checker.getPropertiesOfType(declared)) {
+        const q = shape.getProperty(p.name);
+        if (q && this.#isFeatureProperty(p) && this.#isFeatureProperty(q)) changed = this.#narrowInto(this.symbolSlot(p), this.symbolSlot(q), seen) || changed;
+      }
+    }
+    return changed;
+  }
+
+  /** What one slot holds, read into another: numbers rise, shapes and elements are read through, never merged. */
+  #narrowInto(to: Slot, from: Slot, seen: Set<string>): boolean {
+    const t = this.find(to);
+    const f = this.find(from);
+    const key = `${t.id}:${f.id}`;
+    if (t === f || seen.has(key)) return false;
+    seen.add(key);
+    let changed = this.#raiseNum(t, f.num);
+    for (const shape of f.shapes.values()) changed = this.#narrowShape(t, shape, seen) || changed;
+    if (this.#isContainerSlot(t) && this.#isContainerSlot(f)) changed = this.#narrowInto(this.elemOf(t), this.elemOf(f), seen) || changed;
+    return changed;
+  }
+
+  /** Arguments of one call whose parameters are the same container of T (pushAll(into: T[], items: readonly T[])): one element type. */
+  #sameTypeParameter(fn: TS.SignatureDeclaration, e: TS.CallExpression): void {
+    const groups = new Map<string, TS.Expression[]>();
+    e.arguments.forEach((a, i) => {
+      const p = fn.parameters[i];
+      const symbol = p ? this.symbolOf(p.name) : undefined;
+      if (!symbol) return;
+      const t = this.#checker.getTypeOfSymbol(symbol);
+      if (!this.#mentionsTypeParameter(t) || !this.#isContainer(t)) return;
+      const key = this.#checker.typeToString(t).replace(/^readonly /, '');
+      groups.set(key, [...(groups.get(key) ?? []), a]);
+    });
+    // keptOf(list: readonly T[]): T[]: the result holds what the argument holds
+    const sig = this.#checker.getSignatureFromDeclaration(fn);
+    const returned = sig ? this.#checker.getReturnTypeOfSignature(sig) : null;
+    const same = returned && this.#isContainer(returned) ? groups.get(this.#checker.typeToString(returned).replace(/^readonly /, '')) : undefined;
+    for (const a of same ?? []) {
+      this.#add(() => {
+        const from = this.slotOfExpr(a);
+        const to = this.nodeSlot(e, 'return', this.#typeAt(e));
+        return from && this.#isContainerSlot(this.find(from)) && this.#isContainerSlot(this.find(to)) ? this.#narrowInto(to, from, new Set()) : false;
+      });
+    }
+    for (const list of groups.values()) {
+      for (let i = 1; i < list.length; i++) {
+        const a = list[0]!;
+        const b = list[i]!;
+        this.#add(() => {
+          const x = this.slotOfExpr(a);
+          const y = this.slotOfExpr(b);
+          return x && y && this.#isContainerSlot(this.find(x)) && this.#isContainerSlot(this.find(y)) ? this.#alias(x, y) : false;
+        });
       }
     }
   }
@@ -815,10 +960,19 @@ export class FlowGraph {
     const named = shapes.filter((t) => this.#isNamed(t));
     const widest = (named.length > 0 ? named : shapes).reduce((a, b) => (this.#checker.getPropertiesOfType(b).length > this.#checker.getPropertiesOfType(a).length ? b : a));
     const fields = new Set(this.#checker.getPropertiesOfType(widest).map((p) => p.name));
+    // what the slot declares, when every value that reached it has its fields: wider values are read through it (the
+    // emitter builds the declared value), as an argument is read through its parameter
+    const declared = r.type ? this.underlying(this.#checker.getNonNullableType(r.type)) : null;
+    if (declared && this.isObject(declared) && !this.#checker.isTupleType(declared)) {
+      const asked = this.#checker.getPropertiesOfType(declared);
+      const wider = shapes.some((t) => this.#checker.getPropertiesOfType(t).some((p) => !fields.has(p.name)));
+      if (wider && shapes.every((t) => asked.every((p) => t.getProperty(p.name) || (p.flags & this.#ts.SymbolFlags.Optional) !== 0))) return declared;
+    }
     for (const t of shapes) {
+      if (this.#checker.isTupleType(t) && this.#checker.isTupleType(widest)) continue; // a tuple's type is its positions (readonly or not)
       const extra = this.#checker.getPropertiesOfType(t).map((p) => p.name).filter((n) => !fields.has(n));
       if (extra.length > 0) {
-        const msg = `${r.name}: values of different shapes meet (${this.#checker.typeToString(widest)} and ${this.#checker.typeToString(t)})`;
+        const msg = `${r.name}: values of different shapes meet (${this.#checker.typeToString(widest)} and ${this.#checker.typeToString(t)})${this.unit ? ` [unit ${this.unit}]` : ''}`;
         if (!this.errors.includes(msg)) this.errors.push(msg);
       }
     }
@@ -882,7 +1036,7 @@ export class FlowGraph {
 
   isObject(type: TS.Type): boolean {
     const ts = this.#ts;
-    if (!(type.flags & ts.TypeFlags.Object) || this.#checker.isArrayType(type) || type.getCallSignatures().length > 0) return false;
+    if (!(type.flags & ts.TypeFlags.Object) || this.#checker.isArrayType(type) || type.getCallSignatures().length > 0 || dictionaryOf(ts, this.#checker, type) || listOf(ts, this.#checker, type)) return false;
     const name = (type.aliasSymbol ?? type.getSymbol())?.name ?? '';
     return !this.#spec.types[name] && !this.#spec.classes[name] && !/^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Promise)$/.test(name) && !/Array$/.test(name);
   }
@@ -946,13 +1100,13 @@ export class FlowGraph {
   #isMap(e: TS.Expression): boolean {
     const t = this.#checker.getNonNullableType(this.#typeAt(e));
     const name = t.getSymbol()?.name ?? '';
-    return /^(Map|ReadonlyMap)$/.test(name) || lookupOf(this.#ts, this.#checker, t) !== null;
+    return /^(Map|ReadonlyMap)$/.test(name) || lookupOf(this.#ts, this.#checker, t) !== null || dictionaryOf(this.#ts, this.#checker, t) !== null;
   }
 
   #isContainer(t: TS.Type): boolean {
     const n = this.#checker.getNonNullableType(t);
     const name = n.getSymbol()?.name ?? '';
-    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike)$/.test(name) || /Array$/.test(name);
+    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name) || /Array$/.test(name) || dictionaryOf(this.#ts, this.#checker, n) !== null || listOf(this.#ts, this.#checker, n) !== null;
   }
 
   #isContainerSlot(s: Slot): boolean {
@@ -962,8 +1116,10 @@ export class FlowGraph {
   #elementType(t: TS.Type): TS.Type | null {
     const n = this.#checker.getNonNullableType(t);
     const name = n.getSymbol()?.name ?? '';
-    if (this.#checker.isArrayType(n) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[0] ?? null;
+    if (this.#checker.isArrayType(n) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[0] ?? null;
     if (/^(Map|ReadonlyMap)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[1] ?? null;
+    const entry = dictionaryOf(this.#ts, this.#checker, n) ?? listOf(this.#ts, this.#checker, n);
+    if (entry) return entry;
     return null;
   }
 

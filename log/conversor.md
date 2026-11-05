@@ -9,8 +9,9 @@ sempre verdadeiros.
 ## Estado atual (2026-11-05, sessão retomada)
 
 - **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
-- **Fechamento (2026-11-05, ordem do usuário: encerrar).** Conversor em `b4303e6`, só no git próprio dele: falta `git read-tree` para o jogo. Nada traduzido entrou no jogo; o Diagnóstico do F7 foi escrito à mão.
-- `tools/converter` (master `b4303e6`); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
+- **Primeira área no jogo (2026-11-05):** `src/sim/roads/flowStats.ts` e `controlAdvisor.ts` traduzidos sem edição, compilados no jogo e iguais ao 4.0; ver "Causa e prova" no histórico.
+- **Ainda não usar para o resto sem conferir:** a passada inteira (`--mode whole`) ainda deixa arquivos sem compilar; o caminho validado é `scripts/port-area.ts` com um plano de área, área por área.
+- `tools/converter` (master `c3642d9`, conteúdo trazido ao repositório do jogo); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
   Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
 - Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly em `out/city40`. As passadas por área usam as
@@ -320,3 +321,16 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
   5. Arquivos gerados com o caminho de um do jogo (`core/math.h`) precisam ser vistos antes de integrar.
   6. O cache de `compileFiles` usa o hash de todos os cabeçalhos: qualquer mudança recompila tudo (416 s na primeira rodada).
 - Ainda recusados por unidade: subclasses, setters, campos estáticos, `unknown` (`raw`).
+
+### 2026-11-05 — Causa e prova
+
+**Causa de a ferramenta não entregar:** ela media o que traduzia, nunca o que chegava ao jogo. O contador "in the game" ficou em 0 o tempo todo enquanto 3.900 unidades "traduzidas" não tinham como entrar: uma segunda cópia do 4.0, sem ligação ao estado do jogo (`convert/ledger.ts`, `isDone` em `convert/command.ts`), e nenhum teste rodava o código dentro do jogo. Medido: das 36 unidades de `flowStats` e `controlAdvisor`, o primeiro uso real achou defeitos que 114 testes não viam:
+- ids como `float` (`translate/flow.ts` `#declare`, `translate/types.ts` chave de `Map`): dois ids acima de 2^24 viravam a mesma chave, em silêncio;
+- `a?.get(x)` sem proteção contra nulo (`translate/expressions.ts` `call`);
+- ponteiro `const` em objeto alterado; `optional` estreitado não lido como valor; campo estático; construtor implícito tratado como unidade barrada; constante de tuning sem acesso para outro dono.
+
+**Mudança:** essas causas corrigidas no tradutor; `scripts/port-area.ts`; regra nova no `CLAUDE.md` (a lógica pura entra traduzida, regenera-se, nunca se conserta à mão).
+
+**Prova:** `project/tests/core/flow_control_test.gd`, nos dados do 4.0 por `call40`: `busy_major` 872,4247 contra 872,4241, `changed_at` 900 igual, `quiet_flow` 240 igual, id 33.554.433; 148 cruzamentos contados por veículos reais; um cruzamento da cidade virou semáforo. Tolerância 2e-5 (float contra double).
+
+**Fica por fazer:** o mesmo por área, na ordem do que falta no jogo. `whole` ainda não compila tudo (lista acima).

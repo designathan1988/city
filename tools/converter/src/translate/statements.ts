@@ -10,8 +10,8 @@
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { FunctionPlan } from './context.ts';
-import { INT, declare, elementOf, isNumber, paramDecl, render, target, type CppType } from './cpptype.ts';
-import { ExpressionEmitter } from './expressions.ts';
+import { INT, STRING, declare, elementOf, isNumber, paramDecl, render, target, type CppType, arrow, isHandle } from './cpptype.ts';
+import { ExpressionEmitter, RUNTIME_INCLUDE } from './expressions.ts';
 import { Own } from './flow.ts';
 import { snake } from './names.ts';
 
@@ -26,7 +26,6 @@ function bindings(ts: TypeScriptApi, pattern: TS.ObjectBindingPattern | TS.Array
 }
 export class Emitter extends ExpressionEmitter {
   /** The function being emitted (an edit lowers its returns). */
-  protected fn: FunctionPlan | null = null;
   /** Inside an edit: the state parameter and the locals that stand for it. */
   protected state: { readonly symbols: Set<TS.Symbol>; readonly cpp: string } | null = null;
   /** Inside an index builder: source locals that are members of the index. */
@@ -53,8 +52,9 @@ export class Emitter extends ExpressionEmitter {
     const out: string[] = [];
     for (let i = 0; i < statements.length; i++) {
       const merged = this.#getOrInsert(statements[i]!, statements[i + 1]);
-      if (merged) {
-        out.push(...merged);
+      const entry = merged ?? this.#entryOrMade(statements[i]!, statements[i + 1]);
+      if (entry) {
+        out.push(...entry);
         i++;
         continue;
       }
@@ -121,13 +121,20 @@ export class Emitter extends ExpressionEmitter {
     if (s.kind === ts.SyntaxKind.ContinueStatement) return [`${at}continue;`];
     if (s.kind === ts.SyntaxKind.BreakStatement) return [`${at}break;`];
     if (ts.isEmptyStatement(s)) return [];
-    // throw: what the target does instead is the library's to say (a pattern for what is thrown, `new Error($m)`:
-    // an assert, a logged error); C++ exceptions are not JavaScript's and are never written for one
+    // throw: a library's pattern says what the target does instead (`new Error($m)`); without one, a broken promise of
+    // the program stops it with the message (js::fail). C++ exceptions are not JavaScript's and are never written for one
     if (ts.isThrowStatement(s)) {
       if (this.c.patterns.match(s.expression)) return [`${at}${this.expr(s.expression)};`];
-      this.fail(s, 'a throw with no pattern for what it throws (the library says what the target does instead: `new Error($m)`)');
+      const thrown = s.expression;
+      if (ts.isNewExpression(thrown) && /Error$/.test(thrown.expression.getText())) {
+        this.c.includes.add(RUNTIME_INCLUDE);
+        const text = thrown.arguments?.[0];
+        return [`${at}js::fail(${text ? this.expr(text, STRING) : 'std::string()'});`];
+      }
+      this.fail(s, 'a throw of what is no Error');
       return [];
     }
+    if (ts.isSwitchStatement(s)) return this.#switch(s);
     this.fail(s, 'a statement the translator does not know');
     return [];
   }
@@ -169,11 +176,6 @@ export class Emitter extends ExpressionEmitter {
     }
     const slot = this.c.flow.find(this.c.flow.symbolSlot(symbol));
     const type = this.c.types.slot(slot, 'local');
-    if (init && ts.isNewExpression(init) && init.expression.getText() === 'Set') {
-      this.c.includes.add('unordered_set');
-      this.bind(symbol, { cpp: name, type, set: `${name}_seen` });
-      return [`${at}${declare(type, name)};`, `${at}std::unordered_set<${render(elementOf(type)!)}> ${name}_seen;`];
-    }
     this.bind(symbol, { cpp: name, type });
     if (!init) return [`${at}${declare(type, name)}${this.#zero(type)};`];
     const v = this.value(init, type);
@@ -188,6 +190,8 @@ export class Emitter extends ExpressionEmitter {
     const code = this.coerce(v, type, init);
     // An empty container needs no initializer.
     if (code === `${render(type)}{}`) return [`${at}${declare(type, name)};`];
+    // a pointer to what the code goes on to change: the entry itself, written through
+    if (type.k === 'ptr' && this.#mutated(symbol)) return [`${at}${render(type.to)} *${name} = const_cast<${render(type.to)} *>(${code});`];
     const constant = isConst && !this.#mutated(symbol) && (isNumber(type) || type.k === 'bool' || type.k === 'enum' || this.#isValueType(type) || type.k === 'ptr');
     return [`${at}${constant && type.k !== 'ptr' ? 'const ' : ''}${declare(type, name)} = ${code};`];
   }
@@ -196,7 +200,7 @@ export class Emitter extends ExpressionEmitter {
   #destructure(pattern: TS.ObjectBindingPattern | TS.ArrayBindingPattern, init: TS.Expression): string[] {
     const at = this.indent;
     const source = this.value(init);
-    const access = source.type.k === 'ptr' || source.type.k === 'optional' ? '->' : '.';
+    const access = arrow(source.type);
     const t = target(source.type);
     const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
     const known = t.k === 'struct' ? Object.values(this.c.spec.types).find((k) => k.type === t.name) : undefined;
@@ -278,6 +282,42 @@ export class Emitter extends ExpressionEmitter {
    * `const l = m.get(k); if (l) l.push(v); else m.set(k, [v]);` is one lookup that makes the entry when absent:
    * `m[k].push_back(v)`.
    */
+  /**
+   * `let x = m.get(k); if (!x) m.set(k, x = new Map());` (or the two written apart): the entry of k, made empty if it is not there, and
+   * x that entry itself, as a JavaScript reference to it is. A map of handles keeps the written form: its empty value is no instance.
+   */
+  #entryOrMade(first: TS.Statement, second: TS.Statement | undefined): string[] | null {
+    const ts = this.c.ts;
+    if (!second || !ts.isVariableStatement(first) || !ts.isIfStatement(second) || second.elseStatement) return null;
+    const d = first.declarationList.declarations[0];
+    if (first.declarationList.declarations.length !== 1 || !d || !ts.isIdentifier(d.name) || !d.initializer) return null;
+    const get = d.initializer;
+    if (!ts.isCallExpression(get) || !ts.isPropertyAccessExpression(get.expression) || get.expression.name.text !== 'get' || get.arguments.length !== 1) return null;
+    const name = d.name.text;
+    const owner = get.expression.expression;
+    const test = second.expression;
+    if (!ts.isPrefixUnaryExpression(test) || test.operator !== ts.SyntaxKind.ExclamationToken || test.operand.getText() !== name) return null;
+    let set = false;
+    let made = false;
+    const empty = (e: TS.Expression): boolean => (ts.isNewExpression(e) && (e.arguments?.length ?? 0) === 0) || (ts.isArrayLiteralExpression(e) && e.elements.length === 0)
+      || (ts.isObjectLiteralExpression(e) && e.properties.length === 0);
+    const visit = (n: TS.Node): void => {
+      if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'set' && n.arguments.length === 2
+        && n.expression.expression.getText() === owner.getText() && n.arguments[0]!.getText() === get.arguments[0]!.getText()) set = true;
+      if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && n.left.getText() === name && empty(n.right)) made = true;
+      ts.forEachChild(n, visit);
+    };
+    visit(second.thenStatement);
+    if (!set || !made) return null;
+    const map = this.value(owner);
+    const mapType = target(map.type);
+    if (mapType.k !== 'map' || isHandle(mapType.of)) return null;
+    const cpp = snake(name);
+    const key = this.expr(get.arguments[0]!, mapType.key);
+    this.bind(this.symbolOf(d.name)!, { cpp, type: mapType.of });
+    return [...this.#flush(), `${this.indent}auto &${cpp} = ${map.code}[${key}];`];
+  }
+
   #getOrInsert(first: TS.Statement, second: TS.Statement | undefined): string[] | null {
     const ts = this.c.ts;
     if (!second || !ts.isVariableStatement(first) || !ts.isIfStatement(second) || !second.elseStatement) return null;
@@ -315,13 +355,6 @@ export class Emitter extends ExpressionEmitter {
       if (symbol && this.state.symbols.has(symbol)) return this.#applyState(e.right);
     }
     if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'forEach') return this.#forEach(e);
-    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'add' && ts.isIdentifier(e.expression.expression)) {
-      const local = this.lookup(this.symbolOf(e.expression.expression)!);
-      if (local?.set) {
-        const v = this.expr(e.arguments[0]!, elementOf(local.type)!);
-        return [`${at}if (${local.set}.insert(${v}).second) ${local.cpp}.push_back(${v});`];
-      }
-    }
     if (ts.isCallExpression(e) && ts.isIdentifier(e.expression)) {
       const plan = this.c.functions.get(this.symbolOf(e.expression)!);
       if (plan?.edit) return [`${at}${this.#editCall(e, plan)};`];
@@ -333,6 +366,60 @@ export class Emitter extends ExpressionEmitter {
   }
 
   /** `items.forEach((x, i) => ...)`: an indexed loop with x a reference to the element. */
+  /**
+   * switch: an if chain on the value read once. Clauses without statements fall into the next (their tests join); a
+   * clause with statements ends in break, return, throw or continue, or it falls through and is refused. A break
+   * elsewhere in a clause leaves the switch from the middle: refused too.
+   */
+  #switch(s: TS.SwitchStatement): string[] {
+    const ts = this.c.ts;
+    const at = this.indent;
+    const value = this.value(s.expression);
+    const which = this.temp('which');
+    const type = target(value.type);
+    const leavesSwitch = (n: TS.Node): boolean => {
+      if (n.kind === ts.SyntaxKind.BreakStatement) return (n as TS.BreakStatement).label === undefined;
+      if (ts.isIterationStatement(n, false) || ts.isSwitchStatement(n) || ts.isFunctionLike(n)) return false;
+      return ts.forEachChild(n, (c) => leavesSwitch(c) || undefined) ?? false;
+    };
+    const lines = [...this.#flush(), `${at}{`, `${at}\tconst auto &${which} = ${value.code};`];
+    let tests: string[] = [];
+    let isDefault = false;
+    let last: string[] | null = null;
+    let first = true;
+    this.indent += '\t';
+    const clauses = s.caseBlock.clauses;
+    clauses.forEach((clause, i) => {
+      if (ts.isDefaultClause(clause)) isDefault = true;
+      else tests.push(`${which} == ${this.expr(clause.expression, type)}`);
+      if (clause.statements.length === 0 && i < clauses.length - 1) return;
+      const statements = [...clause.statements];
+      const end = statements[statements.length - 1];
+      if (end?.kind === ts.SyntaxKind.BreakStatement) statements.pop();
+      else if (end && i < clauses.length - 1 && !(ts.isReturnStatement(end) || ts.isThrowStatement(end) || ts.isContinueStatement(end) || (ts.isBlock(end) && this.#endsFlow(end)))) this.fail(clause, 'a switch clause that falls through');
+      if (statements.some((x) => leavesSwitch(x))) this.fail(clause, 'a break in the middle of a switch clause');
+      const body = this.#indented(() => this.block(ts.factory.createNodeArray(statements) as unknown as TS.NodeArray<TS.Statement>));
+      if (isDefault) last = body;
+      else {
+        lines.push(`${this.indent}${first ? '' : 'else '}if (${tests.join(' || ')}) {`, ...body, `${this.indent}}`);
+        first = false;
+      }
+      tests = [];
+      isDefault = false;
+    });
+    if (last) lines.push(...(first ? last : [`${this.indent}else {`, ...(last as string[]), `${this.indent}}`]));
+    this.indent = at;
+    lines.push(`${at}}`);
+    return lines;
+  }
+
+  /** A block that cannot run past its end: its last statement leaves. */
+  #endsFlow(b: TS.Block): boolean {
+    const ts = this.c.ts;
+    const end = b.statements[b.statements.length - 1];
+    return end !== undefined && (ts.isReturnStatement(end) || ts.isThrowStatement(end) || ts.isContinueStatement(end) || end.kind === ts.SyntaxKind.BreakStatement);
+  }
+
   #forEach(e: TS.CallExpression): string[] {
     const ts = this.c.ts;
     const at = this.indent;
@@ -341,6 +428,23 @@ export class Emitter extends ExpressionEmitter {
     if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return [this.fail(fn, 'forEach of a function not written in place').code];
     const element = elementOf(receiver.type)!;
     const [item, index] = fn.parameters;
+    const walked = target(receiver.type);
+    if (walked.k === 'map' || walked.k === 'set') {
+      // map.forEach((value, key) => ...), set.forEach((member) => ...): in insertion order, as the for-of below
+      this.scopes.push(new Map());
+      const entry = this.temp('entry');
+      const value = item && ts.isIdentifier(item.name) ? snake(item.name.text) : this.temp('value');
+      if (item && ts.isIdentifier(item.name)) this.bind(this.symbolOf(item.name)!, { cpp: value, type: element });
+      const key = index && ts.isIdentifier(index.name) ? snake(index.name.text) : null;
+      if (key && walked.k === 'map') this.bind(this.symbolOf(index!.name)!, { cpp: key, type: walked.key });
+      const body = this.#indented(() => [
+        `${this.indent}${paramDecl(element, value)} = ${walked.k === 'map' ? `${entry}.second` : entry};`,
+        ...(key && walked.k === 'map' ? [`${this.indent}${paramDecl(walked.key, key)} = ${entry}.first;`] : []),
+        ...(ts.isBlock(fn.body) ? this.block(fn.body.statements) : [`${this.indent}${this.expr(fn.body)};`]),
+      ]);
+      this.scopes.pop();
+      return [...this.#flush(), `${at}for (const auto &${entry} : ${receiver.code}) {`, ...body, `${at}}`];
+    }
     const i = index && ts.isIdentifier(index.name) ? snake(index.name.text) : this.temp('i');
     this.scopes.push(new Map());
     if (index && ts.isIdentifier(index.name)) this.bind(this.symbolOf(index.name)!, { cpp: i, type: INT });
@@ -390,6 +494,20 @@ export class Emitter extends ExpressionEmitter {
           return [...pre, ...this.#loop(s, decl, { code: `${it}->second`, type: mapType.of }, guard)];
         }
       }
+      // for (x of m.get(k)?.values() ?? []): the values of the entry, only when it exists
+      if (ts.isCallExpression(left) && ts.isPropertyAccessExpression(left.expression) && left.expression.name.text === 'values') {
+        const entry = left.expression.expression;
+        if (ts.isCallExpression(entry) && ts.isPropertyAccessExpression(entry.expression) && entry.expression.name.text === 'get') {
+          const map = this.value(entry.expression.expression);
+          const mapType = target(map.type);
+          if (mapType.k === 'map' && mapType.of.k === 'map') {
+            const it = this.temp('it');
+            const guard = `if (auto ${it} = ${map.code}.find(${this.expr(entry.arguments[0]!, mapType.key)}); ${it} != ${map.code}.end())`;
+            const pre = this.#flush();
+            return [...pre, ...this.#loop(s, decl, { code: `js::values_of(${it}->second)`, type: { k: 'vector', of: mapType.of.of } }, guard)];
+          }
+        }
+      }
       return [this.fail(iterable, 'a loop over `?? []` of something other than a map entry').code];
     }
     let source = this.value(iterable);
@@ -399,7 +517,7 @@ export class Emitter extends ExpressionEmitter {
       this.prelude.push(`const ${render(target(source.type))} ${snapshot} = ${source.code};`);
       source = { code: snapshot, type: target(source.type) };
     }
-    if (ts.isArrayLiteralExpression(iterable)) {
+    if (ts.isArrayLiteralExpression(iterable) && !iterable.elements.some((x) => ts.isSpreadElement(x))) {
       const element = elementOf(source.type)!;
       source = { code: `{${iterable.elements.map((x) => this.expr(x, element)).join(', ')}}`, type: { k: 'list', of: element } };
     }
@@ -418,13 +536,25 @@ export class Emitter extends ExpressionEmitter {
     if (ts.isIdentifier(decl.name)) {
       const name = snake(decl.name.text);
       this.bind(this.symbolOf(decl.name)!, { cpp: name, type: element });
-      head = `for (${paramDecl(element, name)} : ${source.code})`;
+      const changed = target(element).k === 'struct' && !isHandle(element) && this.#mutated(this.symbolOf(decl.name)!);
+      head = changed ? `for (auto &${name} : ${source.code})` : `for (${paramDecl(element, name)} : ${source.code})`;
+    } else if (target(source.type).k === 'map') {
+      // for (const [key, value] of map): its entries, in insertion order
+      const item = this.temp('item');
+      const map = target(source.type) as Extract<CppType, { k: 'map' }>;
+      head = `for (const auto &${item} : ${source.code})`;
+      destructure = bindings(ts, decl.name as TS.ArrayBindingPattern).map(({ el, prop }) => {
+        const local = snake(el.name.getText());
+        const type = prop === '0' ? map.key : map.of;
+        this.bind(this.symbolOf(el.name)!, { cpp: local, type });
+        return `${inner}\t${paramDecl(type, local)} = ${item}.${prop === '0' ? 'first' : 'second'};`;
+      });
     } else {
       const item = this.temp('item');
-      head = `for (${paramDecl(element, item)} : ${source.code})`;
+      head = `for (const auto &${item} : ${source.code})`;
       const t = target(element);
       const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
-      const access = element.k === 'ptr' ? '->' : '.';
+      const access = arrow(element);
       destructure = bindings(ts, decl.name as TS.ObjectBindingPattern | TS.ArrayBindingPattern).map(({ el, prop }) => {
         const field = struct?.fields.find((f) => f.source === prop);
         if (!field) return this.fail(el, `${render(element)} has no field ${prop}`).code;

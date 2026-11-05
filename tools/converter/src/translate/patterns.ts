@@ -20,6 +20,8 @@ export interface PatternMatch {
 export class Patterns {
   readonly #ts: TypeScriptApi;
   readonly #patterns: readonly Pattern[];
+  /** What a constant's name stands for, when it is a plain path of properties. */
+  alias: ((name: TS.Identifier) => TS.Expression | null) | null = null;
 
   constructor(ts: TypeScriptApi, mappings: readonly PatternMapping[]) {
     this.#ts = ts;
@@ -29,12 +31,22 @@ export class Patterns {
     });
   }
 
+  /** What each expression matched: the program does not change while it is read, and the flow asks many times. */
+  readonly #matched = new WeakMap<TS.Expression, PatternMatch | null>();
+
   match(e: TS.Expression): PatternMatch | null {
+    const known = this.#matched.get(e);
+    if (known !== undefined) return known;
+    let found: PatternMatch | null = null;
     for (const pattern of this.#patterns) {
       const bound = new Map<string, TS.Expression>();
-      if (this.#match(pattern.expr, e, bound)) return { pattern, bound };
+      if (this.#match(pattern.expr, e, bound)) {
+        found = { pattern, bound };
+        break;
+      }
     }
-    return null;
+    this.#matched.set(e, found);
+    return found;
   }
 
   #match(p: TS.Node, n: TS.Node, bound: Map<string, TS.Expression>): boolean {
@@ -46,6 +58,11 @@ export class Patterns {
       if (prior) return prior.getText() === n.getText();
       bound.set(p.text, n as TS.Expression);
       return true;
+    }
+    // a constant that only names a part of what the pattern reads (`const F = ROAD_TUNING.flow`): read as what it names
+    if (p.kind !== n.kind && ts.isIdentifier(n)) {
+      const named = this.alias?.(n);
+      if (named) return this.#match(p, named, bound);
     }
     if (p.kind !== n.kind) return false;
     if (ts.isIdentifier(p) || ts.isNumericLiteral(p)) return p.text === (n as TS.Identifier).text;

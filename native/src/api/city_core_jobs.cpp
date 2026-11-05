@@ -56,6 +56,10 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityProbes::amber_stops);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);
 	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
+	ClassDB::bind_method(D_METHOD("flow_replay"), &CityProbes::flow_replay);
+	ClassDB::bind_method(D_METHOD("flow_junction"), &CityProbes::flow_junction);
+	ClassDB::bind_method(D_METHOD("flow_push", "n", "seconds"), &CityProbes::flow_push);
+	ClassDB::bind_method(D_METHOD("flow_state", "n"), &CityProbes::flow_state);
 	ClassDB::bind_method(D_METHOD("probe_set_money", "money"), &CityProbes::probe_set_money);
 	ClassDB::bind_method(D_METHOD("probe_road_build", "profile", "structure", "height_a", "height_b", "len"), &CityProbes::probe_road_build);
 	ClassDB::bind_method(D_METHOD("grade_probe", "scene"), &CityProbes::grade_probe);

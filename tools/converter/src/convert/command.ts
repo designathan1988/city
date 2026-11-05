@@ -1,13 +1,14 @@
 // `converter convert`: a feature carried as far as facts allow. Its ledger decides each unit, the machine translates
 // what is clean, the quarantine judges every output, and the report lists what stays open with its correct method.
 // Nothing is written to the target: accepted files go to --out/files. Exit 0 only when nothing is open.
+import { convertWhole } from './whole.ts';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import { runAudit } from '../audit/run.ts';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
-import { removeTree } from '../common/files.ts';
+import { removeTree, writeTree } from '../common/files.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { prepareTranslation, translate, type PreparedProgram } from '../translate/run.ts';
@@ -30,11 +31,16 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
   { name: 'ports', required: true, help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has' },
   { name: 'coverage-proof', help: 'how a coverage claim is taken: "believed" (default) or "shown" (the owner files exist in the game and cite the unit; a claim not shown is decided again)' },
   { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
+  { name: 'mode', help: '"modules" (default: each module judged alone) or "whole" (the program in one translation, what fails leaving alone)' },
   { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
   { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },
 ];
 
 const AUDIT_EXTENSION = '.cpp';
+/** Modules judged ahead of the one being taken: their compiles overlap the next translations. */
+const JUDGED_AHEAD = 16;
+/** How often a long run writes down what it has decided (a run stopped halfway keeps it). */
+const REPORT_EVERY_MS = 30_000;
 const DEFAULT_MAX_SCATTERING = 0.5;
 const DEFAULT_MIN_CONSTANT_FILES = 3;
 
@@ -67,13 +73,9 @@ function auditOf(graph: GraphIR, rulesFile: string): ReturnType<typeof runAudit>
   });
 }
 
-function writeTree(root: string, files: ReadonlyMap<string, string>): void {
-  for (const [file, text] of files) {
-    const target = path.join(root, file);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, text, 'utf8');
-  }
-}
+
+/** What is done only when an accepted output holds it; a type or a field travels with its module. */
+const WRITTEN_ALONE: ReadonlySet<string> = new Set(['function', 'variable', 'class', 'method', 'constructor', 'getter', 'setter']);
 
 /** Every named constant the accepted files hold, for the rule that each needs a source. */
 function constantsIn(files: ReadonlyMap<string, string>): string[] {
@@ -259,7 +261,7 @@ async function judge(spec: TranslationSpec, input: JudgeInput): Promise<Judged> 
   if (findings.length > 0) return { ...refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`)), attempt: { errors: [], findings, files: result.files, units: result.units } };
   const registration: Registration = { subsystem: spec.subsystem, includes: spec.layer.includes, mapLine: spec.registry?.mapLine ?? '',
     state: spec.state.source ? { header: result.stateHeader, anchor: spec.state.anchor ?? '', member: spec.state.memberLine ?? '', root: spec.state.root } : null };
-  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), declared: result.declared, refusals: [] }, files: result.files, registration };
+  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), declared: result.declared, refusals: [...result.dropped] }, files: result.files, registration };
 }
 
 export async function runConvertCommand(argv: readonly string[]): Promise<void> {
@@ -295,8 +297,9 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     // Translated means written: a function is done only if an accepted output holds it; a type travels with its module.
     const emitted = new Set(outcomes.flatMap((o) => o.emitted));
     const acceptedModules = new Set(outcomes.filter((o) => o.accepted).map((o) => o.module));
+    const declared = new Set(outcomes.filter((o) => o.accepted).flatMap((o) => o.declared ?? []));
     const isDone = (u: LedgerUnit): boolean => u.disposition === 'translate'
-      && (u.kind === 'function' || u.kind === 'variable' ? emitted.has(u.id) || emitted.has(u.id.slice(u.id.indexOf('#') + 1)) : acceptedModules.has(u.file));
+      && (WRITTEN_ALONE.has(u.kind) ? emitted.has(u.id) || declared.has(u.id) : declared.has(u.id) || acceptedModules.has(u.file));
     const done = new Set(ledger.units.filter(isDone).map((u) => u.id));
     const open = ledger.units.filter((u) => u.disposition !== 'exists' && !done.has(u.id));
     const unsourced = constantsIn(accepted).filter((k) => !known[k]);
@@ -310,10 +313,29 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
   if (first) {
     const targetGraph = path.resolve(flags.require('target-graph'));
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
-    for (const spec of specs) {
-      const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
-        stopOf: (id: string) => ledger.stopOf(id), prepared };
-      let judged = await judgeByRoot(spec, judgeInput);
+    const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+      stopOf: (id: string) => ledger.stopOf(id), prepared };
+    if (flags.one('mode') === 'whole') {
+      const whole = await convertWhole(specs, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), candidate: path.join(out, 'candidate'), prepared,
+        stopOf: (id: string) => ledger.stopOf(id) }, (text) => console.log(`  ${text}`));
+      const broken = new Set(whole.failing);
+      for (const [file, text] of whole.result.files) if (!broken.has(file)) accepted.set(file, text);
+      outcomes.push({ module: 'whole', accepted: true, files: [...accepted.keys()], emitted: whole.result.units.map((u) => u.source), declared: whole.result.declared,
+        refusals: [...whole.left].map(([id, why]) => `${id}: ${why}`) });
+      totals = report();
+      console.log(`convert ${feature}: ${ledger.units.length} units; translated ${totals.done}; open ${totals.open}; ${whole.left.size} left out; ${whole.failing.length} files unplaced; ${accepted.size} files -> ${out}`);
+      return;
+    }
+    // modules are judged ahead, their compiles running while the next is translated; the results are taken in order,
+    // so what a module shares with earlier ones is decided as a run in sequence decides it
+    const ahead: Promise<Judged>[] = [];
+    const start = (i: number): void => {
+      while (ahead.length <= i + JUDGED_AHEAD && ahead.length < specs.length) ahead.push(judgeByRoot(specs[ahead.length]!, judgeInput));
+    };
+    let reported = Date.now();
+    for (const [i, spec] of specs.entries()) {
+      start(i);
+      let judged = await ahead[i]!;
       const clashes = (j: Judged): string[] => [...j.files].filter(([file, text]) => accepted.has(file) && accepted.get(file) !== text).map(([file]) => file);
       let clash = clashes(judged);
       // a module another accepted one shares, written with a different part of it: translated again rooting what the
@@ -329,13 +351,22 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
       if (clash.length > 0) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
       else {
         outcomes.push(judged.outcome);
+        // the spec of what was accepted, for `converter differential --spec` (--hand compares C++ by hand with the source)
+        if (judged.outcome.accepted) {
+          fs.mkdirSync(path.join(out, 'specs'), { recursive: true });
+          fs.writeFileSync(path.join(out, 'specs', `${spec.source.replace(/[^\w.-]+/g, '_')}.json`), JSON.stringify(spec, null, 1), 'utf8');
+        }
         for (const [file, text] of judged.files) accepted.set(file, text);
         if (judged.registration) registrations.push(judged.registration);
       }
       const last = outcomes[outcomes.length - 1]!;
       console.log(`  ${last.module}: ${last.accepted ? `accepted, ${last.refusals.length} root(s) left open` : `refused (${last.refusals.length})`}`);
-      totals = report();
+      if (Date.now() - reported > REPORT_EVERY_MS) {
+        totals = report();
+        reported = Date.now();
+      }
     }
+    totals = report();
   }
   console.log(`convert ${feature}: ${ledger.units.length} units; in the game ${counts(ledger.units).exists}; translated ${totals.done}; open ${totals.open}; ` +
     `constants without a source ${totals.unsourced}; ${accepted.size} files -> ${out}`);

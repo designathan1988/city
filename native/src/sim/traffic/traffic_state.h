@@ -5,6 +5,7 @@
 
 #include "core/math.h"
 #include "core/random.h"
+#include "sim/traffic/flow_control.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/traffic/lane_graph_types.h"
@@ -81,6 +82,7 @@ struct Vehicle {
 struct TrafficState {
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last pose publications (publish_poses)
 	LaneGraph g;
+	FlowControl flow_control;
 	std::vector<Vehicle> vehicles;
 	std::vector<int> free_vehicles;
 	std::vector<int> route_pool; // vehicle routes, kept in one block

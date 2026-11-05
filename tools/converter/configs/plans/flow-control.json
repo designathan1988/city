@@ -1,0 +1,3 @@
+{ "source": "src/sim/roads/flowStats.ts", "units": ["FlowStats"], "shared": ["src/sim/roads/controlAdvisor.ts#ControlAdvisor", "src/sim/roads/controlAdvisor.ts#warrantedControl", "src/sim/roads/controlAdvisor.ts#QUIET_FLOW"],
+  "owner": "native/src/sim/roads", "summary": "the flows measured at each junction and the control they warrant",
+  "library": "C:/Users/Jonathan/Desktop/city-worktrees/lab/tools/ports/road-elevation/conversion-library.json", "targetRoot": "C:/Users/Jonathan/Desktop/city-worktrees/lab", "targetGraph": "C:/Users/Jonathan/AppData/Local/Temp/claude/26c8cd2f84403c71/6266e3d7-e77a-4554-af1a-13c6b872f74c/scratchpad/conv-elev/cppgraph.json" }

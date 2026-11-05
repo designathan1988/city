@@ -11,9 +11,14 @@ import type { TranslateContext } from './context.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
 
 /** The runtime of the ECMAScript built-ins (each checked against JavaScript: test/js-runtime.test.ts). */
-export const RUNTIME_SOURCE = path.join(import.meta.dirname, '..', '..', 'cpp', 'js', 'js_runtime.h');
+const RUNTIME_DIR = path.join(import.meta.dirname, '..', '..', 'cpp', 'js');
 /** Where the translation writes it in the target. */
-export const RUNTIME_FILE = `native/src/${RUNTIME_INCLUDE}`;
+const RUNTIME_ROOT = path.posix.dirname(`native/src/${RUNTIME_INCLUDE}`);
+/** Its files as the target holds them, each with its text (a header of each subject: the target's file limits). */
+export function runtimeFiles(): Map<string, string> {
+  return new Map(fs.readdirSync(RUNTIME_DIR).sort().map((f) => [`${RUNTIME_ROOT}/${f}`, fs.readFileSync(path.join(RUNTIME_DIR, f), 'utf8')]));
+}
+export const isRuntimeFile = (file: string): boolean => path.posix.dirname(file) === RUNTIME_ROOT && /^js_\w+\.h$/.test(path.posix.basename(file));
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
@@ -23,7 +28,7 @@ import type { EmittedFunction, EmittedMemo } from './translator.ts';
  * The standard header of each std:: name the translation writes. The headers come from the text written, the
  * module's own, not from the places that remembered to ask for one: a name written is a header included.
  */
-const STD_HEADER: Readonly<Record<string, string>> = {
+const STD_HEADER: Readonly<Record<string, string>> = { shared_ptr: 'memory', make_shared: 'memory', enable_shared_from_this: 'memory',
   optional: 'optional', nullopt: 'optional', function: 'functional', greater: 'functional', less: 'functional', vector: 'vector',
   deque: 'deque', string: 'string', to_string: 'string', unordered_map: 'unordered_map', unordered_set: 'unordered_set',
   numeric_limits: 'limits', regex: 'regex', regex_search: 'regex', regex_replace: 'regex', regex_constants: 'regex', back_inserter: 'iterator',
@@ -106,14 +111,17 @@ function comment(text: string | null, indent = ''): string[] {
 function namesIn(t: CppType): string[] {
   switch (t.k) {
     case 'struct':
+      return [t.name, ...(t.args ?? []).flatMap(namesIn)];
     case 'enum':
       return [t.name];
     case 'optional':
     case 'vector':
     case 'deque':
     case 'list':
+    case 'set':
       return namesIn(t.of);
     case 'ptr':
+    case 'ref':
       return namesIn(t.to);
     case 'map':
       return [...namesIn(t.key), ...namesIn(t.of)];
@@ -194,12 +202,13 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if ('error' in id) c.errors.push(id.error);
     else placed.set(m, id);
   }
-  const header = (m: string, kind: 'types' | 'api'): string => {
+  const header = (m: string, kind: 'types' | 'api' | 'enums'): string => {
     const id = placed.get(m)!;
-    return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'types' ? '_types' : ''}.h`;
+    return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'api' ? '' : `_${kind}`}.h`;
   };
   const depsOf = (types: readonly CppType[], self: string): string[] =>
-    [...new Set(types.flatMap(namesIn).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
+    // an enum alone asks only for its module's enums header
+    [...new Set(types.flatMap(namesIn).filter((n) => !c.types.enums.has(n)).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
 
   for (const [m, id] of placed) {
     const source = sourceFiles.get(m);
@@ -207,32 +216,47 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const top = (what: string): string[] => [`// ${summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${m} by the converter; the owner is ${id.owner}.`];
     const isState = m === stateModule;
     const enums = [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
-    const constants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const allConstants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const constants = allConstants.filter((k) => !k.calling);
+    const calling = allConstants.filter((k) => k.calling);
     const structs = ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
     const memoStructs = isState ? builders : [];
     const own = functions.filter((f) => f.plan.module === m);
 
     // ---- types
-    const typeRefs: CppType[] = [...structs.flatMap((s) => s.fields.map((f) => f.type)), ...constants.map((k) => k.type),
+    const typeRefs: CppType[] = [...structs.flatMap((s) => [...s.fields.map((f) => f.type), ...(s.methodTypes ?? [])]), ...constants.map((k) => k.type),
       ...memoStructs.flatMap((b) => b.plan.fields.map((f) => f.type))];
     const stateStruct = isState ? c.types.structs.get(state) : undefined;
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
+    // a module's enums have a header of their own: they hold nothing, so no cycle of two modules' types can hide one
+    const enumHeaders = [...new Set(typeRefs.flatMap(namesIn).filter((n) => c.types.enums.has(n)).map((n) => nameModule.get(n)!).filter((u) => placed.has(u)))].sort();
+    if (enums.length > 0) {
+      const list: string[] = [...top('enums'), '#pragma once', '', `namespace ${ns} {`, ''];
+      for (const e of enums) list.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
+      list.push(`} // namespace ${ns}`, '');
+      files.set(`${id.owner}/${id.stem}_enums.h`, list.join('\n'));
+      types.push(`#include "${header(m, 'enums')}"`);
+    }
+    for (const u of enumHeaders) if (u !== m && c.types.enums.size > 0 && [...c.types.enums.values()].some((e) => (e.module ?? stateModule) === u)) types.push(`#include "${header(u, 'enums')}"`);
     types.push(PROJECT_MARK);
-    for (const d of depsOf(typeRefs, m)) types.push(`#include "${header(d, 'types')}"`);
+    const constantUses = [...new Set(constants.flatMap((k) => [...(k.uses ?? [])]))].filter((u) => u !== m && placed.has(u));
+    for (const d of [...new Set([...depsOf(typeRefs, m), ...constantUses])].sort()) types.push(`#include "${header(d, 'types')}"`);
     types.push('', STD_MARK, '', `namespace ${ns} {`, '');
-    for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
     // a constant whose type names a struct of this module comes after the structs (C++ declares before use); the
     // others before them, where a field's default may read them
     const ownStructs = new Set(structs.map((s) => s.name));
     const late = constants.filter((k) => namesIn(k.type).some((n) => ownStructs.has(n)));
     const constantLines = (ks: typeof constants): string[] => ks.flatMap((k) => [
       ...comment(`${k.doc ?? ''}${k.line > 0 ? ` (Roadcraft 4.0 ${m}:${k.line})` : ''}`.trim()),
-      k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`]);
+      k.calling ? `inline const ${render(k.type)} &${k.cpp}() { static const ${render(k.type)} value = ${k.value}; return value; }`
+        : k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`]);
     const early = constants.filter((k) => !late.includes(k));
     types.push(...constantLines(early));
     if (early.length > 0) types.push('');
+    // a class may hold itself, or one declared after it: named first
+    for (const s of structs.filter((x) => x.isClass)) types.push(`${templateHead(s)}struct ${s.name};`);
     for (const s of structs) types.push(...structLines(s, m));
     types.push(...constantLines(late));
     if (late.length > 0) types.push('');
@@ -261,11 +285,19 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
 
     // ---- what other modules and owners call: the public functions, and the edits without reindex for other edits
     const visible = own.filter((f) => f.exported || f.plan.edit);
-    const apiRefs = visible.flatMap((f) => [...f.plan.params.map((p) => p.type), f.plan.ret]);
+    const apiRefs = [...visible.flatMap((f) => [...f.plan.params.map((p) => p.type), f.plan.ret]), ...calling.map((k) => k.type)];
     const api: string[] = [...top('what other owners call'), '#pragma once', '', `#include "${header(m, 'types')}"`];
     for (const d of depsOf(apiRefs, m)) api.push(`#include "${header(d, 'types')}"`);
     api.push('', `namespace ${ns} {`, '');
     for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
+    // a constant that calls a function: after the declarations of what it calls
+    for (const f of own.filter((x) => !x.exported && !x.member && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
+    api.push(...constantLines(calling));
+    // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
+    const templates = own.filter((x) => x.inHeader || (x.exported && x.plan.typeParams.length > 0));
+    for (const f of templates) api.push(`${f.signature} {`, ...f.lines, '}', '');
+    const templateUses = [...new Set([...templates.flatMap((f) => [...f.uses]), ...calling.flatMap((k) => [...(k.uses ?? [])])])].filter((u) => u !== m && placed.has(u)).sort();
+    if (templateUses.length > 0) api.splice(api.indexOf(''), 0, ...templateUses.map((u) => `#include "${header(u, 'api')}"`));
     const raw = visible.filter((x) => !x.exported);
     if (raw.length > 0) {
       api.push('// The edits without the rebuild of the indexes, for other edits of the state (the public ones rebuild once).');
@@ -286,20 +318,22 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       const named = typesNamedIn(fns.map((f) => `${f.signature}\n${f.lines.join('\n')}`).join('\n'), nameModule);
       for (const d of [...named].filter((x) => x !== m && !uses.has(x) && placed.has(x)).sort()) out.push(`#include "${header(d, 'types')}"`);
       out.push('', `namespace ${ns} {`, '');
-      const internal = fns.filter((f) => !f.exported && !f.plan.edit);
-      if (internal.length > 0) {
+      const internal = fns.filter((f) => !f.exported && !f.member && !f.plan.edit);
+      // a module whose constants call its functions declares them in its header: none is local to this file
+      if (calling.length > 0) for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      else if (internal.length > 0) {
         out.push('namespace {', '', ...internal.map((f) => `${f.signature};`), '');
         for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
         out.push('} // namespace', '');
       }
-      for (const f of fns.filter((x) => x.exported || x.plan.edit)) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      for (const f of fns.filter((x) => (x.exported || x.member || x.plan.edit) && !(x.exported && x.plan.typeParams.length > 0))) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
       out.push(`} // namespace ${ns}`, '');
       return out.join('\n');
     };
     const edits = own.filter((f) => f.role === 'edit');
     // A public edit rebuilds the state's indexes: its module needs the state's module.
     if (edits.length > 0) files.set(`${id.owner}/${id.stem}_edit.cpp`, cpp('the edits (each rebuilds the indexes once)', edits, builders.length > 0 ? [stateModule] : []));
-    const queries = own.filter((f) => f.role === 'query');
+    const queries = own.filter((f) => f.role === 'query' && !f.inHeader);
     if (queries.length > 0) files.set(`${id.owner}/${id.stem}_query.cpp`, cpp('the queries (they only read)', queries, []));
     if (isState && builders.length > 0) {
       const uses = new Set(builders.flatMap((b) => [...b.uses]));
@@ -320,7 +354,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
   const owners = projectHeaderNames(c);
   for (const id of placed.values()) {
     const prefix = `${id.owner}/${id.stem}`;
-    const own = [`${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
+    const own = [`${prefix}_enums.h`, `${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
     const text = own.map((f) => files.get(f)!).join('\n');
     const std = stdHeadersIn(text);
     const words = new Set(text.match(/\b[A-Za-z_]\w*\b/g) ?? []);
@@ -331,13 +365,17 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
   }
   // the runtime of the built-ins, written beside the translation when its text calls it (core/js_runtime.h)
-  if ([...files.values()].some((text) => /\bjs::/.test(text))) files.set(RUNTIME_FILE, fs.readFileSync(RUNTIME_SOURCE, 'utf8'));
+  if ([...files.values()].some((text) => /\bjs::/.test(text))) for (const [name, text] of runtimeFiles()) files.set(name, text);
   return files;
 }
+
+const templateHead = (s: CppStruct): string => (s.typeParams?.length ? `template <${s.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '');
 
 function structLines(s: CppStruct, source: string): string[] {
   const head = comment(s.comment ?? null);
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
-  return [...head, `struct ${s.name} {`, ...fields, '};', ''];
+  const self = s.typeParams?.length ? `${s.name}<${s.typeParams.join(', ')}>` : s.name;
+  const base = s.isClass ? ` : std::enable_shared_from_this<${self}>` : '';
+  return [...head, `${templateHead(s)}struct ${s.name}${base} {`, ...fields, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
 }

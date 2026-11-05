@@ -129,10 +129,9 @@ export class Ledger {
     const role = this.#roles.get(unit.id)?.role;
     if (role === 'render' || role === 'ui' || role === 'mixed') return `${role} code`;
     const parent = unit.parent === null ? undefined : this.#byId.get(unit.parent);
-    if (parent?.kind === 'class') return 'a member of a class';
-    // A field of a plain type travels with the type.
+    // A field of a plain type or a class travels with it; a class's members are written with the class.
     if (unit.kind === 'field') return null;
-    if (!TRANSLATABLE.has(unit.kind)) return `a ${unit.kind}`;
+    if (!TRANSLATABLE.has(unit.kind) && parent?.kind !== 'class' && unit.kind !== 'class') return `a ${unit.kind}`;
     if (unit.facts.mutableModuleState) return 'mutable module state';
     const wrong = this.#methods(unit.id).filter((m) => !REWRITTEN.has(m.rule));
     return wrong.length > 0 ? `wrong methodology: ${[...new Set(wrong.map((m) => m.rule))].join(', ')}` : null;

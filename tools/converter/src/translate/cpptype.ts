@@ -10,13 +10,18 @@ export type CppType =
   | { readonly k: 'string' }
   | { readonly k: 'void' }
   | { readonly k: 'enum'; readonly name: string }
-  | { readonly k: 'struct'; readonly name: string }
+  | { readonly k: 'struct'; readonly name: string; /** Of a generic class: what its type parameters are. */ readonly args?: readonly CppType[] }
+  /** A function's type parameter: the function is a template. */
+  | { readonly k: 'tparam'; readonly name: string }
   | { readonly k: 'vector'; readonly of: CppType }
   | { readonly k: 'deque'; readonly of: CppType }
   | { readonly k: 'list'; readonly of: CppType }
   | { readonly k: 'map'; readonly key: CppType; readonly of: CppType }
+  | { readonly k: 'set'; readonly of: CppType }
   | { readonly k: 'optional'; readonly of: CppType }
   | { readonly k: 'ptr'; readonly to: CppType }
+  /** An instance of a class of the program: shared, as a reference is in the source. */
+  | { readonly k: 'ref'; readonly to: CppType }
   | { readonly k: 'function'; readonly params: readonly CppType[]; readonly ret: CppType }
   | { readonly k: 'class'; readonly name: string; readonly text: string }
   | { readonly k: 'lambda'; readonly ret: CppType }
@@ -48,8 +53,10 @@ export function render(t: CppType): string {
     case 'int':
     case 'real':
     case 'enum':
-    case 'struct':
+    case 'tparam':
       return t.name;
+    case 'struct':
+      return t.args?.length ? `${t.name}<${t.args.map(render).join(', ')}>` : t.name;
     case 'class':
       return t.text;
     case 'bool':
@@ -65,18 +72,64 @@ export function render(t: CppType): string {
       return `std::deque<${render(t.of)}>`;
     case 'list':
       return `std::initializer_list<${render(t.of)}>`;
+    case 'set':
+      return `js::Set<${render(t.of)}>`;
     case 'map':
       return `js::Map<${render(t.key)}, ${render(t.of)}>`;
     case 'optional':
       return `std::optional<${render(t.of)}>`;
     case 'ptr':
       return `const ${render(t.to)} *`;
+    case 'ref':
+      return `std::shared_ptr<${render(t.to)}>`;
     case 'function':
       return `std::function<${render(t.ret)}(${t.params.map((p) => paramType(p)).join(', ')})>`;
     case 'lambda':
       return 'auto';
     case 'null':
       return 'std::nullptr_t';
+  }
+}
+
+/** Whether a type holds a function's type parameter (it is known only in that function's template). */
+export function holdsTypeParameter(t: CppType): boolean {
+  switch (t.k) {
+    case 'tparam': return true;
+    case 'struct': return (t.args ?? []).some(holdsTypeParameter);
+    case 'vector': case 'deque': case 'list': case 'optional': case 'set': return holdsTypeParameter(t.of);
+    case 'ptr': case 'ref': return holdsTypeParameter(t.to);
+    case 'map': return holdsTypeParameter(t.key) || holdsTypeParameter(t.of);
+    case 'function': return holdsTypeParameter(t.ret) || t.params.some(holdsTypeParameter);
+    default: return false;
+  }
+}
+
+/** What a template's type parameters are, read from a type that holds them against the type at a call (first found wins). */
+export function bindTypeParameters(pattern: CppType, concrete: CppType, out: Map<string, CppType>): void {
+  if (pattern.k === 'tparam') {
+    if (!out.has(pattern.name) && concrete.k !== 'void' && concrete.k !== 'null' && concrete.k !== 'literal') out.set(pattern.name, concrete);
+    return;
+  }
+  if ((pattern.k === 'vector' || pattern.k === 'deque' || pattern.k === 'list' || pattern.k === 'optional' || pattern.k === 'set') && concrete.k === pattern.k) bindTypeParameters(pattern.of, concrete.of, out);
+  else if (pattern.k === 'optional') bindTypeParameters(pattern.of, concrete, out);
+  else if (pattern.k === 'ptr' && concrete.k === 'ptr') bindTypeParameters(pattern.to, concrete.to, out);
+  else if (pattern.k === 'map' && concrete.k === 'map') {
+    bindTypeParameters(pattern.key, concrete.key, out);
+    bindTypeParameters(pattern.of, concrete.of, out);
+  }
+}
+
+/** A type with its type parameters replaced by what they are at a call. */
+export function substitute(t: CppType, types: ReadonlyMap<string, CppType>): CppType {
+  switch (t.k) {
+    case 'tparam': return types.get(t.name) ?? t;
+    case 'vector': case 'deque': case 'list': case 'optional': case 'set': return { ...t, of: substitute(t.of, types) };
+    case 'ptr': return { k: 'ptr', to: substitute(t.to, types) };
+    case 'ref': return { k: 'ref', to: substitute(t.to, types) };
+    case 'struct': return t.args ? { ...t, args: t.args.map((x) => substitute(x, types)) } : t;
+    case 'map': return { k: 'map', key: substitute(t.key, types), of: substitute(t.of, types) };
+    case 'function': return { k: 'function', params: t.params.map((p) => substitute(p, types)), ret: substitute(t.ret, types) };
+    default: return t;
   }
 }
 
@@ -102,17 +155,21 @@ export function paramDecl(t: CppType, name: string): string {
 export const isInt = (t: CppType): boolean => t.k === 'int';
 export const isNumber = (t: CppType): boolean => t.k === 'int' || t.k === 'real';
 export const isPointer = (t: CppType): boolean => t.k === 'ptr';
+/** A value that is absent as nullptr and read through `->`. */
+export const isHandle = (t: CppType): boolean => t.k === 'ptr' || t.k === 'ref';
+/** How a member of a value of this type is read. */
+export const arrow = (t: CppType): string => (isHandle(t) || t.k === 'optional' ? '->' : '.');
 export const isOptional = (t: CppType): boolean => t.k === 'optional';
 
 /** The value under a pointer or an optional. */
 export function target(t: CppType): CppType {
-  return t.k === 'ptr' ? t.to : t.k === 'optional' ? t.of : t;
+  return t.k === 'ptr' || t.k === 'ref' ? t.to : t.k === 'optional' ? t.of : t;
 }
 
 /** What a container holds (a map: its values); null for anything else. */
 export function elementOf(t: CppType): CppType | null {
   const c = target(t);
-  return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' ? c.of : null;
+  return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' || c.k === 'set' ? c.of : null;
 }
 
 export function same(a: CppType, b: CppType): boolean {

@@ -64,12 +64,18 @@ int Simulation::steps_per_tick(SimSpeed sp) const {
 void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	const double dt = 1.0 / s.catalog.tune.sim_tick_hz;
 	for (int k = 0; k < steps; k++) {
-		bool growing = false;
+		bool growing = false, chosen = false;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::step(s, float(dt));
 			growing = s.traffic_levels.growth_on && !s.growth.cells.empty();
+			chosen = !s.traffic.flow_control.changed.empty();
+		}
+		if (chosen) { // rare: the mesh jobs read the control off the network, so it changes under the exclusive lock
+			std::unique_lock<std::shared_mutex> map(s.map_mutex);
+			std::lock_guard<std::mutex> tr(s.traffic_mutex);
+			traffic::apply_flow_control(s);
 		}
 		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
 		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows
