@@ -46,6 +46,38 @@ sempre verdadeiros.
   Opções: `--coverage-proof shown` (só vale "in the game" que o jogo mostra), `--constants <json>`.
 - Censo dos built-ins: `node scripts/builtins-census.ts --source-root <ref> --typescript <ref>/node_modules/typescript --out out/builtins-census.json`
 
+## Roteiro: portar com o conversor
+
+Em `tools/converter`. `node scripts/port.ts doctor` confere os caminhos de `configs/roadcraft-machine.json`.
+
+1. **Rastrear:** `node scripts/port.ts extract <feature> <src/entrada.ts> ...` (grafo e Jelly ficam em cache por versão da fonte).
+   Saída: `out/features/<feature>` (`boundary.json`, `feature.md`, `interface/`). Passada por área: `src/cli.ts feature` com
+   `--graph out/city40/program.json --analysis out/city40/whole/jelly --entry ...` para cada arquivo da área.
+2. **Clone de trabalho:** `node scripts/port.ts workspace <feature>` (o jogo nunca é escrito direto).
+3. **Converter:** `node scripts/port.ts convert <feature> --apply`, ou `src/cli.ts convert` (ver "Comandos"). Saída em
+   `<ports>/<feature>/conversion`: `files/` (o C++ aceito, já nas pastas do dono: `sim/*`, `core`, `render/*`, `api/lab`, e o runtime em
+   `core/js_*.h`), `conversao.md` (cada unidade aberta, com dono e método), `ledger.json`, `registration.json` (membro do estado e linha do
+   mapa), `specs/` (um spec por módulo aceito). `--apply` copia os arquivos para o clone.
+4. **O resto à mão, no dono:** cada linha aberta de `conversao.md` diz o método. A interface é sempre à mão (nunca há alvo GDScript).
+5. **Conferir contra a fonte:** `src/cli.ts differential --source-root <ref> --spec <specs/modulo.json> --target-graph <cppgraph.json>
+   --target-root <jogo> --cxx <clang++> --out <pasta> --hand native/src/<arquivo.cpp>`: o mesmo cenário aleatório na fonte e no C++, e o passo e o
+   valor de cada diferença. Sem `--hand`, compara a própria tradução.
+6. **Jogo:** `node scripts/port.ts verify <feature>`, `audit <feature>`, `pack <feature>` e `sandbox <feature>`; depois os gates, as DLLs e a
+   suíte, como manda o `CLAUDE.md`. `reference <feature>` tira as fotos do 4.0.
+
+**O que cada verificação prova:**
+- `differential`: o C++ dá o mesmo resultado que o TypeScript nos mesmos dados (lógica). `js-runtime.test.ts`: os built-ins iguais ao Node.
+- `scripts/verdict.mjs` + `oracle-calls.mjs` (cópia instrumentada, `tools/oracle-4.0`): o rastreamento contra o que o 4.0 executou de fato.
+- `scripts/oracle.mjs`: o que uma execução real chamou (cobertura V8, perfil de CPU) e todo shader dado à GPU.
+- `scripts/shaders.ts` + `shaders-verdict.mjs`: cada shader traduzido compila e desenha no Godot.
+- `scripts/parity.mjs`: three.js e Godot desenham igual, casos sintéticos.
+- `scripts/frame-capture.mjs` + `frame-replay.mjs`: um quadro real do 4.0, draw a draw, contra o Godot.
+- `scripts/draw-coverage.mjs`: se um draw vazio nos dois motores devia mesmo estar fora da tela.
+
+**Lista do que falta:** `tools/process/records/map40/features.json` tem 308 funcionalidades com linhas e unidades, mas foi gerado do grafo
+antigo (16.771 unidades; o 4.0 novo tem 20.318) e o campo de estado vem do `coverage.md`, que não é confiável (no poles, 268 de 275
+alegações não aparecem no jogo). O que vale: `convert --coverage-proof shown` e `python scripts/open-causes.py <pasta>`.
+
 ## Feito (commits no master)
 
 - `a84852d`: parâmetros mutáveis, slice, instâncias genéricas, padrões com contexto; convert 8x mais rápido.
@@ -240,3 +272,7 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - Hook: `git add` e `git commit` no mesmo comando fazem o hook contar as mudanças de `native/` de outra sessão, mesmo num commit
   do conversor. Sempre em comandos separados (regra do `CLAUDE.md`).
 - Contagem por causa: `python scripts/open-causes.py <pasta com <área>/conversion/ledger.json>`.
+- `a0ded2f` Estado só de quem o módulo faz do nada (`expand(box)` era tratada como edição no lugar, o que mudava a semântica); enums em
+  `_enums.h` próprio (inclusão circular escondia o enum); enum anônimo no módulo da struct; tipo que estende Array é lista; `constexpr` só do que
+  C++ avalia; null contra optional; número convertido onde as chaves recusam estreitar.
+- O conversor passa a gravar `specs/` no `convert`, para `differential --spec --hand`. Roteiro acima escrito a pedido da sessão de porte.
