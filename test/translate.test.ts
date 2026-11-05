@@ -29,7 +29,7 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_runtime.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_runtime.h', 'js_string.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
@@ -61,8 +61,8 @@ describe('translate', () => {
   it('takes a membership test as a predicate: a Set passed in, a rule written in place', () => {
     assert.match(file('yard_query.cpp'), /int kept_count\(const YardState &t, const std::function<bool\(int64_t\)> &kept\)/);
     assert.match(file('yard_query.cpp'), /if \(kept\(p\.id\)\)/);
-    assert.match(file('yard_query.cpp'), /kept_count\(t, \[&\]\(int64_t k\) \{ return chosen_seen\.count\(k\) != 0; \}\)/, 'a Set asks its hash set');
-    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen_seen\.count\(id\) != 0\);/);
+    assert.match(file('yard_query.cpp'), /kept_count\(t, \[&\]\(int64_t k\) \{ return chosen\.count\(k\) != 0; \}\)/, 'a Set asks its hash set');
+    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen\.count\(id\) != 0\);/);
   });
 
   it('folds with reduce, tests a prefix and a suffix, writes NaN and a number without its separator', () => {

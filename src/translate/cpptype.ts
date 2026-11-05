@@ -11,10 +11,13 @@ export type CppType =
   | { readonly k: 'void' }
   | { readonly k: 'enum'; readonly name: string }
   | { readonly k: 'struct'; readonly name: string }
+  /** A function's type parameter: the function is a template. */
+  | { readonly k: 'tparam'; readonly name: string }
   | { readonly k: 'vector'; readonly of: CppType }
   | { readonly k: 'deque'; readonly of: CppType }
   | { readonly k: 'list'; readonly of: CppType }
   | { readonly k: 'map'; readonly key: CppType; readonly of: CppType }
+  | { readonly k: 'set'; readonly of: CppType }
   | { readonly k: 'optional'; readonly of: CppType }
   | { readonly k: 'ptr'; readonly to: CppType }
   | { readonly k: 'function'; readonly params: readonly CppType[]; readonly ret: CppType }
@@ -49,6 +52,7 @@ export function render(t: CppType): string {
     case 'real':
     case 'enum':
     case 'struct':
+    case 'tparam':
       return t.name;
     case 'class':
       return t.text;
@@ -65,6 +69,8 @@ export function render(t: CppType): string {
       return `std::deque<${render(t.of)}>`;
     case 'list':
       return `std::initializer_list<${render(t.of)}>`;
+    case 'set':
+      return `js::Set<${render(t.of)}>`;
     case 'map':
       return `js::Map<${render(t.key)}, ${render(t.of)}>`;
     case 'optional':
@@ -77,6 +83,45 @@ export function render(t: CppType): string {
       return 'auto';
     case 'null':
       return 'std::nullptr_t';
+  }
+}
+
+/** Whether a type holds a function's type parameter (it is known only in that function's template). */
+export function holdsTypeParameter(t: CppType): boolean {
+  switch (t.k) {
+    case 'tparam': return true;
+    case 'vector': case 'deque': case 'list': case 'optional': case 'set': return holdsTypeParameter(t.of);
+    case 'ptr': return holdsTypeParameter(t.to);
+    case 'map': return holdsTypeParameter(t.key) || holdsTypeParameter(t.of);
+    case 'function': return holdsTypeParameter(t.ret) || t.params.some(holdsTypeParameter);
+    default: return false;
+  }
+}
+
+/** What a template's type parameters are, read from a type that holds them against the type at a call (first found wins). */
+export function bindTypeParameters(pattern: CppType, concrete: CppType, out: Map<string, CppType>): void {
+  if (pattern.k === 'tparam') {
+    if (!out.has(pattern.name) && concrete.k !== 'void' && concrete.k !== 'null' && concrete.k !== 'literal') out.set(pattern.name, concrete);
+    return;
+  }
+  if ((pattern.k === 'vector' || pattern.k === 'deque' || pattern.k === 'list' || pattern.k === 'optional' || pattern.k === 'set') && concrete.k === pattern.k) bindTypeParameters(pattern.of, concrete.of, out);
+  else if (pattern.k === 'optional') bindTypeParameters(pattern.of, concrete, out);
+  else if (pattern.k === 'ptr' && concrete.k === 'ptr') bindTypeParameters(pattern.to, concrete.to, out);
+  else if (pattern.k === 'map' && concrete.k === 'map') {
+    bindTypeParameters(pattern.key, concrete.key, out);
+    bindTypeParameters(pattern.of, concrete.of, out);
+  }
+}
+
+/** A type with its type parameters replaced by what they are at a call. */
+export function substitute(t: CppType, types: ReadonlyMap<string, CppType>): CppType {
+  switch (t.k) {
+    case 'tparam': return types.get(t.name) ?? t;
+    case 'vector': case 'deque': case 'list': case 'optional': case 'set': return { ...t, of: substitute(t.of, types) };
+    case 'ptr': return { k: 'ptr', to: substitute(t.to, types) };
+    case 'map': return { k: 'map', key: substitute(t.key, types), of: substitute(t.of, types) };
+    case 'function': return { k: 'function', params: t.params.map((p) => substitute(p, types)), ret: substitute(t.ret, types) };
+    default: return t;
   }
 }
 
@@ -112,7 +157,7 @@ export function target(t: CppType): CppType {
 /** What a container holds (a map: its values); null for anything else. */
 export function elementOf(t: CppType): CppType | null {
   const c = target(t);
-  return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' ? c.of : null;
+  return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' || c.k === 'set' ? c.of : null;
 }
 
 export function same(a: CppType, b: CppType): boolean {

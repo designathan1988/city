@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
-import { RUNTIME_FILE } from '../translate/files.ts';
+import { isRuntimeFile } from '../translate/files.ts';
 
 export interface QuarantineFinding {
   readonly file: string;
@@ -53,7 +53,7 @@ export function scanFiles(files: ReadonlyMap<string, string>, limits: TargetLimi
   const out: QuarantineFinding[] = [];
   for (const [file, text] of files) {
     // the runtime of the built-ins is the converter's own, checked against JavaScript by its differential
-    if (file === RUNTIME_FILE) continue;
+    if (isRuntimeFile(file)) continue;
     for (const { rule, form, detail } of WRONG_FORMS) if (form.test(text)) out.push({ file, rule, detail });
     const extension = path.extname(file);
     const lines = text.split('\n').length;
