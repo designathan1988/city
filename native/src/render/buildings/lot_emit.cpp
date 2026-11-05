@@ -13,9 +13,9 @@ namespace city::b40 {
 namespace {
 constexpr float GROUND_CELL_M = 3.f, LEVEL_M = 0.01f; // a surface's cell on a slope, and the fold under which ground counts as level
 constexpr float LOT_RAISE = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
-constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.05f, RAIL_LOW = 0.45f, POST = 0.12f, POST_EVERY = 2.f;
+constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.04f, RAIL_LOW = 0.45f, LOW_RAIL_H = 0.06f, POST = 0.12f, POST_EVERY = 2.f, POST_OVER = 0.05f;
 constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
-constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f;
+constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f, BOLLARD_BAND_OUT = 0.01f;
 constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
 constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xffefcf;
@@ -95,15 +95,10 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	};
 	float s0 = along_x ? x0 : y0;
 	bar(s0, s0 + len, top - COPING_H, top, RAIL_T);
-	bar(s0, s0 + len, base + (top - base) * RAIL_LOW, base + (top - base) * RAIL_LOW + RAIL_T, RAIL_T);
+	bar(s0, s0 + len, base + (top - base) * RAIL_LOW, base + (top - base) * RAIL_LOW + LOW_RAIL_H, RAIL_T);
+	if (pl.coarse && !light) return; // a fence's posts stand far apart and go with the near level; a railing's close ones read together
 	float every = light ? LIGHT_EVERY : POST_EVERY, pw = light ? LIGHT_POST : POST;
-	for (float a = s0; a <= s0 + len + EPS; a += every) bar(std::min(a, s0 + len - pw), std::min(a, s0 + len - pw) + pw, base, top, pw);
-	if (!light) {
-		// One panel instead of a box every BAR_EVERY metres: a single instance the finish map tiles along the length.
-		float lo = base + (top - base) * RAIL_LOW, hi = top - COPING_H;
-		if (along_x) parts.box(pl.lot, x0, x1, cy - pl.look->fence_bar_m / 2, cy + pl.look->fence_bar_m / 2, lo, hi, m, FIN_METAL);
-		else parts.box(pl.lot, cx - pl.look->fence_bar_m / 2, cx + pl.look->fence_bar_m / 2, y0, y1, lo, hi, m, FIN_METAL);
-	}
+	for (float a = s0; a <= s0 + len + EPS; a += every) bar(std::min(a, s0 + len - pw), std::min(a, s0 + len - pw) + pw, base, top + POST_OVER, pw);
 }
 
 void LotEmit::gate(const LotElement &e) {
@@ -132,7 +127,7 @@ void LotEmit::prop(const LotElement &e) {
 			break;
 		case EL_BOLLARD:
 			parts.box(pl.lot, x0, x1, y0, y1, g, g + e.h, lin, FIN_METAL);
-			parts.box(pl.lot, x0, x1, y0, y1, g + e.h - BOLLARD_BAND, g + e.h - BOLLARD_BAND + BOLLARD_BAND_H, lin_of(BAND_LIGHT), FIN_NONE);
+			parts.box(pl.lot, x0 - BOLLARD_BAND_OUT, x1 + BOLLARD_BAND_OUT, y0 - BOLLARD_BAND_OUT, y1 + BOLLARD_BAND_OUT, g + e.h - BOLLARD_BAND, g + e.h - BOLLARD_BAND + BOLLARD_BAND_H, lin_of(BAND_LIGHT), FIN_NONE);
 			break;
 		case EL_LAMP: {
 			if (e.z > 0) { // on a wall: the lamp's head and its lit glass under it
@@ -185,7 +180,7 @@ void LotEmit::element(const LotElement &e) {
 	bool along_x = e.w >= e.d;
 	float len = along_x ? e.w : e.d;
 	int pieces = std::max(1, int(std::ceil(len / PIECE)));
-	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE) return;
+	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING) return;
 	if (!pl.coarse && e.kind == EL_HEDGE) return; // near, a hedge is the gardens' plants (render/trees/garden_place.h)
 	switch (e.kind) {
 		case EL_SURFACE: surface(e); break;

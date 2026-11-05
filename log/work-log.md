@@ -435,6 +435,17 @@ Ressalvas abertas:
 - A foto `cmp_b` (prédio bege) não vale de par: o 4.0 mostra um vizinho na frente. Nada se conclui dela.
 - **Ordem do usuário (19:5x):** não usar a ferramenta de porte e tradução, incluindo `reference40.mjs` e `call40.mjs`, até a sessão dona resolver. Cobrada por mensagem. Sem ela não há foto nova do 4.0: valem as do arquivo já tiradas e a leitura da fonte.
 
+### Ciclo 6 (cercas)
+
+- **Passo 1.** P15: cerca do lote é faixa opaca flutuando a 0,9 m (`mid_b`, gramados do par). P16: a faixa dos frades briga com o poste (z-fighting, faixa rasgada). P17: cerca e guarda-corpo somem no nível médio.
+- **Passo 2.** `buildingMesh.ts` `emitFence`: postes e dois trilhos, nada entre eles; trilhos 4 cm de espessura, 7 e 6 cm de altura; o poste passa 5 cm do topo; postes de cerca só no perto, os de guarda-corpo ficam; trilhos também longe (`lotRail`). `case 'bollard'`: a faixa 1 cm para fora do poste.
+- **Passo 3.** P15: o painel foi invenção do porte ("One panel instead of a box"), não otimização de algo que o 4.0 tem. P16: faixa e poste com as mesmas faces. P17: `emit_lot` sai na hora para tudo que não é chão, muro ou sebe no nível médio.
+- **Passo 4.** Tirar o painel; medidas do 4.0; faixa 1 cm para fora; cerca e guarda-corpo entram no nível médio pelas caixas dele, sem os postes de cerca. Previsão: menos área opaca perto; caixas a mais no médio, trilho abaixo de um pixel pode cintilar longe: olhar na foto `low3` e medir GPU.
+- **Passo 5.** `lot_emit.cpp`.
+
+- **Passo 6.** Uma rodada: fotos `mid_b`, `lot_a`, `low3`, `low15` em `ultra`. `low3`: GPU 9,45 ms (antes 9,15), 501 draws iguais, primitivas 5,00 M (4,87 M), sombra 3,42 M (3,37 M), 0 engasgos. CPU 2,66 ms contra 1,25, medida com 44 processos `clang` e `node` de outra sessão na máquina e sem draw a mais: falta repetir com a máquina quieta para afirmar.
+- **Passo 7.** Aprovado nas fotos: cerca em postes e dois trilhos, faixa do frade limpa, sem cintilação visível em `low3` e `low15` (foto parada; movimento não visto).
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).
