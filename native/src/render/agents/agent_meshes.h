@@ -7,7 +7,8 @@
 // its own (split_tag) drawn see-through by render/shaders/agent_glass.gdshader over its cabin (agent_cabin); the body, no
 // cabin and the glass opaque; far, the body's outline alone (agents.json far_radius_m: past it no lamp, grille, plate or
 // mirror is a pixel), fewer stations, rows and wheel sides. A shadow takes no more than its silhouette: each level casts with
-// the mesh of the next one (shadow-only draws), which follows the same surface: an inner box would leave the body in its dark.
+// the mesh of the next one, which follows the same surface (an inner box would leave the body in its dark), by shadow-only
+// instances: the engine's own shadow mesh is ignored for a material with a vertex(), as the agents' (uses_shared_shadow_material).
 #pragma once
 
 #include "render/mesh_builder.h"

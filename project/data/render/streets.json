@@ -343,6 +343,7 @@
   "roadcraft": {
    "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, made by tools/assets/make_pole_parts.py). The look of this style, not a norm.",
    "props": {
+    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
     "pole": [
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.5, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
      {"shape": "frustum", "base": [0, 8.49, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
@@ -410,6 +411,7 @@
   "brasil": {
    "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
    "props": {
+    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
     "pole": [
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
      {"shape": "frustum", "base": [0, 10.19, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},

@@ -38,7 +38,7 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
   - `Heightfield::water_original`/`set_water`: save e "voltar ao original" não regeneram a água (antes: a cada save, sob a trava).
 
 ## Em andamento / a fazer (em ordem)
-0. **Orçamento de sombra por tamanho e distância** para o resto (mobiliário 2,9 M, casca 1,9 M, detalhes 1,4 M de triângulos), e ver no motor se cabe cache de cascata.
+0. Instáveis sob carga (`edit_fuzz_test` semente 3 no header, `camera_input_test`). Cache de cascata: a API do Godot 4.7 não tem; pediria motor próprio.
 1. Abertura: leitura 0,9 s, rodadas do greide 1 s (seriais, dependem da ordem), lotes 2,1 s (limite de 24 threads lógicas).
 2. CPU de render +0,5 a 1,5 ms pelas instâncias só de sombra (GPU -1 ms; o quadro é limitado pela GPU): medir com a máquina quieta.
 3. Backlog do CLAUDE.md "Pendências": são recursos de outras linhas (porte), não causas desta.
@@ -130,6 +130,62 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
     leva a edição ao efeito líquido (o `isObsolete` do Qt), não um `if` no comando. Seis sementes de 300 passos limpas.
     Pesquisa para o próximo passo: Cities Skylines 2 teve o mesmo quadro (metade do tempo em sombra, sem orçamento por tamanho e
     distância); estado da arte é cache de cascata com rolagem (Insomniac, SIGGRAPH 2012), a conferir no código do motor.
+
+## Ciclo 1 do fluxo obrigatório de 7 passos (ordem do usuário, 2026-11-05)
+### Passo 1: problemas identificados (medidos)
+- P1. Sombra é 45 % da GPU na vista `perto` (8,8 ms com, 4,7 sem; `--uncapped`).
+- P2. Veículos: cada nível lançava sombra pela própria malha; `mesh_set_shadow_mesh` não baixou a GPU (9,9 ms) e acusou
+  `p_surface_index = 1 out of bounds` (cabine tem 2 superfícies, a malha de sombra 1).
+- P3. Mobiliário: 2,9 M triângulos de sombra, 1,3 ms de GPU sozinho. Poste 570 triângulos × 2.906 instâncias, vão 320 × 1.350.
+- P4. Toda malha com `vertex()` (agents, people, props, building, building_parts) ignora malha de sombra.
+- P5. Contador `render_info` de sombra usa a malha colorida: número enganoso.
+- P6. CPU de render +0,5 a 1,5 ms com as instâncias de sombra (máquina a 100 %, não comparável ainda).
+- P7. Gates inteiros só acusam `DOC_UNICO` em `tools/oracle-4.0` (depende do `exclude_dirs`, do usuário).
+- P8. Abertura: leitura 0,9 s, rodadas do greide 1 s, lotes 2,1 s.
+
+- P9. Na varredura por camada, `people` deu GPU 7,5 ms com só 62 mil triângulos de sombra (base 5,6): medir de novo no passo 6.
+
+### Passo 2: pesquisa
+- [render_forward_clustered.cpp](https://raw.githubusercontent.com/godotengine/godot/master/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp) (P2, P4, P5): `surface_shadow` só vem da malha de sombra se `uses_shared_shadow_material()`; o contador usa `surf->surface`.
+- [scene_shader_forward_clustered.h](https://raw.githubusercontent.com/godotengine/godot/master/servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h) (P4): a condição: sem `vertex`, `discard`, alpha clip, `cull_back`.
+- [Godot mesh LOD](https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/3d/mesh_lod.rst) (P2, P3): num MultiMesh todas as instâncias têm o mesmo LOD: o LOD nativo não serve à frota nem aos postes.
+- [Godot visibility ranges](https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/3d/visibility_ranges.rst) (P3): faixas por instância; sem fade é o mais barato. Não fala de sombra.
+- Autópsia do Cities Skylines 2 ([PC Gamer](https://pcgamer.com/a-tech-analysis-of-cities-skylines-2-proves-its-rendering-way-too-many-polygons-making-cyberpunk-2077-look-like-minecraft-in-comparison), [Tom's Hardware](https://www.tomshardware.com/pc-components/gpus/cities-skylines-2-performance-autopsy-highlights-massive-optimization-failures)) (P1): metade do quadro em sombra, sem orçamento por tamanho e distância.
+- [Insomniac, CSM Scrolling](https://advances.realtimerendering.com/s2012/insomniac/Acton-CSM_Scrolling(Siggraph2012).pdf) e [Cached Shadows do CryEngine](https://www.cryengine.com/docs/static/engines/cryengine-3/categories/1114113/pages/21267738) (P1): cache de cascata. A API do Godot 4.7 (`extension_api-4-7.json`) não tem nada disso: pediria motor próprio.
+- [Qt QUndoCommand](https://doc.qt.io/qt-6/qundocommand.html) (passo de desfazer vazio): `isObsolete`. A página não abriu direto; lida pelo resumo da busca.
+
+### Passo 3: compreensão
+- Causa de P1 a P3: o desenho fino serve de lançador de sombra, em 4 cascatas, para coisas cujo detalhe a sombra não mostra. A saída nativa (P4) não vale com `vertex()`, e o `vertex()` tem função diferente em cada caso.
+- Veículos: o `vertex()` só gira roda e mostra assentos, que a silhueta não mostra: instância só de sombra com material sem `vertex()` e malha do nível seguinte.
+- Postes: o `vertex()` escolhe o braço urbano ou rural por instância: material simples desenharia errado. Precisa do mesmo shader, com malha menor. De perto o isolador aparece na sombra: longe vai a malha leve, perto a inteira.
+- Fios: pendurados só pelo `vertex()` e `shadow` já tratado lá: ficam como estão (0,43 M).
+- Árvores 99 mil: nada a ganhar. Prédios: com a sessão de migração, usando este mesmo dono.
+- P2 no `mesh_set_shadow_mesh` foi tentativa errada minha: desfeita.
+
+### Passo 4: plano
+1. P2, P4: `MultiMeshDraw::shadow_only` e material `shadow_caster`; veículos lançam pela malha do nível seguinte.
+2. P3: `PropKit` faz `pole_cast` (peças pequenas fora, menos lados, por dados); `PropRenderer`: poste visível sem sombra, sombra inteira até `cast_from_m`, leve depois.
+3. P5: registrar no CLAUDE.md que a sombra se julga pelo tempo de GPU.
+4. Passo 6 uma vez: `quick.sh --all --bless`, A/B de GPU e CPU intercalado, fotos de postes de perto e longe.
+
+### Passo 5: código (sem testar)
+- `native/src/render/rs_util.h`: `MultiMeshDraw::shadow_only` (P2, plano 1).
+- `project/render/shaders/shadow_caster.gdshader`, `project/data/render/materials.json`: lançador sem `vertex()` (P4, plano 1).
+- `native/src/render/agents/agent_renderer.{h,cpp}`, `agent_meshes.h`: visual sem sombra, sombra pela malha do nível seguinte (P2).
+- `native/src/render/props/prop_kit.{h,cpp}`, `prop_renderer.{h,cpp}`, `project/data/render/streets.json`: `pole_cast` (P3, plano 2).
+- `CLAUDE.md`: como julgar sombra (P5, plano 3).
+
+### Passo 6: testes e medições (uma rodada)
+`quick.sh --all`: digest igual ao golden, 4 de 4 fotos congeladas iguais, 28/28, gates OK, 85 s. A/B intercalado contra `origin/main`,
+vista `perto`, `--uncapped`: GPU 8,5 e 8,5 → 7,8 e 8,0 ms; CPU de render 1,4 → 1,5 e 2,9 → 3,4 ms (máquina a 100 %; sem alta real na primeira
+dupla). Sem sombras 5,1 ms; só `people` 5,2 ms. Fotos de perto dos carros (`capture --only=trafego`) depois, porque as congeladas não têm frota.
+
+### Passo 7: avaliação
+PASSOU. P2, P3, P4, P5 resolvidos; P6 e P9 eram efeito da carga da máquina, sem causa no código; P1 segue: sombra ainda 2,9 ms, e o resto
+é de prédios (com a sessão de migração, `log/graphics.md`). P7 depende do usuário. P8 é o próximo ciclo. Falha de processo: as fotos da frota
+ficaram de fora da rodada do passo 6 e vieram depois; o plano devia tê-las. `run_gates.py` inteiro antes do push passa a valer sempre.
+Combinado com a sessão de migração: `render/buildings` e `facade_*` são dela; sombra de prédio só se mede depois do aviso dela.
+Instáveis que ela viu sob carga, próximos deste ciclo: `edit_fuzz_test` semente 3 (header) e `camera_input_test`.
 
 ## Como trabalhar (o que funcionou)
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
