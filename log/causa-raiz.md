@@ -249,6 +249,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Causa 5, janela calculada em parede lisa: `far_window` rodava a conta inteira (raio no recuo, hash, lâmpada, reflexo) em todo pixel de fachada do nível médio. Sai logo depois do peitoril quando o pixel não toca vão (`hole <= 0`), com as derivadas tiradas antes da saída. Fotos congeladas: 4 de 4 iguais.
 - Duas cascatas, agora com foto (`look`, passo temporário, 3 vistas a 1920x1080): 4,3 a 8,7% dos pixels mudam mais de 8 níveis, e as sombras ficam mais moles no lote e nas fachadas das torres. Rejeitadas por perda de qualidade.
 
+- Ruído de vias, terreno e água fica como está (`lattice_noise.gdshaderinc`): a tabela de 256 células repetiria a cada poucas centenas de metros nas frequências deles, e `wear.gdshaderinc` já avisa que uma emenda periódica aparece. Essas camadas somavam pouco na medida de antes (terreno 0,14; água 0,30; vias 0,42 ms, com todo o custo delas, não só o ruído): o risco de ladrilho visível não paga. Decidido pela leitura, sem foto.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
