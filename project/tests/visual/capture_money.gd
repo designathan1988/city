@@ -48,6 +48,7 @@ func _ready() -> void:
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	world.set_hour(NOON)
+	CityStore.dispatch(&"set_day_hour", [NOON]) # the bar's clock with the light, as the 4.0's run at noon
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
@@ -68,7 +69,7 @@ func _run() -> void:
 	await _view(ui.ground(b.max.x + FIELD_OUT_M, centre.z), 1.0)
 	hud.open_category("roads")
 	await ui.frames(4)
-	await ui.press(hud.drawer.catalog._cards_row.get_child(_street_card()).get_meta(&"button"))
+	await ui.press(_street_card().get_meta(&"button"))
 	await ui.shot("catalogo")
 	var a: Vector3 = rig.ground_at(FROM)
 	var e: Vector3 = rig.ground_at(TO)
@@ -112,15 +113,17 @@ func _run() -> void:
 	get_tree().quit(0)
 
 
-## The street's place among the cards of its category.
-func _street_card() -> int:
-	var card := 0
+## The street's card in the open tab, by its profile (the cards keep the catalogue's order, not the profiles').
+func _street_card() -> Control:
+	var index := -1
 	for p in CityStore.query(&"road_profiles"):
 		if p.id == STREET:
-			break
-		if p.category == "ruas":
-			card += 1
-	return card
+			index = p.index
+	for c in hud.drawer.catalog._cards_row.get_children():
+		if c.get_meta(&"index") == index:
+			return c
+	push_error("sem o cartão de %s" % STREET)
+	return hud.drawer.catalog._cards_row.get_child(0)
 
 
 func _view(at: Vector3, zoom: float) -> void:
@@ -145,12 +148,12 @@ func _state(what: String) -> void:
 	print(what, ": dinheiro ", CityStore.snapshot.money, " segmentos ", CityStore.snapshot.segments)
 
 
-## The first road found walking east from the middle of town.
+## A point on the axis of the first road found walking east from the middle of town (the pick finds a road from
+## road_pick_m off its axis, where a click takes the building of the lot).
 func _generated_road(from: Vector3) -> Vector3:
 	for i in SEARCH_STEPS:
-		var p := ui.ground(from.x + i * SEARCH_STEP_M, from.z)
-		var seg: Dictionary = CityStore.query(&"segment_at", [p])
+		var seg: Dictionary = CityStore.query(&"segment_at", [ui.ground(from.x + i * SEARCH_STEP_M, from.z)])
 		if seg.get("seg", -1) >= 0:
 			print("via gerada ", seg.seg, " perfil ", seg.profile)
-			return p
+			return seg.at
 	return from
