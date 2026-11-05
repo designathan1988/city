@@ -87,7 +87,7 @@ static func _shown(sl: Dictionary) -> Callable:
 	if unit == METRES:
 		return Formatters.format_length
 	var whole: bool = sl.step >= 1.0
-	return func(v: float) -> String: return ("%d%s" if whole else "%.1f%s") % [int(v) if whole else v, unit]
+	return func(v: float) -> String: return (str(int(v)) if whole else Formatters.format_tenths(v)) + unit
 
 
 static func _slider(drawer: HudDrawer, sl: Dictionary, tool_name: String) -> void:

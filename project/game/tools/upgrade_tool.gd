@@ -36,8 +36,6 @@ func click(p: Vector3) -> void:
 		ctl.hint.emit(refusal(r), false)
 		return
 	var text := Formatters.count_label("ui.insp.upgraded", r.segments) # the money joins it with " · ": no full stop
-	if r.money > 0:
-		text += " · −" + Formatters.format_money(r.money)
-	elif r.money < 0:
-		text += " · " + tr("ui.insp.refund").format({"value": Formatters.format_money(-r.money)})
+	if r.money != 0:
+		text += " · " + Formatters.format_cost(r.money)
 	ctl.hint.emit(text, true)

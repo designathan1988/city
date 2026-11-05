@@ -206,7 +206,6 @@ ui.insp.noDuplicate,Não dá para duplicar aqui: {why}.,Cannot duplicate here: {
 ui.insp.parkingOff,Vagas retiradas.,Parking removed.
 ui.insp.parkingOn,Vagas paralelas à guia.,Kerbside parking added.
 ui.insp.profileApplied,Perfil aplicado à via,Profile applied to the road
-ui.insp.refund,Devolvido {value},Refunded {value}
 ui.insp.reversed,Sentido invertido.,Direction reversed.
 ui.insp.ring,Faz parte de uma rotatória: quem está no anel tem a preferência.,Part of a roundabout: traffic on the ring has priority.
 ui.insp.roads.one,{count} via,{count} road

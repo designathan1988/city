@@ -4,6 +4,8 @@ extends RefCounted
 
 const GROUP := 3
 const PERCENT := 100.0
+## Below this a measure is whole: the float32 of the catalogue carries a few millionths.
+const WHOLE_EPS := 0.0001
 
 
 ## "<n> <noun>": the singular or the plural key by the count (<base>.one, <base>.other).
@@ -26,6 +28,11 @@ static func format_int(v: float) -> String:
 static func format_tenths(v: float) -> String:
 	var text := "%.1f" % v
 	return text.replace(".", ",") if TranslationServer.get_locale().begins_with("pt") else text
+
+
+## A measure as the catalogue writes it (Roadcraft crossSection.ts metresText): whole numbers bare, else one decimal.
+static func format_measure(v: float) -> String:
+	return str(int(round(v))) if absf(v - round(v)) < WHOLE_EPS else format_tenths(v)
 
 
 ## The city's regional style as the interface shows it: its units and money (data/game/start.json).

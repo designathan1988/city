@@ -151,5 +151,5 @@ func _card(p: Dictionary, widest: float) -> Control:
 	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name.custom_minimum_size.x = HudWidgets.px("rc_card_w")
 	HudWidgets.label(col, &"MetaLabel", tr("catalog.meta").format({
-		"width": "%.1f" % p.width, "price": Formatters.format_money(p.cost_per_m)}))
+		"width": Formatters.format_measure(p.width), "price": Formatters.format_money(p.cost_per_m)}))
 	return col
