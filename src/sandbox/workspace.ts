@@ -53,6 +53,7 @@ export interface CreateWorkspaceInput {
  * override.cfg (Godot docs: File paths in Godot projects, ProjectSettings), name a folder after the feature.
  */
 export function isolateUserData(workspace: string, feature: string): void {
+  fs.mkdirSync(path.dirname(path.join(workspace, OVERRIDE_CFG)), { recursive: true });
   fs.writeFileSync(
     path.join(workspace, OVERRIDE_CFG),
     `[application]

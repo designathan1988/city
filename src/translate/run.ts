@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import type { GraphIR } from '../graph/ir.ts';
-import { loadTypeScript, openProgram } from '../graph/typescript.ts';
+import { loadTypeScript, openProgram, type SourceProgram, type TypeScriptApi } from '../graph/typescript.ts';
 import { matchTargetTypes } from './target-types.ts';
 import { LiteralNames } from './literal-names.ts';
 import type { TranslateContext } from './context.ts';
@@ -62,6 +62,21 @@ export interface TranslateInput {
   readonly targetGraph: string;
   /** The differential's logic build: each target value type found is written as its own double-field type. */
   readonly logic?: boolean;
+  /** The program solved already (prepareTranslation), shared by the modules of one feature. */
+  readonly prepared?: PreparedProgram;
+}
+
+export interface PreparedProgram {
+  readonly ts: TypeScriptApi;
+  readonly sp: SourceProgram;
+  readonly sources: readonly TS.SourceFile[];
+  readonly flow: FlowGraph;
+  readonly patterns: Patterns;
+  readonly rules: TargetRules;
+  readonly relative: (f: TS.SourceFile) => string;
+  readonly placement: ModulePlacement;
+  /** The source types the target has, found by shape: the flow reads this same dictionary. */
+  readonly types: TranslationSpec['types'];
 }
 
 /** The logic build's header of value types: what `translate({ logic: true })` maps the source's value types to. */
@@ -81,13 +96,16 @@ function targetRules(targetRoot: string, rulesFile: string): TargetRules {
   return { allowed, layers: rules.cpp_layers };
 }
 
-export function translate(input: TranslateInput): TranslationResult {
+/**
+ * What depends on the program and on what the target owns, not on the module translated: the flow of values is a fixed
+ * point of the whole program, the costliest step by far, so a feature of many modules solves it once. The specs that
+ * share one must agree on the target's owned concepts (functions, classes, memoizers, patterns), the only part of a
+ * spec the flow reads.
+ */
+export function prepareTranslation(input: TranslateInput): PreparedProgram {
   const spec = resolveSpec(input.spec);
   const ts = loadTypeScript(input.sourceRoot, input.typescriptDir);
   const sp = openProgram(ts, input.sourceRoot, input.tsconfig);
-  const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
-  if (!file) throw new Error(`${spec.source} is not part of the program of ${input.tsconfig}`);
-  const errors: string[] = [];
   // The whole program, tests left out: every caller and every use is a fact; a test's values are not the program's.
   const sources = programFiles(sp.program, input.sourceRoot);
   const memoBodies: TS.Node[] = [];
@@ -105,17 +123,31 @@ export function translate(input: TranslateInput): TranslationResult {
     spec.types[source] = input.logic ? { ...found, type: `Logic${found.type}`, include: LOGIC_HEADER } : found;
   }
   const relative = (f: TS.SourceFile): string => path.relative(input.sourceRoot, f.fileName).split(path.sep).join('/');
-  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
   // Every file of the program placed at once: a source file keeps its owner and name whatever is translated with it.
   const placement = new ModulePlacement(sources.map(relative));
+  return { ts, sp, sources, flow, patterns, rules, relative, placement, types: spec.types };
+}
+
+export function translate(input: TranslateInput): TranslationResult {
+  const { ts, sp, sources, flow, patterns, rules, relative, placement, types: found } = input.prepared ?? prepareTranslation(input);
+  const spec = { ...resolveSpec(input.spec), types: found };
+  const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
+  if (!file) throw new Error(`${spec.source} is not part of the program of ${input.tsconfig}`);
+  const errors: string[] = [];
+  // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
+  flow.errors.length = 0;
+  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
-  const stateDecl = file.statements.find((st) => (ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st)) && st.name.text === spec.state.source);
-  if (!stateDecl) throw new Error(`${spec.source} declares no type ${spec.state.source}`);
-  types.structFor(sp.checker.getTypeAtLocation((stateDecl as TS.InterfaceDeclaration).name), spec.state.source);
-  if (spec.state.empty) emptyDefaults(ts, file, spec.state.empty, types.structs.get(spec.state.target)!);
+  // A module of pure functions has no state: its spec's state source is empty.
+  if (spec.state.source) {
+    const stateDecl = file.statements.find((st) => (ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st)) && st.name.text === spec.state.source);
+    if (!stateDecl) throw new Error(`${spec.source} declares no type ${spec.state.source}`);
+    types.structFor(sp.checker.getTypeAtLocation((stateDecl as TS.InterfaceDeclaration).name), spec.state.source);
+    if (spec.state.empty) emptyDefaults(ts, file, spec.state.empty, types.structs.get(spec.state.target)!);
+  }
   const translator = new Translator(c);
   const units = translator.trace();
   translator.plan(units);

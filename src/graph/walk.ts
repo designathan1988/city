@@ -10,7 +10,7 @@ import type { ModuleLoad } from './ir.ts';
 import { containerName, declarationName, externalKey, isNondeterministic, moduleOf } from './origin.ts';
 import { isModuleLevelVariable, outer, referenceKinds } from './references.ts';
 import type { Registry } from './registry.ts';
-import type { SourceProgram } from './typescript.ts';
+import type { SourceProgram, TypeScriptApi } from './typescript.ts';
 import { startsUnit, statementUnits, unitKey, unitOf, type UnitRef } from './units.ts';
 
 interface Targets {
@@ -86,10 +86,11 @@ export class Walker {
       }
     }
     let externalDone = false;
+    const platformGlobal = declarations.some((dd) => { const v = this.#valueDeclaration(dd); return !this.#inScope(v.getSourceFile().fileName) && isPlatformGlobal(ts, v); });
     for (const declaration of declarations) {
       const d = this.#valueDeclaration(declaration);
       if (!this.#inScope(d.getSourceFile().fileName)) {
-        if (!externalDone) this.#external(key, n, d, symbol.name);
+        if (!externalDone) this.#external(key, n, d, symbol.name, platformGlobal);
         externalDone = true;
         continue;
       }
@@ -190,7 +191,18 @@ export class Walker {
     const isAbstract = ts.canHaveModifiers(d) && (ts.getModifiers(d) ?? []).some((m) => m.kind === ts.SyntaxKind.AbstractKeyword);
     const isFunctionField = (ts.isPropertySignature(d) || ts.isPropertyDeclaration(d)) &&
       checker.getTypeAtLocation(d).getNonNullableType().getCallSignatures().length > 0;
-    if (!ts.isMethodSignature(d) && !isAbstract && !isFunctionField) return;
+    // A property of an interface (or an abstract one) is read through the accessors that implement it: a getter runs.
+    const isProperty = !isFunctionField && (ts.isPropertySignature(d) || (isAbstract && ts.isPropertyDeclaration(d)));
+    if (!ts.isMethodSignature(d) && !isAbstract && !isFunctionField && !isProperty) return;
+    if (isProperty) {
+      // only accessors run code; the classes having the interface's members (declared `implements` or not) hold them
+      for (const member of this.#structural(d)) {
+        if (!ts.isGetAccessorDeclaration(member) && !ts.isSetAccessorDeclaration(member)) continue;
+        const ref = unitOf(ts, member);
+        if (ref) this.#registry.add(ref, key, 'implementation');
+      }
+      return;
+    }
     const targets = this.#dispatchTargets(d, isFunctionField);
     for (const ref of targets.implementations) this.#registry.add(ref, key, 'implementation');
     for (const ref of targets.assigners) this.#registry.add(ref, key, 'callbackAssign');
@@ -209,6 +221,10 @@ export class Walker {
       const ref = this.#unitAt(location.fileName, location.textSpan.start);
       if (ref) targets.implementations.push(ref);
     }
+    // TypeScript's types are structural: a class with every member the interface requires implements it without
+    // saying so (`Meso` is the world's `MesoTraffic`), and the language service finds only the declared ones.
+    const known = new Set(targets.implementations.map((r) => r.node));
+    for (const member of this.#structural(d)) if (!known.has(member)) { const ref = unitOf(ts, member); if (ref) targets.implementations.push(ref); }
     if (isFunctionField) {
       for (const reference of service.getReferencesAtPosition(dsf.fileName, name.getStart(dsf)) ?? []) {
         if (!reference.isWriteAccess) continue;
@@ -218,6 +234,47 @@ export class Walker {
     }
     return targets;
   }
+
+  /** Members named as `d` of the program's classes that have every member `d`'s interface requires. */
+  #structural(d: TS.Declaration): TS.Declaration[] {
+    const cached = this.#structuralCache.get(d);
+    if (cached) return cached;
+    const result = this.#structuralOf(d);
+    this.#structuralCache.set(d, result);
+    return result;
+  }
+  readonly #structuralCache = new Map<TS.Declaration, TS.Declaration[]>();
+  #structuralOf(d: TS.Declaration): TS.Declaration[] {
+    const { ts, checker } = this.#sp;
+    const owner = d.parent;
+    if (!owner || !(ts.isInterfaceDeclaration(owner) || ts.isTypeLiteralNode(owner))) return [];
+    const name = ts.getNameOfDeclaration(d);
+    if (!name || !(ts.isIdentifier(name) || ts.isStringLiteral(name))) return [];
+    const ownerType = ts.isInterfaceDeclaration(owner) ? checker.getDeclaredTypeOfSymbol(checker.getSymbolAtLocation(owner.name)!) : checker.getTypeAtLocation(owner);
+    const required = checker.getPropertiesOfType(ownerType).filter((p) => !(p.flags & ts.SymbolFlags.Optional)).map((p) => p.name);
+    if (!this.#classMembers) {
+      const byName = new Map<string, { member: TS.ClassElement; names: Set<string> }[]>();
+      this.#classMembers = byName;
+      for (const sf of this.#sp.program.getSourceFiles()) {
+        if (!this.#inScope(sf.fileName)) continue;
+        const visit = (n: TS.Node): void => {
+          if (ts.isClassLike(n)) {
+            const names = new Set<string>();
+            const symbol = n.name ? checker.getSymbolAtLocation(n.name) : undefined;
+            if (symbol) for (const p of checker.getPropertiesOfType(checker.getDeclaredTypeOfSymbol(symbol))) names.add(p.name);
+            for (const m of n.members) {
+              const mn = m.name && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)) ? m.name.text : null;
+              if (mn) (byName.get(mn) ?? byName.set(mn, []).get(mn)!).push({ member: m, names });
+            }
+          }
+          ts.forEachChild(n, visit);
+        };
+        visit(sf);
+      }
+    }
+    return (this.#classMembers.get(name.text) ?? []).filter((c) => required.every((r) => c.names.has(r))).map((c) => c.member);
+  }
+  #classMembers: Map<string, { member: TS.ClassElement; names: Set<string> }[]> | null = null;
 
   #unitAt(fileName: string, position: number): UnitRef | null {
     if (!this.#inScope(fileName)) return null;
@@ -236,12 +293,16 @@ export class Walker {
     return found ? unitOf(ts, found) : null;
   }
 
-  #external(key: string, n: TS.Identifier | TS.PrivateIdentifier, d: TS.Declaration, fallback: string): void {
+  #external(key: string, n: TS.Identifier | TS.PrivateIdentifier, d: TS.Declaration, fallback: string, platformGlobal: boolean): void {
     const { ts } = this.#sp;
     const module = moduleOf(d.getSourceFile().fileName, this.#sp.root);
     const externalId = externalKey(module, containerName(ts, d), declarationName(ts, d, fallback));
-    for (const kind of referenceKinds(ts, n, d)) this.#registry.externalUse(key, externalId, kind);
+    const kinds = referenceKinds(ts, n, d);
+    for (const kind of kinds) this.#registry.externalUse(key, externalId, kind);
     if (isNondeterministic(externalId)) this.#registry.markNondeterministic(key, externalId);
+    // Assigning a global of the platform (a `declare var` or `declare function` at the top of a library's
+    // declarations, as `window.Worker = …` or `globalThis.fetch = …`) replaces it for every later use.
+    if (platformGlobal && isAssigned(ts, n)) this.#registry.patch(externalId, key);
   }
 
   #unresolvedImport(key: string, bindings: readonly TS.Declaration[]): void {
@@ -295,4 +356,22 @@ export class Walker {
       for (const ref of statementUnits(ts, statement)) this.#registry.add(ref, key, 'moduleLoad');
     }
   }
+}
+
+/** A global the platform declares: a variable or function at the top of a library's declarations (or in its `declare global`). */
+function isPlatformGlobal(ts: TypeScriptApi, d: TS.Declaration): boolean {
+  let decl: TS.Node = d;
+  if (ts.isVariableDeclaration(decl)) decl = decl.parent.parent; // the VariableStatement
+  if (!ts.isVariableStatement(decl) && !ts.isFunctionDeclaration(decl)) return false;
+  const p = decl.parent;
+  return ts.isSourceFile(p) || (ts.isModuleBlock(p) && ts.isModuleDeclaration(p.parent) && p.parent.name.getText() === 'global');
+}
+
+/** `n` (a name, or a member's name as in `window.Worker`) is what an `=` assigns. */
+function isAssigned(ts: TypeScriptApi, n: TS.Identifier | TS.PrivateIdentifier): boolean {
+  const p = n.parent;
+  const expr: TS.Node = p && ts.isPropertyAccessExpression(p) && p.name === n ? p : n;
+  const target = outer(ts, expr);
+  const user = target.parent;
+  return !!user && ts.isBinaryExpression(user) && user.left === target && user.operatorToken.kind === ts.SyntaxKind.EqualsToken;
 }

@@ -69,6 +69,28 @@ export class Registry {
     bump(nested(this.external, from, externalKey), kind, 1);
   }
 
+  /** external key of a platform global → the units that assign it (`window.Worker = …`, `globalThis.fetch = …`). */
+  readonly patches = new Map<string, Set<string>>();
+
+  /** `patcher` replaces the platform global `externalKey`: from then on, a use of the global runs what it put there. */
+  patch(externalKey: string, patcher: string): void {
+    (this.patches.get(externalKey) ?? this.patches.set(externalKey, new Set()).get(externalKey)!).add(patcher);
+  }
+
+  /**
+   * Every unit that uses a replaced global reaches the units that replace it (an indirect call: what runs is the
+   * replacement, which the patching unit defines). The patching unit is the target, so all it defines is reached.
+   */
+  applyPatches(): void {
+    for (const [from, uses] of this.external) {
+      for (const [key, kinds] of uses) {
+        const patchers = this.patches.get(key);
+        if (!patchers || [...kinds.keys()].every((k) => k === 'write')) continue;
+        for (const patcher of patchers) if (patcher !== from) this.edge(from, patcher, 'indirectCall');
+      }
+    }
+  }
+
   /** `target` was passed into or stored in `slot`: every unit calling through the slot reaches it. */
   slotTarget(slot: TS.Declaration, target: UnitRef): void {
     const targets = this.#slotTargets.get(slot) ?? new Map<string, UnitRef>();

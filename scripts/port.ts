@@ -10,8 +10,10 @@ import { RULE_BY_ID } from '../src/audit/catalog.ts';
 import { changedLines, findingsInChanges } from '../src/audit/changed.ts';
 import type { AuditResult } from '../src/audit/run.ts';
 import { removeTree } from '../src/common/files.ts';
+import { folderName, readInventory } from '../src/convert/inventory.ts';
 import type { GraphIR } from '../src/graph/ir.ts';
 import { readWorkspace } from '../src/sandbox/workspace.ts';
+import { addLayer, addMapLine, addStateMember } from '../src/translate/registry.ts';
 
 const CONVERTER = path.resolve(import.meta.dirname, '..');
 const CLI = path.join(CONVERTER, 'src', 'cli.ts');
@@ -39,7 +41,7 @@ const SLOT_STALE_GRACE_S = 600;
 const SW_HIDE = 0;
 const MIN_NODE = [23, 6];
 
-const MACHINE_KEYS = ['source', 'game', 'ports', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
+const MACHINE_KEYS = ['source', 'game', 'ports', 'inventory', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
 type Machine = Record<(typeof MACHINE_KEYS)[number], string>;
 
 function fail(message: string): never {
@@ -155,6 +157,71 @@ function extract(m: Machine, feature: string, entries: readonly string[]): numbe
   console.log(`\nfeature ${feature}: read ${path.join(out, 'feature.md')}, then the code in ${path.join(out, 'source')} and the shared ` +
     `declarations it uses in ${path.join(out, 'interface')} (boundary.json has every list)`);
   return 0;
+}
+
+interface Registration {
+  readonly subsystem: string;
+  readonly includes: readonly string[];
+  readonly mapLine: string;
+  readonly state: { readonly header: string; readonly anchor: string; readonly member: string; readonly root: string } | null;
+}
+
+/** The accepted files into the feature's clone, never the game: each new owner registered where the gates look. A file already there is refused. */
+function applyConversion(m: Machine, feature: string, dir: string): number {
+  const record = readWorkspace(portDir(m, feature));
+  const files = path.join(dir, 'files');
+  if (!fs.existsSync(files)) {
+    console.log('apply: no accepted files');
+    return 1;
+  }
+  const relative = (fs.readdirSync(files, { recursive: true, encoding: 'utf8' })).filter((f) => fs.statSync(path.join(files, f)).isFile());
+  const taken = relative.filter((f) => fs.existsSync(path.join(record.workspace, f)));
+  if (taken.length > 0) fail(`these files are already in the clone: ${taken.join(', ')}`);
+  fs.cpSync(files, record.workspace, { recursive: true });
+  const rulesFile = path.join(record.workspace, 'tools', 'gates', 'rules.json');
+  const docFile = path.join(record.workspace, 'CLAUDE.md');
+  const registrations = JSON.parse(fs.readFileSync(path.join(dir, 'registration.json'), 'utf8')) as Registration[];
+  for (const r of registrations) {
+    const rules = fs.readFileSync(rulesFile, 'utf8');
+    const parsed = JSON.parse(rules) as { cpp_layers: Record<string, string[]>; map_markers: [string, string] };
+    if (!parsed.cpp_layers[r.subsystem]) fs.writeFileSync(rulesFile, addLayer(rules, r.subsystem, r.includes), 'utf8');
+    const doc = fs.readFileSync(docFile, 'utf8');
+    if (!doc.includes(`\`${r.subsystem}/**\``)) fs.writeFileSync(docFile, addMapLine(doc, parsed.map_markers, r.subsystem, r.mapLine), 'utf8');
+    if (r.state) {
+      const root = path.join(record.workspace, r.state.root);
+      const header = fs.readFileSync(root, 'utf8');
+      if (!header.includes(`#include "${r.state.header}"`)) fs.writeFileSync(root, addStateMember(header, r.state.header, r.state.anchor, r.state.member), 'utf8');
+    }
+  }
+  console.log(`apply: ${relative.length} files into ${record.workspace}; run: node scripts/port.ts verify ${feature}`);
+  return 0;
+}
+
+/** A feature of the inventory (editor:poles) or a name already extracted, carried as far as facts allow: `converter convert`, then the clone with --apply. */
+function convert(m: Machine, id: string | undefined, rest: readonly string[]): number {
+  if (!id) fail('give a feature of the inventory (editor:poles) or the name of one already extracted');
+  const known = readInventory(m.inventory).find((f) => f.id === id);
+  const feature = known ? folderName(known.id) : featureName(id);
+  const boundary = path.join(featureDir(feature), 'boundary.json');
+  if (!fs.existsSync(boundary)) {
+    if (!known) fail(`${id} is not in ${m.inventory} and has no extraction`);
+    const code = extract(m, feature, known.sementes);
+    if (code !== 0) return code;
+  }
+  const cache = programCache(m);
+  if (!fs.existsSync(cache.graph)) fail(`${cache.graph} is missing: extract a feature first`);
+  const targetGraph = path.join(CONVERTER, 'out', 'game', 'cppgraph.json');
+  if (!fs.existsSync(targetGraph)) fail(`${targetGraph} is missing: run converter cppgraph on the game`);
+  const dir = path.join(portDir(m, feature), 'conversion');
+  const code = converter(m, ['convert', '--feature', feature, '--source-root', m.source, '--typescript', m.typescript, '--graph', cache.graph, '--boundary', boundary,
+    '--target-root', m.game, '--target-graph', targetGraph, '--library', path.join(CONVERTER, 'configs', 'conversion-library.json'), '--ports', m.ports,
+    '--cxx', m.cxx, '--constants', path.join(portDir(m, feature), 'constantes.json'), '--out', dir]);
+  console.log(`\nwhat stays open, unit by unit: ${path.join(dir, 'conversao.md')}`);
+  if (rest.includes('--apply')) {
+    const applied = applyConversion(m, feature, dir);
+    if (applied !== 0) return applied;
+  }
+  return code;
 }
 
 function workspace(m: Machine, feature: string): number {
@@ -463,7 +530,10 @@ async function serverCommand(action: string | undefined, rest: readonly string[]
 const HELP = `node scripts/port.ts <command> [--machine <file>] ...
   doctor                          every path of the machine file, node, the game's state, the source cache
   extract <feature> <entry>...    the whole feature from the 4.0 -> out/features/<feature> (feature.md, source/, boundary.json)
-  workspace <feature>             isolated clone of the game on convert/<feature> -> <ports>/<feature>/workspace, configured
+  convert <feature> [--apply]     a feature of the inventory (editor:poles): every unit decided from facts, the clean ones translated and
+                                  judged, the rest listed with the correct method -> <ports>/<feature>/conversion (conversao.md);
+                                  exit 1 while anything is open; --apply copies the accepted files into the feature's clone
+  workspace <feature>            isolated clone of the game on convert/<feature> -> <ports>/<feature>/workspace, configured
   verify <feature> [step]...      the game's own checks in the workspace (gates, build-release, build-debug, import, tests, capture)
   audit <feature>                 the methodology audit of the port's own lines (C++ graph of the workspace through clangd)
   reference <feature> <plan> [--timeout <s>]
@@ -488,6 +558,7 @@ async function main(argv: readonly string[]): Promise<number> {
   switch (command) {
     case 'doctor': return doctor(m);
     case 'extract': return extract(m, featureName(name), rest);
+    case 'convert': return convert(m, name, rest);
     case 'workspace': return workspace(m, featureName(name));
     case 'verify': return verify(m, featureName(name), rest);
     case 'audit': return audit(m, featureName(name));

@@ -44,6 +44,8 @@ export function buildGraph(options: GraphOptions): GraphIR {
     for (const sf of files) for (const statement of sf.statements) for (const ref of statementUnits(ts, statement)) registry.add(ref, null, null);
   }
   for (let i = 0; i < registry.queue.length; i++) walker.walk(registry.queue[i]!);
+  // A global of the platform the program replaces (`window.Worker = WatchedWorker`): every use of it runs the replacement.
+  registry.applyPatches();
 
   const units = [...registry.units.values()]
     .map((unit) => unitRecord(sp, registry, unit, relativePath(root, unit.file)))
