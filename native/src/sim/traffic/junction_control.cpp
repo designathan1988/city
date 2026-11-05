@@ -43,6 +43,28 @@ std::vector<Arm> arms_of(const CityState &s, int n) {
 	return arms;
 }
 
+// The same arms as arms_of, in the same order, from the road network alone (no `in`, the direction from the segment's
+// arm): a DirSeg is ok for a live segment between two nodes that is no rail line and has lanes that way (lane_graph.cpp
+// build_dir), so an arm with lanes either way is one of these. What the render reads (control_of, approach_rule) comes
+// from here: it holds only the map lock, and the lane graph catches up with an edit on the next traffic step.
+std::vector<Arm> network_arms(const CityState &s, int n) {
+	const RoadNode &node = s.roads.nodes[size_t(n)];
+	std::vector<Arm> arms;
+	for (int si : node.segs) {
+		const RoadSegment &g = s.roads.segs[size_t(si)];
+		if (!g.alive || g.a == g.b) continue;
+		const Profile &p = s.roads.profile_of(si);
+		if (p.rail || (p.fwd.empty() && p.back.empty())) continue;
+		const city::Arm out = arm_of(g.q, p, g.a == n ? 0 : 1);
+		Arm a;
+		a.seg = si;
+		a.priority = p.priority;
+		a.out = V2(float(out.dx), float(out.dz));
+		arms.push_back(a);
+	}
+	return arms;
+}
+
 Control decide(const RoadNode &node, const std::vector<Arm> &arms, const TrafficParams &tp) {
 	if (arms.size() < 3) return Control::NONE;
 	if (node.ctl == CTL_SIGNAL) return Control::SIGNAL;
@@ -186,7 +208,7 @@ int approach_rule(const CityState &s, int n, int seg) {
 	if (control_of(s, n) != Control::PRIORITY) return RULE_NONE;
 	const int plate = plate_rule(s.roads, seg, n);
 	if (plate) return plate;
-	std::vector<Arm> arms = arms_of(s, n);
+	std::vector<Arm> arms = network_arms(s, n); // build_junction's ranking of arms_of, without the lane graph
 	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
 	for (size_t k = 0; k < arms.size(); k++)
 		if (arms[k].seg == seg) return k < 2 ? RULE_NONE : RULE_YIELD;
@@ -210,21 +232,7 @@ void replan_signal(CityState &s, int n) {
 
 Control control_of(const CityState &s, int n) {
 	if (n < 0 || n >= int(s.roads.nodes.size())) return Control::NONE;
-	const RoadNode &node = s.roads.nodes[size_t(n)];
-	std::vector<Arm> arms; // an arm with lanes either way (DirSeg::ok), facing out of the node
-	for (int si : node.segs) {
-		const RoadSegment &g = s.roads.segs[size_t(si)];
-		if (!g.alive || g.a == g.b) continue;
-		const Profile &p = s.roads.profile_of(si);
-		if (p.rail || (p.fwd.empty() && p.back.empty())) continue;
-		const city::Arm out = arm_of(g.q, p, g.a == n ? 0 : 1);
-		Arm a;
-		a.seg = si;
-		a.priority = p.priority;
-		a.out = V2(float(out.dx), float(out.dz));
-		arms.push_back(a);
-	}
-	return decide(node, arms, s.catalog.traffic);
+	return decide(s.roads.nodes[size_t(n)], network_arms(s, n), s.catalog.traffic);
 }
 
 void build_junctions(CityState &s) {

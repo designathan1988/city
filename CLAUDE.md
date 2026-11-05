@@ -63,7 +63,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 catálogo ao `CityCore` (rejeita chave ausente) → `Simulation` roda em thread própria com tick fixo
 (`sim_tick_hz`), sob `map_mutex` compartilhado e `traffic_mutex`; comandos, crescimento e relógio tomam
 `map_mutex` exclusivo → `ChangeLog` (único canal de "sujo"; drenado sob trava compartilhada + mutex do log) →
-`RenderWorld.sync` (nunca toma o mapa exclusivo) manda as malhas ao `JobPool`: o job de prédio copia o que lê sob trava curta
+`RenderWorld.sync` (nunca toma o mapa exclusivo) manda as malhas ao `JobPool`, que leem só o mapa (vias, rua, dano), nunca o tráfego: o grafo de faixas alcança uma edição no passo seguinte e o passo o reescreve sob a trava compartilhada, então controle e regra do cruzamento vêm da rede (`control_of`, `approach_rule`); o job de prédio copia o que lê sob trava curta
 (`HeightPatch`); a conversão da malha entra em `render.upload_budget_mb` por quadro (o envio à GPU roda na próxima chamada do
 thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Poses por `PoseBuffer`; o save grava em thread própria.
 
