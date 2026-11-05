@@ -17,7 +17,8 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
    sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos analisadas com atenção (contra a referência e
    o estado anterior): nenhuma perda de qualidade visual; todo problema achado é corrigido.
 6. Nunca esperar às cegas um processo lançado (tempo-limite e acompanhamento); parar só processos próprios, pelo PID.
-7. Commit por tema e push regular em `origin/master`.
+7. Commit por tema e push regular em `origin/main` (`https://github.com/designathan1988/city`, a pasta única do projeto: ver
+   "Estrutura do projeto").
 - **Referência — sempre acessível:** `C:\Users\Jonathan\Documents\Projects\roadcraft-4.0-main` (Roadcraft 4.0) é a referência
   de visual e de comportamento de tudo (gráficos, prédios, tráfego, semáforos, pedestres, carros, postes e fios): o jogo
   deve ter todos os gráficos e funcionalidades dele. A pasta pode ser lida, aberta, rodada e estudada a qualquer momento.
@@ -50,13 +51,26 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 ## Comandos
 | O quê | Comando |
 |---|---|
-| Dependência do núcleo (uma vez) | `git clone https://github.com/godotengine/godot-cpp native/godot-cpp` (API 4.7) |
+| Dependência do núcleo (uma vez) | `git clone https://github.com/godotengine/godot-cpp native/godot-cpp && git -C native/godot-cpp checkout e103d348c4b2d8df7b819126d855e19381cb9a87` (API 4.7, o commit com que o núcleo compila) |
 | Gates | `python3 tools/gates/run_gates.py` (`--file X` para um arquivo, `--summary` resumo) |
 | Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` (DLL de release e de debug, a que o editor e os testes carregam) |
 | Testes core + e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
+
+## Estrutura do projeto (pasta única, 2026-11-05)
+`C:\Users\Jonathan\Desktop\city` é o projeto inteiro, e o que vai ao GitHub: o jogo (`native/`, `project/`) e as ferramentas em
+`tools/`, cada uma com o que é dela:
+- `tools/gates`, `tools/build`, `tools/assets`: os gates, o build e os assets do jogo.
+- `tools/converter`: o rastreador e tradutor do 4.0. Tem git próprio: a sessão dele trabalha nele, e o conteúdo é trazido para
+  cá por `git read-tree`. As histórias dele, a do worktree `converter-slice` e a do conversor antigo vão como branches
+  `tools/converter/*`.
+- `tools/processo`: as ferramentas de processo e os registros (ex-`C:\Projects\Roadcraft-windows`): portão, leitura, mapa do
+  4.0, hooks, `registro/`, `funcionalidades-4.0/`, `bin/portao`. Os rastreios do conversor antigo estão em `converter-antigo/out/features`.
+- `tools/portes`: o que cada porte escreveu (planos, coberturas, relatórios, regras); os branches dos clones vão como
+  `portes/<porte>/*`.
+- `tools/oracle-4.0`: a cópia instrumentada do 4.0 para o oráculo (`ORACLE_INSTRUMENT=1`), sem os caches nem os dados de sessão.
 
 ## Fluxo de dados e threads
 `DataTables` lê `data/**` (tabelas grandes divididas em partes com o mesmo schema) → `CityStore.boot` envia o
