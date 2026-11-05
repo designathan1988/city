@@ -6,6 +6,7 @@ const int PIECE_REVEAL = 1, PIECE_PANE = 2, PIECE_SILL = 3;
 const int BYTE_BITS = 8, BYTE_MASK = 255, FIN_SHIFT = 8, FIN_MASK = 15, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
 const float BYTE_MAX = 255.0, KIND_FAR_WALL = 3.0;
 const float DEPTH_STEP_M = 0.04; // shell.cpp BAY_DEPTH_STEP_M
+const float RECESS_M = 0.2; // how deep the pane of a far wall stands in it
 const float SILL_PAST_M = 0.07, SILL_T_M = 0.06, SILL_OUT_M = 0.07; // facade_parts.cpp SILL_PAST (each side), SILL_T, SILL_OUT
 const float SILL_LEAST = 0.05; // of the storey: an opening down to the floor has no sill
 const float REVEAL_TONE = 0.82, SILL_TONE = 1.18;

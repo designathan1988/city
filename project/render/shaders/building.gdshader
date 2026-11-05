@@ -8,6 +8,8 @@ shader_type spatial;
 render_mode cull_back;
 
 global uniform float night;
+global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
+global uniform vec3 sun_direction; // towards the sun, world space (daylight.gd)
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
 global uniform float rooms_awake; // the share of people awake at this hour (daylight.gd)
 global uniform float room_daylight; // how bright a room seen through its glass is by day, as light it sends out
@@ -29,13 +31,16 @@ varying vec3 v_world;
 varying vec3 v_wn;
 varying flat vec4 v_room0;
 varying flat vec4 v_trim;
+varying flat float v_recess; // how deep a far wall's panes stand, worked out in the fragment: 0 on a bay, whose recess is geometry
 
 #include "res://render/shaders/building_bay.gdshaderinc"
 
 void vertex() {
 	v_room0 = CUSTOM0;
 	v_trim = CUSTOM3;
+	v_recess = RECESS_M * building_recess;
 	if (UV2.y > BAY_MESH) {
+		v_recess = 0.0;
 		vec3 p = VERTEX;
 		vec2 uv = UV, uv2 = UV2;
 		vec4 col = COLOR, room, trim;
@@ -80,7 +85,7 @@ void fragment() {
 		albedo *= wall_gain;
 		if (kind == 3) {
 			float glass;
-			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, albedo, emit, glass);
+			far_window(UV, v_room0, uint(fract(UV2.x) * 256.0 + 0.5), n, V, v_recess, albedo, emit, glass);
 			rough = mix(rough, 0.15, glass);
 			nn = normalize(mix(nn, n, glass));
 		}

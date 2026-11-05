@@ -40,6 +40,8 @@ public:
 	// Lens) for render/shaders/props.gdshader.
 	const MeshBuilder &lenses() const { return lenses_; }
 	const MeshBuilder &pole() const { return pole_; }
+	const MeshBuilder &pole_cast() const { return pole_cast_; } // what a pole casts past cast_from(): its long parts
+	float cast_from() const { return cast_from_; }
 	// A wire from t = 0 to 1 along x, as a tube round it (near) or a coarser one (far): props.gdshader bends it.
 	const MeshBuilder &wire(bool near) const { return near ? wire_near_ : wire_far_; }
 	const MeshBuilder &unit_box() const { return box_; }
@@ -47,7 +49,7 @@ public:
 	// The pool of light (a disc of radius 1 at y = 0) and the beam (a cone from there to its apex at y = 1): lamp_glow.gdshader.
 	const MeshBuilder &light() const { return light_; }
 	// The renderer has baked the six above: their vertices need not stay on the CPU.
-	void drop_baked() { pole_ = wire_near_ = wire_far_ = box_ = beam_ = light_ = MeshBuilder(); }
+	void drop_baked() { pole_ = pole_cast_ = wire_near_ = wire_far_ = box_ = beam_ = light_ = MeshBuilder(); }
 	// Copies `src` into `dst`, every vertex moved by basis then origin.
 	static void append(MeshBuilder &dst, const MeshBuilder &src, const godot::Basis &b, const godot::Vector3 &o);
 	// Basis whose +z is `face` (horizontal) and +y up.
@@ -55,7 +57,8 @@ public:
 
 private:
 	MeshBuilder meshes_[int(PropKind::COUNT)];
-	MeshBuilder lenses_, pole_, wire_near_, wire_far_, box_, beam_, light_;
+	float cast_from_ = 0;
+	MeshBuilder lenses_, pole_, pole_cast_, wire_near_, wire_far_, box_, beam_, light_;
 };
 
 } // namespace city

@@ -41,6 +41,7 @@ private:
 	// What a chunk draws as instances.
 	struct Draws {
 		MultiMeshDraw poles, wires_near, wires_far, boxes, beams, light;
+		MultiMeshDraw pole_shadow_near, pole_shadow_far; // the poles' shadow: the whole mesh in the near chunks, the light one past them
 		MeshDraw pools;
 		int count = 0;
 		void free();
@@ -55,7 +56,7 @@ private:
 	SignLook signs_;
 	PropKit kit_;
 	mutable SignAtlas atlas_;
-	OwnedMesh pole_mesh_, wire_near_mesh_, wire_far_mesh_, box_mesh_, beam_mesh_, light_mesh_;
+	OwnedMesh pole_mesh_, pole_cast_mesh_, wire_near_mesh_, wire_far_mesh_, box_mesh_, beam_mesh_, light_mesh_;
 	std::unordered_map<int64_t, MeshDraw> chunks_;
 	std::unordered_map<int64_t, Draws> draws_;
 	Draws preview_;

@@ -65,6 +65,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("agent", errors);
 	glass_ = ctx.material("agent_glass", errors);
+	shadow_ = ctx.material("shadow_caster", errors);
 	Dictionary t = ctx.table("agents", errors);
 	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
@@ -313,7 +314,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 			shown_[i][level] = d.count;
 			if (last) continue;
 			shadow_draws_[i][level].shadow_only = true;
-			shadow_draws_[i][level].set(scenario_, meshes_[i][level + 1].rid, RID(), bufs[i][level], box, true, LAYER_VEHICLES);
+			shadow_draws_[i][level].set(scenario_, meshes_[i][level + 1].rid, shadow_, bufs[i][level], box, true, LAYER_VEHICLES);
 		}
 }
 

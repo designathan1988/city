@@ -14,6 +14,10 @@ const CAR_VIEW_FROM := Vector3(3, 2.5, 14) # x to its left, y up, z ahead, as in
 const CAR_HIGH_FROM := Vector3(0, 45, 50)
 const CAR_VIEW_AT := Vector3(0, 0.5, 0)
 const CAMERA_CLEAR_M := 1.5
+## Round a car, near enough to judge it: where it stands on its shadow, the shadow on its own body, each end, a wheel and from
+## over it. Eye in the vehicle's frame and the height looked at.
+const ORBIT := [[Vector3(3.5, 1.4, 3.5), 0.7], [Vector3(-3.5, 1.4, 3.5), 0.7], [Vector3(3.5, 1.4, -3.5), 0.7], [Vector3(-3.5, 1.4, -3.5), 0.7],
+	[Vector3(4.5, 0.5, 0.0), 0.5], [Vector3(-4.5, 0.5, 0.0), 0.5], [Vector3(1.8, 0.6, 1.8), 0.3], [Vector3(0.5, 5.0, 0.5), 0.5]]
 ## Per type: name, camera offset in the vehicle frame (x to its left, y up, z ahead) and the height looked at.
 const VIEWS := {
 	BUS: [["22_onibus", Vector3(4, 3, 16), 1.6], ["22_onibus_lado", Vector3(-7, 2.6, 1), 1.6], ["22_onibus_alto", Vector3(7, 9, 4), 1.0]],
@@ -35,6 +39,8 @@ static func car_shots(cap: Node, probe: Dictionary, ground: Vector3) -> void:
 		var car: Vector3 = probe.sample[k]
 		await cap._shot("07_carro", eye, car + CAR_VIEW_AT)
 		await cap._shot("08_carro_alto", _eye(probe, k, CAR_HIGH_FROM), car)
+		for i in ORBIT.size():
+			await cap._shot("09_carro_orbita_%d" % i, _eye(probe, k, ORBIT[i][0]), car + Vector3.UP * ORBIT[i][1])
 		return
 	print("captura: nenhum carro com a câmera fora de geometria")
 

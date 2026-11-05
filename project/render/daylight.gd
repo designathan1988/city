@@ -115,6 +115,7 @@ func set_hour(hour: float) -> void:
 	_env.glow_enabled = glow_on and night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
 	RenderingServer.global_shader_parameter_set(&"night", night)
+	RenderingServer.global_shader_parameter_set(&"sun_direction", _sun.global_basis.z)
 	var awake := _awake_share(hour)
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)

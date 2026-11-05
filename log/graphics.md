@@ -159,9 +159,19 @@ Ressalvas abertas:
 - GPU 3,6 ms acima de antes: dívida a pagar.
 - Passada a faixa de 500 m as janelas seguem sem relevo.
 
+## Ciclo 3 (relevo por pixel)
+
+- **Passo 1.** Problema P10: além de 500 m a baia é retângulo plano; janela sem recuo. O par do viaduto com o 4.0 foi fechado com a foto do arquivo (`reference40.mjs configs/plans/viaduct.json`): tabuleiro, pilares e rampas equivalem.
+- **Passo 2.** Krecklau e Kobbelt: a fachada é avaliada por pixel sobre o polígono-base, por ray casting (fontes no ciclo 1).
+- **Passo 3.** Depois do ciclo 2, a geometria deixa de ser a resposta nessa faixa: 1 quad por baia ainda pagaria 2,5 execuções por pixel. A profundidade tem de vir do fragmento.
+- **Passo 4.** Recuo analítico em `far_window`, sol por `sun_direction`, peitoril e sombra dele; desligado no vidro das baias com geometria (`v_recess`).
+- **Previsão:** algumas dezenas de operações por pixel de vidro, sem textura nova: menos de 1 ms em `low3`.
+- **Passo 5.** `project.godot`, `daylight.gd`, `building.gdshader`, `building_bay.gdshaderinc`, `building_far_window.gdshaderinc`.
+- **Passo 6.** A/B intercalado na mesma execução (`look` passo `global`, `building_recess`), seis janelas, vista z1,5, com a GPU a 100 % pelas outras sessões: desligado 25,85 ms, ligado 25,98 ms. Custo: 0,13 ms. A medida solta de 24 ms e 56 engasgos era carga externa (`nvidia-smi` 100 %) e foi descartada. Fotos lado a lado: 7,6 % dos pixels mudaram, fachadas mais definidas.
+- **Passo 7.** Aprovado. Método novo: em máquina dividida, só vale A/B intercalado.
+
 ## Próximo ciclo
 
-1. Relevo por pixel num quad para a faixa de além de 500 m (Krecklau: ray casting da fachada), sem triângulo a mais.
 2. Nível distante pelos dados reais (P8).
 3. Nível perto também em instâncias (P6, P7): paga a dívida de GPU e memória.
 4. Riqueza de perto.

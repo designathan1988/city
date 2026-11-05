@@ -2,11 +2,13 @@
 #include "render/props/prop_kit.h"
 
 #include "core/color.h"
+#include "core/math.h"
 #include "core/units.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace godot;
@@ -93,6 +95,33 @@ MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &
 	return b;
 }
 
+// The longest side of a part: what decides whether its shadow reads.
+float part_size(const Dictionary &p) {
+	const String kind = p.get("shape", "");
+	if (kind == "box") {
+		const Vector3 d = vec3(p["max"]) - vec3(p["min"]);
+		return std::max({ std::fabs(d.x), std::fabs(d.y), std::fabs(d.z) });
+	}
+	if (kind == "cylinder" || kind == "frustum") return std::max(float(p["height"]), 2.f * float(p["radius"]));
+	return BIG;
+}
+
+// What a far prop casts: its parts long enough to show in a shadow, round ones with fewer sides. The parts keep their marks, so
+// the shader that shows or hides them per instance goes on working.
+MeshBuilder cast_parts(const Dictionary &props, const char *name, const Dictionary &cast, PackedStringArray &errors) {
+	MeshBuilder b;
+	const Array list = props[name];
+	const float least = cast["least_m"];
+	const int sides = cast["segments"];
+	for (int i = 0; i < list.size(); i++) {
+		Dictionary p = Dictionary(list[i]).duplicate();
+		if (p.has("lens") || part_size(p) < least) continue;
+		if (p.has("segments")) p["segments"] = std::min(int(p["segments"]), sides);
+		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), float(p.get("part", 0))), errors);
+	}
+	return b;
+}
+
 // A wire: `chords` straight pieces of a tube of `sides` sides round the x axis from 0 to 1, flat-shaded per side. UV is the
 // wire's height and its seat along an urban pole's arm, UV2.y its seat along a rural pole's (or WIRE_SECONDARY_MARK), which
 // props.gdshader hangs from the poles by their kinds.
@@ -168,6 +197,11 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
 	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
 	pole_ = parts(props, "pole", errors);
+	if (!props.has("pole_cast")) errors.push_back("streets.json props: falta pole_cast");
+	if (!errors.is_empty()) return false;
+	const Dictionary cast = props["pole_cast"];
+	pole_cast_ = cast_parts(props, "pole", cast, errors);
+	cast_from_ = cast["from_m"];
 	for (const char *key : { "y_m", "z_m", "rural_z_m", "secondary_z_m" })
 		if (!wires.has(key)) errors.push_back(String("streets.json wires: falta ") + key);
 	if (!errors.is_empty()) return false;

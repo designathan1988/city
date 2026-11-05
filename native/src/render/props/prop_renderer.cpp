@@ -13,6 +13,8 @@ constexpr float NEVER_END = 0.f; // a visibility range without an end
 
 void PropRenderer::Draws::free() {
 	poles.free();
+	pole_shadow_near.free();
+	pole_shadow_far.free();
 	wires_near.free();
 	wires_far.free();
 	boxes.free();
@@ -39,6 +41,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	rs->material_set_param(glow_material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
 	rs->material_set_param(glow_material_, "pool_handover_m", ctx.catalog->tune.render_pool_handover_m);
 	pole_mesh_ = kit_.pole().bake();
+	pole_cast_mesh_ = kit_.pole_cast().bake();
 	wire_near_mesh_ = kit_.wire(true).bake();
 	wire_far_mesh_ = kit_.wire(false).bake();
 	box_mesh_ = kit_.unit_box().bake();
@@ -80,7 +83,12 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
 	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + (inst.boxes.size() + inst.beams.size()) / MM_STRIDE);
 	instances_ += d.count;
-	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, false, LAYER_FURNITURE, false);
+	d.pole_shadow_near.shadow_only = d.pole_shadow_far.shadow_only = true;
+	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_near.range(NEVER_END, kit_.cast_from());
+	d.pole_shadow_far.range(kit_.cast_from(), NEVER_END);
 	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, LAYER_FURNITURE, false);
 	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, LAYER_FURNITURE, false);
 	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true, LAYER_FURNITURE);
