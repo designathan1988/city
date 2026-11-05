@@ -49,6 +49,7 @@ GroundAt ground_named(const Dictionary &g) {
 Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const Catalog &cat = state_->catalog;
+	if (cat.profiles.empty()) return Dictionary(); // a refused catalog has no road to lay the scene with
 	RoadNetwork net;
 	net.init(&cat, nullptr);
 	const Array nodes = scene.get("nodes", Array()), segs = scene.get("segs", Array());

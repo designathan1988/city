@@ -83,18 +83,22 @@ Corner corner_fillet(const Arm &a, const Arm &b) {
 	}
 	double s = 0, t = 0;
 	bool hit = line_line(a.dz * aw, -a.dx * aw, a.dx, a.dz, -b.dz * bw, b.dx * bw, b.dx, b.dz, s, t);
-	double max_hw = std::max({ a.left, a.right, b.left, b.right });
-	if (!hit || psi < ACUTE || std::hypot(a.dz * aw + a.dx * s, -a.dx * aw + a.dz * s) > CORNER_MITER * max_hw || s < -max_hw || t < -max_hw) {
-		double tr = BEVEL_PAD * (aw + bw) / (2 * std::sin(std::max(psi, STRAIGHT_EPS) / 2));
-		return { CornerMode::BEVEL, tr, tr, 0, 0, 0 };
-	}
-	double r = std::max(KERB_RADIUS_MIN, std::min(KERB_RADIUS_MAX, FILLET_SHARE * std::min(a.left, b.right)));
-	double run = r / std::tan(psi / 2);
-	double xx = a.dz * aw + a.dx * s, xz = -a.dx * aw + a.dz * s;
-	double bx = a.dx + b.dx, bz = a.dz + b.dz, bl = std::hypot(bx, bz);
-	if (bl == 0) bl = 1;
-	double k = r / std::sin(psi / 2);
-	return { CornerMode::FILLET, s + run, t + run, r, xx + bx / bl * k, xz + bz / bl * k };
+	const double xx = a.dz * aw + a.dx * s, xz = -a.dx * aw + a.dz * s;
+	const double scaled = std::max(KERB_RADIUS_MIN, std::min(KERB_RADIUS_MAX, FILLET_SHARE * std::min(a.left, b.right)));
+	// A kerb return of radius r on the corner: the arc's centre on the bisector, each leg cut where the arc leaves it.
+	const auto fillet = [&](double r) {
+		const double run = r / std::tan(psi / 2), k = r / std::sin(psi / 2);
+		double bx = a.dx + b.dx, bz = a.dz + b.dz, bl = std::hypot(bx, bz);
+		if (bl == 0) bl = 1;
+		return Corner{ CornerMode::FILLET, s + run, t + run, r, xx + bx / bl * k, xz + bz / bl * k };
+	};
+	const double setback = BEVEL_PAD * (aw + bw) / (2 * std::sin(std::max(psi, STRAIGHT_EPS) / 2));
+	if (!hit) return { CornerMode::BEVEL, setback, setback, 0, 0, 0 };
+	if (psi >= ACUTE && std::hypot(xx, xz) <= CORNER_MITER * std::max(aw, bw)) return fillet(scaled);
+	// A wedge too long to round at its own radius: rounded at the one the setback asks for, when that is a kerb's (corners.ts), else cut straight.
+	const double need = (setback - std::min(s, t)) * std::tan(psi / 2);
+	if (psi >= ACUTE && need <= KERB_RADIUS_MAX) return fillet(std::max(scaled, need));
+	return { CornerMode::BEVEL, setback, setback, 0, 0, 0 };
 }
 
 std::vector<SharpNode> nodes_too_sharp(const RoadNetwork &net, float min_gap) {

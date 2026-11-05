@@ -224,6 +224,9 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
   - `road_height_cases.gd` e as teclas no `camera_input_test`: passam.
 - 17:30 Par com o 4.0: **não foi possível fotografar a via nova.** Pelo `look.mjs`, na cópia `city\roadcraft`, a via entra no documento e os carros andam nela, mas nada é desenhado (cidade e mapa vazio; 25 s de espera). O console diz `[roads] a road tile worker has been silent ... still waiting`. Causa não investigada a fundo: parei por custo. Nesse mapa vazio só a primeira via foi feita, porque o Escape do plano fecha a ferramenta. As medidas das estruturas vêm do `render/structures.ts`, não de foto.
 
+- 17:35 Cantos das junções: medidos no oráculo (`tests/world`, teste descartado). Avenida com boulevard: raio 4,5, recuos 13,65 e 11,65 no nível da guia; rua com rua: 3 e 7,15; 60°: 15,85 e 14,12. A fórmula do `junction.cpp` dá os mesmos valores (o jogo mede no nível do asfalto, 0,15 m a menos, como o nível asfalto do 4.0). A pendência "raio 5 m" estava errada e saiu. Faltava só a cunha comprida: agora é arredondada pelo raio que o recuo pede, como no `corners.ts`, antes de virar chanfro.
+- 17:35 Chave de tuning ausente: no caminho do jogo ela é recusada pelo nome e o jogo fica de pé (`boot_refusal_test`). O crash vinha do `grade_probe`, que lia `profiles[0]` num catálogo vazio quando um teste seguia depois do boot recusado. Corrigido.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
@@ -233,7 +236,7 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
    - o registro do conversor está em `log/conversor.md`.
 2. **Par de um vão urbano-rural** (a foto ainda não foi tirada).
 3. **Elevação:** falta o que está em Pendências no `CLAUDE.md`; o par do viaduto depende de o 4.0 desenhar a via nova no `look.mjs`.
-4. **Laboratório F7, portão `verify`, cantos das junções** (`corners.ts`, raio 4,5) e a chave de tuning ausente que derruba o jogo.
+4. **Laboratório F7 e portão `verify`.**
 5. **Nomes ainda em português:** as chaves `sementes` do `features.json`, as mensagens dos testes e capturas.
 
 ## Regras de convivência (não esquecer)
