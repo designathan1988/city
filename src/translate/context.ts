@@ -109,6 +109,8 @@ export interface TranslateContext {
   readonly types: TypeMapper;
   readonly patterns: Patterns;
   readonly errors: string[];
+  /** The class members that could not be written, with why: their class stands without them. */
+  readonly dropped: Map<FunctionPlan, string>;
   readonly includes: Set<string>;
   readonly functions: Map<TS.Symbol, FunctionPlan>;
   readonly memos: Map<TS.Symbol, MemoPlan>;

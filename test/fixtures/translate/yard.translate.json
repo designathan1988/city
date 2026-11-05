@@ -36,7 +36,8 @@
     "priceOf",
   "tallied",
   "chainSum",
-    "shelved"
+    "shelved",
+    "mixed"
   ],
   "pending": [],
   "number": "float",

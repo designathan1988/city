@@ -28,6 +28,8 @@ export interface TranslationResult {
   readonly declared: readonly string[];
   readonly pending: readonly Pending[];
   readonly errors: readonly string[];
+  /** Why each class member left out was left out: its class is written without it. */
+  readonly dropped: readonly string[];
   /** What other owners call, and the types they see: what a harness needs to drive the translation. */
   readonly api: readonly ApiFunction[];
   readonly structs: readonly CppStruct[];
@@ -145,7 +147,7 @@ export function translate(input: TranslateInput): TranslationResult {
   // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
   flow.errors.length = 0;
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative, targetTypes);
-  const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
+  const c: TranslateContext = { dropped: new Map(), ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
@@ -171,7 +173,7 @@ export function translate(input: TranslateInput): TranslationResult {
   translator.emit();
   const files = translationFiles(c, translator.emitted, translator.builders);
   const listed = [
-    ...[...c.functions.values()].map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
+    ...[...c.functions.values()].filter((f) => !c.dropped.has(f)).map((f) => ({ source: `${f.module}#${f.source}`, cpp: f.cpp, kind: (f.edit ? 'edit' : 'query') as 'edit' | 'query', line: f.line })),
     ...[...c.memos.values()].map((m) => ({ source: m.source, cpp: `${m.struct} (index)`, kind: 'index' as const, line: m.line })),
     ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);
@@ -179,11 +181,11 @@ export function translate(input: TranslateInput): TranslationResult {
   const api = [...c.functions.values()].filter((f) => f.exported && !f.owner)
     .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
   const declared = [...new Set([
-    ...[...c.functions.values()].map((f) => `${f.module}#${f.source}`),
+    ...[...c.functions.values()].filter((f) => !c.dropped.has(f)).map((f) => `${f.module}#${f.source}`),
     ...[...c.constants.values()].filter((k) => k.module).map((k) => `${k.module}#${k.source}`),
     ...[...types.structs.values()].filter((s) => s.declared && s.module && !types.indexStructs.has(s.name)).map((s) => `${s.module}#${s.declared}`),
   ])].sort();
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, pending: spec.pending,
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, dropped: [...c.dropped.values()], pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
     valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),

@@ -266,7 +266,7 @@ async function judge(spec: TranslationSpec, input: JudgeInput): Promise<Judged> 
   if (findings.length > 0) return { ...refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`)), attempt: { errors: [], findings, files: result.files, units: result.units } };
   const registration: Registration = { subsystem: spec.subsystem, includes: spec.layer.includes, mapLine: spec.registry?.mapLine ?? '',
     state: spec.state.source ? { header: result.stateHeader, anchor: spec.state.anchor ?? '', member: spec.state.memberLine ?? '', root: spec.state.root } : null };
-  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), declared: result.declared, refusals: [] }, files: result.files, registration };
+  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), declared: result.declared, refusals: [...result.dropped] }, files: result.files, registration };
 }
 
 export async function runConvertCommand(argv: readonly string[]): Promise<void> {

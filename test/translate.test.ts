@@ -113,6 +113,12 @@ describe('translate', () => {
     assert.ok(bad.errors.some((e) => e.includes('the edit addItem reads an index')), bad.errors.join('\n'));
   });
 
+  it('leaves out of a class the member with no C++ form and what calls it, and keeps the class', () => {
+    assert.equal(result.dropped.length, 2, result.dropped.join('; '));
+    assert.match(file('yard_types.h'), /\bdoubled\(\);/);
+    assert.doesNotMatch(file('yard_types.h'), /\bnamed\(\);/);
+  });
+
   it('writes C++ that compiles without a warning against the target headers', (t) => {
     const cxx = process.env['CONVERTER_CXX'];
     if (!cxx) return t.skip('set CONVERTER_CXX to compile the translation');

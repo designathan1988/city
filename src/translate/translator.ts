@@ -61,7 +61,8 @@ export class Translator extends Emitter {
     try {
       write();
     } catch (error) {
-      this.fail(node, `the translator stopped: ${(error as Error).message.split('\n')[0]}`);
+      const at = (error as Error).stack?.split('\n')[1]?.trim().replace(/^.*[\\/]/, '') ?? '';
+      this.fail(node, `the translator stopped at ${at}: ${(error as Error).message.split('\n')[0]}`);
     }
   }
 
@@ -304,13 +305,21 @@ export class Translator extends Emitter {
     const owner = (kind: MemberOwner['kind'], m: TS.ClassElement): MemberOwner => ({
       struct, source, kind, node, isStatic: (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0 });
     let made = false;
+    // a member whose signature has no C++ form leaves the class, as one whose body has none
+    const planned = (write: () => void): void => {
+      const errors = this.c.errors.length;
+      const flowErrors = this.c.flow.errors.length;
+      write();
+      const plan = [...this.c.functions.values()].at(-1);
+      if (plan?.owner?.node === node) this.#fell(plan, errors, flowErrors);
+    };
     for (const m of node.members) {
       const at = m.getSourceFile().getLineAndCharacterOfPosition(m.getStart()).line + 1;
       if (ts.isConstructorDeclaration(m) && m.body) {
         made = true;
         this.#planFunction(m, 'constructor', at, m, owner('constructor', m));
-      } else if (ts.isMethodDeclaration(m) && m.body) this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('method', m));
-      else if (ts.isGetAccessorDeclaration(m)) this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('getter', m));
+      } else if (ts.isMethodDeclaration(m) && m.body) planned(() => this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('method', m)));
+      else if (ts.isGetAccessorDeclaration(m)) planned(() => this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('getter', m)));
       else if (ts.isSetAccessorDeclaration(m)) this.fail(m, 'a setter');
       else if (ts.isClassStaticBlockDeclaration(m)) this.fail(m, 'a static block');
       else if (ts.isPropertyDeclaration(m) && owner('method', m).isStatic) this.fail(m, 'a static field');
@@ -509,16 +518,53 @@ export class Translator extends Emitter {
 
   /** Every planned function and index written out, each with the modules its code uses. */
   emit(): void {
+    // a member that cannot be written leaves its class, and what calls it falls with it, until nothing more falls
+    const errors = this.c.errors.length;
+    const flowErrors = this.c.flow.errors.length;
+    for (;;) {
+      this.c.errors.length = errors;
+      this.c.flow.errors.length = flowErrors;
+      this.emitted.length = 0;
+      this.builders.length = 0;
+      for (const s of this.c.types.structs.values()) {
+        s.methods = [];
+        s.methodTypes = [];
+      }
+      if (this.#emitAll() === 0) return;
+    }
+  }
+
+  /** Writes every plan; how many members fell this round. */
+  #emitAll(): number {
+    let fallen = 0;
     for (const plan of this.c.functions.values()) {
+      if (this.c.dropped.has(plan)) continue;
       const from = this.emitted.length;
+      const errors = this.c.errors.length;
+      const flowErrors = this.c.flow.errors.length;
       const uses = this.#recording(() => this.#guarded(plan.decl, () => this.#emitFunction(plan)));
       for (const e of this.emitted.slice(from)) for (const u of uses) e.uses.add(u);
+      if (this.#fell(plan, errors, flowErrors)) {
+        this.emitted.length = from;
+        fallen++;
+      }
     }
     for (const memo of this.c.memos.values()) {
       const from = this.builders.length;
       const uses = this.#recording(() => this.#emitMemo(memo));
       for (const b of this.builders.slice(from)) for (const u of uses) b.uses.add(u);
     }
+    return fallen;
+  }
+
+  /** A member with errors since these counts leaves its class, the errors with it. A constructor holds the class up: its errors stay. */
+  #fell(plan: FunctionPlan, errors: number, flowErrors: number): boolean {
+    const grew = this.c.errors.length > errors || this.c.flow.errors.length > flowErrors;
+    if (!grew || !plan.owner || plan.owner.kind === 'constructor') return false;
+    this.c.dropped.set(plan, this.c.errors[errors] ?? this.c.flow.errors[flowErrors] ?? 'left out');
+    this.c.errors.length = errors;
+    this.c.flow.errors.length = flowErrors;
+    return true;
   }
 
   /** What a piece of emission uses: every struct or enum the types meet, every function, constant or index it calls. */

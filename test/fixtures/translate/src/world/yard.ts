@@ -354,3 +354,24 @@ export function shelved(n: number): number {
   names.put('ab');
   return kept.size + (kept.size > 0 ? kept.at(kept.size - 1) : Grade.Low) + names.at(0).length;
 }
+
+/** A class with one member C++ has no form for, and one that calls it: both leave, the class stays. */
+class Mixed {
+  n = 3;
+
+  doubled(): number {
+    return this.n * 2;
+  }
+
+  kind(v: unknown): string {
+    return typeof v;
+  }
+
+  named(): string {
+    return this.kind(this.n);
+  }
+}
+
+export function mixed(k: number): number {
+  return new Mixed().doubled() + k;
+}

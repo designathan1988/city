@@ -392,6 +392,7 @@ export abstract class ExpressionEmitter {
   #member(e: TS.PropertyAccessExpression, obj: Value): Value {
     const name = e.name.text.replace(/^#/, '');
     const getter = this.#memberPlan(e.name);
+    if (getter && this.c.dropped.has(getter)) return this.fail(e, `${getter.source} was left out of its class`);
     if (getter?.owner?.kind === 'getter') return { code: `${obj.code}->${getter.cpp}()`, type: holdsTypeParameter(getter.ret) ? this.#typeOf(e) : getter.ret };
     const t = target(obj.type);
     const access = arrow(obj.type);
@@ -530,6 +531,7 @@ export abstract class ExpressionEmitter {
 
   /** A method called: on its instance, or on its class when it is static. */
   #memberCall(e: TS.CallExpression, plan: FunctionPlan, receiver: TS.Expression): Value {
+    if (this.c.dropped.has(plan)) return this.fail(e, `${plan.source} was left out of its class`);
     this.uses?.add(plan.module);
     this.calledFunction = true;
     const args = this.#argumentsOf(plan, e.arguments, new Map()).join(', ');
