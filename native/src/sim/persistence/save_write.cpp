@@ -129,11 +129,13 @@ std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *part
 	w.put<uint32_t>(SAVE_VERSION);
 	w.put<int32_t>(s.map_index);
 	w.put<uint32_t>(s.seed);
+	mark("header");
 	w.put<double>(s.money);
 	w.put<uint8_t>(s.unlimited_money ? 1 : 0);
+	mark("money");
 	w.put<double>(s.clock.minutes.load());
 	w.put<double>(s.clock.day_shift.load());
-	mark("header");
+	mark("clock");
 	write_terrain(w, s.terrain);
 	mark("terrain");
 	write_variants(w, s.catalog.variants);

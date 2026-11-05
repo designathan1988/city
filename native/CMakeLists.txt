@@ -27,6 +27,12 @@ elseif(MSVC)
     target_compile_options(citycore PRIVATE /W4)
 endif()
 
+# The tests' DLL: an index out of a container stops there, the first time, with its place (libc++ Hardening.rst, fast mode): the
+# bug shows in any ordinary run, not when the heap happens to make it visible.
+if(GODOTCPP_TARGET STREQUAL "template_debug")
+    target_compile_definitions(citycore PRIVATE _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST)
+endif()
+
 get_target_property(GODOTCPP_SUFFIX godot-cpp GODOTCPP_SUFFIX)
 set(OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../project/bin/")
 

@@ -38,7 +38,7 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
   - `Heightfield::water_original`/`set_water`: save e "voltar ao original" não regeneram a água (antes: a cada save, sob a trava).
 
 ## Em andamento / a fazer (em ordem)
-0. Instáveis sob carga (`edit_fuzz_test` semente 3 no header, `camera_input_test`). Cache de cascata: a API do Godot 4.7 não tem; pediria motor próprio.
+0. Cache de cascata: a API do Godot 4.7 não tem; pediria motor próprio. `run_tests.sh` ainda só olha o código de saída.
 1. Abertura: leitura 0,9 s, rodadas do greide 1 s (seriais, dependem da ordem), lotes 2,1 s (limite de 24 threads lógicas).
 2. CPU de render +0,5 a 1,5 ms pelas instâncias só de sombra (GPU -1 ms; o quadro é limitado pela GPU): medir com a máquina quieta.
 3. Backlog do CLAUDE.md "Pendências": são recursos de outras linhas (porte), não causas desta.
@@ -189,6 +189,20 @@ Instáveis que ela viu sob carga, próximos deste ciclo: `edit_fuzz_test` sement
 
 Correção do usuário (18:50): uma foto que não mostra o detalhe não prova nada; olhar o elemento de vários ângulos, zoom e pan. Feito: órbita de
 8 vistas do carro (`09_carro_orbita_*`), antes (`10280a13`) e depois lado a lado: carroceria, rodas, sombra e contato iguais.
+
+## Ciclo 2: crash e preço variável
+- Passo 1. `edit_fuzz_test` e o conversor: preço (`money`) diferente entre rodadas e signal 11 em `upgrade_road`. Pilha traduzida: `edit_value_change`
+  → `settle_road_edit` → `change_profile_at`.
+- Passo 2. [libc++ Hardening](https://releases.llvm.org/18.1.1/projects/libcxx/docs/Hardening.html), [hardened stdlib](https://wrocpp.github.io/toolset/hardened-stdlib/), [ASan no Windows](https://github.com/google/sanitizers/wiki/AddressSanitizerWindowsPort).
+- Passo 3. `j_set_profile` gravava só `op.seg.len`; `built()` lia `nodes[-1].lift` (a = b = -1): leitura fora do vetor. Lixo do heap = preço errado; página sem mapa = crash.
+  Melhorar uma via cobrava errado no jogo. Foi a mesma causa dos dois sintomas.
+- Passo 4. Gravar o trecho inteiro no diário. Hardening `FAST` na DLL de debug: fora do limite para na primeira vez, sem carga.
+- Erro de método meu, apontado pelo usuário: rodadas de 16 e 24 processos para provocar falha, sem pesquisa. Proibido daqui em diante: leitura da pilha e do código, e hardening.
+
+- Passo 5. `journal_ops.cpp` (trecho inteiro no diário), `CMakeLists.txt` (hardening), `city_camera.gd` (o piso do olho vale depois do puxão: era o instável `olho acima do chão`), `save_write.cpp` (`money` e `clock` no hash por parte), `suite.py` (crash é falha).
+- Passo 6, primeira rodada. ERRO: quase toda cena parou em 30 s, e a suíte disse 28/28, porque crash saía com código 0. O hardening achou `band[size_t(b) - 1]` com `INNER` em `TreeLook::keep_at` (lê `band[-1]`), bug antigo em toda abertura; sem efeito no jogo, porque aquela banda tem `keep` igual nas pontas. Corrigido e reproduzido em 5 s com a menor cena.
+- Passo 6, segunda rodada: `quick.sh --all`: digest igual, 4 de 4 fotos, 28/28, gates OK, 69 s.
+- Passo 7. PASSOU. Método novo: pilha lida e hardening no lugar de carga; dois bugs de memória e um de câmera achados em segundos.
 
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
