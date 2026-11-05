@@ -1,0 +1,48 @@
+// CityLandscape: the Landscape drawer's script API, an area of the core (api/city_core.h): weather, clouds, fog, painted ground,
+// trees, elements, biome and the fields the screen passes read (city_core_nature.cpp). Made and freed by CityCore; game/store/city_store.gd
+// reaches it through CityCore.area("landscape").
+#pragma once
+
+#include <godot_cpp/classes/object.hpp>
+
+namespace city {
+
+struct CityState;
+class RenderWorld;
+
+class CityLandscape : public godot::Object {
+	GDCLASS(CityLandscape, godot::Object)
+
+public:
+	void attach(CityState *state, RenderWorld *render) {
+		state_ = state;
+		render_ = render;
+	}
+	godot::Dictionary set_weather(const godot::Dictionary &change);
+	godot::Dictionary add_cloud(const godot::Dictionary &c);
+	godot::Dictionary edit_cloud(int id, const godot::Dictionary &c);
+	godot::Dictionary remove_cloud(int id);
+	godot::Dictionary scatter_clouds(int count, const godot::Dictionary &like, float variation);
+	godot::Dictionary clear_clouds(), clear_fog(), clear_gullies(), clear_trees(), clear_elements(), clear_relief();
+	int cloud_at(const godot::Vector3 &origin, const godot::Vector3 &direction, float drift_x, float drift_z) const;
+	godot::Dictionary fog_brush(const godot::Vector3 &p, float radius, float strength, float height, float speed, bool erase);
+	godot::Dictionary paint_brush(const godot::Vector3 &p, float radius, float strength, float hardness, int kind);
+	godot::Dictionary tree_brush(const godot::Vector3 &p, float radius, int mode, int kind, const godot::Dictionary &brush);
+	godot::Dictionary element_brush(const godot::Vector3 &p, float radius, int kind, const godot::Dictionary &brush, bool erase);
+	godot::Array effects_near(const godot::Vector3 &p, float reach, int first_effect) const;
+	godot::Dictionary set_biome(int region);
+	godot::Dictionary landscape() const;
+	int64_t sky_revision() const;
+	godot::Dictionary fog_field(const godot::Vector3 &camera);
+	godot::Dictionary canyon_field(const godot::Vector3 &camera);
+	godot::Dictionary shore_field();
+
+protected:
+	static void _bind_methods();
+
+private:
+	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
+	RenderWorld *render_ = nullptr;
+};
+
+} // namespace city

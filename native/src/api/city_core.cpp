@@ -26,7 +26,7 @@ namespace {
 const char *const OVERLAY_NAMES[int(Overlay::COUNT)] = { "zones", "congestion" }; // Layers rows (data/ui/drawers.json)
 } // namespace
 
-CityCore::CityCore() : state_(std::make_unique<CityState>()) {}
+CityCore::CityCore() : state_(std::make_unique<CityState>()) { make_areas(); }
 
 namespace {
 
@@ -44,6 +44,7 @@ Vector3 ground_seen(const Camera3D &cam) {
 } // namespace
 
 CityCore::~CityCore() {
+	free_areas(); // first: they point at the state and the render
 	join_save();
 	sim_.stop();
 	if (state_ && state_->jobs) state_->jobs->wait_idle();

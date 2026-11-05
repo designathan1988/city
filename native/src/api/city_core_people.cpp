@@ -1,8 +1,9 @@
 // The census of who is on foot, for the tests and the captures: how old they are, who walks with whom, where they are, the
 // doors the walkers use, and the nearest of each to a point, for a camera to look at.
-#include "api/city_core.h"
+#include "api/city_probes.h"
 #include "core/units.h"
 #include "sim/traffic/traffic_system.h"
+#include "sim/state/city_state.h"
 
 #include <algorithm>
 #include <cmath>
@@ -86,7 +87,7 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 
 } // namespace
 
-Dictionary CityCore::people_census(const Vector3 &at, float radius) {
+Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -170,7 +171,7 @@ Dictionary CityCore::people_census(const Vector3 &at, float radius) {
 	return d;
 }
 
-void CityCore::set_city_hour(float hour) {
+void CityProbes::set_city_hour(float hour) {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 	CityClock &c = state_->clock;
 	c.day_shift = double(hour) * MINUTES_PER_HOUR - c.minutes.load();

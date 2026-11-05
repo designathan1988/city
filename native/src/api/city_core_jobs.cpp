@@ -1,7 +1,9 @@
 // The job pool for the tests: its rule, seen on a pool of its own.
-#include "api/city_core.h"
+#include "api/city_probes.h"
 
 #include "core/job_pool.h"
+
+#include <godot_cpp/core/class_db.hpp>
 
 #include <atomic>
 #include <mutex>
@@ -11,7 +13,7 @@ using namespace godot;
 namespace city {
 
 // The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
-Dictionary CityCore::job_pool_probe() const {
+Dictionary CityProbes::job_pool_probe() const {
 	constexpr int64_t CHUNK_ID = 7;
 	std::mutex gate;
 	std::atomic<int> older{ 0 }, newer{ 0 }, other_lane{ 0 };
@@ -29,6 +31,20 @@ Dictionary CityCore::job_pool_probe() const {
 	d["other_lane"] = other_lane.load();
 	d["replaced"] = int64_t(pool.replaced());
 	return d;
+}
+
+void CityProbes::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
+	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityProbes::kerb_busy);
+	ClassDB::bind_method(D_METHOD("dock_count"), &CityProbes::dock_count);
+	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityProbes::lot_clearance);
+	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityProbes::vehicles_near);
+	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
+	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);
+	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityProbes::amber_stops);
+	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);
+	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
 }
 
 } // namespace city

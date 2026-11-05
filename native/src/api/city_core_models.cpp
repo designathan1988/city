@@ -1,14 +1,17 @@
 // Build > Models for the script side: the catalogue, a body in hand as bytes (a model, a building, a file of the player's), where its
 // ghost goes, setting it down and drawing it apart from the city.
 #include "api/body_doc.h"
-#include "api/city_core.h"
+#include "api/city_builder.h"
 #include "api/edit_result.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/b40/roof_shape.h"
 #include "sim/commands/model_ops.h"
 #include "sim/persistence/body_codec.h"
+#include "sim/state/city_state.h"
+#include "render/render_world.h"
 
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/core/class_db.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -37,7 +40,7 @@ bool body_of(const PackedByteArray &bytes, b40::Body &b) {
 }
 } // namespace
 
-Array CityCore::model_list() const {
+Array CityBuilder::model_list() const {
 	Array out;
 	for (const b40::ModelSpec &m : state_->buildings.designs.models.items) {
 		Dictionary d;
@@ -50,7 +53,7 @@ Array CityCore::model_list() const {
 	return out;
 }
 
-Dictionary CityCore::doc_body(const Dictionary &doc) const {
+Dictionary CityBuilder::doc_body(const Dictionary &doc) const {
 	Dictionary out;
 	b40::Body b;
 	float front_x = 0, front_y = 0;
@@ -65,7 +68,7 @@ Dictionary CityCore::doc_body(const Dictionary &doc) const {
 	return out;
 }
 
-PackedByteArray CityCore::model_bytes(const String &id) const {
+PackedByteArray CityBuilder::model_bytes(const String &id) const {
 	const b40::Data &data = state_->buildings.designs;
 	const b40::ModelSpec *m = data.models.find(std::string(id.utf8().get_data()));
 	if (!m) return PackedByteArray();
@@ -75,7 +78,7 @@ PackedByteArray CityCore::model_bytes(const String &id) const {
 }
 
 // What a building is, to keep as a model: its body and what it is used for.
-Dictionary CityCore::building_bytes(int id) const {
+Dictionary CityBuilder::building_bytes(int id) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	const CityState &s = *state_;
@@ -90,7 +93,7 @@ Dictionary CityCore::building_bytes(int id) const {
 	return d;
 }
 
-Vector3 CityCore::body_size(const PackedByteArray &bytes) const {
+Vector3 CityBuilder::body_size(const PackedByteArray &bytes) const {
 	b40::Body b;
 	if (!body_of(bytes, b)) return Vector3();
 	float top = 0;
@@ -98,7 +101,7 @@ Vector3 CityCore::body_size(const PackedByteArray &bytes) const {
 	return Vector3(b.plan.W, b.plan.D, top);
 }
 
-Dictionary CityCore::place_fit(const Vector3 &at, const Vector2 &size, double rot) const {
+Dictionary CityBuilder::place_fit(const Vector3 &at, const Vector2 &size, double rot) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	PlaceSnap p = snap_place(*state_, size.x, size.y, at.x, at.z, rot);
 	Dictionary d;
@@ -109,41 +112,70 @@ Dictionary CityCore::place_fit(const Vector3 &at, const Vector2 &size, double ro
 	return d;
 }
 
-String CityCore::place_check(const PackedByteArray &bytes, double x, double z, double rot) const {
+String CityBuilder::place_check(const PackedByteArray &bytes, double x, double z, double rot) const {
 	b40::Body b;
 	if (!body_of(bytes, b)) return "tool.failed";
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return String(place_problem(*state_, b, x, z, rot).c_str());
 }
 
-Dictionary CityCore::place_model(const PackedByteArray &bytes, double x, double z, double rot, int fn, int zone) {
+Dictionary CityBuilder::place_model(const PackedByteArray &bytes, double x, double z, double rot, int fn, int zone) {
 	b40::Body b;
 	if (!body_of(bytes, b)) return Dictionary();
 	return run_edit(*state_, PLACE_LABEL, [&](CityState &s) { return place_body(s, b, x, z, rot, fn, zone); });
 }
 
-int CityCore::stage_show(const PackedByteArray &bytes, const RID &scenario, bool ghost) {
+int CityBuilder::stage_show(const PackedByteArray &bytes, const RID &scenario, bool ghost) {
 	b40::Body b;
-	return body_of(bytes, b) ? render_.stage_show(state_->buildings.designs, b, scenario, ghost) : 0;
+	return body_of(bytes, b) ? render_->stage_show(state_->buildings.designs, b, scenario, ghost) : 0;
 }
 
-void CityCore::stage_move(int handle, const Transform3D &at) { render_.stage().move(handle, at); }
-void CityCore::stage_free(int handle) { render_.stage().remove(handle); }
-int CityCore::stage_triangles(int handle) const { return render_.stage().triangles(handle); }
+void CityBuilder::stage_move(int handle, const Transform3D &at) { render_->stage().move(handle, at); }
+void CityBuilder::stage_free(int handle) { render_->stage().remove(handle); }
+int CityBuilder::stage_triangles(int handle) const { return render_->stage().triangles(handle); }
 
-void CityCore::bind_models() {
-	ClassDB::bind_method(D_METHOD("model_list"), &CityCore::model_list);
-	ClassDB::bind_method(D_METHOD("model_bytes", "id"), &CityCore::model_bytes);
-	ClassDB::bind_method(D_METHOD("building_bytes", "id"), &CityCore::building_bytes);
-	ClassDB::bind_method(D_METHOD("body_size", "bytes"), &CityCore::body_size);
-	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityCore::place_fit);
-	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityCore::doc_body);
-	ClassDB::bind_method(D_METHOD("place_check", "bytes", "x", "z", "rot"), &CityCore::place_check);
-	ClassDB::bind_method(D_METHOD("place_model", "bytes", "x", "z", "rot", "function", "zone"), &CityCore::place_model);
-	ClassDB::bind_method(D_METHOD("stage_show", "bytes", "scenario", "ghost"), &CityCore::stage_show);
-	ClassDB::bind_method(D_METHOD("stage_move", "handle", "at"), &CityCore::stage_move);
-	ClassDB::bind_method(D_METHOD("stage_free", "handle"), &CityCore::stage_free);
-	ClassDB::bind_method(D_METHOD("stage_triangles", "handle"), &CityCore::stage_triangles);
+
+void CityBuilder::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("model_list"), &CityBuilder::model_list);
+	ClassDB::bind_method(D_METHOD("model_bytes", "id"), &CityBuilder::model_bytes);
+	ClassDB::bind_method(D_METHOD("building_bytes", "id"), &CityBuilder::building_bytes);
+	ClassDB::bind_method(D_METHOD("body_size", "bytes"), &CityBuilder::body_size);
+	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityBuilder::place_fit);
+	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityBuilder::doc_body);
+	ClassDB::bind_method(D_METHOD("place_check", "bytes", "x", "z", "rot"), &CityBuilder::place_check);
+	ClassDB::bind_method(D_METHOD("place_model", "bytes", "x", "z", "rot", "function", "zone"), &CityBuilder::place_model);
+	ClassDB::bind_method(D_METHOD("stage_show", "bytes", "scenario", "ghost"), &CityBuilder::stage_show);
+	ClassDB::bind_method(D_METHOD("stage_move", "handle", "at"), &CityBuilder::stage_move);
+	ClassDB::bind_method(D_METHOD("stage_free", "handle"), &CityBuilder::stage_free);
+	ClassDB::bind_method(D_METHOD("stage_triangles", "handle"), &CityBuilder::stage_triangles);
+	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityBuilder::body_info);
+	ClassDB::bind_method(D_METHOD("body_pick", "origin", "dir"), &CityBuilder::body_pick);
+	ClassDB::bind_method(D_METHOD("body_outline", "id", "vol"), &CityBuilder::body_outline);
+	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityBuilder::body_storeys);
+	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityBuilder::body_insert_storey);
+	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityBuilder::body_resize);
+	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityBuilder::body_add_wing);
+	ClassDB::bind_method(D_METHOD("body_add_setback", "id", "vol", "inset", "storeys"), &CityBuilder::body_add_setback);
+	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityBuilder::body_split);
+	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityBuilder::body_remove_volume);
+	ClassDB::bind_method(D_METHOD("body_heights", "id", "ground_h", "storey_h"), &CityBuilder::body_heights);
+	ClassDB::bind_method(D_METHOD("body_bay", "id", "vol", "storey", "side", "bay"), &CityBuilder::body_bay);
+	ClassDB::bind_method(D_METHOD("body_set_bay", "id", "vol", "storey", "side", "bay", "what", "scope"), &CityBuilder::body_set_bay);
+	ClassDB::bind_method(D_METHOD("body_set_zone", "id", "vol", "side", "storey0", "storey1", "bay0", "bay1", "what"), &CityBuilder::body_set_zone);
+	ClassDB::bind_method(D_METHOD("body_set_pattern", "id", "vol", "storey", "side", "pattern"), &CityBuilder::body_set_pattern);
+	ClassDB::bind_method(D_METHOD("body_set_face", "id", "vol", "side", "patch"), &CityBuilder::body_set_face);
+	ClassDB::bind_method(D_METHOD("body_set_relief", "id", "vol", "region", "snap"), &CityBuilder::body_set_relief);
+	ClassDB::bind_method(D_METHOD("body_set_roof", "id", "vol", "roof"), &CityBuilder::body_set_roof);
+	ClassDB::bind_method(D_METHOD("body_roof_shape", "id", "vol", "pitch", "ridge", "fall"), &CityBuilder::body_roof_shape);
+	ClassDB::bind_method(D_METHOD("body_paint", "id", "scope", "vol", "side", "storey", "finish", "colour"), &CityBuilder::body_paint);
+	ClassDB::bind_method(D_METHOD("body_add_gear", "id", "vol", "at", "spec"), &CityBuilder::body_add_gear);
+	ClassDB::bind_method(D_METHOD("body_remove_gear", "id", "vol", "gear"), &CityBuilder::body_remove_gear);
+	ClassDB::bind_method(D_METHOD("body_turn_gear", "id", "vol", "gear"), &CityBuilder::body_turn_gear);
+	ClassDB::bind_method(D_METHOD("body_add_part", "id", "vol", "storey", "side", "bay", "spec"), &CityBuilder::body_add_part);
+	ClassDB::bind_method(D_METHOD("body_add_part_at", "id", "at", "spec"), &CityBuilder::body_add_part_at);
+	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityBuilder::body_remove_part);
+	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityBuilder::body_turn_part);
+	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityBuilder::body_repeat_part);
 }
 
 } // namespace city

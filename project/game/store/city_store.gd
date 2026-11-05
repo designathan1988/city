@@ -15,6 +15,7 @@ var snapshot: Dictionary = {}
 var constants: Dictionary = {}
 var saves: CitySaves
 var _core: Node3D
+var _routes: Dictionary = {} # a StoreApi name -> the Callable on the core, or on the area of it, that runs it
 var _since_refresh := 0.0
 
 
@@ -24,6 +25,19 @@ func _ready() -> void:
 	add_child(_core)
 	constants = _core.constants()
 	saves = CitySaves.new(self, _core)
+	for table: Dictionary in [StoreApi.COMMANDS, StoreApi.QUERIES]:
+		for name: StringName in table:
+			_routes[name] = _route(table[name])
+
+
+## "<area>/<method>" runs on that area of the core (CityCore.area); a bare method, on the core itself.
+func _route(spec: String) -> Callable:
+	var cut := spec.find("/")
+	if cut < 0:
+		return Callable(_core, spec)
+	var area: Object = _core.area(spec.left(cut))
+	assert(area != null, "área desconhecida: %s" % spec)
+	return Callable(area, spec.substr(cut + 1))
 
 
 ## Loads the data tables into the core and prepares rendering. Returns the list of problems (empty = ok).
@@ -60,7 +74,7 @@ func first_road() -> int:
 
 func dispatch(command: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.COMMANDS.has(command), "comando desconhecido: %s" % command)
-	var result: Variant = _core.callv(StoreApi.COMMANDS[command], args)
+	var result: Variant = _routes[command].callv(args)
 	if not command.begins_with("preview"):
 		refresh()
 	if result is Dictionary and result.has("error") and not result.error.is_empty() and not command.begins_with("preview"):
@@ -70,7 +84,7 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 
 func query(name: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.QUERIES.has(name), "consulta desconhecida: %s" % name)
-	return _core.callv(StoreApi.QUERIES[name], args)
+	return _routes[name].callv(args)
 
 
 ## The Simulation panel: shares of the city's own density of vehicles and people, and the demand.

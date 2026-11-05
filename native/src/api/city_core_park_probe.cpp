@@ -1,9 +1,10 @@
 // park_sample: where the capture looks at the parked side of the traffic, clear of tall buildings so a camera high over it
 // stands in nothing (project/tests/visual/capture_traffic.gd); camera_clear: whether a capture may stand at a point.
-#include "api/city_core.h"
+#include "api/city_probes.h"
 
 #include "sim/buildings/b40/record.h"
 #include "sim/traffic/traffic_system.h"
+#include "sim/state/city_state.h"
 
 #include <algorithm>
 #include <mutex>
@@ -129,7 +130,7 @@ void band_to(const CityState &s, Dictionary &d) {
 }
 } // namespace
 
-Dictionary CityCore::park_sample() {
+Dictionary CityProbes::park_sample() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -172,7 +173,7 @@ Dictionary CityCore::park_sample() {
 	return d;
 }
 
-int CityCore::dock_count() {
+int CityProbes::dock_count() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	int docks = 0;
@@ -185,7 +186,7 @@ int CityCore::dock_count() {
 	return docks;
 }
 
-Variant CityCore::kerb_busy() {
+Variant CityProbes::kerb_busy() {
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TrafficState &t = state_->traffic;
 	for (const KerbStop &k : t.kerb_stops)
@@ -196,7 +197,7 @@ Variant CityCore::kerb_busy() {
 	return Variant();
 }
 
-bool CityCore::camera_clear(const Vector3 &at, float radius, bool vehicles) {
+bool CityProbes::camera_clear(const Vector3 &at, float radius, bool vehicles) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;

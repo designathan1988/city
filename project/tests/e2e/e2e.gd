@@ -65,16 +65,15 @@ func _ready() -> void:
 
 ## The amber's decision (light_rule.cpp) in numbers: speed, metres to where it stops, speed at the line, amber left.
 func _check_amber_rule() -> void:
-	var core: Object = CityStore._core
-	_check(core.amber_stops(10.0, 30.0, NO_TURN, 4.0, SUV), "amarelo: quem pode parar como o entreverdes supõe para")
-	_check(not core.amber_stops(16.67, 50.0, NO_TURN, 4.0, SUV), "amarelo: quem não para e chega à linha segue")
+	_check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, SUV]), "amarelo: quem pode parar como o entreverdes supõe para")
+	_check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, SUV]), "amarelo: quem não para e chega à linha segue")
 	# just out of the far model near the line, as the soak saw it: slow enough to stop, the amber nearly over
-	_check(core.amber_stops(7.32, 9.57, NO_TURN, 0.1, SUV), "amarelo: quem não chega à linha a tempo para")
-	_check(not core.amber_stops(14.0, 40.0, NO_TURN, 3.5, SUV), "amarelo: em frente chega a tempo")
-	_check(core.amber_stops(14.0, 40.0, TURN_MS, 3.5, SUV), "amarelo: freando para a conversão não chega e para")
-	_check(not core.amber_stops(14.0, 10.0, NO_TURN, 0.1, SUV), "amarelo: quem nem a emergência para segue")
-	_check(absf(core.amber_wanted(60.0) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
-	_check(absf(core.amber_wanted(70.0) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
+	_check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, SUV]), "amarelo: quem não chega à linha a tempo para")
+	_check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, SUV]), "amarelo: em frente chega a tempo")
+	_check(CityStore.query(&"amber_stops", [14.0, 40.0, TURN_MS, 3.5, SUV]), "amarelo: freando para a conversão não chega e para")
+	_check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, SUV]), "amarelo: quem nem a emergência para segue")
+	_check(absf(CityStore.query(&"amber_wanted", [60.0]) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
+	_check(absf(CityStore.query(&"amber_wanted", [70.0]) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
 
 
 func _wait_render() -> void:

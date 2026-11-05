@@ -1,5 +1,5 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
-#include "api/city_core.h"
+#include "api/city_builder.h"
 #include "api/edit_result.h"
 #include "core/color.h"
 #include "sim/buildings/b40/gen.h"
@@ -8,6 +8,7 @@
 #include "sim/commands/body_pick.h"
 #include "sim/commands/body_ops.h"
 #include "sim/persistence/body_codec.h"
+#include "sim/state/city_state.h"
 
 #include <godot_cpp/variant/array.hpp>
 
@@ -53,7 +54,7 @@ Dictionary edit(CityState &state, int id, F &&op) {
 }
 } // namespace
 
-Dictionary CityCore::body_info(int id) const {
+Dictionary CityBuilder::body_info(int id) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	const CityState &s = *state_;
@@ -88,7 +89,7 @@ Dictionary CityCore::body_info(int id) const {
 	return d;
 }
 
-Dictionary CityCore::body_pick(const Vector3 &origin, const Vector3 &dir) const {
+Dictionary CityBuilder::body_pick(const Vector3 &origin, const Vector3 &dir) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	Vector3 n = dir.normalized();
@@ -104,7 +105,7 @@ Dictionary CityCore::body_pick(const Vector3 &origin, const Vector3 &dir) const 
 	return d;
 }
 
-PackedVector3Array CityCore::body_outline(int id, int vol) const {
+PackedVector3Array CityBuilder::body_outline(int id, int vol) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	PackedVector3Array out;
 	const CityState &s = *state_;
@@ -124,39 +125,39 @@ PackedVector3Array CityCore::body_outline(int id, int vol) const {
 	return out;
 }
 
-Dictionary CityCore::body_storeys(int id, int vol, int count) {
+Dictionary CityBuilder::body_storeys(int id, int vol, int count) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_storeys(b, t, vol, count); });
 }
 
-Dictionary CityCore::body_insert_storey(int id, int vol, int at, bool above) {
+Dictionary CityBuilder::body_insert_storey(int id, int vol, int at, bool above) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_insert_storey(b, t, vol, at, above); });
 }
 
-Dictionary CityCore::body_resize(int id, int vol, int side, double delta, bool snap) {
+Dictionary CityBuilder::body_resize(int id, int vol, int side, double delta, bool snap) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_resize(b, t, vol, side, float(delta), snap); });
 }
 
-Dictionary CityCore::body_add_wing(int id, int vol, int side, double depth, double length) {
+Dictionary CityBuilder::body_add_wing(int id, int vol, int side, double depth, double length) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_wing(b, t, vol, side, float(depth), float(length)); });
 }
 
-Dictionary CityCore::body_add_setback(int id, int vol, double inset, int storeys) {
+Dictionary CityBuilder::body_add_setback(int id, int vol, double inset, int storeys) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_setback(b, t, vol, float(inset), storeys); });
 }
 
-Dictionary CityCore::body_split(int id, int vol, int level) {
+Dictionary CityBuilder::body_split(int id, int vol, int level) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_split_at_floor(b, t, vol, level); });
 }
 
-Dictionary CityCore::body_remove_volume(int id, int vol) {
+Dictionary CityBuilder::body_remove_volume(int id, int vol) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_remove_volume(b, t, vol); });
 }
 
-Dictionary CityCore::body_heights(int id, double ground_h, double storey_h) {
+Dictionary CityBuilder::body_heights(int id, double ground_h, double storey_h) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_heights(b, t, float(ground_h), float(storey_h)); });
 }
 
-int CityCore::body_bay(int id, int vol, int storey, int side, int bay) const {
+int CityBuilder::body_bay(int id, int vol, int storey, int side, int bay) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return b40::BAY_NONE;
@@ -167,19 +168,19 @@ int CityCore::body_bay(int id, int vol, int storey, int side, int bay) const {
 	return storey >= 0 && storey < v.storeys ? b40::bay_at(v, storey, side, bay) : int(b40::BAY_NONE);
 }
 
-Dictionary CityCore::body_set_bay(int id, int vol, int storey, int side, int bay, int what, int scope) {
+Dictionary CityBuilder::body_set_bay(int id, int vol, int storey, int side, int bay, int what, int scope) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_bay(b, vol, storey, side, bay, what, scope); });
 }
 
-Dictionary CityCore::body_set_zone(int id, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what) {
+Dictionary CityBuilder::body_set_zone(int id, int vol, int side, int storey0, int storey1, int bay0, int bay1, int what) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_zone(b, vol, side, storey0, storey1, bay0, bay1, what); });
 }
 
-Dictionary CityCore::body_set_pattern(int id, int vol, int storey, int side, int pattern) {
+Dictionary CityBuilder::body_set_pattern(int id, int vol, int storey, int side, int pattern) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_pattern(b, vol, storey, side, pattern); });
 }
 
-Dictionary CityCore::body_set_face(int id, int vol, int side, const Dictionary &patch) {
+Dictionary CityBuilder::body_set_face(int id, int vol, int side, const Dictionary &patch) {
 	b40::FaceGeometry f;
 	f.window_w = float(patch.get("window_w", 0.0));
 	f.window_h = float(patch.get("window_h", 0.0));
@@ -191,7 +192,7 @@ Dictionary CityCore::body_set_face(int id, int vol, int side, const Dictionary &
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_face(b, t, vol, side, f); });
 }
 
-Dictionary CityCore::body_set_relief(int id, int vol, const Dictionary &region, bool snap) {
+Dictionary CityBuilder::body_set_relief(int id, int vol, const Dictionary &region, bool snap) {
 	b40::Relief r;
 	r.side = int(region.get("side", 0));
 	r.bay0 = int(region.get("bay0", 0));
@@ -202,52 +203,52 @@ Dictionary CityCore::body_set_relief(int id, int vol, const Dictionary &region, 
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_relief(b, t, vol, r, snap); });
 }
 
-Dictionary CityCore::body_set_roof(int id, int vol, int roof) {
+Dictionary CityBuilder::body_set_roof(int id, int vol, int roof) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_roof(b, vol, roof); });
 }
 
-Dictionary CityCore::body_roof_shape(int id, int vol, double pitch, int ridge, int fall) {
+Dictionary CityBuilder::body_roof_shape(int id, int vol, double pitch, int ridge, int fall) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_roof_shape(b, t, vol, float(pitch), ridge, fall); });
 }
 
-Dictionary CityCore::body_add_gear(int id, int vol, const Vector3 &at, const Dictionary &spec) {
+Dictionary CityBuilder::body_add_gear(int id, int vol, const Vector3 &at, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
 	V2 local = lot_point(*state_, id, at);
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_gear(b, t, vol, s.kind, local.x, local.y, s.w, s.d, s.h); });
 }
 
-Dictionary CityCore::body_remove_gear(int id, int vol, int gear) {
+Dictionary CityBuilder::body_remove_gear(int id, int vol, int gear) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_gear(b, vol, gear); });
 }
 
-Dictionary CityCore::body_turn_gear(int id, int vol, int gear) {
+Dictionary CityBuilder::body_turn_gear(int id, int vol, int gear) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_turn_gear(b, t, vol, gear); });
 }
 
-Dictionary CityCore::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {
+Dictionary CityBuilder::body_add_part(int id, int vol, int storey, int side, int bay, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part(b, t, vol, storey, side, bay, s); });
 }
 
-Dictionary CityCore::body_add_part_at(int id, const Vector3 &at, const Dictionary &spec) {
+Dictionary CityBuilder::body_add_part_at(int id, const Vector3 &at, const Dictionary &spec) {
 	PartSpec s = part_spec(spec);
 	V2 local = lot_point(*state_, id, at);
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s); });
 }
 
-Dictionary CityCore::body_remove_part(int id, int part) {
+Dictionary CityBuilder::body_remove_part(int id, int part) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_remove_part(b, part); });
 }
 
-Dictionary CityCore::body_turn_part(int id, int part) {
+Dictionary CityBuilder::body_turn_part(int id, int part) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_turn_part(b, part); });
 }
 
-Dictionary CityCore::body_repeat_part(int id, int part, double spacing) {
+Dictionary CityBuilder::body_repeat_part(int id, int part, double spacing) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_repeat_part(b, t, part, float(spacing)); });
 }
 
-Dictionary CityCore::body_paint(int id, int scope, int vol, int side, int storey, int finish, const String &colour) {
+Dictionary CityBuilder::body_paint(int id, int scope, int vol, int side, int storey, int finish, const String &colour) {
 	uint32_t rgb = parse_hex_color(colour.utf8().get_data()) >> ALPHA_BITS;
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_paint(b, scope, vol, side, storey, finish, rgb); });
 }

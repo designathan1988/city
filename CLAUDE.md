@@ -92,22 +92,22 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
 - `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses)
 - `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
+- `native/src/api/city_core_areas.cpp` — as áreas da API, cada uma um objeto próprio sobre o estado e o render do núcleo, feitas com ele e soltas antes dele; o store chama cada nome do `StoreApi` na área dele (o método `area` do núcleo): `builder`, `landscape`, `transit`, `probes`
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
-- `native/src/api/city_core_body.cpp` — o corpo de um prédio para o Construir: o que ele tem e as edições como comandos de script
+- `native/src/api/city_builder.h` · `native/src/api/city_core_body.cpp` — área `builder` (CityBuilder): o corpo de um prédio para o Construir, o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio num andar, ler o estado (andares e lâmpadas: leitura pesada, só depois de um comando), a revisão barata que avisa quando reler, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
-- `native/src/api/city_core_clearance_probe.cpp` — folga dos carros de lote ao longo do caminho e onde cada veículo está na faixa; a regra do âmbar para os testes
-- `native/src/api/city_core_park_probe.cpp` — onde as capturas olham vagas, lotes, ciclofaixas e docas, e se o ponto da câmera está livre
-- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas: custo do quadro, chegada das poses, tráfego e a regra da fila de jobs
+- `native/src/api/city_probes.h` · `native/src/api/city_core_clearance_probe.cpp` · `native/src/api/city_core_park_probe.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` — área `probes` (CityProbes), o que testes e capturas perguntam: folga dos carros de lote e onde cada veículo está na faixa, a regra do âmbar; vagas, lotes, ciclofaixas, docas e câmera livre; quem anda a pé; a regra da fila de jobs
+- `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas do núcleo: custo do quadro, chegada das poses e tráfego
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
 - `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar, o aviso da barra e a câmera perguntam: tráfego ao vivo de via e cruzamento, nós impossíveis e a linha de visão livre de prédios
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
-- `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
+- `native/src/api/city_landscape.h` · `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — área `landscape` (CityLandscape): gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
 - `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
-- `native/src/api/city_core_models.cpp` · `native/src/api/models_loader.cpp` · `native/src/api/models_loader.h` — Construir › Modelos: catálogo, corpo em mãos como bytes, encaixe, colocar e desenhar à parte; models.json → catálogo
-- `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore
-- `native/src/api/city_core_transit.cpp` — transporte público como API de script
+- `native/src/api/city_core_models.cpp` · `native/src/api/models_loader.cpp` · `native/src/api/models_loader.h` — área `builder`, Construir › Modelos: catálogo, corpo em mãos como bytes, encaixe, colocar e desenhar à parte; models.json → catálogo
+- `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore e as áreas (abstratas: só o núcleo as faz)
+- `native/src/api/city_transit.h` · `native/src/api/city_core_transit.cpp` — área `transit` (CityTransit): transporte público como API de script
 - `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
 
 **Núcleo — native/src/core**
@@ -347,7 +347,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
 - `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
-- `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore (tabelas lidas pelo store)
+- `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore, cada um com a área dele (tabelas lidas pelo store)
 - `project/game/store/city_saves.gd` — a cidade no disco: salvar, abrir, autosave, ao perder o foco e ao fechar, arquivo de fora
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
 - `project/game/store/model_library.gd` — os modelos do jogador: um arquivo cada, valem para toda cidade

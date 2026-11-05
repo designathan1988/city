@@ -23,12 +23,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_lots_drawn", "on"), &CityCore::set_lots_drawn);
 	ClassDB::bind_method(D_METHOD("traffic_metrics"), &CityCore::traffic_metrics);
 	ClassDB::bind_method(D_METHOD("set_day_hour", "hour"), &CityCore::set_day_hour);
-	bind_models();
-	bind_bodies();
-	bind_nature();
-	bind_transit();
-	bind_probes();
 	bind_damage();
+	ClassDB::bind_method(D_METHOD("area", "name"), &CityCore::area);
 	ClassDB::bind_method(D_METHOD("get_speed"), &CityCore::get_speed);
 	ClassDB::bind_method(D_METHOD("set_terrain_path", "path"), &CityCore::set_terrain_path);
 	ClassDB::bind_method(D_METHOD("get_terrain_path"), &CityCore::get_terrain_path);
@@ -109,7 +105,6 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("interior_cost", "id", "level", "dir"), &CityCore::interior_cost);
 	ClassDB::bind_method(D_METHOD("render_pending"), &CityCore::render_pending);
 	ClassDB::bind_method(D_METHOD("building_chunk", "x", "z"), &CityCore::building_chunk);
-	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityCore::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("render_cost"), &CityCore::render_cost);
 	ClassDB::bind_method(D_METHOD("road_mesh_counts"), &CityCore::road_mesh_counts);
 	ClassDB::bind_method(D_METHOD("draw_verges", "on"), &CityCore::draw_verges);
@@ -117,20 +112,6 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);
-}
-
-// What the tests and the captures ask of the traffic and of who is on foot: the parked, the kerb, the lots, the amber, the walkers.
-void CityCore::bind_probes() {
-	ClassDB::bind_method(D_METHOD("park_sample"), &CityCore::park_sample);
-	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityCore::camera_clear, DEFVAL(true));
-	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityCore::kerb_busy);
-	ClassDB::bind_method(D_METHOD("dock_count"), &CityCore::dock_count);
-	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityCore::lot_clearance);
-	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityCore::vehicles_near);
-	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityCore::people_census);
-	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityCore::set_city_hour);
-	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityCore::amber_stops);
-	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityCore::amber_wanted);
 }
 
 // The bomb and the pistol's script API: blows, shots, boxes knocked down and what the tests read of the damage.
@@ -143,84 +124,6 @@ void CityCore::bind_damage() {
 	ClassDB::bind_method(D_METHOD("effects_shake"), &CityCore::effects_shake);
 	ClassDB::bind_method(D_METHOD("effects_since_blast"), &CityCore::effects_since_blast);
 	ClassDB::bind_method(D_METHOD("blast_probe", "strength", "distance"), &CityCore::blast_probe);
-}
-
-// Public transport's script API: stops, stations, tracks, lines, the plan, the footway and the pickers.
-void CityCore::bind_transit() {
-	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityCore::transit_stop);
-	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityCore::transit_terminal);
-	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityCore::transit_station);
-	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityCore::transit_track);
-	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityCore::transit_line);
-	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityCore::transit_remove);
-	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityCore::transit_drop_line);
-	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityCore::transit_vehicles);
-	ClassDB::bind_method(D_METHOD("transit_plan"), &CityCore::transit_plan);
-	ClassDB::bind_method(D_METHOD("transit_run"), &CityCore::transit_run);
-	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityCore::transit_footway);
-	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityCore::transit_xray);
-	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityCore::transit_preview);
-	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityCore::transit_pick);
-	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityCore::transit_snap);
-}
-
-// The edited body's script API: reading, the shape tools, the facade tools, the roof, the gear and the parts.
-void CityCore::bind_bodies() {
-	ClassDB::bind_method(D_METHOD("body_info", "id"), &CityCore::body_info);
-	ClassDB::bind_method(D_METHOD("body_pick", "origin", "dir"), &CityCore::body_pick);
-	ClassDB::bind_method(D_METHOD("body_outline", "id", "vol"), &CityCore::body_outline);
-	ClassDB::bind_method(D_METHOD("body_storeys", "id", "vol", "count"), &CityCore::body_storeys);
-	ClassDB::bind_method(D_METHOD("body_insert_storey", "id", "vol", "at", "above"), &CityCore::body_insert_storey);
-	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityCore::body_resize);
-	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityCore::body_add_wing);
-	ClassDB::bind_method(D_METHOD("body_add_setback", "id", "vol", "inset", "storeys"), &CityCore::body_add_setback);
-	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityCore::body_split);
-	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityCore::body_remove_volume);
-	ClassDB::bind_method(D_METHOD("body_heights", "id", "ground_h", "storey_h"), &CityCore::body_heights);
-	ClassDB::bind_method(D_METHOD("body_bay", "id", "vol", "storey", "side", "bay"), &CityCore::body_bay);
-	ClassDB::bind_method(D_METHOD("body_set_bay", "id", "vol", "storey", "side", "bay", "what", "scope"), &CityCore::body_set_bay);
-	ClassDB::bind_method(D_METHOD("body_set_zone", "id", "vol", "side", "storey0", "storey1", "bay0", "bay1", "what"), &CityCore::body_set_zone);
-	ClassDB::bind_method(D_METHOD("body_set_pattern", "id", "vol", "storey", "side", "pattern"), &CityCore::body_set_pattern);
-	ClassDB::bind_method(D_METHOD("body_set_face", "id", "vol", "side", "patch"), &CityCore::body_set_face);
-	ClassDB::bind_method(D_METHOD("body_set_relief", "id", "vol", "region", "snap"), &CityCore::body_set_relief);
-	ClassDB::bind_method(D_METHOD("body_set_roof", "id", "vol", "roof"), &CityCore::body_set_roof);
-	ClassDB::bind_method(D_METHOD("body_roof_shape", "id", "vol", "pitch", "ridge", "fall"), &CityCore::body_roof_shape);
-	ClassDB::bind_method(D_METHOD("body_paint", "id", "scope", "vol", "side", "storey", "finish", "colour"), &CityCore::body_paint);
-	ClassDB::bind_method(D_METHOD("body_add_gear", "id", "vol", "at", "spec"), &CityCore::body_add_gear);
-	ClassDB::bind_method(D_METHOD("body_remove_gear", "id", "vol", "gear"), &CityCore::body_remove_gear);
-	ClassDB::bind_method(D_METHOD("body_turn_gear", "id", "vol", "gear"), &CityCore::body_turn_gear);
-	ClassDB::bind_method(D_METHOD("body_add_part", "id", "vol", "storey", "side", "bay", "spec"), &CityCore::body_add_part);
-	ClassDB::bind_method(D_METHOD("body_add_part_at", "id", "at", "spec"), &CityCore::body_add_part_at);
-	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityCore::body_remove_part);
-	ClassDB::bind_method(D_METHOD("body_turn_part", "id", "part"), &CityCore::body_turn_part);
-	ClassDB::bind_method(D_METHOD("body_repeat_part", "id", "part", "spacing"), &CityCore::body_repeat_part);
-}
-
-// The Landscape drawer's script API: weather, clouds, fog, painting, trees, elements, biome and the landscape reads.
-void CityCore::bind_nature() {
-	ClassDB::bind_method(D_METHOD("set_weather", "change"), &CityCore::set_weather);
-	ClassDB::bind_method(D_METHOD("add_cloud", "cloud"), &CityCore::add_cloud);
-	ClassDB::bind_method(D_METHOD("edit_cloud", "id", "cloud"), &CityCore::edit_cloud);
-	ClassDB::bind_method(D_METHOD("remove_cloud", "id"), &CityCore::remove_cloud);
-	ClassDB::bind_method(D_METHOD("scatter_clouds", "count", "like", "variation"), &CityCore::scatter_clouds);
-	ClassDB::bind_method(D_METHOD("clear_clouds"), &CityCore::clear_clouds);
-	ClassDB::bind_method(D_METHOD("cloud_at", "origin", "direction", "drift_x", "drift_z"), &CityCore::cloud_at);
-	ClassDB::bind_method(D_METHOD("fog_brush", "position", "radius", "strength", "height", "speed", "erase"), &CityCore::fog_brush);
-	ClassDB::bind_method(D_METHOD("clear_fog"), &CityCore::clear_fog);
-	ClassDB::bind_method(D_METHOD("paint_brush", "position", "radius", "strength", "hardness", "kind"), &CityCore::paint_brush);
-	ClassDB::bind_method(D_METHOD("clear_gullies"), &CityCore::clear_gullies);
-	ClassDB::bind_method(D_METHOD("tree_brush", "position", "radius", "mode", "kind", "brush"), &CityCore::tree_brush);
-	ClassDB::bind_method(D_METHOD("clear_trees"), &CityCore::clear_trees);
-	ClassDB::bind_method(D_METHOD("element_brush", "position", "radius", "kind", "brush", "erase"), &CityCore::element_brush);
-	ClassDB::bind_method(D_METHOD("clear_elements"), &CityCore::clear_elements);
-	ClassDB::bind_method(D_METHOD("effects_near", "position", "reach", "first_effect"), &CityCore::effects_near);
-	ClassDB::bind_method(D_METHOD("set_biome", "region"), &CityCore::set_biome);
-	ClassDB::bind_method(D_METHOD("clear_relief"), &CityCore::clear_relief);
-	ClassDB::bind_method(D_METHOD("landscape"), &CityCore::landscape);
-	ClassDB::bind_method(D_METHOD("sky_revision"), &CityCore::sky_revision);
-	ClassDB::bind_method(D_METHOD("fog_field", "camera"), &CityCore::fog_field);
-	ClassDB::bind_method(D_METHOD("canyon_field", "camera"), &CityCore::canyon_field);
-	ClassDB::bind_method(D_METHOD("shore_field"), &CityCore::shore_field);
 }
 
 } // namespace city

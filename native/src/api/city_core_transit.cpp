@@ -1,12 +1,15 @@
 // Public transport as the script API: the commands (sim/commands/transit_commands.h) and the plan, for the tools and the panel.
-#include "api/city_core.h"
+#include "api/city_transit.h"
 
 #include "api/edit_result.h"
 #include "sim/commands/transit_commands.h"
 #include "sim/transit/transit_ground.h"
+#include "sim/state/city_state.h"
+#include "render/render_world.h"
 
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <godot_cpp/core/class_db.hpp>
 
 using namespace godot;
 
@@ -44,43 +47,43 @@ Dictionary line_dict(const TransitLine &l) {
 }
 } // namespace
 
-Dictionary CityCore::transit_stop(const Vector3 &p) {
+Dictionary CityTransit::transit_stop(const Vector3 &p) {
 	return run_edit(*state_, "cmd.transit.stop", [&](CityState &s) { return transit_place_stop(s, p.x, p.z); });
 }
 
-Dictionary CityCore::transit_terminal(const Vector3 &p) {
+Dictionary CityTransit::transit_terminal(const Vector3 &p) {
 	return run_edit(*state_, "cmd.transit.terminal", [&](CityState &s) { return transit_toggle_terminal(s, p.x, p.z); });
 }
 
-Dictionary CityCore::transit_station(const Vector3 &p, int mode) {
+Dictionary CityTransit::transit_station(const Vector3 &p, int mode) {
 	return run_edit(*state_, "cmd.transit.station", [&](CityState &s) { return transit_place_station(s, p.x, p.z, mode_of(mode)); });
 }
 
-Dictionary CityCore::transit_track(const PackedVector3Array &points, int mode) {
+Dictionary CityTransit::transit_track(const PackedVector3Array &points, int mode) {
 	std::vector<V2> run;
 	for (const Vector3 &q : points) run.push_back(V2(q.x, q.z));
 	return run_edit(*state_, "cmd.transit.track", [&](CityState &s) { return transit_lay_track(s, run, mode_of(mode)); });
 }
 
-Dictionary CityCore::transit_line(const PackedInt32Array &stops) {
+Dictionary CityTransit::transit_line(const PackedInt32Array &stops) {
 	std::vector<int> ids;
 	for (int id : stops) ids.push_back(id);
 	return run_edit(*state_, "cmd.transit.line", [&](CityState &s) { return transit_make_line(s, ids); });
 }
 
-Dictionary CityCore::transit_remove(const Vector3 &p) {
+Dictionary CityTransit::transit_remove(const Vector3 &p) {
 	return run_edit(*state_, "cmd.transit.remove", [&](CityState &s) { return transit_remove_at(s, p.x, p.z); });
 }
 
-Dictionary CityCore::transit_drop_line(int id) {
+Dictionary CityTransit::transit_drop_line(int id) {
 	return run_edit(*state_, "cmd.transit.remove", [&](CityState &s) { return transit_remove_line(s, id); });
 }
 
-Dictionary CityCore::transit_vehicles(int id, int vehicles) {
+Dictionary CityTransit::transit_vehicles(int id, int vehicles) {
 	return run_edit(*state_, "cmd.transit.vehicles", [&](CityState &s) { return transit_set_line_vehicles(s, id, vehicles); });
 }
 
-Dictionary CityCore::transit_plan() {
+Dictionary CityTransit::transit_plan() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Array stops, lines;
@@ -93,7 +96,7 @@ Dictionary CityCore::transit_plan() {
 	return d;
 }
 
-Dictionary CityCore::transit_run() {
+Dictionary CityTransit::transit_run() {
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const TransitRun &run = state_->transit_run;
 	int on_road = 0, trains = 0;
@@ -141,13 +144,13 @@ Dictionary CityCore::transit_run() {
 	return d;
 }
 
-int CityCore::transit_pick(const Vector3 &p, int mode, bool any) {
+int CityTransit::transit_pick(const Vector3 &p, int mode, bool any) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const TransitStop *q = stop_near(state_->transit, V2(p.x, p.z), state_->catalog.traffic.transit_pick_m, mode_of(mode), any);
 	return q ? q->id : -1;
 }
 
-Dictionary CityCore::transit_footway(const Vector3 &p, float reach) {
+Dictionary CityTransit::transit_footway(const Vector3 &p, float reach) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
@@ -161,18 +164,36 @@ Dictionary CityCore::transit_footway(const Vector3 &p, float reach) {
 	return d;
 }
 
-void CityCore::transit_xray(bool on) { render_.transit_xray(on); }
+void CityTransit::transit_xray(bool on) { render_->transit_xray(on); }
 
-void CityCore::transit_preview(const PackedVector3Array &points, int mode) {
+void CityTransit::transit_preview(const PackedVector3Array &points, int mode) {
 	std::vector<V2> run;
 	for (const Vector3 &q : points) run.push_back(V2(q.x, q.z));
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	render_.transit_preview(*state_, run, mode_of(mode));
+	render_->transit_preview(*state_, run, mode_of(mode));
 }
 
-Vector3 CityCore::transit_snap(const Vector3 &p, int mode) {
+Vector3 CityTransit::transit_snap(const Vector3 &p, int mode) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return on_ground(*state_, transit_snap_track(*state_, V2(p.x, p.z), mode_of(mode)));
+}
+
+void CityTransit::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("transit_stop", "position"), &CityTransit::transit_stop);
+	ClassDB::bind_method(D_METHOD("transit_terminal", "position"), &CityTransit::transit_terminal);
+	ClassDB::bind_method(D_METHOD("transit_station", "position", "mode"), &CityTransit::transit_station);
+	ClassDB::bind_method(D_METHOD("transit_track", "points", "mode"), &CityTransit::transit_track);
+	ClassDB::bind_method(D_METHOD("transit_line", "stops"), &CityTransit::transit_line);
+	ClassDB::bind_method(D_METHOD("transit_remove", "position"), &CityTransit::transit_remove);
+	ClassDB::bind_method(D_METHOD("transit_drop_line", "id"), &CityTransit::transit_drop_line);
+	ClassDB::bind_method(D_METHOD("transit_vehicles", "id", "vehicles"), &CityTransit::transit_vehicles);
+	ClassDB::bind_method(D_METHOD("transit_plan"), &CityTransit::transit_plan);
+	ClassDB::bind_method(D_METHOD("transit_run"), &CityTransit::transit_run);
+	ClassDB::bind_method(D_METHOD("transit_footway", "position", "reach"), &CityTransit::transit_footway);
+	ClassDB::bind_method(D_METHOD("transit_xray", "on"), &CityTransit::transit_xray);
+	ClassDB::bind_method(D_METHOD("transit_preview", "points", "mode"), &CityTransit::transit_preview);
+	ClassDB::bind_method(D_METHOD("transit_pick", "position", "mode", "any"), &CityTransit::transit_pick);
+	ClassDB::bind_method(D_METHOD("transit_snap", "position", "mode"), &CityTransit::transit_snap);
 }
 
 } // namespace city

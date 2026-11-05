@@ -1,11 +1,12 @@
 // What the photos cannot settle, measured: how far a car in a lot stays from what is solid along its whole way (lot_clearance), and
 // where each vehicle near a point stands on its lane (vehicles_near).
-#include "api/city_core.h"
+#include "api/city_probes.h"
 
 #include "core/units.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/traffic/traffic_system.h"
+#include "sim/state/city_state.h"
 
 #include <algorithm>
 #include <cmath>
@@ -103,7 +104,7 @@ float way_gap(const CityState &s, const LotCar &car, Vector3 &worst, int &kind, 
 }
 } // namespace
 
-Dictionary CityCore::lot_clearance() {
+Dictionary CityProbes::lot_clearance() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -159,7 +160,7 @@ Dictionary CityCore::lot_clearance() {
 	return d;
 }
 
-Array CityCore::vehicles_near(const Vector3 &at, float radius) {
+Array CityProbes::vehicles_near(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -200,7 +201,7 @@ Array CityCore::vehicles_near(const Vector3 &at, float radius) {
 	return out;
 }
 
-bool CityCore::amber_stops(float v, float stop_m, float top, float left, int type) const {
+bool CityProbes::amber_stops(float v, float stop_m, float top, float left, int type) const {
 	const TrafficParams &p = state_->catalog.traffic;
 	const VehicleClass &vc = p.classes[size_t(type)];
 	traffic::AmberApproach a;
@@ -213,7 +214,7 @@ bool CityCore::amber_stops(float v, float stop_m, float top, float left, int typ
 	return traffic::amber_stops(p, a);
 }
 
-float CityCore::amber_wanted(float kmh) const {
+float CityProbes::amber_wanted(float kmh) const {
 	return traffic::amber_wanted(state_->catalog.traffic, kmh / KMH_PER_MS);
 }
 
