@@ -46,6 +46,20 @@ sempre verdadeiros.
   Opções: `--coverage-proof shown` (só vale "in the game" que o jogo mostra), `--constants <json>`.
 - Censo dos built-ins: `node scripts/builtins-census.ts --source-root <ref> --typescript <ref>/node_modules/typescript --out out/builtins-census.json`
 
+## O 4.0 sem nada aberto
+
+A referência é um commit fixo, então o que ela produz é imutável. Em `tools/converter`:
+- **Comportamento:** `node --no-warnings scripts/call40.mjs src/<modulo>.ts '<expressão com m>'`, JSON em 0,15 s, sem navegador.
+- **Cena real:** `node --max-old-space-size=8192 --no-warnings scripts/call40.mjs --scene '<expressão>'`, 16 s: `createSceneRenderer` sobre a GPU nula dos
+  testes do 4.0, `m = { city: {scene, doc, net, sim}, view([x,y,zoom,az,el]), settle() }`. Vista de rua: 364 draws (censo dele: 363).
+- **Fotos:** `node scripts/reference40.mjs <plano.json> <pasta> [--again]`. Plano já feito: 0 s, do arquivo (`out/reference-store`, por commit + plano). Plano
+  novo: servidor estático dentro do processo sobre o build (`out/build40/<commit>`, feito uma vez com `vite build --mode probe --outDir`, 10 s) e Chrome headless;
+  tudo fecha ao terminar (28 s). Aceita o plano do `look.mjs` e o do `look.gd` (`{"city": {...}, "steps": [...]}`).
+- **Edições:** passo `{"edit": "<código com d = RoadDoc>"}`: muda o documento e reabre por `loadDoc`. Direto no `doc` a cena não fica sabendo (não passa pelo
+  `mutateBuilt`). Exemplo: `configs/plans/viaduct.json` (avenida elevada a 8 m sobre uma rua).
+- **Foto sem Chrome nenhum: decidido não fazer agora.** O contexto nulo não tem linker nem pixels, e o quadro teria de ser desenhado em sequência no Godot. Mas aí a
+  "foto do 4.0" seria desenhada pelo nosso motor, e deixaria de ser a verdade contra a qual o Godot é conferido. O Chrome roda só para plano novo e fecha.
+
 ## Roteiro: portar com o conversor
 
 Em `tools/converter`. `node scripts/port.ts doctor` confere os caminhos de `configs/roadcraft-machine.json`.
@@ -288,3 +302,5 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - `5a15b1f` Módulos julgados à frente com a compilação em paralelo; `patterns.match` e `calleeOf` resolvidos uma vez; progresso gravado a cada
   30 s (antes, o livro-razão inteiro a cada módulo).
 - O usuário mandou parar processos longos: passada inteira parada (PID próprio), método acima registrado.
+- `3a93b1e`, `e4ec430` e o commit seguinte: `reference40`, `call40`, `--scene` e o passo `edit`. Viaduto do 4.0 fotografado (59 s a primeira vez, 0 s depois).
+  Pedido do usuário: extrair sem deixar o 4.0 aberto; ideia da GPU nula veio da sessão de migração; plano do `look.gd` a pedido da sessão de causa-raiz.
