@@ -314,7 +314,8 @@ export class TypeMapper {
     const FIELDS = ['first', 'second', 'third', 'fourth'];
     elements.forEach((el, i) => {
       const prop = this.#checker.getPropertyOfType(type, String(i));
-      const cpp = this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
+      // a string literal at a position (`as const`) is a string: a position names no enum
+      const cpp = el.flags & this.#ts.TypeFlags.StringLiteral ? STRING : this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
       made.fields.push({ source: String(i), name: FIELDS[i] ?? `v${i}`, type: cpp, init: this.#init(cpp), comment: null });
     });
     return { k: 'struct', name };
