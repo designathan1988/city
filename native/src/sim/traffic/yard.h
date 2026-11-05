@@ -61,6 +61,8 @@ enum YardSearch { YARD_SEARCH_IN, YARD_SEARCH_OUT, YARD_SEARCH_GRADUATED, YARD_S
 // ran, how many found a way, and what they spent.
 struct YardCost {
 	double total_ms = 0, field_ms = 0, dock_ms = 0, ways_ms = 0;
+	double slice_ms = 0; // the longest a call of advance took: what a tick spends at most
+	int slice_stage = -1; // the stage that call began at (YardPlanner::Stage)
 	int searches[YARD_SEARCHES] = {}, found[YARD_SEARCHES] = {};
 	SearchCost search[YARD_SEARCHES];
 };
@@ -79,20 +81,24 @@ public:
 	YardPlan plan;
 
 private:
-	enum class Stage { OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_GRADUATED, WAY_FINE, DONE };
+	enum class Stage { LAY, OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_GRADUATED, WAY_FINE, DONE };
 	YardInput in_;
 	Field field_, lot_;
-	Stage stage_ = Stage::OPEN;
+	Stage stage_ = Stage::LAY;
 	size_t ring_ = 0, dock_ = 0, gate_ = 0;
 	int row_ = 0;
+	std::unique_ptr<RingFill> fill_; // the ring being set
 	std::unique_ptr<ClearanceFill> clearance_;
 	std::unique_ptr<WaySearch> search_;
 	std::unordered_map<int64_t, std::shared_ptr<Holonomic>> maps_; // the distance maps on this field, by goal (holonomic_key)
+	WaySpace space_; // the memory its searches use, one after another
 	DockWays ways_;
 	AxlePose docked_, pre_;
 	std::vector<int> order_;
 	std::vector<AxlePose> onto_, away_;
 	bool found_in_ = false, found_out_ = false;
+	void lay_step(int &work);
+	std::unique_ptr<RingFill> open_ring(size_t k);
 	void open_step(int &work);
 	void street_step(int &work);
 	void shut_step(int &work);

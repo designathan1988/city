@@ -16,23 +16,48 @@
 namespace city {
 namespace traffic {
 
+// What the steps of a yard's planning cost, in units of work. A unit is the time of writing CELLS_PER_WORK cells of a grid: 0.048 µs on
+// the planner's bench (tests/core/yard_bench, 2026-11-05), a row of a yard's street cells. Each step is charged what it measured there
+// in that unit, so a tick's budget bounds its time; the work is still counted, never timed: the same map gives the same plan on the
+// same tick. Nothing a step does is left uncharged, and no step is bigger than a few of them: a yard's grid, its clearance and a
+// distance map are laid a row at a time.
+constexpr int CELLS_PER_WORK = 64;
+constexpr int WRITE8_WORK_SHARE = 4; // a cell first written as a double (the clearance's start, a new distance map): 2.8 ns a cell
+constexpr int LINE_WORK_SHARE = 5; // a line of the distance transform, per CELLS_PER_WORK cells: 0.225 µs
+constexpr int EDGES_PER_WORK = 3; // the edges of a ring a row of its fill tests (RingFill): at most 0.0154 µs an edge, the bench's
+                                  // 1,577,932 edges given every row's whole time (24.3 ms in 394,483 rows)
+constexpr int HOLONOMIC_CELL_WORK = 2; // a cell of a distance map settled: 0.085 µs
+
 // What is solid on a grid, world XZ: 1 for a cell a body may not touch. `clear`: metres from each cell's centre to the nearest solid.
+// Laid a row at a time (begin, then lay_row until whole), as the planner's slices pay for every row they write.
 struct Field {
 	double x0 = 0, z0 = 0, cell = 0;
 	int nx = 0, nz = 0;
 	std::vector<uint8_t> blocked;
 	std::vector<float> clear;
-	void resize(double x, double z, double size, int cells_x, int cells_z, uint8_t value);
+	void begin(double x, double z, double size, int cells_x, int cells_z); // its frame and its room, no cell yet
+	bool lay_row(uint8_t value); // one more row of `value`; true once whole
+	bool whole() const { return blocked.size() == size_t(nx) * nz; }
 	float clear_at(double x, double z) const; // less than nothing off the grid
 	bool solid_at(double x, double z) const; // off the grid is solid
 };
 
-// Sets every cell whose centre lies inside the polygon.
-void fill_ring(Field &f, const std::vector<V2> &ring, uint8_t value);
-// The cells of a grid a unit of work pays for; a search's pose expanded is worth a few of those units (way_search.cpp).
-constexpr int CELLS_PER_WORK = 64;
+// A polygon set into a grid a row at a time, the cells whose centre lies inside it: each row costs the edges it tests and the cells it
+// writes (a carriageway's ring has thousands of edges: what it costs is rows times edges, not the cells of its box).
+class RingFill {
+public:
+	RingFill(const Field &f, const std::vector<V2> *ring, uint8_t value);
+	bool advance(Field &f, int &work); // true once every row is set
+
+private:
+	const std::vector<V2> *ring_;
+	uint8_t value_;
+	int row_ = 0, last_ = -1;
+	std::vector<double> xs_;
+};
 
 // The clearance of what is blocked, a line of the grid at a time: an exact distance transform (Felzenszwalb and Huttenlocher, 2012).
+// Its squared distances and the clearance are laid a row at a time too, before the columns.
 class ClearanceFill {
 public:
 	explicit ClearanceFill(Field &f);
@@ -40,7 +65,7 @@ public:
 
 private:
 	Field &f_;
-	int stage_ = 0, line_ = 0;
+	int stage_ = 0, line_ = 0; // 0 laying out the squared distances, 1 the columns, 2 the rows
 	std::vector<double> sq_, in_, out_, edge_;
 	std::vector<int> v_;
 };
@@ -73,12 +98,13 @@ struct Holonomic {
 	using Item = std::pair<double, int>;
 	int nx = 0, nz = 0;
 	double cell = 0, half = 0;
-	bool begun = false;
+	bool begun = false, seeded = false;
+	int goal_cell = -1; // -1: the goal is off the grid, and every cell stays out of reach
 	std::vector<double> dist;
 	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
-	void begin(const Field &f, const AxlePose &goal, double body_half, double size);
-	void advance(const Field &f, int &work);
-	bool done() const { return begun && open.empty(); }
+	void begin(const Field &f, const AxlePose &goal, double body_half, double size); // its size and its goal, no cell yet
+	void advance(const Field &f, int &work); // its cells laid, then settled
+	bool done() const { return seeded && open.empty(); }
 };
 
 // The key of the distance map a search at `grain` to `goal` on `f` reads: the grain of its map and its goal's cell there.
@@ -92,23 +118,41 @@ struct WayGoal {
 
 // What a search spent: the cells of its distance map settled, the poses it expanded, and the time of each. Probes, never read by
 // the simulation (the work handed out is what paces it).
+// `looks`, `rs`, `queued`, `pages`: the clearance cells its body tests read, the Reeds-Shepp lengths it worked out, the poses it
+// queued, the pages of headings its tables of poses took (one for every place it first stood at).
 struct SearchCost {
-	int64_t holonomic = 0, expanded = 0;
+	int64_t holonomic = 0, expanded = 0, looks = 0, rs = 0, queued = 0, pages = 0;
 	double holonomic_ms = 0, expand_ms = 0;
 	void add(const SearchCost &o) {
 		holonomic += o.holonomic;
 		expanded += o.expanded;
+		looks += o.looks;
+		rs += o.rs;
+		queued += o.queued;
+		pages += o.pages;
 		holonomic_ms += o.holonomic_ms;
 		expand_ms += o.expand_ms;
 	}
 };
 
 
+// The memory a yard's searches use one after another, the planner's: their tables of poses, their poses and their queue. A search's
+// first writes to megabytes of new memory were most of what starting one cost (the planner's bench: 0.17 ms, up to 2.1 ms).
+class WaySpace {
+public:
+	WaySpace();
+	~WaySpace();
+	struct Room;
+	std::unique_ptr<Room> room;
+};
+
 // The poses from `start` to near the goal, none when there is no way or none within the search's limit. The field, the body and the
-// goal's distance map (`map`: empty, or another search's to the same holonomic_key) are read as it goes, so they outlive it.
+// goal's distance map (`map`: empty, or another search's to the same holonomic_key) and the memory (`space`, one search at a time)
+// are read as it goes, so they outlive it.
 class WaySearch {
 public:
-	WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain);
+	WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain,
+			WaySpace &space);
 	~WaySearch();
 	bool advance(int &work); // spends `work`; true once it is over
 	bool found() const;

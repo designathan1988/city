@@ -12,7 +12,10 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr int FIT_WORK = 64; // a body tested cell by cell along a short leg: units of work
+// Units of work (way_search.h) of the planner's own steps, their mean on the planner's bench: a way found brought onto its goal
+// (settled: 4.3 µs), a dock's start (its straight reverse tested: 6.7 µs), a dock's two ways joined (44 µs), and a gate's stop
+// tested before its search (8.0 µs, 257 of them).
+constexpr int SETTLE_WORK = 90, DOCK_WORK = 140, JOIN_WORK = 917, GATE_WORK = 167; // the means over the unit, 0.048 µs
 constexpr double HALF = 0.5, TINY = 1e-9, PI = 3.14159265358979323846, SETTLE_TANGENT = 0.6, H_DERIV = 6; // the derivative of the Hermite basis: 6 u^2 - 6 u
 
 std::vector<AxlePose> straight(const AxlePose &from, const AxlePose &to, bool reverse, double step) {
@@ -77,18 +80,6 @@ void close_far_street(const YardInput &in, const Field &lot, Field &f, int j) {
 	}
 }
 
-// What filling a ring costs: the cells of the box round it.
-int ring_work(const Field &f, const std::vector<V2> &ring) {
-	float lo_x = ring[0].x, hi_x = lo_x, lo_z = ring[0].y, hi_z = lo_z;
-	for (const V2 &p : ring) {
-		lo_x = std::min(lo_x, p.x);
-		hi_x = std::max(hi_x, p.x);
-		lo_z = std::min(lo_z, p.y);
-		hi_z = std::max(hi_z, p.y);
-	}
-	return 1 + int((hi_x - lo_x) * (hi_z - lo_z) / (f.cell * f.cell)) / CELLS_PER_WORK;
-}
-
 // The farthest out its straight reverse onto the dock can start, the body clear there; false when there is none.
 bool pre_dock(const YardInput &in, const Field &f, const AxlePose &docked, const V2 &out, AxlePose &pre) {
 	for (double d = in.pre_dock; d >= in.pre_step; d -= in.pre_step) {
@@ -126,27 +117,41 @@ void joined(const std::vector<AxlePose> &first, const std::vector<AxlePose> &the
 
 } // namespace
 
+// Only the frames: the grids' cells are laid by advance (Stage::LAY), which pays for them.
 YardPlanner::YardPlanner(YardInput in) : in_(std::move(in)) {
-	field_.resize(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz, 1);
-	lot_.resize(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz, 0);
+	field_.begin(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz);
+	lot_.begin(in_.x0, in_.z0, in_.cell, in_.nx, in_.nz);
 	plan.gates = in_.gates;
+}
+
+// A row of each grid: solid everywhere for the yard's, nothing for the lot's.
+void YardPlanner::lay_step(int &work) {
+	const bool field_whole = field_.lay_row(1);
+	const bool lot_whole = lot_.lay_row(0); // both grids a row each, whichever is whole first
+	work -= 2 * (1 + field_.nx / CELLS_PER_WORK);
+	if (field_whole && lot_whole) stage_ = Stage::OPEN;
+}
+
+// The ring of the open stage `k`: the lot in the yard's grid, the lot in the lot's, then the carriageways and gates' mouths.
+std::unique_ptr<RingFill> YardPlanner::open_ring(size_t k) {
+	if (k == 0) return std::make_unique<RingFill>(field_, &in_.lot, 0);
+	if (k == 1) return std::make_unique<RingFill>(lot_, &in_.lot, 1);
+	if (k - 2 < in_.open.size()) return std::make_unique<RingFill>(field_, &in_.open[k - 2], 0);
+	return nullptr;
 }
 
 YardPlanner::~YardPlanner() = default;
 
 void YardPlanner::open_step(int &work) {
-	if (ring_ == 0) {
-		fill_ring(field_, in_.lot, 0);
-		fill_ring(lot_, in_.lot, 1);
-		work -= ring_work(field_, in_.lot);
-	} else if (ring_ <= in_.open.size()) {
-		fill_ring(field_, in_.open[ring_ - 1], 0);
-		work -= ring_work(field_, in_.open[ring_ - 1]);
-	} else {
+	if (!fill_) fill_ = open_ring(ring_);
+	if (!fill_) {
 		stage_ = Stage::STREET;
 		return;
 	}
-	ring_++;
+	if (fill_->advance(ring_ == 1 ? lot_ : field_, work)) {
+		fill_.reset();
+		ring_++;
+	}
 }
 
 void YardPlanner::street_step(int &work) {
@@ -166,9 +171,11 @@ void YardPlanner::shut_step(int &work) {
 		stage_ = Stage::CLEARANCE;
 		return;
 	}
-	fill_ring(field_, in_.shut[ring_], 1);
-	work -= ring_work(field_, in_.shut[ring_]);
-	ring_++;
+	if (!fill_) fill_ = std::make_unique<RingFill>(field_, &in_.shut[ring_], 1);
+	if (fill_->advance(field_, work)) {
+		fill_.reset();
+		ring_++;
+	}
 }
 
 void YardPlanner::next_dock(int &work) {
@@ -185,7 +192,7 @@ void YardPlanner::next_dock(int &work) {
 	for (int g = 0; g < int(in_.gates.size()); g++) order_.push_back(g);
 	std::sort(order_.begin(), order_.end(), [&](int a, int b) { return (in_.gates[size_t(a)].inner - d.door).len() < (in_.gates[size_t(b)].inner - d.door).len(); });
 	gate_ = 0;
-	work -= FIT_WORK;
+	work -= DOCK_WORK;
 	if (pre_dock(in_, field_, docked_, d.out, pre_)) stage_ = Stage::GATE;
 	else close_dock();
 }
@@ -200,7 +207,7 @@ void YardPlanner::close_dock() {
 void YardPlanner::search_for(const AxlePose &from, const AxlePose &to, bool reversing, WayGrain grain, Stage stage) {
 	std::shared_ptr<Holonomic> &map = maps_[holonomic_key(field_, to, grain)];
 	if (!map) map = std::make_shared<Holonomic>();
-	search_ = std::make_unique<WaySearch>(field_, in_.body, from, WayGoal{ to, reversing, in_.reach, in_.turn }, map, grain);
+	search_ = std::make_unique<WaySearch>(field_, in_.body, from, WayGoal{ to, reversing, in_.reach, in_.turn }, map, grain, space_);
 	stage_ = stage;
 }
 
@@ -210,7 +217,7 @@ void YardPlanner::next_gate(int &work) {
 		return;
 	}
 	const YardGate &g = in_.gates[size_t(order_[gate_])];
-	work--;
+	work -= GATE_WORK;
 	ways_.reached = std::max(ways_.reached, int(YARD_NO_STOP));
 	if (!body_clear(field_, in_.body, g.stop)) {
 		gate_++;
@@ -227,11 +234,11 @@ void YardPlanner::search_step(int &work) {
 	if (!search_->advance(work)) return;
 	const YardGate &g = in_.gates[size_t(order_[gate_])];
 	const bool found = search_->found();
+	work -= SETTLE_WORK; // the way found brought onto its goal, below
 	const int kind = stage_ == Stage::WAY_IN ? YARD_SEARCH_IN : stage_ == Stage::WAY_OUT ? YARD_SEARCH_OUT : stage_ == Stage::WAY_GRADUATED ? YARD_SEARCH_GRADUATED : YARD_SEARCH_FINE;
 	plan.cost.searches[kind]++;
 	plan.cost.found[kind] += found ? 1 : 0;
 	plan.cost.search[kind].add(search_->cost());
-	work -= FIT_WORK;
 	if (stage_ == Stage::WAY_OUT) {
 		found_out_ = found && settled(in_, field_, search_->way(), g.join, false, away_);
 		if (!found_in_ && !found_out_) {
@@ -250,6 +257,7 @@ void YardPlanner::search_step(int &work) {
 		}
 	}
 	search_.reset();
+	work -= JOIN_WORK;
 	if (join_ways(g)) {
 		ways_.gate = order_[gate_];
 		close_dock();
@@ -287,10 +295,12 @@ bool YardPlanner::join_ways(const YardGate &g) {
 
 // Stops at the step that spends the last of the work: the next tick goes on from there.
 bool YardPlanner::advance(int work) {
-	Laps took;
+	Laps took, slice;
+	const Stage began = stage_;
 	while (work > 0 && stage_ != Stage::DONE) {
 		const Stage was = stage_;
 		switch (stage_) {
+			case Stage::LAY: lay_step(work); break;
 			case Stage::OPEN: open_step(work); break;
 			case Stage::STREET: street_step(work); break;
 			case Stage::SHUT: shut_step(work); break;
@@ -309,6 +319,11 @@ bool YardPlanner::advance(int work) {
 		if (was == Stage::DOCK || was == Stage::GATE) plan.cost.dock_ms += ms;
 		else if (was >= Stage::WAY_IN) plan.cost.ways_ms += ms;
 		else plan.cost.field_ms += ms;
+	}
+	const double spent = slice.lap();
+	if (spent > plan.cost.slice_ms) {
+		plan.cost.slice_ms = spent;
+		plan.cost.slice_stage = int(began);
 	}
 	return stage_ == Stage::DONE;
 }

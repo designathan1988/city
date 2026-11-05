@@ -4,6 +4,7 @@
 
 #include "sim/traffic/way_search.h"
 
+#include <cstdint>
 #include <vector>
 
 namespace city {
@@ -24,8 +25,9 @@ struct Discs {
 };
 
 Discs discs_of(const Steered &b);
-// Whether the body's discs at (x, z), its heading's cosine and sine, touch nothing.
-bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s);
+// Whether the body's discs at (x, z), its heading's cosine and sine, touch nothing; `looks`, when given, counts the cells of the
+// clearance it read (one in the open, a disc's or a corner's each nearer something solid).
+bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s, int64_t *looks = nullptr);
 
 } // namespace traffic
 } // namespace city

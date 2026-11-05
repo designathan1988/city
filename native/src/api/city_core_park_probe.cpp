@@ -133,7 +133,7 @@ void band_to(const CityState &s, Dictionary &d) {
 
 // One yard's plan (traffic::YardCost and its docks), by building: its docks and gates, how many have a way and how far each dock's
 // ways got (traffic::YardReach), the time by part, and each kind of search (traffic::YardSearch) as [ran, found, distance cells,
-// distance ms, poses expanded, expanding ms].
+// distance ms, poses expanded, expanding ms, clearance cells read, Reeds-Shepp lengths, poses queued, pages of headings taken].
 Dictionary yard_entry(int id, const traffic::YardPlan &p) {
 	const traffic::YardCost &c = p.cost;
 	Dictionary y;
@@ -154,11 +154,15 @@ Dictionary yard_entry(int id, const traffic::YardPlan &p) {
 	y["field_ms"] = c.field_ms;
 	y["dock_ms"] = c.dock_ms;
 	y["ways_ms"] = c.ways_ms;
+	y["slice_ms"] = c.slice_ms;
+	y["slice_stage"] = c.slice_stage;
 	Array kinds;
 	for (int k = 0; k < traffic::YARD_SEARCHES; k++) {
 		const traffic::SearchCost &s = c.search[k];
 		Array row;
-		for (const Variant &v : { Variant(c.searches[k]), Variant(c.found[k]), Variant(s.holonomic), Variant(s.holonomic_ms), Variant(s.expanded), Variant(s.expand_ms) }) row.push_back(v);
+		for (const Variant &v : { Variant(c.searches[k]), Variant(c.found[k]), Variant(s.holonomic), Variant(s.holonomic_ms), Variant(s.expanded), Variant(s.expand_ms),
+				 Variant(s.looks), Variant(s.rs), Variant(s.queued), Variant(s.pages) })
+			row.push_back(v);
 		kinds.push_back(row);
 	}
 	y["searches"] = kinds;
@@ -189,7 +193,7 @@ Array CityProbes::plan_all_yards() {
 		traffic::YardInput in;
 		if (!traffic::yard_input(s, id, in)) continue;
 		traffic::YardPlanner planner(std::move(in));
-		while (!planner.advance(std::numeric_limits<int>::max())) {}
+		while (!planner.advance(int(s.catalog.traffic.lorry_plan_work))) {} // a tick's budget a call, as the game plans
 		out.push_back(yard_entry(id, planner.plan));
 	}
 	return out;

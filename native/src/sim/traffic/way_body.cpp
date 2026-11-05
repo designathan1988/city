@@ -47,15 +47,23 @@ Discs discs_of(const Steered &b) {
 	return d;
 }
 
-bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s) {
+bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s, int64_t *looks) {
+	int64_t read = 0;
+	struct Count { int64_t *to; const int64_t &n; ~Count() { if (to) *to += n; } } count{ looks, read };
 	const double slack = f.cell * ROOT_HALF; // the field holds the distance at a cell's centre
+	read++;
 	if (f.clear_at(x + c * d.centre, z + s * d.centre) - slack >= d.whole) return true;
-	for (double u : d.at)
+	for (double u : d.at) {
+		read++;
 		if (f.clear_at(x + c * u, z + s * u) - slack < d.r) return false;
+	}
 	for (int k = 0; k < 4; k++) {
+		read++;
 		if (f.clear_at(x + c * d.cu[k] - s * d.cv[k], z + s * d.cu[k] + c * d.cv[k]) - slack >= d.corner_r) continue;
-		for (const BodyPoint &q : d.squares[k])
+		for (const BodyPoint &q : d.squares[k]) {
+			read++;
 			if (f.clear_at(x + c * q.u - s * q.v, z + s * q.u + c * q.v) - slack < d.square_r) return false;
+		}
 	}
 	return true;
 }
