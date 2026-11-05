@@ -401,7 +401,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
   documento único, tamanhos e cabeçalhos; tuning ↔ JSON e espelhos
 - `tools/gates/owners.json` · `tools/gates/rules.json` · `tools/gates/run_gates.py` — donos únicos, configuração, executa todos
-- `tools/gates/hook_protect.py` · `tools/gates/hook_stop_gates.py` — hooks do Claude Code: as regras dos gates, os schemas existentes, os próprios hooks e o settings só o usuário altera (edição e escrita por shell negadas; leitura e execução livres); no fim de um turno com mudanças não commitadas os gates rodam uma vez e, se falham, a sessão recebe a lista e continua
+- `tools/gates/hook_protect.py` · `tools/gates/hook_stop_gates.py` — hooks do Claude Code: as regras dos gates, os schemas existentes, os próprios hooks e o settings só o usuário altera (edição e escrita por shell negadas; leitura e execução livres); no fim de um turno com mudanças não commitadas os gates rodam uma vez e fonte C++ mais nova que uma das DLLs (ou DLL ausente) conta como build não feito; se algo falha, a sessão recebe a lista e continua
 <!-- MAPA:FIM -->
 
 ## Pendências
