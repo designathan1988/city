@@ -214,6 +214,7 @@ func _ground_block(id: int) -> int:
 func _save_round_trip(id: int) -> void:
 	var v: Dictionary = _info(id).volumes[0]
 	CityStore.dispatch(&"body_storeys", [id, 0, v.storeys + ADD_FLOORS])
+	PartCases.fly_flag(id, _check)
 	var edited: int = _info(id).digest
 	var outcome := {}
 	CityStore.saved.connect(func(_s: String, r: Dictionary) -> void: outcome.merge(r), CONNECT_ONE_SHOT)

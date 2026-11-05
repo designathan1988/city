@@ -17,6 +17,7 @@ const MODE_MESA := 4
 
 var out_dir := "user://captures"
 var rig: CityCamera
+var world: CityWorld
 var tools: ToolController
 var hud: RoadcraftHud
 var failures := 0
@@ -28,7 +29,7 @@ func _ready() -> void:
 		if arg.begins_with("--capture-dir="):
 			out_dir = arg.trim_prefix("--capture-dir=")
 	DirAccess.make_dir_recursive_absolute(out_dir)
-	var world := CityWorld.new()
+	world = CityWorld.new()
 	add_child(world)
 	rig = CityCamera.new()
 	add_child(rig)
@@ -56,6 +57,7 @@ func _run() -> void:
 	await _road_tabs(a, e)
 	await _relief(e)
 	await _build(a, e)
+	await CaptureFlag.shot(self, a)
 	await _layers(a, e)
 	await _save_open()
 	print("FALHAS: ", failures)

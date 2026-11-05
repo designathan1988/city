@@ -16,6 +16,10 @@ constexpr float SPIRE_RINGS[4][2] = { { 0.f, 0.78f }, { 0.28f, 0.48f }, { 0.84f,
 constexpr float LANTERN_H = 19.4f, BASE_H = 1.03f, GLASS_H = 7.47f, GLASS_SHARE = 3.69f / 4.02f, BAND_T = 0.07f, BAND_OUT = 0.04f, MULLION = 0.035f;
 constexpr float LID_OUT = 0.12f, LID_H = 0.25f, DOME_H = 1.1f, DOME_TOP = 0.16f, MAST_FOOT = 0.15f, MAST_TOP = 0.1f, BEACON = 0.2f, BEACON_LOW = 0.45f, BEACON_HIGH = 0.1f;
 constexpr int OCTAGON = 8, ROUND = 24, BANDS = 5, DOME_STEPS = 6;
+// The flags (Roadcraft buildingMesh.ts): a spire's 2.2 x 1.25 m at its tip; a lantern's under the mast's tip, 6.6 x 4.3 m on the
+// model's 19.4 m lighthouse.
+constexpr float SPIRE_FLAG_AT = 0.98f, SPIRE_FLAG_W = 2.2f, SPIRE_FLAG_H = 1.25f;
+constexpr float LANTERN_FLAG_DROP = 0.5f, LANTERN_FLAG_W = 0.34f, LANTERN_FLAG_ASPECT = 0.65f;
 
 struct Gear {
 	Shell &shell;
@@ -39,6 +43,10 @@ struct Gear {
 		}
 	}
 	void box(float hw, float hd, float z0, float z1, const char *name) { shell.box(pl.lot, x - hw, x + hw, y - hd, y + hd, z0, z1, paint(name), finish(name)); }
+	// The mast's flag, w x h metres, its hoist's top at height z.
+	void fly(const RoofPart &p, float z, float w, float h) {
+		if (p.flag.pattern != FLAG_NONE) shell.flags.push_back({ pl.lot.at(x, y, z), w, h, p.flag });
+	}
 };
 
 // A flat panel that lies on the roof: its corners each stand on the slope under them.
@@ -62,6 +70,7 @@ void spire(Gear &g, const RoofPart &p, float z) {
 		float z0 = band == 0 ? z + SPIRE_FOOT_H : z + p.h * lo[0];
 		g.ring(OCTAGON, z0, z + p.h * hi[0], radius * lo[1], radius * hi[1], band == 0 ? "gear_base" : "gear_metal");
 	}
+	g.fly(p, z + p.h * SPIRE_FLAG_AT, SPIRE_FLAG_W, SPIRE_FLAG_H);
 }
 
 void lantern(Gear &g, const RoofPart &p, float z) {
@@ -88,6 +97,7 @@ void lantern(Gear &g, const RoofPart &p, float z) {
 	float top = z + p.h;
 	g.ring(OCTAGON, dome + dome_h, top, MAST_FOOT, MAST_TOP, "lantern_mast");
 	g.box(BEACON, BEACON, top - BEACON_LOW, top - BEACON_HIGH, "lantern_beacon");
+	g.fly(p, top - LANTERN_FLAG_DROP, p.h * LANTERN_FLAG_W, p.h * LANTERN_FLAG_W * LANTERN_FLAG_ASPECT);
 }
 } // namespace
 

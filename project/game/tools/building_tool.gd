@@ -6,6 +6,8 @@ class_name BuildingTool
 extends ToolBase
 
 const NO_BAY := -1
+## What a click on a roof does with the card in hand: a thing set on it, or the flag of the mast clicked.
+const ROOF_TOOLS := ["gear", "flag", "flag_colour"]
 
 ## What the last click hit (CityStore query "body_pick"), {} for nothing.
 var picked := {}
@@ -15,6 +17,8 @@ var armed := NO_BAY
 var part := {}
 var scope := 0
 var paint_scope := 0
+## Which of a flag's three colours the next colour card sets.
+var flag_slot := 0
 
 ## The model in hand: {bytes, function, zone}, {} for none.
 var hand := {}
@@ -104,8 +108,8 @@ func click(p: Vector3) -> void:
 func pick(origin: Vector3, dir: Vector3) -> void:
 	var hit: Dictionary = CityStore.query(&"body_pick", [origin, dir])
 	picked = hit
-	if not hit.is_empty() and hit.side < 0 and not part.is_empty() and part.do == "gear":
-		_report(CityStore.dispatch(&"body_add_gear", [hit.id, hit.volume, hit.point, part]))
+	if not hit.is_empty() and hit.side < 0 and not part.is_empty() and ROOF_TOOLS.has(part.do):
+		_report(_roof(hit))
 	elif hit.is_empty() or hit.side < 0:
 		pass
 	elif armed != NO_BAY:
@@ -113,6 +117,18 @@ func pick(origin: Vector3, dir: Vector3) -> void:
 	elif not part.is_empty() and part.do == "part":
 		_report(CityStore.dispatch(&"body_add_part", [hit.id, hit.volume, hit.storey, hit.side, hit.bay, part]))
 	_show()
+
+
+## The roof clicked, with a card in hand: the thing lands at the point, or the mast there gets the flag or the colour.
+func _roof(hit: Dictionary) -> Dictionary:
+	match part.do:
+		"gear":
+			return CityStore.dispatch(&"body_add_gear", [hit.id, hit.volume, hit.point, part])
+		"flag":
+			return CityStore.dispatch(&"body_set_flag", [hit.id, hit.volume, hit.point, part.value])
+		"flag_colour":
+			return CityStore.dispatch(&"body_flag_colour", [hit.id, hit.volume, hit.point, flag_slot, part.rgb])
+	return {"ok": false, "error": "tool.failed"}
 
 
 func cancel() -> void:
@@ -136,6 +152,14 @@ func act(spec: Dictionary) -> void:
 		"part", "gear":
 			part = {} if part == spec else spec
 			armed = NO_BAY
+		"flag", "flag_colour":
+			part = {} if part == spec else spec
+			armed = NO_BAY
+			if not part.is_empty():
+				ctl.hint.emit(tr("hint.builder.flag"), true)
+				return
+		"flag_slot":
+			flag_slot = value
 		"scope":
 			scope = value
 		"paint_scope":

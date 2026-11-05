@@ -7,6 +7,7 @@
 
 #include "sim/buildings/b40/civic.h"
 #include "render/buildings/facade.h"
+#include "render/buildings/flag_cloth.h"
 
 #include <algorithm>
 #include <cfloat>
@@ -125,6 +126,13 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			out.bands[size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
 			out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
 		}
+		std::vector<b40::FlagInstance> flags;
+		for (b40::Shell &s : near_shells) { // the masts' flags, one cloth MultiMesh for the chunk
+			flags.insert(flags.end(), s.flags.begin(), s.flags.end());
+			s.flags.clear();
+		}
+		out.flags = b40::bake_flags(flags);
+		out.unit_flag = unit_flag_->get_rid();
 		out.has_near = true;
 	}
 	out.has_mid = mid;

@@ -112,6 +112,55 @@
       {"id": "spire", "do": "gear", "value": 5, "size": [1.5, 1.5, 11.7]},
       {"id": "lantern", "do": "gear", "value": 6, "size": [4, 4, 19.4]}
      ]
+    },
+    {
+     "title_key": "builder.field.flagPattern",
+     "tools": [
+      {"id": "flagNone", "do": "flag", "value": -1, "icon": "flag_none", "label_key": "builder.flag.none"},
+      {"id": "flagSolid", "do": "flag", "value": 0, "icon": "flag_solid", "label_key": "builder.flagPattern.solid"},
+      {"id": "flagBicolourH", "do": "flag", "value": 1, "icon": "flag_bicolourH", "label_key": "builder.flagPattern.bicolourH"},
+      {"id": "flagBicolourV", "do": "flag", "value": 2, "icon": "flag_bicolourV", "label_key": "builder.flagPattern.bicolourV"},
+      {"id": "flagTricolourH", "do": "flag", "value": 3, "icon": "flag_tricolourH", "label_key": "builder.flagPattern.tricolourH"},
+      {"id": "flagTricolourV", "do": "flag", "value": 4, "icon": "flag_tricolourV", "label_key": "builder.flagPattern.tricolourV"},
+      {"id": "flagCross", "do": "flag", "value": 5, "icon": "flag_cross", "label_key": "builder.flagPattern.cross"},
+      {"id": "flagNordic", "do": "flag", "value": 6, "icon": "flag_nordic", "label_key": "builder.flagPattern.nordic"},
+      {"id": "flagDiagonal", "do": "flag", "value": 7, "icon": "flag_diagonal", "label_key": "builder.flagPattern.diagonal"},
+      {"id": "flagSaltire", "do": "flag", "value": 8, "icon": "flag_saltire", "label_key": "builder.flagPattern.saltire"},
+      {"id": "flagCanton", "do": "flag", "value": 9, "icon": "flag_canton", "label_key": "builder.flagPattern.canton"},
+      {"id": "flagStripes", "do": "flag", "value": 10, "icon": "flag_stripes", "label_key": "builder.flagPattern.stripes"},
+      {"id": "flagBorder", "do": "flag", "value": 11, "icon": "flag_border", "label_key": "builder.flagPattern.border"},
+      {"id": "flagDisc", "do": "flag", "value": 12, "icon": "flag_disc", "label_key": "builder.flagPattern.disc"},
+      {"id": "flagChevron", "do": "flag", "value": 13, "icon": "flag_chevron", "label_key": "builder.flagPattern.chevron"}
+     ]
+    },
+    {
+     "title_key": "builder.field.flag",
+     "tools": [
+      {"id": "flagField0", "do": "flag_slot", "value": 0, "icon": "flag_field0", "label_key": "builder.field.flagColour0"},
+      {"id": "flagField1", "do": "flag_slot", "value": 1, "icon": "flag_field1", "label_key": "builder.field.flagColour1"},
+      {"id": "flagField2", "do": "flag_slot", "value": 2, "icon": "flag_field2", "label_key": "builder.field.flagColour2"}
+     ]
+    },
+    {
+     "title_key": "builder.section.flagColours",
+     "tools": [
+      {"id": "flagColour0", "do": "flag_colour", "value": 0, "icon": "paint", "label_key": "builder.flagColour.0", "rgb": "#ffffff"},
+      {"id": "flagColour1", "do": "flag_colour", "value": 1, "icon": "paint", "label_key": "builder.flagColour.1", "rgb": "#111418"},
+      {"id": "flagColour2", "do": "flag_colour", "value": 2, "icon": "paint", "label_key": "builder.flagColour.2", "rgb": "#c8102e"},
+      {"id": "flagColour3", "do": "flag_colour", "value": 3, "icon": "paint", "label_key": "builder.flagColour.3", "rgb": "#e5533d"},
+      {"id": "flagColour4", "do": "flag_colour", "value": 4, "icon": "paint", "label_key": "builder.flagColour.4", "rgb": "#f2a900"},
+      {"id": "flagColour5", "do": "flag_colour", "value": 5, "icon": "paint", "label_key": "builder.flagColour.5", "rgb": "#ffd100"},
+      {"id": "flagColour6", "do": "flag_colour", "value": 6, "icon": "paint", "label_key": "builder.flagColour.6", "rgb": "#009b3a"},
+      {"id": "flagColour7", "do": "flag_colour", "value": 7, "icon": "paint", "label_key": "builder.flagColour.7", "rgb": "#00843d"},
+      {"id": "flagColour8", "do": "flag_colour", "value": 8, "icon": "paint", "label_key": "builder.flagColour.8", "rgb": "#0b5ea8"},
+      {"id": "flagColour9", "do": "flag_colour", "value": 9, "icon": "paint", "label_key": "builder.flagColour.9", "rgb": "#002776"},
+      {"id": "flagColour10", "do": "flag_colour", "value": 10, "icon": "paint", "label_key": "builder.flagColour.10", "rgb": "#6cace4"},
+      {"id": "flagColour11", "do": "flag_colour", "value": 11, "icon": "paint", "label_key": "builder.flagColour.11", "rgb": "#5b2a86"},
+      {"id": "flagColour12", "do": "flag_colour", "value": 12, "icon": "paint", "label_key": "builder.flagColour.12", "rgb": "#8a1538"},
+      {"id": "flagColour13", "do": "flag_colour", "value": 13, "icon": "paint", "label_key": "builder.flagColour.13", "rgb": "#7b4a2a"},
+      {"id": "flagColour14", "do": "flag_colour", "value": 14, "icon": "paint", "label_key": "builder.flagColour.14", "rgb": "#9aa0a6"},
+      {"id": "flagColour15", "do": "flag_colour", "value": 15, "icon": "paint", "label_key": "builder.flagColour.15", "rgb": "#f28ab2"}
+     ]
     }
    ]
   },

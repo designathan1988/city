@@ -5,7 +5,8 @@ class_name RenderSwitches
 extends RefCounted
 
 ## What the sun lights a shadow from when "bShadows" is off: everything but the buildings.
-const BUILDING_LAYERS := ["building_masses", "building_facades", "building_shells", "building_parts", "building_details"]
+const BUILDING_LAYERS := ["building_masses", "building_facades", "building_shells", "building_parts", "building_details",
+		"building_flags"]
 const ALL_LAYERS := 0xFFFFF # the 20 render layers of a Camera3D's cull mask
 
 var off: Dictionary = {} # the keys switched off

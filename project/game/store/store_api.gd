@@ -26,6 +26,7 @@ const COMMANDS := {
 	&"body_set_pattern": "builder/body_set_pattern", &"body_set_face": "builder/body_set_face", &"body_set_relief": "builder/body_set_relief",
 	&"body_set_roof": "builder/body_set_roof", &"body_roof_shape": "builder/body_roof_shape", &"body_paint": "builder/body_paint",
 	&"body_add_gear": "builder/body_add_gear", &"body_remove_gear": "builder/body_remove_gear", &"body_turn_gear": "builder/body_turn_gear",
+	&"body_set_flag": "builder/body_set_flag", &"body_flag_colour": "builder/body_flag_colour",
 	&"body_add_part": "builder/body_add_part", &"body_add_part_at": "builder/body_add_part_at", &"body_remove_part": "builder/body_remove_part",
 	&"body_turn_part": "builder/body_turn_part", &"body_repeat_part": "builder/body_repeat_part", &"place_model": "builder/place_model",
 	&"transit_stop": "transit/transit_stop", &"transit_terminal": "transit/transit_terminal",

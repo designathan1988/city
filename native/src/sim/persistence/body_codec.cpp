@@ -15,6 +15,10 @@ using namespace b40;
 
 namespace {
 constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; far past any body
+// Bytes that start with the magic carry a version; the bytes before it (saves and the player's model files) start with
+// the plan's kind byte, never these four. 1: the flag of a roof mast (spire, lantern).
+constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
+constexpr uint32_t BODY_VERSION = 1, FLAG_VERSION = 1, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -116,10 +120,12 @@ void put_volume(ByteWriter &w, const Volume &v) {
 	for (const RoofPart &p : v.gear) {
 		w.put<uint8_t>(p.kind);
 		for (float x : { p.x, p.y, p.w, p.d, p.h, p.turn }) w.put<float>(x);
+		w.put<int8_t>(p.flag.pattern);
+		for (uint32_t c : p.flag.rgb) w.put<uint32_t>(c);
 	}
 }
 
-bool get_volume(ByteReader &r, Volume &v) {
+bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	for (float *x : { &v.x, &v.y, &v.w, &v.d, &v.pitch }) *x = r.get<float>();
 	for (int *x : { &v.base, &v.storeys, &v.ridge, &v.fall, &v.wall, &v.roof_paint }) *x = r.get<int32_t>();
 	v.roof = Roof(r.get<uint8_t>());
@@ -149,8 +155,21 @@ bool get_volume(ByteReader &r, Volume &v) {
 	for (RoofPart &p : v.gear) {
 		p.kind = r.get<uint8_t>();
 		for (float *x : { &p.x, &p.y, &p.w, &p.d, &p.h, &p.turn }) *x = r.get<float>();
+		if (version < FLAG_VERSION) continue;
+		p.flag.pattern = r.get<int8_t>();
+		for (uint32_t &c : p.flag.rgb) c = r.get<uint32_t>();
 	}
 	return r.ok;
+}
+
+// The version the bytes at the reader announce, taken when they announce one; the old bytes stay where they are.
+uint32_t body_version(ByteReader &r) {
+	uint32_t magic = 0;
+	if (r.o + sizeof(magic) > r.n) return UNVERSIONED;
+	std::memcpy(&magic, r.p + r.o, sizeof(magic));
+	if (magic != BODY_MAGIC) return UNVERSIONED;
+	r.get<uint32_t>();
+	return r.get<uint32_t>();
 }
 
 void put_element(ByteWriter &w, const LotElement &e) {
@@ -171,6 +190,8 @@ LotElement get_element(ByteReader &r) {
 } // namespace
 
 void write_body(ByteWriter &w, const Body &b) {
+	w.put<uint32_t>(BODY_MAGIC);
+	w.put<uint32_t>(BODY_VERSION);
 	put_plan(w, b.plan);
 	for (uint8_t x : { uint8_t(b.kind), uint8_t(b.use), uint8_t(b.ground), b.style }) w.put<uint8_t>(x);
 	for (int x : { b.palette, b.wall, b.roof, b.trim, b.entrance_volume }) w.put<int32_t>(x);
@@ -193,6 +214,8 @@ void write_body(ByteWriter &w, const Body &b) {
 }
 
 bool read_body(ByteReader &r, Body &b) {
+	const uint32_t version = body_version(r);
+	if (version > BODY_VERSION) return false;
 	b.plan = get_plan(r);
 	b.kind = Kind(r.get<uint8_t>());
 	b.use = Use(r.get<uint8_t>());
@@ -211,7 +234,7 @@ bool read_body(ByteReader &r, Body &b) {
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.volumes.resize(n);
 	for (Volume &v : b.volumes)
-		if (!get_volume(r, v)) return false;
+		if (!get_volume(r, v, version)) return false;
 	n = r.get<uint32_t>();
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.elements.resize(n);

@@ -101,8 +101,9 @@ private:
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MultiMeshDraw, BAND_DRAWS> bands;
+		MultiMeshDraw flags; // the cloths of its masts (flag_cloth.h), with the near level
 		std::array<Held, HELD_KINDS> held;
-		int64_t instances = 0, props = 0; // the instanced parts of its bands, and the bay props among them
+		int64_t instances = 0, props = 0; // the instanced parts of its bands and flags, and the bay props among them
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
@@ -149,7 +150,10 @@ private:
 		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_DRAWS> band_count{};
 		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
-		godot::RID unit_box; // the parts' box mesh
+		godot::PackedFloat32Array flags; // the flags, MultiMesh layout (flag_cloth.h bake_flags)
+		OwnedMesh flag_mm;
+		int flag_count = 0;
+		godot::RID unit_flag; // the flags' cloth
 		OccluderWalls walls;
 		bool has_near = false, has_mid = false, baked = false;
 		bool cut = false; // a building of the near level is cut open
@@ -209,7 +213,7 @@ private:
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
-	godot::Ref<godot::ArrayMesh> unit_box_; // the instanced parts' box (a resource: freed with the renderer)
+	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
 	std::array<float, BAND_DRAWS> band_end_{};

@@ -171,6 +171,8 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_add_gear", "id", "vol", "at", "spec"), &CityBuilder::body_add_gear);
 	ClassDB::bind_method(D_METHOD("body_remove_gear", "id", "vol", "gear"), &CityBuilder::body_remove_gear);
 	ClassDB::bind_method(D_METHOD("body_turn_gear", "id", "vol", "gear"), &CityBuilder::body_turn_gear);
+	ClassDB::bind_method(D_METHOD("body_set_flag", "id", "vol", "at", "pattern"), &CityBuilder::body_set_flag);
+	ClassDB::bind_method(D_METHOD("body_flag_colour", "id", "vol", "at", "slot", "colour"), &CityBuilder::body_flag_colour);
 	ClassDB::bind_method(D_METHOD("body_add_part", "id", "vol", "storey", "side", "bay", "spec"), &CityBuilder::body_add_part);
 	ClassDB::bind_method(D_METHOD("body_add_part_at", "id", "at", "spec"), &CityBuilder::body_add_part_at);
 	ClassDB::bind_method(D_METHOD("body_remove_part", "id", "part"), &CityBuilder::body_remove_part);

@@ -15,6 +15,7 @@ fx.ambientOcclusion,Oclusão ambiente (GTAO),Ambient occlusion (GTAO)
 fx.bDetail,Células em detalhe (L0),Cells in detail (L0)
 fx.bFacadeDetails,"Grades, toldos, colunas, brises","Railings, awnings, columns, fins"
 fx.bFacadeLevel,Nível de fachada (L1),Facade level (L1)
+fx.bFlags,Bandeiras,Flags
 fx.bGlass,Vidro,Glass
 fx.bLots,Lotes,Lots
 fx.bMasses,Massas e níveis distantes,Masses and far levels

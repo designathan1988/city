@@ -8,6 +8,7 @@
 #include "core/units.h"
 
 #include "render/buildings/facade.h"
+#include "render/buildings/flag_cloth.h"
 #include "render/mesh_builder.h"
 
 #include <algorithm>
@@ -63,6 +64,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();
+	unit_flag_ = b40::cloth_mesh();
 	return true;
 }
 
@@ -153,6 +155,7 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
 	for (MultiMeshDraw &d : ch.bands) d.free();
+	ch.flags.free();
 }
 
 void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority) {
