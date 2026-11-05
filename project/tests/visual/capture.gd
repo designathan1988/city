@@ -20,8 +20,6 @@ const JAM_SHOTS := 1
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
-## `--only=<name>` hands the whole run to one scene's shots.
-const DIRECTED := {"transporte": CaptureTransit, "pessoas": CapturePeople, "varredura": CaptureSweep}
 const DAY := CaptureViews.DAY
 const NIGHT := CaptureViews.NIGHT
 
@@ -113,10 +111,8 @@ func _wait_render() -> void:
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
-	for name: String in DIRECTED:
-		if only.has(name):
-			await DIRECTED[name].shots(self)
-			return
+	if await CaptureDirected.run(self, only):
+		return
 	var hour := DAY
 	await CaptureSignals.at_hour(self, hour)
 	if await CaptureTraffic.directed(self, probe, ground):
