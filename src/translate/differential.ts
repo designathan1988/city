@@ -230,14 +230,14 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     // a tuple prints as the JavaScript array it is
     if (isTuple(s)) {
       const items = s.fields.map((f, i) => `\t${i ? 'o << ","; ' : ''}put(o, v.${f.name});`);
-      return `void put(std::ostream &o, const ${s.name} &v) {\n\to << "[";\n${items.join('\n')}\n\to << "]";\n}`;
+      return `${putHead(s)} {\n\to << "[";\n${items.join('\n')}\n\to << "]";\n}`;
     }
     const fields = [...s.fields].sort((a, b) => (a.source < b.source ? -1 : 1));
     const body = fields.map((f) => `\tif (present(v.${f.name})) { o << (first ? "" : ",") << ${JSON.stringify(JSON.stringify(f.source) + ':')}; put(o, v.${f.name}); first = false; }`);
-    return `void put(std::ostream &o, const ${s.name} &v) {\n\tbool first = true;\n\to << "{";\n${body.join('\n')}\n\to << "}";\n}`;
+    return `${putHead(s)} {\n\tbool first = true;\n\to << "{";\n${body.join('\n')}\n\to << "}";\n}`;
   };
   for (const e of t.enums) lines.push(`void put(std::ostream &o, ${e.name} v);`);
-  for (const s of t.structs) lines.push(`void put(std::ostream &o, const ${s.name} &v);`);
+  for (const s of t.structs) lines.push(`${putHead(s)};`);
   for (const name of Object.keys(values)) lines.push(`void put(std::ostream &o, const ${name} &v);`);
   lines.push(`template <class T> void put(std::ostream &o, const std::vector<T> &v);`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
@@ -261,6 +261,13 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `\to << "["; bool first = true; for (const auto &kv : v) { if (!first) o << ","; first = false; o << "["; put(o, kv.first); o << ","; put(o, kv.second); o << "]"; } o << "]";`,
     `}`);
   return lines.join('\n');
+}
+
+/** How a struct is printed; of a generic class, for any of its instances. */
+function putHead(s: { readonly name: string; readonly typeParams?: readonly string[] }): string {
+  const params = s.typeParams ?? [];
+  if (params.length === 0) return `void put(std::ostream &o, const ${s.name} &v)`;
+  return `template <${params.map((p) => `class ${p}`).join(', ')}> void put(std::ostream &o, const ${s.name}<${params.join(', ')}> &v)`;
 }
 
 const CPP_HEAD = `#include <algorithm>

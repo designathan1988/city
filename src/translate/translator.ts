@@ -14,6 +14,8 @@ import { Emitter } from './statements.ts';
 export interface EmittedFunction {
   /** A class's member: its declaration is in the struct. */
   readonly member?: boolean;
+  /** A generic class's member: a template, written in the header. */
+  readonly inHeader?: boolean;
   readonly plan: FunctionPlan;
   /** The modules (source files) whose structs, constants, indexes or functions its code uses. */
   readonly uses: Set<string>;
@@ -95,6 +97,15 @@ export class Translator extends Emitter {
         // names is not a unit to translate; only its placeholders are the feature's values
         const mapped = ts.isExpression(n) && !ts.isIdentifier(n) ? this.c.patterns.match(n) : null;
         if (mapped) { for (const b of mapped.bound.values()) visit(b); return; }
+        // a member read reaches its class, whose name the code may never write (a value of an inferred type)
+        if (ts.isPropertyAccessExpression(n)) {
+          const holder = this.symbolOf(n.name)?.valueDeclaration?.parent;
+          const s = holder && ts.isClassDeclaration(holder) && holder.name ? this.symbolOf(holder.name) : undefined;
+          if (s && this.#decls.has(s) && !reached.has(s)) {
+            reached.add(s);
+            queue.push(s);
+          }
+        }
         if (ts.isIdentifier(n)) {
           const s = this.symbolOf(n);
           if (s && this.#decls.has(s) && !reached.has(s)) {
@@ -287,10 +298,9 @@ export class Translator extends Emitter {
     const source = node.name!.text;
     this.unit = source;
     if (node.heritageClauses?.some((h) => h.token === ts.SyntaxKind.ExtendsKeyword)) { this.fail(node, 'a class that extends another'); return; }
-    if (node.typeParameters?.length) { this.fail(node, 'a generic class'); return; }
     const type = this.c.types.ofType(this.c.checker.getTypeAtLocation(node), 'local', null);
     if (type.k !== 'ref') { this.fail(node, 'a class with no C++ form'); return; }
-    const struct = render(type.to);
+    const struct = type.to.k === 'struct' ? type.to.name : render(type.to);
     const owner = (kind: MemberOwner['kind'], m: TS.ClassElement): MemberOwner => ({
       struct, source, kind, node, isStatic: (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0 });
     let made = false;
@@ -658,7 +668,11 @@ export class Translator extends Emitter {
     const struct = this.c.types.structs.get(owner.struct)!;
     (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : ''}${this.#signature(plan, plan.cpp)};`);
     (struct.methodTypes ??= []).push(...plan.params.map((p) => p.type), plan.ret);
-    this.emitted.push({ plan, signature: this.#signature(plan, `${owner.struct}::${plan.cpp}`), lines: body, exported: false, role: 'query', uses: new Set(), member: true });
+    // a generic class's members are templates: their bodies go where the callers see them
+    const params = struct.typeParams ?? [];
+    const head = params.length > 0 ? `template <${params.map((t) => `class ${t}`).join(', ')}> ` : '';
+    const qualified = params.length > 0 ? `${owner.struct}<${params.join(', ')}>` : owner.struct;
+    this.emitted.push({ plan, signature: `${head}${this.#signature(plan, `${qualified}::${plan.cpp}`)}`, lines: body, exported: false, role: 'query', uses: new Set(), member: true, inHeader: params.length > 0 });
   }
 
   #emitMemo(plan: MemoPlan): void {

@@ -30,6 +30,8 @@ export interface CppStruct {
   readonly declared?: string | null;
   /** A class of the program: instances are shared, and it declares its members. */
   isClass?: boolean;
+  /** Of a generic class: its type parameters. */
+  typeParams?: string[];
   /** Its members as declared in the struct, and the types they name. */
   methods?: string[];
   methodTypes?: CppType[];
@@ -169,7 +171,7 @@ export class TypeMapper {
     // a function's own type parameter: the function is a template, T its caller's (a class's T has no such place)
     if (f & ts.TypeFlags.TypeParameter) {
       const decl = type.getSymbol()?.declarations?.[0];
-      if (decl && ts.isTypeParameterDeclaration(decl) && ts.isFunctionLike(decl.parent)) return { k: 'tparam', name: type.getSymbol()!.name };
+      if (decl && ts.isTypeParameterDeclaration(decl) && (ts.isFunctionLike(decl.parent) || ts.isClassDeclaration(decl.parent))) return { k: 'tparam', name: type.getSymbol()!.name };
     }
     if (f & ts.TypeFlags.NumberLike) return this.number(slot ? this.#flow.numberOf(slot) : Num.Float, use);
     if (f & ts.TypeFlags.BooleanLike) return BOOL;
@@ -254,11 +256,7 @@ export class TypeMapper {
       return { k: 'function', params, ret: this.ofType(call.getReturnType(), 'return', null) };
     }
     if (f & ts.TypeFlags.Object) {
-      if (this.isClass(type)) {
-        const made = this.structFor(type, slot?.name ?? 'value');
-        if (made.k === 'struct') this.structs.get(made.name)!.isClass = true;
-        return { k: 'ref', to: made };
-      }
+      if (this.isClass(type)) return this.#instance(type, slot);
       const shape = (slot ? this.#flow.shapeOf(slot) : null) ?? type;
       const struct = this.structFor(shape, slot?.name ?? 'value');
       if (struct.k !== 'struct' || Object.values(this.#spec.types).some((t) => t.type === struct.name)) return struct;
@@ -268,6 +266,21 @@ export class TypeMapper {
       return struct;
     }
     return this.#unsupported(type, slot, 'no C++ form');
+  }
+
+  /** A reference to an instance: its struct made once, from the class as declared; of a generic class, with what this instance's parameters are. */
+  #instance(type: TS.Type, slot: Slot | null): CppType {
+    const checker = this.#checker;
+    const declared = checker.getDeclaredTypeOfSymbol(type.getSymbol()!) as TS.InterfaceType;
+    const made = this.structFor(declared, slot?.name ?? 'value');
+    if (made.k !== 'struct') return { k: 'ref', to: made };
+    const struct = this.structs.get(made.name)!;
+    struct.isClass = true;
+    const params = declared.typeParameters ?? [];
+    struct.typeParams = params.map((p) => p.symbol.name);
+    if (params.length === 0) return { k: 'ref', to: made };
+    const given = checker.getTypeArguments(type as TS.TypeReference).slice(0, params.length);
+    return { k: 'ref', to: { ...made, args: (given.length === params.length ? given : params).map((a) => this.ofType(a, 'element', null)) } };
   }
 
   /** A class the program declares (a library's stays what the spec says of it). */

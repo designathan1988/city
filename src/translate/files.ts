@@ -111,6 +111,7 @@ function comment(text: string | null, indent = ''): string[] {
 function namesIn(t: CppType): string[] {
   switch (t.k) {
     case 'struct':
+      return [t.name, ...(t.args ?? []).flatMap(namesIn)];
     case 'enum':
       return [t.name];
     case 'optional':
@@ -255,7 +256,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     types.push(...constantLines(early));
     if (early.length > 0) types.push('');
     // a class may hold itself, or one declared after it: named first
-    for (const s of structs.filter((x) => x.isClass)) types.push(`struct ${s.name};`);
+    for (const s of structs.filter((x) => x.isClass)) types.push(`${templateHead(s)}struct ${s.name};`);
     for (const s of structs) types.push(...structLines(s, m));
     types.push(...constantLines(late));
     if (late.length > 0) types.push('');
@@ -293,7 +294,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     for (const f of own.filter((x) => !x.exported && !x.member && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
     api.push(...constantLines(calling));
     // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
-    const templates = visible.filter((x) => x.exported && x.plan.typeParams.length > 0);
+    const templates = own.filter((x) => x.inHeader || (x.exported && x.plan.typeParams.length > 0));
     for (const f of templates) api.push(`${f.signature} {`, ...f.lines, '}', '');
     const templateUses = [...new Set([...templates.flatMap((f) => [...f.uses]), ...calling.flatMap((k) => [...(k.uses ?? [])])])].filter((u) => u !== m && placed.has(u)).sort();
     if (templateUses.length > 0) api.splice(api.indexOf(''), 0, ...templateUses.map((u) => `#include "${header(u, 'api')}"`));
@@ -332,7 +333,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const edits = own.filter((f) => f.role === 'edit');
     // A public edit rebuilds the state's indexes: its module needs the state's module.
     if (edits.length > 0) files.set(`${id.owner}/${id.stem}_edit.cpp`, cpp('the edits (each rebuilds the indexes once)', edits, builders.length > 0 ? [stateModule] : []));
-    const queries = own.filter((f) => f.role === 'query');
+    const queries = own.filter((f) => f.role === 'query' && !f.inHeader);
     if (queries.length > 0) files.set(`${id.owner}/${id.stem}_query.cpp`, cpp('the queries (they only read)', queries, []));
     if (isState && builders.length > 0) {
       const uses = new Set(builders.flatMap((b) => [...b.uses]));
@@ -368,10 +369,13 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
   return files;
 }
 
+const templateHead = (s: CppStruct): string => (s.typeParams?.length ? `template <${s.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '');
+
 function structLines(s: CppStruct, source: string): string[] {
   const head = comment(s.comment ?? null);
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
-  const base = s.isClass ? ` : std::enable_shared_from_this<${s.name}>` : '';
-  return [...head, `struct ${s.name}${base} {`, ...fields, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
+  const self = s.typeParams?.length ? `${s.name}<${s.typeParams.join(', ')}>` : s.name;
+  const base = s.isClass ? ` : std::enable_shared_from_this<${self}>` : '';
+  return [...head, `${templateHead(s)}struct ${s.name}${base} {`, ...fields, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
 }

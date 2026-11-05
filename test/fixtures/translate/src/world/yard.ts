@@ -318,3 +318,39 @@ export function chainSum(n: number): number {
   for (let at: Link | null = head; at !== null; at = at.next) sum += at.value;
   return sum;
 }
+
+/** A kept list of anything: a generic class, a template in C++. */
+export class Shelf<T> {
+  #items: T[] = [];
+
+  put(item: T): void {
+    this.#items.push(item);
+  }
+
+  at(i: number): T {
+    return this.#items[i]!;
+  }
+
+  get size(): number {
+    return this.#items.length;
+  }
+}
+
+enum Grade {
+  Low = 2,
+  High = 7,
+}
+
+/** A value of an inferred type: the class is named by nobody here but its factory. */
+function shelfOf(n: number): Shelf<number> {
+  const made = new Shelf<number>();
+  for (let i = 0; i < n % 4; i++) made.put(i * Grade.High);
+  return made;
+}
+
+export function shelved(n: number): number {
+  const kept = shelfOf(n);
+  const names = new Shelf<string>();
+  names.put('ab');
+  return kept.size + (kept.size > 0 ? kept.at(kept.size - 1) : Grade.Low) + names.at(0).length;
+}

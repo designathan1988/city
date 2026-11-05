@@ -218,6 +218,13 @@ export abstract class ExpressionEmitter {
     if (e.kind === ts.SyntaxKind.FalseKeyword) return { code: 'false', type: BOOL };
     if (e.kind === ts.SyntaxKind.NullKeyword) return { code: 'nullptr', type: NULL };
     if (ts.isIdentifier(e)) return this.#identifier(e);
+    // an enum's member is the value the checker knows
+    if (ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)) {
+      const member = this.symbolOf(ts.isPropertyAccessExpression(e) ? e.name : e.argumentExpression)?.valueDeclaration;
+      const constant = member && ts.isEnumMember(member) ? this.c.checker.getConstantValue(member) : undefined;
+      if (typeof constant === 'number') return Number.isInteger(constant) ? { code: String(constant), type: INT } : { code: realLiteral(String(constant), this.c.spec.number), type: this.c.types.number(Num.Float, 'local') };
+      if (typeof constant === 'string') return { code: JSON.stringify(constant), type: LITERAL };
+    }
     if (ts.isPropertyAccessExpression(e)) return this.#property(e);
     if (ts.isElementAccessExpression(e)) {
       const obj = this.value(e.expression);
@@ -385,7 +392,7 @@ export abstract class ExpressionEmitter {
   #member(e: TS.PropertyAccessExpression, obj: Value): Value {
     const name = e.name.text.replace(/^#/, '');
     const getter = this.#memberPlan(e.name);
-    if (getter?.owner?.kind === 'getter') return { code: `${obj.code}->${getter.cpp}()`, type: getter.ret };
+    if (getter?.owner?.kind === 'getter') return { code: `${obj.code}->${getter.cpp}()`, type: holdsTypeParameter(getter.ret) ? this.#typeOf(e) : getter.ret };
     const t = target(obj.type);
     const access = arrow(obj.type);
     if (name === 'length' && (t.k === 'vector' || t.k === 'string')) return { code: `int(${obj.code}${access}size())`, type: INT };
@@ -408,7 +415,8 @@ export abstract class ExpressionEmitter {
       const struct = this.c.types.structs.get(t.name);
       const field = struct?.fields.find((f) => f.source === name);
       if (!field) return this.fail(e, `${t.name} has no field ${name}`);
-      return { code: `${obj.code}${access}${field.name}`, type: field.type };
+      const bound = new Map((struct?.typeParams ?? []).flatMap((p, i) => (t.args?.[i] ? [[p, t.args[i]!] as const] : [])));
+      return { code: `${obj.code}${access}${field.name}`, type: substitute(field.type, bound) };
     }
     if (this.#isBuiltin(e.name)) return this.builtin(e, obj);
     return this.fail(e, `a member of ${render(obj.type)} the translator does not know`);
@@ -513,8 +521,10 @@ export abstract class ExpressionEmitter {
 
   /** The plan of a class's member a name reads (a method, a getter), or null. */
   #memberPlan(name: TS.Node): FunctionPlan | null {
+    // of a generic class's instance the checker gives a symbol of its own: the plan is the declaration's
     const symbol = this.symbolOf(name);
-    const plan = symbol ? this.c.functions.get(symbol) : undefined;
+    const declared = (symbol?.valueDeclaration as (TS.Node & { symbol?: TS.Symbol }) | undefined)?.symbol ?? symbol;
+    const plan = declared ? this.c.functions.get(declared) : undefined;
     return plan?.owner ? plan : null;
   }
 
@@ -523,15 +533,17 @@ export abstract class ExpressionEmitter {
     this.uses?.add(plan.module);
     this.calledFunction = true;
     const args = this.#argumentsOf(plan, e.arguments, new Map()).join(', ');
-    if (plan.owner!.isStatic) return { code: `${plan.owner!.struct}::${plan.cpp}(${args})`, type: plan.ret };
-    return { code: `${this.value(receiver).code}->${plan.cpp}(${args})`, type: plan.ret };
+    const type = holdsTypeParameter(plan.ret) ? this.#typeOf(e) : plan.ret;
+    if (plan.owner!.isStatic) return { code: `${plan.owner!.struct}::${plan.cpp}(${args})`, type };
+    return { code: `${this.value(receiver).code}->${plan.cpp}(${args})`, type };
   }
 
   /** `this`: read through inside a member; as a value, the shared instance (never in a constructor: nothing holds it yet). */
   #self(e: TS.Expression): Value {
     const owner = this.fn?.owner;
     if (!owner) return this.fail(e, '`this` outside a class');
-    const type: CppType = { k: 'ref', to: { k: 'struct', name: owner.struct } };
+    const params = this.c.types.structs.get(owner.struct)?.typeParams ?? [];
+    const type: CppType = { k: 'ref', to: { k: 'struct', name: owner.struct, ...(params.length > 0 ? { args: params.map((name) => ({ k: 'tparam' as const, name })) } : {}) } };
     if (this.c.ts.isPropertyAccessExpression(e.parent) && e.parent.expression === e) return { code: 'this', type };
     if (owner.kind === 'constructor') return this.fail(e, '`this` given away by a constructor');
     return { code: 'shared_from_this()', type };

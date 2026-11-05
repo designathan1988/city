@@ -10,7 +10,7 @@ export type CppType =
   | { readonly k: 'string' }
   | { readonly k: 'void' }
   | { readonly k: 'enum'; readonly name: string }
-  | { readonly k: 'struct'; readonly name: string }
+  | { readonly k: 'struct'; readonly name: string; /** Of a generic class: what its type parameters are. */ readonly args?: readonly CppType[] }
   /** A function's type parameter: the function is a template. */
   | { readonly k: 'tparam'; readonly name: string }
   | { readonly k: 'vector'; readonly of: CppType }
@@ -53,9 +53,10 @@ export function render(t: CppType): string {
     case 'int':
     case 'real':
     case 'enum':
-    case 'struct':
     case 'tparam':
       return t.name;
+    case 'struct':
+      return t.args?.length ? `${t.name}<${t.args.map(render).join(', ')}>` : t.name;
     case 'class':
       return t.text;
     case 'bool':
@@ -94,6 +95,7 @@ export function render(t: CppType): string {
 export function holdsTypeParameter(t: CppType): boolean {
   switch (t.k) {
     case 'tparam': return true;
+    case 'struct': return (t.args ?? []).some(holdsTypeParameter);
     case 'vector': case 'deque': case 'list': case 'optional': case 'set': return holdsTypeParameter(t.of);
     case 'ptr': case 'ref': return holdsTypeParameter(t.to);
     case 'map': return holdsTypeParameter(t.key) || holdsTypeParameter(t.of);
@@ -124,6 +126,7 @@ export function substitute(t: CppType, types: ReadonlyMap<string, CppType>): Cpp
     case 'vector': case 'deque': case 'list': case 'optional': case 'set': return { ...t, of: substitute(t.of, types) };
     case 'ptr': return { k: 'ptr', to: substitute(t.to, types) };
     case 'ref': return { k: 'ref', to: substitute(t.to, types) };
+    case 'struct': return t.args ? { ...t, args: t.args.map((x) => substitute(x, types)) } : t;
     case 'map': return { k: 'map', key: substitute(t.key, types), of: substitute(t.of, types) };
     case 'function': return { k: 'function', params: t.params.map((p) => substitute(p, types)), ret: substitute(t.ret, types) };
     default: return t;
