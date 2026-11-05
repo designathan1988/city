@@ -23,13 +23,13 @@ def consultas_com_efeito(raiz, fontes):
         return out
     texto = d.ler(api[0])
     bloco = re.search(r"QUERIES\s*:?=\s*\{(.*?)\n\}", texto, re.S)
-    nomes = set(re.findall(r'&"\w+"\s*:\s*"(\w+)"', bloco.group(1))) if bloco else set()
+    nomes = set(re.findall(r'&"\w+"\s*:\s*"(?:\w+/)?(\w+)"', bloco.group(1))) if bloco else set() # "metodo" or "area/metodo"
     for p, t in fontes.items():
         if "/api/" not in p.replace("\\", "/"):
             continue
         for nome, linha, corpo, const in d.funcoes(t):
             curto = nome.split("::")[-1]
-            mutadora = re.search(r"(render_|state_|jobs|s\.)[\w.>()-]*?(\.|->)(sync|submit|update\w*|step\w*|mark\w*|touch)\s*\(", corpo)
+            mutadora = re.search(r"(?:\.|->)(sync|submit|step\w*|mark_\w*|touch|publish\w*)\s*\(", corpo) # any receiver: the class may change
             if curto in nomes and not const and mutadora:
                 out.append(d.achado("CONSULTA_COM_EFEITO", f"a consulta '{curto}' altera estado (não é const e chama sync/submit/set)",
                                     "trabalho por quadro dirigido por quem lê; some quando a tela que lê não existe",
