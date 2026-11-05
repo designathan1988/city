@@ -129,10 +129,19 @@ A correção é um runtime C++ dos built-ins, com uma regra só no tradutor:
    `--coverage-proof shown` só prova que o dono existe e cita a unidade.
 4. Fica do lado da interface (`method`): toLocaleString, performance, window, Promise, try/catch.
 
-**Método para achar a próxima causa:** rodar todas as áreas (47 s a 4 min cada, 4 ao mesmo tempo) e somar o `ledger.json` de
-cada uma: as recusas por categoria e onde as unidades `translate` ficaram presas (módulo recusado, unidade fora dos roots, sem
-spec). Nunca escolher pelo que a sessão do porte encontrou primeiro: a contagem mostrou que uma única causa respondia por
-55% das recusas.
+**Método (ordem do usuário: nada de processos longos):**
+- Corrigir uma causa: um caso no fixture (`test/fixtures/translate`) e `node --test test/translate.test.ts`: segundos, com o C++ compilado e o
+  diferencial contra a fonte. Escolher a causa pelo `ledger.json` que já existe (`scripts/open-causes.py`), sem rodar nada de novo.
+- Passada do programa inteiro: só no fim de um bloco de correções, uma vez, em segundo plano. Nunca por área: o perfil mostrou 63 de
+  106 s em preparo fixo (abrir o programa e resolver o fluxo do programa inteiro), igual em cada uma das 8 áreas, e os módulos comuns
+  julgados de novo em cada uma. A compilação não pesa.
+- Falta medir: uma passada inteira (`--boundary out/city40/whole/boundary.json`) não terminou; foi parada a pedido do usuário depois de
+  267 módulos.
+
+**Classes (decisão pendente, do usuário):** é a maior porção do que resta: cerca de 4.800 unidades (`a member of a class`, 235 arquivos, só 8 com
+`extends`). Traduzir fiel exige semântica de referência (`std::shared_ptr`), objetos que implementam interfaces (`Sink`, `Path`) e `this`. O que
+sairia é o `RoadDoc`, o tráfego e o que mais o 4.0 tem em classes, que o jogo já tem na própria arquitetura (`CityState`, `sim/*`): o
+`CLAUDE.md` diz que não se porta o código. Antes de construir isso, confirmar que vale.
 
 ## Regras desta sessão (do usuário)
 
@@ -276,3 +285,6 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
   `_enums.h` próprio (inclusão circular escondia o enum); enum anônimo no módulo da struct; tipo que estende Array é lista; `constexpr` só do que
   C++ avalia; null contra optional; número convertido onde as chaves recusam estreitar.
 - O conversor passa a gravar `specs/` no `convert`, para `differential --spec --hand`. Roteiro acima escrito a pedido da sessão de porte.
+- `5a15b1f` Módulos julgados à frente com a compilação em paralelo; `patterns.match` e `calleeOf` resolvidos uma vez; progresso gravado a cada
+  30 s (antes, o livro-razão inteiro a cada módulo).
+- O usuário mandou parar processos longos: passada inteira parada (PID próprio), método acima registrado.
