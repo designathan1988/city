@@ -355,7 +355,7 @@ export class FlowGraph {
   numOf(e: TS.Expression): Num {
     const ts = this.#ts;
     const match = this.#patterns.match(e);
-    if (match) return { int: Num.Int, int64: Num.Int64, float: Num.Float, bool: Num.None, void: Num.None }[match.pattern.type];
+    if (match) return { int: Num.Int, int64: Num.Int64, float: Num.Float, bool: Num.None, void: Num.None, owned: Num.None }[match.pattern.type];
     if (ts.isNumericLiteral(e)) {
       const kind = integerLiteral(e.getText());
       return kind === 'int64' ? Num.Int64 : kind === 'int' ? Num.Int : Num.Float;

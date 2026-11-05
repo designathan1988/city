@@ -8,7 +8,7 @@ export interface Pattern {
   readonly expr: TS.Expression;
   readonly target: string;
   readonly include: string;
-  readonly type: 'int' | 'int64' | 'float' | 'bool' | 'void';
+  readonly type: 'int' | 'int64' | 'float' | 'bool' | 'void' | 'owned';
   readonly context: { readonly type: string; readonly name: string } | null;
 }
 

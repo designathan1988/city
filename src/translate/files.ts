@@ -65,6 +65,7 @@ function projectHeaderNames(c: TranslateContext): Map<string, Set<string>> {
   for (const t of Object.values(c.spec.types)) add(t.include, t.type);
   for (const k of Object.values(c.spec.classes)) add(k.include, k.type);
   for (const p of c.spec.patterns) add(p.include, `${p.target} ${p.context?.type ?? ''}`);
+  for (const f of Object.values(c.spec.functions)) if (f.include) add(f.include, `${f.template} ${f.context?.type ?? ''}`);
   return out;
 }
 

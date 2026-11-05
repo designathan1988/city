@@ -147,3 +147,19 @@ export function heightHash(t: YardData, k: number): number {
   for (let i = 0; i < h.length; i++) s += h[i]!;
   return (Math.imul(k | 0, 0x27d4eb2d) ^ Math.imul(s | 0, 0x9e3779b1)) + (k > 0 ? 0x1_0000_0000 : 0);
 }
+
+/** How a post of a kind looks: the target owns it (spec.functions lookOf, spec.types PostLook). */
+export interface PostLook {
+  readonly height: number;
+  readonly lit: boolean;
+}
+
+export function lookOf(kind: number): PostLook {
+  return { height: kind, lit: kind > 1 };
+}
+
+/** The height of the lit posts of a kind: a value the target owns, its fields by the target's names. */
+export function litHeight(t: YardData, kind: number): number {
+  const look = lookOf(kind | 0);
+  return look.lit ? look.height * t.posts.length : 0;
+}

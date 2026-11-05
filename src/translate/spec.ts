@@ -4,6 +4,19 @@
 import fs from 'node:fs';
 
 /** A source concept the target owns already: matched by shape, written as the owner's call. */
+/**
+ * A source function the target owns: its call is the template ($0, $1 the arguments). What it returns is the C++ form
+ * of the source's return type (a source type the spec maps, `types`: RoadStructureSpec → StructureSpec).
+ */
+export interface FunctionMapping {
+  readonly template: string;
+  readonly reason: string;
+  /** The target header that declares it (absent: a template that is only arithmetic, m(x) → x). */
+  readonly include?: string;
+  /** A parameter the target function reads (the tuning): every caller takes it, as a context pattern's callers do. */
+  readonly context?: { readonly type: string; readonly name: string };
+}
+
 export interface PatternMapping {
   /** A source expression with $placeholders, e.g. "($x + 32768) * 65536 + ($y + 32768)". */
   readonly source: string;
@@ -13,7 +26,7 @@ export interface PatternMapping {
   readonly include: string;
   /** What the target expression is (default int64: the target's cell keys). A tuning value is float: an outside
    *  constant (ROAD_TUNING.grade.ramp) mapped to the game's own (its tuning accessor). */
-  readonly type?: 'int' | 'int64' | 'float' | 'bool' | 'void';
+  readonly type?: 'int' | 'int64' | 'float' | 'bool' | 'void' | 'owned';
   /** A parameter the target expression reads (the game passes its tuning: "const Tuning &" tn): every function that
    *  uses the pattern, directly, through a module constant or through a call, takes it, and passes it on. */
   readonly context?: { readonly type: string; readonly name: string };
@@ -77,7 +90,7 @@ export interface TranslationSpec {
   /** The source types the target already has, found by shape when a translation runs (target-types.ts). */
   readonly types: Record<string, { readonly type: string; readonly include: string; readonly fields?: Readonly<Record<string, string>> }>;
   /** Source functions that are unit conversions or identities in the target (m(x) → x: one world unit is a metre). */
-  readonly functions: Readonly<Record<string, { readonly template: string; readonly reason: string }>>;
+  readonly functions: Readonly<Record<string, FunctionMapping>>;
   readonly classes: Readonly<Record<string, ClassMapping>>;
   /** Source functions that memoize a function of the state by identity (identityMemo): each such value is an index. */
   readonly memoizers: readonly string[];
@@ -101,7 +114,7 @@ export function resolveSpec(spec: TranslationSpec): TranslationSpec {
     ...k, type: real(k.type), members: dictionary(Object.entries(k.members)), returns: dictionary(Object.entries(k.returns).map(([m, t]) => [m, real(t)])),
   }]));
   // The target's types are found by shape after the flow is solved (target-types.ts); this dictionary receives them.
-  return { ...spec, classes, types: dictionary([]), functions: dictionary(Object.entries(spec.functions)),
+  return { ...spec, classes, types: dictionary(Object.entries(spec.types ?? {})), functions: dictionary(Object.entries(spec.functions)),
     typeNames: dictionary(Object.entries(spec.typeNames)) };
 }
 

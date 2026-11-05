@@ -146,6 +146,8 @@ export class Translator extends Emitter {
         if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
           const s = this.symbolOf(n.expression);
           if (s && this.c.functions.has(s)) callees.push(s);
+          const owned = s && !this.c.functions.has(s) ? this.c.spec.functions[n.expression.text]?.context : undefined;
+          if (owned) own.set(owned.name, owned);
         }
         ts.forEachChild(n, visit);
       };

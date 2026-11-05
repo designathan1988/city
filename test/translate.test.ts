@@ -40,7 +40,7 @@ describe('translate', () => {
   });
 
   it('finds the target types by shape, within what the layers may include', () => {
-    assert.deepEqual(result.valueTypes, { V2: { x: 'x', y: 'y' } }, 'Vec2 is the core V2; the same-shaped render Point2 is not includable');
+    assert.deepEqual(result.valueTypes, { PostLookC: { height: 'height', lit: 'lit' }, V2: { x: 'x', y: 'y' } }, 'Vec2 is the core V2; the same-shaped render Point2 is not includable; PostLook is the one the spec declares');
     assert.match(file('yard_types.h'), /#include "core\/math\.h"/);
   });
 

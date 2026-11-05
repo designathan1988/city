@@ -8,7 +8,7 @@ import type * as TS from 'typescript';
 import type { SourceProgram, TypeScriptApi } from '../graph/typescript.ts';
 import { ModulePlacement } from '../translate/modules.ts';
 import { snake } from '../translate/names.ts';
-import type { ClassMapping, PatternMapping, TranslationSpec } from '../translate/spec.ts';
+import type { ClassMapping, FunctionMapping, PatternMapping, TranslationSpec } from '../translate/spec.ts';
 import type { LedgerUnit } from './ledger.ts';
 
 export interface ConversionLibrary {
@@ -19,8 +19,13 @@ export interface ConversionLibrary {
   readonly rules: string;
   readonly doc: string;
   readonly ownedFiles: readonly string[];
-  readonly functions: Readonly<Record<string, { readonly template: string; readonly reason: string }>>;
+  readonly functions: Readonly<Record<string, FunctionMapping>>;
   readonly classes: Readonly<Record<string, ClassMapping>>;
+  /**
+   * Source types the game has (RoadStructureSpec → StructureSpec in sim/roads/road_grade.h), with their fields
+   * (source name → the game's): a value of one is the game's, its fields read by these names.
+   */
+  readonly types?: TranslationSpec['types'];
   readonly memoizers: readonly string[];
   readonly patterns: readonly PatternMapping[];
 }
@@ -113,7 +118,7 @@ export function moduleSpecs(ts: TypeScriptApi, sp: SourceProgram, sourceRoot: st
       feature, subsystem: placed.owner, namespace: library.namespace, source: module, summary,
       state: { source: state ?? '', target, member, root: library.stateRoot, ...(empty ? { empty } : {}), anchor: library.stateAnchor, memberLine: `${target} ${member}; // ${relative}` },
       registry: { doc: library.doc, mapLine: `- \`${placed.owner}/**\` — ${summary}` },
-      units: names, pending: [], number: library.number, types: {}, functions: library.functions, classes: library.classes,
+      units: names, pending: [], number: library.number, types: { ...(library.types ?? {}) }, functions: library.functions, classes: library.classes,
       memoizers: library.memoizers, patterns: library.patterns, typeNames: {},
       layer: { rules: library.rules, includes: ['core/', `${relative}/`] },
     });

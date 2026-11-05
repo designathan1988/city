@@ -160,7 +160,7 @@ export abstract class ExpressionEmitter {
     if (match) {
       this.c.includes.add(match.pattern.include);
       return { code: match.pattern.target.replace(/\$(\w+)/g, (_, n: string) => this.expr(match.bound.get(`$${n}`)!)),
-        type: { int: INT, int64: INT64, bool: BOOL, void: VOID, float: this.c.types.number(Num.Float, 'local') }[match.pattern.type] };
+        type: match.pattern.type === 'owned' ? this.#ownedType(e) : { int: INT, int64: INT64, bool: BOOL, void: VOID, float: this.c.types.number(Num.Float, 'local') }[match.pattern.type] };
     }
     if (ts.isParenthesizedExpression(e)) {
       const inner = this.value(e.expression, want);
@@ -307,7 +307,8 @@ export abstract class ExpressionEmitter {
       if (known?.fields) {
         const field = known.fields[name];
         if (!field) return this.fail(e, `${t.name} has no field for ${name} in the spec`);
-        return { code: `${obj.code}${access}${field}`, type: this.c.types.number(Num.Float, 'local') };
+        const flag = (this.c.checker.getTypeAtLocation(e).flags & ts.TypeFlags.BooleanLike) !== 0;
+        return { code: `${obj.code}${access}${field}`, type: flag ? BOOL : this.c.types.number(Num.Float, 'local') };
       }
       const struct = this.c.types.structs.get(t.name);
       const field = struct?.fields.find((f) => f.source === name);
@@ -367,7 +368,9 @@ export abstract class ExpressionEmitter {
       const decl = symbol?.valueDeclaration;
       const external = symbol && !this.c.functions.has(symbol) ? this.c.spec.functions[callee.text] : undefined;
       if (external) {
-        return { code: external.template.replace(/\$(\d)/g, (_, i: string) => this.expr(e.arguments[Number(i)]!)), type: this.numberType(e) };
+        if (external.include) this.c.includes.add(external.include);
+        const code = external.template.replace(/\$(\d)/g, (_, i: string) => this.expr(e.arguments[Number(i)]!));
+        return { code, type: this.#ownedType(e) };
       }
       const memo = symbol ? this.c.memos.get(symbol) : undefined;
       if (memo) return this.#memoRead(e, memo);
@@ -396,6 +399,14 @@ export abstract class ExpressionEmitter {
       }
     }
     return this.fail(e, 'a call the translator does not know');
+  }
+
+  /** What a value the target owns is in C++: an object, the form of its source type (a type the spec maps); else a number. */
+  #ownedType(e: TS.Expression): CppType {
+    const t = this.c.checker.getNonNullableType(this.c.checker.getTypeAtLocation(e));
+    if (t.flags & this.c.ts.TypeFlags.BooleanLike) return BOOL;
+    if (t.flags & this.c.ts.TypeFlags.Object) return this.c.types.ofType(t, 'local', null);
+    return this.numberType(e);
   }
 
   #memoRead(e: TS.CallExpression, memo: MemoPlan): Value {
