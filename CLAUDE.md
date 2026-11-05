@@ -12,10 +12,13 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 3. **Compreensão e plano** antes de codificar: a solução completa e correta, nunca a mais barata; sem arquivo-deus nem
    funcionalidade espalhada; regras deste arquivo (dono único, sem número mágico, dados em `data/**`, mapa em dia).
 4. **Codificação** sem tentativa e erro: se não deu certo, voltar à documentação até entender.
-5. **Teste:** "Gates OK" em `python3 tools/gates/run_gates.py`; C++ mudou → `tools/build/build.sh
-   core` / `core-windows` (DLL de release e de debug); visível mudou → `tools/build/build.sh e2e`. Medir de novo: quadros
-   sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos analisadas com atenção (contra a referência e
-   o estado anterior): nenhuma perda de qualidade visual; todo problema achado é corrigido.
+5. **Teste, rápido e sem afrouxar** (ver "Ferramentas"): na iteração, `tools/build/runq.sh <cópia> <pasta> fast
+   test:<cena>` (scripts compilados, só a DLL de debug com todos os núcleos, só o teste afetado: segundos); antes do commit,
+   os gates dos arquivos mudados (`tools/build/gates_changed.sh`), as duas DLLs (`tools/build/build.sh core-windows`) e a
+   suíte inteira em paralelo (`tools/analise/testes.py`, ~70 s); "Gates OK" em `python3 tools/gates/run_gates.py` antes do
+   push. Medir de novo: quadros sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos tiradas e analisadas
+   com atenção: a diferença contra o estado anterior (`tools/build/photodiff.py`) diz onde olhar e cada mudança é explicada
+   pela causa; nenhuma perda de qualidade visual; todo problema achado é corrigido.
 6. Nunca esperar às cegas um processo lançado (tempo-limite e acompanhamento); parar só processos próprios, pelo PID.
 7. Commit por tema e push regular em `origin/main` (`https://github.com/designathan1988/city`, a pasta única do projeto: ver
    "Estrutura do projeto").
@@ -23,7 +26,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
   de visual e de comportamento de tudo (gráficos, prédios, tráfego, semáforos, pedestres, carros, postes e fios): o jogo
   deve ter todos os gráficos e funcionalidades dele. A pasta pode ser lida, aberta, rodada e estudada a qualquer momento.
   O código dele é referência de comportamento, não de implementação: não se porta o código; portam-se as funcionalidades,
-  cujo rastreamento passa pelo conversor (`converter/scripts/port.ts extract`) e cuja conversão é feita na arquitetura
+  cujo rastreamento passa pelo conversor (`tools/converter`: `scripts/port.ts extract`, `node src/cli.ts feature`) e cuja conversão é feita na arquitetura
   atual, otimizada; nada de colar código não otimizado sem a arquitetura e os gates.
 
 ## Regras de arquitetura (verificadas automaticamente)
@@ -58,6 +61,73 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
+| Ciclo rápido (iteração) | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>`: scripts → DLL de debug (`-j` = núcleos) → o teste; cada job vigiado (log parado 180 s = travado, morto pelo PID), eventos em `<pasta>/events.log`. Jobs: `scripts`, `import`, `build`, `fast`, `gates`, `test:<cena>[@renderizador]`, `scene:<nome>:<cena>[:args]` |
+| Suíte inteira em paralelo | `python tools/analise/testes.py [--raiz <cópia>] [--so=nomes] [--paralelos N]` (logs em `dist/tests`, os que o hook de commit confere) |
+| Gates dos arquivos mudados | `tools/build/gates_changed.sh <cópia>` (`run_gates.py --file` de cada arquivo do `git status`) |
+| Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` (ou o job `scene:look:tests/visual/look.tscn:--plan=<json>` do `runq.sh`) |
+| Diferença de duas rodadas de fotos | `python tools/build/photodiff.py <antes> <depois> <saída>` |
+| Onde cada thread gasta | `python tools/analise/perfil.py --oculto --cmd "<godot> --path project <cena>" --segundos 30 --simbolizador <llvm-symbolizer>` |
+| Tradutor do 4.0 (TS → C++) | `tools/converter`: `node src/cli.ts feature`, `convert`, `differential` (ver "Ferramentas") |
+
+## Ferramentas (o que cada uma faz, o que mediu e o que ensinou; 2026-11-05)
+- **Tempos medidos** (RTX 3060, 24 núcleos): ciclo `fast` de 6 a 15 s (eram 3 min com as duas DLLs em série e `-j 4`); suíte
+  inteira 65 a 75 s com 8 em paralelo (~30 min em série); a cidade do mapa 0 abre em 211 ms (`look`, 6,5 s a rodada inteira); a
+  captura da cidade faz 52 fotos em 48 s; `capture_roads` gasta ~43 s antes da primeira foto (causa a medir com o `perfil.py`).
+  Lento é defeito de método: medir onde vai o tempo e trocar o método, nunca esperar.
+- **`runq.sh`**: fila de jobs, cada um vigiado pelo log (parado = travado, morto só pelo PID do próprio job); um script que não
+  compila quebra o job na hora. `fast` compila os scripts antes da DLL (o jogo aberto prende a DLL: nada de jogo ao lado do link).
+  A DLL de release é refeita para o commit.
+- **`testes.py`** (sessão de causa-raiz): mesma lista e regra de falha do `run_tests.sh`, todas as cenas ao mesmo tempo; uma
+  falha sob carga é repetida sozinha e dita INSTÁVEL, nunca escondida. **`perfil.py`**: congela cada thread a cada 5 ms e soma as
+  pilhas (símbolos pedem a DLL com informação de depuração: `-DCMAKE_BUILD_TYPE=RelWithDebInfo` numa pasta de build à parte, essa
+  DLL nunca é commitada). **`causas.py`**: analisador estático de causas-raiz (<1 s).
+- **Gates**: inteiros atravessam o repositório todo; na iteração, `gates_changed.sh`. O hook recusa um comando composto que cite
+  `tools/gates` (com `time`/`timeout` na frente também) e qualquer comando que escreva um texto com esse caminho: chamar e editar
+  por script. Commit: `git add` e `git commit` em comandos separados; o hook confere os logs de `dist/tests` mais novos que o código.
+- **Rebase e as DLLs**: elas conflitam sempre (binárias, as duas branches mudaram o C++): nunca escolher um lado; refazer as duas a
+  partir das fontes juntas e rodar a suíte de novo no código juntado.
+- **`look.gd`** (+ `look_measure.gd`): o `scripts/look.mjs` do 4.0 no jogo. Plano `{"city": {map, seed, generate}, "steps": [...]}`;
+  passos `setView [x, z, zoom, azimute°, elevação°]` (a câmera exata de uma foto do 4.0, `PairCamera`), `shot`, `wait`, `frames`,
+  `hour`, `dispatch`/`query` (args `{"at": [x, z]}`, `{"profile": id}`, `{"v3": [...]}`), `key`, `click`, `drag`; as medidas vêm de
+  RenderingServer e Performance (`look_measure.gd`: gravação dos quadros com p50/p95/p99, engasgos >25 ms e vsyncs perdidos pelo
+  período do p10; uso com pico/média/mínimo; draws, primitivas e objetos vistos e de sombra; memória; compilações de pipeline;
+  passes da GPU pelos carimbos do RenderingDevice; os passos `record`, `usage`, `until`, `view`, `passes` e `info` no `look.gd`
+  ainda a ligar). Uma pergunta de diagnóstico vira um passo `query` no mesmo log das fotos.
+- **`photodiff.py`**: diferença pixel a pixel de duas rodadas (barra e dock mascarados): a parte mudada, a caixa e o mapa vermelho
+  por foto. Diz onde olhar, não o veredito: na elevação toda borda das vistas baixas mudou porque a câmera mira o chão do `raycast`
+  (0,6 m abaixo da pista, o chão sob a via é rebaixado), não porque a via mudou; foi medido com `query height_at`.
+- **Equivalentes nativos do Godot 4.7** (lidos em `native/godot-cpp/gdextension/extension_api-4-7.json`, a API exata do projeto):
+  tempo de CPU/GPU do viewport `viewport_set_measure_render_time` + `viewport_get_measured_render_time_cpu/gpu`; por quadro
+  `viewport_get_render_info` (OBJECTS, PRIMITIVES, DRAW_CALLS; tipo VISIBLE ou SHADOW); `get_rendering_info` (VIDEO, TEXTURE e
+  BUFFER_MEM_USED, PIPELINE_COMPILATIONS_*); passes da GPU em `RenderingDevice.get_captured_timestamps_*` (Forward+); vistas de
+  depuração `Viewport.debug_draw` (OVERDRAW, WIREFRAME, NORMAL_BUFFER, UNSHADED, LIGHTING, SHADOW_ATLAS, PSSM_SPLITS, OCCLUDERS,
+  DISABLE_LOD…); `Performance.get_monitor`.
+- **Tradutor (`tools/converter`, sessão própria)**: traduz TypeScript puro do 4.0 em C++ compilado e verificado; não tem alvo GDScript
+  nem DOM (a interface é sempre à mão, com o Godot nativo). `feature` acha a fronteira; `convert` traduz o que é puro (spec gerado) e
+  deixa o resto como `method`/`write` no livro-razão; `differential --hand <arquivo>` compara C++ escrito à mão com o TS nos mesmos
+  dados e mostra o passo e o valor de cada diferença. Valores do Tuning entram por padrões da library (`ROAD_TUNING.grade.ramp` →
+  `tn.grade_ramp`, `context` `const Tuning &tn`); uma struct com nome que o jogo já usa ganha o nome do módulo (`ElevationProfile`).
+  `scripts/*.mjs` do 4.0 ficam fora do programa TS. Área do laboratório no núcleo: `native/src/api/lab` (camada api; uma camada nova
+  pediria `rules.json`, que é do usuário).
+- **A medida contra o 4.0 vale mais que a tese**: um vitest de poucas linhas em `tools/oracle-4.0/tests/world/` (nome sem `zz` nem
+  `_`, que o `vitest.config` exclui; resultado gravado em arquivo, o console sai calado) dá o número do 4.0 em 2 s. Assim o greide
+  bateu: o teste usava a classe errada (`avenue4Lanes`; o tipo 2 do 4.0 é `avenue`), a ponta sem saída não é junção (só a margem de
+  2 m) e uma junta onde só a estrutura muda é transição (margem), como em `junction/build.ts`.
+- **Ferramentas do 4.0** (`roadcraft-4.0-main`: `scripts/`, `src/lab`, a API `window.__roadcraft` de `main.ts`, `reports/`) e o
+  porte: `verify.mjs` (só o que a mudança tocou + goldens bit a bit da cidade e do tráfego de uma semente + censo + fotos contra a
+  referência aprovada) e o relatório "Verificação rápida sem suítes" (portões com orçamento, hash do estado por tick, asserções em
+  níveis, save ida e volta, foto com relógio congelado a 0,1 %) — a portar; `look.mjs` — em parte (`look.gd`); `look-compare.mjs`
+  (HyAB em OKLab) — a portar no `photodiff`; `lib/measureCity.mjs` (recusa GPU/CPU ocupadas por PID e memória livre <3 GB, cena
+  assentada, a mesma cena em toda janela), `displayAwake` (monitor apagado = 30 Hz), `sessionJob` (teto de CPU e memória por sessão)
+  — a portar nas medidas; `frames`, `layers`, `material*`, `gpuSteady`, `buildingParts`, `shellMaps` (A/B intercalado, mediana) — a
+  portar como passos do `look`; o laboratório F7 (`src/lab`, ~14 mil linhas: Diagnóstico com veredito GPU/CPU, causas por ms e A/B
+  de um clique com o ruído medido; medidores; consumidores; verificações de vazamento, pipelines novos e ritmo; perfil de CPU com
+  suspeitas, como produto refeito sem mudança e biblioteca cobrada do chamador; cobertura; GPU com passes, captura de quadro, objetos
+  e vistas; gravador; testes; otimizações; Inspector com a entidade sob o cursor e as 5 alturas do ponto) — a portar: a lógica pura
+  pelo tradutor em `native/src/api/lab`, a interface à mão. Lidos inteiros: `scripts/` de topo exceto `probe.mjs`, `check-code`,
+  `model-catalog*`, `model-sheet`, `cook-*`, `bake-people-pics`, `import-makehuman-pack`, `package-desktop` e `accuse`; `src/lab`
+  núcleo, `doctor`, `resources`, `inspector`, `code` e `gpu`. A ler: `src/lab/{recorder,tests,optimizations,catalog}`,
+  `scripts/{probe,diagnose,lab,vite,check-code}`, `tests/{arch,census,fuzz,scale,perf}`, `eslint-rules`, `desktop`.
 
 ## Estrutura do projeto (pasta única, 2026-11-05)
 `C:\Users\Jonathan\Desktop\city` é o projeto inteiro, e o que vai ao GitHub: o jogo (`native/`, `project/`) e as ferramentas em
@@ -439,7 +509,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` · `project/tests/visual/capture_shell.gd` · `project/tests/visual/capture_shell.tscn` — capturas da interface por cliques; a casca inteira nas vistas das fotos do 4.0
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
-- `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` — o jogo olhado por um plano JSON (o formato do scripts/look.mjs do 4.0): setView, shot, wait, frames, hour, dispatch, query, key, click, drag; um plano serve aos dois jogos
+- `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_measure.gd` — o jogo olhado por um plano JSON (o formato do scripts/look.mjs do 4.0): setView, shot, wait, frames, hour, dispatch, query, key, click, drag; um plano serve aos dois jogos; as medidas dos servidores do Godot (quadros, uso, render, passes da GPU)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas
 - `project/ui/hud_actions.gd` — menu, desfazer/refazer e atalhos
@@ -476,6 +546,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
   (MakeHuman CC0 + clipes Rocketbox MIT), pele da cabeça e da cintura, poses de quem vai em veículo por cinemática inversa, ícones e textos do Construir, cartões das bandeiras, KTX2 do Roadcraft → PNG, ruído azul do início dos raios da atmosfera, road_profiles.json da fonte do Roadcraft
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
+- `tools/build/runq.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` — fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
@@ -513,8 +584,8 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Dinheiro: toda via vale como ao nível do chão até haver greide (`built` em `road_economy.cpp` é o único ponto a ligar; `build_lengths` e os multiplicadores já valem e têm teste). O 4.0 não tem imposto nem manutenção: a única entrada é a devolução ao demolir. Estilos em `road_profiles.json`; `eua` e `europa` faltam.
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Oclusão: o preset padrão do jogo (`medium`) não liga o passe (`occlusion.gdshader`), e o 4.0 abre em `high`.
-- Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);
-  Quarteirões ainda não; demolir via deixa o corredor de terreno; a via é cortada em pedaços de `road_max_seg_m` porque a altura é linear entre nós, então um clique de demolir tira um pedaço (no 4.0 o segmento vai de cruzamento a cruzamento): o greide por estações tira o corte. Falta do porte de vias: Personalizar e Meus modelos, editor de perfil, teclas, regras por acesso, conectores, nomes de rua, legendas, vazios, e larguras de faixa e calçada, zebra de escada e nomes de rua por estilo (em `streets.json` `markings.styles`, na ordem do menu Pintura: `br`, o desenho do 4.0 e o padrão, `us`, `eu`, `classic` e, por último, `br_norm`, a norma do MBST IV; o mapa guarda o índice), linha contínua na aproximação de semáforo (MBST IV 4.2.1), comparar a geração com `streets.ts`/`plan.ts`; a prévia não avisa de trecho apertado; parada, preferência e minirrotatória rodam como cruzamento de prioridade; mover recusa um nó cujo outro lado já era fechado.
+- Vias do jogador: a altura é o greide resolvido por estação (`road_grade`), o chão moldado a ela; faltam, no editor, pontes e túneis escolhidos, rampa íngreme recusada e muro de corte (ver Elevação), e o talude leva a grama do terreno, sem o que foi pintado no chão;
+  Quarteirões ainda não; demolir via deixa o corredor de terreno; a via ainda é cortada em pedaços de `road_max_seg_m` (motivo antigo: a altura linear entre nós, que o greide por estações já tirou), então um clique de demolir tira um pedaço (no 4.0 o segmento vai de cruzamento a cruzamento): falta tirar o corte. Falta do porte de vias: Personalizar e Meus modelos, editor de perfil, teclas, regras por acesso, conectores, nomes de rua, legendas, vazios, e larguras de faixa e calçada, zebra de escada e nomes de rua por estilo (em `streets.json` `markings.styles`, na ordem do menu Pintura: `br`, o desenho do 4.0 e o padrão, `us`, `eu`, `classic` e, por último, `br_norm`, a norma do MBST IV; o mapa guarda o índice), linha contínua na aproximação de semáforo (MBST IV 4.2.1), comparar a geração com `streets.ts`/`plan.ts`; a prévia não avisa de trecho apertado; parada, preferência e minirrotatória rodam como cruzamento de prioridade; mover recusa um nó cujo outro lado já era fechado.
 - Tráfego: o mapa 0 não tem indústria (zona industrial só perto de via expressa), logo nenhuma doca até o jogador pintar a zona (`yard_test` pinta); no pátio de 12 m o caminhão pode entrar ou sair de ré pela rua, e na bancada (`yard_bench`, 78 pátios, 245 docas) 17 docas ficam sem caminho em todos os grãos; o planejamento cobra cada operação pelo que faz e nenhuma passa de uma fatia (`ports/integracao/evidence/yard/plano.md`), mas o orçamento de 1 ms por tick (`lorry_plan_work`, unidade de 0,048 µs) só foi medido com a máquina dividida com outra sessão (pior fatia 1,4–2,1 ms na bancada, igual em toda etapa; no `yard_test`, com tráfego e render ao lado, pior tick 3,1 ms): falta medir com a máquina quieta (`yard_bench`, `slice_ms` de cada pátio; `yard_tick_ms`); semáforos atuados pelos veículos (MBST V cap. 7) sem botão de pedestre, coordenação só por plano fixo (onda verde num sentido, verdes partindo do mínimo, sem fluxo medido); sem controle automático do cruzamento pelo fluxo medido (o 4.0: flowStats e controlAdvisor; aqui o semáforo vem da geometria do nó, control_of); rotas
   síncronas no tick (sem threads). Medir com `capture.tscn -- --soak=5` (retidos e paradas no cruzamento por segundo, chegadas).
 - Carros de lote: 115 de 175 raspam algo no caminho, mediana 8 cm (muro em 91), pior 83 cm (pilar, picape em lote pequeno): a curva de Hermite segue o centro e o canto da carroceria abre na curva dos acessos estreitos. Solução: o A* híbrido do pátio (way_search) também para os carros, no worker. Medir com `capture.tscn -- --only=trafego`.
