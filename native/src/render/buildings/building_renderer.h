@@ -135,7 +135,7 @@ private:
 	struct Surface {
 		OwnedMesh mesh;
 		godot::AABB box;
-		int glass_at = -1, sheer_at = -1, card_at = -1; // the mesh surfaces of the panes, the glass guards and the railings, -1: none
+		int glass_at = -1, sheer_at = -1, card_at = -1, lawn_at = -1; // the mesh surfaces of the panes, the glass guards, the railings and the lawns, -1: none
 	};
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
@@ -149,6 +149,7 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
 		std::array<b40::Shell, SUB_COUNT> near_cards, mid_cards; // their railings: another
+		std::array<b40::Shell, SUB_COUNT> near_lawns, mid_lawns; // their lawns: another, in the terrain's grass
 		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
 		std::array<godot::PackedFloat32Array, BAND_DRAWS> bands; // the instanced parts, MultiMesh layout (rs_util.h)
@@ -198,7 +199,7 @@ private:
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
 			RenderLayer layer);
 	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
@@ -220,7 +221,7 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
-	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
 	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)

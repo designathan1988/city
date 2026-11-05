@@ -11,6 +11,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr float GROUND_CELL_M = 3.f, LEVEL_M = 0.01f; // a surface's cell on a slope, and the fold under which ground counts as level
 constexpr float LOT_RAISE = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
 constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.05f, RAIL_LOW = 0.45f, POST = 0.12f, POST_EVERY = 2.f;
 constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
@@ -41,9 +42,21 @@ void LotEmit::surface(const LotElement &e) {
 	bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
 	Lin lin = paint(e, "paving");
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
-	float lift = LOT_RAISE + e.h - HALF * e.h; // one quad per element: the ground layers do the tiling
-	shell.quad(pl.lot.at(x0, y0, ground(x0, y0) + lift), pl.lot.at(x1, y0, ground(x1, y0) + lift), pl.lot.at(x1, y1, ground(x1, y1) + lift),
-			pl.lot.at(x0, y1, ground(x0, y1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
+	float lift = LOT_RAISE + e.h - HALF * e.h;
+	Shell &to = lawn && shell.lawns ? *shell.lawns : shell;
+	// On level ground one quad. On a slope it follows the ground cell by cell: a single quad folds along its own diagonal, and two
+	// surfaces that overlap fold along different ones and cross (a lawn coming up through the car park over it).
+	const float mid_gap = std::fabs(ground((x0 + x1) / 2, (y0 + y1) / 2) - (ground(x0, y0) + ground(x1, y1)) / 2);
+	const float corner_gap = std::fabs(ground(x0, y0) + ground(x1, y1) - ground(x1, y0) - ground(x0, y1));
+	const bool level = mid_gap < LEVEL_M && corner_gap < LEVEL_M;
+	const int nx = level ? 1 : std::max(1, int(std::ceil((x1 - x0) / GROUND_CELL_M))), ny = level ? 1 : std::max(1, int(std::ceil((y1 - y0) / GROUND_CELL_M)));
+	for (int j = 0; j < ny; j++)
+		for (int i = 0; i < nx; i++) {
+			const float a0 = x0 + (x1 - x0) * float(i) / float(nx), a1 = x0 + (x1 - x0) * float(i + 1) / float(nx);
+			const float b0 = y0 + (y1 - y0) * float(j) / float(ny), b1 = y0 + (y1 - y0) * float(j + 1) / float(ny);
+			to.quad(pl.lot.at(a0, b0, ground(a0, b0) + lift), pl.lot.at(a1, b0, ground(a1, b0) + lift), pl.lot.at(a1, b1, ground(a1, b1) + lift),
+					pl.lot.at(a0, b1, ground(a0, b1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
+		}
 }
 
 void LotEmit::wall(const LotElement &e, float x0, float x1, float y0, float y1) {

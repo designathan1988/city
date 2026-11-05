@@ -6,10 +6,9 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 
 **Registros de sessão (`log/`, ordem do usuário, 2026-11-05):** antes de começar, leia todos os `log/*.md`. Cada um é o
 histórico de uma linha de trabalho: o que foi feito, o estado, os comandos e o que falta, em ordem.
-- `log/work-log.md`: porte (elevação, postes, tradutor).
+- `log/work-log.md`: porte (elevação, postes, tradutor) e gráficos das construções, nos 7 passos obrigatórios do usuário.
 - `log/conversor.md`: tradutor.
 - `log/causa-raiz.md`: desempenho e causas.
-- `log/graphics.md`: gráficos das construções, nos 7 passos obrigatórios do usuário.
 
 Ao terminar cada tarefa, ou ao saber algo novo, atualize o registro da sua linha (crie um se a linha for nova), com hora e
 commit, e commite-o junto.

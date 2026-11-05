@@ -124,6 +124,7 @@ struct Shell {
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
+	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass
 	Shell *cards = nullptr; // where this shell's railings go: a surface whose bars the fragment draws
 	Shell *flat = nullptr; // the mid level: where its bays also go as merged rectangles, for where they are too small for their geometry
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
