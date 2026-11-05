@@ -54,6 +54,7 @@ struct PlannedPole {
 	double x = 0, z = 0;
 	int existing = -1; // the pole standing here, which the run reuses
 	bool lamp = false;
+	PoleKind kind = PoleKind::URBAN; // a pole the run reuses keeps its own
 };
 struct PoleRunPlan {
 	std::vector<PlannedPole> poles;
@@ -61,7 +62,7 @@ struct PoleRunPlan {
 	bool from_free = false, to_free = false;
 	double from_x = 0, from_z = 0, to_x = 0, to_z = 0;
 };
-PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps);
-EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps);
+PoleRunPlan plan_pole_run(const CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
+EditResult build_pole_run(CityState &s, double ax, double az, double bx, double bz, double reach, LampMode lamps, PoleKind kind);
 
 } // namespace city

@@ -9,6 +9,8 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAX_RECORDS = 50000000; // a corrupt count stops here, before any allocation
+// A pole's flags byte: its lamp, and its kind (a save from before the kinds holds 0 or 1: every pole urban).
+constexpr uint8_t POLE_LAMP_BIT = 1, POLE_RURAL_BIT = 2;
 
 void write_records(ByteWriter &w, const StreetWorks &k) {
 	w.put<uint32_t>(uint32_t(k.items.items.size()));
@@ -28,7 +30,7 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 		if (!p.alive) continue;
 		w.put<float>(p.x);
 		w.put<float>(p.z);
-		w.put<uint8_t>(p.lamp ? 1 : 0);
+		w.put<uint8_t>(uint8_t((p.lamp ? POLE_LAMP_BIT : 0) | (p.kind == PoleKind::RURAL ? POLE_RURAL_BIT : 0)));
 	}
 	w.put<uint32_t>(uint32_t(k.spans.items.size()));
 	for (const UtilitySpan &p : k.spans.items) {
@@ -76,7 +78,10 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		UtilityPole p;
 		p.x = r.get<float>();
 		p.z = r.get<float>();
-		p.lamp = r.get<uint8_t>() != 0;
+		const uint8_t flags = r.get<uint8_t>();
+		if ((flags & ~(POLE_LAMP_BIT | POLE_RURAL_BIT)) != 0) return false;
+		p.lamp = (flags & POLE_LAMP_BIT) != 0;
+		p.kind = (flags & POLE_RURAL_BIT) != 0 ? PoleKind::RURAL : PoleKind::URBAN;
 		if (r.ok) k.put_pole(int(i), p);
 	}
 	count = r.get<uint32_t>();

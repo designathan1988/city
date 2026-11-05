@@ -11,6 +11,7 @@ const PX := 0.25
 const KERB_KEPT_M := 0.1
 const REACH := 6.0
 const LAMPS_ALL := 2
+const URBAN := 0 # drawers.json pole_kinds
 
 var _check: Callable
 
@@ -32,11 +33,11 @@ func run() -> void:
 	# the ends as the pole tool clicks them, on the footway of each piece (the native line snaps them, pole_tool.gd)
 	var from := a.lerp(mid, 0.3) + Vector3(0, 0, FOOTWAY_OFF_M)
 	var to := mid.lerp(e, 0.7) + Vector3(0, 0, FOOTWAY_OFF_M)
-	var plan: Dictionary = CityStore.query(&"preview_pole_run", [from, to, REACH, LAMPS_ALL])
+	var plan: Dictionary = CityStore.query(&"preview_pole_run", [from, to, REACH, LAMPS_ALL, URBAN])
 	_check.call(plan.get("ok", false), "linha nas calçadas das duas vias novas: %s" % plan.get("error", ""))
 	if not plan.get("ok", false):
 		return
-	var run: Dictionary = CityStore.dispatch(&"build_pole_run", [from, to, REACH, LAMPS_ALL])
+	var run: Dictionary = CityStore.dispatch(&"build_pole_run", [from, to, REACH, LAMPS_ALL, URBAN])
 	var strung: Dictionary = CityStore.query(&"street_counts")
 	_check.call(run.get("ok", false) and strung.spans > 0, "linha ao longo das duas: %s" % run)
 	var off := _off_axis()

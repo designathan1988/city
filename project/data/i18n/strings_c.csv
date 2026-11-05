@@ -395,6 +395,7 @@ v2.row.cut,Corte,Cut
 v2.row.height,Altura,Height
 v2.row.lanes,Faixas,Lanes
 v2.row.lights,Luzes,Lights
+v2.row.poleKind,Poste,Pole
 v2.row.parking,Vagas,Parking
 v2.row.parts,Partes,Parts
 v2.row.sign,Placa,Sign

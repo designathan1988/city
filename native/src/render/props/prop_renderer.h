@@ -32,7 +32,7 @@ public:
 	void update_signals(const PoseFrame &f) { lamps_.update(f); }
 	int lit_lenses() const { return lamps_.lit(); }
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
-	void set_pole_preview(const CityState &s, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing);
+	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
 	int sign_cells() const { return atlas_.cells_used(); }

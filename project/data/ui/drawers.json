@@ -654,6 +654,7 @@
   "text_max": 40,
   "sign_kind": 10,
   "default_lamps": 1,
+  "default_pole_kind": 0,
   "items": [
    {"label_key": "streetscape.tree", "kind": 0, "icon": "ls_tree", "row_m": 10},
    {"label_key": "streetscape.bench", "kind": 2, "icon": "ls_bench", "row_m": 20},
@@ -680,6 +681,9 @@
    {"label_key": "pole.lamps.none", "kind": 0, "icon": "pl_none"},
    {"label_key": "pole.lamps.alternate", "kind": 1, "icon": "pl_alternate"},
    {"label_key": "pole.lamps.all", "kind": 2, "icon": "pl_all"}],
+  "pole_kinds": [
+   {"label_key": "pole.kind.urban", "kind": 0, "icon": "pk_urban"},
+   {"label_key": "pole.kind.rural", "kind": 1, "icon": "pk_rural"}],
   "signs": [
    {"label_key": "sign.type.stop", "sign": 0},
    {"label_key": "sign.type.yield", "sign": 1},

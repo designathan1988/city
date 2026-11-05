@@ -137,14 +137,15 @@ void PropRenderer::drop_chunk(int64_t key) {
 	chunks_.erase(it);
 }
 
-void PropRenderer::set_pole_preview(const CityState &s, const std::vector<Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing) {
+void PropRenderer::set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 	StreetInstances inst;
-	place_pole_preview(s, *look_, furniture_, at, lamp, standing, inst);
+	place_pole_preview(s, *look_, furniture_, poles, inst);
 	inst.pool_mesh = inst.pools.bake();
 	Vector3 lo, hi;
-	for (size_t i = 0; i < at.size(); i++) {
-		lo = i == 0 ? at[i] : Vector3(std::min(lo.x, at[i].x), std::min(lo.y, at[i].y), std::min(lo.z, at[i].z));
-		hi = i == 0 ? at[i] : Vector3(std::max(hi.x, at[i].x), std::max(hi.y, at[i].y), std::max(hi.z, at[i].z));
+	for (size_t i = 0; i < poles.size(); i++) {
+		const Vector3 &at = poles[i].at;
+		lo = i == 0 ? at : Vector3(std::min(lo.x, at.x), std::min(lo.y, at.y), std::min(lo.z, at.z));
+		hi = i == 0 ? at : Vector3(std::max(hi.x, at.x), std::max(hi.y, at.y), std::max(hi.z, at.z));
 	}
 	const float pad = furniture_.wire.max_span;
 	const Vector3 room(pad, pad, pad);

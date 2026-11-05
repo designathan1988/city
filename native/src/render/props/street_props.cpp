@@ -26,6 +26,10 @@ constexpr uint32_t PROP_KINDS = furniture_bit(FurnitureKind::LAMP) | furniture_b
 		furniture_bit(FurnitureKind::PHONE) | furniture_bit(FurnitureKind::DRAIN) | furniture_bit(FurnitureKind::TREE);
 constexpr int CAN_PERIOD = 5, CAN_PHASE = 3; // a transformer on one pole in five
 constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swing out of step
+// A span's phase in the wind and the kinds of its two poles share INSTANCE_CUSTOM.y: the phase (under a turn) plus this times
+// kind_a + 2 kind_b, which props.gdshader takes apart to pick each end's seats.
+constexpr float KIND_STRIDE = 8.f;
+constexpr int KIND_B_WEIGHT = 2;
 constexpr float LIGHT_POOL = 1.f; // the part of the lamp's light it is (lamp_glow.gdshader)
 constexpr int JOINT_ARMS = 2; // a street going on through a node
 const Vector3 UP(0, 1, 0);
@@ -47,13 +51,19 @@ float heading(const Vector3 &arm) { return std::atan2(arm.z, arm.x); }
 // A span between two arms (each end its pole's place and the arm the span hangs from): one instance, because the renderer
 // keeps three copies of every instance's floats on the CPU, and its mesh holds every wire (prop_kit.cpp wire_mesh). x along
 // the chord, y up, z across; props.gdshader hangs each wire from the two arms and bends it from t = 0 to 1.
-void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const Vector3 &arm_a, const Vector3 &b, const Vector3 &arm_b, float phase) {
+// The arms are the poles' arms turned toward the street (street_arm), along which each wire's seat lies, and the kinds say which
+// seats (prop_kit.cpp wire_mesh).
+void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const Vector3 &arm_a, const Vector3 &b, const Vector3 &arm_b, float phase,
+		PoleKind kind_a, PoleKind kind_b) {
 	const Vector3 d = b - a;
 	const float span = Vector2(d.x, d.z).length();
 	if (span < w.min_span || span > w.max_span) return;
 	const Vector3 across = Vector3(-d.z, 0, d.x).normalized();
-	mm_push_plain(inst.wires, d, UP, across, a, std::min(w.max_sag, span * w.sag), phase, heading(arm_a), heading(arm_b));
+	const float kinds = KIND_STRIDE * float(int(kind_a) + KIND_B_WEIGHT * int(kind_b));
+	mm_push_plain(inst.wires, d, UP, across, a, std::min(w.max_sag, span * w.sag), std::fmod(phase, TAU_F) + kinds, heading(arm_a), heading(arm_b));
 }
+
+Vector3 flat(ArmDir a) { return Vector3(a.x, 0, a.z); }
 
 // What a lamp's pool lies on: how far it reaches across (the street's width, sim/roads lamp_row) and the rise per metre
 // along `along` of the road under it.
@@ -123,7 +133,7 @@ PoleFrame frame_of(const CityState &s, const StreetLook &L, int id) {
 		f.v = h.v;
 	}
 	f.arms = pole_arms(s.street, s.catalog.furniture.poles, id, idle);
-	f.kerb = h.ok ? Vector3(h.kx, 0, h.kz) : Vector3(f.arms.arms[0].x, 0, f.arms.arms[0].z);
+	f.kerb = flat(pole_toward(h.ok ? &idle : nullptr, f.arms.arms[0]));
 	return f;
 }
 
@@ -131,11 +141,13 @@ PoleFrame frame_of(const CityState &s, const StreetLook &L, int id) {
 void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F, int id, StreetInstances &inst) {
 	const UtilityPole &p = s.street.poles.items[size_t(id)];
 	const PoleFrame f = frame_of(s, L, id);
+	const bool rural = p.kind == PoleKind::RURAL;
+	const ArmDir toward{ f.kerb.x, f.kerb.z };
 	int mask = int(PolePart::MAST);
 	if (p.lamp) mask |= int(PolePart::LAMP);
-	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(PolePart::CAN);
+	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(rural ? PolePart::CAN_RURAL : PolePart::CAN);
 	push_part(inst.poles, PropKit::facing(f.kerb), f.foot, mask);
-	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(Vector3(a.x, 0, a.z)), f.foot, int(PolePart::ARM));
+	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(flat(street_arm(a, toward))), f.foot, int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
 	if (p.lamp) push_light(inst, s, F, f.seg, f.v, f.foot, f.kerb, { F.lamp_reach, F.lamp_height, false });
 	for (size_t i = 0; i < p.spans.size(); i++) {
 		const UtilitySpan &sp = s.street.spans.items[size_t(p.spans[i])];
@@ -143,8 +155,8 @@ void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F,
 		const PoleFrame o = frame_of(s, L, sp.b);
 		const std::vector<int> &theirs = s.street.poles.items[size_t(sp.b)].spans;
 		const size_t at = size_t(std::find(theirs.begin(), theirs.end(), p.spans[i]) - theirs.begin());
-		const ArmDir mine = f.arms.by_span[i], other = o.arms.by_span[at];
-		push_span(inst, F.wire, f.foot, Vector3(mine.x, 0, mine.z), o.foot, Vector3(other.x, 0, other.z), float(p.spans[i]) * PHASE_STEP);
+		const ArmDir mine = street_arm(f.arms.by_span[i], toward), other = street_arm(o.arms.by_span[at], ArmDir{ o.kerb.x, o.kerb.z });
+		push_span(inst, F.wire, f.foot, flat(mine), o.foot, flat(other), float(p.spans[i]) * PHASE_STEP, p.kind, s.street.poles.items[size_t(sp.b)].kind);
 	}
 }
 
@@ -164,7 +176,7 @@ bool row_end(const CityState &s, const StreetLook &L, int seg, int n, int side, 
 }
 
 // A street going on through its node keeps its line: the last pole of `sid` strung to the first of the next (Roadcraft
-// powerLine.ts join), by the lower segment of the two.
+// powerLine.ts join), by the lower segment of the two. Both poles' arms reach over the same street, as the wires' seats want.
 void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	for (int n : { g.a, g.b }) {
@@ -175,7 +187,7 @@ void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, 
 		const bool same_way = (g.b == n) == (s.roads.segs[size_t(other)].a == n); // the sides keep their names through the node
 		PropPlace a, b;
 		if (!row_end(s, L, sid, n, row_side, a) || !row_end(s, L, other, n, same_way ? row_side : 1 - row_side, b)) continue;
-		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2) * (same_way ? 1.f : -1.f), float(sid) * PHASE_STEP);
+		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2), float(sid) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
 	}
 }
 
@@ -217,7 +229,7 @@ void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook 
 			row_side = p.side;
 			if (wired && p.station == last_station + 1) {
 				const Vector3 arm = place.basis.get_column(2);
-				push_span(inst, F.wire, last.origin, last.basis.get_column(2), place.origin, arm, float(sid + p.station) * PHASE_STEP);
+				push_span(inst, F.wire, last.origin, last.basis.get_column(2), place.origin, arm, float(sid + p.station) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
 			}
 			last = place;
 			last_station = p.station;
@@ -269,17 +281,25 @@ void place_street_props(const CityState &s, const StreetLook &L, const Furniture
 	});
 }
 
-void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<Vector3> &at, const std::vector<bool> &lamp,
-		const std::vector<bool> &standing, StreetInstances &inst) {
-	for (size_t i = 0; i < at.size(); i++) {
-		const Vector3 foot(at[i].x, street_ground(s, L, at[i].x, at[i].z), at[i].z);
-		const Vector3 next = i + 1 < at.size() ? at[i + 1] : at[i], prev = i > 0 ? at[i - 1] : at[i];
-		const Vector3 along = (next - prev).normalized(), arm(along.z, 0, -along.x);
-		if (!standing[i]) push_part(inst.poles, PropKit::facing(arm), foot, int(PolePart::MAST) | int(PolePart::ARM) | (lamp[i] ? int(PolePart::LAMP) : 0));
-		if (i + 1 == at.size()) break;
-		const Vector3 far(next.x, street_ground(s, L, next.x, next.z), next.z);
-		push_span(inst, F.wire, foot, arm, far, arm, 0);
+void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst) {
+	const float reach = s.catalog.furniture.items.stand_reach_m;
+	std::vector<Vector3> foot(poles.size()), arm(poles.size());
+	for (size_t i = 0; i < poles.size(); i++) {
+		const Vector3 &at = poles[i].at;
+		foot[i] = Vector3(at.x, street_ground(s, L, at.x, at.z), at.z);
+		const Vector3 next = i + 1 < poles.size() ? poles[i + 1].at : at, prev = i > 0 ? poles[i - 1].at : at;
+		const Vector3 along = (next - prev).normalized();
+		const ArmDir square{ along.z, -along.x };
+		const FootwayHit h = footway_at(s.roads, at.x, at.z, reach);
+		const ArmDir kerb{ h.kx, h.kz };
+		const ArmDir toward = pole_toward(h.ok ? &kerb : nullptr, square);
+		arm[i] = flat(street_arm(square, toward));
+		if (poles[i].standing) continue;
+		const bool rural = poles[i].kind == PoleKind::RURAL;
+		push_part(inst.poles, PropKit::facing(flat(toward)), foot[i], int(PolePart::MAST) | (poles[i].lamp ? int(PolePart::LAMP) : 0));
+		push_part(inst.poles, PropKit::facing(arm[i]), foot[i], int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
 	}
+	for (size_t i = 0; i + 1 < poles.size(); i++) push_span(inst, F.wire, foot[i], arm[i], foot[i + 1], arm[i + 1], 0, poles[i].kind, poles[i + 1].kind);
 }
 
 void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out) {

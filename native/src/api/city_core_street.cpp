@@ -79,17 +79,18 @@ Dictionary CityStreet::remove_street(const Vector3 &p, float reach) {
 	});
 }
 
-Dictionary CityStreet::preview_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps) {
+Dictionary CityStreet::preview_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps, int kind) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	if (!state_->ready) return d;
-	const PoleRunPlan plan = plan_pole_run(*state_, a.x, a.z, b.x, b.z, reach, LampMode(lamps));
+	const PoleRunPlan plan = plan_pole_run(*state_, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind));
 	Array poles;
 	for (const PlannedPole &p : plan.poles) {
 		Dictionary one;
 		one["position"] = on_ground(*state_, p.x, p.z);
 		one["standing"] = p.existing >= 0;
 		one["lamp"] = p.lamp;
+		one["kind"] = int(p.kind);
 		poles.push_back(one);
 	}
 	d["poles"] = poles;
@@ -100,21 +101,18 @@ Dictionary CityStreet::preview_pole_run(const Vector3 &a, const Vector3 &b, floa
 	return d;
 }
 
-Dictionary CityStreet::build_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps) {
-	return run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) { return city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps)); });
+Dictionary CityStreet::build_pole_run(const Vector3 &a, const Vector3 &b, float reach, int lamps, int kind) {
+	return run_edit(*state_, "cmd.place.poleRun", [&](CityState &s) { return city::build_pole_run(s, a.x, a.z, b.x, b.z, reach, LampMode(lamps), PoleKind(kind)); });
 }
 
 void CityStreet::show_pole_preview(const Array &poles) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	std::vector<Vector3> at;
-	std::vector<bool> lamp, standing;
+	std::vector<PreviewPole> shown;
 	for (int i = 0; i < poles.size(); i++) {
 		const Dictionary p = poles[i];
-		at.push_back(p["position"]);
-		lamp.push_back(p["lamp"]);
-		standing.push_back(p["standing"]);
+		shown.push_back({ p["position"], p["lamp"], p["standing"], PoleKind(int(p["kind"])) });
 	}
-	render_->set_pole_preview(*state_, at, lamp, standing);
+	render_->set_pole_preview(*state_, shown);
 }
 
 void CityStreet::set_road_furniture(int level) {
@@ -171,12 +169,40 @@ Dictionary CityStreet::street_counts() {
 	Dictionary d;
 	d["items"] = w.items.alive;
 	d["poles"] = w.poles.alive;
+	int rural = 0;
+	for (const UtilityPole &p : w.poles.items) rural += p.alive && p.kind == PoleKind::RURAL ? 1 : 0;
+	d["rural_poles"] = rural;
 	d["spans"] = w.spans.alive;
 	d["barriers"] = w.barriers.alive;
 	d["cuts"] = w.cuts.alive;
 	d["instances"] = render_->street_instances();
 	d["sign_cells"] = render_->sign_cells();
 	return d;
+}
+
+// Where each piece of segment `seg`'s furniture stands (tests and the look's queries): its kind, row, side, station, place in the
+// segment frame (v along, u across) and in the world (sim/street/footway.h footway_point, without the kerb's rise).
+Array CityStreet::furniture_spots(int seg) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	Array out;
+	if (seg < 0 || seg >= int(s.roads.segs.size()) || !s.roads.segs[size_t(seg)].alive) return out;
+	std::vector<FurnitureSpot> spots;
+	traffic::street_furniture_of(s, seg, FURNITURE_ALL, spots);
+	for (const FurnitureSpot &p : spots) {
+		double x, z, y;
+		footway_point(s.roads, seg, p.v, p.u, x, z, y);
+		Dictionary d;
+		d["kind"] = int(p.kind);
+		d["row"] = p.row;
+		d["side"] = p.side;
+		d["station"] = p.station;
+		d["v"] = p.v;
+		d["u"] = p.u;
+		d["position"] = Vector3(float(x), float(y), float(z));
+		out.push_back(d);
+	}
+	return out;
 }
 
 void CityStreet::_bind_methods() {
@@ -186,8 +212,8 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("preview_barrier", "points", "cursor", "kind"), &CityStreet::preview_barrier);
 	ClassDB::bind_method(D_METHOD("build_barrier", "points", "kind"), &CityStreet::build_barrier);
 	ClassDB::bind_method(D_METHOD("remove_street", "position", "reach"), &CityStreet::remove_street);
-	ClassDB::bind_method(D_METHOD("preview_pole_run", "from", "to", "reach", "lamps"), &CityStreet::preview_pole_run);
-	ClassDB::bind_method(D_METHOD("build_pole_run", "from", "to", "reach", "lamps"), &CityStreet::build_pole_run);
+	ClassDB::bind_method(D_METHOD("preview_pole_run", "from", "to", "reach", "lamps", "kind"), &CityStreet::preview_pole_run);
+	ClassDB::bind_method(D_METHOD("build_pole_run", "from", "to", "reach", "lamps", "kind"), &CityStreet::build_pole_run);
 	ClassDB::bind_method(D_METHOD("show_pole_preview", "poles"), &CityStreet::show_pole_preview);
 	ClassDB::bind_method(D_METHOD("set_road_furniture", "level"), &CityStreet::set_road_furniture);
 	ClassDB::bind_method(D_METHOD("road_furniture"), &CityStreet::road_furniture);
@@ -195,6 +221,7 @@ void CityStreet::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("street_counts"), &CityStreet::street_counts);
 	ClassDB::bind_method(D_METHOD("street_poles"), &CityStreet::street_poles);
 	ClassDB::bind_method(D_METHOD("furniture_census"), &CityStreet::furniture_census);
+	ClassDB::bind_method(D_METHOD("furniture_spots", "seg"), &CityStreet::furniture_spots);
 }
 
 } // namespace city

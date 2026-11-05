@@ -183,6 +183,8 @@ pole.lamps,Iluminação nos postes,Lights on the poles
 pole.lamps.all,Luz em todos os postes,A light on every pole
 pole.lamps.alternate,Luz em postes alternados,A light on every other pole
 pole.lamps.none,Sem luz,No lights
+pole.kind.rural,Poste rural: cruzeta centralizada,Rural pole: arm across the top
+pole.kind.urban,Poste urbano: cruzeta sobre a rua,Urban pole: arm over the street
 pole.mode.build,Construir rede,Build line
 pole.mode.remove,Remover postes,Remove poles
 profile.avenue,Avenida,Avenue

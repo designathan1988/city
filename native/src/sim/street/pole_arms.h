@@ -21,4 +21,11 @@ struct PoleArms {
 // `idle`: the arm of a pole with no wire yet, square to its street.
 PoleArms pole_arms(const StreetWorks &w, const PoleDef &def, int pole, ArmDir idle);
 
+// Which way a pole's arms reach (Roadcraft 4.0 utilities.ts poleToward): toward the street, the way to its kerb (`kerb`) when it
+// stands by one; else a way fixed in the world, its first arm turned positive along its larger axis, the same at every pole of a
+// line however it wanders, so its wires never cross from one side to the other between two poles.
+ArmDir pole_toward(const ArmDir *kerb, ArmDir arm);
+// An arm turned to reach toward the street (streetArm): itself or its opposite. The wires' seats are measured along it.
+ArmDir street_arm(ArmDir arm, ArmDir toward);
+
 } // namespace city

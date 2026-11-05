@@ -31,10 +31,15 @@ struct StreetItem {
 	float box(int axis) const { return axis == 0 ? x : z; }
 };
 
+// What a pole is built as (Roadcraft 4.0 world/utilities.ts POLE_KINDS, after CELESC E-313.0002): URBAN, the cross-arm held out
+// over the street from the mast (structure B1) with the secondary rack under it (S1); RURAL, the cross-arm across the crown (N1).
+enum class PoleKind : uint8_t { URBAN = 0, RURAL = 1 };
+
 struct UtilityPole {
 	bool alive = false;
 	float x = 0, z = 0;
 	bool lamp = false;
+	PoleKind kind = PoleKind::URBAN;
 	std::vector<int> spans; // reaching it, in the order they were strung
 };
 

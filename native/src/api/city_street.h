@@ -26,8 +26,8 @@ public:
 	godot::Dictionary preview_barrier(const godot::PackedVector3Array &pts, const godot::Vector3 &cursor, int kind);
 	godot::Dictionary build_barrier(const godot::PackedVector3Array &pts, int kind);
 	godot::Dictionary remove_street(const godot::Vector3 &p, float reach);
-	godot::Dictionary preview_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps);
-	godot::Dictionary build_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps);
+	godot::Dictionary preview_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps, int kind);
+	godot::Dictionary build_pole_run(const godot::Vector3 &a, const godot::Vector3 &b, float reach, int lamps, int kind);
 	void show_pole_preview(const godot::Array &poles);
 	void set_road_furniture(int level); // what new roads are laid with: 0 complete, 1 basic, 2 none
 	int road_furniture();
@@ -35,6 +35,7 @@ public:
 	godot::Dictionary street_counts();
 	godot::PackedVector3Array street_poles(); // where the player's poles stand (tests)
 	godot::Dictionary furniture_census();
+	godot::Array furniture_spots(int seg);
 
 protected:
 	static void _bind_methods();

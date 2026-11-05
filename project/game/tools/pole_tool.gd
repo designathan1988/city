@@ -25,13 +25,19 @@ func _reach() -> float:
 	return params.get("reach_m", 0.0)
 
 
+## A run from `a` to `b` as the panel chose it: its lamps and the kind of its poles (drawers.json street).
+func _run(a: Vector3, b: Vector3) -> Array:
+	var street: Dictionary = DataTables.ui("drawers").street
+	return [a, b, _reach(), params.get("lamps", street.default_lamps), params.get("kind", street.default_pole_kind)]
+
+
 func _clear() -> void:
 	_plan = {}
 	CityStore.dispatch(&"preview_pole_line", [[]])
 
 
 func _show(a: Vector3, b: Vector3) -> void:
-	_plan = CityStore.query(&"preview_pole_run", [a, b, _reach(), params.get("lamps", 1)])
+	_plan = CityStore.query(&"preview_pole_run", _run(a, b))
 	if _plan.is_empty():
 		return
 	CityStore.dispatch(&"preview_pole_line", [_plan.poles if _plan.ok else []])
@@ -68,8 +74,8 @@ func release(p: Vector3) -> void:
 	if _from == Vector3.INF:
 		return
 	var end := p if p != Vector3.INF else _to
-	var plan: Dictionary = CityStore.query(&"preview_pole_run", [_from, end, _reach(), params.get("lamps", 1)])
-	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [_from, end, _reach(), params.get("lamps", 1)])
+	var plan: Dictionary = CityStore.query(&"preview_pole_run", _run(_from, end))
+	var r: Dictionary = CityStore.dispatch(&"build_pole_run", _run(_from, end))
 	_from = Vector3.INF
 	_clear()
 	if r.get("ok", false) and not plan.get("poles", []).is_empty():

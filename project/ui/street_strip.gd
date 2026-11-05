@@ -37,22 +37,27 @@ static func build(strip: Control, table: Dictionary, in_hand: String, use: Calla
 		func(c: Dictionary) -> void: use.call("BARRIER", _barrier_params(table, c), true))
 	cards.add_child(VSeparator.new())
 	var lamps: Variant = last.call("POLE", "lamps", table.default_lamps)
+	var kind: Variant = last.call("POLE", "kind", table.default_pole_kind)
 	_cards(cards, table.poles, 1, last.call("POLE", "mode", null) if in_hand == "POLE" else null,
-		func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, c.kind, lamps), true))
+		func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, c.kind, lamps, kind), true))
 	if in_hand == "POLE" and last.call("POLE", "mode", "") == "build":
-		_lamp_row(HudWidgets.hbox(body), table, lamps, use)
+		# Roadcraft: Poste (urban or rural) and Luzes (three choices).
+		_choice_row(HudWidgets.hbox(body), "v2.row.poleKind", table.pole_kinds, kind, "pole.kind",
+			func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, "build", lamps, c.kind), true))
+		_choice_row(HudWidgets.hbox(body), "v2.row.lights", table.lamps, lamps, "pole.lamps",
+			func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, "build", c.kind, kind), true))
 	elif in_hand == "STREETSCAPE":
 		_item_options(body, table, use, last)
 
 
-## The lights of the next line (Roadcraft: Luzes, three choices).
-static func _lamp_row(row: Control, table: Dictionary, lamps: Variant, use: Callable) -> void:
-	HudWidgets.label(row, &"MutedLabel", TranslationServer.translate("v2.row.lights"))
-	for c: Dictionary in table.lamps:
-		var b := HudWidgets.button(&"DrawerTab", c.icon, TranslationServer.translate(c.label_key), "pole.lamps", "", "tab_h")
+## A choice for the next line: `label` and a button per entry of `choices`, the one whose kind is `current` pressed.
+static func _choice_row(row: Control, label: String, choices: Array, current: Variant, tip: String, pick: Callable) -> void:
+	HudWidgets.label(row, &"MutedLabel", TranslationServer.translate(label))
+	for c: Dictionary in choices:
+		var b := HudWidgets.button(&"DrawerTab", c.icon, TranslationServer.translate(c.label_key), tip, "", "tab_h")
 		b.toggle_mode = true
-		b.set_pressed_no_signal(c.kind == lamps)
-		b.pressed.connect(func() -> void: use.call("POLE", _pole_params(table, "build", c.kind), true))
+		b.set_pressed_no_signal(c.kind == current)
+		b.pressed.connect(pick.bind(c))
 		row.add_child(b)
 
 
@@ -124,5 +129,5 @@ static func _barrier_params(table: Dictionary, c: Dictionary) -> Dictionary:
 	return {"kind": c.kind, "reach_m": table.reach_m, "half_width_m": c.half_width_m, "double_click_ms": table.double_click_ms, "double_click_m": table.double_click_m}
 
 
-static func _pole_params(table: Dictionary, mode: Variant, lamps: Variant) -> Dictionary:
-	return {"mode": mode, "lamps": lamps, "reach_m": table.pole_reach_m}
+static func _pole_params(table: Dictionary, mode: Variant, lamps: Variant, kind: Variant) -> Dictionary:
+	return {"mode": mode, "lamps": lamps, "kind": kind, "reach_m": table.pole_reach_m}

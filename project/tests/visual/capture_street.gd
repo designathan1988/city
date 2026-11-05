@@ -13,6 +13,7 @@ const SIGN_WORDS := "40"
 const FENCE := 0
 const REACH := 6.0
 const LAMPS_ALL := 2
+const URBAN := 0 # drawers.json pole_kinds
 const SCAN_STEPS := 300
 const SCAN_ROWS := 40
 const SCAN_M := 3.0
@@ -129,7 +130,7 @@ func _footway() -> Vector3:
 func _run_end(a: Vector3) -> Vector3:
 	for i in RUN_TRIES:
 		var end := a + Vector3.RIGHT.rotated(Vector3.UP, TAU * i / RUN_TRIES) * RUN_M
-		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, end, REACH, LAMPS_ALL])
+		var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, end, REACH, LAMPS_ALL, URBAN])
 		if plan.get("ok", false) and plan.poles.size() >= MIN_RUN_POLES:
 			return end
 	return Vector3.INF

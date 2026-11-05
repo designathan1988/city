@@ -22,6 +22,8 @@ const STROKE_SWING_M := 34.0
 const POINTER_AIMS := 40
 const POINTER_VIEWS_M: Array[float] = [NEAR_M, CLOSE_M, WIDE_M]
 const WEAR_UPLOAD_S := 3.0
+const FURNITURE_LAMP := 1 # furniture_types.h FurnitureKind
+const FURNITURE_COLUMN := 6
 
 var out_dir := "user://captures"
 var world: CityWorld
@@ -70,6 +72,8 @@ func _run() -> void:
 	CityStore.dispatch(&"clear_trees") # the 4.0's free ground is a bare field
 	CityStore.dispatch(&"set_day_hour", [PAIR_HOUR])
 	_lay()
+	for probe: Vector3 in [at(-60, 60), at(-60, 140), at(-150, 100), at(150, 100)]:
+		_spots(probe)
 	print("erro do ponteiro: %.2f px" % await ui.pointer_error(at(0, -120), TOP, POINTER_VIEWS_M, POINTER_AIMS))
 	if "--tool-only" in OS.get_cmdline_user_args():
 		await _tool()
@@ -129,6 +133,19 @@ func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> 
 		args.push_back(PX)
 	var r: Dictionary = CityStore.dispatch(&"build_road", args)
 	_check(r.get("ok", false), "via %s: %s" % [profile, r])
+
+
+## The poles of the street under `p` (lamps and columns), as the log reads them beside the photos: where the furniture
+## stands on it (u across from its centre line, side, row) and in the world.
+func _spots(p: Vector3) -> void:
+	var seg: Dictionary = CityStore.query(&"segment_at", [p])
+	if seg.get("seg", -1) < 0:
+		print("postes em %s: sem via" % p)
+		return
+	print("postes da via %d (perfil %d) em %s:" % [seg.seg, seg.profile, p])
+	for s: Dictionary in CityStore.query(&"furniture_spots", [seg.seg]):
+		if s.kind == FURNITURE_LAMP or s.kind == FURNITURE_COLUMN:
+			print("  tipo %d fileira %d lado %d estação %d v %.1f u %.2f em %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
 
 
 func _lay() -> void:
