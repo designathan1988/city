@@ -23,6 +23,7 @@
   "occluder_min_storeys": 2,
   "road_end_m": 2200,
   "props_end_m": 900,
+  "pool_handover_m": 200,
   "building_detail_end_m": 700,
   "building_mid_end_m": 1100,
   "building_far_end_m": 4500,

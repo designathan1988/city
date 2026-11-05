@@ -2,7 +2,6 @@
 class_name DataTables
 extends RefCounted
 
-const CITY_STYLE := "roadcraft"
 const CATALOG := {
 	"tuning": "res://data/catalog/tuning.json",
 	"maps": "res://data/catalog/maps.json",
@@ -60,6 +59,10 @@ const GAME := {
 	"health": "res://data/game/health.json",
 	"start": "res://data/game/start.json",
 }
+## The regional style a city's tables read (regras-sessoes.md, section 10): this one until a city carries its own. The tables that
+## keep what changes with it under `styles.<id>`, laid over the table when it is read.
+const REGIONAL_STYLE := "roadcraft"
+const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
 const STRINGS := [
 	"res://data/i18n/strings.csv",
 	"res://data/i18n/strings_b.csv",
@@ -75,13 +78,38 @@ static var _cache: Dictionary = {}
 static func _read(path: String) -> Variant:
 	if _cache.has(path):
 		return _cache[path]
-	var text := FileAccess.get_file_as_string(path)
-	var parsed: Variant = JSON.parse_string(text)
+	var parsed: Variant = _parse(path)
+	_cache[path] = _styled(parsed, REGIONAL_STYLE) if path in STYLED else parsed
+	return _cache[path]
+
+
+static func _parse(path: String) -> Variant:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if parsed == null:
 		push_error("JSON inválido: %s" % path)
-		parsed = {}
-	_cache[path] = parsed
+		return {}
 	return parsed
+
+
+## The table at `path` as style `id` draws it, read anew: the game keeps only the one it plays.
+static func style_of(path: String, id: String) -> Dictionary:
+	return _styled(_parse(path), id)
+
+
+## What style `id` holds laid over `table`, block by block; the other styles dropped.
+static func _styled(table: Dictionary, id: String) -> Dictionary:
+	var over: Dictionary = table.styles[id]
+	table.erase("styles")
+	_lay(table, over)
+	return table
+
+
+static func _lay(under: Dictionary, over: Dictionary) -> void:
+	for key: String in over:
+		if over[key] is Dictionary and under.get(key) is Dictionary:
+			_lay(under[key], over[key])
+		else:
+			under[key] = over[key]
 
 
 static func _group(paths: Dictionary) -> Dictionary:
@@ -91,7 +119,13 @@ static func _group(paths: Dictionary) -> Dictionary:
 	return out
 
 
-## One table of the catalog (kept once read).
+## One render table (kept once read): what the game reads while it plays asks this, not render(), which reads every table
+## again once the core has its copy (release_boot_tables).
+static func render_table(key: String) -> Dictionary:
+	return _read(RENDER_TABLES[key])
+
+
+## One table of the catalog (kept once read); the same, against catalog().
 static func catalog_table(key: String) -> Dictionary:
 	if not _catalog_cache.has(key):
 		_catalog_cache[key] = _read(CATALOG[key])
@@ -115,6 +149,27 @@ static func maps() -> Array:
 
 static func render() -> Dictionary:
 	return _group(RENDER_TABLES)
+
+
+## The profiles as written, read anew: only the road catalog's strips want them once the core has its own.
+static func road_profiles() -> Array:
+	var list: Array = _parse(CATALOG.road_profiles).get("profiles", [])
+	for path: String in CATALOG_FRAGMENTS.road_profiles:
+		list.append_array(_parse(path).get("profiles", []))
+	return list
+
+
+## The core holds its own copy of the catalog and of the render tables once it has booted: they need not stay here too.
+## Tuning stays, the script reads it all along; anything asked again is read anew.
+static func release_boot_tables() -> void:
+	for group: Dictionary in [CATALOG, RENDER_TABLES]:
+		for path: String in group.values():
+			if path != CATALOG.tuning:
+				_cache.erase(path)
+	_catalog_cache.clear() # catalog_table's own copies: read anew too
+	for paths: Array in CATALOG_FRAGMENTS.values():
+		for path: String in paths:
+			_cache.erase(path)
 
 
 static func ui(name: String) -> Dictionary:

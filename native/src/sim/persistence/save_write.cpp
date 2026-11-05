@@ -4,6 +4,7 @@
 #include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
+#include "sim/persistence/save_blocks.h"
 #include "sim/persistence/save_demolition.h"
 #include "sim/state/city_state.h"
 

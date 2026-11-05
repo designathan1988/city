@@ -6,6 +6,7 @@
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/ped_system.h"
+#include "sim/street/street_spots.h"
 
 namespace city {
 
@@ -93,6 +94,11 @@ std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s,
 // The node's control (signals, priority or none), from the road network alone: the only owner of that decision,
 // read by build_junction and by the render's signal posts (which hold just the map lock, not the lane graph).
 Control control_of(const CityState &s, int n);
+// The plate the player put on arm `seg` of node `n` (SegRule), and the rule its traffic meets there, by plate or by rank.
+int plate_rule(const RoadNetwork &net, int seg, int n);
+int approach_rule(const CityState &s, int n, int seg);
+// The plates the rules put up at node `n` (street_signs.cpp).
+void junction_signs(const CityState &s, int n, std::vector<SignStand> &out);
 void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now
 float amber_left(const CityState &s, int ds); // seconds of amber left on approach `ds`, which shows amber

@@ -245,7 +245,8 @@
     {
      "id": "street",
      "icon": "ls_bench",
-     "label_key": "v2.land.street"
+     "label_key": "v2.land.street",
+     "tool": "STREETSCAPE"
     }
    ],
    "strip": "land_panels"
@@ -362,6 +363,10 @@
   }
  ],
  "road_options": {
+  "furniture": {
+   "label_key": "roadFurniture.row", "tip_key": "roadFurniture.tip",
+   "choices": [{"label_key": "roadFurniture.complete", "level": 0}, {"label_key": "roadFurniture.basic", "level": 1}, {"label_key": "roadFurniture.none", "level": 2}]
+  },
   "_doc": "The road tool's option rows (Roadcraft ui/v2/shell.ts renderRoads). trace: the alignment, in ToolController order; snap: key = Settings.road_snap.",
   "trace": {"label_key": "palette.trace", "choices": [{"icon": "straight", "label_key": "palette.alignment.straight"},
     {"icon": "curve", "label_key": "palette.alignment.curve"}, {"icon": "free", "label_key": "palette.alignment.free"}]},
@@ -635,5 +640,58 @@
    "title_key": "action.openMap",
    "empty_key": "save.none"
   }
+ },
+ "street": {
+  "_doc": "The Street tab of the Landscape drawer, as the Roadcraft 4.0 lays it out (photo reference/rua/23-aba-rua). kind: sim/street/street_works.h ItemKind and BarrierKind; row_m: the spacing of a dragged row; reach_m, pole_reach_m: how far from the pointer a piece is caught at the least; pick_px: the same in pixels, for a far camera; placing_ring_m: the size of the placing ring; double_click_m: two clicks farther apart than this are two points.",
+  "item_columns": 6,
+  "barrier_columns": 3,
+  "reach_m": 1.5,
+  "pick_px": 26,
+  "pole_reach_m": 6,
+  "placing_ring_m": 0.6,
+  "double_click_ms": 450,
+  "double_click_m": 1.5,
+  "text_max": 40,
+  "sign_kind": 10,
+  "default_lamps": 1,
+  "items": [
+   {"label_key": "streetscape.tree", "kind": 0, "icon": "ls_tree", "row_m": 10},
+   {"label_key": "streetscape.bench", "kind": 2, "icon": "ls_bench", "row_m": 20},
+   {"label_key": "streetscape.lamp", "kind": 4, "icon": "ls_lamp", "row_m": 30},
+   {"label_key": "streetscape.postbox", "kind": 6, "icon": "ls_postbox", "row_m": 60},
+   {"label_key": "streetscape.drain", "kind": 8, "icon": "ls_drain", "row_m": 30},
+   {"label_key": "streetscape.sign", "kind": 10, "icon": "ls_sign"},
+   {"label_key": "streetscape.shrub", "kind": 1, "icon": "ls_shrub", "row_m": 3},
+   {"label_key": "streetscape.bin", "kind": 3, "icon": "ls_bin", "row_m": 30},
+   {"label_key": "streetscape.hydrant", "kind": 5, "icon": "ls_hydrant", "row_m": 100},
+   {"label_key": "streetscape.phone", "kind": 7, "icon": "ls_phone"},
+   {"label_key": "streetscape.meadow", "kind": 9, "icon": "ls_meadow"},
+   {"label_key": "streetscape.streetname", "kind": 11, "icon": "ls_streetname"}],
+  "barriers": [
+   {"label_key": "barrier.kind.fence", "kind": 0, "icon": "fenceRun", "half_width_m": 0.2},
+   {"label_key": "barrier.kind.hedge", "kind": 2, "icon": "hedge", "half_width_m": 0.4},
+   {"label_key": "barrier.kind.railing", "kind": 4, "icon": "railing", "half_width_m": 0.15},
+   {"label_key": "barrier.kind.wall", "kind": 1, "icon": "wallRun", "half_width_m": 0.2},
+   {"label_key": "barrier.kind.guardrail", "kind": 3, "icon": "guardrail", "half_width_m": 0.2}],
+  "poles": [
+   {"label_key": "pole.mode.build", "kind": "build", "icon": "pole_build"},
+   {"label_key": "pole.mode.remove", "kind": "remove", "icon": "pole_remove"}],
+  "lamps": [
+   {"label_key": "pole.lamps.none", "kind": 0, "icon": "pl_none"},
+   {"label_key": "pole.lamps.alternate", "kind": 1, "icon": "pl_alternate"},
+   {"label_key": "pole.lamps.all", "kind": 2, "icon": "pl_all"}],
+  "signs": [
+   {"label_key": "sign.type.stop", "sign": 0},
+   {"label_key": "sign.type.yield", "sign": 1},
+   {"label_key": "sign.type.speed", "sign": 2, "text_hint": "sign.text.speed"},
+   {"label_key": "sign.type.noParking", "sign": 3},
+   {"label_key": "sign.type.noEntry", "sign": 4},
+   {"label_key": "sign.type.pedestrian", "sign": 5},
+   {"label_key": "sign.type.school", "sign": 6},
+   {"label_key": "sign.type.direction", "sign": 7, "text_hint": "sign.text"},
+   {"label_key": "sign.type.street", "sign": 8, "text_hint": "sign.text"},
+   {"label_key": "sign.type.info", "sign": 9, "text_hint": "sign.text"}],
+  "name_kind": 11,
+  "name_hint": "sign.street.placeholder"
  }
 }

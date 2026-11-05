@@ -2,6 +2,7 @@
 // and laid again through the same steps as a new road, so a crossing makes a junction, an overlap is refused and the
 // whole edit rolls back as one undo step.
 #include "sim/commands/commands.h"
+#include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 
 #include "sim/economy/road_economy.h"
@@ -50,6 +51,8 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		box.add(g);
 	}
 	const std::map<int, double> before = squeezes_in(s, box);
+	std::vector<std::vector<CarriedPiece>> kits; // what the player put on each road, carried along (Roadcraft nodeMover.ts carryStreetKit)
+	for (int sid : was.segs) kits.push_back(street_kit_of(s, sid));
 	for (int sid : was.segs) j_remove_segment(s, sid);
 	Anchor to = snap_point(s, x, z, tn.road_merge_m);
 	if (to.node == node) {
@@ -61,7 +64,8 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	end.node = anchor_node(s, to);
 	end.x = net.nodes[size_t(end.node)].x;
 	end.z = net.nodes[size_t(end.node)].z;
-	for (const RoadSegment &g : roads) {
+	for (size_t i = 0; i < roads.size(); i++) {
+		const RoadSegment &g = roads[i];
 		const bool at_a = g.a == node;
 		const Quad q = moved_quad(g.q, at_a, end.x, end.z);
 		Anchor far;
@@ -69,11 +73,13 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		far.x = at_a ? g.q.x1 : g.q.x0;
 		far.z = at_a ? g.q.z1 : g.q.z0;
 		const RoadKeeps keeps{ g.zl, g.zr, g.flags };
-		EditResult laid = lay_road(s, at_a ? end : far, true, q.cx, q.cz, at_a ? far : end, g.profile, keeps);
+		std::vector<int> pieces;
+		EditResult laid = lay_road(s, at_a ? end : far, true, q.cx, q.cz, at_a ? far : end, g.profile, keeps, &pieces);
 		if (!laid.ok) {
 			r.error = laid.error;
 			return r;
 		}
+		carry_kit_along(s, kits[i], g.len, q, pieces);
 		r.segments += laid.segments;
 		r.buildings_removed += laid.buildings_removed;
 	}

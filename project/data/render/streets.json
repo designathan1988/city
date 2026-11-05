@@ -48,369 +48,120 @@
   "_doc": "Parts in local metres (+z faces the road or the arriving traffic, base at y = 0). shape box (min, max), cylinder (base, radius, height, segments) or blob (center, radius); glow 'night' lights the part at night. Signal lenses: lens 0/1/2 = the cars' red/amber/green (on both faces of the head), 3/4 = the walkers' stop/walk (their head faces -x, across the crosswalk; the cars' red and green). color is the lens lit as the screen shows it (render/tone_map.gd gives the radiance): the colour regions of road traffic signals (CIE, as tabled by Janoff, Transportation Research Record 1316, 1991, Table 1; EN 12368 Table 7 asks the same) lie outside what an sRGB screen shows for red and amber, so each is the brightest colour the Environment's ACES can show whose chromaticity is within one MacAdam step (0.0011 in CIE 1976 u'v', CIE TN 001:2014) of the nearest one it can show (red: 0.0377 from the region, the nearest 0.0366; amber: 0.0073, the nearest 0.0062); green the brightest inside its region. An unlit lens is that colour times lens_dim (sRGB), a dark filter lit by the scene: in full sun (daylight.json sun and ambient) it stays at least 16 times dimmer than the lens lit, the phantom signal class 5 of EN 12368 (ratios 21.2, 16.6 and 19.9). The signal head: three 12-inch sections (MUTCD 4D.07; 300 mm lenses, EN 12368 6.2), each housing 13.5 x 13.5 x 7.0 in (SWARCO McCain traffic signal housing sheet), two back to back for the two faces, its bottom 15 ft over the road (MUTCD 4D.15), red on top; each lens a dome 2.0 in proud of its door (Leotek IL6-P3 12-inch module), under a cap visor as deep as the lens is wide, 0.10 in thick (McCain visor sheet), dull black (MUTCD 4D.12). The walkers' head: two 8-inch sections (10 x 10 x 7.0 in, 200 mm lenses, domes 1.7 in, 8-inch visors), the upraised hand above the walking person (MUTCD 4E.04), its bottom at 8.5 ft, the middle of MUTCD 4E.05's 7 to 10 ft. Housings and visors black: linear albedo 0.05, a black-pigmented polymer (Physically Based, 'Toner (Black)'). The lenses are not in the post's mesh: each is drawn once, lit or not, by render/props/signal_lamps.h.",
   "lens_dim": 0.1,
   "signal": [
-   {
-    "shape": "cylinder",
-    "base": [0, 0, 0],
-    "radius": 0.12,
-    "height": 5.8,
-    "segments": 8,
-    "color": "#3a3e42"
-   },
-   {
-    "shape": "box",
-    "min": [-3.6, 5.5, -0.06],
-    "max": [0, 5.62, 0.06],
-    "color": "#3a3e42"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3715, 4.572, -0.1778],
-    "max": [-3.0286, 5.6007, 0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 5.4292, 0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#d20007",
-    "lens": 0
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.5816, 0.1778],
-    "max": [-3.0451, 5.5842, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.4292, 0.1778],
-    "max": [-3.3524, 5.5816, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 5.4292, 0.1778],
-    "max": [-3.0451, 5.5816, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 5.4292, -0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#d20007",
-    "lens": 0
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.5816, -0.4826],
-    "max": [-3.0451, 5.5842, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.4292, -0.4826],
-    "max": [-3.3524, 5.5816, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 5.4292, -0.4826],
-    "max": [-3.0451, 5.5816, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 5.0864, 0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#d46f09",
-    "lens": 1
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.2388, 0.1778],
-    "max": [-3.0451, 5.2413, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.0864, 0.1778],
-    "max": [-3.3524, 5.2388, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 5.0864, 0.1778],
-    "max": [-3.0451, 5.2388, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 5.0864, -0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#d46f09",
-    "lens": 1
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.2388, -0.4826],
-    "max": [-3.0451, 5.2413, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 5.0864, -0.4826],
-    "max": [-3.3524, 5.2388, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 5.0864, -0.4826],
-    "max": [-3.0451, 5.2388, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 4.7435, 0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#22ba50",
-    "lens": 2
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 4.8959, 0.1778],
-    "max": [-3.0451, 4.8984, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 4.7435, 0.1778],
-    "max": [-3.3524, 4.8959, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 4.7435, 0.1778],
-    "max": [-3.0451, 4.8959, 0.4826],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-3.2, 4.7435, -0.1778],
-    "radius": [0.15, 0.15, 0.0508],
-    "color": "#22ba50",
-    "lens": 2
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 4.8959, -0.4826],
-    "max": [-3.0451, 4.8984, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.3549, 4.7435, -0.4826],
-    "max": [-3.3524, 4.8959, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-3.0476, 4.7435, -0.4826],
-    "max": [-3.0451, 4.8959, -0.1778],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-0.2978, 2.5908, -0.127],
-    "max": [-0.12, 3.0988, 0.127],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-0.2978, 2.9718, 0],
-    "radius": [0.0432, 0.1, 0.1],
-    "color": "#d20007",
-    "lens": 3
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 3.0742, -0.1049],
-    "max": [-0.2978, 3.0767, 0.1049],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 2.9718, -0.1049],
-    "max": [-0.2978, 3.0742, -0.1024],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 2.9718, 0.1024],
-    "max": [-0.2978, 3.0742, 0.1049],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "blob",
-    "center": [-0.2978, 2.7178, 0],
-    "radius": [0.0432, 0.1, 0.1],
-    "color": "#22ba50",
-    "lens": 4
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 2.8202, -0.1049],
-    "max": [-0.2978, 2.8227, 0.1049],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 2.7178, -0.1049],
-    "max": [-0.2978, 2.8202, -0.1024],
-    "color": "#3f3f3f"
-   },
-   {
-    "shape": "box",
-    "min": [-0.501, 2.7178, 0.1024],
-    "max": [-0.2978, 2.8202, 0.1049],
-    "color": "#3f3f3f"
-   }
-  ],
-  "lamp": [
-   {
-    "shape": "cylinder",
-    "base": [0, 0, 0],
-    "radius": 0.15,
-    "height": 9.65,
-    "segments": 8,
-    "color": "#b4b0a8"
-   },
-   {
-    "shape": "box",
-    "min": [-0.06, 9.19, -0.85],
-    "max": [0.06, 9.31, 0.85],
-    "color": "#a9a59d"
-   },
-   {
-    "shape": "box",
-    "min": [-0.03, 9.31, -0.78],
-    "max": [0.03, 9.45, -0.72],
-    "color": "#e8e8e4"
-   },
-   {
-    "shape": "box",
-    "min": [-0.03, 9.31, 0.22],
-    "max": [0.03, 9.45, 0.28],
-    "color": "#e8e8e4"
-   },
-   {
-    "shape": "box",
-    "min": [-0.03, 9.31, 0.72],
-    "max": [0.03, 9.45, 0.78],
-    "color": "#e8e8e4"
-   },
-   {
-    "shape": "box",
-    "min": [-0.25, 6.6, -0.57],
-    "max": [0.25, 7.1, -0.07],
-    "color": "#5c6064"
-   },
-   {
-    "shape": "box",
-    "min": [-0.04, 8.0, 0],
-    "max": [0.04, 8.08, 1.9],
-    "color": "#8a8e92"
-   },
-   {
-    "shape": "box",
-    "min": [-0.17, 7.95, 1.5],
-    "max": [0.17, 8.11, 2.3],
-    "color": "#6d7276"
-   },
-   {
-    "shape": "box",
-    "min": [-0.14, 7.9, 1.57],
-    "max": [0.14, 7.95, 2.23],
-    "color": "#fff2cc",
-    "glow": "night"
-   }
+   {"shape": "cylinder", "base": [0, 0, 0], "radius": 0.12, "height": 5.8, "segments": 8, "color": "#3a3e42"},
+   {"shape": "box", "min": [-3.6, 5.5, -0.06], "max": [0, 5.62, 0.06], "color": "#3a3e42"},
+   {"shape": "box", "min": [-3.3715, 4.572, -0.1778], "max": [-3.0286, 5.6007, 0.1778], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 5.4292, 0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#d20007", "lens": 0},
+   {"shape": "box", "min": [-3.3549, 5.5816, 0.1778], "max": [-3.0451, 5.5842, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 5.4292, 0.1778], "max": [-3.3524, 5.5816, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 5.4292, 0.1778], "max": [-3.0451, 5.5816, 0.4826], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 5.4292, -0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#d20007", "lens": 0},
+   {"shape": "box", "min": [-3.3549, 5.5816, -0.4826], "max": [-3.0451, 5.5842, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 5.4292, -0.4826], "max": [-3.3524, 5.5816, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 5.4292, -0.4826], "max": [-3.0451, 5.5816, -0.1778], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 5.0864, 0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#d46f09", "lens": 1},
+   {"shape": "box", "min": [-3.3549, 5.2388, 0.1778], "max": [-3.0451, 5.2413, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 5.0864, 0.1778], "max": [-3.3524, 5.2388, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 5.0864, 0.1778], "max": [-3.0451, 5.2388, 0.4826], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 5.0864, -0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#d46f09", "lens": 1},
+   {"shape": "box", "min": [-3.3549, 5.2388, -0.4826], "max": [-3.0451, 5.2413, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 5.0864, -0.4826], "max": [-3.3524, 5.2388, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 5.0864, -0.4826], "max": [-3.0451, 5.2388, -0.1778], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 4.7435, 0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#22ba50", "lens": 2},
+   {"shape": "box", "min": [-3.3549, 4.8959, 0.1778], "max": [-3.0451, 4.8984, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 4.7435, 0.1778], "max": [-3.3524, 4.8959, 0.4826], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 4.7435, 0.1778], "max": [-3.0451, 4.8959, 0.4826], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-3.2, 4.7435, -0.1778], "radius": [0.15, 0.15, 0.0508], "color": "#22ba50", "lens": 2},
+   {"shape": "box", "min": [-3.3549, 4.8959, -0.4826], "max": [-3.0451, 4.8984, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.3549, 4.7435, -0.4826], "max": [-3.3524, 4.8959, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-3.0476, 4.7435, -0.4826], "max": [-3.0451, 4.8959, -0.1778], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-0.2978, 2.5908, -0.127], "max": [-0.12, 3.0988, 0.127], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-0.2978, 2.9718, 0], "radius": [0.0432, 0.1, 0.1], "color": "#d20007", "lens": 3},
+   {"shape": "box", "min": [-0.501, 3.0742, -0.1049], "max": [-0.2978, 3.0767, 0.1049], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-0.501, 2.9718, -0.1049], "max": [-0.2978, 3.0742, -0.1024], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-0.501, 2.9718, 0.1024], "max": [-0.2978, 3.0742, 0.1049], "color": "#3f3f3f"},
+   {"shape": "blob", "center": [-0.2978, 2.7178, 0], "radius": [0.0432, 0.1, 0.1], "color": "#22ba50", "lens": 4},
+   {"shape": "box", "min": [-0.501, 2.8202, -0.1049], "max": [-0.2978, 2.8227, 0.1049], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-0.501, 2.7178, -0.1049], "max": [-0.2978, 2.8202, -0.1024], "color": "#3f3f3f"},
+   {"shape": "box", "min": [-0.501, 2.7178, 0.1024], "max": [-0.2978, 2.8202, 0.1049], "color": "#3f3f3f"}
   ],
   "hydrant": [
-   {
-    "shape": "cylinder",
-    "base": [0, 0, 0],
-    "radius": 0.15,
-    "height": 0.62,
-    "segments": 8,
-    "color": "#c0261d"
-   },
-   {
-    "shape": "blob",
-    "center": [0, 0.64, 0],
-    "radius": [0.15, 0.12, 0.15],
-    "color": "#c0261d"
-   },
-   {
-    "shape": "box",
-    "min": [0.1, 0.37, -0.06],
-    "max": [0.28, 0.47, 0.06],
-    "color": "#a31f18"
-   }
+   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.16, "height": 0.07, "segments": 10, "color": "#8f2820"},
+   {"shape": "frustum", "base": [0, 0.07, 0], "radius": 0.13, "top_radius": 0.12, "height": 0.52, "segments": 10, "color": "#bd3328"},
+   {"shape": "frustum", "base": [0, 0.59, 0], "radius": 0.14, "top_radius": 0.08, "height": 0.12, "segments": 10, "color": "#bd3328"},
+   {"shape": "frustum", "base": [0, 0.71, 0], "radius": 0.04, "top_radius": 0.035, "height": 0.07, "segments": 6, "color": "#8f2820"},
+   {"shape": "beam", "from": [-0.18, 0.46, 0], "to": [0.18, 0.46, 0], "width": 0.09, "thick": 0.09, "color": "#8f2820"},
+   {"shape": "beam", "from": [0, 0.44, 0.07], "to": [0, 0.44, 0.19], "width": 0.12, "thick": 0.12, "color": "#8f2820"}
   ],
   "bin": [
-   {
-    "shape": "cylinder",
-    "base": [0, 0, 0],
-    "radius": 0.26,
-    "height": 0.9,
-    "segments": 10,
-    "color": "#3f5a46"
-   },
-   {
-    "shape": "cylinder",
-    "base": [0, 0.9, 0],
-    "radius": 0.29,
-    "height": 0.05,
-    "segments": 10,
-    "color": "#2c3a30"
-   }
+   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.22, "top_radius": 0.2, "height": 0.06, "segments": 12, "color": "#232826"},
+   {"shape": "frustum", "base": [0, 0.06, 0], "radius": 0.2, "top_radius": 0.23, "height": 0.8, "segments": 12, "color": "#2f4a3a"},
+   {"shape": "cylinder", "base": [0, 0.82, 0], "radius": 0.236, "height": 0.04, "segments": 12, "color": "#0e100f"},
+   {"shape": "cylinder", "base": [0, 0.855, 0], "radius": 0.245, "height": 0.05, "segments": 12, "color": "#8b9496"},
+   {"shape": "frustum", "base": [0, 0.905, 0], "radius": 0.245, "top_radius": 0.1, "height": 0.13, "segments": 12, "color": "#2f4a3a"}
   ],
   "bench": [
-   {
-    "shape": "box",
-    "min": [-0.85, 0.44, -0.225],
-    "max": [0.85, 0.51, 0.225],
-    "color": "#8a6440"
-   },
-   {
-    "shape": "box",
-    "min": [-0.85, 0.55, -0.25],
-    "max": [0.85, 0.95, -0.19],
-    "color": "#8a6440"
-   },
-   {
-    "shape": "box",
-    "min": [-0.78, 0, -0.21],
-    "max": [-0.72, 0.44, 0.21],
-    "color": "#34383c"
-   },
-   {
-    "shape": "box",
-    "min": [0.72, 0, -0.21],
-    "max": [0.78, 0.44, 0.21],
-    "color": "#34383c"
-   }
+   {"shape": "box", "min": [-0.9, 0.433, 0.11], "max": [0.9, 0.467, 0.23], "color": "#8d6540"},
+   {"shape": "box", "min": [-0.9, 0.433, -0.03], "max": [0.9, 0.467, 0.09], "color": "#7f5a39"},
+   {"shape": "box", "min": [-0.9, 0.433, -0.17], "max": [0.9, 0.467, -0.05], "color": "#8d6540"},
+   {"shape": "box", "min": [-0.9, 0.55, -0.285], "max": [0.9, 0.65, -0.255], "color": "#7f5a39"},
+   {"shape": "box", "min": [-0.9, 0.71, -0.305], "max": [0.9, 0.81, -0.275], "color": "#8d6540"},
+   {"shape": "box", "min": [-0.785, 0, 0.165], "max": [-0.735, 0.45, 0.215], "color": "#262b2a"},
+   {"shape": "box", "min": [0.735, 0, 0.165], "max": [0.785, 0.45, 0.215], "color": "#262b2a"},
+   {"shape": "box", "min": [-0.785, 0, -0.27], "max": [-0.735, 0.84, -0.22], "color": "#262b2a"},
+   {"shape": "box", "min": [0.735, 0, -0.27], "max": [0.785, 0.84, -0.22], "color": "#262b2a"},
+   {"shape": "box", "min": [-0.785, 0.4, -0.24], "max": [-0.735, 0.44, 0.22], "color": "#262b2a"},
+   {"shape": "box", "min": [0.735, 0.4, -0.24], "max": [0.785, 0.44, 0.22], "color": "#262b2a"}
+  ],
+  "postbox": [
+   {"shape": "box", "min": [-0.15, 0, -0.12], "max": [0.15, 0.25, 0.12], "color": "#12304f"},
+   {"shape": "box", "min": [-0.22, 0.25, -0.17], "max": [0.22, 0.97, 0.17], "color": "#1f4f8a"},
+   {"shape": "blob", "center": [0, 0.97, 0], "radius": [0.22, 0.14, 0.17], "color": "#1f4f8a"},
+   {"shape": "box", "min": [-0.11, 0.822, 0.17], "max": [0.11, 0.858, 0.185], "color": "#0a0c0e"},
+   {"shape": "box", "min": [-0.13, 0.56, 0.17], "max": [0.13, 0.68, 0.18], "color": "#e8e4d8"}
+  ],
+  "phone": [
+   {"shape": "frustum", "base": [0, 0, -0.18], "radius": 0.06, "top_radius": 0.05, "height": 1.55, "segments": 8, "color": "#5d6366"},
+   {"shape": "blob", "center": [0, 1.62, -0.02], "radius": [0.45, 0.62, 0.41], "color": "#e8772e"},
+   {"shape": "blob", "center": [0, 1.55, 0.14], "radius": [0.38, 0.52, 0.3], "color": "#d9d4c8"},
+   {"shape": "box", "min": [-0.1, 1.29, 0.2], "max": [0.1, 1.61, 0.3], "color": "#2f5fa0"}
+  ],
+  "drain": [
+   {"shape": "box", "min": [-0.5, -0.12, 0.0], "max": [0.5, 0.01, 0.1], "color": "#9a9890"},
+   {"shape": "box", "min": [-0.45, -0.1, 0.1], "max": [0.45, -0.02, 0.12], "color": "#0b0c0d"},
+   {"shape": "box", "min": [-0.5, -0.14, 0.12], "max": [0.5, -0.12, 0.62], "color": "#9a9890"},
+   {"shape": "box", "min": [-0.42, -0.135, 0.17], "max": [0.42, -0.115, 0.57], "color": "#2b2e2f"}
+  ],
+  "tree_pit": [
+   {"shape": "box", "min": [-0.3, 0, -0.3], "max": [0.3, 0.04, 0.3], "color": "#3a2c1f"},
+   {"shape": "box", "min": [-0.3, 0.005, -0.3], "max": [0.3, 0.055, -0.25], "color": "#3d4341"},
+   {"shape": "box", "min": [-0.3, 0.005, 0.25], "max": [0.3, 0.055, 0.3], "color": "#3d4341"},
+   {"shape": "box", "min": [-0.3, 0.005, -0.3], "max": [-0.25, 0.055, 0.3], "color": "#3d4341"},
+   {"shape": "box", "min": [0.25, 0.005, -0.3], "max": [0.3, 0.055, 0.3], "color": "#3d4341"}
+  ],
+  "meadow": [
+   {"shape": "frustum", "base": [0, 0, 0], "radius": 0.2, "top_radius": 0.01, "height": 0.75, "segments": 5, "color": "#6f8f3a"},
+   {"shape": "frustum", "base": [0.28, 0, 0.12], "radius": 0.2, "top_radius": 0.01, "height": 0.6, "segments": 5, "color": "#7f9c45"},
+   {"shape": "frustum", "base": [-0.25, 0, 0.2], "radius": 0.2, "top_radius": 0.01, "height": 0.68, "segments": 5, "color": "#5f8233"},
+   {"shape": "frustum", "base": [0.1, 0, -0.3], "radius": 0.2, "top_radius": 0.01, "height": 0.55, "segments": 5, "color": "#a9c25e"},
+   {"shape": "frustum", "base": [-0.18, 0, -0.2], "radius": 0.2, "top_radius": 0.01, "height": 0.62, "segments": 5, "color": "#6f8f3a"}
   ]
  },
  "wires": {
-  "_doc": "Wires between consecutive lamp poles: strand heights and offsets across the pole, sag share of the span.",
-  "y_m": [9.45, 9.45, 9.45, 8.35],
-  "z_m": [-0.75, 0.25, 0.75, -0.3],
-  "pieces": 12,
-  "thick_m": 0.035,
+  "_doc": "The wires of a span: every course (y_m, under the arm) at every offset across it (z_m, the insulators): nine, as the Roadcraft 4.0 strings them. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom, as the 4.0 draws it. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube up to tube_end_m, far_chords and far_sides the coarse one up to far_end_m, where a wire is under a pixel at the 1600 x 900 view. Sag and these distances have no norm behind them: measured against the 4.0 in play.",
+  "z_m": [-0.8, 0, 0.8],
+  "radius_m": 0.035,
   "sag": 0.018,
+  "max_sag_m": 1.4,
   "min_span_m": 4,
   "max_span_m": 63,
-  "color": "#202224"
+  "near_chords": 8,
+  "near_sides": 4,
+  "far_chords": 4,
+  "far_sides": 3,
+  "far_end_m": 700,
+  "color": "#1e2224",
+  "tube_end_m": 220
  },
  "wear": { "_doc": "Streets and footways that age with use (render/wear): the field's cell, how much a wheel and a foot leave on the cell under it each simulated second (share of full wear: a busy lane darkens in a few minutes of traffic), the track of a car between its wheels (a sedan's 1.78 m width less a 205 mm tyre, agents.json), how often a tile is sent and how many a frame, and the most a publication counts for (ticks stepped with no frame drawn leave no wear: an agent stands on one cell for one publication).", "field_cell_m": 5, "wheels_per_s": 0.05, "feet_per_s": 0.02, "track_m": 1.58, "upload_every_s": 2, "most_step_s": 0.25, "tiles_per_frame": 2 },
  "trees": {
@@ -514,5 +265,192 @@
     "palm": 0.1
    }
   }
+ },
+ "barriers": {
+  "_doc": "The barriers drawn (render/props/barrier_boxes.cpp): beam_section: a guardrail's W, [y, z] in the unit box of guard_beam_m by beam_thick_m; the form of a W-beam, drawn by eye (NBR 6971 is paid; the Roadcraft 4.0 draws a plain box of the same measures). each run cut into pieces of at most piece_m that step with the ground, sunk sink_m so a slope never shows under them. guard_step_m: NBR 6971 through DER-PR ES-OC 07/18, posts every 2.00 m. The other measures carry no norm and follow the Roadcraft 4.0 look, and so do finishes: colour, metalness and roughness of each material.",
+  "piece_m": 4,
+  "sink_m": 0.15,
+  "coping_m": 0.06,
+  "coping_over": 1.3,
+  "hedge_lap": 0.5,
+  "rail_m": 0.06,
+  "rail_thick_m": 0.04,
+  "rail_levels": [0.35, 0.85],
+  "fence_step_m": 2,
+  "fence_post_m": 0.08,
+  "guard_step_m": 2,
+  "guard_post_m": 0.12,
+  "beam_thick_m": 0.08,
+  "beam_foot_m": 0.45,
+  "lap_m": 0.02,
+  "railing_step_m": 1.5,
+  "railing_post_m": 0.06,
+  "bar_m": 0.05,
+  "bar_low_m": 0.04,
+  "bar_thin_m": 0.02,
+  "bar_step_m": 0.14,
+  "bar_top_m": 0.95,
+  "bar_foot_m": 0.12,
+  "finishes": {
+   "wall": {"color": "#d8d0bf", "metal": 0, "rough": 0.92},
+   "coping": {"color": "#b9b2a4", "metal": 0, "rough": 0.85},
+   "hedge": {"color": "#3d6532", "metal": 0, "rough": 1},
+   "fence": {"color": "#4b5153", "metal": 0.5, "rough": 0.55},
+   "beam": {"color": "#b4bcbf", "metal": 0.8, "rough": 0.32},
+   "guard_post": {"color": "#9aa3a6", "metal": 0.75, "rough": 0.4},
+   "railing": {"color": "#2e3a34", "metal": 0.45, "rough": 0.5}
+  },
+  "piece_min_m": 0.01,
+  "guard_beam_m": 0.3,
+  "beam_section": [[-0.5, -0.5], [-0.42, -0.32], [-0.22, 0.5], [-0.1, 0.42], [0, 0.1], [0.1, 0.42], [0.22, 0.5], [0.42, -0.32], [0.5, -0.5]]
+ },
+ "lamp_light": {
+  "_doc": "The night light of a lamp: pool on the ground and beam from the lens, as the Roadcraft 4.0 draws them (scenery.ts). pool_along: how far a lighting column's pool runs along the road, in its height; pool_sides: the polygon round the pool, whose rim is an ellipse of pi a c: a square 4 a c (27% of its fragments add nothing), 8 sides 3.31 a c (5.5%) for 6 more triangles a lamp, 12 sides 3.22 a c (2.3%) for 4 more; pool_lift_m: over the footway it lies on, so the two never fight for a pixel; across, the street furniture owner sets it. lamp_* are the utility pole lens, column_* the lighting column lens in props.pole.",
+  "pool_along": 1.6,
+  "pool_sides": 8,
+  "pool_lift_m": 0.014,
+  "beams": false,
+  "beam_radius_m": 3.68,
+  "lamp_height_m": 7.16,
+  "lamp_reach_m": 1.6,
+  "column_height_m": 9.02,
+  "column_reach_m": 2.1
+ },
+ "signs": {
+  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px: a layer of the pictures; the layers grow with what a city uses, 45 name plates or 32 plates each. sheet_round_s: the least time between two pictures read back from the viewport. A 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; rotation the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
+  "sheet_w_px": 1024,
+  "sheet_h_px": 512,
+  "sheet_round_s": 0.25,
+  "plate_cell_px": 128,
+  "blade_cell_w_px": 192,
+  "blade_cell_h_px": 54,
+  "post_radius_m": 0.04,
+  "post_sides": 8,
+  "post_color": "#8e979b",
+  "back_color": "#7d8589",
+  "face_out_m": 0.06,
+  "blade_half_m": 0.005,
+  "word_bold": 0.5
+ },
+ "styles": {
+  "_doc": "What changes with a city's regional style (regras-sessoes.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. The drawings are the Roadcraft 4.0 look in both for now.",
+  "roadcraft": {
+   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts POLE_HEIGHT, 8.5 m, here 8.4). The look of this style, not a norm.",
+   "props": {
+    "pole": [
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.4, "segments": 8, "color": "#4e3b2a", "wood": true, "part": 1},
+     {"shape": "frustum", "base": [0, 8.38, 0], "radius": 0.13, "top_radius": 0.045, "height": 0.08, "segments": 8, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 7.800000000000001, -1.0], "max": [0.05, 7.9, 1.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "beam", "from": [0, 7.300000000000001, 0], "to": [0, 7.82, 0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "beam", "from": [0, 7.300000000000001, 0], "to": [0, 7.82, -0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, -0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, 0], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 7.9, 0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "cylinder", "base": [0, 5.780000000000001, -0.46], "radius": 0.28, "height": 0.95, "segments": 10, "color": "#8c9590", "part": 4},
+     {"shape": "beam", "from": [0, 7.080000000000001, 0], "to": [0, 7.300000000000001, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 7.160000000000001, 1.35], "max": [0.13, 7.300000000000001, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.1, 7.15, 1.4], "max": [0.1, 7.160000000000001, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
+     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
+     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
+     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
+     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
+    ]
+   },
+   "wires": {"y_m": [7.85, 7.4, 6.95]},
+   "signs": {
+    "plates": {
+     "stop": {"w_m": 0.75, "h_m": 0.75, "z_m": 2.2, "rotation": 0.0625, "outline_points": 8},
+     "yield": {"w_m": 0.8, "h_m": 0.7, "z_m": 2.2, "rotation": 0.75, "outline_points": 3},
+     "speed": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "rotation": 0.0, "outline_points": 24},
+     "noParking": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "rotation": 0.0, "outline_points": 24},
+     "noEntry": {"w_m": 0.6, "h_m": 0.6, "z_m": 2.2, "rotation": 0.0, "outline_points": 24},
+     "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "rotation": 0.0, "outline_points": 4},
+     "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.2, "rotation": 0.0, "outline_points": 4},
+     "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "rotation": 0.0, "outline_points": 0},
+     "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "rotation": 0.0, "outline_points": 0},
+     "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.2, "rotation": 0.0, "outline_points": 0}
+    },
+    "drawings": [
+     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74},
+     {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72},
+     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6},
+     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
+     {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]},
+     {
+      "plate": "pedestrian",
+      "field": "#f2c500",
+      "rim": "#111111",
+      "inner_share": 0.94,
+      "ink": "#111111",
+      "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}
+     },
+     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56},
+     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
+     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92},
+     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}
+    ]
+   }
+  },
+  "brasil": {
+   "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
+   "props": {
+    "pole": [
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 8, "color": "#4e3b2a", "wood": true, "part": 1},
+     {"shape": "frustum", "base": [0, 10.18, 0], "radius": 0.13, "top_radius": 0.045, "height": 0.08, "segments": 8, "color": "#8c9590", "part": 1},
+     {"shape": "box", "min": [-0.05, 9.6, -1.0], "max": [0.05, 9.7, 1.0], "color": "#3a2c20", "wood": true, "part": 2},
+     {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, 0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "beam", "from": [0, 9.1, 0], "to": [0, 9.62, -0.6], "width": 0.05, "thick": 0.025, "color": "#8c9590", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, -0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, 0], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "frustum", "base": [0, 9.7, 0.8], "radius": 0.07, "top_radius": 0.04, "height": 0.2, "segments": 6, "color": "#d8dcd6", "part": 2},
+     {"shape": "cylinder", "base": [0, 7.58, -0.46], "radius": 0.28, "height": 0.95, "segments": 10, "color": "#8c9590", "part": 4},
+     {"shape": "beam", "from": [0, 7.080000000000001, 0], "to": [0, 7.300000000000001, 1.6], "width": 0.08, "thick": 0.08, "color": "#4a4a46", "part": 8},
+     {"shape": "box", "min": [-0.13, 7.160000000000001, 1.35], "max": [0.13, 7.300000000000001, 1.85], "color": "#a9b0ad", "part": 8},
+     {"shape": "box", "min": [-0.1, 7.15, 1.4], "max": [0.1, 7.160000000000001, 1.8], "color": "#ffdba0", "glow": "night", "part": 8},
+     {"shape": "frustum", "base": [0, 0, 0], "radius": 0.19, "top_radius": 0.15, "height": 0.7, "segments": 8, "color": "#5d6461", "part": 16},
+     {"shape": "frustum", "base": [0, 0.7, 0], "radius": 0.12, "top_radius": 0.07, "height": 8.3, "segments": 8, "color": "#8a918e", "part": 16},
+     {"shape": "beam", "from": [0, 8.88, 0], "to": [0, 9.09, 2.1], "width": 0.08, "thick": 0.08, "color": "#8a918e", "part": 16},
+     {"shape": "box", "min": [-0.19, 9.02, 1.71], "max": [0.19, 9.16, 2.49], "color": "#a9b0ad", "part": 16},
+     {"shape": "box", "min": [-0.14, 9.01, 1.82], "max": [0.14, 9.02, 2.38], "color": "#ffdba0", "glow": "night", "part": 16}
+    ]
+   },
+   "wires": {"y_m": [9.65, 9.2, 8.75]},
+   "signs": {
+    "plates": {
+     "stop": {"w_m": 0.845, "h_m": 0.845, "z_m": 2.53, "rotation": 0.0625, "outline_points": 8},
+     "yield": {"w_m": 0.9, "h_m": 0.78, "z_m": 2.49, "rotation": 0.75, "outline_points": 3},
+     "speed": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "rotation": 0.0, "outline_points": 24},
+     "noParking": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "rotation": 0.0, "outline_points": 24},
+     "noEntry": {"w_m": 0.5, "h_m": 0.5, "z_m": 2.35, "rotation": 0.0, "outline_points": 24},
+     "pedestrian": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "rotation": 0.0, "outline_points": 4},
+     "school": {"w_m": 0.7, "h_m": 0.7, "z_m": 2.45, "rotation": 0.0, "outline_points": 4},
+     "direction": {"w_m": 1.6, "h_m": 0.5, "z_m": 2.4, "rotation": 0.0, "outline_points": 0},
+     "street": {"w_m": 1.0, "h_m": 0.28, "z_m": 2.6, "rotation": 0.0, "outline_points": 0},
+     "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.4, "rotation": 0.0, "outline_points": 0}
+    },
+    "drawings": [
+     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74},
+     {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72},
+     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6},
+     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
+     {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]},
+     {
+      "plate": "pedestrian",
+      "field": "#f2c500",
+      "rim": "#111111",
+      "inner_share": 0.94,
+      "ink": "#111111",
+      "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}
+     },
+     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56},
+     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
+     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92},
+     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}
+    ]
+   }
+  },
+  "eua": {"_doc": "To fill from the MUTCD (FHWA) and the AASHTO Green Book."},
+  "europa": {"_doc": "To fill from the Vienna Convention on Road Signs and Signals (1968) and the European norms."}
  }
 }

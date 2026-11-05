@@ -21,6 +21,7 @@ const TANGENT_DOT := 0.999
 const COST_RUNS := 20
 const TOWN_STEPS := 400
 const TOWN_SWING_M := 60.0
+const FILLED_STYLES := ["roadcraft", "brasil"] # regras-sessoes.md, section 10
 
 var failures := 0
 
@@ -30,6 +31,7 @@ func _ready() -> void:
 	add_child(world)
 	var errors := CityStore.boot(world.terrain, world.materials())
 	_check(errors.is_empty(), "boot %s" % [errors])
+	_styles()
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	var s0 := CityStore.snapshot.duplicate()
@@ -170,6 +172,19 @@ func _plan_cost_town() -> void:
 		CityStore.dispatch(&"preview_road_path", [pieces, PROFILE, PX])
 	print("prévia na cidade: %d peças, %d us por movimento" % [pieces.size() / 3, (Time.get_ticks_usec() - t0) / COST_RUNS])
 	_check(pieces.size() >= 3, "traço pela cidade tem peças")
+
+
+## The styles filled so far hold what the loaders ask of the one the game boots with: a shape for every drawing, a crossing in order.
+func _styles() -> void:
+	for id: String in FILLED_STYLES:
+		var signs: Dictionary = DataTables.style_of(DataTables.RENDER_TABLES.streets, id).signs
+		_check(signs.plates.size() == signs.drawings.size(), "estilo %s: uma figura por placa" % id)
+		for d: Dictionary in signs.drawings:
+			_check(signs.plates.has(d.plate), "estilo %s: placa %s" % [id, d.plate])
+		var kerb: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).signs
+		_check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "estilo %s: placa em curva não mais perto da pista" % id)
+		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing
+		_check(c.zebra_from_m < c.zebra_to_m and c.zebra_to_m < c.stop_from_m and c.stop_from_m < c.stop_to_m, "estilo %s: faixa antes da retenção" % id)
 
 
 func _check(ok: bool, what: String) -> void:

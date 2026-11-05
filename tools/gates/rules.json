@@ -121,6 +121,13 @@
       "sim/state/change_log.h",
       "sim/roads/"
     ],
+    "native/src/sim/street": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/roads/",
+      "sim/street/"
+    ],
     "native/src/sim/zones": [
       "core/",
       "sim/catalog/",
@@ -153,6 +160,7 @@
       "sim/buildings/",
       "sim/zones/",
       "sim/terrain/",
+      "sim/street/",
       "sim/traffic/"
     ],
     "native/src/sim/economy": [

@@ -20,6 +20,7 @@ inline godot::Dictionary result_dict(const EditResult &r) {
 	d["segments"] = r.segments;
 	d["buildings_removed"] = r.buildings_removed;
 	d["zoned_sides"] = r.zoned_sides;
+	d["note"] = godot::String(r.note.c_str());
 	d["placed"] = r.placed;
 	return d;
 }

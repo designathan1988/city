@@ -10,14 +10,7 @@
 namespace city {
 
 namespace {
-EditOp &record(CityState &s, OpKind k) {
-	EditEntry &e = s.history.open;
-	e.ops.emplace_back();
-	EditOp &op = e.ops.back();
-	op.kind = k;
-	e.bytes += sizeof(EditOp);
-	return op;
-}
+EditOp &record(CityState &s, OpKind k) { return j_record(s, k, -1); }
 
 // The lots a ruin sits on are drawn and grown again: its building chunk is marked.
 void mark_ruin(CityState &s, const Ruin &r) {

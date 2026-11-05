@@ -26,7 +26,7 @@ EditResult reverse_road(CityState &s, int seg) {
 	const RoadSegment rec = s.roads.segs[size_t(seg)];
 	j_remove_segment(s, seg);
 	const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-	j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags);
+	j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
 	finish_edit(s, rec.minx, rec.minz, rec.maxx, rec.maxz);
 	r.ok = true;
 	r.segments = 1;

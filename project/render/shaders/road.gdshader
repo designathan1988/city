@@ -41,11 +41,12 @@ uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
 uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
-uniform float pool_sigma = 7.5;
+uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it ends; across, the street furniture owner sets it
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
-uniform float pool_gain = 1.6;
+uniform float pool_gain = 0.32;
 uniform float plate_glow = 0.55;
-uniform float pool_floor = 0.08; // pools light dark asphalt as if it were this much brighter
+uniform float pool_far_m = 900.0; // render.props_end_m and render.pool_handover_m, set by the road renderer
+uniform float pool_handover_m = 200.0;
 
 const int M_ROAD = 0;
 const int M_PLATE = 1;
@@ -66,6 +67,7 @@ varying flat int v_mat;
 varying float v_id;
 varying vec3 v_world;
 varying vec2 v_pool;
+varying float v_eye_m;
 
 const float MEAN_FLOOR = 0.001;
 
@@ -88,7 +90,10 @@ void vertex() {
 	v_mat = int(floor(v_id));
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_pool = UV2;
+	v_eye_m = length(v_world.xz - CAMERA_POSITION_WORLD.xz);
 }
+
+#include "res://render/shaders/lamp_pool.gdshaderinc"
 
 float lamp_pools() {
 	if (v_pool.x < -500.0) {
@@ -98,10 +103,9 @@ float lamp_pools() {
 		return 0.0;
 	}
 	float dv = v_pool.y - pool_step * round(v_pool.y / pool_step);
-	float k = 1.0 / (2.0 * pool_sigma * pool_sigma);
-	float du2 = max(v_pool.x, 0.0) * max(v_pool.x, 0.0);
+	float du = abs(v_pool.x);
 	float far = pool_step - abs(dv);
-	return exp(-(du2 + dv * dv) * k) + exp(-(du2 + far * far) * k);
+	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
 }
 
 void fragment() {
@@ -202,6 +206,7 @@ void fragment() {
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
 	float fade = 1.0 - smoothstep(0.02, 0.5, pix);
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
-	float pools = night > 0.0 ? lamp_pools() : 0.0; // daylight: skip the two exp() per pixel
-	EMISSION = linear_out((albedo + vec3(pool_floor)) * source_linear(pool_color) * pools * night * pool_gain);
+	float far = pool_handed_over(v_eye_m, pool_far_m, pool_handover_m);
+	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
+	EMISSION = linear_out(source_linear(pool_color) * pools * night * pool_gain); // light added, as an additive pool adds it: pale paving does not burn
 }

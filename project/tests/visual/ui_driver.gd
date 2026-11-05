@@ -109,6 +109,15 @@ func key(code: Key, ctrl: bool, shift: bool = false) -> void:
 		await frames(1)
 
 
+## A modifier held down or let go, for what reads it while clicking.
+func modifier(code: Key, pressed: bool) -> void:
+	var k := InputEventKey.new()
+	k.keycode = code
+	k.pressed = pressed
+	Input.parse_input_event(k)
+	await frames(2)
+
+
 func drawn() -> void:
 	var waited := 0
 	await frames(2)

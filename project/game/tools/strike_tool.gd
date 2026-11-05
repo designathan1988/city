@@ -5,7 +5,7 @@ extends ToolBase
 
 
 func click(p: Vector3) -> void:
-	var force: int = int(params.get("strength", DataTables.catalog().blast.strength_min))
+	var force: int = int(params.get("strength", DataTables.catalog_table("blast").strength_min))
 	var r: Dictionary = CityStore.dispatch(&"strike", [p, force])
 	if not r.get("ok", false):
 		ctl.hint.emit(refusal(r), false)

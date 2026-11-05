@@ -8,6 +8,7 @@
 #include "sim/demolition/damage_state.h"
 #include "sim/nature/ground_paint.h"
 #include "sim/roads/road_network.h"
+#include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
 #include "sim/transit/transit_data.h"
 
@@ -23,7 +24,8 @@ namespace city {
 struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
-	MONEY, MARKING, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT };
+	MONEY, MARKING, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT, ADD_ITEM, REM_ITEM, ADD_POLE, REM_POLE, ADD_SPAN, REM_SPAN,
+	ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, SEG_RULE };
 
 // A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
 using NatureEdit = std::function<void(CityState &, bool forward)>;
@@ -31,7 +33,7 @@ using NatureEdit = std::function<void(CityState &, bool forward)>;
 struct EditOp {
 	OpKind kind = OpKind::MONEY;
 	int id = -1;
-	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL
+	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL / SEG_RULE
 	bool player = false; // ZONE: the side was the player's before
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
 	RoadNode node;
@@ -45,6 +47,11 @@ struct EditOp {
 	Gone gone; // DMG_GONE
 	Hurt hurt; // DMG_HURT: the building's damage after (hurt_before: before; 0 means none)
 	float hurt_before = 0;
+	StreetItem item; // the street's records (street_journal.cpp)
+	UtilityPole pole;
+	UtilitySpan span;
+	Barrier barrier;
+	StreetCut cut;
 	std::shared_ptr<const NatureEdit> nature; // NATURE
 };
 
@@ -131,6 +138,7 @@ void j_add_gone(CityState &s, const Gone &g);
 // Sets what a building has taken (0 clears it).
 void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount);
 void apply_damage_op(CityState &s, const EditOp &op, bool forward);
+EditOp &j_record(CityState &s, OpKind k, int id); // appends an op to the open step, for the journals of other owners
 // Keeps the base heights of the rectangle as they are now (before a dab changes them).
 void j_terrain_touch(CityState &s, const SampleRect &r);
 // A landscape change already made, with what undoes and redoes it; `bytes` what it keeps.

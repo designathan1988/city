@@ -24,6 +24,8 @@ void grow_seg(CityState &s, const RoadSegment &g) { s.history.open.grow(g.minx, 
 void grow_point(CityState &s, double x, double z, double r) { s.history.open.grow(x - r, z - r, x + r, z + r); }
 } // namespace
 
+EditOp &j_record(CityState &s, OpKind k, int id) { return record(s, k, id); }
+
 void EditEntry::grow(double x0, double z0, double x1, double z1) {
 	if (!has_box) {
 		minx = x0; minz = z0; maxx = x1; maxz = z1;

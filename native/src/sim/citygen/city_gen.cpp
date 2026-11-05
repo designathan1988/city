@@ -2,6 +2,7 @@
 #include "sim/citygen/city_gen.h"
 
 #include "sim/buildings/growth.h"
+#include "sim/street/street_names.h"
 #include "sim/citygen/road_gen.h"
 #include "sim/citygen/squares.h"
 #include "sim/terrain/terrain_gen.h"
@@ -43,7 +44,7 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 		const int *g = &r.segs[k * SEG_FIELDS];
 		int a = ids[g[0]], b = ids[g[1]];
 		const RoadNode &na = s.roads.nodes[a], &nb = s.roads.nodes[b];
-		s.roads.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), g[2], g[3], g[4], 0);
+		s.roads.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), g[2], g[3], g[4], SEG_GENERATED);
 	}
 	// Only the generator's own dead ends turn in a bulb: a road demolished later leaves a straight cut.
 	for (int n : ids) s.roads.nodes[n].plain = s.roads.nodes[n].segs.size() != 1;
@@ -145,6 +146,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.map_half = float(map.tiles * c.tune.world_tile_m / 2);
 	s.seed = exact_seed;
 	s.roads.init(&s.catalog, &s.log);
+	s.street.clear();
 	s.buildings.init(&s.log);
 	s.lots.clear();
 	s.growth.clear();
@@ -160,6 +162,20 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
+}
+
+// Every street of the generated city takes its name, as the Roadcraft's does.
+void name_streets(CityState &s) {
+	std::vector<int> segs;
+	for (size_t i = 0; i < s.roads.segs.size(); i++) segs.push_back(int(i));
+	for (const StreetName &n : names_for(s.roads, s.street, std::move(segs))) {
+		StreetItem it;
+		it.kind = ItemKind::STREETNAME;
+		it.x = n.x;
+		it.z = n.z;
+		it.text = n.text;
+		s.street.add_item(it);
+	}
 }
 
 CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with_city) {
@@ -180,6 +196,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		rep.lots = int(s.lots.total());
 		rep.squares = plan_squares(s, seed);
 		rep.buildings = fill_all(s);
+		name_streets(s);
 		rep.nodes = r.node_count();
 		rep.segments = r.seg_count();
 	}

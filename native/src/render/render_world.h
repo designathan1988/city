@@ -75,6 +75,12 @@ public:
 	int effect_pieces() const { return effects_.pieces(); }
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
+	int street_instances() const { return props_.instances(); }
+	int sign_cells() const { return props_.sign_cells(); }
+	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
+	void set_pole_preview(const CityState &s, const std::vector<godot::Vector3> &at, const std::vector<bool> &lamp, const std::vector<bool> &standing) {
+		props_.set_pole_preview(s, at, lamp, standing);
+	}
 	int64_t worn_cells() const { return wear_.worn_cells(); }
 	int64_t wear_publications() const { return wear_.publications(); }
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
@@ -139,12 +145,13 @@ private:
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
-	std::vector<int64_t> road_keys_, building_keys_, view_keys_;
+	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;
 	std::vector<int64_t> nature_keys_, water_keys_;
 	Cost cost_;
 	void drain_log(CityState &s);
 	void sync_nature(CityState &s); // the landscape's dirty chunks and the water
+	void mark_changed(const CityState &s); // the chunks the drained edits touched, for every renderer that draws them
 	int upload_every_ = 1, upload_frame_ = 0; // the Optimisations tab: uploads only every N frames
 };
 

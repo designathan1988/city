@@ -499,6 +499,26 @@ cmd.transit.track,Assentar trilho,Lay track
 cmd.transit.line,Criar linha,Make line
 cmd.transit.remove,Remover transporte,Remove transit
 cmd.transit.vehicles,Mudar veículos da linha,Change line vehicles
+hint.pole.offFootway,Postes só nas calçadas,Poles on footways only
+hint.pole.noPath,Não há calçada ligando esses pontos,No footway joins these points
+hint.pole.removed,Poste removido,Pole removed
+hint.barrier.built,Construído,Built
+hint.barrier.removed,Removido,Removed
+hint.barrier.road,Muro e cerca não podem ficar sobre a via nem sobre a calçada,A wall or fence cannot stand on a road or its pavement
+hint.barrier.short,Curto demais para construir,Too short to build
+hint.barrier.nothing,"Não há muro, cerca nem sebe aqui para remover","No wall, fence or hedge here to remove"
+hint.streetscape.rule.stop,Placa de Pare: esta via agora para no cruzamento,Stop sign: this road now stops at the junction
+hint.streetscape.rule.yield,Placa de Dê a preferência: esta via agora dá a preferência no cruzamento,Give-way sign: this road now gives way at the junction
+hint.streetscape.removed,Item removido,Item removed
+hint.streetscape.offFootway,Só nas calçadas,On footways only
+hint.streetscape.narrow,A calçada é estreita demais para isso,The footway is too narrow for this
+hint.streetscape.occupied,Já há algo aqui,Something stands here already
+hint.streetscape.crossing,Não na saída de uma faixa de pedestres,Not at the end of a crossing
+streetscape.meadow,Mato (no gramado),Long grass (on the lawn)
+streetscape.streetname,Nome da rua,Street name
+tool.barrier,Muros,Walls
+cmd.place.streetItem,Colocar peça,Place item
+cmd.place.poleRun,Construir rede,String a line
 cmd.weather,Clima do mapa,Map weather
 cmd.cloud.add,Nuvem,Cloud
 cmd.cloud.edit,Editar nuvem,Edit cloud
@@ -536,9 +556,6 @@ confirm.clearTrees,"Apagar todas as árvores que você plantou e deixar a mata v
 confirm.clearGullies,"Apagar todos os traços de ravina do mapa? As ravinas automáticas continuam.","Clear every gully stroke on the map? The land keeps its own gullies."
 confirm.clearClouds,"Apagar todas as nuvens do céu?","Remove every cloud in the sky?"
 confirm.clearFog,"Apagar toda a neblina do mapa?","Clear all the fog on the map?"
-el.mode.lay,"Colocar","Lay"
-el.mode.eraseKind,"Apagar este tipo","Erase this kind"
-el.mode.eraseAll,"Apagar tudo","Erase all"
 el.strength,"Força do pincel (%)","Brush strength (%)"
 el.variation,"Variação de tamanho (%)","Size variation (%)"
 el.intensity,"Intensidade do efeito (%)","Effect intensity (%)"
@@ -547,24 +564,6 @@ hint.terrain.elements,"Arraste para colocar (ou apagar) · Shift+roda: tamanho d
 hint.element.full,"O mapa já tem elementos demais","The map holds too many elements"
 cmd.place.element,"colocar elementos","lay elements"
 cmd.elements.clear,"Apagar elementos","Clear elements"
-el.kind.stones,"Pedras","Stones"
-el.kind.pebbles,"Seixos","Pebbles"
-el.kind.gravel,"Cascalho","Gravel"
-el.kind.leaves,"Folhas secas","Fallen leaves"
-el.kind.grass,"Grama","Grass"
-el.kind.tallGrass,"Capim alto","Tall grass"
-el.kind.scrub,"Mato","Scrub"
-el.kind.fern,"Samambaia","Fern"
-el.kind.clover,"Trevo","Clover"
-el.kind.flowers,"Flores","Flowers"
-el.kind.mushrooms,"Cogumelos","Mushrooms"
-el.kind.smoke,"Fumaça","Smoke"
-el.kind.fire,"Fogo","Fire"
-el.kind.steam,"Vapor","Steam"
-el.kind.dust,"Poeira","Dust"
-el.kind.soot,"Fuligem","Soot"
-el.kind.sparks,"Faíscas","Sparks"
-el.kind.spray,"Espuma e borrifo","Foam and spray"
 building.problem.size,Dimensões fora dos limites,Size out of bounds
 building.problem.support,Um volume ficaria sem apoio,A block would have nothing under it
 building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on the ground

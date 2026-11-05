@@ -3,6 +3,7 @@
 #include "sim/commands/edit_journal.h"
 
 #include "sim/commands/road_edit.h"
+#include "sim/commands/street_journal.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -85,6 +86,9 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 		case OpKind::DMG_GONE:
 		case OpKind::DMG_HURT: apply_damage_op(s, op, fwd); break;
 		case OpKind::NATURE: (*op.nature)(s, fwd); break;
+		case OpKind::ADD_ITEM: case OpKind::REM_ITEM: case OpKind::ADD_POLE: case OpKind::REM_POLE: case OpKind::ADD_SPAN:
+		case OpKind::REM_SPAN: case OpKind::ADD_BARRIER: case OpKind::REM_BARRIER: case OpKind::ADD_CUT: case OpKind::REM_CUT:
+		case OpKind::SEG_RULE: exec_street(s, op, fwd); break;
 	}
 }
 

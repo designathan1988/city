@@ -80,29 +80,12 @@ bool get_block(ByteReader &r, DamageState &d) {
 }
 } // namespace
 
-void write_extra_blocks(ByteWriter &w, const CityState &s) {
-	const DamageState &d = s.damage;
-	if (d.craters.empty() && d.ruins.empty() && d.gone.empty() && d.hurt.empty() && d.strikes == 0 && d.shots == 0) return;
-	ByteWriter block;
-	put_block(block, d);
-	w.put<uint32_t>(SAVE_TAG_DEMOLITION);
-	w.put<uint32_t>(uint32_t(block.buf.size()));
-	w.put_bytes(block.buf.data(), block.buf.size());
+bool write_damage_block(ByteWriter &w, const DamageState &d) {
+	if (d.craters.empty() && d.ruins.empty() && d.gone.empty() && d.hurt.empty() && d.strikes == 0 && d.shots == 0) return false;
+	put_block(w, d);
+	return true;
 }
 
-bool read_extra_blocks(ByteReader &r, CityState &s) {
-	for (;;) {
-		const uint32_t tag = r.get<uint32_t>();
-		if (!r.ok) return false;
-		if (tag == SAVE_END) return true;
-		const uint32_t size = r.get<uint32_t>();
-		if (!r.ok || r.o + size > r.n) return false;
-		if (tag == SAVE_TAG_DEMOLITION) {
-			ByteReader block{ r.p + r.o, size };
-			if (!get_block(block, s.damage)) return false;
-		}
-		r.o += size; // a block this reader does not know is skipped by its size
-	}
-}
+bool read_damage_block(ByteReader &r, DamageState &d) { return get_block(r, d); }
 
 } // namespace city

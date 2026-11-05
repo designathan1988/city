@@ -88,6 +88,7 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 void RenderWorld::drain_log(CityState &s) {
 	std::lock_guard<std::mutex> log(s.log.mutex);
 	road_keys_.swap(s.log.road_chunks);
+	prop_keys_.swap(s.log.prop_chunks);
 	building_keys_.swap(s.log.building_chunks);
 	view_keys_.swap(s.log.view_chunks);
 	terrain_rects_.swap(s.log.terrain_rects);
@@ -114,6 +115,38 @@ void RenderWorld::sync_nature(CityState &s) {
 	water_.sync(s.terrain);
 }
 
+// The chunks the edits drained from the change log touched, marked for every renderer that draws them, and the lists emptied.
+void RenderWorld::mark_changed(const CityState &s) {
+	// Producers append one key per segment/building; dedup once before the consumers walk the same list.
+	ChangeLog::dedup(road_keys_);
+	ChangeLog::dedup(building_keys_);
+	ChangeLog::dedup(view_keys_);
+	ChangeLog::dedup(prop_keys_);
+	for (int64_t k : road_keys_) {
+		road_stream_.mark(k);
+		props_stream_.mark(k);
+		trees_.mark_dirty(k);
+		cover_.mark_dirty(k);
+		overlays_.mark_dirty(k);
+	}
+	for (int64_t k : building_keys_) {
+		building_stream_.mark(k);
+		trees_.mark_dirty(k);
+		cover_.mark_dirty(k);
+	}
+	for (int64_t k : prop_keys_) { // what the player built on a street (sim/street): its props and the trees round it
+		props_stream_.mark(k);
+		trees_.mark_dirty(k);
+	}
+	transit_.touch(road_keys_);
+	transit_.touch_terrain(s, terrain_rects_);
+	for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
+	road_keys_.clear();
+	building_keys_.clear();
+	view_keys_.clear();
+	prop_keys_.clear();
+}
+
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
 	const int64_t window = int64_t(t.render_upload_budget_mb * BYTES_PER_MIB);
@@ -130,28 +163,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
 		paint_rects_.clear();
 		sync_nature(s);
-		// Producers append one key per segment/building; dedup once before three consumers walk the same list.
-		ChangeLog::dedup(road_keys_);
-		ChangeLog::dedup(building_keys_);
-		ChangeLog::dedup(view_keys_);
-		for (int64_t k : road_keys_) {
-			road_stream_.mark(k);
-			props_stream_.mark(k);
-			trees_.mark_dirty(k);
-			cover_.mark_dirty(k);
-			overlays_.mark_dirty(k);
-		}
-		for (int64_t k : building_keys_) {
-			building_stream_.mark(k);
-			trees_.mark_dirty(k);
-			cover_.mark_dirty(k);
-		}
-		transit_.touch(road_keys_);
-		transit_.touch_terrain(s, terrain_rects_);
-		for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
-		road_keys_.clear();
-		building_keys_.clear();
-		view_keys_.clear();
+		mark_changed(s);
 		terrain_rects_.clear();
 		road_stream_.update(cam.x, cam.z, t.render_road_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) {

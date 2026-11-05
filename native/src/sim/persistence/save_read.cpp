@@ -5,6 +5,7 @@
 #include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
+#include "sim/persistence/save_blocks.h"
 #include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/state/city_state.h"
@@ -211,7 +212,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	} else {
 		r.o -= sizeof(uint32_t); // not the edited bodies: the tag is the first of the extra blocks
 	}
-	return r.ok && read_extra_blocks(r, s); // the demolition block, then the end
+	return r.ok && read_extra_blocks(r, s); // the tagged blocks (demolition, street), then the end
 }
 } // namespace
 

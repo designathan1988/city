@@ -22,6 +22,7 @@ namespace city {
 class CityBuilder;
 class CityLandscape;
 class CityProbes;
+class CityStreet;
 class CityTransit;
 
 class CityCore : public godot::Node3D {
@@ -176,6 +177,7 @@ private:
 	CityLandscape *landscape_ = nullptr;
 	CityTransit *transit_ = nullptr;
 	CityProbes *probes_ = nullptr;
+	CityStreet *street_ = nullptr;
 	void make_areas(), free_areas();
 };
 

@@ -3,6 +3,7 @@
 #include "api/city_core.h"
 #include "api/city_landscape.h"
 #include "api/city_probes.h"
+#include "api/city_street.h"
 #include "api/city_transit.h"
 
 #include <gdextension_interface.h>
@@ -19,6 +20,7 @@ static void initialize_citycore(ModuleInitializationLevel level) {
 	GDREGISTER_ABSTRACT_CLASS(city::CityLandscape);
 	GDREGISTER_ABSTRACT_CLASS(city::CityTransit);
 	GDREGISTER_ABSTRACT_CLASS(city::CityProbes);
+	GDREGISTER_ABSTRACT_CLASS(city::CityStreet);
 	GDREGISTER_CLASS(city::CityCore);
 }
 

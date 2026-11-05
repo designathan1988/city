@@ -137,7 +137,7 @@ func _build_files(col: Control, spec: Dictionary) -> void:
 
 
 func _build_menu(col: Control, spec: Dictionary) -> void:
-	var km: int = int(DataTables.catalog().maps.maps[0].tiles * DataTables.tuning("world_tile_m") / METRES_PER_KM)
+	var km: int = int(DataTables.maps()[0].tiles * DataTables.tuning("world_tile_m") / METRES_PER_KM)
 	for r in spec.rows:
 		if r.has("seg"):
 			call("_seg_" + r.seg, col, r)
@@ -166,7 +166,7 @@ func _seg_quality(col: Control, r: Dictionary) -> void:
 func _seg_paint(col: Control, r: Dictionary) -> void:
 	var row := HudWidgets.option_row(col, tr(r.label_key))
 	var items := []
-	var styles: Array = DataTables.render().streets.markings.styles
+	var styles: Array = DataTables.render_table("streets").markings.styles
 	for i in styles.size():
 		items.append([i, tr("paint." + styles[i].id)])
 	HudWidgets.choices(row, items, int(CityStore.snapshot.get("marking_style", 0)), func(v: int) -> void:

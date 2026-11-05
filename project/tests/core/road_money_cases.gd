@@ -139,7 +139,7 @@ func _refusals(b: Dictionary) -> void:
 
 ## How much of a road is built each way and what that costs.
 func _build_table() -> void:
-	var structure: Dictionary = DataTables.catalog().road_profiles.styles[DataTables.CITY_STYLE].structure
+	var structure: Dictionary = DataTables.catalog().road_profiles.styles[DataTables.REGIONAL_STYLE].structure
 	var cost := 0.0
 	for p in CityStore.query(&"road_profiles"):
 		if p.index == PROFILE:

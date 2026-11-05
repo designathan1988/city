@@ -1,7 +1,11 @@
 // Building and bulldozing roads (Roadcraft construction/execute.ts buildLive, streetEdits.ts demolishSeg, the bulldoze
 // tool) and the money they move (roads/economy.ts chargeFor, journal.ts settle).
 #include "sim/commands/commands.h"
+#include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/street_journal.h"
+#include "sim/street/footway.h"
+#include "sim/street/street_names.h"
 
 #include "core/math.h"
 #include "sim/roads/junction.h"
@@ -67,6 +71,18 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 	}
 }
 
+// A new street is given a name, its plates at the corners (Roadcraft roadTool.ts, V8): a road moved keeps its own.
+void name_streets(CityState &s, const std::vector<int> &laid) {
+	for (const StreetName &n : names_for(s.roads, s.street, laid)) {
+		StreetItem it;
+		it.kind = ItemKind::STREETNAME;
+		it.x = n.x;
+		it.z = n.z;
+		it.text = n.text;
+		j_add_item(s, it);
+	}
+}
+
 } // namespace
 
 EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
@@ -74,11 +90,16 @@ EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
 	const std::map<int, double> before = squeezes_in(s, box);
-	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, RoadKeeps{});
+	RoadKeeps fresh;
+	fresh.flags = s.new_road_flags; // the street furniture set chosen for new roads
+	std::vector<int> laid;
+	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, fresh, &laid);
 	if (r.ok && squeezed_worse(s, before, box)) {
 		r = EditResult{};
 		r.error = "hint.rule.squeezed";
+		return r;
 	}
+	if (r.ok) name_streets(s, laid);
 	return r;
 }
 
@@ -103,7 +124,7 @@ bool joined_quad(const Quad &first, const Quad &second, Quad &out) {
 
 // A junction beside a place where a road was only cut in pieces (lay_pieces) has its mouth capped by the stub between them,
 // and the corner comes out square: the stub and the piece beyond it go back to being one road.
-void merge_stubs(CityState &s, int node, RoadBox &box) {
+void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 	RoadNetwork &net = s.roads;
 	const std::vector<int> arms = net.nodes[size_t(node)].segs;
 	if (arms.size() < MIN_JUNCTION_ARMS) return;
@@ -125,13 +146,17 @@ void merge_stubs(CityState &s, int node, RoadBox &box) {
 		j_remove_segment(s, seg);
 		j_remove_segment(s, other);
 		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, g.flags);
+		const size_t was = made.size();
+		made.erase(std::remove_if(made.begin(), made.end(), [&](int m) { return m == seg || m == other; }), made.end());
+		if (made.size() != was) made.push_back(merged);
 		j_remove_node_if_orphan(s, far);
 		conform_under(s, merged);
 		net.mark_segment(merged);
 	}
 }
 
-EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps) {
+EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps,
+		std::vector<int> *laid) {
 	EditResult r;
 	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile);
 	if (!plan.ok) {
@@ -161,8 +186,9 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	RoadBox box;
 	box.add(minx, minz);
 	box.add(maxx, maxz);
-	for (const Stop &stop : stops) merge_stubs(s, stop.node, box);
+	for (const Stop &stop : stops) merge_stubs(s, stop.node, box, made);
 	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (laid) *laid = made;
 	r.ok = true;
 	r.segments = int(made.size());
 	return r;
@@ -194,6 +220,11 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.ok = true;
 		return r;
 	}
+	// A click on the carriageway is for the road: what stands on the footways must not take it (bulldozer.ts onCarriageway).
+	if (!on_carriageway(s.roads, x, z, 0.f) && remove_street_at(s, x, z, s.catalog.furniture.items.demolish_reach_m)) {
+		r.ok = true;
+		return r;
+	}
 	double t, d;
 	RoadNetwork &net = s.roads;
 	int seg = net.find_segment_near(x, z, reach, t, d);
@@ -211,6 +242,7 @@ EditResult demolish_at(CityState &s, double x, double z) {
 }
 
 void demolish_segment(CityState &s, int seg) {
+	remove_street_kit(s, seg); // what the player put on its sidewalks goes with it (Roadcraft streetKit.ts removeWithStreetKit)
 	const RoadSegment g = s.roads.segs[seg];
 	j_remove_segment(s, seg);
 	j_remove_node_if_orphan(s, g.a);

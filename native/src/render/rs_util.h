@@ -14,7 +14,10 @@ namespace city {
 // Floats per instance: 12 transform + 4 colour + 4 custom. Props/agents/trees keep colour white and put
 // their tint in custom.rgb (the instance colour would also multiply fixed-colour parts).
 constexpr int MM_STRIDE = 20;
-constexpr int MM_PLAIN_STRIDE = 16; // no colour: the engine keeps three CPU copies of each instance, so what is not read is not stored
+// Without the colour: 12 transform + 4 custom. The renderer keeps three copies of every instance's floats on the CPU, whether
+// it interpolates them or not (Godot servers/rendering/storage/mesh_storage.cpp multimesh_allocate_data), so a thing that
+// repeats by the thousand and has no colour of its own goes without.
+constexpr int MM_PLAIN_STRIDE = 16;
 
 // Appends one instance in the documented MultiMesh layout (row-major 3x4 transform, colour, custom).
 inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
@@ -63,9 +66,10 @@ struct MultiMeshDraw {
 	int capacity = -1;
 
 	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
-			const godot::AABB &bounds, bool shadows, RenderLayer layer) {
+			const godot::AABB &bounds, bool shadows, RenderLayer layer, bool coloured = true) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		int count = int(buf.size() / MM_STRIDE);
+		int count = int(buf.size() / (coloured ? MM_STRIDE : MM_PLAIN_STRIDE));
+		if (count == 0 && !mm.is_valid()) return; // nothing drawn here yet
 		if (!mm.is_valid()) {
 			mm = rs->multimesh_create();
 			inst = rs->instance_create2(mm, scenario);
@@ -75,7 +79,7 @@ struct MultiMeshDraw {
 		}
 		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
 		if (count != capacity) {
-			rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
+			rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
 			rs->multimesh_set_mesh(mm, mesh);
 			capacity = count;
 		}

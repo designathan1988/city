@@ -15,12 +15,26 @@ namespace city {
 // Segment flags (Roadcraft roads/flags.ts and network.ts).
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
-	// bit 7 is not taken: saves before the economy carry it on generated roads (SEG_FREE, gone: a generated road is worth its
-	// price, as in the 4.0)
+	SEG_GENERATED = 0x80, // laid by the city generator: its footways carry the generated city's kit (the 4.0 plants no street
+	// trees there). Money does not read it: a generated road is worth its price, as in the 4.0 (saves before the economy
+	// carry this bit as SEG_FREE, with the same meaning)
 	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
 	SEG_ZONED_RIGHT = 0x200,
+	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
+	SEG_RULE_B_MASK = 0x3000,
 };
 constexpr int SEG_FURNITURE_SHIFT = 1;
+constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12;
+enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
+constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
+constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
+// The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
+constexpr uint16_t flags_reversed(uint16_t f) {
+	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK));
+	const uint16_t sides = uint16_t(((f & SEG_ZONED_LEFT) ? SEG_ZONED_RIGHT : 0) | ((f & SEG_ZONED_RIGHT) ? SEG_ZONED_LEFT : 0));
+	const uint16_t rules = uint16_t((((f & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT) << SEG_RULE_B_SHIFT) | (((f & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT) << SEG_RULE_A_SHIFT));
+	return uint16_t(keep | sides | rules);
+}
 
 // What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };

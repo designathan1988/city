@@ -33,24 +33,51 @@
     "span_m": {
      "type": "number"
     },
-    "mount_height_m": {
-     "type": "number"
-    },
-    "unilateral_ratio": {
-     "type": "number"
-    },
     "reach_m": {
+     "type": "number"
+    },
+    "pool_share": {
+     "type": "number"
+    },
+    "pool_margin_m": {
+     "type": "number"
+    },
+    "pool_least_m": {
+     "type": "number"
+    },
+    "pool_back_m": {
+     "type": "number"
+    },
+    "twin_stagger": {
+     "type": "number"
+    },
+    "column_every_m": {
+     "type": "number"
+    },
+    "column_first_m": {
+     "type": "number"
+    },
+    "pole_lit_every": {
      "type": "number"
     }
    },
    "required": [
     "_doc",
     "span_m",
-    "mount_height_m",
-    "unilateral_ratio",
-    "reach_m"
+    "reach_m",
+    "pool_share",
+    "pool_margin_m",
+    "pool_least_m",
+    "pool_back_m",
+    "twin_stagger",
+    "column_every_m",
+    "column_first_m",
+    "pole_lit_every"
    ],
    "strict": true
+  },
+  "styles": {
+   "type": "object"
   },
   "signals": {
    "type": "object",
@@ -229,6 +256,62 @@
      "items": {
       "type": "number"
      }
+    },
+    "lamp_column": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "post_box": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "phone": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "kerb_drain": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "shrub": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "utility_pole": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
+    },
+    "sign_post": {
+     "type": "array",
+     "minItems": 2,
+     "maxItems": 2,
+     "items": {
+      "type": "number"
+     }
     }
    },
    "required": [
@@ -238,7 +321,317 @@
     "fire_hydrant",
     "litter_bin",
     "street_bench",
-    "street_tree"
+    "street_tree",
+    "lamp_column",
+    "post_box",
+    "phone",
+    "kerb_drain",
+    "shrub",
+    "utility_pole",
+    "sign_post"
+   ],
+   "strict": true
+  },
+  "poles": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "height_m": {
+     "type": "number"
+    },
+    "kerb_inset_m": {
+     "type": "number"
+    },
+    "min_spacing_m": {
+     "type": "number"
+    },
+    "max_spacing_m": {
+     "type": "number"
+    },
+    "min_gap_m": {
+     "type": "number"
+    },
+    "reuse_m": {
+     "type": "number"
+    },
+    "corner_tolerance_m": {
+     "type": "number"
+    },
+    "line_catch_m": {
+     "type": "number"
+    },
+    "footway_catch_m": {
+     "type": "number"
+    },
+    "off_line_m": {
+     "type": "number"
+    },
+    "guide_step_m": {
+     "type": "number"
+    },
+    "crossing_cost_m": {
+     "type": "number"
+    },
+    "route_margin_m": {
+     "type": "number"
+    },
+    "route_margin_most_m": {
+     "type": "number"
+    },
+    "corner_deflection_deg": {
+     "type": "number"
+    },
+    "same_arm_sin": {
+     "type": "number"
+    },
+    "landing_clear_m": {
+     "type": "number"
+    },
+    "clear_search_m": {
+     "type": "number"
+    },
+    "corner_reach_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "kerb_inset_m",
+    "min_spacing_m",
+    "max_spacing_m",
+    "min_gap_m",
+    "reuse_m",
+    "corner_tolerance_m",
+    "line_catch_m",
+    "footway_catch_m",
+    "off_line_m",
+    "guide_step_m",
+    "crossing_cost_m",
+    "route_margin_m",
+    "route_margin_most_m",
+    "corner_deflection_deg",
+    "same_arm_sin",
+    "landing_clear_m",
+    "clear_search_m",
+    "corner_reach_m"
+   ],
+   "strict": true
+  },
+  "barriers": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "min_run_m": {
+     "type": "number"
+    },
+    "footway_reach_m": {
+     "type": "number"
+    },
+    "kerb_gap_m": {
+     "type": "number"
+    },
+    "back_gap_m": {
+     "type": "number"
+    },
+    "kinds": {
+     "type": "object",
+     "properties": {
+      "fence": {
+       "type": "object",
+       "properties": {
+        "height_m": {
+         "type": "number"
+        },
+        "thickness_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "height_m",
+        "thickness_m"
+       ],
+       "strict": true
+      },
+      "wall": {
+       "type": "object",
+       "properties": {
+        "height_m": {
+         "type": "number"
+        },
+        "thickness_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "height_m",
+        "thickness_m"
+       ],
+       "strict": true
+      },
+      "hedge": {
+       "type": "object",
+       "properties": {
+        "height_m": {
+         "type": "number"
+        },
+        "thickness_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "height_m",
+        "thickness_m"
+       ],
+       "strict": true
+      },
+      "guardrail": {
+       "type": "object",
+       "properties": {
+        "height_m": {
+         "type": "number"
+        },
+        "thickness_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "height_m",
+        "thickness_m"
+       ],
+       "strict": true
+      },
+      "railing": {
+       "type": "object",
+       "properties": {
+        "height_m": {
+         "type": "number"
+        },
+        "thickness_m": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "height_m",
+        "thickness_m"
+       ],
+       "strict": true
+      }
+     },
+     "required": [
+      "fence",
+      "wall",
+      "hedge",
+      "guardrail",
+      "railing"
+     ],
+     "strict": true
+    }
+   },
+   "required": [
+    "_doc",
+    "min_run_m",
+    "footway_reach_m",
+    "kerb_gap_m",
+    "back_gap_m",
+    "kinds"
+   ],
+   "strict": true
+  },
+  "street_names": {
+   "type": "object",
+   "properties": {
+    "_doc": {"type": "string"},
+    "reach_m": {"type": "number"},
+    "prefix": {"type": "string"},
+    "prefixes": {"type": "object"},
+    "names": {"type": "array"}
+   },
+   "required": ["_doc", "reach_m", "prefix", "prefixes", "names"],
+   "strict": true
+  },
+  "signs": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "approach_reach_m": {
+     "type": "number"
+    },
+    "speed_past_mouth_m": {
+     "type": "number"
+    },
+    "speed_min_length_m": {
+     "type": "number"
+    },
+    "stop_past_line_m": {
+     "type": "number"
+    },
+    "name_past_mouth_m": {
+     "type": "number"
+    },
+    "speed_round_kmh": {
+     "type": "number"
+    },
+    "far_share": {
+     "type": "number"
+    },
+    "plate_kerb_m": {
+     "type": "number"
+    },
+    "plate_kerb_curve_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "approach_reach_m",
+    "speed_past_mouth_m",
+    "speed_min_length_m",
+    "stop_past_line_m",
+    "name_past_mouth_m",
+    "speed_round_kmh",
+    "far_share"
+   ],
+   "strict": true
+  },
+  "items": {
+   "type": "object",
+   "properties": {
+    "_doc": {
+     "type": "string"
+    },
+    "gap_m": {
+     "type": "number"
+    },
+    "stand_reach_m": {
+     "type": "number"
+    },
+    "meadow_apart_m": {
+     "type": "number"
+    },
+    "cut_reach_m": {
+     "type": "number"
+    },
+    "median_reach_m": {
+     "type": "number"
+    },
+    "demolish_reach_m": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "_doc",
+    "gap_m",
+    "stand_reach_m",
+    "meadow_apart_m",
+    "cut_reach_m",
+    "median_reach_m",
+    "demolish_reach_m"
    ],
    "strict": true
   }
@@ -247,12 +640,15 @@
   "_doc",
   "sidewalk",
   "lamps",
-  "signals",
-  "hydrants",
   "furniture",
   "trees",
-  "crossing",
-  "footprints"
+  "styles",
+  "footprints",
+  "poles",
+  "barriers",
+  "signs",
+  "street_names",
+  "items"
  ],
  "strict": true
 }

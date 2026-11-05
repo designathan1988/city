@@ -38,8 +38,12 @@ func refresh() -> void:
 		_toggle(row, c, snap[key] and live, live, func() -> void:
 			Settings.set_road_snap(key, not snap[key])
 			refresh())
-	if _base().class_card:
+	var class_card: bool = _base().class_card
+	if class_card:
 		_class_rows(spec)
+	_furniture_row(spec.furniture)
+	if class_card:
+		_parking_row(spec)
 
 
 ## The base road in hand, as the core describes it.
@@ -51,7 +55,7 @@ func _param(key: String, fallback: Variant) -> Variant:
 	return tools.last_param(ToolController.Tool.ROAD, key, fallback) if tools else fallback
 
 
-## Lanes, width and parking tune a class's own road; a road of the catalogue carries its own (Roadcraft ui/v2/shell.ts).
+## Lanes and width tune a class's own road, and parking (_parking_row); a road of the catalogue carries its own (Roadcraft ui/v2/shell.ts).
 func _class_rows(spec: Dictionary) -> void:
 	var base := _base()
 	var chosen: int = _param("lanes", 0)
@@ -75,7 +79,22 @@ func _class_rows(spec: Dictionary) -> void:
 		var back := HudWidgets.button(&"IconButton", "undo", "", "palette.width.auto", "icon_btn", "icon_btn")
 		back.pressed.connect(func() -> void: option_picked.emit("width", 0.0))
 		row.add_child(back)
-	row = _row(spec.parking.label_key)
+
+
+## What new roads are laid with (Roadcraft shell.ts, roadFurniture): every road's choice, after the class's own size and before its
+## parking, as the reference orders the rows.
+func _furniture_row(spec: Dictionary) -> void:
+	var row := _row(spec.label_key)
+	row.tooltip_text = tr(spec.tip_key)
+	var items := []
+	for c: Dictionary in spec.choices:
+		items.push_back([c.level, tr(c.label_key)])
+	HudWidgets.choices(row, items, CityStore.query(&"road_furniture"), func(level: int) -> void:
+		CityStore.dispatch(&"set_road_furniture", [level]))
+
+
+func _parking_row(spec: Dictionary) -> void:
+	var row := _row(spec.parking.label_key)
 	var parking: int = _param("parking", 0)
 	for i in spec.parking.choices.size():
 		_toggle(row, spec.parking.choices[i], i == parking, true, func() -> void: option_picked.emit("parking", i))

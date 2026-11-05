@@ -44,10 +44,9 @@
        "type": "string",
        "pattern_prefix": "#"
       },
-      "pool_sigma": { "type": "number" },
       "pool_gain": { "type": "number" },
       "plate_glow": { "type": "number" },
-      "pool_floor": { "type": "number" }
+      "pool_along_m": { "type": "number" }
      },
      "required": [
       "asphalt_map",
@@ -81,10 +80,9 @@
       "paver_h",
       "cobble_per_m",
       "pool_color",
-      "pool_sigma",
       "pool_gain",
       "plate_glow",
-      "pool_floor"
+      "pool_along_m"
      ],
      "strict": true
     }
@@ -236,14 +234,22 @@
       "glow_gain": { "type": "number" },
       "roughness": { "type": "number" },
       "lens_roughness": { "type": "number" },
-      "lens_ior": { "type": "number" }
+      "lens_ior": { "type": "number" },
+      "wire_min_px": { "type": "number" },
+      "wire_sway_m": { "type": "number" },
+      "wood_grain": { "type": "number" },
+      "post_metal": { "type": "number" },
+      "post_roughness": { "type": "number" }
      },
      "required": [
       "glow_color",
       "glow_gain",
       "roughness",
       "lens_roughness",
-      "lens_ior"
+      "lens_ior",
+      "wire_min_px",
+      "wire_sway_m",
+      "wood_grain"
      ],
      "strict": true
     }
@@ -573,7 +579,29 @@
   },
   "puffs": { "type": "object", "properties": { "shader": { "type": "string" }, "render_priority": { "type": "integer" }, "params": { "type": "object" } } },
   "debris": { "type": "object", "properties": { "shader": { "type": "string" }, "params": { "type": "object" } } },
-  "marks": { "type": "object", "properties": { "shader": { "type": "string" }, "display_colors": { "type": "object" }, "params": { "type": "object" } } }
+  "marks": { "type": "object", "properties": { "shader": { "type": "string" }, "display_colors": { "type": "object" }, "params": { "type": "object" } } },
+  "lamp_glow": {
+   "type": "object",
+   "strict": true,
+   "required": ["shader", "params"],
+   "properties": {
+    "shader": {"type": "string"},
+    "params": {
+     "type": "object",
+     "strict": true,
+     "required": ["glow_color", "pool_gain", "beam_gain"],
+     "properties": {
+      "glow_color": {"type": "string", "pattern_prefix": "#"},
+      "pool_gain": {"type": "number"},
+      "beam_gain": {"type": "number"},
+      "beam_softness": {"type": "number"},
+      "beam_fade_near_m": {"type": "number"},
+      "beam_fade_far_m": {"type": "number"},
+      "haze": {"type": "number"}
+     }
+    }
+   }
+  }
  },
  "required": [
   "transit", "transit_glass", "transit_xray",
@@ -594,7 +622,8 @@
   "cover_plant",
   "cover_rock",
   "verge",
-  "cover_shore"
+  "cover_shore",
+  "lamp_glow"
  ],
  "strict": true
 }

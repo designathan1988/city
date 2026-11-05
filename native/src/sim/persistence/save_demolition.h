@@ -6,6 +6,7 @@
 
 #include "core/bytes.h"
 #include "sim/buildings/building_store.h"
+#include "sim/demolition/damage_state.h"
 
 namespace city {
 
@@ -17,9 +18,8 @@ constexpr uint32_t SAVE_TAG_DEMOLITION = 0x31474D44U; // 'DMG1'
 void put_building(ByteWriter &w, const Building &b);
 bool get_building(ByteReader &r, Building &b);
 
-// Writes the blocks that follow the growth queue (the demolition block when anything was blown).
-void write_extra_blocks(ByteWriter &w, const CityState &s);
-// Reads them up to and including SAVE_END; false when the bytes are damaged.
-bool read_extra_blocks(ByteReader &r, CityState &s);
+// The block's payload (save_blocks.cpp frames it): false, and nothing written, when nothing was blown.
+bool write_damage_block(ByteWriter &w, const DamageState &d);
+bool read_damage_block(ByteReader &r, DamageState &d);
 
 } // namespace city

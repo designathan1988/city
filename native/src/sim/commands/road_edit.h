@@ -40,7 +40,8 @@ struct RoadKeeps {
 	uint16_t flags = 0;
 };
 // A road laid as build_road lays it, with `keeps` on every piece, and no money moved: the command it is part of settles once.
-EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps);
+EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps,
+		std::vector<int> *laid = nullptr); // laid: the segments it leaves standing
 // build_road without the money: laid and checked (a stretch squeezed between junctions refused); the command settles.
 EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
 // The area an edit touches.
@@ -71,6 +72,8 @@ struct EndMouth {
 	bool covers(const RoadNetwork &net, int other, double at_t, double pad) const;
 };
 EndMouth end_mouth(const CityState &s, const Anchor &at, const Quad &q, int end, int profile);
+// What the player built at (x, z) changed: the chunk of its props and the walkers' bodies on the segments round it.
+void mark_street(CityState &s, double x, double z);
 // Ends an edit over the box: refreshes node shapes there, places again the furniture of the hydrant squares
 // of the nodes it changed (street_furniture.h hydrant_square), recomputes the dirty lot cells (queued for growth) and bumps
 // the revision.

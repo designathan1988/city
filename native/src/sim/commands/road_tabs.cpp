@@ -2,11 +2,13 @@
 // changeProfiles / streetChain / mirrorSymmetric / alongStreet): split a segment where clicked, upgrade a segment or a
 // whole street to the profile in hand (Shift), charging the difference in value or refunding a share of it.
 #include "sim/commands/commands.h"
+#include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/economy/road_economy.h"
 
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
+#include "sim/street/street_spots.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,7 +19,6 @@ namespace city {
 namespace {
 constexpr size_t JUNCTION_ARMS = 3; // fewer arms need no control
 constexpr float SAME_WIDTH_M = 0.01f;
-constexpr int CHAIN_GUARD = 4000;
 
 // The profile reads the same from both ends (strips mirrored, lane directions turned).
 bool mirror_symmetric(const Profile &p) {
@@ -57,35 +58,6 @@ int settle_under(CityState &s, int seg) {
 }
 } // namespace
 
-std::vector<int> street_chain(const CityState &s, int s0) {
-	const RoadNetwork &net = s.roads;
-	int prof = net.segs[s0].profile;
-	const Profile &p = s.catalog.profile(prof);
-	std::vector<int> out{ s0 };
-	for (int start_end : { 1, 0 }) {
-		int sg = s0, end = start_end;
-		for (int guard = 0; guard < CHAIN_GUARD; guard++) {
-			int n = end == 1 ? net.segs[sg].b : net.segs[sg].a;
-			Arm here = arm_of(net.segs[sg].q, p, end);
-			double best_dot = s.catalog.tune.edit_street_cos;
-			int best = -1, best_end = 0;
-			for (int t : net.nodes[n].segs) {
-				if (std::count(out.begin(), out.end(), t) || net.segs[t].profile != prof || s.catalog.profile(prof).ring) continue;
-				int t_end = net.segs[t].a == n ? 0 : 1;
-				if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
-				Arm arm = arm_of(net.segs[t].q, p, t_end);
-				double d = -(arm.dx * here.dx + arm.dz * here.dz);
-				if (d > best_dot) { best_dot = d; best = t; best_end = t_end; }
-			}
-			if (best < 0) break;
-			out.push_back(best);
-			sg = best;
-			end = best_end == 0 ? 1 : 0;
-		}
-	}
-	return out;
-}
-
 EditResult split_road_at(CityState &s, double x, double z) {
 	EditResult r;
 	double t, d;
@@ -117,7 +89,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		r.error = seg < 0 ? "tools.hint.upgradePick" : "ui.insp.ring";
 		return r;
 	}
-	std::vector<int> segs = whole_street ? street_chain(s, seg) : std::vector<int>{ seg };
+	std::vector<int> segs = whole_street ? street_chain(s.roads, seg) : std::vector<int>{ seg };
 	std::map<int, bool> along;
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
 	RoadBox box;
@@ -130,9 +102,11 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 			RoadSegment rec = s.roads.segs[sg];
 			j_remove_segment(s, sg);
 			Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, rec.flags);
+			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
 		}
+		const std::vector<CarriedPiece> kit = street_kit_of(s, sg);
 		j_set_profile(s, sg, profile);
+		carry_street_kit(s, sg, kit); // what stands on its sidewalks moves to the new ones
 		changed.push_back(sg);
 	}
 	if (!settle_road_edit(s, r)) return r; // before the ground moves: the caller rolls the journal back

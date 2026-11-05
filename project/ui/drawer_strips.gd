@@ -27,7 +27,7 @@ static func light(strip: Node, picked: Variant) -> void:
 
 ## The zone of this use at this density; a use with one density has only that.
 static func zone_at(use: int, density: int) -> int:
-	for z: Dictionary in DataTables.catalog().zones.zones:
+	for z: Dictionary in DataTables.catalog_table("zones").zones:
 		if int(z.base) == use and int(z.density) == density:
 			return int(z.code)
 	return use
@@ -35,7 +35,7 @@ static func zone_at(use: int, density: int) -> int:
 
 ## The zone's base use, whatever density it was painted with.
 static func use_of(zone: int) -> int:
-	for z: Dictionary in DataTables.catalog().zones.zones:
+	for z: Dictionary in DataTables.catalog_table("zones").zones:
 		if int(z.code) == zone:
 			return int(z.base)
 	return zone

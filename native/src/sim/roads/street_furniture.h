@@ -19,6 +19,9 @@ struct FurnitureSpot {
 	int node = -1, approach = -1; // a signal post: the junction, and the arm whose arriving traffic it shows
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
 	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
+	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
+	bool lit = true; // a lamp: this pole carries a light (lamps.pole_lit_every)
+	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;
 	float u = 0;
 	float face_left = 0, face_fwd = 0; // the piece's +z in the segment frame (toward the road or the arriving traffic)
@@ -31,17 +34,25 @@ struct LampRow {
 	bool any = false, twin = false;
 	int side = 0;
 	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
-	float centre = 0, half_span = 0;
+	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width
 	double origin = 0, spacing = 1, span = 1; // span: lamps.span_m, the period the night pools repeat with
 	int stations = 0;
-	// A point's place in the night pools: du = |u - centre| - half_span across, dv the arc from the first station on
-	// a period of `span` (the stations' own spacing stretched to it).
+	// A point's place in the night pools: du across, in shares of `across` and signed so a quad interpolates it, dv the arc
+	// from the first station on a period of `span` (the stations' own spacing stretched to it).
 	void pool(float u, double at, float &du, float &dv) const {
-		du = (u > centre ? u - centre : centre - u) - half_span;
+		du = (u - centre) / across;
 		dv = float((at - origin) * span / spacing);
 	}
 };
 LampRow lamp_row(const RoadNetwork &net, int sid);
+
+// The side has a sidewalk; the u `from_kerb` metres in from its kerb.
+bool sidewalk_on(const Profile &p, int side);
+float sidewalk_u(const Profile &p, int side, float from_kerb);
+// How far from the kerb a plate's post stands on segment `seg`: the plate clears the road by more in a curve.
+float plate_kerb(const RoadNetwork &net, int seg);
+// Where a piece of kind `k` stands on `side`, its face kerb_clear_m from the kerb; false when it would leave no free width.
+bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u);
 
 constexpr uint32_t furniture_bit(FurnitureKind k) { return 1u << uint32_t(k); }
 constexpr uint32_t FURNITURE_ALL = (1u << FURNITURE_KINDS) - 1u;

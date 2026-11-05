@@ -2,6 +2,7 @@
 // where junction control signals them) become bodies standing on their sidewalks, footprints along the arc and across
 // from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
 // an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far.
+#include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -82,6 +83,7 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
 	const size_t first = out.size();
 	segment_furniture(s.roads, sid, signalled, kinds, out);
+	merge_street(s.street, s.roads, sid, kinds, out, first); // what the player put up and cut
 	if (s.damage.gone.empty()) return;
 	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)
 	size_t keep = first;

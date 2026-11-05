@@ -4,7 +4,8 @@
   "categories",
   "first_road",
   "catalog_tabs",
-  "road_options"
+  "road_options",
+  "street"
  ],
  "properties": {
   "first_road": {
@@ -92,11 +93,18 @@
           "CLOUD",
           "STRIKE",
           "SHOOT",
-          "TRANSIT"
+          "TRANSIT",
+          "POLE",
+          "BARRIER",
+          "STREETSCAPE"
          ]
         },
-        "kind": { "type": "string" },
-        "mode": { "type": "integer" },
+        "kind": {
+         "type": "string"
+        },
+        "mode": {
+         "type": "integer"
+        },
         "profile": {
          "type": "string"
         },
@@ -246,7 +254,8 @@
    "type": "object",
    "required": [
     "trace",
-    "snap"
+    "snap",
+    "furniture"
    ],
    "properties": {
     "_doc": {
@@ -328,6 +337,44 @@
       }
      },
      "additionalProperties": false
+    },
+    "furniture": {
+     "type": "object",
+     "required": [
+      "label_key",
+      "tip_key",
+      "choices"
+     ],
+     "properties": {
+      "label_key": {
+       "type": "string"
+      },
+      "tip_key": {
+       "type": "string"
+      },
+      "choices": {
+       "type": "array",
+       "minItems": 3,
+       "maxItems": 3,
+       "items": {
+        "type": "object",
+        "required": [
+         "label_key",
+         "level"
+        ],
+        "properties": {
+         "label_key": {
+          "type": "string"
+         },
+         "level": {
+          "type": "integer"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     },
+     "additionalProperties": false
     }
    },
    "additionalProperties": false
@@ -401,6 +448,9 @@
     "help",
     "files"
    ]
+  },
+  "street": {
+   "type": "object"
   }
  },
  "strict": true

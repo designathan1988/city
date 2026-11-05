@@ -107,7 +107,11 @@ func select_tab(tab: Dictionary) -> void:
 		params = { "kind": tab.kind, "mode": tab.mode }
 	elif tools and ToolController.Tool.has(tab.tool):
 		params = tools.remembered.get(ToolController.Tool[tab.tool], {}).duplicate()
+	if tab.get("id", "") == "street" and params.is_empty():
+		params = StreetStrip.first_piece(DataTables.ui("drawers").street)
 	tool_requested.emit(tab.tool, params)
+	if tab.get("id", "") == "street":
+		StreetStrip.show(strip, tools, tool_requested)
 
 
 ## The tool in hand again with one parameter changed (a card or a slider of the strip).
@@ -186,7 +190,7 @@ func _build_strip(tab: Dictionary) -> void:
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
 			retool.bind("ROUNDABOUT", "radius"))
 	elif tab.get("tool", "") == "STRIKE":
-		var blast: Dictionary = DataTables.catalog().blast
+		var blast: Dictionary = DataTables.catalog_table("blast")
 		HudWidgets.range_row(options, tr("strike.force"), blast.strength_min, blast.strength_max, FORCE_STEP,
 			param("STRIKE", "strength", blast.strength_min), Formatters.format_int, retool.bind("STRIKE", "strength"))
 	elif kind == "land_panels":
@@ -225,7 +229,8 @@ func _fit() -> void:
 	var vw := get_viewport_rect().size.x
 	var left := margin + (HudWidgets.px("opts_w") + margin if options_panel.visible else 0.0)
 	var room := vw - margin - left
-	catalog.fit(room - HudWidgets.px("gap"))
+	if catalog.is_inside_tree(): # built when it first shows (road_catalog.gd _ready)
+		catalog.fit(room - HudWidgets.px("gap"))
 	get_tree().call_group(FITS, &"fit", room - HudWidgets.px("gap"))
 	var need := get_combined_minimum_size()
 	var width := minf(need.x, room)

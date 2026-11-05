@@ -14,6 +14,8 @@
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
 #include "sim/state/change_log.h"
+#include "sim/street/pole_routes.h"
+#include "sim/street/street_works.h"
 #include "sim/terrain/heightfield.h"
 #include "sim/traffic/traffic_state.h"
 #include "sim/transit/transit_data.h"
@@ -39,6 +41,7 @@ struct CityState {
 	Heightfield terrain;
 	NatureState nature; // weather, clouds, fog, painted ground, planted trees, the ecosystem (sim/nature)
 	RoadNetwork roads;
+	StreetWorks street; // what the player built along the streets (sim/street)
 	LotCache lots;
 	BuildingStore buildings;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
@@ -52,6 +55,7 @@ struct CityState {
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time
 	CityClock clock;
 	EditHistory history; // undo / redo of the player's commands (sim/commands/edit_history.cpp)
+	uint16_t new_road_flags = 0; // the furniture set the road tool lays new roads with (SEG_FURNITURE_MASK)
 	double money = 0;
 	bool unlimited_money = false;
 	uint32_t seed = 0;

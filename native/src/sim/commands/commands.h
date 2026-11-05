@@ -5,8 +5,10 @@
 #pragma once
 
 #include "sim/roads/road_network.h"
+#include "sim/catalog/furniture_types.h"
 #include "sim/nature/nature_state.h"
 #include "sim/roads/geometry.h"
+#include "sim/street/street_works.h"
 
 #include <cstdint>
 #include <string>
@@ -47,6 +49,7 @@ struct EditResult {
 	std::string error;
 	double money = 0;
 	int segments = 0, buildings_removed = 0, zoned_sides = 0, placed = -1;
+	std::string note; // strings.csv key of what happened instead of the plain result
 };
 
 // What produced a snapped end, for the guide the tool shows (Roadcraft editor/snap.ts SnapResult).
@@ -133,8 +136,6 @@ EditResult set_node_control(CityState &s, int node, int ctl);
 EditResult move_node(CityState &s, int node, double x, double z);
 // The curve of a road with its end `at_a` taken to (x, z), its shape kept (Roadcraft world/doc.ts fitCurve).
 Quad moved_quad(const Quad &q, bool at_a, double x, double z);
-// The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
-std::vector<int> street_chain(const CityState &s, int seg);
 // Why a roundabout cannot go there ("" = it can); `cut` allows cutting the roads inside the circle.
 std::string roundabout_refusal(const CityState &s, double cx, double cz, double radius, bool cut);
 EditResult build_roundabout(CityState &s, double cx, double cz, double radius, bool cut);
@@ -173,6 +174,7 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 // Bulldoze everything in the box between two corners: the buildings whose centre is in it, the rubble, the road segments
 // whose middle is in it (their refund added up). One undo step.
 EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz);
+
 // --- Landscape drawer (nature_commands.cpp): the sky, the painted ground, the planted trees, the map's biome
 constexpr int TREE_PLANT = 0, TREE_ONE = 1, TREE_CUT = 2; // what a dab of the tree brush does
 EditResult set_weather(CityState &s, const Weather &next);

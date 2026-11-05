@@ -65,6 +65,11 @@ func road_under(p: Vector3) -> Dictionary:
 	return seg
 
 
+## How far from `p` a click still catches something: `px` pixels on the ground there, never under `least_m`.
+func pick_m(p: Vector3, least_m: float, px: float) -> float:
+	return maxf(least_m, px * ctl.px_at(p))
+
+
 ## The refusal text for a command result: "Não dá para construir aqui: {why}." / other keys as they are.
 func refusal(result: Dictionary) -> String:
 	var why: String = result.get("error", "")
