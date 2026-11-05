@@ -480,6 +480,7 @@ export abstract class ExpressionEmitter {
       if (memo) return this.#memoRead(e, memo);
       const plan = symbol ? this.c.functions.get(symbol) : undefined;
       if (plan) {
+        if (this.c.dropped.has(plan)) return this.fail(e, `${plan.source} was left out`);
         this.uses?.add(plan.module);
         this.calledFunction = true;
         if (plan.edit) return this.fail(e, 'an edit used as a value (only as a statement or a return)');

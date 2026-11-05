@@ -83,6 +83,10 @@ export interface TranslationSpec {
    * translations wrote into a module this one shares, so the shared module's files are the same union for both.
    */
   readonly shared?: readonly string[];
+  /** The whole program in one translation: a unit that cannot be written leaves alone, what uses it falls with it (convert/whole.ts). */
+  readonly whole?: boolean;
+  /** What a whole translation leaves out, `module#name` (a class's member `module#Class.member`, a struct's field by its C++ name). */
+  readonly left?: readonly string[];
   readonly pending: readonly Pending[];
   /** The C++ type of a TypeScript number (the target's convention for world values). */
   readonly number: string;

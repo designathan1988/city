@@ -1,13 +1,14 @@
 // `converter convert`: a feature carried as far as facts allow. Its ledger decides each unit, the machine translates
 // what is clean, the quarantine judges every output, and the report lists what stays open with its correct method.
 // Nothing is written to the target: accepted files go to --out/files. Exit 0 only when nothing is open.
+import { convertWhole } from './whole.ts';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import { runAudit } from '../audit/run.ts';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
-import { removeTree } from '../common/files.ts';
+import { removeTree, writeTree } from '../common/files.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { prepareTranslation, translate, type PreparedProgram } from '../translate/run.ts';
@@ -30,6 +31,7 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
   { name: 'ports', required: true, help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has' },
   { name: 'coverage-proof', help: 'how a coverage claim is taken: "believed" (default) or "shown" (the owner files exist in the game and cite the unit; a claim not shown is decided again)' },
   { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
+  { name: 'mode', help: '"modules" (default: each module judged alone) or "whole" (the program in one translation, what fails leaving alone)' },
   { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
   { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },
 ];
@@ -71,13 +73,6 @@ function auditOf(graph: GraphIR, rulesFile: string): ReturnType<typeof runAudit>
   });
 }
 
-function writeTree(root: string, files: ReadonlyMap<string, string>): void {
-  for (const [file, text] of files) {
-    const target = path.join(root, file);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, text, 'utf8');
-  }
-}
 
 /** What is done only when an accepted output holds it; a type or a field travels with its module. */
 const WRITTEN_ALONE: ReadonlySet<string> = new Set(['function', 'variable', 'class', 'method', 'constructor', 'getter', 'setter']);
@@ -320,6 +315,17 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
     const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
       stopOf: (id: string) => ledger.stopOf(id), prepared };
+    if (flags.one('mode') === 'whole') {
+      const whole = await convertWhole(specs, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), candidate: path.join(out, 'candidate'), prepared,
+        stopOf: (id: string) => ledger.stopOf(id) }, (text) => console.log(`  ${text}`));
+      const broken = new Set(whole.failing);
+      for (const [file, text] of whole.result.files) if (!broken.has(file)) accepted.set(file, text);
+      outcomes.push({ module: 'whole', accepted: true, files: [...accepted.keys()], emitted: whole.result.units.map((u) => u.source), declared: whole.result.declared,
+        refusals: [...whole.left].map(([id, why]) => `${id}: ${why}`) });
+      totals = report();
+      console.log(`convert ${feature}: ${ledger.units.length} units; translated ${totals.done}; open ${totals.open}; ${whole.left.size} left out; ${whole.failing.length} files unplaced; ${accepted.size} files -> ${out}`);
+      return;
+    }
     // modules are judged ahead, their compiles running while the next is translated; the results are taken in order,
     // so what a module shares with earlier ones is decided as a run in sequence decides it
     const ahead: Promise<Judged>[] = [];

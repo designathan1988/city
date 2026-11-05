@@ -43,13 +43,16 @@ export class Translator extends Emitter {
     const ts = c.ts;
     // The target owns these: calls to them are written as the target's (spec), never traced into.
     const mapped = new Set([...Object.keys(c.spec.functions), ...c.spec.memoizers]);
+    const left = new Set(c.spec.left ?? []);
     for (const file of c.sources) {
+      const module = c.relative(file);
       for (const statement of file.statements) {
+        if (left.size > 0 && (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) && left.has(`${module}#${statement.name?.text}`)) continue;
         if (ts.isFunctionDeclaration(statement) && statement.name && !mapped.has(statement.name.text)) this.#decls.set(this.symbolOf(statement.name)!, statement);
         if (ts.isClassDeclaration(statement) && statement.name && !c.spec.classes[statement.name.text]) this.#decls.set(this.symbolOf(statement.name)!, statement);
         if (ts.isVariableStatement(statement)) {
           for (const d of statement.declarationList.declarations) {
-            if (ts.isIdentifier(d.name) && !mapped.has(d.name.text)) this.#decls.set(this.symbolOf(d.name)!, d);
+            if (ts.isIdentifier(d.name) && !mapped.has(d.name.text) && !left.has(`${module}#${d.name.text}`)) this.#decls.set(this.symbolOf(d.name)!, d);
           }
         }
       }
@@ -81,14 +84,12 @@ export class Translator extends Emitter {
       reached.add(s);
       queue.push(s);
     }
+    const byId = new Map([...this.#decls].map(([s, d]) => [`${this.c.relative(d.getSourceFile())}#${s.name}`, s]));
     for (const id of this.c.spec.shared ?? []) {
-      const at = id.indexOf('#');
-      const module = id.slice(0, at);
-      const name = id.slice(at + 1);
-      const found = [...this.#decls].find(([s, d]) => s.name === name && this.c.relative(d.getSourceFile()) === module);
-      if (found && !reached.has(found[0])) {
-        reached.add(found[0]);
-        queue.push(found[0]);
+      const found = byId.get(id);
+      if (found && !reached.has(found)) {
+        reached.add(found);
+        queue.push(found);
       }
     }
     const pendingNames = new Set(this.c.spec.pending.map((p) => p.unit));
@@ -128,6 +129,8 @@ export class Translator extends Emitter {
     const ts = this.c.ts;
     for (const node of units) {
       const line = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart()).line + 1;
+      const errors = this.c.errors.length;
+      const flowErrors = this.c.flow.errors.length;
       this.#guarded(node, () => {
         if (ts.isFunctionDeclaration(node)) {
           this.#planFunction(node, node.name!.text, line, node);
@@ -144,6 +147,7 @@ export class Translator extends Emitter {
         else if (init && ts.isCallExpression(init) && ts.isIdentifier(init.expression) && this.c.spec.memoizers.includes(init.expression.text)) this.#planMemo(d, init, name, line);
         else this.#planConstant(d, name, line);
       });
+      if (this.c.spec.whole) this.#fellPlanning(node, errors, flowErrors);
     }
     this.#propagateMutability();
     this.#propagateContext();
@@ -313,8 +317,11 @@ export class Translator extends Emitter {
       const plan = [...this.c.functions.values()].at(-1);
       if (plan?.owner?.node === node) this.#fell(plan, errors, flowErrors);
     };
+    const module = this.c.relative(node.getSourceFile());
+    const left = new Set(this.c.spec.left ?? []);
     for (const m of node.members) {
       const at = m.getSourceFile().getLineAndCharacterOfPosition(m.getStart()).line + 1;
+      if (left.has(`${module}#${source}.${m.name?.getText().replace(/^#/, '')}`)) continue;
       if (ts.isConstructorDeclaration(m) && m.body) {
         made = true;
         this.#planFunction(m, 'constructor', at, m, owner('constructor', m));
@@ -329,6 +336,7 @@ export class Translator extends Emitter {
     // what fills the fields when the source writes no constructor
     const empty = ts.factory.createConstructorDeclaration(undefined, [], ts.factory.createBlock([]));
     (empty as { parent: TS.Node }).parent = node;
+    ts.setTextRange(empty, node);
     const plan: FunctionPlan = { source: `${source}.constructor`, cpp: struct, decl: empty, params: [], ret: { k: 'void' }, typeParams: [], edit: null, exported: true,
       owner: { struct, source, kind: 'constructor', isStatic: false, node }, module: this.c.relative(node.getSourceFile()), line, doc: null };
     this.c.functions.set(this.symbolOf(node.name!)!, plan);
@@ -557,10 +565,25 @@ export class Translator extends Emitter {
     return fallen;
   }
 
-  /** A member with errors since these counts leaves its class, the errors with it. A constructor holds the class up: its errors stay. */
+  /** A declaration with errors since these counts, in a whole translation, leaves: its plan goes, what uses it falls. */
+  #fellPlanning(node: TS.Node, errors: number, flowErrors: number): void {
+    if (this.c.errors.length === errors && this.c.flow.errors.length === flowErrors) return;
+    const name = (node as TS.FunctionDeclaration | TS.VariableDeclaration).name as TS.Identifier | undefined;
+    if (name) {
+      const symbol = this.symbolOf(name);
+      const plan = symbol ? this.c.functions.get(symbol) : undefined;
+      if (plan) this.c.dropped.set(plan, 'left out');
+      if (symbol) this.c.constants.delete(symbol);
+      this.c.fallen.set(`${this.c.relative(node.getSourceFile())}#${name.text}`, this.c.errors[errors] ?? this.c.flow.errors[flowErrors] ?? 'left out');
+    }
+    this.c.errors.length = errors;
+    this.c.flow.errors.length = flowErrors;
+  }
+
+  /** A member (in a whole translation, any function) with errors since these counts leaves, the errors with it. A constructor holds its class up: its errors stay. */
   #fell(plan: FunctionPlan, errors: number, flowErrors: number): boolean {
     const grew = this.c.errors.length > errors || this.c.flow.errors.length > flowErrors;
-    if (!grew || !plan.owner || plan.owner.kind === 'constructor') return false;
+    if (!grew || (!plan.owner && !this.c.spec.whole) || plan.owner?.kind === 'constructor') return false;
     this.c.dropped.set(plan, this.c.errors[errors] ?? this.c.flow.errors[flowErrors] ?? 'left out');
     this.c.errors.length = errors;
     this.c.flow.errors.length = flowErrors;

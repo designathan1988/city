@@ -1,3 +1,4 @@
+import path from 'node:path';
 // Limits and file operations every stage shares, owned once: how much output a child process may write back, how a
 // folder tree is removed on Windows (files briefly held by an indexer or antivirus are retried), and content hashes.
 import { createHash } from 'node:crypto';
@@ -15,4 +16,12 @@ export function removeTree(dir: string): void {
 
 export function sha256(file: string): string {
   return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+export function writeTree(root: string, files: ReadonlyMap<string, string>): void {
+  for (const [file, text] of files) {
+    const target = path.join(root, file);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, text, 'utf8');
+  }
 }

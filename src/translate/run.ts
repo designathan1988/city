@@ -30,6 +30,8 @@ export interface TranslationResult {
   readonly errors: readonly string[];
   /** Why each class member left out was left out: its class is written without it. */
   readonly dropped: readonly string[];
+  /** What a whole translation left out by itself, `module#name`, with why. */
+  readonly fallen: readonly (readonly [string, string])[];
   /** What other owners call, and the types they see: what a harness needs to drive the translation. */
   readonly api: readonly ApiFunction[];
   readonly structs: readonly CppStruct[];
@@ -147,7 +149,7 @@ export function translate(input: TranslateInput): TranslationResult {
   // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
   flow.errors.length = 0;
   const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative, targetTypes);
-  const c: TranslateContext = { dropped: new Map(), ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
+  const c: TranslateContext = { dropped: new Map(), fallen: new Map(), ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
@@ -185,7 +187,7 @@ export function translate(input: TranslateInput): TranslationResult {
     ...[...c.constants.values()].filter((k) => k.module).map((k) => `${k.module}#${k.source}`),
     ...[...types.structs.values()].filter((s) => s.declared && s.module && !types.indexStructs.has(s.name)).map((s) => `${s.module}#${s.declared}`),
   ])].sort();
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, dropped: [...c.dropped.values()], pending: spec.pending,
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, dropped: [...c.dropped.values()], fallen: [...c.fallen, ...[...c.dropped].map(([f, why]) => [`${f.module}#${f.source}`, why] as const)], pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
     valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),

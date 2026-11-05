@@ -329,7 +329,16 @@ export class TypeMapper {
       const propType = this.#checker.getTypeOfSymbol(prop);
       if (propType.getCallSignatures().length > 0 && !(prop.flags & this.#ts.SymbolFlags.Property)) continue;
       if (prop.flags & this.#ts.SymbolFlags.Accessor) continue;
+      // in a whole translation a field with no C++ form, or one the compiler refused, leaves its struct: what reads it falls
+      const errors = this.#errors.length;
+      const flowErrors = this.#flow.errors.length;
+      if (this.#spec.left?.includes(`${made.module}#${name}.${snake(prop.name.replace(/^(__#\d+@)?#/, ''))}`)) continue;
       let cpp = this.ofType(propType, 'field', this.#flow.symbolSlot(prop));
+      if (this.#spec.whole && (this.#errors.length > errors || this.#flow.errors.length > flowErrors)) {
+        this.#errors.length = errors;
+        this.#flow.errors.length = flowErrors;
+        continue;
+      }
       if ((prop.flags & this.#ts.SymbolFlags.Optional) !== 0 && cpp.k !== 'bool' && cpp.k !== 'optional' && !isHandle(cpp)) cpp = { k: 'optional', of: cpp };
       if (cpp.k === 'optional') this.includes.add('optional');
       // a private name: the field `steps` of `#steps` (the checker may write it __#1@#steps)
