@@ -209,6 +209,8 @@ Correção do usuário (18:50): uma foto que não mostra o detalhe não prova na
 com lotes 2,1 s (limite de 24 threads lógicas), leitura 0,9 s, rodadas seriais do greide 1 s; sombra de prédio espera a entrega da sessão de migração.
 Backlog do CLAUDE.md "Pendências": recursos do porte, de outras linhas. `run_tests.sh` agora conta crash como falha, como `suite.py`.
 
+Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28. Fotos diferentes do golden local por causa do novo nível médio de prédios da sessão de migração (golden refeito aqui); nada desta linha.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
