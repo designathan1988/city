@@ -8,7 +8,7 @@ import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
 import { removeTree } from '../common/files.ts';
 import { buildGraph } from '../graph/build.ts';
 import { IR_VERSION, type GraphIR } from '../graph/ir.ts';
-import { loadTypeScript, openProgram } from '../graph/typescript.ts';
+import { loadTypeScript, openProgram, type SourceProgram, type TypeScriptApi } from '../graph/typescript.ts';
 import { featureBoundary, type FeatureBoundary, type FeatureUse } from './boundary.ts';
 import { holdsFeature } from './holders.ts';
 import { htmlRoots } from './html.ts';
@@ -50,7 +50,7 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const sp = openProgram(ts, sourceRoot, tsconfig);
   const index = new UnitIndex(sp, ir);
   const roots = flags.all('root').length > 0 ? flags.all('root') : htmlRoots(sourceRoot);
-  const boundary = featureBoundary(ir, flags.all('entry'), roots, holdsFeature(ts, sp.checker, index, ir));
+  const boundary = featureBoundary(ir, entriesOf(ts, sp, ir, flags.all('entry')), roots, holdsFeature(ts, sp.checker, index, ir));
   const slices = sliceShared(ts, sp.checker, index, boundary);
   removeTree(out);
   fs.mkdirSync(out, { recursive: true });
@@ -141,4 +141,34 @@ function renderFeature(index: UnitIndex, b: FeatureBoundary, slices: readonly Fe
     ...b.external.map((x) => `- \`${x.key}\` × ${x.count}`),
     '',
   ].join('\n');
+}
+
+/**
+ * The entries as files of the graph: a file that only re-exports (`export * from '@core/derivedCache'`, kept so old
+ * imports still resolve) has no declarations of its own and stands for the modules it re-exports, followed until
+ * files that declare something. A file that neither declares nor re-exports is left as given: the boundary refuses it.
+ */
+function entriesOf(ts: TypeScriptApi, sp: SourceProgram, ir: GraphIR, entries: readonly string[]): string[] {
+  const declares = new Set(ir.units.map((u) => u.file));
+  const out = new Set<string>();
+  const seen = new Set<string>();
+  const visit = (file: string): void => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    if (declares.has(file)) {
+      out.add(file);
+      return;
+    }
+    const source = sp.sourceFile(path.join(sp.root, file));
+    const targets: string[] = [];
+    for (const st of source?.statements ?? []) {
+      if (!ts.isExportDeclaration(st) || !st.moduleSpecifier) continue;
+      const decl = sp.checker.getSymbolAtLocation(st.moduleSpecifier)?.valueDeclaration;
+      if (decl && ts.isSourceFile(decl)) targets.push(path.relative(sp.root, decl.fileName).split(path.sep).join('/'));
+    }
+    if (targets.length === 0) out.add(file);
+    for (const t of targets) visit(t);
+  };
+  for (const e of entries) visit(e);
+  return [...out];
 }
