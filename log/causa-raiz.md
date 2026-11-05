@@ -187,7 +187,11 @@ ficaram de fora da rodada do passo 6 e vieram depois; o plano devia tê-las. `ru
 Combinado com a sessão de migração: `render/buildings` e `facade_*` são dela; sombra de prédio só se mede depois do aviso dela.
 Instáveis que ela viu sob carga, próximos deste ciclo: `edit_fuzz_test` semente 3 (header) e `camera_input_test`.
 
+Correção do usuário (18:50): uma foto que não mostra o detalhe não prova nada; olhar o elemento de vários ângulos, zoom e pan. Feito: órbita de
+8 vistas do carro (`09_carro_orbita_*`), antes (`10280a13`) e depois lado a lado: carroceria, rodas, sombra e contato iguais.
+
 ## Como trabalhar (o que funcionou)
+- **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
 - Worktree próprio; build: `MINGW=/c/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64 tools/build/build.sh core-windows`.
 - Provar igualdade de resultado: plano do `look.tscn` com centenas de `query height_at` rodado no worktree antigo e no novo
