@@ -70,7 +70,11 @@ func click(p: Vector3) -> void:
 	await button(at, false)
 
 
+## A control just added (a drawer row rebuilt) has its place only once its container sorts it, and the sort is deferred to
+## the end of the frame (Godot 4.7 scene/gui/container.cpp: add_child_notify -> queue_sort -> call_deferred): a frame first,
+## or the click lands where the control is not yet.
 func press(b: Control) -> void:
+	await frames(1)
 	var at := b.get_global_rect().get_center()
 	await move(at)
 	await button(at, true)
