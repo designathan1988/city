@@ -5,7 +5,6 @@ documentos nem memórias (o gate `DOC_UNICO` confere). Atualize este arquivo na 
 mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando o mapa diverge do disco.
 
 ## Processo de trabalho (inegociável, toda tarefa, nesta ordem; trabalho direto, sem agentes)
-A skill `corrigir-na-causa` é a forma operacional deste processo; use-a em toda tarefa.
 1. **Análise:** ler o código envolvido, reproduzir e medir (sonda `render_cost`, `tests/perf/camera_pan`, capturas, CPU,
    GPU, memória) até achar a causa raiz. Corrigir a causa, nunca o efeito. Medir é desta etapa.
 2. **Pesquisa** na documentação oficial (Godot, godot-cpp, Terrain3D) até entender o que fazer e o método; nunca confiar
@@ -78,7 +77,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Mapa do código
 <!-- MAPA:INICIO -->
 **Raiz e ferramentas**
-- `.claude/settings.json` — permissões das ferramentas, memória automática desligada e hook que entrega o Processo de trabalho em toda mensagem e antes de toda ferramenta (script na pasta de ferramentas da raiz do projeto, fora deste repositório; os gates rodam na etapa de teste)
+- `.claude/settings.json` — permissões das ferramentas, memória automática desligada e os dois hooks de `tools/gates/hook_protect.py` e `tools/gates/hook_stop_gates.py`; só o usuário altera este arquivo
 - `native/CMakeLists.txt` — Godot 4.7 API, precisão simples, saída em `project/bin`
 - `native/toolchain-mingw.cmake` — compilação cruzada Windows via llvm-mingw
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
@@ -402,6 +401,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,
   documento único, tamanhos e cabeçalhos; tuning ↔ JSON e espelhos
 - `tools/gates/owners.json` · `tools/gates/rules.json` · `tools/gates/run_gates.py` — donos únicos, configuração, executa todos
+- `tools/gates/hook_protect.py` · `tools/gates/hook_stop_gates.py` — hooks do Claude Code: as regras dos gates, os schemas existentes, os próprios hooks e o settings só o usuário altera (edição e escrita por shell negadas; leitura e execução livres); no fim de um turno com mudanças não commitadas os gates rodam uma vez e, se falham, a sessão recebe a lista e continua
 <!-- MAPA:FIM -->
 
 ## Pendências

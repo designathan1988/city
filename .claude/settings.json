@@ -11,31 +11,27 @@
     ]
   },
   "hooks": {
-    "UserPromptSubmit": [
+    "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
             "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
-            "args": [
-              "C:/Projects/Roadcraft-windows/ferramentas/hook_regras.py"
-            ],
+            "args": ["${CLAUDE_PROJECT_DIR}/tools/gates/hook_protect.py"],
             "timeout": 10
           }
         ]
       }
     ],
-    "PreToolUse": [
+    "Stop": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
-            "args": [
-              "C:/Projects/Roadcraft-windows/ferramentas/hook_regras.py"
-            ],
-            "timeout": 10
+            "args": ["${CLAUDE_PROJECT_DIR}/tools/gates/hook_stop_gates.py"],
+            "timeout": 60
           }
         ]
       }
