@@ -1,6 +1,6 @@
 ## The Effects panel (F7, the menu): every effect of the drawing and every heavy system switched on or off live, with what the GPU,
-## the CPU and the memory spend beside them; not modal, the game stays in view. Two tabs: the switches and the optimisations,
-## each option chosen alone. The readings run only while it is open, out of what it measures.
+## the CPU and the memory spend beside them; not modal, the game stays in view. Three tabs: the switches, the optimisations, each option
+## chosen alone, and the Diagnosis (ui/lab_doctor.gd). The readings run only while it is open, out of what it measures.
 class_name EffectsPanel
 extends PanelContainer
 
@@ -10,6 +10,7 @@ const MS_PER_S := 1000.0
 @onready var _body: VBoxContainer
 @onready var _stats: GridContainer
 @onready var _tab := "switches"
+@onready var doctor: DoctorRun
 @onready var _since := 0.0
 
 
@@ -31,6 +32,11 @@ func _ready() -> void:
 	scroll.add_child(inset)
 	_body = HudWidgets.vbox(inset, &"Pad")
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	doctor = DoctorRun.new()
+	add_child(doctor)
+	doctor.changed.connect(func() -> void:
+		if visible and _tab == "doctor":
+			_render.call_deferred())
 	hide()
 
 
@@ -38,6 +44,11 @@ func toggle() -> void:
 	visible = not visible
 	if visible:
 		_render()
+
+
+func open_tab(id: String) -> void:
+	_tab = id
+	_render()
 
 
 func close() -> bool:
@@ -63,12 +74,14 @@ func _render() -> void:
 	_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_child(_stats)
 	_read_stats()
-	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")]], _tab,
+	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")]], _tab,
 		func(t: String) -> void:
 			_tab = t
 			_render.call_deferred())
 	if _tab == "switches":
 		_switches()
+	elif _tab == "doctor":
+		LabDoctor.draw(_body, doctor)
 	else:
 		_optimizations()
 
@@ -132,13 +145,6 @@ func _optimizations() -> void:
 			Settings.switches_changed())
 
 
-## The CPU's last frame: the core's work and the renderer's. Performance.TIME_PROCESS will not do: it is the worst frame of the last
-## second (main/main.cpp process_max), so a single slow frame reads as the cost of all of them.
-func _cpu_ms(rid: RID) -> float:
-	return float(CityStore.query(&"render_cost").get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(rid) \
-			+ RenderingServer.get_frame_setup_time_cpu()
-
-
 ## The language changed.
 func relabel() -> void:
 	if visible:
@@ -150,7 +156,7 @@ func _read_stats() -> void:
 	var rid := get_viewport().get_viewport_rid()
 	var size := get_viewport().get_visible_rect().size * get_viewport().scaling_3d_scale
 	var rows := [["fx.stat.gpu", "%.2f ms" % RenderingServer.viewport_get_measured_render_time_gpu(rid)],
-		["fx.stat.cpu", "%.2f ms" % _cpu_ms(rid)],
+		["fx.stat.cpu", "%.2f ms" % FrameMeter.cpu_ms(rid)],
 		["fx.stat.fps", "%d" % Performance.get_monitor(Performance.TIME_FPS)],
 		["fx.stat.calls", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))],
 		["fx.stat.triangles", Formatters.format_int(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))],

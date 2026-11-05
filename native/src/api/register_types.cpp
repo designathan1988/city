@@ -5,6 +5,7 @@
 #include "api/city_probes.h"
 #include "api/city_street.h"
 #include "api/city_transit.h"
+#include "api/lab/city_lab.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/class_db.hpp>
@@ -21,6 +22,7 @@ static void initialize_citycore(ModuleInitializationLevel level) {
 	GDREGISTER_ABSTRACT_CLASS(city::CityTransit);
 	GDREGISTER_ABSTRACT_CLASS(city::CityProbes);
 	GDREGISTER_ABSTRACT_CLASS(city::CityStreet);
+	GDREGISTER_ABSTRACT_CLASS(city::CityLab);
 	GDREGISTER_CLASS(city::CityCore);
 }
 

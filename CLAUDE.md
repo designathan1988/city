@@ -9,6 +9,7 @@ histórico de uma linha de trabalho: o que foi feito, o estado, os comandos e o 
 - `log/work-log.md`: porte (elevação, postes, tradutor) e gráficos das construções, nos 7 passos obrigatórios do usuário.
 - `log/conversor.md`: tradutor.
 - `log/causa-raiz.md`: desempenho e causas.
+- `log/lab.md`: laboratório F7.
 
 Ao terminar cada tarefa, ou ao saber algo novo, atualize o registro da sua linha (crie um se a linha for nova), com hora e
 commit, e commite-o junto.
@@ -105,7 +106,7 @@ commit, e commite-o junto.
   RenderingServer e Performance (`look_measure.gd`: gravação dos quadros com p50/p95/p99, engasgos >25 ms e vsyncs perdidos pelo
   período do p10; uso com pico/média/mínimo; draws, primitivas e objetos vistos e de sombra; memória; compilações de pipeline;
   passes da GPU pelos carimbos do RenderingDevice; os passos `record`, `usage`, `until`, `view`, `passes` e `info` no `look.gd`
-  ainda a ligar). Uma pergunta de diagnóstico vira um passo `query` no mesmo log das fotos.
+  ainda a ligar; `clock` e `switch` ligam os carimbos e uma chave do F7). Uma pergunta de diagnóstico vira um passo `query` no mesmo log das fotos.
 - **`photodiff.py`**: diferença pixel a pixel de duas rodadas (barra e dock mascarados): a parte mudada, a caixa e o mapa vermelho
   por foto. Diz onde olhar, não o veredito: na elevação toda borda das vistas baixas mudou porque a câmera mira o chão do `raycast`
   (0,6 m abaixo da pista, o chão sob a via é rebaixado), não porque a via mudou; foi medido com `query height_at`.
@@ -204,6 +205,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/api/city_core_models.cpp` · `native/src/api/models_loader.cpp` · `native/src/api/models_loader.h` — área `builder`, Construir › Modelos: catálogo, corpo em mãos como bytes, encaixe, colocar e desenhar à parte; models.json → catálogo
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore e as áreas (abstratas: só o núcleo as faz)
 - `native/src/api/city_transit.h` · `native/src/api/city_core_transit.cpp` — área `transit` (CityTransit): transporte público como API de script
+- `native/src/api/lab/city_lab.cpp` · `native/src/api/lab/city_lab.h` · `native/src/api/lab/diagnosis.cpp` · `native/src/api/lab/diagnosis.h` — área `lab` (CityLab), o laboratório F7: o que limita o quadro, o peso de cada estágio da GPU e o A/B contra o próprio ruído, regras sem Godot
 
 **Núcleo — native/src/core**
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
@@ -442,6 +444,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/camera/camera_shake.gd` — o tremor da câmera pelo relógio dos efeitos (a bomba), desfeito quando passa
 - `project/game/camera/city_camera.gd` — rig da câmera (orbitar sobre um ponto do chão)
 - `project/game/interior/interior_controller.gd` — a camada Interior no lado do script: o interruptor (menu de camadas), o prédio no meio da vista ou de dois cliques, o andar, a direção da câmera em 8 passos e as luzes; como no 4.0 a câmera fica onde o jogador pôs; relê o núcleo só quando a revisão muda
+- `project/game/lab/doctor_run.gd` · `project/game/lab/frame_meter.gd` · `project/game/lab/pass_clock.gd` — o Diagnóstico medindo (janela de quadros, A/B de uma chave sem gravar as opções); dono das leituras de quadro (`LookMeasure` herda); carimbos da GPU por estágio pelo compositor, ligados só na medida
 - `project/game/data/data_tables.gd` — único leitor de `data/**`; junta as partes de road_profiles e strings e põe `styles.<id>` sobre as tabelas da rua (estilo regional)
 - `project/game/flow/game_flow.gd` — máquina de estados da aplicação (única dona de troca de tela, pausa e saída)
 - `project/game/flow/game_keys.gd` · `project/game/flow/build_stamp.gd` — as teclas do jogo (regras nos dados); o carimbo da versão
@@ -510,6 +513,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
 - `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
+- `project/tests/core/lab_test.gd` · `project/tests/core/lab_test.tscn` — o Diagnóstico: vereditos do 4.0, a conta do A/B e uma medida da cidade pelo botão do painel
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
 - `project/tests/core/yard_test.gd` · `project/tests/core/yard_test.tscn` · `project/tests/core/yard_bench.gd` · `project/tests/core/yard_bench.tscn` — pátios de zona industrial em várias direções: docas com caminho, caminhão na própria faixa e um ciclo inteiro; a bancada do planejador (fora da lista de testes): uma cidade salva, todos os pátios planejados de uma vez (`plan_all_yards`), a mesma entrada para comparar duas versões
@@ -542,10 +546,11 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/ui/hud_drawer.gd` · `project/ui/zone_strip.gd` — gavetas das categorias; a aba Zonas (cartões de uso e a densidade)
 - `project/ui/hud_popover.gd` · `project/ui/pop_bodies.gd` · `project/ui/hud_switch.gd` — camadas, câmera e menu; corpos da simulação e da ajuda; o interruptor das camadas
 - `project/ui/hud_top_bar.gd` · `project/ui/compass.gd` · `project/ui/start_screen.gd` · `project/ui/hud_dialog.gd` · `project/ui/graphics_panel.gd` — barra de cima; bússola (clique e arrasto); tela inicial e cortina; diálogo modal e Sobre; opções gráficas
-- `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves e otimizações); monitor F9; perfil Shift+F9
+- `project/ui/effects_panel.gd` · `project/ui/health_panel.gd` · `project/ui/profiler_hud.gd` — painel de efeitos F7 (chaves, otimizações e Diagnóstico); monitor F9; perfil Shift+F9
 - `project/ui/hud_tip.gd` · `project/ui/hud_widgets.gd` — a dica própria (centrada sob o controle, só se o nome não está na tela); fábricas de botões/rótulos do tema
 - `project/ui/inspector_panel.gd` · `project/ui/junction_panel.gd` — inspetor; tempos do semáforo e onda verde
 - `project/ui/inspector_rows.gd` · `project/ui/selection_overlay.gd` — os números ao vivo do inspetor, como linhas; a faixa da via e o anel do cruzamento que a ferramenta Informação marca sobre o mapa
+- `project/ui/lab_doctor.gd` — aba Diagnóstico do F7: veredito, estágios da GPU por peso e o custo medido de cada chave
 - `project/ui/land_hands.gd` — as mãos da gaveta Paisagem: cartões que redesenham o painel, ações do mapa inteiro e o Relevo pelas teclas
 - `project/ui/land_strips.gd` — painéis da gaveta Paisagem a partir de land_panels.json: cartões na gaveta; pincel, sliders e o que age no mapa inteiro no painel de opções
 - `project/ui/transit_strip.gd` — linhas e seus veículos, na gaveta do transporte
