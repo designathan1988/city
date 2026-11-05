@@ -1,8 +1,17 @@
 # Cidade — city builder (Godot 4.7 + núcleo C++ GDExtension)
 
-Único documento do projeto. Regras, comandos, mapa do código e pendências ficam aqui; não crie outros
-documentos nem memórias (o gate `DOC_UNICO` confere). Atualize este arquivo na mesma
+Único documento de regras do projeto. Regras, comandos, mapa do código e pendências ficam aqui; não crie outros
+documentos nem memórias (o gate `DOC_UNICO` confere), fora os registros de sessão em `log/`. Atualize este arquivo na mesma
 mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando o mapa diverge do disco.
+
+**Registros de sessão (`log/`, ordem do usuário, 2026-11-05):** antes de começar, leia todos os `log/*.md`. Cada um é o
+histórico de uma linha de trabalho: o que foi feito, o estado, os comandos e o que falta, em ordem.
+- `log/work-log.md`: porte (elevação, postes, tradutor).
+- `log/conversor.md`: tradutor.
+- `log/causa-raiz.md`: desempenho e causas.
+
+Ao terminar cada tarefa, ou ao saber algo novo, atualize o registro da sua linha (crie um se a linha for nova), com hora e
+commit, e commite-o junto.
 
 ## Processo de trabalho (inegociável, toda tarefa, nesta ordem; trabalho direto, sem agentes)
 1. **Análise:** ler o código envolvido, reproduzir e medir (sonda `render_cost`, `tests/perf/camera_pan`, capturas, CPU,
