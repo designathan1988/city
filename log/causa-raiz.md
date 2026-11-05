@@ -229,6 +229,12 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Com essa forma: `perto` tudo 12,58, marginal 0,74; `circular` tudo 11,82, marginal dentro do ruído. A rodada inteira subiu 0,5 ms também sem sombra (9,00 contra 8,50): carga da máquina, não do veículo. Custo da forma: até 0,4 ms em `perto`, porque o nível de corpo lança a malha distante.
 - Passou. Combinado com a sessão de migração: o lançador de details e shells em `building_renderer*` é meu, depois do push dela; `facade_*`, `lot_*`, `far_mass` e `bay_kit` são dela; a prova é foto antes e depois em `perto` (varanda, cerca, janela) e tempo intercalado.
 
+### Ciclo 3: o que foi decidido e o que falta (2026-11-05, 20:20; commit `6b155e92`)
+- Duas cascatas ao afastar: não. `_fit_cascades` encaixa a primeira no ponto olhado e as outras em razão geométrica até o fim; com duas, tudo além da primeira cai numa só, e o texel do meio da vista fica mais largo. Isso é perda de qualidade para ganhar parte de 2 ms, e a troca de modo no zoom estouraria a sombra na tela. Decidido pela leitura do código e pela medida de 2 cascatas de antes; não houve foto de 2 cascatas.
+- Fork do motor: não, por ora. A sombra caiu de 5,8 para ~3,5 ms em `perto` sem tocar nele. Cascata em cache não fecha porque o centro dela anda com a câmera, o atlas não é alcançável pelo RenderingDevice e um build próprio afastaria o jogo do Godot 4.7.2 oficial, do qual dependem o Terrain3D e o godot-cpp. A pergunta volta depois do lançador dos prédios, com o que sobrar medido. Não foi feito protótipo.
+- Falta: o lançador de details e shells (0,87 e 0,68 ms antes das mudanças da migração), que espera o push dela; medir depois desse push, não antes. O `camera_input_test` espera a próxima falha para mostrar os valores.
+- Conversor e porte: proibidos pelo usuário até a sessão dona provar a correção pela causa. A cobrança foi mandada a ela duas vezes; ainda sem resposta.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
