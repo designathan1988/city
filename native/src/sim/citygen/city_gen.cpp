@@ -145,10 +145,11 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed) {
 	s.map_half = float(map.tiles * c.tune.world_tile_m / 2);
 	s.seed = exact_seed;
 	s.roads.init(&s.catalog, &s.log);
-	s.buildings.init(&s.log);
+	s.buildings.init(&s.log, &s.catalog.occupancy);
 	s.lots.clear();
 	s.growth.clear();
 	s.history.reset(c.tune);
+	s.edit_revision++; // another map is another network: what follows the edits (the snapshot's counts, the views' lists) reads it again
 	s.edited = false; // a city just made or opened holds no edit of the player's yet
 	s.money = c.tune.economy_start_money;
 	s.unlimited_money = false;

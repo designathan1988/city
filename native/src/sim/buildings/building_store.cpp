@@ -1,6 +1,8 @@
 // Building record storage.
 #include "sim/buildings/building_store.h"
 
+#include "sim/catalog/catalog.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -10,8 +12,9 @@ namespace {
 constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
 } // namespace
 
-void BuildingStore::init(ChangeLog *l) {
+void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
 	log = l;
+	occupancy_ = occupancy;
 	clear();
 }
 
@@ -22,6 +25,7 @@ void BuildingStore::clear() {
 	hash.clear();
 	hash.cell = BUILDING_HASH_CELL;
 	count = 0;
+	residents = jobs = 0;
 }
 
 int BuildingStore::add(const Building &b) {
@@ -37,6 +41,7 @@ void BuildingStore::remove(int id) {
 	if (!b.alive) return;
 	mark(id);
 	hash.remove_aabb(id, b.x, b.z, b.x, b.z);
+	tally(b, -1);
 	b.alive = false;
 	free_ids.push_back(id);
 	count--;
@@ -77,7 +82,18 @@ void BuildingStore::place(int id, const Building &b) {
 	items[id].alive = true;
 	hash.insert_aabb(id, b.x, b.z, b.x, b.z);
 	count++;
+	tally(b, 1);
 	mark(id);
+}
+
+void BuildingStore::tally(const Building &b, int sign) {
+	if (!occupancy_) return;
+	const OccupancyDef &o = *occupancy_;
+	const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
+	int r, j;
+	occupancy(b, o.floor_share, per, r, j);
+	residents += sign * r;
+	jobs += sign * j;
 }
 
 void BuildingStore::mark(int id) const {

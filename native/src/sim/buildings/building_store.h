@@ -11,6 +11,8 @@
 
 namespace city {
 
+struct OccupancyDef;
+
 // Civic functions (the ids saved with a record).
 constexpr uint8_t FN_COUNT_VALUE = 35; // the catalogue keeps unused function ids reserved for future civic kinds
 enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
@@ -37,9 +39,12 @@ public:
 	SpatialHash hash; // by lot centre
 	ChangeLog *log = nullptr;
 	int count = 0;
+	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: what
+	// the city holds is never counted again over every record, and follows growth, edits and loads alike.
+	int residents = 0, jobs = 0;
 	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
 
-	void init(ChangeLog *l);
+	void init(ChangeLog *l, const OccupancyDef *occupancy);
 	void clear();
 	int add(const Building &b);
 	void remove(int id);
@@ -60,7 +65,9 @@ public:
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);
 
 private:
+	const OccupancyDef *occupancy_ = nullptr; // the catalogue's (CityState::catalog), set by init
 	void place(int id, const Building &b);
+	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals
 };
 
 constexpr float BUILDING_HASH_CELL = 64.f;

@@ -10,7 +10,9 @@
 #include "sim/traffic/lane_graph_internal.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <memory>
 
 namespace city {
 namespace traffic {
@@ -58,6 +60,27 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	(arrived ? t.arrived : t.lost)++;
 }
 
+namespace {
+// TrafficCounts from the live counters: the only writer of what the snapshot shows of the fleet.
+void publish_counts(CityState &s) {
+	const TrafficState &t = s.traffic;
+	TrafficCounts &c = s.traffic_counts;
+	c.vehicles.store(t.vehicle_count + t.park.moving);
+	c.people.store(t.ped_count);
+	c.arrived.store(t.arrived);
+	c.lost.store(t.lost);
+}
+
+// The minimum greens of every signalled junction (SignalLeast), published whole: the only writer of CityState::signal_least.
+void publish_signal_least(CityState &s) {
+	const std::vector<Junction> &all = s.traffic.g.junctions;
+	auto least = std::make_shared<SignalLeast>(all.size());
+	for (size_t n = 0; n < all.size(); n++)
+		if (all[n].ctl == Control::SIGNAL) (*least)[n] = all[n].least;
+	std::atomic_store(&s.signal_least, std::shared_ptr<const SignalLeast>(std::move(least)));
+}
+} // namespace
+
 void reset_traffic(CityState &s) {
 	TrafficState &t = s.traffic;
 	// a new map or a load: the whole traffic state starts over (fleet, counters, clock, governor, rng), so nothing of
@@ -79,6 +102,8 @@ void reset_traffic(CityState &s) {
 	t.g.version = s.roads.version;
 	s.log.clear_net();
 	transit::reset(s);
+	publish_counts(s); // a paused new map shows its own empty fleet, not the last city's
+	publish_signal_least(s); // and its own signal plans
 }
 
 namespace {
@@ -168,12 +193,13 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
+	publish_counts(s);
 	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
-	apply_network_changes(s);
+	if (apply_network_changes(s)) publish_signal_least(s);
 	route_compact(t);
 	t.time += dt;
 	t.tick++;

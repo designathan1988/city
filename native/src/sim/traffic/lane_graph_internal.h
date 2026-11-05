@@ -19,7 +19,8 @@ int alloc_conn(CityState &s); // a free pool entry (or a new one), with its per-
 void ensure_conn_state(TrafficState &t); // sizes conn_vehicles/conn_pass/... to LaneGraph::conns
 void graph_grow(CityState &s, int segs, int nodes); // grows every per-segment/per-node vector, keeping the values
 void clear_node(CityState &s, int n); // drops the node's connections (moving or despawning their vehicles)
-void apply_network_changes(CityState &s); // drains ChangeLog net_* at the start of traffic::step
+// Drains ChangeLog net_* at the start of traffic::step; true when a junction was planned again (its signal plan may differ).
+bool apply_network_changes(CityState &s);
 
 } // namespace traffic
 } // namespace city

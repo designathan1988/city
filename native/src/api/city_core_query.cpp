@@ -11,7 +11,9 @@
 #include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <memory>
 
 using namespace godot;
 
@@ -105,9 +107,10 @@ Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const 
 	return city::film_graded(grade, colour);
 }
 
+// Under the map lock shared only: the traffic's counts are what it published (TrafficCounts), so the frame that reads
+// the snapshot never waits for a traffic step; residents and jobs are the BuildingStore's running totals.
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	d["ready"] = s.ready;
@@ -118,37 +121,28 @@ Dictionary CityCore::snapshot() {
 	d["minutes"] = s.clock.minutes.load();
 	d["buildings"] = s.buildings.count;
 	d["segments"] = s.roads.alive_segments();
-	if (s.edit_revision != snap_edit_revision_) {
+	if (s.edit_revision != snap_edit_revision_) { // the network changes only with the player's edits and a new or opened map
 		int nodes = 0;
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
 		int zoned = 0;
 		for (const RoadSegment &g : s.roads.segs) zoned += g.alive ? (g.zl != 0) + (g.zr != 0) : 0;
-		int residents = 0, jobs = 0;
-		const OccupancyDef &o = s.catalog.occupancy;
-		const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
-		for (const Building &b : s.buildings.items) {
-			if (!b.alive) continue;
-			int r, j;
-			BuildingStore::occupancy(b, o.floor_share, per, r, j);
-			residents += r;
-			jobs += j;
-		}
 		snap_edit_revision_ = s.edit_revision;
 		snap_nodes_ = nodes;
 		snap_zoned_ = zoned;
-		snap_residents_ = residents;
-		snap_jobs_ = jobs;
 	}
+	d["edit_revision"] = int64_t(s.edit_revision); // views that list the network (junction marks) read it again only when it moves
+	d["transit_revision"] = int64_t(s.transit_revision); // the same for the transport plan
 	d["nodes"] = snap_nodes_;
 	d["zoned_sides"] = snap_zoned_;
 	d["grown"] = s.growth.grown;
 	d["growth_cells"] = int(s.growth.cells.size());
-	d["residents"] = snap_residents_;
-	d["jobs"] = snap_jobs_;
-	d["vehicles"] = s.traffic.vehicle_count + s.traffic.park.moving;
-	d["people"] = s.traffic.ped_count;
-	d["trips_arrived"] = s.traffic.arrived;
-	d["trips_lost"] = s.traffic.lost;
+	d["residents"] = s.buildings.residents;
+	d["jobs"] = s.buildings.jobs;
+	const TrafficCounts &fleet = s.traffic_counts;
+	d["vehicles"] = fleet.vehicles.load();
+	d["people"] = fleet.people.load();
+	d["trips_arrived"] = fleet.arrived.load();
+	d["trips_lost"] = fleet.lost.load();
 	d["speed"] = int(sim_.speed());
 	d["unsaved"] = s.has_unsaved_work();
 	d["edited"] = s.edited;
@@ -182,14 +176,14 @@ if (l2 < RAY_DIR_MIN && dir.y >= 0) return d;
 }
 
 // A signal under the click: what is set on the node (a change shows at once, the traffic takes it up on its next step) over
-// each stage's minimum green, which still stands. The caller holds the map.
-static bool inspect_signal(const CityState &s, std::mutex &traffic, const Vector3 &p, Dictionary &d) {
+// each stage's minimum green, which still stands. The caller holds the map; the minimum greens are the ones the traffic
+// published (SignalLeast), so a click never waits for a traffic step.
+static bool inspect_signal(const CityState &s, const Vector3 &p, Dictionary &d) {
 	const int n = s.roads.find_node_near(p.x, p.z, SIGNAL_PICK_M);
-	std::lock_guard<std::mutex> tr(traffic);
-	const std::vector<Junction> &all = s.traffic.g.junctions;
-	if (n < 0 || n >= int(all.size()) || all[size_t(n)].ctl != Control::SIGNAL || all[size_t(n)].least.empty()) return false;
+	const std::shared_ptr<const SignalLeast> plans = std::atomic_load(&s.signal_least);
+	if (n < 0 || !plans || n >= int(plans->size()) || (*plans)[size_t(n)].empty()) return false;
 	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
-	const std::vector<float> &least = all[size_t(n)].least;
+	const std::vector<float> &least = (*plans)[size_t(n)];
 	PackedFloat32Array greens;
 	for (size_t k = 0; k < least.size(); k++) greens.push_back(set.fixed && k < set.greens.size() ? std::max(least[k], set.greens[k]) : least[k]);
 	d["kind"] = "junction";
@@ -204,7 +198,7 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
-	if (inspect_signal(s, state_->traffic_mutex, p, d)) return d;
+	if (inspect_signal(s, p, d)) return d;
 	int best = -1;
 	float bd = INSPECT_RADIUS_M;
 	s.buildings.query(p.x - INSPECT_RADIUS_M, p.z - INSPECT_RADIUS_M, p.x + INSPECT_RADIUS_M, p.z + INSPECT_RADIUS_M, [&](int id) {

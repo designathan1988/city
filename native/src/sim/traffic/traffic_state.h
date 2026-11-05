@@ -10,6 +10,7 @@
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
 
+#include <atomic>
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -231,6 +232,12 @@ struct TrafficState {
 	std::unordered_map<int64_t, std::vector<int>> walker_cells; // who stands where, filed when something off the lanes asks
 	uint64_t walkers_filed = ~0ull; // the tick they were filed in
 	Rng rng{ TRAFFIC_SEED };
+};
+
+// The fleet's counts as the traffic last published them (after each tick and on a reset: traffic_system.cpp). The HUD
+// reads these without traffic_mutex, so a snapshot never waits for a traffic step; the live counters stay TrafficState's.
+struct TrafficCounts {
+	std::atomic<int> vehicles{ 0 }, people{ 0 }, arrived{ 0 }, lost{ 0 };
 };
 
 inline int route_at(const std::vector<int> &pool, const RouteRef &r, int k) {

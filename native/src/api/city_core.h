@@ -134,7 +134,8 @@ public:
 	godot::Dictionary clear_relief();
 	godot::Dictionary landscape() const;
 	int64_t sky_revision() const;
-	godot::Dictionary fog_field(const godot::Vector3 &camera);
+	godot::Dictionary fog_field() const; // the fog's window as the render last took it in (RenderWorld::sync advances it)
+	int64_t fog_revision() const; // moves when fog_field would say something else
 
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo();
@@ -212,9 +213,9 @@ private:
 	std::atomic<int> save_state_{ 0 }; // 0 idle, 1 writing, 2 ok, 3 error
 	std::atomic<int64_t> save_bytes_{ 0 };
 	std::string save_error_; // set by the save thread before save_state_ turns 3, read only then
-	// The snapshot's expensive counts follow the player's edits, not the simulation tick.
+	// The snapshot's network counts follow the edits (CityState::edit_revision), not the simulation tick.
 	uint64_t snap_edit_revision_ = ~uint64_t(0);
-	int snap_nodes_ = 0, snap_zoned_ = 0, snap_residents_ = 0, snap_jobs_ = 0;
+	int snap_nodes_ = 0, snap_zoned_ = 0;
 	std::unique_ptr<CityState> state_;
 	Simulation sim_;
 	// The materials the render draws with (render/city_world.gd makes them): held while its meshes reference them, so

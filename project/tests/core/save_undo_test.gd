@@ -1,7 +1,8 @@
 ## Core test of the history and the save file through the store (no rendering needed): every edit kind is undone to
 ## exactly the state before it and redone to the state after it (road, demolish, zone stroke, relief stroke, upgrade,
 ## split, roundabout, drawn building, and the Landscape: weather, cloud, fog, painted ground, planted trees); then a city with edits, grown buildings and sculpted ground is saved, a new map
-## replaces it, and opening the file brings back the same counts, money, clock, buildings, heights and landscape.
+## replaces it, and opening the file brings back the same counts, money, clock, buildings, heights and landscape. The
+## snapshot's residents and jobs follow every change of the buildings: edits and their undo, growth, a new map and a load.
 ## Run: godot --headless --path project res://tests/core/save_undo_test.tscn -- --no-flow
 extends Node3D
 
@@ -22,6 +23,7 @@ const RING_RADIUS := 22.0
 const RING_OUT_M := 700.0
 const LOT_M := 30.0
 const GROW_TICKS := 600
+const GROWTH_OFF := Vector3(0, 0, 260) # a street of its own off the test road's end, zoned to see growth alone
 const PARK_FN := 6
 const SLOT := "teste_ida_e_volta"
 const MONEY_STEP := 0.01
@@ -29,7 +31,7 @@ const NATURE_OUT_M := 900.0
 const RAIN := 0.7
 const PAINT_KIND := 0
 const TREES := {"density": 200.0, "height": 14.0, "variation": 0.3, "spacing": 6.0}
-const KEYS := ["segments", "nodes", "buildings", "money", "zoned_sides"]
+const KEYS := ["segments", "nodes", "buildings", "money", "zoned_sides", "residents", "jobs"]
 
 var failures := 0
 
@@ -139,6 +141,16 @@ func _round(what: String, edit: Callable) -> void:
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	CityStore.dispatch(&"paint_zone", [(a + e) * 0.5, ZONE_RADIUS, ZONE_RES])
 	CityStore.step_ticks(GROW_TICKS)
+	# A street of its own, zoned: what grows on it grows with no edit between the two snapshots.
+	var far := e + GROWTH_OFF
+	var built: Dictionary = CityStore.dispatch(&"build_road", [e, far, false, Vector3.ZERO, PROFILE, 0.25])
+	CityStore.dispatch(&"paint_zone", [(e + far) * 0.5, ZONE_RADIUS, ZONE_RES])
+	var zoned := CityStore.snapshot.duplicate()
+	CityStore.step_ticks(GROW_TICKS)
+	var grew: bool = CityStore.snapshot.grown > zoned.grown
+	_check(built.get("ok", false) and grew and CityStore.snapshot.residents > zoned.residents,
+		"o crescimento conta os moradores: %d prédios cresceram, %d -> %d" % [
+		CityStore.snapshot.grown - zoned.grown, zoned.residents, CityStore.snapshot.residents])
 	var sculpted := _hill(e)
 	var saved := _counts()
 	saved.grown = CityStore.snapshot.grown
@@ -156,6 +168,9 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	_check(_counts() != saved, "mapa novo é outro")
+	var empty := CityStore.snapshot
+	_check(empty.buildings == 0 and empty.residents == 0 and empty.jobs == 0 and empty.vehicles == 0 and empty.people == 0,
+		"mapa vazio sem moradores, empregos nem frota da cidade anterior %s" % [[empty.residents, empty.jobs, empty.vehicles]])
 	var r: Dictionary = CityStore.load_game(SLOT)
 	var got := _counts()
 	got.grown = CityStore.snapshot.grown

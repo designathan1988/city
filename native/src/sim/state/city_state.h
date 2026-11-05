@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <vector>
 
 namespace city {
 
@@ -31,6 +32,11 @@ struct CityClock {
 	void set_hour(double hour); // the time of day moves; `minutes`, the city's age, does not
 };
 
+// Per node, the minimum greens of its stages as the traffic last planned them (empty: no signal there). The traffic
+// publishes a new one whole after a step that planned a junction again; readers take it with std::atomic_load and never
+// wait for a traffic step (the inspector: city_core_query.cpp).
+using SignalLeast = std::vector<std::vector<float>>;
+
 struct CityState {
 	Catalog catalog;
 	ChangeLog log;
@@ -40,6 +46,8 @@ struct CityState {
 	LotCache lots;
 	BuildingStore buildings;
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
+	TrafficCounts traffic_counts; // the counts the traffic published: read without traffic_mutex (traffic_state.h)
+	std::shared_ptr<const SignalLeast> signal_least; // std::atomic_load / std::atomic_store only (traffic_system.cpp writes)
 	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
@@ -60,7 +68,7 @@ struct CityState {
 	// else keeps a dirty flag for the save prompt. `edited`: the player changed this city since it was made or opened
 	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
-	uint64_t edit_revision = 0; // commands and undo/redo only: the snapshot's expensive counts follow this
+	uint64_t edit_revision = 0; // the network as the player shapes it: commands, undo/redo and a new or opened map (found_land)
 	bool edited = false;
 	void touch() { revision++; }
 	bool has_unsaved_work() const { return revision != saved_revision; }
