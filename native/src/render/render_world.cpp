@@ -106,7 +106,10 @@ void RenderWorld::sync_nature(CityState &s) {
 		cover_.mark_dirty(k);
 	}
 	nature_keys_.clear();
-	for (int64_t k : water_keys_) water_.mark(k);
+	for (int64_t k : water_keys_) {
+		water_.mark(k);
+		cover_.mark_dirty(k); // the stones of the shore stand by the water's level
+	}
 	water_keys_.clear();
 	water_.sync(s.terrain);
 }

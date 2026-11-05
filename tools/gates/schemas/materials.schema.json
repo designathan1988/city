@@ -505,6 +505,9 @@
   "cover_plant": {
    "type": "object"
   },
+  "cover_shore": {
+   "type": "object"
+  },
   "cover_rock": {
    "type": "object"
   },
@@ -590,7 +593,8 @@
   "building_ghost",
   "cover_plant",
   "cover_rock",
-  "verge"
+  "verge",
+  "cover_shore"
  ],
  "strict": true
 }
