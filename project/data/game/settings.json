@@ -1,0 +1,37 @@
+{
+ "_doc": "Graphics presets and the frame cap applied by game/settings/settings.gd (frame_cap: Engine.max_fps while the game has the focus and while another application has it; 0 = no cap). shadow_size: the sun's atlas, a quarter per cascade; shadow_filter: RenderingServer.ShadowQuality, Soft Medium and up keep the dither of the filter off plain roofs (Godot docs, 3D lights and shadows): modelling choices.",
+ "default": "medium",
+ "frame_cap": {
+  "max_fps": 60,
+  "background_fps": 30
+ },
+ "presets": {
+  "low": {
+   "label_key": "QUALITY_LOW",
+   "shadows": false,
+   "msaa": 0,
+   "render_scale": 0.75,
+   "shadow_distance": 600, "shadow_size": 2048, "shadow_filter": 2,
+   "occlusion": false,
+   "smaa": false
+  },
+  "medium": {
+   "label_key": "QUALITY_MEDIUM",
+   "shadows": true,
+   "msaa": 1,
+   "render_scale": 1.0,
+   "shadow_distance": 1200, "shadow_size": 4096, "shadow_filter": 3,
+   "occlusion": false,
+   "smaa": false
+  },
+  "high": {
+   "label_key": "QUALITY_HIGH",
+   "shadows": true,
+   "msaa": 2,
+   "render_scale": 1.0,
+   "shadow_distance": 2500, "shadow_size": 8192, "shadow_filter": 4,
+   "occlusion": true,
+   "smaa": true
+  }
+ }
+}

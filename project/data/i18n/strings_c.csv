@@ -1,0 +1,575 @@
+keys,pt_BR,en
+sim.metric.trips,Viagens concluídas,Trips completed
+sim.pause,Pausar,Pause
+sim.people,Pessoas (%),People (%)
+sim.speed,Velocidade da simulação,Simulation speed
+sim.traffic,Tráfego (%),Traffic (%)
+sky.cycle,◐ Dia e noite,◐ Day & night
+sky.day,☀ Dia,☀ Day
+sky.night,☾ Noite,☾ Night
+sky.title,"Céu: sempre dia, sempre noite ou o ciclo de dia e noite","Sky: always day, always night, or the day-night cycle"
+status.impossible.one,1 nó impossível de construir,1 node cannot be built
+status.impossible.other,{count} nós impossíveis de construir,{count} nodes cannot be built
+status.nodes.one,1 nó,1 node
+status.nodes.other,{count} nós,{count} nodes
+status.people.one,1 pessoa,1 person
+status.people.other,{count} pessoas,{count} people
+status.roads.one,1 via,1 road
+status.roads.other,{count} vias,{count} roads
+status.vehicles.one,1 veículo,1 vehicle
+status.vehicles.other,{count} veículos,{count} vehicles
+streetscape.bench,Banco,Bench
+streetscape.bin,Lixeira,Bin
+streetscape.bollard,Frade,Bollard
+streetscape.conifer,Pinheiro,Conifer
+streetscape.drain,Boca de lobo,Kerb drain
+streetscape.fountain,Chafariz,Fountain
+streetscape.hydrant,Hidrante,Hydrant
+streetscape.lamp,Iluminação,Street light
+streetscape.phone,Orelhão (telefone público),Public phone
+streetscape.planter,Floreira,Planter
+streetscape.postbox,Caixa de correio,Post box
+streetscape.shrub,Arbusto,Shrub
+streetscape.sign,Placa,Sign
+streetscape.tree,Árvore,Tree
+strike.force,Força,Force
+terrain.brush,Pincel,Brush
+terrain.canyon,Cânion (arenito),Canyon (sandstone)
+terrain.clear,Aplainar mapa inteiro,Flatten the whole map
+terrain.cloud,Nuvens,Clouds
+terrain.elements,Elementos,Elements
+terrain.escarpment,Escarpa de basalto,Basalt escarpment
+terrain.flatten,Nivelar,Level
+terrain.fog,Neblina,Fog
+terrain.gully,Ravinas,Gullies
+terrain.hardness,Dureza (paredões),Hardness (cliffs)
+terrain.label,Editor de terreno,Terrain editor
+terrain.level,Nivelar em,Level to
+terrain.lower,Rebaixar,Lower
+terrain.mapBiome,Bioma do mapa,Map biome
+terrain.mapBiome.none,Sem ecossistema,No ecosystem
+terrain.mesa,Chapada (arenito),Mesa (sandstone)
+terrain.operation,Operação do terreno,Terrain operation
+terrain.paint,Pintar,Paint
+terrain.radius,Raio,Radius
+terrain.raise,Elevar,Raise
+terrain.river,Rio,River
+terrain.smooth,Alisar,Smooth
+terrain.strength,Força,Strength
+terrain.sugarloaf,Pão de açúcar (granito),Sugarloaf (granite)
+terrain.title,GEOGRAFIA,GEOGRAPHY
+terrain.trees,Árvores,Trees
+terrain.weather,Clima,Weather
+tool.bulldoze,Demolir,Bulldoze
+tool.control,Controle,Control
+tool.draw,Desenhar,Draw
+tool.failed,A ferramenta não conseguiu terminar: {message}.,The tool could not finish: {message}.
+tool.move,Mover,Move
+tool.person,Pessoas,People
+tool.pole,Postes,Poles
+tool.roundabout,Rotatória,Roundabout
+tool.split,Dividir,Split
+tool.streetscape,Paisagismo,Landscaping
+tool.upgrade,Melhorar,Upgrade
+tools.hint.barrierNext,"Clique para continuar o traço; Enter ou Esc termina, Backspace volta um ponto.","Click to go on with the line; Enter or Esc ends it, Backspace steps back a point."
+tools.hint.barrierStart,Clique para começar o traço. Perto de uma via ele vai para as costas da calçada. Shift+clique remove.,Click to start the line. Near a road it goes to the back of the sidewalk. Shift+click removes.
+tools.hint.blocks,"Clique para construir a grade de quarteirões com o perfil escolhido (colunas, linhas, quadra e giro no painel).","Click to build the block grid with the chosen profile (columns, rows, block size and rotation in the panel)."
+tools.hint.bulldoze,"Clique numa via, prédio, item ou muro para demolir; arraste para demolir tudo num retângulo.","Click a road, building, item or wall to demolish it; drag to demolish everything in a rectangle."
+tools.hint.curveControl,Clique para o ponto de controle da curva.,Click for the control point of the curve.
+tools.hint.curveEnd,Clique para terminar a curva.,Click to end the curve.
+tools.hint.curveStart,Clique para começar a curva.,Click to start the curve.
+tools.hint.free,Arraste para desenhar a via livre: ela segue o cursor em curvas suaves; solte para construir.,Drag to draw a free road: it follows the cursor in smooth curves; release to build.
+tools.hint.move,Arraste um nó (ponta ou cruzamento) para mudá-lo de lugar.,Drag a node (an end or a junction) to move it.
+tools.hint.moveDrop,Solte onde o nó deve ficar; as vias ligadas acompanham. Esc cancela.,Drop where the node should go; connected roads follow. Esc cancels.
+tools.hint.roadEnd,Clique para terminar o trecho (continua a partir dele). Esc encerra.,Click to end the stretch (the next one starts from it). Esc stops.
+tools.hint.roadStart,Clique para começar a via.,Click to start the road.
+tools.hint.roundabout,Clique para pôr uma rotatória (raio {radius} m; [ e ] mudam o raio).,Click to place a roundabout (radius {radius} m; [ and ] change it).
+tools.hint.split,Clique numa via para dividi-la em duas naquele ponto.,Click a road to split it in two at that point.
+tools.hint.streetscape,Clique numa calçada (ou no chão) para pôr o item escolhido; arraste ao longo dela para uma fileira. Shift+clique remove.,Click a sidewalk (or the ground) to place the chosen item; drag along it for a row. Shift+click removes.
+tools.hint.upgrade,"Clique numa via para trocar para ""{profile}"" (Shift: a rua inteira; Alt: copiar o perfil da via).","Click a road to change it to ""{profile}"" (Shift: the whole street; Alt: copy the road's profile)."
+tools.item.notOnRoad,Nada fica no meio da via: ponha na calçada.,Nothing stands on the road: put it on the sidewalk.
+tools.toast.blocksBuilt,Quarteirões construídos: {cols} × {rows}.,Blocks built: {cols} × {rows}.
+tools.toast.cannotBuild,Não dá para construir aqui: {why}.,Cannot build here: {why}.
+tools.toast.lampOnWalk,Postes vão na calçada.,Lamps go on the sidewalk.
+tools.toast.lampOnWater,Não dá para pôr postes na água.,Lamps cannot go on the water.
+tools.toast.notMoved,Não movido: {why}.,Not moved: {why}.
+tools.toast.row,Fileira posta ao longo da calçada.,Row placed along the sidewalk.
+tools.toast.signStop,Placa de Pare: quem chega por esta via para no cruzamento.,Stop sign: whoever comes along this road stops at the junction.
+tools.toast.signYield,Dê a preferência: quem chega por esta via dá a vez no cruzamento.,Give way: whoever comes along this road gives way at the junction.
+tools.toast.splitNearEnd,Perto demais da ponta: clique mais para o meio.,Too close to the end: click nearer the middle.
+tools.toast.zoneNoRoad,Nenhuma via perto: desenhe as ruas da quadra primeiro.,No road nearby: draw the block streets first.
+tools.toast.zoneNotBlock,Isso não é uma quadra fechada: feche as ruas em volta.,This is not a closed block: close the streets around it.
+tools.toast.zoneSame,Essa quadra já tem essa zona.,This block already has that zone.
+transit.fewer,Menos veículos,Fewer vehicles
+transit.lines,Linhas,Lines
+transit.mode.bus,Ônibus,Bus
+transit.mode.metro,Metrô,Metro
+transit.mode.train,Trem,Train
+transit.more,Mais veículos,More vehicles
+transit.noLines,Nenhuma linha ainda: ponha paradas ou estações e crie uma linha clicando nelas em ordem.,No lines yet: place stops or stations and make a line by clicking them in order.
+transit.remove,Apagar a linha,Delete the line
+transit.tool.line,Criar linha,Make a line
+transit.tool.metroStation,Estação de metrô,Metro station
+transit.tool.metroTrack,Trilho de metrô,Metro track
+transit.tool.stop,Ponto de ônibus,Bus stop
+transit.tool.terminal,Terminal de ônibus,Bus terminal
+transit.tool.trainStation,Estação de trem,Train station
+transit.tool.trainTrack,Trilho de trem,Train track
+transit.vehicles,Veículos na linha,Vehicles on the line
+tree.kind,Árvores,Trees
+tree.kind.cypress,Cipreste,Cypress
+tree.kind.mixed,Mistas,Mixed
+tree.kind.oak,Carvalho,Oak
+tree.kind.palm,Palmeira,Palm
+tree.mode.cut,Cortar árvores,Cut trees
+tree.mode.one,Uma árvore por clique,One tree a click
+tree.mode.plant,Plantar bosque,Plant a stand
+turn.left,esquerda,left
+turn.right,direita,right
+turn.through,em frente,through
+turn.uturn,retorno,u-turn
+ui.about.assets,Pacotes de arte e suas licenças,Art packs and their licences
+ui.about.author.makehuman,"Equipe MakeHuman / Data Collection AB, Joel Palmius, Jonas Hauquier (makehumancommunity.org)","MakeHuman team / Data Collection AB, Joel Palmius, Jonas Hauquier (makehumancommunity.org)"
+ui.about.author.proxies,"MakeHuman system assets (comunidade MakeHuman, makehumancommunity.org)","MakeHuman system assets (MakeHuman community, makehumancommunity.org)"
+ui.about.author.quaternius,Quaternius (quaternius.com),Quaternius (quaternius.com)
+ui.about.author.rocketbox,Copyright (c) 2020 Microsoft,Copyright (c) 2020 Microsoft
+ui.about.credits,"Feito com three.js (MIT), Vite (MIT), Electron (MIT) e steamworks.js (MIT). Sons sintetizados no próprio jogo; árvores, prédios e veículos gerados por código.","Made with three.js (MIT), Vite (MIT), Electron (MIT) and steamworks.js (MIT). Sounds synthesised in the game; trees, buildings and vehicles generated by code."
+ui.about.files,{n} arquivos · {licence} · {author},{n} files · {licence} · {author}
+ui.about.noAssets,Esta versão não traz pacotes de arte de terceiros.,This version ships no third-party art packs.
+ui.about.pack.makehuman,"Corpos, roupas e esqueleto (MakeHuman)","Bodies, clothes and skeleton (MakeHuman)"
+ui.about.pack.proxies,"Roupas, cabelos e acessórios da comunidade","Community clothes, hair and accessories"
+ui.about.pack.quaternius,Animações (Quaternius),Animations (Quaternius)
+ui.about.pack.rocketbox,Animações capturadas (Microsoft Rocketbox),Motion-captured animations (Microsoft Rocketbox)
+ui.about.showLicence,Ver o texto da licença,Show the licence text
+ui.about.steam,Jogando pelo Steam como {name},Playing on Steam as {name}
+ui.about.title,Sobre o Roadcraft,About Roadcraft
+ui.build.actions,Ações,Actions
+ui.build.decay,Desgaste,Decay
+ui.build.floors,Andares,Floors
+ui.build.next,Próximo lote desenhado,Next lot drawn
+ui.build.renovate,Reformar,Renovate
+ui.build.renovateTip,Reformar o prédio: fica novo de novo (Shift+clique faz o mesmo),Renovate the building: it is new again (Shift+click does the same)
+ui.build.style,Estilo,Style
+ui.build.styleAuto,Automático (bairro),Automatic (neighbourhood)
+ui.camera.follow,Seguir o veículo mais perto do centro (C),Follow the vehicle nearest the centre (C)
+ui.camera.top,Vista de cima,Top view
+ui.camera.turnLeft,Girar à esquerda (Q),Turn left (Q)
+ui.camera.turnRight,Girar à direita (E),Turn right (E)
+ui.cat.build,Construir prédios,Build buildings
+ui.cat.demolish,Demolir,Demolish
+ui.cat.info,Informação: inspecionar vias e cruzamentos,Information: inspect roads and junctions
+ui.cat.landscape,"Paisagem: relevo, solo, natureza, céu e rua","Landscape: relief, ground, nature, sky and street"
+ui.cat.roads,Vias,Roads
+ui.cat.transit,Transporte público,Public transport
+ui.cat.zones,Zoneamento e lotes,Zoning and lots
+ui.catalog.saved,"Modelo ""{name}"" salvo.","Template ""{name}"" saved."
+ui.catalog.tooMany,Perfis demais neste mapa (máximo 512).,Too many profiles on this map (512 at most).
+ui.confirm.newWorld,Criar uma nova cidade no mapa inteiro de {km} km × {km} km?,Create a new city over the whole {km} km × {km} km map?
+ui.do.boxRemove,Demolir tudo num retângulo,Demolish everything in a rectangle
+ui.do.brush,Pincelar,Brush
+ui.do.cancel,Cancelar o traço,Cancel the stroke
+ui.do.closePolygon,Fechar o polígono do lote,Close the lot polygon
+ui.do.copyProfile,Copiar o perfil de uma via (conta-gotas),Copy a road profile (eyedropper)
+ui.do.deleteRoad,Demolir a via mostrada,Demolish the road shown
+ui.do.escape,"Fechar o menu, depois o painel, depois largar a ferramenta","Close the menu, then the panel, then put the tool down"
+ui.do.follow,Seguir um veículo (Esc solta),Follow a vehicle (Esc releases)
+ui.do.iso,Perspectiva ou isométrica,Perspective or isometric
+ui.do.pickBuilding,Escolher um prédio ou um lote vazio,Pick a building or an empty lot
+ui.do.riverEnd,Terminar o rio,Finish the river
+ui.do.riverPoint,Pôr um ponto do rio (de cima para baixo),Add a river point (from upstream down)
+ui.do.roadPoint,Pôr o começo e o fim da via (encadeia),Set the start and end of the road (it chains)
+ui.do.roundabout,Pôr a rotatória,Place the roundabout
+ui.do.stop,Pôr ou tirar uma parada,Add or remove a stop
+ui.do.terminal,Tornar a parada terminal,Make the stop a terminal
+ui.do.tilt,Inclinar a câmera,Tilt the camera
+ui.do.turn,Girar a câmera,Turn the camera
+ui.do.zone,Pintar a zona dos lados das vias,Paint the zone along the roads
+ui.editor.mine,{name} (minha),{name} (mine)
+ui.error.isolation,A página precisa de isolamento de origem (COOP/COEP). Abra o jogo pelo executável Roadcraft ou pelo jogar.bat (jogar.sh) da pasta do jogo.,"The page needs cross-origin isolation (COOP/COEP). Open the game with the Roadcraft executable, or with jogar.bat (jogar.sh) in the game folder."
+ui.error.start,Não foi possível iniciar: {message},Could not start: {message}
+ui.floors.one,{count} andar,{count} floor
+ui.floors.other,{count} andares,{count} floors
+ui.health.error,erro,error
+ui.health.frame,quadro de {ms} ms,{ms} ms frame
+ui.health.slow,lento,slow
+ui.height.ground,no chão,on the ground
+ui.impossible.visit,clique para ver o próximo,click to see the next one
+ui.insp.actions,Ações,Actions
+ui.insp.autoChoice,Escolhido pela importância e pelo fluxo das vias: {choice}.,Chosen by the roads' importance and flow: {choice}.
+ui.insp.closeUturn,Fechar o retorno,Close the U-turn
+ui.insp.duplicated,Via duplicada ao lado.,Road duplicated alongside.
+ui.insp.greenWave,Onda verde em {n} semáforos.,Green wave over {n} lights.
+ui.insp.joinFail,"Essas vias não se unem: perfis diferentes, sentidos opostos ou longas demais juntas.","These roads cannot be joined: different profiles, opposite directions or too long together."
+ui.insp.joined,Vias unidas.,Roads joined.
+ui.insp.lock,Travar esta escolha,Lock this choice
+ui.insp.noBend,Não curvou: {why}.,Not bent: {why}.
+ui.insp.noDuplicate,Não dá para duplicar aqui: {why}.,Cannot duplicate here: {why}.
+ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
+ui.insp.parkingOff,Vagas retiradas.,Parking removed.
+ui.insp.parkingOn,Vagas paralelas à guia.,Kerbside parking added.
+ui.insp.profileApplied,Perfil aplicado à via,Profile applied to the road
+ui.insp.refund,Devolvido {value},Refunded {value}
+ui.insp.reversed,Sentido invertido.,Direction reversed.
+ui.insp.ring,Faz parte de uma rotatória: quem está no anel tem a preferência.,Part of a roundabout: traffic on the ring has priority.
+ui.insp.roads.one,{count} via,{count} road
+ui.insp.roads.other,{count} vias,{count} roads
+ui.insp.split,Via dividida em duas.,Road split in two.
+ui.insp.street,Nome e numeração da rua,Street name and numbering
+ui.insp.uturn,Retorno no canteiro,U-turn in the median
+ui.key.altClick,Alt + clique,Alt + click
+ui.key.brackets,[ / ],[ / ]
+ui.key.delete,Delete,Delete
+ui.key.rf,R / F,R / F
+ui.key.save,Ctrl + S,Ctrl + S
+ui.key.v,V,V
+ui.menu.load,Carregar o último jogo,Load the last game
+ui.menu.newWorld,Nova cidade ({km} km × {km} km),New city ({km} km × {km} km)
+ui.menu.save,Salvar (Ctrl+S),Save (Ctrl+S)
+ui.menu.start,Tela inicial (semente e tamanho do mapa),Title screen (seed and map size)
+ui.menu.testCity,Carregar o pior caso (teste),Load the worst case (test)
+ui.metric.buildings,Prédios,Buildings
+ui.metric.jobs,Empregos,Jobs
+ui.metric.peds,Pedestres,Pedestrians
+ui.metric.residents,Moradores,Residents
+ui.metric.vehicles,Veículos,Vehicles
+ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir devolve {refund} % do preço.,Cash. Roads cost by width and length; bridges and tunnels cost more. Demolishing gives back {refund} % of the price.
+ui.money.unlimited,R$ ∞,$ ∞
+ui.options.apply,Aplicar,Apply
+ui.options.bloom,Brilho das luzes,Light bloom
+ui.options.clear,Sempre limpo,Always clear
+ui.options.compat,Modo de compatibilidade (WebGL 2): qualidade Baixa.,Compatibility mode (WebGL 2): Low quality.
+ui.options.custom,Personalizado,Custom
+ui.options.detail,Detalhe ao longe,Distant detail
+ui.options.game,Jogo,Game
+ui.options.resolution,Resolução,Resolution
+ui.options.title,Opções,Options
+ui.options.volume,Som ambiente,Ambient sound
+ui.options.weather,Tempo,Weather
+ui.people.age,Idade,Age
+ui.people.age.adult,Adulto,Adult
+ui.people.age.any,Qualquer,Any
+ui.people.age.child,Criança,Child
+ui.people.age.senior,Idoso,Senior
+ui.people.age.young,Jovem,Young
+ui.people.any,Qualquer uma,Any
+ui.people.asItComes,Como vem com a roupa,As the outfit comes
+ui.people.bottom,Embaixo,Bottom
+ui.people.hair,Cabelo,Hair
+ui.people.hold,Na mão,Holding
+ui.people.hold.bag,Sacola,Bag
+ui.people.hold.cup,Copo,Cup
+ui.people.hold.none,Nada,Nothing
+ui.people.hold.paper,Jornal,Newspaper
+ui.people.hold.phone,Celular,Phone
+ui.people.hold.umbrella,Guarda-chuva,Umbrella
+ui.people.mixed,Grupo,Group
+ui.people.mixed.on,Cada um de um jeito,Each one different
+ui.people.mode.group,Em roda,In a ring
+ui.people.mode.stand,Parada,Standing
+ui.people.mode.walk,Andando,Walking
+ui.people.outfit,Roupa,Outfit
+ui.people.outfit.casual,Casual,Casual
+ui.people.outfit.elegant,Social,Formal
+ui.people.outfit.sport,Esporte,Sport
+ui.people.outfit.work,Trabalho,Work
+ui.people.sex,Pessoa,Person
+ui.people.sex.any,Qualquer,Any
+ui.people.sex.female,Mulher,Woman
+ui.people.sex.male,Homem,Man
+ui.people.top,Em cima,Top
+ui.perMin,{n}/min,{n}/min
+ui.person.behaviour,Pessoa,Person
+ui.person.clothes,Roupa,Clothes
+ui.person.count,Quantas,How many
+ui.person.height,Altura,Height
+ui.person.stand,Parada,Standing
+ui.person.walk,Andando,Walking
+ui.problem.footways,Calçada só nas bordas.,Sidewalks only at the edges.
+ui.problem.maxLanes,No máximo 8 faixas.,At most 8 lanes.
+ui.problem.order,"As faixas de cada sentido ficam juntas, com a mão à direita.","Lanes of each direction stay together, driving on the right."
+ui.problem.wide,Larga demais (máximo 70 m).,Too wide (70 m at most).
+ui.river.width,Largura do rio (m),River width (m)
+ui.soon,em construção,being built
+ui.soon.buildings,em construção (construtor de prédios),being built (building creator)
+ui.start.empty,Começar num mapa vazio,Start on an empty map
+ui.start.generate,Gerar cidade nova,Generate a new city
+ui.start.quit,Sair,Quit
+ui.start.seed,Semente,Seed
+ui.start.size,Tamanho do mapa,Map size
+ui.start.sub,"Vias, trânsito e cidades inteiras de 10 a 24 km.","Roads, traffic and whole cities from 10 to 24 km."
+ui.stats.tip,{residents} moradores · {jobs} empregos · {buildings} prédios · {speed} km/h de média perto daqui,{residents} residents · {jobs} jobs · {buildings} buildings · {speed} km/h average nearby
+ui.strip.barrier,Mureta,Barrier
+ui.strip.curb,Meio-fio,Curb
+ui.strip.shoulder,Acostamento,Shoulder
+ui.title,Roadcraft,Roadcraft
+ui.toolName.barrier,Muros e cercas,Walls and fences
+ui.toolName.blocks,Quarteirões,Blocks
+ui.toolName.bomb,Bomba,Bomb
+ui.toolName.building,Prédios e lotes,Buildings and lots
+ui.toolName.bulldoze,Demolir,Demolish
+ui.toolName.camera,Câmera,Camera
+ui.toolName.curve,Via em curva,Curved road
+ui.toolName.elements,Elementos,Elements
+ui.toolName.flatten,Nivelar,Level
+ui.toolName.forest,Árvores,Trees
+ui.toolName.free,Via livre,Freehand road
+ui.toolName.inspect,Inspecionar,Inspect
+ui.toolName.landform,Relevos,Landforms
+ui.toolName.lower,Rebaixar,Lower
+ui.toolName.move,Mover,Move
+ui.toolName.paint,Pintar o chão,Paint ground
+ui.toolName.person,Pessoas,People
+ui.toolName.pistol,Pistola,Pistol
+ui.toolName.raise,Elevar,Raise
+ui.toolName.river,Rio,River
+ui.toolName.road,Via reta,Straight road
+ui.toolName.roundabout,Rotatória,Roundabout
+ui.toolName.sky,Céu,Sky
+ui.toolName.smooth,Alisar,Smooth
+ui.toolName.split,Dividir,Split
+ui.toolName.streetscape,Paisagismo,Streetscape
+ui.toolName.transit,Transporte,Transit
+ui.toolName.upgrade,Melhorar,Upgrade
+ui.toolName.weather,Clima,Weather
+ui.toolName.zone,Zonear,Zoning
+ui.touch.click,Clique,Click
+ui.touch.compassDo,Girar e inclinar a câmera; tocar nela põe o norte para cima,Turn and tilt the camera; tap it to face north
+ui.touch.compassKey,Arrastar a bússola,Drag the compass
+ui.touch.dragDo,Mover o mapa (com a câmera) ou pincelar (com a ferramenta),Move the map (camera) or brush (with a tool)
+ui.touch.dragKey,Arrastar um dedo,Drag one finger
+ui.touch.tap,Toque,Tap
+ui.touch.tapDo,"O mesmo que o clique: pôr, escolher, construir","Same as a click: place, pick, build"
+ui.touch.tapKey,Tocar,Tap
+ui.touch.title,Na tela de toque,On a touch screen
+ui.transit.colour,Cor da linha,Line colour
+ui.transit.help.metroStation,Clique sobre um trilho de metrô para pôr uma estação na linha escolhida.,Click a metro track to put a station on the chosen line.
+ui.transit.help.metroTrack,Desenhe o trilho do metrô como uma via; as estações vão sobre ele.,Draw the metro track like a road; stations go on it.
+ui.transit.help.stop,Clique na calçada para pôr paradas na linha escolhida; clique numa parada para tirá-la.,Click a sidewalk to add stops to the chosen line; click a stop to remove it.
+ui.transit.help.terminal,Clique numa parada para torná-la terminal: os ônibus esperam mais e dão a volta ali.,Click a stop to make it a terminal: buses wait longer and turn around there.
+ui.transit.help.trainStation,Clique sobre um trilho de trem para pôr uma estação na linha escolhida.,Click a train track to put a station on the chosen line.
+ui.transit.help.trainTrack,Desenhe o trilho como uma via; as estações vão sobre ele.,Draw the track like a road; stations go on it.
+ui.transit.line,Linha {n},Line {n}
+ui.transit.outBack,Ida e volta,Out and back
+ui.transit.perHour,{n} passageiros/h,{n} passengers/h
+ui.transit.ring,Circular,Ring
+ui.transit.route,Percurso,Route
+ui.transit.stations.one,{count} estação,{count} station
+ui.transit.stations.other,{count} estações,{count} stations
+ui.transit.stops.one,{count} parada,{count} stop
+ui.transit.stops.other,{count} paradas,{count} stops
+ui.turn.auto,Automático,Automatic
+ui.weather.auto,Muda sozinho,Changes by itself
+ui.weather.manual,Ajustado aqui,Set here
+ui.weather.mode,Tempo,Weather
+v2.blocks.count,Quadras,Blocks
+v2.blocks.measure,Medidas,Size
+v2.build.selectToEdit,Clique num prédio para editá-lo,Click a building to edit it
+v2.close,Fechar,Close
+v2.do.health,Saúde do jogo,Game health
+v2.do.pause,Pausar ou continuar,Pause or resume
+v2.do.redo,Refazer,Redo
+v2.do.undo,Desfazer,Undo
+v2.dock.build,Construir,Build
+v2.dock.demolish,Demolir,Demolish
+v2.dock.info,Informação,Info
+v2.dock.landscape,Paisagem,Landscape
+v2.dock.roads,Vias,Roads
+v2.dock.transit,Transporte,Transit
+v2.dock.zones,Zonas,Zones
+v2.grid.toggle,Grade no mapa (mostrar ou ocultar),Grid on the map (show or hide)
+v2.key.drag,Arrastar,Drag
+v2.key.redo,Ctrl + Y,Ctrl + Y
+v2.key.space,Espaço,Space
+v2.land.ground,Solo,Ground
+v2.land.nature,Natureza,Nature
+v2.land.relief,Relevo,Relief
+v2.land.sky,Céu e clima,Sky and weather
+v2.land.street,Rua,Street
+v2.land.walls,Muros e cercas,Walls and fences
+v2.layer.grid,Grade,Grid
+v2.layer.inside,Interior dos prédios,Inside the buildings
+v2.layers,Camadas do mapa,Map layers
+v2.map,Mapa inteiro,Whole map
+v2.roundabout.radius,Raio (m),Radius (m)
+v2.row.biome,Bioma,Biome
+v2.row.brush,Pincel,Brush
+v2.row.clear,Apagar,Clear
+v2.row.cut,Corte,Cut
+v2.row.height,Altura,Height
+v2.row.lanes,Faixas,Lanes
+v2.row.lights,Luzes,Lights
+v2.row.parking,Vagas,Parking
+v2.row.parts,Partes,Parts
+v2.row.sign,Placa,Sign
+v2.row.sky,Céu,Sky
+v2.row.text,Texto,Text
+v2.row.width,Largura,Width
+v2.s.base,Base,Base
+v2.s.direction,Direção,Direction
+v2.s.fogAll,Neblina,Fog
+v2.s.lightning,Raios,Lightning
+v2.s.thunder,Trovão,Thunder
+v2.s.variation,Variação,Variation
+v2.snap.angles,"Ângulos: 90°, 45°, 15°","Angles: 90°, 45°, 15°"
+v2.snap.grid,Pontos na grade de 1 m,Points on the 1 m grid
+v2.snap.on,Encaixe ligado,Snapping on
+v2.snap.title,Encaixe,Snapping
+v2.terrain.brush,Pincel de terreno,Terrain brush
+v2.terrain.landforms,Relevos,Landforms
+v2.zone.density,Densidade,Density
+v2.zone.paint,Zonear,Zone
+v2.zone.use,Uso do solo,Land use
+water.current,Correnteza (m/s),Current (m/s)
+water.foam,Espuma (%),Foam (%)
+water.title,Água dos rios e lagos,Water of rivers and lakes
+water.waves,Ondas (%),Waves (%)
+weather.lightning,Raios por minuto,Lightning a minute
+weather.rain,Chuva (%),Rain (%)
+weather.storm,Tempestade,Storm
+weather.thunder,Volume do trovão (%),Thunder volume (%)
+weather.wind,Vento (m/s),Wind (m/s)
+weather.windDirection,Direção do vento (°),Wind direction (°)
+zone.brush,Pintar zona,Paint zone
+zone.colours,Cores das zonas,Zone colours
+zone.commercial,Comercial,Commercial
+zone.density,Densidade,Density
+zone.fill,Quadra inteira,Whole block
+zone.grid,Grade,Grid
+zone.high,Alta,High
+zone.industrial,Industrial,Industrial
+zone.lot.curve,Curvar lado,Curve a side
+zone.lot.delete,Apagar lotes e construções,Delete lots and buildings
+zone.lot.delete.short,Apagar lotes,Delete lots
+zone.lot.edit,Mover cantos,Move corners
+zone.lot.front,Definir frente,Set front
+zone.lot.join,Juntar lotes,Join lots
+zone.lot.shape.polygon,Polígono (ponto a ponto),Polygon (point by point)
+zone.lot.shape.rect,Retângulo (arrastar),Rectangle (drag)
+zone.lot.size,{w} x {d} m,{w} x {d} m
+zone.lot.split,Dividir lote,Split lot
+zone.lots,Lotes,Lots
+zone.lots.help,"Crie lotes encostando nas calçadas (retângulo ou polígono) e pinte a zona sobre eles: o prédio cresce do tamanho e formato do lote, virado para a frente marcada em azul.","Create lots against the footways (rectangle or polygon) and paint the zone over them: the building grows to the size and shape of the lot, facing the front marked in blue."
+zone.low,Baixa,Low
+zone.medium,Média,Medium
+zone.mixed,Misto,Mixed
+zone.name.0,Sem zona,No zone
+zone.name.1,Residencial,Residential
+zone.name.2,Comercial,Commercial
+zone.name.3,Industrial,Industrial
+zone.name.4,Misto,Mixed
+zone.name.5,Residencial baixa,Low-density residential
+zone.name.6,Residencial alta,High-density residential
+zone.name.7,Comercial baixa,Low-density commercial
+zone.name.8,Comercial alta,High-density commercial
+zone.remove,Tirar zona,Remove zone
+zone.residential,Residencial,Residential
+zone.split.horizontal,Frente e fundos,Front and back
+zone.split.into,Em quantos,Into how many
+zone.split.line,Por linha,Along a line
+zone.split.parts,{n} lotes,{n} lots
+zone.split.vertical,Lado a lado,Side by side
+zone.title,ZONEAMENTO,ZONING
+zone.tool,Ferramenta de zoneamento,Zoning tool
+zone.use,Uso do solo,Land use
+hint.upgrade,"Escolha um perfil e clique numa via para trocá-lo (Shift: a rua inteira; Alt: copiar o perfil da via).","Pick a profile and click a road to change it (Shift: the whole street; Alt: copy the road's profile)."
+hint.terrain,"Segure o botão esquerdo para esculpir o relevo; o traço inteiro se desfaz com Ctrl+Z.","Hold the left button to sculpt the relief; Ctrl+Z undoes the whole stroke."
+hint.lot,"Arraste um retângulo junto a uma via: o prédio escolhido nasce ali, de frente para a via.","Drag a rectangle beside a road: the chosen building goes up there, facing the road."
+ui.insp.upgraded,"Perfil trocado em {count} trecho(s).","Profile changed on {count} segment(s)."
+ui.build.placed,Prédio construído.,Building built.
+save.writeFailed,"Não foi possível gravar o arquivo do salvamento.","The save file could not be written."
+save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes.","A save is still being written; try again in a moment."
+refuse.lot.small,o lote é pequeno demais,the lot is too small
+refuse.lot.road,o lote cobre uma via,the lot covers a road
+tools.hint.upgradePick,Clique numa via para trocar o perfil.,Click a road to change its profile.
+hint.transit.noStreet,Clique perto de uma rua com calçada.,Click near a street with a footway.
+hint.transit.taken,Já há uma parada aqui.,There is a stop here already.
+hint.transit.noStop,Clique numa parada.,Click a stop.
+hint.transit.noTrack,Clique num trilho.,Click a track.
+hint.transit.trackShort,O trilho precisa de dois pontos.,A track needs two points.
+hint.transit.trackOnRoad,O trilho cruza ruas, não corre por elas.,A track crosses streets, it does not run down them.
+hint.transit.lineShort,Uma linha precisa de duas paradas.,A line needs two stops.
+hint.transit.removed,Removido.,Removed.
+hint.transit.lineMade,Linha criada.,Line made.
+transit.stops,{n} paradas,{n} stops
+transit.mark.bus,B,B
+transit.mark.train,T,T
+transit.mark.metro,M,M
+cmd.transit.stop,Pôr parada,Place stop
+cmd.transit.terminal,Mudar terminal,Change terminal
+cmd.transit.station,Pôr estação,Place station
+cmd.transit.track,Assentar trilho,Lay track
+cmd.transit.line,Criar linha,Make line
+cmd.transit.remove,Remover transporte,Remove transit
+cmd.transit.vehicles,Mudar veículos da linha,Change line vehicles
+cmd.weather,Clima do mapa,Map weather
+cmd.cloud.add,Nuvem,Cloud
+cmd.cloud.edit,Editar nuvem,Edit cloud
+cmd.cloud.remove,Tirar nuvem,Remove cloud
+cmd.cloud.scatter,Espalhar nuvens,Spread clouds
+cmd.cloud.clear,Apagar nuvens,Clear clouds
+cmd.fog,Neblina,Fog
+cmd.fog.clear,Apagar neblina,Clear fog
+cmd.gully.clear,Apagar ravinas,Clear gullies
+cmd.trees.clear,Apagar árvores,Clear trees
+cmd.biome,Bioma do mapa,Map biome
+hint.tool.trees,Segure e arraste para plantar ou cortar.,Hold and drag to plant or cut.
+hint.tool.fog,Segure e arraste para deitar neblina.,Hold and drag to lay fog.
+hint.tool.cloud,Clique no céu para pôr ou pegar uma nuvem.,Click the sky to place or pick a cloud.
+hint.tileFull,Esta parte do mapa já tem o máximo que cabe,This part of the map holds as many as it can
+hint.cloud.full,O céu já tem o máximo de nuvens (24),The sky already holds the most clouds (24)
+gully.cut,Cavar,Cut
+gully.erase,Apagar,Erase
+gully.strength,Força,Strength
+gully.auto,Ravinas naturais,Natural gullies
+gully.clear,Apagar ravinas,Clear gullies
+tree.clear,Apagar árvores,Clear trees
+tree.density,Densidade,Density
+tree.height,Altura,Height
+tree.variation,Variação,Variation
+tree.spacing,Espaçamento,Spacing
+fog.strength,Força,Strength
+fog.speed,Velocidade,Speed
+fog.mapDensity,Toda a neblina,All fog
+fog.clear,Apagar neblina,Clear fog
+atmo.fogHeight,Altura da névoa,Mist height
+confirm.clearTerrain,"Aplainar todo o terreno? Esta ação pode ser desfeita.","Flatten the whole terrain? This can be undone."
+confirm.clearElements,"Apagar todos os elementos do mapa?","Remove every element on the map?"
+confirm.clearTrees,"Apagar todas as árvores que você plantou e deixar a mata voltar onde você cortou?","Remove every tree you planted and let the woods grow back where you cut them?"
+confirm.clearGullies,"Apagar todos os traços de ravina do mapa? As ravinas automáticas continuam.","Clear every gully stroke on the map? The land keeps its own gullies."
+confirm.clearClouds,"Apagar todas as nuvens do céu?","Remove every cloud in the sky?"
+confirm.clearFog,"Apagar toda a neblina do mapa?","Clear all the fog on the map?"
+el.mode.lay,"Colocar","Lay"
+el.mode.eraseKind,"Apagar este tipo","Erase this kind"
+el.mode.eraseAll,"Apagar tudo","Erase all"
+el.strength,"Força do pincel (%)","Brush strength (%)"
+el.variation,"Variação de tamanho (%)","Size variation (%)"
+el.intensity,"Intensidade do efeito (%)","Effect intensity (%)"
+el.clear,"Apagar todos os elementos","Remove every element"
+hint.terrain.elements,"Arraste para colocar (ou apagar) · Shift+roda: tamanho do pincel","Drag to lay (or erase) · Shift+wheel: brush size"
+hint.element.full,"O mapa já tem elementos demais","The map holds too many elements"
+cmd.place.element,"colocar elementos","lay elements"
+cmd.elements.clear,"Apagar elementos","Clear elements"
+el.kind.stones,"Pedras","Stones"
+el.kind.pebbles,"Seixos","Pebbles"
+el.kind.gravel,"Cascalho","Gravel"
+el.kind.leaves,"Folhas secas","Fallen leaves"
+el.kind.grass,"Grama","Grass"
+el.kind.tallGrass,"Capim alto","Tall grass"
+el.kind.scrub,"Mato","Scrub"
+el.kind.fern,"Samambaia","Fern"
+el.kind.clover,"Trevo","Clover"
+el.kind.flowers,"Flores","Flowers"
+el.kind.mushrooms,"Cogumelos","Mushrooms"
+el.kind.smoke,"Fumaça","Smoke"
+el.kind.fire,"Fogo","Fire"
+el.kind.steam,"Vapor","Steam"
+el.kind.dust,"Poeira","Dust"
+el.kind.soot,"Fuligem","Soot"
+el.kind.sparks,"Faíscas","Sparks"
+el.kind.spray,"Espuma e borrifo","Foam and spray"
+building.problem.size,Dimensões fora dos limites,Size out of bounds
+building.problem.support,Um volume ficaria sem apoio,A block would have nothing under it
+building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on the ground
+building.problem.outline,Isto ainda não vale para esta planta,This does not work on this plan yet
+building.problem.roofPart,Isto não cabe neste telhado,This does not fit on this roof
+building.problem.lastVolume,O último volume no chão não sai: demolir tira o prédio,The last block on the ground stays: demolish takes the building

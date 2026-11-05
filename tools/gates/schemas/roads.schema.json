@@ -1,0 +1,74 @@
+{
+ "type": "object",
+ "properties": {
+  "roads": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "name_key": {
+      "type": "string"
+     },
+     "lane_w": {
+      "type": "number"
+     },
+     "lanes_fwd": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+     },
+     "lanes_back": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+     },
+     "median": {
+      "type": "number"
+     },
+     "sidewalk": {
+      "type": "number"
+     },
+     "speed_kmh": {
+      "type": "number"
+     },
+     "cost_per_m": {
+      "type": "number"
+     },
+     "upkeep_per_km_day": {
+      "type": "number"
+     },
+     "zoning": {
+      "type": "boolean"
+     },
+     "lights": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "name_key",
+     "lane_w",
+     "lanes_fwd",
+     "lanes_back",
+     "median",
+     "sidewalk",
+     "speed_kmh",
+     "cost_per_m",
+     "upkeep_per_km_day",
+     "zoning",
+     "lights"
+    ],
+    "strict": true
+   },
+   "minItems": 1,
+   "unique_key": "id"
+  }
+ },
+ "required": [
+  "roads"
+ ],
+ "strict": true
+}

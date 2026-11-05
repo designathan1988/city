@@ -1,0 +1,124 @@
+{
+ "type": "object",
+ "properties": {"control_marks":{"type":"array","items":{"type":"object","properties":{"glyph":{"type":"string"},"token":{"type":"string"},"label_key":{"type":"string"}},"required":["glyph","token","label_key"],"strict":true}},
+  "_doc": {
+   "type": "string"
+  },
+  "signal_step_s": {
+   "type": "number"
+  },
+  "stats": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "key": {
+      "type": "string"
+     },
+     "label_key": {
+      "type": "string"
+     },
+     "format": {
+      "type": "string",
+      "enum": [
+       "money",
+       "int",
+       "percent"
+      ]
+     }
+    },
+    "required": [
+     "key",
+     "label_key",
+     "format"
+    ],
+    "strict": true
+   }
+  },
+  "demand": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "zone": {
+      "type": "integer"
+     },
+     "label_key": {
+      "type": "string"
+     },
+     "color": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "zone",
+     "label_key",
+     "color"
+    ],
+    "strict": true
+   }
+  },
+  "speeds": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "speed": {
+      "type": "integer"
+     },
+     "label_key": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "speed",
+     "label_key"
+    ],
+    "strict": true
+   }
+  },
+  "tool_options": {
+   "type": "object",
+   "properties": {
+    "zone_radius": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "terrain_radius": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "terrain_strength": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    }
+   },
+   "required": [
+    "zone_radius",
+    "terrain_radius",
+    "terrain_strength"
+   ],
+   "strict": true
+  }
+ },
+ "required": [
+  "_doc",
+  "stats",
+  "demand",
+  "speeds",
+  "tool_options"
+ ],
+ "strict": true
+}

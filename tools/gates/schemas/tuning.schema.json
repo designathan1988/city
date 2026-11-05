@@ -1,0 +1,9 @@
+{
+ "type": "object",
+ "additional": {
+  "type": "object",
+  "additional": {
+   "type": "number"
+  }
+ }
+}

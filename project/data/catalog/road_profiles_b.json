@@ -1,0 +1,585 @@
+{
+ "profiles": [
+  {
+   "id": "boulevard",
+   "name_key": "profile.boulevard",
+   "road_class": "boulevard",
+   "rank": 9,
+   "speed": 60,
+   "one_way": false,
+   "priority": 3,
+   "category": "avenidas",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 1.7,
+     "pave": 3
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "highway6Lanes",
+   "name_key": "profile.highway6Lanes",
+   "road_class": "highway",
+   "rank": 1,
+   "speed": 110,
+   "one_way": false,
+   "priority": 4,
+   "category": "rodovias",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 2.7
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "oneWayHighway2Lanes",
+   "name_key": "profile.oneWayHighway2Lanes",
+   "road_class": "highway",
+   "rank": 2,
+   "speed": 100,
+   "one_way": true,
+   "priority": 4,
+   "category": "rodovias",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "oneWayHighway3Lanes",
+   "name_key": "profile.oneWayHighway3Lanes",
+   "road_class": "highway",
+   "rank": 3,
+   "speed": 110,
+   "one_way": true,
+   "priority": 4,
+   "category": "rodovias",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "dualCarriageway2Lanes",
+   "name_key": "profile.dualCarriageway2Lanes",
+   "road_class": "highway",
+   "rank": 4,
+   "speed": 80,
+   "one_way": false,
+   "priority": 4,
+   "category": "rodovias",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 1.7
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "countryRoad",
+   "name_key": "profile.countryRoad",
+   "road_class": "urban",
+   "rank": 0,
+   "speed": 80,
+   "one_way": false,
+   "priority": 3,
+   "category": "antigos",
+   "ring": false,
+   "surface": 0,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "shoulder",
+     "width": 1.5
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": -1
+    },
+    {
+     "kind": "shoulder",
+     "width": 1.5
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "ramp",
+   "name_key": "profile.ramp",
+   "road_class": "ramp",
+   "rank": 0,
+   "speed": 60,
+   "one_way": true,
+   "priority": 3,
+   "category": "especiais",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "ramp2Lanes",
+   "name_key": "profile.ramp2Lanes",
+   "road_class": "ramp",
+   "rank": 1,
+   "speed": 60,
+   "one_way": true,
+   "priority": 3,
+   "category": "especiais",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "ruralCobblestoneRoad",
+   "name_key": "profile.ruralCobblestoneRoad",
+   "road_class": "local",
+   "rank": 2,
+   "speed": 40,
+   "one_way": false,
+   "priority": 0,
+   "category": "especiais",
+   "ring": false,
+   "surface": 2,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "concreteRoad",
+   "name_key": "profile.concreteRoad",
+   "road_class": "urban",
+   "rank": 3,
+   "speed": 60,
+   "one_way": false,
+   "priority": 1,
+   "category": "especiais",
+   "ring": false,
+   "surface": 1,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "doubleRailway",
+   "name_key": "profile.doubleRailway",
+   "road_class": "rail",
+   "rank": 0,
+   "speed": 90,
+   "one_way": false,
+   "priority": 6,
+   "category": "trilhos",
+   "ring": false,
+   "surface": 3,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "shoulder",
+     "width": 1.6
+    },
+    {
+     "kind": "lane",
+     "width": 4.3,
+     "dir": 1,
+     "rail": true
+    },
+    {
+     "kind": "lane",
+     "width": 4.3,
+     "dir": -1,
+     "rail": true
+    },
+    {
+     "kind": "shoulder",
+     "width": 1.6
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "singleRailway",
+   "name_key": "profile.singleRailway",
+   "road_class": "rail",
+   "rank": 1,
+   "speed": 80,
+   "one_way": true,
+   "priority": 6,
+   "category": "trilhos",
+   "ring": false,
+   "surface": 3,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "shoulder",
+     "width": 1.6
+    },
+    {
+     "kind": "lane",
+     "width": 4.3,
+     "dir": 1,
+     "rail": true
+    },
+    {
+     "kind": "shoulder",
+     "width": 1.6
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "metroDouble",
+   "name_key": "profile.metroDouble",
+   "road_class": "rail",
+   "rank": 2,
+   "speed": 80,
+   "one_way": false,
+   "priority": 6,
+   "category": "trilhos",
+   "ring": false,
+   "surface": 3,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "shoulder",
+     "width": 0.8
+    },
+    {
+     "kind": "lane",
+     "width": 4.0,
+     "dir": 1,
+     "rail": true
+    },
+    {
+     "kind": "lane",
+     "width": 4.0,
+     "dir": -1,
+     "rail": true
+    },
+    {
+     "kind": "shoulder",
+     "width": 0.8
+    }
+   ],
+   "class_card": false
+  }
+ ]
+}

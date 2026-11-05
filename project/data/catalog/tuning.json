@@ -1,0 +1,133 @@
+{
+ "sim": {
+  "tick_hz": 20,
+  "minutes_per_second": 1,
+  "speed_fast": 2,
+  "speed_fastest": 4,
+  "day_start_min": 390,
+  "growth_per_s": 25,
+  "growth_tries": 8
+ },
+ "economy": {
+  "start_money": 20000000,
+  "refund_share": 0.25
+ },
+ "world": {
+  "tile_m": 1024,
+  "height_spacing_m": 4,
+  "water_spacing_m": 8
+ },
+ "render": {
+  "road_end_m": 2200,
+  "props_end_m": 900,
+  "building_detail_end_m": 700,
+  "building_mid_end_m": 1100,
+  "building_far_end_m": 4500,
+  "max_chunk_rebuilds_per_frame": 6,
+  "commit_budget_ms": 4,
+  "upload_budget_mb": 64,
+  "pose_delay_ticks": 2
+ },
+ "terrain": {
+  "min_height_m": -64,
+  "max_height_m": 400,
+  "embankment_ratio": 1.8,
+  "min_run_m": 7,
+  "road_sink_m": 0.1,
+  "road_hold_m": 2.2,
+  "rough_reach_min": 0.78,
+  "min_hard_rim": 0.08,
+  "min_hard_wall_m": 8,
+  "river_depth_m": 2.5,
+  "river_freeboard_m": 1,
+  "river_floor_share": 0.72
+ },
+ "road": {
+  "min_len_m": 8,
+  "snap_m": 8,
+  "snap_end_m": 6,
+  "max_seg_m": 112,
+  "fixed_gap_m": 6,
+  "merge_m": 3,
+  "sharp_cos": 0.9063,
+  "level_dy_m": 4.5,
+  "max_degree": 8,
+  "pick_m": 14,
+  "overlap_share": 0.75,
+  "overlap_run_m": 8,
+  "parallel_cos": 0.9,
+  "snap_node_px": 30,
+  "snap_pick_px": 26,
+  "snap_land_px": 40,
+  "snap_step_deg": 15,
+  "grid_m": 1,
+  "inner_radius_m": 4.7,
+  "bend_limit": 0.52,
+  "bend_gain": 1.36,
+  "free_tolerance_m": 2,
+  "free_max_controls": 48,
+  "click_px": 7,
+  "variant_lane_lo_m": 2,
+  "variant_lane_hi_m": 6,
+  "variant_walk_lo_m": 1,
+  "variant_walk_hi_m": 12,
+  "bay_m": 2,
+  "max_variants": 256
+ },
+ "history": {
+  "max_entries": 500,
+  "max_mb": 512
+ },
+ "roundabout": {
+  "radius_min_m": 14,
+  "radius_max_m": 60,
+  "approach_m": 40,
+  "entry_merge_m": 6,
+  "max_arc_deg": 50,
+  "disc_pad_m": 6
+ },
+ "edit": {
+  "split_min_m": 4,
+  "street_cos": 0.8192,
+  "max_floors": 60
+ },
+ "build": {
+  "grid_m": 0.5,
+  "module_m": 3,
+  "wing_modules": 3,
+  "min_side_m": 2,
+  "max_side_m": 160,
+  "min_storey_m": 2.6,
+  "max_storey_m": 9,
+  "max_ground_m": 20,
+  "max_volumes": 24,
+  "min_bearing": 0.3,
+  "least_opening": 0.15,
+  "most_opening": 0.95,
+  "max_projection_m": 2.4,
+  "max_recess_m": 4,
+  "relief_step_m": 0.05,
+  "max_bays": 64,
+  "max_pier_every": 16,
+  "min_pitch_deg": 5,
+  "max_pitch_deg": 60,
+  "pick_step_m": 32,
+  "max_parts": 128,
+  "dial_share": 0.9,
+  "step_run_m": 0.3,
+  "ramp_run_per_rise": 12,
+  "max_gear": 32,
+  "gear_turn_deg": 15,
+  "road_probe_m": 2,
+  "world_margin_m": 3.2,
+  "max_plinth_m": 5.5,
+  "road_clearance_m": 0.01,
+  "snap_road_reach_m": 9.6,
+  "snap_building_reach_m": 12,
+  "snap_edge": 0.32
+ },
+ "zone": {
+  "side_offset_m": 14,
+  "sample_m": 8
+ }
+}

@@ -1,0 +1,97 @@
+{
+ "control_marks": [
+  {"glyph": "A", "token": "control_auto", "label_key": "control.auto"},
+  {"glyph": "S", "token": "control_signal", "label_key": "control.signal"},
+  {"glyph": "P", "token": "control_priority", "label_key": "control.priority"},
+  {"glyph": "\u25a0", "token": "control_stop", "label_key": "control.stop"},
+  {"glyph": "\u25bc", "token": "control_yield", "label_key": "control.yield"},
+  {"glyph": "\u2013", "token": "control_none", "label_key": "control.none"},
+  {"glyph": "\u25cb", "token": "control_mini", "label_key": "control.mini"}
+ ],
+ "_doc": "Top-bar statistics: key in CityStore.snapshot and the formatter (game/store/formatters.gd) that shows it. signal_step_s: what one press changes of a signal's green or offset.",
+ "signal_step_s": 2,
+ "stats": [
+  {
+   "key": "money",
+   "label_key": "STAT_MONEY",
+   "format": "money"
+  },
+  {
+   "key": "population",
+   "label_key": "STAT_POPULATION",
+   "format": "int"
+  },
+  {
+   "key": "jobs_filled",
+   "label_key": "STAT_JOBS",
+   "format": "int"
+  },
+  {
+   "key": "happiness",
+   "label_key": "STAT_HAPPINESS",
+   "format": "percent"
+  },
+  {
+   "key": "vehicles",
+   "label_key": "STAT_VEHICLES",
+   "format": "int"
+  }
+ ],
+ "demand": [
+  {
+   "zone": 1,
+   "label_key": "DEMAND_RES",
+   "color": "demand_res"
+  },
+  {
+   "zone": 3,
+   "label_key": "DEMAND_COM",
+   "color": "demand_com"
+  },
+  {
+   "zone": 5,
+   "label_key": "DEMAND_IND",
+   "color": "demand_ind"
+  },
+  {
+   "zone": 6,
+   "label_key": "DEMAND_OFF",
+   "color": "demand_off"
+  }
+ ],
+ "speeds": [
+  {
+   "speed": 0,
+   "label_key": "SPEED_PAUSE"
+  },
+  {
+   "speed": 1,
+   "label_key": "SPEED_1"
+  },
+  {
+   "speed": 2,
+   "label_key": "SPEED_2"
+  },
+  {
+   "speed": 3,
+   "label_key": "SPEED_3"
+  }
+ ],
+ "tool_options": {
+  "zone_radius": [
+   8,
+   64,
+   24
+  ],
+  "terrain_radius": [
+   10,
+   120,
+   40
+  ],
+  "terrain_strength": [
+   0.1,
+   3.0,
+   1.0
+  ]
+ }
+}

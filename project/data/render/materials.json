@@ -1,0 +1,258 @@
+{
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h). Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc): wind_speed_ms 3 = Beaufort 2, light breeze 1.6-3.3 m/s (WMO); sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). wind_dir_x and wind_dir_z: a unit vector; the map has no geographic north, so no climate record applies to the way the wind blows. vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2021, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.85: modelling choice for matte leaves, no published value.",
+ "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
+ "road": {
+  "shader": "res://render/shaders/road.gdshader",
+  "params": {
+   "asphalt_map": "res://assets/surfaces/asphalt.map.png",
+   "asphalt_normal": "res://assets/surfaces/asphalt.normal.png",
+   "footway_map": "res://assets/surfaces/footway.map.png",
+   "footway_normal": "res://assets/surfaces/footway.normal.png",
+   "kerb_map": "res://assets/surfaces/kerb.map.png",
+   "kerb_normal": "res://assets/surfaces/kerb.normal.png",
+   "verge_map": "res://assets/surfaces/verge.map.png",
+   "verge_normal": "res://assets/surfaces/verge.normal.png",
+   "asphalt_m": 10.4,
+   "footway_m": 7.2,
+   "kerb_m": 3.2,
+   "verge_m": 8.8,
+   "normal_asphalt": 1.0,
+   "normal_footway": 1.0,
+   "normal_kerb": 0.85,
+   "normal_verge": 0.9,
+   "asphalt_detail": "res://assets/surfaces/asphalt.detail.png",
+   "asphalt_detail_normal": "res://assets/surfaces/asphalt.detail-normal.png",
+   "concrete_detail": "res://assets/surfaces/concrete.detail.png",
+   "concrete_detail_normal": "res://assets/surfaces/concrete.detail-normal.png",
+   "grass_detail": "res://assets/surfaces/grass.detail.png",
+   "grass_detail_normal": "res://assets/surfaces/grass.detail-normal.png",
+   "asphalt_detail_m": 1.28,
+   "concrete_detail_m": 1.04,
+   "grass_detail_m": 1.6,
+   "detail_near_m": 0.018,
+   "detail_far_m": 0.064,
+   "paver_w": 0.2,
+   "paver_h": 0.1,
+   "cobble_per_m": 4.2,
+   "pool_color": "#ffd18c",
+   "pool_sigma": 6.0,
+   "pool_gain": 3.0,
+   "plate_glow": 0.3,
+   "pool_floor": 0.08
+  }
+ },
+ "building": {
+  "shader": "res://render/shaders/building.gdshader",
+  "params": {
+   "finish_map": "res://assets/surfaces/building-finishes.map.png",
+   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
+   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
+   "finish_m": [
+    8,
+    6,
+    2,
+    2.4,
+    3.2,
+    9.6,
+    4.8,
+    3.2,
+    6,
+    4,
+    4,
+    4.8,
+    8
+   ],
+   "glass_reflect": 0.04,
+   "glass_sky": "#7f95ad",
+   "glass_sky_floor": 0.0,
+   "finish_normal_k": [
+    0.2,
+    0.22,
+    0.25,
+    0.55,
+    0.3,
+    0.3,
+    0.45,
+    0.6,
+    0.3,
+    0.7,
+    0.6,
+    0.3,
+    0.35
+   ],
+   "finish_metal": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0.55,
+    1.0,
+    0,
+    0,
+    0.15,
+    0
+   ],
+   "wall_gain": 1.0,
+   "lamp_glow": 4.0,
+   "window_glow": 0.62
+  }
+ },
+ "building_glass": {
+  "shader": "res://render/shaders/building_glass.gdshader",
+  "params": {
+   "glass_reflect": 0.04,
+   "glass_sky": "#7f95ad",
+   "glass_sky_floor": 0.0,
+   "window_glow": 0.62,
+   "furniture_tone": [0.2051, 0.2918, 0.4179, 0.8879, 0.8632, 0.807, 0.159, 0.2122, 0.2747, 0.2307, 0.2874, 0.3467, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 0.1119, 0.0467, 0.0194, 0.3231, 0.1441, 0.0561, 0.9216, 0.9216, 0.8963, 0.4508, 0.4851, 0.5089, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.855, 0.8714, 0.8632, 0.1119, 0.0467, 0.0194, 0.013, 0.0152, 0.0185, 0.0723, 0.2542, 0.0423, 0.3231, 0.1441, 0.0561, 0.159, 0.2122, 0.2747, 0.8879, 0.8632, 0.807, 0.4508, 0.4851, 0.5089, 0.9216, 0.9216, 0.8963, 0.3231, 0.1441, 0.0561, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.4508, 0.4851, 0.5089, 0.1119, 0.0467, 0.0194, 0.1119, 0.0467, 0.0194, 0.0252, 0.0685, 0.0423, 0.4508, 0.4851, 0.5089, 0.013, 0.0152, 0.0185, 0.3231, 0.1441, 0.0561, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 1.0, 0.8714, 0.6308, 0.3231, 0.1441, 0.0561, 0.3231, 0.1441, 0.0561]
+  }
+ },
+ "building_sheer": {
+  "shader": "res://render/shaders/building_sheer.gdshader",
+  "params": {
+   "opacity": 0.42,
+   "roughness": 0.05,
+   "metalness": 0.2
+  }
+ },
+ "building_card": {
+  "shader": "res://render/shaders/building_card.gdshader",
+  "params": {
+   "thin_bar_m": 0.02,
+   "thin_behind": 0.16,
+   "roughness": 0.45,
+   "metalness": 0.55
+  }
+ },
+ "building_ghost": {
+  "shader": "res://render/shaders/building_ghost.gdshader",
+  "params": {
+   "tint": "#65e5c3",
+   "glow": "#1d5a4a",
+   "opacity": 0.5
+  }
+ },
+ "building_far": {
+  "shader": "res://render/shaders/building_far.gdshader",
+  "params": {
+   "glass_sky": "#7f95ad",
+   "glass_floor": 0.18,
+   "window_glow": 0.42,
+   "wall_gain": 1.0
+  }
+ },
+ "building_parts": {
+  "shader": "res://render/shaders/building_parts.gdshader",
+  "params": {
+   "finish_map": "res://assets/surfaces/building-finishes.map.png",
+   "finish_normal": "res://assets/surfaces/building-finishes.normal.png",
+   "finish_rough": "res://assets/surfaces/building-finishes.rough.png",
+   "finish_m": [8, 6, 2, 2.4, 3.2, 9.6, 4.8, 3.2, 6, 4, 4, 4.8, 8],
+   "finish_normal_k": [0.2, 0.22, 0.25, 0.55, 0.3, 0.3, 0.45, 0.6, 0.3, 0.7, 0.6, 0.3, 0.35],
+   "finish_metal": [0, 0, 0, 0, 0, 0, 0, 0.55, 1.0, 0, 0, 0.15, 0],
+   "wall_gain": 1.0
+  }
+ },
+ "prop": {
+  "shader": "res://render/shaders/props.gdshader",
+  "params": {
+   "glow_color": "#ffdba0",
+   "glow_gain": 6.0,
+   "roughness": 0.85,
+   "lens_roughness": 0.0,
+   "lens_ior": 1.5848
+  }
+ },
+ "agent": {
+  "_doc": "Vehicles. Lamp colours: head_glow a halogen headlamp bulb, a black body at 3200 K (Philips H4 standard bulb); tail_glow the corner of UNECE R48 §2.30 red (y <= 0.335, z <= 0.008: x 0.657, y 0.335); sign_glow the middle of R48 amber (0.398 <= y <= 0.429 on z = 0.007), each from CIE 1931 (Wyman, Sloan & Shirley 2013 fit) to sRGB, out-of-gamut parts clipped, the brightest channel at 1. brake_ratio: a stop lamp at least 5 times its rear position lamp (UNECE R7 §6.2.4.2). Roughness (physicallybased.info): paint 0 (Car Paint: clear topcoat), lens 0 for lamps, signs and the far level's glass (Plastic (PC), Glass), skin 0.5 (Skin I-VI), helmet 0 (Plastic (PC) shell), trim 0.7 (Tire) for every unpainted part, cloth 1 (a matte textile: the database has none). head_power, tail_power, sign_power: how bright the lit lamps draw, set on the night photo (05_transito at 10_noite): a lamp's brightest channel at the top of the display range without bleeding into its body.",
+  "shader": "res://render/shaders/agents.gdshader",
+  "params": {
+   "head_glow": "#ffbf7a",
+   "tail_glow": "#ff0000",
+   "head_power": 4.0,
+   "tail_power": 1.5,
+   "brake_ratio": 5.0,
+   "sign_glow": "#ff7400",
+   "sign_power": 2.0,
+   "paint_roughness": 0.0,
+   "lens_roughness": 0.0,
+   "skin_roughness": 0.5,
+   "helmet_roughness": 0.0,
+   "trim_roughness": 0.7,
+   "cloth_roughness": 1.0
+  }
+ },
+ "transit": {
+  "shader": "res://render/shaders/transit.gdshader",
+  "params": {}
+ },
+ "transit_glass": {
+  "shader": "res://render/shaders/transit_glass.gdshader",
+  "params": {}
+ },
+ "transit_xray": {
+  "shader": "res://render/shaders/transit_xray.gdshader",
+  "layers": 5,
+  "params": {}
+ },
+ "agent_glass": {
+  "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass); tint the 4.0's cool grey-blue (#7896a2), no source behind it, at 40 % in linear light: this sun lights it more than the 4.0's, and at its own value the panes showed milky over a dark cabin (par-hatch-frente).",
+  "shader": "res://render/shaders/agent_glass.gdshader",
+  "params": {
+   "tint": "#4f626b",
+   "transmittance": 0.7,
+   "ior": 1.52,
+   "roughness": 0.0
+  }
+ },
+ "people": {
+  "shader": "res://render/shaders/people.gdshader",
+  "params": {
+   "tint_mix": 0.85,
+   "skin_base": 0.86,
+   "skin_step": 0.04,
+   "roughness_body": 0.82,
+   "eye_color": "#1c1611"
+  }
+ },
+ "overlay": {
+  "shader": "res://render/shaders/overlay.gdshader",
+  "params": {
+   "opacity": 0.6
+  }
+ },
+ "vegetation": {
+  "shader": "res://render/shaders/vegetation.gdshader",
+  "params": {
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "bark_ridges": 9.0,
+   "bark_run_m": 1.1,
+   "bark_deep": 0.55,
+   "bark_far_m": 60.0
+  }
+ },
+ "cover_plant": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.000161, "gust_m": 220.0, "turbulence": 0.189, "sway_hz": 0.25, "roughness": 0.85, "leaf_specular": 0.15 } },
+ "cover_rock": { "shader": "res://render/shaders/vegetation.gdshader", "params": { "sway_per_ms2": 0.0, "gust_m": 220.0, "turbulence": 0.0, "sway_hz": 0.0, "roughness": 0.94, "leaf_specular": 0.5 } },
+ "vegetation_cards": {
+  "shader": "res://render/shaders/vegetation_cards.gdshader",
+  "params": {
+   "sway_per_ms2": 0.000161,
+   "gust_m": 220.0,
+   "turbulence": 0.189,
+   "sway_hz": 0.25,
+   "roughness": 0.8,
+   "leaf_specular": 0.5,
+   "cover_per_mip": 0.25,
+   "leaf_near_m": 22.0,
+   "leaf_far_m": 70.0
+  }
+ }
+}

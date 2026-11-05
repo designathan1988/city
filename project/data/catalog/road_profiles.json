@@ -1,0 +1,604 @@
+{
+ "prices": {
+  "carriageway": 150,
+  "median": 40,
+  "footway": 80
+ },
+ "structure": {
+  "ground": 1,
+  "embankment": 1.4,
+  "trench": 1.8,
+  "bridge": 2.5,
+  "tunnel": 6
+ },
+ "profiles": [
+  {
+   "id": "localStreet",
+   "name_key": "profile.localStreet",
+   "road_class": "local",
+   "rank": 0,
+   "speed": 30,
+   "one_way": false,
+   "priority": 0,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "streetWithParking",
+   "name_key": "profile.streetWithParking",
+   "road_class": "urban",
+   "rank": 4,
+   "speed": 40,
+   "one_way": false,
+   "priority": 1,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "parking",
+     "width": 2
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "parking",
+     "width": 2
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "oneWayWithParking",
+   "name_key": "profile.oneWayWithParking",
+   "road_class": "urban",
+   "rank": 0,
+   "speed": 50,
+   "one_way": true,
+   "priority": 1,
+   "category": "antigos",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "parking",
+     "width": 2
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "avenue",
+   "name_key": "profile.avenue",
+   "road_class": "avenue",
+   "rank": 0,
+   "speed": 60,
+   "one_way": false,
+   "priority": 2,
+   "category": "avenidas",
+   "ring": false,
+   "surface": 0,
+   "centre": "solid",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 3.5,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "avenueWithCycleTrack",
+   "name_key": "profile.avenueWithCycleTrack",
+   "road_class": "avenue",
+   "rank": 3,
+   "speed": 60,
+   "one_way": false,
+   "priority": 2,
+   "category": "avenidas",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "bike",
+     "width": 2
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 1.7,
+     "pave": 3
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "bike",
+     "width": 2
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "expressway",
+   "name_key": "profile.expressway",
+   "road_class": "highway",
+   "rank": 0,
+   "speed": 100,
+   "one_way": false,
+   "priority": 4,
+   "category": "rodovias",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 1.7,
+     "pave": 3
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 0.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "roundabout",
+   "name_key": "profile.roundabout",
+   "road_class": "urban",
+   "rank": 0,
+   "speed": 30,
+   "one_way": true,
+   "priority": 3,
+   "category": "especiais",
+   "ring": true,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 2.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "median",
+     "width": 1.35,
+     "pave": 3
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "urbanStreet",
+   "name_key": "profile.urbanStreet",
+   "road_class": "urban",
+   "rank": 1,
+   "speed": 50,
+   "one_way": false,
+   "priority": 1,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 4,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": true
+  },
+  {
+   "id": "oneWay1Lane",
+   "name_key": "profile.oneWay1Lane",
+   "road_class": "local",
+   "rank": 2,
+   "speed": 30,
+   "one_way": true,
+   "priority": 0,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "oneWay2Lanes",
+   "name_key": "profile.oneWay2Lanes",
+   "road_class": "urban",
+   "rank": 3,
+   "speed": 40,
+   "one_way": true,
+   "priority": 1,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "none",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "parkingOneSide",
+   "name_key": "profile.parkingOneSide",
+   "road_class": "urban",
+   "rank": 5,
+   "speed": 40,
+   "one_way": false,
+   "priority": 1,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "parking",
+     "width": 2
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  },
+  {
+   "id": "streetWithBikeLane",
+   "name_key": "profile.streetWithBikeLane",
+   "road_class": "urban",
+   "rank": 6,
+   "speed": 40,
+   "one_way": false,
+   "priority": 1,
+   "category": "ruas",
+   "ring": false,
+   "surface": 0,
+   "centre": "dashed",
+   "strips": [
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "bike",
+     "width": 2
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": 1
+    },
+    {
+     "kind": "lane",
+     "width": 3,
+     "dir": -1
+    },
+    {
+     "kind": "bike",
+     "width": 2
+    },
+    {
+     "kind": "curb",
+     "width": 0.15
+    },
+    {
+     "kind": "sidewalk",
+     "width": 1.85
+    }
+   ],
+   "class_card": false
+  }
+ ]
+}

@@ -1,0 +1,61 @@
+; Engine configuration. Gameplay data lives in res://data (see CLAUDE.md).
+config_version=5
+
+[application]
+
+config/name="Roadcraft"
+run/main_scene="res://game/play.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[autoload]
+
+Settings="*res://game/settings/settings.gd"
+CityStore="*res://game/store/city_store.gd"
+GameFlow="*res://game/flow/game_flow.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+
+[rendering]
+
+textures/default_filters/anisotropic_filtering_level=4
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="forward_plus"
+anti_aliasing/quality/msaa_3d=0
+
+[shader_globals]
+
+wind_x={
+"type": "float",
+"value": 0.86
+}
+wind_z={
+"type": "float",
+"value": -0.5
+}
+wind_ms={
+"type": "float",
+"value": 3.0
+}
+rain_wet={
+"type": "float",
+"value": 0.0
+}
+night={
+"type": "float",
+"value": 0.0
+}
+rooms_awake={
+"type": "float",
+"value": 0.63
+}
+room_daylight={
+"type": "float",
+"value": 0.2
+}
+outside_on={
+"type": "float",
+"value": 0.79
+}

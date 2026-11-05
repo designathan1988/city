@@ -1,0 +1,389 @@
+{
+  "exclude_dirs": [
+    ".git",
+    ".godot",
+    "native/godot-cpp",
+    "native/build-linux",
+    "native/build-win",
+    "native/build-win-debug",
+    "project/addons",
+    "project/bin",
+    "dist",
+    "__pycache__",
+    ".claude/worktrees"
+  ],
+  "root_allowed": [
+    "CLAUDE.md",
+    ".claude",
+    ".gitignore",
+    "native",
+    "project",
+    "tools",
+    "dist"
+  ],
+  "allowed_docs": [
+    "CLAUDE.md"
+  ],
+  "doc_exempt_names": [
+    "CMakeLists.txt"
+  ],
+  "doc_extensions": [
+    ".md",
+    ".txt",
+    ".rst",
+    ".adoc",
+    ".docx",
+    ".pdf",
+    ".odt"
+  ],
+  "junk_globs": [
+    "*.bak",
+    "*.orig",
+    "*.tmp",
+    "*~",
+    "*_old.*",
+    "*_copy.*",
+    "* copy*",
+    "*.rej",
+    "*.swp",
+    "*.new"
+  ],
+  "max_lines": {
+    ".cpp": 350,
+    ".h": 250,
+    ".gd": 250,
+    ".gdshader": 260,
+    ".glsl": 200,
+    ".py": 300,
+    ".json": 700,
+    ".sh": 90,
+    ".tscn": 400,
+    ".csv": 600
+  },
+  "max_function_lines": {
+    ".gd": 60,
+    ".cpp": 90
+  },
+  "header_comment_extensions": [
+    ".cpp",
+    ".h",
+    ".gd",
+    ".gdshader",
+    ".glsl",
+    ".py",
+    ".sh"
+  ],
+  "mapped_roots": [
+    "native/src",
+    "native/CMakeLists.txt",
+    "native/toolchain-mingw.cmake",
+    "project/game",
+    "project/ui",
+    "project/render",
+    "project/data",
+    "project/tests",
+    "project/project.godot",
+    "project/export_presets.cfg",
+    "tools",
+    ".claude/settings.json",
+    "tools/gates/owners.json"
+  ],
+  "map_markers": [
+    "<!-- MAPA:INICIO -->",
+    "<!-- MAPA:FIM -->"
+  ],
+  "claude_md_max_lines": 500,
+  "cpp_layers": {
+    "native/src/core": [
+      "core/"
+    ],
+    "native/src/sim/transit": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/catalog": [
+      "core/",
+      "sim/catalog/"
+    ],
+    "native/src/sim/state": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/terrain": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/terrain/"
+    ],
+    "native/src/sim/roads": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/roads/"
+    ],
+    "native/src/sim/zones": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/terrain/",
+      "sim/roads/",
+      "sim/zones/"
+    ],
+    "native/src/sim/buildings": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/terrain/",
+      "sim/roads/",
+      "sim/zones/",
+      "sim/buildings/"
+    ],
+    "native/src/sim/nature": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/change_log.h",
+      "sim/terrain/",
+      "sim/nature/"
+    ],
+    "native/src/sim/traffic": [
+      "core/",
+      "sim/catalog/",
+      "sim/state/",
+      "sim/roads/",
+      "sim/buildings/",
+      "sim/zones/",
+      "sim/terrain/",
+      "sim/traffic/"
+    ],
+    "native/src/sim/economy": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/commands": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/simulation": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/persistence": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/citygen": [
+      "core/",
+      "sim/"
+    ],
+    "native/src/sim/lots": [
+      "core/",
+      "sim/citygen/",
+      "sim/state/",
+      "sim/lots/"
+    ],
+    "native/src/render": [
+      "core/",
+      "sim/",
+      "render/",
+      "godot_cpp/"
+    ],
+    "native/src/api": [
+      "core/",
+      "sim/",
+      "render/",
+      "api/",
+      "godot_cpp/",
+      "gdextension_interface.h"
+    ]
+  },
+  "forbidden": [
+  {"id": "JOB_SEM_CHAVE", "paths": ["native/src/"], "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))", "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"},
+    {
+      "id": "SIM_SEM_GODOT",
+      "paths": [
+        "native/src/core/",
+        "native/src/sim/"
+      ],
+      "pattern": "#include\\s*<godot",
+      "message": "core/ e sim/ são C++ puro (thread-safe, fonte única da verdade); Godot só em render/ e api/"
+    },
+    {
+      "id": "RENDER_SO_LEITURA",
+      "paths": [
+        "native/src/render/"
+      ],
+      "pattern": "#include\\s*\"sim/commands/",
+      "message": "render/ só lê o CityState; mutações só pela camada sim/commands"
+    },
+    {
+      "id": "UM_DONO_DO_CORE",
+      "paths": [
+        "project/"
+      ],
+      "pattern": "\\bCityCore\\b",
+      "except": [
+        "project/game/store/city_store.gd"
+      ],
+      "message": "Só game/store/city_store.gd conversa com o núcleo C++ (CityCore)"
+    },
+    {
+      "id": "FLUXO_CENTRAL",
+      "paths": [
+        "project/"
+      ],
+      "pattern": "change_scene_to|get_tree\\(\\)\\.paused\\s*=|get_tree\\(\\)\\.quit",
+      "except": [
+        "project/game/flow/game_flow.gd",
+        "project/tests/"
+      ],
+      "message": "Troca de tela/pausa/saída só pelo GameFlow (game/flow/game_flow.gd)",
+      "_except_doc": "Testes encerram o processo com o código de saída do resultado."
+    },
+    {
+      "id": "UI_SEM_ESTILO_SOLTO",
+      "paths": [
+        "project/ui/",
+        "project/game/"
+      ],
+      "pattern": "Color\\(|Color8\\(|\"#[0-9a-fA-F]{6}|add_theme_[a-z_]+_override",
+      "except": [
+        "project/ui/icons/",
+        "project/ui/theme/theme_builder.gd"
+      ],
+      "message": "Cores/estilos só via design tokens (data/ui/tokens.json) aplicados por ui/theme/theme_builder.gd"
+    },
+    {
+      "id": "TEXTO_VIA_TR",
+      "paths": [
+        "project/ui/",
+        "project/game/"
+      ],
+      "pattern": "(\\.text|tooltip_text|\\.title)\\s*=\\s*\"[^\"]*[A-Za-zÀ-ú]{2}",
+      "message": "Textos visíveis usam tr(\"CHAVE\") com data/i18n/strings.csv"
+    },
+    {
+      "id": "DADOS_POR_UM_LEITOR",
+      "paths": [
+        "project/"
+      ],
+      "pattern": "res://data/[a-z_/]+\\.json",
+      "except": [
+        "project/game/data/data_tables.gd"
+      ],
+      "message": "JSON de dados só é lido por game/data/data_tables.gd"
+    },
+    {
+      "id": "SEM_MARCADORES_SOLTOS",
+      "paths": [
+        "native/src/",
+        "project/game/",
+        "project/ui/",
+        "project/render/",
+        "project/tests/",
+        "tools/"
+      ],
+      "pattern": "\\b(TODO|FIXME|XXX|HACK)\\b",
+      "except": [
+        "tools/gates/rules.json"
+      ],
+      "message": "Pendências vão para a seção 'Pendências' do CLAUDE.md, não para comentários"
+    }
+  ],
+  "schemas": {
+    "project/data/catalog/tuning.json": "tools/gates/schemas/tuning.schema.json",
+    "project/data/render/models.json": "tools/gates/schemas/models.schema.json",
+    "project/data/catalog/maps.json": "tools/gates/schemas/maps.schema.json",
+    "project/data/catalog/nature.json": "tools/gates/schemas/nature.schema.json",
+    "project/data/game/sky.json": "tools/gates/schemas/sky.schema.json",
+    "project/data/render/cover.json": "tools/gates/schemas/cover.schema.json",
+    "project/data/ui/land_panels.json": "tools/gates/schemas/land_panels.schema.json",
+    "project/data/ui/land_elements.json": "tools/gates/schemas/land_elements.schema.json",
+    "project/data/catalog/zones.json": "tools/gates/schemas/zones.schema.json",
+    "project/data/catalog/growth.json": "tools/gates/schemas/growth.schema.json",
+    "project/data/catalog/road_profiles.json": "tools/gates/schemas/road_profiles.schema.json",
+    "project/data/catalog/road_profiles_a.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
+    "project/data/catalog/road_profiles_b.json": "tools/gates/schemas/road_profiles_fragment.schema.json",
+    "project/data/catalog/traffic.json": "tools/gates/schemas/traffic.schema.json",
+    "project/data/catalog/street_furniture.json": "tools/gates/schemas/street_furniture.schema.json",
+    "project/data/render/agents.json": "tools/gates/schemas/agents.schema.json",
+    "project/data/render/transit.json": "tools/gates/schemas/transit.schema.json",
+    "project/data/render/buildings.json": "tools/gates/schemas/buildings.schema.json",
+    "project/data/render/interiors.json": "tools/gates/schemas/interiors.schema.json",
+    "project/data/render/materials.json": "tools/gates/schemas/materials.schema.json",
+    "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
+    "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
+    "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",
+    "project/data/ui/toolbar.json": "tools/gates/schemas/toolbar.schema.json",
+    "project/data/ui/builder.json": "tools/gates/schemas/builder.schema.json",
+    "project/data/ui/hud.json": "tools/gates/schemas/hud.schema.json",
+    "project/data/ui/drawers.json": "tools/gates/schemas/drawers.schema.json",
+    "project/data/game/camera.json": "tools/gates/schemas/camera.schema.json",
+    "project/data/game/settings.json": "tools/gates/schemas/settings.schema.json",
+    "project/data/game/daylight.json": "tools/gates/schemas/daylight.schema.json",
+    "project/data/game/saves.json": "tools/gates/schemas/saves.schema.json",
+    "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json"
+  },
+  "magic_numbers": {
+    "paths": [
+      "native/src/",
+      "project/game/",
+      "project/ui/"
+    ],
+    "exempt": [
+      "native/src/core/",
+      "native/src/api/catalog_loader.cpp"
+    ],
+    "extensions": [
+      ".cpp",
+      ".h",
+      ".gd"
+    ],
+    "allowed_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      -1,
+      0.5,
+      0.25,
+      1.5
+    ],
+    "named_constant_line": "^\\s*(static\\s+)?(inline\\s+)?(constexpr|const)\\s+[\\w:<>]+\\s+[A-Z][A-Z0-9_]*\\s*(=|\\[)|^\\s*const\\s+[A-Z][A-Z0-9_]*\\s*(:=|=|:)",
+    "data_copy_min_abs": 4.5,
+    "data_copy_paths": [
+      "native/src/",
+      "project/game/",
+      "project/ui/",
+      "project/render/"
+    ],
+    "data_copy_allow": [
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE", "native/src/sim/lots/lot_cache.cpp:LOT_LOOK", "native/src/sim/roads/road_network.cpp:LOT_LOOK_M", "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
+      "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
+      "native/src/sim/terrain/heightfield.cpp:BANK_START", "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
+      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
+      "native/src/sim/buildings/b40/model.h:NO_BAY", "project/game/tools/building_tool.gd:NO_BAY",
+      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
+      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H", "native/src/render/atmosphere/fog_field.cpp:BUCKET_M"],
+    "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
+  },
+  "clones": {
+    "min_tokens": 80,
+    "paths": [
+      "native/src/",
+      "project/game/",
+      "project/ui/",
+      "project/render/",
+      "tools/"
+    ],
+    "extensions": [
+      ".cpp",
+      ".h",
+      ".gd",
+      ".gdshader",
+      ".py"
+    ]
+  },
+  "mirrors": []
+}

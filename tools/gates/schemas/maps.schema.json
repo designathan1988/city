@@ -1,0 +1,24 @@
+{
+ "type": "object",
+ "properties": {
+  "maps": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": { "type": "string" },
+     "name_key": { "type": "string" },
+     "tiles": { "type": "integer", "minimum": 4 },
+     "medium": { "type": "boolean" },
+     "city_radius_m": { "type": "number", "minimum": 100 }
+    },
+    "required": ["id", "name_key", "tiles", "medium"],
+    "strict": true
+   },
+   "minItems": 1,
+   "unique_key": "id"
+  }
+ },
+ "required": ["maps"],
+ "strict": true
+}

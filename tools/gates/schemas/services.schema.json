@@ -1,0 +1,136 @@
+{
+ "type": "object",
+ "properties": {
+  "services": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+     },
+     "id": {
+      "type": "string"
+     },
+     "name_key": {
+      "type": "string"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "education",
+       "health",
+       "safety",
+       "fire",
+       "park",
+       "power",
+       "water"
+      ]
+     },
+     "lot_w": {
+      "type": "integer"
+     },
+     "lot_d": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+     },
+     "cost": {
+      "type": "integer"
+     },
+     "upkeep_day": {
+      "type": "integer"
+     },
+     "jobs": {
+      "type": "integer"
+     },
+     "capacity": {
+      "type": "integer"
+     },
+     "floors": {
+      "type": "integer"
+     },
+     "range_m": {
+      "type": "number"
+     },
+     "color": {
+      "type": "string",
+      "pattern_prefix": "#"
+     },
+     "roof": {
+      "type": "string",
+      "enum": [
+       "flat",
+       "gable",
+       "hip"
+      ]
+     },
+     "facade": {
+      "type": "object",
+      "properties": {
+       "bay": {
+        "type": "number"
+       },
+       "window_w": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+       },
+       "window_h": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+       },
+       "sill": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+       },
+       "palette": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern_prefix": "#"
+        },
+        "minItems": 1
+       }
+      },
+      "required": [
+       "bay",
+       "window_w",
+       "window_h",
+       "sill",
+       "palette"
+      ],
+      "strict": true
+     }
+    },
+    "required": [
+     "code",
+     "id",
+     "name_key",
+     "kind",
+     "lot_w",
+     "lot_d",
+     "cost",
+     "upkeep_day",
+     "jobs",
+     "capacity",
+     "floors",
+     "range_m",
+     "color",
+     "roof",
+     "facade"
+    ],
+    "strict": true
+   },
+   "unique_key": "code"
+  }
+ },
+ "required": [
+  "services"
+ ],
+ "strict": true
+}

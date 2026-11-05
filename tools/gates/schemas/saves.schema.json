@@ -1,0 +1,16 @@
+{
+ "type": "object",
+ "required": [
+  "autosave_s"
+ ],
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "autosave_s": {
+   "type": "number",
+   "minimum": 10
+  }
+ },
+ "strict": true
+}

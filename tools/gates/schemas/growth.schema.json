@@ -1,0 +1,64 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "civic": {
+   "type": "object",
+   "properties": {
+    "min_area": {
+     "type": "integer"
+    },
+    "chance": {
+     "type": "number"
+    },
+    "by_zone": {
+     "type": "array",
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "array",
+       "items": {
+        "type": "integer"
+       },
+       "minItems": 0
+      },
+      "minItems": 0
+     }
+    }
+   },
+   "required": [
+    "min_area",
+    "chance",
+    "by_zone"
+   ],
+   "strict": true
+  },
+  "organic_reach_m": {
+   "type": "integer"
+  },
+  "organic_extra_floors": {
+   "type": "integer"
+  },
+  "decay_grace_min": {
+   "type": "integer"
+  },
+  "decay_span_min": {
+   "type": "integer"
+  },
+  "plan": {
+   "type": "object"
+  }
+ },
+ "required": [
+  "_doc",
+  "civic",
+  "organic_reach_m",
+  "organic_extra_floors",
+  "decay_grace_min",
+  "decay_span_min",
+  "plan"
+ ],
+ "strict": true
+}

@@ -1,0 +1,65 @@
+{
+  "_doc": "Registry of single owners. Each concept has exactly one owner (file + symbol). The gate fails if the owner symbol is missing, or if a pattern that re-implements the concept appears in any other file. Values that designers tune live in data tables (project/data); see CLAUDE.md > Definicoes.",
+  "concepts": [
+    {
+      "id": "building_height",
+      "owner": "native/src/sim/simulation/growth.cpp",
+      "symbol": "body_floors",
+      "forbidden_elsewhere": ["floors\\s*\\*", "\\*\\s*\\w*floors\\b", "floor_h\\s*\\*", "\\*\\s*floor_h\\b"],
+      "scope": ["native/src/", "project/game/", "project/ui/", "project/render/"]
+    },
+    {
+      "id": "floor_height",
+      "owner": "native/src/sim/buildings/b40/types.h",
+      "symbol": "level_h",
+      "forbidden_elsewhere": ["\\.floor_h\\b"],
+      "allow": ["native/src/sim/catalog/", "native/src/api/catalog_loader.cpp"],
+      "scope": ["native/src/"]
+    },
+    {
+      "id": "lot_rule",
+      "owner": "native/src/sim/citygen/lot_gen.cpp",
+      "symbol": "LotStrips::lot_free",
+      "forbidden_elsewhere": ["\\.building\\s*<\\s*0", "building\\s*==\\s*-1"],
+      "allow": ["native/src/sim/zones/zone_grid.cpp", "native/src/sim/zones/zone_grid.h"],
+      "scope": ["native/src/"]
+    },
+    {
+      "id": "unsaved_changes",
+      "owner": "native/src/sim/state/city_state.h",
+      "symbol": "revision",
+      "forbidden_elsewhere": ["\\b(unsaved|is_dirty|has_changes|dirty_flag)\\b"],
+      "scope": ["native/src/", "project/game/", "project/ui/"]
+    },
+    {
+      "id": "facade_rules",
+      "owner": "native/src/sim/buildings/b40/facade_compose.cpp",
+      "symbol": "compose_facades",
+      "forbidden_elsewhere": ["\\bbay_count\\b|round\\(\\s*\\w*len\\w*\\s*/\\s*\\w*bay"],
+      "allow": ["project/render/shaders/building.gdshader"],
+      "scope": ["native/src/", "project/render/"]
+    },
+    {
+      "id": "street_furniture",
+      "owner": "native/src/sim/roads/street_furniture.cpp",
+      "symbol": "segment_furniture",
+      "forbidden_elsewhere": ["\b(free_width|kerb_clear|corner_clear|crossing_clear|pole_clear|hydrant_clear|furniture_clear|pit|mount_height|bin_spacing)_m\b", "\bunilateral_ratio\b"],
+      "allow": ["native/src/sim/catalog/furniture_types.h", "native/src/api/furniture_loader.cpp", "native/src/sim/roads/street_furniture_posts.cpp"],
+      "scope": ["native/src/"]
+    },
+    {
+      "id": "money_format",
+      "owner": "project/game/store/formatters.gd",
+      "symbol": "format_money",
+      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "%\\.2f", "R\\$"],
+      "scope": ["project/ui/", "project/game/"]
+    },
+    {
+      "id": "game_state",
+      "owner": "project/game/store/city_store.gd",
+      "symbol": "snapshot",
+      "forbidden_elsewhere": ["\\bvar\\s+(money|population|residents|happiness|demand|game_time|speed)\\b"],
+      "scope": ["project/"]
+    }
+  ]
+}

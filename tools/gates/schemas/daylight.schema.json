@@ -1,0 +1,136 @@
+{
+ "type": "object",
+ "properties": {
+  "_doc": {
+   "type": "string"
+  },
+  "grade": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "contrast": { "type": "number" },
+    "vibrance": { "type": "number" },
+    "tone_from": { "type": "number" },
+    "tone_to": { "type": "number" },
+    "warm_levels": { "type": "array", "items": { "type": "number" } },
+    "lut_side": { "type": "integer" }
+   }
+  },
+  "vignette": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "floor_share": { "type": "number" },
+    "from_r2": { "type": "number" },
+    "to_r2": { "type": "number" },
+    "span": { "type": "number" }
+   }
+  },
+  "low_height": { "type": "number" },
+  "sun_low_share": { "type": "number" },
+  "sun_rise_k": { "type": "number" },
+  "sun_rise_from": { "type": "number" },
+  "fill": { "type": "string", "pattern_prefix": "#" },
+  "sky_top": { "type": "string", "pattern_prefix": "#" },
+  "fill_energy": { "type": "number" },
+  "fill_key_share": { "type": "number" },
+  "fill_elev_deg": { "type": "number" },
+  "fill_turn_deg": { "type": "number" },
+  "clock_step_h": { "type": "number" },
+  "shadow_reach_m": { "type": "number" },
+  "shadow_depth_max_m": { "type": "number" },
+  "shadow_view_least_dip": { "type": "number" },
+  "shadow_past_look": { "type": "number" },
+  "shadow_first_past_look": { "type": "number" },
+  "shadow_first_least_m": { "type": "number" },
+  "shadow_first_share": { "type": "number" },
+  "shadow_reach_step": { "type": "number" },
+  "occlusion": {
+   "type": "object",
+   "properties": {
+    "_doc": { "type": "string" },
+    "radius_m": { "type": "number" },
+    "light_affect": { "type": "number" }
+   }
+  },
+  "low_from_m": { "type": "number" },
+  "low_to_m": { "type": "number" },
+  "overcast_sun": { "type": "number" },
+  "overcast_fill": { "type": "number" },
+  "air_high": { "type": "string", "pattern_prefix": "#" },
+  "air_night_cut": { "type": "number" },
+  "air_height_m": { "type": "number" },
+  "overcast_ambient": { "type": "number" },
+  "overcast_sky": { "type": "number" },
+  "overcast_grey": { "type": "string", "pattern_prefix": "#" },
+  "flash_ambient": { "type": "number" },
+  "flash_sky": { "type": "number" },
+  "sun_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "sun_low": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "moon": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "hemi_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "hemi_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "zenith_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "zenith_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_day": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_dusk": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "horizon_night": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "sky_ground": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "low_zenith": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "low_horizon": {
+   "type": "string",
+   "pattern_prefix": "#"
+  },
+  "awake_by_hour": {
+   "type": "array",
+   "items": {
+    "type": "number"
+   }
+  },
+  "room_daylight": {
+   "type": "number"
+  },
+  "outside_all_night": {
+   "type": "number"
+  }
+ },
+ "additional": {
+  "type": "number"
+ }
+}

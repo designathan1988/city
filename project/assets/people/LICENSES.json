@@ -1,0 +1,16 @@
+{
+ "_doc": "Provenance of people.bin (made by tools/assets/cook_people.py from Roadcraft public/cooked/people).",
+ "makehuman": {
+  "what": "bodies, clothes, hair, shoes and skin colours (MakeHuman hm08 base mesh, MPFB2 system assets, game_engine rig)",
+  "source": "https://github.com/makehumancommunity/mpfb2 @ afb9f530a7c2741dedb8df0ebae2e0b183caec21",
+  "license": "CC0-1.0",
+  "holders": "Data Collection AB, Joel Palmius, Jonas Hauquier (MakeHuman team)"
+ },
+ "rocketbox": {
+  "what": "walk animation (Microsoft Rocketbox Male/Female_Adult_01_Walk_InPlace), retargeted and baked to bone palettes",
+  "source": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "license": "MIT",
+  "copyright": "Copyright (c) 2020 Microsoft",
+  "license_text": "https://opensource.org/license/mit (the package must ship this text with the copyright line above)"
+ }
+}

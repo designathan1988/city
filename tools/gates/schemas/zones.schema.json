@@ -1,0 +1,37 @@
+{
+ "type": "object",
+ "properties": {
+  "zones": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": { "type": "string" },
+     "code": { "type": "integer", "minimum": 0, "maximum": 8 },
+     "name_key": { "type": "string" },
+     "base": { "type": "integer", "minimum": 0, "maximum": 4 },
+     "density": { "type": "integer", "minimum": 0, "maximum": 2 },
+     "color": { "type": "string", "pattern_prefix": "#" }
+    },
+    "required": ["id", "code", "name_key", "base", "density", "color"],
+    "strict": true
+   },
+   "minItems": 1,
+   "unique_key": "code"
+  },
+  "residents": {
+   "type": "object",
+   "properties": {
+    "floor_share": { "type": "number" },
+    "m2_per_resident": { "type": "number" },
+    "m2_per_job_commercial": { "type": "number" },
+    "m2_per_job_industrial": { "type": "number" },
+    "m2_per_person_mixed": { "type": "number" }
+   },
+   "required": ["floor_share", "m2_per_resident", "m2_per_job_commercial", "m2_per_job_industrial", "m2_per_person_mixed"],
+   "strict": true
+  }
+ },
+ "required": ["zones", "residents"],
+ "strict": true
+}
