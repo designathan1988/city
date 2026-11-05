@@ -79,6 +79,8 @@ export interface PreparedProgram {
   readonly placement: ModulePlacement;
   /** The source types the target has, found by shape: the flow reads this same dictionary. */
   readonly types: TranslationSpec['types'];
+  /** The names of the target's own types (classes, structs, enums). */
+  readonly targetTypes: ReadonlySet<string>;
 }
 
 /** The logic build's header of value types: what `translate({ logic: true })` maps the source's value types to. */
@@ -127,18 +129,20 @@ export function prepareTranslation(input: TranslateInput): PreparedProgram {
   const relative = (f: TS.SourceFile): string => path.relative(input.sourceRoot, f.fileName).split(path.sep).join('/');
   // Every file of the program placed at once: a source file keeps its owner and name whatever is translated with it.
   const placement = new ModulePlacement(sources.map(relative));
-  return { ts, sp, sources, flow, patterns, rules, relative, placement, types: spec.types };
+  // the target's own type names: a translated struct must not take one (city::Profile and the 4.0's Profile)
+  const targetTypes = new Set(target.units.filter((u) => u.kind === 'class' || u.kind === 'enum').map((u) => u.name));
+  return { ts, sp, sources, flow, patterns, rules, relative, placement, types: spec.types, targetTypes };
 }
 
 export function translate(input: TranslateInput): TranslationResult {
-  const { ts, sp, sources, flow, patterns, rules, relative, placement, types: found } = input.prepared ?? prepareTranslation(input);
+  const { ts, sp, sources, flow, patterns, rules, relative, placement, types: found, targetTypes } = input.prepared ?? prepareTranslation(input);
   const spec = { ...resolveSpec(input.spec), types: found };
   const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
   if (!file) throw new Error(`${spec.source} is not part of the program of ${input.tsconfig}`);
   const errors: string[] = [];
   // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
   flow.errors.length = 0;
-  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
+  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative, targetTypes);
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
     functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };

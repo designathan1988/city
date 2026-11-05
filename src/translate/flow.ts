@@ -17,6 +17,7 @@ import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
+import { lookupOf } from './types.ts';
 
 /** none < int < int64 < float. */
 export const Num = { None: 0, Int: 1, Int64: 2, Float: 3 } as const;
@@ -939,8 +940,9 @@ export class FlowGraph {
   }
 
   #isMap(e: TS.Expression): boolean {
-    const name = this.#checker.getNonNullableType(this.#typeAt(e)).getSymbol()?.name ?? '';
-    return /^(Map|ReadonlyMap)$/.test(name);
+    const t = this.#checker.getNonNullableType(this.#typeAt(e));
+    const name = t.getSymbol()?.name ?? '';
+    return /^(Map|ReadonlyMap)$/.test(name) || lookupOf(this.#ts, this.#checker, t) !== null;
   }
 
   #isContainer(t: TS.Type): boolean {
