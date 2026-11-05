@@ -66,6 +66,16 @@ export class Translator extends Emitter {
       reached.add(s);
       queue.push(s);
     }
+    for (const id of this.c.spec.shared ?? []) {
+      const at = id.indexOf('#');
+      const module = id.slice(0, at);
+      const name = id.slice(at + 1);
+      const found = [...this.#decls].find(([s, d]) => s.name === name && this.c.relative(d.getSourceFile()) === module);
+      if (found && !reached.has(found[0])) {
+        reached.add(found[0]);
+        queue.push(found[0]);
+      }
+    }
     const pendingNames = new Set(this.c.spec.pending.map((p) => p.unit));
     for (let i = 0; i < queue.length; i++) {
       const visit = (n: TS.Node): void => {
