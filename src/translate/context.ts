@@ -69,6 +69,10 @@ export interface ConstantPlan {
   readonly line: number;
   readonly doc: string | null;
   readonly constexpr: boolean;
+  /** Its value calls a function: it is written after the module's functions are declared, in the module's header. */
+  readonly calling?: boolean;
+  /** The modules its value names. */
+  readonly uses?: ReadonlySet<string>;
 }
 
 export interface Local {

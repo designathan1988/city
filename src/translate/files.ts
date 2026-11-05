@@ -213,7 +213,9 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const top = (what: string): string[] => [`// ${summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${m} by the converter; the owner is ${id.owner}.`];
     const isState = m === stateModule;
     const enums = [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
-    const constants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const allConstants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
+    const constants = allConstants.filter((k) => !k.calling);
+    const calling = allConstants.filter((k) => k.calling);
     const structs = ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
     const memoStructs = isState ? builders : [];
     const own = functions.filter((f) => f.plan.module === m);
@@ -226,7 +228,8 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
     types.push(PROJECT_MARK);
-    for (const d of depsOf(typeRefs, m)) types.push(`#include "${header(d, 'types')}"`);
+    const constantUses = [...new Set(constants.flatMap((k) => [...(k.uses ?? [])]))].filter((u) => u !== m && placed.has(u));
+    for (const d of [...new Set([...depsOf(typeRefs, m), ...constantUses])].sort()) types.push(`#include "${header(d, 'types')}"`);
     types.push('', STD_MARK, '', `namespace ${ns} {`, '');
     for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
     // a constant whose type names a struct of this module comes after the structs (C++ declares before use); the
@@ -235,7 +238,8 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const late = constants.filter((k) => namesIn(k.type).some((n) => ownStructs.has(n)));
     const constantLines = (ks: typeof constants): string[] => ks.flatMap((k) => [
       ...comment(`${k.doc ?? ''}${k.line > 0 ? ` (Roadcraft 4.0 ${m}:${k.line})` : ''}`.trim()),
-      k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`]);
+      k.calling ? `inline const ${render(k.type)} &${k.cpp}() { static const ${render(k.type)} value = ${k.value}; return value; }`
+        : k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`]);
     const early = constants.filter((k) => !late.includes(k));
     types.push(...constantLines(early));
     if (early.length > 0) types.push('');
@@ -267,15 +271,18 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
 
     // ---- what other modules and owners call: the public functions, and the edits without reindex for other edits
     const visible = own.filter((f) => f.exported || f.plan.edit);
-    const apiRefs = visible.flatMap((f) => [...f.plan.params.map((p) => p.type), f.plan.ret]);
+    const apiRefs = [...visible.flatMap((f) => [...f.plan.params.map((p) => p.type), f.plan.ret]), ...calling.map((k) => k.type)];
     const api: string[] = [...top('what other owners call'), '#pragma once', '', `#include "${header(m, 'types')}"`];
     for (const d of depsOf(apiRefs, m)) api.push(`#include "${header(d, 'types')}"`);
     api.push('', `namespace ${ns} {`, '');
     for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
+    // a constant that calls a function: after the declarations of what it calls
+    for (const f of own.filter((x) => !x.exported && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
+    api.push(...constantLines(calling));
     // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
     const templates = visible.filter((x) => x.exported && x.plan.typeParams.length > 0);
     for (const f of templates) api.push(`${f.signature} {`, ...f.lines, '}', '');
-    const templateUses = [...new Set(templates.flatMap((f) => [...f.uses]))].filter((u) => u !== m && placed.has(u)).sort();
+    const templateUses = [...new Set([...templates.flatMap((f) => [...f.uses]), ...calling.flatMap((k) => [...(k.uses ?? [])])])].filter((u) => u !== m && placed.has(u)).sort();
     if (templateUses.length > 0) api.splice(api.indexOf(''), 0, ...templateUses.map((u) => `#include "${header(u, 'api')}"`));
     const raw = visible.filter((x) => !x.exported);
     if (raw.length > 0) {
@@ -298,7 +305,9 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       for (const d of [...named].filter((x) => x !== m && !uses.has(x) && placed.has(x)).sort()) out.push(`#include "${header(d, 'types')}"`);
       out.push('', `namespace ${ns} {`, '');
       const internal = fns.filter((f) => !f.exported && !f.plan.edit);
-      if (internal.length > 0) {
+      // a module whose constants call its functions declares them in its header: none is local to this file
+      if (calling.length > 0) for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      else if (internal.length > 0) {
         out.push('namespace {', '', ...internal.map((f) => `${f.signature};`), '');
         for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
         out.push('} // namespace', '');

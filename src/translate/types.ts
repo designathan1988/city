@@ -65,6 +65,12 @@ function readerOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): { 
   return key ? { key, value } : null;
 }
 
+/** What a dictionary holds (an object type with a string index and no fields of its own); null for anything else. */
+export function dictionaryOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): TS.Type | null {
+  if (!(type.flags & ts.TypeFlags.Object) || checker.isArrayType(type) || checker.getPropertiesOfType(type).length > 0) return null;
+  return checker.getIndexInfoOfType(type, ts.IndexKind.String)?.type ?? null;
+}
+
 /** A reader with `get` (`interface NodeHeights { get(node: NodeId): number | undefined }`, a Map passed in): the map it is read as, [K, V]. */
 export function lookupOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): [TS.Type, TS.Type] | null {
   const reader = readerOf(ts, checker, type);
@@ -210,6 +216,12 @@ export class TypeMapper {
       this.includes.add('unordered_map');
       const key: CppType = k!.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
+    }
+    // a dictionary (Record<string, V>, { [key: string]: V }): a map of strings
+    const entry = dictionaryOf(ts, checker, type);
+    if (entry) {
+      this.includes.add('string');
+      return { k: 'map', key: STRING, of: this.ofType(checker.getNonNullableType(entry), 'element', slot ? this.#flow.elemOf(slot) : null) };
     }
     // a membership test (a Set passed in, or a rule written in place): the test, called with the key
     const member = membershipOf(ts, checker, type);

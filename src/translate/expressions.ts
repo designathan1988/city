@@ -7,7 +7,7 @@
 import type * as TS from 'typescript';
 import type { FunctionPlan, Local, MemoPlan, TranslateContext } from './context.ts';
 import {
-  BOOL, INT, INT64, LITERAL, NULL, STRING, VOID, bindTypeParameters, declare, holdsTypeParameter, integerLiteral, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
+  BOOL, INT, INT64, LITERAL, NULL, STRING, VOID, bindTypeParameters, byValue, declare, holdsTypeParameter, integerLiteral, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
   substitute, widerNumber, type CppType,
 } from './cpptype.ts';
 import { Num } from './flow.ts';
@@ -66,6 +66,8 @@ export abstract class ExpressionEmitter {
   }
 
   /** The unit being planned or written (a function, a constant, an index): what an error belongs to. */
+  /** Whether what is being written called a function of the program (a constant that does cannot be constexpr). */
+  protected calledFunction = false;
   #unit: string | null = null;
   protected get unit(): string | null {
     return this.#unit;
@@ -210,6 +212,13 @@ export abstract class ExpressionEmitter {
     if (ts.isPropertyAccessExpression(e)) return this.#property(e);
     if (ts.isElementAccessExpression(e)) {
       const obj = this.value(e.expression);
+      const dictionary = target(obj.type);
+      if (dictionary.k === 'map') {
+        const key = this.expr(e.argumentExpression, dictionary.key);
+        const written = ts.isBinaryExpression(e.parent) && e.parent.left === e && e.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && e.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment;
+        if (written) return { code: `${obj.code}[${key}]`, type: dictionary.of };
+        return this.#mapEntry(obj.code, dictionary, key);
+      }
       const tuple = this.#tupleField(obj.type, e.argumentExpression);
       if (tuple) return { code: `${obj.code}${obj.type.k === 'ptr' || obj.type.k === 'optional' ? '->' : '.'}${tuple.name}`, type: tuple.type };
       const element = elementOf(obj.type);
@@ -306,7 +315,7 @@ export abstract class ExpressionEmitter {
     const constant = this.c.constants.get(symbol);
     if (constant) {
       if (constant.module) this.uses?.add(constant.module);
-      return { code: constant.cpp, type: constant.type };
+      return { code: constant.calling ? `${constant.cpp}()` : constant.cpp, type: constant.type };
     }
     const fn = this.c.functions.get(symbol);
     if (fn) return { code: fn.cpp, type: { k: 'lambda', ret: fn.ret } };
@@ -330,12 +339,46 @@ export abstract class ExpressionEmitter {
       this.c.includes.add('algorithm');
       return { code: `int(std::count_if(${source.code}.begin(), ${source.code}.end(), ${this.predicate(e.expression.arguments[0]!, element)}))`, type: INT };
     }
-    const obj = this.value(e.expression);
+    const optional = e.questionDotToken !== undefined || ts.isOptionalChain(e);
+    const obj = optional ? this.#mayBeAbsent(e.expression) : this.value(e.expression);
+    if (optional && (obj.type.k === 'ptr' || obj.type.k === 'optional')) return this.#optionalMember(e, obj);
+    return this.#member(e, obj);
+  }
+
+  /** The receiver of `?.`: xs[i]?.y reads past the end of a list as absent, so the element is read as a pointer or null. */
+  #mayBeAbsent(e: TS.Expression): Value {
+    const ts = this.c.ts;
+    if (ts.isElementAccessExpression(e)) {
+      const list = this.value(e.expression);
+      const element = target(list.type).k === 'vector' ? elementOf(list.type) : null;
+      if (element && element.k !== 'ptr') {
+        const held = this.temp('list');
+        const at = this.temp('at');
+        const type: CppType = { k: 'ptr', to: element };
+        return { code: `[&]() -> ${render(type)} { const auto &${held} = ${list.type.k === 'vector' ? list.code : `*${list.code}`}; const auto ${at} = ${this.expr(e.argumentExpression, INT)}; return ${at} >= 0 && size_t(${at}) < ${held}.size() ? &${held}[size_t(${at})] : nullptr; }()`, type };
+      }
+    }
+    return this.value(e);
+  }
+
+  /** a?.b: absent when a is, the receiver read once. What holds no absence of its own (a number) becomes optional. */
+  #optionalMember(e: TS.PropertyAccessExpression, obj: Value): Value {
+    const held = this.temp('from');
+    const read = this.#member(e, { code: held, type: obj.type });
+    const type: CppType = read.type.k === 'ptr' || read.type.k === 'optional' || read.type.k === 'bool' ? read.type : { k: 'optional', of: read.type };
+    const absent = type.k === 'ptr' ? 'nullptr' : type.k === 'bool' ? 'false' : 'std::nullopt';
+    this.c.includes.add('optional');
+    return { code: `[&]() -> ${render(type)} { const auto &${held} = ${obj.code}; if (!${held}) return ${absent}; return ${read.code}; }()`, type };
+  }
+
+  /** A member of a value read: a list's length, a field, what a built-in has. */
+  #member(e: TS.PropertyAccessExpression, obj: Value): Value {
+    const name = e.name.text;
     const t = target(obj.type);
-    if (name === 'length' && (t.k === 'vector' || t.k === 'string')) return { code: `int(${obj.code}.size())`, type: INT };
-    // A Map's or a Set's size (a Set is a vector here: its members in order).
-    if (name === 'size' && (t.k === 'map' || t.k === 'vector' || t.k === 'set')) return { code: `int(${obj.code}.size())`, type: INT };
     const access = obj.type.k === 'ptr' || obj.type.k === 'optional' ? '->' : '.';
+    if (name === 'length' && (t.k === 'vector' || t.k === 'string')) return { code: `int(${obj.code}${access}size())`, type: INT };
+    // A Map's or a Set's size.
+    if (name === 'size' && (t.k === 'map' || t.k === 'vector' || t.k === 'set')) return { code: `int(${obj.code}${access}size())`, type: INT };
     if (t.k === 'tparam') {
       if (name === 'length') return { code: `int(${obj.code}${access}size())`, type: INT };
       const slot = this.c.flow.slotOfExpr(e);
@@ -347,7 +390,7 @@ export abstract class ExpressionEmitter {
       if (known?.fields) {
         const field = known.fields[name];
         if (!field) return this.fail(e, `${t.name} has no field for ${name} in the spec`);
-        const flag = (this.c.checker.getTypeAtLocation(e).flags & ts.TypeFlags.BooleanLike) !== 0;
+        const flag = (this.c.checker.getTypeAtLocation(e).flags & this.c.ts.TypeFlags.BooleanLike) !== 0;
         return { code: `${obj.code}${access}${field}`, type: flag ? BOOL : this.c.types.number(Num.Float, 'local') };
       }
       const struct = this.c.types.structs.get(t.name);
@@ -415,6 +458,7 @@ export abstract class ExpressionEmitter {
       const plan = symbol ? this.c.functions.get(symbol) : undefined;
       if (plan) {
         this.uses?.add(plan.module);
+        this.calledFunction = true;
         if (plan.edit) return this.fail(e, 'an edit used as a value (only as a statement or a return)');
         // a template: T is what the call's own types say, written out, so every argument lands as what T is
         const types = plan.typeParams.length > 0 ? this.#typeArguments(plan, e) : new Map<string, CppType>();
@@ -657,15 +701,17 @@ export abstract class ExpressionEmitter {
     return this.builtin(e, obj);
   }
 
+  /** The entry of a key, or null: a pointer to it (the entry itself when the map holds pointers). */
+  #mapEntry(map: string, type: Extract<CppType, { k: 'map' }>, key: string): Value {
+    const holdsPointers = type.of.k === 'ptr';
+    const ret: CppType = holdsPointers ? type.of : { k: 'ptr', to: type.of };
+    return { code: `[&]() -> ${render(ret)} { auto it = ${map}.find(${key}); return it == ${map}.end() ? nullptr : ${holdsPointers ? 'it->second' : '&it->second'}; }()`, type: ret };
+  }
+
   #mapMethod(e: TS.CallExpression, obj: Value, method: string): Value {
     const map = target(obj.type) as Extract<CppType, { k: 'map' }>;
     const key = (): string => this.expr(e.arguments[0]!, map.key);
-    if (method === 'get') {
-      // The entry, or null: a pointer to it (the entry itself when the map holds pointers).
-      const holdsPointers = map.of.k === 'ptr';
-      const ret: CppType = holdsPointers ? map.of : { k: 'ptr', to: map.of };
-      return { code: `[&]() -> ${render(ret)} { auto it = ${obj.code}.find(${key()}); return it == ${obj.code}.end() ? nullptr : ${holdsPointers ? 'it->second' : '&it->second'}; }()`, type: ret };
-    }
+    if (method === 'get') return this.#mapEntry(obj.code, map, key());
     if (method === 'set') return { code: `${obj.code}[${key()}] = ${this.expr(e.arguments[1]!, map.of)}`, type: { k: 'void' } };
     if (method === 'has') return { code: `(${obj.code}.count(${key()}) != 0)`, type: BOOL };
     if (method === 'delete') return { code: `${obj.code}.erase(${key()})`, type: { k: 'void' } };
@@ -915,10 +961,25 @@ export abstract class ExpressionEmitter {
     const ts = this.c.ts;
     const k = e.operatorToken.kind;
     if (k === ts.SyntaxKind.QuestionQuestionToken) {
+      // xs[i] ?? d: past the end of a list JavaScript reads undefined
+      if (ts.isElementAccessExpression(e.left)) {
+        const list = this.value(e.left.expression);
+        const element = target(list.type).k === 'vector' ? elementOf(list.type) : null;
+        if (element) {
+          const held = this.temp('list');
+          const at = this.temp('at');
+          return { code: `[&] { const auto &${held} = ${list.type.k === 'vector' ? list.code : `*${list.code}`}; const auto ${at} = ${this.expr(e.left.argumentExpression, INT)}; return ${at} >= 0 && size_t(${at}) < ${held}.size() ? ${held}[size_t(${at})] : ${render(element)}(${this.expr(e.right, element)}); }()`, type: element };
+        }
+      }
       const left = this.value(e.left);
       // A pointer is absent as nullptr: `p ?? null` is p, `p ?? q` takes q where p is absent.
       if (left.type.k === 'ptr') {
         if (e.right.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(e.right) && e.right.text === 'undefined')) return left;
+        // a value in place of what is pointed at (`table[k] ?? 0`): the result is the value, the left read once
+        if (byValue(left.type.to) || left.type.to.k === 'string') {
+          const held = this.temp('found');
+          return { code: `[&] { const auto ${held} = ${left.code}; return ${held} ? *${held} : ${render(left.type.to)}(${this.expr(e.right, left.type.to)}); }()`, type: left.type.to };
+        }
         return { code: `(${left.code} ? ${left.code} : ${this.expr(e.right, left.type)})`, type: left.type };
       }
       if (left.type.k !== 'optional') return this.fail(e, '?? on a value that is never absent in C++');
@@ -981,6 +1042,17 @@ export abstract class ExpressionEmitter {
   protected object(e: TS.ObjectLiteralExpression, want?: CppType): Value {
     const ts = this.c.ts;
     const asked = want ? target(want) : undefined;
+    if (asked?.k === 'map') {
+      const made = this.temp('table');
+      const sets: string[] = [];
+      for (const p of e.properties) {
+        if (!ts.isPropertyAssignment(p) && !ts.isShorthandPropertyAssignment(p)) return this.fail(p, 'a member of a dictionary that is no key and value');
+        const key = ts.isComputedPropertyName(p.name) ? this.expr(p.name.expression, asked.key) : `std::string(${JSON.stringify((p.name as TS.Identifier).text)})`;
+        sets.push(`${made}.insert_or_assign(${key}, ${this.expr(ts.isPropertyAssignment(p) ? p.initializer : p.name, asked.of)});`);
+      }
+      this.c.includes.add(RUNTIME_INCLUDE);
+      return { code: `[&] { ${render(asked)} ${made}; ${sets.join(' ')} return ${made}; }()`, type: asked };
+    }
     if (asked?.k === 'function' && e.properties.length === 1) {
       const p = e.properties[0]!;
       const fn = ts.isPropertyAssignment(p) && p.name.getText() === 'has' ? p.initializer : undefined;

@@ -498,7 +498,7 @@ export class Emitter extends ExpressionEmitter {
       });
     } else {
       const item = this.temp('item');
-      head = `for (${paramDecl(element, item)} : ${source.code})`;
+      head = `for (const auto &${item} : ${source.code})`;
       const t = target(element);
       const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
       const access = element.k === 'ptr' ? '->' : '.';

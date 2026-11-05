@@ -128,6 +128,7 @@ export class Translator extends Emitter {
     }
     this.#propagateMutability();
     this.#propagateContext();
+    this.#constantValues();
     this.#checkEditsReadNoIndex();
   }
 
@@ -376,9 +377,46 @@ export class Translator extends Emitter {
       this.c.contextConstants.set(symbol, { code: `(${this.expr(d.initializer!, type)})`, type, include: inner.include, context: inner.context });
       return;
     }
-    const value = d.initializer ? this.expr(d.initializer, type) : '{}';
-    const scalar = type.k === 'int' || type.k === 'real' || type.k === 'bool';
-    this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value, module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: scalar });
+    // its value is written when every name exists: a constant may read one of a module planned later, or call a function
+    this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value: '{}', module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: false });
+    this.#valued.push({ symbol, d, name });
+  }
+
+  readonly #valued: { readonly symbol: TS.Symbol; readonly d: TS.VariableDeclaration; readonly name: string }[] = [];
+
+  /** Every constant's value, once all the units are planned; one that calls a function, or reads one that does, comes after the functions. */
+  #constantValues(): void {
+    for (const { symbol, d, name } of this.#valued) {
+      if (!d.initializer) continue;
+      this.#guarded(d, () => {
+        this.unit = name;
+        this.module = this.c.relative(d.getSourceFile());
+        this.calledFunction = false;
+        const k = this.c.constants.get(symbol)!;
+        let value = '{}';
+        const uses = this.#recording(() => { value = this.expr(d.initializer!, k.type); });
+        const scalar = k.type.k === 'int' || k.type.k === 'real' || k.type.k === 'bool';
+        // at namespace scope there is nothing to capture
+        this.c.constants.set(symbol, { ...k, value: value.replaceAll('[&]', '[]'), constexpr: scalar && !this.calledFunction, calling: this.calledFunction, uses });
+      });
+    }
+    // the order C++ initializes constants of different files in is not the source's (the static initialization order
+    // problem): one that calls a function, or reads a constant that is not constexpr, is made on first use, by a function
+    const named = (value: string, cpp: string): boolean => new RegExp(`\\b${cpp}\\b`).test(value);
+    for (let changed = true; changed;) {
+      changed = false;
+      const dynamic = [...this.c.constants.values()].filter((k) => !k.constexpr);
+      for (const [symbol, k] of this.c.constants) {
+        if (k.calling || !dynamic.some((d) => d !== k && named(k.value, d.cpp))) continue;
+        this.c.constants.set(symbol, { ...k, calling: true, constexpr: false });
+        changed = true;
+      }
+    }
+    const made = [...this.c.constants.values()].filter((k) => k.calling).map((k) => k.cpp);
+    for (const [symbol, k] of this.c.constants) {
+      const value = made.reduce((text, cpp) => text.replace(new RegExp(`\\b${cpp}\\b(?!\\()`, 'g'), `${cpp}()`), k.value);
+      if (value !== k.value) this.c.constants.set(symbol, { ...k, value });
+    }
   }
 
   /**
