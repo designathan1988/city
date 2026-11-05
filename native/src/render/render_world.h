@@ -56,8 +56,8 @@ public:
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
-	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at) {
-		agents_.update(f, cam, at);
+	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
+		agents_.update(f, cam, view, at);
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }

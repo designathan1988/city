@@ -155,7 +155,9 @@ void CityCore::_process(double delta) {
 	// a moment render.pose_delay_ticks behind the clock, inside the published trail even when a tick lands late
 	const PoseSample at = poses.sample(now - int64_t(state_->catalog.tune.render_pose_delay_ticks * double(poses.period_ns)));
 	note_pose(poses, fresh, at);
-	render_.update_agents(poses, cam_, at); // no map lock: the frame is the published snapshot
+	ViewCull view;
+	if (cam) view.read(*cam);
+	render_.update_agents(poses, cam_, view, at); // no map lock: the frame is the published snapshot
 	const int64_t published = poses.stamp_ns[POSE_TRAIL - 1];
 	const double ticks = fresh && poses.period_ns > 0 && wear_stamp_ns_ > 0 ? double(published - wear_stamp_ns_) / double(poses.period_ns) : 0;
 	if (fresh) wear_stamp_ns_ = published;

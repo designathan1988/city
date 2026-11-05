@@ -15,8 +15,9 @@ namespace city {
 
 namespace {
 constexpr float SECTOR_PAD_M = 12.f; // the longest vehicle past its sector's edge, by its origin
+} // namespace
 
-AABB outline(const MeshBuilder &b) {
+AABB mesh_outline(const MeshBuilder &b) {
 	Vector3 lo, hi;
 	for (int64_t i = 0; i < b.v.size(); i++) {
 		const Vector3 &p = b.v[i];
@@ -25,7 +26,6 @@ AABB outline(const MeshBuilder &b) {
 	}
 	return AABB(lo, hi - lo);
 }
-} // namespace
 
 void FleetShadow::init(const RID &scenario, const RID &material, const MeshBuilder &hull, float sector_m, float inset, int models) {
 	free();
@@ -33,14 +33,14 @@ void FleetShadow::init(const RID &scenario, const RID &material, const MeshBuild
 	material_ = material;
 	sector_m_ = sector_m;
 	inset_ = inset;
-	hull_box_ = outline(hull);
+	hull_box_ = mesh_outline(hull);
 	fit_.assign(size_t(models), Fit());
 	hull_.rid = RenderingServer::get_singleton()->mesh_create();
 	hull.commit_to(hull_.rid);
 }
 
 void FleetShadow::set_model(int model, const MeshBuilder &body) {
-	const AABB box = outline(body);
+	const AABB box = mesh_outline(body);
 	const Vector3 mid = box.get_center(), hull_mid = hull_box_.get_center();
 	Fit &f = fit_[size_t(model)];
 	// by the top, not the height: the hull has no wheels under it, and the roof is what must stay inside

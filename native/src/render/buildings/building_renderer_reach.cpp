@@ -53,6 +53,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
 		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
 	}
+	for (ShadowTwin &d : ch.prop_casts) d.range(look_.cast_props_m);
 	for (int b = 0; b < BAND_DRAWS; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)] * detail_scale_);
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0;
 	ch.mid_draws[MID_BAYS].range(mid_from, bay_end_);

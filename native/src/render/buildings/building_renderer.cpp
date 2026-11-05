@@ -56,6 +56,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
 	material_props_ = ctx.material("building_props", errors);
+	material_cast_ = ctx.material("shadow_caster", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_lawn_ = ctx.material("verge", errors);
 	material_parts_ = ctx.material("building_parts", errors);
@@ -157,6 +158,7 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 }
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
+	for (ShadowTwin &d : ch.prop_casts) d.free();
 	for (MultiMeshDraw &d : ch.bands) d.free();
 	for (MultiMeshDraw &d : ch.mid_draws) d.free();
 	for (MeshDraw &d : ch.flat) d.free();

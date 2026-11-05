@@ -92,6 +92,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 	rs->material_set_param(material_, "greys", hex_list(people["grey"]));
 	const Dictionary blob = people["blob"];
 	blob_from_m_ = float(blob["from_m"]);
+	view_reach_m_ = float(people["view_reach_m"]);
 	blob_radius_m_ = float(blob["radius_m"]);
 	blob_lift_m_ = float(blob["lift_m"]);
 	MeshBuilder disc;
@@ -137,7 +138,7 @@ bool PeopleRenderer::show_clip(const String &name) {
 	return true;
 }
 
-int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSample &at, float radius) {
+int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
 	for (PackedFloat32Array &b : bufs_) b.resize(0);
 	blob_buf_.resize(0);
@@ -151,6 +152,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);
+		if (!view.sees(Vector3(p.x, p.y, p.z), view_reach_m_)) continue; // their shadow included: this far out of the view it reaches nothing seen
 		int lod = std::min(floor_, lods - 1);
 		while (lod < lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
 		const std::vector<int> &bodies = by_age_[rec.age < PED_AGES ? rec.age : int(PedAge::ADULT)];

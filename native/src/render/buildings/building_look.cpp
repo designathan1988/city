@@ -19,6 +19,7 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 	near_share = float(at(lod, "near_share"));
 	far_fov_deg = float(at(lod, "fov_deg"));
 	far_hysteresis = float(at(lod, "far_hysteresis"));
+	cast_props_m = float(at(lod, "cast_props_m"));
 	far_rebuild_delay_s = float(at(lod, "far_rebuild_delay_s"));
 	far_rebuild_interval_s = float(at(lod, "far_rebuild_interval_s"));
 	const Dictionary region = region_table(t);

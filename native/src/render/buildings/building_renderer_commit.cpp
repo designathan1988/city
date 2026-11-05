@@ -202,8 +202,10 @@ void BuildingRenderer::commit_one(Built &b) {
 		}
 		for (int band = 0; band < BAND_DRAWS; band++) {
 			const bool prop = band >= BAND_COUNT;
-			ch.bands[size_t(band)].adopt(scenario_, prop ? material_props_ : material_parts_, prop && band - BAND_COUNT < b40::BAY_PROP_SHADOWED,
+			ch.bands[size_t(band)].adopt(scenario_, prop ? material_props_ : material_parts_, false,
 					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], chunk_box(b.key), LAYER_BUILDING_DETAILS);
+			if (prop && band - BAND_COUNT < b40::BAY_PROP_SHADOWED)
+				ch.prop_casts[size_t(band - BAND_COUNT)].bind(scenario_, ch.bands[size_t(band)].mm, material_cast_, chunk_box(b.key), LAYER_BUILDING_DETAILS);
 		}
 		// a cloth throws a shadow; its own layer, as the 4.0's flag layer has its own switch (effects panel bFlags)
 		ch.flags.adopt(scenario_, material_parts_, true, b.flag_mm.release(), b.flag_count, chunk_box(b.key), LAYER_BUILDING_FLAGS);
@@ -258,6 +260,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 		for (MeshDraw *d : { &ch.near[size_t(i)], &ch.parts[size_t(i)], &ch.mid[size_t(i)], &ch.flat[size_t(i)] }) d->visible(on && d->mesh.is_valid());
 	}
 	for (const MultiMeshDraw &d : ch.bands) d.visible(on);
+	for (int k = 0; k < b40::BAY_PROP_SHADOWED; k++) ch.prop_casts[size_t(k)].visible(on && ch.bands[size_t(BAND_COUNT + k)].count > 0);
 	for (const MultiMeshDraw &d : ch.mid_draws) d.visible(on);
 	ch.flags.visible(on);
 }

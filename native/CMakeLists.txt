@@ -9,11 +9,17 @@ set(GODOTCPP_DISABLE_EXCEPTIONS ON CACHE BOOL "" FORCE)
 
 add_subdirectory(godot-cpp SYSTEM) # its headers are third-party: their warnings are not ours
 
+# The simplifier of the vehicles' levels (render/agents/agent_lod.h), fetched into the build folder at a fixed version.
+include(FetchContent)
+FetchContent_Declare(meshoptimizer GIT_REPOSITORY https://github.com/zeux/meshoptimizer.git GIT_TAG v1.3 GIT_SHALLOW TRUE SYSTEM)
+FetchContent_MakeAvailable(meshoptimizer)
+set_target_properties(meshoptimizer PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 file(GLOB_RECURSE CITYCORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
-target_link_libraries(citycore PRIVATE godot-cpp)
+target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer)
 # godot-cpp adds --gc-sections after our options; passed last as a library item it wins, keeping the static
 # engine-class registration callbacks (Image, Camera3D, Terrain3D...) that the release DLL needs at runtime.
 if(MINGW)

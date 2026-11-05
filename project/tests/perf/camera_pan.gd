@@ -76,7 +76,9 @@ func _cycle_step(gpu: float) -> void:
 	cycle_frame = 0
 	cycle_at = (cycle_at + 1) % cycle.size()
 	var next := cycle[cycle_at]
-	cycle_sun.shadow_enabled = next != "0"
+	var hide: int = next.trim_prefix("h").to_int() if next.begins_with("h") else 0 # no shadow, and these layers out of the picture
+	rig.camera.cull_mask = ALL_LAYERS & ~hide
+	cycle_sun.shadow_enabled = next != "0" and not next.begins_with("h")
 	cycle_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if next == "2" else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	cycle_sun.shadow_caster_mask = ALL_LAYERS & ~(-next.to_int()) if next.begins_with("-") else ALL_LAYERS
 

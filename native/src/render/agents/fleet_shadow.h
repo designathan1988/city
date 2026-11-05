@@ -14,6 +14,8 @@
 
 namespace city {
 
+godot::AABB mesh_outline(const MeshBuilder &b);
+
 class FleetShadow {
 public:
 	void init(const godot::RID &scenario, const godot::RID &material, const MeshBuilder &hull, float sector_m, float inset, int models);

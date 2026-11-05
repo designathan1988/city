@@ -8,6 +8,7 @@
 #include "render/agents/people_asset.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
+#include "render/view_cull.h"
 #include "sim/state/city_state.h"
 
 #include <vector>
@@ -44,7 +45,7 @@ public:
 	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
 	void reset();
 	// Returns how many people were drawn.
-	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
+	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	int shown(int level) const; // people drawn at this level on the last frame
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
@@ -65,6 +66,7 @@ private:
 	godot::PackedFloat32Array blob_buf_;
 	godot::RID blob_material_;
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
+	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int floor_ = 0;
 };
 

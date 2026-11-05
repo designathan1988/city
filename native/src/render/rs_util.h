@@ -61,6 +61,40 @@ inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &n
 	current = next;
 }
 
+// A second instance of what a draw shows, in the shadow maps alone and only out to `end`: what stops being wider than a texel of the
+// sun stops being drawn four times over, and the picture keeps it. The draw itself casts nothing.
+struct ShadowTwin {
+	godot::RID inst;
+	void bind(const godot::RID &scenario, const godot::RID &base, const godot::RID &material, const godot::AABB &bounds, RenderLayer layer) {
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		if (!base.is_valid()) {
+			free();
+			return;
+		}
+		if (!inst.is_valid()) {
+			inst = rs->instance_create2(base, scenario);
+			rs->instance_set_layer_mask(inst, layer);
+			rs->instance_geometry_set_cast_shadows_setting(inst, godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
+			rs->instance_geometry_set_material_override(inst, material);
+		} else {
+			rs->instance_set_base(inst, base);
+		}
+		rs->instance_set_custom_aabb(inst, bounds);
+	}
+	void range(float end) const {
+		if (inst.is_valid())
+			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, 0, end, 0, 0,
+					godot::RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+	}
+	void visible(bool on) const {
+		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on);
+	}
+	void free() {
+		if (inst.is_valid()) godot::RenderingServer::get_singleton()->free_rid(inst);
+		inst = godot::RID();
+	}
+};
+
 // A refilled MultiMesh's room grows past what it holds in these steps and shrinks only two steps below: a count that changes
 // every frame (vehicles, people, trains, lit lenses) never reallocates the GPU buffer every frame (multimesh_allocate_data
 // frees it and makes another, its uniform sets and commands again: Godot renderer_rd/storage_rd/mesh_storage.cpp); only the

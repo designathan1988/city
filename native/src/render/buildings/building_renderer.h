@@ -104,6 +104,7 @@ private:
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MeshDraw, SUB_COUNT> flat; // past bay_end_: the mid level's bays as merged rectangles, a bay too small on the screen to pay for its triangles
 		std::array<MultiMeshDraw, BAND_DRAWS> bands;
+		std::array<ShadowTwin, b40::BAY_PROP_SHADOWED> prop_casts; // what the balcony pieces throw, to lod.cast_props_m
 		std::array<MultiMeshDraw, MID_DRAWS> mid_draws;
 		MultiMeshDraw flags; // the cloths of its masts (flag_cloth.h), with the near level
 		std::array<Held, HELD_KINDS> held;
@@ -221,6 +222,7 @@ private:
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
+	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box

@@ -7,6 +7,7 @@
 
 #include "render/agents/agent_meshes.h"
 #include "render/agents/fleet_shadow.h"
+#include "render/view_cull.h"
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -22,7 +23,7 @@ class AgentRenderer {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
-	void update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at);
+	void update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at);
 	int drawn_vehicles() const { return drawn_vehicles_; }
 	int drawn_people() const { return drawn_people_; }
 	godot::Array people_clips() const { return people_.clips(); }
@@ -42,6 +43,8 @@ public:
 
 private:
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
+	// One more than the built levels: the cabin simplified, glass and people still seen, past cabin_close_m (agent_lod.h).
+	static constexpr int MID_DRAW = LEVELS, DRAWS = LEVELS + 1;
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
 	// run, and the strides its seats may fill in (1 alone: in their own order, front first).
 	struct Load {
@@ -59,12 +62,16 @@ private:
 	bool read_loads(const godot::Dictionary &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
+	void commit_mesh(int model, int draw, const MeshBuilder &mb);
 	godot::RID scenario_, material_, glass_, shadow_;
-	OwnedMesh meshes_[AGENT_MODELS][LEVELS]; // the body surface, and the near level's glass surface
-	MultiMeshDraw draws_[AGENT_MODELS][LEVELS];
-	MultiMeshDraw shadow_draws_[AGENT_MODELS][LEVELS - 1]; // a level's instances with the next level's mesh
+	OwnedMesh meshes_[AGENT_MODELS][DRAWS]; // the body surface, and the cabin's glass surface
+	MultiMeshDraw draws_[AGENT_MODELS][DRAWS];
+	MultiMeshDraw shadow_draws_[AGENT_MODELS][DRAWS]; // a level's instances with a lighter mesh; none for the far level, FleetShadow's
 	FleetShadow fleet_shadow_; // what the far level casts
-	int body_tris_[AGENT_MODELS][LEVELS] = {}, glass_tris_[AGENT_MODELS][LEVELS] = {}, shown_[AGENT_MODELS][LEVELS] = {};
+	float reach_m_[AGENT_MODELS] = {}; // from a model's origin to its farthest corner
+	float view_slack_ = 0; // agents.json view_slack
+	float cabin_close_m_ = 0; // agents.json lod.cabin_close_m
+	int body_tris_[AGENT_MODELS][DRAWS] = {}, glass_tris_[AGENT_MODELS][DRAWS] = {}, shown_[AGENT_MODELS][DRAWS] = {};
 	Load load_[AGENT_MODELS];
 	int paints_ = 0;
 	float wheel_r_[AGENT_MODELS] = {};

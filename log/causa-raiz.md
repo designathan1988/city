@@ -235,6 +235,15 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Falta: o lançador de details e shells (0,87 e 0,68 ms antes das mudanças da migração), que espera o push dela; medir depois desse push, não antes. O `camera_input_test` espera a próxima falha para mostrar os valores.
 - Conversor e porte: proibidos pelo usuário até a sessão dona provar a correção pela causa. A cobrança foi mandada a ela duas vezes; ainda sem resposta.
 
+## Ciclo 4: o quadro inteiro, pelo código (2026-11-05, 21:00)
+- Pedido do usuário: 100x, pelo caminho mais caro, sem mais processos pesados; ler o código e corrigir, com uma foto leve de cada elemento.
+- 100x no tempo de quadro não existe: uma imagem sem nada custa 0,26 ms de GPU (1600x900), teto de ~45x com a tela vazia. Mapa do quadro, `camera_pan --casters-cycle` com chaves `h<MASK>` (`perto`, imagem 8,86 ms sem sombra): prédios (massas e fachadas) 3,13; veículos 2,98; o resto abaixo de 0,7 cada.
+- Causa 1, veículos fora da vista: `AgentRenderer::update` punha no MultiMesh todo veículo a 900 m, atrás da câmera também, e o motor só recorta a caixa inteira. Agora `ViewCull` (`render/view_cull.h`) separa a lista da câmera da lista do sol: fora da vista só lança sombra. Pessoas também (`people.view_reach_m`).
+- Causa 2, malhas feitas à mão por nível: a cabine de 10 mil triângulos ia até 140 m, onde o carro tem 55 px; o nível distante tinha ~680 para ~25 px. `agent_lod.cpp` simplifica parte por parte com o meshoptimizer v1.3 (`FetchContent`), erro abaixo de um pixel na distância do nível (`agents.json lod`). Nível novo `MID_DRAW`: cabine simplificada de `cabin_close_m` até `cabin_radius_m`, com vidro e pessoas.
+- Causa 3, peças de sacada lançando sombra a qualquer distância: `ShadowTwin` (`rs_util.h`) lança até `lod.cast_props_m`, pelo `shadow_caster`.
+- Rejeitado: trocar a casca perto pela parede lisa do nível médio na sombra. A vidraça recuada fica atrás da parede lisa e entraria na sombra dela.
+- Hipóteses do `camera_input_test` refutadas por `query` leve: 600 pontos com o raio em duas alturas deram o mesmo chão; 400 pontos antes e depois de 30 s de cidade rodando, nenhum mudou. A causa segue desconhecida.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.

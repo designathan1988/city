@@ -3,6 +3,8 @@
  "vehicle_radius_m": 900,
  "cabin_radius_m": 140,
  "far_radius_m": 260,
+ "view_slack": 0.03,
+ "lod": {"_doc": "How much of a level's surface may move, in metres, when its mesh is simplified (render/agents/agent_lod.h): under the width of a pixel at the level's nearest distance, lens of 35 degrees at 1080 lines (0.58 mm a metre away). Past cabin_close_m the cabin goes simplified, its glass and people still seen.", "cabin_close_m": 60, "cabin_error_m": 0.025, "body_error_m": 0.05, "far_error_m": 0.1},
  "far_shadow": {"_doc": "What the far level casts (fleet_shadow.h): sectors of sector_m, each with its own box, so the near cascades leave them out; a car's hull scaled to each model, inset of its size so it never stands proud of the body it shades.", "sector_m": 320, "inset": 0.97},
  "people_radius_m": 280,
  "exhaust": {"_doc": "Tail smoke per class, for the particle system of the demolition port (it owns the puffs; this says when and where). Puffs a second: idle_per_s standing, moving_per_s plus per_speed for each m/s (at most moving_extra_max) past moving_from_ms. at: the pipe's mouth from the body's middle, x to its left, y up, z ahead. spread_m: scattered this much about it. Every number is the 4.0's (render/exhaust.ts: 0.15, 0.5, 0.02, 1, 0.5 m/s, 0.4 m high at the tail, 0.32 m, 0.96 m puffs of 2.6 s): no outside source. The body's ends come from the traffic classes; a bicycle has none.", "idle_per_s": 0.15, "moving_per_s": 0.5, "per_speed": 0.02, "moving_extra_max": 1, "moving_from_ms": 0.5, "spread_m": 0.32, "puff_m": 0.96, "life_s": 2.6, "pipe_up_m": 0.4, "classes": ["sedan", "hatch", "suv", "van", "pickup", "moto", "bus", "truck"]},
@@ -61,6 +63,7 @@
   "interior": {"lining": "#555555", "floor": "#222222", "seat": "#51585e", "dash": "#222222"}},
  "wheel_jump_m": 5,
  "people": {
+  "view_reach_m": 24,
   "asset": "res://assets/people/people.bin",
   "lod_m": [40, 1000000000],
   "blob": {"_doc": "Past from_m a person casts no real shadow and a soft disc lies under it: where a person stands about 20 pixels tall on 1080 lines through a 40 degree lens, as far as the Roadcraft 4.0 draws its crowd with real shadows (radius_m its disc, lift_m clear of the ground).", "from_m": 125, "radius_m": 0.34, "lift_m": 0.03},
