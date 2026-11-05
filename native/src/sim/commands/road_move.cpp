@@ -4,6 +4,7 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
 
+#include "sim/economy/road_economy.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -35,7 +36,6 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	}
 	const RoadNode was = net.nodes[size_t(node)];
 	std::vector<RoadSegment> roads;
-	double value = 0;
 	RoadBox box;
 	box.add(was.x, was.z);
 	box.add(x, z);
@@ -47,12 +47,10 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 			return r;
 		}
 		roads.push_back(g);
-		value += road_value(s, g.profile, g.len);
 		box.add(g);
 	}
 	const std::map<int, double> before = squeezes_in(s, box);
 	for (int sid : was.segs) j_remove_segment(s, sid);
-	j_money(s, value);
 	Anchor to = snap_point(s, x, z, tn.road_merge_m);
 	if (to.node == node) {
 		to = Anchor{};
@@ -63,7 +61,6 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	end.node = anchor_node(s, to);
 	end.x = net.nodes[size_t(end.node)].x;
 	end.z = net.nodes[size_t(end.node)].z;
-	double paid = 0;
 	for (const RoadSegment &g : roads) {
 		const bool at_a = g.a == node;
 		const Quad q = moved_quad(g.q, at_a, end.x, end.z);
@@ -77,7 +74,6 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 			r.error = laid.error;
 			return r;
 		}
-		paid += laid.money;
 		r.segments += laid.segments;
 		r.buildings_removed += laid.buildings_removed;
 	}
@@ -90,8 +86,8 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 		r.error = "hint.rule.squeezed";
 		return r;
 	}
+	if (!settle_road_edit(s, r)) return r; // the caller rolls the journal back
 	r.ok = true;
-	r.money = paid - value;
 	return r;
 }
 

@@ -1,5 +1,6 @@
 ## Core test of the player road commands through the store (no rendering needed): builds a road from free ground into
-## the generated town, checks the money, the network counts, a refusal, demolition with refund, zoning and growth.
+## the generated town, checks the money, the network counts, a refusal, demolition with refund, zoning and growth; then
+## the money rules (road_money_cases.gd).
 ## Run: godot --headless --path project res://tests/core/road_commands_test.tscn -- --no-flow
 extends Node3D
 
@@ -69,6 +70,7 @@ func _ready() -> void:
 	var d: Dictionary = CityStore.dispatch(&"demolish", [e - Vector3(2, 0, 0)])
 	print("demolir: ", d, " dinheiro ", m0, " -> ", CityStore.snapshot.money)
 	_check(d.ok, "demoliu")
+	RoadMoneyCases.new(_check).run(b)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 

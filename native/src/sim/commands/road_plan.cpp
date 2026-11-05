@@ -3,6 +3,7 @@
 #include "sim/commands/commands.h"
 #include "sim/roads/junction.h"
 #include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 
 #include "sim/state/city_state.h"
 

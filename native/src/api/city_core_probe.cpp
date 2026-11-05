@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/economy/road_economy.h"
 #include "sim/roads/geometry.h"
 #include "sim/traffic/traffic_system.h"
 

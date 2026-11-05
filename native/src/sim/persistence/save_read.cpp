@@ -9,6 +9,8 @@
 #include "sim/citygen/city_gen.h"
 #include "sim/state/city_state.h"
 
+#include <cmath>
+
 namespace city {
 
 namespace {
@@ -182,6 +184,7 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	if (!r.ok || map < 0 || size_t(map) >= s.catalog.maps.size()) return false;
 	found_land(s, map, seed);
 	s.money = r.get<double>();
+	if (!std::isfinite(s.money)) return false;
 	s.unlimited_money = r.get<uint8_t>() != 0;
 	s.clock.minutes.store(r.get<double>());
 	s.clock.day_shift = r.get<double>();

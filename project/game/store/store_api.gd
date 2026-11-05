@@ -51,7 +51,7 @@ const QUERIES := {
 	&"body_info": "builder/body_info", &"body_bay": "builder/body_bay", &"body_pick": "builder/body_pick", &"body_outline": "builder/body_outline",
 	&"transit_plan": "transit/transit_plan", &"transit_footway": "transit/transit_footway", &"transit_xray": "transit/transit_xray", &"transit_preview": "transit/transit_preview", &"transit_run": "transit/transit_run", &"transit_pick": "transit/transit_pick", &"transit_snap": "transit/transit_snap",
 	&"interior": "interior", &"interior_revision": "interior_revision", &"interior_cost": "interior_cost",
-	&"people_census": "probes/people_census", &"set_city_hour": "probes/set_city_hour", &"people_clips": "probes/people_clips", &"show_people_clip": "probes/show_people_clip", &"amber_stops": "probes/amber_stops", &"amber_wanted": "probes/amber_wanted",
+	&"people_census": "probes/people_census", &"set_city_hour": "probes/set_city_hour", &"people_clips": "probes/people_clips", &"show_people_clip": "probes/show_people_clip", &"amber_stops": "probes/amber_stops", &"amber_wanted": "probes/amber_wanted", &"probe_set_money": "probes/probe_set_money", &"probe_road_build": "probes/probe_road_build",
 	&"damage_probe": "damage_probe", &"blast_probe": "blast_probe", &"shot_targets": "shot_targets", &"effects_shake": "effects_shake", &"effects_since_blast": "effects_since_blast",
 	&"traffic_metrics": "traffic_metrics", &"segment_traffic": "segment_traffic", &"segment_path": "segment_path", &"node_traffic": "node_traffic", &"impossible_nodes": "impossible_nodes", &"clear_reach": "clear_reach", &"recent_edits": "recent_edits",
 }

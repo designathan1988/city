@@ -4,6 +4,8 @@
 // quadratic between the midpoints of its neighbours: a uniform quadratic B-spline, so the tangent is continuous at
 // every joint. Callers build inside one undo entry: a refused piece rolls the whole road back.
 #include "sim/commands/commands.h"
+#include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 
 #include "sim/state/city_state.h"
 
@@ -145,15 +147,15 @@ EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Ancho
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
-		EditResult r = build_road(s, from, true, q.cx, q.cz, to, profile);
+		EditResult r = place_road(s, from, true, q.cx, q.cz, to, profile);
 		if (!r.ok) return r; // the undo entry rolls the pieces already laid back
-		total.money += r.money;
 		total.segments += r.segments;
 		total.buildings_removed += r.buildings_removed;
 		from = free_anchor(q.x1, q.z1);
 		from.node = s.roads.find_node_near(q.x1, q.z1, NODE_FOUND_M);
 	}
-	total.ok = !pieces.empty();
+	if (pieces.empty() || !settle_road_edit(s, total)) return total; // the caller rolls the journal back
+	total.ok = true;
 	return total;
 }
 

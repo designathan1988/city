@@ -43,7 +43,7 @@ void insert_roads(CityState &s, const GeneratedRoads &r) {
 		const int *g = &r.segs[k * SEG_FIELDS];
 		int a = ids[g[0]], b = ids[g[1]];
 		const RoadNode &na = s.roads.nodes[a], &nb = s.roads.nodes[b];
-		s.roads.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), g[2], g[3], g[4], SEG_FREE);
+		s.roads.add_segment(a, b, Quad::straight(na.x, na.z, nb.x, nb.z), g[2], g[3], g[4], 0);
 	}
 	// Only the generator's own dead ends turn in a bulb: a road demolished later leaves a straight cut.
 	for (int n : ids) s.roads.nodes[n].plain = s.roads.nodes[n].segs.size() != 1;

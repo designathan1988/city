@@ -15,7 +15,8 @@ namespace city {
 // Segment flags (Roadcraft roads/flags.ts and network.ts).
 enum SegFlag : uint16_t {
 	SEG_FURNITURE_MASK = 0x06, // bits 1-2: 0 full street furniture, 1 basic, 2 none
-	SEG_FREE = 0x80, // built by the generator: worth nothing when demolished
+	// bit 7 is not taken: saves before the economy carry it on generated roads (SEG_FREE, gone: a generated road is worth its
+	// price, as in the 4.0)
 	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
 	SEG_ZONED_RIGHT = 0x200,
 };

@@ -32,7 +32,7 @@ mudança que altera o que ele descreve: o gate `MAPA_DESATUALIZADO` falha quando
 - **Um dono por definição:** valores ajustáveis vivem só em `project/data/**` (tabelas JSON com schema).
   Nomes do tuning: X-macro `CITY_TUNING_FIELDS`; valores: `data/catalog/tuning.json` (`gate_tuning.py` exige
   as mesmas chaves e que todas sejam lidas). Regras com dono único estão em `tools/gates/owners.json`
-  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, estado do jogo);
+  (altura do prédio, andar, regra do lote, "há trabalho a salvar", fachada, mobiliário da rua, dinheiro, cobrança das vias, estado do jogo);
   reimplementar o padrão em outro arquivo gera `DONO_UNICO`.
 - **Sem números mágicos** em `native/src`, `project/game`, `project/ui` (`NUMERO_MAGICO`): dê nome
   (constante no dono) ou mova para dados. Valor distintivo de um dado redigitado no código → `VALOR_DUPLICADO`;
@@ -85,29 +85,26 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 **API GDExtension — native/src/api**
 - `native/src/api/body_doc.cpp` · `native/src/api/body_doc.h` — um prédio como documento (projeto de lote, prédio de uma cidade do Roadcraft) feito corpo
-- `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` — buildings.json → tabelas do gerador de prédios da simulação
-- `native/src/api/blast_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera)
+- `native/src/api/buildings_loader.cpp` · `native/src/api/buildings_loader.h` · `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — buildings.json → tabelas do gerador de prédios da simulação; interiors.json → tabelas dos interiores
+- `native/src/api/blast_loader.cpp` · `native/src/api/traffic_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera); Dictionary → TrafficParams estrito
 - `native/src/api/city_core_strike.cpp` — a bomba como API de script (`strike`, um passo de desfazer) e as sondas `damage_probe` (o que os golpes deixaram no mapa) e `blast_probe` (números do modelo)
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
-- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses)
-- `native/src/api/city_core_bind.cpp` — bindings de script do CityCore
+- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` · `native/src/api/city_core_bind.cpp` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses); os bindings de script do CityCore
 - `native/src/api/city_core_areas.cpp` — as áreas da API, cada uma um objeto próprio sobre o estado e o render do núcleo, feitas com ele e soltas antes dele; o store chama cada nome do `StoreApi` na área dele (o método `area` do núcleo): `builder`, `landscape`, `transit`, `probes`
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_builder.h` · `native/src/api/city_core_body.cpp` — área `builder` (CityBuilder): o corpo de um prédio para o Construir, o que ele tem e as edições como comandos de script
 - `native/src/api/city_core_edit.cpp` — desfazer/refazer, traços e edições das gavetas (dividir, melhorar, rotatória, relevo, prédio desenhado)
 - `native/src/api/city_core_interior.cpp` — a camada Interior dos prédios como API de script: abrir um prédio num andar, ler o estado (andares e lâmpadas: leitura pesada, só depois de um comando), a revisão barata que avisa quando reler, e o custo do interior de um prédio (testes)
 - `native/src/api/city_core_persist.cpp` — salvar/abrir: encode sob trava curta, ZSTD e gravação em thread própria
-- `native/src/api/city_probes.h` · `native/src/api/city_core_clearance_probe.cpp` · `native/src/api/city_core_park_probe.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` — área `probes` (CityProbes), o que testes e capturas perguntam: folga dos carros de lote e onde cada veículo está na faixa, a regra do âmbar; vagas, lotes, ciclofaixas, docas e câmera livre; quem anda a pé; a regra da fila de jobs
+- `native/src/api/city_probes.h` · `native/src/api/city_core_clearance_probe.cpp` · `native/src/api/city_core_park_probe.cpp` · `native/src/api/city_core_people.cpp` · `native/src/api/city_core_jobs.cpp` · `native/src/api/city_core_economy_probe.cpp` — área `probes` (CityProbes), o que testes e capturas perguntam: folga dos carros de lote e onde cada veículo está na faixa, a regra do âmbar; vagas, lotes, ciclofaixas, docas e câmera livre; quem anda a pé; a regra da fila de jobs; o saldo posto à mão e quanto de uma via sai em cada modo de construir
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas do núcleo: custo do quadro, chegada das poses e tráfego
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
 - `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar, o aviso da barra e a câmera perguntam: tráfego ao vivo de via e cruzamento, nós impossíveis e a linha de visão livre de prédios
 - `native/src/api/edit_result.h` — EditResult como Dictionary e `run_edit` (comando dentro de um passo de undo)
 - `native/src/api/city_landscape.h` · `native/src/api/city_core_nature.cpp` · `native/src/api/nature_loader.cpp` — área `landscape` (CityLandscape): gaveta Paisagem como API de script (clima, nuvens, neblina, pintura, árvores, bioma); nature.json → NatureDef estrito
-- `native/src/api/interiors_loader.cpp` · `native/src/api/interiors_loader.h` — interiors.json → tabelas dos interiores
 - `native/src/api/city_core_models.cpp` · `native/src/api/models_loader.cpp` · `native/src/api/models_loader.h` — área `builder`, Construir › Modelos: catálogo, corpo em mãos como bytes, encaixe, colocar e desenhar à parte; models.json → catálogo
 - `native/src/api/register_types.cpp` — entrada da GDExtension: registra CityCore e as áreas (abstratas: só o núcleo as faz)
 - `native/src/api/city_transit.h` · `native/src/api/city_core_transit.cpp` — área `transit` (CityTransit): transporte público como API de script
-- `native/src/api/traffic_loader.cpp` — Dictionary → TrafficParams estrito
 
 **Núcleo — native/src/core**
 - `native/src/core/bytes.h` — leitor/escritor binário do formato de save
@@ -187,6 +184,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/strike_buildings.cpp` · `native/src/sim/commands/strike_ground.cpp` · `native/src/sim/commands/strike_roads.cpp` · `native/src/sim/commands/strike_people.cpp` — prédios (dano que se soma, queda e ruína, fogo, desgaste); cratera, terreno e mobiliário derrubado; o trecho de via que a cratera corta; pedestres (mortos, derrubados, assustados) e veículos explodidos
 - `native/src/sim/commands/shoot_commands.cpp` · `native/src/sim/commands/shoot_internal.h` · `native/src/sim/commands/shoot_people.cpp` · `native/src/sim/commands/shoot_vehicles.cpp` — a pistola: um tiro ao longo da linha de visão (para no terreno; pega o primeiro pedestre, em pé ou caído, ou veículo); ferida por parte do corpo (cabeça mata, tronco um terço da vida, membro um quinto; membro arrancado, barriga aberta, sangramento até morrer), motociclista derrubado, vidro de carro (para o carro), rajada que o faz explodir; avisa o render por eventos
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
+- `native/src/sim/economy/road_economy.cpp` · `native/src/sim/economy/road_economy.h` — dono do dinheiro das vias: modos de construir, preço, a regra da cobrança e o acerto da edição aberta pelo diário
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo
 - `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
 - `native/src/sim/nature/ecology.cpp` · `native/src/sim/nature/ecology.h` — o que cresce onde por bioma (fitofisionomias), calculado por chunk onde é lido
@@ -392,7 +390,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície
 - `project/tests/core/transit_test.gd` · `project/tests/core/transit_test.tscn` — paradas, linha, ônibus, trem, desfazer e save do transporte
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_part_cases.gd` · `project/tests/core/building_pick_cases.gd` · `project/tests/core/building_tool_test.gd` · `project/tests/core/building_tool_test.tscn` — edições do Construir pelo store e pela ferramenta: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
-- `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` — comandos de via/zona/demolir pelo store
+- `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` · `project/tests/core/road_money_cases.gd` — comandos de via/zona/demolir pelo store; o dinheiro das vias (preço pago, devolução, vias geradas, desfazer, recusa sem saldo, modos de construir)
 - `project/tests/core/people_test.gd` · `project/tests/core/people_test.tscn` — quem anda a pé: portas, idades, pares, criança acompanhada e gente por hora
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` — opções da via de classe, Mover, Controle e regras de edição
 - `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa
@@ -419,6 +417,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — parada, estação e trilho nas capturas; a rua com o outro lado livre, onde valem as poses do 4.0
 - `project/tests/visual/capture_people.gd` — pessoas nas capturas: o casal, a família, a criança, o idoso, quem sai de uma porta, quem entra e quem espera na guia, como as fotos do 4.0, e uma multidão por baixo das sombras reais
 - `project/tests/visual/capture_pair.gd` · `project/tests/visual/capture_pair.tscn` — fotos no enquadramento das do 4.0: uma lista de vistas serve aos dois; com `--buildings=` os próprios prédios do 4.0, na pose lida dele, e uma vista com `inside` corta um deles por dentro
+- `project/tests/visual/capture_money.gd` · `project/tests/visual/capture_money.tscn` — o dinheiro por entrada real, nos passos e na câmera do 4.0
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` · `project/tests/visual/capture_shell.gd` · `project/tests/visual/capture_shell.tscn` — capturas da interface por cliques; a casca inteira nas vistas das fotos do 4.0
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
@@ -487,6 +486,7 @@ Backlog de recursos do Bloco E do roteiro (não faz parte do porte de desempenho
 - Interface "em construção" (abas sem ferramenta, desenhadas assim): Quarteirões (Zonas), Interior (Construir) e Rua (Paisagem). Salvar é
   um arquivo por cidade (sem as gerações do Roadcraft; o arquivo que não abre vai para a quarentena); o autosave não grava cidade gerada
   que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
+- Dinheiro: toda via vale como ao nível do chão até haver greide (`built` em `road_economy.cpp` é o único ponto a ligar; `build_lengths` e os multiplicadores já valem e têm teste). O 4.0 não tem imposto nem manutenção: a única entrada é a devolução ao demolir. Estilos em `road_profiles.json`; `eua` e `europa` faltam.
 - Rotatória: sem fundir trecho curto até a junção (Roadcraft < 14 m), sem placas de dê a preferência nos acessos.
 - Oclusão: o preset padrão do jogo (`medium`) não liga o passe (`occlusion.gdshader`), e o 4.0 abre em `high`.
 - Vias do jogador: altura segue o chão (sem greide de menor terraplenagem, pontes/túneis, rampa íngreme, muro; o talude leva a grama do terreno, sem o que foi pintado no chão);

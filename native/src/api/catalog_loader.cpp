@@ -76,9 +76,13 @@ RoadClass road_class(const String &k, Reader &r) {
 	return RoadClass::LOCAL;
 }
 
+// The regional style the prices come from, until the style lives in the CityState.
+const char *const STYLE = "roadcraft";
+
 void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 	Reader top{ errors, "road_profiles" };
-	Dictionary pr = top.dict(t, "prices"), st = top.dict(t, "structure");
+	Dictionary style = top.dict(top.dict(t, "styles"), STYLE);
+	Dictionary pr = top.dict(style, "prices"), st = top.dict(style, "structure");
 	c.prices = { top.num(pr, "carriageway"), top.num(pr, "median"), top.num(pr, "footway") };
 	c.structure = { top.num(st, "ground"), top.num(st, "embankment"), top.num(st, "trench"), top.num(st, "bridge"), top.num(st, "tunnel") };
 	Array list = top.arr(t, "profiles");

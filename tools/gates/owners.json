@@ -48,6 +48,13 @@
       "scope": ["native/src/"]
     },
     {
+      "id": "road_charge",
+      "owner": "native/src/sim/economy/road_economy.cpp",
+      "symbol": "charge_for",
+      "forbidden_elsewhere": ["MIN_CHARGE", "economy_refund_share"],
+      "scope": ["native/src/"]
+    },
+    {
       "id": "money_format",
       "owner": "project/game/store/formatters.gd",
       "symbol": "format_money",

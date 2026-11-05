@@ -151,8 +151,10 @@ def write(name, data):
 
 
 if __name__ == "__main__":
-    prices = {"carriageway": 150, "median": 40, "footway": 80}
-    structure = {"ground": 1, "embankment": 1.4, "trench": 1.8, "bridge": 2.5, "tunnel": 6}
+    # The styles block of road_profiles.json (the money of each regional style) is written by hand: kept as it is,
+    # only the profile lists are made here.
+    with open(OUT + PARTS[0][0], encoding="utf-8") as f:
+        styles = json.load(f)["styles"]
     for name, a, b in PARTS:
         part = {"profiles": BUILTIN[a:b]}
-        write(name, {"prices": prices, "structure": structure, **part} if a == 0 else part)
+        write(name, {"styles": styles, **part} if a == 0 else part)

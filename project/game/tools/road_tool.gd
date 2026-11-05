@@ -167,9 +167,9 @@ func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 	ctl.preview.show_road(_last_plan, _paint(), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
 	var text := _measure(end)
 	if not _last_plan.ok:
-		text += " · " + refusal(_last_plan)
+		text += " · " + reason(_last_plan)
 	elif not _last_plan.affordable:
-		text += " · " + refusal({"error": "ui.insp.noMoney"}, _last_plan.price)
+		text += " · " + tr("rule.short.funds")
 	ctl.tagged.emit(text, pieces[-1], ok)
 
 
@@ -184,7 +184,7 @@ func _paint() -> String:
 ## "120 m · R$ 150.000 · 90°": the length in tens of metres, the angle only when something snapped it.
 func _measure(end: Dictionary) -> String:
 	var tens := roundi(_last_plan.length / ROUND_TO_M) * ROUND_TO_M
-	var text := "%d m · %s" % [tens, Formatters.format_money(_last_plan.price)]
+	var text := "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(_last_plan.price)]
 	return text + (" · %d°" % roundi(end.angle_deg) if end.get("guide", "") != "" else "")
 
 
@@ -194,7 +194,7 @@ func _lay(pieces: PackedVector3Array) -> void:
 		return
 	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1])])
 	if r.is_empty() or not r.ok:
-		ctl.hint.emit(refusal(r, _last_plan.get("price", 0.0)), false)
+		ctl.hint.emit(refusal(r), false)
 		return
 	chain = Vector3.INF
-	ctl.hint.emit(Formatters.format_money(r.money), true)
+	ctl.hint.emit(Formatters.format_cost(r.money), true)

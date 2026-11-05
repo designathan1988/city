@@ -203,7 +203,6 @@ ui.insp.joined,Vias unidas.,Roads joined.
 ui.insp.lock,Travar esta escolha,Lock this choice
 ui.insp.noBend,Não curvou: {why}.,Not bent: {why}.
 ui.insp.noDuplicate,Não dá para duplicar aqui: {why}.,Cannot duplicate here: {why}.
-ui.insp.noMoney,Dinheiro insuficiente: custa {price}.,Not enough money: it costs {price}.
 ui.insp.parkingOff,Vagas retiradas.,Parking removed.
 ui.insp.parkingOn,Vagas paralelas à guia.,Kerbside parking added.
 ui.insp.profileApplied,Perfil aplicado à via,Profile applied to the road
@@ -231,7 +230,7 @@ ui.metric.jobs,Empregos,Jobs
 ui.metric.peds,Pedestres,Pedestrians
 ui.metric.residents,Moradores,Residents
 ui.metric.vehicles,Veículos,Vehicles
-ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir devolve {refund} % do preço.,Cash. Roads cost by width and length; bridges and tunnels cost more. Demolishing gives back {refund} % of the price.
+ui.money.tip,Dinheiro em caixa. Vias custam pela largura e pelo comprimento; pontes e túneis custam mais. Demolir uma via devolve {refund}% do preço dela.,Money in hand. Roads cost by width and length; bridges and tunnels more. Demolishing a road gives back {refund}% of its price.
 ui.money.unlimited,R$ ∞,$ ∞
 ui.options.apply,Aplicar,Apply
 ui.options.bloom,Brilho das luzes,Light bloom
@@ -473,7 +472,8 @@ zone.use,Uso do solo,Land use
 hint.upgrade,"Escolha um perfil e clique numa via para trocá-lo (Shift: a rua inteira; Alt: copiar o perfil da via).","Pick a profile and click a road to change it (Shift: the whole street; Alt: copy the road's profile)."
 hint.terrain,"Segure o botão esquerdo para esculpir o relevo; o traço inteiro se desfaz com Ctrl+Z.","Hold the left button to sculpt the relief; Ctrl+Z undoes the whole stroke."
 hint.lot,"Arraste um retângulo junto a uma via: o prédio escolhido nasce ali, de frente para a via.","Drag a rectangle beside a road: the chosen building goes up there, facing the road."
-ui.insp.upgraded,"Perfil trocado em {count} trecho(s).","Profile changed on {count} segment(s)."
+ui.insp.upgraded.one,Perfil trocado em {count} trecho,Profile changed on {count} segment
+ui.insp.upgraded.other,Perfil trocado em {count} trechos,Profile changed on {count} segments
 ui.build.placed,Prédio construído.,Building built.
 save.writeFailed,"Não foi possível gravar o arquivo do salvamento.","The save file could not be written."
 save.busy,"Um salvamento ainda está sendo gravado; tente de novo em instantes.","A save is still being written; try again in a moment."
@@ -572,3 +572,7 @@ building.problem.footprint,Nada ficaria apoiado no chão,Nothing would stand on 
 building.problem.outline,Isto ainda não vale para esta planta,This does not work on this plan yet
 building.problem.roofPart,Isto não cabe neste telhado,This does not fit on this roof
 building.problem.lastVolume,O último volume no chão não sai: demolir tira o prédio,The last block on the ground stays: demolish takes the building
+hint.rule.funds,Recusado: não há dinheiro para construir isto. Demolir vias devolve parte do preço delas.,Refused: not enough money to build this. Demolishing roads gives back part of their price.
+rule.short.funds,dinheiro insuficiente,not enough money
+economy.refund,devolve {value},refund {value}
+economy.group,.,","

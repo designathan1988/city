@@ -1,7 +1,7 @@
 // CityProbes: what the tests and the captures ask of the city, an area of the core (api/city_core.h): the parked, the kerb, the docks
 // and the lots (city_core_park_probe.cpp), the lots' clearance and the amber (city_core_clearance_probe.cpp), who is on foot
-// and the clips they are drawn in (city_core_people.cpp) and the job queue (city_core_jobs.cpp). Made and freed by CityCore; game/store/city_store.gd reaches it through
-// CityCore.area("probes").
+// and the clips they are drawn in (city_core_people.cpp), the job queue (city_core_jobs.cpp) and the money (city_core_economy_probe.cpp).
+// Made and freed by CityCore; game/store/city_store.gd reaches it through CityCore.area("probes").
 #pragma once
 
 #include <godot_cpp/classes/object.hpp>
@@ -34,6 +34,9 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
+	void probe_set_money(double money); // tests: a balance to reach the refusal without spending it
+	// Tests: how a road would be built and what it would cost (structure: RoadStructure).
+	godot::Dictionary probe_road_build(int profile, int structure, double height_a, double height_b, double len);
 
 protected:
 	static void _bind_methods();

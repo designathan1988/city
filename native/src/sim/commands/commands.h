@@ -199,7 +199,4 @@ EditResult set_biome(CityState &s, int region);
 // Takes the planted trees in a circle away and leaves a clearing there (the woods' trees go too); false when full.
 bool cut_trees_at(CityState &s, float x, float z, float radius);
 
-// Value of one segment (R$): length x price per metre x structure factor (ground).
-double segment_value(const CityState &s, int seg);
-
 } // namespace city

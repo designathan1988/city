@@ -5,6 +5,7 @@
 
 #include "api/edit_result.h"
 #include "sim/roads/road_variants.h"
+#include "sim/economy/road_economy.h"
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
@@ -62,7 +63,7 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 	const Profile &pf = s.catalog.profile(profile);
 	d["half_width"] = pf.half();
 	d["asphalt_half"] = std::max(pf.asph_left, pf.asph_right);
-	d["affordable"] = s.unlimited_money || p.price <= s.money;
+	d["affordable"] = charge_of(s, p.price).affordable;
 	d["points"] = pts;
 	d["start"] = anchor_dict(s, a);
 	d["end"] = anchor_dict(s, b);

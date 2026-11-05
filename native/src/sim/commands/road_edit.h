@@ -15,8 +15,6 @@ namespace city {
 
 // Arc length at curve parameter t from an arc_table (plan.ts arcAtT).
 double arc_at(const std::vector<double> &table, double t);
-// Value of `len` metres of a profile built on the ground (Roadcraft roads/economy.ts segmentPrice, kind ground).
-double road_value(const CityState &s, int profile, double len);
 // Splits segment `seg` at t; returns the new node (height linear along the segment).
 int split_segment(CityState &s, int seg, double t);
 // The node an anchor stands for: its node, a split of its segment (searched again when an earlier split took it) or a
@@ -26,8 +24,8 @@ int anchor_node(CityState &s, const Anchor &a);
 int clear_under(CityState &s, int seg);
 // The ground follows the new segment (a terrain corridor modifier, as the generated city's streets).
 void conform_under(CityState &s, int seg);
-// Removes the segment and the nodes it leaves alone, refunding its share; returns the money back (R$, 0 when none).
-double demolish_segment(CityState &s, int seg);
+// Removes the segment and the nodes it leaves alone; the command settles what comes back (road_economy.h settle_road_edit).
+void demolish_segment(CityState &s, int seg);
 // The ground moved under the box: its roads, buildings and lots are drawn / derived again (brush.ts touchSamples).
 void mark_ground(CityState &s, double minx, double minz, double maxx, double maxz);
 // The painted ground of a sample rectangle is drawn again, its trees and covers placed again.
@@ -41,8 +39,10 @@ struct RoadKeeps {
 	int zl = 0, zr = 0;
 	uint16_t flags = 0;
 };
-// build_road with `keeps` on every piece.
+// A road laid as build_road lays it, with `keeps` on every piece, and no money moved: the command it is part of settles once.
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps);
+// build_road without the money: laid and checked (a stretch squeezed between junctions refused); the command settles.
+EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
 // The area an edit touches.
 struct RoadBox {
 	double minx = std::numeric_limits<double>::max(), minz = minx, maxx = std::numeric_limits<double>::lowest(), maxz = maxx;

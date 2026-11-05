@@ -2,6 +2,7 @@
 class_name DataTables
 extends RefCounted
 
+const CITY_STYLE := "roadcraft"
 const CATALOG := {
 	"tuning": "res://data/catalog/tuning.json",
 	"maps": "res://data/catalog/maps.json",

@@ -5,6 +5,7 @@
 
 #include "core/math.h"
 #include "sim/roads/junction.h"
+#include "sim/economy/road_economy.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -25,7 +26,6 @@ double dir_turn(const Quad &first, const Quad &second) {
 }
 
 constexpr int ARC_STEPS = 64;
-constexpr double MIN_CHARGE = 1; // economy.ts chargeFor: |delta| < 1 moves no money
 
 struct Stop {
 	double t = 0;
@@ -67,10 +67,9 @@ void lay_pieces(CityState &s, const Quad &q, const std::vector<double> &table, c
 	}
 }
 
-bool affords(const CityState &s, double price) { return s.unlimited_money || price <= s.money; }
 } // namespace
 
-EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
 	RoadBox box;
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
@@ -80,6 +79,12 @@ EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx
 		r = EditResult{};
 		r.error = "hint.rule.squeezed";
 	}
+	return r;
+}
+
+EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+	EditResult r = place_road(s, a, has_control, cx, cz, b, profile);
+	if (r.ok && !settle_road_edit(s, r)) r.ok = false; // the caller rolls the journal back
 	return r;
 }
 
@@ -133,10 +138,6 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 		r.error = plan.reason;
 		return r;
 	}
-	if (!affords(s, plan.price)) {
-		r.error = "ui.insp.noMoney";
-		return r;
-	}
 	std::vector<Stop> stops;
 	stops.push_back({ 0, anchor_node(s, a) });
 	for (const Crossing &c : plan.crossings) {
@@ -161,10 +162,8 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	box.add(minx, minz);
 	box.add(maxx, maxz);
 	for (const Stop &stop : stops) merge_stubs(s, stop.node, box);
-	j_money(s, -plan.price);
 	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
-	r.money = s.unlimited_money ? 0 : plan.price;
 	r.segments = int(made.size());
 	return r;
 }
@@ -203,22 +202,19 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		return r;
 	}
 	const RoadSegment g = net.segs[seg];
-	r.money = -demolish_segment(s, seg);
+	demolish_segment(s, seg);
+	settle_road_edit(s, r); // what comes back is always affordable
 	finish_edit(s, g.minx, g.minz, g.maxx, g.maxz);
 	r.ok = true;
 	r.segments = 1;
 	return r;
 }
 
-double demolish_segment(CityState &s, int seg) {
+void demolish_segment(CityState &s, int seg) {
 	const RoadSegment g = s.roads.segs[seg];
-	const double refund = (g.flags & SEG_FREE) ? 0 : segment_value(s, seg) * s.catalog.tune.economy_refund_share;
 	j_remove_segment(s, seg);
 	j_remove_node_if_orphan(s, g.a);
 	j_remove_node_if_orphan(s, g.b);
-	if (refund < MIN_CHARGE || s.unlimited_money) return 0;
-	j_money(s, std::round(refund));
-	return std::round(refund);
 }
 
 } // namespace city
