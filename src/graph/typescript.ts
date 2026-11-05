@@ -27,7 +27,19 @@ export function loadTypeScript(sourceRoot: string, typescriptDir: string | undef
   return createRequire(path.join(path.resolve(sourceRoot), 'package.json'))('typescript') as TypeScriptApi;
 }
 
+/** One program per project in a process: opening it (parsing, binding) is the same work each time, and its checker learns as it is asked. */
+const opened = new Map<string, SourceProgram>();
+
 export function openProgram(ts: TypeScriptApi, sourceRoot: string, tsconfig: string): SourceProgram {
+  const key = `${path.resolve(sourceRoot)}|${path.resolve(tsconfig)}`;
+  const known = opened.get(key);
+  if (known) return known;
+  const program = openNewProgram(ts, sourceRoot, tsconfig);
+  opened.set(key, program);
+  return program;
+}
+
+function openNewProgram(ts: TypeScriptApi, sourceRoot: string, tsconfig: string): SourceProgram {
   const configPath = path.resolve(tsconfig);
   const read = ts.readConfigFile(configPath, ts.sys.readFile);
   if (read.error) {
