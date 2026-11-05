@@ -31,6 +31,11 @@ Fontes: leitura integral de `regras-sessoes.md`, `registro/*.md`, `ports/*/relat
 
 ## 3. O que fica para o usuário (não posso fazer)
 
+0. Dois defeitos do portão, achados no teste ao vivo; a correção está em arquivos que o portão protege da sessão:
+   - `~/.claude/settings.json`, os dois hooks `type: agent`: a doc diz que `if` com padrão além do nome do comando roda "anyway on `$()`, backticks, or `$VAR`", então todo Bash com `$` aciona os juízes, que podem negá-lo. Acrescentar no início dos dois `prompt`: "Se tool_input.command não começar exatamente por `python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py passo`, responda {\"ok\": true} sem ler nada."
+   - `ferramentas/processo/passos.py`, em `_p1`, `_p3`, `_p5`: caminho relativo no registro resolve contra a raiz do projeto, não contra o cwd da sessão; passar `dados.get("cwd")` a `L.normalizar` e a `E.cobre`.
+   - Limite conhecido: a resposta de um curl maior que a saída do Bash chega cortada ao hook, então a citação precisa vir de um trecho que caiba nela.
+
 1. Aplicar `registro/hooks/fonte-settings.proposto.json` em `fonte/.claude/settings.json` (o hook nega a minha edição).
 2. Corrigir os falsos positivos de `hook_protect.py` (item 2 da tabela): tokenização com aspas; `GIT_COMMIT` só em segmento que começa por `git`.
 3. Decidir se os hooks de Stop por prompt e por agente da skill `roadcraft-porte` devem ir para `~/.claude/settings.json` (valeriam em toda sessão, com custo por turno) ou ficar na skill (valem quando ela é invocada).
