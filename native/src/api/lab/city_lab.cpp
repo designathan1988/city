@@ -126,7 +126,12 @@ Dictionary CityLab::diagnose(const Dictionary &frames, const Dictionary &rules) 
 	out["frames"] = static_cast<int64_t>(intervals.size());
 	out["hitches"] = static_cast<int64_t>(hitches);
 	out["many_hitches"] = static_cast<double>(hitches) > r.many_hitches;
-	out["findings"] = findings_as_array(lab::findings_of(stages_of(frames), t.gpu_ms, r));
+	const std::vector<lab::Stage> stages = stages_of(frames);
+	double stages_ms = 0;
+	for (const lab::Stage &s : stages) stages_ms += lab::mean_of(s.samples);
+	out["stages_ms"] = stages_ms; // every stage's mean, to hold against the same frames' mean
+	out["gpu_mean_ms"] = lab::mean_of(samples_of(frames["gpu"]));
+	out["findings"] = findings_as_array(lab::findings_of(stages, t.gpu_ms, r));
 	return out;
 }
 

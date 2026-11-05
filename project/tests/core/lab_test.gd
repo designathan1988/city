@@ -92,10 +92,9 @@ func _measure(hud: RoadcraftHud) -> void:
 	if RenderingServer.get_rendering_device() == null:
 		_check(run.report.findings.is_empty(), "sem dispositivo não há estágios")
 		return
-	var sum := 0.0
-	for f: Dictionary in run.report.findings:
-		sum += f.ms
-	_check(absf(sum - run.report.gpu_ms) <= run.report.gpu_ms * STAGES_SHARE, "os estágios somam a GPU: %.2f de %.2f" % [sum, run.report.gpu_ms])
+	var sum: float = run.report.stages_ms
+	var gpu: float = run.report.gpu_mean_ms
+	_check(absf(sum - gpu) <= gpu * STAGES_SHARE, "os estágios somam a GPU: %.2f de %.2f" % [sum, gpu])
 	_check(get_viewport().get_camera_3d().compositor == null, "o relógio saiu da câmera")
 	run.compare("shadows")
 	await _idle(run)

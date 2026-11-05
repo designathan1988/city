@@ -13,12 +13,6 @@ namespace {
 // A GPU time this small is no time to share a stage of (findings.ts `Math.max(gpuMs, 1e-6)`).
 constexpr double LEAST_GPU_MS = 1e-6;
 
-double mean_of(const std::vector<double> &values) {
-	double sum = 0;
-	for (double v : values) sum += v;
-	return values.empty() ? 0 : sum / static_cast<double>(values.size());
-}
-
 double tail_of(std::vector<double> values, double share) {
 	if (values.empty()) return 0;
 	std::sort(values.begin(), values.end());
@@ -33,6 +27,12 @@ std::optional<double> mean_of_two(std::optional<double> a, std::optional<double>
 }
 
 } // namespace
+
+double mean_of(const std::vector<double> &values) {
+	double sum = 0;
+	for (double v : values) sum += v;
+	return values.empty() ? 0 : sum / static_cast<double>(values.size());
+}
 
 double median(std::vector<double> values) {
 	if (values.empty()) return std::numeric_limits<double>::quiet_NaN();

@@ -60,6 +60,7 @@ struct Comparison {
 };
 
 double median(std::vector<double> values); // NaN with nothing to read
+double mean_of(const std::vector<double> &values); // 0 with nothing to read
 Bound bound_of(const Times &t, const Rules &r);
 Severity severity_of(double ms, const Rules &r);
 // The stages that weigh, heaviest first.
