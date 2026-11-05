@@ -41,6 +41,10 @@ func release(p: Vector3) -> void:
 	ctl.hint.emit(tr("ui.build.placed") if r.get("ok", false) else refusal(r), r.get("ok", false))
 
 
+func in_progress() -> bool:
+	return _a != Vector3.INF
+
+
 func cancel() -> void:
 	_a = Vector3.INF
 	ctl.preview.clear()

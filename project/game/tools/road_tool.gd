@@ -97,6 +97,10 @@ func release(p: Vector3) -> void:
 		_lay(pieces)
 
 
+func in_progress() -> bool:
+	return not draft.is_empty() or not bend.is_empty() or chain != Vector3.INF
+
+
 func cancel() -> void:
 	draft = {}
 	bend = {}

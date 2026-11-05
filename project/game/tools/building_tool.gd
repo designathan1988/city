@@ -131,6 +131,11 @@ func _roof(hit: Dictionary) -> Dictionary:
 	return {"ok": false, "error": "tool.failed"}
 
 
+## What Escape steps back first: the body in hand, the bay armed or the part held (the pick itself goes with the tool).
+func in_progress() -> bool:
+	return not hand.is_empty() or armed != NO_BAY or not part.is_empty()
+
+
 func cancel() -> void:
 	if not hand.is_empty():
 		_put_down()

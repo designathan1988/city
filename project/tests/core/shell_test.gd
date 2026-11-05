@@ -11,6 +11,8 @@ const COST_SLOW_MS := 30.0
 const COST_FAST_MS := 4.0
 const BUDGET_MS := 16.0
 const DT := 0.016
+## Free ground past the town, where a road can start.
+const FIELD_M := 100.0
 
 var failures := 0
 
@@ -195,6 +197,11 @@ func _panels(hud: RoadcraftHud) -> void:
 	_check(hud.popover.visible, "menu abre")
 	_check(hud.escape() and not hud.popover.visible, "Esc fecha o menu antes da ferramenta")
 	hud.open_category("roads")
+	var road: ToolBase = hud.tools.active
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	road.click(Vector3(b.max.x + FIELD_M, 0, (b.min.z + b.max.z) * 0.5))
+	_check(road.in_progress(), "via começada")
+	_check(hud.escape() and not road.in_progress() and not hud.drawer.category.is_empty(), "Esc larga a via em desenho, não a ferramenta")
 	_check(hud.escape() and hud.drawer.category.is_empty(), "Esc larga a ferramenta")
 	_check(not hud.escape(), "Esc sem nada na mão passa adiante")
 	hud.health.toggle()

@@ -87,6 +87,10 @@ func _show_run(to: Vector3) -> void:
 	CityStore.query(&"transit_preview", [run, mode])
 
 
+func in_progress() -> bool:
+	return not points.is_empty() or not stops.is_empty()
+
+
 func cancel() -> void:
 	points.clear()
 	stops.clear()

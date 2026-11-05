@@ -47,6 +47,11 @@ func cancel() -> void:
 	pass
 
 
+## Something is being drawn that cancel() drops: Escape takes it before the tool itself (Roadcraft main.ts gestureInProgress).
+func in_progress() -> bool:
+	return false
+
+
 func key(_keycode: Key) -> void:
 	pass
 

@@ -17,6 +17,15 @@ func click(p: Vector3) -> void:
 	_corner = p
 
 
+func in_progress() -> bool:
+	return _corner != Vector3.INF
+
+
+## The box being dragged goes, nothing demolished (Roadcraft bulldozer cancel).
+func cancel() -> void:
+	_corner = Vector3.INF
+
+
 func release(p: Vector3) -> void:
 	var from := _corner
 	_corner = Vector3.INF

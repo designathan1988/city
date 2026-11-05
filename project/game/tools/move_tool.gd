@@ -53,6 +53,10 @@ func _left_press(p: Vector3) -> bool:
 	return p.distance_to(_from) > ctl.px_at(p) * DataTables.tuning("road_click_px")
 
 
+func in_progress() -> bool:
+	return _node >= 0
+
+
 func cancel() -> void:
 	_node = -1
 	ctl.preview.clear()
