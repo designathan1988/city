@@ -201,6 +201,31 @@ export class Translator extends Emitter {
   }
 
   /** The declaration's own comment: the last one before it (a section rule above it is not about it). */
+  /** The context an expression reads inside (a context pattern, or a constant that is one), with its include; null if none. */
+  #contextIn(e: TS.Expression): { context: { type: string; name: string }; include: string } | null {
+    const ts = this.c.ts;
+    let found: { context: { type: string; name: string }; include: string } | null = null;
+    const visit = (n: TS.Node): void => {
+      if (found) return;
+      if (ts.isExpression(n)) {
+        const match = this.c.patterns.match(n);
+        if (match?.pattern.context) {
+          found = { context: match.pattern.context, include: match.pattern.include };
+          return;
+        }
+        const s = ts.isIdentifier(n) ? this.symbolOf(n) : undefined;
+        const k = s ? this.c.contextConstants.get(s) : undefined;
+        if (k) {
+          found = { context: k.context, include: k.include };
+          return;
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(e);
+    return found;
+  }
+
   #doc(node: TS.Node): string | null {
     const source = node.getSourceFile().text;
     const ranges = this.c.ts.getLeadingCommentRanges(source, node.getFullStart()) ?? [];
@@ -304,6 +329,8 @@ export class Translator extends Emitter {
   #planConstant(d: TS.VariableDeclaration, name: string, line: number): void {
     this.unit = name;
     this.module = this.c.relative(d.getSourceFile());
+    // a regular expression: no C++ constant; each use compiles it once where it is tested (#regexTest)
+    if (d.initializer?.kind === this.c.ts.SyntaxKind.RegularExpressionLiteral) return;
     const symbol = this.symbolOf(d.name)!;
     const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
     // a constant whose value is a context pattern (RAMP_GRADE = ROAD_TUNING.grade.ramp, the game's tuning): no C++
@@ -311,6 +338,19 @@ export class Translator extends Emitter {
     const contextual = d.initializer ? this.c.patterns.match(d.initializer) : null;
     if (contextual?.pattern.context) {
       this.c.contextConstants.set(symbol, { code: this.expr(d.initializer!, type), type, include: contextual.pattern.include, context: contextual.pattern.context });
+      return;
+    }
+    // a value built from a context inside (CLEAR = ROAD_TUNING.grade.clear * 2): a number, a flag or a name is read
+    // the same at each use; a table built from it would be a new one at each use (a pointer into it dangles), so the
+    // target must own it: the library maps the constant by name to the target's table
+    const inner = d.initializer ? this.#contextIn(d.initializer) : null;
+    if (inner) {
+      const scalar = type.k === 'int' || type.k === 'real' || type.k === 'bool' || type.k === 'enum';
+      if (!scalar) {
+        this.fail(d, `${name} is a ${render(type)} built from ${inner.context.name} (${inner.context.type}): the target owns it; map ${name} in the library to the target's table`);
+        return;
+      }
+      this.c.contextConstants.set(symbol, { code: `(${this.expr(d.initializer!, type)})`, type, include: inner.include, context: inner.context });
       return;
     }
     const value = d.initializer ? this.expr(d.initializer, type) : '{}';

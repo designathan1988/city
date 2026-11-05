@@ -51,6 +51,29 @@ describe('translate', () => {
     assert.doesNotMatch(file('yard_query.cpp'), /float dist\(/, 'the helper is not copied into the feature');
   });
 
+  it('copies a spread before sorting it, and reads a tuple by position', () => {
+    assert.match(file('yard_query.cpp'), /std::vector<float> sorted_\d+ = std::vector<float>\(values\);\n\tstd::stable_sort\(sorted_\d+\.begin\(\)/,
+      'the caller\'s values stay as they are');
+    assert.match(file('yard_types.h'), /struct NumberPair \{\n\tfloat first = 0;\n\tfloat second = 0;\n\};/);
+    assert.match(file('yard_query.cpp'), /float t = item_\d+\.first;\n\t\tfloat y = item_\d+\.second;/);
+  });
+
+  it('takes a membership test as a predicate: a Set passed in, a rule written in place', () => {
+    assert.match(file('yard_query.cpp'), /int kept_count\(const YardState &t, const std::function<bool\(int64_t\)> &kept\)/);
+    assert.match(file('yard_query.cpp'), /if \(kept\(p\.id\)\)/);
+    assert.match(file('yard_query.cpp'), /kept_count\(t, \[&\]\(int64_t k\) \{ return chosen_seen\.count\(k\) != 0; \}\)/, 'a Set asks its hash set');
+    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen_seen\.count\(id\) != 0\);/);
+  });
+
+  it('folds with reduce, tests a prefix and a suffix, writes NaN and a number without its separator', () => {
+    const q = file('yard_query.cpp');
+    assert.match(q, /s_\d+\.compare\(0, p_\d+\.size\(\), p_\d+\) == 0/);
+    assert.match(q, /return std::numeric_limits<float>::quiet_NaN\(\);/);
+    assert.match(q, /float acc_\d+ = 0; for \(float b : /);
+    assert.match(file('yard_types.h'), /constexpr float SUMMED = 1000\.5f;/);
+    assert.match(file('yard_types.h'), /#include <limits>/, 'a header from the names written');
+  });
+
   it('keeps integers integers, through cycles, callbacks and helpers called with integers', () => {
     assert.match(file('yard_query.cpp'), /\bint n = 0;/);
     assert.match(file('yard_types.h'), /struct Nearest \{\n\tint32_t i = 0;\n\tfloat d = 0;\n\tV2 at;\n\};/);

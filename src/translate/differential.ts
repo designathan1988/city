@@ -122,7 +122,7 @@ class Scenario {
         return { js: String(b), cpp: String(b) };
       }
       case 'string': {
-        const s = this.pick(['Alpha', 'Beta', 'Gamma', 'Delta']);
+        const s = this.pick(['Alpha', 'Beta', 'Gamma', 'Delta', 'HTTP://a-b-c', '(alpha-beta)', '', 'a-']);
         return { js: JSON.stringify(s), cpp: `std::string(${JSON.stringify(s)})` };
       }
       case 'enum': {
@@ -142,6 +142,10 @@ class Scenario {
       case 'struct':
         return this.#struct(type.name, name, state);
       case 'function':
+        // A membership test of a number (a Set or a rule passed in as `{ has(k) }`): one fixed rule, both languages.
+        if (type.ret.k === 'bool' && type.params.length === 1 && type.params[0]!.k === 'int') {
+          return { js: '{ has: (k) => k % 3 !== 1 }', cpp: '[](int64_t k) { return k % 3 != 1; }' };
+        }
         // One fixed predicate on a point, the same in both languages.
         return { js: '(p) => (Math.floor(p.x / 7) + Math.floor(p.y / 7)) % 2 === 0', cpp: '[](const auto &p) { return (int(std::floor(p.x / 7)) + int(std::floor(p.y / 7))) % 2 == 0; }' };
       default:
@@ -193,6 +197,7 @@ class Scenario {
     const struct = this.#t.structs.find((s) => s.name === name);
     if (!struct) throw new Error(`the harness knows no struct ${name} (for ${hint})`);
     const js: string[] = [];
+    const positions: string[] = [];
     const cpp: string[] = [];
     const xy = struct.fields.some((f) => f.source === 'x' && f.type.k === 'real') && struct.fields.some((f) => f.source === 'y' && f.type.k === 'real')
       ? this.#point() : null;
@@ -200,10 +205,18 @@ class Scenario {
       const at = xy && (f.source === 'x' || f.source === 'y') ? xy[f.source === 'x' ? 0 : 1] : null;
       const v = at !== null && f.type.k === 'real' ? { js: String(at), cpp: realLiteral(String(at), f.type.name) } : this.value(f.type, f.source, state);
       if (v.js !== 'undefined') js.push(`${f.source}: ${v.js}`);
+      positions.push(v.js);
       cpp.push(v.cpp === 'std::nullopt' ? '{}' : v.cpp);
     }
+    // a tuple of the source (fields by position) is an array in JavaScript
+    if (isTuple(struct)) return { js: `[${positions.join(', ')}]`, cpp: `${name}{${cpp.join(', ')}}` };
     return { js: `{ ${js.join(', ')} }`, cpp: `${name}{${cpp.join(', ')}}` };
   }
+}
+
+/** A struct made from a source tuple: its fields' sources are their positions. */
+function isTuple(s: CppStruct): boolean {
+  return s.fields.length > 0 && s.fields.every((f, i) => f.source === String(i));
 }
 
 /** The C++ printer of every type the API returns and the state holds, normalized like the JavaScript one. */
@@ -212,6 +225,11 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
   const enumPut = (e: CppEnum): string => `void put(std::ostream &o, ${e.name} v) {\n\tswitch (v) {\n${e.values.map((v) =>
     `\tcase ${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}: o << ${JSON.stringify(JSON.stringify(v))}; return;`).join('\n')}\n\t}\n}`;
   const structPut = (s: CppStruct): string => {
+    // a tuple prints as the JavaScript array it is
+    if (isTuple(s)) {
+      const items = s.fields.map((f, i) => `\t${i ? 'o << ","; ' : ''}put(o, v.${f.name});`);
+      return `void put(std::ostream &o, const ${s.name} &v) {\n\to << "[";\n${items.join('\n')}\n\to << "]";\n}`;
+    }
     const fields = [...s.fields].sort((a, b) => (a.source < b.source ? -1 : 1));
     const body = fields.map((f) => `\tif (present(v.${f.name})) { o << (first ? "" : ",") << ${JSON.stringify(JSON.stringify(f.source) + ':')}; put(o, v.${f.name}); first = false; }`);
     return `void put(std::ostream &o, const ${s.name} &v) {\n\tbool first = true;\n\to << "{";\n${body.join('\n')}\n\to << "}";\n}`;

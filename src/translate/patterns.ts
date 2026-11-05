@@ -8,7 +8,7 @@ export interface Pattern {
   readonly expr: TS.Expression;
   readonly target: string;
   readonly include: string;
-  readonly type: 'int' | 'int64' | 'float' | 'bool';
+  readonly type: 'int' | 'int64' | 'float' | 'bool' | 'void';
   readonly context: { readonly type: string; readonly name: string } | null;
 }
 
@@ -56,6 +56,17 @@ export class Patterns {
     if (ts.isPropertyAccessExpression(p)) {
       const b = n as TS.PropertyAccessExpression;
       return p.name.text === b.name.text && this.#match(p.expression, b.expression, bound);
+    }
+    if (ts.isElementAccessExpression(p)) {
+      const b = n as TS.ElementAccessExpression;
+      return this.#match(p.expression, b.expression, bound) && this.#match(p.argumentExpression, b.argumentExpression, bound);
+    }
+    if (ts.isStringLiteral(p)) return p.text === (n as TS.StringLiteral).text;
+    if (ts.isNewExpression(p)) {
+      const b = n as TS.NewExpression;
+      const pa = p.arguments ?? [];
+      const ba = b.arguments ?? [];
+      return pa.length === ba.length && this.#match(p.expression, b.expression, bound) && pa.every((a, i) => this.#match(a, ba[i]!, bound));
     }
     if (ts.isCallExpression(p)) {
       const b = n as TS.CallExpression;

@@ -93,3 +93,57 @@ export function limited(n: number): number {
 export function postById(t: YardData, id: number): Post | null {
   return t.posts.find((p) => p.id === id) ?? null;
 }
+
+/** The median of values left as they are: a sorted copy (the spread copies; sorting it leaves the caller's). */
+export function median(values: readonly number[]): number | null {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)]!;
+}
+
+/** The slope of y over t: pairs read by position. */
+export function slope(points: readonly (readonly [t: number, y: number])[]): number {
+  let st = 0;
+  let sy = 0;
+  let den = 0;
+  for (const [t, y] of points) { st += t; sy += y; den += (t - 1) ** 2; }
+  return points.length > 0 ? sy / Math.max(st, 1) + den : 0;
+}
+
+/** Posts some test says are kept: a membership the caller gives (a set, or a rule in place). */
+export function keptCount(t: YardData, kept: { has(id: number): boolean }): number {
+  let n = 0;
+  for (const p of t.posts) if (kept.has(p.id)) n++;
+  return n;
+}
+
+/** Kept by a set and by a rule written in place. */
+export function keptBoth(t: YardData): number {
+  const chosen = new Set<number>();
+  for (const p of t.posts) if (p.x > 0) chosen.add(p.id);
+  const even = { has: (id: number): boolean => id % 2 === 0 || chosen.has(id) };
+  return keptCount(t, chosen) + keptCount(t, even);
+}
+
+/** Totals by reduce, a numeric separator, a prefix test and NaN for nothing. */
+export function summed(t: YardData, label: string): number {
+  if (label.startsWith('(') || label.endsWith(')')) return NaN;
+  const total = t.posts.map((p) => p.x).reduce((a, b) => a + b, 0);
+  return total / 1_000.5;
+}
+
+const BRACKETED = /^\(.*\)$/;
+
+/** A label's short form: the scheme cut, a prefix replaced once and a part everywhere; whether it is bracketed. */
+export function shortLabel(label: string): number {
+  const cut = label.replace(/^[a-z]+:\/\//i, '').replace('a', 'A').replaceAll('-', '');
+  return cut.length + (BRACKETED.test(label) ? 1000 : 0);
+}
+
+/** A hash of heights read through ArrayLike, mixed by Math.imul with a hex constant and a key past int32. */
+export function heightHash(t: YardData, k: number): number {
+  const h: ArrayLike<number> = t.posts.map((p) => p.x);
+  let s = 0;
+  for (let i = 0; i < h.length; i++) s += h[i]!;
+  return (Math.imul(k | 0, 0x27d4eb2d) ^ Math.imul(s | 0, 0x9e3779b1)) + (k > 0 ? 0x1_0000_0000 : 0);
+}

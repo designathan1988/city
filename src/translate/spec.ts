@@ -13,7 +13,7 @@ export interface PatternMapping {
   readonly include: string;
   /** What the target expression is (default int64: the target's cell keys). A tuning value is float: an outside
    *  constant (ROAD_TUNING.grade.ramp) mapped to the game's own (its tuning accessor). */
-  readonly type?: 'int' | 'int64' | 'float' | 'bool';
+  readonly type?: 'int' | 'int64' | 'float' | 'bool' | 'void';
   /** A parameter the target expression reads (the game passes its tuning: "const Tuning &" tn): every function that
    *  uses the pattern, directly, through a module constant or through a call, takes it, and passes it on. */
   readonly context?: { readonly type: string; readonly name: string };

@@ -8,12 +8,22 @@
 // A local that names another owner's object or container shares it, as in the source: a reference when it is never
 // pointed elsewhere, else the pointer the flow gave it. Nothing is copied that the source shared.
 import type * as TS from 'typescript';
+import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { FunctionPlan } from './context.ts';
 import { INT, declare, elementOf, isNumber, paramDecl, render, target, type CppType } from './cpptype.ts';
 import { ExpressionEmitter } from './expressions.ts';
 import { Own } from './flow.ts';
 import { snake } from './names.ts';
 
+
+/**
+ * The names a destructuring binds and the field each reads: `{ a, b: c }` by name, `[t, y]` by position (a tuple's
+ * field source is its position); a hole (`[, y]`) binds nothing.
+ */
+function bindings(ts: TypeScriptApi, pattern: TS.ObjectBindingPattern | TS.ArrayBindingPattern): { el: TS.BindingElement; prop: string }[] {
+  if (ts.isObjectBindingPattern(pattern)) return pattern.elements.map((el) => ({ el, prop: (el.propertyName ?? el.name).getText() }));
+  return pattern.elements.flatMap((el, i) => (ts.isBindingElement(el) ? [{ el, prop: String(i) }] : []));
+}
 export class Emitter extends ExpressionEmitter {
   /** The function being emitted (an edit lowers its returns). */
   protected fn: FunctionPlan | null = null;
@@ -111,6 +121,13 @@ export class Emitter extends ExpressionEmitter {
     if (s.kind === ts.SyntaxKind.ContinueStatement) return [`${at}continue;`];
     if (s.kind === ts.SyntaxKind.BreakStatement) return [`${at}break;`];
     if (ts.isEmptyStatement(s)) return [];
+    // throw: what the target does instead is the library's to say (a pattern for what is thrown, `new Error($m)`:
+    // an assert, a logged error); C++ exceptions are not JavaScript's and are never written for one
+    if (ts.isThrowStatement(s)) {
+      if (this.c.patterns.match(s.expression)) return [`${at}${this.expr(s.expression)};`];
+      this.fail(s, 'a throw with no pattern for what it throws (the library says what the target does instead: `new Error($m)`)');
+      return [];
+    }
     this.fail(s, 'a statement the translator does not know');
     return [];
   }
@@ -120,7 +137,7 @@ export class Emitter extends ExpressionEmitter {
   #declare(d: TS.VariableDeclaration, isConst: boolean): string[] {
     const ts = this.c.ts;
     const at = this.indent;
-    if (ts.isObjectBindingPattern(d.name)) return this.#destructure(d.name, d.initializer!);
+    if (ts.isObjectBindingPattern(d.name) || ts.isArrayBindingPattern(d.name)) return this.#destructure(d.name, d.initializer!);
     if (!ts.isIdentifier(d.name)) return [this.fail(d, 'a declaration the translator does not know').code];
     const symbol = this.symbolOf(d.name)!;
     // A local constant keeps its UPPER_CASE name (the target's named-constant form).
@@ -176,15 +193,14 @@ export class Emitter extends ExpressionEmitter {
   }
 
   /** `const { a, b } = s`: each a reference to (or a copy of a scalar) field of s. */
-  #destructure(pattern: TS.ObjectBindingPattern, init: TS.Expression): string[] {
+  #destructure(pattern: TS.ObjectBindingPattern | TS.ArrayBindingPattern, init: TS.Expression): string[] {
     const at = this.indent;
     const source = this.value(init);
     const access = source.type.k === 'ptr' || source.type.k === 'optional' ? '->' : '.';
     const t = target(source.type);
     const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
     const known = t.k === 'struct' ? Object.values(this.c.spec.types).find((k) => k.type === t.name) : undefined;
-    return pattern.elements.map((el) => {
-      const prop = (el.propertyName ?? el.name).getText();
+    return bindings(this.c.ts, pattern).map(({ el, prop }) => {
       const local = snake(el.name.getText());
       const field = struct?.fields.find((f) => f.source === prop);
       const fieldName = field?.name ?? known?.fields?.[prop];
@@ -409,8 +425,7 @@ export class Emitter extends ExpressionEmitter {
       const t = target(element);
       const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
       const access = element.k === 'ptr' ? '->' : '.';
-      destructure = (decl.name as TS.ObjectBindingPattern).elements.map((el) => {
-        const prop = (el.propertyName ?? el.name).getText();
+      destructure = bindings(ts, decl.name as TS.ObjectBindingPattern | TS.ArrayBindingPattern).map(({ el, prop }) => {
         const field = struct?.fields.find((f) => f.source === prop);
         if (!field) return this.fail(el, `${render(element)} has no field ${prop}`).code;
         const local = snake(el.name.getText());
