@@ -94,3 +94,9 @@ Desvio do plano: o plano previa `lab.json` com schema próprio; uma tabela nova 
 - Achado: `edit_fuzz_test` quebrou (signal 11, em `upgrade_road`, depois de abrir a cidade) sob 8 cenas em paralelo, e a suíte disse ok, porque a saída foi 0. A regra da suíte agora lê `Program crashed`.
 - O crash não se repetiu: 3 rodadas sozinho sem falha. A rodada de carga (32 processos da mesma cena) não vale como prova: todos dividem o mesmo arquivo de save e as falhas dela vêm disso. Causa do crash não achada; passada às outras sessões.
 - O golden do `digest` foi escrito agora neste worktree, então não comparou nada.
+
+### Rodada 1, fechamento (19:00)
+
+Refeita sobre o `origin/main` com as DLLs refeitas das fontes: `quick.sh --all` com saída 0, suíte inteira, `lab_test` sem falha nos dois renderizadores. A sombra medida pelo A/B sem carga: GPU 10,3 → 5,4 ms, primitivas 12,7 M → 3,7 M. Erro de método registrado: restaurar uma DLL do git sem apagá-la deixa o build achar que nada mudou; o jogo abre sem a área nova e trava no `assert` do store. Antes de medir, apagar as DLLs. O crash do `edit_fuzz_test` foi achado pela sessão de causa-raiz (`j_set_profile`, índice -1).
+
+Próximo no laboratório: Recursos, Inspector, GPU, Gravador, Testes e Otimizações.
