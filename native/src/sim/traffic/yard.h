@@ -90,7 +90,7 @@ private:
 	std::unique_ptr<RingFill> fill_; // the ring being set
 	std::unique_ptr<ClearanceFill> clearance_;
 	std::unique_ptr<WaySearch> search_;
-	std::unordered_map<int64_t, std::shared_ptr<Holonomic>> maps_; // the distance maps on this field, by goal (holonomic_key)
+	std::unordered_map<int64_t, std::shared_ptr<Holonomic>> maps_; // bounded: one per dock and grain, gone with the planner; the distance maps on this field, by goal (holonomic_key)
 	WaySpace space_; // the memory its searches use, one after another
 	DockWays ways_;
 	AxlePose docked_, pre_;

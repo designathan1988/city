@@ -16,7 +16,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 } // namespace
 
 bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {

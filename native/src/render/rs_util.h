@@ -11,6 +11,9 @@
 
 namespace city {
 
+// The vertical span every chunk's and every camera-wide box is given: the map's lowest ground to past its tallest building.
+constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f, AABB_HALF_H = 500.f;
+
 // Floats per instance: 12 transform + 4 colour + 4 custom. Props/agents/trees keep colour white and put
 // their tint in custom.rgb (the instance colour would also multiply fixed-colour parts).
 constexpr int MM_STRIDE = 20;
@@ -72,6 +75,7 @@ struct MultiMeshDraw {
 	int capacity = -1; // instances allocated
 	int count = 0; // instances drawn
 	bool coloured_ = true; // the layout allocated
+	bool shadow_only = false; // drawn into the shadow maps alone: another draw shows what it stands for
 
 	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
 			const godot::AABB &bounds, bool shadows, RenderLayer layer, bool coloured = true) {
@@ -83,8 +87,8 @@ struct MultiMeshDraw {
 			mm = rs->multimesh_create();
 			inst = rs->instance_create2(mm, scenario);
 			rs->instance_set_layer_mask(inst, layer);
-			rs->instance_geometry_set_cast_shadows_setting(inst,
-					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
+			rs->instance_geometry_set_cast_shadows_setting(inst, shadow_only ? godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY :
+					(shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF));
 		}
 		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
 		if (n > capacity || n + 2 * MM_ROOM_STEP < capacity || coloured != coloured_) {

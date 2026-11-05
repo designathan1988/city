@@ -44,7 +44,7 @@ private:
 	uint32_t seed_;
 	double half_, water_spacing_;
 	std::vector<double> course_z_, level_, depth_;
-	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake
+	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake; bounded: a generator lives for one fill
 
 	double course_z() const;
 	bool basin_of(int i, int j, double &x, double &z) const;

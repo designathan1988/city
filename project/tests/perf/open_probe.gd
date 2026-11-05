@@ -1,10 +1,13 @@
 ## Where the opening of a city goes: the file (--file=PATH, a city saved by the game) opened twice in a real world, each stage
 ## as the core timed it (check, read, grade, compose, lots, traffic) and the whole. The second round is the one to compare:
 ## the first pays the disk.
+## With --digest: no file, the map 1 of seed 7 made and its state hashed, one line for tools/build/quick.sh to hold to the golden.
 ## Run: godot --path project --resolution 640x360 res://tests/perf/open_probe.tscn -- --no-flow --file=PATH
 extends Node3D
 
 const ROUNDS := 2
+const DIGEST_MAP := 1
+const DIGEST_SEED := 7
 
 
 func _ready() -> void:
@@ -15,9 +18,16 @@ func _ready() -> void:
 	var world := CityWorld.new()
 	add_child(world)
 	var errors := CityStore.boot(world.terrain, world.materials())
-	if not errors.is_empty() or file == "":
+	var digest := OS.get_cmdline_user_args().has("--digest")
+	if not errors.is_empty() or (file == "" and not digest):
 		push_error("boot: %s, file: %s" % [errors, file])
 		get_tree().quit(1)
+		return
+	if digest:
+		CityStore.new_map(DIGEST_MAP, DIGEST_SEED, true, true)
+		var hash: Dictionary = CityStore.query(&"state_hash")
+		print("DIGEST ", hash.whole, " ", JSON.stringify(hash.derived, "", true))
+		get_tree().quit(0)
 		return
 	for round in ROUNDS:
 		var t0 := Time.get_ticks_msec()

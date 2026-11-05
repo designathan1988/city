@@ -18,7 +18,6 @@
 namespace city {
 
 namespace {
-constexpr uint32_t MAX_RECORDS = 50000000; // sanity bound on any saved table
 
 Quad get_quad(ByteReader &r) {
 	Quad q;

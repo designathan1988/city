@@ -27,6 +27,8 @@ struct SavePart { // where a part of the save ends in its bytes (api/city_core_s
 std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts = nullptr);
 // Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
 // open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
+constexpr uint32_t MAX_RECORDS = 50000000; // sanity bound on any saved table: a corrupt count stops here, before any allocation
+
 // Where the opening of a city went, in milliseconds.
 struct OpenTimes {
 	double read = 0, grade = 0, compose = 0, lots = 0;

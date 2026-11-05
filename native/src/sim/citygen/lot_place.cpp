@@ -16,7 +16,7 @@ namespace {
 constexpr double FRONT_PAD = 0.3, CORNER_GAP = 2, STRAIGHT_TOL = 0.5, WIDTH_TRIM = 0.6, LOT_INSET = 0.15, CLEAR_INSET = 0.3;
 constexpr double MAX_SHIFT = 3, SHIFT_PAD = 0.05, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
 constexpr double DEPTH_STEP = 3, MIN_DEPTH = 12, NARROW_STEP = 2, NARROW_SHARE = 4, KEY_SCALE = 4, SEED_SCALE = 2;
-constexpr double NO_ROOM = 1e300, EPS = 1e-6;
+constexpr double EPS = 1e-6;
 constexpr uint32_t SIDE_KEY = 77, SIDE_SALT = 31;
 constexpr int CORNER_FLOATS = 8, BOX_FLOATS = 4;
 constexpr double BOX_GAP = 1e-6; // boxes this far apart are apart whatever the rounding of the separating-axis test

@@ -15,6 +15,7 @@ inline int ifloor(double v) {
 	return i - (v < double(i) ? 1 : 0);
 }
 
+constexpr double NO_ROOM = 1e300; // "nothing yet" for the double searches of the generators
 constexpr float BIG = 1e9f; // "no value yet" for min searches and unbounded gaps
 
 struct V2 {

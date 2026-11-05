@@ -15,7 +15,7 @@ namespace city {
 
 namespace {
 constexpr int FOG_RES = 512; // texels across the window
-constexpr int HOLD_SHARE = 8; // the view goes this share of the window from its middle before it follows
+// HOLD_SHARE: fog_field.h; the view goes this share of the window from its middle before it follows
 constexpr int CHANNELS = 4;
 constexpr float SLAB_HEIGHTS = 3.f; // thin to under a twentieth three heights up
 constexpr float BUCKET_M = 160.f;

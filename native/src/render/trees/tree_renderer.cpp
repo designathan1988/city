@@ -15,7 +15,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float HALF = 0.5f, EVICT_CHUNKS = 2.f;
 constexpr int TIER_NEAR = 0, TIER_FAR = 1;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis

@@ -40,9 +40,15 @@ def mutating_queries(root, sources):
     return out
 
 
-def polling_per_frame(root):
-    """A frame callback that asks the native side every frame without looking at a revision."""
-    out = []
+def costly_natives(sources):
+    """The native methods that lock or walk something: what a frame must not ask for nothing."""
+    return {name.split("::")[-1] for t in sources.values() for name, _, body, _ in d.functions(t)
+            if re.search(r"lock|mutex|\bfor\s*\(|\bwhile\s*\(|Array\s+\w+;", body)}
+
+
+def polling_per_frame(root, sources):
+    """A frame callback that asks the native side every frame, with no revision nor timer, for something that costs."""
+    out, costly = [], costly_natives(sources)
     for p in d.files(root, d.GD_EXT):
         if re.search(r"[\\/]tests?[\\/]", p):
             continue
@@ -50,7 +56,8 @@ def polling_per_frame(root):
         for m in re.finditer(rf"^func ({FRAME_CALLBACKS})\(.*?(?=^func |\Z)", t, re.S | re.M):
             body = m.group(0)
             for q in re.finditer(r"\.query\(\s*&?\"(\w+)\"", body):
-                if not re.search(r"revision|_seen|cached\(", body):
+                gated = re.search(r"\breturn\b", body[:q.start()])  # something decides first whether to ask
+                if q.group(1) in costly and not gated and not re.search(r"revision|_seen|cached\(", body):
                     line = t[:m.start()].count("\n") + body[:q.start()].count("\n") + 1
                     out.append(d.finding("POLLING_PER_FRAME", f"{m.group(1)} asks '{q.group(1)}' every frame",
                                          "the native side's cost and locks paid every frame even when nothing changed",
@@ -60,11 +67,17 @@ def polling_per_frame(root):
 
 def incomplete_cache_keys(root, sources):
     """A cache kept by a revision that does not move on every path that replaces the state (new world, load, reset)."""
-    out, bumps = [], {}
+    out, bumps, setters = [], {}, {}
+    for t in sources.values():  # one-line setters: whoever calls them moves the revision
+        for f, r in re.findall(r"\b(\w+)\s*\(\)\s*\{\s*(\w*revision)\s*(?:\+\+|\+=)", t):
+            setters[f] = r
     for p, t in sources.items():
         for name, line, body, _ in d.functions(t):
             for r in re.findall(r"\b(\w*revision)\s*(?:\+\+|\+=)", body):
                 bumps.setdefault(r, set()).add(name.split("::")[-1])
+            for f, r in setters.items():
+                if re.search(rf"[.>]{f}\s*\(", body):
+                    bumps.setdefault(r, set()).add(name.split("::")[-1])
     for p, t in sources.items():
         for m in re.finditer(r"if\s*\(\s*[\w.>-]*?(\w*revision)\s*!=\s*([\w.]+)\s*\)", t):
             who = bumps.get(m.group(1), set())
@@ -89,7 +102,7 @@ def analyse(root):
     for detector in (d.worker_locks_in_readers, d.realloc_per_frame, d.unpruned_maps, d.idle_wakeups, d.duplicated_constants,
                      d.engine_call_in_loop, mutating_queries, incomplete_cache_keys):
         found += detector(root, sources)
-    return found + polling_per_frame(root)
+    return found + polling_per_frame(root, sources)
 
 
 def report(found):

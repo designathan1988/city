@@ -38,13 +38,10 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
   - `Heightfield::water_original`/`set_water`: save e "voltar ao original" não regeneram a água (antes: a cada save, sob a trava).
 
 ## Em andamento / a fazer (em ordem)
-1. **Sombra da cabine**: 135 carros de ~10 mil triângulos = 5,4 M dos 21 M de sombra. Separar casco (lança sombra) do interior
-   (não lança) em dois `MultiMesh`; ~1 ms de GPU a medir. Depois, dividir a frota por área para as cascatas podarem.
-2. **Abertura**: o que sobra é leitura 0,8 s, rodadas do greide 0,9 s (serial, depende da ordem), grafo de faixas 1,0 s
-   (`build_node`; os nós são independentes, candidato ao pool) e lotes 2,1 s (perto do limite de 24 threads lógicas).
-3. Achados do `causes.py`: POLLING_PER_FRAME (4), UNPRUNED_MAP (2), constantes DIVERGENT/SEM DONO, ENGINE_CALL_IN_LOOP nos
-   laços quentes, WORKER_LOCK_IN_READER (sondas), INCOMPLETE_CACHE_KEY (1).
-4. `tools/gates/rules.json` (`exclude_dirs` de tools/converter, oracle-4.0, process, ports) só o usuário altera.
+1. Abertura: leitura 0,9 s, rodadas do greide 1 s (seriais, dependem da ordem), lotes 2,1 s (limite de 24 threads lógicas).
+2. CPU de render +0,5 a 1,5 ms pelas instâncias só de sombra (GPU -1 ms; o quadro é limitado pela GPU): medir com a máquina quieta.
+3. Backlog do CLAUDE.md "Pendências": são recursos de outras linhas (porte), não causas desta.
+4. `tools/gates/rules.json` (`exclude_dirs`) só o usuário altera.
 
 ## Histórico completo (em ordem; cada tarefa nova entra no fim)
 1. **Desafio inicial** (pedido do usuário): analisar o app inteiro e corrigir causas, não efeitos, com prova técnica, sem mexer
@@ -111,7 +108,20 @@ sessão: avisar a ela; os desta sessão: corrigir. Desenvolver em worktree, nunc
     - `07600808` (warnings): o patch não se aplica mais e o build inteiro já não emite warning; dispensado.
     - JobPool do estado de rascunho do `check_city`: 23 threads, custo desprezível; não é causa.
 
+13. **Sombra e achados (2026-11-05, 18:10)**: a separação do interior da cabine rendeu só 0,7 M (estimativa errada: o peso é o
+    casco fino) e foi desfeita. Causa: o desenho fino usado como lançador de sombra. Agora cada nível lança pela malha do
+    seguinte (`MultiMeshDraw::shadow_only`): sombra 29 → 14,3 M, GPU 11,5 → 8,8 ms; fotos de perto iguais às do main. Caixa como
+    lançador foi rejeitada: cobriria o capô e escureceria o carro. Conflitos do grafo no pool: tráfego 1,0 → 0,57 s. Constantes
+    repetidas com dono único (`AABB_*`, `WORLD_*`, `NO_ROOM`, `MAX_RECORDS`, `HOLD_SHARE`, `FLAT_TANGENT`). `sign_cells` uma vez
+    por rodada. `causes.py`: alcance real (do script, do quadro), custo do método nativo, `bounded:` no membro; 97 → 29 achados,
+    os 28 de ENGINE_CALL são laços de carga, lidos um a um, nenhum por quadro.
+
+14. **Método (2026-11-05, 18:30, pedido do usuário)**: `tools/build/quick.sh` (da outra sessão; meu `verify.py` saiu para não haver dois donos) ganhou o golden do digest: um
+    comando no lugar de build, dumps, fotos e suíte em idas e vindas. o `state_hash`, parte `derived` (12 ms), troca os dumps de `height_at`. Bug achado pelo `causes.py`:
+    `generate_map` não movia `revision`, e a câmera usava os volumes de prédio da cidade anterior; corrigido em `found_land`.
+
 ## Como trabalhar (o que funcionou)
+- **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
 - Worktree próprio; build: `MINGW=/c/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64 tools/build/build.sh core-windows`.
 - Provar igualdade de resultado: plano do `look.tscn` com centenas de `query height_at` rodado no worktree antigo e no novo
   e comparado número a número (ver commit `fde48c56`).

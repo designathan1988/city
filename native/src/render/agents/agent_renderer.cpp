@@ -22,7 +22,6 @@ namespace city {
 
 namespace {
 
-constexpr float AABB_HALF_H = 500.f;
 constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars", then the wagon
 constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
 constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
@@ -236,6 +235,8 @@ Dictionary AgentRenderer::cost() const {
 }
 
 void AgentRenderer::reset() {
+	for (auto &levels : shadow_draws_)
+		for (MultiMeshDraw &m : levels) m.free();
 	for (auto &levels : draws_)
 		for (MultiMeshDraw &m : levels) m.free();
 	people_.reset();
@@ -307,8 +308,12 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < LEVELS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, true, LAYER_VEHICLES);
+			const bool last = level == LEVELS - 1;
+			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, last, LAYER_VEHICLES);
 			shown_[i][level] = d.count;
+			if (last) continue;
+			shadow_draws_[i][level].shadow_only = true;
+			shadow_draws_[i][level].set(scenario_, meshes_[i][level + 1].rid, RID(), bufs[i][level], box, true, LAYER_VEHICLES);
 		}
 }
 

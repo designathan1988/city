@@ -1,5 +1,6 @@
 // What the parked side asks of the road and of the walkers: the point of a segment's frame, the lane a gate opens onto
 // and who stands near a point (the walkers by cell, filed at most once a tick).
+#include "sim/traffic/lane_graph_internal.h"
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/buildings/b40/record.h"
@@ -15,7 +16,6 @@ namespace traffic {
 namespace {
 constexpr float WALKER_CELL_M = 8.f;
 constexpr int CELL_ROW_BITS = 32;
-constexpr double FLAT_TANGENT = 1e-9; // below this the curve has no direction
 
 int64_t cell_of(float x, float z) {
 	return (int64_t(std::floor(x / WALKER_CELL_M)) << CELL_ROW_BITS) ^ int64_t(uint32_t(int32_t(std::floor(z / WALKER_CELL_M))));

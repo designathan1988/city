@@ -4,6 +4,8 @@
 // new map or a load.
 #include "sim/traffic/lane_graph_internal.h"
 
+#include "core/job_pool.h"
+
 #include "sim/traffic/traffic_system.h"
 
 #include "core/units.h"
@@ -193,15 +195,15 @@ void drop_lane_state(CityState &s, int ds) {
 	for (int lane = 0; lane < MAX_LANES; lane++) drop_one_lane_state(s, ds * MAX_LANES + lane);
 }
 
-void build_node(CityState &s, int n) {
+// The node's connections, without their conflicts: `made` gets them, and whether a junction's conflicts are due.
+static bool link_node(CityState &s, int n, std::vector<int> &made) {
 	LaneGraph &g = s.traffic.g;
 	const RoadNetwork &net = s.roads;
-	if (n < 0 || n >= int(net.nodes.size()) || n >= int(g.node_conn.size()) || !net.nodes[n].alive) return;
+	if (n < 0 || n >= int(net.nodes.size()) || n >= int(g.node_conn.size()) || !net.nodes[n].alive) return false;
 	std::vector<int> arms;
 	for (int si : net.nodes[n].segs)
 		if (si * 2 + 1 < int(g.ds.size()) && (g.ds[si * 2].ok || g.ds[si * 2 + 1].ok)) arms.push_back(si);
 	const int degree = int(arms.size());
-	std::vector<int> made;
 	for (int si : arms) {
 		int din = in_ds(net, si, n);
 		if (!g.ds[din].ok) continue;
@@ -217,7 +219,12 @@ void build_node(CityState &s, int n) {
 			link_pair(s, n, din, dout, t, made);
 		}
 	}
-	if (degree >= 2) find_conflicts(g, made, std::max(2, int(s.catalog.traffic.conflict_samples)));
+	return degree >= 2;
+}
+
+void build_node(CityState &s, int n) {
+	std::vector<int> made;
+	if (link_node(s, n, made)) find_conflicts(s.traffic.g, made, std::max(2, int(s.catalog.traffic.conflict_samples)));
 }
 
 void build_lane_graph(CityState &s) {
@@ -229,8 +236,16 @@ void build_lane_graph(CityState &s) {
 	g.lane_conn.assign(g.ds.size() * MAX_LANES, -1);
 	g.lane_metres = 0;
 	for (int seg = 0; seg < int(s.roads.segs.size()); seg++) build_dir(s, seg);
-	for (int n = 0; n < int(s.roads.nodes.size()); n++)
-		if (s.roads.nodes[n].alive) build_node(s, n);
+	// linked in order (the connections are a pool); each node's conflicts touch only its own: over the pool, the same lists
+	std::vector<std::vector<int>> junctions;
+	for (int n = 0; n < int(s.roads.nodes.size()); n++) {
+		std::vector<int> made;
+		if (s.roads.nodes[n].alive && link_node(s, n, made)) junctions.push_back(std::move(made));
+	}
+	const int samples = std::max(2, int(s.catalog.traffic.conflict_samples));
+	auto conflicts = [&](size_t k) { find_conflicts(g, junctions[k], samples); };
+	if (s.jobs) s.jobs->parallel_for(junctions.size(), conflicts);
+	else for (size_t k = 0; k < junctions.size(); k++) conflicts(k);
 	ensure_conn_state(s.traffic);
 	build_junctions(s);
 }

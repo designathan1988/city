@@ -78,6 +78,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate)
 	s.growth.clear();
 	s.damage.clear(); // what blows left on the last map is not on this one
 	s.history.reset(c.tune);
+	s.touch(); // another map: what is cached by the revision (the camera's building volumes) goes with the old one
 	s.edit_revision++; // another map is another network: what follows the edits (the snapshot's counts, the views' lists) reads it again
 	s.edited = false; // a city just made or opened holds no edit of the player's yet
 	s.money = c.tune.economy_start_money;

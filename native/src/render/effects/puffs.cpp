@@ -13,8 +13,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float WORLD_HALF_M = 200000.f; // the pool's box: the whole map
-constexpr float WORLD_UP_M = 20000.f;
 constexpr float NEVER = -1e6f; // a slot's birth until it is written: long dead
 constexpr float SIZE_MIN = 0.6f, SIZE_SPAN = 0.8f; // each puff's size and life vary by these shares
 constexpr float LIFE_LOW = 0.7f, LIFE_SPAN = 0.6f;

@@ -37,8 +37,11 @@ func _init(look: Dictionary, material: ShaderMaterial) -> void:
 
 func _process(delta: float) -> void:
 	_since += delta
-	_waiting.append_array(CityStore.query(&"sign_cells"))
-	if _waiting.is_empty() or _busy or _since < _look.sheet_round_s:
+	if _busy or _since < _look.sheet_round_s:
+		return
+	_waiting.append_array(CityStore.query(&"sign_cells")) # once a round, as they are drawn: an Array across the DLL otherwise
+	if _waiting.is_empty():
+		_since = 0.0
 		return
 	var layer: int = _waiting[0][3]
 	var cut := 0

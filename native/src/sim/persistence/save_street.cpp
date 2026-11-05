@@ -2,13 +2,14 @@
 // without it opens with no street records.
 #include "sim/persistence/save_street.h"
 
+#include "sim/persistence/save_format.h"
+
 #include "core/bytes.h"
 #include "sim/state/city_state.h"
 
 namespace city {
 
 namespace {
-constexpr uint32_t MAX_RECORDS = 50000000; // a corrupt count stops here, before any allocation
 // A pole's flags byte: its lamp, and its kind (a save from before the kinds holds 0 or 1: every pole urban).
 constexpr uint8_t POLE_LAMP_BIT = 1, POLE_RURAL_BIT = 2;
 

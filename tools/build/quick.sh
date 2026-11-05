@@ -2,6 +2,8 @@
 # quick.sh [--all] [scene,scene...]: what a change asks for, in one command and at once. The scripts compile beside the debug DLL
 # while the gates of the changed files run; then the scenes the change touches and the edit fuzz run in parallel.
 # --all also rebuilds both DLLs and runs every scene: the check before a commit. Each step prints its seconds; any failure ends in exit 1.
+# Beside the scenes, a fixed city is hashed (open_probe --digest) and held to the golden in dist/quick: an optimisation leaves it
+# equal, with no dump and no photograph; --bless says the change means to move it. Only what it cannot see needs a picture.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
 GODOT="C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe"
@@ -10,8 +12,10 @@ PY="C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe"
 OUT="$ROOT/dist/quick"
 mkdir -p "$OUT"
 started=$SECONDS
-all=""; picked=""
-for a in "$@"; do [ "$a" = --all ] && all=1 || picked="$a"; done
+all=""; picked=""; bless=""
+for a in "$@"; do
+	case "$a" in --all) all=1 ;; --bless) bless=1 ;; *) picked="$a" ;; esac
+done
 changed="$(git status --short | awk '{print $2}')"
 
 # The scenes a path touches; a path of native/ or project/ with no row here runs every scene.
@@ -51,11 +55,19 @@ echo "build $built, scripts $scripted: $((SECONDS - started)) s"
 [ "$built" = 0 ] || { grep -m12 "error:" "$OUT/build.txt"; exit 1; }
 [ "$scripted" = 0 ] || { grep -m12 "ERROR\|FALHA" "$OUT/scripts.txt"; exit 1; }
 
+"$GODOT" --headless --path project res://tests/perf/open_probe.tscn -- --no-flow --digest 2>&1 | grep -a "^DIGEST" > "$OUT/digest.txt" & digest=$!
 if [ -n "$all" ]; then only=""; else only="--only=$scenes"; fi
 "$PY" tools/analysis/suite.py --parallel 8 --godot "$GODOT" $only > "$OUT/suite.txt" 2>&1
 suite=$?
 wait $gates; gated=$?
+wait $digest
+same=0
+if [ ! -s "$OUT/digest.txt" ]; then echo "digest: the probe gave none"; same=1
+elif [ -n "$bless" ] || [ ! -f "$OUT/golden.txt" ]; then cp "$OUT/digest.txt" "$OUT/golden.txt"; echo "digest: golden written"
+elif cmp -s "$OUT/digest.txt" "$OUT/golden.txt"; then echo "digest: equal to the golden"
+else echo "digest MOVED:"; diff "$OUT/golden.txt" "$OUT/digest.txt"; same=1
+fi
 tail -1 "$OUT/suite.txt"
 tail -1 "$OUT/gates.txt"
 echo "total $((SECONDS - started)) s"
-[ "$suite" = 0 ] && [ "$gated" = 0 ]
+[ "$suite" = 0 ] && [ "$gated" = 0 ] && [ "$same" = 0 ]

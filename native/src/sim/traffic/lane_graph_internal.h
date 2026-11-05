@@ -6,6 +6,8 @@
 #include "sim/traffic/traffic_system.h"
 
 namespace city {
+
+constexpr double FLAT_TANGENT = 1e-9; // below this a curve has no direction at that point
 namespace traffic {
 
 // lane_graph.cpp

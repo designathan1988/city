@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_HALF_H_M = 500.f, HALF = 0.5f;
+constexpr float HALF = 0.5f;
 constexpr int RGB_BITS = 8, RECT_INTS = 4;
 constexpr uint32_t OPAQUE = 0xFFu;
 constexpr uint64_t HASH_START = 14695981039346656037ull, HASH_STEP = 1099511628211ull;
@@ -259,7 +259,7 @@ void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseS
 		mm_push(buf, Vector3(p.fz, 0, -p.fx), Vector3(0, 1, 0), Vector3(p.fx, 0, p.fz), Vector3(p.x, p.y, p.z), line, 0, 0, 0, 0);
 		drawn_cars_++;
 	}
-	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H_M, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H_M * 2, radius_ * 2));
+	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H * 2, radius_ * 2));
 	cars_.set(scenario_, car_.rid, RID(), buf, box, true, LAYER_VEHICLES);
 }
 

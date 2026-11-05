@@ -61,6 +61,7 @@ private:
 	godot::RID scenario_, material_, glass_;
 	OwnedMesh meshes_[AGENT_MODELS][LEVELS]; // the body surface, and the near level's glass surface
 	MultiMeshDraw draws_[AGENT_MODELS][LEVELS];
+	MultiMeshDraw shadow_draws_[AGENT_MODELS][LEVELS - 1]; // a level's instances with the next level's mesh; the last casts its own
 	int body_tris_[AGENT_MODELS][LEVELS] = {}, glass_tris_[AGENT_MODELS][LEVELS] = {}, shown_[AGENT_MODELS][LEVELS] = {};
 	Load load_[AGENT_MODELS];
 	int paints_ = 0;

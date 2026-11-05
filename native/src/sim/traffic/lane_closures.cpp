@@ -2,6 +2,7 @@
 #include "sim/traffic/lane_closures.h"
 
 #include "sim/roads/parking_layout.h"
+#include "sim/traffic/lane_graph_internal.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -12,7 +13,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double FLAT_TANGENT = 1e-9; // below this the curve has no direction
 } // namespace
 
 // The stretches of lane a street part sweeps: the lanes of the gate's segment under the body, with a margin each way.

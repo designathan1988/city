@@ -16,7 +16,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_PAD = 1.f, AABB_MIN_Y = -100.f, AABB_H = 700.f, BYTE = 255.f;
+constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 

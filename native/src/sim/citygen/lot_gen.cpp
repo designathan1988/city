@@ -15,7 +15,7 @@ namespace {
 constexpr double RES = 2, ROAD_PAD = 0.4, PLATE_PAD = 4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
 constexpr double BUSY_SHARE = 0.03, FACING_PROBE = 4, FACING_PAD = 8;
 constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32, MIN_PLATE_ARMS = 3;
-constexpr double NO_ROOM = 1e300, EPS = 1e-6;
+constexpr double EPS = 1e-6;
 constexpr int CORNERS = 8;
 } // namespace
 

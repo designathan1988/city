@@ -9,6 +9,12 @@
 
 using namespace godot;
 
+#include <algorithm>
+#include <cstring>
+#include <mutex>
+#include <shared_mutex>
+#include <vector>
+
 namespace city {
 
 Dictionary CityCore::agent_cost() const { return render_.agent_cost(); }

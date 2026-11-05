@@ -10,8 +10,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float WORLD_HALF_M = 200000.f;
-constexpr float WORLD_UP_M = 20000.f;
 } // namespace
 
 void Marks::init(const RID &scenario, const RID &material, int capacity, int soot_kept, int blood_kept) {

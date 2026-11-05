@@ -21,7 +21,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_HALF_H = 500.f;
 constexpr uint32_t VARIATION_SHIFT = 24, TWO_BITS = 3, TOP_SHIFT = 4, BOTTOM_TEST = 2, BOTTOM_SHIFT = 9, GREY_TEST = 14, GREY_SHIFT = 16;
 constexpr uint32_t HAIR_SHIFT = 18, SKIN_SHIFT = 21, CLOTHES = 16, HAIRS = 8, GREYS = 4, SKINS = 8;
 constexpr float FRAMES_BASE = 64.f, HAIR_BASE = 17.f, SKIN_BASE = 256.f;

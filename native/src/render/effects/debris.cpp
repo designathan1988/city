@@ -12,8 +12,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float WORLD_HALF_M = 200000.f;
-constexpr float WORLD_UP_M = 20000.f;
 constexpr float INERTIA_NUM = 12.f; // inverse inertia per unit mass of a box: 12 / (a2 + b2 + c2)
 constexpr float INERTIA_MIN = 1e-4f;
 constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way

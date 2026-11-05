@@ -1,6 +1,8 @@
 // The town's window (see canyon_field.h).
 #include "render/atmosphere/canyon_field.h"
 
+#include "render/atmosphere/fog_field.h"
+
 #include "sim/buildings/b40/record.h"
 
 #include <godot_cpp/core/math.hpp>
@@ -20,7 +22,6 @@ namespace {
 constexpr int RES = 512; // texels across the window
 constexpr float CELL_M = 4.f;
 constexpr float FIELD_SPAN = RES * CELL_M;
-constexpr int HOLD_SHARE = 8; // the view goes this share of the window from its middle before it follows
 constexpr int REACH_CELLS = 12; // as far as a pixel looks for what stands over it (the shader's longest step)
 constexpr float NOTHING_Y = -9000.f; // no solid here: under every ground
 constexpr float EDGE_REACH_M = 64.f; // a lot's centre this far past the window may still reach into it

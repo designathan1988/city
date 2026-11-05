@@ -15,7 +15,7 @@ constexpr double MIN_LEG_ANGLE = 25; // degrees (roads/impossible.ts)
 constexpr double END_GAP = 4, MIN_PIECE = 9, CELL = 64, PAD = 12, ON_ROAD_MIN = 1.5, ON_ROAD_DEFAULT = 3, ON_ROAD_DY = 2;
 constexpr int64_t CELL_OFF = 4000, CELL_ROW = 8192;
 constexpr int MAX_PASSES = 20, MAX_LEGS = 6, KEEPS_LEGS = 3;
-constexpr double NO_ROOM = 1e300, EPS = 1e-6;
+constexpr double EPS = 1e-6;
 
 class Tidy {
 public:

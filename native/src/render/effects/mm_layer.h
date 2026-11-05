@@ -8,6 +8,8 @@
 
 namespace city {
 
+constexpr float WORLD_HALF_M = 200000.f, WORLD_UP_M = 20000.f; // a layer's box: the whole map, whatever it holds
+
 struct MmLayer {
 	godot::RID mm, inst;
 	godot::Ref<godot::Mesh> mesh; // held: the MultiMesh draws its RID

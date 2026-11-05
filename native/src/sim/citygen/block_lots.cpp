@@ -13,7 +13,7 @@ namespace {
 constexpr double LOT_FRONTAGE = 22, TWO_ROWS = 44, MIN_LOT = 10, RES = 1, MAX_BLOCK = 320, PLATE_SHARE = 1.15;
 constexpr double LATTICE_START = 0.1, LATTICE_STEP = 0.2, LAND_SHARE = 0.5, STREET_PROBE = 12;
 constexpr int MIN_DEGREE_PLATE = 3;
-constexpr double NO_ROOM = 1e300, EPS_LEN = 1e-9, EPS_AREA = 1e-6;
+constexpr double EPS_LEN = 1e-9, EPS_AREA = 1e-6;
 
 using P2 = std::pair<double, double>;
 

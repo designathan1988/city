@@ -8,7 +8,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f;
 constexpr float NEVER_END = 0.f; // a visibility range without an end
 } // namespace
 

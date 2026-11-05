@@ -14,6 +14,8 @@
 
 namespace city {
 
+constexpr int HOLD_SHARE = 8; // the view goes this share of a field's window from where it was made before it is made again
+
 class FogField {
 public:
 	// Called each frame: starts a job when the dabs changed or the view left the window, takes a finished one in.
