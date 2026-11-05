@@ -2,7 +2,9 @@
 // dynamic call graph of the run: every edge caller -> callee of the page and of every worker, with the features that
 // had a frame on the stack, the id table, and the run's integrity (each realm's shadow stack must be back to its root
 // when the page is idle; page errors).
-// `node scripts/oracle-calls.mjs <url> <out dir> <playwright package dir> [seconds of simulation]`
+// `node scripts/oracle-calls.mjs <url> <out dir> <playwright package dir> [seconds of simulation] [--scenario <file.mjs>]`
+// The features instrumented are the copy's Vite config list (ORACLE_FEATURES=<json path> when the dev server starts;
+// default converter-slice/out/definitive-features.json): [{ name, seeds: [paths under src] }].
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -40,6 +42,14 @@ for (const [x, y] of views) for (const [zoom, az, el] of [[60, 30, 25], [220, 21
   await frames(20);
 }
 say(`views done (${views.length * 2})`);
+// a feature's own scenario (--scenario <file.mjs>): its default export, async ({ page, frames, say }), drives the
+// game through what the default run does not reach (an elevated road, a tunnel...); every call it causes is recorded
+const si = process.argv.indexOf('--scenario');
+if (si > 0) {
+  const scenario = (await import(new URL(`file:///${path.resolve(process.argv[si + 1]).replace(/\\/g, '/')}`).href)).default;
+  await scenario({ page, frames, say });
+  say(`scenario done (${path.basename(process.argv[si + 1])})`);
+}
 // time passing: the simulation runs (traffic, people)
 await page.waitForTimeout(simSeconds * 1000);
 await frames(10);
