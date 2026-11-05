@@ -190,8 +190,12 @@ export class Emitter extends ExpressionEmitter {
       const fieldName = field?.name ?? known?.fields?.[prop];
       if (!fieldName) return this.fail(el, `${render(source.type)} has no field ${prop}`).code;
       const type: CppType = field?.type ?? this.c.types.number(3, 'local');
-      this.bind(this.symbolOf(el.name)!, { cpp: local, type });
-      const decl = type.k === 'ptr' || isNumber(type) || type.k === 'bool' || type.k === 'enum' ? `${type.k === 'ptr' ? '' : 'const '}${declare(type, local)}` : `const ${render(type)} &${local}`;
+      const symbol = this.symbolOf(el.name)!;
+      this.bind(symbol, { cpp: local, type });
+      // an object or array the function changes through this name (h[i] = ...): a mutable reference into the source,
+      // which is changed as JavaScript changes the shared array
+      const decl = type.k === 'ptr' || isNumber(type) || type.k === 'bool' || type.k === 'enum' ? `${type.k === 'ptr' ? '' : 'const '}${declare(type, local)}`
+        : this.#mutated(symbol) ? `${render(type)} &${local}` : `const ${render(type)} &${local}`;
       return `${at}${decl} = ${source.code}${access}${fieldName};`;
     });
   }

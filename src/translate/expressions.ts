@@ -62,9 +62,15 @@ export abstract class ExpressionEmitter {
     return this.c.flow.symbolOf(node);
   }
 
+  /** The unit being planned or written (a function, a constant, an index): what an error belongs to. */
+  protected unit: string | null = null;
+
   protected fail(node: TS.Node, why: string): Value {
-    const { line } = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart());
-    this.c.errors.push(`${this.c.spec.source}:${line + 1}: ${why}: ${node.getText().slice(0, 80)}`);
+    const file = node.getSourceFile();
+    const { line } = file.getLineAndCharacterOfPosition(node.getStart());
+    // the node's own file (a value read from another module is reported where it is) and the unit it belongs to
+    // (`[unit X]`: a refusal is attributed to its root without translating each root alone)
+    this.c.errors.push(`${this.c.relative(file)}:${line + 1}: ${why}: ${node.getText().slice(0, 80)}${this.unit ? ` [unit ${this.unit}]` : ''}`);
     return { code: '/*untranslated*/', type: NULL };
   }
 
@@ -142,7 +148,8 @@ export abstract class ExpressionEmitter {
     const match = this.c.patterns.match(e);
     if (match) {
       this.c.includes.add(match.pattern.include);
-      return { code: match.pattern.target.replace(/\$(\w+)/g, (_, n: string) => this.expr(match.bound.get(`$${n}`)!)), type: INT64 };
+      return { code: match.pattern.target.replace(/\$(\w+)/g, (_, n: string) => this.expr(match.bound.get(`$${n}`)!)),
+        type: { int: INT, int64: INT64, bool: BOOL, float: this.c.types.number(Num.Float, 'local') }[match.pattern.type] };
     }
     if (ts.isParenthesizedExpression(e)) {
       const inner = this.value(e.expression, want);
@@ -238,6 +245,11 @@ export abstract class ExpressionEmitter {
     if (!symbol) return this.fail(e, 'an unresolved name');
     const local = this.lookup(symbol);
     if (local) return { code: local.cpp, type: local.type };
+    const contextual = this.c.contextConstants.get(symbol);
+    if (contextual) {
+      this.c.includes.add(contextual.include);
+      return { code: contextual.code, type: contextual.type };
+    }
     const constant = this.c.constants.get(symbol);
     if (constant) {
       if (constant.module) this.uses?.add(constant.module);
@@ -325,6 +337,8 @@ export abstract class ExpressionEmitter {
         this.uses?.add(plan.module);
         if (plan.edit) return this.fail(e, 'an edit used as a value (only as a statement or a return)');
         const args = plan.params.map((p, i) => (e.arguments[i] ? this.expr(e.arguments[i]!, p.type) : p.type.k === 'optional' ? 'std::nullopt' : `${render(p.type)}{}`));
+        // its context parameters, passed on by name (the caller takes them too: #propagateContext)
+        for (const c of plan.context ?? []) args.push(c.name);
         return { code: `${plan.cpp}(${args.join(', ')})`, type: plan.ret };
       }
       const local = symbol ? this.lookup(symbol) : undefined;
@@ -537,6 +551,24 @@ export abstract class ExpressionEmitter {
         }
         this.prelude.push(`std::fill(${obj.code}.begin(), ${obj.code}.end(), ${this.expr(args[0]!, element)});`);
         return obj;
+      }
+      case 'slice': {
+        // a copy (no arguments: the whole array, a working copy), or a range with JavaScript's rules: an index below
+        // zero counts from the end, every index clamped to [0, length], an end before the start makes it empty
+        const type = target(obj.type);
+        if (args.length === 0) return { code: `${render(type)}(${obj.code})`, type };
+        const src = this.temp('from');
+        const n = this.temp('n');
+        const at = this.temp('at');
+        const a = this.temp('a');
+        const b = this.temp('b');
+        const end = args[1] ? `${at}(int(${this.expr(args[1]!, INT)}))` : n;
+        this.c.includes.add('algorithm');
+        return {
+          code: `[&] { const auto &${src} = ${obj.code}; const int ${n} = int(${src}.size()); auto ${at} = [${n}](int i) { return i < 0 ? std::max(${n} + i, 0) : std::min(i, ${n}); }; `
+            + `const int ${a} = ${at}(int(${this.expr(args[0]!, INT)})); const int ${b} = ${end}; return ${render(type)}(${src}.begin() + ${a}, ${src}.begin() + std::max(${a}, ${b})); }()`,
+          type,
+        };
       }
       default:
         return this.fail(e, `Array.${method}`);

@@ -9,7 +9,7 @@ import { removeTree } from '../common/files.ts';
 import { normalizePath } from '../common/paths.ts';
 import { loadTypeScript } from '../graph/typescript.ts';
 import { runDifferential, type DifferentialResult } from './differential.ts';
-import { LOGIC_HEADER, translate } from './run.ts';
+import { LOGIC_HEADER, translate, type TranslationResult } from './run.ts';
 import { readTranslationSpec } from './spec.ts';
 
 export const DIFFERENTIAL_FLAGS: readonly FlagSpec[] = [
@@ -23,7 +23,31 @@ export const DIFFERENTIAL_FLAGS: readonly FlagSpec[] = [
   { name: 'out', required: true, help: 'work folder (outside the target)' },
   { name: 'steps', help: 'calls per scenario (default 3000)' },
   { name: 'seeds', help: 'how many scenarios, seeds 1..n (default 3)' },
+  { name: 'hand', repeatable: true, help: 'a C++ file written by hand, relative to the target root (native/src/...): it replaces the translation\'s file of that path, or is added; the scenario still calls the API the spec declares' },
 ];
+
+/**
+ * The translation with the files written by hand in place of the machine's: the scenario, the printer and the API
+ * (the state type, the public functions with their C++ names, the structs) still come from the spec's translation,
+ * so the hand-written code must declare that API in the same headers. A translation error is no longer fatal (the
+ * function that does not translate is usually the one written by hand); the compile then decides.
+ */
+function withHandFiles(translation: TranslationResult, targetRoot: string, hand: readonly string[]): { translation: TranslationResult; notes: string[] } {
+  if (hand.length === 0) return { translation, notes: [] };
+  const files = new Map(translation.files);
+  const notes: string[] = [];
+  for (const rel of hand) {
+    // the translation's own key form: a path relative to the target root, forward slashes
+    const key = rel.split('\\').join('/').replace(/^\.\//, '');
+    if (path.isAbsolute(key)) throw new ArgsError(`--hand ${rel}: give the path relative to the target root (native/src/...)`);
+    const file = path.join(targetRoot, key);
+    if (!fs.existsSync(file)) throw new ArgsError(`--hand ${rel}: no such file under the target root (${file})`);
+    notes.push(`${files.has(key) ? 'replaced' : 'added'} by hand: ${key}`);
+    files.set(key, fs.readFileSync(file, 'utf8'));
+  }
+  for (const e of translation.errors) notes.push(`translation error (the hand-written files stand in): ${e.split('\n')[0]}`);
+  return { translation: { ...translation, files, errors: [] }, notes };
+}
 
 /** The logic build's value types: each target value type found, with double fields, under its Logic name. */
 function writeLogicHeader(namespace: string, valueTypes: Readonly<Record<string, Readonly<Record<string, string>>>>, dir: string): void {
@@ -63,14 +87,19 @@ export function runDifferentialCommand(argv: readonly string[]): void {
   const typescriptDir = flags.one('typescript');
   const targetGraph = path.resolve(flags.require('target-graph'));
   const ts = loadTypeScript(sourceRoot, typescriptDir);
+  const hand = flags.all('hand');
+  // With files written by hand only the target build runs: hand-written code has the game's own number types, which
+  // the logic build's doubles cannot reach
   const builds = [
-    { name: 'logic (doubles)', spec: { ...spec, number: 'double' }, logic: true, tolerance: 1e-9, includes: [path.join(out, 'logic-headers')] },
-    { name: 'target (floats)', spec, logic: false, tolerance: 1e-4, includes: [] as string[] },
+    ...(hand.length ? [] : [{ name: 'logic (doubles)', spec: { ...spec, number: 'double' }, logic: true, tolerance: 1e-9, includes: [path.join(out, 'logic-headers')] }]),
+    { name: hand.length ? 'target (floats), files written by hand' : 'target (floats)', spec, logic: false, tolerance: 1e-4, includes: [] as string[] },
   ];
   const lines: string[] = [];
   let failed = false;
   for (const build of builds) {
-    const translation = translate({ sourceRoot, tsconfig, typescriptDir, spec: build.spec, targetRoot, targetGraph, logic: build.logic });
+    const made = translate({ sourceRoot, tsconfig, typescriptDir, spec: build.spec, targetRoot, targetGraph, logic: build.logic });
+    const { translation, notes } = withHandFiles(made, targetRoot, hand);
+    lines.push(...notes.map((n) => `  ${n}`));
     const valueTypes = translation.valueTypes;
     if (build.logic) writeLogicHeader(spec.namespace, valueTypes, path.join(out, 'logic-headers'));
     if (translation.errors.length > 0) throw new Error(`the translation has errors:\n${translation.errors.join('\n')}`);

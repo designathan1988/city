@@ -23,6 +23,9 @@ const AREAS: Readonly<Record<string, { readonly layer: string; readonly concept:
   people: { layer: 'native/src/sim', concept: true },
   jobs: { layer: 'native/src/sim', concept: true },
   render: { layer: 'native/src/render', concept: true },
+  // the 4.0 lab (meters, doctor, code analysis, resources, gpu): its pure logic, exposed to the game's script by a
+  // CityCore area like builder, landscape and probes; one folder of the game's existing api layer
+  lab: { layer: 'native/src/api/lab', concept: false },
 };
 
 export class ModulePlacement {
