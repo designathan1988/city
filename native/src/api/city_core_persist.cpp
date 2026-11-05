@@ -113,14 +113,22 @@ Dictionary CityCore::load_city(const String &path) {
 	std::vector<uint8_t> bytes(f->get_length());
 	uint64_t got = f->get_buffer(bytes.data(), bytes.size());
 	f->close();
+	std::string error = "save.file.damaged";
+	Catalog catalog;
+	{
+		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the road variants change it under the exclusive lock
+		catalog = state_->catalog;
+	}
+	if (got != bytes.size() || !check_city(std::move(catalog), bytes.data(), bytes.size(), error)) {
+		d["error"] = String(error.c_str()); // refused before anything changed: the open city runs on
+		return d;
+	}
 	sim_.stop();
-	std::string error;
 	bool ok;
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
-		ok = got == bytes.size() && decode_city(*state_, bytes.data(), bytes.size(), error);
-		if (got != bytes.size()) error = "save.file.damaged";
+		ok = decode_city(*state_, bytes.data(), bytes.size(), error);
 		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 	}
 	need_full_rebuild_ = true;

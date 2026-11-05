@@ -10,6 +10,7 @@
 #include "sim/state/city_state.h"
 
 #include <cmath>
+#include <memory>
 
 namespace city {
 
@@ -170,7 +171,10 @@ bool get_building(ByteReader &r, Building &b) {
 	return r.ok;
 }
 
-bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
+namespace {
+// Everything the file holds, read into `s` (the land founded again from its seed first): false at the first thing that is
+// not a city, with `s` left half replaced.
+bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
 	ByteReader r{ data, size };
 	error = "save.file.damaged";
 	if (r.get<uint32_t>() != SAVE_MAGIC || !r.ok) return false;
@@ -207,7 +211,20 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	} else {
 		r.o -= sizeof(uint32_t); // not the edited bodies: the tag is the first of the extra blocks
 	}
-	if (!r.ok || !read_extra_blocks(r, s)) return false; // the demolition block, then the end
+	return r.ok && read_extra_blocks(r, s); // the demolition block, then the end
+}
+} // namespace
+
+bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error) {
+	auto scratch = std::make_unique<CityState>();
+	scratch->catalog = std::move(catalog);
+	if (!read_city(*scratch, data, size, error)) return false;
+	error.clear();
+	return true;
+}
+
+bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
+	if (!read_city(s, data, size, error)) return false;
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
 	s.log.network_changed = true;

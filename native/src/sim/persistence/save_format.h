@@ -9,6 +9,7 @@
 namespace city {
 
 struct CityState;
+struct Catalog;
 struct ByteWriter;
 struct ByteReader;
 
@@ -20,8 +21,10 @@ constexpr uint32_t SIGNAL_SAVE_VERSION = 4, TRANSIT_SAVE_VERSION = 5;
 
 // The bytes of the whole city (caller holds map_mutex, shared is enough: it only reads).
 std::vector<uint8_t> encode_city(const CityState &s);
-// Replaces the city with the saved one. On failure `error` is a strings.csv key and the state is left as a fresh map
-// of the saved seed (the caller starts a new map when it was not even that).
+// Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
+// open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
+bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error);
+// Replaces the city with the saved one. Give it bytes check_city took: a file that fails halfway leaves `s` mixed.
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error);
 
 // The landscape part of the file (save_nature.cpp).

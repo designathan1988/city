@@ -25,6 +25,9 @@ const GROW_TICKS := 600
 const PARK_FN := 6
 const SLOT := "teste_ida_e_volta"
 const MONEY_STEP := 0.01
+## The balance and an edit of the open city, which a file refused on opening must leave as they were.
+const KEPT_MONEY := 123456.0
+const MARKING_STYLES := 2
 const NATURE_OUT_M := 900.0
 const RAIN := 0.7
 const PAINT_KIND := 0
@@ -142,8 +145,13 @@ func _refuses_bad_balance() -> void:
 	CityStore.query(&"probe_set_money", [INF])
 	var w := await _save(SLOT)
 	_check(w.get("ok", false), "salvou saldo infinito para o teste")
+	CityStore.query(&"probe_set_money", [KEPT_MONEY])
+	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % MARKING_STYLES, true])
+	var before := _counts()
+	var could_undo: bool = CityStore.snapshot.can_undo
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "recusou saldo infinito: %s" % r)
+	_check(could_undo and CityStore.snapshot.can_undo and _counts() == before, "a cidade aberta ficou como estava, com o que desfazer: %s == %s" % [_counts(), before])
 	_drop(SLOT)
 
 
@@ -173,7 +181,9 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	_check(_counts() != saved, "mapa novo é outro")
+	var t0 := Time.get_ticks_usec()
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
+	print("abrir: %d ms" % ((Time.get_ticks_usec() - t0) / 1000))
 	var got := _counts()
 	got.grown = CityStore.snapshot.grown
 	got.minutes = CityStore.snapshot.minutes
