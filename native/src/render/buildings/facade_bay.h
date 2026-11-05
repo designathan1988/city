@@ -6,6 +6,8 @@
 
 #include "render/buildings/facade.h"
 
+#include <functional>
+
 namespace city::b40 {
 
 struct BayCtx {
@@ -40,6 +42,8 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIFTH };
 PaneDark pane_dark(uint8_t comp);
 void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c);
+// Every bay of a placed body with its opening (the census of the bays, building_renderer_probe.cpp).
+void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at);
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
 void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
 

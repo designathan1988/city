@@ -68,6 +68,7 @@ public:
 	};
 	InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
 	godot::Dictionary building_cost() const; // triangles and bytes of every level's surfaces, whole city as it stands (tests)
+	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	// What the view asked of the last frame and what the frame's budget left unasked.
 	struct ViewNeed {

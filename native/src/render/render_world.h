@@ -96,6 +96,7 @@ public:
 		return d;
 	}
 	godot::Dictionary building_cost() const { return buildings_.building_cost(); }
+	godot::Dictionary bay_census() { return buildings_.bay_census(); }
 	void set_detail_scale(float scale) { buildings_.set_detail_scale(scale); }
 	void set_vegetation(float share) { trees_.set_share(share); }
 	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { agents_.set_detail(cabin_m, cabin_cap, people_floor); }

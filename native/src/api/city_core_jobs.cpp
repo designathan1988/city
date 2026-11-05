@@ -1,6 +1,8 @@
 // The job pool for the tests: its rule, seen on a pool of its own.
 #include "api/city_probes.h"
 
+#include "render/render_world.h"
+
 #include "core/job_pool.h"
 #include "sim/state/city_state.h"
 
@@ -14,6 +16,8 @@ using namespace godot;
 namespace city {
 
 // The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
+Dictionary CityProbes::bay_census() { return render_->bay_census(); }
+
 Dictionary CityProbes::job_pool_probe() const {
 	constexpr int64_t CHUNK_ID = 7;
 	std::mutex gate;
@@ -56,6 +60,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("probe_road_build", "profile", "structure", "height_a", "height_b", "len"), &CityProbes::probe_road_build);
 	ClassDB::bind_method(D_METHOD("grade_probe", "scene"), &CityProbes::grade_probe);
 	ClassDB::bind_method(D_METHOD("state_hash"), &CityProbes::state_hash);
+	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
 }
 
 } // namespace city

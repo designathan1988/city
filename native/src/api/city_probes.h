@@ -42,6 +42,7 @@ public:
 	// Tests: the road heights solved on a scene of its own (city_core_grade_probe.cpp), the 4.0's elevation.spec cases.
 	godot::Dictionary grade_probe(const godot::Dictionary &scene);
 	godot::Dictionary state_hash(); // tests: the city as a number, whole and by part (city_core_state_probe.cpp)
+	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
 
 protected:
 	static void _bind_methods();

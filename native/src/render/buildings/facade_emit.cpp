@@ -157,6 +157,24 @@ uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by) {
 	return h ^ (h >> HASH_SH2);
 }
 
+void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at) {
+	const Body &b = *pl.b;
+	for (const Volume &v : b.volumes)
+		for (const Side &sd : sides_of(pl, v, b.level_z(v.base)))
+			for (int k = 0; k < v.storeys; k++) {
+				const int n = bays_of(v, sd.side);
+				BayCtx c;
+				c.W = sd.length / float(n);
+				c.H = b.level_h(v.base + k);
+				c.level = v.base + k;
+				c.geo = &v.faces[sd.side];
+				for (int i = 0; i < n; i++) {
+					c.comp = component(v, k, sd.side, i);
+					at(c, opening_of(*pl.data, c));
+				}
+			}
+}
+
 void emit_facades(Shell &shell, Shell &parts, const Placed &pl) {
 	const Body &b = *pl.b;
 	for (size_t i = 0; i < b.volumes.size(); i++) {
