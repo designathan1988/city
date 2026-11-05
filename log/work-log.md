@@ -194,6 +194,11 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
   - Suíte no worktree: 25/25, com o `inspector_test` instável sob carga ("o som chega depois do raio", tempo do clima, não desta mudança; passa sozinho).
 - 15:38 O hook barrou o commit no worktree: ele lê o `dist/tests` da pasta do projeto. A mudança foi para a pasta do `main` como patch (`scratchpad/final.patch`, 46 arquivos), com as DLLs refeitas e a suíte rodada lá.
 
+- 15:45 Na pasta do `main`: DLLs refeitas das fontes e suíte 25/25, sem instáveis, em 46 s.
+  - Commits `39ab8799` (`structure_spec`) e `3c62f1b4` (postes urbano e rural, a referência nova e este registro).
+  - Push no `origin/main` (`317ce792..3c62f1b4`), que leva também os commits das outras sessões que estavam só no `main` local: `fde48c56` (abertura da cidade), `cdae744a` (registro da causa-raiz) e `ee41449b` (registro do conversor).
+  - Sessão encerrada.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
