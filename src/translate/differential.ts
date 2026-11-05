@@ -1,7 +1,7 @@
 // Differential testing of a translation against its source: the same random scenario (calls of the public API with
 // generated arguments) is written once in JavaScript, run on the source itself (Node runs its TypeScript, its path
 // aliases resolved by a module resolve hook), and once in C++, run on the translation; both print one JSON line
-// per step, normalized the same way (keys sorted; absent, null and false are one; maps as pairs sorted by key;
+// per step, normalized the same way (keys sorted; absent, null and false are one; maps as pairs in insertion order, as both keep it;
 // non-finite numbers as null), and the lines are compared. Inputs are multiples of 0.5, exact in float and double,
 // so a build whose numbers are doubles (JavaScript's own) must agree to the last bit but for the libraries' ulp; the
 // float build is compared within float precision. Nothing is written outside the work folder.
@@ -14,6 +14,8 @@ import { realLiteral, render, type CppType } from './cpptype.ts';
 import { upper } from './names.ts';
 import type { ApiFunction, TranslationResult } from './run.ts';
 import type { CppEnum, CppStruct } from './types.ts';
+import { RUNTIME_INCLUDE } from './expressions.ts';
+import { RUNTIME_FILE, RUNTIME_SOURCE } from './files.ts';
 
 export interface DifferentialInput {
   readonly ts: TypeScriptApi;
@@ -240,7 +242,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
   lines.push(`template <class T> void put(std::ostream &o, const std::vector<T> &v);`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
     `template <class T> void put(std::ostream &o, const T *v);`,
-    `template <class K, class V> void put(std::ostream &o, const std::unordered_map<K, V> &v);`);
+    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
   for (const [name, fields] of Object.entries(values)) {
     const sorted = Object.entries(fields).sort((a, b) => (a[1] < b[1] ? -1 : 1));
@@ -250,10 +252,9 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::vector<T> &v) { o << "["; for (size_t i = 0; i < v.size(); i++) { if (i) o << ","; put(o, v[i]); } o << "]"; }`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
-    `template <class K, class V> void put(std::ostream &o, const std::unordered_map<K, V> &v) {`,
-    `\tstd::vector<const std::pair<const K, V> *> e; for (const auto &kv : v) e.push_back(&kv);`,
-    `\tstd::sort(e.begin(), e.end(), [](auto a, auto b) { return a->first < b->first; });`,
-    `\to << "["; for (size_t i = 0; i < e.size(); i++) { if (i) o << ","; o << "["; put(o, e[i]->first); o << ","; put(o, e[i]->second); o << "]"; } o << "]";`,
+    `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v) {`,
+    // in insertion order, as JavaScript keeps a Map and js::Map keeps it
+    `\to << "["; bool first = true; for (const auto &kv : v) { if (!first) o << ","; first = false; o << "["; put(o, kv.first); o << ","; put(o, kv.second); o << "]"; } o << "]";`,
     `}`);
   return lines.join('\n');
 }
@@ -294,7 +295,7 @@ const JS_SER = `const ser = (v) => {
   if (v === null || v === undefined) return null;
   if (typeof v === 'number') return Number.isFinite(v) ? (Object.is(v, -0) ? 0 : v) : null;
   if (typeof v !== 'object') return v;
-  if (v instanceof Map) return [...v.entries()].sort((a, b) => a[0] - b[0]).map(([k, x]) => [ser(k), ser(x)]);
+  if (v instanceof Map) return [...v.entries()].map(([k, x]) => [ser(k), ser(x)]);
   if (v instanceof Set) return [...v].map(ser);
   if (Array.isArray(v) || ArrayBuffer.isView(v)) return Array.from(v, ser);
   const out = {};
@@ -407,10 +408,14 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, text);
   }
+  // the runtime of the built-ins, which the printer of a Map names, whether or not the translation calls it
+  const runtime = path.join(cppDir, RUNTIME_FILE);
+  fs.mkdirSync(path.dirname(runtime), { recursive: true });
+  if (!t.files.has(RUNTIME_FILE)) fs.copyFileSync(RUNTIME_SOURCE, runtime);
   // Every module's public header: the scenario calls the feature's functions, whatever module they are in.
   const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [
-    ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
+    `#include "${RUNTIME_INCLUDE}"`, ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
     'std::ostringstream lines;',
     // Declared before the template that calls it: names in a template are looked up where it is defined.
     `inline void put(std::ostream &o, std::nullptr_t) { o << "null"; }`,

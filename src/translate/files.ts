@@ -5,7 +5,15 @@
 // source file, the modules its code was recorded using while it was written. Every file opens with the comment the
 // target's gates require: the module's own summary (the source file's first comment).
 import type * as TS from 'typescript';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { TranslateContext } from './context.ts';
+import { RUNTIME_INCLUDE } from './expressions.ts';
+
+/** The runtime of the ECMAScript built-ins (each checked against JavaScript: test/js-runtime.test.ts). */
+export const RUNTIME_SOURCE = path.join(import.meta.dirname, '..', '..', 'cpp', 'js', 'js_runtime.h');
+/** Where the translation writes it in the target. */
+export const RUNTIME_FILE = `native/src/${RUNTIME_INCLUDE}`;
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
@@ -62,6 +70,7 @@ function projectHeaderNames(c: TranslateContext): Map<string, Set<string>> {
     for (const w of text.replace(/\$\w+/g, ' ').replace(/std::\w+/g, ' ').match(/\b[A-Za-z_]\w*\b/g) ?? []) if (!CPP_WORDS.has(w)) names.add(w);
     out.set(include, names);
   };
+  out.set(RUNTIME_INCLUDE, new Set(['js']));
   for (const t of Object.values(c.spec.types)) add(t.include, t.type);
   for (const k of Object.values(c.spec.classes)) add(k.include, k.type);
   for (const p of c.spec.patterns) add(p.include, `${p.target} ${p.context?.type ?? ''}`);
@@ -321,6 +330,8 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       .replace(`${PROJECT_MARK}\n`, project.map((h) => `#include "${h}"\n`).join(''))
       .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
   }
+  // the runtime of the built-ins, written beside the translation when its text calls it (core/js_runtime.h)
+  if ([...files.values()].some((text) => /\bjs::/.test(text))) files.set(RUNTIME_FILE, fs.readFileSync(RUNTIME_SOURCE, 'utf8'));
   return files;
 }
 
