@@ -54,6 +54,14 @@ finds it already in the target and links to it).
 - Render: the same scene captured in the source and in the target, compared with a perceptual metric.
 - Target: the package in an isolated clone with the game's gates, builds, tests, capture and soak.
 
+## 5a. Nothing wrong reaches the machine
+
+Translating syntax carries the source's methods with it, so the decision comes first: the ledger (`src/convert`) reads
+the audit and the whole graph, and a unit is translated only if nothing wrong is in it or reached from it. Each run's
+output is then judged on its own (translation validation), not trusted. A unit the machine cannot write stays open
+with its correct method; it is never reported as converted. Items 4 and 5 of the order of work below are still to do:
+until then those units are written by a session. `test/convert.test.ts` holds each decision and each refused form.
+
 ## 6. Order of work
 
 1. Whole-program model: flow with a worklist over all files; equality flows; no name rules.
