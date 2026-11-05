@@ -1,0 +1,56 @@
+ok   editar código na fase 1 é negado
+ok   redirecionar para código por shell é negado
+ok   sed -i em código é negado
+ok   texto entre aspas citando > não é escrita
+ok   editar documento passa
+ok   editar o portão é negado
+ok   settings do usuário é negado
+ok   apagar o estado por shell é negado
+ok   ler o portão passa
+ok   grep com barra em aspas no portão passa
+ok   cd para a pasta do portão passa
+ok   Get-Content do portão passa
+ok   redirecionar para o portão é negado
+ok   passo fora de ordem é negado
+ok   pedido inventado é recusado
+ok   evidência não lida é recusada
+ok   passo 1 com prova é aceito
+ok   rodar o jogo na fase 2 é negado
+ok   URL não aberta é recusada
+ok   citação que a página não tem é recusada
+ok   passo 2 com URL e citação reais é aceito
+ok   plano com arquivo não lido é recusado
+ok   passo 3 aceito
+ok   arquivo fora do plano é negado
+ok   portão no plano muda na fase 4
+ok   portão fora do plano segue negado
+ok   estado do portão nunca
+ok   chamar função de arquivo não lido é negado
+ok   chamar função já lida passa
+ok   passo 4 com arquivo do plano sem mudar é recusado
+ok   passo 4 completo é aceito
+ok   editar código na fase 5 é negado
+ok   passo 5 sem execução é recusado
+ok   primeira execução passa
+ok   repetir a execução é negado
+ok   imagem não aberta é recusada
+ok   passo 5 aceito
+ok   o passo 5 para a sessão pelo programa
+ok   parada nega ler
+ok   aviso de tarefa não destrava
+ok   mensagem do usuário abre o ciclo seguinte
+ok   escrita por dentro de um script invalida o ciclo
+ok   código já sujo antes da sessão não invalida
+ok   passo 1 recomeça de outra fase
+ok   resposta normal termina
+ok   aguardar sua resposta é segurado
+ok   pedir autorização é segurado
+ok   texto repetido depois de cobrado é segurado
+ok   depois de agir, passa
+ok   com tarefa em segundo plano, pode esperar
+ok   ação destrutiva pode perguntar
+ok   wrap_up pedindo autorização é negado
+ok   wrap_up sem pergunta passa
+ok   ordem do usuário de parar é obedecida
+ok   outro projeto não é da conta do portão
+FALHAS: 0 []

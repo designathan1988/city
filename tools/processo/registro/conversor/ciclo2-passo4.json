@@ -1,0 +1,7 @@
+{
+  "feito": [
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts", "o_que": "prepareTranslation separa o que depende só do programa; translate aceita prepared e limpa flow.errors" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/command.ts", "o_que": "preparo único, relatório a cada módulo, recusa por raiz" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/test/convert-shared.test.ts", "o_que": "mesmos arquivos com e sem preparo, recusa que não passa ao módulo seguinte nem se perde" }
+  ]
+}

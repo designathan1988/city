@@ -1,0 +1,3137 @@
+{
+ "entries": [
+  "src/editor/transitTools.ts",
+  "src/render/transit.ts",
+  "src/sim/transit/transit.ts",
+  "src/ui/v2/transitLine.ts",
+  "src/world/transit.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/editor/transitTools.ts#PICK",
+  "src/editor/transitTools.ts#STOP_REACH",
+  "src/editor/transitTools.ts#TransitTool",
+  "src/editor/transitTools.ts#TransitTool.built",
+  "src/editor/transitTools.ts#TransitTool.click",
+  "src/editor/transitTools.ts#TransitTool.constructor",
+  "src/editor/transitTools.ts#TransitTool.cursor",
+  "src/editor/transitTools.ts#TransitTool.data",
+  "src/editor/transitTools.ts#TransitTool.draw",
+  "src/editor/transitTools.ts#TransitTool.finishLine",
+  "src/editor/transitTools.ts#TransitTool.finishTrack",
+  "src/editor/transitTools.ts#TransitTool.footwayAt",
+  "src/editor/transitTools.ts#TransitTool.key",
+  "src/editor/transitTools.ts#TransitTool.kind",
+  "src/editor/transitTools.ts#TransitTool.lineStops",
+  "src/editor/transitTools.ts#TransitTool.lines",
+  "src/editor/transitTools.ts#TransitTool.move",
+  "src/editor/transitTools.ts#TransitTool.onRoad",
+  "src/editor/transitTools.ts#TransitTool.points",
+  "src/editor/transitTools.ts#TransitTool.preview",
+  "src/editor/transitTools.ts#TransitTool.rail",
+  "src/editor/transitTools.ts#TransitTool.removeLine",
+  "src/editor/transitTools.ts#TransitTool.setKind",
+  "src/editor/transitTools.ts#TransitTool.setVehicles",
+  "src/editor/transitTools.ts#TransitTool.snapTrack",
+  "src/editor/transitTools.ts#TransitTool.stopAt",
+  "src/editor/transitTools.ts#TransitToolDeps",
+  "src/editor/transitTools.ts#TransitToolKind",
+  "src/editor/transitTools.ts#current",
+  "src/editor/transitTools.ts#setTransitTool",
+  "src/editor/transitTools.ts#transitTool",
+  "src/render/transit.ts#<EmptyStatement>",
+  "src/render/transit.ts#Box",
+  "src/render/transit.ts#CAR",
+  "src/render/transit.ts#GAUGE",
+  "src/render/transit.ts#MAX_CARS",
+  "src/render/transit.ts#METRO_DEPTH",
+  "src/render/transit.ts#PIECE",
+  "src/render/transit.ts#PREVIEW_LAYERS",
+  "src/render/transit.ts#SLEEPER_STEP",
+  "src/render/transit.ts#STOP_READS",
+  "src/render/transit.ts#TRACK_READS",
+  "src/render/transit.ts#TUNNEL",
+  "src/render/transit.ts#TrackPreview",
+  "src/render/transit.ts#TransitMeshes",
+  "src/render/transit.ts#TransitParts",
+  "src/render/transit.ts#TransitPlace",
+  "src/render/transit.ts#TransitProduct",
+  "src/render/transit.ts#TransitProduct.allKeys",
+  "src/render/transit.ts#TransitProduct.byId",
+  "src/render/transit.ts#TransitProduct.changed",
+  "src/render/transit.ts#TransitProduct.compute",
+  "src/render/transit.ts#TransitProduct.compute.runOf",
+  "src/render/transit.ts#TransitProduct.constructor",
+  "src/render/transit.ts#TransitProduct.dirty",
+  "src/render/transit.ts#TransitProduct.dirty.meets",
+  "src/render/transit.ts#TransitProduct.equals",
+  "src/render/transit.ts#TransitProduct.filing",
+  "src/render/transit.ts#TransitProduct.kinds",
+  "src/render/transit.ts#TransitProduct.name",
+  "src/render/transit.ts#TransitSource",
+  "src/render/transit.ts#TransitStop",
+  "src/render/transit.ts#TransitTrack",
+  "src/render/transit.ts#VISIBLE",
+  "src/render/transit.ts#XRAY",
+  "src/render/transit.ts#buildTrackPreview",
+  "src/render/transit.ts#createTrackPreview",
+  "src/render/transit.ts#createTrackPreview.dispose",
+  "src/render/transit.ts#createTrackPreview.set",
+  "src/render/transit.ts#createTransit",
+  "src/render/transit.ts#createTransit.cull",
+  "src/render/transit.ts#createTransit.dispose",
+  "src/render/transit.ts#createTransit.material",
+  "src/render/transit.ts#createTransit.place",
+  "src/render/transit.ts#createTransit.setXray",
+  "src/render/transit.ts#createTransit.shown",
+  "src/render/transit.ts#createTransit.sync",
+  "src/render/transit.ts#createTransit.through",
+  "src/render/transit.ts#createTransit.update",
+  "src/render/transit.ts#emptyParts",
+  "src/render/transit.ts#entranceSpot",
+  "src/render/transit.ts#pointsBox",
+  "src/render/transit.ts#sharedMaterial",
+  "src/render/transit.ts#sharedMaterials",
+  "src/render/transit.ts#stopKey",
+  "src/render/transit.ts#stopParts",
+  "src/render/transit.ts#stopParts.colourAt",
+  "src/render/transit.ts#trackBoxes",
+  "src/render/transit.ts#trackKey",
+  "src/render/transit.ts#trackParts",
+  "src/sim/agents/laneGrid.ts#laneChangesSince",
+  "src/sim/transit/transit.ts#AHEAD_TIME",
+  "src/sim/transit/transit.ts#APPROACH",
+  "src/sim/transit/transit.ts#AT_STOP,STOPPED",
+  "src/sim/transit/transit.ts#AWAY_MARGIN",
+  "src/sim/transit/transit.ts#BUS_DWELL,TERMINAL_DWELL,TRAIN_DWELL",
+  "src/sim/transit/transit.ts#BUS_PACE",
+  "src/sim/transit/transit.ts#BUS_SPACING",
+  "src/sim/transit/transit.ts#Bus",
+  "src/sim/transit/transit.ts#CROSSING_STOP",
+  "src/sim/transit/transit.ts#CROSSING_WARN",
+  "src/sim/transit/transit.ts#CROSS_SLACK",
+  "src/sim/transit/transit.ts#DETOUR",
+  "src/sim/transit/transit.ts#KEEP_CLEAR",
+  "src/sim/transit/transit.ts#LevelCrossing",
+  "src/sim/transit/transit.ts#NONE",
+  "src/sim/transit/transit.ts#NO_CROSSINGS",
+  "src/sim/transit/transit.ts#RailLine",
+  "src/sim/transit/transit.ts#TRAIN_AHEAD",
+  "src/sim/transit/transit.ts#TRAIN_CARS,METRO_CARS,CAR_LENGTH",
+  "src/sim/transit/transit.ts#TRAIN_GAP",
+  "src/sim/transit/transit.ts#TRAIN_TOP,METRO_TOP,TRAIN_ACCEL,TRAIN_BRAKE",
+  "src/sim/transit/transit.ts#Train",
+  "src/sim/transit/transit.ts#TrainView",
+  "src/sim/transit/transit.ts#TransitSim",
+  "src/sim/transit/transit.ts#TransitSim.busLinesAt",
+  "src/sim/transit/transit.ts#TransitSim.busStops",
+  "src/sim/transit/transit.ts#TransitSim.buses",
+  "src/sim/transit/transit.ts#TransitSim.closedOn",
+  "src/sim/transit/transit.ts#TransitSim.crossingNear",
+  "src/sim/transit/transit.ts#TransitSim.crossingNearEnd",
+  "src/sim/transit/transit.ts#TransitSim.crossingsByLane",
+  "src/sim/transit/transit.ts#TransitSim.followLanes",
+  "src/sim/transit/transit.ts#TransitSim.followLanes.near",
+  "src/sim/transit/transit.ts#TransitSim.lanesSeen",
+  "src/sim/transit/transit.ts#TransitSim.lineOf",
+  "src/sim/transit/transit.ts#TransitSim.lines",
+  "src/sim/transit/transit.ts#TransitSim.passStopAway",
+  "src/sim/transit/transit.ts#TransitSim.placeBuses",
+  "src/sim/transit/transit.ts#TransitSim.placeRails",
+  "src/sim/transit/transit.ts#TransitSim.pointAt",
+  "src/sim/transit/transit.ts#TransitSim.rails",
+  "src/sim/transit/transit.ts#TransitSim.rebuild",
+  "src/sim/transit/transit.ts#TransitSim.sendBus",
+  "src/sim/transit/transit.ts#TransitSim.spawnBus",
+  "src/sim/transit/transit.ts#TransitSim.step",
+  "src/sim/transit/transit.ts#TransitSim.stepBus",
+  "src/sim/transit/transit.ts#TransitSim.stepTrain",
+  "src/sim/transit/transit.ts#TransitSim.stopLanes",
+  "src/sim/transit/transit.ts#TransitSim.stopPoint",
+  "src/sim/transit/transit.ts#TransitSim.stops",
+  "src/sim/transit/transit.ts#TransitSim.trainZones",
+  "src/sim/transit/transit.ts#TransitSim.trainZones.far",
+  "src/sim/transit/transit.ts#TransitSim.trainZones.zone",
+  "src/sim/transit/transit.ts#TransitSim.trains",
+  "src/sim/transit/transit.ts#TransitSim.transitFor",
+  "src/sim/transit/transit.ts#crossAt",
+  "src/sim/transit/transit.ts#levelCrossings",
+  "src/sim/transit/transit.ts#sameLane",
+  "src/sim/transit/transit.ts#samePoints",
+  "src/sim/transit/transit.ts#travelTime",
+  "src/sim/world.ts#SimWorld.inFocusReach",
+  "src/ui/v2/transitLine.ts#transitLineRow",
+  "src/world/doc.ts#RoadDoc.transitRevision",
+  "src/world/footwayPath.ts#FootwayNet",
+  "src/world/footwayPath.ts#nearestFootway",
+  "src/world/transit.ts#ALONG_ROAD",
+  "src/world/transit.ts#HEX_COLOUR",
+  "src/world/transit.ts#JOIN",
+  "src/world/transit.ts#LINE_COLOURS",
+  "src/world/transit.ts#RailEdge",
+  "src/world/transit.ts#RailGraph",
+  "src/world/transit.ts#RailTrack",
+  "src/world/transit.ts#STOP_CELL",
+  "src/world/transit.ts#TRACK_CELL",
+  "src/world/transit.ts#TrackStretch",
+  "src/world/transit.ts#TransitData",
+  "src/world/transit.ts#TransitLine",
+  "src/world/transit.ts#TransitMode",
+  "src/world/transit.ts#TransitStop",
+  "src/world/transit.ts#addLine",
+  "src/world/transit.ts#addStop",
+  "src/world/transit.ts#addTrack",
+  "src/world/transit.ts#emptyTransit",
+  "src/world/transit.ts#finite",
+  "src/world/transit.ts#hasTransit",
+  "src/world/transit.ts#isMode",
+  "src/world/transit.ts#longestOnRoad",
+  "src/world/transit.ts#nearestTrack",
+  "src/world/transit.ts#normalizeTransit",
+  "src/world/transit.ts#railGraph",
+  "src/world/transit.ts#railGraph.cellOf",
+  "src/world/transit.ts#railGraph.link",
+  "src/world/transit.ts#railGraph.node",
+  "src/world/transit.ts#railPath",
+  "src/world/transit.ts#railPath.onEdge",
+  "src/world/transit.ts#removeLine",
+  "src/world/transit.ts#removeStop",
+  "src/world/transit.ts#removeTrack",
+  "src/world/transit.ts#setLineVehicles",
+  "src/world/transit.ts#setTerminal",
+  "src/world/transit.ts#stopById",
+  "src/world/transit.ts#stopIndex",
+  "src/world/transit.ts#stopNear",
+  "src/world/transit.ts#stretchesNear",
+  "src/world/transit.ts#trackCells",
+  "src/world/transit.ts#trackPointNear"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/changeLog.ts#ChangeLog.since",
+   "kind": "call",
+   "by": [
+    "src/sim/agents/laneGrid.ts#laneChangesSince"
+   ]
+  },
+  {
+   "unit": "src/core/changeLog.ts#ChangeLog.state",
+   "kind": "call",
+   "by": [
+    "src/sim/agents/laneGrid.ts#laneChangesSince"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap",
+   "kind": "construct",
+   "by": [
+    "src/world/transit.ts#railPath"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.peekKey",
+   "kind": "call",
+   "by": [
+    "src/world/transit.ts#railPath"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.pop",
+   "kind": "call",
+   "by": [
+    "src/world/transit.ts#railPath"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.push",
+   "kind": "call",
+   "by": [
+    "src/world/transit.ts#railPath"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.size",
+   "kind": "call",
+   "by": [
+    "src/world/transit.ts#railPath"
+   ]
+  },
+  {
+   "unit": "src/core/identityMemo.ts#identityMemo",
+   "kind": "call",
+   "by": [
+    "src/world/transit.ts#stopIndex",
+    "src/world/transit.ts#trackCells"
+   ]
+  },
+  {
+   "unit": "src/core/polygon.ts#pointInPolygon",
+   "kind": "call",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Frame",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stopPoint",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.closestPoint",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.closestPoint",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.length",
+   "kind": "call",
+   "by": [
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.n",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.point",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.sampleAt",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stopPoint",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/rng.ts#Rng.float",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/core/rng.ts#Rng.range",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#m",
+   "kind": "call",
+   "by": [
+    "src/editor/transitTools.ts#PICK",
+    "src/editor/transitTools.ts#STOP_REACH",
+    "src/editor/transitTools.ts#TransitTool.built",
+    "src/editor/transitTools.ts#TransitTool.click",
+    "src/editor/transitTools.ts#TransitTool.finishTrack",
+    "src/render/transit.ts#CAR",
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#createTransit.update",
+    "src/render/transit.ts#entranceSpot",
+    "src/render/transit.ts#GAUGE",
+    "src/render/transit.ts#METRO_DEPTH",
+    "src/render/transit.ts#PIECE",
+    "src/render/transit.ts#SLEEPER_STEP",
+    "src/render/transit.ts#STOP_READS",
+    "src/render/transit.ts#stopParts",
+    "src/render/transit.ts#TRACK_READS",
+    "src/render/transit.ts#trackBoxes",
+    "src/render/transit.ts#TUNNEL",
+    "src/sim/transit/transit.ts#APPROACH",
+    "src/sim/transit/transit.ts#AT_STOP,STOPPED",
+    "src/sim/transit/transit.ts#AWAY_MARGIN",
+    "src/sim/transit/transit.ts#CROSSING_STOP",
+    "src/sim/transit/transit.ts#CROSSING_WARN",
+    "src/sim/transit/transit.ts#KEEP_CLEAR",
+    "src/sim/transit/transit.ts#TRAIN_AHEAD",
+    "src/sim/transit/transit.ts#TRAIN_CARS,METRO_CARS,CAR_LENGTH",
+    "src/sim/transit/transit.ts#TRAIN_GAP",
+    "src/sim/transit/transit.ts#TRAIN_TOP,METRO_TOP,TRAIN_ACCEL,TRAIN_BRAKE",
+    "src/sim/transit/transit.ts#TransitSim.closedOn",
+    "src/sim/transit/transit.ts#TransitSim.stepTrain",
+    "src/sim/transit/transit.ts#TransitSim.trainZones",
+    "src/sim/transit/transit.ts#TransitSim.trainZones.far",
+    "src/sim/transit/transit.ts#travelTime",
+    "src/world/transit.ts#ALONG_ROAD",
+    "src/world/transit.ts#JOIN",
+    "src/world/transit.ts#longestOnRoad",
+    "src/world/transit.ts#STOP_CELL",
+    "src/world/transit.ts#TRACK_CELL",
+    "src/sim/world.ts#SimWorld.inFocusReach"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built",
+    "src/editor/transitTools.ts#TransitTool.draw",
+    "src/editor/transitTools.ts#TransitTool.finishTrack",
+    "src/editor/transitTools.ts#TransitTool.snapTrack",
+    "src/render/transit.ts#stopParts",
+    "src/sim/transit/transit.ts#crossAt",
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/sim/transit/transit.ts#samePoints",
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/transit/transit.ts#TransitSim.placeRails",
+    "src/sim/transit/transit.ts#TransitSim.pointAt",
+    "src/sim/transit/transit.ts#TransitSim.stepBus",
+    "src/sim/transit/transit.ts#TransitSim.stopPoint",
+    "src/sim/transit/transit.ts#TransitSim.trainZones",
+    "src/sim/transit/transit.ts#TransitSim.trainZones.far",
+    "src/world/transit.ts#addTrack",
+    "src/world/transit.ts#longestOnRoad",
+    "src/world/transit.ts#nearestTrack",
+    "src/world/transit.ts#normalizeTransit",
+    "src/world/transit.ts#railGraph.link",
+    "src/world/transit.ts#railGraph.node",
+    "src/world/transit.ts#railPath.onEdge",
+    "src/world/transit.ts#stopNear",
+    "src/world/transit.ts#stretchesNear",
+    "src/world/transit.ts#trackCells",
+    "src/world/transit.ts#trackPointNear",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built",
+    "src/editor/transitTools.ts#TransitTool.click",
+    "src/editor/transitTools.ts#TransitTool.cursor",
+    "src/editor/transitTools.ts#TransitTool.draw",
+    "src/editor/transitTools.ts#TransitTool.footwayAt",
+    "src/editor/transitTools.ts#TransitTool.move",
+    "src/editor/transitTools.ts#TransitTool.onRoad",
+    "src/editor/transitTools.ts#TransitTool.points",
+    "src/editor/transitTools.ts#TransitTool.preview",
+    "src/editor/transitTools.ts#TransitTool.snapTrack",
+    "src/editor/transitTools.ts#TransitTool.stopAt",
+    "src/sim/transit/transit.ts#crossAt",
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/sim/transit/transit.ts#RailLine",
+    "src/sim/transit/transit.ts#samePoints",
+    "src/sim/transit/transit.ts#TransitSim.placeRails",
+    "src/sim/transit/transit.ts#TransitSim.pointAt",
+    "src/world/transit.ts#addTrack",
+    "src/world/transit.ts#longestOnRoad",
+    "src/world/transit.ts#nearestTrack",
+    "src/world/transit.ts#normalizeTransit",
+    "src/world/transit.ts#railGraph",
+    "src/world/transit.ts#RailGraph",
+    "src/world/transit.ts#railGraph.node",
+    "src/world/transit.ts#railPath",
+    "src/world/transit.ts#railPath.onEdge",
+    "src/world/transit.ts#RailTrack",
+    "src/world/transit.ts#stopNear",
+    "src/world/transit.ts#stretchesNear",
+    "src/world/transit.ts#trackPointNear",
+    "src/world/transit.ts#TrackStretch",
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawOverlayScreen.at",
+   "kind": "indirectCall",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.draw"
+   ]
+  },
+  {
+   "unit": "src/main.ts#transitEditor",
+   "kind": "callbackAssign",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built",
+    "src/editor/transitTools.ts#TransitTool.click",
+    "src/editor/transitTools.ts#TransitTool.data",
+    "src/editor/transitTools.ts#TransitTool.finishLine",
+    "src/editor/transitTools.ts#TransitTool.finishTrack",
+    "src/editor/transitTools.ts#TransitTool.footwayAt",
+    "src/editor/transitTools.ts#TransitTool.key",
+    "src/editor/transitTools.ts#TransitTool.onRoad",
+    "src/editor/transitTools.ts#TransitTool.removeLine",
+    "src/editor/transitTools.ts#TransitTool.setKind",
+    "src/editor/transitTools.ts#TransitTool.setVehicles"
+   ]
+  },
+  {
+   "unit": "src/main.ts#transitEditor",
+   "kind": "implementation",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built",
+    "src/editor/transitTools.ts#TransitTool.click",
+    "src/editor/transitTools.ts#TransitTool.data",
+    "src/editor/transitTools.ts#TransitTool.finishLine",
+    "src/editor/transitTools.ts#TransitTool.finishTrack",
+    "src/editor/transitTools.ts#TransitTool.footwayAt",
+    "src/editor/transitTools.ts#TransitTool.key",
+    "src/editor/transitTools.ts#TransitTool.onRoad",
+    "src/editor/transitTools.ts#TransitTool.removeLine",
+    "src/editor/transitTools.ts#TransitTool.setKind",
+    "src/editor/transitTools.ts#TransitTool.setVehicles"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#createTransit"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.cull",
+   "kind": "implementation",
+   "by": [
+    "src/render/transit.ts#createTransit.cull"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/transit.ts#createTransit.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.update",
+   "kind": "implementation",
+   "by": [
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#InstanceRuns",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#createTransit.cull",
+    "src/render/transit.ts#createTransit.dispose",
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#InstanceRuns",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#createTransit.cull",
+    "src/render/transit.ts#createTransit.setXray"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#Run",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#createTransit.sync",
+    "src/render/transit.ts#TransitPlace",
+    "src/render/transit.ts#TransitProduct.compute.runOf"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder",
+   "kind": "construct",
+   "by": [
+    "src/render/transit.ts#TransitProduct.compute.runOf"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder.build",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.compute.runOf"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder.turned",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.compute.runOf"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunStore",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#TransitProduct.compute.runOf"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunStore",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#createTransit.shown",
+    "src/render/transit.ts#createTransit.through",
+    "src/render/transit.ts#TransitProduct.compute.runOf",
+    "src/render/transit.ts#TransitProduct.constructor"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#sameRun",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.equals"
+   ]
+  },
+  {
+   "unit": "src/render/pinned.ts#pinned",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#createTrackPreview",
+    "src/render/transit.ts#createTrackPreview.set",
+    "src/render/transit.ts#createTransit"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/bay.ts#BayLane",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stopPoint"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/bay.ts#BayLane",
+   "kind": "typeRef",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stopLanes"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/laneGrid.ts#laneGrid",
+   "kind": "call",
+   "by": [
+    "src/sim/agents/laneGrid.ts#laneChangesSince"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/laneGrid.ts#LaneGrid.changes",
+   "kind": "read",
+   "by": [
+    "src/sim/agents/laneGrid.ts#laneChangesSince"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/laneGrid.ts#LaneGridWorld",
+   "kind": "typeRef",
+   "by": [
+    "src/sim/agents/laneGrid.ts#laneChangesSince"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/laneGrid.ts#lanesInBox",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/parking.ts#LANE_BESIDE_REACH",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.followLanes"
+   ]
+  },
+  {
+   "unit": "src/sim/agents/parking.ts#laneBeside",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/transit/transit.ts#TransitSim.rebuild"
+   ]
+  },
+  {
+   "unit": "src/sim/clock.ts#SimClock.tick",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/dt.ts#DT",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stepBus",
+    "src/sim/transit/transit.ts#TransitSim.stepTrain"
+   ]
+  },
+  {
+   "unit": "src/sim/host/protocol.ts#TrainCar",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit.update"
+   ]
+  },
+  {
+   "unit": "src/sim/host/protocol.ts#TrainState",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit.update"
+   ]
+  },
+  {
+   "unit": "src/sim/host/protocol.ts#TrainState",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#TransitMeshes"
+   ]
+  },
+  {
+   "unit": "src/sim/params.ts#DRIVER_NOISE",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/pose.ts#Pose",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/pose.ts#vehiclePose",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/routing/router.ts#planFrom",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/archetypes.ts#Archetype",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/archetypes.ts#ARCHETYPES",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/driver.ts#makeDriver",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/state.ts#createVehicle",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/state.ts#snapshot",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/state.ts#Vehicle",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/state.ts#Vehicle",
+   "kind": "typeRef",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.sendBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/state.ts#Vehicle",
+   "kind": "write",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.placeBuses",
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/vehicleId.ts#VehicleId",
+   "kind": "typeRef",
+   "by": [
+    "src/sim/transit/transit.ts#Bus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#FOCUS_WINDOW",
+   "kind": "read",
+   "by": [
+    "src/sim/world.ts#SimWorld.inFocusReach"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimStreams",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld",
+   "kind": "typeRef",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/transit/transit.ts#TransitSim.passStopAway",
+    "src/sim/transit/transit.ts#TransitSim.placeBuses",
+    "src/sim/transit/transit.ts#TransitSim.placeRails",
+    "src/sim/transit/transit.ts#TransitSim.rebuild",
+    "src/sim/transit/transit.ts#TransitSim.sendBus",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.step",
+    "src/sim/transit/transit.ts#TransitSim.stepBus",
+    "src/sim/transit/transit.ts#TransitSim.stopPoint"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.bodiesIn",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.bodiesIn",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.clock",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.constructor",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.placeRails",
+    "src/sim/transit/transit.ts#TransitSim.rebuild",
+    "src/sim/transit/transit.ts#TransitSim.step"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.enterLanelet",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.focus",
+   "kind": "read",
+   "by": [
+    "src/sim/world.ts#SimWorld.inFocusReach"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.lanelet",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stopPoint"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.microWindow",
+   "kind": "read",
+   "by": [
+    "src/sim/world.ts#SimWorld.inFocusReach"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.nextVehicleId",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.nextVehicleId",
+   "kind": "write",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.removeVehicle",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/transit/transit.ts#TransitSim.rebuild",
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.rng",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.vehicles",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/transit/transit.ts#TransitSim.placeBuses",
+    "src/sim/transit/transit.ts#TransitSim.rebuild",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stepBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#SimWorld.vehicles",
+   "kind": "write",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/sim/world.ts#VersionedMap.set",
+   "kind": "call",
+   "by": [
+    "src/sim/transit/transit.ts#TransitSim.spawnBus"
+   ]
+  },
+  {
+   "unit": "src/ui/i18n/index.ts#t",
+   "kind": "call",
+   "by": [
+    "src/ui/v2/transitLine.ts#transitLineRow"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/geometry.ts#volumeCorners",
+   "kind": "call",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/store.ts#BuildingStore.near",
+   "kind": "call",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Building",
+   "kind": "read",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/types.ts#Volume",
+   "kind": "read",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/world/carriageway.ts#onCarriageway",
+   "kind": "call",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.onRoad"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling",
+   "kind": "construct",
+   "by": [
+    "src/render/transit.ts#TransitProduct.filing",
+    "src/sim/transit/transit.ts#TransitSim.busStops",
+    "src/sim/transit/transit.ts#TransitSim.rebuild"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.file",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.changed",
+    "src/sim/transit/transit.ts#TransitSim.rebuild"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.ids",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.allKeys"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.idsMeetingAny",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.dirty",
+    "src/sim/transit/transit.ts#TransitSim.followLanes"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.remove",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#TransitProduct.changed"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#TransitProduct.dirty",
+    "src/render/transit.ts#TransitProduct.dirty.meets"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#TransitProduct.dirty"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#TransitSource"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal.serialOf",
+   "kind": "call",
+   "by": [
+    "src/world/doc.ts#RoadDoc.transitRevision"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeKind",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#TransitProduct.kinds"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeRect",
+   "kind": "typeRef",
+   "by": [
+    "src/render/transit.ts#pointsBox",
+    "src/render/transit.ts#TransitPlace",
+    "src/render/transit.ts#TransitProduct.compute",
+    "src/sim/transit/transit.ts#TransitSim.followLanes",
+    "src/sim/agents/laneGrid.ts#laneChangesSince",
+    "src/world/footwayPath.ts#FootwayNet"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived",
+   "kind": "construct",
+   "by": [
+    "src/render/transit.ts#createTransit"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.get",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.refresh",
+   "kind": "call",
+   "by": [
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.work",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#DerivedSpec",
+   "kind": "implements",
+   "by": [
+    "src/render/transit.ts#TransitProduct"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#DerivedWork",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit.sync"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/transitTools.ts#TransitToolDeps",
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#stopParts",
+    "src/render/transit.ts#TransitSource",
+    "src/render/transit.ts#TransitStop",
+    "src/render/transit.ts#TransitTrack"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.buildings",
+   "kind": "read",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.built"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.changes",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit.sync",
+    "src/world/doc.ts#RoadDoc.transitRevision"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.nodes",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#stopParts"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.segments",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#stopParts"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.transit",
+   "kind": "read",
+   "by": [
+    "src/editor/transitTools.ts#TransitTool.data",
+    "src/render/transit.ts#stopParts",
+    "src/render/transit.ts#TransitProduct.allKeys",
+    "src/render/transit.ts#TransitProduct.compute",
+    "src/render/transit.ts#TransitProduct.dirty",
+    "src/sim/transit/transit.ts#TransitSim.placeRails",
+    "src/sim/transit/transit.ts#TransitSim.rebuild"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadNode",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#stopParts"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadSegment",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#stopParts"
+   ]
+  },
+  {
+   "unit": "src/world/footwayPath.ts#footwayPath",
+   "kind": "call",
+   "by": [
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/world/footwayPath.ts#FootwayRibbon",
+   "kind": "read",
+   "by": [
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/world/footwayPath.ts#FootwayRibbon",
+   "kind": "typeRef",
+   "by": [
+    "src/world/footwayPath.ts#FootwayNet"
+   ]
+  },
+  {
+   "unit": "src/world/footwayPath.ts#REJECT_STEP",
+   "kind": "read",
+   "by": [
+    "src/world/footwayPath.ts#nearestFootway"
+   ]
+  },
+  {
+   "unit": "src/world/ids.ts#SegmentId",
+   "kind": "typeRef",
+   "by": [
+    "src/world/transit.ts#normalizeTransit",
+    "src/world/transit.ts#TransitStop",
+    "src/world/footwayPath.ts#nearestFootway",
+    "src/world/footwayPath.ts#FootwayNet"
+   ]
+  },
+  {
+   "unit": "src/world/lanelets.ts#Lanelet",
+   "kind": "read",
+   "by": [
+    "src/sim/transit/transit.ts#levelCrossings",
+    "src/sim/transit/transit.ts#TransitSim.spawnBus",
+    "src/sim/transit/transit.ts#TransitSim.stopPoint"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/transitTools.ts#TransitToolDeps"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#SegmentDirection",
+   "kind": "typeRef",
+   "by": [
+    "src/world/footwayPath.ts#FootwayNet"
+   ]
+  },
+  {
+   "unit": "src/world/terrain.ts#TERRAIN_MAX_HEIGHT",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#createTransit.update"
+   ]
+  },
+  {
+   "unit": "src/world/terrain.ts#TERRAIN_MIN_HEIGHT",
+   "kind": "read",
+   "by": [
+    "src/render/transit.ts#createTransit",
+    "src/render/transit.ts#createTransit.update"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/editor/transitTools.ts#setTransitTool",
+   "kind": "call",
+   "by": [
+    "src/main.ts#<ExpressionStatement>@861"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#transitTool",
+   "kind": "reference",
+   "by": [
+    "src/main.ts#mountInterface"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#transitEditor"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool.click",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool.draw",
+   "kind": "call",
+   "by": [
+    "src/main.ts#drawOverlayScreen"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool.key",
+   "kind": "call",
+   "by": [
+    "src/main.ts#doubleClick",
+    "src/main.ts#gameKeys"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool.move",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/editor/transitTools.ts#TransitTool.preview",
+   "kind": "call",
+   "by": [
+    "src/main.ts#drawOverlayScreen"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#buildTrackPreview",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTrackPreview",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTrackPreview.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer",
+    "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTrackPreview.set",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit",
+   "kind": "call",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems.lay",
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit",
+   "kind": "implementation",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems.lay",
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit",
+   "kind": "read",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit.cull",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit.setXray",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit.sync",
+   "kind": "implementation",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems.lay",
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#createTransit.update",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TrackPreview",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer",
+    "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TrackPreview",
+   "kind": "read",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer",
+    "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TrackPreview",
+   "kind": "typeRef",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitMeshes",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitMeshes",
+   "kind": "read",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems.lay",
+    "src/render/renderer.ts#createSceneRenderer",
+    "src/render/renderer.ts#createSceneRenderer.movingCasters",
+    "src/render/renderer.ts#createSceneRenderer.switchedOff"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitProduct.allKeys",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitProduct.changed",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitProduct.compute",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitProduct.dirty",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/transit.ts#TransitProduct.equals",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#CROSSING_STOP",
+   "kind": "read",
+   "by": [
+    "src/sim/intersections/admission.ts#admit",
+    "src/sim/vehicles/obstacles.ts#longitudinalConstraints"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TrainView",
+   "kind": "read",
+   "by": [
+    "src/sim/host/simHost.ts#SimHost.publish"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim",
+   "kind": "construct",
+   "by": [
+    "src/sim/city/city.ts#City.transit"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.closedOn",
+   "kind": "call",
+   "by": [
+    "src/sim/vehicles/obstacles.ts#longitudinalConstraints"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.crossingNearEnd",
+   "kind": "call",
+   "by": [
+    "src/sim/intersections/admission.ts#admit",
+    "src/sim/vehicles/obstacles.ts#longitudinalConstraints"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.step",
+   "kind": "call",
+   "by": [
+    "src/sim/city/city.ts#City.step"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.trains",
+   "kind": "call",
+   "by": [
+    "src/sim/host/simHost.ts#SimHost.publish"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.trainZones",
+   "kind": "call",
+   "by": [
+    "src/sim/agents/walk.ts#stepWalkers"
+   ]
+  },
+  {
+   "unit": "src/sim/transit/transit.ts#TransitSim.trainZones",
+   "kind": "read",
+   "by": [
+    "src/sim/agents/walk.ts#stepWalkers"
+   ]
+  },
+  {
+   "unit": "src/ui/v2/transitLine.ts#transitLineRow",
+   "kind": "call",
+   "by": [
+    "src/ui/v2/shell.ts#mountShell.renderTransit"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addLine",
+   "kind": "call",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addLine",
+   "kind": "read",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addStop",
+   "kind": "call",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addStop",
+   "kind": "read",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addTrack",
+   "kind": "call",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#addTrack",
+   "kind": "read",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#emptyTransit",
+   "kind": "call",
+   "by": [
+    "src/lab/catalog/layers.ts#transitItems",
+    "src/world/doc.ts#RoadDoc.transit"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#hasTransit",
+   "kind": "call",
+   "by": [
+    "src/main.ts#simShowsMotion",
+    "src/sim/agents/trafficBuildings.ts#trafficMapOf",
+    "src/world/doc.ts#RoadDoc.savedGlobals",
+    "src/world/doc.ts#RoadDoc.worldPart"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#normalizeTransit",
+   "kind": "call",
+   "by": [
+    "src/world/doc.ts#RoadDoc.fromJSON"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#TransitData",
+   "kind": "typeRef",
+   "by": [
+    "src/world/doc.ts#RoadDoc.replaceContents",
+    "src/world/doc.ts#RoadDoc.restoreValue",
+    "src/world/doc.ts#RoadDoc.setTransit",
+    "src/world/doc.ts#RoadDoc.transit",
+    "src/world/doc.ts#RoadDoc.worldPart"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#TransitLine",
+   "kind": "read",
+   "by": [
+    "src/ui/v2/shell.ts#mountShell.renderTransit"
+   ]
+  },
+  {
+   "unit": "src/world/transit.ts#TransitLine",
+   "kind": "typeRef",
+   "by": [
+    "src/ui/v2/shell.ts#ShellTransitTool"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 130
+  },
+  {
+   "key": "es:Array.push",
+   "count": 75
+  },
+  {
+   "key": "es:Array.length",
+   "count": 46
+  },
+  {
+   "key": "es:Map.get",
+   "count": 46
+  },
+  {
+   "key": "es:Math.max",
+   "count": 29
+  },
+  {
+   "key": "es:ReadonlyArray.length",
+   "count": 26
+  },
+  {
+   "key": "es:Math.min",
+   "count": 24
+  },
+  {
+   "key": "es:Map",
+   "count": 23
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 18
+  },
+  {
+   "key": "es:Map.set",
+   "count": 17
+  },
+  {
+   "key": "es:Math.floor",
+   "count": 17
+  },
+  {
+   "key": "es:Infinity",
+   "count": 13
+  },
+  {
+   "key": "es:Math.cos",
+   "count": 10
+  },
+  {
+   "key": "es:Math.sin",
+   "count": 10
+  },
+  {
+   "key": "three:InstancedMesh.instanceMatrix",
+   "count": 10
+  },
+  {
+   "key": "es:ReadonlyArray.map",
+   "count": 9
+  },
+  {
+   "key": "es:Record",
+   "count": 9
+  },
+  {
+   "key": "es:Array.filter",
+   "count": 8
+  },
+  {
+   "key": "es:Array.map",
+   "count": 8
+  },
+  {
+   "key": "es:Math.atan2",
+   "count": 8
+  },
+  {
+   "key": "es:Set",
+   "count": 7
+  },
+  {
+   "key": "es:Set.add",
+   "count": 7
+  },
+  {
+   "key": "es:Math.PI",
+   "count": 6
+  },
+  {
+   "key": "es:ReadonlyArray.filter",
+   "count": 6
+  },
+  {
+   "key": "es:ReadonlyArray.find",
+   "count": 6
+  },
+  {
+   "key": "three:Object3D.visible",
+   "count": 6
+  },
+  {
+   "key": "three:Vector3.set",
+   "count": 6
+  },
+  {
+   "key": "es:Array",
+   "count": 5
+  },
+  {
+   "key": "es:ArrayConstructor.isArray",
+   "count": 5
+  },
+  {
+   "key": "three:InstancedMesh.count",
+   "count": 5
+  },
+  {
+   "key": "three:InstancedMesh.instanceColor",
+   "count": 5
+  },
+  {
+   "key": "three:MeshStandardMaterial",
+   "count": 5
+  },
+  {
+   "key": "dom:CanvasDrawPath.beginPath",
+   "count": 4
+  },
+  {
+   "key": "dom:document",
+   "count": 4
+  },
+  {
+   "key": "dom:Document.createElement",
+   "count": 4
+  },
+  {
+   "key": "es:Array.sort",
+   "count": 4
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 4
+  },
+  {
+   "key": "es:NaN",
+   "count": 4
+  },
+  {
+   "key": "es:ReadonlyArray.forEach",
+   "count": 4
+  },
+  {
+   "key": "es:Set.has",
+   "count": 4
+  },
+  {
+   "key": "three:Color",
+   "count": 4
+  },
+  {
+   "key": "three:Group",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.add",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.position",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.rotation",
+   "count": 4
+  },
+  {
+   "key": "three:Object3D.scale",
+   "count": 4
+  },
+  {
+   "key": "three:Sphere.center",
+   "count": 4
+  },
+  {
+   "key": "dom:CanvasDrawPath.stroke",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasFillStrokeStyles.fillStyle",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasFillStrokeStyles.strokeStyle",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasPathDrawingStyles.lineWidth",
+   "count": 3
+  },
+  {
+   "key": "es:Array.forEach",
+   "count": 3
+  },
+  {
+   "key": "es:Array.pop",
+   "count": 3
+  },
+  {
+   "key": "es:Map.clear",
+   "count": 3
+  },
+  {
+   "key": "es:Map.delete",
+   "count": 3
+  },
+  {
+   "key": "es:Map.values",
+   "count": 3
+  },
+  {
+   "key": "es:Number",
+   "count": 3
+  },
+  {
+   "key": "es:NumberConstructor.isFinite",
+   "count": 3
+  },
+  {
+   "key": "three:BufferAttribute.addUpdateRange",
+   "count": 3
+  },
+  {
+   "key": "three:BufferAttribute.clearUpdateRanges",
+   "count": 3
+  },
+  {
+   "key": "three:BufferAttribute.needsUpdate",
+   "count": 3
+  },
+  {
+   "key": "three:InstancedMesh",
+   "count": 3
+  },
+  {
+   "key": "three:InstancedMesh.dispose",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.frustumCulled",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.name",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.renderOrder",
+   "count": 3
+  },
+  {
+   "key": "dom:CanvasCompositing.globalAlpha",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasDrawPath.fill",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasPath.arc",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasPath.lineTo",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasPath.moveTo",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasState.restore",
+   "count": 2
+  },
+  {
+   "key": "dom:Element.textContent",
+   "count": 2
+  },
+  {
+   "key": "es:Array.every",
+   "count": 2
+  },
+  {
+   "key": "es:Array.reverse",
+   "count": 2
+  },
+  {
+   "key": "es:Iterable",
+   "count": 2
+  },
+  {
+   "key": "es:Math.round",
+   "count": 2
+  },
+  {
+   "key": "es:Object",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyArray.some",
+   "count": 2
+  },
+  {
+   "key": "three:BoxGeometry",
+   "count": 2
+  },
+  {
+   "key": "three:BufferAttribute.count",
+   "count": 2
+  },
+  {
+   "key": "three:BufferAttribute.setUsage",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.dispose",
+   "count": 2
+  },
+  {
+   "key": "three:DynamicDrawUsage",
+   "count": 2
+  },
+  {
+   "key": "three:Euler.set",
+   "count": 2
+  },
+  {
+   "key": "three:Frustum",
+   "count": 2
+  },
+  {
+   "key": "three:Frustum.intersectsSphere",
+   "count": 2
+  },
+  {
+   "key": "three:InstancedMesh.setMatrixAt",
+   "count": 2
+  },
+  {
+   "key": "three:MaterialProperties.userData",
+   "count": 2
+  },
+  {
+   "key": "three:Mesh.material",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.matrix",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.updateMatrix",
+   "count": 2
+  },
+  {
+   "key": "three:Sphere.radius",
+   "count": 2
+  },
+  {
+   "key": "dom:CanvasPath.rect",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasPathDrawingStyles.lineCap",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasPathDrawingStyles.lineJoin",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasRenderingContext2D",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasState.save",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasText.fillText",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTextDrawingStyles.font",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTextDrawingStyles.textAlign",
+   "count": 1
+  },
+  {
+   "key": "dom:CanvasTextDrawingStyles.textBaseline",
+   "count": 1
+  },
+  {
+   "key": "dom:CSSStyleDeclaration.background",
+   "count": 1
+  },
+  {
+   "key": "dom:Element.className",
+   "count": 1
+  },
+  {
+   "key": "dom:ElementCSSInlineStyle.style",
+   "count": 1
+  },
+  {
+   "key": "dom:HTMLDivElement",
+   "count": 1
+  },
+  {
+   "key": "dom:ParentNode.append",
+   "count": 1
+  },
+  {
+   "key": "es:Array.findIndex",
+   "count": 1
+  },
+  {
+   "key": "es:Array.slice",
+   "count": 1
+  },
+  {
+   "key": "es:Float32Array",
+   "count": 1
+  },
+  {
+   "key": "es:Float32Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Float64Array",
+   "count": 1
+  },
+  {
+   "key": "es:Float64Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Int32Array",
+   "count": 1
+  },
+  {
+   "key": "es:Int32Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Map.has",
+   "count": 1
+  },
+  {
+   "key": "es:Math.ceil",
+   "count": 1
+  },
+  {
+   "key": "es:Math.sqrt",
+   "count": 1
+  },
+  {
+   "key": "es:NonNullable",
+   "count": 1
+  },
+  {
+   "key": "es:ObjectConstructor.freeze",
+   "count": 1
+  },
+  {
+   "key": "es:ObjectConstructor.fromEntries",
+   "count": 1
+  },
+  {
+   "key": "es:Omit",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.every",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.findIndex",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.flat",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.includes",
+   "count": 1
+  },
+  {
+   "key": "es:RegExp.test",
+   "count": 1
+  },
+  {
+   "key": "es:Set.size",
+   "count": 1
+  },
+  {
+   "key": "es:Uint8Array",
+   "count": 1
+  },
+  {
+   "key": "three:Color.copy",
+   "count": 1
+  },
+  {
+   "key": "three:Color.set",
+   "count": 1
+  },
+  {
+   "key": "three:Frustum.copy",
+   "count": 1
+  },
+  {
+   "key": "three:InstancedBufferAttribute",
+   "count": 1
+  },
+  {
+   "key": "three:InstancedMesh.setColorAt",
+   "count": 1
+  },
+  {
+   "key": "three:MaterialProperties.depthTest",
+   "count": 1
+  },
+  {
+   "key": "three:Matrix4",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.castShadow",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.remove",
+   "count": 1
+  },
+  {
+   "key": "three:Sphere",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/main.ts#transitEditor",
+  "src/sim/city/city.ts#City.transit",
+  "src/world/doc.ts#RoadDoc.transit"
+ ],
+ "sliced": [
+  "src/lab/catalog/layers.ts#transitItems",
+  "src/lab/catalog/layers.ts#transitItems.lay",
+  "src/main.ts#<ExpressionStatement>@861",
+  "src/main.ts#<IfStatement>@4036",
+  "src/main.ts#doubleClick",
+  "src/main.ts#drawOverlayScreen",
+  "src/main.ts#gameKeys",
+  "src/main.ts#mountInterface",
+  "src/main.ts#pointerDown",
+  "src/main.ts#pointerMove",
+  "src/main.ts#simShowsMotion",
+  "src/main.ts#transitEditor",
+  "src/render/renderer.ts#createSceneRenderer",
+  "src/render/renderer.ts#createSceneRenderer.movingCasters",
+  "src/render/renderer.ts#createSceneRenderer.switchedOff",
+  "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders",
+  "src/sim/agents/trafficBuildings.ts#trafficMapOf",
+  "src/sim/agents/walk.ts#stepWalkers",
+  "src/sim/city/city.ts#City.step",
+  "src/sim/city/city.ts#City.transit",
+  "src/sim/host/simHost.ts#SimHost.publish",
+  "src/sim/intersections/admission.ts#admit",
+  "src/sim/vehicles/obstacles.ts#longitudinalConstraints",
+  "src/ui/v2/shell.ts#ShellTransitTool",
+  "src/ui/v2/shell.ts#mountShell.renderTransit",
+  "src/world/derived.ts#Derived.refresh",
+  "src/world/doc.ts#RoadDoc.fromJSON",
+  "src/world/doc.ts#RoadDoc.layOver",
+  "src/world/doc.ts#RoadDoc.replaceContents",
+  "src/world/doc.ts#RoadDoc.restoreValue",
+  "src/world/doc.ts#RoadDoc.savedGlobals",
+  "src/world/doc.ts#RoadDoc.setTransit",
+  "src/world/doc.ts#RoadDoc.takeFork",
+  "src/world/doc.ts#RoadDoc.transit",
+  "src/world/doc.ts#RoadDoc.valueOf",
+  "src/world/doc.ts#RoadDoc.worldPart"
+ ],
+ "slices": [
+  {
+   "unit": "src/lab/catalog/layers.ts#transitItems",
+   "file": "src/lab/catalog/layers.ts",
+   "start": 238,
+   "end": 262,
+   "lines": [
+    238,
+    247,
+    248,
+    249,
+    250,
+    251,
+    252,
+    253,
+    254,
+    255,
+    256,
+    257,
+    259,
+    260,
+    261,
+    262
+   ]
+  },
+  {
+   "unit": "src/lab/catalog/layers.ts#transitItems.lay",
+   "file": "src/lab/catalog/layers.ts",
+   "start": 239,
+   "end": 246,
+   "lines": [
+    239,
+    241,
+    242,
+    243,
+    244,
+    245,
+    246
+   ]
+  },
+  {
+   "unit": "src/main.ts#<ExpressionStatement>@861",
+   "file": "src/main.ts",
+   "start": 861,
+   "end": 861,
+   "lines": [
+    861
+   ]
+  },
+  {
+   "unit": "src/main.ts#<IfStatement>@4036",
+   "file": "src/main.ts",
+   "start": 4036,
+   "end": 4231,
+   "lines": [
+    4036,
+    4063,
+    4098,
+    4231
+   ]
+  },
+  {
+   "unit": "src/main.ts#doubleClick",
+   "file": "src/main.ts",
+   "start": 1207,
+   "end": 1212,
+   "lines": [
+    1207,
+    1209,
+    1212
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawOverlayScreen",
+   "file": "src/main.ts",
+   "start": 2942,
+   "end": 3410,
+   "lines": [
+    2942,
+    3009,
+    3012,
+    3410
+   ]
+  },
+  {
+   "unit": "src/main.ts#gameKeys",
+   "file": "src/main.ts",
+   "start": 2479,
+   "end": 2555,
+   "lines": [
+    2479,
+    2483,
+    2555
+   ]
+  },
+  {
+   "unit": "src/main.ts#mountInterface",
+   "file": "src/main.ts",
+   "start": 1859,
+   "end": 1946,
+   "lines": [
+    1859,
+    1861,
+    1912,
+    1929,
+    1946
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerDown",
+   "file": "src/main.ts",
+   "start": 1217,
+   "end": 1396,
+   "lines": [
+    1217,
+    1252,
+    1292,
+    1294,
+    1295,
+    1394,
+    1396
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerMove",
+   "file": "src/main.ts",
+   "start": 1404,
+   "end": 1475,
+   "lines": [
+    1404,
+    1439,
+    1440,
+    1442,
+    1475
+   ]
+  },
+  {
+   "unit": "src/main.ts#simShowsMotion",
+   "file": "src/main.ts",
+   "start": 2748,
+   "end": 2750,
+   "lines": [
+    2748,
+    2749,
+    2750
+   ]
+  },
+  {
+   "unit": "src/main.ts#transitEditor",
+   "file": "src/main.ts",
+   "start": 854,
+   "end": 860,
+   "lines": [
+    854,
+    855,
+    856,
+    857,
+    858,
+    859,
+    860
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer",
+   "file": "src/render/renderer.ts",
+   "start": 432,
+   "end": 4205,
+   "lines": [
+    432,
+    444,
+    1028,
+    1385,
+    1388,
+    1390,
+    1391,
+    2089,
+    2091,
+    2096,
+    2099,
+    2100,
+    2111,
+    2114,
+    2119,
+    2121,
+    2122,
+    2123,
+    2126,
+    2129,
+    2130,
+    2132,
+    2133,
+    2134,
+    2135,
+    2136,
+    2137,
+    2138,
+    2139,
+    2140,
+    2141,
+    2142,
+    2724,
+    3035,
+    3092,
+    3093,
+    3094,
+    3103,
+    3104,
+    3235,
+    3237,
+    3238,
+    3239,
+    3244,
+    3245,
+    3246,
+    3247,
+    3248,
+    3249,
+    3299,
+    3664,
+    3668,
+    4088,
+    4152,
+    4168,
+    4169,
+    4202,
+    4203,
+    4205
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.movingCasters",
+   "file": "src/render/renderer.ts",
+   "start": 456,
+   "end": 456,
+   "lines": [
+    456
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.switchedOff",
+   "file": "src/render/renderer.ts",
+   "start": 2642,
+   "end": 2657,
+   "lines": [
+    2642,
+    2643,
+    2644,
+    2645,
+    2646,
+    2647,
+    2648,
+    2649,
+    2650,
+    2651,
+    2652,
+    2653,
+    2654,
+    2655,
+    2656,
+    2657
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.warmPreviewShaders",
+   "file": "src/render/renderer.ts",
+   "start": 2587,
+   "end": 2624,
+   "lines": [
+    2587,
+    2590,
+    2614,
+    2615,
+    2616,
+    2617,
+    2618,
+    2621,
+    2623,
+    2624
+   ]
+  },
+  {
+   "unit": "src/sim/agents/trafficBuildings.ts#trafficMapOf",
+   "file": "src/sim/agents/trafficBuildings.ts",
+   "start": 706,
+   "end": 719,
+   "lines": [
+    706,
+    707,
+    708,
+    712,
+    713,
+    718,
+    719
+   ]
+  },
+  {
+   "unit": "src/sim/agents/walk.ts#stepWalkers",
+   "file": "src/sim/agents/walk.ts",
+   "start": 1538,
+   "end": 1880,
+   "lines": [
+    1538,
+    1598,
+    1599,
+    1600,
+    1601,
+    1602,
+    1603,
+    1880
+   ]
+  },
+  {
+   "unit": "src/sim/city/city.ts#City.step",
+   "file": "src/sim/city/city.ts",
+   "start": 36,
+   "end": 41,
+   "lines": [
+    36,
+    38,
+    41
+   ]
+  },
+  {
+   "unit": "src/sim/city/city.ts#City.transit",
+   "file": "src/sim/city/city.ts",
+   "start": 14,
+   "end": 14,
+   "lines": [
+    14
+   ]
+  },
+  {
+   "unit": "src/sim/host/simHost.ts#SimHost.publish",
+   "file": "src/sim/host/simHost.ts",
+   "start": 202,
+   "end": 281,
+   "lines": [
+    202,
+    276,
+    277,
+    280,
+    281
+   ]
+  },
+  {
+   "unit": "src/sim/intersections/admission.ts#admit",
+   "file": "src/sim/intersections/admission.ts",
+   "start": 98,
+   "end": 214,
+   "lines": [
+    98,
+    102,
+    106,
+    119,
+    120,
+    121,
+    139,
+    140,
+    214
+   ]
+  },
+  {
+   "unit": "src/sim/vehicles/obstacles.ts#longitudinalConstraints",
+   "file": "src/sim/vehicles/obstacles.ts",
+   "start": 109,
+   "end": 212,
+   "lines": [
+    109,
+    138,
+    139,
+    140,
+    148,
+    149,
+    150,
+    151,
+    152,
+    153,
+    177,
+    179,
+    180,
+    181,
+    182,
+    183,
+    212
+   ]
+  },
+  {
+   "unit": "src/ui/v2/shell.ts#ShellTransitTool",
+   "file": "src/ui/v2/shell.ts",
+   "start": 268,
+   "end": 276,
+   "lines": [
+    268,
+    273,
+    276
+   ]
+  },
+  {
+   "unit": "src/ui/v2/shell.ts#mountShell.renderTransit",
+   "file": "src/ui/v2/shell.ts",
+   "start": 1602,
+   "end": 1637,
+   "lines": [
+    1602,
+    1624,
+    1625,
+    1626,
+    1628,
+    1630,
+    1631,
+    1632,
+    1633,
+    1634,
+    1637
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.fromJSON",
+   "file": "src/world/doc.ts",
+   "start": 2701,
+   "end": 2887,
+   "lines": [
+    2701,
+    2828,
+    2887
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.layOver",
+   "file": "src/world/doc.ts",
+   "start": 1853,
+   "end": 1899,
+   "lines": [
+    1853,
+    1873,
+    1899
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.replaceContents",
+   "file": "src/world/doc.ts",
+   "start": 2404,
+   "end": 2552,
+   "lines": [
+    2404,
+    2406,
+    2456,
+    2457,
+    2458,
+    2459,
+    2552
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.restoreValue",
+   "file": "src/world/doc.ts",
+   "start": 2374,
+   "end": 2400,
+   "lines": [
+    2374,
+    2376,
+    2384,
+    2399,
+    2400
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.savedGlobals",
+   "file": "src/world/doc.ts",
+   "start": 2599,
+   "end": 2616,
+   "lines": [
+    2599,
+    2600,
+    2614,
+    2615,
+    2616
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.setTransit",
+   "file": "src/world/doc.ts",
+   "start": 190,
+   "end": 192,
+   "lines": [
+    190,
+    191,
+    192
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.takeFork",
+   "file": "src/world/doc.ts",
+   "start": 1902,
+   "end": 1950,
+   "lines": [
+    1902,
+    1930,
+    1950
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.transit",
+   "file": "src/world/doc.ts",
+   "start": 187,
+   "end": 187,
+   "lines": [
+    187
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.valueOf",
+   "file": "src/world/doc.ts",
+   "start": 2358,
+   "end": 2372,
+   "lines": [
+    2358,
+    2359,
+    2367,
+    2371,
+    2372
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.worldPart",
+   "file": "src/world/doc.ts",
+   "start": 2673,
+   "end": 2698,
+   "lines": [
+    2673,
+    2674,
+    2693,
+    2697,
+    2698
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1839,
+   "key": "transit.mode.bus",
+   "text": "'transit.mode.bus': 'Bus'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1840,
+   "key": "transit.mode.train",
+   "text": "'transit.mode.train': 'Train'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1841,
+   "key": "transit.mode.metro",
+   "text": "'transit.mode.metro': 'Metro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1842,
+   "key": "transit.stops",
+   "text": "'transit.stops': '{n} stops'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1843,
+   "key": "transit.fewer",
+   "text": "'transit.fewer': 'Fewer vehicles'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1844,
+   "key": "transit.more",
+   "text": "'transit.more': 'More vehicles'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1846,
+   "key": "transit.remove",
+   "text": "'transit.remove': 'Delete the line'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1852,
+   "key": "hint.transit.removed",
+   "text": "'hint.transit.removed': 'Removed.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1853,
+   "key": "hint.transit.noStreet",
+   "text": "'hint.transit.noStreet': 'Put the stop near a street with a footway.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1854,
+   "key": "hint.transit.taken",
+   "text": "'hint.transit.taken': 'There is a stop here already.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1855,
+   "key": "hint.transit.noStop",
+   "text": "'hint.transit.noStop': 'Click a stop or a station.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1856,
+   "key": "hint.transit.noTrack",
+   "text": "'hint.transit.noTrack': 'Click on a track.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1857,
+   "key": "hint.transit.trackShort",
+   "text": "'hint.transit.trackShort': 'A track needs at least two points.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1858,
+   "key": "hint.transit.trackOnRoad",
+   "text": "'hint.transit.trackOnRoad': 'A train track crosses streets but does not run down them (use the metro under them).'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1859,
+   "key": "hint.transit.lineShort",
+   "text": "'hint.transit.lineShort': 'A line needs at least two stops.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 1860,
+   "key": "hint.transit.lineMade",
+   "text": "'hint.transit.lineMade': 'Line made.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1829,
+   "key": "transit.mode.bus",
+   "text": "'transit.mode.bus': 'Ônibus'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1830,
+   "key": "transit.mode.train",
+   "text": "'transit.mode.train': 'Trem'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1831,
+   "key": "transit.mode.metro",
+   "text": "'transit.mode.metro': 'Metrô'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1832,
+   "key": "transit.stops",
+   "text": "'transit.stops': '{n} paradas'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1833,
+   "key": "transit.fewer",
+   "text": "'transit.fewer': 'Menos veículos'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1834,
+   "key": "transit.more",
+   "text": "'transit.more': 'Mais veículos'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1836,
+   "key": "transit.remove",
+   "text": "'transit.remove': 'Apagar a linha'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1842,
+   "key": "hint.transit.removed",
+   "text": "'hint.transit.removed': 'Removido.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1843,
+   "key": "hint.transit.noStreet",
+   "text": "'hint.transit.noStreet': 'Ponha o ponto perto de uma rua com calçada.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1844,
+   "key": "hint.transit.taken",
+   "text": "'hint.transit.taken': 'Já há uma parada aqui.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1845,
+   "key": "hint.transit.noStop",
+   "text": "'hint.transit.noStop': 'Clique numa parada ou estação.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1846,
+   "key": "hint.transit.noTrack",
+   "text": "'hint.transit.noTrack': 'Clique sobre um trilho.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1847,
+   "key": "hint.transit.trackShort",
+   "text": "'hint.transit.trackShort': 'Um trilho precisa de pelo menos dois pontos.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1848,
+   "key": "hint.transit.trackOnRoad",
+   "text": "'hint.transit.trackOnRoad': 'Trilho de trem cruza ruas, mas não corre por cima delas (use o metrô por baixo).'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1849,
+   "key": "hint.transit.lineShort",
+   "text": "'hint.transit.lineShort': 'Uma linha precisa de pelo menos duas paradas.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 1850,
+   "key": "hint.transit.lineMade",
+   "text": "'hint.transit.lineMade': 'Linha criada.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.ts",
+   "line": 79,
+   "key": "demolish",
+   "text": "demolish: '<path d=\"m5 9 8-5 5 8-8 5Z\"/><path d=\"m7 15 5 5m4-8 3 5\"/>'"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/app.css",
+   "line": 57,
+   "key": "glass",
+   "text": ".glass {\r\n  background: linear-gradient(145deg, var(--ui-hi), transparent 42%), var(--ui-bg);\r\n  border: 1px solid var(--ui-border);\r\n  border-radius: 14px;\r\n  box-shadow: var(--shadow);\r\n}"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.css",
+   "line": 41,
+   "key": "v2-icon",
+   "text": ".v2-icon > span, .v2-pill > span, .v2-seg-b > span, .v2-tabs.compact .v2-tab.icon:not(.on) > span, .v2-tabs.tight .v2-tab.icon > span, .v2-choice.icon > span,\n.v2-verb > span, .v2-act > span {\n  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;\n}"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.css",
+   "line": 69,
+   "key": "v2-icon",
+   "text": ".v2-pill, .v2-icon {\n  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;\n  width: 32px; height: 32px; padding: 0; flex: none;\n  border: 1px solid var(--v-line); border-radius: 10px; background: var(--v-raise); color: var(--v-text);\n}"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.css",
+   "line": 74,
+   "key": "v2-icon",
+   "text": ".v2-pill:hover, .v2-icon:hover:not(:disabled) { background: var(--v-raise-2); border-color: var(--v-accent-line); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.css",
+   "line": 75,
+   "key": "v2-icon",
+   "text": ".v2-icon.on, .v2-pill.on { color: var(--v-accent); border-color: var(--v-accent); background: var(--v-accent-soft); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/v2/shell.css",
+   "line": 76,
+   "key": "v2-icon",
+   "text": ".v2-icon.danger { color: var(--v-danger-ink); }"
+  },
+  {
+   "kind": "style",
+   "owner": "feature",
+   "file": "src/ui/v2/shell.css",
+   "line": 272,
+   "key": "v2-transit-line",
+   "text": ".v2-transit-line { display: flex; align-items: center; gap: 6px; min-width: 260px; padding: 4px 8px; border-radius: 8px; background: var(--v-raise); }"
+  },
+  {
+   "kind": "style",
+   "owner": "feature",
+   "file": "src/ui/v2/shell.css",
+   "line": 273,
+   "key": "v2-transit-line",
+   "text": ".v2-transit-line > i { flex: none; width: 12px; height: 12px; border-radius: 3px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "feature",
+   "file": "src/ui/v2/shell.css",
+   "line": 274,
+   "key": "v2-transit-line",
+   "text": ".v2-transit-line > b { font-weight: 700; }"
+  }
+ ]
+}

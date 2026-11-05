@@ -1,0 +1,1547 @@
+# Raiz e infraestrutura do 4.0
+
+Unidades que nenhuma funcionalidade do jogador alcança: a raiz do programa (ligação), o núcleo e os jobs. Cada uma com o que ela faz, para quem porta a arquitetura e não a funcionalidade.
+
+## src/actionsWiring.ts
+
+- 24-24 `RAY_ABOVE` (variable): How high over the ground under the pointer a building can reach: the tallest stack of the tallest storeys, its roof and plinth.
+- 26-26 `RAY_BELOW` (variable): How far under the ground under the pointer a building can stand (one in a valley seen over a ridge).
+- 28-28 `VEHICLE_HALF_SPAN` (variable): The farthest a vehicle's box reaches from its centre on the ground (a rider's shoulders over a two-wheeler's frame, `shootVehicle`).
+- 30-30 `FIRE_STEP` (variable): How often the fires flare on, seconds of the simulation's time.
+- 33-55 `ActionsDeps` (interface): THE ACTIONS (the dock's Actions: the pistol and the bomb, and the city on fire after)
+- 57-66 `Actions` (interface)
+- 68-475 `createActions` (function)
+
+## src/buildingsWiring.ts
+
+- 31-47 `BuildingWiringDeps` (interface): The building tool's share of the composition root.
+- 49-79 `BuildingWiring` (interface)
+- 81-1216 `createBuildingWiring` (function)
+- 1219-1228 `PRIMITIVE_OF_TOOL` (variable): The basic shape each tool of the Draw tab throws.
+- 1232-1232 `READY` (variable): Every tool the catalogue lists is wired to the engine.
+
+## src/core/aabb.ts
+
+- 10-22 `fromPoints` (function)
+
+## src/core/arrayPack.ts
+
+- 4-6 `KINDS` (variable): The typed arrays a pack holds, by their tag in the head.
+- 7-7 `Kind` (type)
+- 10-10 `PackableArray` (type): Any typed array a pack can hold.
+- 13-16 `ArrayPack` (interface): What a pack holds: its numbers and its arrays by name (the arrays views on the pack's buffer).
+- 19-22 `PackHead` (interface): The head: the numbers, and each array's name, kind, element offset past the head (in bytes) and length.
+- 24-24 `align8` (function)
+- 26-29 `kindOf` (function)
+- 32-42 `layoutOf` (function): A pack's layout: its head's text (a u32 length before it), where the arrays start, and the bytes in all.
+- 45-55 `packArrays` (function): The numbers and arrays laid in one buffer: a u32 head length, the head's JSON, then each array at an offset of 8.
+- 58-73 `packArraysBlob` (function): `packArrays`'s very bytes as a Blob made straight from the arrays (MDN "Blob()": its parts copied once, into the Blob): DO NOT pack into a buffer to put it in a Blob, two copies of every array where one is kept (a tile's link table, written
+- 76-87 `unpackArrays` (function): A pack read back: its arrays views on `buffer` (the buffer's own, from its start).
+- 90-94 `packedArray` (function): One array of a pack, of the kind its reader expects (a pack of another layout throws, never read as garbage).
+- 97-101 `packedNumber` (function): One number of a pack.
+
+## src/core/assert.ts
+
+- 10-10 `__SLOW_CHECKS__` (variable): RUNTIME CHECKS IN TIERS (Unreal's check/checkSlow/ensure; SQLite's asserts, ~3x slower when on, off in release; TigerBeetle's paired assertions): what no test builds - a derived index out of step with its source, a value that should never 
+- 12-14 `AssertionError` (class)
+- 13-13 `AssertionError.name` (field)
+- 17-20 `assert` (function): Throws when `condition` is false (development only: guard the call with `import.meta.env.DEV` when the condition costs anything).
+- 23-24 `slowChecks` (variable): The O(n) sweeps are run: development builds asked for them at build time or in the address.
+- 27-50 `ProblemLog` (class): THE SESSION'S PROBLEMS: each failed `ensure` told once, to the console and to the reporter set at start-up (the crash log, a reporter).
+- 28-28 `ProblemLog.told` (field)
+- 29-29 `ProblemLog.report` (field)
+- 32-34 `ProblemLog.setReporter` (method): Where a failed `ensure` is told besides the console.
+- 37-49 `ProblemLog.ensure` (method): True when `condition` holds; otherwise reported once per message in the session and false, the caller carrying on.
+- 53-53 `problems` (variable): The game's one log of problems (`ensure` below).
+- 56-56 `ensure` (function): `problems.ensure`: a condition the game survives but must hear of.
+
+## src/core/clipper.ts
+
+- 174-188 `area` (function): Signed area of the set, with explicit holes subtracted.
+
+## src/core/commands.ts
+
+- 30-37 `KeyPress` (interface)
+- 53-55 `CommandRegistry.has` (method)
+- 58-60 `CommandRegistry.all` (method): Every command, in the order registered.
+- 63-65 `CommandRegistry.bindings` (method): Every key rule, in the order bound.
+- 68-73 `CommandRegistry.run` (method): Runs `id` if it may run now; `cancelled` when it may not. An unknown id is an error.
+- 76-86 `CommandRegistry.press` (method): Resolves a key press and runs its command
+- 89-98 `matches` (function)
+
+## src/core/derivedCache.ts
+
+- 142-158 `keepDerivedDurably` (function): As `keepDerived`, and also tells when the write has committed (the transaction's `complete`, MDN) or failed
+
+## src/core/dynamicResolution.ts
+
+- 4-4 `WINDOW` (variable): Frames measured per decision.
+- 6-6 `AIM` (variable): The frame aimed at, as a share of the budget: headroom for what the measure misses.
+- 8-8 `STEPS` (variable): The scales drawn, whole first: a few fixed sizes, so the screen's targets are made again only when it steps, never for a size a little off the last.
+- 10-10 `DEADBAND` (variable): It falls only when the scale the frames ask for is this far under the one drawn: the picture does not breathe.
+- 12-12 `RISE_MARGIN` (variable): It rises one step at a time, and only when the frames ask for this much more than that step: rising wants more room than falling.
+- 14-14 `SETTLE` (variable): Samples left out after a change: the GPU's timings come back a few frames late, and those are of the scale before.
+- 16-63 `DynamicResolution` (class)
+- 18-18 `DynamicResolution.scale` (field): The linear share of the chosen pixel ratio being drawn: one of the steps from 1 down to `floor`.
+- 19-19 `DynamicResolution.costs` (field)
+- 20-20 `DynamicResolution.sorted` (field)
+- 21-21 `DynamicResolution.steps` (field)
+- 22-22 `DynamicResolution.count` (field)
+- 23-23 `DynamicResolution.skip` (field)
+- 25-27 `DynamicResolution.constructor` (method)
+- 30-55 `DynamicResolution.sample` (method): One frame's GPU cost against the budget, ms: the new scale when it should change, null to stay.
+- 58-62 `DynamicResolution.reset` (method): Back to the whole ratio (the option switched off, the tier changed).
+
+## src/core/engine.ts
+
+- 7-7 `EngineInput.serialNow` (field)
+- 9-9 `EngineInput.constructor` (method)
+- 12-14 `EngineInput.serial` (method): The serial of its latest change.
+- 17-20 `EngineInput.touch` (method): It changed.
+- 60-62 `Engine.watch` (method): Watches the serial of every input the products are told of: a product computing while it stands still is named.
+- 83-90 `Engine.unregister` (method): Takes a product out (its owner disposed of).
+- 117-119 `Engine.idle` (method): The products of a phase that computed in its last refresh: with no input changed, each is a product computing for nothing.
+
+## src/core/events.ts
+
+- 2-29 `InputQueue` (class): THE GAME'S INPUT, IN ONE QUEUE: what the browser dispatches
+- 3-3 `InputQueue.items` (field)
+- 6-6 `InputQueue.constructor` (method): Input taken; `wake` asks for the frame that will handle it.
+- 8-10 `InputQueue.size` (method)
+- 12-15 `InputQueue.push` (method)
+- 18-23 `InputQueue.drain` (method): Everything taken since the last drain, handled in order; what a handler pushes waits for the next frame.
+- 26-28 `InputQueue.clear` (method): Everything taken dropped unhandled (a map opened under it).
+
+## src/core/forkMap.ts
+
+- 12-14 `ForkMap.GetAccessor` (method)
+- 16-18 `ForkMap.size` (method)
+- 20-25 `ForkMap.get` (method)
+- 27-29 `ForkMap.has` (method)
+- 32-34 `ForkMap.owns` (method): Whether the fork holds this key's value itself (written here), not the one below.
+- 49-53 `ForkMap.set` (method)
+- 55-61 `ForkMap.delete` (method)
+- 64-68 `ForkMap.clear` (method): DO NOT call it on a working copy for an edit: it marks every key below
+- 70-76 `ForkMap.entries` (method)
+- 78-80 `ForkMap.keys` (method)
+- 82-84 `ForkMap.values` (method)
+- 86-88 `ForkMap.MethodDeclaration` (method)
+- 90-92 `ForkMap.forEach` (method)
+- 113-121 `ForkSet.constructor` (method)
+- 123-125 `ForkSet.GetAccessor` (method)
+- 127-129 `ForkSet.size` (method)
+- 131-133 `ForkSet.has` (method)
+- 135-138 `ForkSet.add` (method)
+- 140-142 `ForkSet.delete` (method)
+- 144-146 `ForkSet.clear` (method)
+- 148-150 `ForkSet.keys` (method)
+- 152-154 `ForkSet.values` (method)
+- 156-158 `ForkSet.entries` (method)
+- 160-162 `ForkSet.MethodDeclaration` (method)
+- 164-166 `ForkSet.forEach` (method)
+
+## src/core/gameState.ts
+
+- 3-13 `StateChange` (interface): THE GAME'S STATE: what the player has in hand and how the game runs
+- 16-16 `KEPT` (variable): How many changes are kept; a reader older than that takes everything as changed.
+- 19-24 `Watcher` (interface): A watcher: its keys, the serial it has seen, and what it does.
+- 26-146 `GameState` (class)
+- 27-27 `GameState.current` (field)
+- 28-28 `GameState.serial` (field)
+- 29-29 `GameState.ring` (field)
+- 30-30 `GameState.count` (field)
+- 31-31 `GameState.watchers` (field)
+- 32-32 `GameState.flushing` (field)
+- 34-34 `GameState.flushedUpTo` (field): The serial the last flush told every watcher up to: nothing new, nothing to tell.
+- 36-36 `GameState.scheduled` (field): A flush is queued as a microtask.
+- 39-41 `GameState.constructor` (method): `wake` is asked for a frame whenever something changes, so the next `flush` comes.
+- 44-46 `GameState.values` (method): Every value as it is now, read-only: the one copy there is. Writes go through `set`.
+- 48-50 `GameState.get` (method)
+- 53-62 `GameState.set` (method): Sets a value and writes the change down; false (nothing written) when it already was that.
+- 65-73 `GameState.schedule` (method): Queues one flush after the code running now, and asks for a frame.
+- 76-83 `GameState.watch` (method): Tells `fn`, at every `flush`, the changes of `keys` it has not seen.
+- 86-109 `GameState.flush` (method): Tells every watcher what changed of its keys since it was last told, once, up to the serial the flush started at
+- 112-120 `GameState.between` (method): The changes after `since` up to `upTo`, of `keys` only when given; `null` if some were forgotten.
+- 123-125 `GameState.version` (method): The serial of the latest change: what a reader that has seen everything holds.
+- 128-130 `GameState.since` (method): The changes after `since`, of these keys only when given; `null` if some were forgotten.
+- 133-140 `GameState.latest` (method): The last `n` changes, newest first.
+- 143-145 `GameState.snapshot` (method): Every value as it is now (a copy).
+
+## src/core/gpuTier.ts
+
+- 2-2 `GpuTier` (type): The graphics tier a machine starts on, by the GPU's name as the driver gives it (`WEBGL_debug_renderer_info`).
+- 5-24 `RULES` (variable): First match wins: software, phones and integrated chips before the discrete families; unknown is medium.
+- 26-32 `tierForGpu` (function)
+
+## src/core/health.ts
+
+- 45-47 `HealthLog.version` (method): The serial of the latest entry (a repeat counted on an entry does not move it).
+- 126-126 `FrameSystem` (type): DO NOT name a system by its words in one language
+- 139-139 `FRAMES_KEPT_MS` (variable): How long frames are kept, ms: a measure of a stretch reads all of it (240 frames, the count kept before, was 4 s at 60 Hz: a 5 s window lost its first second, found by the probe 2026-10-19).
+- 141-141 `FRAMES_KEPT_MAX` (variable): And never more than this many (a page drawing far past 60 Hz).
+- 145-145 `FrameTimer.start` (field)
+- 146-146 `FrameTimer.lap` (field)
+- 147-147 `FrameTimer.current` (field)
+- 150-154 `FrameTimer.begin` (method)
+- 157-160 `FrameTimer.mark` (method): The time since the last mark (or the beginning) was `system`'s.
+- 163-168 `FrameTimer.end` (method): Ends the frame; returns it.
+- 176-178 `FrameTimer.recent` (method): The frames kept (the last `FRAMES_KEPT_MS`), oldest first.
+- 182-186 `percentile` (function): The P-th percentile (0 < P <= 100) of `values` by nearest rank: always one of them, the 100th the largest.
+- 189-195 `FrameStats` (interface): How a set of frames went, the whole frame and each system: median, 95th percentile and largest, ms.
+- 198-209 `frameStats` (function): The frames summed up per system - the same numbers the monitor's long-frame entries are made of.
+
+## src/core/idSlots.ts
+
+- 29-35 `IdSlots.constructor` (method)
+
+## src/core/intersect.ts
+
+- 39-54 `closestOnSegment` (function): Closest point on the finite segment a->b to `p`, with its parametric `t`.
+
+## src/core/perfBudget.ts
+
+- 51-51 `MemoryGroup` (type): What holds geometry on the GPU, by the plan's levels (§8.3); `null` budget: the plan sets none.
+- 54-68 `MEMORY_BUDGETS_MB` (variable): MB of GPU memory each group may hold (§8.6, a city of 80 000 buildings).
+- 71-71 `TEXTURE_BUDGET_MB` (variable): Textures (600 MB), the render targets and shadow maps (300 MB), the live JavaScript heap of the page and its workers (1.5 GB): `CIDADE-10KM.md`.
+- 72-72 `TARGET_BUDGET_MB` (variable)
+- 73-73 `HEAP_BUDGET_MB` (variable)
+- 76-87 `memoryGroup` (function): The plan's group of a scene object, by its name (`mesh.name`, as `buildingMesh.ts` and the others set it).
+- 90-110 `CityMeasure` (interface): What `__roadcraft.budget` measured in the running game.
+- 112-120 `BudgetRow` (interface)
+- 122-122 `mb` (function)
+- 123-123 `fmt` (function)
+- 126-166 `cityBudgetTable` (function): The plan's budgets against a measure, the rows furthest over first.
+
+## src/core/polyline.ts
+
+- 50-53 `Polyline.constructor` (method)
+- 189-191 `Polyline.sampleNorm` (method): Frame at normalized position `f` in [0,1].
+- 193-195 `Polyline.tangentAt` (method)
+
+## src/core/profiler.ts
+
+- 30-30 `WINDOW_MS` (variable): Frames of the HUD's window.
+- 68-72 `ChangeSeen` (interface): A change of the document's diary seen in a frame: what set the rebuilds off.
+- 87-90 `Profiler.onToggle` (method): Told now and at each opening or closing: what records only while it is open (the browser's observers, `main.ts`) follows it.
+- 93-93 `Profiler.windowStart` (field)
+- 95-95 `Profiler.framesInWindow` (field)
+- 96-96 `Profiler.frameStart` (field)
+- 98-98 `Profiler.frameMs` (field): Frame times of the window, ms.
+- 108-108 `Profiler.changesWindow` (field): Diary entries of the last window, by kind and cause.
+- 113-113 `Profiler.heapAt` (field)
+- 119-119 `Profiler.stepsWindow` (field): Milliseconds per frame system and per measured step (`hitch:`) in the window, and the last window's, largest first.
+- 123-126 `Profiler.step` (method): Time a system of the frame or a measured step took (ms).
+- 158-162 `Profiler.change` (method): A diary entry the frame saw.
+- 165-169 `Profiler.product` (method): An engine product's refresh.
+- 171-175 `Profiler.longTask` (method)
+- 177-183 `Profiler.heap` (method)
+- 185-187 `Profiler.beginFrame` (method)
+- 190-228 `Profiler.endFrame` (method): Closes the frame: the frame's counts into the window; every `WINDOW_MS`, the window into the HUD's numbers.
+
+## src/core/recentCache.ts
+
+- 27-29 `RecentCache.size` (method): How many values are held.
+- 31-33 `RecentCache.clear` (method)
+
+## src/core/recordMap.ts
+
+- 6-10 `RecordMap.set` (method)
+- 12-15 `RecordMap.delete` (method)
+- 17-20 `RecordMap.clear` (method)
+
+## src/core/regionIndex.ts
+
+- 15-15 `RegionIndex.hits` (field): Scratch for `run`: crossing parameters and winding steps.
+- 17-34 `RegionIndex.constructor` (method)
+- 65-72 `RegionIndex.fromMultiPoly` (method): From a clipper multipolygon (`[x, y]` pairs, holes after the outline).
+- 97-108 `RegionIndex.digest` (method): An exact digest of every segment whose cell the box touches (a collision aside, at about one in 2^53).
+- 111-118 `RegionIndex.boundaryDistance` (method): Distance from a point to the nearest boundary segment within `reach`, or Infinity.
+- 121-160 `RegionIndex.run` (method): Along the line through `p` in direction `d`
+- 163-166 `RegionIndex.span` (method): `run`, for a point that must be inside: false, leaving `out` alone, when it is not.
+- 169-171 `RegionIndex.clusterCount` (method): How many dense grids the rings were filed in (one for one town).
+- 184-184 `COARSE` (variable): The point lookup's coarse cell, in grid cells a side.
+- 253-253 `Grid.count` (field)
+- 262-262 `Grid.stamps` (field)
+- 263-263 `Grid.stamp` (field)
+- 266-295 `Grid.constructor` (method)
+- 302-304 `Grid.bounds` (method): The area its cells cover.
+- 314-316 `Grid.overlaps` (method): Whether a box reaches its cells.
+- 319-325 `Grid.rasterise` (method): Every (cell, segment) pair a segment's supercover touches.
+- 328-345 `Grid.cellsOfSegment` (method): Cells the segment (a, b) passes through, row by row.
+- 348-396 `Grid.scanReference` (method): The winding number at every cell centre, one scanline per row.
+- 431-453 `Grid.digestInto` (method): The segments whose cell the box touches, added to the digest's sums (`RegionIndex.digest`).
+- 456-481 `Grid.nearest` (method): Distance from a point to its nearest segment in the cells within `reach`, or Infinity.
+- 484-530 `Grid.crossings` (method): The crossings of the line through `p` along `d`, within `reach`, with its segments: appended to `hits` from `n`
+- 534-534 `hashBits` (variable): One 32-bit half of a double's bits, for the segment hash below.
+- 535-535 `hashWords` (variable)
+- 536-539 `floatWord` (function)
+- 542-553 `segmentHash` (function): A segment's own hash, for `digest`: the four numbers of its ends.
+
+## src/core/ring.ts
+
+- 36-52 `Ring.constructor` (method)
+- 190-201 `Ring.addToPath` (method): Appends this ring to a Path2D as a closed subpath, arcs kept exact.
+
+## src/core/rng.ts
+
+- 12-27 `Rng.constructor` (method)
+- 71-73 `Rng.bool` (method)
+- 75-78 `Rng.pick` (method)
+- 81-85 `Rng.normal` (method): Box-Muller normal deviate.
+
+## src/core/sampleRing.ts
+
+- 12-14 `SampleRing.size` (method)
+- 17-19 `SampleRing.pushed` (method): Every sample ever pushed (cleared ones too): a reader tells the new ones by it.
+- 22-24 `SampleRing.newest` (method): The sample `back` places before the newest (0 the newest), `back` under `size`.
+- 33-36 `SampleRing.clear` (method)
+- 39-44 `SampleRing.toArray` (method): The samples kept, oldest first.
+- 47-55 `SampleRing.stats` (method): p50, p95, p99 and the largest; how many; how many over `over` ms.
+- 58-66 `SampleStats` (interface)
+- 69-69 `STUTTER_MS` (variable): Two periods of a 59 Hz display: a frame that took longer was seen as a stutter (NVIDIA, "Analysing Stutter").
+
+## src/core/statechart.ts
+
+- 59-61 `Machine.in` (method): Whether `id` is the active state or one of its parents.
+
+## src/core/vec2.ts
+
+- 18-18 `lenSq` (function)
+
+## src/core/weightedSlots.ts
+
+- 45-47 `WeightedSlots.classAt` (method): A slot's class, -1 empty.
+
+## src/desktopJobs.ts
+
+- 6-6 `JobsBridge` (interface): THE DESKTOP'S JOB PROCESSES: the long-running job workers (the tiles' maker, the growth) in utility processes of the shell (`desktop/jobs.cjs`), each process a V8 cage of its own, so a 20 km map's tile workers no longer fill the page's (V8 
+- 9-9 `PortMessage` (interface): The window messages the preload hands on (`desktop/preload.cjs`): a thread's port, and a process stopped (its threads' ports dead).
+- 10-10 `LostMessage` (interface)
+- 11-11 `isPortMessage` (function)
+- 12-12 `isLostMessage` (function)
+- 15-46 `desktopJobWorkers` (function): What makes the pool's workers on the desktop (`jobPool.ts` setJobWorkerMaker): a worker in a job process for the long side, none (the page's own) for the short; null where the page has no desktop shell, or one without job processes.
+
+## src/desktopSaves.ts
+
+- 7-7 `SavesBridge` (interface): THE DESKTOP'S SAVES: the autosave's stores as files in the folder Steam Auto-Cloud syncs, kept by the shell's utility process (`desktop/saves.cjs`); none in a browser.
+- 8-13 `Request` (type)
+- 14-14 `Answer` (interface)
+- 17-17 `PORT_MESSAGE` (variable): The window messages the preload hands on (`desktop/preload.cjs`).
+- 18-18 `LOST_MESSAGE` (variable)
+- 20-20 `CONNECT_MS` (variable): How long the shell may take to hand the port over before the stores answer "nothing" (the game opens without its save rather than never).
+- 22-22 `MIGRATED` (variable): Kept in the folder once the map an older desktop build left in IndexedDB was looked at (`migrate`).
+- 24-24 `MIGRATE_CHUNK` (variable): IndexedDB entries copied per write while migrating.
+- 27-32 `DesktopStores` (interface): The desktop's stores: the page's (`new Persistence`), a port of its own for each worker that reads or writes the tiles (`connect`, `editor/workerParts.ts`), and who to tell when the writer stopped (`onLost`: each such port is dead).
+- 35-114 `desktopSaves` (function): The stores, or null where the page has no desktop shell.
+- 117-139 `migrate` (function): The map an older desktop build kept in IndexedDB copied once into an empty saves folder (IndexedDB left as it is); a folder with files (Steam Cloud brought them) is never overwritten.
+- 141-151 `read` (function)
+
+## src/desktopShown.ts
+
+- 2-5 `DesktopShown` (interface): WHETHER THE DESKTOP WINDOW IS OUT OF SIGHT: minimized or hidden, as the shell tells it (`desktop/main.cjs`, `preload.cjs`). The shell keeps the page "visible" to the Page Visibility API (`backgroundThrottling: false`, Electron WebPreference
+- 8-19 `watchDesktopShown` (function): Listens for the shell's word (a window message from the page's own window); `changed` told each time it turns.
+
+## src/effectsWiring.ts
+
+- 10-10 `CPU_SWITCHES` (variable): The frame's heavy systems on the CPU, each on as the game runs.
+- 11-11 `CpuSwitch` (type)
+- 12-12 `CpuSwitches` (type)
+- 13-13 `ALL_CPU_ON` (variable)
+- 16-20 `BUILDING_CHOICES` (variable): The buildings' settings of several values, each with its values as the panel offers them (`BuildingChoices`).
+- 22-22 `STORE_KEY` (variable)
+- 24-24 `OPT_STORE_KEY` (variable): The lab's optimisations kept apart (`optimizations.ts`): only those set away from the game's own.
+- 26-26 `AVERAGE_OF` (variable): The frames the readings average over.
+- 28-33 `Kept` (interface)
+- 35-47 `readKept` (function)
+- 49-61 `readOptimizations` (function)
+- 64-68 `OptimizationState` (interface): One optimisation as the lab lists it: its spec, the value set, whether that is the game's own.
+- 71-81 `OptimizationControl` (interface): The lab's optimisations (`optimizations.ts`), set live, kept between runs (`roadcraft.optimizations`). Every change told to `EffectsWiring.onChange` as `opt.<id>`.
+- 83-106 `EffectsWiring` (interface)
+- 108-303 `createEffectsWiring` (function)
+
+## src/fieldReport.ts
+
+- 8-8 `ProblemKind` (type): FIELD PROBLEMS: what went wrong on the player's machine, told to the desktop shell's local log (`desktop/problems.cjs`, `<userData>/problems`) and to nothing else. In a browser there is no shell: the console only. Nothing leaves the machin
+- 10-16 `Problem` (interface)
+- 18-18 `ProblemSink` (type)
+- 21-24 `ProblemBridge` (interface): The desktop shell's calls for problems (`desktop/preload.cjs`); absent in a browser.
+- 27-27 `REPEATS` (variable): The same problem told at most this many times a session: an error thrown every frame is one line, not thousands.
+- 29-63 `FieldReport` (class)
+- 30-30 `FieldReport.sinks` (field)
+- 31-31 `FieldReport.seen` (field)
+- 33-33 `FieldReport.repeats` (field): Problems held back as repeats this session.
+- 36-42 `FieldReport.addSink` (method): A place problems go besides the others (the shell's log, the console, a remote reporter); returns its removal.
+- 45-62 `FieldReport.report` (method): One problem handed to every sink; a sink that throws is said on the console and the others still told.
+- 66-66 `fieldReport` (variable): The page's one funnel of problems.
+- 69-69 `bridgeSink` (function): The desktop shell's log as a sink.
+- 72-72 `consoleSink` (function): The browser's sink: the console, since there is no file to write.
+- 75-78 `problemBridge` (function): The shell's problem calls when the page runs inside it.
+- 80-89 `textOf` (function)
+- 92-115 `wireFieldReport` (function): Start-up: the sink by where the page runs, failed `ensure`s, uncaught errors and unhandled rejections.
+- 118-122 `watchContext` (function): The WebGL context lost and given back (MDN `webglcontextlost`; `statusMessage` the browser's reason, when it gives one).
+- 124-124 `ShaderErrorHook` (type)
+- 128-137 `shaderErrorHook` (function): three's `renderer.debug.onShaderError` (three r186 WebGLRenderer docs: called only while `debug.checkShaderErrors` is on; assigning it turns three's own console report off). DO NOT drop the console line: it keeps three's own first words, w
+- 140-140 `SAMPLE_EVERY_MS` (variable): How often the session's heap and frames are looked at, ms (the ring holds 40 s, so no window is missed).
+- 143-210 `SessionSummary` (class): One session's numbers, told as the page closes: the GPU, the quality tiers it ran at, the frames' times and the JS heap's peak.
+- 144-144 `SessionSummary.started` (field)
+- 145-145 `SessionSummary.levels` (field)
+- 146-146 `SessionSummary.peakHeap` (field)
+- 147-147 `SessionSummary.worstP95` (field)
+- 148-148 `SessionSummary.sent` (field)
+- 149-149 `SessionSummary.due` (field)
+- 152-159 `SessionSummary.constructor` (method): `frames` and `gpu` are read only when sampled or built: the frame ring and the renderer may come after the summary.
+- 162-167 `SessionSummary.tick` (method): Each frame: a sample taken when one is due (every `SAMPLE_EVERY_MS`), nothing else.
+- 170-173 `SessionSummary.level` (method): The quality tier now in use, and who moved it (`auto`: the governor; otherwise the player). Kept: the last 40 moves.
+- 176-180 `SessionSummary.sample` (method): Every so often (seconds apart): the heap's size, and the frame ring's p95 (the ring holds the last 40 s; the session's worst window is kept).
+- 183-202 `SessionSummary.build` (method): The summary as a problem of kind `session`.
+- 205-209 `SessionSummary.send` (method): The summary told once (the page closing may say so twice: `pagehide` and `beforeunload`).
+
+## src/frameLoop.ts
+
+- 5-77 `FrameClock` (class): One frame asked for at a time, and the wall time between frames.
+- 6-6 `FrameClock.pending` (field)
+- 7-7 `FrameClock.last` (field)
+- 8-8 `FrameClock.driftQueued` (field)
+- 11-11 `FrameClock.constructor` (method): `loading`: a town is being put together unseen (`SceneHandle.opening`).
+- 13-13 `FrameClock.channel` (field)
+- 16-31 `FrameClock.request` (method): A frame is wanted: one is asked of the browser unless one already is.
+- 34-34 `FrameClock.gap` (field): The player's frame cap, ms between frames (0 none): a display frame before it is due is let pass.
+- 36-36 `FrameClock.due` (field): When the next capped frame is due, on the display's clock.
+- 39-42 `FrameClock.limit` (method): At most `fps` frames a second (the options' frame limit); 0 lifts the cap.
+- 44-54 `FrameClock.shown` (field)
+- 57-61 `FrameClock.tick` (method): Seconds since the last frame, read once at the start of each frame.
+- 64-66 `FrameClock.restart` (method): The time stood still (unpaused, the tab shown again)
+- 69-76 `FrameClock.drift` (method): Only the clouds are moving: a frame in `DRIFT_MS`, unless one is already on its way.
+- 80-80 `DRIFT_MS` (variable): Twenty frames a second for the clouds drifting alone.
+- 83-97 `Periodic` (class): Work done every `seconds` of wall time, not every frame (the minimap ten times a second, the panels two and a half).
+- 84-84 `Periodic.clock` (field)
+- 86-88 `Periodic.constructor` (method)
+- 91-96 `Periodic.due` (method): `wall` seconds went by: true when the work is due (and the clock starts over).
+- 100-115 `SimPeriodic` (class): DO NOT drive the game's own periodic work with `setInterval`.
+- 101-101 `SimPeriodic.last` (field)
+- 103-103 `SimPeriodic.constructor` (method)
+- 106-114 `SimPeriodic.due` (method): The simulation stands at `time` seconds: true when the work is due (and its clock starts over).
+- 118-125 `coalescedTask` (function): `fn` run once, in a task of its own, after however many calls came since it last ran
+
+## src/graphicsWiring.ts
+
+- 12-12 `QualityPreset` (type): A tier the player picked, or the automatic one.
+- 13-13 `isQualityPreset` (function)
+- 16-19 `DesktopBridge` (interface): The desktop shell's calls (`desktop/preload.cjs`); absent in a browser.
+- 20-20 `desktop` (function)
+- 22-22 `PRESET_KEY` (variable)
+- 23-23 `OPTIONS_KEY` (variable)
+- 26-32 `KeptOptions` (interface): What the player set apart from the tier's own (`roadcraft.graphics`); a tier picked clears the first three.
+- 34-41 `readStorage` (function)
+- 42-49 `writeStorage` (function)
+- 52-66 `gpuName` (function): The GPU's name from a context of its own, let go at once: the tier is needed before the game's renderer exists.
+- 68-82 `readKept` (function)
+- 85-98 `settingsFor` (function): The tier's settings with the player's own over them; occlusion and SMAA are passes of the post chain, so either brings it.
+- 100-115 `GraphicsWiring` (interface)
+- 118-282 `createGraphicsWiring` (function): `onLevel`: the tier in use changed, by the automatic governor (`auto`) or the player's pick (`player`); told for the field's session summary (`fieldReport.ts`).
+- 284-290 `pick` (function)
+
+## src/jobs/nodeJobHost.ts
+
+- 6-6 `Listener` (type): A JOB WORKER AS A THREAD OF THE DESKTOP'S JOB PROCESS (`desktop/jobs.cjs`): the page's `job.worker.ts` as it is, its `self` the thread's port (Node `worker_threads` parentPort), built for Node (`scripts/vite/desktop-jobs.config.ts`)
+- 9-34 `ThreadSelf` (class): The thread's `self` (`job.worker.ts` reads it as a worker's): its listener, and the messages that came before the worker's module set it, handed to it in order once it does.
+- 10-10 `ThreadSelf.listener` (field)
+- 11-11 `ThreadSelf.early` (field)
+- 13-13 `ThreadSelf.kept` (field): The buffers the page sent once and names since (`processWorker.ts` KeptBuffer): its record tables.
+- 15-22 `ThreadSelf.constructor` (method)
+- 24-24 `ThreadSelf.onmessage` (method)
+- 25-28 `ThreadSelf.onmessage` (method)
+- 31-33 `ThreadSelf.postMessage` (method): DO NOT post shared memory to the page: the shell's port carries none (a thread's SharedArrayBuffer is its process's, HTML "StructuredSerialize"), the city's table (`recordTable.ts` allocate, shared where `crossOriginIsolated` is not false -
+- 36-36 `IfStatement` (statement)
+- 37-37 `ExpressionStatement` (statement)
+- 38-38 `ExpressionStatement` (statement)
+
+## src/jobs/processWorker.ts
+
+- 4-10 `WorkerLike` (interface): What the pool uses of a worker.
+- 13-13 `ThreadFailed` (interface): What the host in the other process posts when its thread failed or stopped (`desktop/jobs.cjs`).
+- 14-15 `isThreadFailed` (function)
+- 18-19 `isShared` (function): A buffer in shared memory: none reaches another process (the structured clone refuses one past its agent cluster, HTML "StructuredSerialize").
+- 22-22 `KeptBuffer` (interface): A buffer in shared memory written once and never again (a record table, `recordTable.ts`) as a job process's thread keeps it: its id, with its bytes the first time that thread is sent it (`ProcessWorker` keeps).
+- 23-23 `isKept` (function)
+- 25-25 `ForgetKept` (interface): Page to thread: the kept buffers whose page buffer is gone (collected), let go there too.
+- 26-26 `isForgetKept` (function)
+- 29-81 `unshared` (function): `value` as another process may be sent it: every SharedArrayBuffer (and every view on one) a copy of its bytes now, one copy a buffer however often it is named; everything else as it is. The same object when nothing in it is shared. `kept`:
+- 84-102 `restoreKept` (function): The thread's side of `KeptBuffer`: each token in `value` put back as the buffer it names, its bytes kept the first time they come (`keep`); in place. DO NOT copy a record table into the job process with every job: the large city's buildings
+- 105-105 `keptIds` (variable): Each buffer kept by job threads: its id, and the workers whose thread holds it.
+- 106-106 `nextKept` (variable)
+- 107-107 `living` (variable)
+- 109-109 `collected` (variable): A kept buffer collected on the page: let go in every thread holding it (`ForgetKept`).
+- 112-191 `ProcessWorker` (class): A job worker whose thread is in another process: messages posted before its port came are held, then sent in order; its port given by `connect` (one port a worker, `desktopJobs.ts`).
+- 113-113 `ProcessWorker.onmessage` (field)
+- 114-114 `ProcessWorker.onerror` (field)
+- 115-115 `ProcessWorker.onmessageerror` (field)
+- 116-116 `ProcessWorker.port` (field)
+- 117-117 `ProcessWorker.held` (field)
+- 118-118 `ProcessWorker.ended` (field)
+- 120-120 `ProcessWorker.given` (field): The kept buffers its thread holds (`KeptBuffer`).
+- 123-135 `ProcessWorker.constructor` (method): `keeps`: which shared buffers are written once and never again (a record table), kept by the thread once sent (`KeptBuffer`).
+- 137-141 `ProcessWorker.postMessage` (method)
+- 143-149 `ProcessWorker.terminate` (method)
+- 152-160 `ProcessWorker.fail` (method): The thread lost (its process stopped, or it failed): told as a worker's error is, nothing sent to it again.
+- 163-165 `ProcessWorker.forget` (method): A kept buffer collected on the page: its thread lets it go.
+- 168-177 `ProcessWorker.kept` (method): A buffer as this thread is sent it: its token, with a copy of its bytes the first time; null for one not kept (copied with the message).
+- 179-190 `ProcessWorker.send` (method)
+
+## src/main.ts
+
+- 80-80 `__CONFLICT_ZONES_HASH__` (variable)
+- 81-81 `__CITY_GEN_HASH__` (variable)
+- 154-154 `clearBulbs` (variable): The turning circles cleared after each edit, from the network's changes since the last one (`bulbClearing`).
+- 156-156 `Alignment` (type)
+- 159-159 `ExpressionStatement` (statement): The interface language is resolved and applied BEFORE anything reads a label
+- 160-160 `ExpressionStatement` (statement)
+- 163-163 `problemShell` (variable): FIELD PROBLEMS (`fieldReport.ts`) wired before anything can fail: to the desktop shell's local log when it runs in one, the console in a browser.
+- 164-164 `ExpressionStatement` (statement)
+- 166-166 `heapBytes` (function): The JS heap now, where the browser tells it (Chromium's `performance.memory`).
+- 168-168 `canvas` (variable)
+- 171-171 `health` (variable): The game's health (`core/health.ts`): what broke and what was slow, with what the player was doing.
+- 172-172 `frameTimer` (variable)
+- 173-187 `healthWatch` (variable)
+- 189-189 `doc` (variable)
+- 191-191 `NEW_RELIEF` (variable): A new map is a level plain (the player, 2026-10-09); a saved one keeps its own (restored below).
+- 192-192 `ExpressionStatement` (statement)
+- 194-194 `newNature` (function): A new map's ecosystem: the default biome, its patches laid by a seed of its own.
+- 195-195 `ExpressionStatement` (statement)
+- 196-196 `net` (variable)
+- 197-197 `camera` (variable)
+- 199-199 `booted` (variable): Whether the whole module has run.
+- 200-200 `surface` (variable)
+- 201-201 `history` (variable)
+- 203-203 `ExpressionStatement` (statement): On the desktop the map is kept as files Steam Cloud syncs (`desktopSaves.ts`); in a browser, IndexedDB.
+- 204-204 `desktopStores` (variable)
+- 205-205 `persistence` (variable)
+- 208-208 `desktopJobs` (variable): On the desktop the long job workers (the tiles' maker, the growth) run in the shell's job processes, a V8 cage each (`desktopJobs.ts`); before any worker is made.
+- 209-209 `IfStatement` (statement)
+- 210-218 `IfStatement` (statement)
+- 220-220 `ExpressionStatement` (statement)
+- 223-223 `surfaceBake` (variable): ------------------------------------------------------------------ boot
+- 225-225 `ZONES_PREFIX` (variable): The conflict zones measured in earlier sessions
+- 226-226 `IfStatement` (statement)
+- 228-228 `keptZones` (variable): DO NOT read every kept zone at the start (the store grows with every junction the city ever had): the simulation's worker reads the pairs it needs (`ConflictIndex.lookup`).
+- 229-229 `ExpressionStatement` (statement)
+- 231-231 `STREAMED_MARK` (variable): The mark a world by tiles left open at its last close: DO NOT open it again - the player, 2026-10-18: no city by tiles any more; the mark is let go, and the map saved as a map opens.
+- 232-232 `TryStatement` (statement)
+- 233-233 `streamedAtBoot` (variable)
+- 236-236 `TABLE_RESTORE_BUILDINGS` (variable): Buildings from which a saved map is restored through one table (`prepareCity`): a small map loads as it did.
+- 237-237 `ExpressionStatement` (statement)
+- 241-241 `bootSave` (variable): The autosave read and restored into the document; what the boot reads on - the save's settings, whether the player had a map, whether it failed to load. DO NOT keep the loaded save in the module's scope: it held the save's whole map (every
+- 243-243 `savedSession` (variable): The boot's save without its map: its settings, read on through the boot.
+- 245-245 `hadSavedMap` (variable): Whether the player had a map of their own at the boot (the start screen's continue).
+- 246-246 `bootFailed` (variable)
+- 248-276 `restoreBootSave` (function)
+- 279-293 `clearOldMapsOnce` (function): The cities saved before 2026-10-04 (the shipped town, the player's own maps, the copies set aside) are removed, once
+- 295-295 `sim` (variable): The simulation, in a worker of its own (`sim/host/simHost.ts`): the page sends it the map's changes and reads its frames.
+- 297-297 `maxPopulationShare` (variable): The population the machine sustains (`sim/populationGovernor.ts`, run in the worker), never more than the device's own share.
+- 301-301 `measure` (variable): A measure running (`__roadcraft.measure`, `scripts/lib/measureCity.mjs`): `on` a frame drawn every refresh; `step` the simulation going on a fixed step of `MEASURE_STEP_S` a frame, whatever the wall clock did, so two runs of a scene step t
+- 303-303 `PROBES` (variable): The console's probes (`__roadcraft`, `__frames`, `__gpu`, `__state`, `__changes`): in development, and in a build made to be measured (`npm run build:probe`, mode `probe`) - the product's code measured, without the development panels (repor
+- 305-305 `MEASURE_STEP_S` (variable): One display frame at 60 Hz, s: the simulation's step a frame in `measure('running')`.
+- 306-308 `syncPopulationShare` (function)
+- 310-310 `startPopulationShare` (variable): Where the population starts, by the machine's threads (the run's pretended ones, `core/weakMachine.ts`): the governor fills it from there when its steps are cheap.
+- 311-311 `ExpressionStatement` (statement)
+- 314-316 `bootZoomBounds` (function): The zoom range the renderer we are about to boot can actually represent.
+- 319-319 `bootSettings` (variable): A streamed world's camera, where the player left it (its map is its tiles, read round it).
+- 320-328 `IfStatement` (statement)
+- 331-355 `isUntouchedStarter` (function): Whether an autosave is exactly one of the starter scenarios an earlier build seeded, never edited.
+- 357-370 `worldBounds` (function)
+- 374-374 `BrushMode` (type): The terrain brush: a land stamp (`TerrainMode`), or painting the ground (`terrainPaint.ts`).
+- 376-376 `Landform` (type): The landforms: a shape and its ROCK in one tool
+- 377-382 `LANDFORMS` (variable)
+- 383-383 `landformOf` (function)
+- 384-384 `hardnessByMode` (variable)
+- 385-385 `ExpressionStatement` (statement)
+- 386-386 `ExpressionStatement` (statement)
+- 387-387 `ExpressionStatement` (statement)
+- 388-388 `ExpressionStatement` (statement)
+- 389-389 `ExpressionStatement` (statement)
+- 391-391 `IfStatement` (statement): The saved city's time of day, not 06:30 again (`SavedSettings.minutes`).
+- 393-430 `gameState` (variable): The game's state - the tool in hand, the pause and speed, the quality, the selection
+- 432-432 `game` (variable): The game's state, read-only: `game.tool`, `game.paused`, `game.selectedSegment`...
+- 434-437 `tools` (variable): The tool in hand (`editor/toolMachine.ts`): the only way it changes.
+- 439-439 `gullyStrength` (variable): The gully brush's strength, % (Paisagem > Relevo > Ravinas).
+- 441-441 `cloudScatter` (variable): How many clouds "spread over the sky" lays, and how much they vary, %.
+- 443-455 `sessionSettings` (function)
+- 458-486 `roadTool` (variable): The road tool (`editor/roadTool.ts`): the stroke, the chain, the curve waiting for its bend, the road settling.
+- 488-498 `poleTool` (variable): The pole tool (`editor/poles.ts`): the stretch being dragged and the line's last pole.
+- 500-500 `framePolePlan` (variable): The pole run planned for this frame (`PoleTool.plan`), shared by the 3D preview and the overlay.
+- 502-513 `streetscapeTool` (variable): The landscaping tool (`editor/streetscapeTool.ts`): items on the footways.
+- 515-528 `barrierTool` (variable): The walls tool (`editor/barriers.ts`): the wall, fence or hedge being traced.
+- 530-543 `lotTool` (variable): The Zoning tool (`editor/lotTool.ts`): the lots the player draws, edits and zones, with its gestures' own state.
+- 544-544 `hoverAnchor` (variable)
+- 546-550 `select` (function): What is selected - a road (and where along it) or a junction - written through the game's state with why (`gameState`).
+- 553-559 `cameraHand` (variable): The camera moved by hand: the pointers, a pan, an orbit, a pinch (`view/cameraGestures.ts`).
+- 561-561 `KEY_TURN` (variable): Camera turn per press of the camera panel's buttons, rad.
+- 563-567 `cameraMotion` (variable): The keys held and the wheel's notches, spent as a glide frame by frame (`view/cameraMotion.ts`).
+- 569-577 `mover` (variable): The Move tool's node drag (`editor/nodeMover.ts`), previewed live and dropped as one undo step.
+- 579-589 `terrainBrush` (variable): The terrain brush (`editor/terrainBrush.ts`): the stroke in progress and what each dab does.
+- 591-605 `dabSettings` (function): The brush in hand, as one dab reads it (`editor/terrainBrush.ts` `DabSettings`).
+- 606-606 `ExpressionStatement` (statement)
+- 608-608 `view` (variable)
+- 612-612 `overlayCanvas` (variable): The editor's overlay gets its OWN canvas, and must.
+- 613-613 `overlayCtx` (variable)
+- 614-614 `previewAsphaltPattern` (variable)
+- 617-638 `asphaltPreviewPattern` (function): Asphalt grain used by the live 3D-editor preview.
+- 640-640 `canvas3d` (variable)
+- 641-641 `ExpressionStatement` (statement)
+- 642-642 `ExpressionStatement` (statement)
+- 643-643 `ExpressionStatement` (statement)
+- 644-644 `ExpressionStatement` (statement)
+- 647-647 `fieldSession` (variable): The session's summary told to the field log as the page closes (`fieldReport.ts`): the GPU, the tiers, the frames' times, the heap's peak.
+- 648-648 `graphics` (variable)
+- 649-649 `ExpressionStatement` (statement)
+- 650-650 `ExpressionStatement` (statement)
+- 652-652 `effects` (variable): The effects panel (F7, `effectsWiring.ts`): every effect and heavy system switched live, to measure what each costs.
+- 654-654 `achievements` (variable): The city's milestones told to Steam when the desktop shell runs under it (`steamAchievements.ts`).
+- 656-656 `ExpressionStatement` (statement): The graphics are what the player chose: the game lowers only the resolution, and only with "dynamic resolution" on.
+- 657-657 `ExpressionStatement` (statement)
+- 658-658 `ExpressionStatement` (statement)
+- 660-660 `engineFlags` (variable): The traffic's worker, given the map as it opened and the conflict zones measured in earlier sessions.
+- 662-662 `simLanes` (function): Its lots' bays and conflict pairs on this page's pool, talked to straight (DO NOT let the worker open a pool of its own: more isolates in the one V8 cage).
+- 664-666 `ExpressionStatement` (statement): DO NOT wait for the traffic's worker to stand before the world is built: its map read and its traffic laid out took 1.8 s of a reopened city's boot, the page idle meanwhile (2026-10-21). Its messages queue behind its `init` and each frame w
+- 667-667 `ExpressionStatement` (statement)
+- 669-669 `engine` (variable): The engine that brings every derived product up to date, its ledger the work each did (`core/engine.ts`).
+- 670-670 `ExpressionStatement` (statement)
+- 671-671 `scene` (variable)
+- 672-672 `ExpressionStatement` (statement)
+- 674-691 `comesBackFromLostContext` (function): A WebGL context lost for good leaves a black canvas with the game still running behind it (Chrome after hours in a tab, a driver reset): a tab the browser does not give its context back comes back by itself, the session saved first.
+- 692-692 `ExpressionStatement` (statement)
+- 694-694 `ExpressionStatement` (statement): The context lost and back, and a shader that failed (reported while three checks them: `debug.checkShaderErrors`, development builds), told to the field log.
+- 695-695 `ExpressionStatement` (statement)
+- 698-698 `profileFrameEnd` (variable): Decision 5.4: the profiler, the F9 monitor and the console's hooks in a development build only (`scripts/look.mjs` runs on the dev server).
+- 699-741 `wireProfiler` (function)
+- 744-744 `ExpressionStatement` (statement): The traffic's topology is not built here: it is built a slice a frame while the opening puts the town together
+- 745-745 `ExpressionStatement` (statement)
+- 746-746 `ExpressionStatement` (statement)
+- 749-749 `ExpressionStatement` (statement): No loading screen (player, 2026-10-02): the town plays at once and each person appears as their body is ready
+- 750-750 `ExpressionStatement` (statement)
+- 751-752 `ExpressionStatement` (statement)
+- 753-753 `ExpressionStatement` (statement)
+- 754-754 `ExpressionStatement` (statement)
+- 756-756 `ExpressionStatement` (statement)
+- 757-757 `ExpressionStatement` (statement)
+- 760-806 `buildings` (variable): Modular buildings
+- 808-810 `restoreOrbit` (function): Puts the camera back at a saved bearing and tilt; a save without one gets the default view.
+- 812-821 `syncViewFromFlatCamera` (function)
+- 823-826 `fitView` (function)
+- 828-834 `syncFlatCameraFromView` (function)
+- 837-839 `mutate` (function): ------------------------------------------------------------- mutations
+- 842-851 `mutateRoads` (function): A road edit made in place a split, a class, lanes, parking, a section, a direction, a bend, a join, a copy, a node's
+- 854-860 `transitEditor` (variable): The public transport tool (`editor/transitTools.ts`): each edit one undo step.
+- 861-861 `ExpressionStatement` (statement)
+- 864-864 `docText` (variable): The document as text for the autosave, kept while nothing in it has moved
+- 865-872 `serializedDoc` (function)
+- 874-874 `ExpressionStatement` (statement)
+- 876-911 `mutateBuilt` (function)
+- 915-928 `applySnapshot` (function): `table`: an imported map's buildings' table, prepared by the city's worker (`editor/preparedCity.ts`).
+- 931-931 `deferSessionSave` (variable): A large city just opened: its session save waits for the fill after the curtain, instead of running on top of it (the 3.4 GB peak of the metropolis).
+- 933-933 `SAVE_AFTER_FILL_MOST_MS` (variable): Most the deferred save waits for the fill after the curtain once the town is shown.
+- 935-941 `saveOnceShown` (function): The large city's session save once its town is shown and its fill has landed (or `SAVE_AFTER_FILL_MOST_MS` after the reveal). DO NOT wait a fixed time from the map's arrival: a city of 70,000 buildings was still behind its curtain after 30 
+- 942-953 `snapshotApplied` (function)
+- 959-971 `worldAtScreen` (function): The world point under a screen position, ON THE SURFACE THAT IS THERE.
+- 974-985 `groundHeightUnder` (function): The height of what is drawn under a screen point
+- 988-990 `sceneHeightAt` (function): Whatever the player can see at a world point: a road deck, or the ground.
+- 993-993 `PICK_TOP` (variable): Highest surface the pick looks for; step of the march down the ray.
+- 994-994 `PICK_STEP` (variable)
+- 997-997 `roadTop` (variable): DO NOT walk `doc.nodes` here on each road edit: `RoadTop` reads only the cells the edit reached.
+- 998-1002 `surfaceTop` (function)
+- 1005-1022 `firstSurfaceAt` (function): Where the ray under the cursor first meets what is drawn - a deck, or the ground - marched down from above.
+- 1025-1031 `pointerWorld` (function): `rect`: the canvas's box when the caller has already read it for this event (a layout read each).
+- 1034-1037 `coalescedPath` (function): Every position a move went through since the last event, CSS px of the canvas, at its own time stamp
+- 1041-1053 `cancelGestures` (function): Ends every gesture in progress without committing it
+- 1056-1073 `currentGesture` (function): The gesture in progress, named by its dictionary key
+- 1074-1078 `syncGesture` (function)
+- 1080-1080 `syncGestureSoon` (variable): After the event's own handlers: a task of its own, after the whole dispatch.
+- 1081-1083 `ForOfStatement` (statement)
+- 1085-1085 `NO_CAUSE` (variable): What the diary says a change came from (`world/changes.ts` `causeNext`)
+- 1086-1092 `ForOfStatement` (statement)
+- 1094-1102 `caused` (function): Runs `fn` with the diary's cause set to `cause`, then puts the one before back.
+- 1105-1114 `bulldozer` (variable): The bulldozer (`editor/bulldozer.ts`): a click removes what is under it, a box everything inside.
+- 1117-1119 `gestureInProgress` (function): Whether anything is being drawn or dragged right now.
+- 1122-1126 `releaseHeld` (function): A press whose release will never arrive - the window lost focus, the pointer capture was taken
+- 1129-1131 `cancelMove` (function): Cancels a node drag without leaving its live preview in the document.
+- 1136-1136 `cloudStepOpen` (variable): A step the clouds' tool opened and its gesture has not closed yet.
+- 1137-1150 `cloudTool` (variable)
+- 1152-1162 `endTerrainStroke` (function): Ends the brush stroke (`TerrainBrush.end`), warning when the land's stamps near their cap.
+- 1166-1170 `CanvasInput` (type): The canvas's input, taken as the browser dispatches it and handled at the start of the next frame, in order
+- 1171-1171 `canvasInput` (variable)
+- 1172-1172 `take` (function)
+- 1175-1186 `handleInput` (function): One input handled (`frame`, first thing).
+- 1188-1188 `ExpressionStatement` (statement)
+- 1189-1189 `ExpressionStatement` (statement)
+- 1190-1196 `ExpressionStatement` (statement)
+- 1197-1201 `ExpressionStatement` (statement)
+- 1202-1202 `ExpressionStatement` (statement)
+- 1203-1203 `ExpressionStatement` (statement)
+- 1204-1204 `ExpressionStatement` (statement)
+- 1205-1205 `ExpressionStatement` (statement)
+- 1207-1212 `doubleClick` (function)
+- 1213-1216 `singleClick` (function)
+- 1217-1396 `pointerDown` (function)
+- 1398-1398 `ExpressionStatement` (statement)
+- 1399-1402 `captureLost` (function)
+- 1404-1475 `pointerMove` (function)
+- 1477-1477 `HOVER_DRAWN` (variable): The tools whose overlay follows the hover.
+- 1480-1482 `poleReach` (function): Pick radius for a pole, in world units at the current zoom (`PoleTool.reach`: one definition).
+- 1484-1513 `endPointer` (function)
+- 1516-1516 `ForOfStatement` (statement): The camera let go: the pointer's own look again.
+- 1518-1523 `pointerLeft` (function): Nothing to aim at off the map: no hover preview left behind on it.
+- 1524-1524 `ExpressionStatement` (statement)
+- 1526-1534 `ExpressionStatement` (statement)
+- 1535-1550 `wheel` (function)
+- 1556-1556 `roadClassPictures` (variable): Each class's picture, drawn once (`roadSwatch` paints a canvas).
+- 1558-1566 `roadClasses` (function): Every road class as the upgrade tool shows it: name, picture, total width in whole metres.
+- 1569-1569 `MEDIAN_CLASS` (variable): The lanes a road is laid at.
+- 1570-1575 `LANE_CHOICES` (variable)
+- 1577-1585 `laneChoices` (function): The lane choices, the one the next road will be laid as lit: with no count chosen, the class's own.
+- 1586-1594 `setLanes` (function)
+- 1596-1602 `selectRoadType` (function)
+- 1604-1609 `setAlignment` (function)
+- 1611-1611 `ExpressionStatement` (statement): A key rebound: every sentence that names it is written again.
+- 1614-1614 `ROUNDABOUT_RADIUS_M` (variable): The roundabout's radius, in whole metres.
+- 1617-1630 `setZone` (function): A lot or zone setting changed (Zoning): the use, the density, the eraser, the lot verb, the cut.
+- 1633-1633 `BRUSH_MODES` (variable): Every brush of the terrain tool, in the order of its number keys.
+- 1634-1640 `setTerrainMode` (function)
+- 1643-1643 `TERRAIN_RADIUS_RANGE` (variable): One writer for each brush number
+- 1644-1644 `TERRAIN_STRENGTH_RANGE` (variable)
+- 1645-1648 `setTerrainRadius` (function)
+- 1649-1652 `setTerrainStrength` (function)
+- 1655-1668 `mapSlider` (function): A slider of the map's own settings (the fog over the map, the weather, the gullies of the land)
+- 1670-1671 `brushSlider` (function): A slider of a brush, kept between sessions (`ui/toolChoices.ts`): not the map's, no undo.
+- 1674-1674 `ExpressionStatement` (statement): THE WEATHER (Landscape > Sky, `world/weather.ts`) and the water under the river brush: the map's, one undo step a drag.
+- 1675-1676 `weatherSlider` (function)
+- 1679-1679 `ATMOSPHERE_KEY` (variable): The sky the player sets: the mist over everything, and (from before every cloud was the map's) the cloud cover.
+- 1680-1680 `atmosphere` (variable)
+- 1681-1689 `TryStatement` (statement)
+- 1690-1701 `applyAtmosphere` (function)
+- 1703-1711 `IfStatement` (statement): The sky made no clouds of its own any more (every cloud is the map's, to move or take away)
+- 1712-1712 `ExpressionStatement` (statement)
+- 1715-1771 `SLIDERS` (variable): Every slider the interface shows, by name: its range and how the game reads and takes it.
+- 1774-1776 `mapBiome` (function): The map's biome (`world/ecology.ts`): one gives an old map its ecosystem too; "none" takes it away. Undoable.
+- 1777-1786 `setMapBiome` (function)
+- 1789-1797 `wholeMapEdit` (function): One edit of the whole map, asked first and undoable: what each "clear" and "spread" button does.
+- 1798-1817 `MAP_ACTIONS` (variable)
+- 1820-1831 `takeTool` (function): Puts a tool in hand: what it does to the game (gestures dropped, the selection let go, the Builder switched on or off).
+- 1834-1838 `showTool` (function): What follows the tool in hand outside the interface: the pointer's cursor, the Builder's mode, the hint.
+- 1839-1839 `ExpressionStatement` (statement)
+- 1842-1844 `setTool` (function): Takes a tool in hand (a panel's own choice, a road class key).
+- 1847-1849 `freeSelection` (function): Puts everything down: no tool in hand, nothing picked, no panel.
+- 1852-1854 `pickTool` (function): A tool button or key: picks the tool, or puts it down when it is already in hand.
+- 1857-1857 `shell` (variable): The interface's handle: the road inspector's eyedropper opens the road tool through it.
+- 1859-1946 `mountInterface` (function): The interface (`ui/v2/shell.ts`): its HUD, dock, drawer and selection panel, handed the game's state and its commands.
+- 1948-1948 `compass` (variable): The compass in a corner of the interface (`mountInterface`).
+- 1950-1952 `updateCompass` (function): Points the compass where north lies on screen: up the map.
+- 1954-1954 `ExpressionStatement` (statement): Mounted after this module has finished evaluating
+- 1956-1962 `setPaused` (function)
+- 1964-1971 `setSpeed` (function)
+- 1974-1978 `setDemand` (function): How much traffic the city asks for: Low, Normal or Peak.
+- 1980-1983 `toggleCongestion` (function)
+- 1984-1984 `ExpressionStatement` (statement)
+- 1985-1985 `ExpressionStatement` (statement)
+- 1986-1986 `ExpressionStatement` (statement)
+- 1993-1993 `growthPool` (variable): THE GROWTH (`editor/growthFeed.ts`): the generated city's buildings and the zones' (`growZones`), one at a time, each designed in the growth's worker (`growthPool.ts`, `growth.worker.ts`) and written here when its answer comes - outside the
+- 1994-1996 `growth` (variable)
+- 1998-2012 `growthAnswered` (function): The worker's answer: the building written, stamped as grown now. False: not now - nothing is written in the middle of a drag (an authoring preview); the pool offers it again at the next frame (`GrowthPool.pump`).
+- 2015-2027 `newMap` (function)
+- 2029-2033 `newWorld` (function): A NEW CITY from the menu: the small city of Roadcraft 2.0 (`buildSmallCityMap`: straight blocks, medium size) laid out as ONE map, no tiles - the player, 2026-10-18: the tiles were for a city over the whole map, which never worked.
+- 2035-2039 `newLargeWorld` (function): A LARGE CITY: the small city's generator over a larger radius (`largeCity.ts`), every block built, opened at a district while the rest of the world fills in behind the curtain.
+- 2041-2041 `generatingCity` (variable): A city being made off the page (`cityGen.worker.ts`): the curtain over the map while the worker builds it, no frame of it on the page.
+- 2043-2043 `cityOpening` (variable): The opening asked for while one is made: the same promise, never a second city over the first's answer.
+- 2044-2044 `cityAskId` (variable)
+- 2047-2047 `CITY_HASH` (variable): The generated cities kept from earlier sessions, by the generator's code (`cook-plugin.ts` DERIVED: its whole import closure): the same seed makes the same city with the same code, so one made before is read, not made again.
+- 2048-2048 `CITY_PREFIX` (variable)
+- 2049-2049 `IfStatement` (statement)
+- 2051-2051 `ExpressionStatement` (statement): The next new cities made ahead from the start (`cityAhead`), once the boot's work is behind.
+- 2053-2053 `KeptCity` (interface): A kept city: its document without buildings and its buildings' table (`prepareCity`), as the worker answered them.
+- 2056-2076 `cityData` (function): The city's document made by the worker (the game's own generator), or read as an earlier session kept it (`CITY_PREFIX`); without a job queue (a test) it is made on the page, as before.
+- 2079-2083 `openedOf` (function): A city's reply as the page opens it.
+- 2090-2106 `networkBakeOf` (function): A document's network solved by a job worker (`networkBake.worker.ts`), as the page will restore it (`restoreInto`); null without a job queue (a test) or when the worker failed: the page then solves it itself. DO NOT solve a large city's eve
+- 2109-2127 `cityJob` (function): The city's worker asked for a city (`priority`: the queue's, 0 first), its answer kept under `key` for the next opening of this seed.
+- 2134-2134 `NEXT_CITY_KEY` (variable): THE NEXT NEW CITY MADE AHEAD: each size's next seed chosen and kept (`NEXT_CITY_KEY`), its city grown in the background once the game stands idle and kept (`cityJob`), so the menu's new city opens as a kept one (`newWorld`, `newLargeWorld` 
+- 2135-2135 `citiesAhead` (variable)
+- 2136-2145 `nextCitySeed` (function)
+- 2146-2162 `cityAhead` (function)
+- 2164-2166 `citiesAheadLater` (function): Both sizes' next cities made ahead, the large first, once the opening's work is behind (`cityAhead` waits for the world to stand). DO NOT wait a fixed 15 s more: on the first launch the empty map stands in seconds, and the player's first la
+- 2169-2173 `openCityOffPage` (function): A city made off the page and put in place of the map: the curtain over the map while its worker builds it, then the real map opened whole. One at a time, in the order asked.
+- 2175-2200 `openCityNow` (function)
+- 2203-2205 `openSmallCity` (function): The small city of a seed put in place of the map (the menu's, and the probes' with a seed of their own).
+- 2208-2210 `openLargeCity` (function): The large city of a seed put in place of the map (the menu's, and the probes').
+- 2213-2227 `openCity` (function): `table`: its buildings' table, prepared by the city's worker (`editor/preparedCity.ts`).
+- 2230-2240 `fitOpeningView` (function): The view a large city opens at: a district round its middle, in the detail its roads and buildings are drawn for; the whole map comes as the camera moves, the rest of the world filled after the curtain.
+- 2242-2242 `SKY_KEY` (variable): The sky: always day (the default), always night, or the residents' clock; kept.
+- 2243-2243 `SKY_MODES` (variable)
+- 2244-2248 `setSky` (function)
+- 2249-2252 `TryStatement` (statement)
+- 2253-2253 `ExpressionStatement` (statement)
+- 2254-2254 `ExpressionStatement` (statement)
+- 2257-2260 `saveMap` (function): DO NOT say "saved" without asking `exportToFile`
+- 2263-2271 `openImported` (function): Loads a picked map.
+- 2273-2293 `openSession` (function): A picked map's session put in place of the map.
+- 2294-2296 `openMap` (function)
+- 2299-2299 `PERSPECTIVE_KEY` (variable): Perspective or the isometric (orthographic) view, the player's choice, kept.
+- 2300-2303 `setPerspective` (function)
+- 2305-2307 `showPerspective` (function): The camera as the game's state has it.
+- 2308-2308 `ExpressionStatement` (statement)
+- 2310-2315 `ExpressionStatement` (statement): At boot, once the whole file has run: switching the camera asks for a frame, and the frame loop is set up further down.
+- 2318-2318 `TILT_STEP` (variable): The camera menu's buttons: a step per press; north and reset put the camera back (reset frames the map too).
+- 2319-2332 `cameraCommand` (function)
+- 2335-2343 `undo` (function): An undo can change something far off screen, so the game says it happened.
+- 2344-2351 `redo` (function)
+- 2353-2363 `afterRestore` (function): The game after an undo or a redo put records back (`editor/history.ts`): the network rebuilt only when the roads moved
+- 2366-2369 `updateHistoryButtons` (function): Whether there is something to undo and to redo, in the game's state.
+- 2372-2391 `restoreSettings` (function): Restores the user-visible state stored beside a map without touching topology.
+- 2392-2392 `ExpressionStatement` (statement)
+- 2395-2399 `closeInspectorPanel` (function): The road inspector closed (its × , Escape, Delete): nothing picked.
+- 2400-2400 `ExpressionStatement` (statement)
+- 2402-2404 `closeInspector` (function): Closes the road inspector's panel (`ui/inspector.ts`).
+- 2406-2406 `ExpressionStatement` (statement): Open or closed, by a command or by itself (what it showed is gone): in the game's state.
+- 2409-2417 `CONTROL_CYCLE` (variable): Junction control, as a tool rather than as a form field.
+- 2419-2437 `cycleNodeControl` (function)
+- 2440-2440 `hintListeners` (variable): Who shows the tool's hint and the game's answers (the interface, `onHint`).
+- 2442-2442 `earlyFlashes` (variable): The answers said before anyone listened (a map that failed to open at boot): told to the first listener.
+- 2444-2448 `flashHint` (function): A transient answer of the game - saved, refused, undone, a road that cannot be laid
+- 2451-2458 `hintKey` (function): The tool's hint: what a click does now.
+- 2460-2460 `hintShown` (variable)
+- 2461-2466 `updateHint` (function)
+- 2468-2473 `listenHint` (function): A listener of the hint: told the hint now, and any answer said before it came.
+- 2474-2474 `IfStatement` (statement)
+- 2477-2477 `TERRAIN_KEY_MODES` (variable): The terrain brush's operations in the number row's order (1 = raise).
+- 2479-2555 `gameKeys` (variable): Every key the game answers (`editor/gameKeys.ts`): one command a key.
+- 2556-2563 `ExpressionStatement` (statement)
+- 2564-2564 `ExpressionStatement` (statement)
+- 2566-2566 `ExpressionStatement` (statement): A key let go elsewhere never comes up here: nothing stays held.
+- 2570-2570 `frameClock` (variable): The frame asked for, and the time between frames (`frameLoop.ts`).
+- 2571-2571 `ExpressionStatement` (statement)
+- 2572-2572 `ExpressionStatement` (statement)
+- 2574-2574 `lab` (variable): The debugging lab (F7, `lab/lab.ts`): the switches, what each system costs, the code that runs, recordings and tests.
+- 2576-2576 `ExpressionStatement` (statement): For the probes and for an AI reading the game: the lab's context (events, frames, every switch).
+- 2578-2578 `flatCameraDue` (variable): The flat camera kept up with the view (what the tools measure their pixels with): ten times a second.
+- 2580-2580 `panelsDue` (variable): The status bar, the inspector, the simulation's checks.
+- 2582-2582 `zonesDue` (variable): The conflict zones measured since, kept for the next session (`keptZones`).
+- 2584-2584 `actionsWarm` (variable): The Actions' physics asked for (`frame`).
+- 2587-2587 `topologyAfterDraw` (variable): Set by an edit: draw the new geometry first, rebuild the simulation after.
+- 2589-2591 `requestDraw` (function)
+- 2594-2594 `growthDue` (variable): DO NOT go back to a `setInterval` on the wall clock.
+- 2596-2596 `zoneGrowthHold` (variable): Nothing grows before this simulation time (rubble of a collapse lying, `strikeAt`); `at` the time it was set.
+- 2597-2606 `growZones` (function)
+- 2610-2610 `waitingForTab` (variable): Waiting for another tab to let this world go (`openStreamedWorld`): the curtain stays up, saying so.
+- 2611-2611 `loadingCurtain` (variable)
+- 2612-2612 `ExpressionStatement` (statement)
+- 2613-2613 `ExpressionStatement` (statement)
+- 2614-2614 `ExpressionStatement` (statement)
+- 2615-2616 `ExpressionStatement` (statement)
+- 2617-2617 `ExpressionStatement` (statement)
+- 2618-2618 `ExpressionStatement` (statement)
+- 2620-2620 `programsWaited` (variable): The opening's programs the curtain waits for (`SceneHandle.programsReady`), and whether they are compiled.
+- 2621-2621 `programsCompiled` (variable)
+- 2622-2637 `syncLoadingCurtain` (function)
+- 2639-2639 `drawnOnce` (variable): A frame has been drawn, and the first world has been put in place (the opening builds it in parts).
+- 2641-2641 `frameTimes` (variable): Every frame's whole time, the last 40 s (`sampleRing.ts`): the CPU the process spends a frame, sampled while it runs (`__roadcraft.usage`).
+- 2642-2642 `worldShown` (variable)
+- 2644-2745 `frame` (function): @perFrame One frame: input, the topology catching up, the simulation, the drawing, the panels.
+- 2748-2750 `simShowsMotion` (function): Whether anything the simulation moves can be seen moving: vehicles, cars parking, people, signals, public transport.
+- 2755-2755 `SCREEN_REACH` (variable): How far from the view's centre the screen's ground is read, each way: the far ground's ring (`flatAtlas.ts`, 7 plates), the world having no edge to stop at.
+- 2757-2760 `screenReach` (function): The square round the view's centre the screen's ground is held to.
+- 2762-2780 `groundOnScreen` (function): The world's rectangle the screen can show
+- 2783-2783 `BARRIER_PICK_PIXELS` (variable): Pick radius for a barrier under a shift-click, screen pixels.
+- 2786-2805 `drawBarrierPlan` (function): The run being traced (`editor/barriers.ts` `BarrierTool.plan`), as it will stand: red where it cannot be built.
+- 2808-2847 `drawStreetscapeHover` (function): Where the landscaping tool would put its item: a ring on the footway, red where it cannot go.
+- 2849-2898 `drawPolePlan` (function)
+- 2901-2901 `showChanges` (variable): F8: the diary's last changes drawn where they happened (`world/changes.ts`).
+- 2903-2903 `CHANGE_SHOWN` (variable): How long a change stays drawn, ms.
+- 2904-2909 `CHANGE_COLOURS` (variable)
+- 2912-2940 `drawChanges` (function): The rectangles of the changes of the last seconds, each in its kind's colour and labelled with what it was and why
+- 2942-3410 `drawOverlayScreen` (function)
+- 3413-3419 `BUILD_FILL` (variable): How each stretch of the road in hand will be built, drawn between its deck and the natural ground
+- 3420-3420 `PIER_EVERY` (variable)
+- 3421-3459 `drawBuildModes` (function)
+- 3461-3475 `drawTunnelStretches` (function)
+- 3478-3486 `buildSummary` (function): The ways the road in hand is built, beside its length: "ponte 120 m · aterro 40 m".
+- 3489-3505 `TERRAIN_BRUSH_COLOUR` (variable): The brush's colour, by what it does to the ground.
+- 3507-3523 `TERRAIN_BRUSH_FILL` (variable)
+- 3526-3534 `CONTROL_GLYPH` (variable): One glyph and one colour per control mode.
+- 3536-3544 `CONTROL_COLOUR` (variable)
+- 3546-3571 `setNodeHeightMetres` (function)
+- 3573-3818 `showInspector` (function)
+- 3821-3832 `duplicateSelectedSegment` (function): Duplicates the inspected road and keeps the copy selected for immediate editing.
+- 3835-3835 `statusListeners` (variable): Who shows the city's numbers (the interface, `onStatus`).
+- 3837-3856 `currentStatus` (function): The city's numbers now: the clock, the traffic, the money, the junctions that cannot be built.
+- 3858-3862 `updateStatus` (function): Tells the interface the city's numbers (a few times a second while the city runs, and after an edit).
+- 3865-3869 `desktopShown` (variable): The desktop window minimized or hidden (`desktopShown.ts`): drawn no more and saved, as a hidden tab; drawn again when back.
+- 3871-3873 `pageHidden` (function): Nobody can see the game: the tab hidden, or the desktop window minimized or hidden.
+- 3875-3881 `ExpressionStatement` (statement)
+- 3884-3884 `CLOSE_WAIT_MS` (variable): Closing the game saves it.
+- 3885-3898 `saveOnClose` (function)
+- 3899-3899 `ExpressionStatement` (statement)
+- 3901-3903 `ExpressionStatement` (statement): A hidden or discarded tab may never see `beforeunload` (phones, tab freezing).
+- 3904-3904 `ExpressionStatement` (statement)
+- 3907-3907 `saveWarnedAt` (variable): A failed write says so, at most once a minute, instead of losing the map at the next reload in silence.
+- 3908-3913 `ExpressionStatement` (statement)
+- 3915-3915 `ExpressionStatement` (statement)
+- 3918-3918 `ExpressionStatement` (statement): The flat camera put where the view is before the first frame
+- 3923-3930 `ExpressionStatement` (statement): Anything rendered from script rather than from markup has to be re-rendered when the language changes
+- 3933-3941 `setMarkingStyle` (function): The map's road paint (`world/roads/markingStyle.ts`)
+- 3943-3943 `ExpressionStatement` (statement)
+- 3944-3946 `setQuality` (function)
+- 3948-3952 `IfStatement` (statement): The game's state in the console (`core/gameState.ts`): `__state()` its values now and the last changes
+- 3954-3954 `IfStatement` (statement): The game's health in the console (`core/health.ts`): what broke or was slow, newest first.
+- 3956-3957 `IfStatement` (statement): The last frames per system (`core/health.ts` `frameStats`)
+- 3960-3966 `gpuLines` (function): The F9 monitor's GPU lines (state tab, the whole width)
+- 3967-3972 `IfStatement` (statement)
+- 3975-3975 `issuesSeen` (variable): The simulation's own checks (`sim/invariants.ts`, run every 60 ticks) in the health log
+- 3976-3984 `noteSimulationIssues` (function)
+- 3986-3986 `valueText` (function)
+- 3987-4002 `healthPanel` (variable)
+- 4004-4019 `IfStatement` (statement): The diary of changes in the console (`world/changes.ts`): `__changes()` lists the last ones
+- 4022-4024 `compiledUniforms` (function): The uniforms the renderer compiled a material with: `onBeforeCompile` puts textures there that are in no field of the material (report TST-09).
+- 4027-4033 `pacedFps` (function): Frames a second of the last 2 s, from the frames' own start times; null when the game did not draw every refresh in them (the loop on demand: a smoothed 1/delta then told how often it drew, not how fast it could - report UI-15 d).
+- 4036-4231 `IfStatement` (statement): Diagnostic surface for browser-driven checks.
+- 4234-4243 `densify` (function): A polyline with points added so no step is longer than `step`.
+- 4247-4250 `refreshShell` (function): Asks the interface to redraw its panels (a state it shows changed in the game).
+- 4253-4253 `decayLook` (variable): Buildings run down without maintenance (`world/buildings/decayWatch.ts`)
+- 4254-4254 `decayWatch` (function)
+- 4256-4256 `decayDue` (variable): The buildings' decay looked at every 3 s of the city's time (`frame`), not on the wall clock.
+- 4259-4274 `actions` (variable): The Actions (`actionsWiring.ts`): the pistol, the bomb, the buildings it breaks and the fires it leaves.
+- 4277-4277 `ExpressionStatement` (statement): Everything is set up: the first frame may be drawn.
+- 4278-4278 `ExpressionStatement` (statement)
+- 4282-4288 `IfStatement` (statement): autosave holds. The probes' own `generateCity` asks the same (`openSmallCity`).
+
+## src/steamAchievements.ts
+
+- 3-5 `UnlockBridge` (interface): STEAM ACHIEVEMENTS: milestones of the city told to the desktop shell (`desktop/main.cjs` `steam:unlock`); nothing without it.
+- 8-8 `ROAD_MILESTONES` (variable): Roads on the map and the achievement each count unlocks; the ids are the ones set in Steamworks for the game.
+- 10-24 `createSteamAchievements` (function)
+
+## Arquivos compartilhados por mais de uma funcionalidade
+
+- `src/core/units.ts`: 213 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:blueprintLibrary, editor:buildingFloors, editor:buildingPlans, …)
+- `src/core/vec2.ts`: 149 funcionalidades (src:bay, worker:bays, worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:blueprintLibrary, …)
+- `src/core/scalar.ts`: 133 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:blueprintLibrary, editor:buildingPlans, editor:buildingProfile, …)
+- `src/world/ids.ts`: 132 funcionalidades (src:bay, worker:bays, worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, …)
+- `src/world/changes.ts`: 126 funcionalidades (worker:cityGen, editor:barriers, editor:blocks, editor:buildingFloors, editor:buildingSnap, editor:buildingTool, editor:buildings, editor:bulldozer, …)
+- `src/world/roadTypes.ts`: 122 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:bulldozer, …)
+- `src/world/roadSection.ts`: 121 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:buildings, …)
+- `src/world/parking.ts`: 120 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:buildings, …)
+- `src/core/hypot.ts`: 114 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingFloors, editor:buildingPlans, editor:buildingProfile, …)
+- `src/core/identityMemo.ts`: 114 funcionalidades (worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingFloors, editor:buildingPlans, editor:buildingProfile, editor:buildingSnap, …)
+- `src/world/structures.ts`: 112 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:buildings, …)
+- `src/world/doc.ts`: 112 funcionalidades (worker:cityGen, editor:blocks, editor:cityGenerator, editor:commit, editor:history, editor:nodeMover, editor:repair, editor:roadTool, …)
+- `src/core/polyline.ts`: 111 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:bulldozer, …)
+- `src/core/bezier.ts`: 95 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:bulldozer, …)
+- `src/core/recordMap.ts`: 94 funcionalidades (worker:cityGen, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, …)
+- `src/world/cells.ts`: 90 funcionalidades (worker:cityGen, editor:barriers, editor:blocks, editor:buildingSnap, editor:buildingTool, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, …)
+- `src/world/roads/rules.ts`: 85 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, …)
+- `src/world/buildings/materials.ts`: 85 funcionalidades (src:bay, worker:bays, worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingFloors, editor:buildingPlans, editor:buildingProfile, …)
+- `src/world/roads/connectors.ts`: 84 funcionalidades (worker:cityGen, src:conflict, worker:conflictTable, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, …)
+- `src/world/buildings/types.ts`: 84 funcionalidades (src:bay, worker:bays, worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingFloors, editor:buildingPlans, editor:buildingProfile, …)
+- `src/world/network.ts`: 83 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/buildings/flags.ts`: 83 funcionalidades (src:bay, worker:bays, worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingFloors, editor:buildingPlans, editor:buildingProfile, …)
+- `src/core/ring.ts`: 80 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/ribbons.ts`: 77 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/core/aabb.ts`: 75 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, editor:barriers, editor:blocks, editor:buildingTool, editor:buildings, editor:bulldozer, …)
+- `src/world/roads/tuning.ts`: 72 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:editRules, editor:history, …)
+- `src/world/networkBuild.ts`: 66 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/core/fillet.ts`: 65 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:history, …)
+- `src/core/polygon.ts`: 65 funcionalidades (worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingPlans, editor:buildingProfile, editor:buildingTool, editor:buildings, editor:bulldozer, …)
+- `src/world/junction/types.ts`: 64 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:history, …)
+- `src/world/junction/levels.ts`: 64 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:history, …)
+- `src/world/geometry.ts`: 61 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/core/forkMap.ts`: 59 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:growthReplica, …)
+- `src/core/intersect.ts`: 56 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/networkDelta.ts`: 56 funcionalidades (worker:cityGen, editor:blocks, editor:buildings, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, …)
+- `src/world/buildings/geometry.ts`: 56 funcionalidades (worker:cityGen, editor:buildingPlans, editor:buildingSnap, editor:buildingTool, editor:buildings, editor:growthReplica, editor:smallCityMap, worker:growth, …)
+- `src/core/clipper.ts`: 55 funcionalidades (worker:cityGen, worker:conflictTable, editor:cityGenerator, editor:growthReplica, editor:lotTool, editor:nodeMover, editor:poleRoutes, editor:poles, …)
+- `src/world/buildings/footprints.ts`: 55 funcionalidades (worker:cityGen, editor:blueprintLibrary, editor:buildingPlans, editor:buildingProfile, editor:buildingTool, editor:buildings, editor:growthFeed, editor:growthReplica, …)
+- `src/world/tiles.ts`: 54 funcionalidades (worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingTool, editor:buildings, editor:cityGenerator, editor:commit, editor:growthFeed, …)
+- `src/core/recentCache.ts`: 54 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:history, …)
+- `src/world/zones.ts`: 53 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:cookedCities, …)
+- `src/world/terrain.ts`: 53 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:cookedCities, editor:editRules, …)
+- `src/world/buildings/store.ts`: 53 funcionalidades (editor:history, worker:networkBake, sim:agents, sim:host, worker:sim, world:buildings, world:doc, worker:cityGen, …)
+- `src/world/buildings/items.ts`: 52 funcionalidades (worker:cityGen, editor:blocks, editor:buildingFloors, editor:buildingSnap, editor:buildingTool, editor:buildings, editor:bulldozer, editor:chunkedSave, …)
+- `src/world/approach.ts`: 51 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/buildings/grid.ts`: 50 funcionalidades (worker:cityGen, editor:blocks, editor:buildingFloors, editor:buildingSnap, editor:buildingTool, editor:buildings, editor:bulldozer, editor:cityGenerator, …)
+- `src/world/bounds.ts`: 48 funcionalidades (worker:cityGen, editor:blocks, editor:blueprintLibrary, editor:buildingTool, editor:buildings, editor:cityGenerator, editor:commit, editor:growthFeed, …)
+- `src/world/junction/transition.ts`: 48 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/lotRecord.ts`: 46 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:cookedCities, editor:editRules, …)
+- `src/world/surfaces.ts`: 45 funcionalidades (worker:cityGen, editor:cityGenerator, editor:lotTool, editor:nodeMover, editor:poleRoutes, editor:poles, editor:roadTool, editor:roads-powerLine, …)
+- `src/core/rng.ts`: 44 funcionalidades (worker:cityGen, editor:growthFeed, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:growth, editor:editStream, …)
+- `src/core/digest.ts`: 44 funcionalidades (worker:cityGen, worker:conflictTable, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, …)
+- `src/world/landscape.ts`: 42 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:editRules, editor:history, …)
+- `src/jobs/jobScope.ts`: 41 funcionalidades (worker:bays, worker:cityGen, worker:conflictTable, worker:save, worker:growth, worker:job, worker:networkBake, worker:cell, …)
+- `src/core/regionIndex.ts`: 40 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, editor:smallCityMap, …)
+- `src/world/walkable.ts`: 40 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, editor:smallCityMap, …)
+- `src/world/derived.ts`: 38 funcionalidades (worker:cityGen, editor:buildingFloors, editor:buildingTool, editor:chunkedSave, editor:growthFeed, editor:lotTool, editor:persistence, editor:roadTool, …)
+- `src/world/terrainPaint.ts`: 38 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/pedestrianAccess.ts`: 37 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poleRoutes, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, …)
+- `src/world/utilities.ts`: 36 funcionalidades (render:play, render:pole, render:renderer, render:utilities, world:utilities, worker:cityGen, editor:cityGenerator, editor:nodeMover, …)
+- `src/world/buildings/serialize.ts`: 35 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:cookedCities, editor:editRules, editor:history, …)
+- `src/world/rebuildWork.ts`: 34 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/lotStore.ts`: 34 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:growthFeed, editor:history, …)
+- `src/people/body/macro.ts`: 34 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/section.ts`: 33 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:roadTool, editor:roads-streetKit, editor:smallCityMap, editor:streetObjects, editor:streetscapeTool, …)
+- `src/world/barriers.ts`: 33 funcionalidades (worker:cityGen, editor:barriers, editor:blocks, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:editRules, …)
+- `src/core/offset.ts`: 32 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/people/spec.ts`: 32 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/buildings/sections.ts`: 31 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/lanelets.ts`: 31 funcionalidades (src:bay, worker:bays, editor:streetObjects, render:agents, render:play, render:renderer, sim:agents, sim:ambient, …)
+- `src/world/docBinary.ts`: 30 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/conflictTable.ts`: 30 funcionalidades (src:conflict, worker:conflictTable, editor:streetObjects, sim:agents, sim:ambient, sim:city, sim:crossings, sim:drive, …)
+- `src/world/trees.ts`: 29 funcionalidades (worker:cityGen, editor:cityGenerator, editor:smallCityMap, editor:terrainBrush, ui:toolChoices, ui:v2, world:cityGen, world:trees, …)
+- `src/world/pointFiling.ts`: 29 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/sim/people/view.ts`: 28 funcionalidades (render:agents, render:citizen, render:play, render:ragdoll, render:renderer, render:rigged, sim:agents, sim:ambient, …)
+- `src/world/grid.ts`: 28 funcionalidades (editor:roadTool, render:renderer, world:grid, world:zone, worker:cityGen, editor:blocks, editor:cityGenerator, editor:commit, …)
+- `src/core/hitch.ts`: 28 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/junction/bulb.ts`: 28 funcionalidades (worker:cityGen, worker:conflictTable, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, …)
+- `src/world/poleIndex.ts`: 28 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/roadField.ts`: 28 funcionalidades (worker:cityGen, editor:blocks, editor:commit, editor:editRules, editor:growthReplica, editor:nodeMover, editor:roadTool, editor:smallCityMap, …)
+- `src/world/junction/legs.ts`: 27 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/elements.ts`: 27 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/transit.ts`: 27 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:commit, editor:editRules, editor:history, editor:mapExport, editor:nodeMover, …)
+- `src/world/buildings/recordTable.ts`: 27 funcionalidades (worker:cityGen, editor:chunkedSave, editor:growthFeed, editor:history, editor:mapExport, editor:persistence, editor:preparedCity, editor:regionFrames, …)
+- `src/world/gullies.ts`: 26 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/ecology.ts`: 26 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:commit, editor:editRules, editor:history, editor:mapExport, editor:nodeMover, …)
+- `src/world/approachGroups.ts`: 26 funcionalidades (src:conflict, worker:conflictTable, editor:streetObjects, sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, …)
+- `src/world/roads/markingStyle.ts`: 25 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:commit, editor:editRules, editor:history, editor:mapExport, editor:nodeMover, …)
+- `src/core/plain.ts`: 25 funcionalidades (worker:cityGen, editor:blocks, editor:buildingTool, editor:bulldozer, editor:chunkedSave, editor:cityGenerator, editor:commit, editor:editRules, …)
+- `src/world/buildings/blueprints.ts`: 25 funcionalidades (worker:cityGen, editor:blueprintLibrary, editor:buildingPlans, editor:buildingSnap, editor:buildingTool, editor:buildings, editor:fromReference, editor:growthReplica, …)
+- `src/world/clouds.ts`: 25 funcionalidades (editor:cloudTool, render:postprocess, render:renderer, world:clouds, worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, …)
+- `src/world/fogPaint.ts`: 25 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:cityGenerator, editor:cloudTool, editor:commit, editor:editRules, editor:history, …)
+- `src/world/economy.ts`: 23 funcionalidades (editor:blocks, editor:bulldozer, editor:commit, editor:editRules, editor:nodeMover, editor:roadTool, editor:roads-economy, world:economy, …)
+- `src/world/growth/rows.ts`: 23 funcionalidades (worker:cityGen, editor:blocks, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, editor:poles, …)
+- `src/sim/dt.ts`: 22 funcionalidades (render:agents, render:citizen, render:play, render:renderer, render:rigged, sim:agents, sim:ambient, sim:city, …)
+- `src/world/walkways.ts`: 22 funcionalidades (sim:agents, sim:ambient, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:walkways, …)
+- `src/sim/vehicles/archetypes.ts`: 22 funcionalidades (render:agents, render:car, render:play, render:renderer, render:vehicle, sim:agents, sim:ambient, sim:city, …)
+- `src/world/junction/build.ts`: 21 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/sim/people/engine.ts`: 21 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:invariants, sim:meso, sim:people, sim:pipeline, …)
+- `src/world/junction/corners.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/junction/trim.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/junction/polygon.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/junction/derive.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/junction/trimSummary.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/legAngles.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:bulldozer, editor:cityGenerator, editor:commit, editor:editRules, editor:history, editor:nodeMover, …)
+- `src/world/weather.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:chunkedSave, editor:commit, editor:editRules, editor:history, editor:mapExport, editor:nodeMover, …)
+- `src/world/buildings/interior.ts`: 20 funcionalidades (worker:cityGen, editor:blueprintLibrary, editor:buildingTool, editor:history, editor:persistence, editor:preparedCity, editor:smallCityMap, worker:networkBake, …)
+- `src/people/wardrobe.ts`: 20 funcionalidades (editor:history, editor:persistence, worker:networkBake, people:roster, people:spec, people:wardrobe, render:agents, render:citizen, …)
+- `src/world/buildingGates.ts`: 20 funcionalidades (render:renderer, render:road, sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, …)
+- `src/sim/params.ts`: 20 funcionalidades (sim:clock, sim:host, sim:params, worker:sim, sim:pipeline, sim:vehicles, sim:agents, sim:ambient, …)
+- `src/sim/vehicles/vehicleId.ts`: 20 funcionalidades (src:bay, worker:bays, sim:agents, sim:ambient, sim:city, sim:crossings, sim:drive, sim:host, …)
+- `src/sim/agents/trafficBuildings.ts`: 20 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/sim/vehicles/kerbStops.ts`: 20 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/sim/world.ts`: 20 funcionalidades (sim:host, sim:invariants, sim:pipeline, worker:sim, sim:topology, sim:world, sim:city, sim:transit, …)
+- `src/world/elevation.ts`: 20 funcionalidades (worker:cityGen, editor:blocks, editor:commit, editor:editRules, editor:nodeMover, editor:roadTool, editor:smallCityMap, render:renderer, …)
+- `src/world/buildings/foundation.ts`: 19 funcionalidades (worker:cityGen, editor:buildingFloors, editor:buildingTool, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, render:buildings, …)
+- `src/world/lots.ts`: 19 funcionalidades (worker:cityGen, editor:smallCityMap, sim:host, worker:sim, world:lots, editor:lotTool, editor:cityGenerator, world:cityGen, …)
+- `src/core/heap.ts`: 19 funcionalidades (worker:bays, worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poleRoutes, editor:poles, editor:roadTool, editor:roads-powerLine, …)
+- `src/world/heading.ts`: 19 funcionalidades (worker:conflictTable, editor:streetObjects, sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, …)
+- `src/sim/vehicles/driver.ts`: 19 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:drive, sim:host, sim:intersections, sim:invariants, …)
+- `src/sim/vehicles/idm.ts`: 19 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:drive, sim:host, sim:intersections, sim:invariants, …)
+- `src/jobs/jobPool.ts`: 19 funcionalidades (src:bay, src:conflict, worker:job, render:buildings, render:flat, render:ground, render:land, render:renderer, …)
+- `src/render/shadowCasters.ts`: 19 funcionalidades (render:agents, render:barriers, render:buildings, render:cell, render:elements, render:gardens, render:instance, render:people, …)
+- `src/world/roads/footwayRise.ts`: 19 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, render:agents, render:buildings, worker:cell, …)
+- `src/world/openLots.ts`: 18 funcionalidades (worker:cityGen, editor:growthFeed, editor:smallCityMap, world:growth, world:open, editor:blocks, editor:commit, editor:editRules, …)
+- `src/world/groundPatch.ts`: 18 funcionalidades (editor:growthReplica, worker:growth, src:growth, render:flat, worker:flatGround, render:plate, render:renderer, render:terrain, …)
+- `src/world/poleLines.ts`: 17 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poleRoutes, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, …)
+- `src/world/lotRings.ts`: 17 funcionalidades (worker:cityGen, editor:smallCityMap, sim:host, worker:sim, world:lot, world:lots, editor:bulldozer, editor:cityGenerator, …)
+- `src/people/wardrobeSelection.json`: 17 funcionalidades (editor:history, editor:persistence, worker:networkBake, people:roster, people:spec, people:wardrobe, render:agents, render:citizen, …)
+- `src/sim/agents/lotNav.ts`: 17 funcionalidades (worker:bays, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, src:bay, …)
+- `src/sim/agents/lotBays.ts`: 17 funcionalidades (worker:bays, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, sim:crossings, …)
+- `src/sim/vehicles/state.ts`: 17 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/world/buildings/elements.ts`: 16 funcionalidades (editor:buildingTool, editor:buildings, world:buildings, worker:cityGen, editor:growthFeed, editor:growthReplica, editor:smallCityMap, worker:growth, …)
+- `src/world/buildings/streetDoors.ts`: 16 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/world/buildings/docks.ts`: 16 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/render/wind.ts`: 16 funcionalidades (render:buildings, render:exhaust, render:far, render:flat, render:gardens, render:ground, render:low, render:nature, …)
+- `src/editor/snap.ts`: 16 funcionalidades (editor:blocks, editor:bulldozer, editor:commit, editor:roadTool, editor:snap, worker:cityGen, editor:barriers, editor:buildingSnap, …)
+- `src/world/buildings/intern.ts`: 15 funcionalidades (worker:cityGen, editor:buildingTool, editor:buildings, editor:growthFeed, editor:history, editor:persistence, editor:preparedCity, editor:smallCityMap, …)
+- `src/world/buildings/validate.ts`: 15 funcionalidades (worker:cityGen, editor:buildingTool, editor:buildings, editor:growthFeed, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, …)
+- `src/world/conflictPoints.ts`: 15 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:intersections, sim:meso, sim:pipeline, sim:routing, …)
+- `src/sim/routing/routeIndex.ts`: 15 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/sim/clock.ts`: 15 funcionalidades (sim:agents, sim:ambient, sim:city, sim:clock, sim:crossings, sim:host, sim:intersections, sim:invariants, …)
+- `src/sim/ambient/demand.ts`: 15 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:meso, …)
+- `src/render/depthConvention.ts`: 15 funcionalidades (render:canyon, render:depth, render:postprocess, render:renderer, render:agents, render:blast, render:blob, render:buildings, …)
+- `src/render/propGeometry.ts`: 15 funcionalidades (render:prop, render:renderer, render:scenery, render:garden, render:gardens, render:plant, render:pole, render:street, …)
+- `src/render/cellInstances.ts`: 15 funcionalidades (render:barriers, render:cell, render:elements, render:gardens, render:instance, render:plant, render:prop, render:renderer, …)
+- `src/core/changeLog.ts`: 14 funcionalidades (sim:agents, sim:ambient, sim:city, sim:drive, sim:host, sim:intersections, sim:meso, sim:pipeline, …)
+- `src/sim/signals/plan.ts`: 14 funcionalidades (sim:agents, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:pipeline, sim:roads, sim:signals, …)
+- `src/sim/pose.ts`: 14 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:pipeline, sim:pose, …)
+- `src/render/changeBoxes.ts`: 14 funcionalidades (render:barriers, render:cell, render:change, render:elements, render:gardens, render:instance, render:plant, render:prop, …)
+- `src/render/plantImpostors.ts`: 14 funcionalidades (render:far, render:flat, render:gardens, render:nature, render:plant, render:renderer, render:street, render:barriers, …)
+- `src/ui/i18n/index.ts`: 14 funcionalidades (ui:about, ui:buildStamp, ui:builder, ui:effectsPanel, ui:graphicsPanel, ui:healthPanel, ui:healthWatch, ui:i18n, …)
+- `src/world/buildings/cityBuildings.ts`: 13 funcionalidades (editor:buildingTool, render:buildings, ui:v2, world:buildings, worker:cityGen, editor:fromReference, editor:growthReplica, editor:smallCityMap, …)
+- `src/sim/routing/laneReach.ts`: 13 funcionalidades (sim:agents, sim:ambient, sim:city, sim:drive, sim:host, sim:meso, sim:pipeline, sim:routing, …)
+- `src/sim/audit.ts`: 13 funcionalidades (sim:agents, sim:ambient, sim:audit, sim:city, sim:host, sim:invariants, sim:meso, sim:people, …)
+- `src/sim/intersections/claims.ts`: 13 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:intersections, sim:invariants, sim:meso, sim:pipeline, …)
+- `src/render/uploads.ts`: 13 funcionalidades (render:agents, render:flat, render:people, render:play, render:renderer, render:rigged, render:terrain, render:uploads, …)
+- `src/render/mesh/gpuOnly.ts`: 13 funcionalidades (render:agents, render:buildings, render:far, render:flat, render:gardens, render:mesh, render:play, render:pole, …)
+- `src/core/derivedCache.ts`: 13 funcionalidades (worker:conflictTable, render:agents, render:buildings, worker:derivedWriter, worker:ecology, render:ecology, render:people, render:renderer, …)
+- `src/ui/i18n/en.ts`: 13 funcionalidades (ui:about, ui:buildStamp, ui:builder, ui:effectsPanel, ui:graphicsPanel, ui:healthPanel, ui:healthWatch, ui:i18n, …)
+- `src/ui/i18n/pt-BR.ts`: 13 funcionalidades (ui:about, ui:buildStamp, ui:builder, ui:effectsPanel, ui:graphicsPanel, ui:healthPanel, ui:healthWatch, ui:i18n, …)
+- `src/world/walkingLines.ts`: 12 funcionalidades (sim:agents, sim:ambient, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:walking, …)
+- `src/world/rescale.ts`: 12 funcionalidades (editor:blueprintLibrary, editor:history, editor:persistence, worker:networkBake, sim:agents, sim:host, worker:sim, ui:inspector, …)
+- `src/sim/signals/fsm.ts`: 12 funcionalidades (sim:agents, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:pipeline, sim:roads, sim:signals, …)
+- `src/sim/vehicles/cycleLane.ts`: 12 funcionalidades (sim:agents, sim:ambient, sim:city, sim:crossings, sim:host, sim:intersections, sim:pipeline, sim:pose, …)
+- `src/sim/routing/lowerBound.ts`: 12 funcionalidades (sim:agents, sim:ambient, sim:city, sim:drive, sim:host, sim:meso, sim:pipeline, sim:routing, …)
+- `src/sim/routing/searchScratch.ts`: 12 funcionalidades (sim:agents, sim:ambient, sim:city, sim:drive, sim:host, sim:meso, sim:pipeline, sim:routing, …)
+- `src/sim/drive/tactical.ts`: 12 funcionalidades (sim:agents, sim:ambient, sim:city, sim:drive, sim:host, sim:meso, sim:pipeline, sim:routing, …)
+- `src/sim/signals/query.ts`: 12 funcionalidades (render:renderer, render:signals, sim:agents, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:pipeline, …)
+- `src/sim/roads/flowStats.ts`: 12 funcionalidades (sim:host, sim:pipeline, sim:roads, worker:sim, sim:world, sim:topology, sim:agents, sim:ambient, …)
+- `src/world/paving.ts`: 12 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, render:buildings, worker:cell, render:ground, …)
+- `src/render/lowPolyTrees.ts`: 12 funcionalidades (render:far, render:flat, render:gardens, render:ground, render:impostor, render:low, render:nature, render:plant, …)
+- `src/world/buildings/tableRows.ts`: 11 funcionalidades (editor:history, worker:networkBake, sim:agents, sim:host, worker:sim, world:buildings, world:doc, editor:mapExport, …)
+- `src/world/sweptBodies.ts`: 11 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/world/parkingLayout.ts`: 11 funcionalidades (render:renderer, render:road, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, …)
+- `src/sim/peds/sidewalk.ts`: 11 funcionalidades (sim:agents, sim:ambient, sim:crossings, sim:host, sim:intersections, sim:peds, sim:pipeline, worker:sim, …)
+- `src/sim/crossings/state.ts`: 11 funcionalidades (sim:agents, sim:ambient, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:pipeline, worker:sim, …)
+- `src/sim/routing/destination.ts`: 11 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:meso, sim:pipeline, sim:routing, worker:sim, …)
+- `src/sim/routing/router.ts`: 11 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:meso, sim:pipeline, sim:routing, worker:sim, …)
+- `src/core/weakMachine.ts`: 11 funcionalidades (src:bay, src:conflict, worker:job, render:buildings, render:flat, render:gpu, render:ground, render:land, …)
+- `src/render/natureNoise.ts`: 11 funcionalidades (worker:ecology, render:ecology, render:far, render:flat, worker:flatGround, render:land, worker:landStroke, render:nature, …)
+- `src/render/terrainShaping.ts`: 11 funcionalidades (render:flat, render:ground, worker:groundShape, render:renderer, render:terrain, render:buildings, worker:cell, render:land, …)
+- `src/render/instanceCull.ts`: 11 funcionalidades (render:barriers, render:cell, render:elements, render:gardens, render:instance, render:plant, render:prop, render:renderer, …)
+- `src/render/mesh/cylinder.ts`: 11 funcionalidades (render:mesh, render:pole, render:prop, render:renderer, render:scenery, render:sign, render:signals, render:signs, …)
+- `src/render/instanceRuns.ts`: 11 funcionalidades (render:barriers, render:elements, render:gardens, render:instance, render:plant, render:prop, render:renderer, render:scenery, …)
+- `src/world/footwayPath.ts`: 10 funcionalidades (editor:transitTools, sim:agents, sim:ambient, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, …)
+- `src/world/buildings/procedural.ts`: 10 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:buildings, world:growth, editor:buildingTool, …)
+- `src/world/buildings/neighbours.ts`: 10 funcionalidades (worker:cityGen, editor:buildingTool, editor:buildings, editor:growthFeed, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, …)
+- `src/core/polygonBands.ts`: 10 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/world/surfaceParts.ts`: 10 funcionalidades (worker:conflictTable, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, world:lanelets, …)
+- `src/world/turnDigest.ts`: 10 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/world/junctionTurns.ts`: 10 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/world/turnPaths.ts`: 10 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/sim/agents/laneGrid.ts`: 10 funcionalidades (worker:bays, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, sim:transit, …)
+- `src/core/idSlots.ts`: 10 funcionalidades (render:buildings, render:renderer, sim:agents, sim:ambient, sim:city, sim:host, sim:meso, sim:pipeline, …)
+- `src/world/signalPosts.ts`: 10 funcionalidades (render:renderer, render:sign, render:signals, sim:agents, sim:host, sim:peds, worker:sim, world:roads, …)
+- `src/sim/intersections/crossingSpans.ts`: 10 funcionalidades (sim:agents, sim:crossings, sim:host, sim:intersections, sim:invariants, sim:pipeline, worker:sim, sim:topology, …)
+- `src/sim/city/city.ts`: 10 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:meso, sim:pipeline, worker:sim, sim:intersections, …)
+- `src/world/cityGen/mapSize.ts`: 10 funcionalidades (worker:cityGen, editor:roundabout, editor:smallCityMap, worker:ecology, render:ecology, render:far, render:flat, render:iso, …)
+- `src/render/woodsBase.ts`: 10 funcionalidades (worker:ecology, render:ecology, render:far, render:flat, worker:flatGround, render:land, worker:landStroke, render:renderer, …)
+- `src/render/riderPoses.ts`: 10 funcionalidades (render:agents, render:citizen, worker:citizenBake, render:occupants, render:play, render:renderer, render:rider, render:rigged, …)
+- `src/render/sharedGround.ts`: 10 funcionalidades (render:buildings, worker:cell, render:flat, render:ground, worker:groundShape, render:renderer, worker:roadStations, render:shared, …)
+- `src/world/waiting.ts`: 9 funcionalidades (sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:conflict, world:lanelets, world:waiting, …)
+- `src/world/junctionBuild.ts`: 9 funcionalidades (worker:conflictTable, editor:streetObjects, sim:host, sim:pipeline, worker:sim, sim:topology, sim:world, world:junction, …)
+- `src/world/networkLength.ts`: 9 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, sim:vehicles, world:network, …)
+- `src/sim/agents/bay.ts`: 9 funcionalidades (src:bay, worker:bays, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, …)
+- `src/core/simplifyLine.ts`: 9 funcionalidades (render:renderer, render:road, sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, …)
+- `src/sim/ambient/ambient.ts`: 9 funcionalidades (sim:ambient, sim:host, sim:pipeline, worker:sim, sim:meso, sim:agents, sim:city, sim:vehicles, …)
+- `src/sim/host/protocol.ts`: 9 funcionalidades (sim:host, worker:sim, render:density, render:play, render:renderer, ui:inspector, ui:roads, render:signals, …)
+- `src/sim/host/simClient.ts`: 9 funcionalidades (sim:host, worker:sim, render:agents, render:play, render:renderer, render:signals, ui:inspector, ui:roads, …)
+- `src/people/body/proxy.ts`: 9 funcionalidades (people:body, people:hair, render:agents, render:bake, worker:citizenBake, render:people, render:play, render:renderer, …)
+- `src/render/stagedTexels.ts`: 9 funcionalidades (render:agents, render:flat, render:people, render:play, render:renderer, render:rigged, render:staged, render:terrain, …)
+- `src/render/terrainGrid.ts`: 9 funcionalidades (render:buildings, worker:cell, render:cover, render:flat, render:land, worker:landStroke, render:renderer, render:road, …)
+- `src/core/rerootMap.ts`: 9 funcionalidades (worker:cityGen, editor:blocks, editor:commit, editor:editRules, editor:nodeMover, editor:roadTool, editor:smallCityMap, render:renderer, …)
+- `src/editor/poleRoutes.ts`: 9 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poleRoutes, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, …)
+- `src/world/roads/furnitureCatalog.ts`: 9 funcionalidades (worker:cityGen, editor:bulldozer, editor:cityGenerator, editor:nodeMover, editor:roadTool, editor:roads-streetKit, editor:smallCityMap, editor:streetscapeTool, …)
+- `src/world/roads/furnitureSets.ts`: 9 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:roadTool, editor:roads-streetKit, editor:smallCityMap, ui:roads, ui:v2, …)
+- `src/world/rasterGrid.ts`: 8 funcionalidades (worker:cityGen, editor:smallCityMap, sim:host, worker:sim, world:lots, world:pole, world:raster, world:zone)
+- `src/world/buildings/spaces.ts`: 8 funcionalidades (editor:buildingTool, render:buildings, worker:cell, render:destruction, render:play, render:renderer, render:room, world:buildings)
+- `src/people/phenotype.ts`: 8 funcionalidades (people:phenotype, people:roster, people:spec, render:agents, render:citizen, render:play, render:renderer, render:rigged)
+- `src/sim/agents/parking.ts`: 8 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:transit, sim:ambient, src:bay)
+- `src/sim/transit/transit.ts`: 8 funcionalidades (sim:city, sim:host, sim:pipeline, worker:sim, sim:transit, sim:agents, sim:intersections, sim:vehicles)
+- `src/sim/vehicles/spawn.ts`: 8 funcionalidades (sim:host, sim:meso, sim:pipeline, worker:sim, sim:vehicles, sim:agents, sim:ambient, sim:city)
+- `src/render/mesh/weld.ts`: 8 funcionalidades (render:agents, render:buildings, render:car, render:mesh, render:part, render:people, render:renderer, render:vehicle)
+- `src/render/citizenWalk.ts`: 8 funcionalidades (render:agents, render:bake, render:citizen, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/citizenBake.ts`: 8 funcionalidades (render:agents, render:citizen, worker:citizenBake, render:play, render:renderer, render:rigged, render:people, render:bake)
+- `src/render/partLevelsWork.ts`: 8 funcionalidades (render:agents, render:part, render:people, render:renderer, render:vehicle, worker:citizenBake, render:play, render:rigged)
+- `src/render/quality.ts`: 8 funcionalidades (render:optimizations, render:postprocess, render:quality, render:renderer, render:agents, render:vehicle, render:people, render:play)
+- `src/world/viewCells.ts`: 8 funcionalidades (render:buildings, render:gardens, render:pole, render:prop, render:renderer, render:road, render:street, world:view)
+- `src/render/impostorShaders.ts`: 8 funcionalidades (render:far, render:flat, render:gardens, render:impostor, render:nature, render:plant, render:renderer, render:street)
+- `src/world/roads/buildMode.ts`: 8 funcionalidades (editor:blocks, editor:commit, editor:nodeMover, editor:roadTool, render:renderer, render:structure, render:structures, world:roads)
+- `src/render/terrainLevels.ts`: 8 funcionalidades (render:flat, worker:flatGround, render:gpu, render:land, worker:landStroke, render:plate, render:renderer, render:terrain)
+- `src/world/buildings/splitLevel.ts`: 8 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:buildings, world:growth, editor:buildingTool)
+- `src/editor/poles.ts`: 8 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:poles, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, editor:smallCityMap)
+- `src/world/buildings/architecture.ts`: 7 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:buildings, world:growth)
+- `src/world/zoneGrid.ts`: 7 funcionalidades (editor:lotTool, world:lots, world:zone, worker:cityGen, editor:smallCityMap, sim:host, worker:sim)
+- `src/sim/agents/kerbBays.ts`: 7 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, sim:transit)
+- `src/sim/intersections/spillback.ts`: 7 funcionalidades (sim:host, sim:intersections, sim:invariants, sim:pipeline, worker:sim, sim:topology, sim:world)
+- `src/sim/drive/operational.ts`: 7 funcionalidades (sim:drive, sim:host, sim:pipeline, worker:sim, sim:vehicles, sim:ambient, sim:meso)
+- `src/sim/vehicles/curvature.ts`: 7 funcionalidades (sim:ambient, sim:host, sim:intersections, sim:meso, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/ambient/ambientIndex.ts`: 7 funcionalidades (sim:ambient, sim:host, sim:pipeline, worker:sim, sim:agents, sim:city, sim:meso)
+- `src/sim/agents/walk.ts`: 7 funcionalidades (sim:agents, sim:host, worker:sim, sim:ambient, sim:pipeline, render:agents, render:renderer)
+- `src/sim/vehicles/laneClosures.ts`: 7 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/roads/controlAdvisor.ts`: 7 funcionalidades (sim:host, sim:intersections, sim:pipeline, sim:roads, worker:sim, sim:topology, sim:world)
+- `src/sim/people/casualties.ts`: 7 funcionalidades (render:play, render:ragdoll, render:renderer, sim:agents, sim:host, sim:people, worker:sim)
+- `src/render/exhaust.ts`: 7 funcionalidades (render:exhaust, render:renderer, render:blast, render:destruction, render:elements, render:play, render:ragdoll)
+- `src/render/instanceBounds.ts`: 7 funcionalidades (render:agents, render:gore, render:instance, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/cartoon.ts`: 7 funcionalidades (render:agents, render:bake, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/pagePorts.ts`: 7 funcionalidades (render:agents, render:bake, render:page, render:people, render:play, render:renderer, render:rigged)
+- `src/render/citizenGait.ts`: 7 funcionalidades (render:agents, render:citizen, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/citizenPalette.ts`: 7 funcionalidades (render:agents, render:citizen, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/cookedPerson.ts`: 7 funcionalidades (render:agents, render:bake, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/people/body/morph.ts`: 7 funcionalidades (people:body, render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/people/body/assets.ts`: 7 funcionalidades (people:body, render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/people/body/expressions.ts`: 7 funcionalidades (people:body, render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/lodWorker.ts`: 7 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged, render:vehicle)
+- `src/render/people/lodPort.ts`: 7 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged, render:vehicle)
+- `src/render/people/personRig.ts`: 7 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged, render:bake)
+- `src/render/people/classRigMade.ts`: 7 funcionalidades (render:agents, render:bake, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/citizenBake.worker.ts`: 7 funcionalidades (render:agents, render:bake, worker:citizenBake, render:people, render:renderer, render:play, render:rigged)
+- `src/render/buildings/cellArrays.ts`: 7 funcionalidades (render:buildings, worker:cell, render:renderer, render:building, render:destruction, render:play, worker:fracture)
+- `src/render/mesh/textureBaker.ts`: 7 funcionalidades (render:bake, render:buildings, render:flat, render:mesh, render:renderer, render:terrain, render:water)
+- `src/render/surfaceTextures.ts`: 7 funcionalidades (render:buildings, render:materials, render:renderer, render:surface, render:flat, render:mesh, render:terrain)
+- `src/world/streetFurniture.ts`: 7 funcionalidades (render:gardens, render:pole, render:renderer, render:scenery, render:street, render:utilities, world:street)
+- `src/editor/roads/economy.ts`: 7 funcionalidades (editor:blocks, editor:bulldozer, editor:commit, editor:editRules, editor:nodeMover, editor:roadTool, editor:roads-economy)
+- `src/editor/commit.ts`: 7 funcionalidades (editor:blocks, editor:commit, editor:history, editor:nodeMover, editor:repair, editor:roadTool, editor:streetObjects)
+- `src/world/growth/zoning.ts`: 7 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:growth, editor:growthFeed)
+- `src/editor/roads/powerLine.ts`: 7 funcionalidades (worker:cityGen, editor:cityGenerator, editor:nodeMover, editor:roadTool, editor:roads-powerLine, editor:roads-streetKit, editor:smallCityMap)
+- `src/editor/saveBinary.ts`: 7 funcionalidades (editor:chunkedSave, editor:persistence, editor:regionFrames, editor:saveBinary, editor:mapExport, worker:save, editor:saveStore)
+- `src/core/runPool.ts`: 6 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim)
+- `src/sim/agents/buildingOrder.ts`: 6 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim)
+- `src/core/weightedSlots.ts`: 6 funcionalidades (sim:agents, sim:ambient, sim:city, sim:host, sim:pipeline, worker:sim)
+- `src/sim/crossings/permission.ts`: 6 funcionalidades (sim:agents, sim:crossings, sim:host, worker:sim, sim:intersections, sim:pipeline)
+- `src/sim/agents/manoeuvre.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:ambient)
+- `src/sim/signals/permission.ts`: 6 funcionalidades (sim:host, sim:intersections, sim:pipeline, sim:signals, worker:sim, sim:vehicles)
+- `src/sim/intersections/admission.ts`: 6 funcionalidades (sim:host, sim:intersections, sim:pipeline, worker:sim, sim:vehicles, sim:topology)
+- `src/sim/vehicles/obstacles.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/agents/hybridAStar.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:ambient)
+- `src/sim/agents/lorryDocks.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:ambient)
+- `src/sim/agents/lorryTraffic.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:ambient)
+- `src/sim/agents/lotTraffic.ts`: 6 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim, sim:ambient)
+- `src/render/farWoods.ts`: 6 funcionalidades (worker:ecology, render:ecology, render:far, render:flat, render:renderer, render:terrain)
+- `src/sim/host/fleetGrid.ts`: 6 funcionalidades (render:agents, render:frustum, render:play, render:renderer, sim:host, worker:sim)
+- `src/render/people/personMesh.ts`: 6 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/people/roster.ts`: 6 funcionalidades (people:roster, render:agents, render:citizen, render:play, render:renderer, render:rigged)
+- `src/render/citizenStride.ts`: 6 funcionalidades (render:agents, render:citizen, worker:citizenBake, render:play, render:renderer, render:rigged)
+- `src/render/people/garmentSlots.ts`: 6 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/facialMorphs.ts`: 6 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/faceExpression.ts`: 6 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/personBuild.ts`: 6 funcionalidades (render:agents, worker:citizenBake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/bakePool.ts`: 6 funcionalidades (render:agents, render:bake, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/garmentPadding.ts`: 6 funcionalidades (render:agents, render:people, worker:garmentPadding, render:play, render:renderer, render:rigged)
+- `src/render/people/crowdAnimation.ts`: 6 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged, render:citizen)
+- `src/world/rampRise.ts`: 6 funcionalidades (render:agents, render:renderer, render:road, worker:roadTile, world:curb, world:ramp)
+- `src/world/buildings/blocks.ts`: 6 funcionalidades (render:buildings, worker:cell, render:destruction, render:play, render:renderer, world:buildings)
+- `src/world/buildings/lots.ts`: 6 funcionalidades (render:buildings, worker:cell, render:ground, worker:groundShape, render:renderer, world:buildings)
+- `src/world/buildings/pads.ts`: 6 funcionalidades (render:ground, worker:groundShape, render:renderer, world:buildings, render:buildings, worker:cell)
+- `src/render/buildings/facadeProps.ts`: 6 funcionalidades (render:building, render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/buildings/flagLayer.ts`: 6 funcionalidades (render:building, render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/buildings/chunk.ts`: 6 funcionalidades (render:building, render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/buildings/shellParts.ts`: 6 funcionalidades (render:buildings, worker:cell, render:destruction, render:play, render:renderer, worker:fracture)
+- `src/render/lotLattice.ts`: 6 funcionalidades (render:buildings, render:flat, render:lot, render:materials, render:renderer, render:terrain)
+- `src/render/lotOverlay.ts`: 6 funcionalidades (render:lot, render:renderer, render:buildings, render:flat, render:materials, render:terrain)
+- `src/render/buildings/kit.ts`: 6 funcionalidades (render:buildings, render:renderer, worker:cell, render:building, render:destruction, render:play)
+- `src/render/bake/detailRecipes.ts`: 6 funcionalidades (render:bake, render:flat, render:materials, render:mesh, render:renderer, render:terrain)
+- `src/render/gpuLedger.ts`: 6 funcionalidades (render:buildings, render:flat, render:gpu, render:renderer, render:mesh, render:terrain)
+- `src/render/scenery.ts`: 6 funcionalidades (render:renderer, render:scenery, render:pole, render:street, render:utilities, render:gardens)
+- `src/render/candidateKeep.ts`: 6 funcionalidades (render:candidate, render:cell, render:cover, render:elements, render:renderer, render:plant)
+- `src/render/natureTrees.ts`: 6 funcionalidades (render:cover, render:far, render:flat, render:nature, render:plant, render:renderer)
+- `src/world/growth/lotBoundaryRuns.ts`: 6 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:growth)
+- `src/world/growth/lotPlan.ts`: 6 funcionalidades (worker:cityGen, editor:growthReplica, editor:smallCityMap, worker:growth, src:growth, world:growth)
+- `src/world/roads/profile.ts`: 6 funcionalidades (editor:roadTool, editor:roads-profile, ui:inspector, ui:roads, ui:v2, world:roads)
+- `src/world/roads/streetChain.ts`: 6 funcionalidades (worker:cityGen, editor:cityGenerator, editor:roadTool, editor:smallCityMap, ui:inspector, world:roads)
+- `src/world/roads/streetNames.ts`: 6 funcionalidades (worker:cityGen, editor:cityGenerator, editor:roadTool, editor:smallCityMap, world:roads, ui:inspector)
+- `src/editor/saveStore.ts`: 6 funcionalidades (editor:chunkedSave, editor:persistence, worker:save, editor:saveStore, editor:workerParts, worker:job)
+- `src/sim/peds/signalPostIndex.ts`: 5 funcionalidades (sim:agents, sim:host, sim:peds, worker:sim, sim:world)
+- `src/sim/agents/lotDoors.ts`: 5 funcionalidades (sim:agents, sim:ambient, sim:host, sim:pipeline, worker:sim)
+- `src/sim/agents/reedsShepp.ts`: 5 funcionalidades (sim:agents, sim:city, sim:host, sim:pipeline, worker:sim)
+- `src/world/cityGen/wholeMap.ts`: 5 funcionalidades (worker:ecology, render:ecology, render:far, render:renderer, world:cityGen)
+- `src/sim/meso/memory.ts`: 5 funcionalidades (render:density, render:renderer, sim:meso, sim:host, worker:sim)
+- `src/render/interiorSolids.ts`: 5 funcionalidades (render:agents, render:car, render:interior, render:renderer, render:vehicle)
+- `src/render/vehicleModels.ts`: 5 funcionalidades (render:agents, render:car, render:occupants, render:renderer, render:vehicle)
+- `src/render/citizenCasting.ts`: 5 funcionalidades (render:agents, render:citizen, render:play, render:renderer, render:rigged)
+- `src/render/citizenAssets.ts`: 5 funcionalidades (render:agents, render:citizen, render:play, render:renderer, render:rigged)
+- `src/render/people/proceduralBake.ts`: 5 funcionalidades (render:agents, worker:citizenBake, render:people, render:renderer, render:bake)
+- `src/render/people/cookedLoad.ts`: 5 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/heldProps.ts`: 5 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/garmentPaddingPool.ts`: 5 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged)
+- `src/render/people/skinAppearance.ts`: 5 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged)
+- `src/render/groundShear.ts`: 5 funcionalidades (render:agents, render:ground, render:play, render:renderer, render:rigged)
+- `src/render/people/paletteTargets.ts`: 5 funcionalidades (render:agents, render:people, render:play, render:renderer, render:rigged)
+- `src/render/citizenPlays.ts`: 5 funcionalidades (render:agents, render:citizen, render:play, render:renderer, render:rigged)
+- `src/sim/vehicleSignals.ts`: 5 funcionalidades (sim:host, worker:sim, sim:vehicle, render:agents, render:renderer)
+- `src/render/lightLevels.ts`: 5 funcionalidades (render:agents, render:buildings, render:light, render:renderer, render:scenery)
+- `src/render/buildings/roomBehind.ts`: 5 funcionalidades (render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/buildings/partPose.ts`: 5 funcionalidades (render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/mesh/hiddenFaces.ts`: 5 funcionalidades (render:buildings, render:mesh, render:prop, render:renderer, render:scenery)
+- `src/render/buildings/facadeLevel.ts`: 5 funcionalidades (render:buildings, worker:cell, render:destruction, render:play, render:renderer)
+- `src/render/buildings/buildingMesh.ts`: 5 funcionalidades (render:buildings, worker:cell, render:renderer, render:destruction, render:play)
+- `src/render/buildings/fracture.ts`: 5 funcionalidades (render:buildings, worker:fracture, render:destruction, render:play, render:renderer)
+- `src/view/viewport.ts`: 5 funcionalidades (render:iso, render:renderer, ui:v2, view:camera, view:viewport)
+- `src/render/mesh/detailLayer.ts`: 5 funcionalidades (render:materials, render:mesh, render:renderer, render:flat, render:terrain)
+- `src/render/materials.ts`: 5 funcionalidades (render:materials, render:renderer, render:road, render:structure, render:structures)
+- `src/world/buildings/cameraSolids.ts`: 5 funcionalidades (render:renderer, world:buildings, render:canyon, render:occlusion, render:postprocess)
+- `src/render/effectSwitches.ts`: 5 funcionalidades (render:building, render:effect, render:optimizations, render:postprocess, render:renderer)
+- `src/render/roadSurfaceReads.ts`: 5 funcionalidades (render:renderer, render:road, worker:roadTile, render:structure, render:structures)
+- `src/render/groundShape.ts`: 5 funcionalidades (render:flat, render:ground, worker:groundShape, render:renderer, render:terrain)
+- `src/render/groundCover.ts`: 5 funcionalidades (render:ground, render:nature, render:plant, render:renderer, render:cover)
+- `src/render/groundChanges.ts`: 5 funcionalidades (render:flat, render:garden, render:ground, render:renderer, render:terrain)
+- `src/render/plateMesh.ts`: 5 funcionalidades (render:flat, worker:flatGround, render:plate, render:renderer, render:terrain)
+- `src/render/landStroke.ts`: 5 funcionalidades (render:flat, render:land, worker:landStroke, render:renderer, render:terrain)
+- `src/editor/editRules.ts`: 5 funcionalidades (editor:blocks, editor:commit, editor:editRules, editor:nodeMover, editor:roadTool)
+- `src/sim/drive/physicalMotion.ts`: 5 funcionalidades (sim:drive, sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/ambient/lotPlaces.ts`: 4 funcionalidades (sim:ambient, sim:host, sim:pipeline, worker:sim)
+- `src/sim/vehicles/laneChange.ts`: 4 funcionalidades (sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/vehicles/leaderIndex.ts`: 4 funcionalidades (sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/intersections/cycles.ts`: 4 funcionalidades (sim:host, sim:intersections, sim:pipeline, worker:sim)
+- `src/render/casualties.ts`: 4 funcionalidades (render:casualties, render:play, render:ragdoll, render:renderer)
+- `src/render/gore.ts`: 4 funcionalidades (render:gore, render:play, render:ragdoll, render:renderer)
+- `src/render/ragdoll.ts`: 4 funcionalidades (render:agents, render:play, render:ragdoll, render:renderer)
+- `src/world/growth/version.ts`: 4 funcionalidades (worker:cityGen, editor:smallCityMap, world:cityGen, world:growth)
+- `src/world/cityGen/field.ts`: 4 funcionalidades (worker:cityGen, editor:smallCityMap, world:cityGen, editor:cityGenerator)
+- `src/world/cityGen/streets.ts`: 4 funcionalidades (worker:cityGen, editor:smallCityMap, world:cityGen, editor:cityGenerator)
+- `src/world/cityGen/plan.ts`: 4 funcionalidades (worker:cityGen, editor:cityGenerator, editor:smallCityMap, world:cityGen)
+- `src/render/ecologyPool.ts`: 4 funcionalidades (render:ecology, render:flat, render:renderer, render:terrain)
+- `src/sim/host/simAnswers.ts`: 4 funcionalidades (sim:host, worker:sim, ui:inspector, ui:roads)
+- `src/render/carBody.ts`: 4 funcionalidades (render:agents, render:car, render:renderer, render:vehicle)
+- `src/render/people/bodyPixels.ts`: 4 funcionalidades (render:agents, worker:citizenBake, render:people, render:renderer)
+- `src/people/hair/procedural.ts`: 4 funcionalidades (people:hair, render:agents, render:people, render:renderer)
+- `src/render/riggedCitizens.ts`: 4 funcionalidades (render:agents, render:play, render:renderer, render:rigged)
+- `src/render/people/lodPool.ts`: 4 funcionalidades (render:agents, render:people, render:renderer, render:vehicle)
+- `src/render/blobShadows.ts`: 4 funcionalidades (render:agents, render:blob, render:people, render:renderer)
+- `src/render/people/proceduralCrowd.ts`: 4 funcionalidades (render:agents, render:people, render:renderer, render:play)
+- `src/world/curbRamps.ts`: 4 funcionalidades (render:agents, render:renderer, render:road, world:curb)
+- `src/world/buildings/roofPlant.ts`: 4 funcionalidades (render:buildings, worker:cell, render:renderer, world:buildings)
+- `src/world/buildings/towerKit.ts`: 4 funcionalidades (render:buildings, worker:cell, render:renderer, world:buildings)
+- `src/world/carriageway.ts`: 4 funcionalidades (editor:bulldozer, editor:transitTools, render:renderer, world:carriageway)
+- `src/render/sunCascades.ts`: 4 funcionalidades (render:environment, render:renderer, render:sun, render:optimizations)
+- `src/render/mesh/roadEdges.ts`: 4 funcionalidades (render:materials, render:mesh, render:renderer, render:road)
+- `src/render/buildings/layerApi.ts`: 4 funcionalidades (render:building, render:buildings, render:renderer, render:room)
+- `src/world/markings.ts`: 4 funcionalidades (render:paint, render:renderer, render:road, world:markings)
+- `src/render/paintQuads.ts`: 4 funcionalidades (render:paint, render:renderer, render:road, render:markings)
+- `src/render/mesh/stream.ts`: 4 funcionalidades (render:mesh, render:renderer, render:road, worker:roadTile)
+- `src/core/axisCut.ts`: 4 funcionalidades (render:mesh, render:renderer, render:road, worker:roadTile)
+- `src/render/mesh/tileShape.ts`: 4 funcionalidades (render:mesh, render:renderer, render:road, worker:roadTile)
+- `src/render/mesh/tileMesh.ts`: 4 funcionalidades (render:mesh, render:renderer, render:road, worker:roadTile)
+- `src/render/roadTones.ts`: 4 funcionalidades (render:network, render:renderer, render:road, worker:roadTile)
+- `src/render/mesh/roadLodPure.ts`: 4 funcionalidades (render:mesh, render:renderer, render:road, worker:roadTile)
+- `src/render/buildings/gpuBatchedMesh.ts`: 4 funcionalidades (render:buildings, render:mesh, render:renderer, render:network)
+- `src/render/propCells.ts`: 4 funcionalidades (render:gardens, render:prop, render:renderer, render:street)
+- `src/render/torusWindow.ts`: 4 funcionalidades (render:fog, render:renderer, render:torus, render:wear)
+- `src/render/gpu/backendChoice.ts`: 4 funcionalidades (render:gpu, render:renderer, render:sign, render:signs)
+- `src/render/pinned.ts`: 4 funcionalidades (render:density, render:pinned, render:renderer, render:transit)
+- `src/render/terrainLightCompute.ts`: 4 funcionalidades (render:flat, render:renderer, render:terrain, worker:terrainLight)
+- `src/render/plateTexels.ts`: 4 funcionalidades (render:flat, render:plate, render:renderer, render:terrain)
+- `src/render/terrainLod.ts`: 4 funcionalidades (render:flat, render:renderer, render:terrain, render:gpu)
+- `src/render/bake/terrainRecipes.ts`: 4 funcionalidades (render:bake, render:flat, render:renderer, render:terrain)
+- `src/render/water.ts`: 4 funcionalidades (render:flat, render:renderer, render:terrain, render:water)
+- `src/render/landStrokePool.ts`: 4 funcionalidades (render:flat, render:land, render:renderer, render:terrain)
+- `src/render/coverRaster.ts`: 4 funcionalidades (render:cover, render:flat, render:renderer, render:terrain)
+- `src/render/cellKeeps.ts`: 4 funcionalidades (render:cell, render:cover, render:elements, render:renderer)
+- `src/editor/buildingPlans.ts`: 4 funcionalidades (editor:buildingPlans, editor:buildingProfile, editor:buildingTool, editor:buildings)
+- `src/core/keptList.ts`: 4 funcionalidades (editor:blueprintLibrary, ui:inspector, ui:roads, ui:v2)
+- `src/editor/roadPath.ts`: 4 funcionalidades (editor:blocks, editor:commit, editor:roadPath, editor:roadTool)
+- `src/world/cityGen/squares.ts`: 4 funcionalidades (worker:cityGen, editor:cityGenerator, editor:smallCityMap, world:cityGen)
+- `src/editor/growthReplica.ts`: 4 funcionalidades (editor:growthFeed, editor:growthReplica, worker:growth, src:growth)
+- `src/ui/labels.ts`: 4 funcionalidades (ui:inspector, ui:labels, ui:roads, ui:v2)
+- `src/world/roads/templates.ts`: 4 funcionalidades (ui:inspector, ui:roads, ui:v2, world:roads)
+- `src/sim/invariants.ts`: 4 funcionalidades (sim:host, sim:invariants, sim:pipeline, worker:sim)
+- `src/sim/vehicles/integrate.ts`: 4 funcionalidades (sim:host, sim:pipeline, worker:sim, sim:vehicles)
+- `src/sim/pipeline.ts`: 4 funcionalidades (sim:host, sim:pipeline, worker:sim, sim:topology)
+- `src/world/buildings/spilledItems.ts`: 3 funcionalidades (worker:cityGen, editor:smallCityMap, world:buildings)
+- `src/render/ragdollAxes.ts`: 3 funcionalidades (render:play, render:ragdoll, render:renderer)
+- `src/render/ragdollJolt.ts`: 3 funcionalidades (render:play, render:ragdoll, render:renderer)
+- `src/sim/roads/greenWave.ts`: 3 funcionalidades (sim:host, sim:roads, worker:sim)
+- `src/world/roads/laneEnds.ts`: 3 funcionalidades (sim:host, worker:sim, world:roads)
+- `src/world/solids.ts`: 3 funcionalidades (render:play, render:renderer, world:solids)
+- `src/render/mesh/simplify.ts`: 3 funcionalidades (render:agents, render:mesh, render:renderer)
+- `src/render/vehiclePanels.ts`: 3 funcionalidades (render:agents, render:renderer, render:vehicle)
+- `src/render/vehicleWindows.ts`: 3 funcionalidades (render:agents, render:renderer, render:vehicle)
+- `src/render/vehicleFrame.ts`: 3 funcionalidades (render:agents, render:renderer, render:vehicle)
+- `src/render/people/cookPack.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/proceduralCook.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/hairTexture.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/crowdLod.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/personVariants.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/gpuRows.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/render/people/crowdBodies.ts`: 3 funcionalidades (render:agents, render:people, render:renderer)
+- `src/sim/ambient/playerId.ts`: 3 funcionalidades (render:agents, render:renderer, sim:ambient)
+- `src/render/occupants.ts`: 3 funcionalidades (render:agents, render:occupants, render:renderer)
+- `src/render/vehicleLevels.ts`: 3 funcionalidades (render:agents, render:renderer, render:vehicle)
+- `src/render/agents.ts`: 3 funcionalidades (render:agents, render:renderer, render:play)
+- `src/render/blast.ts`: 3 funcionalidades (render:blast, render:play, render:renderer)
+- `src/render/buildings/lightSlots.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/core/minMax.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/roofPlan.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/massing.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/bake/finishRecipes.ts`: 3 funcionalidades (render:bake, render:buildings, render:renderer)
+- `src/render/buildings/lawnGround.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/facadeKit.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/landmarks.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/signature.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/partyWalls.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/partFiling.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/destruction.ts`: 3 funcionalidades (render:destruction, render:play, render:renderer)
+- `src/render/ragdollGround.ts`: 3 funcionalidades (render:play, render:ragdoll, render:renderer)
+- `src/render/roadStations.worker.ts`: 3 funcionalidades (render:renderer, render:road, worker:roadStations)
+- `src/render/environment.ts`: 3 funcionalidades (render:environment, render:renderer, render:optimizations)
+- `src/render/bake/roadRecipes.ts`: 3 funcionalidades (render:bake, render:materials, render:renderer)
+- `src/view/cameraProfile.ts`: 3 funcionalidades (render:iso, render:renderer, view:camera)
+- `src/render/canyonLight.ts`: 3 funcionalidades (render:canyon, render:postprocess, render:renderer)
+- `src/render/cloudShadowStamp.ts`: 3 funcionalidades (render:cloud, render:postprocess, render:renderer)
+- `src/render/buildings/frameBudget.ts`: 3 funcionalidades (render:buildings, render:renderer, render:building)
+- `src/render/buildings/levelKeys.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/massBase.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/render/buildings/massCells.ts`: 3 funcionalidades (render:buildings, render:renderer, render:building)
+- `src/render/optimizationTypes.ts`: 3 funcionalidades (render:optimization, render:optimizations, render:renderer)
+- `src/render/roadTileShape.ts`: 3 funcionalidades (render:renderer, render:road, worker:roadTile)
+- `src/render/mesh/roadLod.ts`: 3 funcionalidades (render:mesh, render:renderer, render:road)
+- `src/render/mesh/surfaceMesh.ts`: 3 funcionalidades (render:mesh, render:renderer, render:road)
+- `src/render/mesh/surfaceTiles.ts`: 3 funcionalidades (render:mesh, render:renderer, render:road)
+- `src/render/mesh/farBlockBatches.ts`: 3 funcionalidades (render:mesh, render:renderer, render:road)
+- `src/render/roadTileMesh.ts`: 3 funcionalidades (render:renderer, render:road, worker:roadTile)
+- `src/render/networkFarRoadsBuild.ts`: 3 funcionalidades (render:network, worker:networkFarRoads, render:renderer)
+- `src/render/roadStandIn.ts`: 3 funcionalidades (render:network, render:renderer, render:road)
+- `src/render/grass.ts`: 3 funcionalidades (render:grass, render:renderer, render:street)
+- `src/render/gardens.ts`: 3 funcionalidades (render:garden, render:gardens, render:renderer)
+- `src/render/stillTree.ts`: 3 funcionalidades (render:renderer, render:signals, render:still)
+- `src/render/structures.ts`: 3 funcionalidades (render:renderer, render:structure, render:structures)
+- `src/world/roads/derivedSigns.ts`: 3 funcionalidades (render:sign, world:roads, editor:streetscapeTool)
+- `src/render/signs.ts`: 3 funcionalidades (render:renderer, render:sign, render:signs)
+- `src/render/utilities.ts`: 3 funcionalidades (render:pole, render:renderer, render:utilities)
+- `src/render/terrainLightPool.ts`: 3 funcionalidades (render:flat, render:renderer, render:terrain)
+- `src/render/terrain.ts`: 3 funcionalidades (render:flat, render:renderer, render:terrain)
+- `src/render/platePaint.ts`: 3 funcionalidades (render:flat, render:plate, render:renderer)
+- `src/render/farForest.ts`: 3 funcionalidades (render:far, render:flat, render:renderer)
+- `src/render/farGround.ts`: 3 funcionalidades (render:far, render:flat, render:renderer)
+- `src/render/buildings/layerCells.ts`: 3 funcionalidades (render:buildings, render:renderer, worker:cell)
+- `src/render/buildings/cellWork.ts`: 3 funcionalidades (render:buildings, worker:cell, render:renderer)
+- `src/sim/meso/model.ts`: 3 funcionalidades (render:density, render:renderer, sim:meso)
+- `src/sim/meso/tileLinks.ts`: 3 funcionalidades (render:density, render:renderer, sim:meso)
+- `src/render/plateFollow.ts`: 3 funcionalidades (render:cover, render:plate, render:renderer)
+- `src/bayPool.ts`: 3 funcionalidades (src:bay, sim:host, worker:sim)
+- `src/world/buildings/lotTemplate.ts`: 3 funcionalidades (render:buildings, ui:v2, world:buildings)
+- `src/world/buildings/lotLibrary.ts`: 3 funcionalidades (render:buildings, ui:v2, world:buildings)
+- `src/editor/buildings.ts`: 3 funcionalidades (editor:buildingTool, editor:buildings, editor:buildingSnap)
+- `src/world/buildings/handles.ts`: 3 funcionalidades (editor:buildingTool, ui:overlay, world:buildings)
+- `src/world/buildings/facadePatterns.ts`: 3 funcionalidades (editor:buildingTool, render:buildings, world:buildings)
+- `src/ui/builder/catalog.ts`: 3 funcionalidades (ui:builder, ui:v2, ui:planSwatch)
+- `src/world/buildings/reference.ts`: 3 funcionalidades (editor:fromReference, render:buildings, world:buildings)
+- `src/world/cityGen/smallCity.ts`: 3 funcionalidades (worker:cityGen, editor:smallCityMap, world:cityGen)
+- `src/world/cityGen/largeCity.ts`: 3 funcionalidades (worker:cityGen, editor:smallCityMap, world:cityGen)
+- `src/editor/cityGenerator.ts`: 3 funcionalidades (worker:cityGen, editor:cityGenerator, editor:smallCityMap)
+- `src/editor/preparedCity.ts`: 3 funcionalidades (worker:cityGen, editor:preparedCity, editor:smallCityMap)
+- `src/conflictPool.ts`: 3 funcionalidades (src:conflict, sim:host, worker:sim)
+- `src/editor/regionFrames.ts`: 3 funcionalidades (editor:chunkedSave, editor:persistence, editor:regionFrames)
+- `src/editor/workerParts.ts`: 3 funcionalidades (editor:workerParts, worker:job, worker:save)
+- `src/editor/roads/streetKit.ts`: 3 funcionalidades (editor:bulldozer, editor:nodeMover, editor:roads-streetKit)
+- `src/view/cameraMotion.ts`: 3 funcionalidades (ui:roads, ui:v2, view:camera)
+- `src/ui/roads/drawProfile.ts`: 3 funcionalidades (ui:inspector, ui:roads, ui:v2)
+- `src/ui/roads/crossSection.ts`: 3 funcionalidades (ui:inspector, ui:roads, ui:v2)
+- `src/ui/roads/templates.ts`: 3 funcionalidades (ui:inspector, ui:roads, ui:v2)
+- `src/ui/roads/profileEditor.ts`: 3 funcionalidades (ui:inspector, ui:roads, ui:v2)
+- `src/world/roads/catalog.ts`: 3 funcionalidades (ui:roads, ui:v2, world:roads)
+- `src/sim/populationGovernor.ts`: 3 funcionalidades (sim:host, sim:population, worker:sim)
+- `src/sim/meso/meso.ts`: 3 funcionalidades (sim:host, sim:meso, worker:sim)
+- `src/sim/topologyCatchUp.ts`: 3 funcionalidades (sim:host, worker:sim, sim:topology)
+- `src/world/tileIndex.ts`: 2 funcionalidades (world:doc, world:tile)
+- `src/world/junction/mouthOverlap.ts`: 2 funcionalidades (world:junction, world:turn)
+- `src/render/buildings/finishes.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/furnitureKit.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/roomLamps.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/massingMaterial.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/thinParts.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/glassRoom.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/louvreSlats.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/facadePropModels.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/fade.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/playEffects.ts`: 2 funcionalidades (render:play, render:renderer)
+- `src/render/roadsRead.ts`: 2 funcionalidades (render:renderer, render:roads)
+- `src/render/roadStations.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/view/camera.ts`: 2 funcionalidades (view:camera, view:viewport)
+- `src/render/frustumGround.ts`: 2 funcionalidades (render:frustum, render:renderer)
+- `src/render/isoViewport.ts`: 2 funcionalidades (render:iso, render:renderer)
+- `src/render/targetBytes.ts`: 2 funcionalidades (render:renderer, render:target)
+- `src/render/screenSize.ts`: 2 funcionalidades (render:renderer, render:screen)
+- `src/render/postprocess.ts`: 2 funcionalidades (render:postprocess, render:renderer)
+- `src/render/buildingSwitches.ts`: 2 funcionalidades (render:building, render:renderer)
+- `src/render/optimizationsQuality.ts`: 2 funcionalidades (render:optimizations, render:renderer)
+- `src/render/optimizations.ts`: 2 funcionalidades (render:optimizations, render:renderer)
+- `src/render/optimizationsApply.ts`: 2 funcionalidades (render:optimizations, render:renderer)
+- `src/render/inspector.ts`: 2 funcionalidades (render:inspector, render:renderer)
+- `src/render/roadSurfaceRings.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/roadSurfaceEntries.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/roadSurfaceInputs.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/roadSurfacePass.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/roadTilePool.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/roadSurfaces.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/networkFarRoads.ts`: 2 funcionalidades (render:network, render:renderer)
+- `src/render/roadProgramStandIns.ts`: 2 funcionalidades (render:renderer, render:road)
+- `src/render/derivedWriterLane.ts`: 2 funcionalidades (render:derived, render:renderer)
+- `src/render/groundShapePool.ts`: 2 funcionalidades (render:ground, render:renderer)
+- `src/render/streetFurnitureLayer.ts`: 2 funcionalidades (render:renderer, render:street)
+- `src/render/buildings/partWarm.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/rain.ts`: 2 funcionalidades (render:rain, render:renderer)
+- `src/render/lightning.ts`: 2 funcionalidades (render:lightning, render:renderer)
+- `src/render/signals.ts`: 2 funcionalidades (render:renderer, render:signals)
+- `src/render/structureCells.ts`: 2 funcionalidades (render:renderer, render:structure)
+- `src/render/wear.ts`: 2 funcionalidades (render:renderer, render:wear)
+- `src/render/signLayer.ts`: 2 funcionalidades (render:renderer, render:sign)
+- `src/render/plantCells.ts`: 2 funcionalidades (render:plant, render:renderer)
+- `src/render/markings.ts`: 2 funcionalidades (render:markings, render:renderer)
+- `src/render/mesh/roadResidency.ts`: 2 funcionalidades (render:mesh, render:renderer)
+- `src/render/revealGate.ts`: 2 funcionalidades (render:renderer, render:reveal)
+- `src/render/shaderCatalogue.ts`: 2 funcionalidades (render:renderer, render:shader)
+- `src/core/sampleRing.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/gpuTimer.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/poleBake.ts`: 2 funcionalidades (render:pole, render:renderer)
+- `src/render/poleLayer.ts`: 2 funcionalidades (render:pole, render:renderer)
+- `src/render/poleCells.ts`: 2 funcionalidades (render:pole, render:renderer)
+- `src/render/barriers.ts`: 2 funcionalidades (render:barriers, render:renderer)
+- `src/render/transit.ts`: 2 funcionalidades (render:renderer, render:transit)
+- `src/render/flatGroundPool.ts`: 2 funcionalidades (render:flat, render:renderer)
+- `src/render/flatAtlas.ts`: 2 funcionalidades (render:flat, render:renderer)
+- `src/world/buildings/floors.ts`: 2 funcionalidades (render:renderer, world:buildings)
+- `src/world/buildings/siteGrading.ts`: 2 funcionalidades (render:renderer, world:buildings)
+- `src/render/occlusion.ts`: 2 funcionalidades (render:occlusion, render:renderer)
+- `src/render/buildings/townColumns.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/partCells.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/farParts.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/shellBatch.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/cellPool.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/cellRequests.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/townIndex.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/massLevels.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/buildings/layer.ts`: 2 funcionalidades (render:buildings, render:renderer)
+- `src/render/roomLamps.ts`: 2 funcionalidades (render:renderer, render:room)
+- `src/render/memoryCounters.ts`: 2 funcionalidades (render:memory, render:renderer)
+- `src/render/clearingCells.ts`: 2 funcionalidades (render:clearing, render:renderer)
+- `src/render/fogLayer.ts`: 2 funcionalidades (render:fog, render:renderer)
+- `src/render/elements.ts`: 2 funcionalidades (render:elements, render:renderer)
+- `src/render/densityCars.ts`: 2 funcionalidades (render:density, render:renderer)
+- `src/render/coverSweep.ts`: 2 funcionalidades (render:cover, render:renderer)
+- `src/render/gpu/compatibility.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/gpu/imageCompare.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/gpu/twins.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/gpu/webgpuView.ts`: 2 funcionalidades (render:gpu, render:renderer)
+- `src/render/renderer.ts`: 2 funcionalidades (render:play, render:renderer)
+- `src/editor/editStream.ts`: 2 funcionalidades (editor:editStream, editor:terrainBrush)
+- `src/editor/buildingFloors.ts`: 2 funcionalidades (editor:buildingFloors, editor:buildingTool)
+- `src/world/buildings/pick.ts`: 2 funcionalidades (editor:buildingTool, world:buildings)
+- `src/editor/buildingSnap.ts`: 2 funcionalidades (editor:buildingSnap, editor:buildingTool)
+- `src/editor/buildingRoofs.ts`: 2 funcionalidades (editor:buildingRoofs, editor:buildingTool)
+- `src/editor/buildingProfile.ts`: 2 funcionalidades (editor:buildingProfile, editor:buildingTool)
+- `src/world/docImage.ts`: 2 funcionalidades (editor:history, world:doc)
+- `src/editor/repair.ts`: 2 funcionalidades (editor:history, editor:repair)
+- `src/ui/builder/icons.ts`: 2 funcionalidades (ui:builder, ui:v2)
+- `src/ui/builder/workspace.ts`: 2 funcionalidades (ui:builder, ui:v2)
+- `src/editor/smallCityMap.ts`: 2 funcionalidades (worker:cityGen, editor:smallCityMap)
+- `src/world/turnChoice.ts`: 2 funcionalidades (worker:conflictTable, world:turn)
+- `src/editor/chunkedSave.ts`: 2 funcionalidades (editor:chunkedSave, editor:persistence)
+- `src/editor/persistence.ts`: 2 funcionalidades (editor:mapExport, editor:persistence)
+- `src/editor/growthFeed.ts`: 2 funcionalidades (editor:growthFeed, src:growth)
+- `src/render/ecologyKept.ts`: 2 funcionalidades (worker:ecology, render:ecology)
+- `src/editor/storeTurns.ts`: 2 funcionalidades (worker:save, editor:storeTurns)
+- `src/core/profiler.ts`: 2 funcionalidades (render:profiler, ui:profilerHud)
+- `src/ui/roads/furnitureChoice.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/core/health.ts`: 2 funcionalidades (ui:healthPanel, ui:healthWatch)
+- `src/world/nearestRibbon.ts`: 2 funcionalidades (editor:lotTool, world:nearest)
+- `src/ui/healthWatch.ts`: 2 funcionalidades (ui:healthPanel, ui:healthWatch)
+- `src/ui/toolChoices.ts`: 2 funcionalidades (ui:toolChoices, ui:v2)
+- `src/editor/roads/profile.ts`: 2 funcionalidades (editor:roadTool, editor:roads-profile)
+- `src/ui/roadSectionEditor.ts`: 2 funcionalidades (ui:inspector, ui:roadSectionEditor)
+- `src/ui/roads/cutWalls.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/roads/profilePanel.ts`: 2 funcionalidades (ui:inspector, ui:roads)
+- `src/ui/roads/connectorPanel.ts`: 2 funcionalidades (ui:inspector, ui:roads)
+- `src/ui/roads/junctionPanel.ts`: 2 funcionalidades (ui:inspector, ui:roads)
+- `src/ui/roads/money.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/roads/profileSwatch.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/roads/catalogPanel.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/roads/keys.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/roads/keysPanel.ts`: 2 funcionalidades (ui:roads, ui:v2)
+- `src/ui/materialSwatch.ts`: 2 funcionalidades (ui:materialSwatch, ui:v2)
+- `src/ui/planSwatch.ts`: 2 funcionalidades (ui:planSwatch, ui:v2)
+- `src/ui/buildStamp.ts`: 2 funcionalidades (ui:about, ui:buildStamp)
+- `src/editor/toolMachine.ts`: 2 funcionalidades (editor:gameKeys, editor:toolMachine)
+- `src/sim/host/simHost.ts`: 2 funcionalidades (sim:host, worker:sim)

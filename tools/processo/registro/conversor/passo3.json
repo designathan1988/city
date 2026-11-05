@@ -1,0 +1,53 @@
+{
+  "solucao": "Novo comando `port.ts convert <funcionalidade>` (e estágio `converter convert`), com um dono da decisão por unidade. (1) Resolve a funcionalidade pelo inventário registro/mapa40 e rastreia com o extract existente. (2) Uma contabilidade (Ledger) decide cada declaração própria e fatia a partir de fatos: papel, achados da auditoria na unidade e nas closures, o que ela alcança no grafo inteiro e o que os portes já entregaram: exists, translate, method ou write, com o método correto e o dono no jogo. Só vai à máquina a unidade sem doença que não alcança nada doente. (3) A spec é gerada dos fatos (estado pelo tipo que as edições recebem e devolvem, função vazia, dono, raízes) mais uma biblioteca escrita uma vez com o que o jogo já possui; o que hoje é spec à mão deixa de ser por funcionalidade. (4) Tradução por módulo com o tradutor existente, aceitando módulo sem estado. (5) Quarentena por execução: nada que a contabilidade parou foi emitido, nenhuma forma errada do catálogo no C++, limites de tamanho do jogo, compila contra os headers reais em C++17; qualquer achado recusa a saída inteira. (6) Saída: contabilidade em JSON e conversao.md com o que falta, unidade por unidade; o código só entra num clone com `--apply`, nunca no fonte. O comando sai com código 1 enquanto restar unidade aberta, constante sem fonte ou achado.",
+  "causa_tratada": "A causa do passo 1 é não existir dono da decisão por unidade: a spec manual decide o que traduzir e nada liga a auditoria à tradução. O Ledger passa a ser esse dono, antes de qualquer código ser escrito, então a doença é parada na origem e não depois; a quarentena confere cada saída, então o tradutor não precisa ser confiável; e o que a máquina não sabe escrever (render, interface, classes, shaders) vira obrigação rastreada com método, em vez de sumir.",
+  "plano": [
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/inventory.ts", "mudanca": "novo: lê funcionalidades.json e as coberturas dos portes" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/ledger.ts", "mudanca": "novo: decisão por unidade a partir de papel, auditoria e alcance" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/autospec.ts", "mudanca": "novo: spec de tradução gerada dos fatos e da biblioteca" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/quarantine.ts", "mudanca": "novo: verificação de cada saída do tradutor" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/command.ts", "mudanca": "novo: estágio converter convert, relatório e veredito" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/cli.ts", "mudanca": "registra o estágio convert" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts", "mudanca": "aceita módulo de funções puras, sem tipo de estado" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/sandbox/workspace.ts", "mudanca": "cria a pasta de override.cfg: o teste workspace and pack falha hoje por ENOENT" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/scripts/port.ts", "mudanca": "comando convert com --apply e chave inventory da máquina" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/configs/roadcraft-machine.json", "mudanca": "chave inventory" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/configs/conversion-library.json", "mudanca": "novo: o que o jogo já possui, escrito uma vez" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/test/convert.test.ts", "mudanca": "novo: decisões do ledger e formas recusadas pela quarentena" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/README.md", "mudanca": "documenta o estágio e seu limite" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/DESIGN.md", "mudanca": "registra o ledger e o que segue por fazer" }
+  ],
+  "simbolos": [
+    { "nome": "classifyRoles", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/classify/roles.ts" },
+    { "nome": "runAudit", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/audit/run.ts" },
+    { "nome": "RULE_BY_ID", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/audit/catalog.ts" },
+    { "nome": "ModulePlacement", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/modules.ts" },
+    { "nome": "translate", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts" },
+    { "nome": "openProgram", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/graph/typescript.ts" },
+    { "nome": "addMapLine", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/registry.ts" },
+    { "nome": "addLayer", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/registry.ts" },
+    { "nome": "parseFlags", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/common/args.ts" },
+    { "nome": "removeTree", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/common/files.ts" },
+    { "nome": "readWorkspace", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/sandbox/workspace.ts" }
+  ],
+  "alternativas": [
+    {
+      "solucao": "Só gerar a spec automaticamente e deixar o tradutor correr sobre tudo o que ela alcança, como hoje.",
+      "por_que_nao": "Não elimina a causa: o tradutor continua escrevendo em C++ a forma doente do 4.0, porque copia sintaxe. Seria mais código doente, mais rápido."
+    },
+    {
+      "solucao": "Auditar só depois, sobre o C++ já gerado, com o comando audit existente.",
+      "por_que_nao": "Trata o efeito: boa parte das doenças (estado de módulo, escrita espalhada, busca quadrática, alocação no quadro) só existe de forma legível no grafo do 4.0. A verificação posterior fica como segunda barreira, não como a decisão."
+    },
+    {
+      "solucao": "Traduzir render, interface e shaders com regras de texto para declarar tudo convertido.",
+      "por_que_nao": "A documentação do Godot mostra que atributos e instâncias não têm equivalente direto, e o estudo de tradutores automáticos mostra qualidade abaixo da escrita à mão. Seria dizer convertido sem estar. Essas unidades ficam abertas, com método e dono, até o jogo tê-las."
+    }
+  ],
+  "fontes": [
+    "https://cs.nyu.edu/home/people/in_memoriam/pnueli/pss00.htm",
+    "https://arxiv.org/abs/2602.00840v1",
+    "https://docs.godotengine.org/en/stable/tutorials/shaders/converting_glsl_to_godot_shaders.html",
+    "https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html"
+  ]
+}

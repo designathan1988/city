@@ -1,0 +1,742 @@
+{
+ "entries": [
+  "src/world/economy.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/world/doc.ts#RoadDoc.forkOrigin",
+  "src/world/economy.ts#BUILD_KINDS",
+  "src/world/economy.ts#BuildKind",
+  "src/world/economy.ts#DEFAULT_ECONOMY",
+  "src/world/economy.ts#E",
+  "src/world/economy.ts#Economy",
+  "src/world/economy.ts#Ledger",
+  "src/world/economy.ts#PER_SQUARE_UNIT",
+  "src/world/economy.ts#RoadCharge",
+  "src/world/economy.ts#buildLengths",
+  "src/world/economy.ts#buildLengths.share",
+  "src/world/economy.ts#chargeFor",
+  "src/world/economy.ts#ledgers",
+  "src/world/economy.ts#priceAll",
+  "src/world/economy.ts#priceOf",
+  "src/world/economy.ts#pricePerUnit",
+  "src/world/economy.ts#readEconomy",
+  "src/world/economy.ts#roadValue",
+  "src/world/economy.ts#segmentCost",
+  "src/world/economy.ts#segmentPrice"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/polyline.ts#Polyline.length",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#segmentPrice"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#METERS_PER_UNIT",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#PER_SQUARE_UNIT"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#roadValue"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#Ledger"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal.since",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#roadValue"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal.version",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#priceAll",
+    "src/world/economy.ts#roadValue",
+    "src/world/doc.ts#RoadDoc.forkOrigin"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#ledgers",
+    "src/world/economy.ts#priceAll",
+    "src/world/economy.ts#roadValue",
+    "src/world/economy.ts#segmentCost",
+    "src/world/economy.ts#segmentPrice",
+    "src/world/doc.ts#RoadDoc.forkOrigin"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.changes",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#priceAll",
+    "src/world/economy.ts#roadValue",
+    "src/world/doc.ts#RoadDoc.forkOrigin"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.forkedFrom",
+   "kind": "read",
+   "by": [
+    "src/world/doc.ts#RoadDoc.forkOrigin"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.node",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#roadValue",
+    "src/world/economy.ts#segmentCost"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.segment",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#roadValue"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.segments",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#priceAll"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadNode",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#roadValue",
+    "src/world/economy.ts#segmentCost"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadSegment",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#priceAll",
+    "src/world/economy.ts#segmentCost"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadSegment",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#segmentCost",
+    "src/world/economy.ts#segmentPrice"
+   ]
+  },
+  {
+   "unit": "src/world/geometry.ts#segmentPolyline",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#segmentPrice"
+   ]
+  },
+  {
+   "unit": "src/world/ids.ts#SegmentId",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#Ledger",
+    "src/world/economy.ts#priceAll",
+    "src/world/economy.ts#priceOf",
+    "src/world/economy.ts#roadValue"
+   ]
+  },
+  {
+   "unit": "src/world/roads/tuning.ts#ROAD_TUNING",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#buildLengths",
+    "src/world/economy.ts#chargeFor",
+    "src/world/economy.ts#DEFAULT_ECONOMY",
+    "src/world/economy.ts#E",
+    "src/world/economy.ts#PER_SQUARE_UNIT",
+    "src/world/economy.ts#segmentCost"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#roadProfile",
+   "kind": "call",
+   "by": [
+    "src/world/economy.ts#segmentCost"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#RoadType",
+   "kind": "read",
+   "by": [
+    "src/world/economy.ts#pricePerUnit"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#RoadType",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#pricePerUnit"
+   ]
+  },
+  {
+   "unit": "src/world/structures.ts#RoadStructure",
+   "kind": "typeRef",
+   "by": [
+    "src/world/economy.ts#buildLengths"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/world/economy.ts#chargeFor",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/economy.ts#settleRoadEdit"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#DEFAULT_ECONOMY",
+   "kind": "read",
+   "by": [
+    "src/world/doc.ts#RoadDoc.economy",
+    "src/world/doc.ts#RoadDoc.savedGlobals",
+    "src/world/doc.ts#RoadDoc.worldPart"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#Economy",
+   "kind": "read",
+   "by": [
+    "src/editor/roads/economy.ts#roadsBefore",
+    "src/main.ts#currentStatus",
+    "src/world/doc.ts#RoadDoc.replaceContents",
+    "src/world/doc.ts#RoadDoc.savedGlobals",
+    "src/world/doc.ts#RoadDoc.setBalance",
+    "src/world/doc.ts#RoadDoc.worldPart"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#Economy",
+   "kind": "typeRef",
+   "by": [
+    "src/world/doc.ts#RoadDoc.economy",
+    "src/world/doc.ts#RoadDoc.restoreValue"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#pricePerUnit",
+   "kind": "call",
+   "by": [
+    "src/ui/roads/catalogPanel.ts#catalogStrip"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#readEconomy",
+   "kind": "call",
+   "by": [
+    "src/editor/persistence.ts#isSerializedDoc",
+    "src/world/doc.ts#RoadDoc.fromJSON"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#RoadCharge",
+   "kind": "read",
+   "by": [
+    "src/editor/commit.ts#commitRoadPath",
+    "src/editor/commit.ts#layCopy",
+    "src/editor/commit.ts#moveNodeChecked",
+    "src/editor/editRules.ts#guardRoadEdit",
+    "src/editor/roads/economy.ts#settleRoadEdit",
+    "src/editor/roadTool.ts#RoadTool.layPart"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#RoadCharge",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/roads/economy.ts#settleRoadEdit"
+   ]
+  },
+  {
+   "unit": "src/world/economy.ts#roadValue",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/economy.ts#roadsBefore",
+    "src/editor/roads/economy.ts#settleRoadEdit"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 9
+  },
+  {
+   "key": "es:Math.max",
+   "count": 4
+  },
+  {
+   "key": "es:Map",
+   "count": 3
+  },
+  {
+   "key": "es:WeakMap.set",
+   "count": 3
+  },
+  {
+   "key": "es:Infinity",
+   "count": 2
+  },
+  {
+   "key": "es:Map.set",
+   "count": 2
+  },
+  {
+   "key": "es:Math.min",
+   "count": 2
+  },
+  {
+   "key": "es:Math.round",
+   "count": 2
+  },
+  {
+   "key": "es:Record",
+   "count": 2
+  },
+  {
+   "key": "es:Set.add",
+   "count": 2
+  },
+  {
+   "key": "es:WeakMap.get",
+   "count": 2
+  },
+  {
+   "key": "es:Array",
+   "count": 1
+  },
+  {
+   "key": "es:Array.some",
+   "count": 1
+  },
+  {
+   "key": "es:ArrayConstructor.isArray",
+   "count": 1
+  },
+  {
+   "key": "es:Map.get",
+   "count": 1
+  },
+  {
+   "key": "es:Map.values",
+   "count": 1
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 1
+  },
+  {
+   "key": "es:Number",
+   "count": 1
+  },
+  {
+   "key": "es:NumberConstructor.isFinite",
+   "count": 1
+  },
+  {
+   "key": "es:Set",
+   "count": 1
+  },
+  {
+   "key": "es:WeakMap",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/world/doc.ts#RoadDoc.economy"
+ ],
+ "sliced": [
+  "src/editor/commit.ts#commitRoadPath",
+  "src/editor/commit.ts#layCopy",
+  "src/editor/commit.ts#moveNodeChecked",
+  "src/editor/editRules.ts#guardRoadEdit",
+  "src/editor/persistence.ts#isSerializedDoc",
+  "src/editor/roadTool.ts#RoadTool.layPart",
+  "src/editor/roads/economy.ts#roadsBefore",
+  "src/editor/roads/economy.ts#settleRoadEdit",
+  "src/main.ts#currentStatus",
+  "src/ui/roads/catalogPanel.ts#catalogStrip",
+  "src/world/doc.ts#RoadDoc.economy",
+  "src/world/doc.ts#RoadDoc.fromJSON",
+  "src/world/doc.ts#RoadDoc.layOver",
+  "src/world/doc.ts#RoadDoc.replaceContents",
+  "src/world/doc.ts#RoadDoc.restoreValue",
+  "src/world/doc.ts#RoadDoc.savedGlobals",
+  "src/world/doc.ts#RoadDoc.setBalance",
+  "src/world/doc.ts#RoadDoc.takeFork",
+  "src/world/doc.ts#RoadDoc.valueOf",
+  "src/world/doc.ts#RoadDoc.worldPart"
+ ],
+ "slices": [
+  {
+   "unit": "src/editor/commit.ts#commitRoadPath",
+   "file": "src/editor/commit.ts",
+   "start": 63,
+   "end": 159,
+   "lines": [
+    63,
+    82,
+    147,
+    150,
+    156,
+    157,
+    159
+   ]
+  },
+  {
+   "unit": "src/editor/commit.ts#layCopy",
+   "file": "src/editor/commit.ts",
+   "start": 162,
+   "end": 172,
+   "lines": [
+    162,
+    163,
+    165,
+    170,
+    171,
+    172
+   ]
+  },
+  {
+   "unit": "src/editor/commit.ts#moveNodeChecked",
+   "file": "src/editor/commit.ts",
+   "start": 747,
+   "end": 765,
+   "lines": [
+    747,
+    761,
+    764,
+    765
+   ]
+  },
+  {
+   "unit": "src/editor/editRules.ts#guardRoadEdit",
+   "file": "src/editor/editRules.ts",
+   "start": 81,
+   "end": 95,
+   "lines": [
+    81,
+    82,
+    90,
+    91,
+    95
+   ]
+  },
+  {
+   "unit": "src/editor/persistence.ts#isSerializedDoc",
+   "file": "src/editor/persistence.ts",
+   "start": 498,
+   "end": 595,
+   "lines": [
+    498,
+    592,
+    595
+   ]
+  },
+  {
+   "unit": "src/editor/roadTool.ts#RoadTool.layPart",
+   "file": "src/editor/roadTool.ts",
+   "start": 440,
+   "end": 514,
+   "lines": [
+    440,
+    446,
+    455,
+    464,
+    465,
+    466,
+    467,
+    468,
+    469,
+    470,
+    471,
+    472,
+    473,
+    474,
+    489,
+    514
+   ]
+  },
+  {
+   "unit": "src/editor/roads/economy.ts#roadsBefore",
+   "file": "src/editor/roads/economy.ts",
+   "start": 11,
+   "end": 13,
+   "lines": [
+    11,
+    12,
+    13
+   ]
+  },
+  {
+   "unit": "src/editor/roads/economy.ts#settleRoadEdit",
+   "file": "src/editor/roads/economy.ts",
+   "start": 16,
+   "end": 22,
+   "lines": [
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ]
+  },
+  {
+   "unit": "src/main.ts#currentStatus",
+   "file": "src/main.ts",
+   "start": 3837,
+   "end": 3856,
+   "lines": [
+    3837,
+    3843,
+    3854,
+    3855,
+    3856
+   ]
+  },
+  {
+   "unit": "src/ui/roads/catalogPanel.ts#catalogStrip",
+   "file": "src/ui/roads/catalogPanel.ts",
+   "start": 65,
+   "end": 153,
+   "lines": [
+    65,
+    115,
+    135,
+    137,
+    138,
+    147,
+    153
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.economy",
+   "file": "src/world/doc.ts",
+   "start": 220,
+   "end": 220,
+   "lines": [
+    220
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.fromJSON",
+   "file": "src/world/doc.ts",
+   "start": 2701,
+   "end": 2887,
+   "lines": [
+    2701,
+    2830,
+    2831,
+    2887
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.layOver",
+   "file": "src/world/doc.ts",
+   "start": 1853,
+   "end": 1899,
+   "lines": [
+    1853,
+    1880,
+    1899
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.replaceContents",
+   "file": "src/world/doc.ts",
+   "start": 2404,
+   "end": 2552,
+   "lines": [
+    2404,
+    2406,
+    2472,
+    2473,
+    2474,
+    2475,
+    2552
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.restoreValue",
+   "file": "src/world/doc.ts",
+   "start": 2374,
+   "end": 2400,
+   "lines": [
+    2374,
+    2376,
+    2383,
+    2399,
+    2400
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.savedGlobals",
+   "file": "src/world/doc.ts",
+   "start": 2599,
+   "end": 2616,
+   "lines": [
+    2599,
+    2600,
+    2601,
+    2610,
+    2611,
+    2615,
+    2616
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.setBalance",
+   "file": "src/world/doc.ts",
+   "start": 1155,
+   "end": 1159,
+   "lines": [
+    1155,
+    1156,
+    1157,
+    1159
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.takeFork",
+   "file": "src/world/doc.ts",
+   "start": 1902,
+   "end": 1950,
+   "lines": [
+    1902,
+    1937,
+    1950
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.valueOf",
+   "file": "src/world/doc.ts",
+   "start": 2358,
+   "end": 2372,
+   "lines": [
+    2358,
+    2359,
+    2366,
+    2371,
+    2372
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.worldPart",
+   "file": "src/world/doc.ts",
+   "start": 2673,
+   "end": 2698,
+   "lines": [
+    2673,
+    2674,
+    2695,
+    2697,
+    2698
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 757,
+   "key": "catalog.meta",
+   "text": "'catalog.meta': \"{width} m · {price}/m\""
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/en.ts",
+   "line": 887,
+   "key": "hint.rule.funds",
+   "text": "'hint.rule.funds': 'Refused: not enough money to build this. Demolishing roads gives back part of their price.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 750,
+   "key": "catalog.meta",
+   "text": "'catalog.meta': \"{width} m · {price}/m\""
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 880,
+   "key": "hint.rule.funds",
+   "text": "'hint.rule.funds': 'Recusado: não há dinheiro para construir isto. Demolir vias devolve parte do preço delas.'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/world/roads/tuning.ts",
+   "line": 79,
+   "key": "ground",
+   "text": "ground: 1"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/world/roads/tuning.ts",
+   "line": 79,
+   "key": "embankment",
+   "text": "embankment: 1.4"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/world/roads/tuning.ts",
+   "line": 79,
+   "key": "trench",
+   "text": "trench: 1.8"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/world/roads/tuning.ts",
+   "line": 79,
+   "key": "bridge",
+   "text": "bridge: 2.5"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/world/roads/tuning.ts",
+   "line": 79,
+   "key": "tunnel",
+   "text": "tunnel: 6"
+  }
+ ]
+}

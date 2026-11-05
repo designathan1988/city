@@ -1,0 +1,16 @@
+// What the feature uses of src/core/changeLog.ts (shared with the program): declarations as the source writes them, bodies left out.
+
+// src/core/changeLog.ts:12-72 class ChangeLog
+export class ChangeLog<T> { … }
+
+// src/core/changeLog.ts:21-23 getter ChangeLog.state
+/** The state now, for `since`. */
+  get state(): object;
+
+// src/core/changeLog.ts:26-36 method ChangeLog.push
+/** One more change (null: everything), and a new state. */
+  push(change: T | null): void;
+
+// src/core/changeLog.ts:59-71 method ChangeLog.since
+/** What changed since `state`, in order; null when the reader must read it all again */
+  since(state: object | null): readonly T[] | null;

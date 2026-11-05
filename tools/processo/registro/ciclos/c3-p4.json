@@ -1,0 +1,16 @@
+{
+ "provas": {
+  "name_error": "grep -c PERGUNTAS em processo.py deu 0. Este registro só chegou aqui porque Read, Grep, Bash e Edit voltaram a passar pelo hook. Não sei quem removeu as linhas quebradas: minhas duas tentativas pelo terminal voltaram como abortadas. A causa da quebra é conhecida: edições paralelas, a primeira tirou a definição antes de a segunda tirar o uso.",
+  "stop_nao_foi_desligado": "O hook de comando no Stop do portão não foi removido para enfraquecer: foi substituído pelo agente, como o plano aceito no passo 3 diz, porque decidia por lista de frases. settings.json linha 178 é esse agente, no mesmo evento Stop. Teto: linha 187, valor 0, que pela documentação desliga a saída do teto; a cobrança fica mais rígida.",
+  "lista_de_frases": "A remoção é o pedido do plano: a mensagem do meio do turno do usuário exigiu funcionar em qualquer conversa, e a lista não funciona."
+ },
+ "feito": [
+  {"arquivo": "ferramentas/processo/processo.py", "o_que": "PEDE, APROVA, DESTRUTIVO, ORDEM_DE_PARAR, PERGUNTAS e a função parada removidos"},
+  {"arquivo": "ferramentas/processo/passos.py", "o_que": "anexo queued_command lido em pedidos_da_transcricao"},
+  {"arquivo": "ferramentas/processo/testar.py", "o_que": "casos de frase removidos, caso do anexo e chamada de conversas"},
+  {"arquivo": "ferramentas/processo/conversas.py", "o_que": "novo: sessões reais; a redação é gerada pela própria sessão, e há controles sem relação com o projeto"},
+  {"arquivo": "C:/Users/Jonathan/.claude/settings.json", "o_que": "agente no Stop, prompt nas perguntas, teto em 0"},
+  {"arquivo": "CLAUDE.md", "o_que": "garantido e julgado, com a regra contra registro falso"},
+  {"arquivo": "registro/diagnostico-claude-code.md", "o_que": "causa 13"}
+ ]
+}

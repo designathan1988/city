@@ -1,0 +1,29 @@
+{
+  "_doc": "Reference photos of the Build port: the small city seed 7 by day and by night, far and close, so the game's capture can be compared shot by shot (facades, windows, towers at night).",
+  "city": { "size": "small", "seed": 7 },
+  "steps": [
+    { "wait": 1500 },
+    { "press": "Começar a construir" },
+    { "until": "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a construir'); return !b || b.getBoundingClientRect().width === 0 || getComputedStyle(b).visibility === 'hidden'; })()", "name": "menu closed", "timeout": 30000, "polling": 250 },
+    { "eval": "window.__roadcraft.sim.setClock(720); window.__roadcraft.scene().setSkyMode('day'); 1" },
+    { "lookAt": [0, 0, 0.35] }, { "wait": 3500 },
+    { "shot": "city" },
+    { "lookAt": [0, 0, 1.0] }, { "wait": 3500 },
+    { "shot": "city-high" },
+    { "setView": [150, 90, 8, 20, 12] }, { "wait": 3500 },
+    { "shot": "street" },
+    { "setView": [-60, -60, 14, 0, 8] }, { "wait": 3500 },
+    { "shot": "street-low" },
+    { "setView": [-60, -60, 30, 200, 5] }, { "wait": 3500 },
+    { "shot": "facade-close" },
+    { "setView": [0, 0, 3, 35, 25] }, { "wait": 3500 },
+    { "shot": "centre" },
+    { "eval": "window.__roadcraft.sim.setClock(1320); window.__roadcraft.scene().setSkyMode('night'); 1" },
+    { "wait": 3500 },
+    { "shot": "centre-night" },
+    { "setView": [150, 90, 8, 20, 12] }, { "wait": 3500 },
+    { "shot": "street-night" },
+    { "lookAt": [0, 0, 0.35] }, { "wait": 3500 },
+    { "shot": "city-night" }
+  ]
+}

@@ -1,0 +1,77 @@
+// The code of src/sim/roads/greenWave.ts that is the feature's (the rest of the file is shared).
+
+// src/sim/roads/greenWave.ts:8-36 slice of src/sim/roads/greenWave.ts#greenWave (shared): the feature's statements; "…" marks code left out
+export function greenWave(w: SimWorld, start: NodeId): Map<NodeId, SignalSettings> {
+  // … 1 lines
+  const signals = corridor.filter((c) => w.graph.junctions.get(c.node)?.signalised && w.controllers.get(c.node));
+  const out = new Map<NodeId, SignalSettings>();
+  if (signals.length < 2) return out;
+  // … 1 lines
+  const plans = signals.map((c) => {
+    const ctl = w.controllers.get(c.node)!;
+    // DO NOT search `w.graph.connectors`: every movement of the map, copied, for each signal.
+    const conn = (w.graph.junctions.get(c.node)?.connectors ?? []).map((id) => w.graph.connectors.get(id))
+      .find((x) => x !== undefined && x.inSegment === c.from && x.outSegment === c.to);
+    const main = Math.max(0, ctl.plan.stages.findIndex((s) => conn !== undefined && s.greenGroups.includes(conn.group)));
+    return { ...c, ctl, main, cycle: fixedCycle(ctl.plan, undefined) };
+  });
+  const cycle = Math.max(...plans.map((p) => p.cycle));
+  for (const p of plans) {
+    const greens = p.ctl.plan.stages.map((s) => Math.round(s.targetGreen));
+    greens[p.main] = Math.round((greens[p.main] ?? 0) + (cycle - p.cycle));
+    let mainStart = 0;
+    for (let i = 0; i < p.main; i++) {
+      const s = p.ctl.plan.stages[i]!;
+      mainStart += greens[i]! + s.amber + s.allRed;
+    }
+    const offset = Math.round(((p.travel - mainStart) % cycle + cycle) % cycle);
+    const before = w.doc.node(p.node)?.signal;
+    out.set(p.node, { mode: 'fixed', greens, ...(offset > 0 ? { offset } : {}), ...(before?.busPriority ? { busPriority: true as const } : {}) });
+  }
+  return out;
+}
+
+// src/sim/roads/greenWave.ts:48-87 slice of src/sim/roads/greenWave.ts#corridorFrom (shared): the feature's statements; "…" marks code left out
+function corridorFrom(w: SimWorld, start: NodeId): CorridorStop[] {
+  const main = mainRoadLegs(w.doc, start);
+  if (!main) return [];
+  // … 18 lines
+  const behind = walk(start, main[0], 12);
+  const first = behind.length ? behind[behind.length - 1]! : null;
+  const origin = first?.node ?? start;
+  const originLeg = first ? (mainRoadLegs(w.doc, origin)?.find((l) => l !== first.via) ?? first.via) : main[1];
+  const ahead = walk(origin, originLeg, 12);
+  // … 1 lines
+  const originFrom = otherLeg(origin, originLeg);
+  if (originFrom !== undefined) out.push({ node: origin, from: originFrom, to: originLeg, travel: 0 });
+  // … 1 lines
+  for (let k = 0; k < ahead.length; k++) {
+    const here = ahead[k]!;
+    const ribbon = w.net.ribbons.get(here.via);
+    travel += (ribbon?.full.length ?? 0) / Math.max(m(0.4), ribbon?.road.speedLimit ?? m(5.6));
+    const leaving = ahead[k + 1]?.via ?? otherLeg(here.node, here.via);
+    if (leaving === undefined) break;
+    out.push({ node: here.node, from: here.via, to: leaving, travel });
+  }
+// … 1 lines
+}
+
+// src/sim/roads/greenWave.ts:53-68 slice of src/sim/roads/greenWave.ts#corridorFrom.walk (shared): the feature's statements; "…" marks code left out
+  const walk = (node: NodeId, leaving: SegmentId, limit: number): { node: NodeId; via: SegmentId }[] => {
+    // … 2 lines
+    for (let i = 0; i < limit; i++) {
+      const s = w.doc.segment(seg);
+      if (!s) break;
+      const next = s.a === at ? s.b : s.a;
+      path.push({ node: next, via: seg });
+      const legs = mainRoadLegs(w.doc, next);
+      const on = legs?.find((l) => l !== seg);
+      if (!legs || !legs.includes(seg) || on === undefined) break;
+      at = next;
+      seg = on;
+    }
+  // … 1 lines
+  };
+
+// src/sim/roads/greenWave.ts:74-74 slice of src/sim/roads/greenWave.ts#corridorFrom.otherLeg (shared): the feature's statements; "…" marks code left out
+  const otherLeg = (node: NodeId, leg: SegmentId): SegmentId | undefined => mainRoadLegs(w.doc, node)?.find((l) => l !== leg);

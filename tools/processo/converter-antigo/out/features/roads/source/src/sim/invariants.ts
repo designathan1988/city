@@ -1,0 +1,117 @@
+// The code of src/sim/invariants.ts that is the feature's (the rest of the file is shared).
+
+// src/sim/invariants.ts:35-259 slice of src/sim/invariants.ts#runAudit (shared): the feature's statements; "…" marks code left out
+export function runAudit(w: SimWorld, level: 'cheap' | 'full', signals?: readonly SignalController[]): AuditIssue[] {
+  // … 47 lines
+  for (const v of w.vehicles.values()) {
+    // … 22 lines
+    if (lane.kind === 'link' && lane.controlled && lane.to !== undefined) {
+      const controller = w.controller(lane.to);
+      if (controller && v.greenDenied > maxSignalCycle(controller)) {
+        out.push(
+          issue(
+            'greenBlocked',
+            tick,
+            v.id,
+            `${v.greenDenied.toFixed(1)}s held at green, longer than the whole cycle`,
+          ),
+        );
+      }
+    }
+    // … 1 lines
+    if (lane.kind === 'link' && lane.controlled && v.v < m(0.04)) {
+      const stalled = w.clock.since(v.lastMovedTick);
+
+      // Being held out of a full lane is correct behaviour — it is what stops the network gridlocking
+      if (
+        stalled > MIN_WEDGE && stalled > wedgeLimit() &&
+        v.constraints.obstacles.some((o) => o.kind === 'spillback')
+      ) {
+        if (junctionIsStuck(w, lane.to, wedgeLimit())) {
+          out.push(
+            issue('spillbackWedge', tick, v.id, `held ${stalled.toFixed(0)}s at a stalled junction`),
+          );
+        }
+      }
+
+      // Cross-node compact reservations can keep one access blocked while the same junction continues serving other directions.
+      const requestWait =
+        v.firstRequestTick === null ? 0 : w.clock.since(v.firstRequestTick);
+      const ownsCompoundAllocation =
+        v.reservedConnectors.length > 0 &&
+        (v.admittedConnector !== null ||
+          v.clearingConnectors.length > 0);
+      // `firstRequestTick` deliberately spans the complete compact-box transaction so admission can preserve FIFO priority
+      const currentAccessWait = Math.min(
+        requestWait,
+        w.clock.since(v.lastMovedTick),
+      );
+      if (
+        ownsCompoundAllocation &&
+        currentAccessWait > MIN_WEDGE && currentAccessWait > wedgeLimit() &&
+        v.constraints.obstacles.some(
+          (o) => o.kind === 'yield' || o.kind === 'conflict' || o.kind === 'pedestrian',
+        )
+      ) {
+        out.push(
+          issue(
+            'greenBlocked',
+            tick,
+            v.id,
+            `access arbitration unresolved ${currentAccessWait.toFixed(0)}s`,
+          ),
+        );
+      }
+    }
+  }
+  // … 33 lines
+  for (const lane of w.graph.lanelets.values()) {
+    if (lane.kind !== 'link') continue;
+    if (lane.length <= 0) {
+      out.push(issue('degenerateGeometry', tick, lane.id, 'zero length'));
+    } else if (lane.length < L_MIN) {
+      out.push(issue('shortLink', tick, lane.id, `length ${lane.length.toFixed(1)} < ${L_MIN.toFixed(1)}`));
+    }
+  }
+  // … 6 lines
+  for (const v of w.vehicles.values()) {
+    // … 1 lines
+    if (!v.clearingConnectors.length && !v.admittedConnector && lane?.kind !== 'connector') continue;
+    // … 2 lines
+    if (lane?.kind === 'connector') connectorIds.add(lane.id);
+    for (const id of connectorIds) {
+      const node = w.connector(id)?.node;
+      if (node === undefined) continue;
+      // … 1 lines
+      const list = holding.get(node);
+      const last = list?.[list.length - 1];
+      if (last?.v === v) last.ids.push(id);
+      else if (list) list.push({ v, ids: [id] });
+      else holding.set(node, [{ v, ids: [id] }]);
+    }
+  }
+  for (const [crossing, state] of w.crossingStates) {
+    // … 6 lines
+    for (const occupant of state.occupants) {
+      for (const { v, ids } of here) {
+        for (const connectorId of ids) {
+          // … 1 lines
+          if (connector?.node === node) {
+            const span = w.crossingSpans.span(connector.id, crossing);
+            if (span === null || (span && !pedestrianAffectsSpan(occupant, span))) continue;
+            if (!reservationCoversCrossing(w, v, connector, segment, span)) continue;
+            out.push(
+              issue(
+                'pedSignalContradiction',
+                tick,
+                `${occupant.id}/${v.id}`,
+                `crossing ${crossing} overlaps reserved connector ${connector.id}`,
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+// … 2 lines
+}

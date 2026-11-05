@@ -1,0 +1,11 @@
+
+> converter convert --feature road-elevation --source-root C:/Users/Jonathan/Documents/Labs/roadcraft-4.0-main --typescript C:/Users/Jonathan/Documents/Labs/roadcraft-4.0-main/node_modules/typescript --graph C:\Projects\Roadcraft-windows\converter\out\cache\source-0f94907384c009a8\program-a4d72803887a8fca.json --boundary C:\Projects\Roadcraft-windows\converter\out\features\road-elevation\boundary.json --target-root C:/Projects/Roadcraft-windows/fonte --target-graph C:\Projects\Roadcraft-windows\converter\out\game\cppgraph.json --library C:\Projects\Roadcraft-windows\converter\configs\conversion-library.json --ports C:/Projects/Roadcraft-windows/ports --cxx C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/x86_64-w64-mingw32-clang++.exe --constants C:\Projects\Roadcraft-windows\ports\road-elevation\constantes.json --out C:\Projects\Roadcraft-windows\ports\road-elevation\conversion
+  src/render/structureCells.ts: accepted, 1 root(s) left open
+  src/render/structures.ts: accepted, 1 root(s) left open
+  src/world/elevation.ts: accepted, 19 root(s) left open
+  src/world/junction/levels.ts: refused (9)
+  src/world/roadField.ts: refused (1)
+  src/world/structures.ts: accepted, 3 root(s) left open
+convert road-elevation: 453 units; in the game 35; translated 26; open 392; constants without a source 1; 12 files -> C:\Projects\Roadcraft-windows\ports\road-elevation\conversion
+
+what stays open, unit by unit: C:\Projects\Roadcraft-windows\ports\road-elevation\conversion\conversao.md

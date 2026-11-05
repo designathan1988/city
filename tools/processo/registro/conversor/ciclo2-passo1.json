@@ -1,0 +1,12 @@
+{
+  "pedido": [
+    "Crie um script que faça o porte do roadcraft 4 pra o jogo atual",
+    "sempre resolva a causa, mesmo que seja mais cara"
+  ],
+  "problema": "O ciclo anterior mostrou que `port.ts convert road-elevation` não termina: estourou 570 s com só dois módulos processados, e como o relatório é escrito no fim, a interrupção perdeu tudo, inclusive os motivos das recusas. Medido em script descartável: grafo 0,1 s, auditoria 0,2 s, ledger 0,1 s, programa 2,9 s, mas uma única tradução de src/render/structureCells.ts levou 270,5 s. Com 6 módulos dão cerca de 27 minutos. Sem terminar, nenhuma saída chega à quarentena, e a tradução segue sem prova numa funcionalidade real.",
+  "causa": "A função translate em run.ts (linhas 84-113) reabre o programa e constrói um FlowGraph novo a cada chamada, e o FlowGraph resolve o fluxo sobre todos os arquivos do programa. command.ts chama translate uma vez por módulo (linhas 140-142). O resultado do fluxo não depende do módulo: o fluxo só lê da spec memoizers, classes, functions e types, que vêm da biblioteca e são iguais em todos os módulos; state e units não entram. O custo é repetir o mesmo cálculo N vezes. Segunda causa, separada: o relatório só é gravado depois do laço (command.ts linhas 164-166), então uma interrupção não deixa nada.",
+  "evidencias": [
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts", "linhas": "84-140" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/command.ts" }
+  ]
+}

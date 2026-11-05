@@ -1,0 +1,22 @@
+{
+ "solucao": "Tirar de processo.py toda decisão por frase: PEDE, APROVA, DESTRUTIVO, ORDEM_DE_PARAR, PERGUNTAS e a função parada. No lugar, dois julgamentos de significado em settings.json: um hook agent no Stop, que lê na transcrição a última ordem do usuário e a última mensagem do agente e decide se o turno parou sem motivo, e um hook prompt em AskUserQuestion e na caixa do app, com continueOnBlock. Os prompts descrevem a regra, nunca frases. Teto de continuações desligado, porque quem respeita a ordem de parar agora é o juiz, que a lê. pedidos_da_transcricao passa a ler o anexo queued_command. Prova nova em conversas.py: sessões reais do Claude com redações que não existem em nenhum arquivo do portão, em dois idiomas, e controles negativos sem relação com o projeto, que não podem ser segurados. Os casos antigos de frase saem de testar.py, porque só provavam a lista. O resultado do passo 5 será o que as sessões mostrarem, inclusive falhou.",
+ "causa_tratada": "A causa 1 era decidir significado com expressão regular: passa a ser decidido por quem lê significado, com a ordem do usuário à vista, e a prova usa redações independentes da regra. A causa 2 some ao ler o anexo. A causa 3 era o texto vencer a cobrança pelo teto: o teto sai e o juiz devolve o turno enquanto o trabalho pedido estiver por fazer. A causa 4 não tem solução por código: o juiz do passo 5 confere artefatos, mas o limite real é dito ao usuário no CLAUDE.md e no relatório: o que é por modelo pode errar, e o que é garantido pelo programa é só a ordem dos passos, o plano e o teste único.",
+ "plano": [
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py", "mudanca": "remover as listas de frases e a função parada"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/passos.py", "mudanca": "ler o anexo queued_command em pedidos_da_transcricao"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/testar.py", "mudanca": "remover os casos de frase, acrescentar o caso do anexo"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/conversas.py", "mudanca": "novo: sessões reais com redações inéditas e controles negativos"},
+  {"arquivo": "C:/Users/Jonathan/.claude/settings.json", "mudanca": "agent no Stop, prompt nas perguntas, teto desligado, sem o hook de comando no Stop do portão"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/CLAUDE.md", "mudanca": "regra real e limite: o que é garantido e o que é julgado"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/registro/diagnostico-claude-code.md", "mudanca": "causa 13: lista de frases e prova viciada, e a correção da linha da causa 12"}
+ ],
+ "simbolos": [
+  {"nome": "normal_texto", "arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/estado.py"}
+ ],
+ "alternativas": [
+  {"solucao": "Aumentar a lista de frases com mais redações", "por_que_nao": "Nenhuma lista cobre a linguagem; só muda a frase que escapa, e continuaria acertando citação inocente. É a causa, não a solução."},
+  {"solucao": "Manter a regra por programa de bloquear turno sem ferramenta depois de cobrado", "por_que_nao": "O programa não sabe se o usuário mandou parar: com o teto desligado, ela brigaria com a ordem de parar sem fim. A decisão depende de ler a ordem, então fica com o juiz."},
+  {"solucao": "Hook prompt no Stop, sem leitura", "por_que_nao": "A entrada do Stop não traz a mensagem do usuário; o prompt julgaria sem ver a ordem. O agente lê a transcrição."}
+ ],
+ "fontes": ["https://code.claude.com/docs/en/hooks.md", "https://code.claude.com/docs/en/goal.md", "https://code.claude.com/docs/en/env-vars.md"]
+}

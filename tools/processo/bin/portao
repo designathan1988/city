@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py "$@"

@@ -1,0 +1,2861 @@
+{
+ "entries": [
+  "src/editor/poles.ts",
+  "src/editor/poleRoutes.ts",
+  "src/render/poleLayer.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/editor/poleRoutes.ts#CROSSING_COST",
+  "src/editor/poleRoutes.ts#RouteGraph",
+  "src/editor/poleRoutes.ts#SPAN_LANDING",
+  "src/editor/poleRoutes.ts#STATION_STEP",
+  "src/editor/poleRoutes.ts#buildRouteGraph",
+  "src/editor/poleRoutes.ts#buildRouteGraph.stationAt",
+  "src/editor/poleRoutes.ts#route",
+  "src/editor/poleRoutes.ts#route.at",
+  "src/editor/poleRoutes.ts#route.placedBefore",
+  "src/editor/poleRoutes.ts#route.reachOf",
+  "src/editor/poleRoutes.ts#route.relax",
+  "src/editor/poleRoutes.ts#stationsAround",
+  "src/editor/poles.ts#CLOSED_PAD",
+  "src/editor/poles.ts#CORNER_TOLERANCE",
+  "src/editor/poles.ts#LINE_CATCH",
+  "src/editor/poles.ts#MIN_POLE_GAP",
+  "src/editor/poles.ts#POLE_PICK_PIXELS",
+  "src/editor/poles.ts#POLE_TO_LINE",
+  "src/editor/poles.ts#PlannedPole",
+  "src/editor/poles.ts#PoleRunPlan",
+  "src/editor/poles.ts#PoleRunPlanner",
+  "src/editor/poles.ts#PoleRunRefusal",
+  "src/editor/poles.ts#PoleSnap",
+  "src/editor/poles.ts#PoleSnapKind",
+  "src/editor/poles.ts#PoleTool",
+  "src/editor/poles.ts#PoleTool.cancel",
+  "src/editor/poles.ts#PoleTool.chain",
+  "src/editor/poles.ts#PoleTool.constructor",
+  "src/editor/poles.ts#PoleTool.down",
+  "src/editor/poles.ts#PoleTool.down.remove",
+  "src/editor/poles.ts#PoleTool.draft",
+  "src/editor/poles.ts#PoleTool.gesture",
+  "src/editor/poles.ts#PoleTool.hover",
+  "src/editor/poles.ts#PoleTool.inProgress",
+  "src/editor/poles.ts#PoleTool.lastMode",
+  "src/editor/poles.ts#PoleTool.marks",
+  "src/editor/poles.ts#PoleTool.move",
+  "src/editor/poles.ts#PoleTool.plan",
+  "src/editor/poles.ts#PoleTool.reach",
+  "src/editor/poles.ts#PoleTool.up",
+  "src/editor/poles.ts#PoleToolHost",
+  "src/editor/poles.ts#REUSE_RADIUS",
+  "src/editor/poles.ts#ROUTE_MARGIN",
+  "src/editor/poles.ts#ROUTE_MARGIN_MOST",
+  "src/editor/poles.ts#Routing",
+  "src/editor/poles.ts#TILE",
+  "src/editor/poles.ts#commitPoleRun",
+  "src/editor/poles.ts#commitPoleRunPoles",
+  "src/editor/poles.ts#computePoleRun",
+  "src/editor/poles.ts#computePoleRun.at",
+  "src/editor/poles.ts#computePoleRun.clear",
+  "src/editor/poles.ts#computePoleRun.clear.ok",
+  "src/editor/poles.ts#computePoleRun.refuse",
+  "src/editor/poles.ts#corners",
+  "src/editor/poles.ts#endOff",
+  "src/editor/poles.ts#graphs",
+  "src/editor/poles.ts#inLanding",
+  "src/editor/poles.ts#lampFor",
+  "src/editor/poles.ts#lastPlan",
+  "src/editor/poles.ts#placeOf",
+  "src/editor/poles.ts#planPoleRun",
+  "src/editor/poles.ts#planPoleRunWhole",
+  "src/editor/poles.ts#poleRouteWork",
+  "src/editor/poles.ts#poleRunPlanner",
+  "src/editor/poles.ts#poleRunPlanner.inner",
+  "src/editor/poles.ts#poleRunPlanner.plan",
+  "src/editor/poles.ts#poleRunPlanner.tileAt",
+  "src/editor/poles.ts#regional",
+  "src/editor/poles.ts#routeGraph",
+  "src/editor/poles.ts#routeRun",
+  "src/editor/poles.ts#snapOn",
+  "src/editor/poles.ts#snapPole",
+  "src/render/poleBake.ts#PartBounds",
+  "src/render/poleBake.ts#PartShape",
+  "src/render/poleBake.ts#WireBounds",
+  "src/render/poleBake.ts#emptyBox",
+  "src/render/poleBake.ts#growPart",
+  "src/render/poleBake.ts#growWires",
+  "src/render/poleBake.ts#partShape",
+  "src/render/poleLayer.ts#BLOCK",
+  "src/render/poleLayer.ts#Block",
+  "src/render/poleLayer.ts#POLE_REACH",
+  "src/render/poleLayer.ts#PartStore",
+  "src/render/poleLayer.ts#PartStore.add",
+  "src/render/poleLayer.ts#PartStore.bounds",
+  "src/render/poleLayer.ts#PartStore.boundsMoved",
+  "src/render/poleLayer.ts#PartStore.box",
+  "src/render/poleLayer.ts#PartStore.capacity",
+  "src/render/poleLayer.ts#PartStore.constructor",
+  "src/render/poleLayer.ts#PartStore.count",
+  "src/render/poleLayer.ts#PartStore.dispose",
+  "src/render/poleLayer.ts#PartStore.drawn",
+  "src/render/poleLayer.ts#PartStore.flush",
+  "src/render/poleLayer.ts#PartStore.level",
+  "src/render/poleLayer.ts#PartStore.levelFor",
+  "src/render/poleLayer.ts#PartStore.matrices",
+  "src/render/poleLayer.ts#PartStore.mesh",
+  "src/render/poleLayer.ts#PartStore.meshOf",
+  "src/render/poleLayer.ts#PartStore.owner",
+  "src/render/poleLayer.ts#PartStore.perInstance",
+  "src/render/poleLayer.ts#PartStore.remove",
+  "src/render/poleLayer.ts#PartStore.reserve",
+  "src/render/poleLayer.ts#PartStore.seal",
+  "src/render/poleLayer.ts#PartStore.shape",
+  "src/render/poleLayer.ts#PartStore.shown",
+  "src/render/poleLayer.ts#PartStore.uncast",
+  "src/render/poleLayer.ts#PartStore.view",
+  "src/render/poleLayer.ts#PartStore.whole",
+  "src/render/poleLayer.ts#PartStore.write",
+  "src/render/poleLayer.ts#PartStore.written",
+  "src/render/poleLayer.ts#PoleLayer",
+  "src/render/poleLayer.ts#PoleLayer.block",
+  "src/render/poleLayer.ts#PoleLayer.blocks",
+  "src/render/poleLayer.ts#PoleLayer.constructor",
+  "src/render/poleLayer.ts#PoleLayer.dispose",
+  "src/render/poleLayer.ts#PoleLayer.fill",
+  "src/render/poleLayer.ts#PoleLayer.flush",
+  "src/render/poleLayer.ts#PoleLayer.follow",
+  "src/render/poleLayer.ts#PoleLayer.group",
+  "src/render/poleLayer.ts#PoleLayer.ids",
+  "src/render/poleLayer.ts#PoleLayer.index",
+  "src/render/poleLayer.ts#PoleLayer.place",
+  "src/render/poleLayer.ts#PoleLayer.poles",
+  "src/render/poleLayer.ts#PoleLayer.polesIn",
+  "src/render/poleLayer.ts#PoleLayer.redo",
+  "src/render/poleLayer.ts#PoleLayer.scale",
+  "src/render/poleLayer.ts#PoleLayer.scratch",
+  "src/render/poleLayer.ts#PoleLayer.spans",
+  "src/render/poleLayer.ts#PoleLayer.specs",
+  "src/render/poleLayer.ts#PoleLayer.string",
+  "src/render/poleLayer.ts#PoleLayer.triangles",
+  "src/render/poleLayer.ts#PoleLayer.unplace",
+  "src/render/poleLayer.ts#PoleLayer.unstring",
+  "src/render/poleLayer.ts#PoleLayer.view",
+  "src/render/poleLayer.ts#PolePreviewInput",
+  "src/render/poleLayer.ts#PoleState",
+  "src/render/poleLayer.ts#ScreenScale",
+  "src/render/poleLayer.ts#ScreenScale.ahead",
+  "src/render/poleLayer.ts#ScreenScale.at",
+  "src/render/poleLayer.ts#ScreenScale.atBox",
+  "src/render/poleLayer.ts#ScreenScale.atPoint",
+  "src/render/poleLayer.ts#ScreenScale.eye",
+  "src/render/poleLayer.ts#ScreenScale.perspective",
+  "src/render/poleLayer.ts#ScreenScale.pixels",
+  "src/render/poleLayer.ts#ScreenScale.set",
+  "src/render/poleLayer.ts#ScreenScale.texel",
+  "src/render/poleLayer.ts#ViewedRoot",
+  "src/render/poleLayer.ts#ViewedRoot.constructor",
+  "src/render/poleLayer.ts#ViewedRoot.update",
+  "src/render/poleLayer.ts#WireStore",
+  "src/render/poleLayer.ts#WireStore.BLOCK",
+  "src/render/poleLayer.ts#WireStore.add",
+  "src/render/poleLayer.ts#WireStore.bounds",
+  "src/render/poleLayer.ts#WireStore.boundsMoved",
+  "src/render/poleLayer.ts#WireStore.box",
+  "src/render/poleLayer.ts#WireStore.buffer",
+  "src/render/poleLayer.ts#WireStore.capacity",
+  "src/render/poleLayer.ts#WireStore.constructor",
+  "src/render/poleLayer.ts#WireStore.count",
+  "src/render/poleLayer.ts#WireStore.data",
+  "src/render/poleLayer.ts#WireStore.dispose",
+  "src/render/poleLayer.ts#WireStore.drawn",
+  "src/render/poleLayer.ts#WireStore.dropLevels",
+  "src/render/poleLayer.ts#WireStore.flush",
+  "src/render/poleLayer.ts#WireStore.geometry",
+  "src/render/poleLayer.ts#WireStore.instances",
+  "src/render/poleLayer.ts#WireStore.level",
+  "src/render/poleLayer.ts#WireStore.levels",
+  "src/render/poleLayer.ts#WireStore.makeMesh",
+  "src/render/poleLayer.ts#WireStore.mesh",
+  "src/render/poleLayer.ts#WireStore.owner",
+  "src/render/poleLayer.ts#WireStore.remove",
+  "src/render/poleLayer.ts#WireStore.reserve",
+  "src/render/poleLayer.ts#WireStore.seal",
+  "src/render/poleLayer.ts#WireStore.sphere",
+  "src/render/poleLayer.ts#WireStore.uncast",
+  "src/render/poleLayer.ts#WireStore.view",
+  "src/render/poleLayer.ts#WireStore.whole",
+  "src/render/poleLayer.ts#WireStore.written",
+  "src/render/poleLayer.ts#blockKey",
+  "src/render/poleLayer.ts#buildPolePreview",
+  "src/render/poleLayer.ts#buildUtilities",
+  "src/render/poleLayer.ts#docPoles",
+  "src/render/poleLayer.ts#drawingBuffer",
+  "src/render/poleLayer.ts#noteScreen",
+  "src/render/poleLayer.ts#noteShadow",
+  "src/render/poleLayer.ts#screen",
+  "src/render/utilities.ts#releaseWireGeometry",
+  "src/render/utilities.ts#wireGeometry",
+  "src/render/utilities.ts#wireLevel",
+  "src/render/utilities.ts#wireParts",
+  "src/render/utilities.ts#writePlacement",
+  "src/world/doc.ts#RoadDoc.pole",
+  "src/world/poleLines.ts#OnContour",
+  "src/world/poleLines.ts#nearestOnContour",
+  "src/world/poleLines.ts#onFootway",
+  "src/world/poleLines.ts#scratchOf",
+  "src/world/utilities.ts#poleCarriesLamp"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/heap.ts#Heap",
+   "kind": "construct",
+   "by": [
+    "src/editor/poleRoutes.ts#route"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.pop",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#route"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.push",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#route",
+    "src/editor/poleRoutes.ts#route.relax"
+   ]
+  },
+  {
+   "unit": "src/core/heap.ts#Heap.size",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#route"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Frame",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.cum",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.length",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.n",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.sampleAt",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.xy",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/core/scalar.ts#EPS",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#m",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#CLOSED_PAD",
+    "src/editor/poles.ts#computePoleRun.clear",
+    "src/editor/poles.ts#CORNER_TOLERANCE",
+    "src/editor/poles.ts#inLanding",
+    "src/editor/poles.ts#LINE_CATCH",
+    "src/editor/poles.ts#MIN_POLE_GAP",
+    "src/editor/poles.ts#placeOf",
+    "src/editor/poles.ts#POLE_TO_LINE",
+    "src/editor/poles.ts#REUSE_RADIUS",
+    "src/editor/poles.ts#ROUTE_MARGIN",
+    "src/editor/poles.ts#ROUTE_MARGIN_MOST",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poleRoutes.ts#CROSSING_COST",
+    "src/editor/poleRoutes.ts#SPAN_LANDING",
+    "src/editor/poleRoutes.ts#STATION_STEP",
+    "src/render/poleLayer.ts#BLOCK",
+    "src/render/poleLayer.ts#POLE_REACH"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#dist",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#corners",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poleRoutes.ts#route"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#commitPoleRunPoles",
+    "src/editor/poles.ts#computePoleRun.at",
+    "src/editor/poles.ts#corners",
+    "src/editor/poles.ts#inLanding",
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#poleRunPlanner.inner",
+    "src/editor/poles.ts#poleRunPlanner.plan",
+    "src/editor/poles.ts#poleRunPlanner.tileAt",
+    "src/editor/poles.ts#PoleTool.up",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/editor/poleRoutes.ts#buildRouteGraph.stationAt",
+    "src/editor/poleRoutes.ts#route.placedBefore",
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#computePoleRun.at",
+    "src/editor/poles.ts#corners",
+    "src/editor/poles.ts#endOff",
+    "src/editor/poles.ts#inLanding",
+    "src/editor/poles.ts#PlannedPole",
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#planPoleRunWhole",
+    "src/editor/poles.ts#PoleRunPlanner",
+    "src/editor/poles.ts#poleRunPlanner.inner",
+    "src/editor/poles.ts#poleRunPlanner.tileAt",
+    "src/editor/poles.ts#PoleSnap",
+    "src/editor/poles.ts#PoleTool.chain",
+    "src/editor/poles.ts#PoleTool.down",
+    "src/editor/poles.ts#PoleTool.draft",
+    "src/editor/poles.ts#PoleTool.hover",
+    "src/editor/poles.ts#PoleTool.marks",
+    "src/editor/poles.ts#PoleTool.move",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poles.ts#Routing",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poles.ts#snapPole",
+    "src/editor/poleRoutes.ts#route",
+    "src/editor/poleRoutes.ts#route.at",
+    "src/world/poleLines.ts#OnContour",
+    "src/world/poleLines.ts#nearestOnContour",
+    "src/world/poleLines.ts#onFootway"
+   ]
+  },
+  {
+   "unit": "src/main.ts#poleTool",
+   "kind": "implementation",
+   "by": [
+    "src/editor/poles.ts#PoleTool.down",
+    "src/editor/poles.ts#PoleTool.down.remove",
+    "src/editor/poles.ts#PoleTool.marks",
+    "src/editor/poles.ts#PoleTool.move",
+    "src/editor/poles.ts#PoleTool.plan",
+    "src/editor/poles.ts#PoleTool.reach",
+    "src/editor/poles.ts#PoleTool.up"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#framePole",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.place"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#PoleSource",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/render/poleLayer.ts#PoleLayer.redo"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#PoleSource",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.fill",
+    "src/render/poleLayer.ts#PoleLayer.redo"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#PoleSource",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildUtilities",
+    "src/render/poleLayer.ts#docPoles",
+    "src/render/poleLayer.ts#PoleLayer.fill",
+    "src/render/poleLayer.ts#PoleLayer.follow",
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/render/poleLayer.ts#PoleLayer.redo"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#WIRE_BLOCK",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.BLOCK",
+    "src/render/poleBake.ts#growWires"
+   ]
+  },
+  {
+   "unit": "src/render/poleBake.ts#wireEnd",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.string"
+   ]
+  },
+  {
+   "unit": "src/render/scenery.ts#SceneryKit",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#buildUtilities",
+    "src/render/poleLayer.ts#PoleLayer.constructor"
+   ]
+  },
+  {
+   "unit": "src/render/shadowCasters.ts#castBySize",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.meshOf",
+    "src/render/poleLayer.ts#WireStore.makeMesh"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#PartLevel",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.levelFor",
+    "src/render/poleLayer.ts#PartStore.meshOf",
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#PARTS",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireParts"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#Placement",
+   "kind": "read",
+   "by": [
+    "src/render/poleBake.ts#growPart",
+    "src/render/utilities.ts#writePlacement"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#Placement",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.add",
+    "src/render/poleLayer.ts#PartStore.write",
+    "src/render/poleLayer.ts#PoleLayer.scratch",
+    "src/render/poleBake.ts#growPart",
+    "src/render/utilities.ts#writePlacement"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#placePole",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.place"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#placing",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#writePlacement"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#POLE_PART_COUNT",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/render/poleLayer.ts#PoleLayer.scratch"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#PolePartSpec",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#PolePartSpec",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.constructor",
+    "src/render/poleLayer.ts#PartStore.flush",
+    "src/render/poleLayer.ts#PartStore.levelFor",
+    "src/render/poleLayer.ts#PartStore.meshOf",
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#PolePartSpec",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.constructor",
+    "src/render/poleLayer.ts#PoleLayer.specs"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.constructor"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs",
+   "kind": "callbackAssign",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs",
+   "kind": "implementation",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs.light",
+   "kind": "callbackAssign",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs.light",
+   "kind": "implementation",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs.solid",
+   "kind": "callbackAssign",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#polePartSpecs.solid",
+   "kind": "implementation",
+   "by": [
+    "src/render/poleLayer.ts#PartStore.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#SPAN_WIRES",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.flush",
+    "src/render/poleLayer.ts#WireStore.geometry"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#spanWires",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.add"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#spanWires",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.add"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#Utilities",
+   "kind": "implements",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#Utilities",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#UtilityParts",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireParts"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_FADE",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireLevel"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_HALF_WIDTH",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.flush"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_STRIDE",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.reserve",
+    "src/render/poleBake.ts#growWires"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_TEMPLATES",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireLevel",
+    "src/render/utilities.ts#wireGeometry"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_TUBE_PIXELS",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireLevel"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WIRE_WIDTH",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#WireStore.makeMesh",
+    "src/render/utilities.ts#wireLevel"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#wireScreen",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#wireScreen",
+   "kind": "write",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.view"
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#WireTemplate",
+   "kind": "read",
+   "by": [
+    "src/render/utilities.ts#wireLevel",
+    "src/render/utilities.ts#wireGeometry"
+   ]
+  },
+  {
+   "unit": "src/world/approach.ts#CROSSWALK_DEPTH",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#inLanding"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CELL",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#poleRunPlanner.tileAt",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poles.ts#TILE"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.idsMeeting",
+   "kind": "call",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.follow"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.follow"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal.serialOf",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#planPoleRun"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeRect",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#poleRunPlanner",
+    "src/editor/poles.ts#poleRunPlanner.inner",
+    "src/editor/poles.ts#poleRunPlanner.tileAt",
+    "src/editor/poles.ts#routeGraph",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/render/poleLayer.ts#PoleLayer.follow",
+    "src/render/poleLayer.ts#PoleLayer.polesIn"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#commitPoleRun",
+    "src/editor/poles.ts#commitPoleRunPoles",
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#lastPlan",
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#planPoleRunWhole",
+    "src/editor/poles.ts#PoleRunPlanner",
+    "src/editor/poles.ts#PoleToolHost",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poles.ts#snapPole",
+    "src/render/poleLayer.ts#docPoles",
+    "src/render/poleLayer.ts#PoleLayer.follow"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.addPole",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#commitPoleRunPoles"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.addPoleSpan",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#commitPoleRunPoles"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.changes",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#planPoleRun"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.poleNear",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#PoleTool.down",
+    "src/editor/poles.ts#PoleTool.marks",
+    "src/editor/poles.ts#snapOn"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.poles",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#docPoles",
+    "src/world/doc.ts#RoadDoc.pole"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.polesIn",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.follow"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.poleSpans",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#docPoles"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removePole",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#PoleTool.down.remove"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.spansAt",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#docPoles"
+   ]
+  },
+  {
+   "unit": "src/world/ids.ts#PoleId",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#commitPoleRunPoles",
+    "src/editor/poles.ts#PlannedPole",
+    "src/editor/poles.ts#PoleSnap",
+    "src/render/poleLayer.ts#Block",
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PartStore.add",
+    "src/render/poleLayer.ts#PartStore.owner",
+    "src/render/poleLayer.ts#PartStore.remove",
+    "src/render/poleLayer.ts#PoleLayer.follow",
+    "src/render/poleLayer.ts#PoleLayer.ids",
+    "src/render/poleLayer.ts#PoleLayer.poles",
+    "src/render/poleLayer.ts#PoleLayer.polesIn",
+    "src/render/poleLayer.ts#PoleLayer.redo",
+    "src/render/poleLayer.ts#PoleLayer.unplace",
+    "src/world/doc.ts#RoadDoc.pole"
+   ]
+  },
+  {
+   "unit": "src/world/ids.ts#SpanId",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PoleLayer.redo",
+    "src/render/poleLayer.ts#PoleLayer.spans",
+    "src/render/poleLayer.ts#PoleLayer.unstring",
+    "src/render/poleLayer.ts#WireStore.owner",
+    "src/render/poleLayer.ts#WireStore.remove"
+   ]
+  },
+  {
+   "unit": "src/world/landscape.ts#CrossingAccess",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#inLanding"
+   ]
+  },
+  {
+   "unit": "src/world/landscape.ts#CrossingAccess",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#inLanding"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#lastPlan",
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#planPoleRunWhole",
+    "src/editor/poles.ts#poleRunPlanner",
+    "src/editor/poles.ts#PoleToolHost",
+    "src/editor/poles.ts#regional",
+    "src/editor/poles.ts#routeGraph",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poles.ts#snapPole",
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#buildUtilities",
+    "src/render/poleLayer.ts#PoleLayer.fill",
+    "src/render/poleLayer.ts#PoleLayer.follow",
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/render/poleLayer.ts#PoleLayer.redo",
+    "src/world/poleLines.ts#onFootway"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.constructor",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#buildUtilities"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.revision",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#planPoleRun"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.ribbons",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.segmentCells",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex",
+   "kind": "construct",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.index"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.deletePole",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.unplace"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.deleteSpan",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.unstring"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.near",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.polesIn"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.putPole",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.place"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.putSpan",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.string"
+   ]
+  },
+  {
+   "unit": "src/world/poleIndex.ts#PoleIndex.spansAt",
+   "kind": "call",
+   "by": [
+    "src/render/poleLayer.ts#PoleLayer.redo"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#ContourEdges",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#ContourScratch",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour",
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#ContourScratch",
+   "kind": "typeRef",
+   "by": [
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#ContourScratch",
+   "kind": "write",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour",
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#EDGE_BUCKET",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#edgeBucket",
+   "kind": "call",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#insideLevels",
+   "kind": "call",
+   "by": [
+    "src/world/poleLines.ts#onFootway"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#insideLevels",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#onFootway"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#POLE_KERB_INSET",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#PoleLines",
+   "kind": "read",
+   "by": [
+    "src/world/poleLines.ts#nearestOnContour",
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#PoleLines",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#graphs",
+    "src/editor/poles.ts#placeOf",
+    "src/editor/poles.ts#poleRunPlanner",
+    "src/editor/poles.ts#poleRunPlanner.tileAt",
+    "src/editor/poles.ts#routeGraph",
+    "src/editor/poles.ts#routeRun",
+    "src/editor/poles.ts#Routing",
+    "src/editor/poles.ts#snapOn",
+    "src/editor/poleRoutes.ts#buildRouteGraph",
+    "src/world/poleLines.ts#nearestOnContour",
+    "src/world/poleLines.ts#scratchOf"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#poleLinesAt",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#regional",
+    "src/editor/poles.ts#snapPole"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#poleLinesIn",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#routeRun"
+   ]
+  },
+  {
+   "unit": "src/world/poleLines.ts#poleLinesOf",
+   "kind": "call",
+   "by": [
+    "src/editor/poles.ts#poleRunPlanner.tileAt"
+   ]
+  },
+  {
+   "unit": "src/world/ribbons.ts#SegmentRibbon",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#CURB_BAND",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#Level",
+   "kind": "reference",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#RoadType",
+   "kind": "read",
+   "by": [
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#DEFAULT_POLE_SPACING",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#planPoleRunWhole",
+    "src/editor/poles.ts#poleRunPlanner.plan"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#MAX_POLE_SPACING",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poleRoutes.ts#buildRouteGraph"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#MIN_POLE_SPACING",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#computePoleRun"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#PoleArms",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#PoleState"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#PoleLampMode",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#lampFor",
+    "src/editor/poles.ts#lastPlan",
+    "src/editor/poles.ts#planPoleRun",
+    "src/editor/poles.ts#planPoleRunWhole",
+    "src/editor/poles.ts#PoleRunPlanner",
+    "src/editor/poles.ts#PoleToolHost"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#UtilityPole",
+   "kind": "read",
+   "by": [
+    "src/editor/poles.ts#commitPoleRunPoles",
+    "src/editor/poles.ts#computePoleRun",
+    "src/editor/poles.ts#PoleTool.down.remove",
+    "src/editor/poles.ts#PoleTool.marks",
+    "src/editor/poles.ts#snapOn",
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PoleLayer.follow",
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/render/poleLayer.ts#PoleLayer.redo"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#UtilityPole",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PoleLayer.place",
+    "src/world/doc.ts#RoadDoc.pole"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#UtilitySpan",
+   "kind": "read",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PoleLayer.redo",
+    "src/render/poleLayer.ts#PoleLayer.string",
+    "src/render/poleLayer.ts#WireStore.add"
+   ]
+  },
+  {
+   "unit": "src/world/utilities.ts#UtilitySpan",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleLayer.ts#buildPolePreview",
+    "src/render/poleLayer.ts#PoleLayer.redo",
+    "src/render/poleLayer.ts#PoleLayer.spans",
+    "src/render/poleLayer.ts#PoleLayer.string",
+    "src/render/poleLayer.ts#WireStore.add"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/editor/poles.ts#commitPoleRun",
+   "kind": "call",
+   "by": [
+    "src/main.ts#<IfStatement>@4036"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#commitPoleRunPoles",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/powerLine.ts#layPowerLinesSteps"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PlannedPole",
+   "kind": "read",
+   "by": [
+    "src/main.ts#drawPolePlan",
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#planPoleRun",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/powerLine.ts#runPlanner",
+    "src/main.ts#<IfStatement>@4036"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#POLE_PICK_PIXELS",
+   "kind": "read",
+   "by": [
+    "src/main.ts#<IfStatement>@4036"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleRunPlan",
+   "kind": "read",
+   "by": [
+    "src/main.ts#drawPolePlan",
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleRunPlan",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/roads/powerLine.ts#PlanRun",
+    "src/main.ts#drawPolePlan",
+    "src/main.ts#framePolePlan"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#poleRunPlanner",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/powerLine.ts#runPlanner"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleRunPlanner",
+   "kind": "call",
+   "by": [
+    "src/editor/roads/powerLine.ts#runPlanner"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#poleRunPlanner.plan",
+   "kind": "implementation",
+   "by": [
+    "src/editor/roads/powerLine.ts#runPlanner"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleSnap",
+   "kind": "read",
+   "by": [
+    "src/main.ts#drawPolePlan"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#poleTool"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.cancel",
+   "kind": "call",
+   "by": [
+    "src/main.ts#cancelGestures"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.down",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.gesture",
+   "kind": "call",
+   "by": [
+    "src/main.ts#currentGesture"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.inProgress",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gestureInProgress"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.marks",
+   "kind": "call",
+   "by": [
+    "src/main.ts#drawPolePlan"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.marks",
+   "kind": "read",
+   "by": [
+    "src/main.ts#drawPolePlan"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.move",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.plan",
+   "kind": "call",
+   "by": [
+    "src/main.ts#frame"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.reach",
+   "kind": "call",
+   "by": [
+    "src/main.ts#poleReach"
+   ]
+  },
+  {
+   "unit": "src/editor/poles.ts#PoleTool.up",
+   "kind": "call",
+   "by": [
+    "src/main.ts#endPointer"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#Block",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build",
+    "src/render/poleCells.ts#PoleCells.derive",
+    "src/render/poleCells.ts#PoleCells.release",
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#Block",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleCells.ts#HeldBlock",
+    "src/render/poleCells.ts#PoleCells.build",
+    "src/render/poleCells.ts#PoleCells.live",
+    "src/render/poleCells.ts#PoleCells.release"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#Block",
+   "kind": "write",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#BLOCK",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build",
+    "src/render/poleCells.ts#PoleCells.constructor",
+    "src/render/poleCells.ts#PoleCells.look"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#buildPolePreview",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#buildPolePreview",
+   "kind": "implementation",
+   "by": [
+    "src/render/poleBake.ts#framePole"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#buildUtilities",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer.warmRoadShaders"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#docPoles",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#docPoles",
+   "kind": "implementation",
+   "by": [
+    "src/render/poleBake.ts#framePole"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore",
+   "kind": "construct",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.add",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.box",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.count",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.dispose",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.release"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.flush",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.meshOf",
+   "kind": "implementation",
+   "by": [
+    "src/render/shadowCasters.ts#castCastersInto",
+    "src/render/shadowCasters.ts#castShadowKey"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.seal",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.derive"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PartStore.view",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#POLE_REACH",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.constructor"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PoleLayer.dispose",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer.warmRoadShaders"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PoleLayer.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PoleLayer.group",
+   "kind": "read",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer.warmRoadShaders"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PoleLayer.place",
+   "kind": "indirectCall",
+   "by": [
+    "src/render/poleBake.ts#framePole",
+    "src/render/utilities.ts#placePole"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PolePreviewInput",
+   "kind": "read",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#PolePreviewInput",
+   "kind": "typeRef",
+   "by": [
+    "src/render/renderer.ts#SceneHandle"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#screen",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#ScreenScale",
+   "kind": "construct",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.scale"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#ScreenScale.atBox",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#ScreenScale.set",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#ViewedRoot",
+   "kind": "construct",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.constructor"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#ViewedRoot",
+   "kind": "typeRef",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.group"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore",
+   "kind": "construct",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.add",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.box",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.count",
+   "kind": "read",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.dispose",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.release"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.drawn",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.derive"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.flush",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.build"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.instances",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.derive"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.makeMesh",
+   "kind": "implementation",
+   "by": [
+    "src/render/shadowCasters.ts#castCastersInto"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.seal",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.derive"
+   ]
+  },
+  {
+   "unit": "src/render/poleLayer.ts#WireStore.view",
+   "kind": "call",
+   "by": [
+    "src/render/poleCells.ts#PoleCells.view"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 68
+  },
+  {
+   "key": "es:Array.length",
+   "count": 36
+  },
+  {
+   "key": "es:Array.push",
+   "count": 29
+  },
+  {
+   "key": "es:Math.max",
+   "count": 21
+  },
+  {
+   "key": "es:Map.get",
+   "count": 16
+  },
+  {
+   "key": "es:Infinity",
+   "count": 15
+  },
+  {
+   "key": "es:Math.min",
+   "count": 14
+  },
+  {
+   "key": "es:Float32Array",
+   "count": 12
+  },
+  {
+   "key": "es:Int32Array",
+   "count": 12
+  },
+  {
+   "key": "es:Math.floor",
+   "count": 11
+  },
+  {
+   "key": "es:ReadonlyArray.length",
+   "count": 11
+  },
+  {
+   "key": "es:Float64Array",
+   "count": 10
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 9
+  },
+  {
+   "key": "es:Map",
+   "count": 8
+  },
+  {
+   "key": "es:Map.set",
+   "count": 8
+  },
+  {
+   "key": "es:Set",
+   "count": 8
+  },
+  {
+   "key": "es:Set.add",
+   "count": 8
+  },
+  {
+   "key": "three:Vector3.x",
+   "count": 8
+  },
+  {
+   "key": "three:Vector3.y",
+   "count": 8
+  },
+  {
+   "key": "three:Vector3.z",
+   "count": 8
+  },
+  {
+   "key": "three:InstancedMesh.instanceMatrix",
+   "count": 7
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 6
+  },
+  {
+   "key": "three:BufferAttribute.array",
+   "count": 6
+  },
+  {
+   "key": "three:Camera",
+   "count": 6
+  },
+  {
+   "key": "three:Sphere.center",
+   "count": 6
+  },
+  {
+   "key": "es:Map.values",
+   "count": 5
+  },
+  {
+   "key": "three:BufferGeometry.setAttribute",
+   "count": 5
+  },
+  {
+   "key": "three:InstancedBufferGeometry",
+   "count": 5
+  },
+  {
+   "key": "three:Vector3.set",
+   "count": 5
+  },
+  {
+   "key": "es:Array.forEach",
+   "count": 4
+  },
+  {
+   "key": "es:Array.sort",
+   "count": 4
+  },
+  {
+   "key": "three:InstancedMesh",
+   "count": 4
+  },
+  {
+   "key": "es:ArrayLike",
+   "count": 3
+  },
+  {
+   "key": "es:Float64ArrayConstructor.from",
+   "count": 3
+  },
+  {
+   "key": "es:Math.ceil",
+   "count": 3
+  },
+  {
+   "key": "es:ReadonlyMap.get",
+   "count": 3
+  },
+  {
+   "key": "es:Set.has",
+   "count": 3
+  },
+  {
+   "key": "es:Uint8Array",
+   "count": 3
+  },
+  {
+   "key": "three:InstancedInterleavedBuffer",
+   "count": 3
+  },
+  {
+   "key": "three:InstancedMesh.boundingSphere",
+   "count": 3
+  },
+  {
+   "key": "three:InterleavedBufferAttribute",
+   "count": 3
+  },
+  {
+   "key": "three:Mesh",
+   "count": 3
+  },
+  {
+   "key": "three:Mesh.geometry",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.name",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.remove",
+   "count": 3
+  },
+  {
+   "key": "three:Object3D.visible",
+   "count": 3
+  },
+  {
+   "key": "three:OrthographicCamera",
+   "count": 3
+  },
+  {
+   "key": "three:Sphere",
+   "count": 3
+  },
+  {
+   "key": "three:Sphere.radius",
+   "count": 3
+  },
+  {
+   "key": "three:Vector3",
+   "count": 3
+  },
+  {
+   "key": "es:Array",
+   "count": 2
+  },
+  {
+   "key": "es:Array.map",
+   "count": 2
+  },
+  {
+   "key": "es:ArrayConstructor.from",
+   "count": 2
+  },
+  {
+   "key": "es:Float32Array.copyWithin",
+   "count": 2
+  },
+  {
+   "key": "es:Float32Array.set",
+   "count": 2
+  },
+  {
+   "key": "es:Float32Array.subarray",
+   "count": 2
+  },
+  {
+   "key": "es:Map.delete",
+   "count": 2
+  },
+  {
+   "key": "es:Math.round",
+   "count": 2
+  },
+  {
+   "key": "es:Math.sqrt",
+   "count": 2
+  },
+  {
+   "key": "es:Parameters",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyArray.forEach",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyArray.map",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyMap.has",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyMap.values",
+   "count": 2
+  },
+  {
+   "key": "es:Set.size",
+   "count": 2
+  },
+  {
+   "key": "three:BufferAttribute.count",
+   "count": 2
+  },
+  {
+   "key": "three:BufferAttribute.needsUpdate",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.boundingSphere",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.deleteAttribute",
+   "count": 2
+  },
+  {
+   "key": "three:BufferGeometry.setIndex",
+   "count": 2
+  },
+  {
+   "key": "three:InstancedBufferGeometry.instanceCount",
+   "count": 2
+  },
+  {
+   "key": "three:InstancedMesh.count",
+   "count": 2
+  },
+  {
+   "key": "three:InstancedMesh.dispose",
+   "count": 2
+  },
+  {
+   "key": "three:InterleavedBuffer.needsUpdate",
+   "count": 2
+  },
+  {
+   "key": "three:Matrix4.elements",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.add",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.castShadow",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.onBeforeRender",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.onBeforeShadow",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.position",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.rotation",
+   "count": 2
+  },
+  {
+   "key": "three:Object3D.scale",
+   "count": 2
+  },
+  {
+   "key": "three:Vector2.y",
+   "count": 2
+  },
+  {
+   "key": "three:WebGLRenderer",
+   "count": 2
+  },
+  {
+   "key": "es:Array.filter",
+   "count": 1
+  },
+  {
+   "key": "es:Array.indexOf",
+   "count": 1
+  },
+  {
+   "key": "es:Array.pop",
+   "count": 1
+  },
+  {
+   "key": "es:Array.reverse",
+   "count": 1
+  },
+  {
+   "key": "es:Array.slice",
+   "count": 1
+  },
+  {
+   "key": "es:Float64Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Float64Array.length",
+   "count": 1
+  },
+  {
+   "key": "es:Int32Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Int32Array.slice",
+   "count": 1
+  },
+  {
+   "key": "es:Int32ArrayConstructor.from",
+   "count": 1
+  },
+  {
+   "key": "es:Iterable",
+   "count": 1
+  },
+  {
+   "key": "es:IterableIterator",
+   "count": 1
+  },
+  {
+   "key": "es:Map.clear",
+   "count": 1
+  },
+  {
+   "key": "es:Map.has",
+   "count": 1
+  },
+  {
+   "key": "es:Map.keys",
+   "count": 1
+  },
+  {
+   "key": "es:Pick",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.some",
+   "count": 1
+  },
+  {
+   "key": "es:Set.delete",
+   "count": 1
+  },
+  {
+   "key": "es:Uint32Array.fill",
+   "count": 1
+  },
+  {
+   "key": "es:Uint8Array.forEach",
+   "count": 1
+  },
+  {
+   "key": "es:WeakMap",
+   "count": 1
+  },
+  {
+   "key": "es:WeakMap.get",
+   "count": 1
+  },
+  {
+   "key": "es:WeakMap.set",
+   "count": 1
+  },
+  {
+   "key": "three:BufferAttribute",
+   "count": 1
+  },
+  {
+   "key": "three:BufferAttribute.addUpdateRange",
+   "count": 1
+  },
+  {
+   "key": "three:BufferAttribute.clearUpdateRanges",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.dispose",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.getAttribute",
+   "count": 1
+  },
+  {
+   "key": "three:BufferGeometry.index",
+   "count": 1
+  },
+  {
+   "key": "three:Camera.projectionMatrix",
+   "count": 1
+  },
+  {
+   "key": "three:Euler.set",
+   "count": 1
+  },
+  {
+   "key": "three:InterleavedBuffer",
+   "count": 1
+  },
+  {
+   "key": "three:InterleavedBuffer.addUpdateRange",
+   "count": 1
+  },
+  {
+   "key": "three:InterleavedBuffer.clearUpdateRanges",
+   "count": 1
+  },
+  {
+   "key": "three:LOD",
+   "count": 1
+  },
+  {
+   "key": "three:Matrix4.toArray",
+   "count": 1
+  },
+  {
+   "key": "three:MeshDepthMaterial",
+   "count": 1
+  },
+  {
+   "key": "three:MeshStandardMaterial",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.clear",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.customDepthMaterial",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.matrix",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.matrixWorld",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.receiveShadow",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.renderOrder",
+   "count": 1
+  },
+  {
+   "key": "three:Object3D.updateMatrix",
+   "count": 1
+  },
+  {
+   "key": "three:OrthographicCamera.isOrthographicCamera",
+   "count": 1
+  },
+  {
+   "key": "three:OrthographicCamera.left",
+   "count": 1
+  },
+  {
+   "key": "three:OrthographicCamera.right",
+   "count": 1
+  },
+  {
+   "key": "three:OrthographicCamera.zoom",
+   "count": 1
+  },
+  {
+   "key": "three:RenderTarget.width",
+   "count": 1
+  },
+  {
+   "key": "three:Vector2",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.length",
+   "count": 1
+  },
+  {
+   "key": "three:Vector3.normalize",
+   "count": 1
+  },
+  {
+   "key": "three:WebGLRenderer.getDrawingBufferSize",
+   "count": 1
+  },
+  {
+   "key": "three:WebGLRenderer.getRenderTarget",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/main.ts#framePolePlan",
+  "src/main.ts#poleTool",
+  "src/render/poleCells.ts#PoleCells.group",
+  "src/render/poleCells.ts#PoleCells.scale",
+  "src/render/utilities.ts#wireScreen"
+ ],
+ "sliced": [
+  "src/editor/roads/powerLine.ts#PlanRun",
+  "src/editor/roads/powerLine.ts#layPowerLinesSteps",
+  "src/editor/roads/powerLine.ts#runPlanner",
+  "src/main.ts#<IfStatement>@4036",
+  "src/main.ts#cancelGestures",
+  "src/main.ts#currentGesture",
+  "src/main.ts#drawOverlayScreen",
+  "src/main.ts#drawPolePlan",
+  "src/main.ts#endPointer",
+  "src/main.ts#frame",
+  "src/main.ts#framePolePlan",
+  "src/main.ts#gestureInProgress",
+  "src/main.ts#pointerDown",
+  "src/main.ts#pointerMove",
+  "src/main.ts#poleReach",
+  "src/main.ts#poleTool",
+  "src/render/poleBake.ts#framePole",
+  "src/render/poleCells.ts#HeldBlock",
+  "src/render/poleCells.ts#PoleCells.build",
+  "src/render/poleCells.ts#PoleCells.constructor",
+  "src/render/poleCells.ts#PoleCells.derive",
+  "src/render/poleCells.ts#PoleCells.dispose",
+  "src/render/poleCells.ts#PoleCells.group",
+  "src/render/poleCells.ts#PoleCells.live",
+  "src/render/poleCells.ts#PoleCells.look",
+  "src/render/poleCells.ts#PoleCells.release",
+  "src/render/poleCells.ts#PoleCells.scale",
+  "src/render/poleCells.ts#PoleCells.view",
+  "src/render/renderer.ts#SceneHandle",
+  "src/render/renderer.ts#createSceneRenderer",
+  "src/render/renderer.ts#createSceneRenderer.switchedOff",
+  "src/render/renderer.ts#createSceneRenderer.syncUtilities",
+  "src/render/renderer.ts#createSceneRenderer.warmRoadShaders",
+  "src/render/shadowCasters.ts#castCastersInto",
+  "src/render/shadowCasters.ts#castShadowKey",
+  "src/render/utilities.ts#placePole",
+  "src/render/utilities.ts#wireMaterials"
+ ],
+ "slices": [
+  {
+   "unit": "src/editor/roads/powerLine.ts#PlanRun",
+   "file": "src/editor/roads/powerLine.ts",
+   "start": 79,
+   "end": 79,
+   "lines": [
+    79
+   ]
+  },
+  {
+   "unit": "src/editor/roads/powerLine.ts#layPowerLinesSteps",
+   "file": "src/editor/roads/powerLine.ts",
+   "start": 25,
+   "end": 68,
+   "lines": [
+    25,
+    39,
+    60,
+    61,
+    64,
+    65,
+    66,
+    68
+   ]
+  },
+  {
+   "unit": "src/editor/roads/powerLine.ts#runPlanner",
+   "file": "src/editor/roads/powerLine.ts",
+   "start": 85,
+   "end": 91,
+   "lines": [
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91
+   ]
+  },
+  {
+   "unit": "src/main.ts#<IfStatement>@4036",
+   "file": "src/main.ts",
+   "start": 4036,
+   "end": 4231,
+   "lines": [
+    4036,
+    4216,
+    4217,
+    4218,
+    4219,
+    4220,
+    4221,
+    4222,
+    4223,
+    4231
+   ]
+  },
+  {
+   "unit": "src/main.ts#cancelGestures",
+   "file": "src/main.ts",
+   "start": 1041,
+   "end": 1053,
+   "lines": [
+    1041,
+    1043,
+    1053
+   ]
+  },
+  {
+   "unit": "src/main.ts#currentGesture",
+   "file": "src/main.ts",
+   "start": 1056,
+   "end": 1073,
+   "lines": [
+    1056,
+    1064,
+    1065,
+    1073
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawOverlayScreen",
+   "file": "src/main.ts",
+   "start": 2942,
+   "end": 3410,
+   "lines": [
+    2942,
+    2988,
+    3410
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawPolePlan",
+   "file": "src/main.ts",
+   "start": 2849,
+   "end": 2898,
+   "lines": [
+    2849,
+    2850,
+    2853,
+    2875,
+    2876,
+    2878,
+    2879,
+    2881,
+    2882,
+    2883,
+    2884,
+    2885,
+    2886,
+    2887,
+    2888,
+    2889,
+    2890,
+    2891,
+    2893,
+    2894,
+    2895,
+    2896,
+    2897,
+    2898
+   ]
+  },
+  {
+   "unit": "src/main.ts#endPointer",
+   "file": "src/main.ts",
+   "start": 1484,
+   "end": 1513,
+   "lines": [
+    1484,
+    1502,
+    1513
+   ]
+  },
+  {
+   "unit": "src/main.ts#frame",
+   "file": "src/main.ts",
+   "start": 2644,
+   "end": 2745,
+   "lines": [
+    2644,
+    2700,
+    2701,
+    2702,
+    2703,
+    2745
+   ]
+  },
+  {
+   "unit": "src/main.ts#framePolePlan",
+   "file": "src/main.ts",
+   "start": 500,
+   "end": 500,
+   "lines": [
+    500
+   ]
+  },
+  {
+   "unit": "src/main.ts#gestureInProgress",
+   "file": "src/main.ts",
+   "start": 1117,
+   "end": 1119,
+   "lines": [
+    1117,
+    1118,
+    1119
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerDown",
+   "file": "src/main.ts",
+   "start": 1217,
+   "end": 1396,
+   "lines": [
+    1217,
+    1252,
+    1305,
+    1307,
+    1308,
+    1394,
+    1396
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerMove",
+   "file": "src/main.ts",
+   "start": 1404,
+   "end": 1475,
+   "lines": [
+    1404,
+    1444,
+    1475
+   ]
+  },
+  {
+   "unit": "src/main.ts#poleReach",
+   "file": "src/main.ts",
+   "start": 1480,
+   "end": 1482,
+   "lines": [
+    1480,
+    1481,
+    1482
+   ]
+  },
+  {
+   "unit": "src/main.ts#poleTool",
+   "file": "src/main.ts",
+   "start": 488,
+   "end": 498,
+   "lines": [
+    488,
+    489,
+    490,
+    491,
+    492,
+    493,
+    494,
+    495,
+    496,
+    497,
+    498
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#HeldBlock",
+   "file": "src/render/poleCells.ts",
+   "start": 28,
+   "end": 31,
+   "lines": [
+    28,
+    29,
+    31
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.build",
+   "file": "src/render/poleCells.ts",
+   "start": 176,
+   "end": 213,
+   "lines": [
+    176,
+    179,
+    180,
+    191,
+    194,
+    195,
+    200,
+    201,
+    202,
+    203,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.constructor",
+   "file": "src/render/poleCells.ts",
+   "start": 66,
+   "end": 76,
+   "lines": [
+    66,
+    67,
+    68,
+    70,
+    71,
+    72,
+    75,
+    76
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.derive",
+   "file": "src/render/poleCells.ts",
+   "start": 137,
+   "end": 173,
+   "lines": [
+    137,
+    142,
+    143,
+    144,
+    145,
+    146,
+    147,
+    148,
+    149,
+    150,
+    151,
+    152,
+    153,
+    154,
+    155,
+    173
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.dispose",
+   "file": "src/render/poleCells.ts",
+   "start": 234,
+   "end": 237,
+   "lines": [
+    234,
+    236,
+    237
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.group",
+   "file": "src/render/poleCells.ts",
+   "start": 50,
+   "end": 50,
+   "lines": [
+    50
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.live",
+   "file": "src/render/poleCells.ts",
+   "start": 53,
+   "end": 53,
+   "lines": [
+    53
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.look",
+   "file": "src/render/poleCells.ts",
+   "start": 96,
+   "end": 134,
+   "lines": [
+    96,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    134
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.release",
+   "file": "src/render/poleCells.ts",
+   "start": 215,
+   "end": 219,
+   "lines": [
+    215,
+    216,
+    217,
+    218,
+    219
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.scale",
+   "file": "src/render/poleCells.ts",
+   "start": 54,
+   "end": 54,
+   "lines": [
+    54
+   ]
+  },
+  {
+   "unit": "src/render/poleCells.ts#PoleCells.view",
+   "file": "src/render/poleCells.ts",
+   "start": 222,
+   "end": 232,
+   "lines": [
+    222,
+    223,
+    224,
+    225,
+    227,
+    228,
+    229,
+    230,
+    231,
+    232
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#SceneHandle",
+   "file": "src/render/renderer.ts",
+   "start": 227,
+   "end": 396,
+   "lines": [
+    227,
+    276,
+    396
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer",
+   "file": "src/render/renderer.ts",
+   "start": 432,
+   "end": 4205,
+   "lines": [
+    432,
+    444,
+    3035,
+    3254,
+    3255,
+    3256,
+    3257,
+    3258,
+    3259,
+    3260,
+    3261,
+    3262,
+    3263,
+    3264,
+    3265,
+    3266,
+    3267,
+    3268,
+    4152,
+    4170,
+    4202,
+    4203,
+    4205
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.switchedOff",
+   "file": "src/render/renderer.ts",
+   "start": 2642,
+   "end": 2657,
+   "lines": [
+    2642,
+    2643,
+    2644,
+    2645,
+    2646,
+    2647,
+    2648,
+    2649,
+    2650,
+    2651,
+    2652,
+    2653,
+    2654,
+    2655,
+    2656,
+    2657
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.syncUtilities",
+   "file": "src/render/renderer.ts",
+   "start": 2063,
+   "end": 2074,
+   "lines": [
+    2063,
+    2067,
+    2070,
+    2071,
+    2074
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.warmRoadShaders",
+   "file": "src/render/renderer.ts",
+   "start": 2506,
+   "end": 2544,
+   "lines": [
+    2506,
+    2509,
+    2524,
+    2525,
+    2526,
+    2527,
+    2528,
+    2529,
+    2538,
+    2539,
+    2540,
+    2541,
+    2543,
+    2544
+   ]
+  },
+  {
+   "unit": "src/render/utilities.ts#wireMaterials",
+   "file": "src/render/utilities.ts",
+   "start": 419,
+   "end": 449,
+   "lines": [
+    419,
+    422,
+    423,
+    435,
+    449
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 366,
+   "key": "hint.pole.offFootway",
+   "text": "'hint.pole.offFootway': 'Poles on footways only'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 367,
+   "key": "hint.pole.noPath",
+   "text": "'hint.pole.noPath': 'No footway joins these points'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/en.ts",
+   "line": 906,
+   "key": "hint.pole.removed",
+   "text": "'hint.pole.removed': 'Pole removed'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 364,
+   "key": "hint.pole.offFootway",
+   "text": "'hint.pole.offFootway': 'Postes só nas calçadas'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 365,
+   "key": "hint.pole.noPath",
+   "text": "'hint.pole.noPath': 'Não há calçada ligando esses pontos'"
+  },
+  {
+   "kind": "entry",
+   "owner": "shared",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 899,
+   "key": "hint.pole.removed",
+   "text": "'hint.pole.removed': 'Poste removido'"
+  }
+ ]
+}

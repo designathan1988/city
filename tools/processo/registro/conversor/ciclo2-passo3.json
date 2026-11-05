@@ -1,0 +1,31 @@
+{
+  "solucao": "Separar em run.ts o que depende só do programa do que depende do módulo: uma nova prepareTranslation abre o programa, resolve o FlowGraph e acha os tipos do alvo uma vez, e translate passa a aceitar esse resultado em `prepared`, sem mudar quem chama sem ele. Antes de cada tradução compartilhada, flow.errors é esvaziado, porque shapeOf não repete um erro que já está na lista e uma recusa de um módulo vazaria ou sumiria no seguinte. Em command.ts: prepara uma vez por funcionalidade; grava ledger.json, registration.json e conversao.md depois de cada módulo, então uma interrupção deixa o que já foi decidido; e a recusa passa a valer para a raiz que a causou: quando um módulo é recusado, cada raiz é julgada sozinha e o módulo é refeito só com as raízes que passam, em vez de uma união de tipos derrubar as vizinhas.",
+  "causa_tratada": "A causa do passo 1 é repetir por módulo um ponto fixo que não depende do módulo. Resolvê-lo uma vez elimina o cálculo repetido, em vez de esconder o custo com mais tempo limite. Gravar a cada módulo elimina a segunda causa, a perda total ao interromper.",
+  "plano": [
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts", "mudanca": "prepareTranslation e campo prepared em translate; flow.errors limpo por tradução" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/src/convert/command.ts", "mudanca": "preparo único, relatório a cada módulo, recusa por raiz" },
+    { "arquivo": "C:/Projects/Roadcraft-windows/converter/test/convert-shared.test.ts", "mudanca": "novo: traduzir com preparo compartilhado dá os mesmos arquivos que sem, e a recusa de um módulo não passa ao seguinte" }
+  ],
+  "simbolos": [
+    { "nome": "translate", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts" },
+    { "nome": "programFiles", "arquivo": "C:/Projects/Roadcraft-windows/converter/src/translate/run.ts" }
+  ],
+  "alternativas": [
+    {
+      "solucao": "Aumentar o tempo limite ou rodar em segundo plano por mais tempo.",
+      "por_que_nao": "Trata o efeito: o cálculo repetido continua, e uma funcionalidade com 30 módulos levaria mais de duas horas."
+    },
+    {
+      "solucao": "Restringir o fluxo aos arquivos da funcionalidade para que fique mais rápido.",
+      "por_que_nao": "Quebra a regra do DESIGN de tirar os fatos do programa inteiro: um inteiro passado por um chamador de fora viraria real, e o tipo em C++ sairia errado sem aviso."
+    },
+    {
+      "solucao": "Manter a recusa por módulo inteiro.",
+      "por_que_nao": "Uma única união de tipos sem forma em C++ deixaria abertas raízes limpas do mesmo arquivo. A recusa tem de ficar em quem a causou."
+    }
+  ],
+  "fontes": [
+    "https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API",
+    "https://en.wikipedia.org/wiki/Data-flow_analysis"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+ "pedido": [
+  "mesmo estando em ignorar permissões e eu já ter dado o poder de autorização para você",
+  "ignorar o hook goal, que você ignora até ele parar",
+  "não cumprir ordens e não procurar soluções baratas",
+  "ESSE GOAL NÃO DEVE DEIXAR O AGENTE IGNORAR DA PRÓXIMA VEZ"
+ ],
+ "problema": "O agente parou para pedir aprovação que o usuário já tinha dado, respondeu ao Stop do /goal só com texto repetido até o teto de continuações encerrar o laço, e deixou dois defeitos abertos no portão: agentes juízes disparando em todo comando com cifrão e caminho relativo resolvido contra a raiz.",
+ "causa": "Três mecanismos. pre_edicao e viola_protecao negam os arquivos do portão em qualquer fase, com a regra 'só o usuário altera', e isso criou um pedido de aprovação estrutural: a própria ferramenta obriga o agente a parar e pedir. Não há hook de Stop no portão, então um turno que responde a uma cobrança só com texto termina sem custo, até o teto de 8 continuações. E o if dos agentes em settings.json especifica mais que o nome do comando, por isso roda em qualquer comando com expansão de shell.",
+ "evidencias": [
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/processo.py"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/comandos.py"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/ferramentas/processo/passos.py"},
+  {"arquivo": "C:/Users/Jonathan/.claude/settings.json"}
+ ]
+}

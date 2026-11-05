@@ -1,0 +1,631 @@
+# Entradas manuais usadas hoje por funcionalidade (relativas a raiz do 4.0)
+
+## barriers: own=56 slices=40 uses=54 hooks=25
+  src/editor/barriers.ts
+  src/render/barriers.ts
+  src/world/barriers.ts
+
+## build: own=4178 slices=360 uses=407 hooks=433
+  src/buildingsWiring.ts
+  src/editor/blocks.ts
+  src/editor/blueprintLibrary.ts
+  src/editor/buildingFloors.ts
+  src/editor/buildingPlans.ts
+  src/editor/buildingProfile.ts
+  src/editor/buildingRoofs.ts
+  src/editor/buildingSnap.ts
+  src/editor/buildingTool.ts
+  src/editor/buildings.ts
+  src/editor/fromReference.ts
+  src/editor/growthFeed.ts
+  src/editor/growthReplica.ts
+  src/editor/lotTool.ts
+  src/growth.worker.ts
+  src/growthPool.ts
+  src/render/buildingSwitches.ts
+  src/render/buildings/buildingMesh.ts
+  src/render/buildings/cell.worker.ts
+  src/render/buildings/cellArrays.ts
+  src/render/buildings/cellPool.ts
+  src/render/buildings/cellRequests.ts
+  src/render/buildings/cellWork.ts
+  src/render/buildings/chunk.ts
+  src/render/buildings/facadeKit.ts
+  src/render/buildings/facadeLevel.ts
+  src/render/buildings/facadePropModels.ts
+  src/render/buildings/facadeProps.ts
+  src/render/buildings/fade.ts
+  src/render/buildings/farParts.ts
+  src/render/buildings/finishes.ts
+  src/render/buildings/flagLayer.ts
+  src/render/buildings/fracture.ts
+  src/render/buildings/fracture.worker.ts
+  src/render/buildings/frameBudget.ts
+  src/render/buildings/furnitureKit.ts
+  src/render/buildings/glassRoom.ts
+  src/render/buildings/gpuBatchedMesh.ts
+  src/render/buildings/kit.ts
+  src/render/buildings/landmarks.ts
+  src/render/buildings/lawnGround.ts
+  src/render/buildings/layer.ts
+  src/render/buildings/layerApi.ts
+  src/render/buildings/layerCells.ts
+  src/render/buildings/levelKeys.ts
+  src/render/buildings/lightSlots.ts
+  src/render/buildings/louvreSlats.ts
+  src/render/buildings/massBase.ts
+  src/render/buildings/massCells.ts
+  src/render/buildings/massLevels.ts
+  src/render/buildings/massing.ts
+  src/render/buildings/massingMaterial.ts
+  src/render/buildings/partCells.ts
+  src/render/buildings/partFiling.ts
+  src/render/buildings/partPose.ts
+  src/render/buildings/partWarm.ts
+  src/render/buildings/parts.ts
+  src/render/buildings/partyWalls.ts
+  src/render/buildings/referenceModel.ts
+  src/render/buildings/roofPlan.ts
+  src/render/buildings/roomBehind.ts
+  src/render/buildings/roomLamps.ts
+  src/render/buildings/shellBatch.ts
+  src/render/buildings/shellParts.ts
+  src/render/buildings/signature.ts
+  src/render/buildings/thinParts.ts
+  src/render/buildings/townColumns.ts
+  src/render/buildings/townIndex.ts
+  src/render/gardenLists.ts
+  src/render/gardens.ts
+  src/render/interiorSolids.ts
+  src/render/lotLattice.ts
+  src/render/lotOverlay.ts
+  src/render/mesh/farBlockBatches.ts
+  src/render/roomLamps.ts
+  src/render/torusWindow.ts
+  src/render/wear.ts
+  src/ui/buildStamp.ts
+  src/ui/builder/catalog.ts
+  src/ui/builder/icons.ts
+  src/ui/builder/workspace.ts
+  src/ui/overlay/builderGrid.ts
+  src/ui/overlay/buildingOverlay.ts
+  src/world/buildingGates.ts
+  src/world/buildings/architecture.ts
+  src/world/buildings/blocks.ts
+  src/world/buildings/blueprints.ts
+  src/world/buildings/cameraSolids.ts
+  src/world/buildings/cityBuildings.ts
+  src/world/buildings/decayWatch.ts
+  src/world/buildings/docks.ts
+  src/world/buildings/elements.ts
+  src/world/buildings/facadePatterns.ts
+  src/world/buildings/flags.ts
+  src/world/buildings/floors.ts
+  src/world/buildings/footprints.ts
+  src/world/buildings/foundation.ts
+  src/world/buildings/geometry.ts
+  src/world/buildings/grid.ts
+  src/world/buildings/handles.ts
+  src/world/buildings/interior.ts
+  src/world/buildings/intern.ts
+  src/world/buildings/items.ts
+  src/world/buildings/lotLibrary.ts
+  src/world/buildings/lotTemplate.ts
+  src/world/buildings/lots.ts
+  src/world/buildings/materials.ts
+  src/world/buildings/neighbours.ts
+  src/world/buildings/pads.ts
+  src/world/buildings/pick.ts
+  src/world/buildings/procedural.ts
+  src/world/buildings/recordTable.ts
+  src/world/buildings/reference.ts
+  src/world/buildings/roofPlant.ts
+  src/world/buildings/sections.ts
+  src/world/buildings/serialize.ts
+  src/world/buildings/siteGrading.ts
+  src/world/buildings/spaces.ts
+  src/world/buildings/spilledItems.ts
+  src/world/buildings/splitLevel.ts
+  src/world/buildings/store.ts
+  src/world/buildings/streetDoors.ts
+  src/world/buildings/tableRows.ts
+  src/world/buildings/towerKit.ts
+  src/world/buildings/types.ts
+  src/world/buildings/validate.ts
+  src/world/growth/grownRows.ts
+  src/world/growth/lotBoundaryRuns.ts
+  src/world/growth/lotPlan.ts
+  src/world/growth/rows.ts
+  src/world/growth/version.ts
+  src/world/growth/zoning.ts
+  src/world/lotRecord.ts
+  src/world/lotRings.ts
+  src/world/lotStore.ts
+  src/world/lots.ts
+  src/world/openLots.ts
+  src/world/zoneGrid.ts
+  src/world/zones.ts
+
+## bulldozer: own=17 slices=10 uses=40 hooks=9
+  src/editor/bulldozer.ts
+
+## camera: own=112 slices=39 uses=19 hooks=49
+  src/view/camera.ts
+  src/view/cameraGestures.ts
+  src/view/cameraMotion.ts
+  src/view/cameraProfile.ts
+
+## clouds: own=25 slices=16 uses=14 hooks=14
+  src/world/clouds.ts
+  src/editor/cloudTool.ts
+
+## demolition: own=721 slices=40 uses=392 hooks=375
+  src/editor/bulldozer.ts
+  src/actionsWiring.ts
+  src/render/playEffects.ts
+  src/render/blast.ts
+  src/render/destruction.ts
+  src/render/gore.ts
+  src/render/casualties.ts
+  src/render/ragdoll.ts
+  src/render/ragdollAxes.ts
+  src/render/ragdollGround.ts
+  src/render/ragdollJolt.ts
+  src/render/buildings/fracture.ts
+  src/render/buildings/fracture.worker.ts
+  src/sim/people/casualties.ts
+  src/render/exhaust.ts
+  src/sim/agents/walk.ts
+
+## destruction: own=86 slices=23 uses=67 hooks=36
+  src/render/blast.ts
+  src/render/destruction.ts
+  src/render/casualties.ts
+
+## economy: own=20 slices=20 uses=22 hooks=9
+  src/world/economy.ts
+
+## interface: own=1202 slices=264 uses=462 hooks=283
+  src/ui/v2/shell.ts
+  src/ui/v2/start.ts
+  src/ui/v2/compass.ts
+  src/ui/v2/transitLine.ts
+  src/ui/about.ts
+  src/ui/buildStamp.ts
+  src/ui/chrome.ts
+  src/ui/effectsPanel.ts
+  src/ui/graphicsPanel.ts
+  src/ui/healthPanel.ts
+  src/ui/healthWatch.ts
+  src/ui/inspector.ts
+  src/ui/labels.ts
+  src/ui/profilerHud.ts
+  src/ui/thunder.ts
+  src/ui/toolChoices.ts
+  src/ui/i18n/index.ts
+  src/view/camera.ts
+  src/view/cameraGestures.ts
+  src/view/cameraMotion.ts
+  src/view/cameraProfile.ts
+  src/view/viewport.ts
+  src/editor/history.ts
+  src/editor/persistence.ts
+  src/editor/saveStore.ts
+  src/editor/saveBinary.ts
+  src/editor/chunkedSave.ts
+  src/editor/gameKeys.ts
+  src/desktopSaves.ts
+  src/desktopShown.ts
+  src/render/quality.ts
+  src/render/optimizations.ts
+  src/render/optimizationsApply.ts
+  src/render/effectSwitches.ts
+  src/steamAchievements.ts
+  src/core/dynamicResolution.ts
+  src/render/revealGate.ts
+  src/editor/cookedCities.ts
+  src/render/isoViewport.ts
+
+## landscape: own=1402 slices=412 uses=411 hooks=412
+  src/editor/terrainBrush.ts
+  src/editor/streetscapeTool.ts
+  src/editor/cloudTool.ts
+  src/world/terrain.ts
+  src/world/terrainPaint.ts
+  src/world/landscape.ts
+  src/world/trees.ts
+  src/world/ecology.ts
+  src/world/weather.ts
+  src/world/clouds.ts
+  src/world/fogPaint.ts
+  src/world/groundPatch.ts
+  src/world/elevation.ts
+  src/world/gullies.ts
+  src/render/terrain.ts
+  src/render/terrainGrid.ts
+  src/render/terrainLevels.ts
+  src/render/terrainLod.ts
+  src/render/terrainShaping.ts
+  src/render/terrainLightCompute.ts
+  src/render/terrainLightPool.ts
+  src/render/terrainLight.worker.ts
+  src/render/water.ts
+  src/render/grass.ts
+  src/render/groundCover.ts
+  src/render/groundShape.ts
+  src/render/groundChanges.ts
+  src/render/groundShear.ts
+  src/render/natureTrees.ts
+  src/render/natureNoise.ts
+  src/render/lowPolyTrees.ts
+  src/render/stillTree.ts
+  src/render/farForest.ts
+  src/render/farWoods.ts
+  src/render/farGround.ts
+  src/render/woodsBase.ts
+  src/render/plantImpostors.ts
+  src/render/plantCells.ts
+  src/render/impostorShaders.ts
+  src/render/ecologyPool.ts
+  src/render/ecology.worker.ts
+  src/render/ecologyKept.ts
+  src/render/rain.ts
+  src/render/wind.ts
+  src/render/lightning.ts
+  src/render/fogLayer.ts
+  src/render/sunCascades.ts
+  src/render/canyonLight.ts
+  src/render/environment.ts
+  src/render/lightLevels.ts
+  src/render/cloudShadowStamp.ts
+  src/render/scenery.ts
+  src/render/bake/terrainRecipes.ts
+  src/render/bake/detailRecipes.ts
+  src/render/mesh/detailLayer.ts
+  src/render/elements.ts
+
+## marcos: own=7 slices=5 uses=1 hooks=5
+  src/world/buildings/lotLibrary.ts
+
+## people: own=1665 slices=282 uses=280 hooks=463
+  src/people/body/assets.ts
+  src/people/body/expressions.ts
+  src/people/body/macro.ts
+  src/people/body/morph.ts
+  src/people/body/proxy.ts
+  src/people/hair/procedural.ts
+  src/people/phenotype.ts
+  src/people/roster.ts
+  src/people/spec.ts
+  src/people/wardrobe.ts
+  src/render/citizenAssets.ts
+  src/render/citizenBake.ts
+  src/render/citizenBake.worker.ts
+  src/render/citizenCasting.ts
+  src/render/citizenGait.ts
+  src/render/citizenPalette.ts
+  src/render/citizenPlays.ts
+  src/render/citizenStride.ts
+  src/render/citizenWalk.ts
+  src/render/people/bodyPixels.ts
+  src/render/people/cartoon.ts
+  src/render/people/classRigMade.ts
+  src/render/people/cookPack.ts
+  src/render/people/cookedLoad.ts
+  src/render/people/cookedPerson.ts
+  src/render/people/crowdAnimation.ts
+  src/render/people/crowdBodies.ts
+  src/render/people/crowdLod.ts
+  src/render/people/faceExpression.ts
+  src/render/people/facialMorphs.ts
+  src/render/people/garmentPadding.ts
+  src/render/people/garmentPadding.worker.ts
+  src/render/people/garmentPaddingPool.ts
+  src/render/people/garmentSlots.ts
+  src/render/people/gpuRows.ts
+  src/render/people/hairTexture.ts
+  src/render/people/heldProps.ts
+  src/render/people/lodPool.ts
+  src/render/people/lodPort.ts
+  src/render/people/lodWorker.ts
+  src/render/people/paletteTargets.ts
+  src/render/people/personBuild.ts
+  src/render/people/personMesh.ts
+  src/render/people/personRig.ts
+  src/render/people/personVariants.ts
+  src/render/people/proceduralBake.ts
+  src/render/people/proceduralCook.ts
+  src/render/people/proceduralCrowd.ts
+  src/render/people/skinAppearance.ts
+  src/render/riderPoses.ts
+  src/render/riggedCitizens.ts
+  src/sim/agents/walk.ts
+  src/sim/crossings/permission.ts
+  src/sim/crossings/state.ts
+  src/sim/intersections/crossingSpans.ts
+  src/sim/peds/sidewalk.ts
+  src/sim/peds/signalPostIndex.ts
+  src/sim/people/casualties.ts
+  src/sim/people/engine.ts
+  src/sim/people/view.ts
+  src/world/footwayPath.ts
+  src/world/pedestrianAccess.ts
+  src/world/roads/footwayRise.ts
+  src/world/walkable.ts
+  src/world/walkingLines.ts
+  src/world/walkways.ts
+
+## poles: own=198 slices=33 uses=116 hooks=64
+  src/editor/poles.ts
+  src/editor/poleRoutes.ts
+  src/render/poleLayer.ts
+
+## road-elevation: own=295 slices=147 uses=146 hooks=58
+  src/world/elevation.ts
+  src/world/structures.ts
+  src/render/structures.ts
+  src/render/structureCells.ts
+  src/world/junction/levels.ts
+
+## roads: own=2504 slices=844 uses=534 hooks=462
+  src/editor/roadTool.ts
+  src/editor/roadPath.ts
+  src/editor/roadTop.ts
+  src/editor/roadParking.ts
+  src/editor/nodeMover.ts
+  src/editor/roundabout.ts
+  src/editor/snap.ts
+  src/editor/streetscapeTool.ts
+  src/editor/streetObjects.ts
+  src/editor/roads/economy.ts
+  src/editor/roads/powerLine.ts
+  src/editor/roads/profile.ts
+  src/editor/roads/streetKit.ts
+  src/world/roads/buildMode.ts
+  src/world/roads/catalog.ts
+  src/world/roads/connectors.ts
+  src/world/roads/derivedSigns.ts
+  src/world/roads/footwayRise.ts
+  src/world/roads/furnitureCatalog.ts
+  src/world/roads/furnitureSets.ts
+  src/world/roads/laneEnds.ts
+  src/world/roads/markingStyle.ts
+  src/world/roads/profile.ts
+  src/world/roads/rules.ts
+  src/world/roads/streetChain.ts
+  src/world/roads/streetNames.ts
+  src/world/roads/templates.ts
+  src/world/roads/tuning.ts
+  src/world/junction/build.ts
+  src/world/junction/bulb.ts
+  src/world/junction/corners.ts
+  src/world/junction/derive.ts
+  src/world/junction/legs.ts
+  src/world/junction/levels.ts
+  src/world/junction/mouthOverlap.ts
+  src/world/junction/polygon.ts
+  src/world/junction/transition.ts
+  src/world/junction/trim.ts
+  src/world/junction/trimSummary.ts
+  src/world/junction/types.ts
+  src/ui/roads/catalogPanel.ts
+  src/ui/roads/connectorPanel.ts
+  src/ui/roads/crossSection.ts
+  src/ui/roads/cutWalls.ts
+  src/ui/roads/drawProfile.ts
+  src/ui/roads/furnitureChoice.ts
+  src/ui/roads/junctionPanel.ts
+  src/ui/roads/keys.ts
+  src/ui/roads/keysPanel.ts
+  src/ui/roads/money.ts
+  src/ui/roads/profileEditor.ts
+  src/ui/roads/profilePanel.ts
+  src/ui/roads/profileSwatch.ts
+  src/ui/roads/templates.ts
+  src/world/junctionBuild.ts
+  src/world/junctionTurns.ts
+  src/world/network.ts
+  src/world/networkBuild.ts
+  src/world/networkDelta.ts
+  src/world/networkLength.ts
+  src/world/rampRise.ts
+  src/world/roadField.ts
+  src/world/roadSection.ts
+  src/world/roadTypes.ts
+  src/world/elevation.ts
+  src/world/lanelets.ts
+  src/world/markings.ts
+  src/world/curbRamps.ts
+  src/world/surfaces.ts
+  src/world/surfaceParts.ts
+  src/world/carriageway.ts
+  src/world/paving.ts
+  src/world/ribbons.ts
+  src/world/gullies.ts
+  src/world/legAngles.ts
+  src/world/streetFurniture.ts
+  src/render/roadSurfaces.ts
+  src/render/roadSurfaceEntries.ts
+  src/render/roadSurfaceInputs.ts
+  src/render/roadSurfacePass.ts
+  src/render/roadSurfaceReads.ts
+  src/render/roadSurfaceRings.ts
+  src/render/roadTileMesh.ts
+  src/render/roadTilePool.ts
+  src/render/roadTileShape.ts
+  src/render/roadTones.ts
+  src/render/roadsRead.ts
+  src/render/roadStandIn.ts
+  src/render/roadProgramStandIns.ts
+  src/render/roadStations.ts
+  src/render/markings.ts
+  src/render/paintQuads.ts
+  src/render/platePaint.ts
+  src/render/networkFarRoads.ts
+  src/render/networkFarRoadsBuild.ts
+  src/render/mesh/roadEdges.ts
+  src/render/mesh/roadLod.ts
+  src/render/mesh/roadLodPure.ts
+  src/render/mesh/roadResidency.ts
+  src/render/mesh/surfaceMesh.ts
+  src/render/mesh/surfaceTiles.ts
+  src/render/surfaceBakeClient.ts
+  src/render/surfaceTextures.ts
+  src/render/bake/roadRecipes.ts
+  src/render/streetFurnitureLayer.ts
+  src/ui/roadSectionEditor.ts
+  src/ui/roadSwatch.ts
+  src/world/cityGen/streets.ts
+  src/world/cityGen/plan.ts
+  src/world/cityGen/wholeMap.ts
+  src/editor/commit.ts
+  src/editor/editRules.ts
+  src/world/parking.ts
+  src/world/parkingLayout.ts
+  src/world/section.ts
+  src/world/approach.ts
+  src/world/approachGroups.ts
+  src/world/geometry.ts
+  src/world/grid.ts
+  src/world/nearestRibbon.ts
+  src/world/footwayPath.ts
+  src/world/cityGen/field.ts
+  src/world/cityGen/mapSize.ts
+
+## start-menu: own=6 slices=1 uses=8 hooks=1
+  src/ui/v2/start.ts
+
+## street-furniture: own=843 slices=138 uses=364 hooks=192
+  src/editor/poles.ts
+  src/editor/poleRoutes.ts
+  src/editor/barriers.ts
+  src/editor/streetObjects.ts
+  src/world/streetFurniture.ts
+  src/world/signalPosts.ts
+  src/world/poleIndex.ts
+  src/world/poleLines.ts
+  src/world/utilities.ts
+  src/world/barriers.ts
+  src/render/poleLayer.ts
+  src/render/poleBake.ts
+  src/render/poleCells.ts
+  src/render/signs.ts
+  src/render/signLayer.ts
+  src/render/signals.ts
+  src/render/streetFurnitureLayer.ts
+  src/render/utilities.ts
+  src/render/barriers.ts
+  src/render/propCells.ts
+  src/render/propGeometry.ts
+  src/world/roads/derivedSigns.ts
+  src/world/roads/furnitureCatalog.ts
+  src/world/roads/furnitureSets.ts
+  src/ui/roads/furnitureChoice.ts
+  src/editor/streetscapeTool.ts
+  src/render/lightLevels.ts
+
+## traffic: own=3237 slices=344 uses=900 hooks=549
+  src/render/carBody.ts
+  src/render/densityCars.ts
+  src/render/exhaust.ts
+  src/render/occupants.ts
+  src/render/vehicleFrame.ts
+  src/render/vehicleLevels.ts
+  src/render/vehicleModels.ts
+  src/render/vehiclePanels.ts
+  src/render/vehicleWindows.ts
+  src/sim/agents/bay.ts
+  src/sim/agents/buildingOrder.ts
+  src/sim/agents/hybridAStar.ts
+  src/sim/agents/kerbBays.ts
+  src/sim/agents/laneGrid.ts
+  src/sim/agents/lorryDocks.ts
+  src/sim/agents/lorryTraffic.ts
+  src/sim/agents/lotBays.ts
+  src/sim/agents/lotDoors.ts
+  src/sim/agents/lotNav.ts
+  src/sim/agents/lotTraffic.ts
+  src/sim/agents/manoeuvre.ts
+  src/sim/agents/parking.ts
+  src/sim/agents/reedsShepp.ts
+  src/sim/agents/trafficBuildings.ts
+  src/sim/agents/walk.ts
+  src/sim/intersections/admission.ts
+  src/sim/intersections/claims.ts
+  src/sim/intersections/crossingSpans.ts
+  src/sim/intersections/cycles.ts
+  src/sim/intersections/spillback.ts
+  src/sim/meso/demand.ts
+  src/sim/meso/memory.ts
+  src/sim/meso/meso.ts
+  src/sim/meso/model.ts
+  src/sim/meso/slots.ts
+  src/sim/meso/tileLinks.ts
+  src/sim/populationGovernor.ts
+  src/sim/routing/destination.ts
+  src/sim/routing/laneReach.ts
+  src/sim/routing/lowerBound.ts
+  src/sim/routing/routeIndex.ts
+  src/sim/routing/router.ts
+  src/sim/routing/searchScratch.ts
+  src/sim/signals/fsm.ts
+  src/sim/signals/permission.ts
+  src/sim/signals/plan.ts
+  src/sim/signals/query.ts
+  src/sim/vehicleSignals.ts
+  src/sim/vehicles/archetypes.ts
+  src/sim/vehicles/curvature.ts
+  src/sim/vehicles/cycleLane.ts
+  src/sim/vehicles/driver.ts
+  src/sim/vehicles/idm.ts
+  src/sim/vehicles/integrate.ts
+  src/sim/vehicles/kerbStops.ts
+  src/sim/vehicles/laneChange.ts
+  src/sim/vehicles/laneClosures.ts
+  src/sim/vehicles/leaderIndex.ts
+  src/sim/vehicles/obstacles.ts
+  src/sim/vehicles/spawn.ts
+  src/sim/vehicles/state.ts
+  src/sim/vehicles/vehicleId.ts
+  src/world/conflictPoints.ts
+  src/world/conflictTable.ts
+  src/world/lanelets.ts
+  src/world/parking.ts
+  src/world/parkingLayout.ts
+  src/world/turnPaths.ts
+  src/sim/ambient/demand.ts
+  src/sim/ambient/ambientIndex.ts
+  src/sim/ambient/lotPlaces.ts
+  src/sim/params.ts
+  src/render/agents.ts
+
+## transit: own=197 slices=35 uses=123 hooks=52
+  src/editor/transitTools.ts
+  src/render/transit.ts
+  src/sim/transit/transit.ts
+  src/ui/v2/transitLine.ts
+  src/world/transit.ts
+
+# Grafo atual (formato em src/graph/ir.ts): unidades 19679 arestas 83451
+tipos de aresta [('read', 29901), ('call', 24047), ('typeRef', 16447), ('write', 6765), ('implementation', 2596), ('callbackAssign', 1034), ('reference', 991), ('construct', 692), ('indirectCall', 440), ('moduleLoad', 385), ('schedule', 67), ('implements', 43), ('inherit', 43)]
+tipos de unidade [('function', 7188), ('variable', 3889), ('method', 3303), ('field', 2246), ('interface', 1573), ('type', 559), ('class', 309), ('getter', 264), ('constructor', 196), ('statement', 146), ('setter', 4), ('enum', 2)]
+
+# Amostra de unidades
+{"id": "src/actionsWiring.ts#Actions", "kind": "interface", "name": "Actions", "file": "src/actionsWiring.ts", "start": {"line": 57, "column": 1}, "end": {"line": 66, "column": 2}, "lines": 10, "exported": true, "signature": "", "parent": null, "nested": [], "facts": {"external": [], "nondeterminism": [], "loopAllocations": [], "numericLiterals": [], "stringLiterals": 0, "decisions": 0, "loops": 0, "awaits": 0, "bitOperations": 0, "isStatic": false, "callable": false, "mutableModuleState": false, "patterns": [], "fingerprints": []}}
+{"id": "src/actionsWiring.ts#ActionsDeps", "kind": "interface", "name": "ActionsDeps", "file": "src/actionsWiring.ts", "start": {"line": 33, "column": 1}, "end": {"line": 55, "column": 2}, "lines": 23, "exported": true, "signature": "", "parent": null, "nested": [], "facts": {"external": [], "nondeterminism": [], "loopAllocations": [], "numericLiterals": [], "stringLiterals": 0, "decisions": 0, "loops": 0, "awaits": 0, "bitOperations": 0, "isStatic": false, "callable": false, "mutableModuleState": false, "patterns": [], "fingerprints": [[52774002, 33], [132449793, 39], [96351221, 42], [22430271, 42], [53625505, 46]]}}
+{"id": "src/actionsWiring.ts#createActions", "kind": "function", "name": "createActions", "file": "src/actionsWiring.ts", "start": {"line": 68, "column": 1}, "end": {"line": 475, "column": 2}, "lines": 408, "exported": true, "signature": "(deps: ActionsDeps): Actions", "parent": null, "nested": [{"start": {"line": 71, "column": 3}, "end": {"line": 75, "column": 5}}, {"start": {"line": 76, "column": 3}, "end": {"line": 76, "column": 56}}, {"start": {"line": 89, "column": 3}, "end": {"line": 146, "column": 4}}, {"start": {"line": 149, "column": 3}, "end": {"line": 210, "column": 4}}, {"start": {"line": 213, "column": 3}, "end": {"line": 226, "column": 4}}, {"start": {"line": 229, "column": 3},
+{"id": "src/render/bake/roadRecipes.ts#kerbRecipe.shade", "kind": "method", "name": "kerbRecipe.shade", "file": "src/render/bake/roadRecipes.ts", "start": {"line": 135, "column": 5}, "end": {"line": 154, "column": 6}, "lines": 20, "exported": false, "signature": "", "parent": "src/render/bake/roadRecipes.ts#kerbRecipe", "nested": [], "facts": {"external": [{"key": "es:Math", "kind": "reference", "count": 3}, {"key": "es:Math.floor", "kind": "call", "count": 1}, {"key": "es:Math.max", "kind": "call", "count": 1}, {"key": "es:Math.min", "kind": "call", "count": 1}], "nondeterminism": [], "loopAllocations": [], "numericLiterals": [{"text": "60", "line": 138, "context": "value"}, {"text": "60", 
+{"id": "src/render/bake/roadRecipes.ts#RAISED_ASPHALT_BASE", "kind": "variable", "name": "RAISED_ASPHALT_BASE", "file": "src/render/bake/roadRecipes.ts", "start": {"line": 9, "column": 1}, "end": {"line": 9, "column": 35}, "lines": 1, "exported": false, "signature": "RAISED_ASPHALT_BASE: 0.245", "parent": null, "nested": [], "facts": {"external": [], "nondeterminism": [], "loopAllocations": [], "numericLiterals": [{"text": "0.245", "line": 9, "context": "constant"}], "stringLiterals": 0, "decisions": 0, "loops": 0, "awaits": 0, "bitOperations": 0, "isStatic": false, "callable": false, "mutableModuleState": false, "patterns": [], "fingerprints": []}}
+{"id": "src/render/bake/roadRecipes.ts#roadRecipes", "kind": "function", "name": "roadRecipes", "file": "src/render/bake/roadRecipes.ts", "start": {"line": 208, "column": 1}, "end": {"line": 217, "column": 2}, "lines": 10, "exported": true, "signature": "(): readonly { readonly key: string; readonly recipe: SurfaceRecipe; readonly mapOnly?: true; }[]", "parent": null, "nested": [], "facts": {"external": [], "nondeterminism": [], "loopAllocations": [], "numericLiterals": [], "stringLiterals": 6, "decisions": 0, "loops": 0, "awaits": 0, "bitOperations": 0, "isStatic": false, "callable": true, "mutableModuleState": false, "patterns": [], "fingerprints": [[36682570, 208], [47812418, 210]]}}
+
+# Amostra de arestas
+{"from": "src/actionsWiring.ts#Actions", "to": "src/core/vec2.ts#Vec2", "kind": "typeRef", "count": 2}
+{"from": "src/actionsWiring.ts#Actions", "to": "src/world/buildings/types.ts#Building", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/core/vec2.ts#Vec2", "kind": "typeRef", "count": 2}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/render/renderer.ts#SceneHandle", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/sim/host/simClient.ts#SimClient", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/view/viewport.ts#Viewport", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/world/doc.ts#RoadDoc", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#ActionsDeps", "to": "src/world/network.ts#Network", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#createActions", "to": "src/actionsWiring.ts#Actions", "kind": "typeRef", "count": 1}
+{"from": "src/actionsWiring.ts#createActions", "to": "src/actionsWiring.ts#ActionsDeps", "kind": "call", "count": 2}

@@ -1,0 +1,2734 @@
+{
+ "entries": [
+  "src/editor/barriers.ts",
+  "src/render/barriers.ts",
+  "src/world/barriers.ts"
+ ],
+ "roots": [
+  "src/main.ts",
+  "src/peopleLab/main.ts"
+ ],
+ "own": [
+  "src/editor/barriers.ts#BarrierTool",
+  "src/editor/barriers.ts#BarrierTool.cancel",
+  "src/editor/barriers.ts#BarrierTool.constructor",
+  "src/editor/barriers.ts#BarrierTool.cursor",
+  "src/editor/barriers.ts#BarrierTool.down",
+  "src/editor/barriers.ts#BarrierTool.finish",
+  "src/editor/barriers.ts#BarrierTool.gesture",
+  "src/editor/barriers.ts#BarrierTool.key",
+  "src/editor/barriers.ts#BarrierTool.lastClick",
+  "src/editor/barriers.ts#BarrierTool.move",
+  "src/editor/barriers.ts#BarrierTool.plan",
+  "src/editor/barriers.ts#BarrierTool.points",
+  "src/editor/barriers.ts#BarrierToolHost",
+  "src/editor/barriers.ts#FOOTWAY_REACH",
+  "src/editor/barriers.ts#MIN_BARRIER_RUN",
+  "src/editor/barriers.ts#barrierProblem",
+  "src/editor/barriers.ts#onCarriageway",
+  "src/editor/barriers.ts#snapBarrierPoint",
+  "src/render/barriers.ts#BarrierPlace",
+  "src/render/barriers.ts#BarrierProduct",
+  "src/render/barriers.ts#BarrierProduct.allKeys",
+  "src/render/barriers.ts#BarrierProduct.byId",
+  "src/render/barriers.ts#BarrierProduct.changed",
+  "src/render/barriers.ts#BarrierProduct.compute",
+  "src/render/barriers.ts#BarrierProduct.constructor",
+  "src/render/barriers.ts#BarrierProduct.dirty",
+  "src/render/barriers.ts#BarrierProduct.equals",
+  "src/render/barriers.ts#BarrierProduct.filing",
+  "src/render/barriers.ts#BarrierProduct.kinds",
+  "src/render/barriers.ts#BarrierProduct.name",
+  "src/render/barriers.ts#BarrierSource",
+  "src/render/barriers.ts#Barriers",
+  "src/render/barriers.ts#Box",
+  "src/render/barriers.ts#KINDS",
+  "src/render/barriers.ts#PARTS",
+  "src/render/barriers.ts#PIECE",
+  "src/render/barriers.ts#POST_STEP",
+  "src/render/barriers.ts#PartList",
+  "src/render/barriers.ts#READ_REACH",
+  "src/render/barriers.ts#SINK",
+  "src/render/barriers.ts#barrierInto",
+  "src/render/barriers.ts#barrierParts",
+  "src/render/barriers.ts#barrierParts.material",
+  "src/render/barriers.ts#createBarriers",
+  "src/render/barriers.ts#createBarriers.cull",
+  "src/render/barriers.ts#createBarriers.dispose",
+  "src/render/barriers.ts#createBarriers.sync",
+  "src/render/barriers.ts#placeBarrier",
+  "src/render/barriers.ts#placeKerbBarrier",
+  "src/world/barriers.ts#BARRIER_KINDS",
+  "src/world/barriers.ts#BARRIER_SIZE",
+  "src/world/barriers.ts#Barrier",
+  "src/world/barriers.ts#BarrierKind",
+  "src/world/barriers.ts#KERB_BARRIERS",
+  "src/world/barriers.ts#isBarrierKind",
+  "src/world/doc.ts#RoadDoc.barriersInAny"
+ ],
+ "uses": [
+  {
+   "unit": "src/core/polyline.ts#Frame",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.closestPoint",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.closestPoint",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/core/polyline.ts#Polyline.sampleAt",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/core/units.ts#m",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#barrierProblem",
+    "src/editor/barriers.ts#FOOTWAY_REACH",
+    "src/editor/barriers.ts#MIN_BARRIER_RUN",
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint",
+    "src/render/barriers.ts#createBarriers",
+    "src/render/barriers.ts#PIECE",
+    "src/render/barriers.ts#placeBarrier",
+    "src/render/barriers.ts#placeKerbBarrier",
+    "src/render/barriers.ts#POST_STEP",
+    "src/render/barriers.ts#READ_REACH",
+    "src/render/barriers.ts#SINK"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#barrierProblem",
+    "src/editor/barriers.ts#BarrierTool.finish",
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/core/vec2.ts#Vec2",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/barriers.ts#barrierProblem",
+    "src/editor/barriers.ts#BarrierTool.cursor",
+    "src/editor/barriers.ts#BarrierTool.down",
+    "src/editor/barriers.ts#BarrierTool.move",
+    "src/editor/barriers.ts#BarrierTool.plan",
+    "src/editor/barriers.ts#BarrierTool.points",
+    "src/editor/barriers.ts#BarrierToolHost",
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/editor/snap.ts#ribbonsNear",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/main.ts#barrierTool",
+   "kind": "implementation",
+   "by": [
+    "src/editor/barriers.ts#BarrierTool.down",
+    "src/editor/barriers.ts#BarrierTool.finish",
+    "src/editor/barriers.ts#BarrierTool.key",
+    "src/editor/barriers.ts#BarrierTool.move",
+    "src/editor/barriers.ts#BarrierTool.plan"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#createBarriers"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.cull",
+   "kind": "implementation",
+   "by": [
+    "src/render/barriers.ts#createBarriers.cull"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/barriers.ts#createBarriers.dispose"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#createInstanceRuns.update",
+   "kind": "implementation",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#InstanceRuns",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#createBarriers.cull",
+    "src/render/barriers.ts#createBarriers.dispose",
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#InstanceRuns",
+   "kind": "read",
+   "by": [
+    "src/render/barriers.ts#createBarriers"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#Run",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierPlace",
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder",
+   "kind": "construct",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.compute"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#barrierInto"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder.build",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.compute"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunBuilder.turned",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#barrierInto"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#RunStore",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.constructor",
+    "src/render/barriers.ts#createBarriers"
+   ]
+  },
+  {
+   "unit": "src/render/instanceRuns.ts#sameRun",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.equals"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/validate.ts#ROAD_CLEARANCE",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/buildings/validate.ts#touchesRoad",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#barrierProblem"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling",
+   "kind": "construct",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.filing"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.file",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.changed"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.ids",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.allKeys"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.idsMeetingAny",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.dirty",
+    "src/world/doc.ts#RoadDoc.barriersInAny"
+   ]
+  },
+  {
+   "unit": "src/world/cells.ts#CellFiling.remove",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.changed"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "read",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.dirty"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#Change",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.dirty"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeJournal",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierSource"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeKind",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.kinds"
+   ]
+  },
+  {
+   "unit": "src/world/changes.ts#ChangeRect",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#BarrierPlace",
+    "src/render/barriers.ts#BarrierProduct.compute",
+    "src/world/doc.ts#RoadDoc.barriersInAny"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived",
+   "kind": "construct",
+   "by": [
+    "src/render/barriers.ts#createBarriers"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.get",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.refresh",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#Derived.work",
+   "kind": "read",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#DerivedSpec",
+   "kind": "implements",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct"
+   ]
+  },
+  {
+   "unit": "src/world/derived.ts#DerivedWork",
+   "kind": "read",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc",
+   "kind": "typeRef",
+   "by": [
+    "src/render/barriers.ts#Barriers",
+    "src/render/barriers.ts#BarrierSource"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barrierCells",
+   "kind": "read",
+   "by": [
+    "src/world/doc.ts#RoadDoc.barriersInAny"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barrierMap",
+   "kind": "read",
+   "by": [
+    "src/world/doc.ts#RoadDoc.barriersInAny"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barriers",
+   "kind": "call",
+   "by": [
+    "src/render/barriers.ts#BarrierProduct.allKeys",
+    "src/render/barriers.ts#BarrierProduct.compute"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.changes",
+   "kind": "read",
+   "by": [
+    "src/render/barriers.ts#createBarriers.sync"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.segment",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadSegment",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/barriers.ts#barrierProblem",
+    "src/editor/barriers.ts#BarrierToolHost",
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/network.ts#Network.constructor",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/ribbons.ts#SegmentRibbon",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#CURB_BAND",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#halfWidth",
+   "kind": "call",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#Level",
+   "kind": "reference",
+   "by": [
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  },
+  {
+   "unit": "src/world/roadTypes.ts#RoadType",
+   "kind": "read",
+   "by": [
+    "src/editor/barriers.ts#onCarriageway",
+    "src/editor/barriers.ts#snapBarrierPoint"
+   ]
+  }
+ ],
+ "hooks": [
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool",
+   "kind": "construct",
+   "by": [
+    "src/main.ts#barrierTool"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.cancel",
+   "kind": "call",
+   "by": [
+    "src/main.ts#cancelGestures"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.down",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerDown"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.gesture",
+   "kind": "call",
+   "by": [
+    "src/main.ts#currentGesture"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.key",
+   "kind": "call",
+   "by": [
+    "src/main.ts#gameKeys"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.move",
+   "kind": "call",
+   "by": [
+    "src/main.ts#pointerMove"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.plan",
+   "kind": "call",
+   "by": [
+    "src/main.ts#drawBarrierPlan"
+   ]
+  },
+  {
+   "unit": "src/editor/barriers.ts#BarrierTool.plan",
+   "kind": "read",
+   "by": [
+    "src/main.ts#drawBarrierPlan"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#BarrierProduct.allKeys",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#BarrierProduct.changed",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#BarrierProduct.compute",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#BarrierProduct.dirty",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#BarrierProduct.equals",
+   "kind": "implementation",
+   "by": [
+    "src/world/derived.ts#Derived.refresh"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#Barriers",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#Barriers",
+   "kind": "read",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer",
+    "src/render/renderer.ts#createSceneRenderer.switchedOff"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#createBarriers",
+   "kind": "call",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#createBarriers.cull",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#createBarriers.dispose",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/render/barriers.ts#createBarriers.sync",
+   "kind": "implementation",
+   "by": [
+    "src/render/renderer.ts#createSceneRenderer"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#Barrier",
+   "kind": "read",
+   "by": [
+    "src/editor/bulldozer.ts#Bulldozer.boxed",
+    "src/editor/chunkedSave.ts#KEYED",
+    "src/main.ts#barrierTool",
+    "src/render/flatAtlas.ts#createFlatAtlas.readWholeContent",
+    "src/world/doc.ts#itemDifferences",
+    "src/world/doc.ts#RoadDoc.addBarrier",
+    "src/world/doc.ts#RoadDoc.barrierNear",
+    "src/world/doc.ts#RoadDoc.fromJSON",
+    "src/world/doc.ts#RoadDoc.putBarrierRecord",
+    "src/world/doc.ts#RoadDoc.removeBarrier",
+    "src/world/doc.ts#RoadDoc.replaceContents",
+    "src/world/doc.ts#RoadDoc.restore.itemRects",
+    "src/world/doc.ts#sameBarriers",
+    "src/world/doc.ts#savedBarrier",
+    "src/world/solids.ts#solidsOfItem"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#Barrier",
+   "kind": "typeRef",
+   "by": [
+    "src/editor/chunkedSave.ts#KEYED",
+    "src/world/doc.ts#barrierRecord",
+    "src/world/doc.ts#RoadDoc.addBarrier",
+    "src/world/doc.ts#RoadDoc.barrierCells",
+    "src/world/doc.ts#RoadDoc.barrierMap",
+    "src/world/doc.ts#RoadDoc.barrierNear",
+    "src/world/doc.ts#RoadDoc.barriers",
+    "src/world/doc.ts#RoadDoc.barriersIn",
+    "src/world/doc.ts#RoadDoc.putBarrierRecord",
+    "src/world/doc.ts#RoadDoc.restore",
+    "src/world/doc.ts#RoadDoc.takeFork",
+    "src/world/doc.ts#savedBarrier"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#BARRIER_KINDS",
+   "kind": "read",
+   "by": [
+    "src/main.ts#mountInterface",
+    "src/ui/v2/shell.ts#mountShell.renderLandscape"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#BARRIER_SIZE",
+   "kind": "read",
+   "by": [
+    "src/world/solids.ts#solidsOfItem"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#BarrierKind",
+   "kind": "typeRef",
+   "by": [
+    "src/main.ts#gameState",
+    "src/main.ts#mountInterface",
+    "src/world/doc.ts#RoadDoc.addBarrier"
+   ]
+  },
+  {
+   "unit": "src/world/barriers.ts#isBarrierKind",
+   "kind": "call",
+   "by": [
+    "src/world/doc.ts#barrierRecord"
+   ]
+  }
+ ],
+ "external": [
+  {
+   "key": "es:Math",
+   "count": 33
+  },
+  {
+   "key": "es:Array.push",
+   "count": 16
+  },
+  {
+   "key": "es:Math.max",
+   "count": 14
+  },
+  {
+   "key": "es:ReadonlyArray.length",
+   "count": 8
+  },
+  {
+   "key": "es:Math.hypot",
+   "count": 6
+  },
+  {
+   "key": "es:Math.min",
+   "count": 6
+  },
+  {
+   "key": "es:Array.length",
+   "count": 5
+  },
+  {
+   "key": "es:Infinity",
+   "count": 5
+  },
+  {
+   "key": "es:Array.map",
+   "count": 3
+  },
+  {
+   "key": "es:Record",
+   "count": 3
+  },
+  {
+   "key": "es:Set.add",
+   "count": 3
+  },
+  {
+   "key": "es:Map.get",
+   "count": 2
+  },
+  {
+   "key": "es:Math.atan2",
+   "count": 2
+  },
+  {
+   "key": "es:Math.ceil",
+   "count": 2
+  },
+  {
+   "key": "es:Math.round",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlyArray.map",
+   "count": 2
+  },
+  {
+   "key": "es:ReadonlySet.has",
+   "count": 2
+  },
+  {
+   "key": "es:Set",
+   "count": 2
+  },
+  {
+   "key": "three:BoxGeometry",
+   "count": 2
+  },
+  {
+   "key": "three:MeshStandardMaterial",
+   "count": 2
+  },
+  {
+   "key": "dom:performance",
+   "count": 1
+  },
+  {
+   "key": "dom:Performance.now",
+   "count": 1
+  },
+  {
+   "key": "es:Array.filter",
+   "count": 1
+  },
+  {
+   "key": "es:Array.pop",
+   "count": 1
+  },
+  {
+   "key": "es:Iterable",
+   "count": 1
+  },
+  {
+   "key": "es:Map",
+   "count": 1
+  },
+  {
+   "key": "es:Map.clear",
+   "count": 1
+  },
+  {
+   "key": "es:Map.delete",
+   "count": 1
+  },
+  {
+   "key": "es:Map.set",
+   "count": 1
+  },
+  {
+   "key": "es:Math.abs",
+   "count": 1
+  },
+  {
+   "key": "es:Object",
+   "count": 1
+  },
+  {
+   "key": "es:ObjectConstructor.fromEntries",
+   "count": 1
+  },
+  {
+   "key": "es:Readonly",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.every",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyArray.forEach",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyMap.get",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlyMap.keys",
+   "count": 1
+  },
+  {
+   "key": "es:ReadonlySet",
+   "count": 1
+  },
+  {
+   "key": "three:Frustum",
+   "count": 1
+  },
+  {
+   "key": "three:Group",
+   "count": 1
+  },
+  {
+   "key": "three:Material",
+   "count": 1
+  },
+  {
+   "key": "three:Matrix4",
+   "count": 1
+  }
+ ],
+ "holders": [
+  "src/main.ts#barrierTool",
+  "src/world/doc.ts#RoadDoc.barrierCells",
+  "src/world/doc.ts#RoadDoc.barriers"
+ ],
+ "sliced": [
+  "src/editor/bulldozer.ts#Bulldozer.boxed",
+  "src/editor/chunkedSave.ts#KEYED",
+  "src/main.ts#<IfStatement>@4036",
+  "src/main.ts#barrierTool",
+  "src/main.ts#cancelGestures",
+  "src/main.ts#currentGesture",
+  "src/main.ts#drawBarrierPlan",
+  "src/main.ts#gameKeys",
+  "src/main.ts#gameState",
+  "src/main.ts#mountInterface",
+  "src/main.ts#pointerDown",
+  "src/main.ts#pointerMove",
+  "src/render/flatAtlas.ts#createFlatAtlas.readWholeContent",
+  "src/render/renderer.ts#createSceneRenderer",
+  "src/render/renderer.ts#createSceneRenderer.switchedOff",
+  "src/ui/v2/shell.ts#mountShell.renderLandscape",
+  "src/world/derived.ts#Derived.refresh",
+  "src/world/doc.ts#RoadDoc.addBarrier",
+  "src/world/doc.ts#RoadDoc.barrierCells",
+  "src/world/doc.ts#RoadDoc.barrierMap",
+  "src/world/doc.ts#RoadDoc.barrierNear",
+  "src/world/doc.ts#RoadDoc.barriers",
+  "src/world/doc.ts#RoadDoc.barriersIn",
+  "src/world/doc.ts#RoadDoc.clearBarrierRecords",
+  "src/world/doc.ts#RoadDoc.deleteBarrierRecord",
+  "src/world/doc.ts#RoadDoc.fromJSON",
+  "src/world/doc.ts#RoadDoc.layOver",
+  "src/world/doc.ts#RoadDoc.ownIndex",
+  "src/world/doc.ts#RoadDoc.putBarrierRecord",
+  "src/world/doc.ts#RoadDoc.removeBarrier",
+  "src/world/doc.ts#RoadDoc.replaceContents",
+  "src/world/doc.ts#RoadDoc.restore",
+  "src/world/doc.ts#RoadDoc.restore.itemRects",
+  "src/world/doc.ts#RoadDoc.serialized",
+  "src/world/doc.ts#RoadDoc.takeFork",
+  "src/world/doc.ts#barrierRecord",
+  "src/world/doc.ts#itemDifferences",
+  "src/world/doc.ts#sameBarriers",
+  "src/world/doc.ts#savedBarrier",
+  "src/world/solids.ts#createSolids",
+  "src/world/solids.ts#solidsOfItem"
+ ],
+ "slices": [
+  {
+   "unit": "src/editor/bulldozer.ts#Bulldozer.boxed",
+   "file": "src/editor/bulldozer.ts",
+   "start": 125,
+   "end": 149,
+   "lines": [
+    125,
+    137,
+    138,
+    139,
+    145,
+    147,
+    149
+   ]
+  },
+  {
+   "unit": "src/editor/chunkedSave.ts#KEYED",
+   "file": "src/editor/chunkedSave.ts",
+   "start": 60,
+   "end": 94,
+   "lines": [
+    60,
+    81,
+    82,
+    83,
+    84,
+    94
+   ]
+  },
+  {
+   "unit": "src/main.ts#<IfStatement>@4036",
+   "file": "src/main.ts",
+   "start": 4036,
+   "end": 4231,
+   "lines": [
+    4036,
+    4128,
+    4131,
+    4132,
+    4134,
+    4135,
+    4139,
+    4144,
+    4231
+   ]
+  },
+  {
+   "unit": "src/main.ts#barrierTool",
+   "file": "src/main.ts",
+   "start": 515,
+   "end": 528,
+   "lines": [
+    515,
+    516,
+    517,
+    518,
+    519,
+    520,
+    521,
+    522,
+    523,
+    524,
+    525,
+    526,
+    527,
+    528
+   ]
+  },
+  {
+   "unit": "src/main.ts#cancelGestures",
+   "file": "src/main.ts",
+   "start": 1041,
+   "end": 1053,
+   "lines": [
+    1041,
+    1044,
+    1053
+   ]
+  },
+  {
+   "unit": "src/main.ts#currentGesture",
+   "file": "src/main.ts",
+   "start": 1056,
+   "end": 1073,
+   "lines": [
+    1056,
+    1066,
+    1067,
+    1073
+   ]
+  },
+  {
+   "unit": "src/main.ts#drawBarrierPlan",
+   "file": "src/main.ts",
+   "start": 2786,
+   "end": 2805,
+   "lines": [
+    2786,
+    2787,
+    2789,
+    2790,
+    2791,
+    2792,
+    2793,
+    2794,
+    2795,
+    2796,
+    2798,
+    2799,
+    2800,
+    2801,
+    2802,
+    2803,
+    2805
+   ]
+  },
+  {
+   "unit": "src/main.ts#gameKeys",
+   "file": "src/main.ts",
+   "start": 2479,
+   "end": 2555,
+   "lines": [
+    2479,
+    2484,
+    2555
+   ]
+  },
+  {
+   "unit": "src/main.ts#gameState",
+   "file": "src/main.ts",
+   "start": 393,
+   "end": 430,
+   "lines": [
+    393,
+    413,
+    430
+   ]
+  },
+  {
+   "unit": "src/main.ts#mountInterface",
+   "file": "src/main.ts",
+   "start": 1859,
+   "end": 1946,
+   "lines": [
+    1859,
+    1861,
+    1896,
+    1929,
+    1946
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerDown",
+   "file": "src/main.ts",
+   "start": 1217,
+   "end": 1396,
+   "lines": [
+    1217,
+    1252,
+    1297,
+    1298,
+    1299,
+    1394,
+    1396
+   ]
+  },
+  {
+   "unit": "src/main.ts#pointerMove",
+   "file": "src/main.ts",
+   "start": 1404,
+   "end": 1475,
+   "lines": [
+    1404,
+    1438,
+    1475
+   ]
+  },
+  {
+   "unit": "src/render/flatAtlas.ts#createFlatAtlas.readWholeContent",
+   "file": "src/render/flatAtlas.ts",
+   "start": 584,
+   "end": 602,
+   "lines": [
+    584,
+    595,
+    602
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer",
+   "file": "src/render/renderer.ts",
+   "start": 432,
+   "end": 4205,
+   "lines": [
+    432,
+    444,
+    1026,
+    2089,
+    2091,
+    2096,
+    2099,
+    2100,
+    2111,
+    2114,
+    2116,
+    2117,
+    2118,
+    2119,
+    2120,
+    2121,
+    2122,
+    2123,
+    2126,
+    2139,
+    2141,
+    2142,
+    3035,
+    3092,
+    3093,
+    3094,
+    3103,
+    3104,
+    3299,
+    3663,
+    4088,
+    4152,
+    4167,
+    4202,
+    4203,
+    4205
+   ]
+  },
+  {
+   "unit": "src/render/renderer.ts#createSceneRenderer.switchedOff",
+   "file": "src/render/renderer.ts",
+   "start": 2642,
+   "end": 2657,
+   "lines": [
+    2642,
+    2643,
+    2644,
+    2645,
+    2646,
+    2647,
+    2648,
+    2649,
+    2650,
+    2651,
+    2652,
+    2653,
+    2654,
+    2655,
+    2656,
+    2657
+   ]
+  },
+  {
+   "unit": "src/ui/v2/shell.ts#mountShell.renderLandscape",
+   "file": "src/ui/v2/shell.ts",
+   "start": 1433,
+   "end": 1577,
+   "lines": [
+    1433,
+    1450,
+    1471,
+    1491,
+    1511,
+    1545,
+    1554,
+    1555,
+    1556,
+    1576,
+    1577
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.addBarrier",
+   "file": "src/world/doc.ts",
+   "start": 512,
+   "end": 519,
+   "lines": [
+    512,
+    515,
+    516,
+    517,
+    518,
+    519
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barrierCells",
+   "file": "src/world/doc.ts",
+   "start": 172,
+   "end": 172,
+   "lines": [
+    172
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barrierMap",
+   "file": "src/world/doc.ts",
+   "start": 169,
+   "end": 169,
+   "lines": [
+    169
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barrierNear",
+   "file": "src/world/doc.ts",
+   "start": 559,
+   "end": 573,
+   "lines": [
+    559,
+    560,
+    562,
+    563,
+    564,
+    565,
+    566,
+    567,
+    568,
+    569,
+    570,
+    571,
+    572,
+    573
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barriers",
+   "file": "src/world/doc.ts",
+   "start": 170,
+   "end": 170,
+   "lines": [
+    170
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.barriersIn",
+   "file": "src/world/doc.ts",
+   "start": 535,
+   "end": 537,
+   "lines": [
+    535,
+    536,
+    537
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.clearBarrierRecords",
+   "file": "src/world/doc.ts",
+   "start": 552,
+   "end": 556,
+   "lines": [
+    552,
+    554,
+    555,
+    556
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.deleteBarrierRecord",
+   "file": "src/world/doc.ts",
+   "start": 546,
+   "end": 550,
+   "lines": [
+    546,
+    549,
+    550
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.fromJSON",
+   "file": "src/world/doc.ts",
+   "start": 2701,
+   "end": 2887,
+   "lines": [
+    2701,
+    2840,
+    2844,
+    2845,
+    2887
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.layOver",
+   "file": "src/world/doc.ts",
+   "start": 1853,
+   "end": 1899,
+   "lines": [
+    1853,
+    1863,
+    1899
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.ownIndex",
+   "file": "src/world/doc.ts",
+   "start": 1987,
+   "end": 2000,
+   "lines": [
+    1987,
+    1989,
+    1993,
+    1994,
+    1995,
+    1999,
+    2000
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.putBarrierRecord",
+   "file": "src/world/doc.ts",
+   "start": 540,
+   "end": 544,
+   "lines": [
+    540,
+    542,
+    543,
+    544
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.removeBarrier",
+   "file": "src/world/doc.ts",
+   "start": 521,
+   "end": 527,
+   "lines": [
+    521,
+    522,
+    523,
+    525,
+    527
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.replaceContents",
+   "file": "src/world/doc.ts",
+   "start": 2404,
+   "end": 2552,
+   "lines": [
+    2404,
+    2406,
+    2434,
+    2436,
+    2438,
+    2552
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.restore",
+   "file": "src/world/doc.ts",
+   "start": 2233,
+   "end": 2337,
+   "lines": [
+    2233,
+    2271,
+    2273,
+    2285,
+    2286,
+    2287,
+    2296,
+    2297,
+    2337
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.restore.itemRects",
+   "file": "src/world/doc.ts",
+   "start": 2258,
+   "end": 2268,
+   "lines": [
+    2258,
+    2259,
+    2266,
+    2267,
+    2268
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.serialized",
+   "file": "src/world/doc.ts",
+   "start": 2636,
+   "end": 2670,
+   "lines": [
+    2636,
+    2637,
+    2658,
+    2669,
+    2670
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#RoadDoc.takeFork",
+   "file": "src/world/doc.ts",
+   "start": 1902,
+   "end": 1950,
+   "lines": [
+    1902,
+    1913,
+    1950
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#barrierRecord",
+   "file": "src/world/doc.ts",
+   "start": 3080,
+   "end": 3085,
+   "lines": [
+    3080,
+    3081,
+    3085
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#itemDifferences",
+   "file": "src/world/doc.ts",
+   "start": 3439,
+   "end": 3471,
+   "lines": [
+    3439,
+    3461,
+    3462,
+    3463,
+    3464,
+    3465,
+    3466,
+    3467,
+    3468,
+    3469,
+    3471
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#sameBarriers",
+   "file": "src/world/doc.ts",
+   "start": 3474,
+   "end": 3484,
+   "lines": [
+    3474,
+    3475,
+    3476,
+    3477,
+    3478,
+    3479,
+    3480,
+    3481,
+    3482,
+    3484
+   ]
+  },
+  {
+   "unit": "src/world/doc.ts#savedBarrier",
+   "file": "src/world/doc.ts",
+   "start": 3695,
+   "end": 3695,
+   "lines": [
+    3695
+   ]
+  },
+  {
+   "unit": "src/world/solids.ts#createSolids",
+   "file": "src/world/solids.ts",
+   "start": 96,
+   "end": 142,
+   "lines": [
+    96,
+    104,
+    109,
+    112,
+    115,
+    126,
+    142
+   ]
+  },
+  {
+   "unit": "src/world/solids.ts#solidsOfItem",
+   "file": "src/world/solids.ts",
+   "start": 45,
+   "end": 82,
+   "lines": [
+    45,
+    48,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    68,
+    80,
+    82
+   ]
+  }
+ ],
+ "resources": [
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 161,
+   "key": "barrier.kind.fence",
+   "text": "'barrier.kind.fence': 'Fence'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 162,
+   "key": "barrier.kind.wall",
+   "text": "'barrier.kind.wall': 'Wall'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 163,
+   "key": "barrier.kind.hedge",
+   "text": "'barrier.kind.hedge': 'Hedge'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 164,
+   "key": "barrier.kind.guardrail",
+   "text": "'barrier.kind.guardrail': 'Guardrail'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 165,
+   "key": "barrier.kind.railing",
+   "text": "'barrier.kind.railing': 'Railing'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 914,
+   "key": "hint.barrier.built",
+   "text": "'hint.barrier.built': 'Built'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 915,
+   "key": "hint.barrier.removed",
+   "text": "'hint.barrier.removed': 'Removed'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 916,
+   "key": "hint.barrier.road",
+   "text": "'hint.barrier.road': 'A wall or fence cannot stand on a road or its pavement'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 917,
+   "key": "hint.barrier.short",
+   "text": "'hint.barrier.short': 'Too short to build'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/en.ts",
+   "line": 918,
+   "key": "hint.barrier.nothing",
+   "text": "'hint.barrier.nothing': 'No wall, fence or hedge here to remove'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 160,
+   "key": "barrier.kind.fence",
+   "text": "'barrier.kind.fence': 'Cerca'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 161,
+   "key": "barrier.kind.wall",
+   "text": "'barrier.kind.wall': 'Muro'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 162,
+   "key": "barrier.kind.hedge",
+   "text": "'barrier.kind.hedge': 'Sebe'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 163,
+   "key": "barrier.kind.guardrail",
+   "text": "'barrier.kind.guardrail': 'Defensa (guard-rail)'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 164,
+   "key": "barrier.kind.railing",
+   "text": "'barrier.kind.railing': 'Gradil urbano'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 907,
+   "key": "hint.barrier.built",
+   "text": "'hint.barrier.built': 'Construído'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 908,
+   "key": "hint.barrier.removed",
+   "text": "'hint.barrier.removed': 'Removido'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 909,
+   "key": "hint.barrier.road",
+   "text": "'hint.barrier.road': 'Muro e cerca não podem ficar sobre a via nem sobre a calçada'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 910,
+   "key": "hint.barrier.short",
+   "text": "'hint.barrier.short': 'Curto demais para construir'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/i18n/pt-BR.ts",
+   "line": 911,
+   "key": "hint.barrier.nothing",
+   "text": "'hint.barrier.nothing': 'Não há muro, cerca nem sebe aqui para remover'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/v2/shell.ts",
+   "line": 187,
+   "key": "guardrail",
+   "text": "guardrail: '<path d=\"M5 18v-8M12 18v-8M19 18v-8\"/><path d=\"M3 9h18v4H3Z\"/><path d=\"M3 11h18\"/>'"
+  },
+  {
+   "kind": "entry",
+   "owner": "feature",
+   "file": "src/ui/v2/shell.ts",
+   "line": 188,
+   "key": "railing",
+   "text": "railing: '<path d=\"M4 20V6M20 20V6\"/><path d=\"M4 7h16M4 18h16\"/><path d=\"M8 7v11M12 7v11M16 7v11\"/>'"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/peopleLab/peopleLab.css",
+   "line": 29,
+   "key": "rail",
+   "text": ".rail { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0; background: #121417; border-right: 1px solid var(--line); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/peopleLab/peopleLab.css",
+   "line": 30,
+   "key": "rail",
+   "text": ".rail button { position: relative; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); cursor: pointer; display: grid; place-items: center; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/peopleLab/peopleLab.css",
+   "line": 31,
+   "key": "rail",
+   "text": ".rail button:hover { color: var(--ink); background: var(--panel-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/peopleLab/peopleLab.css",
+   "line": 45,
+   "key": "row",
+   "text": ".row { display: grid; grid-template-columns: 96px 1fr 38px; align-items: center; gap: 8px; min-height: 28px; color: var(--ink-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/peopleLab/peopleLab.css",
+   "line": 46,
+   "key": "row",
+   "text": ".row output { text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 11px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 3,
+   "key": "rp-panel",
+   "text": ".rp-panel {\n  position: fixed; left: 16px; right: 16px; bottom: calc(var(--v-dock-h, 54px) + 14px); z-index: 40;\n  max-width: 1000px; margin: 0 auto; max-height: calc(100vh - var(--v-dock-h, 54px) - var(--v-hud-h, 46px) - 30px); overflow: auto;\n  display: grid; gap: 8px; padding: 12px 14px 14px;\n  /* Nearly opaque: a panel this full of drawing must not show the tool bars through it. */\n  background: rgba(14, 22, 24, 0.97); color: var(--v-text, #eef4f2);\n  border: 1px solid var(--v-line, rgba(255, 255, 255, 0.1)); border-radius: var(--v-r, 12px);\n  box-shadow: var(--v-shadow, 0 18px 50px rgba(0, 0, 0, 0.45));\n  font: 13px/1.3 Inter, ui-sans-serif, \"Segoe UI\", Roboto, sans-serif;\n}"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 18,
+   "key": "rp-panel",
+   "text": ".rp-panel *, .rp-summary * { box-sizing: border-box; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 19,
+   "key": "rp-panel",
+   "text": ".rp-panel button { font: inherit; color: inherit; cursor: pointer; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 20,
+   "key": "rp-panel",
+   "text": ".rp-panel button:disabled { opacity: 0.35; cursor: default; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 21,
+   "key": "rp-panel",
+   "text": ".rp-panel :focus-visible { outline: 2px solid var(--v-accent, #4fe0bf); outline-offset: 1px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 23,
+   "key": "rp-head",
+   "text": ".rp-head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-right: 38px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 24,
+   "key": "rp-head",
+   "text": ".rp-head > .rp-icon { position: absolute; top: 0; right: 0; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 25,
+   "key": "rp-head",
+   "text": ".rp-head .rp-foot { margin-left: auto; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 26,
+   "key": "rp-title",
+   "text": ".rp-title { font-size: 15px; font-weight: 650; letter-spacing: 0.01em; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 27,
+   "key": "rp-sub",
+   "text": ".rp-sub { color: var(--v-muted, #a3b4b0); font-size: 12.5px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 28,
+   "key": "rp-chip",
+   "text": ".rp-chip { padding: 4px 10px; border-radius: 999px; background: var(--v-raise, rgba(255,255,255,.05)); border: 1px solid var(--v-line); font-variant-numeric: tabular-nums; color: var(--v-muted); font-size: 12px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 29,
+   "key": "rp-panel",
+   "text": ".rp-panel .rp-icon { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--v-r-s, 8px); background: none; color: var(--v-muted); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 30,
+   "key": "rp-icon",
+   "text": ".rp-icon:hover { background: var(--v-raise-2, rgba(255,255,255,.09)); color: var(--v-text); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 31,
+   "key": "rp-icon",
+   "text": ".rp-icon svg, .rp-tool svg, .rp-btn svg, .rp-issue svg, .rp-ok svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 33,
+   "key": "rp-label",
+   "text": ".rp-label { color: var(--v-muted); font-size: 11.5px; font-weight: 600; text-transform: none; letter-spacing: 0.02em; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 36,
+   "key": "rp-cards",
+   "text": ".rp-cards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 37,
+   "key": "rp-cards",
+   "text": ".rp-cards::-webkit-scrollbar { height: 6px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 38,
+   "key": "rp-cards",
+   "text": ".rp-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 3px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 39,
+   "key": "rp-cards",
+   "text": ".rp-cards::-webkit-scrollbar-track { background: transparent; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 40,
+   "key": "rp-card",
+   "text": ".rp-card { position: relative; flex: none; width: 96px; border: 1px solid var(--v-line); border-radius: 10px; background: var(--v-raise); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 41,
+   "key": "rp-panel",
+   "text": ".rp-panel .rp-card-main { display: grid; gap: 5px; width: 100%; padding: 6px 6px 7px; border: 0; background: none; text-align: left; border-radius: 10px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 42,
+   "key": "rp-card",
+   "text": ".rp-card:hover { border-color: var(--v-accent-line, rgba(79,224,191,.5)); background: var(--v-raise-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 44,
+   "key": "rp-card-art",
+   "text": ".rp-card-art { display: block; height: 34px; border-radius: 6px; overflow: hidden; background: linear-gradient(#26383a, #1a2729); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 45,
+   "key": "rp-card-art",
+   "text": ".rp-card-art svg { display: block; width: 100%; height: 100%; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 46,
+   "key": "rp-card-name",
+   "text": ".rp-card-name { font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 47,
+   "key": "rp-panel",
+   "text": ".rp-panel .rp-card-x { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: grid; place-items: center; border: 0; border-radius: 6px; background: rgba(0,0,0,.55); color: var(--v-muted); font-size: 13px; line-height: 1; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 48,
+   "key": "rp-card-x",
+   "text": ".rp-card-x svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 49,
+   "key": "rp-panel",
+   "text": ".rp-panel .rp-card-x:hover { color: var(--v-danger-ink, #ffb3aa); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 50,
+   "key": "rp-card-blank",
+   "text": ".rp-card-blank { display: grid; place-items: center; height: 100%; color: var(--v-accent); background: var(--v-accent-soft, rgba(79,224,191,.14)); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 51,
+   "key": "rp-card-blank",
+   "text": ".rp-card-blank svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 54,
+   "key": "rp-stage",
+   "text": ".rp-stage { position: relative; border-radius: 10px; overflow: hidden; background: linear-gradient(180deg, #2b4448 0%, #1d2f32 70%); border: 1px solid var(--v-line); touch-action: none; user-select: none; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 64,
+   "key": "rp-end",
+   "text": ".rp-end { position: absolute; top: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(0,0,0,.32); color: #c9d6d3; font-size: 11px; pointer-events: none; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 65,
+   "key": "rp-end-l",
+   "text": ".rp-end-l { left: 8px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 65,
+   "key": "rp-end-r",
+   "text": ".rp-end-r { right: 8px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 66,
+   "key": "rp-picture",
+   "text": ".rp-picture { min-height: 120px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 67,
+   "key": "rp-empty",
+   "text": ".rp-empty { display: grid; place-items: center; align-content: center; gap: 8px; min-height: 160px; padding: 20px; color: var(--v-muted); text-align: center; font-size: 13px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 68,
+   "key": "rp-empty",
+   "text": ".rp-empty svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.5; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 72,
+   "key": "rp-palette",
+   "text": ".rp-palette { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 73,
+   "key": "rp-palette",
+   "text": ".rp-palette > .rp-label { margin-right: 4px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 74,
+   "key": "rp-tool",
+   "text": ".rp-tool { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 12px 0 9px; border: 1px solid var(--v-line); border-radius: var(--v-r-s); background: var(--v-raise); font-size: 12px; font-weight: 600; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 75,
+   "key": "rp-tool",
+   "text": ".rp-tool:hover { border-color: var(--v-accent-line); color: var(--v-text); background: var(--v-raise-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 76,
+   "key": "rp-tool",
+   "text": ".rp-tool svg { width: 22px; height: 22px; color: #cfe3de; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 79,
+   "key": "rp-props",
+   "text": ".rp-props { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 8px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 80,
+   "key": "rp-panel",
+   "text": "@media (max-width: 760px) { .rp-panel { left: 8px; right: 8px; } }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 82,
+   "key": "rp-panel",
+   "text": ".rp-panel { container-type: inline-size; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 83,
+   "key": "rp-props",
+   "text": "@container (max-width: 640px) { .rp-props { grid-template-columns: 1fr; } }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 84,
+   "key": "rp-block",
+   "text": ".rp-block { display: grid; gap: 8px; align-content: start; padding: 10px 12px; border: 1px solid var(--v-line); border-radius: 10px; background: var(--v-raise); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 85,
+   "key": "rp-block-head",
+   "text": ".rp-block-head { display: flex; align-items: center; gap: 8px; font-weight: 650; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 86,
+   "key": "rp-block-head",
+   "text": ".rp-block-head .rp-swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 87,
+   "key": "rp-block-head",
+   "text": ".rp-block-head .rp-actions { margin-left: auto; display: flex; gap: 2px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 88,
+   "key": "rp-row",
+   "text": ".rp-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 30px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 89,
+   "key": "rp-note",
+   "text": ".rp-note { color: var(--v-muted); font-size: 11.5px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 90,
+   "key": "rp-ctrls",
+   "text": ".rp-ctrls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 92,
+   "key": "rp-seg",
+   "text": ".rp-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(0,0,0,.18); border: 1px solid var(--v-line); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 94,
+   "key": "rp-seg",
+   "text": ".rp-seg button { min-height: 26px; padding: 0 11px; border: 0; border-radius: 7px; background: none; color: var(--v-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 95,
+   "key": "rp-seg",
+   "text": ".rp-seg button:hover { color: var(--v-text); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 101,
+   "key": "rp-step",
+   "text": ".rp-step { display: inline-grid; grid-template-columns: 28px minmax(52px, auto) 28px; align-items: center; gap: 2px; padding: 2px; border-radius: 999px; background: rgba(0,0,0,.18); border: 1px solid var(--v-line); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 102,
+   "key": "rp-step",
+   "text": ".rp-step button { width: 28px; height: 26px; border: 0; border-radius: 999px; background: none; color: var(--v-text); font-size: 16px; font-weight: 700; line-height: 1; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 103,
+   "key": "rp-step",
+   "text": ".rp-step button:hover:not(:disabled) { background: var(--v-raise-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 104,
+   "key": "rp-step",
+   "text": ".rp-step output { text-align: center; font-weight: 650; font-variant-numeric: tabular-nums; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 106,
+   "key": "rp-switch",
+   "text": ".rp-switch { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; color: var(--v-text); font-size: 12.5px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 112,
+   "key": "rp-panel",
+   "text": ".rp-panel .rp-issue { width: 100%; text-align: left; font: inherit; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; background: rgba(255, 111, 97, 0.12); border: 1px solid rgba(255, 111, 97, 0.35); color: var(--v-danger-ink, #ffb3aa); font-size: 12.5px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 113,
+   "key": "rp-issue",
+   "text": "button.rp-issue:hover { background: rgba(255, 111, 97, 0.2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 114,
+   "key": "rp-issue",
+   "text": ".rp-issue svg { flex: none; margin-top: 1px; color: var(--v-danger, #ff6f61); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 115,
+   "key": "rp-ok",
+   "text": ".rp-ok { display: flex; gap: 8px; align-items: center; color: #9be3c9; font-size: 12.5px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 118,
+   "key": "rp-foot",
+   "text": ".rp-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 119,
+   "key": "rp-btn",
+   "text": ".rp-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--v-line); background: var(--v-raise); font-weight: 650; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 120,
+   "key": "rp-btn",
+   "text": ".rp-btn:hover:not(:disabled) { border-color: var(--v-accent-line); background: var(--v-raise-2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 124,
+   "key": "rp-field",
+   "text": ".rp-field { min-height: 32px; width: 180px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--v-line); background: rgba(0,0,0,.25); color: var(--v-text); font: inherit; outline: none; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 125,
+   "key": "rp-field",
+   "text": ".rp-field::placeholder { color: var(--v-muted); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 126,
+   "key": "rp-field",
+   "text": ".rp-field:focus { border-color: var(--v-accent-line); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 129,
+   "key": "rp-summary",
+   "text": ".rp-summary { display: grid; gap: 8px; margin: 10px 0; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 130,
+   "key": "rp-summary-head",
+   "text": ".rp-summary-head { display: flex; align-items: baseline; gap: 8px; font-weight: 650; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 131,
+   "key": "rp-summary-head",
+   "text": ".rp-summary-head .rp-sub { margin-left: auto; font-weight: 500; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 132,
+   "key": "rp-summary-art",
+   "text": ".rp-summary-art { border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #2b4448 0%, #1d2f32 70%); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 133,
+   "key": "rp-summary-art",
+   "text": ".rp-summary-art svg { display: block; width: 100%; height: auto; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 134,
+   "key": "rp-summary",
+   "text": ".rp-summary .rp-btn { justify-self: start; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 142,
+   "key": "rp-keys",
+   "text": ".rp-keys {\n  position: fixed; left: 330px; bottom: 80px; z-index: 41; width: 264px; display: grid; gap: 8px; padding: 12px;\n  background: rgba(14, 22, 24, 0.97); color: var(--v-text, #eef4f2); border: 1px solid var(--v-line, rgba(255,255,255,.1));\n  border-radius: var(--v-r, 12px); box-shadow: var(--v-shadow, 0 18px 50px rgba(0,0,0,.45));\n  font: 13px/1.3 Inter, ui-sans-serif, \"Segoe UI\", Roboto, sans-serif;\n}"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 148,
+   "key": "rp-keys",
+   "text": ".rp-keys * { box-sizing: border-box; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 149,
+   "key": "rp-keys",
+   "text": ".rp-keys button { font: inherit; color: inherit; cursor: pointer; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 150,
+   "key": "rp-keys-head",
+   "text": ".rp-keys-head { display: flex; align-items: center; justify-content: space-between; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 151,
+   "key": "rp-keys",
+   "text": ".rp-keys .rp-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--v-muted); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 152,
+   "key": "rp-keys",
+   "text": ".rp-keys .rp-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 153,
+   "key": "rp-keys-row",
+   "text": ".rp-keys-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 154,
+   "key": "rp-key",
+   "text": ".rp-key { min-width: 86px; min-height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--v-line); border-bottom-width: 3px; background: var(--v-raise, rgba(255,255,255,.05)); font-weight: 650; font-variant-numeric: tabular-nums; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 155,
+   "key": "rp-key",
+   "text": ".rp-key:hover { border-color: var(--v-accent-line, rgba(79,224,191,.5)); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 157,
+   "key": "rp-keys",
+   "text": ".rp-keys .rp-btn { justify-self: start; display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--v-line); background: var(--v-raise); font-weight: 600; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 158,
+   "key": "rp-keys",
+   "text": ".rp-keys .rp-note { color: var(--v-danger-ink, #ffb3aa); font-size: 12px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 159,
+   "key": "rp-keys",
+   "text": ".rp-keys :focus-visible { outline: 2px solid var(--v-accent, #4fe0bf); outline-offset: 1px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 177,
+   "key": "rp-connectors",
+   "text": ".rp-connectors .rp-btn { justify-self: start; display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: inherit; font: inherit; font-weight: 600; cursor: pointer; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 180,
+   "key": "rp-junction",
+   "text": ".rp-junction { display: grid; gap: 8px; margin: 10px 0; color: var(--v-text, #eef4f2); font: 13px/1.3 Inter, ui-sans-serif, \"Segoe UI\", Roboto, sans-serif; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 181,
+   "key": "rp-junction",
+   "text": ".rp-junction * { box-sizing: border-box; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 182,
+   "key": "rp-junction",
+   "text": ".rp-junction button { font: inherit; color: inherit; cursor: pointer; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 183,
+   "key": "rp-junction",
+   "text": ".rp-junction button:disabled { opacity: 0.35; cursor: default; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 184,
+   "key": "rp-junction",
+   "text": ".rp-junction :focus-visible { outline: 2px solid var(--v-accent, #4fe0bf); outline-offset: 1px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 185,
+   "key": "rp-junction",
+   "text": ".rp-junction .rp-block { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 186,
+   "key": "rp-junction",
+   "text": ".rp-junction .rp-block-head { font-weight: 650; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 187,
+   "key": "rp-junction",
+   "text": ".rp-junction .rp-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 30px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 189,
+   "key": "rp-junction",
+   "text": ".rp-junction .rp-btn { justify-self: start; display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); font-weight: 600; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 190,
+   "key": "rp-junction",
+   "text": ".rp-junction .rp-btn:hover { border-color: var(--v-accent-line, rgba(79,224,191,.5)); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 191,
+   "key": "rp-lock",
+   "text": ".rp-lock { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--v-muted, #a3b4b0); font-size: 12px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 192,
+   "key": "rp-flows",
+   "text": ".rp-flows { display: grid; gap: 2px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 193,
+   "key": "rp-flow",
+   "text": ".rp-flow { display: flex; justify-content: space-between; font-size: 12px; color: var(--v-muted, #a3b4b0); font-variant-numeric: tabular-nums; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 194,
+   "key": "rp-flow",
+   "text": ".rp-flow strong { color: var(--v-text, #eef4f2); font-weight: 650; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 195,
+   "key": "rp-moves",
+   "text": ".rp-moves { display: grid; gap: 4px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 196,
+   "key": "rp-moves",
+   "text": ".rp-moves .rp-ctrls { display: flex; flex-wrap: wrap; gap: 4px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 197,
+   "key": "rp-move",
+   "text": ".rp-move { min-height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.18); color: var(--v-muted, #a3b4b0); text-decoration: line-through; font-size: 12px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 210,
+   "key": "rc-catalog",
+   "text": ".rc-catalog { display: grid; gap: 6px; min-width: 0; font: 12px/1.25 Inter, ui-sans-serif, \"Segoe UI\", Roboto, sans-serif; color: var(--v-text, #eef4f2); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 211,
+   "key": "rc-catalog",
+   "text": ".rc-catalog * { box-sizing: border-box; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 212,
+   "key": "rc-catalog",
+   "text": ".rc-catalog button { font: inherit; color: inherit; cursor: pointer; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 213,
+   "key": "rc-tabs",
+   "text": ".rc-tabs { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(0,0,0,.22); justify-self: start; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 214,
+   "key": "rc-tab",
+   "text": ".rc-tab { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: 7px; border: 0; background: none; font-weight: 600; font-size: 12px; color: var(--v-muted, #a3b4b0); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 215,
+   "key": "rc-tab",
+   "text": ".rc-tab em { font-style: normal; font-size: 10.5px; opacity: .7; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 216,
+   "key": "rc-tab",
+   "text": ".rc-tab:hover { color: var(--v-text, #eef4f2); background: rgba(255,255,255,.06); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 218,
+   "key": "rc-cards",
+   "text": ".rc-cards { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 219,
+   "key": "rc-card",
+   "text": ".rc-card { position: relative; flex: 0 0 124px; border-radius: 9px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 220,
+   "key": "rc-card-main",
+   "text": ".rc-card-main { display: grid; gap: 3px; width: 124px; padding: 0; border: 0; background: none; text-align: left; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 221,
+   "key": "rc-art",
+   "text": ".rc-art { display: block; width: 124px; height: 64px; border-radius: 8px; border: 2px solid transparent; box-shadow: 0 1px 0 rgba(0,0,0,.35); transition: border-color .12s, transform .12s; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 222,
+   "key": "rc-card-main",
+   "text": ".rc-card-main:hover .rc-art { border-color: rgba(255,255,255,.45); transform: translateY(-1px); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 224,
+   "key": "rc-name",
+   "text": ".rc-name { padding: 0 2px; font-weight: 600; font-size: 11px; line-height: 1.2; min-height: 3.6em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 226,
+   "key": "rc-meta",
+   "text": ".rc-meta { padding: 0 2px; font-size: 10.5px; color: var(--v-muted, #a3b4b0); font-variant-numeric: tabular-nums; white-space: nowrap; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 227,
+   "key": "rc-custom",
+   "text": ".rc-custom { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border-radius: 7px; border: 0; background: rgba(10,18,20,.78); color: var(--v-accent, #4fe0bf); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 228,
+   "key": "rc-custom",
+   "text": ".rc-custom:hover { background: var(--v-accent, #4fe0bf); color: var(--v-accent-ink, #062520); }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 229,
+   "key": "rc-empty",
+   "text": ".rc-empty { padding: 10px 4px; color: var(--v-muted, #a3b4b0); max-width: 360px; }"
+  },
+  {
+   "kind": "style",
+   "owner": "shared",
+   "file": "src/ui/roads/roads.css",
+   "line": 238,
+   "key": "rp-summary-actions",
+   "text": ".rp-summary-actions { display: flex; flex-wrap: wrap; gap: 6px; }"
+  }
+ ]
+}
