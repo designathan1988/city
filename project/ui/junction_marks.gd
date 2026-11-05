@@ -1,24 +1,19 @@
 ## With the Controle tab up every junction says what it runs by: a ring and a letter over it, bigger under the pointer
-## (Roadcraft main.ts). Drawn only for the junctions on the screen; the list comes again when the city changes.
+## (Roadcraft main.ts). Drawn only for the junctions on the screen; the list is the store's, read again only when the
+## network changes (CityStore.cached), not with every refresh of the snapshot.
 class_name JunctionMarks
 extends Control
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-@onready var _junctions: Array = []
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hide()
-	CityStore.changed.connect(func(_snapshot: Dictionary) -> void:
-		if visible:
-			_junctions = CityStore.query(&"junctions"))
 	if tools:
 		tools.tool_changed.connect(func(tool: int, _params: Dictionary) -> void:
-			visible = tool == ToolController.Tool.CONTROL
-			if visible:
-				_junctions = CityStore.query(&"junctions"))
+			visible = tool == ToolController.Tool.CONTROL)
 
 
 func _process(_delta: float) -> void:
@@ -36,7 +31,7 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	var size_px := int(HudWidgets.px("control_mark_font"))
 	var r := HudWidgets.px("control_mark_r")
-	for j in _junctions:
+	for j in CityStore.cached(&"junctions"):
 		if camera.is_position_behind(j.at):
 			continue
 		var at := camera.unproject_position(j.at)

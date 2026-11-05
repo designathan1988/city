@@ -176,9 +176,8 @@ Dictionary CityCore::landscape() const {
 
 int64_t CityCore::sky_revision() const { return int64_t(state_->nature.sky_revision); }
 
-Dictionary CityCore::fog_field(const Vector3 &camera) {
-	render_.fog().sync(*state_, camera.x, camera.z);
-	return render_.fog().view();
-}
+Dictionary CityCore::fog_field() const { return render_.fog().view(); }
+
+int64_t CityCore::fog_revision() const { return int64_t(render_.fog().revision()); }
 
 } // namespace city

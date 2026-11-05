@@ -30,7 +30,7 @@ func _draw() -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var plan: Dictionary = CityStore.query(&"transit_plan")
+	var plan: Dictionary = CityStore.cached(&"transit_plan") # read again only when the plan changes
 	var by_id := {}
 	for s: Dictionary in plan.stops:
 		by_id[s.id] = s

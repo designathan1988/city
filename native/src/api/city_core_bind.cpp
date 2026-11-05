@@ -168,7 +168,8 @@ void CityCore::bind_nature() {
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityCore::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityCore::landscape);
 	ClassDB::bind_method(D_METHOD("sky_revision"), &CityCore::sky_revision);
-	ClassDB::bind_method(D_METHOD("fog_field", "camera"), &CityCore::fog_field);
+	ClassDB::bind_method(D_METHOD("fog_field"), &CityCore::fog_field);
+	ClassDB::bind_method(D_METHOD("fog_revision"), &CityCore::fog_revision);
 }
 
 } // namespace city

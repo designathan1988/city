@@ -161,6 +161,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.backlog = backlog;
 		cost_.budget_left = budget.left;
 	}
+	fog_.sync(s, cam.x, cam.z); // its job takes the map itself; the window follows the view as the chunks do
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	UploadBudget upload(window, roads_.baking() + verges_.baking() + props_.baking() + buildings_.baking());
 	RenderingServer::get_singleton()->get_video_adapter_name(); // a wrapped call: runs the queued commands first

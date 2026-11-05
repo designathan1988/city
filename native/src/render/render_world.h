@@ -77,7 +77,7 @@ public:
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
-	FogField &fog() { return fog_; }
+	const FogField &fog() const { return fog_; } // advanced by sync, like every view of the map
 	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }

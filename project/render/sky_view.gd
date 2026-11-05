@@ -34,6 +34,7 @@ var _puffs := PackedVector4Array()
 var _looks := PackedVector4Array()
 var _weather_view: WeatherView
 var _fog_field: Dictionary = {}
+var _fog_seen := -1 # the core's fog_revision last applied: the window is read and bound only when the render took a new one in
 
 
 func _init(world: CityWorld) -> void:
@@ -103,8 +104,11 @@ func _process(dt: float) -> void:
 	_light(way)
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
-	_fog_field = CityStore.query(&"fog_field", [get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() else Vector3.ZERO])
-	_apply_fog()
+	var fog_rev: int = CityStore.query(&"fog_revision")
+	if fog_rev != _fog_seen:
+		_fog_seen = fog_rev
+		_fog_field = CityStore.query(&"fog_field")
+		_apply_fog()
 
 
 func _read() -> void:

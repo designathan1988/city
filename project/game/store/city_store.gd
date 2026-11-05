@@ -7,6 +7,9 @@ signal changed(snapshot: Dictionary)
 signal command_failed(error_key: String)
 
 const SNAPSHOT_INTERVAL_S := 0.25
+## Reads of the core that change only when a revision of the snapshot moves (the network with edit_revision, the transport
+## plan with transit_revision): `cached` asks the core once per revision, so a view drawing every frame never asks for nothing.
+const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision"}
 ## Save files: SaveSlots owns where they live (one per city). The city on screen is written to its own slot
 ## (`_city_slot`, given at its first save or by the slot it was opened from): Save, Ctrl+S and the autosave every
 ## autosave_s of real time while it has unsaved work and is the player's (it has a slot or they edited it). The core
@@ -25,6 +28,7 @@ var _save_slot := ""
 var _city_slot := ""
 var _export_to := "" # a map copy to make once the save in flight is written
 var _save_auto := false # the save in flight is the autosave
+var _cache := {} # CACHED_BY query -> [the revision it was read at, its answer]
 
 
 func _ready() -> void:
@@ -154,6 +158,19 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 func query(name: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.QUERIES.has(name), "consulta desconhecida: %s" % name)
 	return _core.callv(StoreApi.QUERIES[name], args)
+
+
+## A CACHED_BY query's answer, asked of the core again only when its revision in the snapshot moved (every command
+## refreshes the snapshot, so an edit is seen at once).
+func cached(name: StringName) -> Variant:
+	var rev: int = snapshot.get(CACHED_BY[name], -1)
+	if rev < 0:
+		return query(name)
+	var hit: Array = _cache.get(name, [])
+	if hit.is_empty() or hit[0] != rev:
+		hit = [rev, query(name)]
+		_cache[name] = hit
+	return hit[1]
 
 
 ## Tests only: advance the simulation deterministically.
