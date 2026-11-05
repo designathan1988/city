@@ -1,0 +1,212 @@
+// `converter convert`: a feature carried as far as facts allow. Its ledger decides each unit, the machine translates
+// what is clean, the quarantine judges every output, and the report lists what stays open with its correct method.
+// Nothing is written to the target: accepted files go to --out/files. Exit 0 only when nothing is open.
+import fs from 'node:fs';
+import path from 'node:path';
+import { runAudit } from '../audit/run.ts';
+import { parseFlags, type FlagSpec } from '../common/args.ts';
+import { removeTree } from '../common/files.ts';
+import type { GraphIR } from '../graph/ir.ts';
+import { loadTypeScript, openProgram } from '../graph/typescript.ts';
+import { prepareTranslation, translate, type PreparedProgram } from '../translate/run.ts';
+import type { TranslationSpec } from '../translate/spec.ts';
+import { moduleSpecs, ownedNames, readLibrary } from './autospec.ts';
+import { readCoverage } from './inventory.ts';
+import { Ledger, counts, type LedgerUnit } from './ledger.ts';
+import { compileFiles, scanFiles, scanUnits, targetLimits, type QuarantineFinding } from './quarantine.ts';
+
+export const CONVERT_FLAGS: readonly FlagSpec[] = [
+  { name: 'feature', required: true, help: 'the feature\'s name' },
+  { name: 'source-root', required: true, help: 'root of the TypeScript source project' },
+  { name: 'typescript', help: 'TypeScript package directory (default: the source project\'s own)' },
+  { name: 'graph', required: true, help: 'the whole program\'s graph (converter graph)' },
+  { name: 'boundary', required: true, help: 'the feature\'s boundary.json (converter feature)' },
+  { name: 'target-root', required: true, help: 'root of the target game (read only)' },
+  { name: 'target-graph', required: true, help: 'the target\'s C++ graph (converter cppgraph)' },
+  { name: 'library', required: true, help: 'what the game already owns (configs/conversion-library.json)' },
+  { name: 'ports', required: true, help: 'the port folders: each cobertura.md says what the game has' },
+  { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
+  { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
+  { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },
+];
+
+const AUDIT_EXTENSION = '.cpp';
+const DEFAULT_MAX_SCATTERING = 0.5;
+const DEFAULT_MIN_CONSTANT_FILES = 3;
+
+interface ModuleOutcome {
+  readonly module: string;
+  readonly accepted: boolean;
+  readonly files: readonly string[];
+  readonly emitted: readonly string[];
+  readonly refusals: readonly string[];
+}
+
+interface Registration {
+  readonly subsystem: string;
+  readonly includes: readonly string[];
+  readonly mapLine: string;
+  readonly state: { readonly header: string; readonly anchor: string; readonly member: string; readonly root: string } | null;
+}
+
+function auditOf(graph: GraphIR, rulesFile: string): ReturnType<typeof runAudit> {
+  const rules = JSON.parse(fs.readFileSync(rulesFile, 'utf8')) as {
+    max_lines?: Record<string, number>; max_function_lines?: Record<string, number>; magic_numbers?: { allowed_values?: number[]; exempt?: string[] };
+  };
+  return runAudit(graph, {
+    hot: [], uiDirs: ['src/ui'], stateDirs: ['src/world', 'src/sim'], simDirs: ['src/world', 'src/sim'],
+    maxFileLines: rules.max_lines?.[AUDIT_EXTENSION], maxFunctionLines: rules.max_function_lines?.[AUDIT_EXTENSION], features: [],
+    maxScattering: DEFAULT_MAX_SCATTERING, writerDirs: [], channels: [], stateRoot: null, minConstantFiles: DEFAULT_MIN_CONSTANT_FILES,
+    allowedNumbers: rules.magic_numbers?.allowed_values ?? null, numberExempt: rules.magic_numbers?.exempt ?? [],
+  });
+}
+
+function writeTree(root: string, files: ReadonlyMap<string, string>): void {
+  for (const [file, text] of files) {
+    const target = path.join(root, file);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, text, 'utf8');
+  }
+}
+
+/** Every named constant the accepted files hold, for the rule that each needs a source. */
+function constantsIn(files: ReadonlyMap<string, string>): string[] {
+  const out = new Set<string>();
+  for (const [file, text] of files) {
+    if (!file.endsWith('.h')) continue;
+    for (const m of text.matchAll(/constexpr\s+[\w:]+\s+([A-Z][A-Z0-9_]*)\s*=/g)) out.add(m[1]!);
+  }
+  return [...out].sort();
+}
+
+function render(feature: string, units: readonly LedgerUnit[], outcomes: readonly ModuleOutcome[], open: readonly LedgerUnit[], unsourced: readonly string[], done: ReadonlySet<string>): string {
+  const c = counts(units);
+  const lines = [`# Conversion: ${feature}`, '',
+    `Units: ${units.length}. In the game: ${c.exists}. Translated and accepted: ${done.size}. Open: ${open.length}. Constants without a source: ${unsourced.length}.`, '',
+    open.length === 0 && unsourced.length === 0 ? 'Complete.' : '**Not complete.** Each open unit below still has to be written in its owner, by the method given.', '',
+    '## Modules translated', '', ...(outcomes.length ? outcomes.map((o) => `- \`${o.module}\`: ${o.accepted ? `accepted, ${o.files.length} files${o.refusals.length ? `; roots left open: ${o.refusals.slice(0, 6).join('; ')}` : ''}` : `refused: ${o.refusals.slice(0, 6).join('; ')}`}`) : ['None.']), '',
+    '## Open units', '', '| Unit | Role | Owner | Why | Method |', '|---|---|---|---|---|'];
+  for (const u of open) {
+    const methods = [...new Set(u.methods.map((m) => `${m.rule}: ${m.correct}`))].join('<br>');
+    lines.push(`| \`${u.id}\` | ${u.role} | \`${u.owner}\` | ${u.why.replace(/\|/g, '/')} | ${methods.replace(/\|/g, '/')} |`);
+  }
+  lines.push('', '## Constants that need a measurement or a primary source', '', ...(unsourced.length ? unsourced.map((k) => `- \`${k}\``) : ['None.']), '');
+  return lines.join('\n');
+}
+
+interface JudgeInput {
+  readonly sourceRoot: string;
+  readonly typescript: string | undefined;
+  readonly targetRoot: string;
+  readonly targetGraph: string;
+  readonly cxx: string;
+  readonly rules: string;
+  readonly candidate: string;
+  readonly stopOf: (id: string) => string | null;
+  readonly prepared: PreparedProgram;
+}
+
+interface Judged {
+  readonly outcome: ModuleOutcome;
+  readonly files: Map<string, string>;
+  readonly registration: Registration | null;
+}
+
+/** A refusal belongs to the root that caused it: a refused module is judged root by root and written again with those that pass. */
+function judgeByRoot(spec: TranslationSpec, input: JudgeInput): Judged {
+  const whole = judge(spec, input);
+  if (whole.outcome.accepted || spec.units.length < 2) return whole;
+  const alone = spec.units.map((unit) => ({ unit, judged: judge({ ...spec, units: [unit] }, input) }));
+  const passed = alone.filter((a) => a.judged.outcome.accepted).map((a) => a.unit);
+  if (passed.length === 0) return whole;
+  const kept = judge({ ...spec, units: passed }, input);
+  if (!kept.outcome.accepted) return whole;
+  const left = alone.filter((a) => !a.judged.outcome.accepted).map((a) => `${a.unit}: ${a.judged.outcome.refusals[0] ?? 'refused'}`);
+  return { ...kept, outcome: { ...kept.outcome, refusals: left } };
+}
+
+function judge(spec: TranslationSpec, input: JudgeInput): Judged {
+  const module = spec.source;
+  const refused = (refusals: readonly string[]): Judged => ({ outcome: { module, accepted: false, files: [], emitted: [], refusals }, files: new Map(), registration: null });
+  let result: ReturnType<typeof translate>;
+  try {
+    result = translate({ sourceRoot: input.sourceRoot, tsconfig: path.join(input.sourceRoot, 'tsconfig.json'), typescriptDir: input.typescript, spec, targetRoot: input.targetRoot,
+      targetGraph: input.targetGraph, prepared: input.prepared });
+  } catch (error) {
+    return refused([`the translator stopped: ${(error as Error).message.split('\n')[0]}`]);
+  }
+  if (result.errors.length > 0) return refused(result.errors);
+  const overlay = path.join(input.candidate, module.replace(/[^\w.-]+/g, '_'));
+  removeTree(overlay);
+  writeTree(overlay, result.files);
+  const findings: QuarantineFinding[] = [...scanUnits(input.stopOf, result.units), ...scanFiles(result.files, targetLimits(input.rules)),
+    ...compileFiles(input.cxx, overlay, input.targetRoot, result.files)];
+  if (findings.length > 0) return refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`));
+  const registration: Registration = { subsystem: spec.subsystem, includes: spec.layer.includes, mapLine: spec.registry?.mapLine ?? '',
+    state: spec.state.source ? { header: result.stateHeader, anchor: spec.state.anchor ?? '', member: spec.state.memberLine ?? '', root: spec.state.root } : null };
+  return { outcome: { module, accepted: true, files: [...result.files.keys()], emitted: result.units.map((u) => u.source), refusals: [] }, files: result.files, registration };
+}
+
+export function runConvertCommand(argv: readonly string[]): void {
+  const flags = parseFlags(argv, CONVERT_FLAGS);
+  const feature = flags.require('feature');
+  const sourceRoot = path.resolve(flags.require('source-root'));
+  const targetRoot = path.resolve(flags.require('target-root'));
+  const out = path.resolve(flags.require('out'));
+  const library = readLibrary(flags.require('library'));
+  const rules = path.join(targetRoot, library.rules);
+  const graph = JSON.parse(fs.readFileSync(flags.require('graph'), 'utf8')) as GraphIR;
+  const boundary = JSON.parse(fs.readFileSync(flags.require('boundary'), 'utf8')) as { own: string[]; sliced: string[] };
+  const ledger = new Ledger({ graph, audit: auditOf(graph, rules), own: boundary.own, sliced: boundary.sliced, coverage: readCoverage(flags.require('ports')),
+    ownedFiles: library.ownedFiles, ownedNames: ownedNames(library) });
+  const typescript = flags.one('typescript');
+  const ts = loadTypeScript(sourceRoot, typescript);
+  const sp = openProgram(ts, sourceRoot, path.join(sourceRoot, 'tsconfig.json'));
+  const specs = moduleSpecs(ts, sp, sourceRoot, feature, ledger.units, library, graph.files.map((f) => f.path));
+  removeTree(out);
+  fs.mkdirSync(out, { recursive: true });
+  const accepted = new Map<string, string>();
+  const outcomes: ModuleOutcome[] = [];
+  const registrations: Registration[] = [];
+  const sources = flags.one('constants');
+  const known = sources && fs.existsSync(sources) ? JSON.parse(fs.readFileSync(sources, 'utf8')) as Record<string, string> : {};
+  // Written after every module: a run stopped halfway leaves everything it decided.
+  const report = (): { open: number; unsourced: number; done: number } => {
+    writeTree(path.join(out, 'files'), accepted);
+    // Translated means written: a function is done only if an accepted output holds it; a type travels with its module.
+    const emitted = new Set(outcomes.flatMap((o) => o.emitted));
+    const acceptedModules = new Set(outcomes.filter((o) => o.accepted).map((o) => o.module));
+    const isDone = (u: LedgerUnit): boolean => u.disposition === 'translate'
+      && (u.kind === 'function' || u.kind === 'variable' ? emitted.has(u.id) || emitted.has(u.id.slice(u.id.indexOf('#') + 1)) : acceptedModules.has(u.file));
+    const done = new Set(ledger.units.filter(isDone).map((u) => u.id));
+    const open = ledger.units.filter((u) => u.disposition !== 'exists' && !done.has(u.id));
+    const unsourced = constantsIn(accepted).filter((k) => !known[k]);
+    fs.writeFileSync(path.join(out, 'ledger.json'), JSON.stringify({ feature, counts: counts(ledger.units), done: [...done], units: ledger.units, outcomes, unsourced }, null, 1), 'utf8');
+    fs.writeFileSync(path.join(out, 'registration.json'), JSON.stringify(registrations, null, 1), 'utf8');
+    fs.writeFileSync(path.join(out, 'conversao.md'), render(feature, ledger.units, outcomes, open, unsourced, done), 'utf8');
+    return { open: open.length, unsourced: unsourced.length, done: done.size };
+  };
+  let totals = report();
+  const first = specs[0];
+  if (first) {
+    const targetGraph = path.resolve(flags.require('target-graph'));
+    const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
+    for (const spec of specs) {
+      const judged = judgeByRoot(spec, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+        stopOf: (id) => ledger.stopOf(id), prepared });
+      const clash = [...judged.files].find(([file, text]) => accepted.has(file) && accepted.get(file) !== text);
+      if (clash) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
+      else {
+        outcomes.push(judged.outcome);
+        for (const [file, text] of judged.files) accepted.set(file, text);
+        if (judged.registration) registrations.push(judged.registration);
+      }
+      const last = outcomes[outcomes.length - 1]!;
+      console.log(`  ${last.module}: ${last.accepted ? `accepted, ${last.refusals.length} root(s) left open` : `refused (${last.refusals.length})`}`);
+      totals = report();
+    }
+  }
+  console.log(`convert ${feature}: ${ledger.units.length} units; in the game ${counts(ledger.units).exists}; translated ${totals.done}; open ${totals.open}; ` +
+    `constants without a source ${totals.unsourced}; ${accepted.size} files -> ${out}`);
+  process.exitCode = totals.open === 0 && totals.unsourced === 0 ? 0 : 1;
+}

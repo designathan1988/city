@@ -1,0 +1,125 @@
+// C++ types as data, rendered to text only when written. The translator asks a type what it is (a pointer, an
+// optional, a container and what it holds) instead of reading it back out of text.
+
+export type IntName = 'int' | 'int8_t' | 'int16_t' | 'int32_t' | 'int64_t' | 'uint8_t' | 'uint16_t' | 'uint32_t';
+
+export type CppType =
+  | { readonly k: 'int'; readonly name: IntName }
+  | { readonly k: 'real'; readonly name: string }
+  | { readonly k: 'bool' }
+  | { readonly k: 'string' }
+  | { readonly k: 'void' }
+  | { readonly k: 'enum'; readonly name: string }
+  | { readonly k: 'struct'; readonly name: string }
+  | { readonly k: 'vector'; readonly of: CppType }
+  | { readonly k: 'deque'; readonly of: CppType }
+  | { readonly k: 'list'; readonly of: CppType }
+  | { readonly k: 'map'; readonly key: CppType; readonly of: CppType }
+  | { readonly k: 'optional'; readonly of: CppType }
+  | { readonly k: 'ptr'; readonly to: CppType }
+  | { readonly k: 'function'; readonly params: readonly CppType[]; readonly ret: CppType }
+  | { readonly k: 'class'; readonly name: string; readonly text: string }
+  | { readonly k: 'lambda'; readonly ret: CppType }
+  /** A string literal before it lands (a const char *, or a std::string, or an enum value). */
+  | { readonly k: 'literal' }
+  /** null or undefined before it lands (nullptr or std::nullopt). */
+  | { readonly k: 'null' };
+
+export const INT: CppType = { k: 'int', name: 'int' };
+export const INT64: CppType = { k: 'int', name: 'int64_t' };
+export const BOOL: CppType = { k: 'bool' };
+export const STRING: CppType = { k: 'string' };
+export const VOID: CppType = { k: 'void' };
+export const NULL: CppType = { k: 'null' };
+export const LITERAL: CppType = { k: 'literal' };
+
+export function render(t: CppType): string {
+  switch (t.k) {
+    case 'int':
+    case 'real':
+    case 'enum':
+    case 'struct':
+      return t.name;
+    case 'class':
+      return t.text;
+    case 'bool':
+      return 'bool';
+    case 'string':
+    case 'literal':
+      return 'std::string';
+    case 'void':
+      return 'void';
+    case 'vector':
+      return `std::vector<${render(t.of)}>`;
+    case 'deque':
+      return `std::deque<${render(t.of)}>`;
+    case 'list':
+      return `std::initializer_list<${render(t.of)}>`;
+    case 'map':
+      return `std::unordered_map<${render(t.key)}, ${render(t.of)}>`;
+    case 'optional':
+      return `std::optional<${render(t.of)}>`;
+    case 'ptr':
+      return `const ${render(t.to)} *`;
+    case 'function':
+      return `std::function<${render(t.ret)}(${t.params.map((p) => paramType(p)).join(', ')})>`;
+    case 'lambda':
+      return 'auto';
+    case 'null':
+      return 'std::nullptr_t';
+  }
+}
+
+/** Scalars, enums and pointers travel by value; everything else by const reference. */
+export function byValue(t: CppType): boolean {
+  return t.k === 'int' || t.k === 'real' || t.k === 'bool' || t.k === 'enum' || t.k === 'ptr';
+}
+
+export function paramType(t: CppType): string {
+  return byValue(t) ? render(t) : `const ${render(t)} &`;
+}
+
+/** `T name`, with the pointer's star next to the name as the target's code writes it. */
+export function declare(t: CppType, name: string): string {
+  const text = render(t);
+  return text.endsWith('*') ? `${text}${name}` : `${text} ${name}`;
+}
+
+export function paramDecl(t: CppType, name: string): string {
+  return byValue(t) ? declare(t, name) : `const ${render(t)} &${name}`;
+}
+
+export const isInt = (t: CppType): boolean => t.k === 'int';
+export const isNumber = (t: CppType): boolean => t.k === 'int' || t.k === 'real';
+export const isPointer = (t: CppType): boolean => t.k === 'ptr';
+export const isOptional = (t: CppType): boolean => t.k === 'optional';
+
+/** The value under a pointer or an optional. */
+export function target(t: CppType): CppType {
+  return t.k === 'ptr' ? t.to : t.k === 'optional' ? t.of : t;
+}
+
+/** What a container holds (a map: its values); null for anything else. */
+export function elementOf(t: CppType): CppType | null {
+  const c = target(t);
+  return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' ? c.of : null;
+}
+
+export function same(a: CppType, b: CppType): boolean {
+  return render(a) === render(b) && a.k === b.k;
+}
+
+/** A real literal in the target's number type: `3.f`, `0.5f` for float; `3.0`, `0.5` for double. */
+export function realLiteral(text: string, real: string): string {
+  const t = text.replace(/^\./, '0.');
+  const point = /[.eE]/.test(t) ? t : `${t}.${real === 'float' ? '' : '0'}`;
+  return real === 'float' ? `${point}f` : point;
+}
+
+/** The wider of two numbers (int < int64 < real), for arithmetic and std::max. */
+export function widerNumber(a: CppType, b: CppType): CppType {
+  if (a.k === 'real') return a;
+  if (b.k === 'real') return b;
+  if (a.k === 'int' && b.k === 'int') return a.name === 'int64_t' || b.name === 'int64_t' ? INT64 : a;
+  return a.k === 'int' ? b : a;
+}

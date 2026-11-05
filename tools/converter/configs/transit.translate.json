@@ -1,0 +1,67 @@
+{
+  "feature": "transit",
+  "subsystem": "native/src/sim/transit",
+  "namespace": "city",
+  "source": "src/world/transit.ts",
+  "summary": "Public transport as the player lays it out (stops, tracks, lines) and the rail network they form",
+  "state": {
+    "source": "TransitData",
+    "target": "TransitState",
+    "member": "transit",
+    "root": "native/src/sim/state/city_state.h",
+    "empty": "emptyTransit",
+    "anchor": "TrafficState traffic;",
+    "memberLine": "TransitState transit; // public transport: stops, tracks, lines and the rail network (sim/transit)"
+  },
+  "units": [
+    "hasTransit", "addStop", "removeStop", "setTerminal", "addTrack", "removeTrack", "addLine", "removeLine",
+    "setLineVehicles", "railGraph", "nearestTrack", "trackPointNear", "stopById", "stopNear", "railPath", "longestOnRoad"
+  ],
+  "pending": [
+    { "unit": "normalizeTransit", "owner": "native/src/sim/persistence", "reason": "reading a saved city is the save format's: it writes and reads TransitState and calls reindex after loading" },
+    { "unit": "the player's transit tools (src/editor/transitTools.ts)", "owner": "native/src/sim/commands", "reason": "player actions are commands (undo journal, money, touch()) calling these edits under the exclusive lock" },
+    { "unit": "transit in the interface (src/ui/v2/transitLine.ts)", "owner": "native/src/api", "reason": "the API exposes the queries to the interface; the UI never writes the state" }
+  ],
+  "number": "float",
+  "functions": {
+    "m": { "template": "$0", "reason": "m(x) is x metres in world units; the 4.0 has METERS_PER_UNIT = 1 and the game's unit is the metre" }
+  },
+  "classes": {
+    "Heap": {
+      "type": "std::priority_queue<std::tuple<$real, uint32_t, int>, std::vector<std::tuple<$real, uint32_t, int>>, std::greater<>>",
+      "include": "queue",
+      "companion": { "suffix": "_seq", "type": "uint32_t", "init": "0" },
+      "members": {
+        "push": "$self.emplace($1, $seq++, $0)",
+        "size": "int($self.size())",
+        "peekKey": "std::get<0>($self.top())",
+        "pop": "[&] { const int top = std::get<2>($self.top()); $self.pop(); return top; }()"
+      },
+      "returns": { "push": "void", "size": "int", "peekKey": "$real", "pop": "int" },
+      "reason": "core/heap.ts orders by key, then by arrival (the key is the translation's number type, $real): a min priority_queue of (key, arrival, item) is the same order; the game has no heap of its own (core/job_pool.h uses std::priority_queue too)"
+    }
+  },
+  "memoizers": ["identityMemo"],
+  "patterns": [
+    {
+      "source": "($x + 32768) * 65536 + ($y + 32768)",
+      "target": "cell_key($x, $y)",
+      "include": "core/grid.h",
+      "reason": "the 4.0 packs a cell's two integers into one key; the game's owner of cell keys is core/grid.h cell_key (any packing that is one-to-one is the same index)"
+    }
+  ],
+  "typeNames": {
+    "{ track: number; x: number; y: number; d: number; }": "NearestTrack",
+    "{ e: number; u: number; q: Vec2; d: number; }": "EdgePoint",
+    "{ stop: TransitStop; order: number; }": "StopEntry",
+    "{ x: number; y: number; }": "TransitEntrance"
+  },
+  "registry": {
+    "doc": "CLAUDE.md",
+    "mapLine": "- `native/src/sim/transit/**` — transporte público (paradas, trilhos, linhas) e a rede ferroviária, traduzido do Roadcraft 4.0 (src/world/transit.ts) pelo conversor"
+  },
+  "layer": {
+    "rules": "tools/gates/rules.json",
+    "includes": ["core/", "sim/transit/"]
+  }
+}

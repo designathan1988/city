@@ -1,0 +1,58 @@
+{
+  "_doc": "The game's own setup and verification (tools/build/build.sh core-windows, ferramentas/verificar_integracao.py), run in the sandbox clone. Needs GODOT (Godot 4.7 console binary), MINGW (llvm-mingw root), BASH (Git bash) and PYTHON in the environment.",
+  "copy": ["native/godot-cpp"],
+  "hiddenRunner": "tools/build/hidden_run.ps1",
+  "setup": [
+    {
+      "name": "configure-release",
+      "run": ["cmake", "-S", "native", "-B", "native/build-win", "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
+        "-DGODOTCPP_TARGET=template_release", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${env:MINGW}"],
+      "timeoutSeconds": 600
+    },
+    {
+      "name": "configure-debug",
+      "run": ["cmake", "-S", "native", "-B", "native/build-win-debug", "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
+        "-DGODOTCPP_TARGET=template_debug", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${env:MINGW}",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"],
+      "timeoutSeconds": 600
+    }
+  ],
+  "verify": [
+    {
+      "name": "gates",
+      "run": ["${env:PYTHON}", "tools/gates/run_gates.py", "--summary"],
+      "expect": { "includes": ["OK"] }
+    },
+    {
+      "name": "build-release",
+      "run": ["cmake", "--build", "native/build-win", "-j", "4"],
+      "timeoutSeconds": 3600
+    },
+    {
+      "name": "build-debug",
+      "run": ["cmake", "--build", "native/build-win-debug", "-j", "4"],
+      "timeoutSeconds": 3600
+    },
+    {
+      "name": "import",
+      "run": ["${env:GODOT}", "--path", "project", "--headless", "--import"],
+      "timeoutSeconds": 900,
+      "expect": { "excludes": ["SCRIPT ERROR"] }
+    },
+    {
+      "name": "tests",
+      "hidden": true,
+      "run": ["\"${env:BASH}\"", "tools/build/run_tests.sh", "\"${env:GODOT}\"", "project", "\"${evidence}/logs\"", ">", "\"${evidence}/tests.txt\"", "2>&1"],
+      "timeoutSeconds": 3600,
+      "expect": { "file": "${evidence}/tests.txt", "excludes": ["FALHOU"], "atLeast": { "text": "ok ", "count": 4 } }
+    },
+    {
+      "name": "capture",
+      "hidden": true,
+      "run": ["\"${env:GODOT}\"", "--path", "project", "--resolution", "1600x900", "res://tests/visual/capture.tscn", "--", "--map=0",
+        "--capture-dir=\"${evidence}/photos\"", ">", "\"${evidence}/capture.txt\"", "2>&1"],
+      "timeoutSeconds": 1800,
+      "expect": { "file": "${evidence}/capture.txt", "excludes": ["SCRIPT ERROR"], "files": { "dir": "${evidence}/photos", "count": 20 } }
+    }
+  ]
+}
