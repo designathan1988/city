@@ -1,0 +1,33 @@
+{
+ "city": {
+  "seed": 7,
+  "size": "small"
+ },
+ "viewport": [
+  1280,
+  720
+ ],
+ "steps": [
+  {
+   "edit": "const n=(x,y,h)=>d.addNode({x,y},h).id; const s0=n(-160,900,0), s1=n(160,900,0); d.addSegment(s0,s1,0); const a=n(0,640,0),b=n(0,760,8),c=n(0,1040,8),e=n(0,1160,0); d.addSegment(a,b,2,null,0,'both',null,'elevated'); d.addSegment(b,c,2,null,0,'both',null,'elevated'); d.addSegment(c,e,2,null,0,'both',null,'elevated')"
+  },
+  {
+   "wait": 3000
+  },
+  {
+   "setView": [
+    0,
+    900,
+    2.2,
+    35,
+    28
+   ]
+  },
+  {
+   "wait": 2500
+  },
+  {
+   "shot": "viaduct"
+  }
+ ]
+}

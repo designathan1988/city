@@ -54,7 +54,19 @@ function forThe40(asked) {
   return { storage: { 'roadcraft.quality': 'ultra' }, viewport: [1920, 1080], ...rest, steps: [...opening, ...steps] };
 }
 
-const plan = forThe40(JSON.parse(fs.readFileSync(planFile, 'utf8')));
+/**
+ * {"edit": "<code with d, the RoadDoc>"}: the document changed and reopened whole. An edit made straight on the document skips the road
+ * the game's edits go through (`mutateBuilt`), and the scene would not know; loadDoc is the game's own way in.
+ */
+function withEdits(asked) {
+  return { ...asked, steps: (asked.steps ?? []).flatMap((s) => (s.edit === undefined ? [s] : [
+    { eval: `(() => { performance.clearMarks(); const r = window.__roadcraft, d = r.doc; ${s.edit}; r.loadDoc(d.toJSON()); return 'edited'; })()` },
+    { until: "performance.getEntriesByName('opening:shown').length > 0", name: 'city reopened', timeout: 120000, polling: 200 },
+    { until: "(() => { const c = document.getElementById('loading-curtain'); return !!c && getComputedStyle(c).display === 'none'; })()", name: 'curtain gone', timeout: 60000, polling: 200 },
+  ])) };
+}
+
+const plan = withEdits(forThe40(JSON.parse(fs.readFileSync(planFile, 'utf8'))));
 const key =createHash('sha256').update(commit).update(JSON.stringify(canonical(plan))).digest('hex').slice(0, 24);
 const kept = path.join(store, key);
 fs.mkdirSync(outDir, { recursive: true });
