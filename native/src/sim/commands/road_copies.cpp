@@ -61,6 +61,8 @@ EditResult duplicate_road(CityState &s, int seg) {
 
 EditResult set_marking_style(CityState &s, int style) {
 	EditResult r;
+	r.ok = true;
+	if (style == s.marking_style.load()) return r; // nothing to paint again: the city is not changed (a session read on opening)
 	j_set_marking(s, style);
 	double minx = 0, minz = 0, maxx = 0, maxz = 0; // the network's box: finish_edit walks the cells of what it is given
 	bool any = false;
@@ -75,7 +77,6 @@ EditResult set_marking_style(CityState &s, int style) {
 		any = true;
 	}
 	if (any) finish_edit(s, minx, minz, maxx, maxz);
-	r.ok = true;
 	return r;
 }
 

@@ -144,6 +144,13 @@ func _refuses_bad_balance() -> void:
 	_check(w.get("ok", false), "salvou saldo infinito para o teste")
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "recusou saldo infinito: %s" % r)
+	_drop(SLOT)
+
+
+## What a slot leaves on disk, the save and its session, goes: the next run starts from none.
+func _drop(slot: String) -> void:
+	DirAccess.remove_absolute(CityStore.saves.save_path(slot))
+	DirAccess.remove_absolute(Session.path(slot))
 
 
 func _save_round_trip(a: Vector3, e: Vector3) -> void:
@@ -171,14 +178,16 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	got.grown = CityStore.snapshot.grown
 	got.minutes = CityStore.snapshot.minutes
 	_check(r.ok, "abriu %s" % r)
+	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico (a salvar: %s, desfazer: %s)" % [CityStore.snapshot.unsaved, CityStore.snapshot.can_undo])
+	CityStore.dispatch(&"set_marking_style", [CityStore.snapshot.marking_style, false])
+	_check(not CityStore.snapshot.unsaved, "a mesma pintura, posta de novo como a sessão faz ao abrir, não muda a cidade")
 	_check(got == saved, "mesmos números %s == %s" % [got, saved])
 	_check([_height(sculpted), _height(a), _height((a + e) * 0.5)] == heights, "mesmas alturas %s" % [heights])
 	_check(_probes() == probes, "mesmos prédios (%d sondados)" % probes.size())
 	CityStore.step_ticks(SignalCases.SIGNAL_TICKS)
 	_check(CityStore.query(&"inspect", [signal_at]) == plan, "mesmo semáforo %s" % [plan])
 	_check(_landscape() == landscape, "mesma paisagem %s == %s" % [_landscape(), landscape])
-	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico")
-	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
+	_drop(SLOT)
 
 
 ## Saves on the core's thread like the game does and returns the outcome `saved` carried.
