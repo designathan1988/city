@@ -103,6 +103,7 @@ Dictionary CityCore::pose_stats() {
 	d["late"] = st.late;
 	d["gap_min_ms"] = double(st.gap_min_ns) / NS_PER_MS;
 	d["gap_max_ms"] = double(st.gap_max_ns) / NS_PER_MS;
+	d["sim_wakeups"] = int64_t(sim_.wakeups()); // since the clock started (not reset by this call)
 	const int64_t last = st.last_tick_ns;
 	st = PoseStats();
 	st.last_tick_ns = last;
