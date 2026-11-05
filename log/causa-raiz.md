@@ -251,6 +251,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 
 - Ruído de vias, terreno e água fica como está (`lattice_noise.gdshaderinc`): a tabela de 256 células repetiria a cada poucas centenas de metros nas frequências deles, e `wear.gdshaderinc` já avisa que uma emenda periódica aparece. Essas camadas somavam pouco na medida de antes (terreno 0,14; água 0,30; vias 0,42 ms, com todo o custo delas, não só o ruído): o risco de ladrilho visível não paga. Decidido pela leitura, sem foto.
 
+- Erro meu, corrigido pela sessão de migração (`7e82f8c5`): o `ShadowTwin` das peças de sacada usava `chunk_box`, com centro a 250 m de altura, e a faixa de visibilidade mede até esse centro; os 200 m de `cast_props_m` nunca o alcançavam, e do chão as peças perderam a sombra entre `df5a319f` e esse commit. Eu não tinha fotografado o caso. Com `rows_box`, a foto de perto mostra a sombra do condensador na parede. Os custos de `perto` medidos neste ciclo são de antes dessa correção e não valem mais para prédios.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
