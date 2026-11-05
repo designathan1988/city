@@ -65,6 +65,12 @@ function readerOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): { 
   return key ? { key, value } : null;
 }
 
+/** What a type that extends Array holds (a number index and a length, not itself an array type); null for anything else. */
+export function listOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): TS.Type | null {
+  if (!(type.flags & ts.TypeFlags.Object) || checker.isArrayType(type) || checker.isTupleType(type) || !type.getProperty('length')) return null;
+  return checker.getIndexInfoOfType(type, ts.IndexKind.Number)?.type ?? null;
+}
+
 /** What a dictionary holds (an object type with a string index and no fields of its own); null for anything else. */
 export function dictionaryOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): TS.Type | null {
   if (!(type.flags & ts.TypeFlags.Object) || checker.isArrayType(type) || checker.getPropertiesOfType(type).length > 0) return null;
@@ -111,6 +117,8 @@ export class TypeMapper {
   readonly #reserved: ReadonlySet<string>;
   /** The unit being written: its refusals name it. */
   unit: string | null = null;
+  /** The module of the struct whose fields are being read. */
+  #holder: string | null = null;
 
   constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[], relative: (file: TS.SourceFile) => string, reserved: ReadonlySet<string> = new Set()) {
     this.#reserved = reserved;
@@ -217,6 +225,9 @@ export class TypeMapper {
       const key: CppType = k!.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
     }
+    // a type that extends Array (interface Path extends Array<Point>): a list
+    const listed = listOf(ts, checker, type);
+    if (listed) return this.#vector(this.ofType(listed, 'element', slot ? this.#flow.elemOf(slot) : null));
     // a dictionary (Record<string, V>, { [key: string]: V }): a map of strings
     const entry = dictionaryOf(ts, checker, type);
     if (entry) {
@@ -281,6 +292,8 @@ export class TypeMapper {
     this.#seen(made);
     // Registered before its fields: a type that holds itself stops here. The files order structs by what they hold.
     this.structs.set(name, made);
+    const holder = this.#holder;
+    this.#holder = made.module ?? holder;
     for (const prop of this.#checker.getPropertiesOfType(type)) {
       const propType = this.#checker.getTypeOfSymbol(prop);
       if (propType.getCallSignatures().length > 0 && !(prop.flags & this.#ts.SymbolFlags.Property)) continue;
@@ -289,6 +302,7 @@ export class TypeMapper {
       if (cpp.k === 'optional') this.includes.add('optional');
       made.fields.push({ source: prop.name, name: snake(prop.name), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
     }
+    this.#holder = holder;
     return { k: 'struct', name };
   }
 
@@ -338,16 +352,22 @@ export class TypeMapper {
   #enumOf(types: readonly TS.Type[], alias: TS.Symbol | undefined, hint: string): CppEnum {
     const values = types.map((t) => (t as TS.StringLiteralType).value);
     if (alias) {
-      const existing = this.enums.get(alias.name);
+      const stem = pascal((alias.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'));
+      const name = this.#reserved.has(alias.name) ? `${stem}${alias.name}` : alias.name;
+      const existing = this.enums.get(name);
       if (existing) return this.#seen(existing);
-      const made = { name: alias.name, module: this.#moduleOf(alias.declarations?.[0]), comment: this.#doc(alias), values };
-      this.enums.set(alias.name, made);
+      const made = { name, module: this.#moduleOf(alias.declarations?.[0]), comment: this.#doc(alias), values };
+      this.enums.set(name, made);
       return this.#seen(made);
     }
     for (const e of this.enums.values()) if (values.every((v) => e.values.includes(v))) return this.#seen(e);
-    const made = { name: pascal(hint), module: null, comment: null, values };
+    // an anonymous union: an enum of the module of the struct that holds it, named by what holds it and, when that name
+    // is another enum's, by its values
+    const word = pascal(hint.replace(/[^A-Za-z0-9]+/g, ' ').trim().replace(/\s+/g, '_')).replace(/_/g, '') || 'Kind';
+    const name = this.enums.has(word) || this.structs.has(word) || this.#reserved.has(word) ? `${word}${values.slice(0, FIELDS_IN_NAME).map((v) => pascal(v.replace(/[^A-Za-z0-9]+/g, ''))).join('')}` : word;
+    const made = { name, module: this.#holder ?? this.#spec.source, comment: null, values };
     this.enums.set(made.name, made);
-    return made;
+    return this.#seen(made);
   }
 
   enumValue(e: CppEnum, value: string): string {

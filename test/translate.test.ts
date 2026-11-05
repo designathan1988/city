@@ -62,7 +62,7 @@ describe('translate', () => {
     assert.match(file('yard_query.cpp'), /int kept_count\(const YardState &t, const std::function<bool\(int64_t\)> &kept\)/);
     assert.match(file('yard_query.cpp'), /if \(kept\(p\.id\)\)/);
     assert.match(file('yard_query.cpp'), /kept_count\(t, \[&\]\(int64_t k\) \{ return chosen\.count\(k\) != 0; \}\)/, 'a Set asks its hash set');
-    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen\.count\(id\) != 0\);/);
+    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen\.count\(int\(id\)\) != 0\);/);
   });
 
   it('folds with reduce, tests a prefix and a suffix, writes NaN and a number without its separator', () => {

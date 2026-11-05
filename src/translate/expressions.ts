@@ -16,6 +16,13 @@ import { snake } from './names.ts';
 /** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
 export const RUNTIME_INCLUDE = 'core/js_runtime.h';
 
+/** Whether a number becomes another kind landing where braces refuse it: real and integer, or a wider integer in a narrower one. */
+function narrows(from: CppType, to: CppType): boolean {
+  if (!isNumber(from) || !isNumber(to) || render(from) === render(to)) return false;
+  if (from.k === 'int' && to.k === 'int') return from.name === 'int64_t' && to.name !== 'int64_t';
+  return true;
+}
+
 export interface Value {
   readonly code: string;
   readonly type: CppType;
@@ -117,6 +124,7 @@ export abstract class ExpressionEmitter {
     if (want.k !== 'ptr' && want.k !== 'optional' && v.type.k === 'ptr' && same(want, v.type.to)) return `*${v.code}`;
     if (want.k === 'optional' && v.type.k === 'ptr' && same(want.of, v.type.to)) return `(${v.code} ? std::optional<${render(want.of)}>(*${v.code}) : std::nullopt)`;
     if (want.k === 'string' && v.type.k === 'literal') return `std::string(${v.code})`;
+    if (narrows(v.type, want) && !/^-?[\d.]+f?$/.test(v.code)) return `${render(want)}(${v.code})`;
     if (e && want.k === 'enum' && this.c.ts.isStringLiteral(e)) return this.#enumLiteral(want.name, e);
     const structural = this.#structural(v, want);
     if (structural) return structural;
@@ -997,6 +1005,9 @@ export abstract class ExpressionEmitter {
     if (op === '=') return { code: `${left.code} = ${this.coerce(right, left.type, e.right)}`, type: left.type };
     if (['==', '!=', '<', '>', '<=', '>=', '&&', '||'].includes(op)) {
       const leftCode = ts.isStringLiteral(e.left) && right.type.k === 'enum' ? this.#enumLiteral(right.type.name, e.left) : left.code;
+      // an optional is absent as nullopt, not as a null pointer
+      if (right.type.k === 'null' && left.type.k === 'optional') return { code: `${leftCode} ${op} std::nullopt`, type: BOOL };
+      if (left.type.k === 'null' && right.type.k === 'optional') return { code: `${right.code} ${op} std::nullopt`, type: BOOL };
       return { code: `${leftCode} ${op} ${this.coerce(right, enumSide, e.right)}`, type: BOOL };
     }
     if (op === 'instanceof' || op === 'in') return this.fail(e, op);

@@ -330,6 +330,11 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
       if (clash.length > 0) outcomes.push({ ...judged.outcome, accepted: false, files: [], emitted: [], refusals: [`${clash[0]} differs from another module's output`] });
       else {
         outcomes.push(judged.outcome);
+        // the spec of what was accepted, for `converter differential --spec` (--hand compares C++ by hand with the source)
+        if (judged.outcome.accepted) {
+          fs.mkdirSync(path.join(out, 'specs'), { recursive: true });
+          fs.writeFileSync(path.join(out, 'specs', `${spec.source.replace(/[^\w.-]+/g, '_')}.json`), JSON.stringify(spec, null, 1), 'utf8');
+        }
         for (const [file, text] of judged.files) accepted.set(file, text);
         if (judged.registration) registrations.push(judged.registration);
       }

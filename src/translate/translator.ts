@@ -399,7 +399,7 @@ export class Translator extends Emitter {
         const uses = this.#recording(() => { value = this.expr(d.initializer!, k.type); });
         const scalar = k.type.k === 'int' || k.type.k === 'real' || k.type.k === 'bool';
         // at namespace scope there is nothing to capture
-        this.c.constants.set(symbol, { ...k, value: value.replaceAll('[&]', '[]'), constexpr: scalar && !this.calledFunction, calling: this.calledFunction, uses });
+        this.c.constants.set(symbol, { ...k, value: value.replaceAll('[&]', '[]'), constexpr: scalar && !this.calledFunction && !/\b(std|js)::/.test(value), calling: this.calledFunction, uses });
       });
     }
     // the order C++ initializes constants of different files in is not the source's (the static initialization order
