@@ -9,7 +9,8 @@ sempre verdadeiros.
 ## Estado atual (2026-11-05, sessão retomada)
 
 - **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
-- `tools/converter` (master `af95221`); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
+- **Fechamento (2026-11-05, ordem do usuário: encerrar).** Conversor em `b4303e6`, só no git próprio dele: falta `git read-tree` para o jogo. Nada traduzido entrou no jogo; o Diagnóstico do F7 foi escrito à mão.
+- `tools/converter` (master `b4303e6`); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
   Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
 - Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly em `out/city40`. As passadas por área usam as
@@ -309,3 +310,13 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - Passada inteira `w2`: bateu no limite de 300 s (301 s); o livro-razão dela é parcial (502 módulos vistos, 359 aceitos, 2.609 unidades feitas) e não serve de número. Refeita como `w3`, limite de 590 s.
 - Pixels do 4.0 no Node: `@onirenaud/node-webgl` 0.2.0 instalado em `out/gl40` (fora do git). Triângulo desenhado e lido de volta, ANGLE D3D11 na RTX 3060, com `EXT_clip_control`, `EXT_color_buffer_float`, BPTC e `WEBGL_multi_draw`. Só isso foi provado: a cena do 4.0 não rodou nele. `gl` não instala no Node 24 (ABI 137; os binários vão até o 134).
 - Trabalho na cena do 4.0 parado pelo usuário: "O ROADCRAFT 4 É A REFERENCIA E NÃO O JOGO ALVO". As fotos de referência continuam saindo do `reference40`. Volta ao passo 2 de "A fazer": levar ao jogo o que compila.
+- `dec52da` Classes traduzidas (struct com `shared_ptr`, `make_shared`, `this`, getters e estáticos); `73832a2` classes genéricas como `template`, `enum` pelo valor, classe alcançada pelo que se lê dela; `54d3a50` recusa por membro; `b4303e6` `--mode whole`.
+- Passadas: por módulo, 3.901 (classes), 3.905 (genéricas), 3.912 (por membro), de 19.377 unidades. `--mode whole`: 4.580, com funções 410 → 1.115, métodos 5 → 181, classes 7 → 66; tradução de ~5 s por rodada, 923 s no total, quase tudo compilação. **Ressalva:** os 4.580 contam unidades de 278 arquivos que não compilam; o número compilado é menor e não foi medido.
+- Onde parou, próximos passos de `--mode whole`, nesta ordem, nenhum feito:
+  1. `whole.ts` não acha o dono de um erro em constante de cabeçalho: a lista de `units` traz constantes pelo nome solto, sem `module#`. Por isso um erro em `perf_budget_types.h:28` derruba quase todos os arquivos que o incluem.
+  2. `#freshName`: struct anônimo herda o nome da constante em maiúsculas (`SIGNAL SIGNAL`, `VIEWBUDGETS`, tipo não declarado).
+  3. `#planConstant`: constante de objeto vira ponteiro para temporário (`&(OutHiLo{...})`); usar o valor.
+  4. Constantes literais de módulos diferentes colidem no mesmo namespace (`MB`, `H`).
+  5. Arquivos gerados com o caminho de um do jogo (`core/math.h`) precisam ser vistos antes de integrar.
+  6. O cache de `compileFiles` usa o hash de todos os cabeçalhos: qualquer mudança recompila tudo (416 s na primeira rodada).
+- Ainda recusados por unidade: subclasses, setters, campos estáticos, `unknown` (`raw`).
