@@ -244,6 +244,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Rejeitado: trocar a casca perto pela parede lisa do nível médio na sombra. A vidraça recuada fica atrás da parede lisa e entraria na sombra dela.
 - Hipóteses do `camera_input_test` refutadas por `query` leve: 600 pontos com o raio em duas alturas deram o mesmo chão; 400 pontos antes e depois de 30 s de cidade rodando, nenhum mudou. A causa segue desconhecida.
 
+- Causa 4, ruído dos prédios: `weather()` rodava 4 ruídos de valor, 16 hashes PCG por pixel de parede, para manchas de dezenas de metros. `vnoise` agora lê `assets/noise/lattice.png` (`tools/assets/make_lattice_noise.py`): o filtro bilinear do amostrador faz a mistura, uma busca no lugar de quatro hashes. Fotos congeladas: 3 de 4 iguais, a outra 0,11%. O ganho de GPU destas quatro causas não foi medido, por ordem do usuário (2026-11-05: parar de medir, corrigir no código, foto leve de cada elemento).
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.

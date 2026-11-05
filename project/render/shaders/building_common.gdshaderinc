@@ -3,13 +3,14 @@
 
 #include "res://render/shaders/building_hash.gdshaderinc"
 
+// The lattice's values, one a texel (tools/assets/make_lattice_noise.py): value noise is the sampler's bilinear filter at a point
+// moved by the smooth step, one fetch where four hashes ran on every pixel of every wall.
+uniform sampler2D noise_lattice : filter_linear, repeat_enable;
+
 float vnoise(vec2 p) {
 	vec2 i = floor(p), f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
-	uvec2 u = uvec2(ivec2(i) + 32768);
-	float a = h01(u.x * 73856093u ^ u.y * 19349663u), b = h01((u.x + 1u) * 73856093u ^ u.y * 19349663u);
-	float c = h01(u.x * 73856093u ^ (u.y + 1u) * 19349663u), d = h01((u.x + 1u) * 73856093u ^ (u.y + 1u) * 19349663u);
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+	return textureLod(noise_lattice, (i + f + 0.5) / vec2(textureSize(noise_lattice, 0)), 0.0).r;
 }
 
 // The finish of a face: albedo tone, perturbed world normal, roughness, metalness.
