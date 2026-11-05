@@ -13,7 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))  # --root points at another copy
-FAILED = re.compile(r"SCRIPT ERROR|^FAIL|FALHAS: [1-9]|FAILURES: [1-9]", re.M)  # the tests' own failure lines
+FAILED = re.compile(r"Program crashed|SCRIPT ERROR|^FAIL|FALHAS: [1-9]|FAILURES: [1-9]", re.M)  # the tests' own failure lines
 
 
 def listed(name, text):

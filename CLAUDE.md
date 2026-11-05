@@ -94,6 +94,7 @@ commit, e commite-o junto.
   pilhas (símbolos pedem a DLL com informação de depuração: `-DCMAKE_BUILD_TYPE=RelWithDebInfo` numa pasta de build à parte, essa
   DLL nunca é commitada). **`causes.py`**: analisador estático de causas-raiz (<1 s).
 - **Sombra se julga pelo tempo de GPU**: `render_info` conta a malha colorida, não a de sombra (`render_forward_clustered.cpp`), e `mesh_set_shadow_mesh` só vale para material sem `vertex()` (`uses_shared_shadow_material`), então os nossos o ignoram; o caminho é a instância `shadow_only`. `camera_pan --casters=MASK` dá a sombra por camada.
+- **Bug de memória e de tempo não se caça com carga**: a DLL de debug tem o hardening da libc++ (índice fora do limite para na hora, com o lugar); uma falha que só aparece sob carga se lê na pilha (`llvm-symbolizer` com a DLL de `RelWithDebInfo`) e no código. Prova visual é do elemento, de perto e de vários ângulos.
 - **Gates**: inteiros atravessam o repositório todo; na iteração, `gates_changed.sh`. O hook recusa um comando composto que cite
   `tools/gates` (com `time`/`timeout` na frente também) e qualquer comando que escreva um texto com esse caminho: chamar e editar
   por script. Commit: `git add` e `git commit` em comandos separados; o hook confere os logs de `dist/tests` mais novos que o código.

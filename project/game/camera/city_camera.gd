@@ -245,6 +245,9 @@ func _apply() -> void:
 	if pos.y < floor_y:
 		pos.y = floor_y
 		basis = Basis.looking_at(focus - pos, basis.y)
-	pos = pull.eye(focus, pos, half)
+	var pulled: Vector3 = pull.eye(focus, pos, half)
+	if pulled != pos: # the pull goes by time, towards the focus: the floor holds wherever it leaves the eye
+		pos = pulled
+		pos.y = maxf(pos.y, _ground_height(pos.x, pos.z) + cfg.ground_clearance)
 	camera.global_transform = Transform3D(basis, pos)
 	camera.near = clampf(pos.distance_to(focus) * cfg.near_per_m, cfg.near_min, cfg.near_max)

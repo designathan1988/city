@@ -138,7 +138,7 @@ void j_set_profile(CityState &s, int seg, int profile) {
 		EditOp &op = record(s, OpKind::PROFILE, seg);
 		op.from = g.profile;
 		op.to = profile;
-		op.seg.len = g.len; // what the change is worth
+		op.seg = g; // what the change is worth: its length, its structure and the heights at its ends
 		grow_seg(s, g);
 	}
 	s.roads.set_profile(seg, profile);

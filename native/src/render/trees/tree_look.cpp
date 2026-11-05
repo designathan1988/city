@@ -43,7 +43,7 @@ WoodBand TreeLook::band_at(float d) const {
 float TreeLook::keep_at(float d, WoodBand b) const {
 	const BandLook &B = band[size_t(b)];
 	if (b == WoodBand::OPEN && d <= B.from) return B.lone * scale;
-	float top = b == WoodBand::OPEN ? B.from : band[size_t(b) - 1].from;
+	float top = b == WoodBand::EDGE ? band[size_t(WoodBand::INNER)].from : B.from; // only the edge ramps up to a band above it
 	float t = top > B.from ? clampf((d - B.from) / (top - B.from), 0.f, 1.f) : 0.f;
 	return (B.keep0 + (B.keep1 - B.keep0) * t) * scale;
 }
