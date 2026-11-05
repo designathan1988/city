@@ -33,6 +33,16 @@ export const VOID: CppType = { k: 'void' };
 export const NULL: CppType = { k: 'null' };
 export const LITERAL: CppType = { k: 'literal' };
 
+/**
+ * The integer a number literal is, as written (`1_000`, `0x27d4eb2d`, `0b101`, `0o17`): 'int', 'int64' past int32,
+ * or null for a real. The one place the flow and the emitter decide it.
+ */
+export function integerLiteral(written: string): 'int' | 'int64' | null {
+  const text = written.replace(/_/g, '');
+  if (!/^(\d+|0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+)$/.test(text)) return null;
+  return Number(text) > 2147483647 ? 'int64' : 'int';
+}
+
 export function render(t: CppType): string {
   switch (t.k) {
     case 'int':

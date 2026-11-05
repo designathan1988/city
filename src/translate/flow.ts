@@ -18,6 +18,7 @@ import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
 import { lookupOf } from './types.ts';
+import { integerLiteral } from './cpptype.ts';
 
 /** none < int < int64 < float. */
 export const Num = { None: 0, Int: 1, Int64: 2, Float: 3 } as const;
@@ -65,7 +66,7 @@ export class Slot {
   }
 }
 
-const INT_MATH = new Set(['floor', 'ceil', 'round', 'trunc', 'sign']);
+const INT_MATH = new Set(['floor', 'ceil', 'round', 'trunc', 'sign', 'imul']);
 const JOIN_MATH = new Set(['max', 'min', 'abs']);
 const CALLBACK_METHODS = new Set(['forEach', 'map', 'filter', 'some', 'every', 'find', 'findIndex']);
 const SAME_ELEMENTS = new Set(['filter', 'slice', 'sort', 'reverse', 'concat']);
@@ -354,8 +355,11 @@ export class FlowGraph {
   numOf(e: TS.Expression): Num {
     const ts = this.#ts;
     const match = this.#patterns.match(e);
-    if (match) return { int: Num.Int, int64: Num.Int64, float: Num.Float, bool: Num.None }[match.pattern.type];
-    if (ts.isNumericLiteral(e)) return /^\d+$/.test(e.getText()) ? Num.Int : Num.Float;
+    if (match) return { int: Num.Int, int64: Num.Int64, float: Num.Float, bool: Num.None, void: Num.None }[match.pattern.type];
+    if (ts.isNumericLiteral(e)) {
+      const kind = integerLiteral(e.getText());
+      return kind === 'int64' ? Num.Int64 : kind === 'int' ? Num.Int : Num.Float;
+    }
     if (ts.isParenthesizedExpression(e) || ts.isNonNullExpression(e) || ts.isAsExpression(e)) return this.numOf(e.expression);
     if (ts.isPrefixUnaryExpression(e)) return e.operator === ts.SyntaxKind.TildeToken ? Num.Int : e.operator === ts.SyntaxKind.ExclamationToken ? Num.None : this.numOf(e.operand);
     if (ts.isPostfixUnaryExpression(e)) return this.numOf(e.operand);
@@ -880,7 +884,7 @@ export class FlowGraph {
     const ts = this.#ts;
     if (!(type.flags & ts.TypeFlags.Object) || this.#checker.isArrayType(type) || type.getCallSignatures().length > 0) return false;
     const name = (type.aliasSymbol ?? type.getSymbol())?.name ?? '';
-    return !this.#spec.types[name] && !this.#spec.classes[name] && !/^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|Promise)$/.test(name) && !/Array$/.test(name);
+    return !this.#spec.types[name] && !this.#spec.classes[name] && !/^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Promise)$/.test(name) && !/Array$/.test(name);
   }
 
   /** Two shapes in one slot: their same-named fields are one slot (TypeScript is structural). */
@@ -948,7 +952,7 @@ export class FlowGraph {
   #isContainer(t: TS.Type): boolean {
     const n = this.#checker.getNonNullableType(t);
     const name = n.getSymbol()?.name ?? '';
-    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray)$/.test(name) || /Array$/.test(name);
+    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike)$/.test(name) || /Array$/.test(name);
   }
 
   #isContainerSlot(s: Slot): boolean {
@@ -958,7 +962,7 @@ export class FlowGraph {
   #elementType(t: TS.Type): TS.Type | null {
     const n = this.#checker.getNonNullableType(t);
     const name = n.getSymbol()?.name ?? '';
-    if (this.#checker.isArrayType(n) || /^(ReadonlyArray|Set|ReadonlySet)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[0] ?? null;
+    if (this.#checker.isArrayType(n) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[0] ?? null;
     if (/^(Map|ReadonlyMap)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[1] ?? null;
     return null;
   }

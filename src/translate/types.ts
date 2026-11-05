@@ -39,18 +39,43 @@ export interface CppEnum {
 /** Where a type is used: a field or parameter takes the spec's integer type, a local the plain int. */
 export type Use = 'field' | 'param' | 'local' | 'return' | 'element';
 
-/** An object type whose one member is `get(key): V | undefined`: a read-only map, [K, V]; null otherwise. */
-export function lookupOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): [TS.Type, TS.Type] | null {
+/**
+ * A reader the source declares itself: an object type whose members are only `get(key): V | undefined` and
+ * `has(key): boolean` (methods, or functions held as fields), all of one key. Its key, and the value `get` gives
+ * (null with `has` alone); null when the type is anything else.
+ */
+function readerOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): { key: TS.Type; value: TS.Type | null } | null {
   if (!(type.flags & ts.TypeFlags.Object) || type.getCallSignatures().length > 0) return null;
   const props = checker.getPropertiesOfType(type);
-  if (props.length !== 1 || props[0]!.name !== 'get') return null;
-  const decl = props[0]!.valueDeclaration ?? props[0]!.declarations?.[0];
-  if (!decl || !(ts.isMethodSignature(decl) || ts.isMethodDeclaration(decl))) return null;
-  const sig = checker.getSignaturesOfType(checker.getTypeOfSymbol(props[0]!), ts.SignatureKind.Call)[0];
-  if (!sig || sig.getParameters().length !== 1) return null;
-  const key = checker.getTypeOfSymbol(sig.getParameters()[0]!);
-  const value = checker.getNonNullableType(sig.getReturnType());
-  return [key, value];
+  if (props.length === 0 || props.some((p) => p.name !== 'get' && p.name !== 'has')) return null;
+  let key: TS.Type | null = null;
+  let value: TS.Type | null = null;
+  for (const p of props) {
+    const sigs = checker.getSignaturesOfType(checker.getNonNullableType(checker.getTypeOfSymbol(p)), ts.SignatureKind.Call);
+    if (sigs.length !== 1 || sigs[0]!.getParameters().length !== 1) return null;
+    const k = checker.getTypeOfSymbol(sigs[0]!.getParameters()[0]!);
+    if (key && !checker.isTypeAssignableTo(k, key)) return null;
+    key ??= k;
+    const ret = sigs[0]!.getReturnType();
+    if (p.name === 'has' && !(ret.flags & ts.TypeFlags.BooleanLike)) return null;
+    if (p.name === 'get') value = checker.getNonNullableType(ret);
+  }
+  return key ? { key, value } : null;
+}
+
+/** A reader with `get` (`interface NodeHeights { get(node: NodeId): number | undefined }`, a Map passed in): the map it is read as, [K, V]. */
+export function lookupOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): [TS.Type, TS.Type] | null {
+  const reader = readerOf(ts, checker, type);
+  return reader?.value ? [reader.key, reader.value] : null;
+}
+
+/**
+ * A reader with `has` alone (`{ has(node: NodeId): boolean }`: a Set passed in, or a rule written in place): the test
+ * it is, its key; null otherwise.
+ */
+export function membershipOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): TS.Type | null {
+  const reader = readerOf(ts, checker, type);
+  return reader && !reader.value ? reader.key : null;
 }
 
 export class TypeMapper {
@@ -156,7 +181,7 @@ export class TypeMapper {
     if (/^Float(32|64)Array$/.test(name)) return this.#vector({ k: 'real', name: this.#spec.number });
     const typed = /^(Ui|I)nt(8|16|32)Array$/.exec(name);
     if (typed) return this.#vector({ k: 'int', name: `${typed[1] === 'Ui' ? 'u' : ''}int${typed[2]}_t` as IntName });
-    if (checker.isArrayType(type) || /^(ReadonlyArray|Set|ReadonlySet)$/.test(name)) {
+    if (checker.isArrayType(type) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet)$/.test(name)) {
       if (/Set$/.test(name)) this.includes.add('unordered_set');
       const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
       return this.#vector(this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null));
@@ -169,6 +194,14 @@ export class TypeMapper {
       this.includes.add('unordered_map');
       const key: CppType = k!.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
+    }
+    // a membership test (a Set passed in, or a rule written in place): the test, called with the key
+    const member = membershipOf(ts, checker, type);
+    if (member) {
+      this.includes.add('functional');
+      // a number key as a Map's (an id may pass 2^31: int64_t)
+      const key: CppType = member.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(member, 'param', null);
+      return { k: 'function', params: [key], ret: BOOL };
     }
     const call = type.getCallSignatures()[0];
     if (call) {
@@ -190,6 +223,7 @@ export class TypeMapper {
 
   /** The struct of an object type (or the target type it is the same as), declared on first use. */
   structFor(type: TS.Type, hint: string): CppType {
+    if (this.#checker.isTupleType(type)) return this.#tuple(type as TS.TypeReference);
     const symbol = type.aliasSymbol ?? type.getSymbol();
     const declared = symbol && symbol.name !== '__type' && symbol.name !== '__object' ? symbol.name : null;
     if (!declared) {
@@ -223,6 +257,34 @@ export class TypeMapper {
       if (cpp.k === 'optional') this.includes.add('optional');
       made.fields.push({ source: prop.name, name: snake(prop.name), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
     }
+    return { k: 'struct', name };
+  }
+
+  /**
+   * A tuple (`[t: number, y: number]`): a struct of its positions, read by position. One struct for every tuple of the
+   * same element types, labelled or not (the program passes one where the other is asked), named from them
+   * (`NumberPair`); its fields `first`, `second`, ... (`v<i>` past four). A field's source is its position.
+   */
+  #tuple(type: TS.TypeReference): CppType {
+    const elements = this.#checker.getTypeArguments(type);
+    const word = (t: TS.Type): string => pascal(this.#checker.typeToString(this.#checker.getBaseTypeOfLiteralType(t)).replace(/[^A-Za-z0-9]+/g, ' ').trim().replace(/\s+/g, '_'));
+    const words = elements.map(word);
+    const arity = ['', 'Single', 'Pair', 'Triple', 'Quad'][elements.length] ?? `Tuple${elements.length}`;
+    const name = this.#spec.typeNames[this.#checker.typeToString(type)] ?? `${words.every((w) => w === words[0]) ? words[0] : words.join('')}${arity}`;
+    const known = this.structs.get(name);
+    if (known) {
+      this.#seen(known);
+      return { k: 'struct', name };
+    }
+    const made: CppStruct = { name, comment: `A tuple of the source (${this.#checker.typeToString(type)}), read by position.`, fields: [], module: null, line: 0 };
+    this.#seen(made);
+    this.structs.set(name, made);
+    const FIELDS = ['first', 'second', 'third', 'fourth'];
+    elements.forEach((el, i) => {
+      const prop = this.#checker.getPropertyOfType(type, String(i));
+      const cpp = this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
+      made.fields.push({ source: String(i), name: FIELDS[i] ?? `v${i}`, type: cpp, init: this.#init(cpp), comment: null });
+    });
     return { k: 'struct', name };
   }
 

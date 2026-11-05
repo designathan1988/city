@@ -5,7 +5,7 @@
   "source": "src/world/yard.ts",
   "summary": "A fixture yard of posts",
   "state": { "source": "YardData", "target": "YardState", "member": "yard", "root": "native/src/sim/state/city_state.h", "empty": "emptyYard" },
-  "units": ["addPost", "removePost", "countNear", "nearest", "firstX", "chain", "limited", "postById"],
+  "units": ["addPost", "removePost", "countNear", "nearest", "firstX", "chain", "limited", "postById", "median", "slope", "keptCount", "keptBoth", "summed", "shortLabel", "heightHash"],
   "pending": [],
   "number": "float",
   "functions": {},
