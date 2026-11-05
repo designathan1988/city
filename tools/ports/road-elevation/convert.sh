@@ -7,7 +7,7 @@ set -uo pipefail
 GAME="$(cd "$1" && pwd)"; WORK="$2"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CONV="${CONVERTER:-$GAME/tools/converter}" # the converter's own repository (its newest master) when set
-SRC="${ROADCRAFT_40:-C:/Users/Jonathan/Documents/Projects/roadcraft-4.0-main}"
+SRC="${ROADCRAFT_40:-C:/Users/Jonathan/Documents/Projects/city/roadcraft}"
 MINGW="${MINGW:-C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64}"
 BOUNDARY="$GAME/tools/process/converter-old/out/features/road-elevation/boundary.json"
 mkdir -p "$WORK"

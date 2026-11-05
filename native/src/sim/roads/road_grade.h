@@ -6,6 +6,8 @@
 // The ground is handed in (sim/roads does not include sim/terrain): the natural ground, water standing as a floor.
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -19,6 +21,17 @@ struct Tuning;
 enum class Structure : uint8_t { GROUND = 0, ELEVATED = 1, BRIDGE = 2, TUNNEL = 3 };
 constexpr bool is_raised(Structure s) { return s == Structure::ELEVATED || s == Structure::BRIDGE; }
 constexpr bool is_sunken(Structure s) { return s == Structure::TUNNEL; }
+constexpr size_t STRUCTURE_COUNT = 4;
+
+// What a structure is (world/structures.ts ROAD_STRUCTURES), the one owner of its figures, read from the tuning (grade):
+// clearance, the deck surface over the ground under it (negative: a tunnel's depth under it); deck, the structure under
+// the asphalt; supports, whether it stands on bents and piers.
+struct StructureSpec {
+	float clearance = 0;
+	float deck = 0;
+	bool supports = false;
+};
+StructureSpec structure_spec(Structure s, const Tuning &tn);
 
 // The ground a road is laid over at (x, z): the natural height, water standing as a floor.
 using GroundAt = std::function<float(float x, float z)>;
