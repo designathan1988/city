@@ -246,6 +246,9 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 
 - Causa 4, ruído dos prédios: `weather()` rodava 4 ruídos de valor, 16 hashes PCG por pixel de parede, para manchas de dezenas de metros. `vnoise` agora lê `assets/noise/lattice.png` (`tools/assets/make_lattice_noise.py`): o filtro bilinear do amostrador faz a mistura, uma busca no lugar de quatro hashes. Fotos congeladas: 3 de 4 iguais, a outra 0,11%. O ganho de GPU destas quatro causas não foi medido, por ordem do usuário (2026-11-05: parar de medir, corrigir no código, foto leve de cada elemento).
 
+- Causa 5, janela calculada em parede lisa: `far_window` rodava a conta inteira (raio no recuo, hash, lâmpada, reflexo) em todo pixel de fachada do nível médio. Sai logo depois do peitoril quando o pixel não toca vão (`hole <= 0`), com as derivadas tiradas antes da saída. Fotos congeladas: 4 de 4 iguais.
+- Duas cascatas, agora com foto (`look`, passo temporário, 3 vistas a 1920x1080): 4,3 a 8,7% dos pixels mudam mais de 8 níveis, e as sombras ficam mais moles no lote e nas fachadas das torres. Rejeitadas por perda de qualidade.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
