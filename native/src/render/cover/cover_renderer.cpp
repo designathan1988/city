@@ -179,7 +179,7 @@ void CoverRenderer::commit_one(Built &b) {
 		ch[at].range(0, end);
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
-		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts);
+		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
 		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
 	}
 }
