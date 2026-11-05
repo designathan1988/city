@@ -105,7 +105,10 @@ private:
 		std::array<MeshDraw, SUB_COUNT> flat; // past bay_end_: the mid level's bays as merged rectangles, a bay too small on the screen to pay for its triangles
 		std::array<MultiMeshDraw, BAND_DRAWS> bands;
 		std::array<ShadowTwin, b40::BAY_PROP_SHADOWED> prop_casts; // what the balcony pieces throw, to lod.cast_props_m
-		std::array<MultiMeshDraw, MID_DRAWS> mid_draws;
+		std::array<std::array<MultiMeshDraw, MID_DRAWS>, SUB_COUNT> mid_draws;
+		// A visibility range is measured to the centre of the instance's box (docs: Visibility ranges): every level of a sub-chunk takes this
+		// one box, so they hand over at one distance, with neither both drawn nor a hole between them.
+		std::array<godot::AABB, SUB_COUNT> reach_box;
 		MultiMeshDraw flags; // the cloths of its masts (flag_cloth.h), with the near level
 		std::array<Held, HELD_KINDS> held;
 		int64_t instances = 0, props = 0; // the instanced parts of its bands and flags, and the bay props among them
@@ -157,9 +160,12 @@ private:
 		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_DRAWS> band_count{};
 		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
-		std::array<godot::PackedFloat32Array, MID_DRAWS> mid_buf; // the mid level's instances, as the bands
-		std::array<OwnedMesh, MID_DRAWS> mid_mm;
-		std::array<int, MID_DRAWS> mid_count{};
+		std::array<std::array<godot::PackedFloat32Array, MID_DRAWS>, SUB_COUNT> mid_buf; // the mid level's instances, as the bands, by sub-chunk
+		std::array<std::array<OwnedMesh, MID_DRAWS>, SUB_COUNT> mid_mm;
+		std::array<std::array<int, MID_DRAWS>, SUB_COUNT> mid_count{};
+		std::array<std::array<godot::AABB, MID_DRAWS>, SUB_COUNT> mid_box;
+		std::array<godot::AABB, BAND_DRAWS> band_box; // what each band really covers: its range is measured to that box's centre
+		godot::AABB flag_box;
 		std::array<godot::RID, MID_DRAWS> mid_mesh;
 		godot::PackedFloat32Array flags; // the flags, MultiMesh layout (flag_cloth.h bake_flags)
 		OwnedMesh flag_mm;
@@ -208,6 +214,7 @@ private:
 	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
 	void commit_one(Built &b);
+	void fit_reach(Chunk &ch, const Built &b);
 	void commit_super(SuperBuilt &b);
 	void submit_super(const CityState &s, int64_t super_key, float priority);
 	void visit_super(int64_t super_key, Super &sp, const godot::Vector3 &cam, float eye, std::vector<Want> &want);

@@ -56,8 +56,10 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	for (ShadowTwin &d : ch.prop_casts) d.range(look_.cast_props_m);
 	for (int b = 0; b < BAND_DRAWS; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)] * detail_scale_);
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0;
-	ch.mid_draws[MID_BAYS].range(mid_from, bay_end_);
-	ch.mid_draws[MID_BOXES].range(mid_from, 0);
+	for (auto &sub : ch.mid_draws) {
+		sub[MID_BAYS].range(mid_from, bay_end_);
+		sub[MID_BOXES].range(mid_from, 0);
+	}
 	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }

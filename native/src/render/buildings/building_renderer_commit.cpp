@@ -18,11 +18,36 @@ namespace city {
 namespace {
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
+constexpr int ROW_STEP = 4, ROW_ORIGIN = 3; // a row of a plain MultiMesh buffer: three lines of a basis and an origin (rs_util.h mm_push_plain)
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 
-// A chunk's culling box (every level and band of it).
+// The box of a chunk with nothing to bound yet.
 AABB chunk_box(int64_t key) {
 	return AABB(Vector3(float(key_x(key)) * CHUNK, AABB_MIN_Y, float(key_y(key)) * CHUNK), Vector3(CHUNK, AABB_H, CHUNK));
+}
+
+// What the instances of a plain MultiMesh buffer cover: each one's origin and its three axes, a unit model at most each way. A band's and
+// a mid level's visibility range is measured to the centre of this box, so it has to stand where they stand: the chunk's own box has
+// its centre hundreds of metres over the street.
+AABB rows_box(const PackedFloat32Array &buf, int64_t key) {
+	const int64_t rows = buf.size() / MM_PLAIN_STRIDE;
+	if (rows == 0) return chunk_box(key);
+	const float *r = buf.ptr();
+	Vector3 mn, mx;
+	for (int64_t i = 0; i < rows; i++, r += MM_PLAIN_STRIDE) {
+		const Vector3 o(r[ROW_ORIGIN], r[ROW_ORIGIN + ROW_STEP], r[ROW_ORIGIN + 2 * ROW_STEP]);
+		const Vector3 reach(std::abs(r[0]) + std::abs(r[1]) + std::abs(r[2]), std::abs(r[ROW_STEP]) + std::abs(r[ROW_STEP + 1]) + std::abs(r[ROW_STEP + 2]),
+				std::abs(r[2 * ROW_STEP]) + std::abs(r[2 * ROW_STEP + 1]) + std::abs(r[2 * ROW_STEP + 2]));
+		mn = i == 0 ? o - reach : mn.min(o - reach);
+		mx = i == 0 ? o + reach : mx.max(o + reach);
+	}
+	const Vector3 pad(AABB_PAD, AABB_PAD, AABB_PAD);
+	return AABB(mn - pad, mx - mn + pad * 2);
+}
+
+void grow(AABB &box, const AABB &more) {
+	if (more.size == Vector3()) return;
+	box = box.size == Vector3() ? more : box.merge(more);
 }
 
 Color unpack(uint32_t c) {
@@ -129,7 +154,8 @@ int64_t BuildingRenderer::Built::bytes() const {
 				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true) + near_sheer[size_t(i)].bytes(true) +
 				near_cards[size_t(i)].bytes(true) + mid_cards[size_t(i)].bytes(true);
 	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
-	for (const PackedFloat32Array &buf : mid_buf) n += buf.size() * int64_t(sizeof(float));
+	for (const auto &sub : mid_buf)
+		for (const PackedFloat32Array &buf : sub) n += buf.size() * int64_t(sizeof(float));
 	n += flags.size() * int64_t(sizeof(float));
 	return n;
 }
@@ -169,16 +195,22 @@ void BuildingRenderer::Built::bake() {
 	}
 	for (int b = 0; b < BAND_DRAWS; b++) {
 		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_PLAIN_STRIDE);
-		band_mm[size_t(b)] = bake_multimesh(band_mesh[size_t(b)], bands[size_t(b)], chunk_box(key));
+		band_box[size_t(b)] = rows_box(bands[size_t(b)], key);
+		band_mm[size_t(b)] = bake_multimesh(band_mesh[size_t(b)], bands[size_t(b)], band_box[size_t(b)]);
 		bands[size_t(b)] = PackedFloat32Array();
 	}
-	for (int k = 0; k < MID_DRAWS; k++) {
-		mid_count[size_t(k)] = int(mid_buf[size_t(k)].size() / MM_PLAIN_STRIDE);
-		if (mid_count[size_t(k)] > 0) mid_mm[size_t(k)] = bake_multimesh(mid_mesh[size_t(k)], mid_buf[size_t(k)], chunk_box(key));
-		mid_buf[size_t(k)] = PackedFloat32Array();
-	}
+	for (size_t i = 0; i < SUB_COUNT; i++)
+		for (size_t k = 0; k < MID_DRAWS; k++) {
+			mid_count[i][k] = int(mid_buf[i][k].size() / MM_PLAIN_STRIDE);
+			if (mid_count[i][k] > 0) {
+				mid_box[i][k] = rows_box(mid_buf[i][k], key);
+				mid_mm[i][k] = bake_multimesh(mid_mesh[k], mid_buf[i][k], mid_box[i][k]);
+			}
+			mid_buf[i][k] = PackedFloat32Array();
+		}
 	flag_count = int(flags.size() / MM_PLAIN_STRIDE);
-	flag_mm = bake_multimesh(unit_flag, flags, chunk_box(key));
+	flag_box = rows_box(flags, key);
+	flag_mm = bake_multimesh(unit_flag, flags, flag_box);
 	flags = PackedFloat32Array();
 	baked = true;
 }
@@ -203,12 +235,12 @@ void BuildingRenderer::commit_one(Built &b) {
 		for (int band = 0; band < BAND_DRAWS; band++) {
 			const bool prop = band >= BAND_COUNT;
 			ch.bands[size_t(band)].adopt(scenario_, prop ? material_props_ : material_parts_, false,
-					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], chunk_box(b.key), LAYER_BUILDING_DETAILS);
+					b.band_mm[size_t(band)].release(), b.band_count[size_t(band)], b.band_box[size_t(band)], LAYER_BUILDING_DETAILS);
 			if (prop && band - BAND_COUNT < b40::BAY_PROP_SHADOWED)
-				ch.prop_casts[size_t(band - BAND_COUNT)].bind(scenario_, ch.bands[size_t(band)].mm, material_cast_, chunk_box(b.key), LAYER_BUILDING_DETAILS);
+				ch.prop_casts[size_t(band - BAND_COUNT)].bind(scenario_, ch.bands[size_t(band)].mm, material_cast_, b.band_box[size_t(band)], LAYER_BUILDING_DETAILS);
 		}
 		// a cloth throws a shadow; its own layer, as the 4.0's flag layer has its own switch (effects panel bFlags)
-		ch.flags.adopt(scenario_, material_parts_, true, b.flag_mm.release(), b.flag_count, chunk_box(b.key), LAYER_BUILDING_FLAGS);
+		ch.flags.adopt(scenario_, material_parts_, true, b.flag_mm.release(), b.flag_count, b.flag_box, LAYER_BUILDING_FLAGS);
 		ch.occluder.set(scenario_, b.walls);
 		std::copy(b.held.begin(), b.held.begin() + HELD_MID_WALLS, ch.held.begin());
 		ch.instances = b.flag_count;
@@ -223,15 +255,39 @@ void BuildingRenderer::commit_one(Built &b) {
 			put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES);
 			put_level(ch.flat[size_t(i)], b.flat[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // the plain side behind throws the shadow
 		}
-		for (int k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
-			ch.mid_draws[size_t(k)].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[size_t(k)].release(), b.mid_count[size_t(k)],
-					chunk_box(b.key), LAYER_BUILDING_FACADES);
+		for (size_t i = 0; i < SUB_COUNT; i++)
+			for (size_t k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
+				ch.mid_draws[i][k].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[i][k].release(), b.mid_count[i][k],
+						b.mid_box[i][k], LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
 	}
+	fit_reach(ch, b);
 	ranges(ch);
 	show(ch, ch.shown); // the bands' MultiMeshes come up visible: the chunk's state decides
+}
+
+// Every level of each sub-chunk on one box, that grows with what it holds.
+void BuildingRenderer::fit_reach(Chunk &ch, const Built &b) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		AABB &box = ch.reach_box[i];
+		if (b.has_near) {
+			grow(box, b.near[i].box);
+			grow(box, b.parts[i].box);
+		}
+		if (b.has_mid) {
+			grow(box, b.mid[i].box);
+			grow(box, b.flat[i].box);
+			for (const AABB &drawn : b.mid_box[i]) grow(box, drawn);
+		}
+		if (box.size == Vector3()) continue;
+		for (const MeshDraw *d : { &ch.near[i], &ch.parts[i], &ch.mid[i], &ch.flat[i] })
+			if (d->inst.is_valid()) rs->instance_set_custom_aabb(d->inst, box);
+		for (const MultiMeshDraw &d : ch.mid_draws[i])
+			if (d.inst.is_valid()) rs->instance_set_custom_aabb(d.inst, box);
+	}
 }
 
 void BuildingRenderer::commit_super(SuperBuilt &b) {
@@ -261,7 +317,8 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 	}
 	for (const MultiMeshDraw &d : ch.bands) d.visible(on);
 	for (int k = 0; k < b40::BAY_PROP_SHADOWED; k++) ch.prop_casts[size_t(k)].visible(on && ch.bands[size_t(BAND_COUNT + k)].count > 0);
-	for (const MultiMeshDraw &d : ch.mid_draws) d.visible(on);
+	for (const auto &sub : ch.mid_draws)
+		for (const MultiMeshDraw &d : sub) d.visible(on);
 	ch.flags.visible(on);
 }
 

@@ -146,16 +146,12 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	}
 	out.has_mid = mid;
 	if (mid) {
-		std::vector<b40::BoxInstance> boxes;
-		std::vector<b40::BayInstance> bays;
 		for (size_t i = 0; i < SUB_COUNT; i++) {
-			boxes.insert(boxes.end(), mid_parts[i].boxes.begin(), mid_parts[i].boxes.end());
-			bays.insert(bays.end(), mid_shells[i].bays.begin(), mid_shells[i].bays.end());
+			out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
+			out.mid_buf[i][MID_BOXES] = bake_band(mid_parts[i].boxes);
 			mid_shells[i].bays = {};
 			mid_shells[i].flat = nullptr;
 		}
-		out.mid_buf[MID_BAYS] = bake_bays(bays);
-		out.mid_buf[MID_BOXES] = bake_band(boxes);
 		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
 		out.mid_mesh[MID_BOXES] = unit_box_->get_rid();
 	}

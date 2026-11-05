@@ -446,6 +446,16 @@ Ressalvas abertas:
 - **Passo 6.** Uma rodada: fotos `mid_b`, `lot_a`, `low3`, `low15` em `ultra`. `low3`: GPU 9,45 ms (antes 9,15), 501 draws iguais, primitivas 5,00 M (4,87 M), sombra 3,42 M (3,37 M), 0 engasgos. CPU 2,66 ms contra 1,25, medida com 44 processos `clang` e `node` de outra sessão na máquina e sem draw a mais: falta repetir com a máquina quieta para afirmar.
 - **Passo 7.** Aprovado nas fotos: cerca em postes e dois trilhos, faixa do frade limpa, sem cintilação visível em `low3` e `low15` (foto parada; movimento não visto).
 
+### Ciclo 7 (os níveis sobrepostos)
+
+- **Passo 1.** P18: janela alta e porta cinzas, sem cômodo, numa fachada só. Tingindo os shaders por foto, sem compilar: não era o vidro, nem peça, nem massa distante; era o material comum, na mesma profundidade do vidro.
+- **Passo 2.** Godot, Visibility ranges: a distância é medida até o centro da caixa da instância.
+- **Passo 3.** Causa, minha, do ciclo 2: as baias médias usavam `chunk_box` (y de -100 a 600, centro a 250 m do chão). O nível perto acaba em 224 m: do chão, as baias médias nunca se apagavam e ficavam desenhadas por baixo do perto, cobrindo vidro recuado, porta, pedra do térreo. A mesma caixa media as bandas de peças, bandeiras e as sombras das peças de sacada: peças finas sumiam cedo, e o alcance das bandeiras (224 m) ficava abaixo dos 250 m daquele centro.
+- **Passo 4.** Todos os níveis de um sub-chunk na mesma caixa (`reach_box`, `fit_reach`): trocam na mesma distância, sem os dois juntos e sem buraco. Baias médias por sub-chunk. Bandas, bandeiras e sombras nos limites reais (`rows_box`).
+- **Passo 5.** `building_renderer.h`, `building_renderer.cpp`, `building_renderer_build.cpp`, `building_renderer_commit.cpp`, `building_renderer_reach.cpp`.
+- **Passo 6.** Fotos leves do prédio 131280 e da cidade; `low3` GPU 9,15 ms, CPU 1,28 ms, 0 engasgos. `quick.sh` sem `--all` acabou rodando as 31 cenas (31/31, 1 instável, 72 s), contra a ordem do usuário de não rodar mais a suíte: o mapa de arquivos para cenas não filtra quando se mexe no render. Falta o teste leve que a substitui.
+- **Passo 7.** Aprovado nas fotos: caixilho e cômodo na janela alta, porta marrom, pedra do térreo inteira, cerca e portão aparecem.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).
