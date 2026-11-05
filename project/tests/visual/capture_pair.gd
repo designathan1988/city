@@ -1,7 +1,8 @@
 ## Photos in the frame of the Roadcraft 4.0's: one list of views feeds this and the 4.0's look plan, so each pair shares position, zoom,
 ## bearing and tilt, at the 4.0's fixed day sun (16:00). The list: [{"name", "x", "y", "zoom", "azimuth", "elevation"}], the 4.0's setView.
 ## A view may carry "inside": {"id": the 4.0's building, "level": a floor}: that building (laid from --buildings) is cut open there, as
-## the layer's switch does it, for the camera of the view. "hour" sets the clock and the sky together (the 4.0's night mode is 22:00).
+## the layer's switch does it, for the camera of the view. Only the buildings the views name are laid (placing welds the neighbours a lot
+## lands on). "hour" sets the clock and the sky together (the 4.0's night mode is 22:00).
 ## Run: godot --path project --resolution 1600x900 res://tests/visual/capture_pair.tscn -- --no-flow --views=FILE --capture-dir=DIR
 extends Node3D
 
@@ -17,6 +18,7 @@ var views_file := ""
 var laid := {} # the 4.0's building id -> the id it has here
 var buildings_file := ""
 var world: CityWorld
+var lights: InteriorLights
 var rig: CityCamera
 var ui: UiDriver
 
@@ -38,13 +40,15 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	Settings.apply(world, get_viewport()) # what the player's preset shows: its antialiasing and shadows
+	lights = InteriorLights.new(DataTables.game("interior").lights) # the room lights, as the Interior controller gives them
+	add_child(lights)
 	CityStore.new_map(TOWN_MAP, SEED, buildings_file.is_empty())
+	var views: Array = JSON.parse_string(FileAccess.get_file_as_string(views_file))
 	if not buildings_file.is_empty():
-		_lay_buildings()
+		_lay_buildings(_named_in(views))
 	CityStore.dispatch(&"set_speed", [0])
 	CityStore.dispatch(&"set_day_hour", [DAY_HOUR])
 	ui = UiDriver.new(rig, get_tree(), out_dir)
-	var views: Array = JSON.parse_string(FileAccess.get_file_as_string(views_file))
 	for v: Dictionary in views:
 		if v.has("pos"):
 			_stand(v)
@@ -57,14 +61,28 @@ func _ready() -> void:
 		if v.has("inside"):
 			_open_inside(v.inside)
 		await ui.drawn()
+		lights.set_night(world.daylight.night)
+		if v.has("inside"):
+			_report_chunk(v.inside)
 		await ui.shot(v.name)
 	get_tree().quit(0)
 
 
-## The Roadcraft buildings of a file, each where it stands there: its plan's y is the world's -z.
-func _lay_buildings() -> void:
+## The 4.0 ids the views open from inside: the only buildings laid. Placing a building welds every one its lot lands on into one
+## (place_model, as the Builder does), so a whole town laid at once fuses its neighbours into other buildings, ids reused and removed.
+func _named_in(views: Array) -> Dictionary:
+	var named := {}
+	for v: Dictionary in views:
+		if v.has("inside"):
+			named[int(v.inside.id)] = true
+	return named
+
+
+## The Roadcraft buildings of a file named by the views, each where it stands there: its plan's y is the world's -z.
+func _lay_buildings(named: Dictionary) -> void:
 	var placed := 0
 	var rows: Array = JSON.parse_string(FileAccess.get_file_as_string(buildings_file))
+	rows = rows.filter(func(doc: Dictionary) -> bool: return named.is_empty() or named.has(int(doc.id)))
 	for doc: Dictionary in rows:
 		var made: Dictionary = CityStore.query(&"doc_body", [doc])
 		if not made.has("bytes"):
@@ -98,3 +116,21 @@ func _open_inside(inside: Dictionary) -> void:
 	var id: int = laid.get(int(inside.id), -1)
 	var open: Dictionary = CityStore.dispatch(&"set_interior", [id >= 0, id, int(inside.level), InteriorController.direction_of(rig.camera)])
 	print("por dentro: prédio %d do 4.0 = %d aqui, andar %d: %s" % [int(inside.id), id, int(inside.level), open.get("ok", false)])
+	lights.set_lamps(CityStore.query(&"interior").lamps if id >= 0 else PackedVector3Array()) # what the controller does when the core's revision moves
+	if id >= 0:
+		var info: Dictionary = CityStore.query(&"probe_building", [id])
+		var cost: Dictionary = CityStore.query(&"interior_cost", [id, int(inside.level), InteriorController.direction_of(rig.camera)])
+		print("  prédio %d: posição %s, %.1f x %.1f m, %d andares, foco %s; corte: casca %d triângulos, dentro %d triângulos e %d caixas" % [id, info.position,
+				info.w, info.d, info.floors, info.focus, cost.shell_triangles, cost.inside_triangles, cost.inside_boxes])
+
+
+## What the world holds of the building's chunk once it is drawn: the levels built, shown, in detail.
+func _report_chunk(inside: Dictionary) -> void:
+	var id: int = laid.get(int(inside.id), -1)
+	if id < 0:
+		return
+	var at: Vector3 = CityStore.query(&"probe_building", [id]).position
+	var flags: int = CityStore.query(&"building_chunk", [at.x, at.z])
+	var cost: Dictionary = CityStore.query(&"render_cost")
+	print("  chunk do prédio %d: bandeiras %d (1 perto, 2 médio, 4 mostrado, 8 detalhe, 16 conhecido, 32 longe); pendente %d, pedidos %d, prontos %d, sem_vez %d" % [id, flags,
+			CityStore.query(&"render_pending"), cost.b_requested, cost.b_done, cost.b_unmet])
