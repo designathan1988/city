@@ -20,7 +20,7 @@ constexpr uint32_t SALT_SEVER = 0x73657665U;
 constexpr uint32_t SALT_MAIM = 0x6d61696dU;
 constexpr uint32_t SALT_BODY = 0x626f6479U;
 constexpr int LIMB_KINDS = 5; // head, two arms, two legs
-constexpr float POWER_MIN = 0.3f; // a body thrown from the edge still moves a little
+constexpr float THROW_FLOOR = 0.3f; // the least share of the throw a body at the edge of the blast gets: it still moves a little
 constexpr float DEATH_REACH_SHARE = 1.1f; // vehicles are blown within this share of the range of their limit
 constexpr float FAR_DIE_HEAD = 0.25f; // a killed body further out loses its head with this chance
 constexpr uint32_t TORN_BIT = 1;
@@ -55,7 +55,7 @@ DamageEvent casualty(const Blow &b, int id, const Pose &at, uint32_t look, float
 	e.x = at.x; e.y = at.y; e.z = at.z;
 	e.a = heading_of(at);
 	e.b = b.x; e.c = b.z;
-	e.d = std::min(1.f, std::max(POWER_MIN, pressure / b.p.torn_kpa));
+	e.d = std::min(1.f, std::max(THROW_FLOOR, pressure / b.p.torn_kpa));
 	e.dx = lie;
 	e.u = look;
 	e.v = flags;
