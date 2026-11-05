@@ -1,4 +1,4 @@
-## The length, price and refusal of the road in hand, beside its end (Roadcraft main.ts drawRoadPreview): it follows the
+## The length, price and refusal of the road in hand, beside its end, in the reference's box (Roadcraft main.ts drawRoadPreview): it follows the
 ## world point on the screen and stays inside it. The road tool fills it through ToolController.tagged.
 class_name PreviewTag
 extends PanelContainer
@@ -9,7 +9,8 @@ extends PanelContainer
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label = HudWidgets.label(self, &"BodyLabel")
+	theme_type_variation = &"PreviewTag"
+	_label = HudWidgets.label(self, &"PreviewTagLabel")
 	hide()
 	var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 	if tools:
@@ -18,8 +19,7 @@ func _ready() -> void:
 
 func show_at(text: String, at: Vector3, ok: bool) -> void:
 	visible = text != ""
-	theme_type_variation = &"Toast" if ok else &"DangerToast"
-	_label.theme_type_variation = &"BodyLabel" if ok else &"DangerLabel"
+	_label.theme_type_variation = &"PreviewTagLabel" if ok else &"PreviewDangerLabel" # a refusal only changes the ink
 	_label.text = text
 	_at = at
 	reset_size()

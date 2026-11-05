@@ -65,7 +65,7 @@ func drag(p: Vector3) -> void:
 		draft.end = _end_at(draft.start, p)
 		_sample(p)
 		draft.dragged = draft.dragged or p.distance_to(draft.pressed) > ctl.px_at(p) * DataTables.tuning("road_click_px")
-		_preview(_draft_pieces(), draft.end)
+		_preview(_draft_pieces())
 
 
 func hover(p: Vector3) -> void:
@@ -73,7 +73,7 @@ func hover(p: Vector3) -> void:
 		_bend_to(p)
 	elif chain != Vector3.INF:
 		var end := _end_at(chain, p)
-		_preview(_pieces(chain, end.position, false, Vector3.ZERO, PackedVector3Array([chain])), end)
+		_preview(_pieces(chain, end.position, false, Vector3.ZERO, PackedVector3Array([chain])))
 	else:
 		_clear_preview()
 
@@ -156,10 +156,10 @@ func _pieces(a: Vector3, b: Vector3, has_control: bool, control: Vector3, sample
 
 func _bend_to(p: Vector3) -> void:
 	bend.control = p
-	_preview(_pieces(bend.start, bend.end, true, p, PackedVector3Array()), {})
+	_preview(_pieces(bend.start, bend.end, true, p, PackedVector3Array()))
 
 
-func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
+func _preview(pieces: PackedVector3Array) -> void:
 	if pieces.is_empty():
 		_clear_preview()
 		return
@@ -169,7 +169,7 @@ func _preview(pieces: PackedVector3Array, end: Dictionary) -> void:
 		return
 	var ok: bool = _last_plan.ok and _last_plan.affordable
 	ctl.preview.show_road(_last_plan, _paint(), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
-	var text := _measure(end)
+	var text := _measure()
 	if not _last_plan.ok:
 		text += " · " + reason(_last_plan)
 	elif not _last_plan.affordable:
@@ -185,11 +185,10 @@ func _paint() -> String:
 	return "yellow" if p.yellow else "white"
 
 
-## "120 m · R$ 150.000 · 90°": the length in tens of metres, the angle only when something snapped it.
-func _measure(end: Dictionary) -> String:
+## "120 m · R$ 150.000": the length in tens of metres and its cost (Roadcraft main.ts drawRoadPreview).
+func _measure() -> String:
 	var tens := roundi(_last_plan.length / ROUND_TO_M) * ROUND_TO_M
-	var text := "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(_last_plan.price)]
-	return text + (" · %d°" % roundi(end.angle_deg) if end.get("guide", "") != "" else "")
+	return "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(_last_plan.price)]
 
 
 func _lay(pieces: PackedVector3Array) -> void:

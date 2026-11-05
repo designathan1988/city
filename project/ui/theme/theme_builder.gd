@@ -132,6 +132,7 @@ static func _panels() -> void:
 	_panel(&"RowBand", box("raise", "kbd_radius"))
 	_panel(&"LampChip", _pad(box("raise", "pill_radius", "line"), "pad"))
 	_panel(&"Toast", _margins(box("bg_strong", "pill_radius", "line", true), "toast_pad_x", "toast_pad_y", "toast_pad_y"))
+	_panel(&"PreviewTag", _margins(box("preview_tag_bg", "preview_tag_radius"), "preview_tag_pad_x", "preview_tag_pad_y", "preview_tag_pad_y"))
 	_panel(&"DangerToast", _margins(box("bg_strong", "pill_radius", "danger", true), "toast_pad_x", "toast_pad_y", "toast_pad_y"))
 	for axis in ["H", "V"]:
 		var base := StringName(axis + "BoxContainer")
