@@ -9,6 +9,8 @@ static func run(cap: Node, only: PackedStringArray) -> bool:
 		await CaptureTransit.shots(cap)
 	elif only.has("pessoas"):
 		await CapturePeople.shots(cap)
+	elif only.has("clipes"):
+		await CapturePeople.clips(cap)
 	elif only.has("varredura"):
 		await CaptureSweep.shots(cap)
 	else:

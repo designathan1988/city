@@ -6,6 +6,7 @@ extends Node3D
 const TOWN_MAP := 0
 const SEED := 1
 const SETTLE_FRAMES := 2
+const RIDER_CLIPS := ["chairSit", "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "motoRide", "motoStop", "bikeStop", "bikePedal"]
 const WARMUP_TICKS := 4800
 const WARMUP_FROM := 12.0
 const SMALL_HOURS := 3.0
@@ -57,6 +58,7 @@ func _ready() -> void:
 	print("corpos: ", probe.people_overlaps, " móveis: ", probe.people_in_furniture)
 	_check(int(probe.people_in_furniture) == 0, "dentro de móvel: %d" % probe.people_in_furniture)
 	_check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "par encostado: %d" % c.party_touching)
+	_clips()
 	CityStore.step_ticks(MORE_TICKS)
 	var later: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 	print("depois: ", later)
@@ -74,6 +76,20 @@ func _ready() -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
+
+
+## The clips of people in vehicles (tools/assets/rider_poses.py): every one in the file, in the block, and a body seated in it.
+func _clips() -> void:
+	var clips: Array = CityStore.query(&"people_clips")
+	var named := {}
+	for c: Dictionary in clips:
+		named[c.name] = c
+	for name: String in RIDER_CLIPS:
+		_check(named.has(name), "clipe no arquivo: %s" % name)
+		_check(named.has(name) and float(named[name].pelvis.y) > 0.0 and float(named[name].above) > 0.0, "pelve e alcance de %s" % name)
+	_check(CityStore.query(&"show_people_clip", ["chairSit"]), "toca um clipe pelo nome")
+	_check(not CityStore.query(&"show_people_clip", ["sem nome"]), "recusa clipe que não há")
+	CityStore.query(&"show_people_clip", ["idle"])
 
 
 func _check(ok: bool, what: String) -> void:

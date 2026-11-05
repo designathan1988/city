@@ -80,6 +80,8 @@ public:
 	int64_t super_bytes_max() const { return buildings_.super_bytes_max(); }
 	int drawn_vehicles() const { return agents_.drawn_vehicles(); }
 	int drawn_people() const { return agents_.drawn_people(); }
+	godot::Array people_clips() const { return agents_.people_clips(); }
+	bool show_people_clip(const godot::String &name) { return agents_.show_people_clip(name); }
 	godot::Dictionary agent_cost() const {
 		godot::Dictionary d = agents_.cost();
 		d["trees_near"] = trees_.near_trees();

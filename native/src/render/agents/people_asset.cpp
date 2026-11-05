@@ -23,10 +23,10 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
-constexpr uint32_t VERSION = 2, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
-constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
+constexpr uint32_t VERSION = 3, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
-constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.1, 1.0]
+constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.9, 1.9]: the cook prints it
 constexpr int TEXELS_PER_VALUE = 2;
 constexpr uint32_t FIXED_MAX = 65535;
 
@@ -112,22 +112,38 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 }
 } // namespace
 
+int PeopleAsset::clip(const char *name) const {
+	for (size_t i = 0; i < clips.size(); i++)
+		if (clips[i].name == name) return int(i);
+	return -1;
+}
+
 bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 	PackedByteArray raw = FileAccess::get_file_as_bytes(path);
 	ByteReader r{ raw.ptr(), size_t(raw.size()) };
 	uint32_t magic = r.get<uint32_t>(), version = r.get<uint32_t>(), count = r.get<uint32_t>(), bones = r.get<uint32_t>();
 	uint32_t lod_count = r.get<uint32_t>(), pal_w = r.get<uint32_t>();
 	block_rows = int(r.get<uint32_t>());
-	idle_row = int(r.get<uint32_t>());
-	idle_frames = int(r.get<uint32_t>());
-	pedal_row = int(r.get<uint32_t>());
-	pedal_frames = int(r.get<uint32_t>());
+	const uint32_t clip_count = r.get<uint32_t>();
 	const uint32_t pal_h = uint32_t(block_rows) * count;
-	if (!r.ok || magic != MAGIC || version != VERSION || count == 0 || count > MAX_VARIATIONS || lod_count == 0 || lod_count > MAX_LODS ||
-			pal_w != bones * BONE_TEXELS || idle_row <= 0 || idle_frames <= 0 || pedal_row < idle_row + idle_frames || pedal_row + pedal_frames > block_rows) {
+	bool sound = r.ok && magic == MAGIC && version == VERSION && count > 0 && count <= MAX_VARIATIONS && lod_count > 0 && lod_count <= MAX_LODS &&
+			pal_w == bones * BONE_TEXELS && clip_count > 0 && clip_count <= MAX_CLIPS;
+	clips.assign(sound ? clip_count : 0, PersonClip());
+	for (PersonClip &c : clips) {
+		char name[CLIP_NAME_BYTES + 1] = {};
+		r.get_bytes(reinterpret_cast<uint8_t *>(name), CLIP_NAME_BYTES);
+		c.name = name;
+		c.row = int(r.get<uint32_t>());
+		c.frames = int(r.get<uint32_t>());
+		sound = sound && c.frames > 0 && c.row + c.frames <= block_rows;
+	}
+	const int idle = clip("idle");
+	if (!r.ok || !sound || idle < 0) {
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
 	}
+	idle_row = clips[size_t(idle)].row;
+	idle_frames = clips[size_t(idle)].frames;
 	lods = int(lod_count);
 	variations.assign(count, PersonVariation());
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
@@ -142,6 +158,16 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 		pv.senior = flags & FLAG_SENIOR;
 		pv.child = flags & FLAG_CHILD;
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
+		pv.fits.resize(clips.size());
+		for (PersonFit &f : pv.fits) {
+			f.pelvis.x = r.get<float>();
+			f.pelvis.y = r.get<float>();
+			f.pelvis.z = r.get<float>();
+			f.above = r.get<float>();
+			f.below = r.get<float>();
+			f.ahead = r.get<float>();
+			f.side = r.get<float>();
+		}
 	}
 	for (uint32_t v = 0; v < count && r.ok; v++)
 		for (uint32_t l = 0; l < lod_count && r.ok; l++) {

@@ -47,6 +47,9 @@ public:
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	int shown(int level) const; // people drawn at this level on the last frame
+	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
+	godot::Array clips() const;
+	bool show_clip(const godot::String &name);
 
 private:
 	PeopleAsset asset_;

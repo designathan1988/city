@@ -21,7 +21,7 @@ void CityCore::make_areas() {
 	transit_ = memnew(CityTransit);
 	transit_->attach(state_.get(), &render_);
 	probes_ = memnew(CityProbes);
-	probes_->attach(state_.get());
+	probes_->attach(state_.get(), &render_);
 }
 
 // memdelete of an extension object destroys it through the engine (godot-cpp core/memory.hpp: object_destroy of its owner).

@@ -3,6 +3,7 @@
 #include "api/city_probes.h"
 #include "core/units.h"
 #include "sim/traffic/traffic_system.h"
+#include "render/render_world.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -86,6 +87,10 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 }
 
 } // namespace
+
+Array CityProbes::people_clips() const { return render_->people_clips(); }
+
+bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
