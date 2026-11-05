@@ -17,9 +17,6 @@ const FASTEST_SPEED := 3
 const JAM_SHOTS := 1
 ## Close view of the vehicle nearest to the centre: camera offset and look-at offset from it.
 ## Offsets in the vehicle frame: x to its left, y up, z ahead.
-## Busiest lit junction for pedestrians (traffic_probe busy_crossing): oblique view and a closer one.
-const CROSSING_FROM := Vector3(-8, 42, 16)
-const CROSSING_NEAR_FROM := Vector3(-6, 22, 10)
 ## Close look at the pedestrian nearest to the centre (same frame as the car view) and the height looked at.
 const PERSON_VIEW_FROM := Vector3(1.5, 1.4, 4.5)
 const PERSON_VIEW_AT_Y := 0.95
@@ -139,10 +136,10 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	await _person_shot(probe, ground)
 	if not only.has("none") or soak > 0:
 		var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
-		await _shot("15_travessia", cross + CROSSING_FROM, cross)
-		await _shot("16_travessia_perto", cross + CROSSING_NEAR_FROM, cross)
+		await CaptureCrossing.views(self, cross)
 		await CaptureKerb.shots(self, CityStore.query(&"traffic_probe", [0]).get("crossing_kerb", []))
 		await CaptureSignals.shots(self, cross, [DAY, NIGHT])
+		await CaptureCrossing.paint(self, cross)
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
 		print("retido em ", j, " ", probe.jam_info[i])

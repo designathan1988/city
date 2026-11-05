@@ -11,7 +11,6 @@ const VIEW := [45.0, 52.0, 2300.0] # yaw, pitch (degrees), distance: the whole t
 const LONG_FRAME_MS := 80.0
 const TIP_WAIT_S := 1.2
 const STREET_M := 120.0
-const PAINT_M := 40.0 # close enough for a dash (3 m) and a zebra bar (0.5 m) to show
 const PHOTO_HOUR := 12.0
 const CLOCK_BUTTON := 2
 const SPEED_PAUSED := 0
@@ -182,18 +181,12 @@ func _switch_shadow() -> void:
 
 
 func _map_layers() -> void:
-	var junction := _nearest("node") # the camera stands where the paint is: a junction, not wherever the last photo left it
+	var junction := _nearest("node") # the grid is seen over a junction, the same one the shadow shots stand on
 	Settings.set_layer("grid", true)
 	rig.jump(junction, VIEW[0], VIEW[1], STREET_M)
 	await _frames(SETTLE)
 	await _shot("layer_grid")
 	Settings.set_layer("grid", false)
-	rig.jump(junction, VIEW[0], VIEW[1], PAINT_M)
-	for style in DataTables.render().streets.markings.styles.size():
-		CityStore.dispatch(&"set_marking_style", [style, false])
-		await _frames(FRAMES / 2)
-		await _shot("paint_%d" % style)
-	CityStore.dispatch(&"set_marking_style", [0, false])
 	rig.jump(Vector3.ZERO, VIEW[0], VIEW[1], VIEW[2])
 	await _frames(FRAMES / 2)
 
