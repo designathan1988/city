@@ -37,6 +37,10 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	float det = dux.x * duy.y - dux.y * duy.x;
 	det = abs(det) < 1e-9 ? 1e-9 : det;
 	vec3 pu = (dpx * duy.y - dpy * dux.y) / det, pv = (dpy * dux.x - dpx * duy.x) / det;
+	vec3 wall = albedo; // what a reveal shows, with no sill on it
+	float line = recess * pulse(uv.x, foot.x, a0 - f, a1 + f);
+	albedo *= (1.0 + (SILL_LIGHT - 1.0) * line * pulse(uv.y, foot.y, code.g - SILL_SHARE, code.g)) * (1.0 - DRIP_DARK * line * pulse(uv.y, foot.y, code.g - SILL_DRIP, code.g - SILL_SHARE));
+	if (hole <= 0.0) return; // plain wall: most of a facade, with nothing below this to show (and no derivative left to take)
 	vec2 back = uv + grid_step(V, pu, pv, n, depth) * recess;
 	float across = pulse(back.x, foot.x, a0 + f, a1 - f);
 	float pan = across * pulse(back.y, foot.y, code.g + f, code.b - f) * hole;
@@ -44,9 +48,7 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	vec2 past = vec2(at.x < a0 ? -1.0 : at.x > a1 ? 1.0 : 0.0, at.y < code.g ? -1.0 : at.y > code.b ? 1.0 : 0.0);
 	float reveal = recess * hole * (1.0 - pulse(back.x, foot.x, a0, a1) * pulse(back.y, foot.y, code.g, code.b));
 	vec3 face = normalize(-past.x * normalize(pu) - past.y * normalize(pv) + n * 1e-3);
-	vec3 wall_seen = albedo * (REVEAL_SHADE + REVEAL_SUN * clamp(dot(face, sun_direction), 0.0, 1.0) * (1.0 - night));
-	float line = recess * pulse(uv.x, foot.x, a0 - f, a1 + f);
-	albedo *= (1.0 + (SILL_LIGHT - 1.0) * line * pulse(uv.y, foot.y, code.g - SILL_SHARE, code.g)) * (1.0 - DRIP_DARK * line * pulse(uv.y, foot.y, code.g - SILL_DRIP, code.g - SILL_SHARE));
+	vec3 wall_seen = wall * (REVEAL_SHADE + REVEAL_SUN * clamp(dot(face, sun_direction), 0.0, 1.0) * (1.0 - night));
 	uint h = pcg(seed * 977u + uint(cell.x + 512.0) * 131u + uint(cell.y + 512.0) * 7177u);
 	float dark_near = picks == DARK_PICK ? (h % 20u < 5u ? 1.0 : 0.0) : picks == DARK_QUARTER ? (h % 4u == 0u ? 1.0 : 0.0) : picks == DARK_FIFTH ? (h % 5u == 0u ? 1.0 : 0.0) : 0.0;
 	float dark = mix(dark_near, picks == DARK_FIFTH ? 0.2 : picks == DARK_PICK || picks == DARK_QUARTER ? 0.25 : 0.0, sub);
