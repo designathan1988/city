@@ -192,6 +192,10 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.backlog = backlog;
 		cost_.budget_left = budget.left;
 	}
+	// The fields' jobs take the map themselves; their windows follow the view as the chunks do (one per-frame driver: here).
+	fog_.sync(s, cam.x, cam.z);
+	canyon_.sync(s, cam.x, cam.z);
+	shore_.sync(s);
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	const bool uploads_due = ++upload_frame_ >= upload_every_;
 	if (uploads_due) upload_frame_ = 0;

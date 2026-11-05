@@ -62,9 +62,7 @@ void reset_traffic(CityState &s) {
 	TrafficState &t = s.traffic;
 	// a new map or a load: the whole traffic state starts over (fleet, counters, clock, governor, rng), so nothing of
 	// the old city survives in a field this list forgot; the old fleet is gone before the full graph build
-	const TrafficLevels levels = t.levels; // the panels' choices outlive the city
-	t = TrafficState();
-	t.levels = levels;
+	t = TrafficState(); // the panels' choices (CityState::traffic_levels) outlive the city
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
@@ -81,6 +79,7 @@ void reset_traffic(CityState &s) {
 	t.g.version = s.roads.version;
 	s.log.clear_net();
 	transit::reset(s);
+	publish_view(s); // a paused new map shows its own empty fleet, not the last city's
 }
 
 namespace {
@@ -173,6 +172,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	for (int i = 0; i < POSE_TRAIL; i++) f.stamp_ns[i] = t.stamp_ns[i];
 	f.period_ns = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	s.poses.publish();
+	publish_view(s);
 	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
@@ -189,7 +189,7 @@ void step(CityState &s, float dt) {
 	t.step_ms[STAGE_BAYS] += lap.lap();
 	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
-	if (t.levels.vehicles_on) {
+	if (s.traffic_levels.vehicles_on) {
 		spawn_vehicles(s, dt);
 		meso_process(s);
 		change_lanes(s);
@@ -197,10 +197,10 @@ void step(CityState &s, float dt) {
 		step_kerb_stops(s, dt);
 	}
 	t.step_ms[STAGE_FLEET] += lap.lap();
-	if (t.levels.vehicles_on) step_lots(s, dt);
+	if (s.traffic_levels.vehicles_on) step_lots(s, dt);
 	t.step_ms[STAGE_LOTS] += lap.lap();
 	transit::step(s, dt);
-	if (t.levels.people_on) step_pedestrians(s, dt);
+	if (s.traffic_levels.people_on) step_pedestrians(s, dt);
 	t.step_ms[STAGE_WALKERS] += lap.lap();
 }
 

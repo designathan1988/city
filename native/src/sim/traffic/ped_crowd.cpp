@@ -249,7 +249,7 @@ float walk_half(const CityState &s, int seg, int side) {
 
 void crowd_step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
-	if (!t.levels.crowd_on) { // the Optimisations tab: nobody minds anybody, each at their own speed
+	if (!s.traffic_levels.crowd_on) { // the Optimisations tab: nobody minds anybody, each at their own speed
 		for (Pedestrian &w : t.peds)
 			if (w.alive) w.pace = w.speed;
 		return;

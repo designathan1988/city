@@ -92,6 +92,7 @@ func _zoom_test() -> void:
 	for i in 3:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, at)
 	await get_tree().create_timer(SETTLE_S).timeout
+	await _pull_settled()
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
 	_check(rig.pull.shown < EPS, "roda: longe dos prédios o olho não é puxado (%.3f)" % rig.pull.shown)
@@ -213,6 +214,16 @@ func _button(button: MouseButton, at: Vector2, pressed: bool, shift: bool) -> vo
 	e.global_position = at
 	Input.parse_input_event(e)
 	await _frames(1)
+
+
+## Waits for the pull to let go, as long as the slowest let-go takes (camera.json: the hold, then the ease from a full pull down
+## to EPS): the state is checked, not a fixed time, so a slow frame cannot fail it and a pull that never lets go still does.
+func _pull_settled() -> void:
+	var limit: float = cfg.pull_hold_s + cfg.pull_out_s * log(1.0 / EPS)
+	var waited := 0.0
+	while rig.pull.shown >= EPS and waited < limit:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
 
 
 func _wheel(button: MouseButton, at: Vector2) -> void:

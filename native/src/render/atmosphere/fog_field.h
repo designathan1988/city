@@ -20,6 +20,7 @@ public:
 	void sync(const CityState &s, float cam_x, float cam_z);
 	// { any, texture, slab, window } for render/sky_view.gd.
 	godot::Dictionary view() const;
+	uint64_t view_revision() const { return view_revision_; } // moves whenever view() would say something else (RenderWorld::sync drives sync)
 	void reset();
 
 private:
@@ -35,6 +36,7 @@ private:
 	bool has_done_ = false;
 	std::atomic<bool> busy_{ false };
 	uint64_t seen_ = ~uint64_t(0);
+	uint64_t view_revision_ = 0; // main thread only
 	float ox_ = 0, oz_ = 0, side_ = 1, low_ = 0, high_ = 0;
 	bool any_ = false;
 };

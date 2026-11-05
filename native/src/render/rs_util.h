@@ -58,18 +58,27 @@ inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &n
 	current = next;
 }
 
-// One MultiMesh drawn by one instance. Created lazily, resized to fit the buffer. `bounds` is both the instance's and
-// the MultiMesh's own box: without one, every multimesh_set_buffer walks all the instances on the main thread to
-// rebuild the MultiMesh AABB (Godot renderer_rd/storage_rd/mesh_storage.cpp _multimesh_set_buffer).
+// A refilled MultiMesh's room grows past what it holds in these steps and shrinks only two steps below: a count that changes
+// every frame (vehicles, people, trains, lit lenses) never reallocates the GPU buffer every frame (multimesh_allocate_data
+// frees it and makes another, its uniform sets and commands again: Godot renderer_rd/storage_rd/mesh_storage.cpp); only the
+// visible count moves (multimesh_set_visible_instances).
+constexpr int MM_ROOM_STEP = 32;
+
+// One MultiMesh drawn by one instance. Created lazily, its room kept by the rule above (its only owner). `bounds` is both the
+// instance's and the MultiMesh's own box: without one, every multimesh_set_buffer walks all the instances on the main thread
+// to rebuild the MultiMesh AABB (Godot renderer_rd/storage_rd/mesh_storage.cpp _multimesh_set_buffer).
 struct MultiMeshDraw {
 	godot::RID mm, inst;
-	int capacity = -1;
+	int capacity = -1; // instances allocated
+	int count = 0; // instances drawn
+	bool coloured_ = true; // the layout allocated
 
 	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
 			const godot::AABB &bounds, bool shadows, RenderLayer layer, bool coloured = true) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		int count = int(buf.size() / (coloured ? MM_STRIDE : MM_PLAIN_STRIDE));
-		if (count == 0 && !mm.is_valid()) return; // nothing drawn here yet
+		const int stride = coloured ? MM_STRIDE : MM_PLAIN_STRIDE;
+		const int n = int(buf.size() / stride);
+		if (n == 0 && !mm.is_valid()) return; // nothing drawn here yet
 		if (!mm.is_valid()) {
 			mm = rs->multimesh_create();
 			inst = rs->instance_create2(mm, scenario);
@@ -78,25 +87,35 @@ struct MultiMeshDraw {
 					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
 		}
 		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
-		if (count != capacity) {
-			rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
+		if (n > capacity || n + 2 * MM_ROOM_STEP < capacity || coloured != coloured_) {
+			capacity = (n + MM_ROOM_STEP - 1) / MM_ROOM_STEP * MM_ROOM_STEP;
+			coloured_ = coloured;
+			rs->multimesh_allocate_data(mm, capacity, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
 			rs->multimesh_set_mesh(mm, mesh);
-			capacity = count;
 		}
 		rs->multimesh_set_custom_aabb(mm, bounds);
-		if (count > 0) rs->multimesh_set_buffer(mm, buf);
+		if (n > 0 && n == capacity) {
+			rs->multimesh_set_buffer(mm, buf);
+		} else if (n > 0) { // the buffer fills the whole room (the size the RenderingServer asks); the rest is not drawn
+			godot::PackedFloat32Array room = buf;
+			room.resize(int64_t(capacity) * stride);
+			rs->multimesh_set_buffer(mm, room);
+		}
+		rs->multimesh_set_visible_instances(mm, n);
+		count = n;
 		rs->instance_set_custom_aabb(inst, bounds);
-		rs->instance_set_visible(inst, count > 0);
+		rs->instance_set_visible(inst, n > 0);
 	}
 	// Shows `next` (a MultiMesh of `count` instances a job filled, bake_multimesh, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count,
+	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count_in,
 			const godot::AABB &bounds, RenderLayer layer) {
 		swap_base(inst, mm, next, scenario, material, shadows, layer);
-		capacity = mm.is_valid() ? count : 0;
+		capacity = count = mm.is_valid() ? count_in : 0;
+		coloured_ = false; // bake_multimesh's layout
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(inst, bounds);
 	}
 	void visible(bool on) const {
-		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on && capacity > 0);
+		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on && count > 0);
 	}
 	void range(float begin, float end) const {
 		if (inst.is_valid())
@@ -109,6 +128,7 @@ struct MultiMeshDraw {
 		if (mm.is_valid()) rs->free_rid(mm);
 		inst = mm = godot::RID();
 		capacity = -1;
+		count = 0;
 	}
 };
 

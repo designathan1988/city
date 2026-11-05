@@ -2,6 +2,7 @@
 #include "api/city_probes.h"
 
 #include "core/job_pool.h"
+#include "sim/state/city_state.h"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -30,6 +31,8 @@ Dictionary CityProbes::job_pool_probe() const {
 	d["newer"] = newer.load();
 	d["other_lane"] = other_lane.load();
 	d["replaced"] = int64_t(pool.replaced());
+	d["keys_left"] = int64_t(pool.tracked()); // forgotten once run: the bookkeeping does not grow with the map
+	d["game_keys"] = int64_t(state_->jobs->tracked()); // the game's pool now: keys with a job queued
 	return d;
 }
 

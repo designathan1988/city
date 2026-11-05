@@ -33,14 +33,22 @@ void Simulation::start(CityState &s, bool paused) {
 }
 
 void Simulation::stop() {
-	running_ = false;
+	{
+		std::lock_guard<std::mutex> lk(wake_mutex_);
+		running_ = false;
+	}
+	wake_.notify_all();
 	if (thread_.joinable()) thread_.join();
 	speed_ = SimSpeed::STOPPED;
 }
 
 void Simulation::set_speed(SimSpeed sp) {
-	if (speed_.load() == SimSpeed::STOPPED || sp == SimSpeed::STOPPED) return; // only start()/stop() enter or leave STOPPED
-	speed_ = sp;
+	{
+		std::lock_guard<std::mutex> lk(wake_mutex_);
+		if (speed_.load() == SimSpeed::STOPPED || sp == SimSpeed::STOPPED) return; // only start()/stop() enter or leave STOPPED
+		speed_ = sp;
+	}
+	wake_.notify_all();
 }
 
 int Simulation::steps_per_tick(SimSpeed sp) const {
@@ -61,7 +69,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::step(s, float(dt));
-			growing = s.traffic.levels.growth_on && !s.growth.cells.empty();
+			growing = s.traffic_levels.growth_on && !s.growth.cells.empty();
 		}
 		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
 		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows
@@ -91,6 +99,13 @@ void Simulation::run() {
 	constexpr int MAX_CATCHUP_TICKS = 2;
 	int64_t deadline = now_ns();
 	while (running_) {
+		wakeups_++;
+		if (speed_.load() == SimSpeed::PAUSED) { // nothing to step: wait for the speed or stop(), not for the clock
+			std::unique_lock<std::mutex> lk(wake_mutex_);
+			wake_.wait(lk, [this]() { return !running_ || speed_.load() != SimSpeed::PAUSED; });
+			deadline = now_ns(); // the clock goes on from now, not from where it stopped
+			continue;
+		}
 		deadline += period_ns_.load();
 		int64_t wait = deadline - now_ns();
 		if (wait > 0) {

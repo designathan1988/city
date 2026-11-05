@@ -187,7 +187,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 double fleet_target(const CityState &s) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	return std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * t.levels.traffic * t.levels.population * t.levels.demand * t.gov);
+	return std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * s.traffic_levels.traffic * s.traffic_levels.population * s.traffic_levels.demand * t.gov);
 }
 
 float day_factor(const TrafficParams &p, float h) {

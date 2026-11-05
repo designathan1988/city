@@ -33,9 +33,12 @@ public:
 	godot::Dictionary set_biome(int region);
 	godot::Dictionary landscape() const;
 	int64_t sky_revision() const;
-	godot::Dictionary fog_field(const godot::Vector3 &camera);
-	godot::Dictionary canyon_field(const godot::Vector3 &camera);
-	godot::Dictionary shore_field();
+	// The render's fields as RenderWorld::sync last took them in: read-only, with the revision that says a new one is in.
+	godot::Dictionary fog_field() const;
+	int64_t fog_revision() const;
+	godot::Dictionary canyon_field() const;
+	int64_t canyon_revision() const;
+	godot::Dictionary shore_field() const;
 
 protected:
 	static void _bind_methods();

@@ -44,6 +44,7 @@ public:
 	void submit(JobKey key, float priority, std::function<void()> work); // lower priority runs first
 	void parallel_for(size_t n, const std::function<void(size_t)> &fn); // blocks until done
 	void wait_idle(); // blocks until the queue is empty and no worker is running
+	size_t tracked(); // keys with a job still queued: none once the pool is idle (a key is forgotten when its newest job is taken)
 	uint64_t replaced() const { return replaced_.load(); } // queued jobs a newer one of their key took the place of
 
 private:

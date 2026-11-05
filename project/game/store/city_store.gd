@@ -7,6 +7,9 @@ signal changed(snapshot: Dictionary)
 signal command_failed(error_key: String)
 
 const SNAPSHOT_INTERVAL_S := 0.25
+## Reads of the core that change only when a revision of the snapshot moves (the network with edit_revision, the transport
+## plan with transit_revision): `cached` asks the core once per revision, so a view drawing every frame never asks for nothing.
+const CACHED_BY := {&"junctions": "edit_revision", &"transit_plan": "transit_revision"}
 
 signal saved(slot: String, result: Dictionary)
 signal loaded(slot: String, result: Dictionary)
@@ -17,6 +20,7 @@ var saves: CitySaves
 var _core: Node3D
 var _routes: Dictionary = {} # a StoreApi name -> the Callable on the core, or on the area of it, that runs it
 var _since_refresh := 0.0
+var _cache := {} # CACHED_BY query -> [the revision it was read at, its answer]
 
 
 func _ready() -> void:
@@ -87,6 +91,19 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 func query(name: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.QUERIES.has(name), "consulta desconhecida: %s" % name)
 	return _routes[name].callv(args)
+
+
+## A CACHED_BY query's answer, asked of the core again only when its revision in the snapshot moved (every command
+## refreshes the snapshot, so an edit is seen at once).
+func cached(name: StringName) -> Variant:
+	var rev: int = snapshot.get(CACHED_BY[name], -1)
+	if rev < 0:
+		return query(name)
+	var hit: Array = _cache.get(name, [])
+	if hit.is_empty() or hit[0] != rev:
+		hit = [rev, query(name)]
+		_cache[name] = hit
+	return hit[1]
 
 
 ## The Simulation panel: shares of the city's own density of vehicles and people, and the demand.

@@ -76,6 +76,7 @@ void CanyonField::reset() {
 	has_done_ = false;
 	seen_ = ~uint64_t(0);
 	any_ = false;
+	view_revision_++;
 }
 
 void CanyonField::work(const CityState &s, float ox, float oz, uint64_t revision) {
@@ -120,6 +121,7 @@ void CanyonField::sync(const CityState &s, float cam_x, float cam_z) {
 		if (has_done_) {
 			has_done_ = false;
 			busy_ = false;
+			view_revision_++;
 			any_ = done_.any;
 			ox_ = done_.ox;
 			oz_ = done_.oz;

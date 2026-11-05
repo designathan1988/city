@@ -78,6 +78,11 @@ void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 	batch->cv.wait(lk, [&]() { return batch->running == 0; });
 }
 
+size_t JobPool::tracked() {
+	std::lock_guard<std::mutex> lk(m_);
+	return latest_.size();
+}
+
 void JobPool::wait_idle() {
 	std::unique_lock<std::mutex> lk(m_);
 	idle_cv_.wait(lk, [&]() { return idle(); });
@@ -95,7 +100,8 @@ void JobPool::loop() {
 				work = std::move(helpers_.front());
 				helpers_.pop_front();
 			} else {
-				Item item = q_.top();
+				// Moved out, not copied (the job's captures); the heap's order reads only priority and seq, which stay.
+				Item item = std::move(const_cast<Item &>(q_.top()));
 				q_.pop();
 				auto it = latest_.find(item.key);
 				if (it == latest_.end() || it->second != item.seq) { // superseded while queued
@@ -103,6 +109,7 @@ void JobPool::loop() {
 					if (idle()) idle_cv_.notify_all();
 					continue;
 				}
+				latest_.erase(it); // its newest job runs: an older one still queued finds no entry and is dropped
 				work = std::move(item.work);
 			}
 			++busy_;

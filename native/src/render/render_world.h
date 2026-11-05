@@ -109,9 +109,10 @@ public:
 	BuildingRenderer::InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
-	FogField &fog() { return fog_; }
-	CanyonField &canyon() { return canyon_; }
-	ShoreField &shore() { return shore_; }
+	// The atmosphere's and the shore's fields: advanced by sync with the rest of the render, read by the sky and the terrain views.
+	const FogField &fog() const { return fog_; }
+	const CanyonField &canyon() const { return canyon_; }
+	const ShoreField &shore() const { return shore_; }
 	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }

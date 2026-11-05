@@ -32,9 +32,6 @@ constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8;
 constexpr int HAIR_MAX = 8, SKIN_MAX = 8, PAINT_MAX = 16, LINE_PAINTS = 8, CUTS = 3, OUTFITS_MAX = 8, OUTFIT_COLOURS = 8;
 constexpr int HALF_EXACT = 2048; // whole numbers a half float holds exactly: the order (stride * seats + first) below it
 constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (stride 1 fills them front to back)
-// A draw's room in instances grows past what it holds, in these steps, and shrinks only two steps below: vehicles
-// coming and going do not reallocate its buffers every frame (the rest of the room is not drawn).
-constexpr int ROOM_STEP = 32;
 
 PackedColorArray palette(const Variant &list, int max, const char *name, PackedStringArray &errors) {
 	PackedColorArray out;
@@ -300,18 +297,12 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	}
 	drawn_people_ = people_.update(f, cam, at, people_r_);
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
-	// no override: each surface carries its material (the body and the near level's glass)
-	RenderingServer *rs = RenderingServer::get_singleton();
+	// no override: each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level : { CABIN_LEVEL, BODY_LEVEL }) {
 			MultiMeshDraw &d = draws_[i][level];
-			PackedFloat32Array &buf = bufs[i][level];
-			const int n = int(buf.size() / MM_STRIDE);
-			const int room = n > d.capacity || n + 2 * ROOM_STEP < d.capacity ? (n + ROOM_STEP - 1) / ROOM_STEP * ROOM_STEP : d.capacity;
-			buf.resize(int64_t(room) * MM_STRIDE);
-			d.set(scenario_, meshes_[i][level].rid, RID(), buf, box, true, LAYER_VEHICLES);
-			if (d.mm.is_valid()) rs->multimesh_set_visible_instances(d.mm, n);
-			shown_[i][level] = n;
+			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, true, LAYER_VEHICLES);
+			shown_[i][level] = d.count;
 		}
 }
 

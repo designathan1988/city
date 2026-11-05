@@ -49,7 +49,7 @@ const QUERIES := {
 	&"place_fit": "builder/place_fit", &"place_check": "builder/place_check", &"stage_show": "builder/stage_show", &"stage_move": "builder/stage_move", &"stage_free": "builder/stage_free", &"stage_triangles": "builder/stage_triangles",
 	&"overlays": "overlays", &"save_status": "save_status", &"park_sample": "probes/park_sample", &"plan_all_yards": "probes/plan_all_yards", &"camera_clear": "probes/camera_clear", &"kerb_busy": "probes/kerb_busy", &"dock_count": "probes/dock_count", &"lot_clearance": "probes/lot_clearance", &"vehicles_near": "probes/vehicles_near",
 	&"landscape": "landscape/landscape", &"cloud_at": "landscape/cloud_at",
-	&"sky_revision": "landscape/sky_revision", &"fog_field": "landscape/fog_field", &"canyon_field": "landscape/canyon_field", &"shore_field": "landscape/shore_field", &"effects_near": "landscape/effects_near",
+	&"sky_revision": "landscape/sky_revision", &"fog_field": "landscape/fog_field", &"fog_revision": "landscape/fog_revision", &"canyon_field": "landscape/canyon_field", &"canyon_revision": "landscape/canyon_revision", &"shore_field": "landscape/shore_field", &"effects_near": "landscape/effects_near",
 	&"body_info": "builder/body_info", &"body_bay": "builder/body_bay", &"body_pick": "builder/body_pick", &"body_outline": "builder/body_outline",
 	&"transit_plan": "transit/transit_plan", &"transit_footway": "transit/transit_footway", &"transit_xray": "transit/transit_xray", &"transit_preview": "transit/transit_preview", &"transit_run": "transit/transit_run", &"transit_pick": "transit/transit_pick", &"transit_snap": "transit/transit_snap",
 	&"interior": "interior", &"interior_revision": "interior_revision", &"interior_cost": "interior_cost",

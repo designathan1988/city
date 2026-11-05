@@ -258,6 +258,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/ped_wounds.cpp` — quanto do passo próprio guarda um pedestre ferido (leve, na perna, grave)
 - `native/src/sim/traffic/route_arena.cpp` — arena de rotas (RouteRef) reutilizada
 - `native/src/sim/traffic/routing.cpp` — rotas de carro por segmento dirigido, desvio e reconsideração
+- `native/src/sim/traffic/traffic_view.cpp` · `native/src/sim/traffic/traffic_view.h` — o que o tráfego publica para a thread principal (buffer triplo sem trava): números da frota, contagens por via e por nó, cruzamentos, verdes mínimos; e os níveis dos painéis como atômicos
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/lane_graph_types.h` · `native/src/sim/traffic/ped_state.h` — veículos, meso e pools; o vocabulário do grafo de faixas (faixas dirigidas, conectores, controle do cruzamento); os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild

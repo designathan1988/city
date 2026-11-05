@@ -109,9 +109,11 @@ Color CityCore::film_graded(const Dictionary &grade, const Color &colour) const 
 	return city::film_graded(grade, colour);
 }
 
+// Under the map lock shared only: the fleet's numbers are the traffic's last publication (TrafficView) and the panels' levels
+// are atomics, so the frame that reads the snapshot never waits for a traffic step; residents and jobs are the
+// BuildingStore's running totals.
 Dictionary CityCore::snapshot() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	d["ready"] = s.ready;
@@ -131,35 +133,25 @@ Dictionary CityCore::snapshot() {
 		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
 		int zoned = 0;
 		for (const RoadSegment &g : s.roads.segs) zoned += g.alive ? (g.zl != 0) + (g.zr != 0) : 0;
-		int residents = 0, jobs = 0;
-		const OccupancyDef &o = s.catalog.occupancy;
-		const float per[4] = { o.m2_per_resident, o.m2_per_job_commercial, o.m2_per_job_industrial, o.m2_per_person_mixed };
-		for (const Building &b : s.buildings.items) {
-			if (!b.alive) continue;
-			int r, j;
-			BuildingStore::occupancy(b, o.floor_share, per, r, j);
-			residents += r;
-			jobs += j;
-		}
 		snap_.edit_revision = s.edit_revision;
 		snap_.nodes = nodes;
 		snap_.zoned = zoned;
-		snap_.residents = residents;
-		snap_.jobs = jobs;
 	}
 	d["nodes"] = snap_.nodes;
 	d["zoned_sides"] = snap_.zoned;
 	d["grown"] = s.growth.grown;
 	d["growth_cells"] = int(s.growth.cells.size());
-	d["residents"] = snap_.residents;
-	d["jobs"] = snap_.jobs;
-	d["vehicles"] = s.traffic.vehicle_count + s.traffic.park.moving;
-	d["people"] = s.traffic.ped_count;
-	d["trips_arrived"] = s.traffic.arrived;
-	d["trips_lost"] = s.traffic.lost;
-	d["traffic_level"] = s.traffic.levels.traffic;
-	d["people_level"] = s.traffic.levels.people;
-	d["demand"] = s.traffic.levels.demand;
+	d["residents"] = s.buildings.residents;
+	d["jobs"] = s.buildings.jobs;
+	d["transit_revision"] = int64_t(s.transit_revision); // views that list the transport plan read it again only when it moves
+	const TrafficView &fleet = state_->traffic_views.acquire();
+	d["vehicles"] = fleet.vehicles;
+	d["people"] = fleet.people;
+	d["trips_arrived"] = fleet.arrived;
+	d["trips_lost"] = fleet.lost;
+	d["traffic_level"] = s.traffic_levels.traffic.load();
+	d["people_level"] = s.traffic_levels.people.load();
+	d["demand"] = s.traffic_levels.demand.load();
 	d["speed"] = int(sim_.speed());
 	d["unsaved"] = s.has_unsaved_work();
 	d["edited"] = s.edited;

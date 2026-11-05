@@ -5,6 +5,8 @@
 #include "sim/state/city_state.h"
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 namespace city {
@@ -18,6 +20,7 @@ public:
 	void stop(); // joins the thread; safe to call twice
 	void set_speed(SimSpeed sp);
 	SimSpeed speed() const { return speed_.load(); }
+	uint64_t wakeups() const { return wakeups_.load(); } // turns of the tick thread's loop (probes: a pause turns none)
 	int steps_per_tick(SimSpeed sp) const;
 	// One step without the thread (tests). Takes its own locks: the caller must not hold map_mutex.
 	void step(CityState &s);
@@ -31,6 +34,11 @@ private:
 	std::atomic<SimSpeed> speed_{ SimSpeed::STOPPED };
 	std::atomic<bool> running_{ false };
 	std::atomic<int64_t> period_ns_{ 0 };
+	std::atomic<uint64_t> wakeups_{ 0 };
+	// Paused, the thread sleeps on wake_ until set_speed() or stop(): they change the state under wake_mutex_ first, so no
+	// change is missed and a stopped clock wakes nothing.
+	std::mutex wake_mutex_;
+	std::condition_variable wake_;
 	double owed_ = 0; // seconds of the damage clock the map lock was not free for
 };
 

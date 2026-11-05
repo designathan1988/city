@@ -46,6 +46,8 @@ struct CityState {
 	BuildingStore buildings;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
+	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
+	TripleBuffer<TrafficView> traffic_views; // what the traffic published for the main thread (traffic_view.h)
 	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
@@ -70,7 +72,7 @@ struct CityState {
 	// (an edit recorded, undone or redone), so its work is theirs (autosave keeps it).
 	uint64_t revision = 0, saved_revision = 0;
 	std::atomic<int> marking_style{ 0 }; // the map's paint standard (data/render/streets.json markings.styles); mesh jobs read it
-	uint64_t edit_revision = 0; // commands and undo/redo only: the snapshot's expensive counts follow this
+	uint64_t edit_revision = 0; // the network as the player shapes it: commands, undo/redo and a new or opened map (found_land)
 	bool edited = false;
 	void touch() { revision++; }
 	bool has_unsaved_work() const { return revision != saved_revision; }

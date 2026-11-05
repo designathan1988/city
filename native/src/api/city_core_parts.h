@@ -40,7 +40,7 @@ struct InspectCache {
 // The snapshot's expensive counts follow the player's edits, not the simulation tick.
 struct SnapCounts {
 	uint64_t edit_revision = ~uint64_t(0);
-	int nodes = 0, zoned = 0, residents = 0, jobs = 0;
+	int nodes = 0, zoned = 0; // the network's counts, following the edits (residents and jobs: BuildingStore totals)
 };
 
 // What pose_stats reports since its last call (city_core_probe_render.cpp).

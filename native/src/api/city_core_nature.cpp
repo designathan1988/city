@@ -179,20 +179,12 @@ Dictionary CityLandscape::landscape() const {
 
 int64_t CityLandscape::sky_revision() const { return int64_t(state_->nature.sky_revision); }
 
-Dictionary CityLandscape::fog_field(const Vector3 &camera) {
-	render_->fog().sync(*state_, camera.x, camera.z);
-	return render_->fog().view();
-}
-
-Dictionary CityLandscape::canyon_field(const Vector3 &camera) {
-	render_->canyon().sync(*state_, camera.x, camera.z);
-	return render_->canyon().view();
-}
-
-Dictionary CityLandscape::shore_field() {
-	render_->shore().sync(*state_);
-	return render_->shore().view();
-}
+// Read-only: RenderWorld::sync advances the fields each frame; the sky reads a window only when its revision moved.
+Dictionary CityLandscape::fog_field() const { return render_->fog().view(); }
+int64_t CityLandscape::fog_revision() const { return int64_t(render_->fog().view_revision()); }
+Dictionary CityLandscape::canyon_field() const { return render_->canyon().view(); }
+int64_t CityLandscape::canyon_revision() const { return int64_t(render_->canyon().view_revision()); }
+Dictionary CityLandscape::shore_field() const { return render_->shore().view(); }
 
 void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_weather", "change"), &CityLandscape::set_weather);
@@ -215,8 +207,10 @@ void CityLandscape::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_relief"), &CityLandscape::clear_relief);
 	ClassDB::bind_method(D_METHOD("landscape"), &CityLandscape::landscape);
 	ClassDB::bind_method(D_METHOD("sky_revision"), &CityLandscape::sky_revision);
-	ClassDB::bind_method(D_METHOD("fog_field", "camera"), &CityLandscape::fog_field);
-	ClassDB::bind_method(D_METHOD("canyon_field", "camera"), &CityLandscape::canyon_field);
+	ClassDB::bind_method(D_METHOD("fog_field"), &CityLandscape::fog_field);
+	ClassDB::bind_method(D_METHOD("fog_revision"), &CityLandscape::fog_revision);
+	ClassDB::bind_method(D_METHOD("canyon_revision"), &CityLandscape::canyon_revision);
+	ClassDB::bind_method(D_METHOD("canyon_field"), &CityLandscape::canyon_field);
 	ClassDB::bind_method(D_METHOD("shore_field"), &CityLandscape::shore_field);
 }
 

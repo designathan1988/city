@@ -21,6 +21,7 @@ public:
 	void sync(const CityState &s, float cam_x, float cam_z);
 	// { any, texture, window } for render/sky_view.gd.
 	godot::Dictionary view() const;
+	uint64_t view_revision() const { return view_revision_; } // moves whenever view() would say something else (RenderWorld::sync drives sync)
 	void touch() { revision_++; } // the buildings changed
 	void reset();
 
@@ -38,6 +39,7 @@ private:
 	std::atomic<bool> busy_{ false };
 	std::atomic<uint64_t> revision_{ 0 };
 	uint64_t seen_ = ~uint64_t(0);
+	uint64_t view_revision_ = 0; // main thread only
 	float ox_ = 0, oz_ = 0;
 	bool any_ = false;
 	BuildingBodies bodies_; // the job's alone

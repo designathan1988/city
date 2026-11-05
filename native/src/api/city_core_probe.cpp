@@ -18,22 +18,13 @@ namespace city {
 
 // The Simulation panel's numbers (Roadcraft main.ts currentStatus): the mean speed of the vehicles driven near the camera
 // and how many of them stand (the far ones live in lane queues, with no speed of their own).
+// The traffic's last publication (TrafficView): the HUD asks four times a second and never waits for a traffic step.
 Dictionary CityCore::traffic_metrics() {
-	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
-	const TrafficState &t = state_->traffic;
-	const float standing = state_->catalog.traffic.tail_moving_ms;
-	double sum = 0;
-	int queued = 0, near = 0;
-	for (const Vehicle &v : t.vehicles) {
-		if (!v.alive || !v.micro) continue;
-		near++;
-		sum += v.v;
-		queued += v.v < standing ? 1 : 0;
-	}
+	const TrafficView &v = state_->traffic_views.acquire();
 	Dictionary d;
-	d["mean_speed_ms"] = near > 0 ? sum / near : 0.0;
-	d["queued"] = queued;
-	d["near"] = near;
+	d["mean_speed_ms"] = v.mean_speed_ms;
+	d["queued"] = v.queued;
+	d["near"] = v.near;
 	return d;
 }
 
