@@ -24,7 +24,7 @@ commit, e commite-o junto.
 5. **Teste, rápido e sem afrouxar** (ver "Ferramentas"): na iteração, `tools/build/runq.sh <cópia> <pasta> fast
    test:<cena>` (scripts compilados, só a DLL de debug com todos os núcleos, só o teste afetado: segundos); antes do commit,
    os gates dos arquivos mudados (`tools/build/gates_changed.sh`), as duas DLLs (`tools/build/build.sh core-windows`) e a
-   suíte inteira em paralelo (`tools/analise/testes.py`, ~70 s); "Gates OK" em `python3 tools/gates/run_gates.py` antes do
+   suíte inteira em paralelo (`tools/analysis/suite.py`, ~50 s); "Gates OK" em `python3 tools/gates/run_gates.py` antes do
    push. Medir de novo: quadros sem travar, GPU nunca a 100%, CPU e memória nunca acima de antes. Fotos tiradas e analisadas
    com atenção: a diferença contra o estado anterior (`tools/build/photodiff.py`) diz onde olhar e cada mudança é explicada
    pela causa; nenhuma perda de qualidade visual; todo problema achado é corrigido.
@@ -71,25 +71,25 @@ commit, e commite-o junto.
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
 | Ciclo rápido (iteração) | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>`: scripts → DLL de debug (`-j` = núcleos) → o teste; cada job vigiado (log parado 180 s = travado, morto pelo PID), eventos em `<pasta>/events.log`. Jobs: `scripts`, `import`, `build`, `fast`, `gates`, `test:<cena>[@renderizador]`, `scene:<nome>:<cena>[:args]` |
-| Suíte inteira em paralelo | `python tools/analise/testes.py [--raiz <cópia>] [--so=nomes] [--paralelos N]` (logs em `dist/tests`, os que o hook de commit confere) |
+| Suíte inteira em paralelo | `python tools/analysis/suite.py [--root <cópia>] [--only=nomes] [--parallel N]` (logs em `dist/tests`, os que o hook de commit confere) |
 | Gates dos arquivos mudados | `tools/build/gates_changed.sh <cópia>` (`run_gates.py --file` de cada arquivo do `git status`) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` (ou o job `scene:look:tests/visual/look.tscn:--plan=<json>` do `runq.sh`) |
 | Diferença de duas rodadas de fotos | `python tools/build/photodiff.py <antes> <depois> <saída>` |
-| Onde cada thread gasta | `python tools/analise/perfil.py --oculto --cmd "<godot> --path project <cena>" --segundos 30 --simbolizador <llvm-symbolizer>` |
+| Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Tradutor do 4.0 (TS → C++) | `tools/converter`: `node src/cli.ts feature`, `convert`, `differential` (ver "Ferramentas") |
 
 ## Ferramentas (o que cada uma faz, o que mediu e o que ensinou; 2026-11-05)
 - **Tempos medidos** (RTX 3060, 24 núcleos): ciclo `fast` de 6 a 15 s (eram 3 min com as duas DLLs em série e `-j 4`); suíte
   inteira 65 a 75 s com 8 em paralelo (~30 min em série); a cidade do mapa 0 abre em 211 ms (`look`, 6,5 s a rodada inteira); a
-  captura da cidade faz 52 fotos em 48 s; `capture_roads` gasta ~43 s antes da primeira foto (causa a medir com o `perfil.py`).
+  captura da cidade faz 52 fotos em 48 s; `capture_roads` gasta ~43 s antes da primeira foto (causa a medir com o `sampler.py`).
   Lento é defeito de método: medir onde vai o tempo e trocar o método, nunca esperar.
 - **`runq.sh`**: fila de jobs, cada um vigiado pelo log (parado = travado, morto só pelo PID do próprio job); um script que não
   compila quebra o job na hora. `fast` compila os scripts antes da DLL (o jogo aberto prende a DLL: nada de jogo ao lado do link).
   A DLL de release é refeita para o commit.
-- **`testes.py`** (sessão de causa-raiz): mesma lista e regra de falha do `run_tests.sh`, todas as cenas ao mesmo tempo; uma
-  falha sob carga é repetida sozinha e dita INSTÁVEL, nunca escondida. **`perfil.py`**: congela cada thread a cada 5 ms e soma as
+- **`suite.py`** (sessão de causa-raiz): mesma lista e regra de falha do `run_tests.sh`, todas as cenas ao mesmo tempo; uma
+  falha sob carga é repetida sozinha e dita INSTÁVEL, nunca escondida. **`sampler.py`**: congela cada thread por ~0,1 ms a cada 5 ms (copia a pilha e desenrola depois) e soma as
   pilhas (símbolos pedem a DLL com informação de depuração: `-DCMAKE_BUILD_TYPE=RelWithDebInfo` numa pasta de build à parte, essa
-  DLL nunca é commitada). **`causas.py`**: analisador estático de causas-raiz (<1 s).
+  DLL nunca é commitada). **`causes.py`**: analisador estático de causas-raiz (<1 s).
 - **Gates**: inteiros atravessam o repositório todo; na iteração, `gates_changed.sh`. O hook recusa um comando composto que cite
   `tools/gates` (com `time`/`timeout` na frente também) e qualquer comando que escreva um texto com esse caminho: chamar e editar
   por script. Commit: `git add` e `git commit` em comandos separados; o hook confere os logs de `dist/tests` mais novos que o código.
@@ -351,7 +351,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 **Render (só lê) — native/src/render**
 - `native/src/render/agents/agent_cabin.cpp` · `native/src/render/agents/agent_parts.cpp` — cabine de qualquer veículo (forro com vãos de porta, painel, fileiras de bancos nos estilos carro/cabine/poltrona, volante, pessoas com a ordem de ocupação) e vidro à parte; peças comuns: cores, caixas e barras marcadas, painéis de vidro, rodas e casco oco com arcos
-- `native/src/render/agents/agent_meshes.h` · `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — malhas dos agentes (agents.json) em dois níveis (perto: cabine e vidro transparente; longe: sem cabine, vidro opaco), paletas, lotação e ordem dos assentos por veículo e MultiMesh por quadro
+- `native/src/render/agents/agent_meshes.h` · `native/src/render/agents/agent_renderer.cpp` · `native/src/render/agents/agent_renderer.h` — malhas dos agentes (agents.json) em três níveis (perto: cabine e vidro transparente; corpo: sem cabine, vidro opaco; longe, depois de `far_radius_m`: só o contorno), paletas, lotação e ordem dos assentos por veículo e MultiMesh por quadro
 - `native/src/render/agents/car_body.cpp` · `native/src/render/agents/car_parts.cpp` · `native/src/render/agents/car_shape.cpp` · `native/src/render/agents/car_shape.h` — carroceria loftada do carro (faixas por região, normais suaves); pontas, peças e cabine; forma (linha do teto monótona, anel)
 - `native/src/render/agents/bus_body.cpp` · `native/src/render/agents/heavy_meshes.cpp` — ônibus de entrada baixa (deque atrás, lugar da cadeira de rodas) pela NBR 15570; caminhão (cabine, baú, chassi) pela ficha; moto; peças dos pesados (pneu pela designação, rodas duplas)
 - `native/src/render/agents/bicycle_mesh.cpp` — bicicleta urbana com ciclista (quadro de tubos, rodas, garfo, guidão)
@@ -486,6 +486,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` · `project/tests/perf/tier_gpu.gd` · `project/tests/perf/tier_gpu.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície; o que cada nível gráfico custa à GPU nas três vistas: tempo medido em amostras e contagens
+- `project/tests/perf/open_probe.gd` · `project/tests/perf/open_probe.tscn` — onde vai a abertura de uma cidade salva: cada etapa como o núcleo a mediu (`load_city`, chave `ms`)
 - `project/tests/perf/main_thread_probe.gd` · `project/tests/perf/main_thread_probe.tscn` · `project/tests/perf/pending_probe.gd` · `project/tests/perf/pending_probe.tscn` — o que a thread principal paga pelas leituras do núcleo com a simulação rodando (espera do snapshot, mapa × tráfego, leituras por quadro, chaves ociosas do pool); sombras por configuração do sol, ritmo de quadros (--pace), cauda quadro a quadro (--tail), clique do inspetor e acordadas da simulação em pausa (da sessão de causa-raiz)
 - `project/tests/core/transit_test.gd` · `project/tests/core/transit_test.tscn` — paradas, linha, ônibus, trem, desfazer e save do transporte
 - `project/tests/core/building_edit_test.gd` · `project/tests/core/building_edit_test.tscn` · `project/tests/core/building_part_cases.gd` · `project/tests/core/building_pick_cases.gd` · `project/tests/core/building_tool_test.gd` · `project/tests/core/building_tool_test.tscn` — edições do Construir pelo store e pela ferramenta: desfazer ao corpo gerado, refazer aos mesmos bytes, recusas e ida e volta do save; o que um raio da câmera acerta
@@ -584,6 +585,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - Água: a praia segue o nível da água de cada lugar (`ShoreField`); a terra acaba numa reta sem praia, noutro lugar que no 4.0, e o mar fica mais claro. Sombra das árvores: no 4.0 só as plantadas lançam (fotos; o código dele manda lançar em todas), no jogo também as nativas. Alvo de cor vem de uma foto antiga do 4.0 (o mapa 0 não tem lago). `noise2d` da via ainda tem o hash com degraus em Forward+ (`lattice_noise` é o certo).
 - Pontes têm tabuleiro e pilares, mas não há vão estaiado nem rodovia elevada sobre terra (viadutos).
 - Elevação (porte do elevation.ts): o greide e o chão moldado batem com o 4.0 nos números (road_grade_test). O editor tem altura na ferramenta (PageUp/PageDown e a linha Altura, um metro por vez), a via sai da altura em que foi começada, a prévia sobe pela rampa, o ponteiro segura a via na altura e não no chão, o encaixe só pega o que está na mesma altura, passar por cima e a recusa por pouca diferença (`hint.road.clearance`), o greide máximo de 12% e a linha Corte (talude ou muro). O render tem tabuleiro, encontros, pilares, guarda-corpos, emboques e muros de arrimo com aterro. Faltam: o par de fotos com o 4.0 (a via nova não é desenhada no `look.mjs`: os workers de ladrilho ficam calados, `log/work-log.md`), preços por estrutura no `built`, a escolha do corte lembrada entre sessões, a linha Teclas, a parte de baixo das junções no ar, e conferir em foto veículos e pedestres no tabuleiro e no túnel (as faixas já leem `seg_y`). O `raycast` acerta o que o jogador vê (`RoadNetwork::ray_deck`: o tabuleiro de uma via antes do chão, como o `worldAtScreen` do 4.0; `road_commands_test`).
+- Sombra dos veículos: cada `MultiMesh` da frota tem uma caixa só, então as 4 cascatas desenham todos; o nível distante tirou 28 % dos triângulos de sombra, e a maior parte do que sobra é a cabine (135 carros de ~10 mil triângulos, 5,4 M nas cascatas): separar casco, que lança sombra, do interior, que não lança.
 - Ocupantes, motociclista e ciclista: ainda de blocos. Desenho decidido: uma instância por ocupante no MultiMesh dos pedestres, pelve no ponto H do assento, até `cabin_radius_m`, fileiras de trás até 1/1,6 disso; faltam os clipes sentados e de pilotar em `people.bin`.
 - Transporte: ônibus param na faixa sem baia e sem embarque (o `kerb_stops` ainda não atende ônibus); sem cancelas desenhadas nas passagens (nem o 4.0 tem); edição de via reencontra as faixas de todas as paradas e passagens, não só as da área; paradas e trilhos procurados em lista, sem índice por célula; a prévia do trilho é opaca e refeita a cada movimento do ponteiro; passagem fecha a 160 m (valor do 4.0: 7 s a 22 m/s; 49 CFR 234.225 pede 20 s). Escolas com alunos não são simuladas. Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD

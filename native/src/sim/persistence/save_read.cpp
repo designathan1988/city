@@ -5,6 +5,7 @@
 #include "sim/persistence/body_codec.h"
 
 #include "core/bytes.h"
+#include "core/laps.h"
 #include "sim/persistence/save_blocks.h"
 #include "sim/persistence/save_demolition.h"
 #include "sim/citygen/city_gen.h"
@@ -246,15 +247,22 @@ bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &
 	return true;
 }
 
-bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error) {
+bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error, OpenTimes *times) {
+	OpenTimes spent;
+	Laps laps;
 	{
 		ComposeHold hold(s.terrain); // the modifiers read (and the old ones dropped) and every road shaped: composed once
 		if (!read_city(s, data, size, error, false)) return false;
+		spent.read = laps.lap();
 		s.roads.grade.everything(); // every road's height solved on the ground read, and the ground shaped to them
 		sync_grade(s);
+		spent.grade = laps.lap();
 	}
+	spent.compose = laps.lap();
 	mark_all_lot_cells(s);
 	s.lots.process_dirty(s);
+	spent.lots = laps.lap();
+	if (times) *times = spent;
 	s.log.network_changed = true;
 	s.ready = true;
 	s.touch();

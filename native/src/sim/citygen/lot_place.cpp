@@ -18,13 +18,23 @@ constexpr double MAX_SHIFT = 3, SHIFT_PAD = 0.05, DRY_MIN = 0.5, WET_CLEAR = 0.5
 constexpr double DEPTH_STEP = 3, MIN_DEPTH = 12, NARROW_STEP = 2, NARROW_SHARE = 4, KEY_SCALE = 4, SEED_SCALE = 2;
 constexpr double NO_ROOM = 1e300, EPS = 1e-6;
 constexpr uint32_t SIDE_KEY = 77, SIDE_SALT = 31;
-constexpr int CORNER_FLOATS = 8;
+constexpr int CORNER_FLOATS = 8, BOX_FLOATS = 4;
+constexpr double BOX_GAP = 1e-6; // boxes this far apart are apart whatever the rounding of the separating-axis test
 // Frontage/depth bands by base zone (Roadcraft lots.ts LOT_SIZE and DEEP).
 constexpr double RES_W0 = 12, RES_W1 = 19, RES_D0 = 26, RES_D1 = 34, RES_DEEP0 = 38, RES_DEEP1 = 48;
 constexpr double COM_W0 = 16, COM_W1 = 28, COM_D0 = 30, COM_D1 = 40, COM_DEEP0 = 55, COM_DEEP1 = 70;
 constexpr double IND_W0 = 30, IND_W1 = 55, IND_D0 = 40, IND_D1 = 60;
 constexpr double MIX_W0 = 14, MIX_W1 = 22, MIX_D0 = 28, MIX_D1 = 36, MIX_DEEP0 = 45, MIX_DEEP1 = 58;
 constexpr double RES_HIGH_DEEP0 = 45, RES_HIGH_DEEP1 = 58, COM_HIGH_DEEP0 = 58, COM_HIGH_DEEP1 = 72;
+
+void box_of(const double *c, double *box) {
+	box[0] = box[2] = NO_ROOM;
+	box[1] = box[3] = -NO_ROOM;
+	for (int k = 0; k < CORNER_FLOATS; k += 2) {
+		box[0] = std::min(box[0], c[k]); box[1] = std::max(box[1], c[k]);
+		box[2] = std::min(box[2], c[k + 1]); box[3] = std::max(box[3], c[k + 1]);
+	}
+}
 
 // JavaScript Math.round (halves go up).
 int32_t js_round(double v) { return int32_t(std::floor(v + 0.5)); }
@@ -80,8 +90,13 @@ double LotStrips::exact_shift(const Frame &f) const {
 		for (size_t m = 0; m < pts.size(); m += 2)
 			if (std::hypot(pts[m] - g_.nx[n], pts[m + 1] - g_.nz[n]) < BULB_R + BULB_WALK) return NO_ROOM;
 	}
-	for (size_t k = 0; k < taken_.size(); k += CORNER_FLOATS)
+	double box[BOX_FLOATS];
+	box_of(c, box);
+	for (size_t k = 0, b = 0; k < taken_.size(); k += CORNER_FLOATS, b += BOX_FLOATS) {
+		const double *t = &taken_box_[b];
+		if (t[0] > box[1] + BOX_GAP || t[1] < box[0] - BOX_GAP || t[2] > box[3] + BOX_GAP || t[3] < box[2] - BOX_GAP) continue;
 		if (rects_overlap(c, &taken_[k])) return NO_ROOM;
+	}
 	return shift;
 }
 
@@ -92,6 +107,9 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 	inner.w = f.w - WIDTH_TRIM;
 	corners(inner, LOT_INSET, c);
 	taken_.insert(taken_.end(), c, c + CORNER_FLOATS);
+	double box[BOX_FLOATS];
+	box_of(c, box);
+	taken_box_.insert(taken_box_.end(), box, box + BOX_FLOATS);
 	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
 	Lot l;
 	l.x = f.cx; l.z = f.cz; l.w = f.w - WIDTH_TRIM; l.d = f.d;

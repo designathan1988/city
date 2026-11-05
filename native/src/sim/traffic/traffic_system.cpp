@@ -77,6 +77,7 @@ void reset_traffic(CityState &s) {
 	t.cross_walk.assign(arms, 0);
 	t.cross_cars.assign(arms, 0);
 	t.g.version = s.roads.version;
+	s.lane_graph_serial++;
 	s.log.clear_net();
 	transit::reset(s);
 	publish_view(s); // a paused new map shows its own empty fleet, not the last city's

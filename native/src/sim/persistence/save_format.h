@@ -23,9 +23,14 @@ constexpr uint32_t SIGNAL_SAVE_VERSION = 4, TRANSIT_SAVE_VERSION = 5, GRADE_SAVE
 std::vector<uint8_t> encode_city(const CityState &s);
 // Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
 // open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
+// Where the opening of a city went, in milliseconds.
+struct OpenTimes {
+	double read = 0, grade = 0, compose = 0, lots = 0;
+};
+
 bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error);
 // Replaces the city with the saved one. Give it bytes check_city took: a file that fails halfway leaves `s` mixed.
-bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error);
+bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error, OpenTimes *times = nullptr);
 
 // The landscape part of the file (save_nature.cpp).
 void write_nature(ByteWriter &w, const CityState &s);

@@ -192,7 +192,7 @@ class Sampler:
             turn %= max(1, len(others))
             order = ([self.main] if self.main in ids else []) + others[turn:] + others[:turn]
             for n, tid in enumerate(order):
-                if n and time.perf_counter() - sweep > interval:
+                if n > 1 and time.perf_counter() - sweep > interval:  # the main thread and at least one other, however late
                     turn += n - 1
                     break
                 stack, cpu = self.stack(tid)

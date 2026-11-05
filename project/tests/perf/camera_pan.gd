@@ -6,7 +6,7 @@
 ## the triangles and draw calls of the visible and shadow passes, and the memory (static, video, buffers). The slowest
 ## frames are broken down (when in the movement; the core's _process by section, query render_cost; GPU; render
 ## CPU) to tell where a hitch comes from.
-## Analysis knobs: --shadows=0 (no sun shadows), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
+## Analysis knobs: --shadows=0 (no sun shadows), --casters=MASK (only these render layers cast them), --msaa=0 (no MSAA), --verges=0 (no ground round the roads), --wear=0 (no wear
 ## read), to see what a feature costs; --moves=a,b runs
 ## only those movements (the rig still goes where each one starts); --uncapped (no vsync, no frame cap: under the cap the GPU
 ## slows its clock until a frame takes about the same, so only this compares the GPU cost of two versions; not the game's pace).
@@ -57,6 +57,9 @@ func _knobs(world: CityWorld) -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg == "--shadows=0":
 			world.sun.shadow_enabled = false
+		elif arg.begins_with("--casters="):
+			for sun: Node in world.find_children("*", "DirectionalLight3D", true, false):
+				(sun as Light3D).shadow_caster_mask = arg.trim_prefix("--casters=").to_int()
 		elif arg == "--msaa=0":
 			get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 		elif arg == "--uncapped":
@@ -193,6 +196,7 @@ func _report(name: String) -> void:
 		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
 	print("  maior HLOD de superchunk construído: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
 	print("  prédios: ", JSON.stringify(CityStore.query(&"building_cost")))
+	print("  veículos: ", JSON.stringify(CityStore.query(&"agent_cost")))
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.

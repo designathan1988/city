@@ -3,6 +3,7 @@
 // into blocks and each block is composed once, so n inserts cost n and not n times everything that overlaps them.
 #include "sim/terrain/heightfield.h"
 
+#include "core/job_pool.h"
 #include "core/math.h"
 
 #include <algorithm>
@@ -44,6 +45,7 @@ void Heightfield::release(bool compose) {
 		for (const SampleRect &r : rects) recompose(r.x0, r.z0, r.x1, r.z1);
 		return;
 	}
+	std::vector<SampleRect> runs;
 	for (int bz = 0; bz < nb; bz++)
 		for (int bx = 0; bx < nb;) { // each run of dirty blocks along a row is one rectangle
 			if (!dirty[size_t(bz) * size_t(nb) + size_t(bx)]) {
@@ -52,8 +54,14 @@ void Heightfield::release(bool compose) {
 			}
 			const int start = bx;
 			while (bx < nb && dirty[size_t(bz) * size_t(nb) + size_t(bx)]) bx++;
-			recompose(start * COMPOSE_BLOCK, bz * COMPOSE_BLOCK, std::min(N, bx * COMPOSE_BLOCK) - 1, std::min(N, (bz + 1) * COMPOSE_BLOCK) - 1);
+			runs.push_back({ start * COMPOSE_BLOCK, bz * COMPOSE_BLOCK, std::min(N, bx * COMPOSE_BLOCK) - 1, std::min(N, (bz + 1) * COMPOSE_BLOCK) - 1 });
 		}
+	// the runs share no sample and a sample's height depends on no other: over the pool, the same heights in any order
+	auto one = [&](size_t k) { compose_rect(runs[k]); };
+	if (jobs) jobs->parallel_for(runs.size(), one);
+	else for (size_t k = 0; k < runs.size(); k++) one(k);
+	if (log)
+		for (const SampleRect &r : runs) log->terrain_rects.insert(log->terrain_rects.end(), { r.x0, r.z0, r.x1, r.z1 });
 }
 
 void Heightfield::recompose_world_rect(float minx, float minz, float maxx, float maxz) {
@@ -68,6 +76,12 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 		waiting.push_back({ x0, z0, x1, z1 });
 		return;
 	}
+	compose_rect({ x0, z0, x1, z1 });
+	if (log) log->terrain_rects.insert(log->terrain_rects.end(), { x0, z0, x1, z1 });
+}
+
+void Heightfield::compose_rect(const SampleRect &r) {
+	const int x0 = r.x0, z0 = r.z0, x1 = r.x1, z1 = r.z1;
 	for (int z = z0; z <= z1; z++)
 		for (int x = x0; x <= x1; x++) final_h[size_t(z) * N + x] = dequant(base_q[size_t(z) * N + x]);
 	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f);
@@ -84,7 +98,6 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
 	for (int id : ids)
 		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w);
-	if (log) log->terrain_rects.insert(log->terrain_rects.end(), { x0, z0, x1, z1 });
 }
 
 // Each piece visits only the samples whose nearest point of the polyline can lie on it: the slab along it, the wedge

@@ -47,6 +47,7 @@ struct CityState {
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)
 	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
+	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do
 	TripleBuffer<TrafficView> traffic_views; // what the traffic published for the main thread (traffic_view.h)
 	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it

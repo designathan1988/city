@@ -5,6 +5,8 @@
 // gives the same heights.
 #include "sim/roads/road_grade_internal.h"
 
+#include "core/job_pool.h"
+
 #include "sim/roads/road_network.h"
 
 #include <algorithm>
@@ -15,6 +17,7 @@ namespace city {
 
 namespace {
 constexpr int MAX_SOLVE_PASSES = 64; // MAX_SOLVE_PASSES
+constexpr size_t POOLED_SEGMENTS = 64; // below this an edit's few segments cost less than the pool's hand-off
 constexpr float RISE_EPS = 1e-6f; // a node rose: past rounding
 constexpr float MOVED_EPS = 1e-4f; // a profile moved: past what a station's rounding is
 constexpr float DISC_MIN_M = 2.4f; // balancedAtNode: the least radius of a node's disc of ground
@@ -208,7 +211,7 @@ void reach_nodes(Solve &sv, const std::vector<int> &changed_ends, bool all) {
 }
 } // namespace
 
-void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone) {
+void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone, JobPool *jobs) {
 	const size_t ns = net.segs.size(), nn = net.nodes.size();
 	prof.resize(ns);
 	node.resize(nn);
@@ -229,7 +232,7 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 	Solve sv{ *this, net, grade_tune(net.cat->tune), ground, std::vector<char>(ns, 0), std::vector<char>(nn, 0),
 		std::vector<float>(nn, NONE), std::vector<float>(nn, 0), std::vector<float>(nn, 0), std::vector<float>(nn, NONE),
 		std::vector<char>(nn, 0), {}, {} };
-	std::vector<int> ends;
+	std::vector<int> ends, read;
 	for (size_t s = 0; s < ns; s++) {
 		if (!touched[s]) continue;
 		if (!net.segs[s].alive) {
@@ -237,9 +240,15 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 			prof[s] = GradeProfile();
 			continue;
 		}
-		grade_inputs(*this, net, int(s), ground, regrounded[s] != 0, sv.t);
-		ends.push_back(prof[s].a);
-		ends.push_back(prof[s].b);
+		read.push_back(int(s));
+	}
+	// each segment reads the ground into its own profile and nothing else: over the pool when there are many (a whole city)
+	auto inputs = [&](size_t k) { grade_inputs(*this, net, read[k], ground, regrounded[size_t(read[k])] != 0, sv.t); };
+	if (jobs && read.size() >= POOLED_SEGMENTS) jobs->parallel_for(read.size(), inputs);
+	else for (size_t k = 0; k < read.size(); k++) inputs(k);
+	for (int s : read) {
+		ends.push_back(prof[size_t(s)].a);
+		ends.push_back(prof[size_t(s)].b);
 	}
 	std::sort(ends.begin(), ends.end());
 	ends.erase(std::unique(ends.begin(), ends.end()), ends.end());

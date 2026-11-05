@@ -4,9 +4,12 @@
 // holding its centre; every cell that sees the same streets cuts them the same way.
 #pragma once
 
+#include "core/math.h"
 #include "sim/roads/geometry.h"
 #include "sim/roads/profiles.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <vector>
@@ -31,6 +34,26 @@ struct Lot {
 	int zone = 0, profile = 0;
 	uint32_t seed = 0;
 };
+
+// A raster of square cells with its first cell's corner at (ax, az): the cells whose centre is within r of (x, z) in the
+// box i0..i1, j0..j1 take v. A row of a disc is one run: its ends found by the test itself, the middle filled.
+inline void fill_disc(uint8_t *grid, int w, double ax, double az, double res, double x, double z, double r, const int box[4], uint8_t v) {
+	const double r2 = r * r;
+	auto in = [&](int i, double dz2) {
+		const double dx = ax + (i + 0.5) * res - x;
+		return dx * dx + dz2 <= r2;
+	};
+	const int mid = std::min(box[1], std::max(box[0], ifloor((x - ax) / res)));
+	for (int j = box[2]; j <= box[3]; j++) {
+		const double dz = az + (j + 0.5) * res - z, dz2 = dz * dz, reach = std::sqrt(std::max(0.0, r2 - dz2)) / res;
+		int lo = std::max(box[0], mid - int(reach)), hi = std::min(box[1], mid + int(reach));
+		while (lo > box[0] && in(lo - 1, dz2)) lo--;
+		while (lo <= hi && !in(lo, dz2)) lo++;
+		while (hi < box[1] && in(hi + 1, dz2)) hi++;
+		while (hi >= lo && !in(hi, dz2)) hi--;
+		if (lo <= hi) std::fill(grid + size_t(j) * w + lo, grid + size_t(j) * w + hi + 1, v);
+	}
+}
 
 struct LotGround {
 	std::function<double(double, double)> height; // ground height

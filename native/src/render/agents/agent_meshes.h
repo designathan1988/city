@@ -3,9 +3,10 @@
 // +X the driver's left, Y up, origin = body centre on the road. UV2.x tags each part for render/shaders/agents.gdshader
 // (AgentTag); UV2.y = 1 marks wheel vertices (UV = their hub), turned by the shader, and UV2.y = 2 a person's (Limb::SEAT,
 // UV = the seat's place in the order the seats fill, -1 the driver, and the vehicle's passenger seats): shown or folded
-// away by the shader from the vehicle's load and order. Each vehicle comes at two levels: near, its glass a surface of its
-// own (split_tag) drawn see-through by render/shaders/agent_glass.gdshader over its cabin (agent_cabin); far, no cabin and
-// the glass opaque.
+// away by the shader from the vehicle's load and order. Each vehicle comes at three levels: near, its glass a surface of
+// its own (split_tag) drawn see-through by render/shaders/agent_glass.gdshader over its cabin (agent_cabin); the body, no
+// cabin and the glass opaque; far, the body's outline alone (agents.json far_radius_m: past it no lamp, grille, plate or
+// mirror is a pixel), fewer stations, rows and wheel sides.
 #pragma once
 
 #include "render/mesh_builder.h"
@@ -16,6 +17,9 @@
 #include <functional>
 
 namespace city {
+
+// The levels a vehicle is built at, nearest first; agents.json car_body detail arrays and wheel_sides hold one entry each.
+constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 
 enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN, ROOF, GLOSS };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.
@@ -145,7 +149,7 @@ void split_tag(const MeshBuilder &src, AgentTag tag, MeshBuilder &rest, MeshBuil
 // inside out).
 // car_body.cpp: one passenger car style (agents.json "cars"[i]) with the shared "car_body" and "cars_cabin" settings.
 int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictionary &body, const godot::Dictionary &inside, const CabinLook *cabin,
-		const AgentTrim &trim);
+		const AgentTrim &trim, int level);
 // bus_body.cpp
 int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 // heavy_meshes.cpp

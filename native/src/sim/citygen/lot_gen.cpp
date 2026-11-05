@@ -49,13 +49,9 @@ std::vector<Lot> LotStrips::run() {
 }
 
 void LotStrips::mark(double x, double z, double r, uint8_t v) {
-	int i0 = std::max(0, int(std::floor((x - r - ax_) / RES))), i1 = std::min(W_ - 1, int(std::ceil((x + r - ax_) / RES)));
-	int j0 = std::max(0, int(std::floor((z - r - az_) / RES))), j1 = std::min(W_ - 1, int(std::ceil((z + r - az_) / RES)));
-	for (int j = j0; j <= j1; j++)
-		for (int i = i0; i <= i1; i++) {
-			double px = ax_ + (i + 0.5) * RES - x, pz = az_ + (j + 0.5) * RES - z;
-			if (px * px + pz * pz <= r * r) grid_[size_t(j) * W_ + i] = v;
-		}
+	const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::ceil((x + r - ax_) / RES))),
+		std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::ceil((z + r - az_) / RES))) };
+	fill_disc(grid_.data(), W_, ax_, az_, RES, x, z, r, box, v);
 }
 
 void LotStrips::mark_roads() {
@@ -149,23 +145,29 @@ void LotStrips::corners(const Frame &f, double inset, double *c) {
 }
 
 void LotStrips::mark_lot(const Frame &f) {
-	for (double a = -f.w / 2; a <= f.w / 2; a += RES / 2)
+	for (double a = -f.w / 2; a <= f.w / 2; a += RES / 2) {
+		const double x = f.cx + f.tx * a, z = f.cz + f.tz * a;
 		for (double b = -f.d / 2; b <= f.d / 2; b += RES / 2) {
-			int i = int(std::floor((f.cx + f.tx * a + f.lx * b - ax_) / RES)), j = int(std::floor((f.cz + f.tz * a + f.lz * b - az_) / RES));
+			int i = ifloor((x + f.lx * b - ax_) / RES), j = ifloor((z + f.lz * b - az_) / RES);
 			if (i >= 0 && j >= 0 && i < W_ && j < W_) grid_[size_t(j) * W_ + i] = 2;
 		}
+	}
 }
 
 bool LotStrips::lot_free(const Frame &f) const {
-	int total = 0, busy = 0;
-	for (double a = -f.w / 2 + 1; a <= f.w / 2 - 1; a += RES)
+	int across = 0, deep = 0, busy = 0;
+	for (double a = -f.w / 2 + 1; a <= f.w / 2 - 1; a += RES) across++;
+	for (double b = -f.d / 2 + 1; b <= f.d / 2 - 1; b += RES) deep++;
+	const double most = across * deep * BUSY_SHARE; // past it the answer is known: most frames tried are refused
+	for (double a = -f.w / 2 + 1; a <= f.w / 2 - 1; a += RES) {
+		const double x = f.cx + f.tx * a, z = f.cz + f.tz * a;
 		for (double b = -f.d / 2 + 1; b <= f.d / 2 - 1; b += RES) {
-			int i = int(std::floor((f.cx + f.tx * a + f.lx * b - ax_) / RES)), j = int(std::floor((f.cz + f.tz * a + f.lz * b - az_) / RES));
-			total++;
+			int i = ifloor((x + f.lx * b - ax_) / RES), j = ifloor((z + f.lz * b - az_) / RES);
 			if (i < 0 || j < 0 || i >= W_ || j >= W_) continue;
-			if (grid_[size_t(j) * W_ + i]) busy++;
+			if (grid_[size_t(j) * W_ + i] && ++busy > most) return false;
 		}
-	return busy <= total * BUSY_SHARE;
+	}
+	return true;
 }
 
 bool rects_overlap(const double *a, const double *b) {

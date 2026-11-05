@@ -2,6 +2,7 @@
 // writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save.
 #include "api/city_core.h"
 
+#include "core/laps.h"
 #include "sim/persistence/save_format.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -119,18 +120,29 @@ Dictionary CityCore::load_city(const String &path) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the road variants change it under the exclusive lock
 		catalog = state_->catalog;
 	}
+	Laps laps;
 	if (got != bytes.size() || !check_city(std::move(catalog), bytes.data(), bytes.size(), error)) {
 		d["error"] = String(error.c_str()); // refused before anything changed: the open city runs on
 		return d;
 	}
+	Dictionary spent;
+	spent["check"] = laps.lap();
 	sim_.stop();
 	bool ok;
+	OpenTimes times;
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
-		ok = decode_city(*state_, bytes.data(), bytes.size(), error);
+		ok = decode_city(*state_, bytes.data(), bytes.size(), error, &times);
+		laps.lap();
 		if (ok) traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
+		spent["traffic"] = laps.lap();
 	}
+	spent["read"] = times.read;
+	spent["grade"] = times.grade;
+	spent["compose"] = times.compose;
+	spent["lots"] = times.lots;
+	d["ms"] = spent;
 	need_full_rebuild_ = true;
 	sim_.start(*state_);
 	d["ok"] = ok;

@@ -18,6 +18,7 @@ struct TrafficTally {
 	int vehicles = 0, queued = 0, seen = 0;
 	float speed = 0, capacity = 0;
 	float mean_speed() const { return seen > 0 ? speed / float(seen) : -1.f; }
+	void clear_fleet() { vehicles = queued = seen = 0; speed = 0; } // capacity is the graph's
 };
 
 // A node as the traffic runs it; lamps and minimum greens are ranges of TrafficView::lamps / ::least.
@@ -29,6 +30,10 @@ struct JunctionView {
 };
 
 struct TrafficView {
+	// What only the lane graph decides (capacities, known, control, movements, the signalled nodes) is written when this
+	// differs from CityState::lane_graph_serial: each of the three views holds its own copy.
+	uint64_t graph_serial = 0;
+	std::vector<int> signals; // the signalled nodes
 	int vehicles = 0, people = 0, arrived = 0, lost = 0; // the fleet (the snapshot)
 	int near = 0, queued = 0; // driven by the near model, and of those standing
 	double mean_speed_ms = 0;

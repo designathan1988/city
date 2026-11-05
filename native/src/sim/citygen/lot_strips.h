@@ -28,6 +28,7 @@ private:
 	std::vector<uint8_t> grid_;
 	std::vector<std::vector<double>> tables_;
 	std::vector<double> half_, retreat_, taken_;
+	std::vector<double> taken_box_; // each of taken_ as minx, maxx, minz, maxz: the separated ones never reach rects_overlap
 	std::vector<Lot> out_;
 
 	double len(int s) const { return tables_[s].back(); }

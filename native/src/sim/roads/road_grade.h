@@ -14,6 +14,7 @@
 
 namespace city {
 
+class JobPool;
 class RoadNetwork;
 struct Tuning;
 
@@ -83,7 +84,7 @@ public:
 
 	// Solves what changed. `moved`: the segments whose heights changed (their surfaces, lanes and ground follow);
 	// `gone`: the segments solved before that are no longer alive.
-	void solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone);
+	void solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone, JobPool *jobs = nullptr);
 
 	bool has(int s) const { return s >= 0 && s < int(prof.size()) && prof[size_t(s)].valid; }
 	// The deck height of segment s at arc `at` from its a node (linear between stations, continuous).

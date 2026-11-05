@@ -142,6 +142,7 @@ private:
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
 	int held = 0;
+	void compose_rect(const SampleRect &r); // its final heights, nothing logged: rectangles that share no sample may run at once
 	std::vector<SampleRect> waiting;
 	// Distance to the nearest piece of a polyline (x, height, z triples) for the samples of the box within `reach` of it.
 	const std::vector<NearSample> &nearest(const std::vector<float> &pts, float reach, int ax0, int az0, int ax1, int az1) const;

@@ -5,6 +5,7 @@
 // runs from data/render/agents.json.
 #pragma once
 
+#include "render/agents/agent_meshes.h"
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -39,7 +40,7 @@ public:
 	int cabins_drawn() const;
 
 private:
-	static constexpr int CABIN_LEVEL = 0, BODY_LEVEL = 1, LEVELS = 2;
+	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
 	// run, and the strides its seats may fill in (1 alone: in their own order, front first).
 	struct Load {
@@ -70,7 +71,7 @@ private:
 	};
 	std::vector<Odometer> odo_;
 	PeopleRenderer people_;
-	float vehicle_r_ = 0, cabin_r_ = 0, people_r_ = 0, jump_m_ = 0;
+	float vehicle_r_ = 0, cabin_r_ = 0, far_r_ = 0, people_r_ = 0, jump_m_ = 0;
 	float cabin_reach_ = 0; // the tier's reach of the cabin level; 0: the table's
 	int cabin_cap_ = 0; // the most cabins drawn, the nearest; 0: no cap
 	float cabin_limit2_ = 0; // the cap's distance, squared, found on the last frame (0: none)

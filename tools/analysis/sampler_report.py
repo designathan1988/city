@@ -25,15 +25,17 @@ def module_of(name):
 
 
 def report(samples, names, main, window_s, interval_ms):
-    per_thread = defaultdict(lambda: {"n": 0, "waiting": 0, "self": Counter(), "inclusive": Counter(), "waits": Counter(), "chains": Counter(),
+    per_thread = defaultdict(lambda: {"n": 0, "waiting": 0, "cpu": 0, "wall": 0, "self": Counter(), "inclusive": Counter(), "waits": Counter(), "chains": Counter(),
                                       "code": Counter(), "code_waiting": Counter(), "waiting_chains": Counter()})
-    timeline = defaultdict(lambda: {"n": 0, "waiting": 0, "hot": Counter()})
+    timeline = defaultdict(lambda: {"n": 0, "waiting": 0, "hot": Counter(), "others": Counter()})
     for t, tid, stack, cpu, wall in samples:
         frames = [function_of(names.get(a, hex(a))) for a in stack]  # by function: the lines of one function add up
         app = [f for f in frames if module_of(f) not in SYSTEM]
         waiting = cpu < ACTIVE * wall  # by the thread's own CPU time, not by the name on top
         r = per_thread[tid]
         r["n"] += 1
+        r["cpu"] += cpu
+        r["wall"] += wall
         top = app[0] if app else (frames[0] if frames else "?")
         owner = next((f for f in app if f.endswith(")")), "(no symbols on the stack)")  # the code that triggered the time above it
         chain = " <- ".join(app[:DEPTH])
@@ -53,12 +55,14 @@ def report(samples, names, main, window_s, interval_ms):
             w["n"] += 1
             w["waiting"] += waiting
             w["hot"][("waiting: " if waiting else "") + top] += 1
+        elif not waiting:  # who works while the main thread is where it is: what a long wait there is waiting for
+            timeline[int(t // window_s)]["others"][top] += 1
     data = {"main": main, "threads": {}, "timeline": []}
     print(f"Samples: {len(samples)} ({interval_ms:g} ms between sweeps); main thread: {main}")
-    order = sorted(per_thread.items(), key=lambda kv: (kv[0] != main, -(kv[1]["n"] - kv[1]["waiting"])))
+    order = sorted(per_thread.items(), key=lambda kv: (kv[0] != main, -kv[1]["cpu"]))  # by the CPU they really took
     for tid, r in order[:TOP]:
         print(f"\n== thread {tid}{' (main)' if tid == main else ''}: {r['n']} samples, running {100 * (r['n'] - r['waiting']) / max(1, r['n']):.0f}%,"
-              f" waiting {100 * r['waiting'] / max(1, r['n']):.0f}%")
+              f" waiting {100 * r['waiting'] / max(1, r['n']):.0f}%; uses {100 * r['cpu'] / max(1, r['wall']):.0f}% of a core")
         for title, counts in (("self (where the CPU is)", r["self"]), ("inclusive (who pays)", r["inclusive"]),
                               ("waits (who waits)", r["waits"]), ("hot chains", r["chains"]),
                               ("code behind the running time (first frame with symbols)", r["code"]),
@@ -72,7 +76,9 @@ def report(samples, names, main, window_s, interval_ms):
         print(f"\n== main thread timeline (windows of {window_s:g} s; the start-up is the first)")
         for k in sorted(timeline):
             v = timeline[k]
-            hot = ", ".join(f"{f} {100 * n / v['n']:.0f}%" for f, n in v["hot"].most_common(3))
-            print(f"  {k * window_s:6.1f} s: waiting {100 * v['waiting'] / v['n']:3.0f}% | {hot}")
-            data["timeline"].append({"t": k * window_s, "waiting": v["waiting"] / v["n"], "hot": v["hot"].most_common(5)})
+            hot = ", ".join(f"{f} {100 * n / max(1, v['n']):.0f}%" for f, n in v["hot"].most_common(3))
+            busy = ", ".join(f"{f} x{n}" for f, n in v["others"].most_common(3))
+            print(f"  {k * window_s:6.1f} s: waiting {100 * v['waiting'] / max(1, v['n']):3.0f}% | {hot}" + (f" || others: {busy}" if busy else ""))
+            data["timeline"].append({"t": k * window_s, "waiting": v["waiting"] / max(1, v["n"]), "hot": v["hot"].most_common(5),
+                                     "others": v["others"].most_common(5)})
     return data

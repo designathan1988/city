@@ -9,6 +9,12 @@ namespace city {
 constexpr double PI_D = 3.14159265358979323846;
 constexpr float PI_F = 3.14159265358979323846f;
 constexpr float TAU_F = 6.28318530717958647692f;
+// std::floor as an int, inline: on the x86-64 baseline std::floor is a library call, paid per cell of a raster.
+inline int ifloor(double v) {
+	const int i = int(v);
+	return i - (v < double(i) ? 1 : 0);
+}
+
 constexpr float BIG = 1e9f; // "no value yet" for min searches and unbounded gaps
 
 struct V2 {

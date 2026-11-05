@@ -23,13 +23,16 @@ constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
 constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
 constexpr int COARSE_ROWS[] = { 0, 1, 3, 4, RING_BELT, RING_PANE_TOP, 12, RING_ROOF, RING - 1 };
+// One band per region (region_of): underneath, the flank, the side glass, the roof's edge, the top.
+constexpr int FAR_ROWS[] = { 0, RING_SILL, RING_BELT, RING_PANE_TOP, RING_ROOF, RING - 1 };
 
 enum class Region : int { UNDER, PAINT, ROOF, GLASS, FRAME };
 
 struct Loft {
 	const CarStyle *s = nullptr;
 	float seam = 0, pillar = 0, frame = 0; // shares of L
-	bool fine = false;
+	int level = AGENT_CABIN_LEVEL; // the entry of the car_body detail arrays
+	bool fine = false; // the cabin level: seams, frames, mirrors and handles
 };
 
 bool near_edge(float xm, float edge, float half) { return std::fabs(xm - edge) < half; }
@@ -112,7 +115,7 @@ bool same_surface(Region a, Region b) {
 
 std::vector<float> stations(const Loft &lf, const Dictionary &body) {
 	const CarStyle &s = *lf.s;
-	const int k = lf.fine ? 0 : 1, uniform = int(Array(body["stations"])[k]), arch = int(Array(body["arch_steps"])[k]);
+	const int k = lf.level, uniform = int(Array(body["stations"])[k]), arch = int(Array(body["arch_steps"])[k]);
 	const int ends = int(Array(body["end_steps"])[k]), rolls = int(Array(body["end_roll_steps"])[k]);
 	std::vector<float> xs;
 	for (int i = 0; i <= uniform; i++) xs.push_back(-0.5f + float(i) / uniform);
@@ -190,18 +193,22 @@ void loft(MeshBuilder &mb, const Loft &lf, const std::vector<float> &xs, const A
 	std::vector<std::array<Vector2, RING>> rings(n);
 	for (size_t i = 0; i < n; i++) car_ring(s, xs[i], rings[i].data());
 	auto at = [&](size_t i, int k) { return Vector3(rings[i][size_t(k)].x, rings[i][size_t(k)].y, xs[i] * s.L); };
-	const Rows rows = lf.fine ? Rows{ FINE_ROWS, RING } : Rows{ COARSE_ROWS, int(sizeof(COARSE_ROWS) / sizeof(int)) };
+	Rows rows{ FAR_ROWS, int(sizeof(FAR_ROWS) / sizeof(int)) };
+	if (lf.level == AGENT_CABIN_LEVEL) rows = Rows{ FINE_ROWS, RING };
+	else if (lf.level == AGENT_BODY_LEVEL) rows = Rows{ COARSE_ROWS, int(sizeof(COARSE_ROWS) / sizeof(int)) };
 	for (size_t i = 0; i + 1 < n; i++) gap(mb, lf, rows, xs, i, at, trim);
 }
 
 } // namespace
 
-int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const Dictionary &inside, const CabinLook *look, const AgentTrim &trim) {
+int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, const Dictionary &inside, const CabinLook *look, const AgentTrim &trim,
+		int level) {
 	const CarStyle s = read_car_style(car, body);
 	const int passengers = look ? car_cabin(mb, s, inside, *look) : 0;
 	Loft lf;
 	lf.s = &s;
-	lf.fine = look != nullptr; // the cabin level: every detail
+	lf.level = level;
+	lf.fine = level == AGENT_CABIN_LEVEL; // every detail
 	lf.seam = float(body["door_seam_m"]) / s.L;
 	lf.pillar = float(body["b_pillar_m"]) / s.L;
 	lf.frame = s.frame / s.L;
@@ -209,8 +216,8 @@ int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, co
 	loft(mb, lf, xs, trim);
 	car_cap(mb, s, xs.back(), 1.f, trim);
 	car_cap(mb, s, xs.front(), -1.f, trim);
-	car_details(mb, s, body, lf.fine, trim);
-	const int sides = int(Array(body["wheel_sides"])[lf.fine ? 0 : 1]);
+	if (level != AGENT_FAR_LEVEL) car_details(mb, s, body, lf.fine, trim); // far, none of them is a pixel
+	const int sides = int(Array(body["wheel_sides"])[level]);
 	for (int k = 0; k < 2; k++)
 		for (int side : { -1, 1 }) {
 			const Vector3 hub(side * s.track[k] * 0.5f, s.r, s.axles[k] * s.L);

@@ -4,8 +4,8 @@
 #include "sim/citygen/lot_gen.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
-#include <map>
 
 namespace city {
 
@@ -74,39 +74,44 @@ public:
 	}
 
 	void disc(double x, double z, double r) {
-		int i0 = std::max(0, int(std::floor((x - r - ax_) / RES))), i1 = std::min(W_ - 1, int(std::floor((x + r - ax_) / RES)));
-		int j0 = std::max(0, int(std::floor((z - r - az_) / RES))), j1 = std::min(W_ - 1, int(std::floor((z + r - az_) / RES)));
-		for (int j = j0; j <= j1; j++) {
-			double dz = az_ + (j + 0.5) * RES - z;
-			for (int i = i0; i <= i1; i++) {
-				double dx = ax_ + (i + 0.5) * RES - x;
-				if (dx * dx + dz * dz <= r * r) paved_[size_t(j) * W_ + i] = 1;
-			}
-		}
+		const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::floor((x + r - ax_) / RES))),
+			std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::floor((z + r - az_) / RES))) };
+		fill_disc(paved_.data(), W_, ax_, az_, RES, x, z, r, box, 1);
 	}
 
+	// The land's closed pieces, by runs of a row joined to the runs they touch in the row above: the same pieces a flood of
+	// the raster finds, 4-connected, in the order its row-major scan meets them, at the cost of the runs and not of the cells.
 	std::vector<lot_gen::BlockLot> cut_all() {
-		std::vector<int> stack, cells;
-		double cap = MAX_BLOCK / RES;
-		for (int start = 0; start < W_ * W_; start++) {
-			if (paved_[start] || label_[start] >= 0) continue;
-			int id = start, i0 = W_, i1 = -1, j0 = W_, j1 = -1;
-			bool open = false;
-			cells.clear();
-			stack.assign(1, start);
-			label_[start] = id;
-			while (!stack.empty()) {
-				int k = stack.back(), i = k % W_, j = k / W_;
-				stack.pop_back();
-				cells.push_back(k);
-				i0 = std::min(i0, i); i1 = std::max(i1, i); j0 = std::min(j0, j); j1 = std::max(j1, j);
-				if (i == 0 || j == 0 || i == W_ - 1 || j == W_ - 1 || i1 - i0 > cap || j1 - j0 > cap) open = true;
-				const int nb[4] = { i > 0 ? k - 1 : -1, i < W_ - 1 ? k + 1 : -1, j > 0 ? k - W_ : -1, j < W_ - 1 ? k + W_ : -1 };
-				for (int q : nb)
-					if (q >= 0 && !paved_[q] && label_[q] < 0) { label_[q] = id; stack.push_back(q); }
+		find_runs();
+		std::vector<Piece> pieces;
+		std::vector<int> piece_of(runs_.size(), -1), next(runs_.size(), -1);
+		for (int r = 0; r < int(runs_.size()); r++) {
+			const int root = find(r);
+			if (piece_of[size_t(root)] < 0) {
+				piece_of[size_t(root)] = int(pieces.size());
+				pieces.push_back({ r, r, 0, W_, -1, runs_[size_t(r)].row, -1 });
 			}
-			if (open || cells.size() * RES * RES < MIN_LOT * MIN_LOT * 2) continue;
-			cut_block(cells, id);
+			Piece &p = pieces[size_t(piece_of[size_t(root)])];
+			const Run &run = runs_[size_t(r)];
+			if (p.last != r) next[size_t(p.last)] = r;
+			p.last = r;
+			p.cells += run.to - run.from + 1;
+			p.i0 = std::min(p.i0, run.from);
+			p.i1 = std::max(p.i1, run.to);
+			p.j1 = run.row;
+		}
+		std::vector<std::array<int, 3>> rows;
+		for (const Piece &p : pieces) {
+			if (is_open(p) || p.cells * RES * RES < MIN_LOT * MIN_LOT * 2) continue;
+			const int id = runs_[size_t(p.first)].row * W_ + runs_[size_t(p.first)].from;
+			rows.clear();
+			for (int r = p.first; r >= 0; r = next[size_t(r)]) {
+				const Run &run = runs_[size_t(r)];
+				std::fill(label_.begin() + run.row * W_ + run.from, label_.begin() + run.row * W_ + run.to + 1, id);
+				if (!rows.empty() && rows.back()[0] == run.row) rows.back()[2] = run.to;
+				else rows.push_back({ run.row, run.from, run.to });
+			}
+			cut_block(rows, id);
 		}
 		return std::move(out_);
 	}
@@ -118,6 +123,55 @@ private:
 	std::vector<uint8_t> paved_;
 	std::vector<int> label_;
 	std::vector<lot_gen::BlockLot> out_;
+	struct Run {
+		int row, from, to, parent; // columns from..to of a row, and the run it was joined to (itself: a root)
+	};
+	struct Piece { // a closed or open piece of land: its first and last run in row order, cells and box
+		int first, last, cells, i0, i1, j0, j1;
+	};
+	std::vector<Run> runs_;
+
+	int find(int r) {
+		while (runs_[size_t(r)].parent != r) {
+			runs_[size_t(r)].parent = runs_[size_t(runs_[size_t(r)].parent)].parent;
+			r = runs_[size_t(r)].parent;
+		}
+		return r;
+	}
+
+	// The roots keep the lowest run, so a piece is found at the run a row-major scan reaches first.
+	void join(int a, int b) {
+		a = find(a);
+		b = find(b);
+		if (a != b) runs_[size_t(std::max(a, b))].parent = std::min(a, b);
+	}
+
+	void find_runs() {
+		int above = 0, above_end = 0;
+		for (int j = 0; j < W_; j++) {
+			const int here = int(runs_.size());
+			const uint8_t *row = paved_.data() + size_t(j) * W_;
+			for (int i = 0; i < W_;) {
+				if (row[i]) {
+					i++;
+					continue;
+				}
+				const int from = i;
+				while (i < W_ && !row[i]) i++;
+				const int id = int(runs_.size());
+				runs_.push_back({ j, from, i - 1, id });
+				while (above < above_end && runs_[size_t(above)].to < from) above++;
+				for (int k = above; k < above_end && runs_[size_t(k)].from <= i - 1; k++) join(id, k);
+			}
+			above = here;
+			above_end = int(runs_.size());
+		}
+	}
+
+	bool is_open(const Piece &p) const {
+		const double cap = MAX_BLOCK / RES;
+		return p.i0 == 0 || p.j0 == 0 || p.i1 == W_ - 1 || p.j1 == W_ - 1 || p.i1 - p.i0 > cap || p.j1 - p.j0 > cap;
+	}
 
 	bool land_at(double x, double z, int id) const {
 		int i = int(std::floor((x - ax_) / RES)), j = int(std::floor((z - az_) / RES));
@@ -128,20 +182,12 @@ private:
 		return i >= 0 && j >= 0 && i < W_ && j < W_ && paved_[size_t(j) * W_ + i] == 1;
 	}
 
-	void cut_block(const std::vector<int> &block, int id) {
-		std::map<int, int> first, last; // row -> first / last column (JS Map order: first seen; the hull sorts anyway)
-		for (int k : block) {
-			int i = k % W_, j = k / W_;
-			auto f = first.find(j);
-			if (f == first.end() || i < f->second) first[j] = i;
-			auto l = last.find(j);
-			if (l == last.end() || i > l->second) last[j] = i;
-		}
+	// spans: each row of the block with its first and last column, in row order.
+	void cut_block(const std::vector<std::array<int, 3>> &spans, int id) {
 		std::vector<P2> pts;
-		for (const auto &fi : first) {
-			pts.push_back({ ax_ + (fi.second + 0.5) * RES, az_ + (fi.first + 0.5) * RES });
-			int l = last[fi.first];
-			if (l != fi.second) pts.push_back({ ax_ + (l + 0.5) * RES, az_ + (fi.first + 0.5) * RES });
+		for (const std::array<int, 3> &r : spans) {
+			pts.push_back({ ax_ + (r[1] + 0.5) * RES, az_ + (r[0] + 0.5) * RES });
+			if (r[2] != r[1]) pts.push_back({ ax_ + (r[2] + 0.5) * RES, az_ + (r[0] + 0.5) * RES });
 		}
 		Box box;
 		if (!min_area_box(convex_hull(pts), box)) return;
