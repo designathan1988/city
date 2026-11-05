@@ -3,10 +3,10 @@
 // built-in the same way, as a call here; each is checked against Node (test/js-runtime.test.ts). Header only, C++17.
 #pragma once
 
-#include "js_array.h"
-#include "js_map.h"
-#include "js_number.h"
-#include "js_string.h"
+#include "core/js_array.h"
+#include "core/js_map.h"
+#include "core/js_number.h"
+#include "core/js_string.h"
 
 #include <cstdio>
 #include <cstdlib>

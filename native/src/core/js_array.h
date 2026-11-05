@@ -2,7 +2,7 @@
 // sections cited at each one). Each is checked against Node by the converter (test/js-runtime.test.ts).
 #pragma once
 
-#include "js_string.h"
+#include "core/js_string.h"
 #include <algorithm>
 #include <optional>
 #include <type_traits>

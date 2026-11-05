@@ -16,7 +16,7 @@ const RUNTIME_DIR = path.join(import.meta.dirname, '..', '..', 'cpp', 'js');
 const RUNTIME_ROOT = path.posix.dirname(`native/src/${RUNTIME_INCLUDE}`);
 /** Its files as the target holds them, each with its text (a header of each subject: the target's file limits). */
 export function runtimeFiles(): Map<string, string> {
-  return new Map(fs.readdirSync(RUNTIME_DIR).sort().map((f) => [`${RUNTIME_ROOT}/${f}`, fs.readFileSync(path.join(RUNTIME_DIR, f), 'utf8')]));
+  return new Map(fs.readdirSync(RUNTIME_DIR).sort().map((f) => [`${RUNTIME_ROOT}/${f}`, fs.readFileSync(path.join(RUNTIME_DIR, f), 'utf8').replace(/#include "js_/g, '#include "core/js_')]));
 }
 export const isRuntimeFile = (file: string): boolean => path.posix.dirname(file) === RUNTIME_ROOT && /^js_\w+\.h$/.test(path.posix.basename(file));
 import { declare, render, type CppType } from './cpptype.ts';
