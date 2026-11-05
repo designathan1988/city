@@ -89,6 +89,7 @@ private:
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
+	enum MidDraw { MID_BAYS, MID_BOXES, MID_DRAWS }; // the mid level's instances: its openings, and what stands out of its walls
 	static constexpr float REACH_PAD = 0.25f; // of a chunk: the stream starts a level a little before its range reaches the eye
 	// What the meshes hold, surface by surface (building_cost).
 	enum SurfaceKind { HELD_NEAR_WALLS, HELD_NEAR_PANES, HELD_NEAR_GUARDS, HELD_NEAR_CARDS, HELD_NEAR_PIECES, HELD_MID_WALLS, HELD_MID_PANES, HELD_MID_CARDS, HELD_KINDS };
@@ -101,7 +102,9 @@ private:
 	};
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
+		std::array<MeshDraw, SUB_COUNT> flat; // past bay_end_: the mid level's bays as merged rectangles, a bay too small on the screen to pay for its triangles
 		std::array<MultiMeshDraw, BAND_DRAWS> bands;
+		std::array<MultiMeshDraw, MID_DRAWS> mid_draws;
 		MultiMeshDraw flags; // the cloths of its masts (flag_cloth.h), with the near level
 		std::array<Held, HELD_KINDS> held;
 		int64_t instances = 0, props = 0; // the instanced parts of its bands and flags, and the bay props among them
@@ -146,11 +149,16 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
 		std::array<b40::Shell, SUB_COUNT> near_cards, mid_cards; // their railings: another
-		std::array<Surface, SUB_COUNT> near, parts, mid;
+		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
+		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
 		std::array<godot::PackedFloat32Array, BAND_DRAWS> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
 		std::array<int, BAND_DRAWS> band_count{};
 		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
+		std::array<godot::PackedFloat32Array, MID_DRAWS> mid_buf; // the mid level's instances, as the bands
+		std::array<OwnedMesh, MID_DRAWS> mid_mm;
+		std::array<int, MID_DRAWS> mid_count{};
+		std::array<godot::RID, MID_DRAWS> mid_mesh;
 		godot::PackedFloat32Array flags; // the flags, MultiMesh layout (flag_cloth.h bake_flags)
 		OwnedMesh flag_mm;
 		int flag_count = 0;
@@ -193,9 +201,10 @@ private:
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
 			RenderLayer layer);
-	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer) const;
+	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
 	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);
 	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
+	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
 	void commit_one(Built &b);
 	void commit_super(SuperBuilt &b);
 	void submit_super(const CityState &s, int64_t super_key, float priority);
@@ -214,9 +223,10 @@ private:
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
-	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
+	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
 	const CityState *state_ = nullptr;
 	float parts_end_ = 0, near_end_ = 0, mid_end_ = 0, far_end_ = 0;
+	float bay_end_ = 0; // how far a bay of the mid level is geometry: past it, it is under ~12 pixels and its triangles cost more than they show
 	std::array<float, BAND_DRAWS> band_end_{};
 	float detail_scale_ = 1; // the graphics tier's share of the near reach (set_detail_scale)
 	std::atomic<bool> lots_drawn_{ true }; // read by the mesh jobs

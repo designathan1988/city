@@ -61,12 +61,108 @@ Solução escolhida: baias paramétricas instanciadas. Poucas malhas compartilha
 
 ### Passo 5: código
 
-(a preencher ao terminar)
+Sem testes nem medições nesta etapa. Mudança sobre o plano, com o motivo: o schema de materiais é fechado, então a baia entrou no próprio `building.gdshader` em vez de shader novo; o item 8 saiu, porque com as lajes reais as peças deixam de ficar soltas.
+
+| Arquivo | O que mudou | Problemas |
+|---|---|---|
+| `native/src/render/buildings/bay_kit.{h,cpp}` (novo) | malha compartilhada da baia, 22 triângulos, em espaço de índices | P2, P6, P7 |
+| `project/render/shaders/building_bay.gdshaderinc` (novo) | põe a baia pelo dado da instância e a transforma em faces comuns | P1, P2 |
+| `project/render/shaders/building.gdshader` | desvio no `vertex()` para a malha da baia | P2 |
+| `native/src/render/buildings/shell.{h,cpp}` | `BayInstance`, `Shell::bay` | P1, P2 |
+| `native/src/render/buildings/far_mass.cpp` | `bay_walls`: cada vão é instância com seu componente, paredes cegas fundidas, lado liso recuado 0,7 m que dá a sombra | P1 |
+| `native/src/render/buildings/facade_emit.cpp` | `each_bay`, `relief`, `pushed_faces`, `emit_relief`, `lines` por shell | P3 |
+| `native/src/render/buildings/facade_parts.cpp` | `emit_bay_relief` | P3 |
+| `native/src/render/buildings/building_renderer*.{h,cpp}` | `MidDraw`, assar baias e `mid_parts`, alcance, visibilidade | P3, P4 |
+
 
 ### Passo 6: testes e medições
 
-(a preencher, uma vez)
+Uma rodada, poses iguais às do passo 1 (`--preset` high do `look`), vista `low3` parada:
+
+| Medida | Antes | Depois |
+|---|---|---|
+| GPU p50 | 6,2 ms | **19,1 ms** |
+| Intervalo de quadro p50 | 16,7 ms | **20,5 ms** (perde o 60 fps) |
+| Primitivas vistas | 2,35 M | 6,28 M |
+| Primitivas de sombra | 4,18 M | 4,52 M |
+| Vídeo | 522 MB | 548 MB |
+| CPU p50 | 1,0 ms | 1,1 ms |
+
+Compilou de primeira e o shader passou. Foto `low3`: composição real por fachada, brises, pilastras e relevo aparecem.
 
 ### Passo 7: avaliação
 
-(a preencher)
+**Reprovado.** A qualidade subiu, mas o desempenho caiu a um terço; a regra é nunca pior que antes. Passos cumpridos: 1 a 6, com um desvio de ordem registrado (revisão de um risco de shader antes do teste, só por leitura). Volta ao passo 1 para o custo de GPU. Nada disso foi commitado.
+
+## Ciclo 2
+
+### Passo 1: problemas
+
+- **P9. GPU triplicou com as baias.** Medido em `low3`, separando por faixa:
+
+| Geometria | GPU p50 | Primitivas |
+|---|---|---|
+| sem baias nem caixas | 6,6 ms | 2,43 M |
+| só caixas | 8,0 ms | 3,74 M |
+| caixas e baias até 500 m | 9,2 ms | 4,78 M |
+| caixas e baias até 800 m | 10,4 ms | 5,74 M |
+| tudo | 19,1 ms | 6,28 M |
+
+Os últimos 0,54 M de primitivas custam 8,7 ms: não é contagem de triângulos.
+
+Hipótese refutada por medida: o ruído `weather` (sem ele: 9,7 e 21,6 ms, dentro do ruído da máquina, que está dividida com outras sessões).
+
+### Passo 2: pesquisa
+
+| Fonte | O que diz | Problema |
+|---|---|---|
+| [Fatahalian et al., Quad-Fragment Merging](https://graphics.stanford.edu/papers/fragmerging/shade_sig10.pdf) | a GPU sombreia em quadras 2x2; triângulos pequenos desperdiçam a maior parte | P9 |
+| [Unigine: Quad Overdraw](https://developer.unigine.com/en/docs/2.21/content/optimization/geometry/quad_overdraw/) | medir e reduzir sobreposição de quadras | P9 |
+| [Visibility Buffer, Filmic Worlds](https://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/) | visibility buffer elimina isso, mas pede passe de material próprio: não disponível no Godot padrão | P9, rejeitada |
+| [GPU Performance for Game Artists](https://www.gamedeveloper.com/programming/gpu-performance-for-game-artists) | LOD bem ajustado reduz overshading: triângulo cobre mais da quadra | P9 |
+
+### Passo 3: a causa
+
+Simulação antes de aplicar (`overshade`: a baia rasterizada em quadras 2x2, parede a 40 graus; execuções do shader por pixel coberto):
+
+| Baia em pixels | 22 triângulos | 1 quad por baia | quad por 4x4 baias |
+|---|---|---|---|
+| 3 | 3,66 | 2,48 | 1,40 |
+| 8 | 2,49 | 1,55 | 1,13 |
+| 17 | 1,79 | 1,27 | 1,08 |
+| 48 | 1,35 | 1,09 | 1,03 |
+
+A causa de P9 é o overshading: longe, uma baia de 3 px executa o shader 3,7 vezes por pixel. Medida e simulação apontam igual: o custo cresce quando a baia encolhe, não com o número de triângulos. Um quad por baia ainda paga 2,5 vezes; o certo é fundir.
+
+### Passo 4: plano (previsão registrada antes de aplicar)
+
+1. Baias com geometria até `render.building_bay_end_m` = 500 m.
+2. Adiante, as mesmas baias em retângulos fundidos de um componente, com a composição real: 1,1 execução por pixel. Superfície própria por chunk, faixa de visibilidade complementar.
+3. Tirar a medida temporária de `building_renderer_reach.cpp`.
+
+**Previsão:** GPU em `low3` de 9 a 10 ms, 60 fps, composição mantida a qualquer distância do nível médio. Fica acima dos 6,2 ms de antes por causa do relevo real, e isso terá de ser pago no ciclo seguinte.
+
+### Passo 5: código
+
+Sem testes. `far_mass.cpp flat_bays`; `building_renderer*` superfície `flat` por chunk, sem sombra; `shell.h` `flat`; `render.building_bay_end_m` em `tuning.json`; medida temporária removida. Na revisão por leitura: `put_level` forçava sombra, e a superfície nova projetaria a segunda sombra; ganhou o parâmetro `shadows`.
+
+### Passo 6: testes e medições
+
+Uma rodada, mesma vista `low3`: GPU p50 **9,8 ms** (ciclo 1: 19,1; antes de tudo: 6,2; previsto: 9 a 10), 4,93 M primitivas, 552 MB de vídeo. Intervalo p50 16,7 ms, mas 7 engasgos, CPU p99 100 ms. Foto igual à do ciclo 1.
+
+### Passo 7: avaliação
+
+**Aprovado com ressalvas.** Passos cumpridos, com a simulação antes de aplicar. Um erro de edição (for sem chaves) pego pelo compilador.
+
+Ressalvas abertas:
+- Os engasgos não têm causa provada. No momento havia 19 processos Godot e 37 node de outras sessões, e o streaming parado (`pendente=0`): provável carga externa, a confirmar com a máquina quieta.
+- GPU 3,6 ms acima de antes: dívida a pagar.
+- Passada a faixa de 500 m as janelas seguem sem relevo.
+
+## Próximo ciclo
+
+1. Relevo por pixel num quad para a faixa de além de 500 m (Krecklau: ray casting da fachada), sem triângulo a mais.
+2. Nível distante pelos dados reais (P8).
+3. Nível perto também em instâncias (P6, P7): paga a dívida de GPU e memória.
+4. Riqueza de perto.
+5. Decisão do usuário: `visibility buffer` pediria modificar o motor Godot.

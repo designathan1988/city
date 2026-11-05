@@ -25,7 +25,7 @@
   "props_end_m": 900,
   "pool_handover_m": 200,
   "building_detail_end_m": 700,
-  "building_mid_end_m": 1100,
+  "building_bay_end_m": 500, "building_mid_end_m": 1100,
   "building_far_end_m": 4500,
   "max_chunk_rebuilds_per_frame": 6,
   "commit_budget_ms": 4,

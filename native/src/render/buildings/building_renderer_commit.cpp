@@ -41,7 +41,7 @@ void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const 
 
 // A chunk's level: its walls, panes or far walls, glass guards and railings each with their material, on the mesh's surfaces, so no
 // override on the instance.
-void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown, RenderLayer layer) const {
+void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown, RenderLayer layer, bool shadows) const {
 	if (sf.mesh.valid()) {
 		RenderingServer *rs = RenderingServer::get_singleton();
 		if (sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
@@ -49,7 +49,7 @@ void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, boo
 		if (sf.sheer_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.sheer_at, material_sheer_);
 		if (sf.card_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.card_at, material_card_);
 	}
-	put(d, sf, scenario_, RID(), true, shown, layer);
+	put(d, sf, scenario_, RID(), shadows, shown, layer);
 }
 
 BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer, const b40::Shell *cards) {
@@ -95,6 +95,16 @@ PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstanc
 	return buf;
 }
 
+PackedFloat32Array BuildingRenderer::bake_bays(const std::vector<b40::BayInstance> &bays) {
+	PackedFloat32Array buf;
+	for (const b40::BayInstance &inst : bays) {
+		const float *bs = inst.basis;
+		const Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]), z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]);
+		mm_push_plain(buf, x, y, z, Vector3(inst.origin[0], inst.origin[1], inst.origin[2]), inst.shares, inst.wall, inst.trim, inst.code);
+	}
+	return buf;
+}
+
 PackedFloat32Array BuildingRenderer::bake_props(const std::vector<b40::PropInstance> &props) {
 	PackedFloat32Array buf;
 	for (const b40::PropInstance &inst : props) {
@@ -109,10 +119,11 @@ PackedFloat32Array BuildingRenderer::bake_props(const std::vector<b40::PropInsta
 int64_t BuildingRenderer::Built::bytes() const {
 	int64_t n = 0;
 	for (int i = 0; i < SUB_COUNT; i++)
-		n += near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
+		n += flat_shell[size_t(i)].bytes(true) + flat_glass[size_t(i)].bytes(true) + near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
 				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true) + near_sheer[size_t(i)].bytes(true) +
 				near_cards[size_t(i)].bytes(true) + mid_cards[size_t(i)].bytes(true);
 	for (const PackedFloat32Array &buf : bands) n += buf.size() * int64_t(sizeof(float));
+	for (const PackedFloat32Array &buf : mid_buf) n += buf.size() * int64_t(sizeof(float));
 	n += flags.size() * int64_t(sizeof(float));
 	return n;
 }
@@ -133,6 +144,8 @@ void BuildingRenderer::Built::bake() {
 			held[HELD_MID_PANES].add(mid_glass[size_t(i)], true);
 			held[HELD_MID_CARDS].add(mid_cards[size_t(i)], true);
 			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)]);
+			held[HELD_MID_PANES].add(flat_glass[size_t(i)], true);
+			flat[size_t(i)] = BuildingRenderer::bake(flat_shell[size_t(i)], true, &flat_glass[size_t(i)]);
 		}
 		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
 		near_shell[size_t(i)] = b40::Shell();
@@ -143,11 +156,18 @@ void BuildingRenderer::Built::bake() {
 		near_cards[size_t(i)] = b40::Shell();
 		mid_cards[size_t(i)] = b40::Shell();
 		mid_glass[size_t(i)] = b40::Shell();
+		flat_shell[size_t(i)] = b40::Shell();
+		flat_glass[size_t(i)] = b40::Shell();
 	}
 	for (int b = 0; b < BAND_DRAWS; b++) {
 		band_count[size_t(b)] = int(bands[size_t(b)].size() / MM_PLAIN_STRIDE);
 		band_mm[size_t(b)] = bake_multimesh(band_mesh[size_t(b)], bands[size_t(b)], chunk_box(key));
 		bands[size_t(b)] = PackedFloat32Array();
+	}
+	for (int k = 0; k < MID_DRAWS; k++) {
+		mid_count[size_t(k)] = int(mid_buf[size_t(k)].size() / MM_PLAIN_STRIDE);
+		if (mid_count[size_t(k)] > 0) mid_mm[size_t(k)] = bake_multimesh(mid_mesh[size_t(k)], mid_buf[size_t(k)], chunk_box(key));
+		mid_buf[size_t(k)] = PackedFloat32Array();
 	}
 	flag_count = int(flags.size() / MM_PLAIN_STRIDE);
 	flag_mm = bake_multimesh(unit_flag, flags, chunk_box(key));
@@ -189,7 +209,13 @@ void BuildingRenderer::commit_one(Built &b) {
 		ch.cut = b.cut;
 	}
 	if (b.has_mid) {
-		for (int i = 0; i < SUB_COUNT; i++) put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES);
+		for (int i = 0; i < SUB_COUNT; i++) {
+			put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES);
+			put_level(ch.flat[size_t(i)], b.flat[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // the plain side behind throws the shadow
+		}
+		for (int k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
+			ch.mid_draws[size_t(k)].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[size_t(k)].release(), b.mid_count[size_t(k)],
+					chunk_box(b.key), LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
@@ -221,9 +247,10 @@ void BuildingRenderer::restyle_chunk(int64_t key) {
 void BuildingRenderer::show(Chunk &ch, bool on) {
 	ch.shown = on;
 	for (int i = 0; i < SUB_COUNT; i++) {
-		for (MeshDraw *d : { &ch.near[size_t(i)], &ch.parts[size_t(i)], &ch.mid[size_t(i)] }) d->visible(on && d->mesh.is_valid());
+		for (MeshDraw *d : { &ch.near[size_t(i)], &ch.parts[size_t(i)], &ch.mid[size_t(i)], &ch.flat[size_t(i)] }) d->visible(on && d->mesh.is_valid());
 	}
 	for (const MultiMeshDraw &d : ch.bands) d.visible(on);
+	for (const MultiMeshDraw &d : ch.mid_draws) d.visible(on);
 	ch.flags.visible(on);
 }
 

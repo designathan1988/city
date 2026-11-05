@@ -46,6 +46,9 @@ void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c);
 void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at);
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
 void emit_bay_props(Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
+// What of a bay stands out of its wall, for the mid level: slabs, guards, shutters, fins and awnings. Boxes go to the instanced
+// `parts`; what is no box (a railing's card, an awning's canvas) to `shell`.
+void emit_bay_relief(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);
 
 // Part models (part_models.cpp), each placed by its centre (a, h, depth) and size (sx, sy, sz) in the bay frame.
 struct Part {

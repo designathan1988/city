@@ -2,7 +2,8 @@
 // surface kind written by native/src/render/buildings/shell.h: 0 shell face (UV2.x = cooked finish layer + 1, 0 = no
 // finish), 3 far wall with painted windows (UV in bays/storeys, CUSTOM0 = window shares and flags), 4 lamp, 5 lawn. The panes,
 // 1 and 2, are building_glass.gdshader's. Finishes: world-planar UVs in metres, map, normal map, roughness and metal mask. Far
-// windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp).
+// windows: building_far_window.gdshaderinc (CUSTOM0 and 3 written by shell.cpp). The mid level's bays are instances of one mesh
+// that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
 shader_type spatial;
 render_mode cull_back;
 
@@ -29,11 +30,25 @@ varying vec3 v_wn;
 varying flat vec4 v_room0;
 varying flat vec4 v_trim;
 
+#include "res://render/shaders/building_bay.gdshaderinc"
+
 void vertex() {
-	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	v_room0 = CUSTOM0;
 	v_trim = CUSTOM3;
+	if (UV2.y > BAY_MESH) {
+		vec3 p = VERTEX;
+		vec2 uv = UV, uv2 = UV2;
+		vec4 col = COLOR, room, trim;
+		bay_place(p, uv, uv2, col, room, trim, INSTANCE_CUSTOM, length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz));
+		v_room0 = room;
+		v_trim = trim;
+		VERTEX = p;
+		UV = uv;
+		UV2 = uv2;
+		COLOR = col;
+	}
+	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"

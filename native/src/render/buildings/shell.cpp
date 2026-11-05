@@ -203,6 +203,25 @@ void Shell::pane(const Basis &f, float a0, float a1, float b0, float b1, float c
 	}
 }
 
+void Shell::bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth) {
+	constexpr float DEPTH_STEP_M = 0.04f; // building_bay.gdshaderinc DEPTH_STEP_M
+	constexpr int DEPTH_MOST = 15, FIN_SHIFT = 8, FLAGS_SHIFT = 12, DEPTH_SHIFT = 20;
+	auto byte = [](float v) { return uint32_t(std::clamp(v, 0.f, 1.f) * BYTE + HALF_STEP); };
+	auto three = [&](float r, float g, float b) { return float(byte(r) << (2 * BYTE_BITS) | byte(g) << BYTE_BITS | byte(b)); };
+	const Color tone = shaded(f.at(W / 2, H / 2, 0), far_tint(wall, fin), true, SK_SHELL);
+	BayInstance b;
+	const Vector3 cols[3] = { f.e0 * W, f.e1 * H, f.e2 };
+	for (int i = 0; i < 3; i++)
+		for (int k = 0; k < 3; k++) b.basis[i * 3 + k] = cols[i][k];
+	for (int k = 0; k < 3; k++) b.origin[k] = f.o[k];
+	b.shares = three(w.width, w.sill, w.head);
+	b.wall = three(tone.r, tone.g, tone.b);
+	b.trim = three(gamma(w.trim.r), gamma(w.trim.g), gamma(w.trim.b));
+	const uint32_t steps = uint32_t(std::min(DEPTH_MOST, int(std::lround(depth / DEPTH_STEP_M))));
+	b.code = float((seed & SEED_BYTE) | uint32_t(fin + 1) << FIN_SHIFT | uint32_t(w.flags & SEED_BYTE) << FLAGS_SHIFT | steps << DEPTH_SHIFT);
+	bays.push_back(b);
+}
+
 void Shell::far_wall(const Vector3 p[4], const Vector3 &out, const Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w) {
 	if (glass) {
 		glass->grime_floor = grime_floor;

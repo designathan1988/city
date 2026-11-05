@@ -76,6 +76,10 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
 	for (b40::Shell &p : mid_parts) p.instanced = true;
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		out.flat_glass[i].rooms = true;
+		out.flat_shell[i].glass = &out.flat_glass[i];
+	}
 	for (size_t r = 0; r < in.records.size(); r++) {
 		const Building &rec = in.records[r];
 		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
@@ -94,12 +98,14 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
 		}
 		pl.coarse = true;
+		mid_shells[size_t(sub)].flat = &out.flat_shell[size_t(sub)];
 		b40::emit_far(mid_shells[size_t(sub)], pl, true);
+		b40::emit_relief(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		if (lots_drawn_.load()) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
-		near_shells[i].glass = mid_shells[i].glass = nullptr;
+		near_shells[i].glass = mid_shells[i].glass = out.flat_shell[i].glass = nullptr;
 		near_shells[i].sheer = nullptr;
 		near_shells[i].cards = mid_shells[i].cards = nullptr;
 	}
@@ -136,6 +142,20 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.has_near = true;
 	}
 	out.has_mid = mid;
+	if (mid) {
+		std::vector<b40::BoxInstance> boxes;
+		std::vector<b40::BayInstance> bays;
+		for (size_t i = 0; i < SUB_COUNT; i++) {
+			boxes.insert(boxes.end(), mid_parts[i].boxes.begin(), mid_parts[i].boxes.end());
+			bays.insert(bays.end(), mid_shells[i].bays.begin(), mid_shells[i].bays.end());
+			mid_shells[i].bays = {};
+			mid_shells[i].flat = nullptr;
+		}
+		out.mid_buf[MID_BAYS] = bake_bays(bays);
+		out.mid_buf[MID_BOXES] = bake_band(boxes);
+		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
+		out.mid_mesh[MID_BOXES] = unit_box_->get_rid();
+	}
 	return out;
 }
 

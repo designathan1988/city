@@ -7,6 +7,7 @@
 #include "core/laps.h"
 #include "core/units.h"
 
+#include "render/buildings/bay_kit.h"
 #include "render/buildings/facade.h"
 #include "render/buildings/flag_cloth.h"
 #include "render/mesh_builder.h"
@@ -64,6 +65,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
 	unit_box_ = unit.commit();
+	unit_bay_ = b40::bay_mesh();
 	unit_flag_ = b40::cloth_mesh();
 	return true;
 }
@@ -155,6 +157,8 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
 	for (MultiMeshDraw &d : ch.bands) d.free();
+	for (MultiMeshDraw &d : ch.mid_draws) d.free();
+	for (MeshDraw &d : ch.flat) d.free();
 	ch.flags.free();
 }
 

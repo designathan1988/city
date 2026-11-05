@@ -21,12 +21,6 @@ constexpr int MAX_STEPS = 40;
 constexpr uint32_t HV = 0x27d4eb2d, HL = 0x165667b1, HS = 0x3c6ef372, HI = 0x85ebca6b, HX = 0x2c1b3c6d, HY = 0x297a2d39;
 constexpr int HASH_SH1 = 15, HASH_SH2 = 13, LEVEL_OFF = 7, SIDE_OFF = 3, INDEX_OFF = 11, BAY_Q = 7;
 
-float relief_push(const Volume &v, int side, int bay, int k) {
-	for (const Relief &r : v.reliefs)
-		if (r.side == side && bay >= r.bay0 && bay <= r.bay1 && k >= r.storey0 && k <= r.storey1) return r.depth;
-	return 0;
-}
-
 uint8_t component(const Volume &v, int k, int side, int bay) { return bay_at(v, k, side, bay); }
 
 
@@ -80,11 +74,17 @@ struct SideEmit {
 	const Volume &v;
 	int vol;
 	void storey(const Side &sd, int k, float z);
-	void lines(const Side &sd);
+	void relief(const Side &sd, int k, float z);
+	void pushed_faces(const BayCtx &c, const Side &sd, int k, int i, int n, float push);
+	void lines(Shell &s, const Side &sd);
 	void plinth(const Side &sd);
+	template <typename F>
+	void each_bay(const Side &sd, int k, float z, F &&at);
 };
 
-void SideEmit::storey(const Side &sd, int k, float z) {
+// Every bay of a storey not wholly covered, its context filled in.
+template <typename F>
+void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 	const Body &b = *pl.b;
 	int level = v.base + k, n = bays_of(v, sd.side);
 	float W = sd.length / float(n), H = b.level_h(level);
@@ -116,17 +116,44 @@ void SideEmit::storey(const Side &sd, int k, float z) {
 		c.plan_out = sd.n;
 		c.open_left = i > 0 && component(v, k, sd.side, i - 1) == BAY_GOURMET;
 		c.open_right = i + 1 < n && component(v, k, sd.side, i + 1) == BAY_GOURMET;
-		if (b.cut_level >= 0 && level == b.cut_level && cut_bay(shell, pl, c, sd.n)) continue; // the floor seen: this wall came down
-		emit_bay(shell, parts, pl, c);
-		float lp = i > 0 ? relief_push(v, sd.side, i - 1, k) : 0, rp = i + 1 < n ? relief_push(v, sd.side, i + 1, k) : 0;
-		relief_faces(shell, c, push, lp, rp, i == 0, i == n - 1);
-		if (push != 0) relief_caps(shell, c, push, k == 0 || relief_push(v, sd.side, i, k - 1) != push, k + 1 >= v.storeys || relief_push(v, sd.side, i, k + 1) != push);
-		pilaster(shell, c, v.faces[sd.side], i, level == 0 ? GROUND_LIFT : 0);
-		if (level == 0 && (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) && v.base == 0) steps(shell, pl, c);
+		at(c, i, n, push);
 	}
 }
 
-void SideEmit::lines(const Side &sd) {
+void SideEmit::storey(const Side &sd, int k, float z) {
+	const Body &b = *pl.b;
+	const int level = v.base + k;
+	each_bay(sd, k, z, [&](const BayCtx &c, int i, int n, float push) {
+		if (b.cut_level >= 0 && level == b.cut_level && cut_bay(shell, pl, c, sd.n)) return; // the floor seen: this wall came down
+		emit_bay(shell, parts, pl, c);
+		pushed_faces(c, sd, k, i, n, push);
+		pilaster(shell, c, v.faces[sd.side], i, level == 0 ? GROUND_LIFT : 0);
+		if (level == 0 && (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) && v.base == 0) steps(shell, pl, c);
+	});
+}
+
+// The same bays for the mid level: what stands out of the wall, a pilaster once for the whole height.
+void SideEmit::relief(const Side &sd, int k, float z) {
+	const Body &b = *pl.b;
+	each_bay(sd, k, z, [&](const BayCtx &c, int i, int n, float push) {
+		if (c.plain) return;
+		emit_bay_relief(shell, parts, pl, c, opening_of(*pl.data, c));
+		pushed_faces(c, sd, k, i, n, push);
+		if (k != 0) return;
+		BayCtx whole = c;
+		whole.H = b.level_z(v.top()) - b.level_z(v.base);
+		pilaster(parts, whole, v.faces[sd.side], i, GROUND_LIFT);
+	});
+}
+
+// The cheeks and caps of a bay pushed out of its neighbours' plane.
+void SideEmit::pushed_faces(const BayCtx &c, const Side &sd, int k, int i, int n, float push) {
+	float lp = i > 0 ? relief_push(v, sd.side, i - 1, k) : 0, rp = i + 1 < n ? relief_push(v, sd.side, i + 1, k) : 0;
+	relief_faces(shell, c, push, lp, rp, i == 0, i == n - 1);
+	if (push != 0) relief_caps(shell, c, push, k == 0 || relief_push(v, sd.side, i, k - 1) != push, k + 1 >= v.storeys || relief_push(v, sd.side, i, k + 1) != push);
+}
+
+void SideEmit::lines(Shell &s, const Side &sd) {
 	const Body &b = *pl.b;
 	Paint mp = moulding_of(pl);
 	Lin m = paint_lin(mp);
@@ -136,9 +163,9 @@ void SideEmit::lines(const Side &sd) {
 		if (v.lines == LINES_BASE && level != 1) continue;
 		if (covered(b, v, level, mid) && covered(b, v, level - 1, mid)) continue;
 		float z = b.level_z(level) - b.level_z(v.base);
-		if (v.lines == LINES_EVERY) band(shell, sd, z, BAND_OUT, BAND_H, m, mp.finish, false);
-		else if (v.lines == LINES_BASE) band(shell, sd, z, BASE_OUT, BASE_H, m, mp.finish, false);
-		else if (v.lines == LINES_SLAB) band(shell, sd, z, SLAB_OUT, SLAB_H, wall_lin(pl, v, k, 0) * SLAB_SHADE, b.wall_of(v).finish, true);
+		if (v.lines == LINES_EVERY) band(s, sd, z, BAND_OUT, BAND_H, m, mp.finish, false);
+		else if (v.lines == LINES_BASE) band(s, sd, z, BASE_OUT, BASE_H, m, mp.finish, false);
+		else if (v.lines == LINES_SLAB) band(s, sd, z, SLAB_OUT, SLAB_H, wall_lin(pl, v, k, 0) * SLAB_SHADE, b.wall_of(v).finish, true);
 	}
 }
 
@@ -150,11 +177,33 @@ void SideEmit::plinth(const Side &sd) {
 }
 } // namespace
 
+float relief_push(const Volume &v, int side, int bay, int k) {
+	for (const Relief &r : v.reliefs)
+		if (r.side == side && bay >= r.bay0 && bay <= r.bay1 && k >= r.storey0 && k <= r.storey1) return r.depth;
+	return 0;
+}
+
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by) {
 	uint32_t h = (uint32_t(vol + 1) * HV) ^ (uint32_t(level + LEVEL_OFF) * HL) ^ (uint32_t(side + SIDE_OFF) * HS) ^ (uint32_t(index + INDEX_OFF) * HI);
 	h ^= (uint32_t(int32_t(std::round(bx * BAY_Q))) * HX) ^ (uint32_t(int32_t(std::round(by * BAY_Q))) * HY);
 	h = (h ^ (h >> HASH_SH1)) * HI;
 	return h ^ (h >> HASH_SH2);
+}
+
+void emit_relief(Shell &shell, Shell &parts, const Placed &pl) {
+	const Body &b = *pl.b;
+	for (size_t i = 0; i < b.volumes.size(); i++) {
+		const Volume &v = b.volumes[i];
+		SideEmit se{ shell, parts, pl, v, int(i) };
+		for (const Side &sd : sides_of(pl, v, b.level_z(v.base))) {
+			float z = 0;
+			for (int k = 0; k < v.storeys; k++) {
+				se.relief(sd, k, z);
+				z += b.level_h(v.base + k);
+			}
+			se.lines(parts, sd);
+		}
+	}
 }
 
 void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at) {
@@ -187,7 +236,7 @@ void emit_facades(Shell &shell, Shell &parts, const Placed &pl) {
 				se.storey(sd, k, z);
 				z += b.level_h(v.base + k);
 			}
-			se.lines(sd);
+			se.lines(shell, sd);
 			if (v.base == 0) se.plinth(sd);
 		}
 	}

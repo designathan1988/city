@@ -30,6 +30,7 @@ struct Ctx {
 	const BayCtx &c;
 	const Opening &o;
 	float am, hm, w, h;
+	bool coarse = false; // the mid level: no louvres
 	Lin paint(const char *n) const { return paint_lin(pl.data->color(n)); }
 	Part at(float a, float hh, float depth, float sx, float sy, float sz) const { return Part{ &c.f, a, hh, depth, sx, sy, sz, pl.look }; }
 	void sill(float past, float t, float out) const {
@@ -110,12 +111,38 @@ void Ctx::shuttered() {
 		for (float s : { -1.f, 1.f }) {
 			Part p = at(am + s * (LOUVRE_SPREAD * w + SURROUND), hm, LOUVRE_OUT, w / 2, h, LOUVRE_T);
 			part_box(shell, p, col, FIN_WOOD);
-			part_louvre(parts, Part{ p.f, p.a, p.h, p.depth - LOUVRE_T, p.sx, p.sy, LOUVRE_T }, col, FIN_WOOD);
+			if (!coarse) part_louvre(parts, Part{ p.f, p.a, p.h, p.depth - LOUVRE_T, p.sx, p.sy, LOUVRE_T }, col, FIN_WOOD);
 		}
 	}
 	part_box(shell, at(am, o.h0 - SHUT_SILL_T / 2, (o.depth - SHUT_SILL_OUT) / 2, w + SHUT_SILL_PAST, SHUT_SILL_T, o.depth + SHUT_SILL_OUT), paint("sill"), FIN_CONCRETE);
 }
 } // namespace
+
+void emit_bay_relief(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
+	Ctx x{ parts, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0, true };
+	switch (c.comp) {
+		case BAY_BALCONY:
+			part_box(parts, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
+			part_railing(shell, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
+			break;
+		case BAY_SHOPFRONT: {
+			uint32_t aw = pl.data->shop_awnings[size_t(pl.b->palette) % pl.data->shop_awnings.size()];
+			part_awning(shell, x.at(c.W / 2, o.h1 + AWNING_UP, 0, c.W - AWNING_TRIM, AWNING_H, BAL_OUT), lin_of(aw), FIN_PLASTER);
+			break;
+		}
+		case BAY_DOOR:
+			if (c.level == 0) x.canopy(CANOPY_PAD, CANOPY_T, CANOPY_OUT, FASCIA_H, CANOPY_ROOM);
+			break;
+		case BAY_DOUBLE_DOOR:
+			if (c.level == 0) x.canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM);
+			break;
+		case BAY_LOGGIA: x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w); break;
+		case BAY_BRISE: part_brise(parts, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, c.trim_fin); break;
+		case BAY_SHUTTERED: x.shuttered(); break;
+		case BAY_GOURMET: x.gourmet(); break;
+		default: break;
+	}
+}
 
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
 	Ctx x{ shell, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0 };

@@ -79,6 +79,15 @@ struct BoxInstance {
 	float thick = 0;
 };
 
+// One bay of the mid level, an instance of the shared mesh (bay_kit.h): its axes along the bay, up it and out of the wall, the first
+// two as long as the bay and the third a metre, then four exact integers as floats (building_bay.gdshaderinc): the opening's shares,
+// the wall's and the trim's sRGB, and the seed, finish, window flags and depth.
+struct BayInstance {
+	float basis[BOX_BASIS_FLOATS] = {};
+	float origin[3] = {};
+	float shares = 0, wall = 0, trim = 0, code = 0;
+};
+
 // A piece of bay_props.h: which model, its axes with their scale and where it stands.
 struct PropInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
@@ -103,6 +112,7 @@ struct Shell {
 	std::vector<godot::Vector2> uv, uv2;
 	std::vector<int32_t> idx;
 	std::vector<BoxInstance> boxes; // box() collects instances instead of triangles when `instanced`
+	std::vector<BayInstance> bays; // the mid level's openings (bay())
 	std::vector<PropInstance> props; // what hangs on the bays and stands on their balconies
 	std::vector<FlagInstance> flags; // the flags of the masts it drew (roof_gear.cpp)
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
@@ -115,6 +125,7 @@ struct Shell {
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
 	Shell *cards = nullptr; // where this shell's railings go: a surface whose bars the fragment draws
+	Shell *flat = nullptr; // the mid level: where its bays also go as merged rectangles, for where they are too small for their geometry
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
 
 	bool empty() const { return idx.empty() && boxes.empty(); }
@@ -128,6 +139,8 @@ struct Shell {
 	void box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip = SKIP_NONE);
 	// A railing's face at e2 = c: one quad, its bars drawn by building_card.gdshader, so they hold at any distance.
 	void card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind);
+	// A bay with an opening, `f` at its left end on the storey floor: an instance, no triangles (bay_kit.h).
+	void bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth);
 	// A glass pane of w x h metres at e2 = c.
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.

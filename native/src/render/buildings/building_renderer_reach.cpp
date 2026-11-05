@@ -31,6 +31,7 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 	parts_end_ = detail * look_.parts_share;
 	near_end_ = detail * look_.near_share;
 	mid_end_ = s.catalog.tune.render_building_mid_end_m;
+	bay_end_ = s.catalog.tune.render_building_bay_end_m;
 	far_end_ = s.catalog.tune.render_building_far_end_m;
 	float fov = look_.far_fov_deg > 0 ? look_.far_fov_deg : VIEW_ANGLE_FALLBACK;
 	float half_tan = std::tan(fov * PI_F / float(DEG_PER_TURN));
@@ -53,6 +54,10 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
 	}
 	for (int b = 0; b < BAND_DRAWS; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)] * detail_scale_);
+	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0;
+	ch.mid_draws[MID_BAYS].range(mid_from, bay_end_);
+	ch.mid_draws[MID_BOXES].range(mid_from, 0);
+	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 
