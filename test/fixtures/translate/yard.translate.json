@@ -32,7 +32,8 @@
     "TURN",
     "kindCost",
     "checkedCount",
-    "idOrder"
+    "idOrder",
+    "priceOf"
   ],
   "pending": [],
   "number": "float",

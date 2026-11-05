@@ -54,7 +54,8 @@ export function scanFiles(files: ReadonlyMap<string, string>, limits: TargetLimi
   for (const [file, text] of files) {
     // the runtime of the built-ins is the converter's own, checked against JavaScript by its differential
     if (isRuntimeFile(file)) continue;
-    for (const { rule, form, detail } of WRONG_FORMS) if (form.test(text)) out.push({ file, rule, detail });
+    const code = text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/\/\/.*$/gm, '');
+    for (const { rule, form, detail } of WRONG_FORMS) if (form.test(code)) out.push({ file, rule, detail });
     const extension = path.extname(file);
     const lines = text.split('\n').length;
     const maxLines = limits.maxLines[extension];

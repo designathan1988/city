@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -167,6 +168,21 @@ template <class T>
 std::vector<T> values(const Set<T> &s) {
 	std::vector<T> out;
 	for (const auto &x : s) out.push_back(x);
+	return out;
+}
+/** Object.keys, Object.values and Object.entries of a dictionary, in insertion order. */
+template <class V>
+std::vector<std::string> object_keys(const Map<std::string, V> &m) {
+	return keys(m);
+}
+template <class V>
+std::vector<V> object_values(const Map<std::string, V> &m) {
+	return values(m);
+}
+template <class V>
+std::vector<std::pair<std::string, V>> object_entries(const Map<std::string, V> &m) {
+	std::vector<std::pair<std::string, V>> out;
+	for (const auto &e : m) out.push_back(e);
 	return out;
 }
 /** map.clear(), set.clear(). */

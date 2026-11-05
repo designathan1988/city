@@ -194,7 +194,7 @@ function highestId<T extends { readonly id: number }>(list: readonly T[]): numbe
 export function placesAndIds(t: YardData, p: Vec2): number {
   const near = keptOf(t.posts, (q) => q.x > 0);
   const big = keptOf([1, 2, 3], (n) => n > 1);
-  return spot(p) + spot(t.posts[0]!) + spots(t.posts) + near.length + big.length + highestId(t.posts);
+  return spot(p) + spot(t.posts[0]!) + (t.posts[9]?.x ?? 0) * 0 + ([1, 2][5] ?? 4) + spots(t.posts) + near.length + big.length + highestId(t.posts);
 }
 
 /** A constant of its own, a root even if nothing here reads it. */
@@ -239,4 +239,24 @@ export function idOrder(t: YardData): number[] {
   sizes.forEach((v, k) => { out.push(v - k); });
   for (const v of sizes.values()) out.push(v);
   return out;
+}
+
+const HALF_SPAN = spanOf(40);
+
+/** A constant that calls a function declared after it, and one that reads it. */
+function spanOf(n: number): number {
+  return n / 2;
+}
+
+const QUARTER_SPAN = HALF_SPAN / 2;
+
+/** Prices by name: a dictionary, read, written, walked. */
+const PRICES: Record<string, number> = { Alpha: 3, Beta: 5 };
+
+export function priceOf(label: string): number {
+  const table: Record<string, number> = {};
+  table['Delta'] = 7;
+  let sum = QUARTER_SPAN;
+  for (const [k, v] of Object.entries(PRICES)) sum += v + k.length;
+  return sum + (PRICES[label] ?? 1) + (table[label] ?? 2);
 }
