@@ -97,9 +97,12 @@
  "shadow_first_share": 0.34,
  "shadow_reach_step": 0.1,
  "occlusion": {
-  "_doc": "Screen-space occlusion of the high presets: the 4.0's reach and its blend over the whole picture (GTAO, its intensity 0.85), the value a modelling choice.",
-  "radius_m": 1.0,
-  "light_affect": 0.85
+  "_doc": "Screen-space occlusion of the high presets (render/shaders/occlusion.gdshader): the 4.0's GTAO, blended over the whole picture. Its radius 1 reached by a random share of 0.5 to 1 of it; a fixed set of slices takes the mean. Its distance exponent, thickness, scale and intensity, the values modelling choices.",
+  "reach_m": 0.75,
+  "reach_curve": 1.6,
+  "thickness_m": 0.8,
+  "power": 1.05,
+  "strength": 0.85
  },
  "shadow_split_1": 0.1,
  "shadow_split_2": 0.25,

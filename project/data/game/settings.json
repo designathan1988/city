@@ -1,5 +1,5 @@
 {
- "_doc": "Graphics options (game/settings/*.gd). default: the preset of a new install; tests_preset: what a run driven by tests opens on, never auto, so a test or a photo does not depend on the machine's GPU and is comparable with those taken before (another level is asked for by name, --preset=); auto starts at the tier the GPU's name gives (gpu_rules, first match; regular expressions on RenderingServer.get_video_adapter_name, unknown = gpu_default) and the governor moves it, never above that tier. levels: the tiers, weakest first. Each tier: pixel_ratio the most device pixels per CSS pixel drawn (the 3D scale is min(1, pixel_ratio / screen ratio)); shadows and shadow_px the side of a cascade (4 splits share an atlas of twice that side, Godot docs: Lights and shadows); shadow_filter the sun's RenderingServer.ShadowQuality: on a plain grey wall in half shadow the weave of the filter measured 8.9 at Soft Medium and 3.9 at Soft Ultra with daylight.json shadow_blur 0.6, for no GPU cost past the noise of the run (ports/landscape/relatorio.md), so medium and up use Soft Ultra; filter_radius: the engine's directional_shadow_quality_radius for each RenderingServer.ShadowQuality (renderer_scene_render_rd.cpp, tag 4.7.2-stable), that Daylight divides its shadow bias by; shadow_least_m the least reach of the sun's shadows, that Daylight fits its cascades to. Atlas and filter are the numbers the landscape session checked in photos, modelling choices, not the 4.0's; ultra holds high's until that session measures them apart; msaa 0, 1, 2 = off, 2x, 4x (Viewport.msaa_3d); smaa the post filter (Viewport.screen_space_aa); ssao and ssao_half the ambient occlusion and its half resolution (RenderingServer.environment_set_ssao_quality); anisotropy 0..4 = off..16x (Viewport.anisotropic_filtering_level); detail_props the street furniture layer; triangle_share the buildings' near level as a share of its triangles: its reach scales by the square root (triangles grow with the area in reach). frame_cap: Engine.max_fps while the game has the focus (the player's choice, fps_choices, 0 = none) and while another application has it; a covered window is not held back by vsync. governor: a window of window frames (a p90 over 1,5 s at 60 Hz, ARQUITETURA.md item 8), settle frames left out after a change, down after down_windows missed, up after up_windows under up_share of the budget, a raise undone within undone_s holds undone_hold_s (doubled each time), a frame over stall_s is a stall. ssao: RenderingServer.environment_set_ssao_quality's arguments at the Godot project setting defaults (rendering/environment/ssao/*). dynamic_resolution: scales of the 3D drawing, whole first, aim share of the budget, window frames a decision, deadband and rise_margin keep the picture from breathing, settle frames left out after a change. post: bloom, ambient occlusion and SMAA at all (the post chain). vegetation: share of the woods and lone trees (street and park trees stay). detail_cutoff_zoom: pixels per metre below which furniture, vehicles, people and road paint stop being drawn. pedestrian_detail: 0 the far level only. occupant_zoom: pixels per metre at which the cabin level ends; vehicle_error_px divides that reach (a fixed shape's error on the screen falls with the distance), vehicle_whole_cap: the most cabins drawn, the nearest. sky_clouds and cloud_shadows: for the sky's owner to read from Settings.current() on `changed`. layers: what shows over the map when nothing was chosen. presets: what the player can choose and what a settings file may hold; anything else falls to default.",
+ "_doc": "Graphics options (game/settings/*.gd). default: the preset of a new install; tests_preset: what a run driven by tests opens on, never auto, so a test or a photo does not depend on the machine's GPU and is comparable with those taken before (another level is asked for by name, --preset=); auto starts at the tier the GPU's name gives (gpu_rules, first match; regular expressions on RenderingServer.get_video_adapter_name, unknown = gpu_default) and the governor moves it, never above that tier. levels: the tiers, weakest first. Each tier: pixel_ratio the most device pixels per CSS pixel drawn (the 3D scale is min(1, pixel_ratio / screen ratio)); shadows and shadow_px the side of a cascade (4 splits share an atlas of twice that side, Godot docs: Lights and shadows); shadow_filter the sun's RenderingServer.ShadowQuality: on a plain grey wall in half shadow the weave of the filter measured 8.9 at Soft Medium and 3.9 at Soft Ultra with daylight.json shadow_blur 0.6, for no GPU cost past the noise of the run (ports/landscape/relatorio.md), so medium and up use Soft Ultra; filter_radius: the engine's directional_shadow_quality_radius for each RenderingServer.ShadowQuality (renderer_scene_render_rd.cpp, tag 4.7.2-stable), that Daylight divides its shadow bias by; shadow_least_m the least reach of the sun's shadows, that Daylight fits its cascades to. Atlas and filter are the numbers the landscape session checked in photos, modelling choices, not the 4.0's; ultra holds high's until that session measures them apart; msaa 0, 1, 2 = off, 2x, 4x (Viewport.msaa_3d); smaa the post filter (Viewport.screen_space_aa); ssao the corner occlusion (render/occlusion_pass.gd, the one owner of it); anisotropy 0..4 = off..16x (Viewport.anisotropic_filtering_level); detail_props the street furniture layer; triangle_share the buildings' near level as a share of its triangles: its reach scales by the square root (triangles grow with the area in reach). frame_cap: Engine.max_fps while the game has the focus (the player's choice, fps_choices, 0 = none) and while another application has it; a covered window is not held back by vsync. governor: a window of window frames (a p90 over 1,5 s at 60 Hz, ARQUITETURA.md item 8), settle frames left out after a change, down after down_windows missed, up after up_windows under up_share of the budget, a raise undone within undone_s holds undone_hold_s (doubled each time), a frame over stall_s is a stall. dynamic_resolution: scales of the 3D drawing, whole first, aim share of the budget, window frames a decision, deadband and rise_margin keep the picture from breathing, settle frames left out after a change. post: bloom, ambient occlusion and SMAA at all (the post chain). vegetation: share of the woods and lone trees (street and park trees stay). detail_cutoff_zoom: pixels per metre below which furniture, vehicles, people and road paint stop being drawn. pedestrian_detail: 0 the far level only. occupant_zoom: pixels per metre at which the cabin level ends; vehicle_error_px divides that reach (a fixed shape's error on the screen falls with the distance), vehicle_whole_cap: the most cabins drawn, the nearest. sky_clouds and cloud_shadows: for the sky's owner to read from Settings.current() on `changed`. layers: what shows over the map when nothing was chosen. presets: what the player can choose and what a settings file may hold; anything else falls to default.",
  "default": "auto",
  "tests_preset": "medium",
  "presets": [
@@ -84,7 +84,6 @@
    "msaa": 0,
    "smaa": false,
    "ssao": false,
-   "ssao_half": true,
    "anisotropy": 1,
    "detail_props": false,
    "triangle_share": 0.35,
@@ -107,7 +106,6 @@
    "msaa": 1,
    "smaa": false,
    "ssao": false,
-   "ssao_half": true,
    "anisotropy": 2,
    "detail_props": true,
    "triangle_share": 0.6,
@@ -130,7 +128,6 @@
    "msaa": 0,
    "smaa": true,
    "ssao": true,
-   "ssao_half": true,
    "anisotropy": 3,
    "detail_props": true,
    "triangle_share": 1,
@@ -153,7 +150,6 @@
    "msaa": 0,
    "smaa": true,
    "ssao": true,
-   "ssao_half": false,
    "anisotropy": 4,
    "detail_props": true,
    "triangle_share": 1,
@@ -167,12 +163,6 @@
    "sky_clouds": true,
    "cloud_shadows": true
   }
- },
- "ssao": {
-  "adaptive_target": 0.5,
-  "blur_passes": 2,
-  "fadeout_from_m": 50,
-  "fadeout_to_m": 300
  },
  "shadow_choices": [
   0,

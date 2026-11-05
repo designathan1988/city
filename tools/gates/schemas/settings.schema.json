@@ -9,7 +9,6 @@
   "dynamic_resolution",
   "gpu_rules",
   "gpu_default",
-  "ssao",
   "shadow_choices",
   "fps_choices",
   "presets",

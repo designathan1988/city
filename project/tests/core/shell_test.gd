@@ -96,9 +96,9 @@ func _resolution() -> void:
 func _options(world: CityWorld, rig: CityCamera) -> void:
 	Settings.set_preset("ultra")
 	var aa := Viewport.SCREEN_SPACE_AA_SMAA if QualityTier.has_smaa() else Viewport.SCREEN_SPACE_AA_DISABLED
-	_check(world.environment.ssao_enabled and get_viewport().screen_space_aa == aa, "ultra liga oclusão e SMAA onde ele existe")
+	_check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra liga oclusão e SMAA onde eles existem")
 	Settings.set_preset("low")
-	_check(not world.sun.shadow_enabled and not world.environment.ssao_enabled, "baixa tira sombra e oclusão")
+	_check(not world.sun.shadow_enabled and not world.occlusion.visible, "baixa tira sombra e oclusão")
 	var names: Dictionary = CityStore.constants.render_layers
 	_check(rig.camera.cull_mask & int(names.furniture) == 0, "baixa esconde o mobiliário pela máscara")
 	Settings.keep("shadows", 2048)

@@ -24,15 +24,6 @@
    ]
   },
   {
-   "id": "aoResolution",
-   "field": "ssao_half",
-   "offered": [
-    "tier",
-    false,
-    true
-   ]
-  },
-  {
    "id": "anisotropy",
    "field": "anisotropy",
    "offered": [

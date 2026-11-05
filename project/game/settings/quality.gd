@@ -12,7 +12,6 @@ const BASE_DPI := 96.0
 const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
-const SSAO_QUALITY := RenderingServer.ENV_SSAO_QUALITY_MEDIUM
 const COMPATIBILITY := "gl_compatibility"
 const FALLBACK_AA := 1 # where SMAA does not exist the same tier asks for this entry of MSAA_MODES
 ## pedestrian_detail 0: the people's nearest level is this one (their far level).
@@ -97,10 +96,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
-	world.environment.ssao_enabled = q.ssao
-	var ao: Dictionary = DataTables.game("settings").ssao
-	RenderingServer.environment_set_ssao_quality(SSAO_QUALITY, q.ssao_half, ao.adaptive_target, int(ao.blur_passes),
-			ao.fadeout_from_m, ao.fadeout_to_m)
+	world.occlusion.turn(q.ssao)
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
 	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),

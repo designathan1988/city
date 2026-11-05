@@ -53,8 +53,11 @@
    "type": "object",
    "properties": {
     "_doc": { "type": "string" },
-    "radius_m": { "type": "number" },
-    "light_affect": { "type": "number" }
+    "reach_m": { "type": "number" },
+    "reach_curve": { "type": "number" },
+    "thickness_m": { "type": "number" },
+    "power": { "type": "number" },
+    "strength": { "type": "number" }
    }
   },
   "low_from_m": { "type": "number" },
