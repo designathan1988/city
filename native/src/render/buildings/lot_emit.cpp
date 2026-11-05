@@ -104,7 +104,7 @@ void LotEmit::gate(const LotElement &e) {
 
 void LotEmit::prop(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2, g = ground(e.x, e.y);
-	Lin lin = paint(e, "concrete");
+	Lin lin = paint(e, e.kind == EL_PARKING ? "parking_asphalt" : "concrete");
 	int8_t f = fin(e);
 	switch (e.kind) {
 		case EL_PLANTER:
