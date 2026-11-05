@@ -14,7 +14,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HALF = 0.5f, FAR_M = 1e9f, MIN_RUN_M = 1e-3f;
+constexpr float HALF = 0.5f, MIN_RUN_M = 1e-3f;
 constexpr float FULL_TURN = 6.28318530718f;
 
 Color hex(const Variant &v) {

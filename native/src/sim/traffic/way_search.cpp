@@ -14,7 +14,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double PI = 3.14159265358979323846, TWO_PI = 2 * PI, ROOT_HALF = 0.70710678118654752, ROOT_TWO = 1.41421356237309505;
+constexpr double PI = 3.14159265358979323846, TWO_PI = 2 * PI, ROOT_HALF = 0.70710678118654752;
 // The search's own cells, this much across, and this many headings round; a step's arc, a little longer than a cell's diagonal so a
 // step always leaves its cell; the poses it may expand. A cell keeps one pose, so a tight yard can be lost at the coarser grain.
 struct Grain {

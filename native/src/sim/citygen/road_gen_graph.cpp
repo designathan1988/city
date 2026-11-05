@@ -15,7 +15,6 @@ namespace {
 constexpr double BUCKET = 96, MERGE = 7, COLLAPSE = 16, PARALLEL_COS = 0.93, HUG_DIST = 26, GEN_SEG_LEN = 100;
 constexpr int64_t KEY_OFF = 2000, KEY_ROW = 4096, PAIR = 1000000;
 constexpr int MAX_LINKS = 6, MIN_COMPONENT = 30, RANK_EXPRESSWAY = 3, RANK_AVENUE_BIKE = 2;
-constexpr double NO_ROOM = 1e300;
 constexpr int GROUND_PROBES = 5;
 constexpr double NODE_PROBE = 8, NODE_MIN_Y = 1.5, CROSS_EPS = 1e-6, PARALLEL_DEN = 1e-9;
 constexpr double SIDE_PROBE_M = 20; // about half a lot's depth, off the street's middle

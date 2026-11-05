@@ -25,8 +25,8 @@ void subtract(std::vector<ArcSpan> &from, const std::vector<ArcSpan> &cut) {
 	}
 }
 
-// How far from `node` along `sid` no bay may start: past the corner and its crosswalk, or just the mouth on a joint.
-double end_clear(const RoadNetwork &net, int sid, int node, double mouth) {
+// How far from `node` along its segment no bay may start: past the corner and its crosswalk, or just the mouth on a joint.
+double end_clear(const RoadNetwork &net, int node, double mouth) {
 	const TrafficParams &tp = net.cat->traffic;
 	const int arms = int(net.nodes[size_t(node)].segs.size());
 	if (arms <= 1) return tp.kerb_dead_end_m;
@@ -55,7 +55,7 @@ void kerb_layout(const RoadNetwork &net, int sid, const std::vector<ArcSpan> gat
 	const RoadSegment &g = net.segs[size_t(sid)];
 	const Profile &p = net.profile_of(sid);
 	const float pitch = net.cat->traffic.kerb_bay_pitch_m;
-	const double from = end_clear(net, sid, g.a, g.retreat_a), to = g.len - end_clear(net, sid, g.b, g.retreat_b);
+	const double from = end_clear(net, g.a, g.retreat_a), to = g.len - end_clear(net, g.b, g.retreat_b);
 	for (const StripEdge &e : p.edges) {
 		if (e.strip.kind != StripKind::PARKING) continue;
 		const int side = e.u0 + e.u1 > 0 ? LEFT : RIGHT;
