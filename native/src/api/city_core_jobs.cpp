@@ -61,6 +61,9 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("grade_probe", "scene"), &CityProbes::grade_probe);
 	ClassDB::bind_method(D_METHOD("state_hash"), &CityProbes::state_hash);
 	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
+	ClassDB::bind_method(D_METHOD("traffic_hashes", "ticks"), &CityProbes::traffic_hashes);
+	ClassDB::bind_method(D_METHOD("graph_fault"), &CityProbes::graph_fault);
+	ClassDB::bind_method(D_METHOD("undo_steps"), &CityProbes::undo_steps);
 }
 
 } // namespace city

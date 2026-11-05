@@ -56,6 +56,8 @@ func _ready() -> void:
 	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)))
 	CityStore.dispatch(&"set_speed", [0])
 	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))
+	if "--frozen" in OS.get_cmdline_user_args():
+		Engine.time_scale = 0.0 # shaders' TIME, the clock and every delta stand: the same plan gives the same picture, by frames alone
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	add_child(RoadcraftHud.new())
 	measure = LookMeasure.new(get_viewport())

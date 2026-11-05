@@ -102,6 +102,8 @@ void apply_entry(CityState &s, const EditEntry &e, bool forward) {
 	}
 	if (!e.terrain_idx.empty()) {
 		s.terrain.write_samples(e.terrain_idx, forward ? e.terrain_after : e.terrain_before);
+		if (!forward)
+			for (int tile : e.clean_tiles) s.terrain.tile_dirty[size_t(tile)] = 0;
 		mark_ground(s, e.minx, e.minz, e.maxx, e.maxz);
 	}
 	for (const PaintEdit &p : e.paint) {
@@ -195,6 +197,7 @@ void EditHistory::close_paint(const CityState &s) {
 void EditHistory::push(CityState &s) {
 	close_terrain(s);
 	close_paint(s);
+	open.reduce();
 	if (!open.empty()) {
 		undo_stack.push_back(std::move(open));
 		redo_stack.clear();

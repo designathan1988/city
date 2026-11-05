@@ -8,6 +8,7 @@ extends Node3D
 const ROUNDS := 2
 const DIGEST_MAP := 1
 const DIGEST_SEED := 7
+const DIGEST_TICKS := 200
 
 
 func _ready() -> void:
@@ -26,7 +27,8 @@ func _ready() -> void:
 	if digest:
 		CityStore.new_map(DIGEST_MAP, DIGEST_SEED, true, true)
 		var hash: Dictionary = CityStore.query(&"state_hash")
-		print("DIGEST ", hash.whole, " ", JSON.stringify(hash.derived, "", true))
+		var fleet: PackedStringArray = CityStore.query(&"traffic_hashes", [DIGEST_TICKS])
+		print("DIGEST ", hash.whole, " ", JSON.stringify(hash.derived, "", true), " fleet ", fleet[DIGEST_TICKS - 1])
 		get_tree().quit(0)
 		return
 	for round in ROUNDS:

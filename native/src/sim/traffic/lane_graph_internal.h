@@ -2,6 +2,8 @@
 // node, the connection pool and the state that must grow with it.
 #pragma once
 
+#include <string>
+
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -12,6 +14,7 @@ namespace traffic {
 
 // lane_graph.cpp
 void build_dir(CityState &s, int seg); // (re)builds the two directed segments of `seg`, keeping lane_metres right
+std::string lane_graph_fault(const CityState &s); // lane_graph_check.cpp: the first thing the graph must not be, or nothing
 void build_node(CityState &s, int n); // allocates the node's connections from the pool and sets their conflicts
 void build_lane_graph(CityState &s); // full build: new map and load
 void drop_lane_state(CityState &s, int ds); // vehicles and meso entries of one directed segment leave

@@ -22,9 +22,11 @@ void put_framed(ByteWriter &w, uint32_t tag, F &&fill) {
 }
 } // namespace
 
-void write_extra_blocks(ByteWriter &w, const CityState &s) {
+void write_extra_blocks(ByteWriter &w, const CityState &s, const std::function<void(const char *)> &written) {
 	put_framed(w, SAVE_TAG_DEMOLITION, [&](ByteWriter &b) { return write_damage_block(b, s.damage); });
+	written("demolition");
 	put_framed(w, SAVE_TAG_STREET, [&](ByteWriter &b) { return write_street_block(b, s.street); });
+	written("street");
 }
 
 bool read_extra_blocks(ByteReader &r, CityState &s) {

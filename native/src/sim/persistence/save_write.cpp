@@ -152,9 +152,9 @@ std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *part
 	w.put<uint32_t>(SAVE_BODIES);
 	write_edited_bodies(w, s.buildings);
 	mark("bodies");
-	write_extra_blocks(w, s);
+	write_extra_blocks(w, s, mark);
 	w.put<uint32_t>(SAVE_END);
-	mark("blocks");
+	mark("end");
 	return std::move(w.buf);
 }
 

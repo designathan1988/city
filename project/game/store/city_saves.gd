@@ -78,15 +78,15 @@ func save_game(slot: String) -> Dictionary:
 
 ## Replaces the city with the saved one (the core stops the simulation, reads it and redraws everything). The city
 ## keeps that slot, unless it is a map copy (then its first save gives it one of its own).
-func load_game(slot: String) -> Dictionary:
-	var r: Dictionary = _core.load_city(save_path(slot)) # waits for a save in flight first
+func load_game(slot: String, paused := false) -> Dictionary:
+	var r: Dictionary = _core.load_city(save_path(slot), paused) # waits for a save in flight first
 	_settle_save()
 	_since_autosave = 0.0
 	if r.get("ok", false):
 		_city_slot = slot if SaveSlots.is_city_slot(slot) else ""
 		if not _city_slot.is_empty():
 			SaveSlots.remember_last(_city_slot)
-		Session.read(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"))
+		Session.read(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"), paused)
 	_store.refresh()
 	_store.loaded.emit(slot, r)
 	return r

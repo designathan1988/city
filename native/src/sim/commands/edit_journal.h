@@ -67,12 +67,14 @@ struct EditEntry {
 	std::vector<EditOp> ops;
 	std::unordered_map<uint32_t, uint16_t> terrain_open;
 	std::vector<uint32_t> terrain_idx;
+	std::vector<int> clean_tiles; // tiles that matched the generated land before this edit: undoing it makes them so again
 	std::vector<uint16_t> terrain_before, terrain_after;
 	std::unordered_map<int, std::shared_ptr<const PaintTile>> paint_open; // tiles as they were (while open)
 	std::vector<PaintEdit> paint;
 	double minx = 0, minz = 0, maxx = 0, maxz = 0;
 	bool has_box = false;
 	size_t bytes = 0;
+	void reduce(); // edit_reduce.cpp: to its net effect, when it closes
 	bool empty() const { return ops.empty() && terrain_idx.empty() && terrain_open.empty() && paint.empty() && paint_open.empty(); }
 	void grow(double x0, double z0, double x1, double z1);
 };

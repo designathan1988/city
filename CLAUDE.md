@@ -9,6 +9,7 @@ histórico de uma linha de trabalho: o que foi feito, o estado, os comandos e o 
 - `log/work-log.md`: porte (elevação, postes, tradutor).
 - `log/conversor.md`: tradutor.
 - `log/causa-raiz.md`: desempenho e causas.
+- `log/graphics.md`: gráficos das construções, nos 7 passos obrigatórios do usuário.
 
 Ao terminar cada tarefa, ou ao saber algo novo, atualize o registro da sua linha (crie um se a linha for nova), com hora e
 commit, e commite-o junto.
@@ -258,6 +259,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/body_pick.cpp` · `native/src/sim/commands/body_pick.h` — o que um raio da câmera acerta: registro, bloco, face, andar e vão
 - `native/src/sim/commands/commands.h` — API de comandos do jogador
 - `native/src/sim/commands/edit_history.cpp` — pilhas de desfazer/refazer e limites
+- `native/src/sim/commands/edit_reduce.cpp` — a edição reduzida ao efeito líquido ao fechar: vizinhas exatamente inversas se anulam, e a que dá em nada não vira passo de desfazer (o `isObsolete` do Qt)
 - `native/src/sim/commands/edit_journal.h` — diário de edições (único mutador dos comandos)
 - `native/src/sim/commands/journal_ops.cpp` — operações `j_*` do diário
 - `native/src/sim/commands/journal_damage.cpp` — operações do diário do dano (cratera, ruína, mobiliário derrubado, dano acumulado do prédio) e o inverso de cada uma
@@ -330,6 +332,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
+- `native/src/sim/traffic/lane_graph_check.cpp` — o que o grafo de faixas nunca pode ser, conferido na DLL de debug a cada mudança da rede
 - `native/src/sim/traffic/lane_graph_edit.cpp` — rebuild incremental das faixas e nós sujos
 - `native/src/sim/traffic/lane_graph_internal.h` — superfície interna do grafo de faixas
 - `native/src/sim/traffic/lane_list.cpp` — listas por faixa/conector e lista micro de veículos
@@ -503,6 +506,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/quality_test.gd` · `project/tests/core/quality_test.tscn` · `project/tests/core/inspector_test.gd` · `project/tests/core/inspector_test.tscn` — níveis gráficos lidos no que é desenhado; inspetor, edições de via, nó impossível, arquivo ruim, quarentena e sessão
 - `project/tests/core/boot_refusal_test.gd` · `project/tests/core/boot_refusal_test.tscn` — catálogo sem uma chave: recusado pelo nome, e o jogo de pé atrás da recusa
 - `project/tests/core/edit_fuzz_test.gd` · `project/tests/core/edit_fuzz_test.tscn` — edições sorteadas contra o hash do estado: desfazer e refazer passam pelos mesmos hashes, salvar e abrir é a mesma cidade, a mesma semente faz a mesma cidade (`--seed=N`, `--steps=N` repetem uma falha)
+- `project/tests/core/traffic_hash_test.gd` · `project/tests/core/traffic_hash_test.tscn` — o tráfego é determinístico: o mesmo mapa, passo a passo duas vezes, dá o mesmo hash da frota em todo tick, e o primeiro que diverge é nomeado
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto
 - `project/tests/core/city_mass_test.gd` · `project/tests/core/city_mass_test.tscn` — a massa da cidade gerada: andares por distância do miolo
@@ -528,6 +532,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` · `project/tests/visual/capture_shell.gd` · `project/tests/visual/capture_shell.tscn` — capturas da interface por cliques; a casca inteira nas vistas das fotos do 4.0
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
+- `project/tests/visual/frozen_plan.json` — as vistas congeladas do `quick.sh` (`look --frozen`): o mundo parado, bit a bit
 - `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_measure.gd` — o jogo olhado por um plano JSON (o formato do scripts/look.mjs do 4.0): setView, shot, wait, frames, hour, dispatch, query, key, click, drag; um plano serve aos dois jogos; as medidas dos servidores do Godot (quadros, uso, render, passes da GPU)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
 - `project/ui/drawer_strips.gd` — cartões e controles das gavetas

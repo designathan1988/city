@@ -210,6 +210,9 @@ void apply_network_changes(CityState &s) {
 	}
 	t.g.version = s.roads.version;
 	s.lane_graph_serial++;
+#ifdef DEBUG_ENABLED
+	if (t.graph_fault.empty()) t.graph_fault = lane_graph_fault(s);
+#endif
 }
 
 } // namespace traffic
