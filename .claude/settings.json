@@ -8,6 +8,10 @@
       "Write",
       "WebFetch",
       "WebSearch"
+    ],
+    "deny": [
+      "Agent",
+      "Workflow"
     ]
   },
   "hooks": {
@@ -18,7 +22,9 @@
           {
             "type": "command",
             "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
-            "args": ["${CLAUDE_PROJECT_DIR}/tools/gates/hook_protect.py"],
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/tools/gates/hook_protect.py"
+            ],
             "timeout": 10
           }
         ]
@@ -30,7 +36,9 @@
           {
             "type": "command",
             "command": "C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe",
-            "args": ["${CLAUDE_PROJECT_DIR}/tools/gates/hook_stop_gates.py"],
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/tools/gates/hook_stop_gates.py"
+            ],
             "timeout": 60
           }
         ]

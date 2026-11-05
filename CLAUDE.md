@@ -77,7 +77,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 ## Mapa do código
 <!-- MAPA:INICIO -->
 **Raiz e ferramentas**
-- `.claude/settings.json` — permissões das ferramentas, memória automática desligada e os dois hooks de `tools/gates/hook_protect.py` e `tools/gates/hook_stop_gates.py`; só o usuário altera este arquivo
+- `.claude/settings.json` — permissões das ferramentas (Agent e Workflow negados: sem subagentes), memória automática desligada e os dois hooks de `tools/gates/hook_protect.py` e `tools/gates/hook_stop_gates.py`; só o usuário altera este arquivo
 - `native/CMakeLists.txt` — Godot 4.7 API, precisão simples, saída em `project/bin`
 - `native/toolchain-mingw.cmake` — compilação cruzada Windows via llvm-mingw
 - `project/export_presets.cfg` · `project/project.godot` — exportação Windows e projeto Godot (autoloads, cena inicial)
