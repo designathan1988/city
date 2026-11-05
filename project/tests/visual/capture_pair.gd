@@ -56,8 +56,7 @@ func _ready() -> void:
 			var at := ui.ground(v.x, v.y)
 			rig.jump(at, RIGHT_ANGLE - v.azimuth, v.elevation, CameraProfile.view_distance(rig.cfg, PAIR_LINES / (2.0 * v.zoom)))
 		if v.has("hour"):
-			world.set_hour(v.hour)
-			CityStore.dispatch(&"set_day_hour", [v.hour])
+			UiDriver.at_hour(world, v.hour)
 		if v.has("inside"):
 			_open_inside(v.inside)
 		await ui.drawn()

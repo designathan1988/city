@@ -112,11 +112,11 @@ func _run() -> void:
 ## The same crossings under the game's night, then the day again for the tool.
 func _night() -> void:
 	var sky: Dictionary = DataTables.game("daylight")
-	world.set_hour(sky.night_hour)
+	UiDriver.at_hour(world, sky.night_hour)
 	await _photo("night_urban_top", at(0, -120), TOP, CLOSE_M)
 	await _photo("night_urban_low", at(0, -120), LOW, NEAR_M)
 	await _photo("night_avenue_low", at(-60, 100), LOW, NEAR_M)
-	world.set_hour(sky.day_hour)
+	UiDriver.at_hour(world, sky.day_hour)
 
 
 func at(x: float, z: float) -> Vector3:

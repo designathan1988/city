@@ -76,7 +76,7 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
-	world.set_hour(DAY)
+	UiDriver.at_hour(world, DAY)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)

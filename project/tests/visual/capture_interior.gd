@@ -58,8 +58,7 @@ func _shot(layer: InteriorController, s: Array) -> void:
 		failures += 1
 		print("FAIL: no building ", s[0])
 		return
-	CityStore.dispatch(&"set_day_hour", [s[5]])
-	world.set_hour(s[5]) # the sky follows the clock in the game (the HUD's hour control); here the scene does it
+	UiDriver.at_hour(world, s[5])
 	var yaw: float = rad_to_deg(float(info.rot)) + float(s[2])
 	rig.jump(info.focus, yaw, s[4], _distance_for(info.focus, yaw, s[4], s[3]))
 	await _frames(SETTLE_FRAMES)

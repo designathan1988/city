@@ -39,13 +39,13 @@ static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
 	var lens := camera.fov
 	var plate_at := _clear_spot(cap, dir)
 	for night: bool in [false, true]:
-		cap.world.set_hour(NIGHT if night else cap.DAY)
+		UiDriver.at_hour(cap.world, NIGHT if night else cap.DAY)
 		await cap.ui.frames(int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1)
 		for name: String in poses:
 			if name.ends_with("noite") != night:
 				continue
 			if not night:
-				cap.world.set_hour(poses[name].get("hour", cap.DAY))
+				UiDriver.at_hour(cap.world, poses[name].get("hour", cap.DAY))
 			var thing := name.trim_suffix("-noite").trim_suffix("-perto")
 			if thing in ["semaforo", "esquina"]:
 				var arm: Array = probe.crossing_kerb

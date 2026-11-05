@@ -47,8 +47,7 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
-	world.set_hour(NOON)
-	CityStore.dispatch(&"set_day_hour", [NOON]) # the bar's clock with the light, as the 4.0's run at noon
+	UiDriver.at_hour(world, NOON) # as the 4.0's run, at noon
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)

@@ -24,7 +24,7 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	await _close_views(cap, dir)
 	for hour: float in [cap.DAY, cap.NIGHT]:
-		cap.world.set_hour(hour)
+		UiDriver.at_hour(cap.world, hour)
 		await cap.ui.frames(int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1)
 		var tag := "dia" if hour == cap.DAY else "noite"
 		await _eye(cap, "rua_10_rua_" + tag, a - dir * cap.BACK_M + side * cap.SIDE_M, a + dir * cap.RUN_M * 0.5)

@@ -64,7 +64,7 @@ func _ready() -> void:
 		return
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
-	world.set_hour(hour)
+	UiDriver.at_hour(world, hour)
 	if not preset.is_empty():
 		Settings.preset = preset
 		Settings.apply(world, get_viewport())
@@ -121,7 +121,7 @@ func _city_light(field: Vector3) -> void:
 	await shot("luz_parede", mid, 120.0, 14.0, 30.0)
 	await shot("ceu_baixo", field, 45.0, -14.0, 200.0)
 	await shot("ceu_alto", field, 45.0, -30.0, 200.0)
-	world.set_hour(NIGHT_HOUR)
+	UiDriver.at_hour(world, NIGHT_HOUR)
 	await shot("ceu_noite", field, 45.0, -14.0, 200.0)
 	await shot("noite_campo", field, 45.0, 24.0, 2.0)
 	await shot("noite_cidade", mid, 30.0, 26.0, 6.0)

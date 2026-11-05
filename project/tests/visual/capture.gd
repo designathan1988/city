@@ -78,8 +78,7 @@ func _ready() -> void:
 
 ## The shot's hour: the light and the clock the top bar shows.
 func set_hour(hour: float) -> void:
-	world.set_hour(hour)
-	CityStore.dispatch(&"set_day_hour", [hour])
+	UiDriver.at_hour(world, hour)
 
 
 func _boot_world() -> bool:

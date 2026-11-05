@@ -1,5 +1,6 @@
 ## Real input for the visual captures: mouse moves, clicks, holds and drags over ground points or controls, Ctrl keys,
-## waiting until the render has caught up and saving the viewport. Events go through Input like a player's.
+## waiting until the render has caught up and saving the viewport. Events go through Input like a player's. Each step is
+## written to the log as it starts ("passo: ..."), so a capture that crashes or hangs shows the step it was on.
 class_name UiDriver
 extends RefCounted
 
@@ -64,6 +65,7 @@ func button(at: Vector2, pressed: bool) -> void:
 
 
 func click(p: Vector3) -> void:
+	step("clique em %s" % p)
 	await hover(p)
 	var at := rig.camera.unproject_position(ground(p.x, p.z))
 	await button(at, true)
@@ -74,6 +76,7 @@ func click(p: Vector3) -> void:
 ## the end of the frame (Godot 4.7 scene/gui/container.cpp: add_child_notify -> queue_sort -> call_deferred): a frame first,
 ## or the click lands where the control is not yet.
 func press(b: Control) -> void:
+	step("botão %s \"%s\"" % [b.name, b.get("text") if b.get("text") != null else ""])
 	await frames(1)
 	var at := b.get_global_rect().get_center()
 	await move(at)
@@ -82,6 +85,7 @@ func press(b: Control) -> void:
 
 
 func hold(p: Vector3, frames: int) -> void:
+	step("segura em %s" % p)
 	await hover(p)
 	var at := rig.camera.unproject_position(ground(p.x, p.z))
 	await button(at, true)
@@ -90,6 +94,7 @@ func hold(p: Vector3, frames: int) -> void:
 
 
 func drag(p0: Vector3, p1: Vector3) -> void:
+	step("arrasta de %s a %s" % [p0, p1])
 	await hover(p0)
 	await button(rig.camera.unproject_position(ground(p0.x, p0.z)), true)
 	await hover(p0.lerp(p1, 0.5))
@@ -99,6 +104,7 @@ func drag(p0: Vector3, p1: Vector3) -> void:
 
 
 func key(code: Key, ctrl: bool, shift: bool = false) -> void:
+	step("tecla %s%s%s" % ["Ctrl+" if ctrl else "", "Shift+" if shift else "", OS.get_keycode_string(code)])
 	for pressed in [true, false]:
 		var k := InputEventKey.new()
 		k.keycode = code
@@ -119,6 +125,7 @@ func modifier(code: Key, pressed: bool) -> void:
 
 
 func drawn() -> void:
+	step("espera o render")
 	var waited := 0
 	await frames(2)
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
@@ -131,6 +138,18 @@ func shot(name: String, settle: int = SETTLE_FRAMES) -> void:
 	var path := "%s/%s.png" % [out_dir, name]
 	tree.root.get_texture().get_image().save_png(path)
 	print("captura: ", path)
+
+
+## A shot's hour, the light and the city's clock together: in play the sky follows the clock (the top bar's hour), and what
+## runs by the hour (traffic, people, lit windows) reads the clock, not the light.
+static func at_hour(world: CityWorld, hour: float) -> void:
+	world.set_hour(hour)
+	CityStore.dispatch(&"set_day_hour", [hour])
+
+
+## The step that starts now, in the log.
+func step(what: String) -> void:
+	print("passo: ", what)
 
 
 func frames(n: int) -> void:

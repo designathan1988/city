@@ -22,7 +22,7 @@ const TRIES := 16
 ## `cap` is the capture scene (its _shot, world and camera).
 static func shots(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
-	cap.world.set_hour(HOUR)
+	UiDriver.at_hour(cap.world, HOUR)
 	var left: Dictionary = SHOTS.duplicate()
 	for key in SHOTS: # --only=pessoas,34_saindo: only those, a moment later
 		if cap.only.size() > 1 and not cap.only.has(SHOTS[key]):
@@ -52,7 +52,7 @@ static func shots(cap: Node) -> void:
 ## skin of people.gdshader reads them from the palette.
 static func clips(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
-	cap.world.set_hour(HOUR)
+	UiDriver.at_hour(cap.world, HOUR)
 	for t in TRIES:
 		CityStore.query(&"set_city_hour", [HOUR])
 		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, NEAR_M])
