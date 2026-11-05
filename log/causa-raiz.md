@@ -211,6 +211,24 @@ Backlog do CLAUDE.md "Pendências": recursos do porte, de outras linhas. `run_te
 
 Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28. Fotos diferentes do golden local por causa do novo nível médio de prédios da sessão de migração (golden refeito aqui); nada desta linha.
 
+## Ciclo 3: o resto da sombra
+- Passo 1. `camera_pan --casters-cycle` (A/B na mesma execução, a cada 12 quadros): vista `perto` tudo 13,90 ms, sem sombra 8,07, 2 cascatas 11,93; custo marginal: veículos 2,1, detalhes 0,87, cascas 0,68, fachadas 0,57.
+- Passo 2. [godot-proposals #6948](https://github.com/godotengine/godot-proposals/issues/6948), [PR #76291](https://github.com/godotengine/godot/pull/76291), [#4635](https://github.com/godotengine/godot-proposals/issues/4635), [issue #57549](https://github.com/godotengine/godot/issues/57549), [UE Virtual Shadow Maps](https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine), [Sparse VSM](https://ktstephano.github.io/rendering/stratusgfx/svsm), [Compositor](https://docs.godotengine.org/en/latest/tutorials/rendering/compositor.html), [RenderingDevice](https://docs.godotengine.org/en/stable/classes/class_renderingdevice.html).
+- Passo 3. Cache e atualização escalonada: PR #76291 nunca aceito, com rasgo e acne relatados e sem número de ganho; cascata anda com a câmera, o estático teria de ser refeito. RenderingDevice não alcança o atlas do motor: a luz de cada shader teria de ser refeita. Virtual Shadow Maps é reescrever o renderizador. Decisão: sem fork; "o desafio é reduzir o que renderizamos" (Olij). Veículos: frota numa caixa, as 4 cascatas desenham tudo.
+- Passo 4. Sombra dos carros longe: uma malha sem rodas, escalada por instância, em setores com caixa própria.
+
+### Ciclo 3, passo 5: código (2026-11-05, sem testar)
+- `native/src/render/agents/fleet_shadow.{h,cpp}` (novo, dono único): a frota além de `far_radius_m` lança sombra por uma malha só, o casco do sedã sem rodas (`AGENT_HULL_LEVEL`), encaixado na caixa de cada modelo (largura e comprimento pela caixa, altura pelo teto, para o teto não sair do carro), em setores de `far_shadow.sector_m`, cada um com caixa própria. O nível distante deixa de lançar a própria malha.
+- `agent_meshes.h`, `agent_renderer.{h,cpp}`, `car_body.cpp`, `project/data/render/agents.json` (`far_shadow`, quarta entrada de `car_body`), `CLAUDE.md` (mapa).
+- Ordem do usuário (2026-11-05): o conversor e o porte não são usados até a sessão dona dizer que estão resolvidos pela causa; a cobrança foi mandada a ela.
+
+### Ciclo 3, passos 6 e 7: medida e avaliação (2026-11-05, 20:10)
+- `quick.sh --all`: 30/30, digest igual, gates OK. Duas fotos congeladas deram diferente (0,67 e 0,19 de média), todas em chão de lote, com 0 veículos em cena: a referência era de 18:54 e o commit dos gramados (`2ddf397b`) é de 18:58. Controle com a DLL e o `agents.json` de HEAD: 4 de 4 fotos iguais às minhas. A referência foi renovada (`--bless`).
+- GPU intercalada, `perto`: tudo 13,90 → 11,98 ms; marginal dos veículos 2,1 → 0,34; `circular`: tudo 12,50 → 11,46; marginal 0,90 → dentro do ruído.
+- Fotos: a mesma frota parada nos dois lados de `far_radius_m` (zoom 5 e 6, em 4 ângulos e 4 lugares): sombra no mesmo lugar e do mesmo tamanho, sem casco saindo do carro. A foto mostrou as vans arredondadas de longe: o limite de 4 estações existia porque a malha distante lançava sombra. Sem isso, `car_body` passou a 8 estações, 2 passos de arco e 1 de ponta nesse nível, e as vans voltaram a ter cantos.
+- Com essa forma: `perto` tudo 12,58, marginal 0,74; `circular` tudo 11,82, marginal dentro do ruído. A rodada inteira subiu 0,5 ms também sem sombra (9,00 contra 8,50): carga da máquina, não do veículo. Custo da forma: até 0,4 ms em `perto`, porque o nível de corpo lança a malha distante.
+- Passou. Combinado com a sessão de migração: o lançador de details e shells em `building_renderer*` é meu, depois do push dela; `facade_*`, `lot_*`, `far_mass` e `bay_kit` são dela; a prova é foto antes e depois em `perto` (varanda, cerca, janela) e tempo intercalado.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.

@@ -87,8 +87,12 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	if (!errors.is_empty()) return false;
 	const Array wheel_sides = body["wheel_sides"];
 	for (const char *key : { "wheel_sides", "stations", "arch_steps", "end_steps", "end_roll_steps" }) // one entry per level (agent_meshes.h)
-		if (Array(body[key]).size() != LEVELS) errors.push_back(String("agents.json: car_body.") + key + " precisa de um valor por nível");
+		if (Array(body[key]).size() != LEVELS + 1) errors.push_back(String("agents.json: car_body.") + key + " precisa de um valor por nível e um para a sombra da frota");
 	if (!errors.is_empty()) return false;
+	const Dictionary far_shadow = t["far_shadow"];
+	MeshBuilder hull;
+	build_car(hull, cars[0], body, inside, nullptr, trim, AGENT_HULL_LEVEL);
+	fleet_shadow_.init(scenario_, shadow_, hull, far_shadow["sector_m"], far_shadow["inset"], AGENT_MODELS);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < LEVELS; level++) {
@@ -103,6 +107,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 			else if (i == int(VehicleType::BUS)) seats = build_bus(mb, d = t["bus"], sides, l, trim);
 			else seats = build_truck(mb, d = t["truck"], sides, l, trim);
 			wheel_r_[i] = agent_tyre(d["tyre"]).x; // the motorbike's: its rear wheel
+			if (level == FAR_LEVEL) fleet_shadow_.set_model(i, mb);
 			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
 			if (level == CABIN_LEVEL) load_[i].seats = seats;
 			// near, the glass is see-through over the cabin; far, it stays in the body, opaque
@@ -236,6 +241,7 @@ Dictionary AgentRenderer::cost() const {
 }
 
 void AgentRenderer::reset() {
+	fleet_shadow_.free();
 	for (auto &levels : shadow_draws_)
 		for (MultiMeshDraw &m : levels) m.free();
 	for (auto &levels : draws_)
@@ -284,6 +290,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		const float d2 = flat2 + dy * dy;
 		if (cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
 		const int level = level_at(d2);
+		if (level == FAR_LEVEL) fleet_shadow_.add(model_of(type, paint), p);
 		push_agent(bufs[model_of(type, paint)][level], p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, order, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
@@ -294,6 +301,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 		const float d2 = flat2 + dy * dy;
 		if (cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
 		const int level = level_at(d2);
+		if (level == FAR_LEVEL) fleet_shadow_.add(model_of(type, paint), rec.at);
 		push_agent(bufs[model_of(type, paint)][level], rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
@@ -309,13 +317,13 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseSam
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < LEVELS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			const bool last = level == LEVELS - 1;
-			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, last, LAYER_VEHICLES);
+			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, false, LAYER_VEHICLES);
 			shown_[i][level] = d.count;
-			if (last) continue;
+			if (level == FAR_LEVEL) continue;
 			shadow_draws_[i][level].shadow_only = true;
 			shadow_draws_[i][level].set(scenario_, meshes_[i][level + 1].rid, shadow_, bufs[i][level], box, true, LAYER_VEHICLES);
 		}
+	fleet_shadow_.draw();
 }
 
 int AgentRenderer::cabins_drawn() const {

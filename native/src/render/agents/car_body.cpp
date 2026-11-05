@@ -216,7 +216,8 @@ int build_car(MeshBuilder &mb, const Dictionary &car, const Dictionary &body, co
 	loft(mb, lf, xs, trim);
 	car_cap(mb, s, xs.back(), 1.f, trim);
 	car_cap(mb, s, xs.front(), -1.f, trim);
-	if (level != AGENT_FAR_LEVEL) car_details(mb, s, body, lf.fine, trim); // far, none of them is a pixel
+	if (level < AGENT_FAR_LEVEL) car_details(mb, s, body, lf.fine, trim); // far, none of them is a pixel
+	if (level == AGENT_HULL_LEVEL) return passengers;
 	const int sides = int(Array(body["wheel_sides"])[level]);
 	for (int k = 0; k < 2; k++)
 		for (int side : { -1, 1 }) {

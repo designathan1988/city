@@ -136,7 +136,7 @@ func _limit_tests() -> void:
 	lo = CameraProfile.min_tilt(cfg, rig.half)
 	_check(rig.pitch < 0.0 and absf(rig.pitch - lo) < EPS, "na rua olha para cima até %.1f graus" % rad_to_deg(rig.pitch))
 	var under: Variant = CityStore.query(&"raycast", [rig.camera.global_position + Vector3.UP * cfg.ray_top, Vector3.DOWN]).get("position")
-	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "olho acima do chão")
+	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "olho acima do chão (olho %.3f, chão %s)" % [rig.camera.global_position.y, under])
 	for i in 120:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
 	await get_tree().create_timer(SETTLE_S).timeout
