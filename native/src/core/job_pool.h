@@ -45,6 +45,7 @@ public:
 	void parallel_for(size_t n, const std::function<void(size_t)> &fn); // blocks until done
 	void wait_idle(); // blocks until the queue is empty and no worker is running
 	uint64_t replaced() const { return replaced_.load(); } // queued jobs a newer one of their key took the place of
+	size_t tracked(); // keys with a job still queued: none once the pool is idle (a key is forgotten when its newest job is taken)
 
 private:
 	struct Item {
@@ -67,7 +68,7 @@ private:
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
 	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;
-	std::unordered_map<JobKey, uint64_t, JobKeyHash> latest_;
+	std::unordered_map<JobKey, uint64_t, JobKeyHash> latest_; // the newest queued job of each key (only while one is queued)
 	std::atomic<uint64_t> replaced_{ 0 };
 	uint64_t seq_ = 0;
 	bool stop_ = false;

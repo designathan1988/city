@@ -10,6 +10,6 @@ func _ready() -> void:
 		return
 	var seen: Dictionary = CityStore.query(&"job_pool_probe")
 	print("fila: ", seen)
-	var good: bool = seen.older == 0 and seen.newer == 1 and seen.other_lane == 1 and seen.replaced == 1
+	var good: bool = seen.older == 0 and seen.newer == 1 and seen.other_lane == 1 and seen.replaced == 1 and seen.keys_left == 0
 	print("FALHAS: ", 0 if good else 1)
 	get_tree().quit(0 if good else 1)

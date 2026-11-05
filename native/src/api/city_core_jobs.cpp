@@ -28,6 +28,8 @@ Dictionary CityCore::job_pool_probe() const {
 	d["newer"] = newer.load();
 	d["other_lane"] = other_lane.load();
 	d["replaced"] = int64_t(pool.replaced());
+	d["keys_left"] = int64_t(pool.tracked()); // the pool forgets a key once its job ran: its bookkeeping does not grow with the map
+	d["game_keys"] = int64_t(state_->jobs->tracked()); // the same of the game's pool now: the keys with a job queued
 	return d;
 }
 
