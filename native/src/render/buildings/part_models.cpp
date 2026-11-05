@@ -19,7 +19,7 @@ constexpr float LOUVRE_T = 0.09f, SLAT_FILL = 0.67f, SLAT_SHADE = 0.85f;
 constexpr int SLATS = 9;
 constexpr int BRISE_FINS = 6;
 constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
-constexpr float HALF = 0.5f, FACE_OUT = 0.005f;
+constexpr float HALF = 0.5f;
 constexpr uint32_t BRASS = 0xb08d57, LAMP_WARM = 0xffefcf;
 
 Basis centred(const Part &p) { return Basis{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 }; }

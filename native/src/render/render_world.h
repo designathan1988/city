@@ -47,7 +47,11 @@ public:
 
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset(); // frees every instance (new city / load)
-	void shutdown() { wear_.free(); } // the core is going: what lives as long as the render does
+	// The core is going: what lives as long as the render does (the wear field, the effects' layers and flash light, made by init)
+	void shutdown() {
+		wear_.free();
+		effects_.release();
+	}
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.

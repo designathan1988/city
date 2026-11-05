@@ -28,7 +28,7 @@ void lump(MeshBuilder &mb, const Dictionary &k, uint32_t seed, Rng &r) {
 	Shade sh{ Tones{ hexc(k["dark"]), hexc(k["lit"]) }, float(k["jitter"]), float(k["shade_bottom"]), 1.f, 1.f, BloomSpec{} };
 	MeshBuilder none;
 	CrownSpec c{ Vector3(0, HALF_F, 0), Vector3(HALF_F, HALF_F, HALF_F), float(k["rough"]), seed, int(k["subdiv"]), 0, 0, 0 };
-	tree_crown(mb, none, c, sh, r);
+	static_cast<void>(tree_crown(mb, none, c, sh, r)); // its mean tone is for a tree's far card; ground pieces have none
 }
 
 // A column with `arms` bent arms part way up.
@@ -74,7 +74,7 @@ void flower(MeshBuilder &mb, const Dictionary &k, const Color &bloom, uint32_t s
 	Shade sh{ Tones{ shade, bloom }, 0.f, 1.f, 1.f, 1.f, BloomSpec{} };
 	MeshBuilder none;
 	CrownSpec c{ Vector3(0, 1.f - head, 0), Vector3(head, head, head), 0.f, seed, HEAD_SUBDIV, 0, 0, 0 };
-	tree_crown(mb, none, c, sh, r);
+	static_cast<void>(tree_crown(mb, none, c, sh, r)); // its mean tone is for a tree's far card; ground pieces have none
 }
 
 Ref<ArrayMesh> variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
