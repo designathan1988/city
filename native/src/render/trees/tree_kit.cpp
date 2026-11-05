@@ -18,6 +18,8 @@ namespace city {
 
 namespace {
 constexpr float HALF_F = 0.5f;
+// A species on a trunk this short is a bush: its flowers are a scatter over its sunlit side, not its whole top (the 4.0, lowPolyTrees.ts bush).
+constexpr float BUSH_TRUNK_TOP = 0.2f, BUSH_BLOOM_SCATTER = 0.3f;
 
 Vector3 vec3(const Variant &v) {
 	Array a = v;
@@ -95,7 +97,8 @@ TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, P
 		float(d["heart_shrink"]), BloomSpec{} };
 	if (d.has("bloom")) {
 		Dictionary b = d["bloom"];
-		sh.bloom = BloomSpec{ true, Tones{ hexc(b["dark"]), hexc(b["lit"]) }, float(b["above"]) };
+		const bool bush = float(Dictionary(d["trunk"])["top"]) < BUSH_TRUNK_TOP;
+		sh.bloom = BloomSpec{ true, Tones{ hexc(b["dark"]), hexc(b["lit"]) }, float(b["above"]), bush ? BUSH_BLOOM_SCATTER : 1.f };
 	}
 	MeshBuilder body, cards;
 	Dictionary t = d["trunk"];

@@ -11,11 +11,8 @@ namespace city::b40 {
 namespace {
 constexpr float LINE_LIFT = 0.09f; // over the ground covers (lot_space.cpp lays them up to 0.10 m)
 constexpr float BUMPER = 0.3f, BUMPER_T = 0.15f, BUMPER_LO = 0.9f, BUMPER_HI = 1.3f, BUMPER_IN = 0.4f;
-// A shrub: an eight-sided mass, narrower at its foot and its crown than at its waist, flat shaded like the trees.
-constexpr int BUSH_SIDES = 8;
-constexpr float BUSH_FOOT = 0.75f, BUSH_WAIST_Z = 0.45f, BUSH_CROWN = 0.55f, BUSH_TOP = 1.05f, SHADE_SPAN = 0.2f, SHADE_LO = 0.9f;
-constexpr float TAU = 6.2831853f;
-constexpr float SOIL_H = 0.12f, BLOOM = 0.28f, BLOOM_H = 0.14f, BLOOM_EVERY = 0.4f, BLOOM_IN = 0.2f;
+constexpr float SHADE_SPAN = 0.2f;
+constexpr float BED_KERB_H = 0.16f, BED_KERB_W = 0.12f, BED_SOIL_H = 0.2f; // the 4.0's (buildingMesh.ts emitFlowers)
 constexpr float WATER_LIFT = 0.02f, COPING_W = 0.3f, COPING_OVER = 0.07f; // water over the covers, coping over the water
 constexpr float LOUNGER_SEAT = 0.3f, LOUNGER_T = 0.07f, LOUNGER_HEAD = 0.5f, LOUNGER_BACK = 0.65f;
 constexpr float TABLE_TOP = 0.05f, LEG = 0.1f, SWING_POST = 0.08f, SWING_SEAT_Z = 0.45f, SWING_SEAT = 0.5f, SWING_SEAT_D = 0.25f;
@@ -25,13 +22,6 @@ constexpr float LINE_POST = 0.06f, WIRE = 0.02f, WIRE_DOWN = 0.1f, CLOTH = 0.6f,
 constexpr float PALLET_T = 0.14f, CAGE_POST = 0.06f, CAGE_RAIL = 0.05f, CAGE_BAR = 0.02f, CAGE_BAR_EVERY = 0.15f;
 constexpr float CYLINDER = 0.32f, CYLINDER_H = 0.9f, CYLINDER_EVERY = 0.5f, HALF = 0.5f;
 constexpr uint32_t BLUE_GAS = 0x3a6fb0, BUMPER_BLACK = 0x1c1d1f, DOOR_DARK = 0x4a3a2c;
-constexpr uint32_t HASH_X = 0x9e3779b1u, HASH_Y = 0x85ebca6bu, HASH_BITS = 0xffff;
-constexpr float HASH_Q = 100.f; // centimetres: a shrub's tint follows its place
-
-float jitter(const LotElement &e) {
-	uint32_t h = uint32_t(int32_t(e.x * HASH_Q)) * HASH_X ^ uint32_t(int32_t(e.y * HASH_Q)) * HASH_Y;
-	return SHADE_LO + SHADE_SPAN * float(h & HASH_BITS) / float(HASH_BITS);
-}
 
 struct PropEmit {
 	Shell &shell, &parts;
@@ -66,30 +56,10 @@ struct PropEmit {
 		for (float x : { x0() + BUMPER_IN, x1() - BUMPER_IN - BUMPER })
 			parts.box(pl.lot, x, x + BUMPER, y0(), y0() + BUMPER_T, g + BUMPER_LO, g + BUMPER_HI, lin_of(BUMPER_BLACK), FIN_NONE);
 	}
-	void shrub() const {
-		const Lin l = lin * jitter(e);
-		const float rings[3][2] = { { BUSH_FOOT, 0 }, { 1, BUSH_WAIST_Z }, { BUSH_CROWN, 1 } }; // radius share, height share
-		auto at = [&](int ring, int k) {
-			float a = TAU * float(k) / float(BUSH_SIDES);
-			return pl.lot.at(e.x + std::cos(a) * e.w * HALF * rings[ring][0], e.y + std::sin(a) * e.d * HALF * rings[ring][0], g + e.h * rings[ring][1]);
-		};
-		const godot::Vector3 top = pl.lot.at(e.x, e.y, g + e.h * BUSH_TOP), mid = pl.lot.at(e.x, e.y, g + e.h * BUSH_WAIST_Z);
-		for (int k = 0; k < BUSH_SIDES; k++) {
-			int n = (k + 1) % BUSH_SIDES;
-			for (int ring = 0; ring < 2; ring++) {
-				godot::Vector3 out = (at(ring, k) + at(ring + 1, n)) * HALF - mid;
-				shell.quad(at(ring, k), at(ring, n), at(ring + 1, n), at(ring + 1, k), out, l, FIN_NONE);
-			}
-			shell.tri(at(2, k), at(2, n), top, (at(2, k) + at(2, n) + top) / 3 - mid, l * (1 + SHADE_SPAN * HALF), FIN_NONE);
-		}
-	}
+	// The bed's kerb and its soil; the flowers are the gardens' plants (render/trees/garden_place.h).
 	void flowers() const {
-		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + SOIL_H, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
-		const Lin bloom[3] = { lin, named("flowers_alt"), named("hedge") };
-		int k = 0;
-		for (float y = y0() + BLOOM_IN; y + BLOOM <= y1() - BLOOM_IN + CAGE_BAR; y += BLOOM_EVERY)
-			for (float x = x0() + BLOOM_IN; x + BLOOM <= x1() - BLOOM_IN + CAGE_BAR; x += BLOOM_EVERY, k++)
-				parts.box(pl.lot, x, x + BLOOM, y, y + BLOOM, g + SOIL_H, g + SOIL_H + BLOOM_H, bloom[k % 3], FIN_NONE);
+		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + BED_KERB_H, named("planter"), FIN_NONE, SKIP_E2_NEG);
+		shell.box(pl.lot, x0() + BED_KERB_W, x1() - BED_KERB_W, y0() + BED_KERB_W, y1() - BED_KERB_W, g + BED_KERB_H, g + BED_SOIL_H, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
 	}
 	// The water just over the ground covers, the stone coping round it higher still: a pool read from above.
 	void pool() const {
@@ -161,8 +131,8 @@ bool emit_lot_prop(Shell &shell, Shell &parts, const Placed &pl, const LotElemen
 		case EL_STALL: p.stall(); return true;
 		case EL_DOCK: p.dock(); return true;
 		case EL_DRAIN: p.mark(p.x0(), p.x1(), p.y0(), p.y1(), lin); return true;
-		case EL_TREE: return true; // the trees' renderer draws it
-		case EL_SHRUB: p.shrub(); return true;
+		case EL_TREE: return true; // the gardens' plants (render/trees/garden_place.h)
+		case EL_SHRUB: return true; // the gardens' plants
 		case EL_FLOWERS: p.flowers(); return true;
 		case EL_POOL: p.pool(); return true;
 		case EL_LOUNGER: p.lounger(); return true;

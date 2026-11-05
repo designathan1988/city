@@ -42,6 +42,7 @@ struct BloomSpec {
 	bool on = false;
 	Tones tones;
 	float above = 0; // faces and cards higher than this (model units) take the bloom's tones
+	float scatter = 1; // the share of them that do: a tree's whole top, a bush's flowers among its leaves
 };
 
 // Palm fronds: each leaves the crown `lift` radians above level and bends over by `bend` along its length, in `steps` straight

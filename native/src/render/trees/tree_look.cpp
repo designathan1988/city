@@ -94,6 +94,12 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	park_h0 = at(p["park_height_m"], 0); park_h1 = at(p["park_height_m"], 1); street_height_m = p["street_height_m"];
 	eco_gain = p["eco_gain"]; eco_mean = p["eco_mean"]; forest_gain = p["forest_gain"];
 	for (const Variant &name : Array(p["planted_models"])) planted_species.push_back(std::max(kit.find(String(name)), 0));
+	shrub_species = kit.find("shrub");
+	hedge_species = kit.find("hedge");
+	flowering_species = { kit.find("shrub_flowering"), kit.find("shrub_flowering_cream"), kit.find("shrub_flowering_red") };
+	bed_species = { kit.find("flower_bed"), kit.find("flower_bed_cream"), kit.find("flower_bed_red") };
+	if (shrub_species < 0 || hedge_species < 0 || *std::min_element(flowering_species.begin(), flowering_species.end()) < 0 || *std::min_element(bed_species.begin(), bed_species.end()) < 0)
+		errors.push_back("streets.json trees: faltam espécies do jardim (shrub, shrub_flowering*, hedge, flower_bed*)");
 	park.load(p["park_mix"], kit, "park_mix", errors);
 	street.load(p["street_mix"], kit, "street_mix", errors);
 	for (int b = 0; b < WOOD_BANDS; b++) {

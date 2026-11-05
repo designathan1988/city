@@ -18,19 +18,12 @@ constexpr float SHADE_BASE = 0.93f, SHADE_SPAN = 0.12f, SHADE_MOD = 1000.f;
 constexpr size_t CUT_CACHE_MAX = 1024;
 constexpr int CUT_LEVEL_SHIFT = 40, CUT_DIR_SHIFT = 52;
 constexpr uint32_t GOLDEN = 2654435761u;
-constexpr uint64_t EDITED_MIX = 0x9e3779b97f4a7c15ull;
-constexpr uint64_t SEED_BITS = 32, ZONE_BITS = 8, FLOOR_BITS = 16, SIZE_Q = 10;
-uint64_t key_of(const Building &r) {
-	uint64_t k = uint64_t(r.seed) << SEED_BITS;
-	k ^= uint64_t(r.zone) | (uint64_t(r.floors) << ZONE_BITS) | (uint64_t(r.fn) << (ZONE_BITS + FLOOR_BITS));
-	k ^= uint64_t(std::lround(r.w * SIZE_Q)) * GOLDEN ^ (uint64_t(std::lround(r.d * SIZE_Q)) << ZONE_BITS);
-	return k ^ uint64_t(r.body) * EDITED_MIX; // an edited body is its own, whatever its seed says
-}
+constexpr uint64_t CUT_MIX = 0x9e3779b97f4a7c15ull;
 
 } // namespace
 
 const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec) {
-	uint64_t k = key_of(rec);
+	uint64_t k = b40::body_key(rec);
 	auto it = cache_.find(k);
 	if (it != cache_.end()) return *it->second;
 	if (cache_.size() >= CACHE_MAX) clear();
@@ -40,10 +33,10 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 }
 
 const b40::Body &BuildingBodies::cut_body(const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut) {
-	uint64_t k = key_of(rec);
+	uint64_t k = b40::body_key(rec);
 	uint32_t turn;
 	std::memcpy(&turn, &rec.rot, sizeof turn);
-	k = (k ^ (uint64_t(cut.level) << CUT_LEVEL_SHIFT) ^ (uint64_t(cut.dir) << CUT_DIR_SHIFT) ^ uint64_t(turn)) * EDITED_MIX;
+	k = (k ^ (uint64_t(cut.level) << CUT_LEVEL_SHIFT) ^ (uint64_t(cut.dir) << CUT_DIR_SHIFT) ^ uint64_t(turn)) * CUT_MIX;
 	auto it = cuts_.find(k);
 	if (it != cuts_.end()) return *it->second;
 	if (cuts_.size() >= CUT_CACHE_MAX) cuts_.clear();
@@ -68,7 +61,7 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	pl.fn = rec.fn;
 	pl.rooms = nullptr; // a cut building shows its real inside, not a room behind its panes
 	if (!cut) {
-		std::unique_ptr<b40::PaneRooms> &rooms = rooms_[key_of(rec)];
+		std::unique_ptr<b40::PaneRooms> &rooms = rooms_[b40::body_key(rec)];
 		if (!rooms) rooms = std::make_unique<b40::PaneRooms>(data, b, b40::purpose_of(b, rec.fn, rec.seed));
 		pl.rooms = rooms.get();
 	}

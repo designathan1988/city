@@ -11,6 +11,7 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/trees/far_cards.h"
+#include "render/trees/garden_place.h"
 #include "render/trees/tree_place.h"
 
 #include <chrono>
@@ -28,6 +29,7 @@ public:
 	void mark_dirty(int64_t key);
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
 	int near_trees() const; // trees of the near level now
+	int near_plants() const; // of them, the gardens' bushes and hedges
 	void sync(const CityState &s, const godot::Vector3 &cam, BuildBudget &budget);
 	void commit(const std::chrono::steady_clock::time_point &until);
 	int pending() const;
@@ -35,7 +37,7 @@ public:
 private:
 	struct Near {
 		std::vector<MultiMeshDraw> body, cards;
-		int trees = 0;
+		int trees = 0, plants = 0; // every instance, and those of the gardens' bushes and hedges
 	};
 	struct Built {
 		int64_t key = 0;
@@ -64,6 +66,7 @@ private:
 	const StreetLook *look_ = nullptr;
 	TreeLook trees_;
 	TreeKit kit_;
+	mutable GardenBook gardens_; // the workers' build_near and build_far fill it
 	std::unordered_map<int64_t, Near> near_;
 	std::unordered_map<int64_t, FarDraw> far_;
 	mutable std::mutex queue_mutex_;

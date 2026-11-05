@@ -76,11 +76,18 @@ void TreeRenderer::reset() {
 	near_.clear();
 	far_.clear();
 	pending_ = 0;
+	gardens_.clear();
 }
 
 int TreeRenderer::near_trees() const {
 	int n = 0;
 	for (const auto &[key, ch] : near_) n += ch.trees;
+	return n;
+}
+
+int TreeRenderer::near_plants() const {
+	int n = 0;
+	for (const auto &[key, ch] : near_) n += ch.plants;
 	return n;
 }
 
@@ -100,11 +107,11 @@ TreeRenderer::Built TreeRenderer::build_near(const CityState &s, int64_t key) co
 	Built out;
 	out.key = key;
 	std::vector<TreeInstance> trees;
-	place_trees(s, *look_, trees_, kit_, key, trees);
+	place_trees(s, *look_, trees_, kit_, gardens_, key, trees);
 	out.bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
-		float c = std::cos(t.yaw) * t.width, sn = std::sin(t.yaw) * t.width;
-		mm_push(out.bufs[size_t(t.species)], Vector3(c, 0, -sn), Vector3(t.lean_x, 1, t.lean_z) * t.height, Vector3(sn, 0, c), t.p, Color(1, 1, 1, 1),
+		const float c = std::cos(t.yaw), sn = std::sin(t.yaw), deep = t.depth > 0 ? t.depth : t.width;
+		mm_push(out.bufs[size_t(t.species)], Vector3(c, 0, -sn) * t.width, Vector3(t.lean_x, 1, t.lean_z) * t.height, Vector3(sn, 0, c) * deep, t.p, Color(1, 1, 1, 1),
 				t.tint.r, t.tint.g, t.tint.b, float(t.species));
 	}
 	return out;
@@ -116,7 +123,7 @@ TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) con
 	std::vector<FarCard> cards;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
-			place_far(s, *look_, trees_, kit_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
+			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
 	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, kit_.pictures().frame_share() * HALF);
 	return out;
 }
@@ -128,11 +135,16 @@ void TreeRenderer::commit_near(Built &b) {
 	ch.cards.resize(size_t(n));
 	ch.trees = 0;
 	for (const PackedFloat32Array &buf : b.bufs) ch.trees += int(buf.size() / MM_STRIDE);
+	ch.plants = int(b.bufs[size_t(trees_.shrub_species)].size() + b.bufs[size_t(trees_.hedge_species)].size()) / MM_STRIDE;
+	for (int species : trees_.flowering_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
+	for (int species : trees_.bed_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	AABB box = box_of(b.key, CHUNK);
 	float end = trees_.near_m + trees_.fade_m + CHUNK * DIAGONAL * HALF;
 	for (int i = 0; i < n; i++) {
 		const TreeSpecies &sp = kit_.species(i);
-		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
+		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
+		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
+		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, casts, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
 		if (sp.cards.is_null()) continue;
 		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);

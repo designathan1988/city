@@ -173,6 +173,7 @@ void LotEmit::element(const LotElement &e) {
 	float len = along_x ? e.w : e.d;
 	int pieces = std::max(1, int(std::ceil(len / PIECE)));
 	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE) return;
+	if (!pl.coarse && e.kind == EL_HEDGE) return; // near, a hedge is the gardens' plants (render/trees/garden_place.h)
 	switch (e.kind) {
 		case EL_SURFACE: surface(e); break;
 		case EL_WALL: case EL_FENCE: case EL_RAILING: case EL_HEDGE:

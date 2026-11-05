@@ -21,6 +21,8 @@ LotFrame lot_frame(const Building &rec);
 
 // The record's body: the version the player edited, or a civic building, an open lot or a grown building made from its seed.
 void record_body(const Data &data, const Building &rec, Body &b);
+// What names that body: two records with the same key have the same body, wherever they stand.
+uint64_t body_key(const Building &rec);
 
 // The ground under a body's ground blocks, from `height(x, z)` in the world: its highest and lowest points (corners and a 1.5 m
 // grid), and the floor those give, the highest + the plinth. The render draws on it and a click on a wall is measured from it.

@@ -199,6 +199,19 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
   - Push no `origin/main` (`317ce792..3c62f1b4`), que leva também os commits das outras sessões que estavam só no `main` local: `fde48c56` (abertura da cidade), `cdae744a` (registro da causa-raiz) e `ee41449b` (registro do conversor).
   - Sessão encerrada.
 
+- 16:20 Nova sessão (`continue os trabalhos`, meta `/goal` reativada). Trabalhando direto na pasta do `main`; o worktree `elevacao` serve de base de comparação do estado anterior.
+- 16:25 `tools/converter` no jogo sincronizado com o master `9499eac`. Passada por área refeita sobre a referência nova: mesmos totais da rodada anterior (por exemplo render 755 de 8.510, world 562 de 8.697), peopleLab ainda cai no `convert`. O tradutor deixa a maioria aberta (`method`), então o porte segue pelos donos, com o livro-razão como guia.
+- 16:28 Norma CELESC E-313.0002 baixada e lida nas figuras: Figura 16 (B1 55/70/60 cm, N1 95/35/60 cm) e Figura 43 (15 cm do topo à cruzeta, 50 cm à mão-francesa) confirmam as medidas do poste.
+- 16:30 Foto do poste no 4.0 novo (servidor vite em 5300, `scripts/look.mjs`, `press` em "Começar a construir"): a forma confere com a nossa (cruzeta sobre a rua, 3 isoladores, carretéis, luminária abaixo).
+- 16:33 Par aéreo no mesmo enquadramento (semente 7): as ruas são as mesmas; as diferenças eram os jardins dos lotes (nenhuma árvore de lote desenhada), arbustos em blocos, canteiros em caixas e a falta de variedade entre vizinhos.
+- 16:37–16:46 Jardins dos lotes portados (`render/trees/garden_place`):
+  - causa: `tree_place` só lia corpos editados; o mapa 0 tinha 2.646 árvores de lote nunca desenhadas;
+  - árvores, arbustos, sebes e canteiros viram plantas, com as medidas do `gardenPlace.ts`; as plantas de cada corpo ficam num cache por `b40::body_key` (o corpo custa <134 µs);
+  - espécies novas `hedge`, `shrub_flowering_cream/red`, `flower_bed*`; flor de arbusto é salpico de 30% do lado alto (regra do 4.0; o schema não aceita chave nova, então é constante nomeada em `tree_kit.cpp`);
+  - medido: as touceiras do 4.0 (24 modelos por canteiro) triplicaram a GPU, de 6,2 para 21 ms, quase tudo em sombra. Um modelo por trecho de canteiro, sem sombra: 6,8 ms na vista aérea e 9,1 na rua (base 6,2 e 8,2), 60 fps, zero engasgos;
+  - `render/buildings/civic.h` (repasse) removido; e2e confere `plants_near`.
+- 16:48 DLLs refeitas, gates dos mudados OK, suíte 25/25 sem instáveis.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
@@ -206,7 +219,7 @@ Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, 
    - levar ao jogo o que compila, área por área, conferindo com `differential --hand` contra o 4.0;
    - escrever as unidades abertas nos donos pelo método indicado;
    - o registro do conversor está em `log/conversor.md`.
-2. **Par de fotos de perto com o 4.0 novo:** poste urbano (rack S1) e rural, vão urbano-rural sem os secundários. A ferramenta está pronta: a aba Rua › Postes › Poste.
+2. **Variedade dos prédios:** o 4.0 faz 4 candidatos por lote e fica com o menos parecido com os vizinhos em 100 m (`zoning.ts unlikeness`, `procedural.ts bodySignature`); o jogo pega o primeiro.
 3. **Elevação:** editor (camada 3), render por estação (camada 4: tabuleiro, pilares, encontros, guarda-corpos, emboques; par `look-pair16` "viaduto") e consumidores (camada 5).
 4. **Laboratório F7, portão `verify`, cantos das junções** (`corners.ts`, raio 4,5) e a chave de tuning ausente que derruba o jogo.
 5. **Nomes ainda em português:** as chaves `sementes` do `features.json`, as mensagens dos testes e capturas.

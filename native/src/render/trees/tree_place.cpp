@@ -4,7 +4,8 @@
 #include "core/math.h"
 #include "core/random.h"
 #include "core/seeded.h"
-#include "render/buildings/civic.h"
+#include "sim/buildings/b40/civic.h"
+#include "render/trees/garden_place.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/building_store.h"
 
@@ -170,29 +171,13 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 	}
 }
 
-// The trees a body the player set down has: each where the body stands it, at the height it says.
-void body_trees(const CityState &s, const TreeLook &T, const Building &b, std::vector<TreeInstance> &out) {
-	b40::BodyRef body = s.buildings.designs.edited->get(b.body);
-	if (!body) return;
-	std::vector<b40::LotTree> trees;
-	b40::lot_trees(*body, b40::lot_frame(b), trees);
-	for (size_t k = 0; k < trees.size(); k++) {
-		const b40::LotTree &t = trees[k];
-		uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
-		Vector3 p(t.at.x, s.terrain.height_at(t.at.x, t.at.y), t.at.y);
-		out.push_back({ p, t.height, t.height * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary), TAU_F * h01(h, YAW), 0, 0, T.park.pick(h01(h, SPECIES)), tint_of(T, h01(h, TINT)) });
-	}
-}
-
-void parks(const CityState &s, const TreeLook &T, const ChunkGround &l, int64_t key, std::vector<TreeInstance> &out) {
+// The lots' plants: each lot's garden, and the grove of a park or a square that has not been edited.
+void parks(const CityState &s, const TreeLook &T, GardenBook &book, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[size_t(id)];
 		if (chunk_of(b.x, b.z) != key) continue;
-		if (b.body != 0) {
-			body_trees(s, T, b, out);
-			continue;
-		}
-		if (!b40::is_open_lot(b.fn)) continue;
+		place_garden(s, T, book, b, view, out);
+		if (b.body != 0 || !b40::is_open_lot(b.fn)) continue;
 		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
 		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
 		for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
@@ -235,21 +220,21 @@ void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<Tre
 }
 } // namespace
 
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<TreeInstance> &out) {
 	ChunkGround l = chunk_ground(s, key);
 	street(s, L, T, key, out);
-	parks(s, T, l, key, out);
+	parks(s, T, book, l, key, GardenView::NEAR, out);
 	planted(s, T, key, out);
 	wild(s, T, kit, l, key, out);
 }
 
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<FarCard> &out) {
 	ChunkGround l = chunk_ground(s, key);
 	std::vector<TreeInstance> trees;
 	street(s, L, T, key, trees);
-	parks(s, T, l, key, trees);
+	parks(s, T, book, l, key, GardenView::FAR, trees);
 	planted(s, T, key, trees);
 	wild(s, T, kit, l, key, trees);
 	for (const TreeInstance &t : trees) out.push_back(far_of(t));

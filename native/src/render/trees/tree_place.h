@@ -45,6 +45,7 @@ struct BandLook {
 };
 
 constexpr int WOOD_PATCHES = 3;
+constexpr int FLOWERING_KINDS = 3;
 
 struct TreeLook {
 	float near_m = 0, fade_m = 0, far_m = 0, grid_m = 1, jitter = 0, plate_m = 1;
@@ -58,6 +59,8 @@ struct TreeLook {
 	float park_m2_per_tree = 1, park_edge = 0, park_h0 = 0, park_h1 = 0, street_height_m = 1;
 	float eco_gain = 0, eco_mean = 0, forest_gain = 0; // how the ecosystem and painted forest raise the density
 	std::vector<int> planted_species; // the species of each model slot of a planted tree (sim/nature/planted_trees.h)
+	int shrub_species = 0, hedge_species = 0; // the gardens' plants that are no tree (garden_place.h)
+	std::array<int, FLOWERING_KINDS> flowering_species{}, bed_species{}; // a flowering bush and a flower bed, in each tone
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;
 	SpeciesMix park, street;
@@ -76,6 +79,7 @@ struct TreeInstance {
 	float height = 1, width = 1, yaw = 0, lean_x = 0, lean_z = 0;
 	int species = 0;
 	godot::Color tint;
+	float depth = 0; // across the model's x, when it differs from `width` (a hedge's clipped piece)
 };
 
 // One far card: a tree.
@@ -86,11 +90,13 @@ struct FarCard {
 	int species = 0;
 };
 
+class GardenBook; // the plants of the lots' bodies (garden_place.h)
+
 // The trees of 256 m chunk `key`, near models.
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<TreeInstance> &out);
 // The far cards of chunk `key`: the same trees, one card each.
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key,
+void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<FarCard> &out);
 
 } // namespace city

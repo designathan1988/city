@@ -125,7 +125,7 @@ Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, cons
 		float k = 1.f + vnoise(d.x * NOISE_FREQ + d.y, d.z * NOISE_FREQ - d.y, c.seed) * c.rough;
 		return Vector3(d.x * c.radius.x, d.y * c.radius.y, d.z * c.radius.z) * k;
 	};
-	auto tones_at = [&](float y) { return sh.bloom.on && y > sh.bloom.above ? sh.bloom.tones : sh.leaf; };
+	auto tones_at = [&](float y) { return sh.bloom.on && y > sh.bloom.above && (sh.bloom.scatter >= 1.f || r.f() < sh.bloom.scatter) ? sh.bloom.tones : sh.leaf; };
 	auto height01 = [&](float y) { return clampf((y + c.radius.y) / (2.f * c.radius.y), 0.f, 1.f); };
 	bool covered = c.cards > 0;
 	float shrink = covered ? sh.heart_shrink : 1.f, dim = covered ? sh.heart_shade : 1.f;
