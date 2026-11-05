@@ -1,0 +1,14 @@
+{
+ "contexto": "Por ordem do usuário ('RESOLVA ISSO DE UMA VEZ POR TODAS', e 'eu já ter dado o poder de autorização para você') a correção do portão já foi aplicada por script, porque a trava antiga não tinha saída: conferir em tools/process/commands.py, steps.py, process.py, test.py, ~/.claude/settings.json e ~/bin/portao. Este plano cobre o que resta: documentar a regra nova e a autorização, para então testar tudo no passo 5.",
+ "solucao": "Registrar no CLAUDE.md da raiz a autorização permanente do usuário, as formas de comando portao e portao-ver, e a regra nova: nenhuma recusa é beco sem saída, o passo 1 recomeça de qualquer fase, o portão muda como código na fase 4 com o juiz, e o hook de Stop devolve ao agente o turno só de texto e o pedido de aprovação. Registrar no diagnóstico as causas achadas no teste: proteção por lista de leitura negando juízes e sessões, repos_de sem o converter, ausência de saída da fase 4, juiz que não lia o pedido do usuário.",
+ "causa_tratada": "A causa das paradas era o beco sem saída do portão, já removido no código. A documentação precisa dizer a regra vigente, senão a próxima sessão lê a antiga, 'só o usuário altera', e volta a pedir aprovação, como a sessão do conversor fez ao ler aquela linha.",
+ "plano": [
+  {"arquivo": "C:/Projects/Roadcraft-windows/CLAUDE.md", "mudanca": "seção do portão com as regras novas e a autorização permanente"},
+  {"arquivo": "C:/Projects/Roadcraft-windows/records/claude-code-diagnosis.md", "mudanca": "causas achadas no teste ao vivo; item 0 da seção 3 resolvido"}
+ ],
+ "simbolos": [],
+ "alternativas": [
+  {"solucao": "Não atualizar a documentação, já que o programa impõe a regra", "por_que_nao": "A linha antiga do CLAUDE.md diz que só o usuário altera o portão. Sessões leem isso e param para pedir, mesmo com o programa liberando: seria deixar a causa da parada viva no texto."}
+ ],
+ "sources": ["https://code.claude.com/docs/en/hooks.md"]
+}

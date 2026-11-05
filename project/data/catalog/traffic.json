@@ -335,7 +335,7 @@
   "ped_despawn_window_share": 1.2
  },
  "styles": {
-  "_doc": "What changes with a city's regional style (regras-sessoes.md, section 10). drive_side: right only for now, the lanes are laid out for it, and a style that says left is refused at boot. signal_lenses and signal_plan: read by nothing yet.",
+  "_doc": "What changes with a city's regional style (session-rules.md, section 10). drive_side: right only for now, the lanes are laid out for it, and a style that says left is refused at boot. signal_lenses and signal_plan: read by nothing yet.",
   "roadcraft": {"_doc": "The 4.0's: right-hand traffic, three lenses, actuated.", "drive_side": "right", "signal_lenses": 3, "signal_plan": "actuated"},
   "brasil": {"_doc": "CTB art. 29, I: circulation on the right. CONTRAN MBST vol. V: three lenses, actuated plans (cap. 7).", "drive_side": "right", "signal_lenses": 3, "signal_plan": "actuated"},
   "eua": {"_doc": "To fill from the MUTCD (FHWA).", "drive_side": "right"},

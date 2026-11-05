@@ -5,7 +5,7 @@ that colour onto the face, up to nine vertices in ten on some bodies. The body's
 same variation, takes its place.
 
 The waist: the garments were cut apart, and in the bind pose the bottom's top edge lies a median 3 to 8 cm below the top's hem
-(analise-pessoas/hem_posed.py: no vertex of the bottom comes through the top, two at most in any frame). What shows there is the
+(people-analysis/hem_posed.py: no vertex of the bottom comes through the top, two at most in any frame). What shows there is the
 body's skin in patches, under a shirt. The trunk's skin below the middle of the top is painted as the top; the neckline above
 it stays skin.
 """

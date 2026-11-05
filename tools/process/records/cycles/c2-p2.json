@@ -1,0 +1,19 @@
+{
+ "sources": [
+  {
+   "url": "https://code.claude.com/docs/en/env-vars.md",
+   "citacao": "Maximum number of consecutive times a [Stop](https://code.claude.com/docs/en/hooks.md#stop) or [SubagentStop](https://code.claude.com/docs/en/hooks.md#subagentstop) hook may block the turn from ending before Claude Code overrides it",
+   "conclusao": "O teto que deixou meus turnos só de texto vencerem a meta é uma variável: o settings pode subi-lo, e um bloqueio próprio do portão pode segurar o turno enquanto não houver chamada de ferramenta."
+  },
+  {
+   "url": "https://code.claude.com/docs/en/hooks.md",
+   "citacao": "patterns that specify more than the command name run the hook anyway on `$()`, backticks, or `$VAR`",
+   "conclusao": "Um if com só o nome do comando não sofre isso: `Bash(rm *)` não roda em `echo $(date)`. Logo o registro de passo precisa de um comando próprio, de nome único, e o if passa a citar só esse nome."
+  },
+  {
+   "url": "https://code.claude.com/docs/en/hooks.md",
+   "citacao": "The count of consecutive continuations resets each time Claude calls a tool",
+   "conclusao": "Parar de responder só com texto é o que zera a contagem: bloquear o Stop enquanto não houver ferramenta chamada obriga a agir, e quem age não bate no teto."
+  }
+ ]
+}

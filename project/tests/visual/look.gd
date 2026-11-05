@@ -7,11 +7,16 @@
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
+## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
+## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
+## {"passes": true} (the GPU's passes), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
+## {"until": query, "args": [...], "equals": value, "timeout": ms}.
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
 
 const SETTLE_FRAMES := 4
 const MS_PER_S := 1000.0
+const UNTIL_TIMEOUT_MS := 60000.0
 
 var out_dir := "user://captures"
 var plan_path := ""
@@ -20,6 +25,8 @@ var rig: CityCamera
 var ui: UiDriver
 var failures := 0
 var shots := 0
+var measure: LookMeasure
+var recording := ""
 
 
 func _ready() -> void:
@@ -30,7 +37,7 @@ func _ready() -> void:
 			plan_path = arg.trim_prefix("--plan=")
 	var plan: Variant = JSON.parse_string(FileAccess.get_file_as_string(plan_path)) if plan_path != "" else null
 	if not plan is Dictionary:
-		push_error("plano ilegível: %s" % plan_path)
+		push_error("unreadable plan: %s" % plan_path)
 		get_tree().quit(2)
 		return
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -48,12 +55,14 @@ func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)))
 	CityStore.dispatch(&"set_speed", [0])
-	print("cidade aberta em %d ms" % (Time.get_ticks_msec() - t0))
+	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	add_child(RoadcraftHud.new())
+	measure = LookMeasure.new(get_viewport())
+	add_child(measure)
 	for step: Dictionary in plan.get("steps", []):
 		await _step(step)
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -73,21 +82,36 @@ func _step(step: Dictionary) -> void:
 		UiDriver.at_hour(world, float(step.hour))
 	elif step.has("dispatch"):
 		var r: Variant = CityStore.dispatch(StringName(step.dispatch), _args(step.get("args", [])))
-		print("comando %s: %s" % [step.dispatch, r])
+		print("command %s: %s" % [step.dispatch, r])
 		if r is Dictionary and r.has("ok") and not r.ok:
 			failures += 1
-			print("FAIL comando recusado: ", step.dispatch)
+			print("FAIL command refused: ", step.dispatch)
 	elif step.has("query"):
-		print("consulta %s %s: %s" % [step.query, step.get("args", []), CityStore.query(StringName(step.query), _args(step.get("args", [])))])
+		print("query %s %s: %s" % [step.query, step.get("args", []), CityStore.query(StringName(step.query), _args(step.get("args", [])))])
 	elif step.has("key"):
 		await ui.key(OS.find_keycode_from_string(step.key), false)
 	elif step.has("click"):
 		await ui.click(_point(step.click))
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
+	elif step.has("record"):
+		measure.record()
+		recording = str(step.record)
+	elif step.has("recordEnd"):
+		print("frames %s: %s" % [recording, measure.record_end()])
+	elif step.has("usage"):
+		print("usage: %s" % await measure.usage(self, float(step.usage) if step.usage is float else LookMeasure.USAGE_SECONDS))
+	elif step.has("info"):
+		print("info: %s" % measure.info())
+	elif step.has("passes"):
+		print("passes: %s" % measure.passes())
+	elif step.has("view"):
+		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(step.view)).to_upper())
+	elif step.has("until"):
+		await _until(step)
 	else:
 		failures += 1
-		print("FAIL passo desconhecido: ", step)
+		print("FAIL unknown step: ", step)
 
 
 ## A plan's arguments for a command: {"at": [x, z]} the ground's point there, {"profile": id} a road class's index,
@@ -106,12 +130,26 @@ func _args(raw: Array) -> Array:
 	return out
 
 
+## {"until": query, "args": [...], "equals": value, "timeout": ms}: frames until the game's own answer is the one asked
+## (a wait on a signal, never a guess at a time); past the timeout the step fails.
+func _until(step: Dictionary) -> void:
+	var t0 := Time.get_ticks_msec()
+	var limit := float(step.get("timeout", UNTIL_TIMEOUT_MS))
+	while CityStore.query(StringName(step.until), _args(step.get("args", []))) != step.get("equals", 0):
+		if Time.get_ticks_msec() - t0 > limit:
+			failures += 1
+			print("FAIL until %s: not %s after %d ms" % [step.until, step.get("equals", 0), limit])
+			return
+		await get_tree().process_frame
+	print("until %s: %d ms" % [step.until, Time.get_ticks_msec() - t0])
+
+
 func _profile(id: String) -> int:
 	for p: Dictionary in CityStore.query(&"road_profiles"):
 		if p.id == id:
 			return p.index
 	failures += 1
-	print("FAIL classe de via desconhecida: ", id)
+	print("FAIL unknown road class: ", id)
 	return -1
 
 

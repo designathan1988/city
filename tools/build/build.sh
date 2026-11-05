@@ -51,7 +51,7 @@ export_all() {
 }
 
 readme() {
-	cat > "$OUT/LEIA-ME.txt" <<'TXT'
+	cat > "$OUT/READ-ME.txt" <<'TXT'
 Roadcraft - city builder (Godot 4.7 + nucleo C++)
 Windows 10/11 64 bits: abra jogo/Roadcraft.exe
 Camera (como no Roadcraft): botao direito arrastado gira/inclina; botao do meio (ou Shift+direito) arrasta o mapa;
@@ -66,7 +66,7 @@ package() {
 	readme
 	local stage="$OUT/stage"
 	rm -rf "$stage" "$OUT/Roadcraft.zip" && mkdir -p "$stage/jogo" "$stage/fonte"
-	cp -r "$OUT/windows/." "$stage/jogo/" && cp "$OUT/LEIA-ME.txt" "$stage/"
+	cp -r "$OUT/windows/." "$stage/jogo/" && cp "$OUT/READ-ME.txt" "$stage/"
 	(cd "$ROOT" && git ls-files 2>/dev/null || find CLAUDE.md .claude native/src native/CMakeLists.txt native/toolchain-mingw.cmake \
 		project tools -type f ! -path "*/.godot/*" ! -path "*/__pycache__/*") | while read -r f; do
 		mkdir -p "$stage/fonte/$(dirname "$f")" && cp "$ROOT/$f" "$stage/fonte/$f"

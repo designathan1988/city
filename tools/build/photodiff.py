@@ -38,8 +38,8 @@ for a in sorted(after.glob("*.png")):
     rows.append((a.name, float(d.mean()), float(share), box))
 for name, mean, share, box in sorted(rows, key=lambda r: -(r[2] or 0) if isinstance(r[2], float) else 1):
     if mean is None:
-        print(f"{name:32s} sem par")
+        print(f"{name:32s} no pair")
     elif mean == "size":
-        print(f"{name:32s} tamanho diferente")
+        print(f"{name:32s} different size")
     else:
-        print(f"{name:32s} média {mean:6.2f}  mudou {share * 100:6.2f}%  caixa {box}")
+        print(f"{name:32s} mean {mean:6.2f}  changed {share * 100:6.2f}%  box {box}")

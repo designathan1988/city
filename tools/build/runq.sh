@@ -31,7 +31,7 @@ kill_job() { # <log>
 watch_job() { # <name> <log> <cmd...>
 	local name="$1" log="$2"; shift 2
 	: > "$log"
-	say "INICIO $name"
+	say "START $name"
 	"$@" &
 	local pid=$! size=-1 still=0 seen=0
 	while kill -0 "$pid" 2> /dev/null; do
@@ -46,14 +46,14 @@ watch_job() { # <name> <log> <cmd...>
 			# a scene whose script did not parse never quits: it is broken now, not after STALL_S of silence (the scripts
 			# job lists every parse error and quits by itself)
 			if [ "$name" != scripts ] && grep -qE "Failed to load script .*Parse error|SCRIPT ERROR: Parse Error" "$log" 2> /dev/null; then
-				say "QUEBROU $name (script não carregou: $(grep -m1 -oE 'Parse Error: .*' "$log" | cut -c1-160))"
+				say "BROKE $name (script did not load: $(grep -m1 -oE 'Parse Error: .*' "$log" | cut -c1-160))"
 				kill_job "$log"; kill "$pid" 2> /dev/null; wait "$pid" 2> /dev/null
 				return 4
 			fi
 		else
 			still=$((still + 2))
 			if [ "$still" -ge "$STALL_S" ]; then
-				say "TRAVOU $name (log parado há ${STALL_S}s; última linha: $(tail -n 1 "$log" | cut -c1-160))"
+				say "HUNG $name (log still for ${STALL_S}s; last line: $(tail -n 1 "$log" | cut -c1-160))"
 				kill_job "$log"; kill "$pid" 2> /dev/null; wait "$pid" 2> /dev/null
 				return 3
 			fi
@@ -67,9 +67,9 @@ watch_job() { # <name> <log> <cmd...>
 	fi
 	local err; err=$(grep -c "SCRIPT ERROR" "$log" 2> /dev/null || true)
 	if [ "$code" -eq 0 ] && [ "${err:-0}" -eq 0 ]; then say "OK $name"
-	elif [ "$code" -eq 1 ] || [ "${err:-0}" -gt 0 ]; then say "FALHOU $name (saída $code, $err SCRIPT ERROR)"
-	elif [ "$code" -eq 3221225477 ]; then say "QUEBROU $name (violação de acesso 0xC0000005; última linha: $(tail -n 1 "$log" | cut -c1-160))"
-	else say "QUEBROU $name (saída $code; última linha: $(tail -n 1 "$log" | cut -c1-160))"
+	elif [ "$code" -eq 1 ] || [ "${err:-0}" -gt 0 ]; then say "FAILED $name (exit $code, $err SCRIPT ERROR)"
+	elif [ "$code" -eq 3221225477 ]; then say "BROKE $name (access violation 0xC0000005; last line: $(tail -n 1 "$log" | cut -c1-160))"
+	else say "BROKE $name (exit $code; last line: $(tail -n 1 "$log" | cut -c1-160))"
 	fi
 	[ "$code" -ge 0 ] && [ "$code" -le 255 ] && return "$code"
 	return 255
@@ -94,7 +94,7 @@ build_one() { # <release|debug>
 run_builds() {
 	build_one release
 	build_one debug
-	say "avisos: $(cat "$EV"/build-*.txt | grep -cE 'warning:|error:')"
+	say "warnings: $(cat "$EV"/build-*.txt | grep -cE 'warning:|error:')"
 }
 
 cd "$WS" || exit 2
@@ -107,7 +107,7 @@ for job in "$@"; do
 		fast)
 			godot_job scripts --headless --path project -s "$(cygpath -m "$HERE/check_scripts.gd")" || exit 1
 			build_one debug || exit 1
-			say "avisos: $(grep -cE 'warning:|error:' "$EV/build-debug.txt")" ;;
+			say "warnings: $(grep -cE 'warning:|error:' "$EV/build-debug.txt")" ;;
 		gates+build)
 			run_gates &
 			gpid=$!
@@ -129,7 +129,7 @@ for job in "$@"; do
 		cmd:*)
 			IFS=':' read -r _ name command <<< "$job"
 			watch_job "$name" "$EV/$name.txt" bash -c "{ $command; } > \"$EV/$name.txt\" 2>&1" ;;
-		*) say "TAREFA DESCONHECIDA $job" ;;
+		*) say "UNKNOWN JOB $job" ;;
 	esac
 done
-say "FIM DA FILA"
+say "END OF QUEUE"

@@ -166,7 +166,7 @@
   ]
  },
  "styles": {
-  "_doc": "What changes with a city's regional style (regras-sessoes.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. signals: the same in both for now, nothing of the Roadcraft 4.0 was measured to tell them apart.",
+  "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. signals: the same in both for now, nothing of the Roadcraft 4.0 was measured to tell them apart.",
   "roadcraft": {
    "lamps": {"pole_lit_every": 1, "column_every_m": 30, "column_first_m": 6},
    "street_names": {"names": ["Brasil", "Sete de Setembro", "Quinze de Novembro", "Tiradentes", "Santos Dumont", "Getúlio Vargas", "Rui Barbosa", "Duque de Caxias", "Marechal Deodoro", "Princesa Isabel", "Dom Pedro II", "Castro Alves", "Machado de Assis", "José de Alencar", "Carlos Gomes", "Barão do Rio Branco", "Anita Garibaldi", "Benjamin Constant", "Floriano Peixoto", "das Flores", "dos Ipês", "das Palmeiras", "das Acácias", "dos Jacarandás", "das Mangueiras", "dos Pinheiros", "da Paz", "da Liberdade", "da Esperança", "da Independência", "da República", "XV de Agosto", "Primeiro de Maio", "São Paulo", "Minas Gerais", "Bahia", "Paraná", "Pernambuco", "Goiás", "Amazonas", "Ceará", "Santa Catarina", "Cecília Meireles", "Monteiro Lobato", "Oscar Niemeyer", "Tom Jobim", "Portinari", "Villa-Lobos", "Clarice Lispector", "do Comércio", "da Estação", "do Porto", "da Matriz", "do Rosário", "São João", "São José", "Santo Antônio"]},
