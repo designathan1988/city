@@ -33,6 +33,7 @@ var _terrain_material: Resource
 var marks: ChangeMarks # F8
 var water: CityWater
 var _mesh_size := 0
+var _terrain_target: Node3D # what the terrain's clipmap centres on (_follow_view)
 var sky_mode: String:
 	get:
 		return daylight.mode
@@ -184,7 +185,19 @@ func follow_clock(hour: float) -> void:
 func _process(_delta: float) -> void:
 	if daylight.mode == "cycle" and CityStore.ready_to_read():
 		daylight.follow_clock(CityStore.snapshot.hour)
-	daylight.follow_view(get_viewport().get_camera_3d())
+	var cam := get_viewport().get_camera_3d()
+	daylight.follow_view(cam)
+	_follow_view(cam)
+
+
+## The terrain's clipmap and LODs centre on the camera that draws the city, or on the world's origin while none does (a test of the
+## core). Terrain3D 1.1 falls back to the viewport's camera only while it has no target, and with neither it errs and stops its
+## physics process, the LODs frozen (src/terrain_3d.cpp _grab_camera); a target set here never leaves it without one.
+func _follow_view(cam: Camera3D) -> void:
+	var want: Node3D = cam if cam else self
+	if want != _terrain_target:
+		_terrain_target = want
+		terrain.clipmap_target = want
 
 
 ## The Optimisations tab: the terrain's nearest meshes divided (Terrain3D mesh_size: lod0 has 4 mesh_size + 2 quads a side).
@@ -215,6 +228,7 @@ func _build_terrain(palette: Dictionary) -> void:
 	terrain.free_editor_textures = false
 	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
 	terrain.render_layers = int(CityStore.constants.render_layers.terrain)
+	_follow_view(null) # a target before its first physics frame, even with no camera yet
 	add_child(terrain)
 	_mesh_size = terrain.get("mesh_size")
 	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene.
