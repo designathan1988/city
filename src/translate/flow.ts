@@ -17,7 +17,7 @@ import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { Patterns } from './patterns.ts';
 import type { TranslationSpec } from './spec.ts';
-import { dictionaryOf, lookupOf } from './types.ts';
+import { dictionaryOf, listOf, lookupOf } from './types.ts';
 import { integerLiteral } from './cpptype.ts';
 
 /** none < int < int64 < float. */
@@ -998,7 +998,7 @@ export class FlowGraph {
 
   isObject(type: TS.Type): boolean {
     const ts = this.#ts;
-    if (!(type.flags & ts.TypeFlags.Object) || this.#checker.isArrayType(type) || type.getCallSignatures().length > 0 || dictionaryOf(ts, this.#checker, type)) return false;
+    if (!(type.flags & ts.TypeFlags.Object) || this.#checker.isArrayType(type) || type.getCallSignatures().length > 0 || dictionaryOf(ts, this.#checker, type) || listOf(ts, this.#checker, type)) return false;
     const name = (type.aliasSymbol ?? type.getSymbol())?.name ?? '';
     return !this.#spec.types[name] && !this.#spec.classes[name] && !/^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Promise)$/.test(name) && !/Array$/.test(name);
   }
@@ -1068,7 +1068,7 @@ export class FlowGraph {
   #isContainer(t: TS.Type): boolean {
     const n = this.#checker.getNonNullableType(t);
     const name = n.getSymbol()?.name ?? '';
-    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name) || /Array$/.test(name) || dictionaryOf(this.#ts, this.#checker, n) !== null;
+    return this.#checker.isArrayType(n) || /^(Map|Set|ReadonlyMap|ReadonlySet|ReadonlyArray|ArrayLike|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name) || /Array$/.test(name) || dictionaryOf(this.#ts, this.#checker, n) !== null || listOf(this.#ts, this.#checker, n) !== null;
   }
 
   #isContainerSlot(s: Slot): boolean {
@@ -1080,7 +1080,7 @@ export class FlowGraph {
     const name = n.getSymbol()?.name ?? '';
     if (this.#checker.isArrayType(n) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[0] ?? null;
     if (/^(Map|ReadonlyMap)$/.test(name)) return this.#checker.getTypeArguments(n as TS.TypeReference)[1] ?? null;
-    const entry = dictionaryOf(this.#ts, this.#checker, n);
+    const entry = dictionaryOf(this.#ts, this.#checker, n) ?? listOf(this.#ts, this.#checker, n);
     if (entry) return entry;
     return null;
   }

@@ -112,10 +112,13 @@ export function moduleSpecs(ts: TypeScriptApi, sp: SourceProgram, sourceRoot: st
     }
     const names = roots.map((r) => r.id.slice(r.id.indexOf('#') + 1)).filter((n) => known.has(n));
     if (names.length === 0) continue;
-    const state = stateType(ts, sp.checker, file, functions);
+    // the state is what the module makes from nothing: a pure function of a value (expand(box): Aabb) edits no state, and
+    // written in place it would change what the caller keeps
+    const candidate = stateType(ts, sp.checker, file, functions);
+    const empty = candidate ? emptyMaker(ts, sp.checker, functions, candidate) : undefined;
+    const state = empty ? candidate : null;
     const target = state ? `${state.replace(/(Data|Doc|State)$/, '')}State` : '';
     const member = snake(target.replace(/State$/, ''));
-    const empty = state ? emptyMaker(ts, sp.checker, functions, state) : undefined;
     const relative = placed.owner.replace(/^native\/src\//, '');
     const summary = summaryOf(ts, file);
     out.push({

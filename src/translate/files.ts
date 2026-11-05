@@ -200,12 +200,13 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if ('error' in id) c.errors.push(id.error);
     else placed.set(m, id);
   }
-  const header = (m: string, kind: 'types' | 'api'): string => {
+  const header = (m: string, kind: 'types' | 'api' | 'enums'): string => {
     const id = placed.get(m)!;
-    return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'types' ? '_types' : ''}.h`;
+    return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'api' ? '' : `_${kind}`}.h`;
   };
   const depsOf = (types: readonly CppType[], self: string): string[] =>
-    [...new Set(types.flatMap(namesIn).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
+    // an enum alone asks only for its module's enums header
+    [...new Set(types.flatMap(namesIn).filter((n) => !c.types.enums.has(n)).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
 
   for (const [m, id] of placed) {
     const source = sourceFiles.get(m);
@@ -227,11 +228,20 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
+    // a module's enums have a header of their own: they hold nothing, so no cycle of two modules' types can hide one
+    const enumHeaders = [...new Set(typeRefs.flatMap(namesIn).filter((n) => c.types.enums.has(n)).map((n) => nameModule.get(n)!).filter((u) => placed.has(u)))].sort();
+    if (enums.length > 0) {
+      const list: string[] = [...top('enums'), '#pragma once', '', `namespace ${ns} {`, ''];
+      for (const e of enums) list.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
+      list.push(`} // namespace ${ns}`, '');
+      files.set(`${id.owner}/${id.stem}_enums.h`, list.join('\n'));
+      types.push(`#include "${header(m, 'enums')}"`);
+    }
+    for (const u of enumHeaders) if (u !== m && c.types.enums.size > 0 && [...c.types.enums.values()].some((e) => (e.module ?? stateModule) === u)) types.push(`#include "${header(u, 'enums')}"`);
     types.push(PROJECT_MARK);
     const constantUses = [...new Set(constants.flatMap((k) => [...(k.uses ?? [])]))].filter((u) => u !== m && placed.has(u));
     for (const d of [...new Set([...depsOf(typeRefs, m), ...constantUses])].sort()) types.push(`#include "${header(d, 'types')}"`);
     types.push('', STD_MARK, '', `namespace ${ns} {`, '');
-    for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
     // a constant whose type names a struct of this module comes after the structs (C++ declares before use); the
     // others before them, where a field's default may read them
     const ownStructs = new Set(structs.map((s) => s.name));
@@ -340,7 +350,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
   const owners = projectHeaderNames(c);
   for (const id of placed.values()) {
     const prefix = `${id.owner}/${id.stem}`;
-    const own = [`${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
+    const own = [`${prefix}_enums.h`, `${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
     const text = own.map((f) => files.get(f)!).join('\n');
     const std = stdHeadersIn(text);
     const words = new Set(text.match(/\b[A-Za-z_]\w*\b/g) ?? []);
