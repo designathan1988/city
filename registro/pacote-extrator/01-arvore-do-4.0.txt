@@ -1,0 +1,868 @@
+# Roadcraft 4.0 commit 22357c92: arquivos reais (linhas caminho), sem src/lab e src/peopleLab
+     475 src/actionsWiring.ts
+     124 src/bayPool.ts
+      24 src/bays.worker.ts
+    1232 src/buildingsWiring.ts
+      31 src/cityGen.worker.ts
+     280 src/conflictPool.ts
+     164 src/conflictTable.worker.ts
+      46 src/core/aabb.ts
+     101 src/core/arrayPack.ts
+      56 src/core/assert.ts
+     231 src/core/axisCut.ts
+     112 src/core/bezier.ts
+      72 src/core/changeLog.ts
+     188 src/core/clipper.ts
+      98 src/core/commands.ts
+     341 src/core/derivedCache.ts
+      78 src/core/digest.ts
+      63 src/core/dynamicResolution.ts
+     137 src/core/engine.ts
+      29 src/core/events.ts
+      64 src/core/fillet.ts
+     175 src/core/forkMap.ts
+     146 src/core/gameState.ts
+      32 src/core/gpuTier.ts
+     216 src/core/health.ts
+      64 src/core/heap.ts
+       6 src/core/hitch.ts
+      48 src/core/hypot.ts
+     132 src/core/idSlots.ts
+      18 src/core/identityMemo.ts
+      68 src/core/intersect.ts
+      85 src/core/keptList.ts
+       9 src/core/minMax.ts
+     147 src/core/offset.ts
+     166 src/core/perfBudget.ts
+      49 src/core/plain.ts
+      90 src/core/polygon.ts
+      58 src/core/polygonBands.ts
+     402 src/core/polyline.ts
+     284 src/core/profiler.ts
+      34 src/core/recentCache.ts
+      21 src/core/recordMap.ts
+     553 src/core/regionIndex.ts
+     104 src/core/rerootMap.ts
+     219 src/core/ring.ts
+     118 src/core/rng.ts
+      74 src/core/runPool.ts
+      69 src/core/sampleRing.ts
+      72 src/core/scalar.ts
+      24 src/core/simplifyLine.ts
+     138 src/core/statechart.ts
+      19 src/core/units.ts
+      46 src/core/vec2.ts
+      49 src/core/weakMachine.ts
+     118 src/core/weightedSlots.ts
+      46 src/desktopJobs.ts
+     151 src/desktopSaves.ts
+      19 src/desktopShown.ts
+     174 src/editor/barriers.ts
+      49 src/editor/blocks.ts
+      66 src/editor/blueprintLibrary.ts
+       2 src/editor/buildingFacade.ts
+      42 src/editor/buildingFloors.ts
+     271 src/editor/buildingPlans.ts
+     107 src/editor/buildingProfile.ts
+      43 src/editor/buildingRoofs.ts
+     225 src/editor/buildingSnap.ts
+    2726 src/editor/buildingTool.ts
+    1125 src/editor/buildings.ts
+     150 src/editor/bulldozer.ts
+     800 src/editor/chunkedSave.ts
+     104 src/editor/cityGenerator.ts
+      92 src/editor/cloudTool.ts
+    1008 src/editor/commit.ts
+      52 src/editor/cookedCities.ts
+     284 src/editor/editRules.ts
+      13 src/editor/editStream.ts
+     251 src/editor/fromReference.ts
+     148 src/editor/gameKeys.ts
+     353 src/editor/growthFeed.ts
+     290 src/editor/growthReplica.ts
+     192 src/editor/history.ts
+     874 src/editor/lotTool.ts
+      46 src/editor/mapExport.ts
+     120 src/editor/nodeMover.ts
+     662 src/editor/persistence.ts
+     198 src/editor/poleRoutes.ts
+     515 src/editor/poles.ts
+      84 src/editor/preparedCity.ts
+      68 src/editor/regionFrames.ts
+      72 src/editor/repair.ts
+      40 src/editor/roadParking.ts
+     108 src/editor/roadPath.ts
+     599 src/editor/roadTool.ts
+      93 src/editor/roadTop.ts
+      22 src/editor/roads/economy.ts
+      94 src/editor/roads/powerLine.ts
+      34 src/editor/roads/profile.ts
+      90 src/editor/roads/streetKit.ts
+      85 src/editor/roundabout.ts
+      23 src/editor/save.worker.ts
+     108 src/editor/saveBinary.ts
+     156 src/editor/saveStore.ts
+     113 src/editor/smallCityMap.ts
+     424 src/editor/snap.ts
+      44 src/editor/storeTurns.ts
+     105 src/editor/streetObjects.ts
+     154 src/editor/streetscapeTool.ts
+     265 src/editor/terrainBrush.ts
+      85 src/editor/toolMachine.ts
+     249 src/editor/transitTools.ts
+      92 src/editor/workerParts.ts
+     303 src/effectsWiring.ts
+     210 src/fieldReport.ts
+     125 src/frameLoop.ts
+       7 src/globals.d.ts
+     290 src/graphicsWiring.ts
+      17 src/growth.worker.ts
+      86 src/growthPool.ts
+      94 src/job.worker.ts
+     693 src/jobs/jobPool.ts
+      19 src/jobs/jobScope.ts
+      38 src/jobs/nodeJobHost.ts
+     191 src/jobs/processWorker.ts
+    4288 src/main.ts
+      43 src/networkBake.worker.ts
+      97 src/people/body/assets.ts
+      42 src/people/body/expressions.ts
+     114 src/people/body/macro.ts
+     411 src/people/body/morph.ts
+     205 src/people/body/proxy.ts
+     638 src/people/hair/procedural.ts
+      34 src/people/phenotype.ts
+     129 src/people/roster.ts
+     360 src/people/spec.ts
+     116 src/people/wardrobe.ts
+     165 src/people/wardrobeSelection.json
+     171 src/people/wardrobeSex.json
+    2596 src/render/agents.ts
+     124 src/render/bake/catalogue.ts
+     261 src/render/bake/detailRecipes.ts
+     382 src/render/bake/finishRecipes.ts
+     217 src/render/bake/roadRecipes.ts
+     308 src/render/bake/terrainRecipes.ts
+     201 src/render/bakePool.ts
+     257 src/render/barriers.ts
+     757 src/render/blast.ts
+     103 src/render/blobShadows.ts
+     102 src/render/buildingSwitches.ts
+    4196 src/render/buildings/buildingMesh.ts
+      20 src/render/buildings/cell.worker.ts
+     578 src/render/buildings/cellArrays.ts
+     396 src/render/buildings/cellPool.ts
+     209 src/render/buildings/cellRequests.ts
+     236 src/render/buildings/cellWork.ts
+     136 src/render/buildings/chunk.ts
+     450 src/render/buildings/facadeKit.ts
+     210 src/render/buildings/facadeLevel.ts
+     350 src/render/buildings/facadePropModels.ts
+     192 src/render/buildings/facadeProps.ts
+      43 src/render/buildings/fade.ts
+     293 src/render/buildings/farParts.ts
+     366 src/render/buildings/finishes.ts
+     170 src/render/buildings/flagLayer.ts
+     417 src/render/buildings/fracture.ts
+      19 src/render/buildings/fracture.worker.ts
+     142 src/render/buildings/frameBudget.ts
+     462 src/render/buildings/furnitureKit.ts
+     451 src/render/buildings/glassRoom.ts
+     406 src/render/buildings/gpuBatchedMesh.ts
+     729 src/render/buildings/kit.ts
+     421 src/render/buildings/landmarks.ts
+      62 src/render/buildings/lawnGround.ts
+    1242 src/render/buildings/layer.ts
+     111 src/render/buildings/layerApi.ts
+     313 src/render/buildings/layerCells.ts
+      30 src/render/buildings/levelKeys.ts
+      29 src/render/buildings/lightSlots.ts
+     107 src/render/buildings/louvreSlats.ts
+     226 src/render/buildings/massBase.ts
+    1081 src/render/buildings/massCells.ts
+     180 src/render/buildings/massLevels.ts
+     607 src/render/buildings/massing.ts
+     127 src/render/buildings/massingMaterial.ts
+     526 src/render/buildings/partCells.ts
+     209 src/render/buildings/partFiling.ts
+     110 src/render/buildings/partPose.ts
+      30 src/render/buildings/partWarm.ts
+     322 src/render/buildings/parts.ts
+     114 src/render/buildings/partyWalls.ts
+     246 src/render/buildings/referenceModel.ts
+      83 src/render/buildings/roofPlan.ts
+     182 src/render/buildings/roomBehind.ts
+      62 src/render/buildings/roomLamps.ts
+     288 src/render/buildings/shellBatch.ts
+     173 src/render/buildings/shellParts.ts
+    1803 src/render/buildings/signature.ts
+      98 src/render/buildings/thinParts.ts
+     178 src/render/buildings/townColumns.ts
+     130 src/render/buildings/townIndex.ts
+      83 src/render/candidateKeep.ts
+     378 src/render/canyonLight.ts
+    1018 src/render/carBody.ts
+     164 src/render/casualties.ts
+    1131 src/render/cellInstances.ts
+     106 src/render/cellKeeps.ts
+      63 src/render/changeBoxes.ts
+       8 src/render/citizenAssets.ts
+     531 src/render/citizenBake.ts
+     165 src/render/citizenBake.worker.ts
+     343 src/render/citizenCasting.ts
+     608 src/render/citizenGait.ts
+      55 src/render/citizenPalette.ts
+     154 src/render/citizenPlays.ts
+     113 src/render/citizenStride.ts
+     388 src/render/citizenWalk.ts
+      87 src/render/clearingCells.ts
+      54 src/render/cloudShadowStamp.ts
+      94 src/render/coverRaster.ts
+     251 src/render/coverSweep.ts
+     509 src/render/densityCars.ts
+      36 src/render/depthConvention.ts
+       2 src/render/derivedCache.ts
+      46 src/render/derivedWriter.worker.ts
+      50 src/render/derivedWriterLane.ts
+     409 src/render/destruction.ts
+      37 src/render/ecology.worker.ts
+      86 src/render/ecologyKept.ts
+     103 src/render/ecologyPool.ts
+      64 src/render/effectSwitches.ts
+     357 src/render/elements.ts
+     338 src/render/environment.ts
+     239 src/render/exhaust.ts
+     358 src/render/farForest.ts
+      65 src/render/farGround.ts
+     195 src/render/farWoods.ts
+     960 src/render/flatAtlas.ts
+      29 src/render/flatGround.worker.ts
+     103 src/render/flatGroundPool.ts
+     204 src/render/fogLayer.ts
+      57 src/render/frustumGround.ts
+     123 src/render/gardenLists.ts
+     274 src/render/gardens.ts
+     258 src/render/gore.ts
+       8 src/render/gpu/backendChoice.ts
+      89 src/render/gpu/compatibility.ts
+      80 src/render/gpu/imageCompare.ts
+     132 src/render/gpu/twins.ts
+     410 src/render/gpu/webgpuView.ts
+     132 src/render/gpuLedger.ts
+      96 src/render/gpuTimer.ts
+      97 src/render/grass.ts
+      79 src/render/groundChanges.ts
+     322 src/render/groundCover.ts
+     266 src/render/groundShape.ts
+      21 src/render/groundShape.worker.ts
+     131 src/render/groundShapePool.ts
+      35 src/render/groundShear.ts
+     314 src/render/impostorShaders.ts
+      96 src/render/inspector.ts
+      26 src/render/instanceBounds.ts
+      40 src/render/instanceCull.ts
+     220 src/render/instanceRuns.ts
+      70 src/render/interiorSolids.ts
+     177 src/render/inventory.ts
+     460 src/render/isoViewport.ts
+      62 src/render/ktxParse.d.ts
+     155 src/render/landStroke.ts
+      17 src/render/landStroke.worker.ts
+      25 src/render/landStrokePool.ts
+      61 src/render/lightLevels.ts
+     138 src/render/lightning.ts
+     446 src/render/lotLattice.ts
+     517 src/render/lotOverlay.ts
+     645 src/render/lowPolyTrees.ts
+      61 src/render/markings.ts
+     148 src/render/materials.ts
+     146 src/render/memoryCounters.ts
+      45 src/render/mesh/cylinder.ts
+     122 src/render/mesh/detailLayer.ts
+     198 src/render/mesh/farBlockBatches.ts
+      56 src/render/mesh/gpuOnly.ts
+     129 src/render/mesh/hiddenFaces.ts
+      52 src/render/mesh/roadEdges.ts
+      78 src/render/mesh/roadLod.ts
+      81 src/render/mesh/roadLodPure.ts
+     352 src/render/mesh/roadResidency.ts
+      28 src/render/mesh/simplify.ts
+      54 src/render/mesh/stream.ts
+      47 src/render/mesh/surfaceMesh.ts
+     241 src/render/mesh/surfaceTiles.ts
+     141 src/render/mesh/textureBaker.ts
+     317 src/render/mesh/tileMesh.ts
+     577 src/render/mesh/tileShape.ts
+      23 src/render/mesh/updateRanges.ts
+      80 src/render/mesh/weld.ts
+      14 src/render/meshoptSimplifier.d.ts
+       0 src/render/motion/rocketboxFemale.json
+       0 src/render/motion/rocketboxMale.json
+       0 src/render/motion/walkFemale.json
+       0 src/render/motion/walkMale.json
+      25 src/render/natureNoise.ts
+     331 src/render/natureTrees.ts
+     280 src/render/networkFarRoads.ts
+      18 src/render/networkFarRoads.worker.ts
+     187 src/render/networkFarRoadsBuild.ts
+     260 src/render/occlusion.ts
+     240 src/render/occupants.ts
+      30 src/render/optimizationTypes.ts
+     376 src/render/optimizations.ts
+     262 src/render/optimizationsApply.ts
+     114 src/render/optimizationsQuality.ts
+      20 src/render/pagePorts.ts
+     118 src/render/paintQuads.ts
+     122 src/render/partLevelsWork.ts
+      19 src/render/people/bodyPixels.ts
+     131 src/render/people/cartoon.ts
+      62 src/render/people/classRigMade.ts
+      52 src/render/people/cookPack.ts
+      63 src/render/people/cookedLoad.ts
+     266 src/render/people/cookedPerson.ts
+     362 src/render/people/crowdAnimation.ts
+     114 src/render/people/crowdBodies.ts
+     287 src/render/people/crowdLod.ts
+     139 src/render/people/faceExpression.ts
+      63 src/render/people/facialMorphs.ts
+     100 src/render/people/garmentPadding.ts
+      32 src/render/people/garmentPadding.worker.ts
+     123 src/render/people/garmentPaddingPool.ts
+      20 src/render/people/garmentSlots.ts
+     172 src/render/people/gpuRows.ts
+      66 src/render/people/hairTexture.ts
+     174 src/render/people/heldProps.ts
+      59 src/render/people/lodPool.ts
+      23 src/render/people/lodPort.ts
+     111 src/render/people/lodWorker.ts
+     103 src/render/people/paletteTargets.ts
+      53 src/render/people/personBuild.ts
+     306 src/render/people/personMesh.ts
+     896 src/render/people/personRig.ts
+      78 src/render/people/personVariants.ts
+     306 src/render/people/proceduralBake.ts
+      74 src/render/people/proceduralCook.ts
+    2531 src/render/people/proceduralCrowd.ts
+     692 src/render/people/skinAppearance.ts
+       9 src/render/pinned.ts
+     174 src/render/plantCells.ts
+     511 src/render/plantImpostors.ts
+      50 src/render/plateFollow.ts
+      98 src/render/plateMesh.ts
+      36 src/render/platePaint.ts
+      83 src/render/plateTexels.ts
+     576 src/render/playEffects.ts
+      87 src/render/poleBake.ts
+     238 src/render/poleCells.ts
+     750 src/render/poleLayer.ts
+    1242 src/render/postprocess.ts
+      63 src/render/profilerHooks.ts
+     618 src/render/propCells.ts
+     452 src/render/propGeometry.ts
+     343 src/render/quality.ts
+    1980 src/render/ragdoll.ts
+      60 src/render/ragdollAxes.ts
+      72 src/render/ragdollGround.ts
+     398 src/render/ragdollJolt.ts
+     173 src/render/rain.ts
+    4205 src/render/renderer.ts
+      41 src/render/revealGate.ts
+     586 src/render/riderPoses.ts
+    1299 src/render/riggedCitizens.ts
+      58 src/render/roadProgramStandIns.ts
+     134 src/render/roadStandIn.ts
+      83 src/render/roadStations.ts
+      27 src/render/roadStations.worker.ts
+     199 src/render/roadSurfaceEntries.ts
+     775 src/render/roadSurfaceInputs.ts
+     142 src/render/roadSurfacePass.ts
+     359 src/render/roadSurfaceReads.ts
+      77 src/render/roadSurfaceRings.ts
+     823 src/render/roadSurfaces.ts
+     110 src/render/roadTile.worker.ts
+     172 src/render/roadTileMesh.ts
+     207 src/render/roadTilePool.ts
+      83 src/render/roadTileShape.ts
+      19 src/render/roadTones.ts
+      12 src/render/roadsRead.ts
+      45 src/render/roomLamps.ts
+     376 src/render/scenery.ts
+      33 src/render/screenSize.ts
+     165 src/render/shaderCatalogue.ts
+      54 src/render/shadowCasters.ts
+     137 src/render/sharedGround.ts
+     440 src/render/signLayer.ts
+     730 src/render/signals.ts
+     465 src/render/signs.ts
+     116 src/render/stagedTexels.ts
+      41 src/render/stillTree.ts
+     470 src/render/streetFurnitureLayer.ts
+     115 src/render/structureCells.ts
+     715 src/render/structures.ts
+    1171 src/render/sunCascades.ts
+     121 src/render/surfaceBakeClient.ts
+     104 src/render/surfaceTextures.ts
+      51 src/render/targetBytes.ts
+    2854 src/render/terrain.ts
+      12 src/render/terrainGrid.ts
+     161 src/render/terrainLevels.ts
+      24 src/render/terrainLight.worker.ts
+      96 src/render/terrainLightCompute.ts
+      78 src/render/terrainLightPool.ts
+     324 src/render/terrainLod.ts
+      94 src/render/terrainShaping.ts
+      62 src/render/torusWindow.ts
+     568 src/render/transit.ts
+     664 src/render/uploads.ts
+     587 src/render/utilities.ts
+      75 src/render/vehicleFrame.ts
+      82 src/render/vehicleLevels.ts
+    1245 src/render/vehicleModels.ts
+     139 src/render/vehiclePanels.ts
+      53 src/render/vehicleWindows.ts
+     405 src/render/water.ts
+     187 src/render/wear.ts
+     209 src/render/wind.ts
+      78 src/render/woodsBase.ts
+      44 src/sim/agents/bay.ts
+     252 src/sim/agents/buildingOrder.ts
+     474 src/sim/agents/hybridAStar.ts
+     387 src/sim/agents/kerbBays.ts
+     192 src/sim/agents/laneGrid.ts
+     558 src/sim/agents/lorryDocks.ts
+     483 src/sim/agents/lorryTraffic.ts
+     519 src/sim/agents/lotBays.ts
+     126 src/sim/agents/lotDoors.ts
+     318 src/sim/agents/lotNav.ts
+     739 src/sim/agents/lotTraffic.ts
+     252 src/sim/agents/manoeuvre.ts
+     484 src/sim/agents/parking.ts
+     271 src/sim/agents/reedsShepp.ts
+     746 src/sim/agents/trafficBuildings.ts
+    2275 src/sim/agents/walk.ts
+     999 src/sim/ambient/ambient.ts
+     401 src/sim/ambient/ambientIndex.ts
+      62 src/sim/ambient/demand.ts
+     391 src/sim/ambient/lotPlaces.ts
+       2 src/sim/ambient/playerId.ts
+      41 src/sim/audit.ts
+      42 src/sim/city/city.ts
+      65 src/sim/clock.ts
+     171 src/sim/crossings/permission.ts
+      35 src/sim/crossings/state.ts
+      68 src/sim/drive/operational.ts
+      20 src/sim/drive/physicalMotion.ts
+     147 src/sim/drive/tactical.ts
+       2 src/sim/dt.ts
+     128 src/sim/host/fleetGrid.ts
+     188 src/sim/host/protocol.ts
+     102 src/sim/host/simAnswers.ts
+     796 src/sim/host/simClient.ts
+     465 src/sim/host/simHost.ts
+    1139 src/sim/intersections/admission.ts
+     208 src/sim/intersections/claims.ts
+     240 src/sim/intersections/crossingSpans.ts
+     260 src/sim/intersections/cycles.ts
+      93 src/sim/intersections/spillback.ts
+     361 src/sim/invariants.ts
+     117 src/sim/meso/demand.ts
+     170 src/sim/meso/memory.ts
+     798 src/sim/meso/meso.ts
+     630 src/sim/meso/model.ts
+     226 src/sim/meso/slots.ts
+       8 src/sim/meso/tileLinks.ts
+     137 src/sim/params.ts
+     308 src/sim/peds/sidewalk.ts
+     105 src/sim/peds/signalPostIndex.ts
+      75 src/sim/people/casualties.ts
+      79 src/sim/people/engine.ts
+     115 src/sim/people/view.ts
+     452 src/sim/pipeline.ts
+      77 src/sim/populationGovernor.ts
+     214 src/sim/pose.ts
+      65 src/sim/roads/controlAdvisor.ts
+      97 src/sim/roads/flowStats.ts
+      87 src/sim/roads/greenWave.ts
+      76 src/sim/routing/destination.ts
+     374 src/sim/routing/laneReach.ts
+      41 src/sim/routing/lowerBound.ts
+      73 src/sim/routing/routeIndex.ts
+     402 src/sim/routing/router.ts
+     231 src/sim/routing/searchScratch.ts
+     430 src/sim/signals/fsm.ts
+      43 src/sim/signals/permission.ts
+     433 src/sim/signals/plan.ts
+      50 src/sim/signals/query.ts
+      13 src/sim/sim.worker.ts
+      45 src/sim/topologyCatchUp.ts
+     599 src/sim/transit/transit.ts
+     131 src/sim/vehicleSignals.ts
+     236 src/sim/vehicles/archetypes.ts
+     126 src/sim/vehicles/curvature.ts
+      32 src/sim/vehicles/cycleLane.ts
+      76 src/sim/vehicles/driver.ts
+     109 src/sim/vehicles/idm.ts
+     326 src/sim/vehicles/integrate.ts
+     595 src/sim/vehicles/kerbStops.ts
+     577 src/sim/vehicles/laneChange.ts
+      89 src/sim/vehicles/laneClosures.ts
+     201 src/sim/vehicles/leaderIndex.ts
+     212 src/sim/vehicles/obstacles.ts
+     327 src/sim/vehicles/spawn.ts
+     249 src/sim/vehicles/state.ts
+       2 src/sim/vehicles/vehicleId.ts
+    1400 src/sim/world.ts
+      24 src/steamAchievements.ts
+      24 src/ui/about.ts
+     247 src/ui/app.css
+      46 src/ui/buildStamp.ts
+     198 src/ui/builder/catalog.ts
+     315 src/ui/builder/icons.ts
+     106 src/ui/builder/workspace.css
+     371 src/ui/builder/workspace.ts
+      15 src/ui/chrome.ts
+     180 src/ui/effectsPanel.ts
+     111 src/ui/graphicsPanel.ts
+     266 src/ui/healthPanel.ts
+     203 src/ui/healthWatch.ts
+    1865 src/ui/i18n/en.ts
+     141 src/ui/i18n/index.ts
+    1855 src/ui/i18n/pt-BR.ts
+     519 src/ui/inspector.ts
+      20 src/ui/labels.ts
+     211 src/ui/materialSwatch.ts
+      31 src/ui/overlay/builderGrid.ts
+     316 src/ui/overlay/buildingOverlay.ts
+      84 src/ui/overlay/congestion.ts
+       7 src/ui/overlay/palette.ts
+      91 src/ui/overlay/surface.ts
+      87 src/ui/planSwatch.ts
+     100 src/ui/profilerHud.ts
+     128 src/ui/roadSectionEditor.ts
+      97 src/ui/roadSwatch.ts
+     186 src/ui/roads/catalogPanel.ts
+     176 src/ui/roads/connectorPanel.ts
+     317 src/ui/roads/crossSection.ts
+      17 src/ui/roads/cutWalls.ts
+      18 src/ui/roads/drawProfile.ts
+      22 src/ui/roads/furnitureChoice.ts
+     325 src/ui/roads/junctionPanel.ts
+     110 src/ui/roads/keys.ts
+      99 src/ui/roads/keysPanel.ts
+      18 src/ui/roads/money.ts
+     754 src/ui/roads/profileEditor.ts
+      83 src/ui/roads/profilePanel.ts
+     136 src/ui/roads/profileSwatch.ts
+     238 src/ui/roads/roads.css
+      53 src/ui/roads/templates.ts
+      73 src/ui/thunder.ts
+     233 src/ui/toolChoices.ts
+     117 src/ui/v2/compass.ts
+     406 src/ui/v2/shell.css
+    2084 src/ui/v2/shell.ts
+      76 src/ui/v2/start.ts
+      16 src/ui/v2/transitLine.ts
+      81 src/view/camera.ts
+     333 src/view/cameraGestures.ts
+     195 src/view/cameraMotion.ts
+      57 src/view/cameraProfile.ts
+     104 src/view/viewport.ts
+      43 src/world/approach.ts
+      69 src/world/approachGroups.ts
+      27 src/world/barriers.ts
+      93 src/world/bounds.ts
+      44 src/world/buildingGates.ts
+     325 src/world/buildings/architecture.ts
+     134 src/world/buildings/blocks.ts
+     330 src/world/buildings/blueprints.ts
+     344 src/world/buildings/cameraSolids.ts
+     341 src/world/buildings/cityBuildings.ts
+      58 src/world/buildings/decayWatch.ts
+      56 src/world/buildings/docks.ts
+     518 src/world/buildings/elements.ts
+     113 src/world/buildings/facadePatterns.ts
+      38 src/world/buildings/flags.ts
+      47 src/world/buildings/floors.ts
+     181 src/world/buildings/footprints.ts
+     352 src/world/buildings/foundation.ts
+     802 src/world/buildings/geometry.ts
+     188 src/world/buildings/grid.ts
+     154 src/world/buildings/handles.ts
+     914 src/world/buildings/interior.ts
+     241 src/world/buildings/intern.ts
+     142 src/world/buildings/items.ts
+      31 src/world/buildings/lotLibrary.ts
+      11 src/world/buildings/lotTemplate.ts
+      87 src/world/buildings/lots.ts
+     296 src/world/buildings/materials.ts
+     103 src/world/buildings/neighbours.ts
+     442 src/world/buildings/pads.ts
+     226 src/world/buildings/pick.ts
+     705 src/world/buildings/procedural.ts
+     515 src/world/buildings/recordTable.ts
+       9 src/world/buildings/reference.ts
+     145 src/world/buildings/roofPlant.ts
+      94 src/world/buildings/sections.ts
+     398 src/world/buildings/serialize.ts
+     181 src/world/buildings/siteGrading.ts
+     149 src/world/buildings/spaces.ts
+     161 src/world/buildings/spilledItems.ts
+     307 src/world/buildings/splitLevel.ts
+     441 src/world/buildings/store.ts
+      41 src/world/buildings/streetDoors.ts
+     122 src/world/buildings/tableRows.ts
+      21 src/world/buildings/towerKit.ts
+     469 src/world/buildings/types.ts
+     347 src/world/buildings/validate.ts
+      43 src/world/carriageway.ts
+     255 src/world/cells.ts
+     381 src/world/changes.ts
+      64 src/world/cityGen/field.ts
+      12 src/world/cityGen/largeCity.ts
+       9 src/world/cityGen/mapSize.ts
+     156 src/world/cityGen/plan.ts
+      12 src/world/cityGen/smallCity.ts
+     152 src/world/cityGen/squares.ts
+     483 src/world/cityGen/streets.ts
+     247 src/world/cityGen/wholeMap.ts
+     110 src/world/clouds.ts
+     687 src/world/conflictPoints.ts
+     643 src/world/conflictTable.ts
+     203 src/world/curbRamps.ts
+     187 src/world/derived.ts
+    3700 src/world/doc.ts
+     130 src/world/docBinary.ts
+      25 src/world/docImage.ts
+     446 src/world/ecology.ts
+     169 src/world/economy.ts
+     101 src/world/elements.ts
+    1540 src/world/elevation.ts
+      88 src/world/fogPaint.ts
+      61 src/world/footwayPath.ts
+     100 src/world/geometry.ts
+      24 src/world/grid.ts
+      65 src/world/groundPatch.ts
+      83 src/world/growth/grownRows.ts
+      58 src/world/growth/lotBoundaryRuns.ts
+    1094 src/world/growth/lotPlan.ts
+      44 src/world/growth/rows.ts
+       2 src/world/growth/version.ts
+     640 src/world/growth/zoning.ts
+      23 src/world/gullies.ts
+      13 src/world/heading.ts
+      38 src/world/ids.ts
+     298 src/world/junction/build.ts
+     135 src/world/junction/bulb.ts
+     204 src/world/junction/corners.ts
+     202 src/world/junction/derive.ts
+     164 src/world/junction/legs.ts
+     344 src/world/junction/levels.ts
+      25 src/world/junction/mouthOverlap.ts
+     238 src/world/junction/polygon.ts
+     119 src/world/junction/transition.ts
+      54 src/world/junction/trim.ts
+      41 src/world/junction/trimSummary.ts
+      94 src/world/junction/types.ts
+     415 src/world/junctionBuild.ts
+      83 src/world/junctionTurns.ts
+     414 src/world/landscape.ts
+     845 src/world/lanelets.ts
+      44 src/world/legAngles.ts
+      26 src/world/lotRecord.ts
+      66 src/world/lotRings.ts
+     451 src/world/lotStore.ts
+    1329 src/world/lots.ts
+     468 src/world/markings.ts
+      21 src/world/nearestRibbon.ts
+     380 src/world/network.ts
+     797 src/world/networkBuild.ts
+     122 src/world/networkDelta.ts
+      44 src/world/networkLength.ts
+     286 src/world/openLots.ts
+      69 src/world/parking.ts
+     257 src/world/parkingLayout.ts
+      63 src/world/paving.ts
+       6 src/world/pedestrianAccess.ts
+     113 src/world/pointFiling.ts
+     121 src/world/poleIndex.ts
+     573 src/world/poleLines.ts
+      94 src/world/rampRise.ts
+      31 src/world/rasterGrid.ts
+       5 src/world/rebuildWork.ts
+     132 src/world/rescale.ts
+     211 src/world/ribbons.ts
+     750 src/world/roadField.ts
+     270 src/world/roadSection.ts
+     427 src/world/roadTypes.ts
+     124 src/world/roads/buildMode.ts
+     109 src/world/roads/catalog.ts
+      83 src/world/roads/connectors.ts
+      83 src/world/roads/derivedSigns.ts
+      91 src/world/roads/footwayRise.ts
+      28 src/world/roads/furnitureCatalog.ts
+     164 src/world/roads/furnitureSets.ts
+      41 src/world/roads/laneEnds.ts
+      86 src/world/roads/markingStyle.ts
+     267 src/world/roads/profile.ts
+     142 src/world/roads/rules.ts
+      68 src/world/roads/streetChain.ts
+     141 src/world/roads/streetNames.ts
+      89 src/world/roads/templates.ts
+      85 src/world/roads/tuning.ts
+     105 src/world/section.ts
+      76 src/world/signalPosts.ts
+     152 src/world/solids.ts
+     123 src/world/streetFurniture.ts
+      75 src/world/structures.ts
+      58 src/world/surfaceParts.ts
+     150 src/world/surfaces.ts
+      54 src/world/sweptBodies.ts
+     295 src/world/terrain.ts
+      37 src/world/terrainPaint.ts
+     140 src/world/tileIndex.ts
+      91 src/world/tiles.ts
+     368 src/world/transit.ts
+      88 src/world/trees.ts
+      12 src/world/turnChoice.ts
+      27 src/world/turnDigest.ts
+     632 src/world/turnPaths.ts
+       2 src/world/units.ts
+     161 src/world/utilities.ts
+     342 src/world/viewCells.ts
+      13 src/world/waiting.ts
+     136 src/world/walkable.ts
+     403 src/world/walkingLines.ts
+     673 src/world/walkways.ts
+      54 src/world/weather.ts
+     313 src/world/zoneGrid.ts
+      39 src/world/zones.ts
+
+# tests/ (pastas e contagem)
+     13 tests/arch
+      1 tests/census
+     36 tests/core
+      3 tests/desktop
+     70 tests/editor
+      1 tests/fixtures
+      2 tests/fuzz
+      4 tests/fuzz/support
+      7 tests/people
+      8 tests/perf
+      1 tests/perf/support
+    214 tests/render
+      7 tests/render/support
+      7 tests/scale
+      2 tests/scale/census
+      2 tests/scale/render
+      1 tests/scale/world
+     85 tests/sim
+     11 tests/sim/agents
+      1 tests/sim/ambient
+      5 tests/sim/drive
+      8 tests/sim/indexes
+      6 tests/sim/indexes/oracle
+      4 tests/sim/meso
+      1 tests/sim/meso/support
+      3 tests/sim/routing
+      6 tests/sim/support
+      4 tests/support
+      2 tests/tooling
+     24 tests/ui
+      2 tests/view
+    155 tests/world
+      5 tests/world/oracle
+      4 tests/world/support
+      3 tests/world/support/town
+
+# scripts/
+scripts/accuse.mjs
+scripts/bake-people-pics.mjs
+scripts/baselines/code-rules.baseline.json
+scripts/baselines/eslint-suppressions.json
+scripts/baselines/knip.baseline.json
+scripts/baselines/refs.baseline.json
+scripts/buildingParts.mjs
+scripts/check-code.mjs
+scripts/check-code/program.mjs
+scripts/check-code/units.mjs
+scripts/check-refs.mjs
+scripts/check.mjs
+scripts/cook-cities.mjs
+scripts/cook-people.mjs
+scripts/diagnose/diagnose.mjs
+scripts/diagnose/instrument.mjs
+scripts/diagnose/quality.mjs
+scripts/diagnose/report.mjs
+scripts/diagnose/server.mjs
+scripts/diagnose/sources.mjs
+scripts/diagnose/staticRules.mjs
+scripts/frames.mjs
+scripts/gpuSteady.mjs
+scripts/import-makehuman-pack.py
+scripts/knip-check.mjs
+scripts/lab-call.mjs
+scripts/lab/coverage.mjs
+scripts/lab/sweep.mjs
+scripts/lab/verify.mjs
+scripts/layers.mjs
+scripts/lib/displayAwake.mjs
+scripts/lib/measureCity.mjs
+scripts/look-compare.mjs
+scripts/look.mjs
+scripts/look/alloc-70k.json
+scripts/look/baseline-8k.json
+scripts/look/city-open-usage.json
+scripts/look/detail-ab.json
+scripts/look/final-200k.json
+scripts/look/final-8k.json
+scripts/look/new-large.json
+scripts/look/reference-8k.json
+scripts/look/route.json
+scripts/look/shadow-scroll.json
+scripts/look/step-200k.json
+scripts/look/step-25k.json
+scripts/look/step-70k.json
+scripts/look/texlist.json
+scripts/look/verify.json
+scripts/look/views.json
+scripts/material.mjs
+scripts/materialEach.mjs
+scripts/model-catalog-advice.mjs
+scripts/model-catalog-report.mjs
+scripts/model-catalog.mjs
+scripts/model-sheet.mjs
+scripts/package-desktop.mjs
+scripts/patches/clipper2-ts+2.0.1-18.patch
+scripts/probe.mjs
+scripts/probe/NEXT-STEPS.md
+scripts/probe/README.md
+scripts/probe/analyze.mjs
+scripts/probe/collect.mjs
+scripts/probe/config.json
+scripts/probe/page.mjs
+scripts/probe/plan.mjs
+scripts/probe/run.mjs
+scripts/probe/sources.mjs
+scripts/run-limited.mjs
+scripts/sessionJob.d.mts
+scripts/sessionJob.mjs
+scripts/shellMaps.mjs
+scripts/verify.mjs
+scripts/vite/build-stamp.ts
+scripts/vite/cook-plugin.ts
+scripts/vite/desktop-jobs.config.ts
+scripts/vite/ktx2.ts
+scripts/vite/labReports.ts
+scripts/vite/labSource.ts
+scripts/vite/model-urls-plugin.ts
+scripts/vite/surface-bake-plugin.ts
+
+# dados (pasta: arquivos, primeiros nomes)
+lots: 38 arquivos; artDeco.json balconyMid.json bank.json beauxArts.json beigeClassic.json brickFrame.json cemetery.json church.json cityHallBrick.json cityHallWhite.json cubeBalcony.json darkGlass.json 
+cooked: 90 arquivos; cities people procedural surfaces 
+cooked/cities: 5 arquivos; large-7.json.gz large-7.table.gz manifest.json small-7.json.gz small-7.table.gz 
+cooked/people: 17 arquivos; manifest.json mh_00.bin mh_04.bin mh_08.bin mh_11.bin mh_14.bin mh_18.bin mh_34.bin mh_38.bin mh_44.bin mh_45.bin mh_48.bin 
+cooked/surfaces: 30 arquivos; asphalt-raised.map.ktx2 asphalt.detail-normal.ktx2 asphalt.detail.ktx2 asphalt.map.ktx2 asphalt.normal.ktx2 asphalt.rough.ktx2 building-finishes.map.ktx2 building-finishes.normal.ktx2 building-finishes.rough.ktx2 concrete.detail-normal.ktx2 concrete.detail.ktx2 deck.map.ktx2 
+cooked/procedural: 38 arquivos; acc-headband.bin class-female-adult.bin class-female-child.bin class-female-senior.bin class-female-young.bin class-male-adult.bin class-male-child.bin class-male-senior.bin class-male-young.bin hair-afro.bin hair-bob.bin hair-bobFringe.bin 
+public: 2391 arquivos; models 
+public/models: 2391 arquivos; citizens elements people 

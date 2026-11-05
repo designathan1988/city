@@ -1,6 +1,6 @@
 # Regras das sessões (Roadcraft-windows)
 
-Arquivo único de regras, mantido pela coordenadora. Toda sessão (coordenadora e filhas) o lê inteiro ao começar e sempre que receber uma mensagem da coordenadora. A skill `corrigir-na-causa` é a forma operacional destas regras; invoque-a no início de toda tarefa.
+Arquivo único de regras, mantido pela coordenadora. Toda sessão (coordenadora e filhas) o lê inteiro ao começar e sempre que receber uma mensagem da coordenadora. O Processo de trabalho de `fonte/CLAUDE.md` é a forma operacional destas regras.
 
 ## 1. Modelo de trabalho
 
