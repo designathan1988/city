@@ -47,6 +47,8 @@ export interface LedgerInput {
   /** Files and names the game owns already (the conversion library): reached, never translated. */
   readonly ownedFiles: readonly string[];
   readonly ownedNames: readonly string[];
+  /** Why the game does not show a coverage claim (null: it does); absent, every claim is believed. */
+  readonly unproven?: (id: string, delivered: Delivered) => string | null;
 }
 
 const FOLLOWED: ReadonlySet<string> = new Set(['call', 'construct', 'read', 'reference']);
@@ -172,7 +174,14 @@ export class Ledger {
     const methods = this.#methods(id);
     const base = { id, kind: unit.kind, file: unit.file, line: unit.start.line, lines: unit.lines, role, owner, methods };
     const delivered = this.delivered(unit);
-    if (delivered) return { ...base, disposition: 'exists', owner: delivered.target || owner, why: `port ${delivered.port}: ${delivered.state}` };
+    // a claim the game does not show is set aside: the unit is decided as if no port had it, the claim noted
+    const doubt = delivered && this.#input.unproven ? this.#input.unproven(this.#input.coverage.has(unit.id) ? unit.id : unit.file, delivered) : null;
+    if (delivered && !doubt) return { ...base, disposition: 'exists', owner: delivered.target || owner, why: `port ${delivered.port}: ${delivered.state}` };
+    const decided = this.#undelivered(unit, base, sliced, role, methods);
+    return doubt ? { ...decided, why: `${decided.why} (port ${delivered!.port} says ${delivered!.state}, not shown: ${doubt})` } : decided;
+  }
+
+  #undelivered(unit: UnitRecord, base: Omit<LedgerUnit, 'disposition' | 'why'>, sliced: boolean, role: Role, methods: LedgerUnit['methods']): LedgerUnit {
     if (sliced) return { ...base, disposition: 'write', why: 'a part of shared code: it joins the code of the owner that holds the rest' };
     if (role === 'render') return { ...base, disposition: 'write', why: RENDER_METHOD };
     if (role === 'ui') return { ...base, disposition: 'write', why: UI_METHOD };
