@@ -79,6 +79,9 @@ function writeTree(root: string, files: ReadonlyMap<string, string>): void {
   }
 }
 
+/** What is done only when an accepted output holds it; a type or a field travels with its module. */
+const WRITTEN_ALONE: ReadonlySet<string> = new Set(['function', 'variable', 'class', 'method', 'constructor', 'getter', 'setter']);
+
 /** Every named constant the accepted files hold, for the rule that each needs a source. */
 function constantsIn(files: ReadonlyMap<string, string>): string[] {
   const out = new Set<string>();
@@ -301,7 +304,7 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
     const acceptedModules = new Set(outcomes.filter((o) => o.accepted).map((o) => o.module));
     const declared = new Set(outcomes.filter((o) => o.accepted).flatMap((o) => o.declared ?? []));
     const isDone = (u: LedgerUnit): boolean => u.disposition === 'translate'
-      && (u.kind === 'function' || u.kind === 'variable' ? emitted.has(u.id) || declared.has(u.id) : declared.has(u.id) || acceptedModules.has(u.file));
+      && (WRITTEN_ALONE.has(u.kind) ? emitted.has(u.id) || declared.has(u.id) : declared.has(u.id) || acceptedModules.has(u.file));
     const done = new Set(ledger.units.filter(isDone).map((u) => u.id));
     const open = ledger.units.filter((u) => u.disposition !== 'exists' && !done.has(u.id));
     const unsourced = constantsIn(accepted).filter((k) => !known[k]);

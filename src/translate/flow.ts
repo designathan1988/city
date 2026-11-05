@@ -547,6 +547,12 @@ export class FlowGraph {
       }
       if (ts.isFunctionLike(n)) this.#parameters(n);
       if (ts.isCallExpression(n)) this.#call(n);
+      if (ts.isNewExpression(n)) this.#construction(n);
+      if (ts.isPropertyDeclaration(n) && n.initializer) {
+        const declared = this.symbolOf(n.name);
+        const value = n.initializer;
+        if (declared) this.#flow(() => this.symbolSlot(declared), value);
+      }
       if (ts.isArrayLiteralExpression(n)) {
         for (const x of n.elements) {
           if (ts.isSpreadElement(x)) this.#add(() => this.#sameElements(this.nodeSlot(n, 'literal', this.#typeAt(n)), x.expression));
@@ -612,6 +618,17 @@ export class FlowGraph {
   }
 
   /** Parameters: an object parameter refers to its caller's object; a callback's parameters come from its receiver. */
+  /** `new C(a)`: its arguments reach the constructor's parameters, as a call's do. */
+  #construction(e: TS.NewExpression): void {
+    const decl = this.#checker.getResolvedSignature(e)?.declaration as TS.SignatureDeclaration | undefined;
+    if (!decl || !this.#ts.isConstructorDeclaration(decl) || !this.inProgram(decl)) return;
+    (e.arguments ?? []).forEach((a, i) => {
+      const p = decl.parameters[i];
+      const symbol = p ? this.symbolOf(p.name) : undefined;
+      if (symbol) this.#argument(symbol, a);
+    });
+  }
+
   #parameters(fn: TS.SignatureDeclaration): void {
     const ts = this.#ts;
     fn.parameters.forEach((p, i) => {

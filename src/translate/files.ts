@@ -28,7 +28,7 @@ import type { EmittedFunction, EmittedMemo } from './translator.ts';
  * The standard header of each std:: name the translation writes. The headers come from the text written, the
  * module's own, not from the places that remembered to ask for one: a name written is a header included.
  */
-const STD_HEADER: Readonly<Record<string, string>> = {
+const STD_HEADER: Readonly<Record<string, string>> = { shared_ptr: 'memory', make_shared: 'memory', enable_shared_from_this: 'memory',
   optional: 'optional', nullopt: 'optional', function: 'functional', greater: 'functional', less: 'functional', vector: 'vector',
   deque: 'deque', string: 'string', to_string: 'string', unordered_map: 'unordered_map', unordered_set: 'unordered_set',
   numeric_limits: 'limits', regex: 'regex', regex_search: 'regex', regex_replace: 'regex', regex_constants: 'regex', back_inserter: 'iterator',
@@ -120,6 +120,7 @@ function namesIn(t: CppType): string[] {
     case 'set':
       return namesIn(t.of);
     case 'ptr':
+    case 'ref':
       return namesIn(t.to);
     case 'map':
       return [...namesIn(t.key), ...namesIn(t.of)];
@@ -222,7 +223,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const own = functions.filter((f) => f.plan.module === m);
 
     // ---- types
-    const typeRefs: CppType[] = [...structs.flatMap((s) => s.fields.map((f) => f.type)), ...constants.map((k) => k.type),
+    const typeRefs: CppType[] = [...structs.flatMap((s) => [...s.fields.map((f) => f.type), ...(s.methodTypes ?? [])]), ...constants.map((k) => k.type),
       ...memoStructs.flatMap((b) => b.plan.fields.map((f) => f.type))];
     const stateStruct = isState ? c.types.structs.get(state) : undefined;
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
@@ -253,6 +254,8 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const early = constants.filter((k) => !late.includes(k));
     types.push(...constantLines(early));
     if (early.length > 0) types.push('');
+    // a class may hold itself, or one declared after it: named first
+    for (const s of structs.filter((x) => x.isClass)) types.push(`struct ${s.name};`);
     for (const s of structs) types.push(...structLines(s, m));
     types.push(...constantLines(late));
     if (late.length > 0) types.push('');
@@ -287,7 +290,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     api.push('', `namespace ${ns} {`, '');
     for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
     // a constant that calls a function: after the declarations of what it calls
-    for (const f of own.filter((x) => !x.exported && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
+    for (const f of own.filter((x) => !x.exported && !x.member && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
     api.push(...constantLines(calling));
     // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
     const templates = visible.filter((x) => x.exported && x.plan.typeParams.length > 0);
@@ -314,7 +317,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       const named = typesNamedIn(fns.map((f) => `${f.signature}\n${f.lines.join('\n')}`).join('\n'), nameModule);
       for (const d of [...named].filter((x) => x !== m && !uses.has(x) && placed.has(x)).sort()) out.push(`#include "${header(d, 'types')}"`);
       out.push('', `namespace ${ns} {`, '');
-      const internal = fns.filter((f) => !f.exported && !f.plan.edit);
+      const internal = fns.filter((f) => !f.exported && !f.member && !f.plan.edit);
       // a module whose constants call its functions declares them in its header: none is local to this file
       if (calling.length > 0) for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
       else if (internal.length > 0) {
@@ -322,7 +325,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
         for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
         out.push('} // namespace', '');
       }
-      for (const f of fns.filter((x) => (x.exported || x.plan.edit) && !(x.exported && x.plan.typeParams.length > 0))) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      for (const f of fns.filter((x) => (x.exported || x.member || x.plan.edit) && !(x.exported && x.plan.typeParams.length > 0))) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
       out.push(`} // namespace ${ns}`, '');
       return out.join('\n');
     };
@@ -369,5 +372,6 @@ function structLines(s: CppStruct, source: string): string[] {
   const head = comment(s.comment ?? null);
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
-  return [...head, `struct ${s.name} {`, ...fields, '};', ''];
+  const base = s.isClass ? ` : std::enable_shared_from_this<${s.name}>` : '';
+  return [...head, `struct ${s.name}${base} {`, ...fields, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
 }

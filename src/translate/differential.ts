@@ -242,6 +242,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
   lines.push(`template <class T> void put(std::ostream &o, const std::vector<T> &v);`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
     `template <class T> void put(std::ostream &o, const T *v);`,
+    `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v);`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`,
     `template <class T> void put(std::ostream &o, const js::Set<T> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
@@ -253,6 +254,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::vector<T> &v) { o << "["; for (size_t i = 0; i < v.size(); i++) { if (i) o << ","; put(o, v[i]); } o << "]"; }`,
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
+    `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const js::Set<T> &v) { o << "["; bool first = true; for (const auto &x : v) { if (!first) o << ","; first = false; put(o, x); } o << "]"; }`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v) {`,
     // in insertion order, as JavaScript keeps a Map and js::Map keeps it
@@ -289,6 +291,7 @@ inline void put(std::ostream &o, const std::string &s) {
 }
 template <class T> bool present(const std::optional<T> &v) { return v.has_value(); }
 template <class T> bool present(const T *v) { return v != nullptr; }
+template <class T> bool present(const std::shared_ptr<T> &v) { return v != nullptr; }
 inline bool present(bool v) { return v; }
 template <class T> bool present(const T &) { return true; }
 `;

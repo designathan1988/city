@@ -176,7 +176,7 @@ export function translate(input: TranslateInput): TranslationResult {
     ...[...c.constants.values()].map((k) => ({ source: k.source, cpp: k.cpp, kind: 'constant' as const, line: k.line })),
   ].sort((a, b) => a.line - b.line);
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
-  const api = [...c.functions.values()].filter((f) => f.exported)
+  const api = [...c.functions.values()].filter((f) => f.exported && !f.owner)
     .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
   const declared = [...new Set([
     ...[...c.functions.values()].map((f) => `${f.module}#${f.source}`),

@@ -20,6 +20,8 @@ export type CppType =
   | { readonly k: 'set'; readonly of: CppType }
   | { readonly k: 'optional'; readonly of: CppType }
   | { readonly k: 'ptr'; readonly to: CppType }
+  /** An instance of a class of the program: shared, as a reference is in the source. */
+  | { readonly k: 'ref'; readonly to: CppType }
   | { readonly k: 'function'; readonly params: readonly CppType[]; readonly ret: CppType }
   | { readonly k: 'class'; readonly name: string; readonly text: string }
   | { readonly k: 'lambda'; readonly ret: CppType }
@@ -77,6 +79,8 @@ export function render(t: CppType): string {
       return `std::optional<${render(t.of)}>`;
     case 'ptr':
       return `const ${render(t.to)} *`;
+    case 'ref':
+      return `std::shared_ptr<${render(t.to)}>`;
     case 'function':
       return `std::function<${render(t.ret)}(${t.params.map((p) => paramType(p)).join(', ')})>`;
     case 'lambda':
@@ -91,7 +95,7 @@ export function holdsTypeParameter(t: CppType): boolean {
   switch (t.k) {
     case 'tparam': return true;
     case 'vector': case 'deque': case 'list': case 'optional': case 'set': return holdsTypeParameter(t.of);
-    case 'ptr': return holdsTypeParameter(t.to);
+    case 'ptr': case 'ref': return holdsTypeParameter(t.to);
     case 'map': return holdsTypeParameter(t.key) || holdsTypeParameter(t.of);
     case 'function': return holdsTypeParameter(t.ret) || t.params.some(holdsTypeParameter);
     default: return false;
@@ -119,6 +123,7 @@ export function substitute(t: CppType, types: ReadonlyMap<string, CppType>): Cpp
     case 'tparam': return types.get(t.name) ?? t;
     case 'vector': case 'deque': case 'list': case 'optional': case 'set': return { ...t, of: substitute(t.of, types) };
     case 'ptr': return { k: 'ptr', to: substitute(t.to, types) };
+    case 'ref': return { k: 'ref', to: substitute(t.to, types) };
     case 'map': return { k: 'map', key: substitute(t.key, types), of: substitute(t.of, types) };
     case 'function': return { k: 'function', params: t.params.map((p) => substitute(p, types)), ret: substitute(t.ret, types) };
     default: return t;
@@ -147,11 +152,15 @@ export function paramDecl(t: CppType, name: string): string {
 export const isInt = (t: CppType): boolean => t.k === 'int';
 export const isNumber = (t: CppType): boolean => t.k === 'int' || t.k === 'real';
 export const isPointer = (t: CppType): boolean => t.k === 'ptr';
+/** A value that is absent as nullptr and read through `->`. */
+export const isHandle = (t: CppType): boolean => t.k === 'ptr' || t.k === 'ref';
+/** How a member of a value of this type is read. */
+export const arrow = (t: CppType): string => (isHandle(t) || t.k === 'optional' ? '->' : '.');
 export const isOptional = (t: CppType): boolean => t.k === 'optional';
 
 /** The value under a pointer or an optional. */
 export function target(t: CppType): CppType {
-  return t.k === 'ptr' ? t.to : t.k === 'optional' ? t.of : t;
+  return t.k === 'ptr' || t.k === 'ref' ? t.to : t.k === 'optional' ? t.of : t;
 }
 
 /** What a container holds (a map: its values); null for anything else. */

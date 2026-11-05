@@ -6,12 +6,14 @@
 // another through these), and the public `x` calls it and rebuilds the indexes once. The indexes point into the
 // state's vectors, which an edit may reallocate, so no edit may read an index: that is checked, not assumed.
 import type * as TS from 'typescript';
-import type { FunctionPlan, MemoPlan, TranslateContext } from './context.ts';
+import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './context.ts';
 import { holdsTypeParameter, paramType, render, type CppType } from './cpptype.ts';
 import { pascal, snake, upper } from './names.ts';
 import { Emitter } from './statements.ts';
 
 export interface EmittedFunction {
+  /** A class's member: its declaration is in the struct. */
+  readonly member?: boolean;
   readonly plan: FunctionPlan;
   /** The modules (source files) whose structs, constants, indexes or functions its code uses. */
   readonly uses: Set<string>;
@@ -42,6 +44,7 @@ export class Translator extends Emitter {
     for (const file of c.sources) {
       for (const statement of file.statements) {
         if (ts.isFunctionDeclaration(statement) && statement.name && !mapped.has(statement.name.text)) this.#decls.set(this.symbolOf(statement.name)!, statement);
+        if (ts.isClassDeclaration(statement) && statement.name && !c.spec.classes[statement.name.text]) this.#decls.set(this.symbolOf(statement.name)!, statement);
         if (ts.isVariableStatement(statement)) {
           for (const d of statement.declarationList.declarations) {
             if (ts.isIdentifier(d.name) && !mapped.has(d.name.text)) this.#decls.set(this.symbolOf(d.name)!, d);
@@ -116,6 +119,10 @@ export class Translator extends Emitter {
       this.#guarded(node, () => {
         if (ts.isFunctionDeclaration(node)) {
           this.#planFunction(node, node.name!.text, line, node);
+          return;
+        }
+        if (ts.isClassDeclaration(node)) {
+          this.#planClass(node, line);
           return;
         }
         const d = node as TS.VariableDeclaration;
@@ -271,8 +278,45 @@ export class Translator extends Emitter {
     return n !== undefined && (n.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
   }
 
-  #planFunction(fn: TS.SignatureDeclaration & { body?: TS.ConciseBody }, name: string, line: number, holder: TS.Node): void {
-    this.unit = name;
+  /**
+   * A class: a struct of its fields that declares its members, its instances shared as references are in the source. A subclass, a
+   * generic class, a setter and a static field are refused by their unit.
+   */
+  #planClass(node: TS.ClassDeclaration, line: number): void {
+    const ts = this.c.ts;
+    const source = node.name!.text;
+    this.unit = source;
+    if (node.heritageClauses?.some((h) => h.token === ts.SyntaxKind.ExtendsKeyword)) { this.fail(node, 'a class that extends another'); return; }
+    if (node.typeParameters?.length) { this.fail(node, 'a generic class'); return; }
+    const type = this.c.types.ofType(this.c.checker.getTypeAtLocation(node), 'local', null);
+    if (type.k !== 'ref') { this.fail(node, 'a class with no C++ form'); return; }
+    const struct = render(type.to);
+    const owner = (kind: MemberOwner['kind'], m: TS.ClassElement): MemberOwner => ({
+      struct, source, kind, node, isStatic: (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0 });
+    let made = false;
+    for (const m of node.members) {
+      const at = m.getSourceFile().getLineAndCharacterOfPosition(m.getStart()).line + 1;
+      if (ts.isConstructorDeclaration(m) && m.body) {
+        made = true;
+        this.#planFunction(m, 'constructor', at, m, owner('constructor', m));
+      } else if (ts.isMethodDeclaration(m) && m.body) this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('method', m));
+      else if (ts.isGetAccessorDeclaration(m)) this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('getter', m));
+      else if (ts.isSetAccessorDeclaration(m)) this.fail(m, 'a setter');
+      else if (ts.isClassStaticBlockDeclaration(m)) this.fail(m, 'a static block');
+      else if (ts.isPropertyDeclaration(m) && owner('method', m).isStatic) this.fail(m, 'a static field');
+    }
+    this.unit = source;
+    if (made) return;
+    // what fills the fields when the source writes no constructor
+    const empty = ts.factory.createConstructorDeclaration(undefined, [], ts.factory.createBlock([]));
+    (empty as { parent: TS.Node }).parent = node;
+    const plan: FunctionPlan = { source: `${source}.constructor`, cpp: struct, decl: empty, params: [], ret: { k: 'void' }, typeParams: [], edit: null, exported: true,
+      owner: { struct, source, kind: 'constructor', isStatic: false, node }, module: this.c.relative(node.getSourceFile()), line, doc: null };
+    this.c.functions.set(this.symbolOf(node.name!)!, plan);
+  }
+
+  #planFunction(fn: TS.SignatureDeclaration & { body?: TS.ConciseBody }, name: string, line: number, holder: TS.Node, owner?: MemberOwner): void {
+    this.unit = owner?.source ?? name;
     const checker = this.c.checker;
     const flow = this.c.flow;
     const retType = checker.getSignatureFromDeclaration(fn)!.getReturnType();
@@ -300,8 +344,9 @@ export class Translator extends Emitter {
       return { name: pname, type: this.c.types.slot(flow.symbolSlot(symbol), 'param'), byValue, mutable: !byValue && this.#contentsChanged(fn, symbol) };
     });
     const ret = edit ? edit.result ?? { k: 'void' as const } : this.c.types.slot(flow.returnSlot(fn), 'return');
-    this.c.functions.set(this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!, {
-      source: name, cpp: snake(name), decl: fn, params, ret, typeParams: (fn.typeParameters ?? []).map((t) => t.name.text), edit, exported: this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
+    const key = owner?.kind === 'constructor' ? (fn as unknown as { symbol: TS.Symbol }).symbol : this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!;
+    this.c.functions.set(key, {
+      source: owner ? `${owner.source}.${name}` : name, cpp: owner?.kind === 'constructor' ? owner.struct : snake(name), ...(owner ? { owner } : {}), decl: fn, params, ret, typeParams: (fn.typeParameters ?? []).map((t) => t.name.text), edit, exported: owner !== undefined || this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
       doc: this.#doc(this.c.ts.isVariableDeclaration(holder) ? holder.parent.parent : holder),
     });
   }
@@ -549,11 +594,12 @@ export class Translator extends Emitter {
     // context parameters after its own (const Tuning &tn)
     for (const c of plan.context ?? []) params.push(`${c.type}${c.type.endsWith('&') || c.type.endsWith('*') ? '' : ' '}${c.name}`);
     const head = plan.typeParams.length > 0 ? `template <${plan.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '';
+    if (plan.owner?.kind === 'constructor') return `${name}(${params.join(', ')})`;
     return `${head}${render(plan.ret)} ${name}(${params.join(', ')})`;
   }
 
   #emitFunction(plan: FunctionPlan): void {
-    this.unit = plan.source;
+    this.unit = plan.owner?.source ?? plan.source;
     this.fn = plan;
     this.module = plan.module;
     this.scopes.push(new Map());
@@ -565,10 +611,15 @@ export class Translator extends Emitter {
     this.state = plan.edit && first ? { symbols: new Set([this.symbolOf(first.name)!]), cpp: plan.params[0]!.name } : null;
     if (this.state) this.collectInlined(plan.decl);
     else this.inlined.clear();
-    const body = this.functionBody(plan.decl as TS.FunctionDeclaration, plan.ret);
+    const fields = plan.owner?.kind === 'constructor' ? this.#fieldLines(plan.owner, plan) : [];
+    const body = [...fields, ...this.functionBody(plan.decl as TS.FunctionDeclaration, plan.ret)];
     this.scopes.pop();
     this.state = null;
     this.fn = null;
+    if (plan.owner) {
+      this.#emitMember(plan, plan.owner, body);
+      return;
+    }
     if (plan.edit) {
       this.emitted.push({ plan, signature: this.#signature(plan, `edit_${plan.cpp}`), lines: body, exported: false, role: 'edit', uses: new Set() });
       if (!plan.exported) return;
@@ -580,6 +631,34 @@ export class Translator extends Emitter {
       return;
     }
     this.emitted.push({ plan, signature: this.#signature(plan, plan.cpp), lines: body, exported: plan.exported, role: 'query', uses: new Set() });
+  }
+
+  /** The fields a constructor fills before its own body: what each is declared with, and what its parameters declare. */
+  #fieldLines(owner: MemberOwner, plan: FunctionPlan): string[] {
+    const ts = this.c.ts;
+    const struct = this.c.types.structs.get(owner.struct)!;
+    const lines: string[] = [];
+    const put = (name: string, value: (type: CppType) => string): void => {
+      const field = struct.fields.find((f) => f.source === name);
+      if (field) lines.push(`\tthis->${field.name} = ${value(field.type)};`);
+    };
+    for (const m of owner.node.members) {
+      if (!ts.isPropertyDeclaration(m) || !m.initializer || (m.modifiers ?? []).some((x) => x.kind === ts.SyntaxKind.StaticKeyword)) continue;
+      const init = m.initializer;
+      put(m.name.getText().replace(/^#/, ''), (type) => this.expr(init, type));
+    }
+    plan.decl.parameters.forEach((p, i) => {
+      if ((p.modifiers ?? []).length > 0) put(p.name.getText(), () => plan.params[i]!.name);
+    });
+    return lines;
+  }
+
+  /** A member: declared in its struct, defined by its qualified name. */
+  #emitMember(plan: FunctionPlan, owner: MemberOwner, body: string[]): void {
+    const struct = this.c.types.structs.get(owner.struct)!;
+    (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : ''}${this.#signature(plan, plan.cpp)};`);
+    (struct.methodTypes ??= []).push(...plan.params.map((p) => p.type), plan.ret);
+    this.emitted.push({ plan, signature: this.#signature(plan, `${owner.struct}::${plan.cpp}`), lines: body, exported: false, role: 'query', uses: new Set(), member: true });
   }
 
   #emitMemo(plan: MemoPlan): void {

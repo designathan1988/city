@@ -22,6 +22,15 @@ export interface Param {
 }
 
 /** A source function and its C++ form. */
+export interface MemberOwner {
+  readonly struct: string;
+  /** The class's name in the source: the unit a refusal of the member belongs to. */
+  readonly source: string;
+  readonly kind: 'method' | 'getter' | 'constructor';
+  readonly isStatic: boolean;
+  readonly node: TS.ClassDeclaration;
+}
+
 export interface FunctionPlan {
   readonly source: string;
   readonly cpp: string;
@@ -35,6 +44,8 @@ export interface FunctionPlan {
   /** An edit takes the feature's state first and changes it in place; `result` is what it returns besides. */
   readonly edit: { readonly result: CppType | null; readonly resultField: string | null } | null;
   readonly exported: boolean;
+  /** A member of a class: written in its struct, not as a free function. */
+  readonly owner?: MemberOwner;
   /** The source file it comes from, relative to the source root: its module. */
   readonly module: string;
   readonly line: number;

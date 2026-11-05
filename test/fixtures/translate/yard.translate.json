@@ -33,7 +33,9 @@
     "kindCost",
     "checkedCount",
     "idOrder",
-    "priceOf"
+    "priceOf",
+  "tallied",
+  "chainSum"
   ],
   "pending": [],
   "number": "float",

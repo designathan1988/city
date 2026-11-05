@@ -6,7 +6,7 @@
 // owns, a value. Anonymous shapes get the spec's name, or the name of the type they are the same as (V2).
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
-import { BOOL, STRING, VOID, type CppType, type IntName } from './cpptype.ts';
+import { BOOL, STRING, VOID, type CppType, type IntName, isHandle } from './cpptype.ts';
 import { Num, Own, type FlowGraph, type Slot } from './flow.ts';
 import { pascal, snake, upper } from './names.ts';
 import type { TranslationSpec } from './spec.ts';
@@ -28,6 +28,11 @@ export interface CppStruct {
   readonly line: number;
   /** The source's name of the type it is made from (null: an anonymous shape, a tuple, a library type). */
   readonly declared?: string | null;
+  /** A class of the program: instances are shared, and it declares its members. */
+  isClass?: boolean;
+  /** Its members as declared in the struct, and the types they name. */
+  methods?: string[];
+  methodTypes?: CppType[];
 }
 
 export interface CppEnum {
@@ -184,7 +189,7 @@ export class TypeMapper {
       }
       if (present.length === type.types.length) return this.#unsupported(type, slot, 'a union of different types');
       const inner = this.ofType(present.length === 1 ? present[0]! : checker.getNonNullableType(type), use, slot);
-      if (inner.k === 'ptr' || inner.k === 'bool' || inner.k === 'optional') return inner;
+      if (isHandle(inner) || inner.k === 'bool' || inner.k === 'optional') return inner;
       this.includes.add('optional');
       return { k: 'optional', of: inner };
     }
@@ -249,6 +254,11 @@ export class TypeMapper {
       return { k: 'function', params, ret: this.ofType(call.getReturnType(), 'return', null) };
     }
     if (f & ts.TypeFlags.Object) {
+      if (this.isClass(type)) {
+        const made = this.structFor(type, slot?.name ?? 'value');
+        if (made.k === 'struct') this.structs.get(made.name)!.isClass = true;
+        return { k: 'ref', to: made };
+      }
       const shape = (slot ? this.#flow.shapeOf(slot) : null) ?? type;
       const struct = this.structFor(shape, slot?.name ?? 'value');
       if (struct.k !== 'struct' || Object.values(this.#spec.types).some((t) => t.type === struct.name)) return struct;
@@ -258,6 +268,14 @@ export class TypeMapper {
       return struct;
     }
     return this.#unsupported(type, slot, 'no C++ form');
+  }
+
+  /** A class the program declares (a library's stays what the spec says of it). */
+  isClass(type: TS.Type): boolean {
+    const symbol = type.getSymbol();
+    const decl = symbol?.valueDeclaration;
+    return symbol !== undefined && (symbol.flags & this.#ts.SymbolFlags.Class) !== 0 && decl !== undefined && this.#flow.inProgram(decl)
+      && !this.#spec.classes[symbol.name];
   }
 
   /** The struct of an object type (or the target type it is the same as), declared on first use. */
@@ -297,10 +315,13 @@ export class TypeMapper {
     for (const prop of this.#checker.getPropertiesOfType(type)) {
       const propType = this.#checker.getTypeOfSymbol(prop);
       if (propType.getCallSignatures().length > 0 && !(prop.flags & this.#ts.SymbolFlags.Property)) continue;
+      if (prop.flags & this.#ts.SymbolFlags.Accessor) continue;
       let cpp = this.ofType(propType, 'field', this.#flow.symbolSlot(prop));
-      if ((prop.flags & this.#ts.SymbolFlags.Optional) !== 0 && cpp.k !== 'bool' && cpp.k !== 'optional' && cpp.k !== 'ptr') cpp = { k: 'optional', of: cpp };
+      if ((prop.flags & this.#ts.SymbolFlags.Optional) !== 0 && cpp.k !== 'bool' && cpp.k !== 'optional' && !isHandle(cpp)) cpp = { k: 'optional', of: cpp };
       if (cpp.k === 'optional') this.includes.add('optional');
-      made.fields.push({ source: prop.name, name: snake(prop.name), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
+      // a private name: the field `steps` of `#steps` (the checker may write it __#1@#steps)
+      const field = prop.name.replace(/^(__#\d+@)?#/, '');
+      made.fields.push({ source: field, name: snake(field), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
     }
     this.#holder = holder;
     return { k: 'struct', name };

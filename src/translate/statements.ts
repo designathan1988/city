@@ -10,7 +10,7 @@
 import type * as TS from 'typescript';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import type { FunctionPlan } from './context.ts';
-import { INT, STRING, declare, elementOf, isNumber, paramDecl, render, target, type CppType } from './cpptype.ts';
+import { INT, STRING, declare, elementOf, isNumber, paramDecl, render, target, type CppType, arrow } from './cpptype.ts';
 import { ExpressionEmitter, RUNTIME_INCLUDE } from './expressions.ts';
 import { Own } from './flow.ts';
 import { snake } from './names.ts';
@@ -26,7 +26,6 @@ function bindings(ts: TypeScriptApi, pattern: TS.ObjectBindingPattern | TS.Array
 }
 export class Emitter extends ExpressionEmitter {
   /** The function being emitted (an edit lowers its returns). */
-  protected fn: FunctionPlan | null = null;
   /** Inside an edit: the state parameter and the locals that stand for it. */
   protected state: { readonly symbols: Set<TS.Symbol>; readonly cpp: string } | null = null;
   /** Inside an index builder: source locals that are members of the index. */
@@ -198,7 +197,7 @@ export class Emitter extends ExpressionEmitter {
   #destructure(pattern: TS.ObjectBindingPattern | TS.ArrayBindingPattern, init: TS.Expression): string[] {
     const at = this.indent;
     const source = this.value(init);
-    const access = source.type.k === 'ptr' || source.type.k === 'optional' ? '->' : '.';
+    const access = arrow(source.type);
     const t = target(source.type);
     const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
     const known = t.k === 'struct' ? Object.values(this.c.spec.types).find((k) => k.type === t.name) : undefined;
@@ -501,7 +500,7 @@ export class Emitter extends ExpressionEmitter {
       head = `for (const auto &${item} : ${source.code})`;
       const t = target(element);
       const struct = t.k === 'struct' ? this.c.types.structs.get(t.name) : undefined;
-      const access = element.k === 'ptr' ? '->' : '.';
+      const access = arrow(element);
       destructure = bindings(ts, decl.name as TS.ObjectBindingPattern | TS.ArrayBindingPattern).map(({ el, prop }) => {
         const field = struct?.fields.find((f) => f.source === prop);
         if (!field) return this.fail(el, `${render(element)} has no field ${prop}`).code;

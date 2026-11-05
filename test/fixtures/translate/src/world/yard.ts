@@ -260,3 +260,61 @@ export function priceOf(label: string): number {
   for (const [k, v] of Object.entries(PRICES)) sum += v + k.length;
   return sum + (PRICES[label] ?? 1) + (table[label] ?? 2);
 }
+
+/** A running count: a class, its instance shared by whoever holds it. */
+export class Tally {
+  total = 0;
+  #steps: number[] = [];
+  readonly label: string;
+
+  constructor(label: string) {
+    this.label = label;
+  }
+
+  add(n: number): Tally {
+    this.total += n;
+    this.#steps.push(n);
+    return this;
+  }
+
+  get count(): number {
+    return this.#steps.length;
+  }
+
+  mean(): number {
+    return this.count > 0 ? this.total / this.count : 0;
+  }
+
+  static of(n: number): Tally {
+    return new Tally('one').add(n);
+  }
+}
+
+/** A link: a class that holds itself, absent at the end, with no constructor of its own for its fields. */
+class Link {
+  value = 1;
+  next: Link | null = null;
+}
+
+/** Two names of one instance see the same changes. */
+export function tallied(values: number[]): number {
+  const t = new Tally('sum');
+  const same = t;
+  for (const v of values) same.add(v);
+  t.add(2).add(3);
+  return t.total + same.count + t.mean() + Tally.of(4).total + t.label.length;
+}
+
+export function chainSum(n: number): number {
+  const head = new Link();
+  let tail = head;
+  for (let i = 0; i < n % 5; i++) {
+    const made = new Link();
+    made.value = i + 2;
+    tail.next = made;
+    tail = made;
+  }
+  let sum = 0;
+  for (let at: Link | null = head; at !== null; at = at.next) sum += at.value;
+  return sum;
+}
