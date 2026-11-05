@@ -8,6 +8,7 @@ import type { Finding } from '../src/audit/context.ts';
 import { folderName, readCoverage, type Delivered } from '../src/convert/inventory.ts';
 import { Ledger, type LedgerUnit } from '../src/convert/ledger.ts';
 import { scanFiles, scanUnits } from '../src/convert/quarantine.ts';
+import { unproven } from '../src/convert/coverage-proof.ts';
 import type { EdgeKind, EdgeRecord, GraphIR, UnitKind, UnitRecord } from '../src/graph/ir.ts';
 
 function unit(id: string, kind: UnitKind, extra: { parent?: string; external?: string[] } = {}): UnitRecord {
@@ -140,5 +141,25 @@ describe('convert: what is known first', () => {
     assert.deepEqual([...coverage.keys()].sort(), ['src/a.ts', 'src/c.ts#x', 'src/e.ts']);
     assert.equal(coverage.get('src/e.ts')?.port, 'older');
     assert.equal(coverage.get('src/a.ts')?.target, 'sim/a.cpp');
+  });
+});
+
+describe('convert: a coverage claim the game must show', () => {
+  it('stands only when the owner files exist and cite the unit, by its name, the game\'s form of it or its 4.0 file', () => {
+    const game = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-proof-'));
+    fs.mkdirSync(path.join(game, 'native', 'src', 'sim'), { recursive: true });
+    fs.writeFileSync(path.join(game, 'native', 'src', 'sim', 'poles.cpp'), '// Roadcraft 4.0 editor/poles.ts, its behaviour\nint plan_run(int a) { return a; }\n');
+    const claim = (target: string): Delivered => ({ port: 'poles', target, state: 'portado' });
+    const proof = (id: string, target: string): string | null => unproven(game, { id, delivered: claim(target) });
+    try {
+      assert.equal(proof('src/editor/poles.ts#planRun', '`sim/poles.cpp`'), null, 'cited in the game\'s form');
+      assert.equal(proof('src/editor/poles.ts', 'sim/poles.cpp'), null, 'a whole file cited by its 4.0 path');
+      assert.match(proof('src/editor/poles.ts#routeAround', 'sim/poles.cpp')!, /never names routeAround \(nor route_around\)/);
+      assert.match(proof('src/editor/poles.ts#planRun', 'sim/poles.cpp + render/wires.cpp')!, /the game has no render\/wires\.cpp/);
+      assert.match(proof('src/editor/poles.ts#planRun', 'porte demolition')!, /names no file of the game/);
+      assert.match(proof('src/render/poleLayer.ts', 'sim/poles.cpp')!, /never cites render\/poleLayer\.ts/);
+    } finally {
+      fs.rmSync(game, { recursive: true, force: true });
+    }
   });
 });

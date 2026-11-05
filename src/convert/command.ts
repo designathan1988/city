@@ -6,14 +6,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import { runAudit } from '../audit/run.ts';
-import { parseFlags, type FlagSpec } from '../common/args.ts';
+import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
 import { removeTree } from '../common/files.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { prepareTranslation, translate, type PreparedProgram } from '../translate/run.ts';
 import type { TranslationSpec } from '../translate/spec.ts';
 import { moduleSpecs, ownedNames, readLibrary } from './autospec.ts';
-import { readCoverage } from './inventory.ts';
+import { unproven } from './coverage-proof.ts';
+import { readCoverage, type Delivered } from './inventory.ts';
 import { Ledger, counts, type LedgerUnit } from './ledger.ts';
 import { compileFiles, scanFiles, scanUnits, targetLimits, type QuarantineFinding } from './quarantine.ts';
 
@@ -27,6 +28,7 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
   { name: 'target-graph', required: true, help: 'the target\'s C++ graph (converter cppgraph)' },
   { name: 'library', required: true, help: 'what the game already owns (configs/conversion-library.json)' },
   { name: 'ports', required: true, help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has' },
+  { name: 'coverage-proof', help: 'how a coverage claim is taken: "believed" (default) or "shown" (the owner files exist in the game and cite the unit; a claim not shown is decided again)' },
   { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
   { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
   { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },
@@ -270,8 +272,12 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
   const rules = path.join(targetRoot, library.rules);
   const graph = JSON.parse(fs.readFileSync(flags.require('graph'), 'utf8')) as GraphIR;
   const boundary = JSON.parse(fs.readFileSync(flags.require('boundary'), 'utf8')) as { own: string[]; sliced: string[] };
+  const proof = flags.one('coverage-proof') ?? 'believed';
+  if (proof !== 'believed' && proof !== 'shown') throw new ArgsError(`--coverage-proof is believed or shown, not ${proof}`);
+  const owners = new Map<string, string | null>();
   const ledger = new Ledger({ graph, audit: auditOf(graph, rules), own: boundary.own, sliced: boundary.sliced, coverage: readCoverage(flags.require('ports')),
-    ownedFiles: library.ownedFiles, ownedNames: ownedNames(library) });
+    ownedFiles: library.ownedFiles, ownedNames: ownedNames(library),
+    ...(proof === 'shown' ? { unproven: (id: string, delivered: Delivered) => unproven(targetRoot, { id, delivered }, owners) } : {}) });
   const typescript = flags.one('typescript');
   const ts = loadTypeScript(sourceRoot, typescript);
   const sp = openProgram(ts, sourceRoot, path.join(sourceRoot, 'tsconfig.json'));
