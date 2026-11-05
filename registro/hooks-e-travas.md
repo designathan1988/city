@@ -191,3 +191,18 @@ O `/goal` é "um invólucro em volta de um hook Stop do tipo prompt com escopo d
 - `fonte/.claude/settings.json`: `autoMemoryEnabled: false`, permissões, e os dois hooks (`hook_protect.py` em PreToolUse; `hook_stop_gates.py` em Stop). Protegido pelo próprio hook.
 - Removidos: skills, plugins, hooks antigos, memória automática, nas pastas raiz do Claude e nos clones.
 - Pendência observada nesta sessão: `hook_protect.py` dá falso positivo quando um comando apenas **menciona** o nome de um arquivo protegido num texto (heredoc de anotações) e redireciona para **outro** arquivo. Correção: negar só quando o alvo do redirecionamento ou o argumento de um comando de escrita é o arquivo protegido.
+
+## 11. Diagnóstico das negações (417 sessões, 23/out a 5/nov/2026)
+
+Medido nas transcrições (`~/.claude/projects` e `C:\Projects\backup\.claude`): o modelo alegou "não tenho permissão" em texto **12** vezes; o programa devolveu **655** negações reais. Origem das negações:
+
+| Origem | Quantidade | O que é |
+|---|---|---|
+| Hooks antigos do próprio usuário (git-gate, commitGate.mjs, writeGate, "Regra do usuário", whole-review) | 248 | removidos nesta semana |
+| Classificador do auto mode (Sonnet 5, servidor) | 141 | motivos: sem explicação (109), Irreversible Local Destruction, Self-Modification (editar `.claude`), Create Unsafe Agents (lançar `claude -p --dangerously-skip-permissions`), Auto-Mode Bypass, CI Bypass |
+| Prompt de permissão rejeitado ("The user doesn't want to proceed") | 127 | em modo Manual/auto, quando o pedido não é aprovado |
+| Pedido de aprovação sem resposta em `-p` | 13 | sessões filhas em modo Manual negam o que pediria aprovação |
+
+Modo inicial das sessões: 311 Manual (`default`), 88 auto (padrão do app), 10 bypass. Nenhum settings fixava `defaultMode`. Conclusão: as duas faces vêm de atores diferentes. "Pede autorização" é o programa (modo de permissão, classificador, hooks); "faz o que não foi pedido" é o modelo, que nenhuma permissão governa, só o que ele consegue executar.
+
+Configuração aplicada em 5/nov, só com settings: `~/.claude/settings.json` com `permissions.defaultMode: "bypassPermissions"`, `skipDangerousModePermissionPrompt: true` e `outputStyle: "Proactive"`; `fonte/.claude/settings.json` com `permissions.deny: ["Agent", "Workflow"]`. Ambas valeram na sessão em andamento (estilo aplicado; ferramenta Workflow removida), sem reinício.
