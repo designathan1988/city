@@ -5,14 +5,87 @@
 // source file, the modules its code was recorded using while it was written. Every file opens with the comment the
 // target's gates require: the module's own summary (the source file's first comment).
 import type * as TS from 'typescript';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { TranslateContext } from './context.ts';
+import { RUNTIME_INCLUDE } from './expressions.ts';
+
+/** The runtime of the ECMAScript built-ins (each checked against JavaScript: test/js-runtime.test.ts). */
+export const RUNTIME_SOURCE = path.join(import.meta.dirname, '..', '..', 'cpp', 'js', 'js_runtime.h');
+/** Where the translation writes it in the target. */
+export const RUNTIME_FILE = `native/src/${RUNTIME_INCLUDE}`;
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
 import type { CppStruct } from './types.ts';
 import type { EmittedFunction, EmittedMemo } from './translator.ts';
 
-const STD = new Set(['algorithm', 'cmath', 'cstdint', 'deque', 'functional', 'iterator', 'limits', 'optional', 'queue', 'string', 'tuple',
-  'unordered_map', 'unordered_set', 'utility', 'vector']);
+/**
+ * The standard header of each std:: name the translation writes. The headers come from the text written, the
+ * module's own, not from the places that remembered to ask for one: a name written is a header included.
+ */
+const STD_HEADER: Readonly<Record<string, string>> = {
+  optional: 'optional', nullopt: 'optional', function: 'functional', greater: 'functional', less: 'functional', vector: 'vector',
+  deque: 'deque', string: 'string', to_string: 'string', unordered_map: 'unordered_map', unordered_set: 'unordered_set',
+  numeric_limits: 'limits', regex: 'regex', regex_search: 'regex', regex_replace: 'regex', regex_constants: 'regex', back_inserter: 'iterator',
+  get: 'tuple', array: 'array', pair: 'utility', move: 'utility', swap: 'utility', tuple: 'tuple', queue: 'queue',
+  priority_queue: 'queue', initializer_list: 'initializer_list', size_t: 'cstddef', int64_t: 'cstdint', int32_t: 'cstdint', uint32_t: 'cstdint',
+  ...Object.fromEntries(['sort', 'stable_sort', 'find', 'find_if', 'count_if', 'copy_if', 'any_of', 'all_of', 'none_of', 'min', 'max',
+    'reverse', 'fill', 'clamp', 'lower_bound', 'upper_bound', 'remove_if'].map((n) => [n, 'algorithm'])),
+  ...Object.fromEntries(['floor', 'ceil', 'round', 'trunc', 'sqrt', 'hypot', 'sin', 'cos', 'tan', 'atan', 'atan2', 'asin', 'acos', 'exp',
+    'log', 'pow', 'fabs', 'fmod', 'isfinite', 'isnan', 'abs'].map((n) => [n, 'cmath'])),
+};
+
+/** The standard headers the written text names. */
+function stdHeadersIn(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.matchAll(/\bstd::(\w+)/g)) {
+    const h = STD_HEADER[m[1]!];
+    if (h) out.add(h);
+  }
+  // the fixed-width integers are written without std::
+  if (/\bu?int(8|16|32|64)_t\b/.test(text)) out.add('cstdint');
+  return out;
+}
+
+/** The modules of the structs and enums a text names (a whole word: `Frame`, not `FrameOut`). */
+function typesNamedIn(text: string, nameModule: ReadonlyMap<string, string>): Set<string> {
+  const words = new Set(text.match(/\b[A-Z]\w*\b/g) ?? []);
+  const out = new Set<string>();
+  for (const w of words) {
+    const m = nameModule.get(w);
+    if (m) out.add(m);
+  }
+  return out;
+}
+
+/**
+ * Each target header the spec names, with the names it declares there: a value type's (V2), a class mapping's type,
+ * the names a pattern writes and its context's type (Tuning). A module that writes one of them includes the header.
+ */
+function projectHeaderNames(c: TranslateContext): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  const add = (include: string, text: string): void => {
+    if (!include.endsWith('.h')) return;
+    const names = out.get(include) ?? new Set<string>();
+    for (const w of text.replace(/\$\w+/g, ' ').replace(/std::\w+/g, ' ').match(/\b[A-Za-z_]\w*\b/g) ?? []) if (!CPP_WORDS.has(w)) names.add(w);
+    out.set(include, names);
+  };
+  out.set(RUNTIME_INCLUDE, new Set(['js']));
+  for (const t of Object.values(c.spec.types)) add(t.include, t.type);
+  for (const k of Object.values(c.spec.classes)) add(k.include, k.type);
+  for (const p of c.spec.patterns) add(p.include, `${p.target} ${p.context?.type ?? ''}`);
+  for (const f of Object.values(c.spec.functions)) if (f.include) add(f.include, `${f.template} ${f.context?.type ?? ''}`);
+  return out;
+}
+
+const CPP_WORDS = new Set(['const', 'int', 'float', 'double', 'bool', 'auto', 'unsigned', 'return', 'true', 'false', 'nullptr', 'int32_t',
+  'int64_t', 'uint32_t', 'uint8_t', 'size_t']);
+
+/** The marker the types header holds where the target's headers go. */
+const PROJECT_MARK = '@@project-includes@@';
+
+/** The marker the types header holds where its standard includes go, filled once every file is written. */
+const STD_MARK = '@@std-includes@@';
 
 function comment(text: string | null, indent = ''): string[] {
   if (!text) return [];
@@ -125,9 +198,6 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const id = placed.get(m)!;
     return `${id.owner.replace(/^native\/src\//, '')}/${id.stem}${kind === 'types' ? '_types' : ''}.h`;
   };
-  const projectIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => i.endsWith('.h')).sort();
-  const stdIncludes = [...new Set([...c.includes, ...c.types.includes])].filter((i) => STD.has(i));
-  if (builders.some((b) => b.plan.stores.size > 0)) stdIncludes.push('deque');
   const depsOf = (types: readonly CppType[], self: string): string[] =>
     [...new Set(types.flatMap(namesIn).map((n) => nameModule.get(n)).filter((m): m is string => m !== undefined && m !== self && placed.has(m)))].sort();
 
@@ -149,16 +219,23 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     if (stateStruct) typeRefs.push(...stateStruct.fields.map((f) => f.type));
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
-    for (const p of projectIncludes) types.push(`#include "${p}"`);
+    types.push(PROJECT_MARK);
     for (const d of depsOf(typeRefs, m)) types.push(`#include "${header(d, 'types')}"`);
-    types.push('', ...[...new Set(stdIncludes)].sort().map((s) => `#include <${s}>`), '', `namespace ${ns} {`, '');
+    types.push('', STD_MARK, '', `namespace ${ns} {`, '');
     for (const e of enums) types.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
-    for (const k of constants) {
-      types.push(...comment(`${k.doc ?? ''}${k.line > 0 ? ` (Roadcraft 4.0 ${m}:${k.line})` : ''}`.trim()));
-      types.push(k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`);
-    }
-    if (constants.length > 0) types.push('');
+    // a constant whose type names a struct of this module comes after the structs (C++ declares before use); the
+    // others before them, where a field's default may read them
+    const ownStructs = new Set(structs.map((s) => s.name));
+    const late = constants.filter((k) => namesIn(k.type).some((n) => ownStructs.has(n)));
+    const constantLines = (ks: typeof constants): string[] => ks.flatMap((k) => [
+      ...comment(`${k.doc ?? ''}${k.line > 0 ? ` (Roadcraft 4.0 ${m}:${k.line})` : ''}`.trim()),
+      k.constexpr ? `constexpr ${render(k.type)} ${k.cpp} = ${k.value};` : `inline const ${render(k.type)} ${k.cpp} = ${k.value};`]);
+    const early = constants.filter((k) => !late.includes(k));
+    types.push(...constantLines(early));
+    if (early.length > 0) types.push('');
     for (const s of structs) types.push(...structLines(s, m));
+    types.push(...constantLines(late));
+    if (late.length > 0) types.push('');
     for (const b of memoStructs) {
       types.push(...comment(b.plan.doc), `// (Roadcraft 4.0 ${b.plan.writtenIn}:${b.plan.line}: rebuilt by every edit)`, `struct ${b.plan.struct} {`);
       for (const [owned, member] of b.plan.stores) types.push(`\tstd::deque<${owned}> ${member}; // owned here, filed below by address (a deque never moves them)`);
@@ -205,6 +282,9 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       uses.delete(m);
       const out = [...top(role), `#include "${header(m, 'api')}"`];
       for (const u of [...uses].filter((x) => placed.has(x)).sort()) out.push(`#include "${header(u, 'api')}"`);
+      // the types its text names (an internal function's parameter, a local) from modules it calls nothing of
+      const named = typesNamedIn(fns.map((f) => `${f.signature}\n${f.lines.join('\n')}`).join('\n'), nameModule);
+      for (const d of [...named].filter((x) => x !== m && !uses.has(x) && placed.has(x)).sort()) out.push(`#include "${header(d, 'types')}"`);
       out.push('', `namespace ${ns} {`, '');
       const internal = fns.filter((f) => !f.exported && !f.plan.edit);
       if (internal.length > 0) {
@@ -234,6 +314,24 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       files.set(`${id.owner}/${id.stem}_index.cpp`, index.join('\n'));
     }
   }
+  // a module's types header includes what the module's own files name (each of them includes it first): the standard
+  // headers of the std:: names written, the target headers of the names the spec says they declare. From the text,
+  // so a module shared by two translations is written the same by both
+  const owners = projectHeaderNames(c);
+  for (const id of placed.values()) {
+    const prefix = `${id.owner}/${id.stem}`;
+    const own = [`${prefix}_types.h`, `${prefix}.h`, `${prefix}_edit.cpp`, `${prefix}_query.cpp`, `${prefix}_index.cpp`].filter((f) => files.has(f));
+    const text = own.map((f) => files.get(f)!).join('\n');
+    const std = stdHeadersIn(text);
+    const words = new Set(text.match(/\b[A-Za-z_]\w*\b/g) ?? []);
+    const project = [...owners].filter(([, names]) => [...names].some((n) => words.has(n))).map(([h]) => h).sort();
+    const types = `${prefix}_types.h`;
+    files.set(types, files.get(types)!
+      .replace(`${PROJECT_MARK}\n`, project.map((h) => `#include "${h}"\n`).join(''))
+      .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
+  }
+  // the runtime of the built-ins, written beside the translation when its text calls it (core/js_runtime.h)
+  if ([...files.values()].some((text) => /\bjs::/.test(text))) files.set(RUNTIME_FILE, fs.readFileSync(RUNTIME_SOURCE, 'utf8'));
   return files;
 }
 

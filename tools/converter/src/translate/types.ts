@@ -26,6 +26,8 @@ export interface CppStruct {
   /** The source file that declares it (its module), null when it has no declaration of its own. */
   readonly module: string | null;
   readonly line: number;
+  /** The source's name of the type it is made from (null: an anonymous shape, a tuple, a library type). */
+  readonly declared?: string | null;
 }
 
 export interface CppEnum {
@@ -38,6 +40,45 @@ export interface CppEnum {
 
 /** Where a type is used: a field or parameter takes the spec's integer type, a local the plain int. */
 export type Use = 'field' | 'param' | 'local' | 'return' | 'element';
+
+/**
+ * A reader the source declares itself: an object type whose members are only `get(key): V | undefined` and
+ * `has(key): boolean` (methods, or functions held as fields), all of one key. Its key, and the value `get` gives
+ * (null with `has` alone); null when the type is anything else.
+ */
+function readerOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): { key: TS.Type; value: TS.Type | null } | null {
+  if (!(type.flags & ts.TypeFlags.Object) || type.getCallSignatures().length > 0) return null;
+  const props = checker.getPropertiesOfType(type);
+  if (props.length === 0 || props.some((p) => p.name !== 'get' && p.name !== 'has')) return null;
+  let key: TS.Type | null = null;
+  let value: TS.Type | null = null;
+  for (const p of props) {
+    const sigs = checker.getSignaturesOfType(checker.getNonNullableType(checker.getTypeOfSymbol(p)), ts.SignatureKind.Call);
+    if (sigs.length !== 1 || sigs[0]!.getParameters().length !== 1) return null;
+    const k = checker.getTypeOfSymbol(sigs[0]!.getParameters()[0]!);
+    if (key && !checker.isTypeAssignableTo(k, key)) return null;
+    key ??= k;
+    const ret = sigs[0]!.getReturnType();
+    if (p.name === 'has' && !(ret.flags & ts.TypeFlags.BooleanLike)) return null;
+    if (p.name === 'get') value = checker.getNonNullableType(ret);
+  }
+  return key ? { key, value } : null;
+}
+
+/** A reader with `get` (`interface NodeHeights { get(node: NodeId): number | undefined }`, a Map passed in): the map it is read as, [K, V]. */
+export function lookupOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): [TS.Type, TS.Type] | null {
+  const reader = readerOf(ts, checker, type);
+  return reader?.value ? [reader.key, reader.value] : null;
+}
+
+/**
+ * A reader with `has` alone (`{ has(node: NodeId): boolean }`: a Set passed in, or a rule written in place): the test
+ * it is, its key; null otherwise.
+ */
+export function membershipOf(ts: TypeScriptApi, checker: TS.TypeChecker, type: TS.Type): TS.Type | null {
+  const reader = readerOf(ts, checker, type);
+  return reader && !reader.value ? reader.key : null;
+}
 
 export class TypeMapper {
   readonly structs = new Map<string, CppStruct>();
@@ -56,7 +97,11 @@ export class TypeMapper {
   /** Told the module of every struct and enum a type uses (the emitter records what each function needs). */
   observe: ((module: string) => void) | null = null;
 
-  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[], relative: (file: TS.SourceFile) => string) {
+  /** The target's own type names: a translated struct that would take one is named after its module too. */
+  readonly #reserved: ReadonlySet<string>;
+
+  constructor(ts: TypeScriptApi, checker: TS.TypeChecker, spec: TranslationSpec, flow: FlowGraph, errors: string[], relative: (file: TS.SourceFile) => string, reserved: ReadonlySet<string> = new Set()) {
+    this.#reserved = reserved;
     this.#ts = ts;
     this.#checker = checker;
     this.#spec = spec;
@@ -102,6 +147,12 @@ export class TypeMapper {
     if (type.isUnion()) {
       const present = type.types.filter((t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null)));
       if (present.every((t) => t.flags & ts.TypeFlags.BooleanLike)) return BOOL;
+      // numeric literals (a direction `1 | -1`, a sign, a code) are one number: its kind is the flow's (integers stay
+      // int), optional when undefined or null may be in it
+      if (present.length > 0 && present.every((t) => t.flags & ts.TypeFlags.NumberLike)) {
+        const n = this.number(slot ? this.#flow.numberOf(slot) : Num.Float, use);
+        return present.length === type.types.length ? n : { k: 'optional', of: n };
+      }
       if (present.length > 0 && present.every((t) => t.flags & ts.TypeFlags.StringLiteral)) {
         const e: CppType = { k: 'enum', name: this.#enumOf(present, type.aliasSymbol, slot?.name ?? 'value').name };
         return present.length === type.types.length ? e : { k: 'optional', of: e };
@@ -132,16 +183,27 @@ export class TypeMapper {
     if (/^Float(32|64)Array$/.test(name)) return this.#vector({ k: 'real', name: this.#spec.number });
     const typed = /^(Ui|I)nt(8|16|32)Array$/.exec(name);
     if (typed) return this.#vector({ k: 'int', name: `${typed[1] === 'Ui' ? 'u' : ''}int${typed[2]}_t` as IntName });
-    if (checker.isArrayType(type) || /^(ReadonlyArray|Set|ReadonlySet)$/.test(name)) {
+    if (checker.isArrayType(type) || /^(ReadonlyArray|ArrayLike|Set|ReadonlySet)$/.test(name)) {
       if (/Set$/.test(name)) this.includes.add('unordered_set');
       const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
       return this.#vector(this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null));
     }
-    if (/^(Map|ReadonlyMap)$/.test(name)) {
-      const [k, v] = checker.getTypeArguments(type as TS.TypeReference);
+    // a lookup the source declares itself (`interface NodeHeights { get(node: NodeId): number | undefined }`, a Map
+    // passed in): the map it is read as
+    const lookup = lookupOf(ts, checker, type);
+    if (lookup || /^(Map|ReadonlyMap)$/.test(name)) {
+      const [k, v] = lookup ?? checker.getTypeArguments(type as TS.TypeReference);
       this.includes.add('unordered_map');
       const key: CppType = k!.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
+    }
+    // a membership test (a Set passed in, or a rule written in place): the test, called with the key
+    const member = membershipOf(ts, checker, type);
+    if (member) {
+      this.includes.add('functional');
+      // a number key as a Map's (an id may pass 2^31: int64_t)
+      const key: CppType = member.flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } : this.ofType(member, 'param', null);
+      return { k: 'function', params: [key], ret: BOOL };
     }
     const call = type.getCallSignatures()[0];
     if (call) {
@@ -163,24 +225,33 @@ export class TypeMapper {
 
   /** The struct of an object type (or the target type it is the same as), declared on first use. */
   structFor(type: TS.Type, hint: string): CppType {
+    if (this.#checker.isTupleType(type)) return this.#tuple(type as TS.TypeReference);
     const symbol = type.aliasSymbol ?? type.getSymbol();
-    const declared = symbol && symbol.name !== '__type' && symbol.name !== '__object' ? symbol.name : null;
+    // a type TypeScript's own library declares (Pick, Partial, Record, Omit): no name of the program; named by its
+    // shape, like an object literal's type
+    const inLib = symbol?.declarations?.some((d) => /[\\/]typescript[\\/]lib[\\/]lib\.[^\\/]*\.d\.ts$/.test(d.getSourceFile().fileName)) ?? false;
+    const declared = symbol && !inLib && symbol.name !== '__type' && symbol.name !== '__object' ? symbol.name : null;
     if (!declared) {
       const same = this.#sameAs(type);
       if (same) return same;
     }
     const shape = this.#checker.typeToString(type, undefined, this.#ts.TypeFormatFlags.NoTruncation | this.#ts.TypeFormatFlags.InTypeAlias);
+    // a declared name the target already uses for its own type (city::Profile): the module's name in front
+    // (ElevationProfile), so both live in one namespace; a name the spec gives (typeNames) wins
+    const stem = pascal((symbol?.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'));
+    const own = declared && this.#reserved.has(declared) && declared !== this.#spec.state.source ? `${stem}${declared}` : declared;
     const name = declared === this.#spec.state.source ? this.#spec.state.target
-      : declared ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? pascal(hint);
+      : (declared ? this.#spec.typeNames[declared] : undefined) ?? own ?? this.#anonymous.get(shape) ?? this.#spec.typeNames[shape] ?? pascal(hint);
     const known = this.structs.get(name);
     if (known) {
       this.#seen(known);
       return { k: 'struct', name };
     }
     if (!declared) this.#anonymous.set(shape, name);
-    const decl = symbol?.declarations?.[0];
+    // a library type has no declaration of the program: its module is where it is used, its line none
+    const decl = inLib ? undefined : symbol?.declarations?.[0];
     const made: CppStruct = { name, comment: symbol && declared ? this.#doc(symbol) : null, fields: [], module: this.#moduleOf(decl),
-      line: decl ? decl.getSourceFile().getLineAndCharacterOfPosition(decl.getStart()).line + 1 : 0 };
+      line: decl ? decl.getSourceFile().getLineAndCharacterOfPosition(decl.getStart()).line + 1 : 0, declared };
     this.#seen(made);
     // Registered before its fields: a type that holds itself stops here. The files order structs by what they hold.
     this.structs.set(name, made);
@@ -192,6 +263,34 @@ export class TypeMapper {
       if (cpp.k === 'optional') this.includes.add('optional');
       made.fields.push({ source: prop.name, name: snake(prop.name), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
     }
+    return { k: 'struct', name };
+  }
+
+  /**
+   * A tuple (`[t: number, y: number]`): a struct of its positions, read by position. One struct for every tuple of the
+   * same element types, labelled or not (the program passes one where the other is asked), named from them
+   * (`NumberPair`); its fields `first`, `second`, ... (`v<i>` past four). A field's source is its position.
+   */
+  #tuple(type: TS.TypeReference): CppType {
+    const elements = this.#checker.getTypeArguments(type);
+    const word = (t: TS.Type): string => pascal(this.#checker.typeToString(this.#checker.getBaseTypeOfLiteralType(t)).replace(/[^A-Za-z0-9]+/g, ' ').trim().replace(/\s+/g, '_'));
+    const words = elements.map(word);
+    const arity = ['', 'Single', 'Pair', 'Triple', 'Quad'][elements.length] ?? `Tuple${elements.length}`;
+    const name = this.#spec.typeNames[this.#checker.typeToString(type)] ?? `${words.every((w) => w === words[0]) ? words[0] : words.join('')}${arity}`;
+    const known = this.structs.get(name);
+    if (known) {
+      this.#seen(known);
+      return { k: 'struct', name };
+    }
+    const made: CppStruct = { name, comment: `A tuple of the source (${this.#checker.typeToString(type)}), read by position.`, fields: [], module: null, line: 0 };
+    this.#seen(made);
+    this.structs.set(name, made);
+    const FIELDS = ['first', 'second', 'third', 'fourth'];
+    elements.forEach((el, i) => {
+      const prop = this.#checker.getPropertyOfType(type, String(i));
+      const cpp = this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
+      made.fields.push({ source: String(i), name: FIELDS[i] ?? `v${i}`, type: cpp, init: this.#init(cpp), comment: null });
+    });
     return { k: 'struct', name };
   }
 

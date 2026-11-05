@@ -29,7 +29,7 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_runtime.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
@@ -40,7 +40,7 @@ describe('translate', () => {
   });
 
   it('finds the target types by shape, within what the layers may include', () => {
-    assert.deepEqual(result.valueTypes, { V2: { x: 'x', y: 'y' } }, 'Vec2 is the core V2; the same-shaped render Point2 is not includable');
+    assert.deepEqual(result.valueTypes, { PostLookC: { height: 'height', lit: 'lit' }, V2: { x: 'x', y: 'y' } }, 'Vec2 is the core V2; the same-shaped render Point2 is not includable; PostLook is the one the spec declares');
     assert.match(file('yard_types.h'), /#include "core\/math\.h"/);
   });
 
@@ -51,10 +51,33 @@ describe('translate', () => {
     assert.doesNotMatch(file('yard_query.cpp'), /float dist\(/, 'the helper is not copied into the feature');
   });
 
+  it('copies a spread before sorting it, and reads a tuple by position', () => {
+    assert.match(file('yard_query.cpp'), /std::vector<float> sorted_\d+ = std::vector<float>\(values\);\n\tstd::stable_sort\(sorted_\d+\.begin\(\)/,
+      'the caller\'s values stay as they are');
+    assert.match(file('yard_types.h'), /struct NumberPair \{\n\tfloat first = 0;\n\tfloat second = 0;\n\};/);
+    assert.match(file('yard_query.cpp'), /float t = item_\d+\.first;\n\t\tfloat y = item_\d+\.second;/);
+  });
+
+  it('takes a membership test as a predicate: a Set passed in, a rule written in place', () => {
+    assert.match(file('yard_query.cpp'), /int kept_count\(const YardState &t, const std::function<bool\(int64_t\)> &kept\)/);
+    assert.match(file('yard_query.cpp'), /if \(kept\(p\.id\)\)/);
+    assert.match(file('yard_query.cpp'), /kept_count\(t, \[&\]\(int64_t k\) \{ return chosen_seen\.count\(k\) != 0; \}\)/, 'a Set asks its hash set');
+    assert.match(file('yard_query.cpp'), /std::function<bool\(int64_t\)> even = \[&\]\(int64_t id\) -> bool \{\n\t\treturn id % 2 == 0 \|\| \(chosen_seen\.count\(id\) != 0\);/);
+  });
+
+  it('folds with reduce, tests a prefix and a suffix, writes NaN and a number without its separator', () => {
+    const q = file('yard_query.cpp');
+    assert.match(q, /s_\d+\.compare\(0, p_\d+\.size\(\), p_\d+\) == 0/);
+    assert.match(q, /return std::numeric_limits<float>::quiet_NaN\(\);/);
+    assert.match(q, /float acc_\d+ = 0; for \(float b : /);
+    assert.match(file('yard_types.h'), /constexpr float SUMMED = 1000\.5f;/);
+    assert.match(file('yard_types.h'), /#include <limits>/, 'a header from the names written');
+  });
+
   it('keeps integers integers, through cycles, callbacks and helpers called with integers', () => {
     assert.match(file('yard_query.cpp'), /\bint n = 0;/);
     assert.match(file('yard_types.h'), /struct Nearest \{\n\tint32_t i = 0;\n\tfloat d = 0;\n\tV2 at;\n\};/);
-    assert.match(file('yard_query.cpp'), /std::unordered_map<int64_t, std::vector<int>> at;/);
+    assert.match(file('yard_query.cpp'), /js::Map<int64_t, std::vector<int>> at;/);
     assert.match(file('yard_query.cpp'), /auto link = \[&\]\(int32_t a, int32_t b\) -> void/);
     assert.match(file('yard_types.h'), /int32_t next_id = 1;/, 'the empty state starts ids at 1');
   });
@@ -75,7 +98,7 @@ describe('translate', () => {
   it('shares what the source shares: references, and an index that holds pointers into the state', () => {
     assert.match(file('yard_query.cpp'), /const auto &cells = t\.index\.post_cells\.cells;/);
     assert.match(file('yard_query.cpp'), /const auto &first = t\.posts\[0\];/);
-    assert.match(file('yard_types.h'), /std::unordered_map<int64_t, std::vector<const Post \*>> cells;/);
+    assert.match(file('yard_types.h'), /js::Map<int64_t, std::vector<const Post \*>> cells;/);
     assert.match(file('yard_index.cpp'), /index\.cells\[key\]\.push_back\(&p\);/, 'one lookup makes the entry when absent');
   });
 

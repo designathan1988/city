@@ -1,9 +1,9 @@
 {
   "_doc": "Where things are on this machine, for scripts/port.ts. Paths change: edit them here, nowhere else, then run `node scripts/port.ts doctor`. ${name} refers to another key of this file.",
-  "source": "C:/Users/Jonathan/Documents/Labs/roadcraft-4.0-main",
-  "game": "C:/Projects/Roadcraft-windows/fonte",
-  "ports": "C:/Projects/Roadcraft-windows/ports",
-  "inventory": "C:/Projects/Roadcraft-windows/registro/mapa40/funcionalidades.json",
+  "source": "C:/Users/Jonathan/Documents/Projects/city/roadcraft",
+  "game": "C:/Users/Jonathan/Desktop/city",
+  "ports": "C:/Users/Jonathan/Desktop/city/tools/ports",
+  "inventory": "C:/Users/Jonathan/Desktop/city/tools/process/records/map40/features.json",
   "jelly": "C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly",
   "typescript": "${source}/node_modules/typescript",
   "types": "${source}/node_modules/@types",

@@ -24,6 +24,8 @@ export interface TranslationResult {
   readonly subsystem: string;
   readonly files: Map<string, string>;
   readonly units: { readonly source: string; readonly cpp: string; readonly kind: 'edit' | 'query' | 'index' | 'constant'; readonly line: number }[];
+  /** Every declaration of the source the files hold, `module#name`: functions, constants and declared types. */
+  readonly declared: readonly string[];
   readonly pending: readonly Pending[];
   readonly errors: readonly string[];
   /** What other owners call, and the types they see: what a harness needs to drive the translation. */
@@ -46,7 +48,9 @@ export interface ApiFunction {
   /** The source file that exports it (relative to the source root). */
   readonly module: string;
   readonly cpp: string;
-  readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean }[];
+  readonly params: readonly { readonly name: string; readonly type: CppType; readonly byValue: boolean; readonly mutable?: boolean }[];
+  /** Context parameters it takes after its own (a context pattern used, directly or through a call). */
+  readonly context?: readonly { readonly type: string; readonly name: string }[];
   readonly ret: CppType;
   /** An edit changes the state (its first parameter); `ret` is what it returns besides. */
   readonly edit: boolean;
@@ -77,6 +81,8 @@ export interface PreparedProgram {
   readonly placement: ModulePlacement;
   /** The source types the target has, found by shape: the flow reads this same dictionary. */
   readonly types: TranslationSpec['types'];
+  /** The names of the target's own types (classes, structs, enums). */
+  readonly targetTypes: ReadonlySet<string>;
 }
 
 /** The logic build's header of value types: what `translate({ logic: true })` maps the source's value types to. */
@@ -125,20 +131,22 @@ export function prepareTranslation(input: TranslateInput): PreparedProgram {
   const relative = (f: TS.SourceFile): string => path.relative(input.sourceRoot, f.fileName).split(path.sep).join('/');
   // Every file of the program placed at once: a source file keeps its owner and name whatever is translated with it.
   const placement = new ModulePlacement(sources.map(relative));
-  return { ts, sp, sources, flow, patterns, rules, relative, placement, types: spec.types };
+  // the target's own type names: a translated struct must not take one (city::Profile and the 4.0's Profile)
+  const targetTypes = new Set(target.units.filter((u) => u.kind === 'class' || u.kind === 'enum').map((u) => u.name));
+  return { ts, sp, sources, flow, patterns, rules, relative, placement, types: spec.types, targetTypes };
 }
 
 export function translate(input: TranslateInput): TranslationResult {
-  const { ts, sp, sources, flow, patterns, rules, relative, placement, types: found } = input.prepared ?? prepareTranslation(input);
+  const { ts, sp, sources, flow, patterns, rules, relative, placement, types: found, targetTypes } = input.prepared ?? prepareTranslation(input);
   const spec = { ...resolveSpec(input.spec), types: found };
   const file = sp.sourceFile(path.join(input.sourceRoot, spec.source));
   if (!file) throw new Error(`${spec.source} is not part of the program of ${input.tsconfig}`);
   const errors: string[] = [];
   // The flow names a shape error once: each translation starts clean, or one module's refusal would pass to the next.
   flow.errors.length = 0;
-  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative);
+  const types = new TypeMapper(ts, sp.checker, spec, flow, errors, relative, targetTypes);
   const c: TranslateContext = { ts, checker: sp.checker, spec, file, sources, relative, placement, flow, types, patterns, errors, includes: new Set(),
-    functions: new Map(), memos: new Map(), constants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
+    functions: new Map(), memos: new Map(), constants: new Map(), contextConstants: new Map(), literals: new LiteralNames(ts, sp.checker), literalConstants: new Map(),
     allowedNumbers: rules.allowed };
   // The state type is declared first, so its struct carries the target name and its fields are in order.
   // A module of pure functions has no state: its spec's state source is empty.
@@ -150,6 +158,15 @@ export function translate(input: TranslateInput): TranslationResult {
   }
   const translator = new Translator(c);
   const units = translator.trace();
+  // the types an earlier translation wrote into a module this one shares (spec.shared): declared here too, so the
+  // shared module's types header is the same for both
+  for (const id of spec.shared ?? []) {
+    const at = id.indexOf('#');
+    const shared = sp.sourceFile(path.join(input.sourceRoot, id.slice(0, at)));
+    const name = id.slice(at + 1);
+    const decl = shared?.statements.find((st) => (ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st)) && st.name.text === name) as TS.InterfaceDeclaration | TS.TypeAliasDeclaration | undefined;
+    if (decl) types.structFor(sp.checker.getTypeAtLocation(decl.name), name);
+  }
   translator.plan(units);
   translator.emit();
   const files = translationFiles(c, translator.emitted, translator.builders);
@@ -161,7 +178,12 @@ export function translate(input: TranslateInput): TranslationResult {
   // Shapes that cannot meet in one struct are found while the types are written: they are errors too.
   const api = [...c.functions.values()].filter((f) => f.exported)
     .map((f) => ({ source: f.source, module: f.module, cpp: f.cpp, params: f.params, ret: f.ret, edit: f.edit !== null }));
-  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, pending: spec.pending,
+  const declared = [...new Set([
+    ...[...c.functions.values()].map((f) => `${f.module}#${f.source}`),
+    ...[...c.constants.values()].filter((k) => k.module).map((k) => `${k.module}#${k.source}`),
+    ...[...types.structs.values()].filter((s) => s.declared && s.module && !types.indexStructs.has(s.name)).map((s) => `${s.module}#${s.declared}`),
+  ])].sort();
+  return { feature: spec.feature, subsystem: spec.subsystem, files, units: listed, declared, pending: spec.pending,
     errors: [...new Set([...flow.errors, ...errors])], api, structs: [...types.structs.values()].filter((s) => !types.indexStructs.has(s.name)),
     enums: [...types.enums.values()], state: spec.state.target, stateModule: relative(file),
     valueTypes: Object.fromEntries(Object.values(spec.types).filter((t) => t.fields).map((t) => [t.type, t.fields!])),

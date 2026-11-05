@@ -66,9 +66,23 @@ export class Translator extends Emitter {
       reached.add(s);
       queue.push(s);
     }
+    for (const id of this.c.spec.shared ?? []) {
+      const at = id.indexOf('#');
+      const module = id.slice(0, at);
+      const name = id.slice(at + 1);
+      const found = [...this.#decls].find(([s, d]) => s.name === name && this.c.relative(d.getSourceFile()) === module);
+      if (found && !reached.has(found[0])) {
+        reached.add(found[0]);
+        queue.push(found[0]);
+      }
+    }
     const pendingNames = new Set(this.c.spec.pending.map((p) => p.unit));
     for (let i = 0; i < queue.length; i++) {
       const visit = (n: TS.Node): void => {
+        // an expression a pattern maps is the target's own value (ROAD_TUNING.grade.ramp → tn.grade_ramp): what it
+        // names is not a unit to translate; only its placeholders are the feature's values
+        const mapped = ts.isExpression(n) && !ts.isIdentifier(n) ? this.c.patterns.match(n) : null;
+        if (mapped) { for (const b of mapped.bound.values()) visit(b); return; }
         if (ts.isIdentifier(n)) {
           const s = this.symbolOf(n);
           if (s && this.#decls.has(s) && !reached.has(s)) {
@@ -101,10 +115,129 @@ export class Translator extends Emitter {
       else if (init && ts.isCallExpression(init) && ts.isIdentifier(init.expression) && this.c.spec.memoizers.includes(init.expression.text)) this.#planMemo(d, init, name, line);
       else this.#planConstant(d, name, line);
     }
+    this.#propagateMutability();
+    this.#propagateContext();
     this.#checkEditsReadNoIndex();
   }
 
+  /**
+   * The context parameters each function takes: a context pattern it uses (in its body, or through a module constant
+   * mapped to one), or a function it calls that takes one, to the fixed point. They follow its own parameters, by
+   * name, and every call passes them on (the caller has them as its own).
+   */
+  #propagateContext(): void {
+    const ts = this.c.ts;
+    type Ctx = { readonly type: string; readonly name: string };
+    const direct = new Map<TS.Symbol, Map<string, Ctx>>();
+    const calls = new Map<TS.Symbol, TS.Symbol[]>();
+    for (const [key, plan] of this.c.functions) {
+      const own = new Map<string, Ctx>();
+      const callees: TS.Symbol[] = [];
+      const visit = (n: TS.Node): void => {
+        if (ts.isIdentifier(n)) {
+          const s = this.symbolOf(n);
+          const k = s ? this.c.contextConstants.get(s) : undefined;
+          if (k) own.set(k.context.name, k.context);
+        }
+        if (ts.isExpression(n)) {
+          const m = this.c.patterns.match(n);
+          if (m?.pattern.context) own.set(m.pattern.context.name, m.pattern.context);
+        }
+        if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+          const s = this.symbolOf(n.expression);
+          if (s && this.c.functions.has(s)) callees.push(s);
+          const owned = s && !this.c.functions.has(s) ? this.c.spec.functions[n.expression.text]?.context : undefined;
+          if (owned) own.set(owned.name, owned);
+        }
+        ts.forEachChild(n, visit);
+      };
+      const body = (plan.decl as { body?: TS.Node }).body;
+      if (body) visit(body);
+      direct.set(key, own);
+      calls.set(key, callees);
+    }
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const [key, own] of direct) for (const c of calls.get(key) ?? []) for (const [name, ctx] of direct.get(c) ?? []) {
+        if (!own.has(name)) { own.set(name, ctx); changed = true; }
+      }
+    }
+    for (const [key, own] of direct) {
+      if (own.size === 0) continue;
+      const plan = this.c.functions.get(key)!;
+      this.c.functions.set(key, { ...plan, context: [...own.values()].sort((a, b) => (a.name < b.name ? -1 : 1)) });
+    }
+  }
+
+  /**
+   * A parameter passed on (whole, or a part of it: `p.h`) to a parameter the callee changes is changed too: taken by
+   * mutable reference as well, to the fixed point (JavaScript shares the array all the way down).
+   */
+  #propagateMutability(): void {
+    const ts = this.c.ts;
+    const rootOf = (e: TS.Expression): TS.Expression => {
+      let x = e;
+      while (ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x) || ts.isParenthesizedExpression(x) || ts.isNonNullExpression(x)) x = x.expression;
+      return x;
+    };
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const [key, plan] of this.c.functions) {
+        const fn = plan.decl as TS.SignatureDeclaration & { body?: TS.Node };
+        if (!fn.body) continue;
+        const params = plan.params.map((p, i) => { const symbol = fn.parameters[i] ? this.symbolOf(fn.parameters[i]!.name) : undefined; return { p, symbol, aliases: symbol ? this.#aliasesOf(fn, symbol) : new Set<TS.Symbol>() }; });
+        let next = plan.params;
+        const visit = (n: TS.Node): void => {
+          if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+            const callee = this.symbolOf(n.expression);
+            const target = callee ? this.c.functions.get(callee) : undefined;
+            if (target) n.arguments.forEach((arg, j) => {
+              if (!target.params[j]?.mutable) return;
+              const root = rootOf(arg);
+              if (!ts.isIdentifier(root)) return;
+              const s = this.symbolOf(root);
+              const i = params.findIndex((x) => s !== undefined && x.aliases.has(s));
+              if (i < 0 || next[i]!.mutable || next[i]!.byValue) return;
+              // the state parameter keeps its own rule (an edit changes it, a query does not)
+              const q = next[i]!.type;
+              if (i === 0 && q.k === 'struct' && q.name === this.c.spec.state.target) return;
+              next = next.map((q, k) => (k === i ? { ...q, mutable: true } : q));
+            });
+          }
+          ts.forEachChild(n, visit);
+        };
+        visit(fn.body);
+        if (next !== plan.params) { this.c.functions.set(key, { ...plan, params: next }); changed = true; }
+      }
+    }
+  }
+
   /** The declaration's own comment: the last one before it (a section rule above it is not about it). */
+  /** The context an expression reads inside (a context pattern, or a constant that is one), with its include; null if none. */
+  #contextIn(e: TS.Expression): { context: { type: string; name: string }; include: string } | null {
+    const ts = this.c.ts;
+    let found: { context: { type: string; name: string }; include: string } | null = null;
+    const visit = (n: TS.Node): void => {
+      if (found) return;
+      if (ts.isExpression(n)) {
+        const match = this.c.patterns.match(n);
+        if (match?.pattern.context) {
+          found = { context: match.pattern.context, include: match.pattern.include };
+          return;
+        }
+        const s = ts.isIdentifier(n) ? this.symbolOf(n) : undefined;
+        const k = s ? this.c.contextConstants.get(s) : undefined;
+        if (k) {
+          found = { context: k.context, include: k.include };
+          return;
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(e);
+    return found;
+  }
+
   #doc(node: TS.Node): string | null {
     const source = node.getSourceFile().text;
     const ranges = this.c.ts.getLeadingCommentRanges(source, node.getFullStart()) ?? [];
@@ -127,6 +260,7 @@ export class Translator extends Emitter {
   }
 
   #planFunction(fn: TS.SignatureDeclaration & { body?: TS.ConciseBody }, name: string, line: number, holder: TS.Node): void {
+    this.unit = name;
     const checker = this.c.checker;
     const flow = this.c.flow;
     const retType = checker.getSignatureFromDeclaration(fn)!.getReturnType();
@@ -151,7 +285,7 @@ export class Translator extends Emitter {
       const declared = checker.getTypeOfSymbol(symbol);
       // An Omit<T> parameter is filled in by the function: taken by value.
       const byValue = declared.aliasSymbol?.name === 'Omit';
-      return { name: pname, type: this.c.types.slot(flow.symbolSlot(symbol), 'param'), byValue };
+      return { name: pname, type: this.c.types.slot(flow.symbolSlot(symbol), 'param'), byValue, mutable: !byValue && this.#contentsChanged(fn, symbol) };
     });
     const ret = edit ? edit.result ?? { k: 'void' as const } : this.c.types.slot(flow.returnSlot(fn), 'return');
     this.c.functions.set(this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!, {
@@ -161,6 +295,7 @@ export class Translator extends Emitter {
   }
 
   #planMemo(d: TS.VariableDeclaration, call: TS.CallExpression, name: string, line: number): void {
+    this.unit = name;
     const ts = this.c.ts;
     const fn = call.arguments[0];
     if (!fn || (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn))) {
@@ -204,9 +339,32 @@ export class Translator extends Emitter {
   }
 
   #planConstant(d: TS.VariableDeclaration, name: string, line: number): void {
+    this.unit = name;
     this.module = this.c.relative(d.getSourceFile());
+    // a regular expression: no C++ constant; each use compiles it once where it is tested (#regexTest)
+    if (d.initializer?.kind === this.c.ts.SyntaxKind.RegularExpressionLiteral) return;
     const symbol = this.symbolOf(d.name)!;
     const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
+    // a constant whose value is a context pattern (RAMP_GRADE = ROAD_TUNING.grade.ramp, the game's tuning): no C++
+    // constant; each reference reads the target expression through the context parameter
+    const contextual = d.initializer ? this.c.patterns.match(d.initializer) : null;
+    if (contextual?.pattern.context) {
+      this.c.contextConstants.set(symbol, { code: this.expr(d.initializer!, type), type, include: contextual.pattern.include, context: contextual.pattern.context });
+      return;
+    }
+    // a value built from a context inside (CLEAR = ROAD_TUNING.grade.clear * 2): a number, a flag or a name is read
+    // the same at each use; a table built from it would be a new one at each use (a pointer into it dangles), so the
+    // target must own it: the library maps the constant by name to the target's table
+    const inner = d.initializer ? this.#contextIn(d.initializer) : null;
+    if (inner) {
+      const scalar = type.k === 'int' || type.k === 'real' || type.k === 'bool' || type.k === 'enum';
+      if (!scalar) {
+        this.fail(d, `${name} is a ${render(type)} built from ${inner.context.name} (${inner.context.type}): the target owns it; map ${name} in the library to the target's table`);
+        return;
+      }
+      this.c.contextConstants.set(symbol, { code: `(${this.expr(d.initializer!, type)})`, type, include: inner.include, context: inner.context });
+      return;
+    }
     const value = d.initializer ? this.expr(d.initializer, type) : '{}';
     const scalar = type.k === 'int' || type.k === 'real' || type.k === 'bool';
     this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value, module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: scalar });
@@ -271,17 +429,77 @@ export class Translator extends Emitter {
     return uses;
   }
 
+  /** The function changes the contents of a parameter: an element or a field written (=, op=, ++, --), or a mutating
+   *  method called on it. Reading it, or passing it on, is not a change. */
+  /** A parameter and the names that alias a part of it (`const { h } = profile`, `const h = profile.h`): a change
+   *  through any of them is a change of the parameter (JavaScript shares the object). */
+  #aliasesOf(fn: TS.SignatureDeclaration, symbol: TS.Symbol): Set<TS.Symbol> {
+    const ts = this.c.ts;
+    const tracked = new Set<TS.Symbol>([symbol]);
+    const rootOf = (e: TS.Expression): TS.Expression => {
+      let x = e;
+      while (ts.isPropertyAccessExpression(x) || ts.isElementAccessExpression(x) || ts.isParenthesizedExpression(x) || ts.isNonNullExpression(x)) x = x.expression;
+      return x;
+    };
+    const collect = (n: TS.Node): void => {
+      if (ts.isVariableDeclaration(n) && n.initializer) {
+        const root = rootOf(n.initializer);
+        const from = ts.isIdentifier(root) ? this.symbolOf(root) : undefined;
+        if (from && tracked.has(from)) {
+          if (ts.isObjectBindingPattern(n.name)) for (const el of n.name.elements) { const s = this.symbolOf(el.name); if (s) tracked.add(s); }
+          else if (ts.isIdentifier(n.name) && root !== n.initializer) { const s = this.symbolOf(n.name); if (s) tracked.add(s); }
+        }
+      }
+      ts.forEachChild(n, collect);
+    };
+    const fnBody = (fn as { body?: TS.Node }).body;
+    for (let size = -1; fnBody && size !== tracked.size;) { size = tracked.size; collect(fnBody); }
+    return tracked;
+  }
+
+  #contentsChanged(fn: TS.SignatureDeclaration, symbol: TS.Symbol): boolean {
+    const ts = this.c.ts;
+    const MUTATORS = ['push', 'set', 'add', 'delete', 'sort', 'reverse', 'fill', 'splice', 'pop', 'shift', 'unshift', 'clear', 'copyWithin'];
+    const assigns = (k: TS.SyntaxKind): boolean => k >= ts.SyntaxKind.FirstAssignment && k <= ts.SyntaxKind.LastAssignment;
+    const written = (target: TS.Node): boolean => {
+      const p = target.parent;
+      if (ts.isBinaryExpression(p) && p.left === target && assigns(p.operatorToken.kind)) return true;
+      return (ts.isPrefixUnaryExpression(p) || ts.isPostfixUnaryExpression(p)) && (p.operator === ts.SyntaxKind.PlusPlusToken || p.operator === ts.SyntaxKind.MinusMinusToken);
+    };
+    const tracked = this.#aliasesOf(fn, symbol);
+    let found = false;
+    const visit = (n: TS.Node): void => {
+      if (found) return;
+      const s = ts.isIdentifier(n) ? this.symbolOf(n) : undefined;
+      if (s && tracked.has(s) && !(ts.isParameter(n.parent) && n.parent.name === n)) {
+        const p = n.parent;
+        if ((ts.isElementAccessExpression(p) || ts.isPropertyAccessExpression(p)) && p.expression === n) {
+          if (written(p)) found = true;
+          if (ts.isPropertyAccessExpression(p) && ts.isCallExpression(p.parent) && p.parent.expression === p && MUTATORS.includes(p.name.text)) found = true;
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    const body = (fn as { body?: TS.Node }).body;
+    if (body) visit(body);
+    return found;
+  }
+
   #signature(plan: FunctionPlan, name: string): string {
     const params = plan.params.map((p, i) => {
       if (i === 0 && plan.params[0]!.type.k === 'struct' && (plan.params[0]!.type as { name: string }).name === this.c.spec.state.target) {
         return `${plan.edit ? '' : 'const '}${render(p.type)} &${p.name}`;
       }
+      if (p.mutable) return `${render(p.type)} &${p.name}`;
       return p.byValue ? `${render(p.type)} ${p.name}` : `${paramType(p.type)}${paramType(p.type).endsWith('&') ? '' : ' '}${p.name}`;
     });
+    // context parameters after its own (const Tuning &tn)
+    for (const c of plan.context ?? []) params.push(`${c.type}${c.type.endsWith('&') || c.type.endsWith('*') ? '' : ' '}${c.name}`);
     return `${render(plan.ret)} ${name}(${params.join(', ')})`;
   }
 
   #emitFunction(plan: FunctionPlan): void {
+    this.unit = plan.source;
     this.fn = plan;
     this.module = plan.module;
     this.scopes.push(new Map());
@@ -311,6 +529,7 @@ export class Translator extends Emitter {
   }
 
   #emitMemo(plan: MemoPlan): void {
+    this.unit = plan.source;
     this.memo = plan;
     this.module = this.c.relative(this.c.file);
     this.scopes.push(new Map());

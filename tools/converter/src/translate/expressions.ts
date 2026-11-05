@@ -7,11 +7,14 @@
 import type * as TS from 'typescript';
 import type { Local, MemoPlan, TranslateContext } from './context.ts';
 import {
-  BOOL, INT, INT64, LITERAL, NULL, STRING, declare, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
+  BOOL, INT, INT64, LITERAL, NULL, STRING, VOID, declare, integerLiteral, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
   widerNumber, type CppType,
 } from './cpptype.ts';
 import { Num } from './flow.ts';
 import { snake } from './names.ts';
+
+/** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
+export const RUNTIME_INCLUDE = 'core/js_runtime.h';
 
 export interface Value {
   readonly code: string;
@@ -62,9 +65,15 @@ export abstract class ExpressionEmitter {
     return this.c.flow.symbolOf(node);
   }
 
+  /** The unit being planned or written (a function, a constant, an index): what an error belongs to. */
+  protected unit: string | null = null;
+
   protected fail(node: TS.Node, why: string): Value {
-    const { line } = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart());
-    this.c.errors.push(`${this.c.spec.source}:${line + 1}: ${why}: ${node.getText().slice(0, 80)}`);
+    const file = node.getSourceFile();
+    const { line } = file.getLineAndCharacterOfPosition(node.getStart());
+    // the node's own file (a value read from another module is reported where it is) and the unit it belongs to
+    // (`[unit X]`: a refusal is attributed to its root without translating each root alone)
+    this.c.errors.push(`${this.c.relative(file)}:${line + 1}: ${why}: ${node.getText().slice(0, 80)}${this.unit ? ` [unit ${this.unit}]` : ''}`);
     return { code: '/*untranslated*/', type: NULL };
   }
 
@@ -83,6 +92,17 @@ export abstract class ExpressionEmitter {
 
   protected coerce(v: Value, want: CppType | undefined, e?: TS.Expression): string {
     if (!want) return v.code;
+    if (want.k === 'function' && want.ret.k === 'bool' && want.params.length === 1) {
+      const from = target(v.type);
+      const key = want.params[0]!;
+      const seen = e && this.c.ts.isIdentifier(e) ? this.lookup(this.symbolOf(e)!)?.set : undefined;
+      if (seen) return `[&](${paramDecl(key, 'k')}) { return ${seen}.count(k) != 0; }`;
+      if (from.k === 'map') return `[&](${paramDecl(key, 'k')}) { return ${v.code}.count(k) != 0; }`;
+      if (from.k === 'vector') {
+        this.c.includes.add('algorithm');
+        return `[&](${paramDecl(key, 'k')}) { return std::find(${v.code}.begin(), ${v.code}.end(), k) != ${v.code}.end(); }`;
+      }
+    }
     if (v.type.k === 'null') return want.k === 'ptr' ? 'nullptr' : want.k === 'optional' ? 'std::nullopt' : `${render(want)}{}`;
     if (want.k === 'ptr' && v.type.k !== 'ptr' && same(want.to, target(v.type))) return `&${this.#lvalue(v.code)}`;
     if (want.k !== 'ptr' && want.k !== 'optional' && v.type.k === 'ptr' && same(want, v.type.to)) return `*${v.code}`;
@@ -142,7 +162,8 @@ export abstract class ExpressionEmitter {
     const match = this.c.patterns.match(e);
     if (match) {
       this.c.includes.add(match.pattern.include);
-      return { code: match.pattern.target.replace(/\$(\w+)/g, (_, n: string) => this.expr(match.bound.get(`$${n}`)!)), type: INT64 };
+      return { code: match.pattern.target.replace(/\$(\w+)/g, (_, n: string) => this.expr(match.bound.get(`$${n}`)!)),
+        type: match.pattern.type === 'owned' ? this.#ownedType(e) : { int: INT, int64: INT64, bool: BOOL, void: VOID, float: this.c.types.number(Num.Float, 'local') }[match.pattern.type] };
     }
     if (ts.isParenthesizedExpression(e)) {
       const inner = this.value(e.expression, want);
@@ -166,6 +187,8 @@ export abstract class ExpressionEmitter {
     if (ts.isPropertyAccessExpression(e)) return this.#property(e);
     if (ts.isElementAccessExpression(e)) {
       const obj = this.value(e.expression);
+      const tuple = this.#tupleField(obj.type, e.argumentExpression);
+      if (tuple) return { code: `${obj.code}${obj.type.k === 'ptr' || obj.type.k === 'optional' ? '->' : '.'}${tuple.name}`, type: tuple.type };
       const element = elementOf(obj.type);
       if (!element) return this.fail(e, `an element of ${render(obj.type)}`);
       return { code: `${obj.code}[${this.expr(e.argumentExpression)}]`, type: element };
@@ -187,17 +210,24 @@ export abstract class ExpressionEmitter {
 
   #number(e: TS.NumericLiteral): Value {
     const value = Number(e.text);
-    const int = /^\d+$/.test(e.getText());
-    const type = int ? INT : this.c.types.number(Num.Float, 'local');
-    const text = int ? e.getText() : realLiteral(e.getText(), this.c.spec.number);
+    // a separator (1_000.5) only groups the digits: C++ writes them without it
+    const written = e.getText().replace(/_/g, '');
+    // an integer written in any base (0x.., 0b.., 0o..): an int, or an int64_t past int32 (C++ would make it unsigned
+    // or long); C++ has no 0o, so octal and binary are written in decimal
+    const kind = integerLiteral(written);
+    const int = kind !== null;
+    const wide = kind === 'int64';
+    const type = int ? (wide ? INT64 : INT) : this.c.types.number(Num.Float, 'local');
+    const digits = /^0[bBoO]/.test(written) ? String(value) : written;
+    const text = int ? (wide ? `int64_t(${digits}LL)` : digits) : realLiteral(written, this.c.spec.number);
     if (this.#inConstant(e) || this.c.allowedNumbers.includes(value)) return { code: text, type };
     // A number the target's gates do not allow bare: a constant of this module, named from what receives it.
     const name = this.c.literals.name(e, value, this.module);
     const key = `${this.module}|${name}`;
     if (!this.c.literalConstants.has(key)) {
       const line = e.getSourceFile().getLineAndCharacterOfPosition(e.getStart()).line + 1;
-      this.c.literalConstants.set(key, { source: e.getText(), cpp: name, type, value: text, module: this.module, line,
-        doc: `The ${e.getText()} the source writes here`, constexpr: true });
+      this.c.literalConstants.set(key, { source: written, cpp: name, type, value: text, module: this.module, line,
+        doc: `The ${written} the source writes here`, constexpr: true });
     }
     return { code: name, type };
   }
@@ -219,7 +249,10 @@ export abstract class ExpressionEmitter {
       if (isInt(v.type)) parts.push(`std::to_string(${v.code})`);
       else if (v.type.k === 'string') parts.push(v.code);
       else if (v.type.k === 'literal') parts.push(`std::string(${v.code})`);
-      else return this.fail(span.expression, 'a template part that is not an integer or a string (JavaScript formats numbers its own way)');
+      else {
+        this.c.includes.add(RUNTIME_INCLUDE);
+        parts.push(`js::to_string(${v.code})`);
+      }
       if (span.literal.text) parts.push(JSON.stringify(span.literal.text));
     }
     if (parts.length === 0) return { code: 'std::string()', type: STRING };
@@ -230,6 +263,10 @@ export abstract class ExpressionEmitter {
 
   #identifier(e: TS.Identifier): Value {
     if (e.text === 'undefined') return { code: 'nullptr', type: NULL };
+    if (e.text === 'NaN') {
+      this.c.includes.add('limits');
+      return { code: `std::numeric_limits<${this.c.spec.number}>::quiet_NaN()`, type: this.c.types.number(Num.Float, 'local') };
+    }
     if (e.text === 'Infinity') {
       this.c.includes.add('limits');
       return { code: `std::numeric_limits<${this.c.spec.number}>::infinity()`, type: this.c.types.number(Num.Float, 'local') };
@@ -238,6 +275,11 @@ export abstract class ExpressionEmitter {
     if (!symbol) return this.fail(e, 'an unresolved name');
     const local = this.lookup(symbol);
     if (local) return { code: local.cpp, type: local.type };
+    const contextual = this.c.contextConstants.get(symbol);
+    if (contextual) {
+      this.c.includes.add(contextual.include);
+      return { code: contextual.code, type: contextual.type };
+    }
     const constant = this.c.constants.get(symbol);
     if (constant) {
       if (constant.module) this.uses?.add(constant.module);
@@ -271,13 +313,15 @@ export abstract class ExpressionEmitter {
       if (known?.fields) {
         const field = known.fields[name];
         if (!field) return this.fail(e, `${t.name} has no field for ${name} in the spec`);
-        return { code: `${obj.code}${access}${field}`, type: this.c.types.number(Num.Float, 'local') };
+        const flag = (this.c.checker.getTypeAtLocation(e).flags & ts.TypeFlags.BooleanLike) !== 0;
+        return { code: `${obj.code}${access}${field}`, type: flag ? BOOL : this.c.types.number(Num.Float, 'local') };
       }
       const struct = this.c.types.structs.get(t.name);
       const field = struct?.fields.find((f) => f.source === name);
       if (!field) return this.fail(e, `${t.name} has no field ${name}`);
       return { code: `${obj.code}${access}${field.name}`, type: field.type };
     }
+    if (this.#isBuiltin(e.name)) return this.builtin(e, obj);
     return this.fail(e, `a member of ${render(obj.type)} the translator does not know`);
   }
 
@@ -300,15 +344,33 @@ export abstract class ExpressionEmitter {
       const receiver = callee.expression;
       const method = callee.name.text;
       if (ts.isIdentifier(receiver) && receiver.text === 'Math') return this.#math(e, method);
+      // a static built-in (Number.isInteger, String.fromCharCode, Array.isArray): the runtime's
+      if (ts.isIdentifier(receiver) && this.#isBuiltin(receiver) && !(receiver.text === 'Number' && method === 'isFinite')) return this.builtin(e, null);
       if (ts.isIdentifier(receiver) && receiver.text === 'Number' && method === 'isFinite') {
         this.c.includes.add('cmath');
         return { code: `std::isfinite(${this.expr(e.arguments[0]!)})`, type: BOOL };
+      }
+      if (method === 'test' && e.arguments.length === 1) {
+        const regex = this.#regexOf(receiver);
+        if (regex) return this.#regexTest(regex, e.arguments[0]!);
       }
       const obj = this.value(receiver);
       const t = target(obj.type);
       if (t.k === 'class') return this.#classMember(e, t.name, obj, method, e.arguments);
       if (t.k === 'map') return this.#mapMethod(e, obj, method);
+      if (t.k === 'function' && method === 'has' && t.params.length === 1 && e.arguments.length === 1) {
+        return { code: `${obj.code}(${this.expr(e.arguments[0]!, t.params[0])})`, type: BOOL };
+      }
+      if (t.k === 'vector' && method === 'has' && e.arguments.length === 1) {
+        const seen = ts.isIdentifier(receiver) ? this.lookup(this.symbolOf(receiver)!)?.set : undefined;
+        const key = this.expr(e.arguments[0]!, elementOf(t)!);
+        if (seen) return { code: `(${seen}.count(${key}) != 0)`, type: BOOL };
+        this.c.includes.add('algorithm');
+        return { code: `(std::find(${obj.code}.begin(), ${obj.code}.end(), ${key}) != ${obj.code}.end())`, type: BOOL };
+      }
       if (t.k === 'vector') return this.arrayMethod(e, obj, method, want);
+      if (t.k === 'string' || t.k === 'literal') return this.#stringMethod(e, obj, method);
+      if (this.#isBuiltin(callee.name)) return this.builtin(e, obj);
       return this.fail(e, `a method ${method} of ${render(obj.type)}`);
     }
     if (ts.isIdentifier(callee)) {
@@ -316,7 +378,9 @@ export abstract class ExpressionEmitter {
       const decl = symbol?.valueDeclaration;
       const external = symbol && !this.c.functions.has(symbol) ? this.c.spec.functions[callee.text] : undefined;
       if (external) {
-        return { code: external.template.replace(/\$(\d)/g, (_, i: string) => this.expr(e.arguments[Number(i)]!)), type: this.numberType(e) };
+        if (external.include) this.c.includes.add(external.include);
+        const code = external.template.replace(/\$(\d)/g, (_, i: string) => this.expr(e.arguments[Number(i)]!));
+        return { code, type: this.#ownedType(e) };
       }
       const memo = symbol ? this.c.memos.get(symbol) : undefined;
       if (memo) return this.#memoRead(e, memo);
@@ -325,6 +389,8 @@ export abstract class ExpressionEmitter {
         this.uses?.add(plan.module);
         if (plan.edit) return this.fail(e, 'an edit used as a value (only as a statement or a return)');
         const args = plan.params.map((p, i) => (e.arguments[i] ? this.expr(e.arguments[i]!, p.type) : p.type.k === 'optional' ? 'std::nullopt' : `${render(p.type)}{}`));
+        // its context parameters, passed on by name (the caller takes them too: #propagateContext)
+        for (const c of plan.context ?? []) args.push(c.name);
         return { code: `${plan.cpp}(${args.join(', ')})`, type: plan.ret };
       }
       const local = symbol ? this.lookup(symbol) : undefined;
@@ -342,7 +408,57 @@ export abstract class ExpressionEmitter {
         return { code: `${local.cpp}(${e.arguments.map((a, i) => this.expr(a, fnType.params[i])).join(', ')})`, type: fnType.ret };
       }
     }
+    if (ts.isIdentifier(callee) && this.#isBuiltin(callee)) return this.builtin(e, null);
     return this.fail(e, 'a call the translator does not know');
+  }
+
+  /** What a value the target owns is in C++: an object, the form of its source type (a type the spec maps); else a number. */
+  #ownedType(e: TS.Expression): CppType {
+    const t = this.c.checker.getNonNullableType(this.c.checker.getTypeAtLocation(e));
+    if (t.flags & this.c.ts.TypeFlags.BooleanLike) return BOOL;
+    if (t.flags & this.c.ts.TypeFlags.StringLike) return STRING;
+    if (t.flags & (this.c.ts.TypeFlags.Void | this.c.ts.TypeFlags.Undefined)) return VOID;
+    if (t.flags & this.c.ts.TypeFlags.Object) return this.c.types.ofType(t, 'local', null);
+    return this.numberType(e);
+  }
+
+  /** Whether a name resolves to a declaration of TypeScript's own library (an ECMAScript built-in). */
+  #isBuiltin(node: TS.Node): boolean {
+    const decl = this.c.checker.getSymbolAtLocation(node)?.declarations?.[0];
+    return decl !== undefined && /[\\/]typescript[\\/]lib[\\/]lib\.[^\\/]*\.d\.ts$/.test(decl.getSourceFile().fileName);
+  }
+
+  /**
+   * A built-in the translator does not lower itself, written the one way every built-in is: the runtime's function
+   * (cpp/js/js_runtime.h, each checked against JavaScript) named mechanically from ECMAScript's: x.toFixed(2) is
+   * js::to_fixed(x, 2), Number.isInteger(x) js::number_is_integer(x), String(x) js::to_string(x). C++ overloads pick
+   * the version; the value has the C++ form of its TypeScript type. A callback is a lambda; an absent argument is the
+   * runtime's default.
+   */
+  protected builtin(e: TS.CallExpression | TS.PropertyAccessExpression, receiver: Value | null): Value {
+    const ts = this.c.ts;
+    const call = ts.isCallExpression(e) ? e : null;
+    const callee = call ? call.expression : e;
+    let name: string;
+    if (ts.isPropertyAccessExpression(callee)) {
+      const host = callee.expression;
+      const statics = receiver === null && ts.isIdentifier(host) ? host.text : null;
+      name = statics && statics !== 'Math' ? `${snake(statics)}_${snake(callee.name.text)}` : snake(callee.name.text);
+    } else if (ts.isIdentifier(callee)) name = callee.text === 'String' ? 'to_string' : snake(callee.text);
+    else return this.fail(e, 'a built-in called through an expression');
+    const args: string[] = receiver ? [receiver.type.k === 'literal' ? `std::string(${receiver.code})` : receiver.code] : [];
+    for (const a of call?.arguments ?? []) {
+      if (ts.isArrowFunction(a) || ts.isFunctionExpression(a)) args.push(this.lambda(a).code);
+      else if (ts.isSpreadElement(a)) return this.fail(a, 'a spread argument to a built-in');
+      else {
+        const v = this.value(a);
+        args.push(v.type.k === 'literal' ? `std::string(${v.code})` : v.code);
+      }
+    }
+    this.c.includes.add(RUNTIME_INCLUDE);
+    const code = `js::${name}(${args.join(', ')})`;
+    const type = this.#ownedType(call ?? e);
+    return { code: isNumber(type) ? `${render(type)}(${code})` : code, type };
   }
 
   #memoRead(e: TS.CallExpression, memo: MemoPlan): Value {
@@ -365,6 +481,12 @@ export abstract class ExpressionEmitter {
       const number = this.c.spec.number;
       return { code: `[&] { const ${number} ${x} = ${args[0]!.code}; const ${number} down = std::floor(${x}); return int(${x} - down >= ${realLiteral('0.5', number)} ? down + 1 : down); }()`, type: INT };
     }
+    // the low 32 bits of the product of two int32 (wrapping: unsigned arithmetic in C++, signed overflow is undefined)
+    // (an operand that is no integer is truncated first, as JavaScript's ToInt32 does)
+    if (method === 'imul') {
+      const u = (v: Value): string => (isInt(v.type) ? `uint32_t(${v.code})` : `uint32_t(int64_t(${v.code}))`);
+      return { code: `int32_t(${u(args[0]!)} * ${u(args[1]!)})`, type: { k: 'int', name: 'int32_t' } };
+    }
     if (method === 'abs') return isInt(args[0]!.type) ? { code: `std::abs(${args[0]!.code})`, type: INT } : { code: `std::fabs(${args[0]!.code})`, type: real };
     if (REAL_MATH.has(method)) return { code: `std::${method}(${args.map((a) => a.code).join(', ')})`, type: real };
     if (method === 'max' || method === 'min') {
@@ -379,7 +501,96 @@ export abstract class ExpressionEmitter {
       });
       return { code: code.reduce((acc, x) => `std::${method}(${acc}, ${x})`), type };
     }
-    return this.fail(e, `Math.${method}`);
+    return this.builtin(e, null);
+  }
+
+  /** A string's prefix, suffix and part tests (the same answer as JavaScript's for every string). */
+  #stringMethod(e: TS.CallExpression, obj: Value, method: string): Value {
+    if (method === 'replace' || method === 'replaceAll') return this.#replace(e, obj, method === 'replaceAll');
+    if (e.arguments.length !== 1 || !['startsWith', 'endsWith', 'includes'].includes(method)) return this.builtin(e, obj);
+    this.c.includes.add('string');
+    const s = this.temp('s');
+    const p = this.temp('p');
+    const bind = `const std::string &${s} = ${obj.type.k === 'literal' ? `std::string(${obj.code})` : obj.code}; const std::string ${p} = ${this.expr(e.arguments[0]!, STRING)};`;
+    if (method === 'startsWith') return { code: `[&] { ${bind} return ${s}.compare(0, ${p}.size(), ${p}) == 0; }()`, type: BOOL };
+    if (method === 'endsWith') return { code: `[&] { ${bind} return ${s}.size() >= ${p}.size() && ${s}.compare(${s}.size() - ${p}.size(), ${p}.size(), ${p}) == 0; }()`, type: BOOL };
+    if (method === 'includes') return { code: `[&] { ${bind} return ${s}.find(${p}) != std::string::npos; }()`, type: BOOL };
+    return this.builtin(e, obj);
+  }
+
+  /**
+   * s.replace(pattern, text): the first match replaced (every one with a g regex or replaceAll). A regex goes through
+   * std::regex_replace with the ECMAScript grammar; a text pattern is found as text. A replacement with `$` (JavaScript's
+   * $&, $1, ...) or a function is refused: its rules are not std::regex's format rules.
+   */
+  #replace(e: TS.CallExpression, obj: Value, all: boolean): Value {
+    const ts = this.c.ts;
+    const [pattern, replacement] = e.arguments;
+    if (!pattern || !replacement || e.arguments.length !== 2) return this.fail(e, `String.replace with ${e.arguments.length} arguments`);
+    if (!ts.isStringLiteral(replacement) && !ts.isNoSubstitutionTemplateLiteral(replacement)) return this.fail(replacement, 'a replacement that is not text written in place');
+    if (replacement.text.includes('$')) return this.fail(replacement, 'a replacement with $ patterns');
+    this.c.includes.add('string');
+    const subject = obj.type.k === 'literal' ? `std::string(${obj.code})` : obj.code;
+    const text = JSON.stringify(replacement.text);
+    const regex = this.#regexOf(pattern);
+    if (regex) {
+      const slash = regex.text.lastIndexOf('/');
+      const body = regex.text.slice(1, slash);
+      const flags = regex.text.slice(slash + 1);
+      if (/[^gi]/.test(flags)) return this.fail(regex, `a regular expression with the flags ${flags}`);
+      if (body.includes(')"')) return this.fail(regex, 'a regular expression that ends a C++ raw string');
+      this.c.includes.add('regex');
+      const re = this.temp('re');
+      const options = flags.includes('i') ? 'std::regex::ECMAScript | std::regex::icase' : 'std::regex::ECMAScript';
+      const once = all || flags.includes('g') ? '' : ', std::regex_constants::format_first_only';
+      return { code: `[&] { static const std::regex ${re}(R"(${body})", ${options}); return std::regex_replace(${subject}, ${re}, std::string(${text})${once}); }()`, type: STRING };
+    }
+    const s = this.temp('s');
+    const p = this.temp('p');
+    const at = this.temp('at');
+    const find = `const std::string ${p} = ${this.expr(pattern, STRING)}; const std::string by = ${text};`;
+    // JavaScript: an empty pattern matches at 0 (replace: find gives 0) and between every character (replaceAll)
+    if (all) {
+      return { code: `[&] { std::string ${s} = ${subject}; ${find} if (${p}.empty()) { std::string r = by; for (const char ch : ${s}) { r += ch; r += by; } return r; } for (size_t ${at} = ${s}.find(${p}); ${at} != std::string::npos; ${at} = ${s}.find(${p}, ${at} + by.size())) ${s}.replace(${at}, ${p}.size(), by); return ${s}; }()`, type: STRING };
+    }
+    return { code: `[&] { std::string ${s} = ${subject}; ${find} const size_t ${at} = ${s}.find(${p}); if (${at} != std::string::npos) ${s}.replace(${at}, ${p}.size(), by); return ${s}; }()`, type: STRING };
+  }
+
+  /** A regular expression written in place, or held by a constant written with one: its literal. */
+  #regexOf(e: TS.Expression): TS.RegularExpressionLiteral | null {
+    const ts = this.c.ts;
+    if (e.kind === ts.SyntaxKind.RegularExpressionLiteral) return e as TS.RegularExpressionLiteral;
+    if (!ts.isIdentifier(e)) return null;
+    const decl = this.symbolOf(e)?.valueDeclaration;
+    if (!decl || !ts.isVariableDeclaration(decl) || !decl.initializer || !ts.isVariableDeclarationList(decl.parent)
+      || (decl.parent.flags & ts.NodeFlags.Const) === 0) return null;
+    return decl.initializer.kind === ts.SyntaxKind.RegularExpressionLiteral ? decl.initializer as TS.RegularExpressionLiteral : null;
+  }
+
+  /**
+   * re.test(s): std::regex_search with the ECMAScript grammar (std::regex's own default), compiled once. Flags other
+   * than i (case) change what test answers (g and y keep a position between calls) and are refused.
+   */
+  #regexTest(regex: TS.RegularExpressionLiteral, arg: TS.Expression): Value {
+    const text = regex.text;
+    const slash = text.lastIndexOf('/');
+    const body = text.slice(1, slash);
+    const flags = text.slice(slash + 1);
+    if (/[^i]/.test(flags)) return this.fail(regex, `a regular expression with the flags ${flags} (only i keeps test free of state)`);
+    if (body.includes(')"')) return this.fail(regex, 'a regular expression that ends a C++ raw string');
+    this.c.includes.add('regex');
+    this.c.includes.add('string');
+    const options = flags.includes('i') ? 'std::regex::ECMAScript | std::regex::icase' : 'std::regex::ECMAScript';
+    const re = this.temp('re');
+    return { code: `[&] { static const std::regex ${re}(R"(${body})", ${options}); return std::regex_search(${this.expr(arg, STRING)}, ${re}); }()`, type: BOOL };
+  }
+
+  /** The field a position of a tuple is (`p[0]`: its first), or null when the value is no tuple or the index no literal. */
+  #tupleField(type: CppType, index: TS.Expression): { name: string; type: CppType } | null {
+    const t = target(type);
+    if (t.k !== 'struct' || !this.c.ts.isNumericLiteral(index)) return null;
+    const field = this.c.types.structs.get(t.name)?.fields.find((f) => f.source === index.text);
+    return field && /^\d+$/.test(field.source) ? { name: field.name, type: field.type } : null;
   }
 
   #mapMethod(e: TS.CallExpression, obj: Value, method: string): Value {
@@ -394,7 +605,7 @@ export abstract class ExpressionEmitter {
     if (method === 'set') return { code: `${obj.code}[${key()}] = ${this.expr(e.arguments[1]!, map.of)}`, type: { k: 'void' } };
     if (method === 'has') return { code: `(${obj.code}.count(${key()}) != 0)`, type: BOOL };
     if (method === 'delete') return { code: `${obj.code}.erase(${key()})`, type: { k: 'void' } };
-    return this.fail(e, `Map.${method}`);
+    return this.builtin(e, obj);
   }
 
   // ---- callbacks
@@ -538,8 +749,49 @@ export abstract class ExpressionEmitter {
         this.prelude.push(`std::fill(${obj.code}.begin(), ${obj.code}.end(), ${this.expr(args[0]!, element)});`);
         return obj;
       }
+      case 'reduce': {
+        // xs.reduce(f, start): the running value through every element in order (without a start JavaScript begins
+        // at the first element and throws on an empty array: refused)
+        if (args.length !== 2) return this.fail(e, 'Array.reduce without a start value');
+        const literal = this.c.flow.slotOfExpr(e);
+        const start = this.value(args[1]!, want);
+        const type: CppType = want ?? (literal ? this.c.types.slot(literal, 'local') : start.type);
+        const acc = this.temp('acc');
+        const names = this.inlineParams(args[0]!, [type, element, INT]);
+        if (names) {
+          const x = names[1] ?? 'unused';
+          const index = names[2] ? this.temp('i') : null;
+          const body = this.expr((args[0] as TS.ArrowFunction).body as TS.Expression, type);
+          this.endInline();
+          const bindAcc = names[0] ? `const ${render(type)} ${names[0]} = ${acc}; ` : '';
+          const loop = index
+            ? `for (int ${index} = 0; ${index} < int(${obj.code}.size()); ${index}++) { ${paramDecl(element, x)} = ${obj.code}[${index}]; const int ${names[2]} = ${index}; ${bindAcc}${acc} = ${body}; }`
+            : `for (${paramDecl(element, x)} : ${obj.code}) { ${bindAcc}${acc} = ${body}; }`;
+          return { code: `[&] { ${render(type)} ${acc} = ${this.coerce(start, type, args[1])}; ${loop} return ${acc}; }()`, type };
+        }
+        const fold = this.callback(args[0]!, [type, element], type);
+        return { code: `[&] { ${render(type)} ${acc} = ${this.coerce(start, type, args[1])}; for (const auto &x : ${obj.code}) ${acc} = (${fold})(${acc}, x); return ${acc}; }()`, type };
+      }
+      case 'slice': {
+        // a copy (no arguments: the whole array, a working copy), or a range with JavaScript's rules: an index below
+        // zero counts from the end, every index clamped to [0, length], an end before the start makes it empty
+        const type = target(obj.type);
+        if (args.length === 0) return { code: `${render(type)}(${obj.code})`, type };
+        const src = this.temp('from');
+        const n = this.temp('n');
+        const at = this.temp('at');
+        const a = this.temp('a');
+        const b = this.temp('b');
+        const end = args[1] ? `${at}(int(${this.expr(args[1]!, INT)}))` : n;
+        this.c.includes.add('algorithm');
+        return {
+          code: `[&] { const auto &${src} = ${obj.code}; const int ${n} = int(${src}.size()); auto ${at} = [${n}](int i) { return i < 0 ? std::max(${n} + i, 0) : std::min(i, ${n}); }; `
+            + `const int ${a} = ${at}(int(${this.expr(args[0]!, INT)})); const int ${b} = ${end}; return ${render(type)}(${src}.begin() + ${a}, ${src}.begin() + std::max(${a}, ${b})); }()`,
+          type,
+        };
+      }
       default:
-        return this.fail(e, `Array.${method}`);
+        return this.builtin(e, obj);
     }
   }
 
@@ -568,10 +820,12 @@ export abstract class ExpressionEmitter {
     const op = { [ts.SyntaxKind.ExclamationToken]: '!', [ts.SyntaxKind.MinusToken]: '-', [ts.SyntaxKind.PlusToken]: '+',
       [ts.SyntaxKind.TildeToken]: '~', [ts.SyntaxKind.PlusPlusToken]: '++', [ts.SyntaxKind.MinusMinusToken]: '--' }[e.operator];
     if (op === '-' && ts.isNumericLiteral(e.operand) && this.c.allowedNumbers.includes(-Number(e.operand.text))) {
-      const text = e.operand.getText();
-      return /^\d+$/.test(text) ? { code: `-${text}`, type: INT } : { code: `-${realLiteral(text, this.c.spec.number)}`, type: this.c.types.number(Num.Float, 'local') };
+      const text = e.operand.getText().replace(/_/g, '');
+      return integerLiteral(text) === 'int' ? { code: `-${text}`, type: INT } : { code: `-${realLiteral(text, this.c.spec.number)}`, type: this.c.types.number(Num.Float, 'local') };
     }
     const v = this.value(e.operand);
+    // ~x makes x an int32 first (ToInt32), as | and & do
+    if (op === '~' && !(v.type.k === 'int' && v.type.name !== 'int64_t' && v.type.name !== 'uint32_t')) return { code: `~int32_t(int64_t(${v.code}))`, type: { k: 'int', name: 'int32_t' } };
     return { code: `${op}${v.code}`, type: op === '!' ? BOOL : v.type };
   }
 
@@ -617,6 +871,30 @@ export abstract class ExpressionEmitter {
       return { code: `${leftCode} ${op} ${this.coerce(right, enumSide, e.right)}`, type: BOOL };
     }
     if (op === 'instanceof' || op === 'in') return this.fail(e, op);
+    // a ** b is Math.pow(a, b): C++ has no such operator
+    if (op === '**=' || op === '**') {
+      this.c.includes.add('cmath');
+      const pow = `std::pow(${left.code}, ${right.code})`;
+      if (op === '**=') return { code: `${left.code} = ${isInt(left.type) ? `${render(left.type)}(${pow})` : pow}`, type: left.type };
+      const type = this.numberType(e);
+      return { code: isInt(type) ? `${render(type)}(${pow})` : pow, type };
+    }
+    // bitwise operators: JavaScript makes each operand an int32 (ToInt32: truncated, modulo 2^32), counts a shift
+    // modulo 32 and gives >>> as an unsigned 32-bit value; C++ refuses them on a real, and a shift by 32 or a left
+    // shift into the sign bit is undefined
+    const bitwise = op.replace(/=$/, '');
+    if (['|', '&', '^', '<<', '>>', '>>>'].includes(bitwise) && op !== '>=' && op !== '<=') {
+      const i32 = (v: Value): string => (isInt(v.type) && v.type.k === 'int' && v.type.name !== 'int64_t' && v.type.name !== 'uint32_t' ? v.code : `int32_t(int64_t(${v.code}))`);
+      const a = i32(left);
+      const b = i32(right);
+      const code = bitwise === '<<' ? `int32_t(uint32_t(${a}) << (uint32_t(${b}) & 31u))`
+        : bitwise === '>>' ? `(${a} >> (uint32_t(${b}) & 31u))`
+          : bitwise === '>>>' ? `int64_t(uint32_t(${a}) >> (uint32_t(${b}) & 31u))`
+            : `(${a} ${bitwise} ${b})`;
+      const type: CppType = bitwise === '>>>' ? INT64 : { k: 'int', name: 'int32_t' };
+      if (assigns) return { code: `${left.code} = ${render(left.type) === render(type) ? code : `${render(left.type)}(${code})`}`, type: left.type };
+      return { code, type };
+    }
     if (assigns) return { code: `${left.code} ${op} ${right.code}`, type: left.type };
     if (op === '+' && (left.type.k === 'string' || left.type.k === 'literal' || right.type.k === 'string')) {
       return { code: `${left.type.k === 'literal' ? `std::string(${left.code})` : left.code} + ${right.code}`, type: STRING };
@@ -635,6 +913,12 @@ export abstract class ExpressionEmitter {
   protected object(e: TS.ObjectLiteralExpression, want?: CppType): Value {
     const ts = this.c.ts;
     const asked = want ? target(want) : undefined;
+    if (asked?.k === 'function' && e.properties.length === 1) {
+      const p = e.properties[0]!;
+      const fn = ts.isPropertyAssignment(p) && p.name.getText() === 'has' ? p.initializer : undefined;
+      if (fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return { code: this.callback(fn, asked.params, asked.ret), type: asked };
+      if (ts.isMethodDeclaration(p) && p.name.getText() === 'has') return this.fail(p, 'a has() written as a method (write it as has: (k) => ...)');
+    }
     const slot = this.c.flow.slotOfExpr(e);
     const type: CppType = asked && asked.k === 'struct' ? asked
       : this.c.types.structFor((slot ? this.c.flow.shapeOf(slot) : null) ?? this.c.checker.getTypeAtLocation(e), 'value');
@@ -677,12 +961,22 @@ export abstract class ExpressionEmitter {
   #array(e: TS.ArrayLiteralExpression, want?: CppType): Value {
     const ts = this.c.ts;
     const slot = this.c.flow.slotOfExpr(e);
+    // a tuple asked (or the literal's own type a tuple): its positions in order
+    const asTuple = want && target(want).k === 'struct' ? target(want) : null;
+    const own = asTuple ?? (this.c.checker.isTupleType(this.c.checker.getContextualType(e) ?? this.c.checker.getTypeAtLocation(e))
+      ? this.c.types.structFor(this.c.checker.getContextualType(e) ?? this.c.checker.getTypeAtLocation(e), 'tuple') : null);
+    if (own && own.k === 'struct') {
+      const struct = this.c.types.structs.get(own.name);
+      if (struct && struct.fields.every((f, i) => f.source === String(i)) && struct.fields.length === e.elements.length && !e.elements.some((x) => ts.isSpreadElement(x))) {
+        return { code: `${own.name}{${e.elements.map((x, i) => this.expr(x, struct.fields[i]!.type)).join(', ')}}`, type: own };
+      }
+    }
     const type: CppType = want?.k === 'vector' ? want : slot ? this.c.types.slot(slot, 'local') : { k: 'vector', of: INT };
     const element = elementOf(type)!;
     // [...src]: a copy of src.
     if (e.elements.length === 1 && ts.isSpreadElement(e.elements[0]!)) {
       const src = this.value(e.elements[0]!.expression);
-      if (same(target(src.type), type)) return { code: src.code, type };
+      if (same(target(src.type), type)) return { code: `${render(type)}(${src.code})`, type };
     }
     if (!e.elements.some((x) => ts.isSpreadElement(x))) return { code: `${render(type)}{${e.elements.map((x) => this.expr(x, element)).join(', ')}}`, type };
     const out = this.temp('items');
