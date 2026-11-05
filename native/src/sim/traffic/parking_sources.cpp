@@ -179,6 +179,21 @@ void look_round(CityState &s, float cx, float cz) {
 
 } // namespace
 
+void read_lots_with_docks(CityState &s) {
+	ParkingState &p = s.traffic.park;
+	b40::Body body;
+	for (int id = 0; id < int(s.buildings.items.size()); id++) {
+		const Building &rec = s.buildings.items[size_t(id)];
+		if (!rec.alive || p.lots.count(id)) continue;
+		b40::record_body(s.buildings.designs, rec, body);
+		for (const b40::LotElement &e : body.elements)
+			if (e.kind == b40::EL_DOCK) {
+				read_lot(s, id);
+				break;
+			}
+	}
+}
+
 void add_row(ParkingState &p, int b) {
 	Bay &bay = p.bays[size_t(b)];
 	bay.has_row = true;

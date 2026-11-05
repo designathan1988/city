@@ -4,9 +4,11 @@
 
 #include "sim/buildings/b40/record.h"
 #include "sim/traffic/traffic_system.h"
+#include "sim/traffic/yard.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
+#include <limits>
 #include <mutex>
 #include <shared_mutex>
 
@@ -128,7 +130,70 @@ void band_to(const CityState &s, Dictionary &d) {
 	}
 	d["band_lanes"] = bands;
 }
+
+// One yard's plan (traffic::YardCost and its docks), by building: its docks and gates, how many have a way and how far each dock's
+// ways got (traffic::YardReach), the time by part, and each kind of search (traffic::YardSearch) as [ran, found, distance cells,
+// distance ms, poses expanded, expanding ms].
+Dictionary yard_entry(int id, const traffic::YardPlan &p) {
+	const traffic::YardCost &c = p.cost;
+	Dictionary y;
+	y["building"] = id;
+	y["docks"] = int(p.docks.size());
+	y["gates"] = int(p.gates.size());
+	int ways = 0;
+	Array reached;
+	reached.resize(traffic::YARD_REACHES);
+	reached.fill(0);
+	for (const traffic::DockWays &w : p.docks) {
+		ways += w.gate >= 0 ? 1 : 0;
+		reached[w.reached] = int(reached[w.reached]) + 1;
+	}
+	y["with_way"] = ways;
+	y["reached"] = reached;
+	y["total_ms"] = c.total_ms;
+	y["field_ms"] = c.field_ms;
+	y["dock_ms"] = c.dock_ms;
+	y["ways_ms"] = c.ways_ms;
+	Array kinds;
+	for (int k = 0; k < traffic::YARD_SEARCHES; k++) {
+		const traffic::SearchCost &s = c.search[k];
+		Array row;
+		for (const Variant &v : { Variant(c.searches[k]), Variant(c.found[k]), Variant(s.holonomic), Variant(s.holonomic_ms), Variant(s.expanded), Variant(s.expand_ms) }) row.push_back(v);
+		kinds.push_back(row);
+	}
+	y["searches"] = kinds;
+	return y;
+}
+
+// The yards planned so far, by building.
+Array yard_costs(const ParkingState &pk) {
+	std::vector<int> ids;
+	for (const auto &y : pk.yards) ids.push_back(y.first);
+	std::sort(ids.begin(), ids.end());
+	Array out;
+	for (int id : ids) out.push_back(yard_entry(id, *pk.yards.at(id)));
+	return out;
+}
 } // namespace
+
+// The bench of the yard planner: every building's yard planned to the end now, from the city as it stands, none of it kept. The same
+// saved city gives every version of the planner the same yards to plan (the game's own planning follows the ticks, so its yards
+// change with how fast it plans).
+Array CityProbes::plan_all_yards() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex); // the lots read are the traffic's, as the step reads them
+	traffic::read_lots_with_docks(*state_);
+	const CityState &s = *state_;
+	Array out;
+	for (int id = 0; id < int(s.buildings.items.size()); id++) {
+		traffic::YardInput in;
+		if (!traffic::yard_input(s, id, in)) continue;
+		traffic::YardPlanner planner(std::move(in));
+		while (!planner.advance(std::numeric_limits<int>::max())) {}
+		out.push_back(yard_entry(id, planner.plan));
+	}
+	return out;
+}
 
 Dictionary CityProbes::park_sample() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -168,6 +233,7 @@ Dictionary CityProbes::park_sample() {
 	d["yard_gates"] = gates;
 	d["yard_slowest_ms"] = pk.plan_slowest_ms;
 	d["yard_tick_ms"] = pk.plan_tick_ms;
+	d["yard_costs"] = yard_costs(pk);
 	for (const Lorry &l : pk.lorries)
 		if (l.phase != LorryPhase::COMING) d["lorry"] = Vector3(s.traffic.vehicles[size_t(l.id)].cur.x, s.traffic.vehicles[size_t(l.id)].cur.y, s.traffic.vehicles[size_t(l.id)].cur.z);
 	return d;

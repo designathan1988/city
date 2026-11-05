@@ -81,6 +81,8 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 	_check(s.docks_reached[NO_STOP] == 0, "%d docas sem lugar para o caminhão na própria faixa em %s" % [s.docks_reached[NO_STOP], at])
 	_check(s.docks_with_way >= s.docks_planned * WAY_SHARE, "%d de %d docas com caminho em %s" % [s.docks_with_way, s.docks_planned, at])
 	_mark("planejado")
+	for y: Dictionary in s.get("yard_costs", []):
+		print("  custo do pátio ", y)
 	print("  pátios ", s.yards, " portões ", s.yard_gates, " planejadas ", s.docks_planned, " com caminho ", s.docks_with_way, " parou em ", s.docks_reached, " chamadas ", s.lorry_calls, " pior plano ", s.yard_slowest_ms, " ms, pior tick ", s.yard_tick_ms, " ms")
 
 

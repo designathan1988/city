@@ -40,6 +40,9 @@ void forget_parking_lot(CityState &s, int id); // a building came or went: its b
 void refile_bay(CityState &s, int b, bool away); // the bay on the free or scenery list its state says; `away`: on none
 void remove_row(ParkingState &p, int b); // the scenery car of bay `b` is gone
 bool read_bay_way(CityState &s, int b); // the bay's way out through its gate and the lane it joins; false: it has none
+// The lots of every building with a dock read now, wherever the camera is (the yard planner's bench, CityProbes::plan_all_yards):
+// the game reads a lot when the view comes near it.
+void read_lots_with_docks(CityState &s);
 void add_row(ParkingState &p, int b); // a car stands in bay `b` now
 void publish_parked(CityState &s, PoseFrame &f); // the standing cars, made again only when a row changed
 

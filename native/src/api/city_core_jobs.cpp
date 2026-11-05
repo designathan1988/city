@@ -35,6 +35,7 @@ Dictionary CityProbes::job_pool_probe() const {
 
 void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
+	ClassDB::bind_method(D_METHOD("plan_all_yards"), &CityProbes::plan_all_yards);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("kerb_busy"), &CityProbes::kerb_busy);
 	ClassDB::bind_method(D_METHOD("dock_count"), &CityProbes::dock_count);

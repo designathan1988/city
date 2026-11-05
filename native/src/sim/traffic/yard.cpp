@@ -2,6 +2,7 @@
 // the gates' mouths across the footway; shut, every other lot and this lot's solid parts.
 #include "sim/traffic/yard.h"
 
+#include "core/laps.h"
 #include "core/math.h"
 
 #include <algorithm>
@@ -195,8 +196,11 @@ void YardPlanner::close_dock() {
 	stage_ = Stage::DOCK;
 }
 
-void YardPlanner::search_for(const AxlePose &from, const AxlePose &to, bool reversing, bool fine, Stage stage) {
-	search_ = std::make_unique<WaySearch>(field_, in_.body, from, WayGoal{ to, reversing, in_.reach, in_.turn }, fine);
+// A search reads the distance map of its goal's cell, worked out once on this field (Dolgov et al.; the 4.0's `maps`).
+void YardPlanner::search_for(const AxlePose &from, const AxlePose &to, bool reversing, WayGrain grain, Stage stage) {
+	std::shared_ptr<Holonomic> &map = maps_[holonomic_key(field_, to, grain)];
+	if (!map) map = std::make_shared<Holonomic>();
+	search_ = std::make_unique<WaySearch>(field_, in_.body, from, WayGoal{ to, reversing, in_.reach, in_.turn }, map, grain);
 	stage_ = stage;
 }
 
@@ -213,26 +217,35 @@ void YardPlanner::next_gate(int &work) {
 		return;
 	}
 	ways_.reached = std::max(ways_.reached, int(YARD_NO_WAY));
-	search_for(g.stop, pre_, true, false, Stage::WAY_IN);
+	search_for(g.stop, pre_, true, WayGrain::COARSE, Stage::WAY_IN);
 }
 
-// The way in, the way out, and when neither was found the way in again at the finer grain. The search keeps one pose to a cell, so
-// it can lose a way that exists: one found holds for both.
+// The way in, then the way out, at the coarse grain; when neither was found, the way in at the graduated grain, then at the fine one
+// (WayGrain: the coarse grain finds most yards' ways fast, and loses a tight yard's, which the graduated one finds with some half the
+// poses of the fine one). A search keeps one pose to a cell, so it can lose a way that exists: one found holds for both.
 void YardPlanner::search_step(int &work) {
 	if (!search_->advance(work)) return;
 	const YardGate &g = in_.gates[size_t(order_[gate_])];
 	const bool found = search_->found();
+	const int kind = stage_ == Stage::WAY_IN ? YARD_SEARCH_IN : stage_ == Stage::WAY_OUT ? YARD_SEARCH_OUT : stage_ == Stage::WAY_GRADUATED ? YARD_SEARCH_GRADUATED : YARD_SEARCH_FINE;
+	plan.cost.searches[kind]++;
+	plan.cost.found[kind] += found ? 1 : 0;
+	plan.cost.search[kind].add(search_->cost());
 	work -= FIT_WORK;
 	if (stage_ == Stage::WAY_OUT) {
 		found_out_ = found && settled(in_, field_, search_->way(), g.join, false, away_);
 		if (!found_in_ && !found_out_) {
-			search_for(g.stop, pre_, true, true, Stage::WAY_FINE);
+			search_for(g.stop, pre_, true, WayGrain::GRADUATED, Stage::WAY_GRADUATED);
 			return;
 		}
 	} else {
 		found_in_ = found && settled(in_, field_, search_->way(), pre_, true, onto_);
 		if (stage_ == Stage::WAY_IN) {
-			search_for(pre_, g.join, false, false, Stage::WAY_OUT);
+			search_for(pre_, g.join, false, WayGrain::COARSE, Stage::WAY_OUT);
+			return;
+		}
+		if (stage_ == Stage::WAY_GRADUATED && !found_in_) {
+			search_for(g.stop, pre_, true, WayGrain::FINE, Stage::WAY_FINE);
 			return;
 		}
 	}
@@ -274,7 +287,9 @@ bool YardPlanner::join_ways(const YardGate &g) {
 
 // Stops at the step that spends the last of the work: the next tick goes on from there.
 bool YardPlanner::advance(int work) {
+	Laps took;
 	while (work > 0 && stage_ != Stage::DONE) {
+		const Stage was = stage_;
 		switch (stage_) {
 			case Stage::OPEN: open_step(work); break;
 			case Stage::STREET: street_step(work); break;
@@ -289,6 +304,11 @@ bool YardPlanner::advance(int work) {
 			case Stage::GATE: next_gate(work); break;
 			default: search_step(work); break;
 		}
+		const double ms = took.lap();
+		plan.cost.total_ms += ms;
+		if (was == Stage::DOCK || was == Stage::GATE) plan.cost.dock_ms += ms;
+		else if (was >= Stage::WAY_IN) plan.cost.ways_ms += ms;
+		else plan.cost.field_ms += ms;
 	}
 	return stage_ == Stage::DONE;
 }

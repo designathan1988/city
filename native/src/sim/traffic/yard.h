@@ -5,7 +5,9 @@
 
 #include "sim/traffic/way_search.h"
 
+#include <cstdint>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -50,9 +52,23 @@ struct DockWays {
 	int into_street = 0, away_street = 0;
 };
 
+// The searches of a plan by kind: the way in and the way out at the coarse grain; when neither was found, the way in at the
+// graduated grain, and when that one was not either, at the fine grain (WayGrain).
+enum YardSearch { YARD_SEARCH_IN, YARD_SEARCH_OUT, YARD_SEARCH_GRADUATED, YARD_SEARCH_FINE, YARD_SEARCHES };
+
+// What a plan spent, probes never read by the simulation: the time filling its field (the lot, the streets, the shut rings and the
+// clearance), at the docks (their straight reverse and the gates tried), and in its searches' stages; each kind of search, how many
+// ran, how many found a way, and what they spent.
+struct YardCost {
+	double total_ms = 0, field_ms = 0, dock_ms = 0, ways_ms = 0;
+	int searches[YARD_SEARCHES] = {}, found[YARD_SEARCHES] = {};
+	SearchCost search[YARD_SEARCHES];
+};
+
 struct YardPlan {
 	std::vector<YardGate> gates;
 	std::vector<DockWays> docks;
+	YardCost cost;
 };
 
 class YardPlanner {
@@ -63,7 +79,7 @@ public:
 	YardPlan plan;
 
 private:
-	enum class Stage { OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_FINE, DONE };
+	enum class Stage { OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_GRADUATED, WAY_FINE, DONE };
 	YardInput in_;
 	Field field_, lot_;
 	Stage stage_ = Stage::OPEN;
@@ -71,6 +87,7 @@ private:
 	int row_ = 0;
 	std::unique_ptr<ClearanceFill> clearance_;
 	std::unique_ptr<WaySearch> search_;
+	std::unordered_map<int64_t, std::shared_ptr<Holonomic>> maps_; // the distance maps on this field, by goal (holonomic_key)
 	DockWays ways_;
 	AxlePose docked_, pre_;
 	std::vector<int> order_;
@@ -82,7 +99,7 @@ private:
 	void next_dock(int &work);
 	void next_gate(int &work);
 	void search_step(int &work);
-	void search_for(const AxlePose &from, const AxlePose &to, bool reversing, bool fine, Stage stage);
+	void search_for(const AxlePose &from, const AxlePose &to, bool reversing, WayGrain grain, Stage stage);
 	void close_dock();
 	bool join_ways(const YardGate &g);
 };

@@ -58,16 +58,31 @@ bool body_fits(const Field &f, const Steered &b, const AxlePose &p, double margi
 // Whether the body's discs at the pose touch nothing: the quick test of the search.
 bool body_clear(const Field &f, const Steered &b, const AxlePose &p);
 
-// The rear axle's shortest distance to the goal from every search cell, round what is solid, a cell at a time.
+// The grain a search runs at. COARSE: half a metre and 5 degrees, the 4.0's and Dolgov et al.'s; it finds most yards' ways fast, and
+// keeps one pose to a cell, so a tight yard can be lost. GRADUATED (Pivtoraiko and Kelly 2008, as González-Sieira et al. 2019 adapt it
+// to the obstacles): the fine grain near the start and the goal, where a lorry is fitted to a dock or a lane, and elsewhere each
+// motion the longest that does not meet anything, the coarse step or, where that one touches, the fine one; it finds a tight yard's
+// way with some half the poses of FINE (the yard planner's bench). FINE: a quarter of a metre and 2.5 degrees everywhere.
+enum class WayGrain { COARSE, GRADUATED, FINE };
+
+// The rear axle's shortest distance to the goal from every search cell, round what is solid, a cell at a time: Dolgov et al.'s
+// holonomic-with-obstacles heuristic, dynamic programming in 2D from the goal. It depends on the field and the goal's cell only, so
+// every search to that cell at the same grain on the same field reads one (holonomic_key): the searches to a dock from each of its
+// gates, and to a gate from each dock. A search reads the map at its own grain: the coarse one at the coarse cell, the others at the fine.
 struct Holonomic {
 	using Item = std::pair<double, int>;
 	int nx = 0, nz = 0;
 	double cell = 0, half = 0;
+	bool begun = false;
 	std::vector<double> dist;
 	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
 	void begin(const Field &f, const AxlePose &goal, double body_half, double size);
 	void advance(const Field &f, int &work);
+	bool done() const { return begun && open.empty(); }
 };
+
+// The key of the distance map a search at `grain` to `goal` on `f` reads: the grain of its map and its goal's cell there.
+int64_t holonomic_key(const Field &f, const AxlePose &goal, WayGrain grain);
 
 struct WayGoal {
 	AxlePose pose;
@@ -75,15 +90,30 @@ struct WayGoal {
 	double reach = 0, turn = 0; // how near its place and heading a pose must come
 };
 
-// The poses from `start` to near the goal, none when there is no way or none within the search's limit. The field and the body are
-// read as it goes, so they outlive it. `fine`: at half the grain, for the tight yard the usual search loses; some eight times the work.
+// What a search spent: the cells of its distance map settled, the poses it expanded, and the time of each. Probes, never read by
+// the simulation (the work handed out is what paces it).
+struct SearchCost {
+	int64_t holonomic = 0, expanded = 0;
+	double holonomic_ms = 0, expand_ms = 0;
+	void add(const SearchCost &o) {
+		holonomic += o.holonomic;
+		expanded += o.expanded;
+		holonomic_ms += o.holonomic_ms;
+		expand_ms += o.expand_ms;
+	}
+};
+
+
+// The poses from `start` to near the goal, none when there is no way or none within the search's limit. The field, the body and the
+// goal's distance map (`map`: empty, or another search's to the same holonomic_key) are read as it goes, so they outlive it.
 class WaySearch {
 public:
-	WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, bool fine = false);
+	WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain);
 	~WaySearch();
 	bool advance(int &work); // spends `work`; true once it is over
 	bool found() const;
 	const std::vector<AxlePose> &way() const;
+	const SearchCost &cost() const;
 
 private:
 	class Run;

@@ -96,6 +96,7 @@ void transform_row(const std::vector<double> &in, int n, std::vector<double> &ou
 } // namespace
 
 void Holonomic::begin(const Field &f, const AxlePose &goal, double body_half, double size) {
+	begun = true;
 	cell = size;
 	half = body_half;
 	nx = int(std::ceil(f.nx * f.cell / cell));

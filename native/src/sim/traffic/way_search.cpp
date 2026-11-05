@@ -1,7 +1,12 @@
 // The search (way_search.h). Nodes are poses on a grid of place and heading; a step is an exact arc of the rear axle at one of five
-// curvatures, either way. The cost still to go is the larger of the paper's two heuristics: round the obstacles for the axle alone,
-// and the Reeds-Shepp length near the goal. Near it a Reeds-Shepp shot is tried, the paper's analytic expansion.
+// curvatures, either way, the coarse grain's or, where that one meets something, the fine grain's.
+// The cost still to go is the larger of the paper's two heuristics: round the obstacles for the axle alone, and the Reeds-Shepp
+// length near the goal. Near it a Reeds-Shepp shot is tried, the paper's analytic expansion.
 #include "sim/traffic/way_search.h"
+
+#include "sim/traffic/way_body.h"
+
+#include "core/laps.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,28 +19,28 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr double PI = 3.14159265358979323846, TWO_PI = 2 * PI, ROOT_HALF = 0.70710678118654752, ROOT_TWO = 1.41421356237309505;
-// The search's own cells, this much across, and this many headings round; a step's arc, a little longer than a cell's diagonal so a
-// step always leaves its cell; the poses it may expand. A cell keeps one pose, so a tight yard can be lost at the coarser grain.
+constexpr double PI = 3.14159265358979323846, TWO_PI = 2 * PI;
+// The search's two grains (graduated fidelity, way_search.h): its cells this much across and this many headings round, and a step's
+// arc a little longer than a cell's diagonal so a step always leaves its cell. Where the coarse step meets something the fine one is
+// tried (a lorry boxed in by a dock's walls moves on at the fine grain, where the coarse one had stopped).
 struct Grain {
 	double cell = 0;
 	int headings = 0;
 	double step = 0;
-	int most = 0;
 };
+constexpr int COARSE = 0, FINE = 1, GRAIN_COUNT = 2;
 constexpr int COARSE_HEADINGS = 72; // a heading every 5 degrees
 constexpr int FINE_HEADINGS = 144; // every 2.5
-constexpr Grain GRAINS[] = { { 0.5, COARSE_HEADINGS, 0.8, 80000 }, { 0.25, FINE_HEADINGS, 0.4, 1500000 } };
+constexpr Grain GRAINS[GRAIN_COUNT] = { { 0.5, COARSE_HEADINGS, 0.8 }, { 0.25, FINE_HEADINGS, 0.4 } };
+constexpr int COARSE_MOST = 80000, FINE_MOST = 1500000; // the poses a search may expand: at the coarse grain, at any finer
 constexpr int SUBSTEPS = 2; // poses tested along a step
 constexpr double REVERSE_COST = 1.6, SWITCH_COST = 15, STEER_COST = 0.6, STEER_CHANGE_COST = 2; // per metre; a stop and a start; the wheel
 constexpr double H_WEIGHT = 1.4; // a little over one finds a way sooner, a little longer than the shortest
 constexpr double SHOT_REACH = 30, SHOT_NEAR = 8; // shots from every pose this near, from one in SHOT_EVERY as far as the reach
 constexpr int SHOT_EVERY = 8;
 constexpr double SHOT_STEP = 0.25;
-constexpr double DISC_STEP = 1, DISC_SPREAD = 1.9; // two discs this far apart, in chord lengths, still cover the side between them
-constexpr double QUARTER_STEP = 0.25; // a corner of the body is tested in squares about this wide: 5 cm past the flank at most
 constexpr double CURVATURES[] = { -1, -0.5, 0, 0.5, 1 }; // shares of the tightest
-constexpr double NO_CURVE = 1e-9, HALF = 0.5, FIT_SQUARE = 0.5;
+constexpr double NO_CURVE = 1e-9, HALF = 0.5;
 constexpr int EXPANDED_WORK = 8, SHOT_WORK = 8; // a pose expanded, a Reeds-Shepp shot: units of work, measured against a grid's cells
 
 double wrap(double a) {
@@ -45,70 +50,12 @@ double wrap(double a) {
 	return r;
 }
 
-struct BodyPoint {
-	double u = 0, v = 0;
-};
-
-// Discs along the body's axis as wide as it and a little: they hold the flanks. The four corners the end discs leave out: one wide
-// disc each, which answers in the open but stands a fifth of the half width past the flank, so a lorry beside a kerb would not fit
-// its own lane; when it touches, the small squares of that corner say.
-struct Discs {
-	std::vector<double> at;
-	double r = 0, corner_r = 0, centre = 0, whole = 0, square_r = 0;
-	double cu[4] = {}, cv[4] = {};
-	std::vector<BodyPoint> squares[4];
-};
-
-// The squares of a corner that reach out of the end disc at `end`: `tip` the body's end there, `side` which flank.
-void corner_squares(Discs &d, double hw, double end, double tip, double side, std::vector<BodyPoint> &out) {
-	const int n = std::max(1, int(std::ceil(hw / QUARTER_STEP)));
-	const double w = hw / n, inward = tip > end ? -1 : 1;
-	for (int a = 0; a < n; a++)
-		for (int b = 0; b < n; b++) {
-			const double u = tip + inward * (a + HALF) * w, v = side * (hw - (b + HALF) * w);
-			if (std::hypot(std::fabs(u - end) + w * HALF, std::fabs(v) + w * HALF) > d.r) out.push_back({ u, v });
-		}
-	d.square_r = w * ROOT_HALF + (d.r - hw);
-}
-
-Discs discs_of(const Steered &b) {
-	Discs d;
-	const double back = b.length * HALF - b.rear, front = b.length * HALF + b.rear, hw = b.width * HALF;
-	const double u0 = -back + hw, u1 = front - hw;
-	d.r = hw + b.margin;
-	const double spacing = std::min(DISC_STEP, DISC_SPREAD * std::sqrt(d.r * d.r - hw * hw));
-	const int n = std::max(1, int(std::ceil((u1 - u0) / spacing))) + 1;
-	for (int i = 0; i < n; i++) d.at.push_back(u0 + (u1 - u0) * i / std::max(1, n - 1));
-	const double us[2] = { -back + hw * HALF, front - hw * HALF }, vs[2] = { -hw * HALF, hw * HALF };
-	for (int k = 0; k < 4; k++) {
-		d.cu[k] = us[k / 2];
-		d.cv[k] = vs[k % 2];
-		corner_squares(d, hw, k / 2 ? u1 : u0, k / 2 ? front : -back, k % 2 ? 1 : -1, d.squares[k]);
-	}
-	d.corner_r = ROOT_HALF * hw + b.margin;
-	d.centre = b.rear;
-	d.whole = std::hypot(b.length * HALF, hw) + b.margin;
-	return d;
-}
-
-bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s) {
-	const double slack = f.cell * ROOT_HALF; // the field holds the distance at a cell's centre
-	if (f.clear_at(x + c * d.centre, z + s * d.centre) - slack >= d.whole) return true;
-	for (double u : d.at)
-		if (f.clear_at(x + c * u, z + s * u) - slack < d.r) return false;
-	for (int k = 0; k < 4; k++) {
-		if (f.clear_at(x + c * d.cu[k] - s * d.cv[k], z + s * d.cu[k] + c * d.cv[k]) - slack >= d.corner_r) continue;
-		for (const BodyPoint &q : d.squares[k])
-			if (f.clear_at(x + c * q.u - s * q.v, z + s * q.u + c * q.v) - slack < d.square_r) return false;
-	}
-	return true;
-}
-
 struct Node {
 	AxlePose pose;
 	double g = 0, kappa = 0;
 	int parent = -1;
 	bool closed = false;
+	int grain = COARSE; // the grain of the step that reached it: the table it is kept in
 };
 
 // The node standing for each place and heading: a page of headings for each place touched, in blocks that never move. A search runs
@@ -143,77 +90,86 @@ private:
 
 class WaySearch::Run {
 public:
-	Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, const Grain &grain);
+	Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain);
 	bool advance(int &work);
 	bool found = false;
 	std::vector<AxlePose> way;
+	SearchCost cost;
 
 private:
 	using Item = std::pair<double, int>;
 	const Field &f_;
 	const Steered &b_;
 	const WayGoal goal_;
-	const Grain &grain_;
 	const AxlePose start_;
+	const WayGrain grain_;
+	const int most_;
+	const int map_grain_; // the grain of its distance map: the coarse one for a coarse search, the fine one for the others
 	Discs discs_;
-	Holonomic h_;
+	std::shared_ptr<Holonomic> h_;
 	std::deque<Node> nodes_;
-	PoseTable table_;
+	PoseTable tables_[GRAIN_COUNT];
+	int nx_[GRAIN_COUNT] = {}, nz_[GRAIN_COUNT] = {};
 	std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open_;
 	int expanded_ = 0;
 	bool over_ = false, begun_ = false;
-	bool place_of(const AxlePose &p, size_t &place) const;
-	int &slot_of(size_t place, const AxlePose &p);
-	double h_at(size_t place, const AxlePose &p) const;
+	bool place_of(const AxlePose &p, int grain, size_t &place) const;
+	int &slot_of(int grain, size_t place, const AxlePose &p);
+	double h_at(size_t map_place, const AxlePose &p) const;
 	void push(const Node &n);
+	bool near_ends(const AxlePose &p) const;
 	void expand(int id);
-	bool arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const;
+	bool arc(const AxlePose &from, double kappa, double dir, double step, AxlePose &to) const;
 	bool shot(const AxlePose &from, std::vector<AxlePose> &out) const;
 	void trace(int id);
 	void close_on(int id, int &work);
 };
 
-// The cell of the rear axle, false off the grid: the body answers for its middle, so in the open the axle can stand past the edge.
-bool WaySearch::Run::place_of(const AxlePose &p, size_t &place) const {
-	const int i = int(std::floor((p.x - f_.x0) / grain_.cell)), j = int(std::floor((p.z - f_.z0) / grain_.cell));
-	if (i < 0 || j < 0 || i >= h_.nx || j >= h_.nz) return false;
-	place = size_t(j) * h_.nx + i;
+// The cell of the rear axle at a grain, false off the grid: the body answers for its middle, so in the open the axle can stand past
+// the edge.
+bool WaySearch::Run::place_of(const AxlePose &p, int grain, size_t &place) const {
+	const double cell = GRAINS[grain].cell;
+	const int i = int(std::floor((p.x - f_.x0) / cell)), j = int(std::floor((p.z - f_.z0) / cell));
+	if (i < 0 || j < 0 || i >= nx_[grain] || j >= nz_[grain]) return false;
+	place = size_t(j) * nx_[grain] + i;
 	return true;
 }
 
-int &WaySearch::Run::slot_of(size_t place, const AxlePose &p) {
-	int k = int(std::lround(wrap(p.angle) / TWO_PI * grain_.headings)) % grain_.headings;
-	if (k < 0) k += grain_.headings;
-	return table_.at(place, k);
+int &WaySearch::Run::slot_of(int grain, size_t place, const AxlePose &p) {
+	const int headings = GRAINS[grain].headings;
+	int k = int(std::lround(wrap(p.angle) / TWO_PI * headings)) % headings;
+	if (k < 0) k += headings;
+	return tables_[grain].at(place, k);
 }
 
-double WaySearch::Run::h_at(size_t place, const AxlePose &p) const {
+// `map_place`: the pose's cell at the grain of the distance map.
+double WaySearch::Run::h_at(size_t map_place, const AxlePose &p) const {
 	const double far = std::hypot(goal_.pose.x - p.x, goal_.pose.z - p.z);
-	double best = std::max(h_.dist[place], far);
+	double best = std::max(h_->dist[map_place], far);
 	if (far <= SHOT_REACH) best = std::max(best, reeds_shepp_length(p, goal_.pose, b_.radius));
 	return best;
 }
 
 void WaySearch::Run::push(const Node &n) {
-	size_t place = 0;
-	if (!place_of(n.pose, place)) return;
-	int &slot = slot_of(place, n.pose);
+	size_t place = 0, mapped = 0;
+	if (!place_of(n.pose, n.grain, place) || !place_of(n.pose, map_grain_, mapped)) return;
+	int &slot = slot_of(n.grain, place, n.pose);
 	if (slot >= 0) {
 		Node &old = nodes_[size_t(slot)];
 		if (old.closed || old.g <= n.g) return;
 		old = n;
-		open_.push({ n.g + H_WEIGHT * h_at(place, n.pose), slot });
+		open_.push({ n.g + H_WEIGHT * h_at(mapped, n.pose), slot });
 		return;
 	}
 	slot = int(nodes_.size());
 	nodes_.push_back(n);
-	open_.push({ n.g + H_WEIGHT * h_at(place, n.pose), slot });
+	open_.push({ n.g + H_WEIGHT * h_at(mapped, n.pose), slot });
 }
 
-// The exact arc of the rear axle over a step, `to` its end; false when the body meets something on the way.
-bool WaySearch::Run::arc(const AxlePose &from, double kappa, double dir, AxlePose &to) const {
+// The exact arc of the rear axle over a step of `step` metres, `to` its end; false when the body meets something on the way.
+bool WaySearch::Run::arc(const AxlePose &from, double kappa, double dir, double step, AxlePose &to) const {
 	double x = from.x, z = from.z, a = from.angle;
-	const double ds = grain_.step / SUBSTEPS * dir;
+	const double ds = step / SUBSTEPS * dir;
 	for (int k = 0; k < SUBSTEPS; k++) {
 		const double a1 = a + kappa * ds;
 		if (std::fabs(kappa) < NO_CURVE) {
@@ -230,16 +186,31 @@ bool WaySearch::Run::arc(const AxlePose &from, double kappa, double dir, AxlePos
 	return true;
 }
 
+// Near the start or the goal, where a lorry is fitted to a dock or a lane, the fine grain (high fidelity near the ends, Pivtoraiko
+// and Kelly; González-Sieira et al.: "using high fidelity near the goal facilitates approaching to this point"); elsewhere each way and
+// curvature the longest step that does not meet anything (their Alg. 3): the coarse one, else the fine one. A pose is kept at the
+// fine grain when a fine step reached it or it stands near an end, and each step leaves the cell of its grain.
+bool WaySearch::Run::near_ends(const AxlePose &p) const {
+	return std::hypot(p.x - goal_.pose.x, p.z - goal_.pose.z) <= SHOT_NEAR || std::hypot(p.x - start_.x, p.z - start_.z) <= SHOT_NEAR;
+}
+
 void WaySearch::Run::expand(int id) {
 	const Node n = nodes_[size_t(id)];
+	const bool near = grain_ == WayGrain::FINE || (grain_ == WayGrain::GRADUATED && near_ends(n.pose));
 	for (double dir : { 1.0, -1.0 })
 		for (double share : CURVATURES) {
 			const double kappa = share / b_.radius;
 			AxlePose to;
-			if (!arc(n.pose, kappa, dir, to)) continue;
-			double g = n.g + grain_.step * (to.reverse ? REVERSE_COST : 1) + grain_.step * STEER_COST * std::fabs(share) + STEER_CHANGE_COST * std::fabs(kappa - n.kappa) * b_.radius;
+			int stepped = COARSE;
+			if (near || !arc(n.pose, kappa, dir, GRAINS[COARSE].step, to)) {
+				if (grain_ == WayGrain::COARSE || !arc(n.pose, kappa, dir, GRAINS[FINE].step, to)) continue;
+				stepped = FINE;
+			}
+			const int lands = stepped == FINE || (grain_ == WayGrain::GRADUATED && near_ends(to)) ? FINE : COARSE;
+			const double step = GRAINS[stepped].step;
+			double g = n.g + step * (to.reverse ? REVERSE_COST : 1) + step * STEER_COST * std::fabs(share) + STEER_CHANGE_COST * std::fabs(kappa - n.kappa) * b_.radius;
 			if (n.parent >= 0 && to.reverse != n.pose.reverse) g += SWITCH_COST;
-			push({ to, g, kappa, id, false });
+			push({ to, g, kappa, id, false, lands });
 		}
 }
 
@@ -262,14 +233,19 @@ void WaySearch::Run::trace(int id) {
 	if (way.size() > 1) way[0].reverse = way[1].reverse; // the start is driven the way of the first step
 }
 
-WaySearch::Run::Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, const Grain &grain) :
-		f_(f), b_(b), goal_(goal), grain_(grain), start_(start), discs_(discs_of(b)) {
+WaySearch::Run::Run(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain) :
+		f_(f), b_(b), goal_(goal), start_(start), grain_(grain), most_(grain == WayGrain::COARSE ? COARSE_MOST : FINE_MOST), map_grain_(grain == WayGrain::COARSE ? COARSE : FINE), discs_(discs_of(b)),
+		h_(std::move(map)) {
 	over_ = !body_clear(f, b, start) || !body_clear(f, b, goal.pose);
 	if (over_) return;
-	h_.begin(f, goal.pose, b.width * HALF, grain.cell);
-	table_.begin(size_t(h_.nx) * h_.nz, grain.headings);
+	if (!h_->begun) h_->begin(f, goal.pose, b.width * HALF, GRAINS[map_grain_].cell);
+	for (int k = 0; k < GRAIN_COUNT; k++) {
+		nx_[k] = int(std::ceil(f.nx * f.cell / GRAINS[k].cell)); // as Holonomic::begin sizes its map
+		nz_[k] = int(std::ceil(f.nz * f.cell / GRAINS[k].cell));
+		tables_[k].begin(size_t(nx_[k]) * nz_[k], GRAINS[k].headings);
+	}
 	std::vector<Item> room;
-	room.reserve(size_t(grain.most));
+	room.reserve(size_t(most_));
 	open_ = std::priority_queue<Item, std::vector<Item>, std::greater<Item>>(std::greater<Item>(), std::move(room));
 }
 
@@ -299,47 +275,41 @@ void WaySearch::Run::close_on(int id, int &work) {
 }
 
 bool WaySearch::Run::advance(int &work) {
+	Laps took;
 	if (!over_ && !begun_) {
-		h_.advance(f_, work);
-		if (!h_.open.empty()) return false;
+		const int had = work;
+		h_->advance(f_, work); // nothing left when another search to the goal's cell worked it out
+		cost.holonomic += had - work;
+		cost.holonomic_ms += took.lap();
+		if (!h_->open.empty()) return false;
 		begun_ = true;
-		push({ start_, 0, 0, -1, false });
+		push({ start_, 0, 0, -1, false, grain_ == WayGrain::COARSE ? COARSE : FINE }); // at a finer grain the start is fine: it is an end
 	}
 	while (!over_ && work > 0) {
-		if (open_.empty() || expanded_ >= grain_.most) { over_ = true; break; }
+		if (open_.empty() || expanded_ >= most_) { over_ = true; break; }
 		const int id = open_.top().second;
 		open_.pop();
 		if (!nodes_[size_t(id)].closed) close_on(id, work);
 	}
+	cost.expanded = expanded_;
+	cost.expand_ms += took.lap();
 	return over_;
 }
 
-bool body_clear(const Field &f, const Steered &b, const AxlePose &p) {
-	return discs_clear(f, discs_of(b), p.x, p.z, std::cos(p.angle), std::sin(p.angle));
+int64_t holonomic_key(const Field &f, const AxlePose &goal, WayGrain grain) {
+	const int g = grain == WayGrain::COARSE ? COARSE : FINE;
+	const double cell = GRAINS[g].cell;
+	const int64_t nx = int64_t(std::ceil(f.nx * f.cell / cell));
+	return (int64_t(std::floor((goal.z - f.z0) / cell)) * nx + int64_t(std::floor((goal.x - f.x0) / cell))) * GRAIN_COUNT + g;
 }
 
-// In squares: one the clearance says is free costs a look; only those near something solid are read cell by cell.
-bool body_fits(const Field &f, const Steered &b, const AxlePose &p, double margin) {
-	const double c = std::cos(p.angle), s = std::sin(p.angle), step = f.cell * HALF, slack = f.cell * ROOT_HALF;
-	const double back = b.length * HALF - b.rear + margin, front = b.length * HALF + b.rear + margin, hw = b.width * HALF + margin;
-	const int nu = int(std::ceil((back + front) / FIT_SQUARE)), nv = int(std::ceil(2 * hw / FIT_SQUARE));
-	const double du = (back + front) / nu, dv = 2 * hw / nv, room = std::hypot(du, dv) * HALF + slack;
-	for (int a = 0; a < nu; a++)
-		for (int d = 0; d < nv; d++) {
-			const double u0 = -back + a * du, v0 = -hw + d * dv, cu = u0 + du * HALF, cv = v0 + dv * HALF;
-			if (f.clear_at(p.x + c * cu - s * cv, p.z + s * cu + c * cv) >= room) continue;
-			for (double u = u0; u <= u0 + du; u += step)
-				for (double v = v0; v <= v0 + dv; v += step)
-					if (f.solid_at(p.x + c * u - s * v, p.z + s * u + c * v)) return false;
-		}
-	return true;
-}
-
-WaySearch::WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, bool fine) : run_(std::make_unique<Run>(f, b, start, goal, GRAINS[fine ? 1 : 0])) {}
+WaySearch::WaySearch(const Field &f, const Steered &b, const AxlePose &start, const WayGoal &goal, std::shared_ptr<Holonomic> map, WayGrain grain) :
+		run_(std::make_unique<Run>(f, b, start, goal, std::move(map), grain)) {}
 WaySearch::~WaySearch() = default;
 bool WaySearch::advance(int &work) { return run_->advance(work); }
 bool WaySearch::found() const { return run_->found; }
 const std::vector<AxlePose> &WaySearch::way() const { return run_->way; }
+const SearchCost &WaySearch::cost() const { return run_->cost; }
 
 } // namespace traffic
 } // namespace city
