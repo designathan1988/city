@@ -5,8 +5,10 @@ user's; a session can read and run them but never change them. Everything else p
 Protected, relative to the project root: tools/gates/rules.json, tools/gates/owners.json, tools/gates/run_gates.py,
 tools/gates/gate_*.py, tools/gates/hook_*.py, the schemas that already exist (a schema for a new table may be created),
 and .claude/settings*.json. A shell command that names a protected file passes only when every segment naming it is a
-plain read (cat, head, grep, git diff...) or runs the script (python tools/gates/run_gates.py). A program that writes
-the file from inside its own code is not seen here: the commits of tools/gates are the user's to review."""
+plain read (cat, head, grep, git diff...) or runs the script (python tools/gates/run_gates.py). The body of a heredoc is
+data, not a command, unless it feeds an interpreter (python, node, sh...): a note that merely mentions a protected file
+passes. A program that writes the file from inside its own code is not seen here: the commits of tools/gates are the
+user's to review."""
 import fnmatch
 import json
 import os
@@ -20,8 +22,11 @@ NAME = re.compile(r"[\w./\\~:-]*(?:tools[/\\]gates[/\\][\w.*-]+|\.claude[/\\]set
 SEGMENT = re.compile(r"\|\||&&|\||;|\n")
 PREFIX = re.compile(r"^\s*(?:cd\s+\S+\s*(?:&&|;)\s*)?(?:[\w-]+=\S+\s+)*")
 READERS = re.compile(r"^(?:cat|head|tail|less|more|wc|grep|rg|egrep|fgrep|findstr|diff|cmp|file|stat|ls|dir|md5sum|"
-                     r"sha\w+sum|type|Get-Content|gc|Select-String|sls|Get-Item|Test-Path|git\s+(?:diff|log|show|status|"
-                     r"blame|ls-files|grep)|sed\s+-n|awk|python3?|py)\b")
+                     r"sha\w+sum|type|echo|printf|Get-Content|gc|Select-String|sls|Get-Item|Test-Path|"
+                     r"git(?:\s+-C\s+\S+)?\s+(?:diff|log|show|status|blame|ls-files|grep|add|commit)|sed\s+-n|awk|"
+                     r"python3?|py)\b")
+INTERPRETER = re.compile(r"^(?:python3?|py|node|perl|ruby|bash|sh|zsh|pwsh|powershell)\b")
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 HARMLESS_REDIRECT = re.compile(r"(?:\d?&?>>?\s*(?:/dev/null|\$null|nul)\b|\d>&\d)")
 RUNS_SCRIPT = re.compile(r"^(?:python3?|py)(?:\s+-[\w-]+)*\s+\"?[\w./\\:-]*tools[/\\]gates[/\\][\w.-]+\.py\"?")
 
@@ -51,8 +56,24 @@ def segment_allowed(segment):
     return bool(READERS.match(body)) and ">" not in body
 
 
+def strip_heredocs(command):
+    """Drops the body of every heredoc whose command is not an interpreter: it is data, not a command."""
+    out, lines, i = [], command.split("\n"), 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        m = HEREDOC.search(line)
+        if not m or INTERPRETER.match(PREFIX.sub("", line, count=1)):
+            continue
+        while i < len(lines) and lines[i].strip() != m.group(2):
+            i += 1
+        i += 1
+    return "\n".join(out)
+
+
 def shell_violation(command, root):
-    for segment in SEGMENT.split(command):
+    for segment in SEGMENT.split(strip_heredocs(command)):
         names = [n for n in NAME.findall(segment) if protected(relative(os.path.join(root, n), root), root)]
         if names and not segment_allowed(segment):
             return names[0].replace("\\", "/")
