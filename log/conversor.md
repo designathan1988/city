@@ -8,7 +8,8 @@ sempre verdadeiros.
 
 ## Estado atual (2026-11-05, sessão retomada)
 
-- `tools/converter` (master `9ccbdaf`) e `tools/converter-slice` limpos. O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
+- **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
+- `tools/converter` (master `af95221`); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
   Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
 - Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly em `out/city40`. As passadas por área usam as
@@ -304,3 +305,7 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - O usuário mandou parar processos longos: passada inteira parada (PID próprio), método acima registrado.
 - `3a93b1e`, `e4ec430` e o commit seguinte: `reference40`, `call40`, `--scene` e o passo `edit`. Viaduto do 4.0 fotografado (59 s a primeira vez, 0 s depois).
   Pedido do usuário: extrair sem deixar o 4.0 aberto; ideia da GPU nula veio da sessão de migração; plano do `look.gd` a pedido da sessão de causa-raiz.
+- `af95221` `openProgram` memoizado: um programa TypeScript por processo.
+- Passada inteira `w2`: bateu no limite de 300 s (301 s); o livro-razão dela é parcial (502 módulos vistos, 359 aceitos, 2.609 unidades feitas) e não serve de número. Refeita como `w3`, limite de 590 s.
+- Pixels do 4.0 no Node: `@onirenaud/node-webgl` 0.2.0 instalado em `out/gl40` (fora do git). Triângulo desenhado e lido de volta, ANGLE D3D11 na RTX 3060, com `EXT_clip_control`, `EXT_color_buffer_float`, BPTC e `WEBGL_multi_draw`. Só isso foi provado: a cena do 4.0 não rodou nele. `gl` não instala no Node 24 (ABI 137; os binários vão até o 134).
+- Trabalho na cena do 4.0 parado pelo usuário: "O ROADCRAFT 4 É A REFERENCIA E NÃO O JOGO ALVO". As fotos de referência continuam saindo do `reference40`. Volta ao passo 2 de "A fazer": levar ao jogo o que compila.
