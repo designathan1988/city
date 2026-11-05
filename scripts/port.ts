@@ -10,7 +10,7 @@ import { RULE_BY_ID } from '../src/audit/catalog.ts';
 import { changedLines, findingsInChanges } from '../src/audit/changed.ts';
 import type { AuditResult } from '../src/audit/run.ts';
 import { removeTree } from '../src/common/files.ts';
-import { folderName, readInventory } from '../src/convert/inventory.ts';
+import { folderName, portFile, readInventory } from '../src/convert/inventory.ts';
 import type { GraphIR } from '../src/graph/ir.ts';
 import { readWorkspace } from '../src/sandbox/workspace.ts';
 import { addLayer, addMapLine, addStateMember } from '../src/translate/registry.ts';
@@ -215,7 +215,7 @@ function convert(m: Machine, id: string | undefined, rest: readonly string[]): n
   const dir = path.join(portDir(m, feature), 'conversion');
   const code = converter(m, ['convert', '--feature', feature, '--source-root', m.source, '--typescript', m.typescript, '--graph', cache.graph, '--boundary', boundary,
     '--target-root', m.game, '--target-graph', targetGraph, '--library', path.join(CONVERTER, 'configs', 'conversion-library.json'), '--ports', m.ports,
-    '--cxx', m.cxx, '--constants', path.join(portDir(m, feature), 'constantes.json'), '--out', dir]);
+    '--cxx', m.cxx, '--constants', portFile(portDir(m, feature), 'constants.json', 'constantes.json'), '--out', dir]);
   console.log(`\nwhat stays open, unit by unit: ${path.join(dir, 'conversao.md')}`);
   if (rest.includes('--apply')) {
     const applied = applyConversion(m, feature, dir);

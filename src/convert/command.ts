@@ -26,7 +26,7 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
   { name: 'target-root', required: true, help: 'root of the target game (read only)' },
   { name: 'target-graph', required: true, help: 'the target\'s C++ graph (converter cppgraph)' },
   { name: 'library', required: true, help: 'what the game already owns (configs/conversion-library.json)' },
-  { name: 'ports', required: true, help: 'the port folders: each cobertura.md says what the game has' },
+  { name: 'ports', required: true, help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has' },
   { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
   { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
   { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },

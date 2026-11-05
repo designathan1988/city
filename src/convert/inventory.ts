@@ -31,11 +31,22 @@ const IN_GAME = /^(portado|já existia|ja existia)\b/i;
  * backquoted source path (`src/x.ts` or `src/x.ts#name`), with the target and the state among its cells. Only a
  * whole file's row speaks for all its declarations; a partial row speaks for nothing.
  */
+/**
+ * A port's own file by its English name (`coverage.md`, `constants.json`), or by the Portuguese name the older port
+ * folders still carry (`cobertura.md`, `constantes.json`); the English path when neither exists.
+ */
+export function portFile(dir: string, name: string, legacy: string): string {
+  const file = path.join(dir, name);
+  if (fs.existsSync(file)) return file;
+  const old = path.join(dir, legacy);
+  return fs.existsSync(old) ? old : file;
+}
+
 export function readCoverage(portsDir: string): Map<string, Delivered> {
   const out = new Map<string, Delivered>();
   if (!fs.existsSync(portsDir)) return out;
   for (const port of fs.readdirSync(portsDir).sort()) {
-    const file = path.join(portsDir, port, 'cobertura.md');
+    const file = portFile(path.join(portsDir, port), 'coverage.md', 'cobertura.md');
     if (!fs.existsSync(file)) continue;
     for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
       const cells = line.split('|').map((c) => c.trim());

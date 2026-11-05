@@ -124,10 +124,12 @@ describe('convert: what is known first', () => {
     assert.equal(folderName('editor:poleRoutes'), 'editor-pole-routes');
   });
 
-  it('reads whole files and declarations from a coverage table, and nothing from a partial row', () => {
+  it('reads whole files and declarations from a coverage table (coverage.md, or the older cobertura.md), and nothing from a partial row', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-coverage-'));
     fs.mkdirSync(path.join(dir, 'roads'));
-    fs.writeFileSync(path.join(dir, 'roads', 'cobertura.md'), [
+    fs.mkdirSync(path.join(dir, 'older'));
+    fs.writeFileSync(path.join(dir, 'older', 'cobertura.md'), '| `src/e.ts` | whole 4 | what | `sim/e.cpp` | portado | note |');
+    fs.writeFileSync(path.join(dir, 'roads', 'coverage.md'), [
       '| `src/a.ts` | whole 10 | what | `sim/a.cpp` | portado | note |',
       '| `src/b.ts` | part 10 | what | `sim/b.cpp` | portado | note |',
       '| `src/c.ts#x` | function | what | `sim/c.cpp` | já existia | note |',
@@ -135,7 +137,8 @@ describe('convert: what is known first', () => {
     ].join('\n'));
     const coverage = readCoverage(dir);
     fs.rmSync(dir, { recursive: true, force: true });
-    assert.deepEqual([...coverage.keys()].sort(), ['src/a.ts', 'src/c.ts#x']);
+    assert.deepEqual([...coverage.keys()].sort(), ['src/a.ts', 'src/c.ts#x', 'src/e.ts']);
+    assert.equal(coverage.get('src/e.ts')?.port, 'older');
     assert.equal(coverage.get('src/a.ts')?.target, 'sim/a.cpp');
   });
 });
