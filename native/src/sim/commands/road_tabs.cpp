@@ -11,6 +11,7 @@
 #include "sim/street/street_spots.h"
 
 #include <algorithm>
+#include <tuple>
 #include <cmath>
 #include <map>
 
@@ -156,6 +157,33 @@ EditResult set_road_end(CityState &s, int node, bool bulb) {
 	}
 	double x = net.nodes[node].x, z = net.nodes[node].z;
 	finish_edit(s, x, z, x, z);
+	r.ok = true;
+	return r;
+}
+
+EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built) {
+	EditResult r;
+	const auto same_lane = [&](const LaneLink &l) { return l.from == link.from && l.from_lane == link.from_lane; };
+	const std::vector<LaneLink> &held = s.roads.nodes[size_t(node)].links;
+	std::vector<LaneLink> own, rest;
+	for (const LaneLink &l : held) (same_lane(l) ? own : rest).push_back(l);
+	if (own.empty())
+		for (const LaneLink &l : built)
+			if (same_lane(l)) own.push_back(l);
+	const auto at = std::find(own.begin(), own.end(), link);
+	if (at != own.end()) own.erase(at);
+	else own.push_back(link);
+	if (own.empty()) {
+		r.error = "hint.lane.last";
+		return r;
+	}
+	rest.insert(rest.end(), own.begin(), own.end());
+	std::sort(rest.begin(), rest.end(), [](const LaneLink &a, const LaneLink &b) {
+		return std::tie(a.from, a.from_lane, a.to, a.to_lane) < std::tie(b.from, b.from_lane, b.to, b.to_lane);
+	});
+	j_links(s, node, std::move(rest));
+	const RoadNode &n = s.roads.nodes[size_t(node)];
+	finish_edit(s, n.x, n.z, n.x, n.z);
 	r.ok = true;
 	return r;
 }

@@ -114,6 +114,10 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+// A connection of a junction toggled by hand (connectors.ts toggleLaneLink): an arriving lane first taken by hand starts from what the traffic
+// built (`built`); a lane left with none is refused.
+EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built);
+
 // Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
 EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
 EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points);

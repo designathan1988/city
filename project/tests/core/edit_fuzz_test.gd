@@ -120,7 +120,7 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 16)
+	var kind := rng.randi_range(0, 17)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
@@ -160,6 +160,14 @@ func _other(kind: int, road: Vector3) -> void:
 			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND])
 		14:
 			CityStore.dispatch(&"transit_stop", [road])
+		17:
+			var junctions: Array = CityStore.query(&"junctions")
+			if not junctions.is_empty():
+				var node: int = junctions[rng.randi_range(0, junctions.size() - 1)].node
+				var built: Array = CityStore.query(&"node_lanes", [node]).built
+				if not built.is_empty():
+					var one: Array = built[rng.randi_range(0, built.size() - 1)]
+					CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
 		16:
 			var lots: Array = CityStore.query(&"lots")
 			if lots.is_empty() or rng.randf() < 0.5:

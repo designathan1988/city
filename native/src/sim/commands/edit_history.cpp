@@ -81,6 +81,10 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			s.transit = fwd ? *op.transit_after : *op.transit_before;
 			s.transit_revision++;
 			break;
+		case OpKind::NODE_LINKS:
+			s.roads.nodes[size_t(op.id)].links = fwd ? op.links_after : op.links_before;
+			s.log.net_node(op.id);
+			break;
 		case OpKind::LOTS:
 			for (const LotBook *book : { op.lots_before.get(), op.lots_after.get() })
 				for (const PlayerLot &l : book->lots)

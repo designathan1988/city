@@ -150,3 +150,6 @@ cmd.lot.edit,editar lote,edit lot
 cmd.lot.split,dividir lote,split lot
 cmd.lot.join,juntar lotes,join lots
 cmd.lot.delete,apagar lote,delete lot
+connector.title,Conexões das faixas,Lane connections
+hint.lane.last,Esta faixa precisa de ao menos uma saída,This lane needs at least one way out
+cmd.lane.link,Ligar faixas,Connect lanes

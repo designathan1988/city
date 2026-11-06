@@ -69,33 +69,56 @@ void make_curve(const CityState &s, Conn &c, const TrafficParams &tp) {
 	c.len = std::max(c.table[CONN_STEPS], MIN_LANE_M);
 }
 
-// Connections of one turn class from `din` to `dout`, allocated from the pool and threaded onto the node and lane lists.
+// One connection, allocated from the pool and threaded onto the node and lane lists.
+void add_conn(CityState &s, int node, int din, int from_lane, int dout, int to_lane, Turn turn, std::vector<int> &made) {
+	LaneGraph &g = s.traffic.g;
+	const int ci = alloc_conn(s);
+	Conn &c = g.conns[size_t(ci)];
+	c = Conn();
+	c.alive = true;
+	c.node = node;
+	c.from_ds = din;
+	c.from_lane = from_lane;
+	c.to_ds = dout;
+	c.to_lane = to_lane;
+	c.turn = turn;
+	make_curve(s, c, s.catalog.traffic);
+	const int key = din * MAX_LANES + from_lane;
+	c.next_at_node = g.node_conn[size_t(node)];
+	c.next_from = g.lane_conn[size_t(key)];
+	g.node_conn[size_t(node)] = ci;
+	g.lane_conn[size_t(key)] = ci;
+	made.push_back(ci);
+}
+
+// Whether a hand-made link still stands: both roads at the node, both lanes on them.
+bool link_stands(const CityState &s, int node, const LaneLink &l) {
+	const LaneGraph &g = s.traffic.g;
+	const RoadNetwork &net = s.roads;
+	const std::vector<int> &segs = net.nodes[size_t(node)].segs;
+	if (std::find(segs.begin(), segs.end(), l.from) == segs.end() || std::find(segs.begin(), segs.end(), l.to) == segs.end()) return false;
+	const DirSeg &in = g.ds[size_t(in_ds(net, l.from, node))], &out = g.ds[size_t(out_ds(net, l.to, node))];
+	return in.ok && out.ok && l.from_lane < in.lanes && l.to_lane < out.lanes;
+}
+
+// Whether the player said where this arriving lane goes.
+bool lane_by_hand(const CityState &s, int node, int seg, int lane) {
+	for (const LaneLink &l : s.roads.nodes[size_t(node)].links)
+		if (l.from == seg && l.from_lane == lane && link_stands(s, node, l)) return true;
+	return false;
+}
+
+// Connections of one turn class from `din` to `dout`.
 void link_pair(CityState &s, int node, int din, int dout, Turn turn, std::vector<int> &made) {
 	LaneGraph &g = s.traffic.g;
 	const DirSeg &di = g.ds[din], &do_ = g.ds[dout];
 	std::vector<int> ok;
 	for (int l = 0; l < di.lanes; l++)
-		if (lane_allows(l, di.lanes, turn)) ok.push_back(l);
-	const int k = do_.lanes, m = int(ok.size()), key0 = din * MAX_LANES;
+		if (lane_allows(l, di.lanes, turn) && !lane_by_hand(s, node, di.seg, l)) ok.push_back(l);
+	const int k = do_.lanes, m = int(ok.size());
 	for (int r = 0; r < m; r++) {
-		const int ci = alloc_conn(s);
-		Conn &c = g.conns[size_t(ci)];
-		c = Conn();
-		c.alive = true;
-		c.node = node;
-		c.from_ds = din;
-		c.from_lane = ok[r];
-		c.to_ds = dout;
-		c.turn = turn;
 		bool from_left = turn == Turn::LEFT || turn == Turn::UTURN;
-		c.to_lane = from_left ? std::max(0, k - 1 - std::min(m - 1 - r, k - 1)) : std::min(r, k - 1);
-		make_curve(s, c, s.catalog.traffic);
-		const int key = key0 + c.from_lane;
-		c.next_at_node = g.node_conn[size_t(node)];
-		c.next_from = g.lane_conn[size_t(key)];
-		g.node_conn[size_t(node)] = ci;
-		g.lane_conn[size_t(key)] = ci;
-		made.push_back(ci);
+		add_conn(s, node, din, ok[r], dout, from_left ? std::max(0, k - 1 - std::min(m - 1 - r, k - 1)) : std::min(r, k - 1), turn, made);
 	}
 }
 
@@ -218,6 +241,14 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 			Turn t = classify(V2(ph.fx, ph.fz), V2(po.fx, po.fz), so == si, degree, s.catalog.traffic.straight_dot);
 			link_pair(s, n, din, dout, t, made);
 		}
+	}
+	for (const LaneLink &l : net.nodes[n].links) {
+		if (!link_stands(s, n, l)) continue;
+		const int din = in_ds(net, l.from, n), dout = out_ds(net, l.to, n);
+		Pose ph, po;
+		lane_pose(s, din, 0, g.ds[din].len, ph);
+		lane_pose(s, dout, 0, 0.f, po);
+		add_conn(s, n, din, l.from_lane, dout, l.to_lane, classify(V2(ph.fx, ph.fz), V2(po.fx, po.fz), l.from == l.to, degree, s.catalog.traffic.straight_dot), made);
 	}
 	return degree >= 2;
 }

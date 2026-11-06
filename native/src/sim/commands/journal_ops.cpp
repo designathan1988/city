@@ -216,6 +216,19 @@ void j_lots(CityState &s, LotBook next) {
 	s.touch();
 }
 
+void j_links(CityState &s, int node, std::vector<LaneLink> next) {
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_LINKS, node);
+		op.links_before = s.roads.nodes[size_t(node)].links;
+		op.links_after = next;
+		const RoadNode &n = s.roads.nodes[size_t(node)];
+		s.history.open.grow(float(n.x), float(n.z), float(n.x), float(n.z));
+	}
+	s.roads.nodes[size_t(node)].links = std::move(next);
+	s.log.net_node(node);
+	s.touch();
+}
+
 void j_transit(CityState &s, TransitData next) {
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::TRANSIT, -1);

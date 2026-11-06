@@ -19,6 +19,7 @@ const MOVE_OFF_M := 300.0
 const MOVE_LEN_M := 60.0
 const MOVE_BY_M := 30.0
 const CONTROL_OFF_M := 420.0
+const TICKS_FOR_GRAPH := 3
 const RULES_OFF_M := 540.0
 const SHARP_DEG := 15.0
 const OPEN_DEG := 40.0
@@ -126,6 +127,27 @@ func _control(e: Vector3) -> void:
 	var end: Dictionary = CityStore.query(&"node_at", [a, PX])
 	var r: Dictionary = CityStore.dispatch(&"set_node_control", [end.node, 1])
 	_check(r.get("error", "") == "hint.control.notJunction", "ponta não tem controle: %s" % r)
+	_lanes_by_hand(hit.node)
+
+
+## A lane's connection taken away by hand, the traffic's graph following, and undo bringing it back.
+func _lanes_by_hand(node: int) -> void:
+	CityStore.step_ticks(TICKS_FOR_GRAPH)
+	var before: Array = CityStore.query(&"node_lanes", [node]).built
+	_check(before.size() > 1, "conectores: o cruzamento tem ligações (%d)" % before.size())
+	var one: Array = before[0]
+	var left := before.filter(func(b: Array) -> bool: return b[0] == one[0] and b[1] == one[1])
+	var r: Dictionary = CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
+	if left.size() < 2:
+		_check(r.get("error", "") == "hint.lane.last", "conectores: a faixa não fica sem saída: %s" % r)
+		return
+	_check(r.get("ok", false), "conectores: ligação tirada")
+	CityStore.step_ticks(TICKS_FOR_GRAPH)
+	var now: Array = CityStore.query(&"node_lanes", [node]).built
+	_check(now.size() == before.size() - 1, "conectores: o grafo perdeu a ligação (%d -> %d)" % [before.size(), now.size()])
+	CityStore.dispatch(&"undo")
+	CityStore.step_ticks(TICKS_FOR_GRAPH)
+	_check(CityStore.query(&"node_lanes", [node]).built.size() == before.size(), "conectores: desfazer volta a ligação")
 
 
 ## What an edit may not leave: two roads meeting under 25 degrees, a stretch too short for its two junctions. A refusal

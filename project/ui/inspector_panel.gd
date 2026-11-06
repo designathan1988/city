@@ -134,6 +134,7 @@ func _node(col: Control) -> void:
 	_head(col, tr("inspector.junction"))
 	_stats = HudWidgets.vbox(col)
 	_fill_node(_stats)
+	ConnectorPanel.fill(col, _info.id)
 	if _info.has("greens"): # a signal: what the player sets on it (JunctionPanel), drawn again from what the core reports
 		JunctionPanel.fill(col, _info, _redraw)
 

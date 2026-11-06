@@ -64,6 +64,12 @@ struct SignalSettings {
 	bool operator==(const SignalSettings &o) const { return fixed == o.fixed && offset == o.offset && greens == o.greens; }
 };
 
+// A connection through a junction the player made by hand (Roadcraft world/roads/connectors.ts): the arriving road and lane, the leaving ones.
+struct LaneLink {
+	int from = -1, from_lane = 0, to = -1, to_lane = 0;
+	bool operator==(const LaneLink &o) const { return from == o.from && from_lane == o.from_lane && to == o.to && to_lane == o.to_lane; }
+};
+
 struct RoadNode {
 	bool alive = false;
 	double x = 0, z = 0;
@@ -76,6 +82,7 @@ struct RoadNode {
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on
 	bool plain = false; // a dead end ends in a straight cut: every player road's, until set_road_end asks for a bulb
+	std::vector<LaneLink> links; // an arriving lane named here goes only where these say (save_links.h)
 };
 
 struct RoadSegment {

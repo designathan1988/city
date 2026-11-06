@@ -14,7 +14,7 @@ const COMMANDS := {
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
 	&"upgrade_road": "upgrade_road", &"road_variant": "road_variant", &"move_node": "move_node", &"set_node_control": "set_node_control",
 	&"roundabout": "roundabout", &"terrain_brush": "terrain_brush", &"draw_building": "draw_building",
-	&"set_building": "set_building", &"set_overlay": "set_overlay", &"set_signal": "set_signal", &"green_wave": "green_wave",
+	&"toggle_lane_link": "toggle_lane_link", &"set_building": "set_building", &"set_overlay": "set_overlay", &"set_signal": "set_signal", &"green_wave": "green_wave",
 	&"set_weather": "landscape/set_weather",
 	&"add_cloud": "landscape/add_cloud", &"edit_cloud": "landscape/edit_cloud", &"remove_cloud": "landscape/remove_cloud",
 	&"scatter_clouds": "landscape/scatter_clouds", &"clear_clouds": "landscape/clear_clouds", &"fog_brush": "landscape/fog_brush",
@@ -41,7 +41,7 @@ const COMMANDS := {
 	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture", &"set_road_height": "street/set_road_height", &"set_road_walls": "street/set_road_walls",
 }
 const QUERIES := {
-	&"block_lines": "block_lines", &"road_spec": "road_spec", &"road_spec_limits": "road_spec_limits", &"road_spec_issues": "road_spec_issues", &"road_spec_make": "road_spec_make", &"lot_at": "lot_at", &"lot_angle_at": "lot_angle_at", &"lot_land": "lot_land", &"lot_snap_point": "lot_snap_point", &"lots": "lots", &"lot_cut_lines": "lot_cut_lines",
+	&"block_lines": "block_lines", &"node_lanes": "node_lanes", &"road_spec": "road_spec", &"road_spec_limits": "road_spec_limits", &"road_spec_issues": "road_spec_issues", &"road_spec_make": "road_spec_make", &"lot_at": "lot_at", &"lot_angle_at": "lot_angle_at", &"lot_land": "lot_land", &"lot_snap_point": "lot_snap_point", &"lots": "lots", &"lot_cut_lines": "lot_cut_lines",
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"flow_replay": "probes/flow_replay", &"flow_junction": "probes/flow_junction", &"flow_push": "probes/flow_push", &"flow_state": "probes/flow_state", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"wear_probe": "wear_probe", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",
