@@ -43,12 +43,15 @@ private:
 		MultiMeshDraw poles, wires_near, wires_far, boxes, beams, light;
 		MultiMeshDraw pole_shadow_near, pole_shadow_far; // the poles' shadow: the whole mesh in the near chunks, the light one past them
 		MeshDraw pools;
+		godot::RID cast; // the chunk's mesh in the shadow maps alone, as far as a thin thing's shadow reads
 		int count = 0;
 		void free();
 	};
 	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
 	void commit_one(BuiltMesh &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
+	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);
+	float shadow_end() const;
 	godot::RID scenario_, material_, glow_material_;
 	const StreetLook *look_ = nullptr;
 	FurnitureLook furniture_;

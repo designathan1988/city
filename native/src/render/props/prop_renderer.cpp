@@ -9,9 +9,12 @@ namespace city {
 
 namespace {
 constexpr float NEVER_END = 0.f; // a visibility range without an end
+constexpr float HALF_DIAGONAL = 0.7071f; // of a chunk, from its middle to a corner
 } // namespace
 
 void PropRenderer::Draws::free() {
+	if (cast.is_valid()) RenderingServer::get_singleton()->free_rid(cast);
+	cast = RID();
 	poles.free();
 	pole_shadow_near.free();
 	pole_shadow_far.free();
@@ -89,7 +92,7 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
 	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
 	d.pole_shadow_near.range(NEVER_END, kit_.cast_from());
-	d.pole_shadow_far.range(kit_.cast_from(), NEVER_END);
+	d.pole_shadow_far.range(kit_.cast_from(), shadow_end());
 	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, LAYER_FURNITURE, false);
 	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, LAYER_FURNITURE, false);
 	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true, LAYER_FURNITURE);
@@ -101,14 +104,35 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
 }
 
+// Past where the wires stop being tubes a pole or a bin is thinner than a texel of the farther cascades: its shadow costs the whole shadow pass and shows nothing. Measured by
+// the middle of the chunk: the chunks a view stands over cast whole.
+float PropRenderer::shadow_end() const {
+	return furniture_.wire.near_end + float(CHUNK) * HALF_DIAGONAL;
+}
+
+void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	if (d.cast.is_valid()) rs->free_rid(d.cast);
+	d.cast = RID();
+	if (!mesh.is_valid()) return;
+	d.cast = rs->instance_create2(mesh, scenario_);
+	rs->instance_set_layer_mask(d.cast, LAYER_FURNITURE);
+	rs->instance_geometry_set_material_override(d.cast, material_);
+	rs->instance_geometry_set_cast_shadows_setting(d.cast, RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
+	rs->instance_set_custom_aabb(d.cast, box);
+	rs->instance_geometry_set_visibility_range(d.cast, 0, shadow_end(), 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+}
+
 void PropRenderer::commit_one(BuiltMesh &b) {
 	MeshDraw &d = chunks_[b.key];
 	const bool any = b.mesh.valid();
-	d.adopt(scenario_, material_, true, b.mesh.release(), LAYER_FURNITURE);
+	cast_chunk(draws_[b.key], RID(), AABB()); // before the mesh it shows goes
+	d.adopt(scenario_, material_, false, b.mesh.release(), LAYER_FURNITURE);
 	const float pad = furniture_.wire.max_span, x0 = key_x(b.key) * CHUNK - pad, z0 = key_y(b.key) * CHUNK - pad;
 	const AABB box(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK + pad * 2, AABB_H, CHUNK + pad * 2));
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, box);
 	d.visible(any);
+	if (any) cast_chunk(draws_[b.key], d.mesh, box);
 	StreetInstances inst;
 	{
 		std::lock_guard<std::mutex> lk(placed_mutex_);

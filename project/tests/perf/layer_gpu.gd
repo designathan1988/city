@@ -35,4 +35,22 @@ func _ready() -> void:
 		for r: Dictionary in by_time:
 			if r.gpu_ms > 0.03 or r.primitives > 0:
 				print("  %s %.2f ms, %.2f Mprim, %.2f sombra, %d chamadas" % [r.layer, r.gpu_ms, r.primitives / MILLION, r.shadow_primitives / MILLION, r.draws])
+	if OS.get_cmdline_user_args().has("--switches"):
+		await _switches()
 	get_tree().quit(0)
+
+
+## What every switch of the F7 costs at the last of the views but one (the Diagnosis's A/B, its noise beside it).
+func _switches() -> void:
+	var v: Array = VIEWS[VIEWS.size() - 2]
+	_rig.jump(_rig.focus, 0.0, v[2], v[1])
+	for f in SETTLE_FRAMES:
+		await get_tree().process_frame
+	Settings.set_preset("high")
+	var doctor := DoctorRun.new()
+	add_child(doctor)
+	await get_tree().process_frame
+	for key: String in doctor.all_switches():
+		await doctor.compare(key)
+		var c: Dictionary = doctor.results[key]
+		print("chave %s: gpu %s -> %s (ruído %s)" % [key, c.gpu_before, c.gpu_after, c.noise_gpu])

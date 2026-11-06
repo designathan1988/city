@@ -2,6 +2,7 @@
 ## viewport), the Effects panel's new switches and the Optimisations tab's options; the entry the sky's owner reads.
 extends Node3D
 
+const CAR_FRAMES := 1800
 const TOWN_MAP := 0
 const SEED := 1
 const SETTLE_FRAMES := 240
@@ -103,6 +104,11 @@ func _tiers(rig: CityCamera) -> void:
 func _counts(rig: CityCamera) -> void:
 	await _settled()
 	var c := _cost()
+	for f in CAR_FRAMES: # the city settles before a car need have come by: what is asked is that a car near is drawn with its cabin
+		if int(c.cabins) > 0:
+			break
+		await get_tree().process_frame
+		c = _cost()
 	var cabins: int = c.cabins
 	var people := await _people_close(rig)
 	print("  ultra de perto: %d cabines, %d pessoas no nível perto, %d árvores perto" % [cabins, people, c.trees_near])
