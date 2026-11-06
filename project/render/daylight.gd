@@ -141,6 +141,14 @@ func follow_view(camera: Camera3D) -> void:
 	_fit_cascades(camera)
 
 
+## The filter in use: its radius is the engine's, and the blur follows it so a soft edge keeps its width whatever the filter
+## (shadow_blur at shadow_blur_radius). What a filter changes is its samples: 32 at Soft Ultra, 16 at Soft High, per pixel
+## (renderer_scene_render_rd.cpp); at the same width the picture holds to 16 and shows its grain at 8.
+func set_filter(radius: float) -> void:
+	shadow_filter_radius = radius
+	_sun.shadow_blur = _d.shadow_blur * _d.shadow_blur_radius / radius
+
+
 ## The sun's cascades fitted to the view (Engel, ShaderX5, as the 4.0's sunCascades.ts): the first ends just past the
 ## point looked at, the others in ratio to the far end. A fixed share leaves a texel wider than a sign post up close.
 func _fit_cascades(camera: Camera3D) -> void:
@@ -156,7 +164,7 @@ func _fit_cascades(camera: Camera3D) -> void:
 	_sun.directional_shadow_split_1 = first / end
 	_sun.directional_shadow_split_2 = second / end
 	_sun.directional_shadow_split_3 = sqrt(second * end) / end
-	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _d.shadow_blur * shadow_filter_radius)
+	var bias: float = _d.shadow_bias_m * BIAS_PERCENT / (_first_depth(camera, end) * _sun.shadow_blur * shadow_filter_radius)
 	if absf(bias - _sun.shadow_bias) > bias * _d.shadow_reach_step:
 		_sun.shadow_bias = bias
 
