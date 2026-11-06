@@ -19,7 +19,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/signature_glass.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
-	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
+	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 
@@ -79,6 +79,10 @@ func materials() -> Dictionary:
 				var fade: ShaderMaterial = m.duplicate()
 				fade.shader = load(table[key].fade_shader)
 				_materials[key + "_fade"] = fade
+			if table[key].has("ruin_shader"): # the same material for a building coming down in pieces (ruin_pieces.h)
+				var ruin: ShaderMaterial = m.duplicate()
+				ruin.shader = load(table[key].ruin_shader)
+				_materials[key + "_ruin"] = ruin
 			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
 				var over: ShaderMaterial = m.duplicate()
 				over.render_priority = layer

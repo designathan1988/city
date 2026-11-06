@@ -50,6 +50,7 @@ void EffectWorld::piece(const Vector3 &at, const Vector3 &size, const Vector3 &v
 }
 
 void EffectWorld::blast(const DamageEvent &e, const CityState &s) {
+	blast_point_ = Vector3(e.x, e.y, e.z);
 	const float radius = params_.fireball_base + params_.fireball_per_force * e.dx; // the fireball: from the force of the blow
 	const int soil = int(e.c);
 	for (const BurstDef &b : params_.bursts) {
@@ -116,7 +117,7 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 	for (const Ruin &r : s.damage.ruins) { // the heap it left: the building falls into it
 		if (std::fabs(r.x - e.x) < 1.f && std::fabs(r.z - e.z) < 1.f) {
 			ground_here_ = s.terrain.height_at(r.x, r.z);
-			pile(r, true);
+			pile(r, true, true, !ruins_.fall(s, r, RuinPieces::Blow{ blast_point_, e.a, heap_of(r) }));
 		}
 	}
 	puffs_.burst(e.x, e.y + DOWN_PAPER_HEIGHT_M, e.z, params_.paper_count, PUFF_PAPER, params_.paper_spread, params_.paper_size, params_.paper_life);

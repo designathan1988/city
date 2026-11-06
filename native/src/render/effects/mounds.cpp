@@ -69,6 +69,8 @@ Ref<ArrayMesh> hill_mesh() {
 }
 } // namespace
 
+float Mounds::hill_at(float x, float z) { return hill(x, z); }
+
 void Mounds::init(const RID &scenario, const RID &material, int capacity) {
 	material_ = material;
 	capacity_ = capacity;

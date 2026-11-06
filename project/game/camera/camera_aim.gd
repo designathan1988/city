@@ -17,9 +17,10 @@ static func hold_height(rig: CityCamera, screen: Vector2, h: float) -> float:
 
 
 ## How far a change may bring the held point back. A ray grazing the plane meets it ever farther for ever less of a turn, so the hold lets go between
-## `keep_firm_deg` and `keep_grazing_deg` of the ray over the plane and under that the view turns about its centre: what `swing` moved the ray's own point
-## over the sine of the shallowest hold, and the share of the way the hold still has.
-static func firm_reach(rig: CityCamera, screen: Vector2, point: Vector3, h: float, swing: float) -> float:
+## `keep_firm_deg` and `keep_grazing_deg` of the ray over the plane and under that the view turns about its centre: how far the ray's own point moved from
+## `was`, `reach` along it, over the sine of the shallowest hold, and the share of the way the hold still has.
+static func firm_reach(rig: CityCamera, screen: Vector2, point: Vector3, h: float, was: Vector3, reach: float) -> float:
+	var swing := (rig.camera.project_ray_origin(screen) + rig.camera.project_ray_normal(screen) * reach).distance_to(was)
 	var found: Variant = rig.hit_at(screen, h)
 	if found == null:
 		return 0.0

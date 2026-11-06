@@ -7,6 +7,7 @@
 #include "render/effects/effect_params.h"
 #include "render/effects/mm_layer.h"
 #include "render/effects/puffs.h"
+#include "render/effects/rigid_step.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/quaternion.hpp>
@@ -43,7 +44,7 @@ public:
 		while (clock_ >= STEP_S) {
 			clock_ -= STEP_S;
 			for (Piece &p : pieces_)
-				if (!p.asleep) step(p, ground_of);
+				if (!p.asleep && rigid_step(p, ground_of, params_)) dirty_ = true;
 		}
 		for (Piece &p : pieces_) burn(p, now, dt, puffs);
 		reap(dt);
@@ -51,22 +52,17 @@ public:
 	}
 	bool moving() const;
 	int count() const { return int(pieces_.size()); }
-	static constexpr float STEP_S = 1.f / 60.f;
-	static constexpr int CORNERS = 8; // of a piece's box
+	static constexpr float STEP_S = RIGID_STEP_S;
 
 private:
-	struct Piece {
-		godot::Vector3 p, v, w, size;
-		godot::Quaternion q;
+	struct Piece : RigidPiece {
+		godot::Vector3 size;
 		godot::Color tint;
-		godot::Vector3 corners[CORNERS];
-		float inv_inertia = 0, rest = 0, burn_until = 0, carry = 0;
+		float burn_until = 0, carry = 0;
 		float life = 0;
-		bool cylinder = false, asleep = false, still = false, charred = false, dusty = false;
+		bool cylinder = false, still = false, charred = false, dusty = false;
 		int wreck = -1;
 	};
-	template <typename F>
-	void step(Piece &b, F &&ground_of);
 	void burn(Piece &p, double now, float dt, Puffs &puffs);
 	void reap(float dt); // the pieces whose time is up leave
 	void flush();
@@ -81,5 +77,3 @@ private:
 };
 
 } // namespace city
-
-#include "render/effects/debris_step.inl"

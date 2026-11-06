@@ -34,6 +34,13 @@ varying vec3 v_wn;
 varying flat vec4 v_room0;
 varying flat vec4 v_trim;
 varying flat float v_recess; // how deep a far wall's panes stand, worked out in the fragment: 0 on a bay, whose recess is geometry
+#ifdef RUIN
+const int RUIN_PIECES_A_ROW = 256; // render/effects/ruin_pieces.cpp PIECES_A_ROW
+uniform sampler2D pieces : filter_nearest, repeat_disable; // three rows of a matrix a piece
+varying flat vec3 v_turn0;
+varying flat vec3 v_turn1;
+varying flat vec3 v_turn2;
+#endif
 
 #include "res://render/shaders/building_bay.gdshaderinc"
 #include "res://render/shaders/building_level.gdshaderinc"
@@ -57,6 +64,18 @@ void vertex() {
 	}
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+#ifdef RUIN
+	// The finishes keep to the wall as it stood, in v_world and v_wn; only where it is drawn and how it faces the light move.
+	ivec4 id = ivec4(CUSTOM0 * 255.0 + 0.5);
+	int piece = id.r + id.g * 256 + id.b * 65536;
+	ivec2 at = ivec2((piece % RUIN_PIECES_A_ROW) * 3, piece / RUIN_PIECES_A_ROW);
+	vec4 r0 = texelFetch(pieces, at, 0), r1 = texelFetch(pieces, at + ivec2(1, 0), 0), r2 = texelFetch(pieces, at + ivec2(2, 0), 0);
+	VERTEX = vec3(dot(r0, vec4(VERTEX, 1.0)), dot(r1, vec4(VERTEX, 1.0)), dot(r2, vec4(VERTEX, 1.0)));
+	NORMAL = vec3(dot(r0.xyz, NORMAL), dot(r1.xyz, NORMAL), dot(r2.xyz, NORMAL));
+	v_turn0 = r0.xyz;
+	v_turn1 = r1.xyz;
+	v_turn2 = r2.xyz;
+#endif
 	// What lies on the lot stays there: stepped back it sinks under the lawn, which is drawn by another material and stands still.
 	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * 255.0 + 0.5) != KIND_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
 }
@@ -102,5 +121,8 @@ void fragment() {
 	EMISSION = surface_out(emit);
 	ROUGHNESS = rough;
 	METALLIC = metal;
+#ifdef RUIN
+	nn = vec3(dot(v_turn0, nn), dot(v_turn1, nn), dot(v_turn2, nn));
+#endif
 	NORMAL = normalize((VIEW_MATRIX * vec4(nn, 0.0)).xyz);
 }

@@ -193,8 +193,7 @@ func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = nul
 	if before == null:
 		return
 	var reach := from.distance_to(before)
-	var swing := (camera.project_ray_origin(screen) + camera.project_ray_normal(screen) * reach).distance_to(from + along * reach)
-	CameraAim.bring(self, screen, before, at_h, CameraAim.firm_reach(self, screen, before, at_h, swing))
+	CameraAim.bring(self, screen, before, at_h, CameraAim.firm_reach(self, screen, before, at_h, from + along * reach, reach))
 
 
 ## The tilt the player asks for, kept as the far tilt it means at this distance.

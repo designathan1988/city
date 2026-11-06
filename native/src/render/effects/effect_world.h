@@ -9,6 +9,7 @@
 #include "render/effects/marks.h"
 #include "render/effects/mounds.h"
 #include "render/effects/puffs.h"
+#include "render/effects/ruin_pieces.h"
 #include "render/render_context.h"
 #include "sim/state/city_state.h"
 
@@ -21,6 +22,7 @@ namespace city {
 class EffectWorld {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
+	void set_ruin_maker(RuinPieces::Maker maker) { ruins_.set_maker(std::move(maker)); }
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
 	void release();
@@ -28,8 +30,10 @@ public:
 	void sync(CityState &s);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
-	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || flash_left_ > 0; }
+	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
 	int pieces() const { return debris_.count(); }
+	int ruin_pieces() const { return ruins_.pieces(); }
+	int ruin_pieces_flying() const { return ruins_.flying(); }
 	int blood_marks() const { return marks_.blood(); }
 	size_t events_played() const { return played_; }
 
@@ -43,8 +47,9 @@ private:
 	void blast(const DamageEvent &e, const CityState &s);
 	void building_hit(const DamageEvent &e);
 	void building_down(const DamageEvent &e, const CityState &s);
-	void pile(const Ruin &r, bool falling); // the heap a building left (effect_ruins.cpp)
+	void pile(const Ruin &r, bool falling, bool mound, bool loose); // the heap a building left (effect_ruins.cpp): its mound and the plain pieces on it
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
+	static float heap_of(const Ruin &r); // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
 	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
 	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
@@ -68,6 +73,8 @@ private:
 	Marks marks_;
 	Mounds mounds_;
 	Debris debris_;
+	RuinPieces ruins_;
+	godot::Vector3 blast_point_; // the last blow's: where a building that comes down is thrown from
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame

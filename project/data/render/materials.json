@@ -42,7 +42,7 @@
   }
  },
  "building": {
-  "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader",
+  "shader": "res://render/shaders/building.gdshader", "fade_shader": "res://render/shaders/building_fade.gdshader", "ruin_shader": "res://render/shaders/building_ruin.gdshader",
   "params": {
    "noise_lattice": "res://assets/noise/lattice.png",
    "finish_map": "res://assets/surfaces/building-finishes.map.png",

@@ -17,6 +17,10 @@ const DURATION_SLACK_MS := 1e-3
 const CURVE_LAST_Z := 40.0 # the duration fit holds to here
 const DURATION_HOLD_TOL := 1e-3
 const SMALL_FORCE := 5
+const FALL_FORCE := 30
+const PIECES_LEAST := 12
+const FALL_FRAMES := 3000
+const SETTLE_FRAMES := 60
 const HITS_TO_FALL := 12
 const WARM_TICKS := 600
 ## Step of the scan for a point of road.
@@ -35,6 +39,7 @@ func _ready() -> void:
 	_model()
 	_effects()
 	_roads()
+	await _fall()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -137,6 +142,38 @@ func _roads() -> void:
 	_check(CityStore.dispatch(&"undo", []), "desfez o golpe na via")
 	var undone: Dictionary = CityStore.query(&"damage_probe")
 	_check(undone.segments == before.segments and undone.gone == before.gone and undone.craters == before.craters, "a via, o mobiliário e a cratera voltaram")
+
+
+## A building brought down comes down in pieces of its own walls: they appear in a job's time, some fly, all come to rest, and undoing the blow takes them away.
+func _fall() -> void:
+	for f in SETTLE_FRAMES: # what the blows above brought down comes to rest first
+		await get_tree().process_frame
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") == 0)
+	var ids: Array = CityStore.query(&"list_buildings")
+	var spot: Vector3 = CityStore.query(&"probe_building", [ids[ids.size() - 1]]).position
+	var ruins: int = CityStore.query(&"damage_probe").ruins
+	var before: int = CityStore.query(&"effects_ruin_pieces")
+	var r: Dictionary = CityStore.dispatch(&"strike", [spot, FALL_FORCE])
+	_check(r.ok and CityStore.query(&"damage_probe").ruins > ruins, "um prédio caiu para a fratura")
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_pieces") > before)
+	var pieces: int = CityStore.query(&"effects_ruin_pieces")
+	print("peças do prédio caído: ", pieces - before)
+	_check(pieces - before >= PIECES_LEAST, "o prédio virou peças (%d)" % (pieces - before))
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") > 0)
+	_check(CityStore.query(&"effects_ruin_flying") > 0, "as peças voam")
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") == 0)
+	_check(CityStore.query(&"effects_ruin_flying") == 0, "as peças pousam")
+	_check(CityStore.dispatch(&"undo", []), "desfez a queda")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(CityStore.query(&"effects_ruin_pieces") <= before, "desfazer leva as peças embora")
+
+
+func _until(met: Callable) -> void:
+	for f in FALL_FRAMES:
+		if met.call():
+			return
+		await get_tree().process_frame
 
 
 func _check(ok: bool, what: String) -> void:

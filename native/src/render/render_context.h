@@ -20,6 +20,7 @@ struct RenderContext {
 	godot::RID scenario;
 	godot::Dictionary tables; // file stem -> parsed JSON (e.g. "palette", "streets", "buildings")
 	std::unordered_map<std::string, godot::RID> materials;
+	godot::Dictionary material_objects; // the same, as objects: for what needs a copy of its own (ruin_pieces.h)
 	const Catalog *catalog = nullptr;
 
 	// The material of that name, or an error when data/render/materials.json does not define it.

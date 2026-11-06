@@ -12,8 +12,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float INERTIA_NUM = 12.f; // inverse inertia per unit mass of a box: 12 / (a2 + b2 + c2)
-constexpr float INERTIA_MIN = 1e-4f;
 constexpr float RANDOM_SPIN_RANGE = 8.f; // rad/s of the random spin a piece is thrown with, either way
 constexpr float TINT_MIN = 0.85f, TINT_SPAN = 0.3f; // each piece's shade varies a little
 constexpr float CYL_SIDES = 9.f;
@@ -83,12 +81,8 @@ void Debris::add(const PieceSpec &s) {
 	b.dusty = s.dusty;
 	b.wreck = s.wreck;
 	const Vector3 half = s.cylinder ? Vector3(s.size.x, s.size.y * 0.5f, s.size.z) : s.size * 0.5f;
-	int k = 0;
-	for (int x = -1; x <= 1; x += 2)
-		for (int y = -1; y <= 1; y += 2)
-			for (int z = -1; z <= 1; z += 2) b.corners[k++] = Vector3(x * half.x, y * half.y, z * half.z);
 	const float extent = s.cylinder ? s.size.y * s.size.y + 3.f * s.size.x * s.size.x : s.size.x * s.size.x + s.size.y * s.size.y + s.size.z * s.size.z;
-	b.inv_inertia = INERTIA_NUM / std::max(INERTIA_MIN, extent);
+	b.shape(half, extent);
 	pieces_.push_back(b);
 	if (int(pieces_.size()) > params_.debris_max) { // room: the oldest piece at rest that is not laid for good, else the oldest
 		auto it = std::find_if(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.asleep && !p.still && p.burn_until <= 0; });

@@ -85,6 +85,8 @@ public:
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
 	float effects_shake() const { return render_.shake(); } // metres the blasts move the camera now
 	float effects_since_blast() const { return render_.since_blast(); } // effect seconds since the last blast (-1 none)
+	int effects_ruin_pieces() const { return render_.ruin_pieces(); } // of the buildings drawn in pieces, and of those in the air
+	int effects_ruin_flying() const { return render_.ruin_pieces_flying(); }
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
 	godot::Dictionary damage_probe() const;

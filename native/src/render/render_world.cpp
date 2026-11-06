@@ -36,6 +36,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = effects_.init(ctx, errors) && ok;
+	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground) { return ruin_of(data, buildings_.look(), rec, ground); });
 	if (ok) {
 		std::vector<Ref<Mesh>> bodies;
 		std::vector<Vector3> sizes;

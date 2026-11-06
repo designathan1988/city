@@ -37,6 +37,9 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	debris_.init(scenario_, debris, params_);
 	debris_material_ = debris;
 	mounds_.init(scenario_, rubble, MOUND_SLOTS);
+	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
+	if (ruin.is_null()) errors.push_back("material ausente: building_ruin");
+	ruins_.init(scenario_, ruin, params_);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	light_ = rs->omni_light_create();
 	rs->light_set_shadow(light_, false);
@@ -53,6 +56,7 @@ void EffectWorld::set_wrecks(const std::vector<Ref<Mesh>> &bodies, const std::ve
 }
 
 void EffectWorld::reset() {
+	ruins_.reset();
 	puffs_.reset();
 	marks_.reset();
 	debris_.reset();
@@ -68,6 +72,7 @@ void EffectWorld::reset() {
 }
 
 void EffectWorld::release() {
+	ruins_.release();
 	RenderingServer *rs = RenderingServer::get_singleton();
 	if (light_inst_.is_valid()) rs->free_rid(light_inst_);
 	if (light_.is_valid()) rs->free_rid(light_);
@@ -156,6 +161,11 @@ void EffectWorld::sync(CityState &s) {
 	step_geysers(dt);
 	step_sources(dt);
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
+	ruins_.update(dt, puffs_);
+	for (const Ruin &r : ruins_.take_uncut()) {
+		ground_here_ = s.terrain.height_at(r.x, r.z);
+		pile(r, true, false, true);
+	}
 	shake_ *= std::exp(-params_.shake_decay * dt);
 	if (shake_ < SHAKE_FLOOR) shake_ = 0;
 	light_update(dt);
