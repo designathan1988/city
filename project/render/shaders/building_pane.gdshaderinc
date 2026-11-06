@@ -167,8 +167,7 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	float h1 = fract(lot * 13.71), h2 = fract(lot * 7.37), h3 = fract(lot * 3.13);
 	vec3 cq = o + d * ((0.12 - o.z) / d.z);
 	vec2 pu = cq.xy / max(size, vec2(0.1)) + 0.5;
-	vec3 cloth = h2 < 0.25 ? vec3(0.86, 0.8, 0.68) : h2 < 0.45 ? vec3(0.9, 0.89, 0.86) : h2 < 0.6 ? vec3(0.5, 0.51, 0.53)
-			: h2 < 0.72 ? vec3(0.72, 0.6, 0.45) : h2 < 0.84 ? vec3(0.4, 0.47, 0.58) : h2 < 0.93 ? vec3(0.6, 0.34, 0.26) : vec3(0.42, 0.5, 0.38);
+	vec3 cloth = pane_cloth(h2);
 	float cover = 0.0, daylight = 0.85 + 0.25 * clamp(pu.y, 0.0, 1.0);
 	vec3 hung = cloth;
 	if (h1 < 0.36) {
@@ -228,12 +227,12 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 		at += side * 1e-3; // off the surface a hair: a point on a side sees the opening's edge in that side's plane on the right side
 		open = opening_share(at, side, 0.5 * size);
 	}
-	vec3 seen = PANE_MEAN_SEEN;
 	float kind = v_room0.a * 255.0;
+	vec3 seen = pane_tone(lot, room_tone(V, n, kind > 1.5 ? FLOOR_TILE : kind > 0.5 ? FLOOR_STONE : FLOOR_BOARD));
 	if (tiny < 1.0 && frame < 1.0 && solid < 1.0) {
 		vec3 lo = vec3(-v_room0.r, -v_room1.r, 0.0) * ROOM_SPAN_M, hi = vec3(v_room0.g, v_room1.g, v_room0.b) * ROOM_SPAN_M;
 		vec3 room = room_hung(room_trace(o, d, lot, lo, hi, kind), o, d, size, lot);
-		seen = mix(room, PANE_MEAN_SEEN, tiny);
+		seen = mix(room, seen, tiny);
 	}
 	// Less of the room as the glass turns to a mirror (Schlick, F0 4 %): at every size, or a pane seen edge-on burns as a bright sliver.
 	float seen_cos = clamp(ray.z / max(length(ray), 1e-4), 0.0, 1.0);

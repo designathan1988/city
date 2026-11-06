@@ -72,5 +72,7 @@ void far_window(vec2 uv, vec4 code, uint seed, vec3 n, vec3 V, float depth, inou
 	float lit = mix(step(1.0 - rooms_awake, lot), rooms_awake, far_sub) * building_night_windows;
 	vec3 lamp = mix(room_lamp(fract(lot * 17.31), office), room_lamp_mean(office), far_sub);
 	float through = 1.0 - (0.04 + 0.96 * pow(1.0 - cosv, 5.0)); // what the glass lets out at this angle (Schlick, F0 4 %)
-	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + PANE_MEAN_SEEN * room_daylight) * through * mix(1.0, 0.64, dark) + glass_reflection(V, n, F, mix(GLASS_ENV, GLASS_ENV_DARK, dark))) * glass;
+	vec3 room = room_tone(V, n, office > 0.5 ? FLOOR_STONE : fract(lot * 11.3) < 0.5 ? FLOOR_BOARD : FLOOR_TILE);
+	vec3 seen = mix(pane_tone(lot, room), pane_mean(room_tone(V, n, office > 0.5 ? FLOOR_STONE : FLOOR_HOME)), far_sub);
+	emit = ((lamp * lit * night * window_glow * FAR_ROOM_LEVEL + seen * room_daylight) * through * mix(1.0, 0.64, dark) + glass_reflection(V, n, F, mix(GLASS_ENV, GLASS_ENV_DARK, dark))) * glass;
 }

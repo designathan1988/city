@@ -21,7 +21,6 @@ const int KIND_MASK = 7;
 const int KIND_DARK = 2;
 const int KIND_CLEAR = 6; // shell.h SK_PANE_CLEAR: the glass of a building cut open, with no room behind it
 const float PANE_DEPTH_STEP_M = 0.01; // shell.cpp PANE_RECESS_STEP_M
-const vec3 PANE_MEAN_SEEN = vec3(0.42, 0.45, 0.47); // a room under a pixel: its mean by day
 
 varying vec3 v_world;
 varying vec3 v_wn;
@@ -49,6 +48,7 @@ void vertex() {
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/building_hash.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
+#include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
 #include "res://render/shaders/building_pane.gdshaderinc"
 

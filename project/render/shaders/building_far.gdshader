@@ -31,7 +31,7 @@ varying flat vec4 v_opening; // width, sill and head as shares of the bay and th
 const int WINDOW_BLANK = 4; // shell.h WINDOW_FLAG_BLANK: a side with no openings
 const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
 const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
-const vec3 MEAN_SEEN = vec3(0.42, 0.45, 0.47); // a room under a pixel by day (building.gdshader PANE_MEAN_SEEN)
+#include "res://render/shaders/building_room_tone.gdshaderinc"
 const vec3 PANE_ALBEDO = vec3(0.0075, 0.0096, 0.0115); // glass scatters next to nothing (building_pane.gdshaderinc)
 
 #include "res://render/shaders/building_colour.gdshaderinc"
@@ -77,7 +77,7 @@ void fragment() {
 		float fresnel = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
 		albedo = mix(albedo, PANE_ALBEDO, m) * mix(FOOT_SHADE, 1.0, smoothstep(0.0, FOOT_STOREYS, UV.y));
 		rough = mix(rough, 0.35, m);
-		emit = ((lamp * lit * night * window_glow + MEAN_SEEN * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
+		emit = ((lamp * lit * night * window_glow + pane_mean(room_tone(V, n, FLOOR_HOME)) * room_daylight) * (1.0 - fresnel) + glass_reflection(V, n, fresnel, GLASS_ENV)) * m;
 	}
 	albedo *= wall_gain;
 	if (kind == 4) emit += albedo * night;

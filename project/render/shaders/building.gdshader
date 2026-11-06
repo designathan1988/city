@@ -60,7 +60,7 @@ void vertex() {
 #include "res://render/shaders/building_colour.gdshaderinc"
 #include "res://render/shaders/building_common.gdshaderinc"
 #include "res://render/shaders/building_lamps.gdshaderinc"
-const vec3 PANE_MEAN_SEEN = vec3(0.42, 0.45, 0.47); // a room under a pixel: its mean by day
+#include "res://render/shaders/building_room_tone.gdshaderinc"
 #include "res://render/shaders/building_sky_glass.gdshaderinc"
 #include "res://render/shaders/building_far_window.gdshaderinc"
 
