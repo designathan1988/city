@@ -103,6 +103,13 @@ func _step(step: Dictionary) -> void:
 		await ui.move(at)
 		await ui.button(at, true)
 		await ui.button(at, false)
+	elif step.has("press"): # the button held, for a shot in the middle of a gesture
+		await ui.move(Vector2(step.press[0], step.press[1]))
+		await ui.button(Vector2(step.press[0], step.press[1]), true)
+	elif step.has("moveTo"):
+		await ui.move(Vector2(step.moveTo[0], step.moveTo[1]))
+	elif step.has("letGo"):
+		await ui.button(Vector2(step.letGo[0], step.letGo[1]), false)
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
 	elif step.has("until"):

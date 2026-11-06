@@ -5,12 +5,28 @@ extends ToolBase
 
 ## A drag shorter than this is a click.
 const DRAG_MIN_M := 2.0
+const LINE_PX := 2.0
 
 var _corner := Vector3.INF
 
 
 func enter() -> void:
 	ctl.hint.emit("", true)
+
+
+func exit() -> void:
+	ctl.preview.clear()
+
+
+## The rectangle that would go, on the ground.
+func drag(p: Vector3) -> void:
+	if _corner == Vector3.INF or _corner.distance_to(p) <= DRAG_MIN_M:
+		ctl.preview.clear()
+		return
+	var ring := PackedVector3Array()
+	for at: Vector2 in [Vector2(_corner.x, _corner.z), Vector2(p.x, _corner.z), Vector2(p.x, p.z), Vector2(_corner.x, p.z), Vector2(_corner.x, _corner.z)]:
+		ring.push_back(Vector3(at.x, CityStore.query(&"height_at", [at.x, at.y]), at.y))
+	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * LINE_PX}])
 
 
 func click(p: Vector3) -> void:
@@ -24,11 +40,13 @@ func in_progress() -> bool:
 ## The box being dragged goes, nothing demolished (Roadcraft bulldozer cancel).
 func cancel() -> void:
 	_corner = Vector3.INF
+	ctl.preview.clear()
 
 
 func release(p: Vector3) -> void:
 	var from := _corner
 	_corner = Vector3.INF
+	ctl.preview.clear()
 	if from == Vector3.INF:
 		return
 	var box := p != Vector3.INF and from.distance_to(p) > DRAG_MIN_M
