@@ -22,6 +22,7 @@ uniform float bed_from_m; // the depth the bed has taken over the ground by
 uniform float silt_m; // the depth it is all silt by
 uniform float bed_cover; // how much of the ground the bed hides
 uniform float bed_wet; // what the wet leaves of the bed's light
+uniform vec3 absorb_m; // what a metre of water takes of each colour (Pope and Fry 1997, with a river's fine silt): the bed goes blue-green as it sinks
 uniform float wave_scale; // cells a metre: one over the peak wavelength
 uniform float peak_hz; // the peak's frequency: cells a second the main layer drifts
 uniform float detail_ratio; // the detail layer's wavelength ratio (frequency ratio squared)
@@ -88,6 +89,7 @@ void fragment() {
 	// The bed, drawn here as a layer under the sheet: the ground shader knows the sea's level, not the water over each place.
 	float grain = mix(0.62, 1.3, vnoise(world.xz * 2.65)) * mix(0.85, 1.12, vnoise(world.xz * 1.05 + 0.4));
 	vec3 bed = mix(source_linear(gravel) * grain, source_linear(silt), smoothstep(bed_from_m, silt_m, below)) * bed_wet;
+	bed *= exp(-absorb_m * below * 2.0); // down to the bed and up again
 	float bed_a = bed_cover * smoothstep(0.0, bed_from_m, below);
 	float sheet = max(mix(sheet_least, sheet_most, smoothstep(bed_seen_m, bed_hidden_m, below)), froth);
 	float cover = sheet + (1.0 - sheet) * bed_a;
