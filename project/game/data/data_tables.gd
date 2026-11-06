@@ -55,6 +55,7 @@ const GAME := {
 	"saves": "res://data/game/saves.json",
 	"interior": "res://data/game/interior.json",
 	"render_switches": "res://data/game/render_switches.json",
+	"lab": "res://data/game/lab.json",
 	"optimizations": "res://data/game/optimizations.json",
 	"health": "res://data/game/health.json",
 	"start": "res://data/game/start.json",

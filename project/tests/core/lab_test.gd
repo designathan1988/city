@@ -12,6 +12,8 @@ const STAGES_SHARE := 0.15
 ## Windows a measure may take: another program on the GPU fills a window with noise, and the panel rightly answers "within the noise".
 ## An effect that is there shows in a clean window; one that is not shows in none. (measureCity in the 4.0 refuses a busy GPU.)
 const CLEAN_TRIES := 4
+const REC_WAIT_S := 1.2 # past the recorder's settling, with frames to spare
+const CHECKS_LEAST := 8
 
 var failures := 0
 
@@ -34,8 +36,38 @@ func _ready() -> void:
 	_verdicts()
 	_comparison()
 	await _measure(hud)
+	await _tools()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## The panel's other tools: a recording cut at a change, a leak read as a slope, the views, and a sweep of one switch.
+func _tools() -> void:
+	var rec := LabRecorder.new()
+	add_child(rec)
+	rec.start()
+	await get_tree().create_timer(REC_WAIT_S).timeout
+	Settings.switches_changed()
+	await get_tree().create_timer(REC_WAIT_S).timeout
+	var path := rec.stop()
+	_check(rec.stretches.size() == 2, "a mudança corta a gravação: %d trechos" % rec.stretches.size())
+	_check(rec.stretches.size() > 0 and rec.stretches[0].frames > 0, "o trecho tem quadros")
+	_check(path != "" and FileAccess.file_exists(path), "o relatório foi salvo: %s" % path)
+	DirAccess.remove_absolute(path)
+	var rising: Array[Dictionary] = [{"t": 0.0, "v": 10.0}, {"t": 30.0, "v": 15.0}, {"t": 60.0, "v": 20.0}]
+	_check(is_equal_approx(ResourceWatch.slope(rising, "v"), 10.0), "a inclinação é por minuto")
+	var watch := ResourceWatch.new()
+	watch.sample(0.0)
+	watch.sample(1.0)
+	_check(watch.checks().size() >= CHECKS_LEAST, "as verificações vêm com veredito")
+	LabTools.set_view(get_viewport(), "OVERDRAW")
+	_check(get_viewport().debug_draw == Viewport.DEBUG_DRAW_OVERDRAW, "a vista da GPU troca o desenho")
+	LabTools.set_view(get_viewport(), "DISABLED")
+	var run := DoctorRun.new()
+	add_child(run)
+	var keys := run.all_switches()
+	await run.sweep(keys.slice(0, 1))
+	_check(run.results.has(keys[0]), "a varredura mede a chave")
 
 
 func _frames(interval: float, cpu: float, gpu: Variant) -> Dictionary:

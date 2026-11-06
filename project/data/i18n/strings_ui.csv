@@ -179,3 +179,43 @@ lab.inspector.point,Ponto,Point
 lab.inspector.ground,Altura do chão,Ground height
 lab.inspector.pointer,Altura sob o ponteiro,Height under the pointer
 zone.lot.size,{w} x {d} m,{w} x {d} m
+fx.tab.gpu,GPU,GPU
+fx.tab.checks,Verificações,Checks
+fx.tab.recorder,Gravador,Recorder
+fx.tab.tests,Testes,Tests
+lab.gpu.drawn,O que é desenhado,What is drawn
+lab.gpu.seen,Visto,Seen
+lab.gpu.shadow,Sombra,Shadow
+lab.gpu.counts,"%s objetos, %s chamadas, %s triângulos","%s objects, %s calls, %s triangles"
+lab.gpu.views,Vista,View
+lab.view.DISABLED,Normal,Normal
+lab.view.UNSHADED,Sem luz,Unshaded
+lab.view.LIGHTING,Só luz,Lighting only
+lab.view.OVERDRAW,Sobreposição,Overdraw
+lab.view.WIREFRAME,Arame,Wireframe
+lab.view.NORMAL_BUFFER,Normais,Normals
+lab.view.SHADOW_ATLAS,Atlas de sombra,Shadow atlas
+lab.view.PSSM_SPLITS,Cascatas,Cascades
+lab.view.OCCLUDERS,Oclusores,Occluders
+lab.view.DISABLE_LOD,Sem níveis,No LOD
+lab.check.adapter,Placa de vídeo,Video adapter
+lab.check.method,Renderizador,Renderer
+lab.check.static,Memória do jogo,Game memory
+lab.check.video,Memória de vídeo,Video memory
+lab.check.texture,Texturas,Textures
+lab.check.buffer,Geometrias,Geometries
+lab.check.objects,Objetos,Objects
+lab.check.nodes,Nós,Nodes
+lab.check.orphans,Nós soltos,Orphan nodes
+lab.check.pipelines,Pipelines novos,New pipelines
+lab.verdict.ok.word,ok,ok
+lab.verdict.info.word,aviso,note
+lab.verdict.warning.word,atenção,warning
+lab.verdict.problem.word,problema,problem
+lab.rec.start,Gravar,Record
+lab.rec.stop,Parar e salvar,Stop and save
+lab.rec.help,Cada mudança de chave ou opção abre um trecho. O momento logo depois da mudança fica de fora.,Each change of a switch or option opens a stretch. The moment right after it stays out.
+lab.rec.stretch,Trecho %d (%.0f s),Stretch %d (%.0f s)
+lab.rec.row,"%.1f ms, p99 %.1f, %d engasgos, %d perdidos","%.1f ms, p99 %.1f, %d hitches, %d dropped"
+lab.rec.saved,Salvo em %s,Saved to %s
+lab.sweep,Medir todas as chaves,Measure every switch

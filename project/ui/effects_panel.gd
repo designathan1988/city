@@ -6,11 +6,15 @@ extends PanelContainer
 
 const MIB := 1048576.0
 const MS_PER_S := 1000.0
+const LIVE_TABS := ["consumers", "inspector", "gpu", "checks"]
 
 @onready var _body: VBoxContainer
 @onready var _stats: GridContainer
+@onready var _live: VBoxContainer # what is read again as the panel stands open: nothing in it takes a click, a button rebuilt under the pointer loses it
 @onready var _tab := "switches"
 @onready var doctor: DoctorRun
+@onready var recorder: LabRecorder
+@onready var _watch := ResourceWatch.new()
 @onready var _since := 0.0
 
 
@@ -35,7 +39,12 @@ func _ready() -> void:
 	doctor = DoctorRun.new()
 	add_child(doctor)
 	doctor.changed.connect(func() -> void:
-		if visible and _tab == "doctor":
+		if visible and (_tab == "doctor" or _tab == "tests"):
+			_render.call_deferred())
+	recorder = LabRecorder.new()
+	add_child(recorder)
+	recorder.changed.connect(func() -> void:
+		if visible and _tab == "recorder":
 			_render.call_deferred())
 	hide()
 
@@ -75,7 +84,8 @@ func _render() -> void:
 	_body.add_child(_stats)
 	_read_stats()
 	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")],
-		["consumers", tr("fx.tab.consumers")], ["inspector", tr("fx.tab.inspector")]], _tab,
+		["consumers", tr("fx.tab.consumers")], ["inspector", tr("fx.tab.inspector")], ["gpu", tr("fx.tab.gpu")], ["checks", tr("fx.tab.checks")],
+		["recorder", tr("fx.tab.recorder")], ["tests", tr("fx.tab.tests")]], _tab,
 		func(t: String) -> void:
 			_tab = t
 			_render.call_deferred())
@@ -83,12 +93,30 @@ func _render() -> void:
 		_switches()
 	elif _tab == "doctor":
 		LabDoctor.draw(_body, doctor)
-	elif _tab == "consumers":
-		LabViews.consumers(_body)
-	elif _tab == "inspector":
-		LabViews.inspector(_body)
+	elif _tab in LIVE_TABS:
+		_live = HudWidgets.vbox(_body, &"Pad")
+		_live.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_read_live()
+		if _tab == "gpu":
+			LabTools.views(_body, _render)
+	elif _tab == "recorder":
+		LabTools.recorder(_body, recorder, _render)
+	elif _tab == "tests":
+		LabTools.tests(_body, doctor)
 	else:
 		_optimizations()
+
+
+func _read_live() -> void:
+	HudWidgets.clear(_live)
+	if _tab == "consumers":
+		LabViews.consumers(_live)
+	elif _tab == "inspector":
+		LabViews.inspector(_live)
+	elif _tab == "gpu":
+		LabTools.drawn(_live)
+	elif _tab == "checks":
+		LabTools.checks(_live, _watch)
 
 
 func _small(parent: Control, text: String, run: Callable) -> void:
@@ -102,6 +130,7 @@ func _small(parent: Control, text: String, run: Callable) -> void:
 func _reset() -> void:
 	Settings.switches.reset()
 	Settings.optimizations = {}
+	get_viewport().debug_draw = Viewport.DEBUG_DRAW_DISABLED
 	Settings.switches_changed()
 
 
@@ -181,6 +210,7 @@ func _process(delta: float) -> void:
 	_since += delta
 	if _since >= DataTables.game("render_switches").stats_every_s:
 		_since = 0.0
-		if _tab == "consumers" or _tab == "inspector":
-			_render()
+		_watch.sample(float(Time.get_ticks_msec()) / MS_PER_S)
+		if _tab in LIVE_TABS:
+			_read_live()
 		_read_stats()

@@ -104,3 +104,11 @@ Próximo no laboratório: Recursos, Inspector, GPU, Gravador, Testes e Otimizaç
 ### Instabilidade do `lab_test`, fechada
 
 A sessão de migração viu 25,10 de 29,68 ms sob carga. Causa: a soma das médias dos estágios que pesam contra a mediana da GPU. Agora a mesma janela, a mesma estatística e todos os estágios: 31,95 de 31,95 ms com a suíte ao lado.
+
+### Abas GPU, Verificações, Gravador e Testes (2026-11-06)
+
+Lidos do 4.0: `lab/gpu/controller.ts`, `lab/recorder/analysis.ts` (trecho), `lab/resources/diagnostics.ts` (trecho), `lab/tests/index.ts` (trecho), não os arquivos inteiros. GPU: objetos, chamadas e triângulos vistos e de sombra e as dez vistas do motor (`Viewport.debug_draw`); a vista Arame só vale para malhas feitas depois de escolhida. Verificações: `ResourceWatch`, o que sobe lido como reta em 60 s, julgado só depois de 20 s. Gravador: corta a cada `Settings.changed`, deixa 750 ms de fora e grava JSON em `user://lab`. Testes: `DoctorRun.sweep`, o A/B de cada chave em sequência. `lab_test` prova corte, relatório, inclinação, vista e varredura de uma chave; fotos das abas com o jogo aberto.
+
+Achado na foto: as abas ao vivo refaziam o painel inteiro a cada 0,25 s, com as abas e botões junto, e um clique podia cair num botão já trocado. Agora só `_live` é refeito, e nele não há botão.
+
+Não feito: passes da GPU por nome (o motor só os dá ao profiler do depurador; o que existe são os estágios do Diagnóstico), captura de um quadro com lista de draw calls, contagem por camada, A/B de opções na varredura (só chaves), o relatório geral do laboratório e perfil de CPU dentro do jogo (fora dele, `tools/analysis/sampler.py`). `Nós soltos` mostra 32 com o jogo aberto; não verifiquei se são nós guardados de propósito ou vazamento.

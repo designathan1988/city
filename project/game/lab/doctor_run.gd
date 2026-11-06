@@ -61,6 +61,21 @@ func compare(key: String) -> void:
 	_end()
 
 
+## Every switch of the panel, the keys.
+func all_switches() -> Array[String]:
+	var out: Array[String] = []
+	for g: Dictionary in DataTables.game("render_switches").groups:
+		for item: Dictionary in g.items:
+			out.append(item.key)
+	return out
+
+
+## What each of `keys` costs, one after the other (lab/tests sweep).
+func sweep(keys: Array[String]) -> void:
+	for key in keys:
+		await compare(key)
+
+
 func _begin(what: String) -> void:
 	busy = true
 	_say(what)
