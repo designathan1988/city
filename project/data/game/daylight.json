@@ -95,6 +95,7 @@
  "shadow_first_past_look": 1.5,
  "shadow_first_least_m": 16.0,
  "shadow_first_share": 0.34,
+ "ssil": {"radius_m": 6.0, "intensity": 1.4},
  "shadow_reach_step": 0.1,
  "occlusion": {
   "_doc": "Screen-space occlusion of the high presets (render/shaders/occlusion.gdshader): the 4.0's GTAO, blended over the whole picture. Its radius 1 reached by a random share of 0.5 to 1 of it; a fixed set of slices takes the mean. Its distance exponent, thickness, scale and intensity, the values modelling choices.",

@@ -78,6 +78,9 @@
           },
           "temporal_mip_bias": {
             "type": "number"
+          },
+          "ssil": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -91,7 +94,8 @@
           "ssao",
           "temporal",
           "temporal_sharpness",
-          "temporal_mip_bias"
+          "temporal_mip_bias",
+          "ssil"
         ]
       }
     }

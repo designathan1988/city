@@ -157,6 +157,8 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold
 	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	environment.ssil_radius = day.ssil.radius_m
+	environment.ssil_intensity = day.ssil.intensity
 	FilmLook.grade(environment, day.grade)
 	var we := WorldEnvironment.new()
 	we.environment = environment

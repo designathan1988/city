@@ -24,6 +24,9 @@ uniform vec3 sign_glow : source_color;
 uniform float sign_power;
 // roughness by surface (materials.json agent: sources there); every surface is a dielectric
 uniform float paint_roughness;
+uniform vec3 sheen_sky : source_color; // what a clear coat mirrors above the horizon and below it
+uniform vec3 sheen_ground : source_color;
+uniform float sheen_power;
 uniform float lens_roughness;
 uniform float helmet_roughness;
 uniform float trim_roughness;
@@ -54,19 +57,32 @@ void vertex() {
 	}
 }
 
+// The clear coat of a painted panel: the world mirrored by Schlick's Fresnel, the sky over a soft horizon and the street under it. That line
+// running along the doors and the sky growing on the roof at a glancing view is what reads as car paint.
+vec3 sheen(vec3 n, vec3 v) {
+	vec3 r = reflect(-v, n);
+	float f = 0.04 + 0.96 * pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 5.0);
+	vec3 world = mix(source_linear(sheen_ground), source_linear(sheen_sky) * (0.7 + 0.5 * clamp(r.y, 0.0, 1.0)), smoothstep(-0.04, 0.06, r.y));
+	return world * f * sheen_power * (1.0 - night);
+}
+
 void fragment() {
 	int tag = int(v_tag + 0.5);
 	vec3 c = srgb_to_linear(COLOR.rgb); // COLOR is sRGB on both renderers; everything below in linear
 	float rough = trim_roughness;
 	vec3 emit = vec3(0.0);
+	vec3 coat = sheen(mat3(INV_VIEW_MATRIX) * NORMAL, mat3(INV_VIEW_MATRIX) * VIEW);
 	if (tag == 1) {
 		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
+		emit = coat;
 	} else if (tag == 7) {
 		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
+		emit = coat;
 	} else if (tag == 8) {
 		rough = paint_roughness;
+		emit = coat;
 	} else if (tag == 2) {
 		bool on = v_custom.b > -0.5;
 		emit = on ? head_lit + source_linear(head_glow) * night * head_power : vec3(0.0);

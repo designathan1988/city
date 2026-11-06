@@ -19,6 +19,7 @@ constexpr float INDICATOR_DROP_M = 0.03f, INDICATOR_RISE_M = 0.02f; // the front
 constexpr float SCAN_STEP_M = 0.005f, SCAN_REACH_M = 0.6f; // the walk in from an end to the surface at a half width
 constexpr float NOSE_BACK_M = 0.02f, TAIL_BACK_M = 0.05f; // where the end's height is read, clear of its roll
 constexpr float GRILLE_RISE_M = 0.03f, GRILLE_SINK_M = 0.012f, GRILLE_LOW = 0.5f; // over the middle of the nose
+constexpr float BUMPER_SHARE = 0.3f; // of an end's height, up from its foot
 constexpr float PLATE_THICK_M = 0.012f, PLATE_PROUD_M = 0.009f, PLATE_FRONT = 0.45f, PLATE_REAR = 0.55f; // up from the bottom to the grille, the tail lamps
 constexpr float HANDLE_SINK_M = 0.007f, HANDLE_DROP_M = 0.09f, HANDLE_REACH_M = 0.2f, HANDLE_SHARE = 0.25f, HANDLE_AHEAD_M = 0.06f;
 constexpr float ROOT_IN_M = 0.02f, ROOT_DROP_M = 0.03f, TIP_BACK_M = 0.04f, TIP_OUT_M = 0.1f; // a mirror's arm, out of the door to its housing
@@ -110,9 +111,18 @@ void car_cap(MeshBuilder &mb, const CarStyle &s, float xf, float dir, const Agen
 	Vector2 r[RING];
 	car_ring(s, xf, r);
 	const float z = xf * s.L;
+	float low = r[1].y, top = r[1].y;
+	for (int k = 1; k < RING; k++) {
+		low = std::min(low, r[k].y);
+		top = std::max(top, r[k].y);
+	}
+	const float bumper = low + (top - low) * BUMPER_SHARE;
 	for (int k = 1; k + 1 < RING; k++) { // ring[0] is the middle of the floor: band 0 has no height
 		const Vector2 &lo = r[k], &hi = r[k + 1];
-		mb.quad(Vector3(-lo.x, lo.y, z), Vector3(lo.x, lo.y, z), Vector3(hi.x, hi.y, z), Vector3(-hi.x, hi.y, z), trim.blackout, Vector3(0, 0, dir), nullptr, agent_tag(AgentTag::FIXED));
+		// the end is the body's own panel; only the bumper's foot is the black of the trim
+		const bool foot = (lo.y + hi.y) * 0.5f < bumper;
+		mb.quad(Vector3(-lo.x, lo.y, z), Vector3(lo.x, lo.y, z), Vector3(hi.x, hi.y, z), Vector3(-hi.x, hi.y, z), foot ? trim.blackout : AGENT_WHITE, Vector3(0, 0, dir), nullptr,
+				agent_tag(foot ? AgentTag::GLOSS : AgentTag::PAINT));
 	}
 }
 

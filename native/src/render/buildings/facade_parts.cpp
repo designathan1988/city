@@ -61,7 +61,8 @@ struct Ctx {
 	// A glass guard standing on the floor at `floor`: the pane up to its cap, the cap's top at the guard height.
 	void glass_guard(float a, float floor, float depth, float width) const {
 		const float pane = pl.look->guard_h_m - CAP_H;
-		part_box(shell.sheer ? *shell.sheer : shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
+		// only where there is a surface for what is seen through: on the opaque mid level the glass would be a black mirror
+		if (shell.sheer) part_box(*shell.sheer, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
 		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, PART_PAINT);
 	}
 	bool stands_out();
