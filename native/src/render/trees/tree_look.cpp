@@ -48,6 +48,11 @@ float TreeLook::keep_at(float d, WoodBand b) const {
 	return (B.keep0 + (B.keep1 - B.keep0) * t) * scale;
 }
 
+// The tier's budget of trees against the land's plan: it thins the woods only as far as the plan goes over it, as the 4.0's treeScale does.
+float TreeLook::tier_share(float tier) const {
+	return std::min(1.f, over_planned * tier) / scale;
+}
+
 int SpeciesMix::pick(float r) const {
 	for (size_t i = 0; i < weight.size(); i++)
 		if (r < weight[i]) return species[i];
@@ -120,8 +125,9 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 			float d = density_of(i * CAL_STEP_M, j * CAL_STEP_M) + eco_gain * eco_mean;
 			sum += keep_at(d, band_at(d));
 		}
-	float cell = grid_m * grid_m, planned = float(sum) / float(CAL_SIDE * CAL_SIDE);
-	scale = std::min(1.f, woods_per_ha * cell / HA_M2 / std::max(planned, THRESHOLD_GAP));
+	const float cell = grid_m * grid_m, planned = float(sum) / float(CAL_SIDE * CAL_SIDE);
+	over_planned = woods_per_ha * cell / HA_M2 / std::max(planned, THRESHOLD_GAP);
+	scale = std::min(1.f, over_planned);
 	most *= scale;
 	return errors.is_empty() && grid_m > 0 && mass_span > 0 && slope_to > slope_from && crowd_full > 0;
 }

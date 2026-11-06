@@ -669,3 +669,7 @@ Ressalvas abertas:
 - Armadilha: `capture` roda no `tests_preset` (`medium`, sem sombra de poste); `look` em `high`. Para julgar a sombra, `look`.
 - `inspector_test` instável sob carga (`the sound comes after the lightning`): só apareceu agora porque `FAIL` passou a ser lido. O timer conta quadros e tem a precisão de um; o teste comparava com o relógio de parede. O teste passou a descontar o quadro em que o timer acabou.
 - Os dados: `lamp_light` de `streets.json` é estrito (li só o começo do schema e supus aberto). Os números foram para `tuning.json render.lamp_*`, a cor é o `glow_color` do `lamp_glow`, e `pool_along`, `pool_sides` e `pool_lift_m` ficam sem uso enquanto o schema pedir.
+
+## 2026-11-06: o chão aberto contra o 4.0 rodando
+- Com o 4.0 aberto (`npx vite` em 5300 e `scripts/look.mjs`, mesma semente e mesma vista), dois desvios. Névoa: `fog_density` 1,5e-4 com `air_high` azul escuro deixava o campo turquesa a 1 km e as matas distantes pretas; o `environment.ts` do 4.0 diz "No fog: the map is seen clear to its edges (the player, 2026-10-06)". Ordem do usuário: densidade 0, e o fog do motor desliga junto.
+- Matas ralas: suspeitei da conta (`scale * share` contra o `treeScale` do 4.0) e troquei por `tier_share`, a mesma conta do 4.0, mas nada mudou, porque o plano passa do orçamento. A causa era só o corte do nível `high` (0,54). Com 1 as manchas batem com o 4.0, e o custo nas vistas da cidade é zero (10,16 contra 10,10 ms perto), porque as matas ficam fora dela: `high` passou a 1.

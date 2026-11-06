@@ -66,6 +66,8 @@ struct TreeLook {
 	SpeciesMix park, street;
 	std::atomic<float> share{ 1.f }; // the graphics tier's share of the woods and lone trees; jobs read it
 	float scale = 1, most = 1; // worked out by load(): the chances' scale and the highest chance
+	float over_planned = 1; // the land's budget of trees over what its plan would grow
+	float tier_share(float tier) const; // what is left of the plan on a tier of that share of the budget
 	float density_of(double x, double y) const; // the patches' share of the density, on the map's own axes
 	WoodBand band_at(float density) const;
 	float keep_at(float density, WoodBand b) const; // the chance of a cell, scaled

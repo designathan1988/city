@@ -91,7 +91,8 @@ int TreeRenderer::near_plants() const {
 	return n;
 }
 
-void TreeRenderer::set_share(float share) {
+void TreeRenderer::set_share(float tier) {
+	const float share = trees_.tier_share(tier);
 	if (trees_.share.load() == share) return;
 	trees_.share.store(share);
 	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].dirty.insert(key);
