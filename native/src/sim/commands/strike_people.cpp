@@ -93,7 +93,7 @@ void harm_walker(Blow &b, int id) {
 		b.emit(casualty(b, id, at, look, p, flags, lie));
 		traffic::down_pedestrian(b.s, id, lie);
 	}
-	traffic::frighten_pedestrian(b.s, id, b.p.panic_s);
+	traffic::frighten_pedestrian(b.s, id, b.p.panic_s, b.x, b.z, true);
 }
 } // namespace
 
@@ -107,6 +107,7 @@ void strike_people(Blow &b) {
 		const float dx = w.cur.x - b.x, dz = w.cur.z - b.z;
 		if (dx * dx + dz * dz <= reach2) harm_walker(b, id);
 	}
+	traffic::add_shock(b.s, b.x, b.z, std::min(reach, b.s.catalog.traffic.ped_blast_shock_m));
 }
 
 void strike_traffic(Blow &b) {

@@ -122,7 +122,8 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 	Round r{ s, p, float(ox), float(oy), float(oz), float(dx / len), float(dy / len), float(dz / len), 0, 0, 0, SHOT_SALT ^ s.damage.strikes ^ uint32_t(s.damage.shots), out };
 	s.damage.shots++;
 	float limit = p.max_range_m, gx, gy, gz;
-	if (s.terrain.raycast(V2(r.ox, r.oz), r.oy, V2(r.dx, r.dz), r.dy, p.max_range_m, gx, gy, gz)) limit = std::hypot(std::hypot(gx - r.ox, gz - r.oz), gy - r.oy);
+	const bool landed = s.terrain.raycast(V2(r.ox, r.oz), r.oy, V2(r.dx, r.dz), r.dy, p.max_range_m, gx, gy, gz);
+	if (landed) limit = std::hypot(std::hypot(gx - r.ox, gz - r.oz), gy - r.oy);
 	Found best;
 	aim_at_walkers(r, limit, best);
 	aim_at_vehicles(r, limit, best);
@@ -136,9 +137,10 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 	line.dx = r.dx; line.dz = r.dz; line.a = r.dy;
 	line.u = best.id < 0 ? 0u : best.vehicle ? 2u : 1u;
 	r.emit(line);
-	if (best.id < 0) return out;
-	if (best.vehicle) shoot_vehicle(r, best.id, best.up, r.x, r.y, r.z);
-	else shoot_walker(r, best.id, best.part, r.x, r.y, r.z, best.lying);
+	if (best.id >= 0 && best.vehicle) shoot_vehicle(r, best.id, best.up, r.x, r.y, r.z);
+	else if (best.id >= 0) shoot_walker(r, best.id, best.part, r.x, r.y, r.z, best.lying);
+	// Heard where it lands, whatever it lands on; a round into the sky lands nowhere near anybody.
+	if (best.id >= 0 || landed) traffic::startle_pedestrians(s, r.x, r.z, p.startle_m, s.catalog.traffic.ped_shot_fright_s);
 	return out;
 }
 

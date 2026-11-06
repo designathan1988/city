@@ -42,7 +42,7 @@ enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);
 
 // What somebody standing does with their hands and face, past the idle.
-enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, COUNT };
+enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, CROUCH, PHOTO, COUNT };
 
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
@@ -51,6 +51,7 @@ struct AgentRecord {
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
 	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
 	float act_share = 0; // pedestrians: how far into `act` they are (0 standing idle .. 1)
+	float act_since = 0, act_left = 0; // pedestrians: seconds since `act` began, and until a fright lets go of it
 	uint8_t age = 0; // pedestrians: PedAge
 	uint8_t act = 0; // pedestrians: PedAct
 };

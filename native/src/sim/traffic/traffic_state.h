@@ -89,6 +89,8 @@ struct TrafficState {
 	std::vector<int> route_pool; // vehicle routes, kept in one block
 	std::vector<int> ped_pool; // pedestrian routes
 	size_t route_waste = 0, ped_waste = 0;
+	std::vector<PedShock> shocks; // what walkers run from (ped_fright.cpp)
+	float shock_look = 0; // t.time they are looked at next
 	std::string graph_fault; // the debug DLL: the first broken rule of the lane graph (lane_graph_check.cpp)
 	std::vector<Pedestrian> peds;
 	std::vector<int> free_peds;

@@ -29,7 +29,16 @@ void reset_pedestrians(CityState &s);
 // (it walks on after), or frightened into running for a while.
 void remove_pedestrian(CityState &s, int id);
 void down_pedestrian(CityState &s, int id, float seconds);
-void frighten_pedestrian(CityState &s, int id, float seconds);
+// ped_fright.cpp: a bang at (x, z) heard: a shot, or a blast's stampede. Frightened for about `seconds`; what it does first, and then away.
+void frighten_pedestrian(CityState &s, int id, float seconds, float x, float z, bool stampede);
+void startle_pedestrians(CityState &s, float x, float z, float reach, float seconds); // a shot heard by those within `reach`
+void add_shock(CityState &s, float x, float z, float reach); // something those who come near run from a good while after: a body, a blast's ruin
+void look_at_shocks(CityState &s); // who has come near one
+void mourn_pedestrian(CityState &s, int id); // shot dead: those walking with it go down beside it a while
+bool held_by_fright(const TrafficState &t, Pedestrian &w); // stopped by what it heard this step
+void turn_from_bang(CityState &s, Pedestrian &w); // done with what it heard: if it was heading for the bang, back the other way
+void flee_on(CityState &s, Pedestrian &w, int n); // frightened, at node n: by the street that leads furthest off
+void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // round to the bang, and back to its way, no faster than a body turns
 // ped_wounds.cpp: the share of its own pace a hurt walker keeps (1 unhurt).
 float wounded_pace(const BlastParams &b, const Pedestrian &w);
 

@@ -59,6 +59,11 @@ struct SidewalkFurniture {
 	float longest = 0; // the longest footprint along the arc (a search by s0 starts this far back)
 };
 
+// A shocking thing on the street (a body, a blast): whoever comes within `reach` of it before `until` runs from it.
+struct PedShock {
+	float x = 0, z = 0, reach = 0, until = 0;
+};
+
 // A walker with a destination: a route of nodes over streets with sidewalks; along a sidewalk on
 // its own track, round each corner and over the crosswalks (waiting at the kerb for the walk phase or a gap).
 // What every step reads comes first (two cache lines, copied out by ped_crowd.cpp), the way and the trail after.
@@ -79,6 +84,12 @@ struct Pedestrian {
 	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
 	float act_share = 0; // how far into `act` it is, eased
 	PedAct act = PedAct::NONE; // what it does while it stands (ped_acts.cpp)
+	double act_from = 0; // t.time `act` began at
+	// A bang heard (ped_fright.cpp): what it has it do, stopped and turned to (face_x, face_z), and until when; when it trips and for how long; where
+	// the bang was, and that it has yet to turn from it; its facing while it turns; with somebody shot beside it.
+	PedAct held_act = PedAct::NONE;
+	float held_until = 0, face_x = 0, face_z = 0, trip_at = 0, trip_s = 0, bang_x = 0, bang_z = 0, turn_x = 0, turn_z = 0;
+	bool flee_due = false, turning = false, mourning = false;
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)

@@ -25,6 +25,10 @@ namespace city {
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
 	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
+	X(ped_shot_fright_s) X(ped_shock_life_s) X(ped_body_shock_m) X(ped_blast_shock_m) X(ped_shock_look_s) X(ped_shocks_most) X(ped_react_near_m) X(ped_react_crouch_roll) X(ped_react_film_roll) X(ped_react_trip_roll) X(ped_react_crouch_s) X(ped_react_film_s) \
+	X(ped_react_glance_s) X(ped_react_look_s) X(ped_trip_after_s) X(ped_trip_s) X(ped_stampede_trip_roll) X(ped_stampede_trip_m) X(ped_stampede_trip_span_s) \
+	X(ped_stampede_crouch_roll) X(ped_stampede_crouch_s) X(ped_stampede_fall_roll) X(ped_stampede_fall_m) X(ped_stampede_fall_s) X(ped_stampede_fall_after_s) \
+	X(ped_stampede_film_roll) X(ped_stampede_film_m) X(ped_mourn_m) X(ped_mourn_s) X(ped_turn_rad_s) \
 	X(lorry_kerb_over_m) X(ped_crossing_share) X(ped_act_fade_s) X(ped_look_after_s) X(ped_look_hold_s) X(ped_phone_after_s) X(ped_hands_after_s) X(ped_talk_after_s) X(ped_talk_turn_s) \
 	X(ped_talk_stagger_s) \
 	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \

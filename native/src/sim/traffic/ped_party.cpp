@@ -114,9 +114,10 @@ void follow_leaders(CityState &s, float dt) {
 	for (Pedestrian &w : t.peds) {
 		if (!w.alive || w.with < 0) continue;
 		const Pedestrian &l = t.peds[size_t(w.with)];
+		const bool held = held_by_fright(t, w);
 		const Pose want = place_by(s, w, l);
 		const V2 to(want.x - w.cur.x, want.z - w.cur.z);
-		const float far = to.len(), step = std::min(far, std::max(l.pace, p.ped_moving_ms) * p.ped_company_catch * dt);
+		const float far = to.len(), step = held ? 0.f : std::min(far, std::max(l.pace, p.ped_moving_ms) * p.ped_company_catch * dt);
 		if (far > ARRIVED_M) {
 			const V2 d = to.norm();
 			w.cur.x += d.x * step;
@@ -129,9 +130,10 @@ void follow_leaders(CityState &s, float dt) {
 		w.cur.fz = face.y;
 		w.walked += step;
 		w.pace = step / std::max(dt, MIN_STEP_S);
-		const bool standing = l.mode == PedMode::WAIT || w.pace <= p.ped_moving_ms;
+		const bool standing = l.mode == PedMode::WAIT || w.pace <= p.ped_moving_ms || held;
 		w.rest = clampf(w.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(s.traffic, p, w, dt);
+		ease_facing(s.traffic, p, w, dt);
 	}
 }
 

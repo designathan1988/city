@@ -92,7 +92,7 @@ Array CityProbes::people_clips() const { return render_->people_clips(); }
 
 bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
-static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag" };
+static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo" };
 
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);

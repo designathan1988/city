@@ -24,7 +24,7 @@ constexpr int BLOB_SIDES = 10;
 constexpr int CLIP_TABLE = 24; // people_pose.gdshaderinc clip_row, clip_frames, clip_seconds
 constexpr float ACT_SPAN = .96f; // people_pose.gdshaderinc: the whole of an act, short of the next clip's number
 constexpr int PALM_ROWS = 3, PALM_ROW_FLOATS = 4;
-constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag" };
+constexpr const char *ACT_CLIPS[int(PedAct::COUNT)] = { nullptr, "talk", "listen", "look", "phone", "headphones", "bag", "crouchIdle", "photo" };
 constexpr float CLIP_CODE_BASE = 2.f; // an instance colour's alpha from here on: the clip of that number, held (people.gdshader)
 // The clip of each SeatPose and, for who puts a foot down, the one stopped.
 constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit", "motoRide", "bikePedal" };
@@ -119,6 +119,9 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
 		if (act_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + ACT_CLIPS[i]);
 	}
+	crouch_down_ = asset_.clip("crouchDown");
+	crouch_up_ = asset_.clip("crouchUp");
+	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
 	for (int i = 0; i < int(SeatPose::COUNT); i++) {
 		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
@@ -257,8 +260,13 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			agent_row(blob_buf_.add(), under, blob_radius_m_, 0, 0, 0, 0);
 		}
 		const int act = rec.act < int(PedAct::COUNT) ? rec.act : 0;
-		const float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * ACT_SPAN : 0.f;
-		const float walk = phase - std::floor(phase);
+		float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * ACT_SPAN : 0.f;
+		float walk = phase - std::floor(phase);
+		if (act == int(PedAct::CROUCH) && doing > 0) { // down, a while there and up again (citizenGait.ts): played from its start, not by the clock
+			const Played at_it = crouch_at(pv.female ? 1 : 0, rec.act_since, rec.act_left);
+			doing = -(float(at_it.clip) + rec.act_share * ACT_SPAN);
+			walk = at_it.phase;
+		}
 		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest);
 		if (level == 0 && doing > 0) {
 			if (float *row = held_.row(rec.id, act)) agent_row(row, p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
@@ -276,6 +284,17 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
 	held_.draw(scenario_, box, LAYER_PEOPLE);
 	return drawn;
+}
+
+PeopleRenderer::Played PeopleRenderer::crouch_at(int female, float since, float left) const {
+	const PersonClip &down = asset_.clips[size_t(crouch_down_)], &up = asset_.clips[size_t(crouch_up_)];
+	const PersonClip &stay = asset_.clips[size_t(act_clips_[int(PedAct::CROUCH)])];
+	// the last frame is the end of a clip played once: a clip's phase 1 is its first frame again
+	auto once = [](const PersonClip &c, float share) { return clampf(share, 0.f, 1.f) * float(c.frames - 1) / float(c.frames); };
+	if (left < up.seconds[female]) return { crouch_up_, once(up, 1.f - left / up.seconds[female]) };
+	if (since < down.seconds[female]) return { crouch_down_, once(down, since / down.seconds[female]) };
+	const float turns = (since - down.seconds[female]) / stay.seconds[female];
+	return { act_clips_[int(PedAct::CROUCH)], turns - std::floor(turns) };
 }
 
 int PeopleRenderer::shown(int level) const {

@@ -93,7 +93,8 @@ void begin_line(CityState &s, int id) {
 	Pedestrian &w = t.peds[id];
 	take_kerb_place(s, id); // toward the kerb of a crosswalk: to its own place there
 	const Waypoint &to = w.ways[w.wi];
-	if (to.cross >= 0 && (!walk_ok(s, w.way_node, to.cross) || cars_on_crossing(s, w.way_node, to.cross))) {
+	const bool frightened = t.time < w.panic_until; // no signal holds somebody running: only the cars on the crossing do
+	if (to.cross >= 0 && ((!frightened && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross))) {
 		w.mode = PedMode::WAIT;
 		return;
 	}
@@ -114,6 +115,7 @@ void at_node(CityState &s, int id) {
 	Pedestrian &w = t.peds[id];
 	const int n = toward(s, w);
 	if (w.ri + 1 >= w.route.len) { despawn(t, id, true); return; }
+	if (t.time < w.panic_until) flee_on(s, w, n);
 	int next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1)), side_out = 0;
 	const bool last = w.ri + 2 >= w.route.len;
 	int want = last ? w.goal_side : -1;
@@ -146,6 +148,8 @@ void walk(CityState &s, int id, float dt) {
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
 	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
+	if (held_by_fright(t, w)) return;
+	turn_from_bang(s, w);
 	if (w.mode == PedMode::LOT) {
 		walk_lot(s, id, dt);
 		return;
@@ -217,11 +221,6 @@ void down_pedestrian(CityState &s, int id, float seconds) {
 	w.down_until = float(s.traffic.time) + seconds;
 }
 
-void frighten_pedestrian(CityState &s, int id, float seconds) {
-	Pedestrian &w = s.traffic.peds[size_t(id)];
-	w.panic_until = float(s.traffic.time) + seconds;
-}
-
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;
 	t.peds.clear();
@@ -230,6 +229,8 @@ void reset_pedestrians(CityState &s) {
 	t.ped_waste = 0;
 	t.ped_count = 0;
 	t.node_crossers.assign(s.roads.nodes.size(), {});
+	t.shocks.clear();
+	t.shock_look = 0;
 	t.kerb_slots.clear();
 	t.crowd.clear();
 	t.crowd_keys.clear();
@@ -262,6 +263,7 @@ void step_pedestrians(CityState &s, float dt) {
 	int spawns = filling ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
 	spawns = std::min(spawns, int(p.ped_routes_per_step));
 	read_doors(s);
+	look_at_shocks(s);
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float out = p.ped_window_m * p.ped_despawn_window_share, out2 = out * out; // beyond it: gone, not lost
 	t.ped_waiting = 0;
@@ -278,10 +280,11 @@ void step_pedestrians(CityState &s, float dt) {
 		walk(s, id, dt);
 		if (!t.peds[size_t(id)].alive) continue;
 		Pedestrian &after = t.peds[size_t(id)];
-		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms;
+		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms || held_by_fright(t, after);
 		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(t, p, after, dt);
 		pose(s, after);
+		ease_facing(t, p, after, dt);
 	}
 	follow_leaders(s, dt);
 	for (int k = 0; k < spawns; k++) spawn_walker(s, now, !filling);

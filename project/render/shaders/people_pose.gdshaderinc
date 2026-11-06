@@ -2,7 +2,8 @@
 // (people_held.gdshader). INSTANCE_CUSTOM = (body, what they do standing, a seed, walk phase 0..1); the instance colour's alpha = the share of the walk
 // in the pose, the rest standing: a walker slows into it and out of it (Pedestrian::rest); from CLIP_CODE_BASE on, the clip of that number alone:
 // somebody in a vehicle. What they do standing is a clip's number and, as its fraction over ACT_SPAN, how far into it they are (Pedestrian::act_share):
-// the rest of the standing is the idle.
+// the rest of the standing is the idle. Below zero the clip is played from its start, at the phase in the fourth channel, and not by the clock:
+// somebody crouching, who stands still until it is over, so no walk reads that channel.
 uniform sampler2D palette : filter_nearest, repeat_disable;
 uniform int block_rows; // a variation's rows of the palette; its walk first
 uniform int idle_clip; // the clip of somebody standing with nothing to do
@@ -45,7 +46,7 @@ void add_clip(int first, int frames, float phase, float share, ivec4 bones, vec4
 
 // How far into what they do somebody standing is.
 float act_share(vec4 custom) {
-	return min(fract(custom.g) / ACT_SPAN, 1.0);
+	return min(fract(abs(custom.g)) / ACT_SPAN, 1.0);
 }
 
 // A clip played by the clock, each person at their own place of it.
@@ -72,7 +73,12 @@ void person_pose(vec4 custom, float code, ivec4 bones, vec4 weights, vec3 vertex
 		int female = body_female[variation];
 		float doing = act_share(custom);
 		if (doing > 0.0) {
-			add_standing(int(custom.g), block, female, seed, (1.0 - code) * doing, bones, weights, vertex, normal, pos, nor);
+			int clip = int(abs(custom.g));
+			if (custom.g < 0.0) {
+				add_clip(block + clip_row[clip], clip_frames[clip], custom.a, (1.0 - code) * doing, bones, weights, vertex, normal, pos, nor);
+			} else {
+				add_standing(clip, block, female, seed, (1.0 - code) * doing, bones, weights, vertex, normal, pos, nor);
+			}
 		}
 		if (doing < 1.0) {
 			add_standing(idle_clip, block, female, seed, (1.0 - code) * (1.0 - doing), bones, weights, vertex, normal, pos, nor);

@@ -39,16 +39,6 @@ DamageEvent casualty_of(const Round &r, int id, const Pedestrian &w, uint32_t fl
 	return e;
 }
 
-void startle(Round &r, float x, float z) {
-	TrafficState &t = r.s.traffic;
-	const float reach2 = r.p.startle_m * r.p.startle_m;
-	for (int id = 0; id < int(t.peds.size()); id++) {
-		const Pedestrian &w = t.peds[size_t(id)];
-		if (!w.alive) continue;
-		const float ax = w.cur.x - x, az = w.cur.z - z;
-		if (ax * ax + az * az <= reach2) traffic::frighten_pedestrian(r.s, id, r.p.panic_s);
-	}
-}
 } // namespace
 
 void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz, bool lying) {
@@ -87,7 +77,8 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 	if (w.hp <= 0.f) {
 		r.emit(casualty_of(r, id, w, CAS_DEAD | shared, PUSH_KILL, 0.f, hx, hz));
 		r.out.killed = true;
-		startle(r, w.cur.x, w.cur.z);
+		traffic::mourn_pedestrian(r.s, id);
+		traffic::add_shock(r.s, w.cur.x, w.cur.z, r.s.catalog.traffic.ped_body_shock_m);
 		traffic::remove_pedestrian(r.s, id);
 		return;
 	}
@@ -108,7 +99,6 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 		w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
 		r.emit(casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
 	}
-	startle(r, w.cur.x, w.cur.z);
 }
 
 } // namespace city

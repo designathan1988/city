@@ -37,13 +37,14 @@ SEATED_FRAMES = 12  # somebody sitting hardly moves: the breath of the baked 36 
 CLIP_NAME_BYTES = 16
 PALETTE_SPAN = 3.0  # people.gdshader BODY_SPAN: palette values lie within it, the cook prints them
 FIXED_MAX = 65535
-STAND_FRAMES = {"talk": 120, "listen": 90, "look": 32, "phone": 110, "headphones": 100, "bag": 100}  # what one does waiting: 3 to 7 frames a second
+STAND_FRAMES = {"talk": 120, "listen": 90, "look": 32, "phone": 110, "headphones": 100, "bag": 100, "crouchDown": 24, "crouchIdle": 40, "crouchUp": 24, "photo": 60}  # what one does waiting: 3 to 7 frames a second
 HAND = "Bip01_R_Hand"
 FINGERS = ("Bip01_R_Finger1", "Bip01_R_Finger2", "Bip01_R_Finger3", "Bip01_R_Finger4")  # index to little finger
 # name in the file, name of the baked clip for an adult and for a senior
 CLIPS = [("walk", "walk", "walkElder"), ("idle", "idle", "idle"), ("carDrive",) * 3, ("carRide",) * 3, ("carRearRide",) * 3, ("cabDrive",) * 3,
          ("cabRide",) * 3, ("chairSit",) * 3, ("motoRide",) * 3, ("motoStop",) * 3, ("bikePedal",) * 3, ("bikeStop",) * 3,
-         ("talk",) * 3, ("listen",) * 3, ("look",) * 3, ("phone",) * 3, ("headphones",) * 3, ("bag",) * 3]
+         ("talk",) * 3, ("listen",) * 3, ("look",) * 3, ("phone",) * 3, ("headphones",) * 3, ("bag",) * 3,
+         ("crouchDown",) * 3, ("crouchIdle",) * 3, ("crouchUp",) * 3, ("photo",) * 3]
 
 
 def buffer(raw, base, ref):

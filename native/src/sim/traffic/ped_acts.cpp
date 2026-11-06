@@ -33,7 +33,8 @@ Party party_of(const TrafficState &t, const Pedestrian &w) {
 	return p;
 }
 
-PedAct wanted(const TrafficParams &p, const Pedestrian &w, const Party &party) {
+PedAct wanted(const TrafficState &t, const TrafficParams &p, const Pedestrian &w, const Party &party) {
+	if (t.time < w.held_until) return w.held_act == PedAct::CROUCH && w.rest < 1.f ? PedAct::NONE : w.held_act; // the crouch starts from standing
 	const Pedestrian &l = *party.leader;
 	if (l.mode != PedMode::WAIT) return PedAct::NONE;
 	const float waited = l.wait;
@@ -54,7 +55,7 @@ PedAct wanted(const TrafficParams &p, const Pedestrian &w, const Party &party) {
 
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt) {
 	if (w.mode != PedMode::WAIT) w.wait = 0;
-	const PedAct want = wanted(p, w, party_of(t, w));
+	const PedAct want = wanted(t, p, w, party_of(t, w));
 	const float step = dt / p.ped_act_fade_s;
 	if (want == w.act) {
 		w.act_share = want == PedAct::NONE ? 0.f : std::min(1.f, w.act_share + step);
@@ -64,6 +65,7 @@ void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, floa
 	if (w.act_share > 0) return;
 	w.act_share = 0;
 	w.act = want;
+	w.act_from = t.time;
 }
 
 } // namespace traffic

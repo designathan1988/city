@@ -19,6 +19,15 @@ const CLIPS := ["chairSit", "carDrive", "carRide", "cabDrive", "motoRide", "moto
 const HANDS := ["phone", "bag"] # looked at again from where the hand reads
 const HANDS_M := 2.2
 const HANDS_Y := 1.1
+const BANG := {"crouch": "45_agachado", "photo": "46_filmando"}
+const BANG_FROM := Vector3(2, 40, 2) # straight down, this far beside somebody
+const BANG_NEAR_M := 60.0
+const BANG_TRIES := 12
+const BANG_STRIDE := 7
+const BANG_CROWD := 300
+const BANG_LOOKS := 6
+const BANG_TICKS := 16
+const BANG_CALM_TICKS := 500
 const WAIT_TICKS := 200
 const TRIES := 16
 
@@ -52,6 +61,35 @@ static func shots(cap: Node) -> void:
 	CityStore.query(&"set_city_hour", [HOUR])
 	var ground: Vector3 = cap._ground(FAR_AT.x, FAR_AT.z)
 	await cap._shot("37_multidao", ground + FAR_FROM - Vector3(FAR_AT.x, 0, FAR_AT.z), ground + FAR_AT - Vector3(FAR_AT.x, 0, FAR_AT.z))
+
+
+## Who has just heard a shot: down where they were near it, a phone held up to it far off: --only=tiro.
+static func bang(cap: Node) -> void:
+	Settings.apply(cap.world, cap.get_viewport())
+	UiDriver.at_hour(cap.world, HOUR)
+	CityStore.step_ticks(WAIT_TICKS)
+	var left: Dictionary = BANG.duplicate()
+	for t in BANG_TRIES:
+		var found: Array = CityStore.query(&"shot_targets", [BANG_CROWD]).walkers
+		if found.is_empty():
+			break
+		var at: Vector3 = found[(t * BANG_STRIDE) % found.size()].position
+		print("tiro em ", at, ": ", CityStore.dispatch(&"shoot", [at + BANG_FROM, Vector3.DOWN]))
+		for k in BANG_LOOKS:
+			CityStore.step_ticks(BANG_TICKS)
+			var census: Dictionary = CityStore.query(&"people_census", [at, BANG_NEAR_M])
+			for key in left.keys():
+				if not census.spots.has(key):
+					continue
+				var spot: Array = census.spots[key]
+				var seen := _from(spot[0], spot[1], spot[2])
+				await cap._shot(left[key], seen, spot[0] + Vector3.UP * LOOK_Y)
+				await cap._shot(left[key] + "_perto", spot[0] + (seen - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
+				left.erase(key)
+		if left.is_empty():
+			break
+		CityStore.step_ticks(BANG_CALM_TICKS)
+	print("sem foto: ", left.keys())
 
 
 ## The clips of people in vehicles, on who waits at a kerb: --only=clipes. They are drawn with no vehicle round them, as the

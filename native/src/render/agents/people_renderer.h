@@ -86,6 +86,12 @@ private:
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
 	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
+	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
+	struct Played {
+		int clip = 0;
+		float phase = 0;
+	};
+	Played crouch_at(int female, float since, float left) const; // `since` it began and `left` of it
 	HeldThings held_;
 	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
