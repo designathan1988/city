@@ -187,6 +187,11 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.lock = laps.lap();
 		drain_log(s);
 		effects_.sync(s);
+		const std::vector<int64_t> repaint = effects_.take_repaint();
+		if (!repaint.empty()) {
+			buildings_.set_broken(effects_.broken());
+			building_keys_.insert(building_keys_.end(), repaint.begin(), repaint.end());
+		}
 		if (terrain3d && !terrain_rects_.empty()) terrain_.push_rects(s.terrain, terrain3d, terrain_rects_);
 		if (terrain3d && !paint_rects_.empty()) terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_);
 		paint_rects_.clear();

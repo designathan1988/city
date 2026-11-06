@@ -23,7 +23,10 @@ public:
 	};
 	static constexpr int FLOATS_A_PIECE = 12; // three rows of four
 
-	void begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, float ground, float heap, const EffectParams &law);
+	// `standing`: a building that stands, nothing falling until a scar says so.
+	void begin(const std::shared_ptr<RuinMesh> &cut, const Ruin &ruin, float ground, float heap, const EffectParams &law, bool standing = false);
+	void scar(const Scar &c); // what the blow reaches goes, thrown; what hung on it follows
+	void collapse(const Ruin &ruin, float heap); // and what was left comes down
 	void step(std::vector<Note> *notes);
 	void settle(); // to the end, at once
 	bool resting() const { return left_ == 0; }

@@ -154,6 +154,7 @@ EditOp &j_record(CityState &s, OpKind k, int id); // appends an op to the open s
 void j_terrain_touch(CityState &s, const SampleRect &r);
 // A landscape change already made, with what undoes and redoes it; `bytes` what it keeps.
 void j_nature(CityState &s, size_t bytes, NatureEdit edit);
+void j_add_scar(CityState &s, const Scar &c); // journal_damage.cpp
 // Keeps the painted tiles as they are now (before a dab changes them).
 void j_paint_touch(CityState &s, const std::vector<int> &tiles);
 

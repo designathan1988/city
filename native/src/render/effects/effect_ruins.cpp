@@ -69,10 +69,43 @@ void EffectWorld::pile(const Ruin &r, bool falling, bool mound, bool loose) {
 	}
 }
 
+namespace {
+Ruin standing_ruin(const Building &b) {
+	Ruin r;
+	r.x = b.x; r.z = b.z; r.w = b.w; r.d = b.d; r.rot = b.rot; r.seed = b.seed;
+	r.record = b;
+	return r;
+}
+
+std::vector<Scar> scars_of(const CityState &s, const Building &b) {
+	std::vector<Scar> out;
+	for (const Scar &c : s.damage.scars)
+		if (c.seed == b.seed && c.bx == b.x && c.bz == b.z) out.push_back(c);
+	return out;
+}
+} // namespace
+
+void EffectWorld::building_scar(const DamageEvent &e, const CityState &s) {
+	const Building &b = s.buildings.items[size_t(e.id)];
+	if (b.alive) ruins_.scar(s, standing_ruin(b), scars_of(s, b), true);
+}
+
 void EffectWorld::rebuild_ruins(const CityState &s) {
 	debris_.reset();
 	mounds_.reset();
-	ruins_.keep_only(s.damage.ruins);
+	std::map<uint32_t, std::vector<Scar>> standing;
+	std::map<uint32_t, Ruin> whole;
+	for (const Scar &c : s.damage.scars) // those of a building that fell later name nothing now
+		s.buildings.query(c.bx, c.bz, c.bx, c.bz, [&](int id) {
+			const Building &b = s.buildings.items[size_t(id)];
+			if (!b.alive || b.seed != c.seed || b.x != c.bx || b.z != c.bz) return;
+			standing[b.seed].push_back(c);
+			whole.emplace(b.seed, standing_ruin(b));
+		});
+	std::map<uint32_t, size_t> counts;
+	for (const auto &[seed, scars] : standing) counts[seed] = scars.size();
+	ruins_.keep_only(s.damage.ruins, counts);
+	for (const auto &[seed, scars] : standing) ruins_.scar(s, whole[seed], scars, false);
 	for (const Ruin &r : s.damage.ruins) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
 		pile(r, false, true, !ruins_.holds(r.seed) && !ruins_.add(s, r, heap_of(r), false));

@@ -65,8 +65,17 @@ int sub_index(const Building &b, int64_t key) {
 }
 } // namespace
 
+void BuildingRenderer::set_broken(const std::unordered_set<uint32_t> &seeds) {
+	std::lock_guard<std::mutex> lk(broken_mutex_);
+	broken_ = seeds;
+}
+
 BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int64_t *chunk_keys, int count) const {
 	Inputs in;
+	{
+		std::lock_guard<std::mutex> lk(broken_mutex_);
+		in.broken = broken_;
+	}
 	float minx = FLT_MAX, minz = FLT_MAX, maxx = -FLT_MAX, maxz = -FLT_MAX;
 	for (int k = 0; k < count; k++) {
 		const float x0 = float(key_x(chunk_keys[k])) * CHUNK, z0 = float(key_y(chunk_keys[k])) * CHUNK;
@@ -152,25 +161,26 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
+		const bool broken = in.broken.count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
 		if (own_design) {
 			const b40::Basis &l = pl.lot;
 			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0, l.e2, -l.e1), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
 		}
 		if (near) {
-			if (!own_design) {
+			if (!own_design && !broken) {
 				b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 				b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
+			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
 			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
 		}
 		pl.coarse = true;
 		mid_shells[size_t(sub)].flat = &out.flat_shell[size_t(sub)];
-		if (!own_design) {
+		if (!own_design && !broken) {
 			b40::emit_far(mid_shells[size_t(sub)], pl, true);
 			b40::emit_relief(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 			b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);

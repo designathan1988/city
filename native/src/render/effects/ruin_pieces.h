@@ -14,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <unordered_set>
 
 namespace city {
 
@@ -32,7 +33,11 @@ public:
 	void release() { reset(); }
 	// The building of `r`, its mound `heap` high, in pieces: `falling` before the player, else lying as it came to rest. False with no room: a plain heap.
 	bool add(const CityState &s, const Ruin &r, float heap, bool falling);
-	void keep_only(const std::vector<Ruin> &ruins); // an undo took some ruins back
+	// The building of `r`, standing, its `scars` taken out of it: `falling` before the player, else lying as they came to rest.
+	void scar(const CityState &s, const Ruin &r, const std::vector<Scar> &scars, bool falling);
+	void keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, size_t> &scarred); // an undo took some back: by seed, how many scars
+	const std::unordered_set<uint32_t> &broken() const { return broken_; } // standing, drawn here and no longer by the buildings
+	std::vector<int64_t> take_repaint(); // the chunks whose buildings changed hands
 	bool holds(uint32_t seed) const { return falls_.count(seed) > 0; }
 	void update(float dt, Puffs &puffs);
 	std::vector<Uncut> take_uncut();
@@ -50,17 +55,23 @@ private:
 		godot::Ref<godot::ShaderMaterial> material;
 		godot::PackedByteArray rows;
 		int rows_of_pieces = 0;
-		bool falling = false, ready = false, dirty = false;
+		bool falling = false, ready = false, dirty = false, standing = false;
+		std::vector<Scar> scars; // of a standing building
+		size_t scars_done = 0;
+		float heap_after = -1; // it came down while its pieces were being cut: this high
 	};
 	struct Done {
 		uint32_t seed = 0;
 		std::shared_ptr<RuinMesh> cut;
 		std::shared_ptr<RuinSim> sim;
+		size_t scars_done = 0;
 	};
 	struct Inbox {
 		std::mutex mutex;
 		std::vector<Done> done;
 	};
+	void start(const CityState &s, Fall &f, float heap); // its pieces cut in a job
+	bool room();
 	void adopt(Fall &f, const Done &done);
 	void make_room(int64_t vertices);
 	void dust(const std::vector<RuinSim::Note> &notes, Puffs &puffs);
@@ -74,6 +85,8 @@ private:
 	std::shared_ptr<Inbox> inbox_ = std::make_shared<Inbox>();
 	std::map<uint32_t, Fall> falls_; // by the ruin's seed
 	std::vector<Uncut> uncut_;
+	std::unordered_set<uint32_t> broken_;
+	std::vector<int64_t> repaint_;
 	std::vector<RuinSim::Note> notes_;
 	Rng rng_{ 0x2a1f3ULL };
 	float clock_ = 0;

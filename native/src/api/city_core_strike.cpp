@@ -44,6 +44,8 @@ Dictionary CityCore::damage_probe() const {
 	d["ruins"] = int(s.damage.ruins.size());
 	d["gone"] = int(s.damage.gone.size());
 	d["hurt"] = int(s.damage.hurt.size());
+	d["scars"] = int(s.damage.scars.size());
+	d["broken"] = render_.broken_buildings();
 	d["fires"] = int(s.damage.fires.size());
 	d["strikes"] = int(s.damage.strikes);
 	d["pieces"] = render_.effect_pieces();

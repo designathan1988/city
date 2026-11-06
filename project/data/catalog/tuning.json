@@ -211,6 +211,17 @@
  "strike": {
   "force_start": 5,
   "force_fine": 10,
-  "force_coarse": 5
+  "force_coarse": 5,
+  "frame_floors": 5,
+  "frame_collapse_kpa": 137.9,
+  "standing_least": 0.35,
+  "storey_m": 3.2,
+  "scar_radius_m": 2.5,
+  "scar_radius_per_force": 1.1,
+  "scar_near_share": 0.75,
+  "scar_force_gain": 1.2,
+  "scar_force_least": 4,
+  "scar_lift_m": 1.5,
+  "scars_most": 8
  }
 }

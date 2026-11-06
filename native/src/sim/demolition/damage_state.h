@@ -40,6 +40,15 @@ struct Hurt {
 	float x = 0, z = 0, amount = 0;
 };
 
+// A blow that broke part of a standing building (destruction.ts `strike`): what it reached falls, and what hung on that with it;
+// the rest stands. `seed`, `bx`, `bz` name the building as `Hurt` does; x y z is where it struck, `force` how hard. One blow, one scar.
+struct Scar {
+	uint32_t seed = 0;
+	float bx = 0, bz = 0, x = 0, y = 0, z = 0, force = 0;
+};
+constexpr float SCAR_REACH_M = 1.4f, SCAR_REACH_PER_FORCE_M = 0.55f; // the 4.0's: how far from where it struck a blow breaks a building
+inline float scar_reach_m(float force) { return SCAR_REACH_M + force * SCAR_REACH_PER_FORCE_M; }
+
 // A building on fire until `until` (seconds of DamageState::now).
 struct Fire {
 	int building = -1;
@@ -52,6 +61,7 @@ struct DamageState {
 	std::vector<Ruin> ruins;
 	std::vector<Gone> gone;
 	std::vector<Hurt> hurt; // buildings that took a blow without falling
+	std::vector<Scar> scars; // the parts of them broken off, in the order of the blows
 	std::vector<Fire> fires; // not saved: a fire does not outlast the session
 	double now = 0; // seconds of simulation since the map began (the clock of fires and of the growth hold)
 	double growth_hold_until = 0; // nothing grows on the lots while rubble lies (seconds of `now`)

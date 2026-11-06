@@ -24,6 +24,8 @@ const SETTLE_FRAMES := 60
 const HITS_TO_FALL := 12
 const WARM_TICKS := 600
 ## Step of the scan for a point of road.
+const SKY_M := 900.0
+const TALL_M := 18.0
 const SCAN_STEP_M := 40.0
 var failures := 0
 
@@ -38,9 +40,10 @@ func _ready() -> void:
 	CityStore.step_ticks(WARM_TICKS)
 	_force_steps()
 	_model()
+	await _scar()
+	await _fall()
 	_effects()
 	_roads()
-	await _fall()
 	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -206,3 +209,32 @@ func _force_steps() -> void:
 	_check(StrikeStrip.next_force(fine, -1) == fine - 1, "force: down by one at the fine limit")
 	_check(StrikeStrip.next_force(int(blast.strength_min), -1) == int(blast.strength_min), "force: stops at the least")
 	_check(StrikeStrip.next_force(int(blast.strength_max), 1) == int(blast.strength_max), "force: stops at the most")
+
+
+## A small bomb on a roof breaks part of the building and leaves it standing, drawn in pieces; undo gives it back whole.
+func _scar() -> void:
+	for f in SETTLE_FRAMES: # what the blows above broke is drawn first
+		await get_tree().process_frame
+	await _until(func() -> bool: return not CityStore.query(&"damage_probe").effects_busy)
+	var bounds: Dictionary = CityStore.query(&"city_bounds")
+	var roof := Vector3.INF
+	var x: float = bounds.min.x
+	while x < bounds.max.x and roof == Vector3.INF:
+		var z: float = bounds.min.z
+		while z < bounds.max.z and roof == Vector3.INF:
+			var hit: Dictionary = CityStore.query(&"body_pick", [Vector3(x, SKY_M, z), Vector3.DOWN])
+			if not hit.is_empty() and hit.point.y > float(CityStore.query(&"height_at", [x, z])) + TALL_M:
+				roof = hit.point
+			z += SCAN_STEP_M
+		x += SCAN_STEP_M
+	_check(roof != Vector3.INF, "found a tall roof")
+	var before: Dictionary = CityStore.query(&"damage_probe")
+	_check(CityStore.dispatch(&"strike", [roof, SMALL_FORCE]).ok, "a small bomb on the roof")
+	var after: Dictionary = CityStore.query(&"damage_probe")
+	_check(after.scars > before.scars and after.buildings == before.buildings, "part of it broke off, and it stands (%d scars)" % after.scars)
+	await _until(func() -> bool: return CityStore.query(&"damage_probe").broken > before.broken)
+	_check(CityStore.query(&"damage_probe").broken > before.broken, "it is drawn in pieces")
+	_check(CityStore.dispatch(&"undo", []), "undid the bomb on the roof")
+	await _until(func() -> bool: return CityStore.query(&"damage_probe").broken == before.broken)
+	var undone: Dictionary = CityStore.query(&"damage_probe")
+	_check(undone.scars == before.scars and undone.broken == before.broken, "undo gave the building back whole")

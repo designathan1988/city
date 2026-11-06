@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -86,6 +86,11 @@ func _step(step: Dictionary) -> void:
 		while "--frozen" in OS.get_cmdline_user_args() and Engine.get_frames_drawn() % JITTER_PHASES != 0: # the same step of the temporal filter's jitter, however long the jobs took
 			await get_tree().process_frame
 		await ui.shot("%02d-%s" % [shots, step.shot])
+		shots += 1
+	elif step.has("blastShot"): # at that second of the effects' own clock, with no wait for the world to be drawn
+		while CityStore.query(&"effects_since_blast") < float(step.at):
+			await get_tree().process_frame
+		await ui.shot("%02d-%s" % [shots, step.blastShot], 0)
 		shots += 1
 	elif step.has("wait"):
 		await get_tree().create_timer(float(step.wait) / MS_PER_S).timeout

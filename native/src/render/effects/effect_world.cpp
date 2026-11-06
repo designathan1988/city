@@ -152,11 +152,12 @@ void EffectWorld::sync(CityState &s) {
 		craters_seen_ = s.damage.craters.size();
 		marks_.set_craters(s.damage.craters, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
 	}
-	if (ruins_seen_ != s.damage.ruins.size()) {
+	if (ruins_seen_ != s.damage.ruins.size() || scars_seen_ != s.damage.scars.size()) {
 		// a building brought down in this frame already fell into its heap (its event); any other change (open, undo, redo) lays them all again
-		const bool fell = std::any_of(events_played_.begin(), events_played_.end(), [](const DamageEvent &e) { return e.kind == DamageEvent::BUILDING_DOWN; });
+		const bool fell = std::any_of(events_played_.begin(), events_played_.end(), [](const DamageEvent &e) { return e.kind == DamageEvent::BUILDING_DOWN || e.kind == DamageEvent::BUILDING_SCAR; });
 		if (!fell) rebuild_ruins(s);
 		ruins_seen_ = s.damage.ruins.size();
+		scars_seen_ = s.damage.scars.size();
 	}
 	burn_fires(s, dt);
 	step_geysers(dt);

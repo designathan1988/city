@@ -36,6 +36,8 @@ public:
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
 	int pieces() const { return debris_.count(); }
 	int ruin_pieces() const { return ruins_.pieces(); }
+	const std::unordered_set<uint32_t> &broken() const { return ruins_.broken(); }
+	std::vector<int64_t> take_repaint() { return ruins_.take_repaint(); }
 	int bodies() const { return people_ ? people_->bodies().count() : 0; }
 	int bodies_moving() const { return people_ ? people_->bodies().moving() : 0; }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
@@ -52,6 +54,7 @@ private:
 	void apply(const DamageEvent &e, const CityState &s);
 	void blast(const DamageEvent &e, const CityState &s);
 	void building_hit(const DamageEvent &e);
+	void building_scar(const DamageEvent &e, const CityState &s); // effect_ruins.cpp
 	void building_down(const DamageEvent &e, const CityState &s);
 	void pile(const Ruin &r, bool falling, bool mound, bool loose); // the heap a building left (effect_ruins.cpp): its mound and the plain pieces on it
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
@@ -98,7 +101,7 @@ private:
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
-	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), played_ = 0;
+	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), scars_seen_ = 0, played_ = 0;
 	float ground_here_ = 0; // the ground under the heap being laid
 };
 

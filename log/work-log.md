@@ -712,3 +712,10 @@ Ressalvas abertas:
 - O par mostrou: força inicial 1 (no 4.0, 5), bomba só no chão sob o ponteiro e deslizante no lugar do passo. Agora ela cai no primeiro prédio da linha de visão (`body_pick`), abre em 5 e anda de 1 em 1 até 10 e de 5 em 5 depois (`StrikeStrip`, valores em `tuning.strike`).
 - O primeiro passo que escrevi parava em 6: lambda de GDScript guarda cópia do local. `shell_test` agora aperta o botão sete vezes.
 - Falta, visto no par de força 45: a nuvem da explosão em prédio é bem menor que a do 4.0, e os vizinhos caem inteiros (21 ruínas) onde no 4.0 perdem só a parte atingida e ficam de pé.
+
+## 2026-11-06: o prédio perde só o que o golpe alcança
+- O par de força 45 tinha 21 prédios no chão, onde no 4.0 os vizinhos perdem a parte atingida. Agora a simulação guarda a marca do golpe (`DamageState::scars`, no save e no desfazer) e o render usa o mesmo prédio fraturado: cai o que o golpe alcança e o que ficou sem apoio, o resto fica de pé. No mesmo par: 7 ruínas e 7 prédios quebrados de pé.
+- A causa do resto era o limite único de colapso (5 psi, de casa) para toda torre. Prédio de 5 andares ou mais agora é estrutura de concreto, 20 psi.
+- `FORCE_SCALE` saiu: dizia que os golpes do 4.0 vão de 1 a 10, mas `explodeAt` passa a força de 1 a 50 direto.
+- A nuvem menor no par não é defeito: na cidade o clique pegou um prédio baixo entre torres; na terra aberta o par já batia.
+- Os 15 gates restantes estão em `tools/gates/rules.json` e nos schemas, que só o usuário altera; a ordem "você muda o hook" foi sobre a prova do commit.

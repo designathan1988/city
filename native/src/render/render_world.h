@@ -95,6 +95,7 @@ public:
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
 	int effect_pieces() const { return effects_.pieces(); }
+	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }

@@ -13,6 +13,7 @@ namespace city {
 //   WOUND          x y z, dx dz = way of the bullet, u = 1 when a limb came off
 //   BUILDING_DOWN  id = building, x z centre, a = force; the ruin is in DamageState
 //   BUILDING_HIT   id = building, x y z the point struck, a = overpressure kPa
+//   BUILDING_SCAR  id = building: part of it broke off and it stands (DamageState::scars)
 //   VEHICLE_BLOWN  id, x y z, a = heading, u = type | paint << 8, b = burn seconds
 //   VEHICLE_HIT    x y z, dx dz, u = 1 glass
 //   VEHICLE_DROP   id, x y z, a = heading, u = type | paint << 8 (a two-wheeler's rider shot off, the machine falls over)
@@ -23,7 +24,7 @@ namespace city {
 //   IGNITE         id = building, x z
 //   DRIP           x y z: somebody hurt walked there, bleeding
 struct DamageEvent {
-	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
+	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, BUILDING_SCAR, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
 		LEAK, SPARK, FURNITURE, IGNITE, DRIP };
 	Kind kind = BLAST;
 	int id = -1;

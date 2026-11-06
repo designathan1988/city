@@ -35,6 +35,7 @@ void RuinPieces::init(const RID &scenario, const Ref<ShaderMaterial> &material, 
 
 void RuinPieces::free_fall(Fall &f) {
 	RenderingServer *rs = RenderingServer::get_singleton();
+	if (broken_.erase(f.ruin.seed)) repaint_.push_back(chunk_of(f.ruin.x, f.ruin.z));
 	if (f.inst.is_valid()) rs->free_rid(f.inst);
 	if (f.texture.is_valid()) rs->free_rid(f.texture);
 	f.inst = RID();
@@ -44,13 +45,18 @@ void RuinPieces::free_fall(Fall &f) {
 void RuinPieces::reset() {
 	for (auto &[seed, f] : falls_) free_fall(f);
 	falls_.clear();
+	repaint_.clear();
 	inbox_ = std::make_shared<Inbox>(); // what a job still has in hand arrives nowhere
 }
 
-void RuinPieces::keep_only(const std::vector<Ruin> &ruins) {
+void RuinPieces::keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, size_t> &scarred) {
 	for (auto it = falls_.begin(); it != falls_.end();) {
 		const uint32_t seed = it->first;
-		if (std::any_of(ruins.begin(), ruins.end(), [seed](const Ruin &r) { return r.seed == seed; })) {
+		const Fall &f = it->second;
+		const auto mine = scarred.find(seed);
+		const bool stays = f.standing ? mine != scarred.end() && mine->second == f.scars.size()
+				: std::any_of(ruins.begin(), ruins.end(), [seed](const Ruin &r) { return r.seed == seed; });
+		if (stays) {
 			++it;
 			continue;
 		}
@@ -60,32 +66,87 @@ void RuinPieces::keep_only(const std::vector<Ruin> &ruins) {
 }
 
 bool RuinPieces::add(const CityState &s, const Ruin &r, float heap, bool falling) {
-	if (!maker_ || !material_.is_valid() || !s.jobs || falls_.count(r.seed)) return false;
-	if (int(falls_.size()) >= MOST_FALLS) { // the oldest at rest makes way; with all of them still coming down this one is a plain heap
-		auto rest = std::find_if(falls_.begin(), falls_.end(), [](const auto &e) { return e.second.ready && e.second.sim->resting(); });
-		if (rest == falls_.end()) return false;
-		free_fall(rest->second);
-		falls_.erase(rest);
+	const auto held = falls_.find(r.seed);
+	if (held != falls_.end() && held->second.standing) { // what was left of it comes down
+		Fall &f = held->second;
+		f.standing = false;
+		f.falling = falling;
+		f.ruin = r;
+		broken_.erase(r.seed);
+		if (f.ready) f.sim->collapse(r, heap);
+		else f.heap_after = heap;
+		return true;
 	}
+	if (!maker_ || !material_.is_valid() || !s.jobs || held != falls_.end() || !room()) return false;
 	Fall &f = falls_[r.seed];
 	f.ruin = r;
 	f.falling = falling;
+	start(s, f, heap);
+	return true;
+}
+
+void RuinPieces::scar(const CityState &s, const Ruin &r, const std::vector<Scar> &scars, bool falling) {
+	const auto held = falls_.find(r.seed);
+	if (held != falls_.end()) {
+		Fall &f = held->second;
+		f.scars = scars;
+		f.falling = f.falling || falling;
+		if (!f.ready) return; // the job has the first of them: the rest wait for its pieces (adopt)
+		for (; f.scars_done < scars.size(); f.scars_done++) f.sim->scar(scars[f.scars_done]);
+		return;
+	}
+	if (!maker_ || !material_.is_valid() || !s.jobs || !room()) return;
+	Fall &f = falls_[r.seed];
+	f.ruin = r;
+	f.falling = falling;
+	f.standing = true;
+	f.scars = scars;
+	start(s, f, 0.f);
+}
+
+std::vector<int64_t> RuinPieces::take_repaint() {
+	std::vector<int64_t> out;
+	out.swap(repaint_);
+	return out;
+}
+
+bool RuinPieces::room() {
+	if (int(falls_.size()) < MOST_FALLS) return true;
+	// The oldest at rest makes way, a heap before a building still standing: that one would come back whole. With all of them still
+	// coming down this one is a plain heap.
+	auto at_rest = [](const auto &e) { return e.second.ready && e.second.sim->resting(); };
+	auto rest = std::find_if(falls_.begin(), falls_.end(), [&](const auto &e) { return at_rest(e) && !e.second.standing; });
+	if (rest == falls_.end()) rest = std::find_if(falls_.begin(), falls_.end(), at_rest);
+	if (rest == falls_.end()) return false;
+	free_fall(rest->second);
+	falls_.erase(rest);
+	return true;
+}
+
+void RuinPieces::start(const CityState &s, Fall &f, float heap) {
+	const Ruin &r = f.ruin;
+	const bool falling = f.falling, standing = f.standing;
+	const std::vector<Scar> scars = f.scars;
 	const float reach = 0.5f * std::hypot(r.w, r.d) + LOT_PAD_M, ground = s.terrain.height_at(r.x, r.z);
 	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach));
 	const b40::Data *data = &s.buildings.designs;
-	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, ground, heap, falling]() {
+	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling]() {
 		Done done;
 		done.seed = r.seed;
 		done.cut = maker(*data, r.record, *patch);
 		if (done.cut && !done.cut->pieces.empty()) {
 			done.sim = std::make_shared<RuinSim>();
-			done.sim->begin(done.cut, r, ground, heap, law);
+			done.sim->begin(done.cut, r, ground, heap, law, standing);
+			for (const Scar &c : scars) {
+				done.sim->scar(c);
+				if (!falling) done.sim->settle();
+			}
+			done.scars_done = scars.size();
 			if (!falling) done.sim->settle();
 		}
 		std::lock_guard<std::mutex> lk(inbox->mutex);
 		inbox->done.push_back(std::move(done));
 	});
-	return true;
 }
 
 void RuinPieces::make_room(int64_t vertices) {
@@ -124,6 +185,10 @@ void RuinPieces::adopt(Fall &f, const Done &done) {
 	const Vector3 out_box = Vector3(1, 0, 1) * ((f.cut->hi.y - f.cut->lo.y) * BOX_SPREAD);
 	rs->instance_set_custom_aabb(f.inst, AABB(f.cut->lo - out_box, f.cut->hi - f.cut->lo + out_box * 2.f));
 	f.ready = true;
+	f.scars_done = done.scars_done;
+	for (; f.scars_done < f.scars.size(); f.scars_done++) f.sim->scar(f.scars[f.scars_done]);
+	if (f.heap_after >= 0.f) f.sim->collapse(f.ruin, f.heap_after);
+	if (f.standing && broken_.insert(f.ruin.seed).second) repaint_.push_back(chunk_of(f.ruin.x, f.ruin.z));
 }
 
 void RuinPieces::dust(const std::vector<RuinSim::Note> &notes, Puffs &puffs) {
@@ -156,7 +221,7 @@ void RuinPieces::update(float dt, Puffs &puffs) {
 				adopt(it->second, d);
 				continue;
 			}
-			uncut_.push_back(Uncut{ it->second.ruin, it->second.falling });
+			if (!it->second.standing) uncut_.push_back(Uncut{ it->second.ruin, it->second.falling }); // a design of its own stands whole
 			falls_.erase(it);
 		}
 		inbox_->done.clear();

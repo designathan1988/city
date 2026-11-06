@@ -83,6 +83,14 @@ void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount) {
 	put_hurt(s.damage, { seed, x, z, amount }, amount);
 }
 
+void j_add_scar(CityState &s, const Scar &c) {
+	s.damage.scars.push_back(c);
+	j_nature(s, sizeof(c), [c](CityState &st, bool fwd) {
+		if (fwd) st.damage.scars.push_back(c);
+		else if (!st.damage.scars.empty()) st.damage.scars.pop_back();
+	});
+}
+
 void apply_damage_op(CityState &s, const EditOp &op, bool fwd) {
 	DamageState &d = s.damage;
 	switch (op.kind) {

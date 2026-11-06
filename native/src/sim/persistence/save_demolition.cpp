@@ -40,6 +40,11 @@ void put_block(ByteWriter &w, const DamageState &d) {
 	}
 	for (const Ruin &r : d.ruins)
 		for (float v : { r.blow_x, r.blow_y, r.blow_z, r.blow_force }) w.put<float>(v);
+	w.put<uint32_t>(uint32_t(d.scars.size()));
+	for (const Scar &c : d.scars) {
+		w.put<uint32_t>(c.seed);
+		for (float v : { c.bx, c.bz, c.x, c.y, c.z, c.force }) w.put<float>(v);
+	}
 }
 
 bool get_block(ByteReader &r, DamageState &d) {
@@ -85,6 +90,14 @@ bool get_block(ByteReader &r, DamageState &d) {
 			continue;
 		}
 		u.blow_x = r.get<float>(); u.blow_y = r.get<float>(); u.blow_z = r.get<float>(); u.blow_force = r.get<float>();
+	}
+	if (r.o >= r.n) return r.ok; // a save from before scars: every standing building is whole
+	n = r.get<uint32_t>();
+	if (!r.ok || n > SAVED_ENTRIES_MAX) return false;
+	d.scars.resize(n);
+	for (Scar &c : d.scars) {
+		c.seed = r.get<uint32_t>();
+		c.bx = r.get<float>(); c.bz = r.get<float>(); c.x = r.get<float>(); c.y = r.get<float>(); c.z = r.get<float>(); c.force = r.get<float>();
 	}
 	return r.ok;
 }

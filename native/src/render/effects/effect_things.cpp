@@ -150,6 +150,7 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::BLAST: blast(e, s); break;
 		case DamageEvent::BUILDING_HIT: building_hit(e); break;
 		case DamageEvent::BUILDING_DOWN: building_down(e, s); break;
+		case DamageEvent::BUILDING_SCAR: building_scar(e, s); break;
 		case DamageEvent::FURNITURE: furniture(e, s); break;
 		case DamageEvent::VEHICLE_BLOWN: vehicle(e, s); break;
 		case DamageEvent::CASUALTY: casualty(e, s); break;

@@ -5,13 +5,8 @@
 //   near   0 .. D x near_share         walls with real openings and reveals, panes, sills, bands, roofs, plant, lot
 //   mid    near end ..                 walls with shader-painted windows, the real roofs (parapets, cornices, plant)
 //   far    per 512 m SUPERCHUNK        every building's masses in one mesh (material building_far)
-// Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for
-// every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured
-// with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its
-// mid level is built, and the far mesh folds that chunk's buildings away (building_far.gdshader chunk_mask) - one
-// switch per chunk, never a hole nor a building drawn twice. The mid level is built within mid_end (+ pad) on the
-// ground, as the chunks are streamed. Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit
-// indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
+// Near and mid switch inside a chunk by RenderingServer visibility ranges. The far mesh of a superchunk stands in for every chunk not drawn in its own detail: a chunk is drawn in detail once its centre comes within mid_end (measured with the eye height, as the visibility ranges measure; it leaves past mid_end x (1 + lod.far_hysteresis)) while its mid level is built, and the far mesh folds that chunk's buildings away (building_far.gdshader chunk_mask) - one switch per chunk, never a hole nor a building drawn twice.
+// The mid level is built within mid_end (+ pad) on the ground, as the chunks are streamed. Large chunks are split into 128 m sub-chunks so every surface keeps 16-bit indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
 
 #include "render/buildings/building_surface.h"
@@ -37,6 +32,7 @@
 #include <limits>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace city {
@@ -48,6 +44,7 @@ public:
 	const b40::BuildingLook &look() const { return look_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
+	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
 	void rebuild_chunk(const CityState &s, int64_t key); // a chunk to (re)mesh: its levels turn stale, its superchunk dirty
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
@@ -176,6 +173,7 @@ private:
 	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
 	struct Inputs {
 		std::vector<Building> records;
+		std::unordered_set<uint32_t> broken; // standing in pieces (RuinPieces): only their lots are drawn here
 		std::vector<int> ids; // the id of each record
 		InteriorView view; // the Interior layer as the job started
 		HeightPatch ground;
@@ -186,6 +184,8 @@ private:
 		uint8_t mask;
 	};
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
+	mutable std::mutex broken_mutex_; // the jobs gather on their own threads
+	std::unordered_set<uint32_t> broken_;
 	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
