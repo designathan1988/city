@@ -32,6 +32,7 @@ uniform float helmet_roughness;
 uniform float trim_roughness;
 
 const float BRAKE_FLAG = 8.0;
+#include "res://render/shaders/agent_door.gdshaderinc"
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
 uniform vec3 paints[24]; // the paints, then the colours of the transport lines
 uniform int paint_n = 1;
@@ -47,8 +48,10 @@ void vertex() {
 	v_tag = UV2.x;
 	v_custom = INSTANCE_CUSTOM;
 	v_seed = COLOR.a;
-	if (UV2.y > 0.5) {
-		float a = INSTANCE_CUSTOM.g - (INSTANCE_CUSTOM.g >= BRAKE_FLAG ? BRAKE_FLAG : 0.0);
+	if (UV2.y > DOOR_MARK) {
+		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g);
+	} else if (UV2.y > 0.5) {
+		float a = mod(INSTANCE_CUSTOM.g, BRAKE_FLAG);
 		vec2 d = VERTEX.yz - UV;
 		vec2 nd = NORMAL.yz;
 		float c = cos(a), s = sin(a);
@@ -90,7 +93,7 @@ void fragment() {
 		rough = lens_roughness;
 	} else if (tag == 3) {
 		bool on = v_custom.b > -0.5;
-		bool braking = v_custom.g >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
+		bool braking = mod(v_custom.g, DOOR_FLAG) >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;

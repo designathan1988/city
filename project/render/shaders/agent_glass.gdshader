@@ -8,6 +8,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back;
 
 #include "res://render/shaders/color_space.gdshaderinc"
+#include "res://render/shaders/agent_door.gdshaderinc"
 
 const float SPECULAR_PER_F0 = 12.5; // Godot: F0 = 0.08 * SPECULAR
 const float SCHLICK_POWER = 5.0;
@@ -16,6 +17,11 @@ uniform vec3 tint : source_color;
 uniform float transmittance = 0.7;
 uniform float ior = 1.52;
 uniform float roughness = 0.0;
+
+void vertex() {
+	if (COLOR.g > PANE_MARK) VERTEX.y = mix(VERTEX.y, COLOR.r * SILL_SPAN_M, pane_drop(COLOR.a, VERTEX.x));
+	if (UV2.y > DOOR_MARK) door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g);
+}
 
 void fragment() {
 	float f0 = pow((ior - 1.0) / (ior + 1.0), 2.0);

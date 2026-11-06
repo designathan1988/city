@@ -10,6 +10,7 @@ namespace traffic {
 void assign_errand(const CityState &s, Vehicle &v, int id); // at its birth: what this trip does at the kerb
 void step_kerb_stops(CityState &s, float dt);
 float kerb_stop_gap(const TrafficState &t, const Vehicle &v); // metres to where its front stops
+uint32_t kerb_door_level(const CityState &s, const Vehicle &v); // how far its kerb door stands open, in LOOK_DOOR_MASK steps
 void kerb_forget(CityState &s, int id); // it left the scene
 
 // pedestrians.cpp: a walker on the footway at `arc` of the sidewalk, with a trip, held by the kerb stop (PedMode::KERB), -1 with

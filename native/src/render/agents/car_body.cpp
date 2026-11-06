@@ -21,6 +21,9 @@ namespace {
 
 constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
 constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
+constexpr float CARD_IN_M = 0.03f; // a door's card, this far inside its skin
+constexpr float SILL_SPAN_M = 4.f; // a pane's colour: its sill's height over this (agent_door.gdshaderinc)
+constexpr int KERB_SIDE = 1; // the door that opens at the kerb: the front one on the +X side (kerb_stops.cpp door_places)
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
 constexpr int COARSE_ROWS[] = { 0, 1, 3, 4, RING_BELT, RING_PANE_TOP, 12, RING_ROOF, RING - 1 };
 // One band per region (region_of): underneath, the flank, the side glass, the roof's edge, the top.
@@ -41,6 +44,12 @@ bool near_door(const Loft &lf, float xm) {
 	for (float e : lf.s->doors)
 		if (near_edge(xm, e, lf.seam * 0.5f)) return true;
 	return false;
+}
+
+// The front door's skin, on the level where the door is seen to open: between its seams, from the sill to the top of its glass.
+bool on_kerb_door(const Loft &lf, float xm, int k, int k1) {
+	const std::vector<float> &d = lf.s->doors;
+	return lf.fine && d.size() > 1 && xm < d[0] && xm > d[1] && !near_door(lf, xm) && k >= RING_SILL && k1 <= RING_PANE_TOP;
 }
 
 bool near_b_pillar(const Loft &lf, float xm) {
@@ -175,14 +184,24 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 			pos[c] = at(ii[c], kk[c]);
 			nrm[c] = nn.length_squared() > DEGENERATE_AREA ? nn.normalized() : face.normalized();
 		}
-		const Color col = colour_of(reg[r], trim);
+		const bool door = on_kerb_door(lf, xm, k, k1);
+		// the front door's window goes down to its sill in the glass's shader: its colour is not drawn, so it says where the sill is
+		const Color col = door && reg[r] == Region::GLASS ? Color(at(i, RING_BELT).y / SILL_SPAN_M, 1, 0) : colour_of(reg[r], trim);
 		const Vector2 t2 = agent_tag(tag_of(reg[r]));
+		const Vector2 hinge(car_half_w(*lf.s, lf.s->doors[0]), lf.s->doors[0] * lf.s->L), door_t2 = agent_tag(tag_of(reg[r]), Limb::DOOR);
 		for (int side : { -1, 1 }) {
 			const Vector3 mirror(float(side), 1, 1);
+			const bool swings = door && side == KERB_SIDE;
 			int v[4];
-			for (int c = 0; c < 4; c++) v[c] = mb.add(pos[c] * mirror, nrm[c] * mirror, col, Vector2(), t2);
+			for (int c = 0; c < 4; c++) v[c] = mb.add(pos[c] * mirror, nrm[c] * mirror, col, swings ? hinge : Vector2(), swings ? door_t2 : t2);
 			mb.tri(v[0], v[1], v[2], face * mirror);
 			mb.tri(v[0], v[2], v[3], face * mirror);
+			if (!swings || reg[r] == Region::GLASS) continue;
+			// Its inside: what an open door shows, facing the cabin.
+			const Vector2 card = agent_tag(AgentTag::FIXED, Limb::DOOR);
+			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * CARD_IN_M) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
+			mb.tri(v[0], v[2], v[1], -face * mirror);
+			mb.tri(v[0], v[3], v[2], -face * mirror);
 		}
 	}
 }

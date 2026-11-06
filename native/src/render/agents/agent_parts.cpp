@@ -117,8 +117,9 @@ void agent_wheel(MeshBuilder &mb, const Vector3 &c, float r, float w, int sides,
 namespace {
 constexpr float TYRE_SECTION = 0.2f, TYRE_LIP = 0.9f; // the shoulder's radius, and the sidewall's reach in from it, as shares of r and of that
 constexpr int SHOULDER_STEPS = 4, SPOKES = 5, BOSS_SIDES = 8;
-constexpr float DISC_R = 0.72f, RIM_FACE = 0.25f; // the rim's disc: of r, and how far out its face stands, of the width
-constexpr float SPOKE_REACH = 0.56f, SPOKE_ROOT = 0.3f, SPOKE_TIP = 0.12f, SPOKE_FACE = 0.34f; // of r; its face of the width
+constexpr float RIM_FACE = 0.25f; // how far out the rim's face stands, of the width
+constexpr float SPOKE_ROOT = 0.2f, SPOKE_TIP = 0.15f, SPOKE_FACE = 0.34f; // of r, the spoke flaring a little to the lip; its face of the width
+constexpr float LIP_IN = 0.86f, ROTOR_R = 0.74f, ROTOR_SHADE = 0.42f, ROTOR_DEEP = 0.004f; // of the rim's radius: the lip's inner edge, the brake's disc; its shade of the metal
 constexpr float BOSS_R = 0.18f, BOSS_FACE = 0.36f, WIRE_M = 0.006f;
 
 struct Lathe {
@@ -181,9 +182,13 @@ void agent_wheel_near(MeshBuilder &mb, const Vector3 &c, float r, float w, int s
 	lathe_band(l, ring, last, Vector3());
 	std::vector<int> sunk = lathe_ring(l, lip, w * RIM_FACE, -1, 0, trim.tyre); // the sidewall's inner edge down to the rim
 	lathe_band(l, last, sunk, Vector3());
-	lathe_disc(l, lip, w * RIM_FACE, trim.under);
-	lathe_disc(l, r * DISC_R, w * RIM_FACE + HUB_PROUD_M, trim.under);
-	for (int i = 0; i < SPOKES; i++) spoke(l, TAU_F * i / SPOKES, r * SPOKE_REACH, r * SPOKE_ROOT, r * SPOKE_TIP, w * SPOKE_FACE, trim.hub);
+	// The rim: its lip in metal, the well dark behind the spokes and the brake's disc in the well.
+	const float face = w * RIM_FACE;
+	lathe_disc(l, lip * LIP_IN, face, trim.under);
+	lathe_disc(l, lip * ROTOR_R, face + ROTOR_DEEP, trim.hub * ROTOR_SHADE);
+	std::vector<int> lip_out = lathe_ring(l, lip, face + HUB_PROUD_M, 0, 1, trim.hub), lip_in = lathe_ring(l, lip * LIP_IN, face + HUB_PROUD_M, 0, 1, trim.hub);
+	lathe_band(l, lip_out, lip_in, Vector3());
+	for (int i = 0; i < SPOKES; i++) spoke(l, TAU_F * i / SPOKES, lip * (LIP_IN + ROTOR_DEEP), r * SPOKE_ROOT, r * SPOKE_TIP, w * SPOKE_FACE, trim.hub);
 	Lathe boss{ mb, c, side, BOSS_SIDES, Vector2(c.y, c.z), agent_tag(AgentTag::FIXED, Limb::WHEEL) };
 	lathe_disc(boss, r * BOSS_R, w * BOSS_FACE, trim.hub);
 }

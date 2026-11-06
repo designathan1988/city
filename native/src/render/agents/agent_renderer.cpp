@@ -26,6 +26,7 @@ namespace {
 
 constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
 constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
+constexpr float DOOR_FLAG = 16.f; // each step the kerb door stands open, over the brake's flag and the wheel's angle (agent_door.gdshaderinc)
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
 constexpr float STILL_M = 0.002f; // a frame's movement under this is standing
@@ -229,6 +230,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
 		const bool brake = (rec.look & (1u << LOOK_BRAKE_SHIFT)) != 0;
 		if (type < 0 || type >= VEHICLE_TYPES) continue;
+		const float door = float((rec.look >> LOOK_DOOR_SHIFT) & LOOK_DOOR_MASK) * DOOR_FLAG;
 		float spin = roll(int(rec.id), p, wheel_r_[type]);
 		const float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, flat2 = dx * dx + dz * dz;
 		if (flat2 > r2) continue;
@@ -246,7 +248,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int level = level_at(d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
-		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f), passengers, 0.f, hash_float(rec.id * SEED_SALT));
+		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
 		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}
