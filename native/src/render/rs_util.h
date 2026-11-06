@@ -1,6 +1,7 @@
 // RenderingServer helpers: instances drawn without scene nodes (lighter for thousands of chunks).
 #pragma once
 
+#include "render/instance_rows.h"
 #include "render/render_layers.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -16,89 +17,6 @@ namespace city {
 
 // The vertical span every chunk's and every camera-wide box is given: the map's lowest ground to past its tallest building.
 constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f, AABB_HALF_H = 500.f;
-
-// Floats per instance: 12 transform + 4 colour + 4 custom. Props/agents/trees keep colour white and put
-// their tint in custom.rgb (the instance colour would also multiply fixed-colour parts).
-constexpr int MM_STRIDE = 20;
-// Without the colour: 12 transform + 4 custom. The renderer keeps three copies of every instance's floats on the CPU, whether
-// it interpolates them or not (Godot servers/rendering/storage/mesh_storage.cpp multimesh_allocate_data), so a thing that
-// repeats by the thousand and has no colour of its own goes without.
-constexpr int MM_PLAIN_STRIDE = 16;
-
-// Appends one instance in the documented MultiMesh layout (row-major 3x4 transform, colour, custom).
-inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
-		const godot::Vector3 &o, const godot::Color &col, float c0, float c1, float c2, float c3) {
-	const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, col.r, col.g, col.b, col.a, c0, c1, c2, c3 };
-	int64_t at = buf.size();
-	buf.resize(at + MM_STRIDE);
-	float *w = buf.ptrw() + at;
-	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
-}
-
-// The same into a row of InstanceRows.
-inline void mm_row(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, const godot::Color &col,
-		float c0, float c1, float c2, float c3) {
-	const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, col.r, col.g, col.b, col.a, c0, c1, c2, c3 };
-	std::memcpy(w, v, sizeof(v));
-}
-inline void mm_row_plain(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, float c0, float c1,
-		float c2, float c3) {
-	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
-	std::memcpy(w, v, sizeof(v));
-}
-
-// The same without the colour, for a material that reads only INSTANCE_CUSTOM.
-inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
-		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
-	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
-	int64_t at = buf.size();
-	buf.resize(at + MM_PLAIN_STRIDE);
-	float *w = buf.ptrw() + at;
-	for (int i = 0; i < MM_PLAIN_STRIDE; i++) w[i] = v[i];
-}
-
-// The rows of a MultiMesh refilled every frame. The array lives from frame to frame at the size of the draw's room, so a frame costs
-// one ptrw, a cursor per row and no allocation, and what goes to the RenderingServer is the array itself, the size it asks.
-class InstanceRows {
-public:
-	explicit InstanceRows(int stride = MM_STRIDE) : stride_(stride) {}
-	void restart() {
-		count_ = 0;
-		base_ = rows_.is_empty() ? nullptr : rows_.ptrw();
-	}
-	float *add() {
-		if (int64_t(count_ + 1) * stride_ > rows_.size()) grow(count_ + 1);
-		return base_ + int64_t(count_++) * stride_;
-	}
-	void append(const InstanceRows &more) {
-		if (more.count_ == 0) return;
-		if (int64_t(count_ + more.count_) * stride_ > rows_.size()) grow(count_ + more.count_);
-		std::memcpy(base_ + int64_t(count_) * stride_, more.base_, sizeof(float) * size_t(more.count_) * size_t(stride_));
-		count_ += more.count_;
-	}
-	int count() const { return count_; }
-	int stride() const { return stride_; }
-	// RowKeeper's: the rows stay from the last frame, each one written or dropped.
-	void reopen() { base_ = rows_.is_empty() ? nullptr : rows_.ptrw(); }
-	float *row(int i) { return base_ + int64_t(i) * stride_; }
-	void drop_last() { count_--; }
-	const godot::PackedFloat32Array &fitted(int room) {
-		if (rows_.size() != int64_t(room) * stride_) {
-			rows_.resize(int64_t(room) * stride_);
-			base_ = rows_.ptrw();
-		}
-		return rows_;
-	}
-
-private:
-	void grow(int wanted) {
-		rows_.resize(int64_t(std::max(wanted, count_ * 2)) * stride_);
-		base_ = rows_.ptrw();
-	}
-	godot::PackedFloat32Array rows_;
-	float *base_ = nullptr;
-	int count_ = 0, stride_;
-};
 
 // `inst` (made on first use in `scenario`, on render `layer`, with `material` when valid, casting shadows or not) shows
 // `next` in place of `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
@@ -255,81 +173,6 @@ private:
 	}
 };
 
-// A mesh made by a job, off the main thread: mesh_add_surface_from_arrays converts the arrays on the calling thread and
-// the RenderingServer queues the surface's upload for the main thread's next call into it (Godot rendering_server.cpp /
-// server_wrap_mt_common.h), so the conversion never lands on the frame and the uploads are paced by the bakes the frame
-// admits (chunk_jobs.h). Freed unless handed over (a result dropped as stale frees its mesh); bake_multimesh fills a
-// MultiMesh the same way.
-struct OwnedMesh {
-	godot::RID rid;
-	OwnedMesh() = default;
-	OwnedMesh(const OwnedMesh &) = delete;
-	OwnedMesh &operator=(const OwnedMesh &) = delete;
-	OwnedMesh(OwnedMesh &&o) noexcept : rid(o.rid) { o.rid = godot::RID(); }
-	OwnedMesh &operator=(OwnedMesh &&o) noexcept {
-		if (this != &o) {
-			reset();
-			rid = o.rid;
-			o.rid = godot::RID();
-		}
-		return *this;
-	}
-	~OwnedMesh() { reset(); }
-	bool valid() const { return rid.is_valid(); }
-	void reset() {
-		if (rid.is_valid()) godot::RenderingServer::get_singleton()->free_rid(rid);
-		rid = godot::RID();
-	}
-	godot::RID release() {
-		godot::RID r = rid;
-		rid = godot::RID();
-		return r;
-	}
-};
-
-// A MultiMesh of `buf` (MultiMesh layout, MM_PLAIN_STRIDE floats per instance) filled on the calling thread, as a mesh bake
-// (chunk_jobs.h): its own box, so the RenderingServer never walks the instances to bound it. None when `buf` is empty.
-inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat32Array &buf, const godot::AABB &bounds) {
-	OwnedMesh m;
-	const int count = int(buf.size() / MM_PLAIN_STRIDE);
-	if (count == 0) return m;
-	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-	m.rid = rs->multimesh_create();
-	rs->multimesh_allocate_data(m.rid, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, false, true);
-	rs->multimesh_set_mesh(m.rid, mesh);
-	rs->multimesh_set_custom_aabb(m.rid, bounds);
-	rs->multimesh_set_buffer(m.rid, buf);
-	return m;
-}
-
-// A plain mesh drawn by one instance (road and overlay chunks).
-struct MeshDraw {
-	godot::RID mesh, inst;
-	// Shows `next` (a mesh a job made, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, RenderLayer layer) {
-		swap_base(inst, mesh, next, scenario, material, shadows, layer);
-	}
-	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows, RenderLayer layer) {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		if (!mesh.is_valid()) {
-			mesh = rs->mesh_create();
-			inst = rs->instance_create2(mesh, scenario);
-			rs->instance_set_layer_mask(inst, layer);
-			rs->instance_geometry_set_cast_shadows_setting(inst,
-					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		}
-		rs->mesh_clear(mesh);
-		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
-	}
-	void visible(bool on) const {
-		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on);
-	}
-	void free() {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		if (inst.is_valid()) rs->free_rid(inst);
-		if (mesh.is_valid()) rs->free_rid(mesh);
-		inst = mesh = godot::RID();
-	}
-};
-
 } // namespace city
+
+#include "render/mesh_draw.h" // what stands on the above: a mesh a job made, and drawing one

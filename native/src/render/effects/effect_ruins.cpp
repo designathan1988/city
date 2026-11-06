@@ -16,6 +16,7 @@ namespace city {
 namespace {
 constexpr float PIECES_PER_M2 = 0.35f; // heap pieces over the lot's area, and what each floor adds to the share
 constexpr float PIECES_PER_STOREY = 0.25f;
+constexpr float SEED_SPAN = 4096.f; // the relief of a heap, from its seed
 constexpr int HEAP_FEWEST = 14, HEAP_MOST = 60;
 constexpr float STOREYS_PER_M = 0.3125f; // a storey is about 3.2 m: a building's height for the fall
 constexpr float SLAB_MIN_M = 0.35f, PIECE_SPAN_M = 1.6f, PIECE_FLAT_MIN = 0.08f, PIECE_FLAT_SPAN = 0.22f; // slabs of wall, roof and glass
@@ -42,7 +43,7 @@ void EffectWorld::pile(const Ruin &r, bool falling) {
 	const float height = storeys / STOREYS_PER_M, heap = std::clamp(height * HEAP_HEIGHT_K, HEAP_MIN_M, HEAP_MAX_M);
 	const float c = std::cos(r.rot), sn = std::sin(r.rot);
 	const Color wall = PALETTE_TINTS[hash_u32(r.seed) % 4]; // each building its own wall; the roof and glass are common to all
-	mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & 0xFFFu) / 4096.f, falling ? now_ : MOUND_LONG_AGO_S);
+	mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & 0xFFFu) / SEED_SPAN, falling ? now_ : MOUND_LONG_AGO_S);
 	for (int i = 0; i < n; i++) {
 		const float u = (rng.f() - 0.5f) * r.w, v = (rng.f() - 0.5f) * r.d;
 		const float x = r.x + u * c + v * sn, z = r.z - u * sn + v * c;

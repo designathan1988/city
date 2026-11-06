@@ -24,6 +24,13 @@ void mark_seg(CityState &s, int id, bool removed) {
 	(removed ? s.log.net_seg_removed(id) : s.log.net_seg(id));
 }
 
+void exec_lots(CityState &s, const EditOp &op, bool fwd) {
+	for (const LotBook *book : { op.lots_before.get(), op.lots_after.get() })
+		for (const PlayerLot &l : book->lots)
+			for (const LotPoint &p : l.corners) s.log.lot_cells.push_back(chunk_of(float(p.x), float(p.z)));
+	s.lot_book = fwd ? *op.lots_after : *op.lots_before;
+}
+
 void exec(CityState &s, const EditOp &op, bool fwd) {
 	RoadNetwork &net = s.roads;
 	switch (op.kind) {
@@ -99,12 +106,7 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			s.roads.nodes[size_t(op.id)].links = fwd ? op.links_after : op.links_before;
 			s.log.net_node(op.id);
 			break;
-		case OpKind::LOTS:
-			for (const LotBook *book : { op.lots_before.get(), op.lots_after.get() })
-				for (const PlayerLot &l : book->lots)
-					for (const LotPoint &p : l.corners) s.log.lot_cells.push_back(chunk_of(float(p.x), float(p.z)));
-			s.lot_book = fwd ? *op.lots_after : *op.lots_before;
-			break;
+		case OpKind::LOTS: exec_lots(s, op, fwd); break;
 		case OpKind::DMG_CRATER:
 		case OpKind::DMG_RUIN:
 		case OpKind::DMG_GONE:

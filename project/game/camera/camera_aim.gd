@@ -16,6 +16,20 @@ static func hold_height(rig: CityCamera, screen: Vector2, h: float) -> float:
 	return o.y + d.y * limit
 
 
+## Moves the point looked at until `point` (on the plane at `h`) is under `screen`.
+static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float) -> void:
+	for pass_i in int(rig.cfg.keep_passes):
+		var found: Variant = rig.hit_at(screen, h)
+		if found == null:
+			return
+		var d: Vector3 = point - found
+		if absf(d.x) + absf(d.z) < rig.cfg.keep_tolerance_cm * CityCamera.CM:
+			return
+		rig.focus.x += d.x
+		rig.focus.z += d.z
+		rig._apply()
+
+
 ## Whether a pan can grab the ground under the pointer (else it slides by the drag).
 static func holds(rig: CityCamera, screen: Vector2, h: float) -> bool:
 	return is_equal_approx(hold_height(rig, screen, h), h)

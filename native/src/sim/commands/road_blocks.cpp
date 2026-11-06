@@ -1,6 +1,6 @@
 // Several blocks at once (Roadcraft editor/blocks.ts): a grid of streets laid in one gesture, each line a road of its own that joins what is
 // already there, the whole grid one step of undo.
-#include "sim/commands/commands.h"
+#include "sim/commands/road_blocks.h"
 
 #include <cmath>
 

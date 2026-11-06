@@ -4,6 +4,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "sim/commands/road_blocks.h"
 #include "sim/roads/road_variants.h"
 #include "sim/economy/road_economy.h"
 

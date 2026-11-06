@@ -10,6 +10,8 @@ using namespace godot;
 
 namespace city {
 
+static constexpr float FLATTEST_HALF_M = 1e-3f;
+
 namespace {
 constexpr float DENT_WIDE_M = 0.45f, DENT_FINE_M = 0.18f, DENT_WIDE_DEEP_M = 0.04f, DENT_FINE_DEEP_M = 0.015f, SAG_M = 0.12f;
 constexpr float DENT_X = 0.5f, DENT_Z = 0.6f, Z_PACE = 1.3f, Y_PACE = 0.7f;
@@ -30,7 +32,7 @@ AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed) {
 		first = false;
 	}
 	const Vector3 middle = box.get_center();
-	const float half = std::max(box.size.y * 0.5f, 1e-3f);
+	const float half = std::max(box.size.y * 0.5f, FLATTEST_HALF_M);
 	const auto buckled = [&](const Vector3 &at) {
 		const Vector3 p = at - middle;
 		const float top = std::max(0.f, p.y / half), dent = wave(p, 1.f / DENT_WIDE_M, seed) * DENT_WIDE_DEEP_M + wave(p, 1.f / DENT_FINE_M, seed) * DENT_FINE_DEEP_M;

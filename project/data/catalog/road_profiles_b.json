@@ -13,55 +13,17 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "median",
-     "width": 1.7,
-     "pave": 3
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    }
+    {"kind": "sidewalk", "width": 2.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "median", "width": 1.7, "pave": 3},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 2.85}
    ],
    "class_card": true
   },
@@ -78,64 +40,19 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "median",
-     "width": 2.7
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "median", "width": 2.7},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -152,32 +69,12 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -194,37 +91,13 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -241,44 +114,15 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "median",
-     "width": 1.7
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "median", "width": 1.7},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -295,24 +139,10 @@
    "surface": 0,
    "centre": "dashed",
    "strips": [
-    {
-     "kind": "shoulder",
-     "width": 1.5
-    },
-    {
-     "kind": "lane",
-     "width": 3.5,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 3.5,
-     "dir": -1
-    },
-    {
-     "kind": "shoulder",
-     "width": 1.5
-    }
+    {"kind": "shoulder", "width": 1.5},
+    {"kind": "lane", "width": 3.5, "dir": 1},
+    {"kind": "lane", "width": 3.5, "dir": -1},
+    {"kind": "shoulder", "width": 1.5}
    ],
    "class_card": false
   },
@@ -329,27 +159,11 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": true
   },
@@ -366,32 +180,12 @@
    "surface": 0,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -408,32 +202,12 @@
    "surface": 2,
    "centre": "none",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 3,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 3,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
-    }
+    {"kind": "sidewalk", "width": 0.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 3, "dir": 1},
+    {"kind": "lane", "width": 3, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 0.85}
    ],
    "class_card": false
   },
@@ -450,32 +224,12 @@
    "surface": 1,
    "centre": "dashed",
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 1.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 1.85
-    }
+    {"kind": "sidewalk", "width": 1.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 1.85}
    ],
    "class_card": false
   },
@@ -492,26 +246,10 @@
    "surface": 3,
    "centre": "none",
    "strips": [
-    {
-     "kind": "shoulder",
-     "width": 1.6
-    },
-    {
-     "kind": "lane",
-     "width": 4.3,
-     "dir": 1,
-     "rail": true
-    },
-    {
-     "kind": "lane",
-     "width": 4.3,
-     "dir": -1,
-     "rail": true
-    },
-    {
-     "kind": "shoulder",
-     "width": 1.6
-    }
+    {"kind": "shoulder", "width": 1.6},
+    {"kind": "lane", "width": 4.3, "dir": 1, "rail": true},
+    {"kind": "lane", "width": 4.3, "dir": -1, "rail": true},
+    {"kind": "shoulder", "width": 1.6}
    ],
    "class_card": false
   },
@@ -528,20 +266,9 @@
    "surface": 3,
    "centre": "none",
    "strips": [
-    {
-     "kind": "shoulder",
-     "width": 1.6
-    },
-    {
-     "kind": "lane",
-     "width": 4.3,
-     "dir": 1,
-     "rail": true
-    },
-    {
-     "kind": "shoulder",
-     "width": 1.6
-    }
+    {"kind": "shoulder", "width": 1.6},
+    {"kind": "lane", "width": 4.3, "dir": 1, "rail": true},
+    {"kind": "shoulder", "width": 1.6}
    ],
    "class_card": false
   },
@@ -558,26 +285,10 @@
    "surface": 3,
    "centre": "none",
    "strips": [
-    {
-     "kind": "shoulder",
-     "width": 0.8
-    },
-    {
-     "kind": "lane",
-     "width": 4.0,
-     "dir": 1,
-     "rail": true
-    },
-    {
-     "kind": "lane",
-     "width": 4.0,
-     "dir": -1,
-     "rail": true
-    },
-    {
-     "kind": "shoulder",
-     "width": 0.8
-    }
+    {"kind": "shoulder", "width": 0.8},
+    {"kind": "lane", "width": 4.0, "dir": 1, "rail": true},
+    {"kind": "lane", "width": 4.0, "dir": -1, "rail": true},
+    {"kind": "shoulder", "width": 0.8}
    ],
    "class_card": false
   },
@@ -595,32 +306,12 @@
    "centre": "none",
    "class_card": false,
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 3,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 3,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    }
+    {"kind": "sidewalk", "width": 2.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 3, "dir": 1},
+    {"kind": "lane", "width": 3, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 2.85}
    ]
   },
   {
@@ -637,32 +328,12 @@
    "centre": "dashed",
    "class_card": false,
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    }
+    {"kind": "sidewalk", "width": 2.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 2.85}
    ]
   },
   {
@@ -679,55 +350,17 @@
    "centre": "none",
    "class_card": false,
    "strips": [
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": 1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "median",
-     "width": 1.7,
-     "pave": 3
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "lane",
-     "width": 4,
-     "dir": -1
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 2.85
-    }
+    {"kind": "sidewalk", "width": 2.85},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "lane", "width": 4, "dir": 1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "median", "width": 1.7, "pave": 3},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "lane", "width": 4, "dir": -1},
+    {"kind": "curb", "width": 0.15},
+    {"kind": "sidewalk", "width": 2.85}
    ]
   }
  ]

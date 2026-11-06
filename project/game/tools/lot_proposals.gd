@@ -4,6 +4,7 @@ extends RefCounted
 
 const CELL_M := 256.0 # core/grid.h CHUNK: proposals are read a cell at a time
 const NO_CELL := Vector2i(1 << 30, 0)
+const SHOWN_M := 0.1
 
 var _rings: Array = []
 var _cell := NO_CELL
@@ -36,7 +37,7 @@ static func size_of(ring: PackedVector3Array) -> String:
 	var deep := 0.0
 	for q in ring:
 		deep = maxf(deep, absf(along.normalized().orthogonal().dot(Vector2(q.x, q.z) - a)))
-	return TranslationServer.translate("zone.lot.size").format({"w": Formatters.format_measure(snappedf(along.length(), 0.1)), "d": Formatters.format_measure(snappedf(deep, 0.1))})
+	return TranslationServer.translate("zone.lot.size").format({"w": Formatters.format_measure(snappedf(along.length(), SHOWN_M)), "d": Formatters.format_measure(snappedf(deep, SHOWN_M))})
 
 
 static func middle(ring: PackedVector3Array) -> Vector3:

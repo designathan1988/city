@@ -93,7 +93,7 @@ static func _metres(v: float) -> String:
 
 
 static func _percent(v: float) -> String:
-	return "%d%%" % roundi(v * 100.0)
+	return "%d%%" % roundi(v * Formatters.PERCENT)
 
 
 static func _noop(_v: float) -> void:

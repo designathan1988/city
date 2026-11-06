@@ -1,3 +1,4 @@
+// A motorcyclist's helmet: its mesh, colours and instances (helmets.h).
 #include "render/agents/helmets.h"
 
 #include "core/color.h"

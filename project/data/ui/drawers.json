@@ -8,53 +8,14 @@
    "tip_key": "ui.cat.roads",
    "strip": "road_catalog",
    "tabs": [
-    {
-     "id": "draw",
-     "icon": "draw",
-     "label_key": "tool.draw",
-     "tool": "ROAD"
-    },
-    {
-     "id": "upgrade",
-     "icon": "upgrade",
-     "label_key": "tool.upgrade",
-     "tool": "UPGRADE",
-     "note_key": "hint.upgrade"
-    },
-    {
-     "id": "move",
-     "icon": "move",
-     "label_key": "tool.move",
-     "tool": "MOVE",
-     "note_key": "hint.move"
-    },
-    {
-     "id": "split",
-     "icon": "split",
-     "label_key": "tool.split",
-     "tool": "SPLIT",
-     "note_key": "hint.split"
-    },
-    {
-     "id": "control",
-     "icon": "control",
-     "label_key": "tool.control",
-     "tool": "CONTROL",
-     "note_key": "hint.control"
-    },
-    {
-     "id": "roundabout",
-     "icon": "roundabout",
-     "label_key": "tool.roundabout",
-     "tool": "ROUNDABOUT",
-     "note_key": "hint.roundabout"
-    }
+    {"id": "draw", "icon": "draw", "label_key": "tool.draw", "tool": "ROAD"},
+    {"id": "upgrade", "icon": "upgrade", "label_key": "tool.upgrade", "tool": "UPGRADE", "note_key": "hint.upgrade"},
+    {"id": "move", "icon": "move", "label_key": "tool.move", "tool": "MOVE", "note_key": "hint.move"},
+    {"id": "split", "icon": "split", "label_key": "tool.split", "tool": "SPLIT", "note_key": "hint.split"},
+    {"id": "control", "icon": "control", "label_key": "tool.control", "tool": "CONTROL", "note_key": "hint.control"},
+    {"id": "roundabout", "icon": "roundabout", "label_key": "tool.roundabout", "tool": "ROUNDABOUT", "note_key": "hint.roundabout"}
    ],
-   "ring": {
-    "label_key": "v2.roundabout.radius",
-    "step": 2,
-    "default": 40
-   }
+   "ring": {"label_key": "v2.roundabout.radius", "step": 2, "default": 40}
   },
   {
    "id": "zones",
@@ -63,41 +24,14 @@
    "tip_key": "ui.cat.zones",
    "strip": "zone_cards",
    "tabs": [
-    {
-     "id": "paint",
-     "icon": "brush",
-     "label_key": "v2.zone.paint",
-     "tool": "ZONE",
-     "note_key": "hint.tool.zone"
-    },
-    {
-     "id": "lots",
-     "icon": "lotEdit",
-     "tool": "LOTS",
-     "label_key": "zone.lots"
-    }
+    {"id": "paint", "icon": "brush", "label_key": "v2.zone.paint", "tool": "ZONE", "note_key": "hint.tool.zone"},
+    {"id": "lots", "icon": "lotEdit", "tool": "LOTS", "label_key": "zone.lots"}
    ],
    "cards": [
-    {
-     "label_key": "zone.residential",
-     "zone": 1,
-     "swatch": "zone_res"
-    },
-    {
-     "label_key": "zone.commercial",
-     "zone": 2,
-     "swatch": "zone_com"
-    },
-    {
-     "label_key": "zone.industrial",
-     "zone": 3,
-     "swatch": "zone_ind"
-    },
-    {
-     "label_key": "zone.remove",
-     "zone": 0,
-     "icon": "eraser"
-    }
+    {"label_key": "zone.residential", "zone": 1, "swatch": "zone_res"},
+    {"label_key": "zone.commercial", "zone": 2, "swatch": "zone_com"},
+    {"label_key": "zone.industrial", "zone": 3, "swatch": "zone_ind"},
+    {"label_key": "zone.remove", "zone": 0, "icon": "eraser"}
    ]
   },
   {
@@ -106,112 +40,28 @@
    "label_key": "v2.dock.build",
    "tip_key": "ui.cat.build",
    "tabs": [
-    {
-     "id": "models",
-     "icon": "models",
-     "label_key": "builder.category.models", "tool": "BUILD"
-    },
-    {
-     "id": "draw",
-     "icon": "draw",
-     "label_key": "builder.category.draw",
-     "tool": "LOT",
-     "note_key": "hint.lot"
-    },
-    {
-     "id": "mass",
-     "icon": "mass",
-     "label_key": "builder.category.mass",
-     "tool": "BUILD"
-    },
-    {
-     "id": "facade",
-     "icon": "face",
-     "label_key": "builder.category.facade",
-     "tool": "BUILD"
-    },
-    {
-     "id": "parts",
-     "icon": "components",
-     "label_key": "builder.category.parts",
-     "tool": "BUILD"
-    },
-    {
-     "id": "roof",
-     "icon": "roof",
-     "label_key": "builder.category.roof",
-     "tool": "BUILD"
-    },
-    {
-     "id": "interior",
-     "icon": "interiorView",
-     "tool": "BUILD",
-     "label_key": "builder.category.interior"
-    },
-    {
-     "id": "paint",
-     "icon": "paint",
-     "label_key": "builder.category.paint",
-     "tool": "BUILD"
-    }
+    {"id": "models", "icon": "models", "label_key": "builder.category.models", "tool": "BUILD"},
+    {"id": "draw", "icon": "draw", "label_key": "builder.category.draw", "tool": "LOT", "note_key": "hint.lot"},
+    {"id": "mass", "icon": "mass", "label_key": "builder.category.mass", "tool": "BUILD"},
+    {"id": "facade", "icon": "face", "label_key": "builder.category.facade", "tool": "BUILD"},
+    {"id": "parts", "icon": "components", "label_key": "builder.category.parts", "tool": "BUILD"},
+    {"id": "roof", "icon": "roof", "label_key": "builder.category.roof", "tool": "BUILD"},
+    {"id": "interior", "icon": "interiorView", "tool": "BUILD", "label_key": "builder.category.interior"},
+    {"id": "paint", "icon": "paint", "label_key": "builder.category.paint", "tool": "BUILD"}
    ],
    "strip": "build_cards",
    "cards": [
-    {
-     "label_key": "building.fn.square",
-     "fn": 5,
-     "icon": "fountain"
-    },
-    {
-     "label_key": "building.fn.park",
-     "fn": 6,
-     "icon": "ls_tree"
-    },
-    {
-     "label_key": "building.fn.school",
-     "fn": 1,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.clinic",
-     "fn": 4,
-     "icon": "health"
-    },
-    {
-     "label_key": "building.fn.hospital",
-     "fn": 3,
-     "icon": "health"
-    },
-    {
-     "label_key": "building.fn.policeStation",
-     "fn": 10,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.fireStation",
-     "fn": 11,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.cityHall",
-     "fn": 9,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.church",
-     "fn": 2,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.sportsCourt",
-     "fn": 13,
-     "icon": "build"
-    },
-    {
-     "label_key": "building.fn.none",
-     "fn": 0,
-     "icon": "zones"
-    }
+    {"label_key": "building.fn.square", "fn": 5, "icon": "fountain"},
+    {"label_key": "building.fn.park", "fn": 6, "icon": "ls_tree"},
+    {"label_key": "building.fn.school", "fn": 1, "icon": "build"},
+    {"label_key": "building.fn.clinic", "fn": 4, "icon": "health"},
+    {"label_key": "building.fn.hospital", "fn": 3, "icon": "health"},
+    {"label_key": "building.fn.policeStation", "fn": 10, "icon": "build"},
+    {"label_key": "building.fn.fireStation", "fn": 11, "icon": "build"},
+    {"label_key": "building.fn.cityHall", "fn": 9, "icon": "build"},
+    {"label_key": "building.fn.church", "fn": 2, "icon": "build"},
+    {"label_key": "building.fn.sportsCourt", "fn": 13, "icon": "build"},
+    {"label_key": "building.fn.none", "fn": 0, "icon": "zones"}
    ]
   },
   {
@@ -220,36 +70,11 @@
    "label_key": "v2.dock.landscape",
    "tip_key": "ui.cat.landscape",
    "tabs": [
-    {
-     "id": "relief",
-     "icon": "terrain",
-     "label_key": "v2.land.relief",
-     "tool": "TERRAIN"
-    },
-    {
-     "id": "ground",
-     "icon": "paint",
-     "label_key": "v2.land.ground",
-     "tool": "PAINT"
-    },
-    {
-     "id": "nature",
-     "icon": "ls_tree",
-     "label_key": "v2.land.nature",
-     "tool": "TREES"
-    },
-    {
-     "id": "sky",
-     "icon": "cloud",
-     "label_key": "v2.land.sky",
-     "tool": "CLOUD"
-    },
-    {
-     "id": "street",
-     "icon": "ls_bench",
-     "label_key": "v2.land.street",
-     "tool": "STREETSCAPE"
-    }
+    {"id": "relief", "icon": "terrain", "label_key": "v2.land.relief", "tool": "TERRAIN"},
+    {"id": "ground", "icon": "paint", "label_key": "v2.land.ground", "tool": "PAINT"},
+    {"id": "nature", "icon": "ls_tree", "label_key": "v2.land.nature", "tool": "TREES"},
+    {"id": "sky", "icon": "cloud", "label_key": "v2.land.sky", "tool": "CLOUD"},
+    {"id": "street", "icon": "ls_bench", "label_key": "v2.land.street", "tool": "STREETSCAPE"}
    ],
    "strip": "land_panels"
   },
@@ -259,62 +84,13 @@
    "label_key": "v2.dock.transit",
    "tip_key": "ui.cat.transit",
    "tabs": [
-    {
-     "id": "stop",
-     "icon": "tr_stop",
-     "label_key": "transit.tool.stop",
-     "tool": "TRANSIT",
-     "kind": "stop",
-     "mode": 0
-    },
-    {
-     "id": "terminal",
-     "icon": "tr_terminal",
-     "label_key": "transit.tool.terminal",
-     "tool": "TRANSIT",
-     "kind": "terminal",
-     "mode": 0
-    },
-    {
-     "id": "trainTrack",
-     "icon": "tr_track",
-     "label_key": "transit.tool.trainTrack",
-     "tool": "TRANSIT",
-     "kind": "track",
-     "mode": 1
-    },
-    {
-     "id": "trainStation",
-     "icon": "tr_station",
-     "label_key": "transit.tool.trainStation",
-     "tool": "TRANSIT",
-     "kind": "station",
-     "mode": 1
-    },
-    {
-     "id": "metroTrack",
-     "icon": "tr_metro",
-     "label_key": "transit.tool.metroTrack",
-     "tool": "TRANSIT",
-     "kind": "track",
-     "mode": 2
-    },
-    {
-     "id": "metroStation",
-     "icon": "tr_station",
-     "label_key": "transit.tool.metroStation",
-     "tool": "TRANSIT",
-     "kind": "station",
-     "mode": 2
-    },
-    {
-     "id": "line",
-     "icon": "tr_line",
-     "label_key": "transit.tool.line",
-     "tool": "TRANSIT",
-     "kind": "line",
-     "mode": 0
-    }
+    {"id": "stop", "icon": "tr_stop", "label_key": "transit.tool.stop", "tool": "TRANSIT", "kind": "stop", "mode": 0},
+    {"id": "terminal", "icon": "tr_terminal", "label_key": "transit.tool.terminal", "tool": "TRANSIT", "kind": "terminal", "mode": 0},
+    {"id": "trainTrack", "icon": "tr_track", "label_key": "transit.tool.trainTrack", "tool": "TRANSIT", "kind": "track", "mode": 1},
+    {"id": "trainStation", "icon": "tr_station", "label_key": "transit.tool.trainStation", "tool": "TRANSIT", "kind": "station", "mode": 1},
+    {"id": "metroTrack", "icon": "tr_metro", "label_key": "transit.tool.metroTrack", "tool": "TRANSIT", "kind": "track", "mode": 2},
+    {"id": "metroStation", "icon": "tr_station", "label_key": "transit.tool.metroStation", "tool": "TRANSIT", "kind": "station", "mode": 2},
+    {"id": "line", "icon": "tr_line", "label_key": "transit.tool.line", "tool": "TRANSIT", "kind": "line", "mode": 0}
    ]
   },
   {
@@ -324,27 +100,9 @@
    "tip_key": "ui.cat.demolish",
    "danger": true,
    "tabs": [
-    {
-     "id": "bulldoze",
-     "icon": "demolish",
-     "label_key": "tool.bulldoze",
-     "tool": "DEMOLISH",
-     "note_key": "help.tool.bulldoze"
-    },
-    {
-     "id": "pistol",
-     "icon": "actions",
-     "label_key": "actions.pistol",
-     "tool": "SHOOT",
-     "note_key": "help.tool.shoot"
-    },
-    {
-     "id": "bomb",
-     "icon": "bomb",
-     "label_key": "actions.bomb",
-     "tool": "STRIKE",
-     "note_key": "help.tool.strike"
-    }
+    {"id": "bulldoze", "icon": "demolish", "label_key": "tool.bulldoze", "tool": "DEMOLISH", "note_key": "help.tool.bulldoze"},
+    {"id": "pistol", "icon": "actions", "label_key": "actions.pistol", "tool": "SHOOT", "note_key": "help.tool.shoot"},
+    {"id": "bomb", "icon": "bomb", "label_key": "actions.bomb", "tool": "STRIKE", "note_key": "help.tool.strike"}
    ]
   },
   {
@@ -353,13 +111,7 @@
    "label_key": "v2.dock.info",
    "tip_key": "ui.cat.info",
    "tabs": [
-    {
-     "id": "inspect",
-     "icon": "info",
-     "label_key": "ui.toolName.inspect",
-     "tool": "INSPECT",
-     "note_key": "hint.tool.inspect"
-    }
+    {"id": "inspect", "icon": "info", "label_key": "ui.toolName.inspect", "tool": "INSPECT", "note_key": "hint.tool.inspect"}
    ],
    "no_drawer": true
   }
@@ -445,179 +197,54 @@
  ],
  "zone_radius": 40,
  "actions": [
-  {
-   "icon": "layers",
-   "tip_key": "v2.layers",
-   "popover": "layers"
-  },
-  {
-   "icon": "advanced",
-   "tip_key": "builder.menu.simulation",
-   "popover": "sim"
-  },
-  {
-   "icon": "camera",
-   "tip_key": "camera.label",
-   "popover": "camera"
-  },
-  {
-   "icon": "undo",
-   "tip_key": "action.undo",
-   "action": "undo"
-  },
-  {
-   "icon": "redo",
-   "tip_key": "action.redo",
-   "action": "redo"
-  },
-  {
-   "icon": "help",
-   "tip_key": "builder.help",
-   "popover": "help"
-  },
-  {
-   "icon": "menu",
-   "tip_key": "builder.menu.app",
-   "popover": "menu"
-  }
+  {"icon": "layers", "tip_key": "v2.layers", "popover": "layers"},
+  {"icon": "advanced", "tip_key": "builder.menu.simulation", "popover": "sim"},
+  {"icon": "camera", "tip_key": "camera.label", "popover": "camera"},
+  {"icon": "undo", "tip_key": "action.undo", "action": "undo"},
+  {"icon": "redo", "tip_key": "action.redo", "action": "redo"},
+  {"icon": "help", "tip_key": "builder.help", "popover": "help"},
+  {"icon": "menu", "tip_key": "builder.menu.app", "popover": "menu"}
  ],
  "popovers": {
   "layers": {
    "title_key": "v2.layers",
    "rows": [
-    {
-     "icon": "grid",
-     "label_key": "v2.layer.grid",
-     "action": "grid"
-    },
-    {
-     "icon": "zones",
-     "label_key": "zone.colours",
-     "action": "zones"
-    },
-    {
-     "icon": "heat",
-     "label_key": "sim.congestionLabel",
-     "action": "congestion"
-    },
-    {
-     "icon": "interiorView",
-     "label_key": "v2.layer.inside",
-        "action": "interior"
-    }
+    {"icon": "grid", "label_key": "v2.layer.grid", "action": "grid"},
+    {"icon": "zones", "label_key": "zone.colours", "action": "zones"},
+    {"icon": "heat", "label_key": "sim.congestionLabel", "action": "congestion"},
+    {"icon": "interiorView", "label_key": "v2.layer.inside", "action": "interior"}
    ]
   },
   "menu": {
    "rows": [
-    {
-     "icon": "m_new",
-     "label_key": "action.newMap",
-     "action": "new_empty"
-    },
-    {
-     "icon": "m_new",
-     "label_key": "ui.menu.newWorld",
-     "action": "new_city"
-    },
-    {
-     "icon": "m_new",
-     "label_key": "action.newLargeWorld",
-     "action": "new_large"
-    },
-    {
-     "icon": "m_open",
-     "label_key": "action.openMap",
-     "action": "open"
-    },
-    {
-     "icon": "m_save",
-     "label_key": "action.saveMap",
-     "action": "save_map"
-    },
-    {
-     "icon": "m_save",
-     "label_key": "ui.menu.save",
-     "action": "save"
-    },
-    {
-     "icon": "m_open",
-     "label_key": "ui.menu.load",
-     "action": "load_last"
-    },
-    {
-     "rule": true
-    },
-    {
-     "seg": "quality",
-     "label_key": "menu.quality"
-    },
-    {
-     "icon": "m_quality",
-     "label_key": "menu.graphicsOptions",
-     "action": "graphics"
-    },
-    {
-     "icon": "m_quality",
-     "label_key": "menu.effectsPanel",
-     "action": "effects"
-    },
-    {
-     "seg": "language",
-     "label_key": "menu.language"
-    },
-    {
-     "seg": "paint",
-     "label_key": "menu.paint"
-    },
-    {
-     "rule": true
-    },
-    {
-     "icon": "m_about",
-     "label_key": "action.about",
-     "action": "about"
-    }
+    {"icon": "m_new", "label_key": "action.newMap", "action": "new_empty"},
+    {"icon": "m_new", "label_key": "ui.menu.newWorld", "action": "new_city"},
+    {"icon": "m_new", "label_key": "action.newLargeWorld", "action": "new_large"},
+    {"icon": "m_open", "label_key": "action.openMap", "action": "open"},
+    {"icon": "m_save", "label_key": "action.saveMap", "action": "save_map"},
+    {"icon": "m_save", "label_key": "ui.menu.save", "action": "save"},
+    {"icon": "m_open", "label_key": "ui.menu.load", "action": "load_last"},
+    {"rule": true},
+    {"seg": "quality", "label_key": "menu.quality"},
+    {"icon": "m_quality", "label_key": "menu.graphicsOptions", "action": "graphics"},
+    {"icon": "m_quality", "label_key": "menu.effectsPanel", "action": "effects"},
+    {"seg": "language", "label_key": "menu.language"},
+    {"seg": "paint", "label_key": "menu.paint"},
+    {"rule": true},
+    {"icon": "m_about", "label_key": "action.about", "action": "about"}
    ],
    "large_maps": ["metropolis", "km24"]
   },
   "camera": {
    "title_key": "camera.label",
    "buttons": [
-    {
-     "icon": "cam_turn_left",
-     "label_key": "ui.camera.turnLeft",
-     "action": "turn_left"
-    },
-    {
-     "icon": "cam_tilt_down",
-     "label_key": "camera.tiltDown",
-     "action": "tilt_down"
-    },
-    {
-     "icon": "cam_north",
-     "label_key": "camera.north",
-     "action": "north"
-    },
-    {
-     "icon": "cam_tilt_up",
-     "label_key": "camera.tiltUp",
-     "action": "tilt_up"
-    },
-    {
-     "icon": "cam_turn_right",
-     "label_key": "ui.camera.turnRight",
-     "action": "turn_right"
-    },
-    {
-     "icon": "cam_perspective",
-     "label_key": "camera.perspective",
-     "action": "perspective"
-    },
-    {
-     "icon": "cam_reset",
-     "label_key": "action.resetView",
-     "action": "reset"
-    }
+    {"icon": "cam_turn_left", "label_key": "ui.camera.turnLeft", "action": "turn_left"},
+    {"icon": "cam_tilt_down", "label_key": "camera.tiltDown", "action": "tilt_down"},
+    {"icon": "cam_north", "label_key": "camera.north", "action": "north"},
+    {"icon": "cam_tilt_up", "label_key": "camera.tiltUp", "action": "tilt_up"},
+    {"icon": "cam_turn_right", "label_key": "ui.camera.turnRight", "action": "turn_right"},
+    {"icon": "cam_perspective", "label_key": "camera.perspective", "action": "perspective"},
+    {"icon": "cam_reset", "label_key": "action.resetView", "action": "reset"}
    ]
   },
   "sim": {
@@ -657,13 +284,8 @@
     ]
    ]
   },
-  "help": {
-   "title_key": "builder.help"
-  },
-  "files": {
-   "title_key": "action.openMap",
-   "empty_key": "save.none"
-  }
+  "help": {"title_key": "builder.help"},
+  "files": {"title_key": "action.openMap", "empty_key": "save.none"}
  },
  "street": {
   "_doc": "The Street tab of the Landscape drawer, as the Roadcraft 4.0 lays it out (photo reference/rua/23-aba-rua). kind: sim/street/street_works.h ItemKind and BarrierKind; row_m: the spacing of a dragged row; reach_m, pole_reach_m: how far from the pointer a piece is caught at the least; pick_px: the same in pixels, for a far camera; placing_ring_m: the size of the placing ring; double_click_m: two clicks farther apart than this are two points.",

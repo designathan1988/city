@@ -11,6 +11,8 @@ using namespace godot;
 
 namespace city {
 
+static constexpr double SHORTEST_SIDE2_M2 = 1e-6; // a side this short has no direction
+
 namespace {
 constexpr double LOT_ANGLE_LOOK_M = 80;
 
@@ -77,7 +79,7 @@ double CityCore::lot_angle_at(const Vector3 &p) {
 	double best = LOT_ANGLE_LOOK_M * LOT_ANGLE_LOOK_M, angle = 0;
 	s.roads.for_segments_near(p.x - LOT_ANGLE_LOOK_M, p.z - LOT_ANGLE_LOOK_M, p.x + LOT_ANGLE_LOOK_M, p.z + LOT_ANGLE_LOOK_M, [&](int seg) {
 		const Quad &q = s.roads.segs[size_t(seg)].q;
-		const double dx = q.x1 - q.x0, dz = q.z1 - q.z0, len2 = std::max(dx * dx + dz * dz, 1e-6);
+		const double dx = q.x1 - q.x0, dz = q.z1 - q.z0, len2 = std::max(dx * dx + dz * dz, SHORTEST_SIDE2_M2);
 		const double t = std::clamp(((p.x - q.x0) * dx + (p.z - q.z0) * dz) / len2, 0.0, 1.0);
 		const double ex = q.x0 + dx * t - p.x, ez = q.z0 + dz * t - p.z, d = ex * ex + ez * ez;
 		if (d < best) {

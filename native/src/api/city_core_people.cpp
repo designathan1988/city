@@ -92,6 +92,30 @@ Array CityProbes::people_clips() const { return render_->people_clips(); }
 
 bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
+// The doors the walkers know, and the sidewalks they stand on.
+static void census_doors(const CityState &s, Dictionary &d) {
+	const TrafficState &t = s.traffic;
+	int doors = 0;
+	for (const auto &list : t.doors) doors += int(list.size());
+	d["doors"] = doors;
+	d["doors_across"] = doors_across(s);
+	int sidewalks = 0, served = 0;
+	for (int seg : t.ped_segs)
+		for (int side = 0; side < 2; side++) {
+			const Profile &pf = s.roads.profile_of(seg);
+			if (!(side == 0 ? pf.has_walk_right : pf.has_walk_left)) continue;
+			sidewalks++;
+			const size_t key = size_t(seg * 2 + side);
+			served += key < t.doors.size() && !t.doors[key].empty() ? 1 : 0;
+		}
+	d["sidewalks"] = sidewalks;
+	d["sidewalks_with_doors"] = served;
+	d["doors_to_read"] = int(t.door_todo.size());
+	d["came_out"] = t.doors_out;
+	d["went_in"] = t.doors_in;
+	d["arrived"] = t.ped_arrived;
+}
+
 static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag", "crouch", "photo" };
 
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
@@ -154,27 +178,9 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	d["party_touching"] = touching;
 	d["touching_by"] = who_touches(t, 2 * s.catalog.traffic.ped_body_m);
 	d["modes"] = modes;
-	int doors = 0;
-	for (const auto &list : t.doors) doors += int(list.size());
-	d["doors"] = doors;
-	d["doors_across"] = doors_across(s);
 	d["lot_way_longest_m"] = longest;
 	d["going_to_the_foot"] = on_foot_line;
-	int sidewalks = 0, served = 0;
-	for (int seg : t.ped_segs)
-		for (int side = 0; side < 2; side++) {
-			const Profile &pf = s.roads.profile_of(seg);
-			if (!(side == 0 ? pf.has_walk_right : pf.has_walk_left)) continue;
-			sidewalks++;
-			const size_t key = size_t(seg * 2 + side);
-			served += key < t.doors.size() && !t.doors[key].empty() ? 1 : 0;
-		}
-	d["sidewalks"] = sidewalks;
-	d["sidewalks_with_doors"] = served;
-	d["doors_to_read"] = int(t.door_todo.size());
-	d["came_out"] = t.doors_out;
-	d["went_in"] = t.doors_in;
-	d["arrived"] = t.ped_arrived;
+	census_doors(s, d);
 	d["wanted"] = traffic::people_wanted(s, traffic::people_now(s.catalog.traffic, float(s.clock.hour())));
 	Dictionary where;
 	for (const auto &e : spots) {

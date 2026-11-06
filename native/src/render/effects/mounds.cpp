@@ -20,9 +20,12 @@ constexpr int GRID = 40;
 constexpr float BELL_POWER = 2.2f, BELL_SHOULDER = 1.1f; // how flat its top, how soon it falls away
 constexpr float LUMP_SHARE = 0.28f; // what the noise moves of its height
 constexpr uint32_t LATTICE_SEED = 7741;
-constexpr uint32_t BYTE = 255;
+constexpr uint32_t BYTE = 255, GREEN_SHIFT = 8, BLUE_SHIFT = 16;
+constexpr float HASH_TOP = 65535.f;
+constexpr float LUMP_WIDE = 5, LUMP_MID = 12, LUMP_FINE = 27; // the relief's three scales
+constexpr float WIDE_SHARE = 0.55f, MID_SHARE = 0.3f, FINE_SHARE = 0.15f;
 
-float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / 65535.f; }
+float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / HASH_TOP; }
 
 float value_noise(float x, float z) {
 	const int i = int(std::floor(x)), j = int(std::floor(z));
@@ -35,7 +38,7 @@ float value_noise(float x, float z) {
 float hill(float x, float z) {
 	const float r = std::min(1.f, std::pow(std::pow(std::fabs(x) * 2, 3.f) + std::pow(std::fabs(z) * 2, 3.f), 1.f / 3.f)); // a rounded square, as the footprint
 	const float bell = std::pow(std::max(0.f, 1 - std::pow(r, BELL_POWER)), BELL_SHOULDER);
-	const float lumps = value_noise(x * 5, z * 5) * 0.55f + value_noise(x * 12, z * 12) * 0.3f + value_noise(x * 27, z * 27) * 0.15f;
+	const float lumps = value_noise(x * LUMP_WIDE, z * LUMP_WIDE) * WIDE_SHARE + value_noise(x * LUMP_MID, z * LUMP_MID) * MID_SHARE + value_noise(x * LUMP_FINE, z * LUMP_FINE) * FINE_SHARE;
 	return bell * (1 - LUMP_SHARE + LUMP_SHARE * 2 * lumps);
 }
 
@@ -83,7 +86,7 @@ void Mounds::release() { layer_.release(); }
 void Mounds::add(const Vector3 &at, float rot, float w, float d, float h, const Color &wall, float seed, double born) {
 	if (shown_ >= capacity_) return;
 	const float c = std::cos(rot), s = std::sin(rot);
-	const uint32_t packed = uint32_t(wall.r * float(BYTE)) | uint32_t(wall.g * float(BYTE)) << 8 | uint32_t(wall.b * float(BYTE)) << 16;
+	const uint32_t packed = uint32_t(wall.r * float(BYTE)) | uint32_t(wall.g * float(BYTE)) << GREEN_SHIFT | uint32_t(wall.b * float(BYTE)) << BLUE_SHIFT;
 	layer_.put(shown_++, Vector3(c * w, 0, -s * w), Vector3(0, h, 0), Vector3(s * d, 0, c * d), at, float(born), seed, float(packed), 0);
 	dirty_ = true;
 }

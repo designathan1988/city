@@ -20,6 +20,8 @@ using namespace godot;
 
 namespace city {
 
+static constexpr int HEX_BASE = 16;
+
 namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
@@ -244,7 +246,7 @@ Dictionary CityCore::body_census(int kind) {
 		for (const b40::LotElement &e : body.elements) {
 			if (size_t(e.kind) < elements.size()) elements[size_t(e.kind)]++;
 			if (e.kind == b40::EL_SURFACE && e.paint >= 0 && size_t(e.paint) < body.paints.size()) {
-				const String tone = String::num_int64(int64_t(body.paints[size_t(e.paint)].rgb), 16);
+				const String tone = String::num_int64(int64_t(body.paints[size_t(e.paint)].rgb), HEX_BASE);
 				covers[tone] = double(covers.get(tone, 0.0)) + double(e.w) * e.d;
 			}
 		}

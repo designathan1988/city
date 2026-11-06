@@ -70,7 +70,7 @@ func _in_a_building(look: Vector3, eye: Vector3) -> float:
 
 
 func _parts() -> Dictionary:
-	return {"ground": _rig._ground.x, "rise": _rig._rise.x, "over": _rig._over.x, "out": _rig._out.x, "pull": _rig.pull.shown(), "floor": _rig._eye_ground}
+	return {"ground": _rig._ground.x, "rise": _rig._rise.x, "over": _rig.ahead.over.x, "out": _rig.ahead.out.x, "pull": _rig.pull.shown(), "floor": _rig._eye_ground}
 
 
 func _walk(half: float, tilt: float, yaw: float, start: Vector3) -> void:

@@ -28,16 +28,8 @@ var pull: CameraPull
 var _ground_y := 0.0
 var _ground := CameraDamp.new() # the height the view rests on
 var _rise := CameraDamp.new() # how far the eye stands over its orbit, clear of the ground
-var _over := CameraDamp.new() # how far the whole view stands over the roof the point looked at is in
-var _out := CameraDamp.new() # the share of the line of sight taken off to leave a building
 var _eye_ground := -INF # the ground under the eye, as last read
-# Where the view is heading, eased: what the buildings ask of it is read there too, so the eye starts round a wall before it reaches it.
-var _focus_rate := Vector3.ZERO
-var _yaw_rate := 0.0
-var _half_rate := 0.0 # of the logarithm
-var _last_focus := Vector3.ZERO
-var _last_yaw := 0.0
-var _last_half := 1.0
+var ahead: CameraAhead
 
 
 func _ready() -> void:
@@ -51,6 +43,7 @@ func _ready() -> void:
 	gestures = CameraGestures.new(self)
 	motion = CameraMotion.new(self)
 	pull = CameraPull.new(cfg)
+	ahead = CameraAhead.new(self)
 	yaw = deg_to_rad(cfg.start_yaw)
 	far_tilt = deg_to_rad(cfg.start_pitch)
 	half = cfg.start_view_half
@@ -155,7 +148,7 @@ func px_per_m() -> float:
 
 ## Moves the view so `grabbed` (on the plane at `h`) sits under the pointer again.
 func pan_to(grabbed: Vector3, screen: Vector2, h: float) -> void:
-	_bring(screen, grabbed, h)
+	CameraAim.bring(self, screen, grabbed, h)
 
 
 ## Zooms by `factor` (above 1: closer) keeping the ground under the pointer, or `grabbed` when given.
@@ -197,21 +190,7 @@ func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = nul
 	_apply()
 	if before == null:
 		return
-	_bring(screen, before, at_h)
-
-
-## Moves the point looked at until `point` (on the plane at `h`) is under `screen`.
-func _bring(screen: Vector2, point: Vector3, h: float) -> void:
-	for pass_i in int(cfg.keep_passes):
-		var found: Variant = hit_at(screen, h)
-		if found == null:
-			return
-		var d: Vector3 = point - found
-		if absf(d.x) + absf(d.z) < cfg.keep_tolerance_cm * CM:
-			return
-		focus.x += d.x
-		focus.z += d.z
-		_apply()
+	CameraAim.bring(self, screen, before, at_h)
 
 
 ## The tilt the player asks for, kept as the far tilt it means at this distance.
@@ -222,7 +201,7 @@ func _ask_tilt(next: float) -> void:
 
 ## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
 ## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map).
-func _ground_height(x: float, z: float) -> float:
+func seen_height(x: float, z: float) -> float:
 	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
 	return hit.position.y if hit.get("hit", false) else CityStore.query(&"height_at", [x, z])
 
@@ -235,9 +214,9 @@ func _apply() -> void:
 	CameraProfile.lens(camera, cfg, half)
 	distance = CameraProfile.view_distance(cfg, half)
 	_ground_y = _ground.x
-	focus.y = _ground.x + CameraProfile.eye_lift(cfg, half) + _over.x
+	focus.y = _ground.x + CameraProfile.eye_lift(cfg, half) + ahead.over.x
 	var basis := Basis.from_euler(Vector3(-pitch, yaw, 0.0))
-	var orbit_eye := focus.lerp(focus + basis.z * distance, 1.0 - maxf(pull.shown(), _out.x))
+	var orbit_eye := focus.lerp(focus + basis.z * distance, 1.0 - maxf(pull.shown(), ahead.out.x))
 	var pos := orbit_eye
 	pos.y = maxf(pos.y + _rise.x, _eye_ground + cfg.ground_touch_m)
 	if pos.y != orbit_eye.y: # raised over the ground, still looking at the same point
@@ -249,7 +228,7 @@ func _apply() -> void:
 ## Once a frame: what stands under and in front of the view, each height and share moved towards it on its own spring. Nothing the terrain,
 ## a road's edge, a roof or a wall asks of the view reaches the screen as a step. `dt` 0 takes it all at once (a jump).
 func _settle(dt: float) -> void:
-	_ground.to(_ground_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(_ground_height(focus.x, focus.z))
+	_ground.to(seen_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(seen_height(focus.x, focus.z))
 	var base := Vector3(focus.x, _ground.x + CameraProfile.eye_lift(cfg, half), focus.z)
 	var far_eye := base + Basis.from_euler(Vector3(-pitch, yaw, 0.0)).z * distance
 	pull.ask(base, far_eye, half)
@@ -258,56 +237,11 @@ func _settle(dt: float) -> void:
 	else:
 		pull.snap()
 	var eye := far_eye.lerp(base, pull.shown())
-	_eye_ground = _ground_height(eye.x, eye.z)
+	_eye_ground = seen_height(eye.x, eye.z)
 	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
-	_note_trend(dt)
-	var clear := _clear_of_buildings(base, eye + Vector3.UP * rise, far_eye.distance_to(base), half)
-	var coming := _coming_clear(dt)
-	var over := maxf(clear.x, coming.x)
-	var out := maxf(clear.y, coming.y)
+	ahead.settle(dt, base, eye + Vector3.UP * rise, far_eye.distance_to(base))
 	if dt > 0.0:
 		_rise.to(rise, dt, cfg.eye_rise_s if rise > _rise.x else cfg.eye_fall_s)
-		_over.to(over, dt, cfg.eye_out_s if over > _over.x else cfg.eye_back_s)
-		_out.to(out, dt, cfg.eye_out_s if out > _out.x else cfg.eye_back_s)
 	else:
 		_rise.snap(rise)
-		_over.snap(over)
-		_out.snap(out)
 	_apply()
-
-
-## At any distance, never inside a building: how far the view must stand over the roof at its point, and the share of the line of sight to take off.
-func _clear_of_buildings(base: Vector3, eye: Vector3, line: float, at_half: float) -> Vector2:
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye, CameraProfile.eye_lift(cfg, at_half)])
-	return Vector2(free[0].y - base.y, clampf(1.0 - free[1].distance_to(free[0]) / maxf(line, PARALLEL), 0.0, 1.0))
-
-
-## How the view has been moving, eased so that one frame's gesture is not read as a course.
-func _note_trend(dt: float) -> void:
-	if dt <= 0.0:
-		_focus_rate = Vector3.ZERO
-		_yaw_rate = 0.0
-		_half_rate = 0.0
-	else:
-		var keep := exp(-dt / cfg.trend_s)
-		_focus_rate = (focus - _last_focus) / dt * (1.0 - keep) + _focus_rate * keep
-		_yaw_rate = angle_difference(_last_yaw, yaw) / dt * (1.0 - keep) + _yaw_rate * keep
-		_half_rate = log(half / _last_half) / dt * (1.0 - keep) + _half_rate * keep
-	_last_focus = focus
-	_last_yaw = yaw
-	_last_half = half
-
-
-## What the buildings will ask where the view is heading (the Deoccluder's look ahead): nothing to read while it stands still.
-func _coming_clear(dt: float) -> Vector2:
-	var moving := Vector2(_focus_rate.x, _focus_rate.z).length() / half + absf(_yaw_rate) + absf(_half_rate)
-	if dt <= 0.0 or moving < cfg.trend_still:
-		return Vector2.ZERO
-	var ahead_s: float = cfg.look_ahead_s
-	var at := focus + _focus_rate * ahead_s
-	var at_half := clampf(half * exp(_half_rate * ahead_s), cfg.view_half_min, cfg.view_half_max)
-	var base := Vector3(at.x, _ground_height(at.x, at.z) + CameraProfile.eye_lift(cfg, at_half), at.z)
-	var tilt := clampf(CameraProfile.profile_tilt(cfg, at_half) + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, at_half), deg_to_rad(cfg.max_tilt_deg))
-	var away := CameraProfile.view_distance(cfg, at_half)
-	var eye := base + Basis.from_euler(Vector3(-tilt, yaw + _yaw_rate * ahead_s, 0.0)).z * away
-	return _clear_of_buildings(base, eye, away, at_half)

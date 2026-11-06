@@ -7,6 +7,7 @@
 // ahead. Held up past its jamtime (by the way: sidewalk, zebra, a single stripe) it squeezes past walkers (never
 // furniture) at ped_jam_share of its pace (SUMO's jamtime).
 #include "sim/traffic/ped_stripes.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
 #include <cmath>
@@ -230,6 +231,18 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	side_limits(f, b, n, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
 	return out;
+}
+
+void on_sidewalk(Pedestrian &w) {
+	w.u = w.u_goal = w.dir == 0 ? -w.track : w.track; // its own side of the way
+	w.stripe_held = 0;
+	w.pace = w.speed;
+	w.jam = 0;
+}
+
+void onto_line(Pedestrian &w) {
+	w.u = w.u_goal = 0; // a new line starts where the walker stands
+	w.stripe_held = 0;
 }
 
 } // namespace traffic

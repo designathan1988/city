@@ -28,8 +28,19 @@ func run() -> void:
 	await t._click(MOUSE_BUTTON_RIGHT, c)
 	t._check(road.chain == Vector3.INF, "clique direito cancela a via")
 	await _height_keys()
+	_blocks()
 	_zone_brush()
 	t.tools.set_tool(ToolController.Tool.NONE)
+
+
+## Streets by the block from the road tool: the preview, and the grid laid where it was shown.
+func _blocks() -> void:
+	var at := Vector3(ZONE_ROAD_X, 0, -ZONE_ROAD_Z)
+	var had: int = CityStore.query(&"inspect", [at]).size()
+	RoadBlocks.show(t.tools, at)
+	RoadBlocks.lay(t.tools.active, at)
+	CityStore.dispatch(&"undo")
+	t._check(CityStore.query(&"inspect", [at]).size() == had, "quarteirões pela ferramenta: desfeitos em um passo")
 
 
 ## A fast drag reports two points far apart: the whole way between them is zoned, and with Shift held the same stroke takes the zone away.

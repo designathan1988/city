@@ -1,3 +1,4 @@
+// What people hold: the meshes, one a thing, and the instances that follow the bodies (held_things.h).
 #include "render/agents/held_things.h"
 
 #include "core/color.h"

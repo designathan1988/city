@@ -23,7 +23,7 @@ namespace city {
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SIGN = 6, ROOF = 7, GLOSS = 8 };
+enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
 enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3 }; // what the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge
 

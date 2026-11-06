@@ -66,6 +66,8 @@ private:
 	bool read_loads(const godot::Dictionary &loads, godot::PackedStringArray &errors);
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
+	void limit_cabins(); // the next frame's limit of who has a cabin
+	void draw_rows(const godot::Vector3 &cam); // the rows of this frame to the server
 	void commit_mesh(int model, int draw, const MeshBuilder &mb);
 	// Whoever is aboard, to PeopleRenderer: the driver, and the passengers the order seats.
 	void seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin);

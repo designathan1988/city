@@ -1,6 +1,6 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
-// 6 a lit sign (the bus's destination, day and night), 7 a roof (the paint, or black on a share of the cars), 8 the gloss black round
+// 5 a lit sign (the bus's destination, day and night), 6 a roof (the paint, or black on a share of the cars), 7 the gloss black round
 // the glass. The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
@@ -77,11 +77,11 @@ void fragment() {
 		c = srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == 7) {
+	} else if (tag == 6) {
 		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
-	} else if (tag == 8) {
+	} else if (tag == 7) {
 		rough = paint_roughness;
 		emit = coat;
 	} else if (tag == 2) {
@@ -97,7 +97,7 @@ void fragment() {
 		rough = lens_roughness;
 	} else if (tag == 4) {
 		rough = lens_roughness;
-	} else if (tag == 6) {
+	} else if (tag == 5) {
 		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
 	}

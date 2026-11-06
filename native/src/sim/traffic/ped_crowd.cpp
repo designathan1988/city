@@ -342,17 +342,5 @@ void crowd_step(CityState &s, float dt) {
 	}
 }
 
-void on_sidewalk(Pedestrian &w) {
-	w.u = w.u_goal = w.dir == 0 ? -w.track : w.track; // its own side of the way
-	w.stripe_held = 0;
-	w.pace = w.speed;
-	w.jam = 0;
-}
-
-void onto_line(Pedestrian &w) {
-	w.u = w.u_goal = 0; // a new line starts where the walker stands
-	w.stripe_held = 0;
-}
-
 } // namespace traffic
 } // namespace city

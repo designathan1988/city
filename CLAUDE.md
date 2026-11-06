@@ -282,7 +282,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/demolish_box.cpp` — demolir na caixa: prédios, entulho e vias com o meio dentro do retângulo, num passo de desfazer
 - `native/src/sim/commands/road_copies.cpp` — inverter mão única, duplicar via e a pintura do mapa
-- `native/src/sim/commands/road_blocks.cpp` — quarteirões de uma vez: uma grade de ruas num gesto, um passo de desfazer
+- `native/src/sim/commands/road_blocks.cpp` · `native/src/sim/commands/road_blocks.h` — quarteirões de uma vez: uma grade de ruas num gesto, um passo de desfazer
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_grade_sync.cpp` · `native/src/sim/commands/road_grade_sync.h` — o greide resolvido depois de uma edição (chão = terreno, água e nível do mar) e o chão moldado às vias movidas; se um trecho cruza água (vira ponte)
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
@@ -315,7 +315,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/geometry.cpp` · `native/src/sim/roads/geometry.h` — geometria pura das vias (Bézier, tabelas de comprimento e o parâmetro de um comprimento e vice-versa, interseções)
 - `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
-- `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`)
+- `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` · `native/src/sim/roads/road_network_node.cpp` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`); o que um nó é para quem passa nele (faixa, retorno, movimento proibido)
 - `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — **traduzidos do 4.0 pelo conversor, sem edição** (`tools/converter/configs/plans/flow-control.json`): o fluxo medido em cada cruzamento e o controle que ele pede; muda-se regerando, nunca à mão
 - `native/src/sim/roads/road_grade.cpp` · `native/src/sim/roads/road_grade.h` · `native/src/sim/roads/road_grade_internal.h` · `native/src/sim/roads/road_grade_profile.cpp` · `native/src/sim/roads/road_grade_solve.cpp` — dono único da altura das vias (elevation.ts do 4.0): estações de cada trecho, chão lido em 7 pontos, placas das junções e das transições, os solvers de chão, variável, elevada e afundada, as rodadas até os nós pararem; a estrutura de um trecho (chão, elevada, ponte, túnel)
 - `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` · `native/src/sim/roads/road_spec.cpp` · `native/src/sim/roads/road_spec.h` · `native/src/api/city_core_road_spec.cpp` — via de classe com as faixas, a largura e as vagas das opções da ferramenta, um perfil a mais no catálogo; a via que o jogador compõe, elemento por elemento (profile.ts do 4.0), o que a impede, e a API do editor
@@ -453,7 +453,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/wear/wear_field.cpp` · `native/src/render/wear/wear_field.h` — desgaste das ruas e calçadas: campo em janela que dá a volta, em camadas de uma textura em array, só as alteradas enviadas
 - `native/src/render/mesh_order.cpp` · `native/src/render/mesh_order.h` — a ordem dos triângulos de uma superfície para o cache de vértices da GPU, no job que assa a malha
-- `native/src/render/rs_util.h` · `native/src/render/row_keeper.h` — instâncias RenderingServer sem nós de cena e as linhas de MultiMesh que vivem entre quadros; cada agente na mesma linha de quadro a quadro, para o vetor de movimento do TAA e do FSR2
+- `native/src/render/rs_util.h` · `native/src/render/instance_rows.h` · `native/src/render/mesh_draw.h` · `native/src/render/row_keeper.h` — instâncias RenderingServer sem nós de cena e as linhas de MultiMesh que vivem entre quadros; cada agente na mesma linha de quadro a quadro, para o vetor de movimento do TAA e do FSR2
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` · `native/src/render/cover/shore_stones.cpp` · `native/src/render/cover/shore_stones.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores), as pedras da margem e do leito e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/shore_field.cpp` · `native/src/render/water/shore_field.h` · `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — o nível da água ao lado de cada terra, para a praia; superfície dos lagos e rios acima do mar, por chunk
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
@@ -464,6 +464,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/trees/garden_place.cpp` · `native/src/render/trees/garden_place.h` — os jardins dos lotes (gardenPlace.ts do 4.0): árvores, arbustos, sebes e canteiros do corpo postos no chão como plantas, as de cada corpo guardadas pela chave dele; um canteiro é um modelo por trecho e não lança sombra
 
 **Godot — project/**
+- `project/game/camera/camera_ahead.gd` — para onde a vista vai: o que os prédios pedem agora e adiante, nas molas de sair deles
 - `project/game/camera/camera_aim.gd` — até onde o ponteiro segura uma altura
 - `project/game/camera/camera_damp.gd` — mola criticamente amortecida, exata em qualquer quadro: o dono de todo movimento suave da câmera
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
@@ -497,6 +498,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/tools/building_tool.gd` · `project/game/tools/lot_tool.gd` — Construir: o clique escolhe bloco, face e vão e as ferramentas da gaveta agem na escolha; Construir › Desenhar
 - `project/game/tools/demolish_tool.gd` · `project/game/tools/strike_tool.gd` · `project/game/tools/shoot_tool.gd` — demolir; bomba (um clique, força do parâmetro `strength`, o controle da aba Bomba) e pistola (um tiro pelo raio da câmera); a aba Demolir chama `set_tool(STRIKE|SHOOT, ...)`
 - `project/game/tools/road_keys.gd` — as teclas da ferramenta de via, remapeáveis: o que o jogo guarda para si vem de `project/data/ui/keys.json` e da câmera
+- `project/game/tools/road_blocks.gd` — quarteirões na ferramenta de via: a grade guardada, a prévia e o assentar
 - `project/game/tools/road_tool.gd` · `project/game/tools/roundabout_tool.gd` · `project/game/tools/split_tool.gd` · `project/game/tools/upgrade_tool.gd` · `project/game/tools/control_tool.gd` · `project/game/tools/move_tool.gd` — via reta/curva com prévia; rotatória; Dividir; Melhorar; Controle; Mover
 - `project/game/tools/inspect_tool.gd` · `project/game/tools/terrain_tool.gd` · `project/game/tools/zone_tool.gd` · `project/game/tools/transit_tool.gd` — inspecionar; Relevo; pincel de zona; parada, terminal, trilho, estação e linha
 - `project/game/tools/tool_base.gd` · `project/game/tools/tool_controller.gd` — base das ferramentas (recebe pontos do chão); máquina de estados das ferramentas

@@ -292,13 +292,23 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	rows_lost_ = placed;
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) rows_lost_ -= bufs[i][level].count();
+	limit_cabins();
+	drawn_people_ = people_.update(f, cam, view, at, people_r_);
+	draw_rows(cam);
+}
+
+void AgentRenderer::limit_cabins() {
 	if (cabin_cap_ > 0 && int(near_d2_.size()) > cabin_cap_) { // the next frame's limit: the nearest cabin_cap_ keep theirs
 		std::nth_element(near_d2_.begin(), near_d2_.begin() + cabin_cap_, near_d2_.end());
 		cabin_limit2_ = near_d2_[size_t(cabin_cap_)];
 	} else {
 		cabin_limit2_ = 0;
 	}
-	drawn_people_ = people_.update(f, cam, view, at, people_r_);
+}
+
+void AgentRenderer::draw_rows(const Vector3 &cam) {
+	auto &bufs = seen_rows_;
+	auto &casts = cast_rows_;
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
 	// no override: each surface carries its material (the body and the near level's glass); the room is MultiMeshDraw's
 	for (int i = 0; i < AGENT_MODELS; i++)

@@ -13,6 +13,8 @@
 
 namespace city {
 
+static constexpr double FAR_OFF_M = 1e18; // a box before its first point
+
 namespace {
 constexpr double CORNER_REACH_M = 0.8, SIDE_REACH_M = 1.2;
 
@@ -27,7 +29,7 @@ void bounds(const std::vector<LotPoint> &q, double &x0, double &z0, double &x1, 
 
 // The book replaced, and the land of `rings` read again.
 EditResult commit(CityState &s, LotBook next, const std::vector<std::vector<LotPoint>> &rings) {
-	double x0 = 1e18, z0 = 1e18, x1 = -1e18, z1 = -1e18;
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 	for (const std::vector<LotPoint> &q : rings) bounds(q, x0, z0, x1, z1);
 	j_lots(s, std::move(next));
 	for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
@@ -52,7 +54,7 @@ bool free_of_lots(const LotBook &book, const std::vector<LotPoint> &q) {
 
 // What stands on a ring goes with it.
 void raze(CityState &s, const std::vector<LotPoint> &q, EditResult &r) {
-	double x0 = 1e18, z0 = 1e18, x1 = -1e18, z1 = -1e18;
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 	bounds(q, x0, z0, x1, z1);
 	std::vector<int> ids;
 	s.buildings.query(float(x0), float(z0), float(x1), float(z1), [&](int id) {
@@ -91,7 +93,7 @@ void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, doub
 	LotBook next = s.lot_book;
 	std::vector<std::vector<LotPoint>> touched;
 	for (const PlayerLot &lot : s.lot_book.lots) {
-		double x0 = 1e18, z0 = 1e18, x1 = -1e18, z1 = -1e18;
+		double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
 		bounds(lot.corners, x0, z0, x1, z1);
 		if (x1 < minx || x0 > maxx || z1 < minz || z0 > maxz) continue;
 		bool crossed = false;
