@@ -37,8 +37,8 @@ Os `tools/ports/*/coverage.md` estão velhos (elevação consta como a portar, e
 | Terreno | variação macro e neblina aérea feitas; falta estrato de rocha e sombra de contato |
 | Luz | SSIL no alto e no ultra, FSR2, cascatas por degraus |
 | Vias | Quarteirões de uma vez feito (`road_blocks.cpp`); faltam editor de perfil, Personalizar, Meus modelos, conectores, regras por acesso |
-| Zoneamento e lotes | feitos os lotes do jogador: `sim/lots/lot_book`, `lot_commands`, bloco no save, `lots_tool.gd`, aba Lotes, zona por lote, crescimento lendo o lote, fuzz; faltam `onLand` (hoje recusa sobre a via), `cutLotsByRoads`, `lotSnapper` e o lote de cor nas camadas |
-| Construir › Interior | FALTA ligar a aba (contrato em `ports/interior/report.md`) |
+| Zoneamento e lotes | feitos: lotes do jogador, `onLand`, `cutLotsByRoads`, `lotSnapper`, cor no chão pela camada de zonas (Clipper2 em `sim/lots/lot_land`), prévia do que será feito; falta `planLots`/`applyLots` (proposta de lotes de um quarteirão) |
+| Construir › Interior (provado por clique e foto em 2026-11-06, `torre695-andar10`) | FALTA ligar a aba (contrato em `ports/interior/report.md`) |
 | Tráfego, pedestres, água, paisagismo, bomba, pistola, transporte, mobília | a conferir, ver Pendências do CLAUDE.md |
 
 ## Falta depois

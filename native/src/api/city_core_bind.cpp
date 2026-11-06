@@ -94,7 +94,9 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
 	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
 	ClassDB::bind_method(D_METHOD("lot_add_rect", "a", "b", "angle"), &CityCore::lot_add_rect);
-	ClassDB::bind_method(D_METHOD("lot_add_polygon", "points", "front"), &CityCore::lot_add_polygon);
+	ClassDB::bind_method(D_METHOD("lot_add_polygon", "points"), &CityCore::lot_add_polygon);
+	ClassDB::bind_method(D_METHOD("lot_land", "a", "b", "angle"), &CityCore::lot_land);
+	ClassDB::bind_method(D_METHOD("lot_snap_point", "point", "reach", "apart"), &CityCore::lot_snap_point);
 	ClassDB::bind_method(D_METHOD("lot_move_corner", "from", "to"), &CityCore::lot_move_corner);
 	ClassDB::bind_method(D_METHOD("lot_curve_side", "a", "b", "through"), &CityCore::lot_curve_side);
 	ClassDB::bind_method(D_METHOD("lot_set_front", "id", "side"), &CityCore::lot_set_front);

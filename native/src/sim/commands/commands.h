@@ -116,7 +116,10 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
 // Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
 EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
-EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points, int front);
+EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points);
+// A road edit cuts the lots it crosses, in its own step of undo (cutLotsByRoads): each is replaced by the pieces left on land, of its
+// zone where they are big enough, and what stood on it goes.
+void cut_lots_by_roads(CityState &s, double minx, double minz, double maxx, double maxz);
 EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to);
 EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through);
 EditResult set_lot_front(CityState &s, int id, int side);

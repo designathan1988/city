@@ -2,6 +2,7 @@
 #include "api/city_core.h"
 #include "api/edit_result.h"
 #include "sim/lots/lot_book.h"
+#include "sim/lots/lot_land.h"
 
 #include <algorithm>
 #include <cmath>
@@ -35,10 +36,10 @@ Dictionary CityCore::lot_add_rect(const Vector3 &a, const Vector3 &b, double ang
 	return run_edit(*state_, "cmd.place.lot", [&](CityState &s) { return add_lot_rect(s, point(a), point(b), angle); });
 }
 
-Dictionary CityCore::lot_add_polygon(const PackedVector3Array &points, int front) {
+Dictionary CityCore::lot_add_polygon(const PackedVector3Array &points) {
 	std::vector<LotPoint> ring;
 	for (const Vector3 &p : points) ring.push_back(point(p));
-	return run_edit(*state_, "cmd.place.lot", [&](CityState &s) { return add_lot_polygon(s, ring, front); });
+	return run_edit(*state_, "cmd.place.lot", [&](CityState &s) { return add_lot_polygon(s, ring); });
 }
 
 Dictionary CityCore::lot_move_corner(const Vector3 &from, const Vector3 &to) {
@@ -85,6 +86,24 @@ double CityCore::lot_angle_at(const Vector3 &p) {
 		}
 	});
 	return angle;
+}
+
+// The rectangle being dragged as it will be made: cut back to the footways, on the ground.
+PackedVector3Array CityCore::lot_land(const Vector3 &a, const Vector3 &b, double angle) {
+	PackedVector3Array out;
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const std::vector<LotPoint> rect = lot_rect({ a.x, a.z }, { b.x, b.z }, angle);
+	if (rect.empty()) return out;
+	for (const LotPoint &p : lot_on_land(state_->roads, rect)) out.push_back(Vector3(float(p.x), state_->terrain.height_at(float(p.x), float(p.z)), float(p.z)));
+	return out;
+}
+
+// A lot's point by the streets and the other lots (lotSnapper): `apart`, when finite, the corner being dragged.
+Vector3 CityCore::lot_snap_point(const Vector3 &p, double reach, const Vector3 &apart) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const LotPoint from = { apart.x, apart.z };
+	const LotSnap hit = lot_snap(state_->lot_book, state_->roads, { p.x, p.z }, reach, 0, apart.is_finite() ? &from : nullptr);
+	return Vector3(float(hit.p.x), state_->terrain.height_at(float(hit.p.x), float(hit.p.z)), float(hit.p.z));
 }
 
 int CityCore::lot_at(const Vector3 &p) {

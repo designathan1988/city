@@ -100,6 +100,11 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 
 } // namespace
 
+// Whether the ops since `from` laid a road or widened one.
+static bool moved_paving(const EditEntry &e, size_t from) {
+	return std::any_of(e.ops.begin() + std::ptrdiff_t(from), e.ops.end(), [](const EditOp &op) { return op.kind == OpKind::ADD_SEG || op.kind == OpKind::PROFILE; });
+}
+
 void apply_entry(CityState &s, const EditEntry &e, bool forward) {
 	if (forward) {
 		for (const EditOp &op : e.ops) exec(s, op, true);
@@ -147,6 +152,8 @@ void EditHistory::begin(const std::string &label) {
 }
 
 void EditHistory::end(CityState &s, bool ok) {
+	if (ok && open.has_box && !s.lot_book.lots.empty() && moved_paving(open, begin_ops))
+		cut_lots_by_roads(s, open.minx - SETTLE_PAD_M, open.minz - SETTLE_PAD_M, open.maxx + SETTLE_PAD_M, open.maxz + SETTLE_PAD_M);
 	recording = false;
 	if (!ok && open.ops.size() > begin_ops) {
 		EditEntry tail;

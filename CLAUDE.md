@@ -67,7 +67,7 @@ commit, e commite-o junto.
 ## Comandos
 | O quê | Comando |
 |---|---|
-| O que um clone precisa | O `godot-cpp` já vem em `native/godot-cpp` (commit e103d348 do oficial, API 4.7) e as DLLs do núcleo em `project/bin` (refeitas e versionadas a cada mudança no C++): o jogo abre no Godot sem compilar. O meshoptimizer vem pelo CMake na primeira compilação (`FetchContent`, v1.3, pasta de build; precisa de rede uma vez). Instalados à parte: Godot 4.7.2 (`winget install GodotEngine.GodotEngine`), llvm-mingw `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+ (o tradutor e a cópia do 4.0), Python 3.12 (gates) e, para o oráculo, `npm install` em `tools/oracle-4.0` |
+| O que um clone precisa | O `godot-cpp` já vem em `native/godot-cpp` (commit e103d348 do oficial, API 4.7) e as DLLs do núcleo em `project/bin` (refeitas e versionadas a cada mudança no C++): o jogo abre no Godot sem compilar. O meshoptimizer e a Clipper2 (booleanas de polígono em inteiros, 2.0.1) vêm pelo CMake na primeira compilação (`FetchContent`, pasta de build; precisa de rede uma vez). Instalados à parte: Godot 4.7.2 (`winget install GodotEngine.GodotEngine`), llvm-mingw `20261020-ucrt-x86_64` (`C:/Projects/toolchains`), CMake 4.4, Node 23.6+ (o tradutor e a cópia do 4.0), Python 3.12 (gates) e, para o oráculo, `npm install` em `tools/oracle-4.0` |
 | Gates | `python3 tools/gates/run_gates.py` (`--file X` para um arquivo, `--summary` resumo) |
 | Núcleo Linux / Windows | `tools/build/build.sh core` / `MINGW=... tools/build/build.sh core-windows` (DLL de release e de debug, a que o editor e os testes carregam) |
 | Testes core + e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
@@ -298,6 +298,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/economy/road_economy.cpp` · `native/src/sim/economy/road_economy.h` — dono do dinheiro das vias: modos de construir, preço, a regra da cobrança e o acerto da edição aberta pelo diário
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo; os do jogador têm a preferência
+- `native/src/sim/lots/lot_land.cpp` · `native/src/sim/lots/lot_land.h` — o lote contra as ruas (onLand, cutLotsByRoads, lotSnapper do 4.0): a calçada ao redor de uma caixa como polígonos em milímetros (Clipper2), o que sobra fora dela, a frente e o encaixe
 - `native/src/sim/lots/lot_book.cpp` · `native/src/sim/lots/lot_book.h` · `native/src/sim/commands/lot_commands.cpp` · `native/src/sim/persistence/save_lots.cpp` · `native/src/sim/persistence/save_lots.h` · `native/src/api/city_core_lots.cpp` — os lotes que o jogador desenha (world/lots.ts do 4.0): polígono com frente, onde um prédio cabe, cortar, juntar, curvar um lado; as edições pelo diário, o bloco do save e a API de script
 - `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
 - `native/src/sim/nature/ecology.cpp` · `native/src/sim/nature/ecology.h` — o que cresce onde por bioma (fitofisionomias), calculado por chunk onde é lido
@@ -648,7 +649,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - Interface: o painel de efeitos só traz as chaves do que já existe (nuvens, clima, partículas e transporte vêm com as sessões donas); o laboratório de objetos do 4.0 não tem par. Avisos: o 4.0 tem um só, trocado a cada resposta (`flashHint`, 2,4 s, 520 px, sem variante vermelha) e a barra de dica escondida (`shell.css .v2-hint`); o jogo manda as falas das ferramentas a uma barra fixa (`HudMessages.hint`) com recusa em vermelho, e mistura resultado, nota da ferramenta e recusa a cada movimento no mesmo sinal.
 - Lotes: sem lote de esquina e garagem em encosta; escritórios do mapa 0 (29-30 m, praça 5-7 m) sem fundo para estacionamento.
 - Estilo regional: o seletor da tela inicial, `CityState::style` e as unidades dos formatadores existem, com um só estilo (`roadcraft`); o bloco no save (hoje vai no arquivo da sessão) e a leitura única pelo render e pela simulação esperam o mecanismo. O catálogo de vias ainda escreve "m" no texto de `strings`.
-- Lotes do jogador: o lote desenhado sobre a via é recusado, no 4.0 ele é cortado à calçada (`onLand`) e uma via nova corta os que cruza (`cutLotsByRoads`); o encaixe em calçadas e cantos (`lotSnapper`) e o lote de cor nas camadas faltam. Salvar é
+- Lotes do jogador: faltam a proposta de lotes de um quarteirão (`planLots`/`applyLots`), a etiqueta de medidas e o caminho do apagar em traço do 4.0. Salvar é
   um arquivo por cidade (sem as gerações do Roadcraft; o arquivo que não abre vai para a quarentena); o autosave não grava cidade gerada
   que o jogador não editou nem salvou (o Roadcraft grava e poda as não tocadas).
 - Dinheiro: o 4.0 não tem imposto nem manutenção: a única entrada é a devolução ao demolir. Estilos em `road_profiles.json`; `eua` e `europa` faltam.

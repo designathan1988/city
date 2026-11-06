@@ -84,8 +84,8 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	tool = next
 	params = p
 	remembered[next] = p
-	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
 	preview.clear()
+	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
 	tool_changed.emit(tool, params)
 
 

@@ -59,6 +59,10 @@ std::vector<LotPoint> joined_lots(const std::vector<LotPoint> &a, const std::vec
 // Whether a ring lies deep in another (a corner or the middle of one well inside the other).
 bool lots_overlap(const std::vector<LotPoint> &a, const std::vector<LotPoint> &b);
 bool big_enough(const std::vector<LotPoint> &ring);
+// The ring in triangles by ear clipping, three indices each: a lot may be concave.
+std::vector<int> lot_triangles(const std::vector<LotPoint> &ring);
+// A piece of a cut lot with its front: the side along the old front fa -> fb, or the side nearest it.
+std::vector<LotPoint> piece_with_front(const std::vector<LotPoint> &piece, const LotPoint &fa, const LotPoint &fb);
 // The side from a to b bent through `through`: the points between them, a quadratic curve.
 std::vector<LotPoint> curved_side(const LotPoint &a, const LotPoint &b, const LotPoint &through);
 // What the corners near `at` take: the points move to `to`.

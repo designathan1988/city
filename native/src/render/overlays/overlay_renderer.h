@@ -43,6 +43,7 @@ private:
 		Ribbon r;
 	};
 	void strip(Ribbon &out, const CityState &s, int seg, float u0, float u1, const godot::Color &col, bool on_road) const;
+	void lot_cover(Ribbon &out, const CityState &s, const PlayerLot &lot, int64_t key) const;
 	Ribbon build_zone_cpu(const CityState &s, int64_t key) const;
 	Ribbon build_congestion_cpu(const CityState &s, const PoseFrame &f, int64_t key) const;
 	void submit_zone(const CityState &s, int64_t key);

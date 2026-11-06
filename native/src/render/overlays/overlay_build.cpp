@@ -18,7 +18,59 @@ constexpr float BYTE_MAX = 255.f; // packed zone colours are RGBA8
 constexpr double MIN_DERIV = 1e-6; // a degenerate curve keeps a finite normal
 constexpr float COLOUR_RANGE_MIN = 1e-3f; // free_share == jam_share still divides
 constexpr float HALF_JAM = 0.5f;
+
+Color zone_color(const CityState &s, int code, float alpha) {
+	const uint32_t c = s.catalog.zone(code).color;
+	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, alpha);
+}
+
+// A convex polygon cut by a line of constant x (or z): what lies on the side `keep` looks to.
+std::vector<LotPoint> clipped(const std::vector<LotPoint> &q, bool on_x, double line, double keep) {
+	std::vector<LotPoint> out;
+	const auto off = [&](const LotPoint &p) { return ((on_x ? p.x : p.z) - line) * keep; };
+	for (size_t i = 0; i < q.size(); i++) {
+		const LotPoint &p = q[i], &r = q[(i + 1) % q.size()];
+		const double a = off(p), b = off(r);
+		if (a >= 0) out.push_back(p);
+		if ((a >= 0) != (b >= 0)) {
+			const double t = a / (a - b);
+			out.push_back({ p.x + (r.x - p.x) * t, p.z + (r.z - p.z) * t });
+		}
+	}
+	return out;
+}
 } // namespace
+
+// A zoned lot coloured on the ground (lotOverlay.ts FLAG_FILL): its triangles cut to the cells of the chunk, so the colour lies on the
+// relief and each chunk draws its own part of the lot.
+void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot &lot, int64_t key) const {
+	const double cx = double(key_x(key)) * CHUNK, cz = double(key_y(key)) * CHUNK;
+	const Color col = zone_color(s, lot.zone, zone_alpha_);
+	const std::vector<int> tris = lot_triangles(lot.corners);
+	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
+		const std::vector<LotPoint> tri = { lot.corners[size_t(tris[t])], lot.corners[size_t(tris[t + 1])], lot.corners[size_t(tris[t + 2])] };
+		double x0 = cx + CHUNK, z0 = cz + CHUNK, x1 = cx, z1 = cz;
+		for (const LotPoint &p : tri) {
+			x0 = std::min(x0, p.x);
+			z0 = std::min(z0, p.z);
+			x1 = std::max(x1, p.x);
+			z1 = std::max(z1, p.z);
+		}
+		const int i0 = std::max(0, int(std::floor((x0 - cx) / sample_))), i1 = std::min(int(CHUNK / sample_), int(std::ceil((x1 - cx) / sample_)));
+		const int j0 = std::max(0, int(std::floor((z0 - cz) / sample_))), j1 = std::min(int(CHUNK / sample_), int(std::ceil((z1 - cz) / sample_)));
+		for (int j = j0; j < j1; j++)
+			for (int i = i0; i < i1; i++) {
+				const double ax = cx + double(i) * sample_, az = cz + double(j) * sample_;
+				const std::vector<LotPoint> cell = clipped(clipped(clipped(clipped(tri, true, ax, 1), true, ax + sample_, -1), false, az, 1), false, az + sample_, -1);
+				const auto at = [&](const LotPoint &p) { return Vector3(float(p.x), s.terrain.height_at(float(p.x), float(p.z)) + lift_, float(p.z)); };
+				for (size_t k = 1; k + 1 < cell.size(); k++)
+					for (const LotPoint &p : { cell[0], cell[k], cell[k + 1] }) {
+						out.v.push_back(at(p));
+						out.c.push_back(col);
+					}
+			}
+	}
+}
 
 // A ribbon along segment `seg` between offsets u0 and u1 (left of a -> b positive), on the road or on the ground.
 void OverlayRenderer::strip(Ribbon &out, const CityState &s, int seg, float u0, float u1, const Color &col, bool on_road) const {
@@ -58,13 +110,13 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 			int code = side == 0 ? g.zl : g.zr;
 			const bool players = g.flags & (side == 0 ? SEG_ZONED_LEFT : SEG_ZONED_RIGHT);
 			if (code == 0 || (!players && !every)) continue;
-			uint32_t c = s.catalog.zone(code).color;
-			Color col(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE_MAX, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE_MAX,
-					float((c >> RGBA_B_SHIFT) & 0xff) / BYTE_MAX, every ? zone_alpha_tool_ : zone_alpha_);
+			const Color col = zone_color(s, code, every ? zone_alpha_tool_ : zone_alpha_);
 			if (side == 0) strip(r, s, sg, p.left, p.left + zone_depth_, col, false);
 			else strip(r, s, sg, -p.right - zone_depth_, -p.right, col, false);
 		}
 	});
+	for (const PlayerLot &lot : s.lot_book.lots)
+		if (lot.zone != 0) lot_cover(r, s, lot, key);
 	return r;
 }
 

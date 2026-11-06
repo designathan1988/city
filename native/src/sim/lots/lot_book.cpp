@@ -81,6 +81,8 @@ int LotBook::at(double x, double z) const {
 	return 0;
 }
 
+std::vector<LotPoint> piece_with_front(const std::vector<LotPoint> &piece, const LotPoint &fa, const LotPoint &fb) { return with_front(piece, fa, fb); }
+
 double lot_area(const std::vector<LotPoint> &q) {
 	double a = 0;
 	for (size_t i = 0; i < q.size(); i++) {
@@ -88,6 +90,31 @@ double lot_area(const std::vector<LotPoint> &q) {
 		a += p.x * r.z - r.x * p.z;
 	}
 	return a / 2;
+}
+
+std::vector<int> lot_triangles(const std::vector<LotPoint> &ring) {
+	std::vector<int> left(ring.size()), out;
+	for (size_t i = 0; i < ring.size(); i++) left[i] = int(i);
+	if (lot_area(ring) < 0) std::reverse(left.begin(), left.end());
+	const auto turn = [&](int a, int b, int c) { return (ring[size_t(b)].x - ring[size_t(a)].x) * (ring[size_t(c)].z - ring[size_t(a)].z) - (ring[size_t(b)].z - ring[size_t(a)].z) * (ring[size_t(c)].x - ring[size_t(a)].x); };
+	const auto holds = [&](int a, int b, int c, int p) { return turn(a, b, p) >= 0 && turn(b, c, p) >= 0 && turn(c, a, p) >= 0; };
+	while (left.size() > 2) {
+		const size_t n = left.size();
+		bool cut = false;
+		for (size_t i = 0; i < n && !cut; i++) {
+			const int a = left[(i + n - 1) % n], b = left[i], c = left[(i + 1) % n];
+			if (turn(a, b, c) <= 0) continue;
+			bool ear = true;
+			for (int p : left)
+				if (p != a && p != b && p != c && holds(a, b, c, p)) ear = false;
+			if (!ear) continue;
+			out.insert(out.end(), { a, b, c });
+			left.erase(left.begin() + std::ptrdiff_t(i));
+			cut = true;
+		}
+		if (!cut) break; // what is left has no area: points in a line
+	}
+	return out;
 }
 
 bool big_enough(const std::vector<LotPoint> &ring) { return ring.size() >= 3 && std::abs(lot_area(ring)) >= MIN_LOT_M * MIN_LOT_M / 2; }

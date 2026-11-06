@@ -10,6 +10,10 @@ const CUT_LINE := 2
 ## What of a corner or a side the pointer takes, in screen pixels.
 const PICK_PX := 14.0
 const LINE_PX := 2.0
+## How far a lot's point reaches for a footway or a corner: pixels at this zoom, and never less than these metres.
+const SNAP_PX := 16.0
+const SNAP_LEAST_M := 2.5
+const MARK_M := 0.9
 
 var mode := "add"
 var cut_kind := CUT_ACROSS
@@ -26,6 +30,7 @@ func enter() -> void:
 	cut_kind = params.get("cut", CUT_ACROSS)
 	parts = params.get("parts", 2)
 	_read()
+	_show()
 	ctl.hint.emit("zone.lots.help", true)
 
 
@@ -73,6 +78,15 @@ func _show(extra: Array = []) -> void:
 	ctl.preview.show_ribbons(roads)
 
 
+## A point of a lot by the footways, the blocks' corners and the other lots' corners; `apart` is the corner being dragged.
+func _snap(p: Vector3, apart := Vector3.INF) -> Vector3:
+	return CityStore.query(&"lot_snap_point", [p, maxf(SNAP_LEAST_M, ctl.px_at(p) * SNAP_PX), apart])
+
+
+func _mark(p: Vector3) -> Dictionary:
+	return {"points": PackedVector3Array([p + Vector3.LEFT * MARK_M, p + Vector3.RIGHT * MARK_M]), "half_width": MARK_M}
+
+
 ## The corner under `p`, or INF.
 func _corner(p: Vector3) -> Vector3:
 	var reach := ctl.px_at(p) * PICK_PX
@@ -111,12 +125,12 @@ func click(p: Vector3) -> void:
 	var id: int = CityStore.query(&"lot_at", [p])
 	match mode:
 		"add":
-			_from = p
+			_from = _snap(p)
 		"polygon":
 			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * PICK_PX:
-				_done(CityStore.dispatch(&"lot_add_polygon", [_points, 0]))
+				_done(CityStore.dispatch(&"lot_add_polygon", [_points]))
 			else:
-				_points.push_back(p)
+				_points.push_back(_snap(p))
 				_show()
 		"edit":
 			_from = _corner(p)
@@ -151,6 +165,11 @@ func drag(p: Vector3) -> void:
 		return
 	if mode == "curve" and not _side.is_empty():
 		_show([{"points": PackedVector3Array([_side[0], p, _side[1]]), "half_width": _width(p) * 2.0}])
+	elif mode == "add":
+		var ring: PackedVector3Array = CityStore.query(&"lot_land", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])])
+		_show([{"points": _closed(ring), "half_width": _width(p) * 2.0}] if ring.size() >= 3 else [])
+	elif mode == "edit":
+		_show([{"points": PackedVector3Array([_from, _snap(p, _from)]), "half_width": _width(p) * 2.0}])
 	else:
 		_show([{"points": PackedVector3Array([_from, p]), "half_width": _width(p) * 2.0}])
 
@@ -161,9 +180,9 @@ func release(p: Vector3) -> void:
 		return
 	match mode:
 		"add":
-			_done(CityStore.dispatch(&"lot_add_rect", [_from, p, CityStore.query(&"lot_angle_at", [_from])]))
+			_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])]))
 		"edit":
-			_done(CityStore.dispatch(&"lot_move_corner", [_from, p]))
+			_done(CityStore.dispatch(&"lot_move_corner", [_from, _snap(p, _from)]))
 		"curve":
 			if not _side.is_empty():
 				_done(CityStore.dispatch(&"lot_curve_side", [_side[0], _side[1], p]))
@@ -181,6 +200,9 @@ func hover(p: Vector3) -> void:
 		var lines: PackedVector3Array = CityStore.query(&"lot_cut_lines", [id, cut_kind, parts, p, p]) if id != 0 else PackedVector3Array()
 		for i in range(0, lines.size() - 1, 2):
 			extra.push_back({"points": PackedVector3Array([lines[i], lines[i + 1]]), "half_width": _width(p) * 2.0})
-	elif _points.size() >= 1:
-		extra.push_back({"points": PackedVector3Array([_points[-1], p]), "half_width": _width(p) * 2.0})
+	elif mode == "add" or mode == "polygon":
+		var at := _snap(p)
+		extra.push_back(_mark(at))
+		if _points.size() >= 1:
+			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
 	_show(extra)

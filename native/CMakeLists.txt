@@ -52,11 +52,38 @@ FetchContent_Declare(mimalloc GIT_REPOSITORY https://github.com/microsoft/mimall
 FetchContent_MakeAvailable(mimalloc)
 set_target_properties(mimalloc-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Polygon booleans in integers (the lots cut against the paving), the same on every machine.
+set(CLIPPER2_UTILS OFF CACHE BOOL "" FORCE)
+set(CLIPPER2_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CLIPPER2_TESTS OFF CACHE BOOL "" FORCE)
+set(CLIPPER2_USINGZ "OFF" CACHE STRING "" FORCE)
+FetchContent_Declare(clipper2 GIT_REPOSITORY https://github.com/AngusJohnson/Clipper2.git GIT_TAG Clipper2_2.0.1 GIT_SHALLOW TRUE SOURCE_SUBDIR CPP)
+FetchContent_MakeAvailable(clipper2)
+set_target_properties(Clipper2 PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_options(Clipper2 PRIVATE -include iterator) # its header leans on what libstdc++ brings along and libc++ does not
+
 file(GLOB_RECURSE CITYCORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
-target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer mimalloc-static)
+target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer mimalloc-static Clipper2)
+
+# Every object of the link is compiled against the one profile: ThinLTO refuses two summaries, and Ninja knows nothing of a file read through
+# a flag, so a new profile would leave the libraries on the old one.
+if(GODOTCPP_TARGET STREQUAL "template_release" AND CITY_PROFILE STREQUAL "use" AND EXISTS "${CITY_PROFILE_DATA}")
+    foreach(lib citycore godot-cpp meshoptimizer mimalloc-static Clipper2)
+        get_target_property(lib_dir ${lib} SOURCE_DIR)
+        get_target_property(lib_sources ${lib} SOURCES)
+        set(lib_files "")
+        foreach(file ${lib_sources})
+            if(NOT file MATCHES "\\$<")
+                cmake_path(ABSOLUTE_PATH file BASE_DIRECTORY "${lib_dir}")
+                list(APPEND lib_files "${file}")
+            endif()
+        endforeach()
+        set_source_files_properties(${lib_files} TARGET_DIRECTORY ${lib} PROPERTIES OBJECT_DEPENDS "${CITY_PROFILE_DATA}")
+    endforeach()
+endif()
 # godot-cpp adds --gc-sections after our options; passed last as a library item it wins, keeping the static
 # engine-class registration callbacks (Image, Camera3D, Terrain3D...) that the release DLL needs at runtime.
 if(MINGW)
