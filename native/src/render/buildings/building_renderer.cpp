@@ -288,6 +288,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	if (!state_) return;
 	// RenderWorld::sync calls this under the shared map lock (the ground height is a map read)
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
+	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
 	const double now = now_s();
 	std::vector<Want> want, want_super;
 	int waiting = 0; // far meshes to redo, each on its clock
@@ -295,11 +296,11 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 		// the far reach from the superchunk's centre, as the chunks are streamed (a nearest-point reach would hold a
 		// ring of extra far meshes, a quarter more memory, for buildings past building_far_end_m)
 		const float ground = horizontal(cam, super_centre(key));
-		if (ground > far_end_ * DROP_K && sp.far.inst.is_valid()) drop_far(key, sp);
+		if (ground > far_reach * DROP_K && sp.far.inst.is_valid()) drop_far(key, sp);
 		visit_super(key, sp, cam, eye, want);
 		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
 		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);
-		if (sp.dirty && ground <= far_end_) {
+		if (sp.dirty && ground <= far_reach) {
 			std::lock_guard<std::mutex> lk(queue_mutex_);
 			if (!super_requested_.count(key)) {
 				if (due) want_super.push_back({ ground, key, 0 });

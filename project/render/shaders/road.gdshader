@@ -48,6 +48,11 @@ uniform float plate_glow = 0.55;
 uniform float pool_far_m = 900.0; // render.props_end_m and render.pool_handover_m, set by the road renderer
 uniform float pool_handover_m = 200.0;
 
+// The far level (render/roads/far_road_renderer.h): a superchunk's mesh, whose vertices carry their chunk in CUSTOM0; the chunks drawn in detail fold
+// away, and the rest stands `far_pull` metres towards the eye, along its ray, so the coarser ground out there never comes through.
+instance uniform int chunk_mask = 0;
+instance uniform float far_pull = 0.0;
+
 const int M_ROAD = 0;
 const int M_PLATE = 1;
 const int M_FOOTPATH = 2;
@@ -89,6 +94,10 @@ void vertex() {
 	v_id = COLOR.a * 16.0;
 	v_mat = int(floor(v_id));
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	if (far_pull > 0.0) {
+		vec3 to_eye = CAMERA_POSITION_WORLD - v_world;
+		VERTEX = ((chunk_mask >> int(CUSTOM0.r * 255.0 + 0.5)) & 1) != 0 ? vec3(0.0) : VERTEX + to_eye * (far_pull / max(length(to_eye), far_pull));
+	}
 	v_pool = UV2;
 	v_eye_m = length(v_world.xz - CAMERA_POSITION_WORLD.xz);
 }

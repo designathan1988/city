@@ -127,6 +127,43 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 	s.rect(sd.f, 0, sd.length, b.level_z(v.base), b.level_z(v.top()), -MASS_IN_M, wall_lin(pl, v, 0, sd.side), fin);
 }
 
+// The far level's wall of a side: what of it stands in the open, in rectangles of bays and storeys that read alike. A neighbour covers a side only
+// where it stands: a lower block leaves the wall above it, a wing the wall past it.
+void lean_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+	const Body &b = *pl.b;
+	const Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
+	auto open = [&](int k, int i) {
+		const float am = W * (float(i) + HALF);
+		return !covered(b, v, v.base + k, Point2{ sd.p0.x + dir.x * am + sd.n.x * TEST_OUT, sd.p0.y + dir.y * am + sd.n.y * TEST_OUT });
+	};
+	auto alike = [&](int k, int k0) {
+		const Lin a = wall_lin(pl, v, k, sd.side), c = wall_lin(pl, v, k0, sd.side);
+		return side_comp(v, k, sd.side) == side_comp(v, k0, sd.side) && b.level_h(v.base + k) == b.level_h(v.base + k0) && a.r == c.r && a.g == c.g && a.b == c.b;
+	};
+	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
+	auto cell_of = [&](int k, int i) -> char & { return done[size_t(k) * size_t(n) + size_t(i)]; };
+	const float c0 = float(pl.id % CELL_OFFSETS);
+	s.grime_floor = pl.lot.o.y + b.level_z(v.base);
+	for (int k = 0; k < v.storeys; k++)
+		for (int i = 0; i < n; i++) {
+			if (cell_of(k, i) || !open(k, i)) continue;
+			int i1 = i + 1, k1 = k + 1;
+			while (i1 < n && !cell_of(k, i1) && open(k, i1)) i1++;
+			auto whole_row = [&](int row) {
+				for (int j = i; j < i1; j++)
+					if (cell_of(row, j) || !open(row, j)) return false;
+				return alike(row, k);
+			};
+			while (k1 < v.storeys && whole_row(k1)) k1++;
+			for (int r = k; r < k1; r++)
+				for (int j = i; j < i1; j++) cell_of(r, j) = 1;
+			const float za = b.level_z(v.base + k), zb = b.level_z(v.base + k1), a0 = W * float(i), a1 = W * float(i1);
+			const Vector3 p[4] = { sd.f.at(a0, za, 0), sd.f.at(a1, za, 0), sd.f.at(a1, zb, 0), sd.f.at(a0, zb, 0) };
+			const Vector2 cell[4] = { Vector2(c0 + float(i), float(k)), Vector2(c0 + float(i1), float(k)), Vector2(c0 + float(i1), float(k1)), Vector2(c0 + float(i), float(k1)) };
+			s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, windows_of(pl, v, k, sd.side, W, b.level_h(v.base + k), side_comp(v, k, sd.side)));
+		}
+}
+
 void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
@@ -138,31 +175,14 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 		int n = bays_of(v, sd.side);
 		float W = sd.length / float(n);
 		int8_t fin = b.wall_of(v).finish;
-		int k = 0;
-		if (!pl.lean) {
-			s.grime_floor = pl.lot.o.y + z0;
-			bay_walls(s, pl, v, sd, n, W, fin);
-			k = v.storeys;
-		}
-		while (k < v.storeys) {
-			int level = v.base + k, k1 = v.storeys;
-			float za = b.level_z(level), zb = b.level_z(v.base + k1);
-			if (!covered(b, v, level, mid)) {
-				float H = b.level_h(level);
-				Vector3 p[4] = { sd.f.at(0, za, 0), sd.f.at(sd.length, za, 0), sd.f.at(sd.length, zb, 0), sd.f.at(0, zb, 0) };
-				float kb = float(k1 - k);
-				float c0 = pl.lean ? float(pl.id % CELL_OFFSETS) : 0;
-				Vector2 cell[4] = { Vector2(c0, 0), Vector2(c0 + float(n), 0), Vector2(c0 + float(n), kb), Vector2(c0, kb) };
-				s.grime_floor = pl.lot.o.y + z0;
-				s.far_wall(p, sd.f.e2, cell, wall_lin(pl, v, k, sd.side), fin, pl.id, windows_of(pl, v, k, sd.side, W, H, side_comp(v, k, sd.side)));
-			}
-			k = k1;
-		}
+		s.grime_floor = pl.lot.o.y + z0;
+		if (pl.lean) lean_walls(s, pl, v, sd, n, W, fin);
+		else bay_walls(s, pl, v, sd, n, W, fin);
 		float top = b.level_z(v.top());
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
 			Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
-			if (!pl.lean) s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
+			s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
 			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
@@ -170,7 +190,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	}
 }
 
-void roof(Shell &s, const Placed &pl, const Volume &v) {
+void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	const Body &b = *pl.b;
 	float eaves = b.level_z(v.top());
 	if (!roof_flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
@@ -184,19 +204,23 @@ void roof(Shell &s, const Placed &pl, const Volume &v) {
 	s.grime_floor = -FAR_AWAY;
 	for (size_t i = 0; i < p.size(); i++) s.tri(c, p[i], p[(i + 1) % p.size()], pl.lot.e2, lin, rp.finish);
 	for (const Core &cr : b.cores) {
-		if (pl.lean) break;
 		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
 		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
 		const Paint &wp = b.wall_of(v);
 		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}
+	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // its plant a metre or more across, the same as near; what is finer goes
+		Shell finer;
+		emit_roof_plant(s, finer, pl, v, vol, eaves);
+	}
 }
 } // namespace
 
 void emit_far(Shell &shell, const Placed &pl, bool roofs) {
-	for (const Volume &v : pl.b->volumes) {
+	for (size_t i = 0; i < pl.b->volumes.size(); i++) {
+		const Volume &v = pl.b->volumes[i];
 		walls(shell, pl, v, roofs);
-		if (roofs) roof(shell, pl, v);
+		if (roofs) roof(shell, pl, v, int(i));
 	}
 }
 

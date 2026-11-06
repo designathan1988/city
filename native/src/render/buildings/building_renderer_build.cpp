@@ -199,6 +199,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
 	far.rooms = true; // each side's windows, as the other levels code them
+	far.coarse = true;
 	far.custom_used = 1;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {

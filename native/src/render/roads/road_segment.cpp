@@ -198,6 +198,12 @@ void emit_segment(const RoadEmit &e, int sid) {
 	const Profile &p = e.s.catalog.profile(g.profile);
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (v1 - v0 < ROAD_MIN_SPAN || p.edges.empty()) return;
+	if (e.far) { // a kerb's face or a dropped kerb is under a pixel from there: the strips run whole from mouth to mouth
+		const std::vector<Sample> whole = samples(e, sid, v0, v1, false, false, v0, v1);
+		const Ctx c{ e, whole, lamp_row(e.s.roads, sid) };
+		for (const Piece &pc : pieces_of(e.L, p)) tops(c, pc);
+		return;
+	}
 	bool ring_or_rail = p.ring || p.rail;
 	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
 	float island0, island1;

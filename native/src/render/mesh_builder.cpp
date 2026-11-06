@@ -135,6 +135,7 @@ static Array surface_arrays(const MeshBuilder &b) {
 	arr[Mesh::ARRAY_COLOR] = b.c;
 	arr[Mesh::ARRAY_TEX_UV] = b.uv;
 	arr[Mesh::ARRAY_TEX_UV2] = b.uv2;
+	if (!b.tags.is_empty()) arr[Mesh::ARRAY_CUSTOM0] = b.tags;
 	PackedInt32Array ordered = b.idx;
 	order_triangles(ordered.ptrw(), size_t(ordered.size()), size_t(b.v.size()));
 	arr[Mesh::ARRAY_INDEX] = ordered;
@@ -150,7 +151,17 @@ Ref<ArrayMesh> MeshBuilder::commit() const {
 
 int64_t MeshBuilder::bytes() const {
 	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
-			idx.size() * sizeof(int32_t));
+			idx.size() * sizeof(int32_t) + tags.size());
+}
+
+void MeshBuilder::tag(uint8_t value) {
+	constexpr int64_t CHANNELS = 4; // an RGBA8 custom array: the value in the first, the rest unused
+	int64_t at = tags.size();
+	tags.resize(v.size() * CHANNELS);
+	for (; at < tags.size(); at += CHANNELS) {
+		tags[at] = value;
+		tags[at + 1] = tags[at + 2] = tags[at + 3] = 0;
+	}
 }
 
 OwnedMesh MeshBuilder::bake() const {
@@ -163,8 +174,9 @@ OwnedMesh MeshBuilder::bake() const {
 
 void MeshBuilder::commit_to(const RID &mesh) const {
 	if (empty()) return;
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(),
-			Dictionary(), RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES);
+	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+	if (!tags.is_empty()) format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), Dictionary(), format);
 }
 
 } // namespace city

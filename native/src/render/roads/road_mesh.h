@@ -16,6 +16,7 @@ struct RoadEmit {
 	const CityState &s;
 	const StreetLook &L;
 	MeshBuilder &mb;
+	bool far = false; // the far level: the pieces' top faces alone, on a longer step
 };
 
 // Position on the centre line at arc length `at` (height = RoadNetwork::seg_y), unit forward and left vectors.

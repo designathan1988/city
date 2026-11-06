@@ -515,6 +515,15 @@ Ressalvas abertas:
 - **Defeito achado ao abrir o exe:** `strings_ui`, `strings_d` e `strings_e` estavam com o importador `csv_translation`, que tira o CSV do pacote, e `DataTables.load_translations` lê o CSV. Os três agora são `keep`, como os outros. Toda parte nova de `strings*.csv` precisa do mesmo `.import`.
 - Aberto no desktop oculto por 600 quadros: 0 erros no log. A tela do exe não foi olhada.
 
+### Ciclo 13: a câmera que puxava e a cidade de longe (2026-11-05)
+- **Câmera:** `pull_full_half`/`pull_none_half` estavam em 60/240; no 4.0 são 4,8/19,2 (`pullWeight`), então o olho era puxado na vista normal da cidade. Faltavam duas regras do `isoViewport`: nada de puxão quando o ponto olhado está num prédio, e peso pela profundidade (`PULL_SOFT` 1,5 m). Portadas em `city_core_sight.cpp` (`sight_pull`), com `eye_free`: em qualquer distância o olho não fica dentro de um prédio.
+- **Ruas sumindo:** as vias iam só até `road_end_m` (2,2 km da câmera). Novo `FarRoadRenderer`: o mapa inteiro, uma malha por superchunk, só as faces de cima, no mesmo material `road`, dobrada por `chunk_mask` onde o chunk detalhado está de pé (o `networkFarRoads` do 4.0). Sem marcações, talude nem pontes nesse nível.
+- **Cidade cortada a 4,5 km:** o alcance dos prédios agora cresce com a altura do olho (`lod.far_per_eye`).
+- **Faces pretas:** era buraco. `walls()` do nível distante testava um ponto só, no térreo e no meio do lado, e tirava a parede inteira. `lean_walls` desenha por vão e por andar, juntando o que é igual; o térreo com outra fachada ganha faixa própria.
+- **Telhados de longe:** voltaram coroamento, casas de máquinas e o equipamento grande (`emit_roof_plant` com `coarse`), iguais aos de perto.
+- Fotos: mapa `km16`, semente 7, vistas de subúrbio e de longe em `ultra`, comparadas antes e depois. A paridade da cor da via na troca e a câmera em movimento não foram olhadas em foto.
+- Pendente: o `gates_user.py` (scratch) ganhou `pull_soft_m`, `far_step_m`, `far_pull_m` e `far_per_eye`.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

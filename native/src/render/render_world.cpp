@@ -19,6 +19,7 @@ constexpr int64_t BACKLOG_WINDOWS = 4;
 
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	bool ok = roads_.init(ctx, errors);
+	ok = ok && far_roads_.init(ctx, roads_.look(), errors);
 	ok = ok && verges_.init(ctx, roads_.look(), errors);
 	ok = ok && structures_.init(ctx, roads_.look(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
@@ -38,6 +39,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 void RenderWorld::reset() {
 	wear_.reset();
 	roads_.reset();
+	far_roads_.reset();
 	verges_.reset();
 	structures_.reset();
 	props_.reset();
@@ -70,12 +72,14 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 		if (g.alive) {
 			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
 			road_stream_.mark(k);
+			far_roads_.mark(k);
 			overlays_.mark_dirty(k);
 		}
 	for (const RoadNode &n : s.roads.nodes)
 		if (n.alive) {
 			int64_t k = chunk_of(float(n.x), float(n.z));
 			road_stream_.mark(k);
+			far_roads_.mark(k);
 			overlays_.mark_dirty(k);
 		}
 	props_stream_.known = road_stream_.known;
@@ -126,6 +130,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 	ChangeLog::dedup(prop_keys_);
 	for (int64_t k : road_keys_) {
 		road_stream_.mark(k);
+		far_roads_.mark(k);
 		props_stream_.mark(k);
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
@@ -152,7 +157,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const Tuning &t = s.catalog.tune;
 	const int64_t window = int64_t(t.render_upload_budget_mb * BYTES_PER_MIB);
-	const bool backlog = roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() > window * BACKLOG_WINDOWS;
+	const bool backlog = roads_.waiting() + far_roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() > window * BACKLOG_WINDOWS;
 	BuildBudget budget(backlog ? 0 : std::max(1, int(t.render_max_chunk_rebuilds_per_frame)));
 	Laps laps;
 	{
@@ -178,12 +183,13 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 					verges_.drop_chunk(k);
 					structures_.drop_chunk(k);
 				});
+		far_roads_.update(s, *s.jobs, budget, cam);
 		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) { props_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { props_.drop_chunk(k); });
 		// a building chunk's "build" only registers it (its levels are meshed and budgeted by update_view), so the
 		// shared mesh budget is not spent on it and a superchunk knows all its chunks at once
 		BuildBudget registry = BuildBudget::unlimited();
-		building_stream_.update(cam.x, cam.z, t.render_building_far_end_m, STREAM_DROP_K, registry,
+		building_stream_.update(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, registry,
 				[&](int64_t k) { buildings_.rebuild_chunk(s, k); }, [&](int64_t k) { buildings_.drop_chunk(k); });
 		roads_.update_view(cam);
 		cost_.stream = laps.lap();
@@ -203,10 +209,12 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(int64_t(t.render_commit_budget_ms));
 	const bool uploads_due = ++upload_frame_ >= upload_every_;
 	if (uploads_due) upload_frame_ = 0;
-	UploadBudget upload(uploads_due ? window : 0, roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking());
+	UploadBudget upload(uploads_due ? window : 0, roads_.baking() + far_roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking());
 	RenderingServer::get_singleton()->get_video_adapter_name(); // a wrapped call: runs the queued commands first
 	cost_.flush = laps.lap();
 	roads_.commit(*s.jobs, upload, until);
+	far_roads_.commit(*s.jobs, upload, until);
+	far_roads_.fold(roads_);
 	verges_.commit(*s.jobs, upload, until);
 	structures_.commit(*s.jobs, upload, until);
 	cost_.roads = laps.lap();

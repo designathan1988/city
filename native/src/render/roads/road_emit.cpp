@@ -29,7 +29,7 @@ SegFrame seg_frame(const CityState &s, int sid, double at) {
 
 int surface_steps(const RoadEmit &e, int sid, double v0, double v1) {
 	const RoadSegment &g = e.s.roads.segs[size_t(sid)];
-	const int fine = std::max(1, int(std::ceil((v1 - v0) / e.L.step)));
+	const int fine = std::max(1, int(std::ceil((v1 - v0) / (e.far ? e.L.far_step : e.L.step))));
 	if (!g.q.is_straight(STRAIGHT_TOL)) return fine;
 	// A straight road on one grade is linear in position, height, texture and pool coordinates: its two mouths are enough.
 	const double ya = e.s.roads.seg_y(sid, v0), yb = e.s.roads.seg_y(sid, v1);

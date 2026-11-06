@@ -29,6 +29,7 @@ struct MeshBuilder {
 	godot::PackedVector2Array uv, uv2;
 
 	godot::PackedInt32Array idx;
+	godot::PackedByteArray tags; // what a shader tells the vertices apart by, CUSTOM0.r: none unless `tag` was asked
 
 	int add(const godot::Vector3 &p, const godot::Vector3 &nn, const godot::Color &col, const godot::Vector2 &t = godot::Vector2(),
 			const godot::Vector2 &t2 = godot::Vector2());
@@ -40,6 +41,7 @@ struct MeshBuilder {
 	void cylinder(const godot::Vector3 &base, float r, float h, int seg, const godot::Color &col, bool cap, const godot::Vector2 &t2 = godot::Vector2());
 	void cone(const godot::Vector3 &base, float r, float h, int seg, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
 	void blob(const godot::Vector3 &center, const godot::Vector3 &radius, const godot::Color &col, const godot::Vector2 &t2 = godot::Vector2());
+	void tag(uint8_t value); // the vertices added since the last tag carry `value`
 	bool empty() const { return idx.is_empty(); }
 	int64_t bytes() const; // of the arrays handed to the RenderingServer (chunk_jobs.h UploadBudget)
 	godot::Ref<godot::ArrayMesh> commit() const;

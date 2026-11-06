@@ -21,6 +21,8 @@
  "median_nose_m": 0.5,
  "verge": {"reach_m": 1.0, "under_m": 0.08, "strips": 1},
  "sample_step_m": 3,
+ "far_step_m": 24,
+ "far_pull_m": 3,
  "plate_blend_m": 2.26,
  "face_eps_m": 0.004,
 	"markings": {"white": "#eee8d7", "yellow": "#e1c45a", "lift_m": 0.02, "mer_line_m": 0.1, "mer_dash_m": 1, "mer_gap_m": 1, "lpp_line_m": 0.1, "lpp_run_min_m": 0.5,

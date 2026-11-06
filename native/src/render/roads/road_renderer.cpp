@@ -41,6 +41,7 @@ void RoadChunks::reset() {
 	clear_queue();
 	for (auto &kv : chunks_) kv.second.surface.free();
 	chunks_.clear();
+	revision_++;
 }
 
 void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
@@ -64,6 +65,7 @@ void RoadChunks::commit_one(BuiltMesh &b) {
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
 	c.surface.visible(any && drawn_);
 	c.made = b.count;
+	revision_++;
 }
 
 RoadChunks::Count RoadChunks::count() const {
@@ -95,6 +97,7 @@ void RoadChunks::drop_chunk(int64_t key) {
 	if (it == chunks_.end()) return;
 	it->second.surface.free();
 	chunks_.erase(it);
+	revision_++;
 }
 
 void RoadRenderer::update_view(const Vector3 &) {}

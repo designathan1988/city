@@ -20,6 +20,11 @@ public:
 	void drop_chunk(int64_t key);
 	Count count() const;
 	void draw(bool on); // for the cost probes: what a frame costs without these chunks
+	uint64_t revision() const { return revision_; } // moves when a chunk comes or goes
+	template <typename F>
+	void each_standing(F &&fn) const {
+		for (const auto &kv : chunks_) fn(kv.first);
+	}
 
 protected:
 	void commit_one(BuiltMesh &b) override;
@@ -33,6 +38,7 @@ private:
 	};
 	std::unordered_map<int64_t, Chunk> chunks_;
 	bool drawn_ = true;
+	uint64_t revision_ = 1;
 };
 
 } // namespace city

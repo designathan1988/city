@@ -57,6 +57,8 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.verge_under = float(v["under_m"]);
 	L.verge_strips = int(v["strips"]);
 	L.step = float(t["sample_step_m"]);
+	L.far_step = float(t["far_step_m"]);
+	L.far_pull = float(t["far_pull_m"]);
 	L.face_eps = float(t["face_eps_m"]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
 	L.ramp_flare = float(r["flare_m"]);

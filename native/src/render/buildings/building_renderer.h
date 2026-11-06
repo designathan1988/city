@@ -81,6 +81,9 @@ public:
 	int64_t waiting() const { return waiting_ + super_waiting_; } // bytes built and waiting to bake (last commit)
 	// The largest superchunk far mesh built so far, bytes of arrays (render_cost probe: against render.upload_budget_mb).
 	int64_t super_bytes_max() const { return super_bytes_max_.load(); }
+	float stream_reach(const CityState &s, const godot::Vector3 &cam) const { // how far from the eye its chunks are known
+		return far_end_ + std::max(0.f, cam.y - s.terrain.height_at(cam.x, cam.z)) * look_.far_per_eye;
+	}
 	const CommitTimes &commit_times() const { return times_; }
 
 private:
