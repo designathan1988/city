@@ -121,6 +121,7 @@ struct Shell {
 	bool tone = true;
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
+	Shell *box_sink = nullptr; // where this shell's boxes go, as instances: a row of a band in place of a dozen triangles in the mesh
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
 	int custom_used = CUSTOM_ARRAYS; // how many of them go to the GPU: the far level takes its windows' code alone
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer

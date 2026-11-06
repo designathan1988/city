@@ -487,6 +487,14 @@ Ressalvas abertas:
 - `quick.sh` apaga `dist/quick/passed` logo no início: nenhuma aprovação sobrevive a uma verificação que falha.
 - O restante do gate é schema e `rules.json` (do usuário), mais o que é da sessão do conversor.
 
+### Ciclo 11 (memória do nível médio)
+
+- **Medida.** Por prédio, o nível médio tinha 309 triângulos de telhado, 265 de lote, 141 de relevo e 71 de parede: as caixas gravadas na malha pesavam mais que a fachada. `mid_walls` 1,08 M triângulos e 139 MB.
+- **Causa.** Toda caixa de telhado e de lote ia na malha (12 triângulos, ~1,5 KB), onde uma instância custa 64 bytes.
+- **Correção.** `Shell::box_sink`: as caixas das malhas perto e média viram instâncias, num lugar só. As do médio com mais de meio metro (`MID_SOLIDS`) lançam sombra; as finas não: ali um texel de sombra já tem um palmo. As do perto lançam até o fim do nível.
+- **Resultado** (`low3`, `ultra`): `mid_walls` 502 mil triângulos e 68 MB; `near_walls` de 29 para 16 MB; vídeo 565 para 534 MB; buffers 176 para 145 MB. GPU 8,63 ms (8,18 antes), porque as caixas do perto agora lançam sombra até 224 m. Primeira tentativa, com toda caixa do médio lançando, deu 9,62 ms: reprovada.
+- **Fotos** `mid_b`, `lot_a`, `low3`, `low15`: iguais a olho.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

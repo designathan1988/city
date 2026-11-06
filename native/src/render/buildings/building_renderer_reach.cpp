@@ -54,7 +54,8 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) {
-		for (const ShadowTwin &d : ch.prop_casts[i]) d.range(look_.cast_props_m);
+		// a box throws its shadow as long as it stands; the balcony pieces, fine as they are, to lod.cast_props_m
+		for (int k = 0; k < BAND_CASTS; k++) ch.prop_casts[i][size_t(k)].range(k < BAND_COUNT - 1 ? near_end_ * detail_scale_ : look_.cast_props_m);
 		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
 		for (size_t b = 0; b < BAND_DRAWS; b++) ch.bands[i][b].range(0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
 	}
@@ -62,7 +63,11 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	for (auto &sub : ch.mid_draws) {
 		sub[MID_BAYS].range(mid_from, bay_end_);
 		sub[MID_BOXES].range(mid_from, 0);
+		sub[MID_SOLIDS].range(mid_from, 0);
 	}
+	for (const ShadowTwin &d : ch.mid_casts)
+		if (d.inst.is_valid())
+			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }

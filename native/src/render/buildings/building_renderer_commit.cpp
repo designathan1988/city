@@ -262,6 +262,8 @@ void BuildingRenderer::commit_one(Built &b) {
 			for (size_t k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
 				ch.mid_draws[i][k].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[i][k].release(), b.mid_count[i][k],
 						b.mid_box[i][k], LAYER_BUILDING_FACADES);
+		for (size_t i = 0; i < SUB_COUNT; i++)
+			ch.mid_casts[i].bind(scenario_, ch.mid_draws[i][MID_SOLIDS].mm, material_cast_, b.mid_box[i][MID_SOLIDS], LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
@@ -295,6 +297,7 @@ void BuildingRenderer::fit_reach(Chunk &ch, const Built &b) {
 			if (d.inst.is_valid()) rs->instance_set_custom_aabb(d.inst, box);
 		for (const ShadowTwin &d : ch.prop_casts[i])
 			if (d.inst.is_valid()) rs->instance_set_custom_aabb(d.inst, box);
+		if (ch.mid_casts[i].inst.is_valid()) rs->instance_set_custom_aabb(ch.mid_casts[i].inst, box);
 	}
 }
 
@@ -330,6 +333,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 	}
 	for (const auto &sub : ch.mid_draws)
 		for (const MultiMeshDraw &d : sub) d.visible(on);
+	for (size_t i = 0; i < SUB_COUNT; i++) ch.mid_casts[i].visible(on && ch.mid_draws[i][MID_SOLIDS].count > 0);
 	ch.flags.visible(on);
 }
 
