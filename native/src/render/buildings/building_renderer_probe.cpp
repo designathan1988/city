@@ -22,8 +22,8 @@ int BuildingRenderer::pending() const {
 	return need_.unmet + int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size());
 }
 
-BuildingRenderer::ViewNeed BuildingRenderer::view_need() const {
-	ViewNeed n = need_;
+BuildingViewNeed BuildingRenderer::view_need() const {
+	BuildingViewNeed n = need_;
 	std::lock_guard<std::mutex> lk(queue_mutex_);
 	n.requested = int(requested_.size() + super_requested_.size());
 	n.done = int(done_.size() + super_done_.size());

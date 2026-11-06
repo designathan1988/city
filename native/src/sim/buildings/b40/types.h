@@ -177,6 +177,9 @@ struct Body {
 	std::vector<Core> cores;
 	float entrance_x = 0;
 	int entrance_volume = 0;
+	// A design of its own (signature_kinds.h): its number, and where the lot's front lay in the design's frame. 0 is the facade kit. An edit gives it back to the kit.
+	uint8_t signature = 0;
+	float signature_x = 0, signature_y = 0;
 	// Drawing only, never stored (interior/cut.h): this body cut open at this floor, for a camera looking along cut_view (lot frame).
 	int cut_level = -1;
 	Point2 cut_view;

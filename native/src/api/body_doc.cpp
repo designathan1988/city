@@ -2,6 +2,8 @@
 // lot frame until the fit at the end. Open blocks are the lot's own ground: a surface, none for plain grass.
 #include "api/body_doc.h"
 
+#include "sim/buildings/b40/signature_kinds.h"
+
 #include "api/function_names.h"
 
 #include "sim/commands/body_ops.h"
@@ -234,6 +236,9 @@ bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &fr
 	const V2 front = fit_plan(out);
 	front_x = front.x;
 	front_y = front.y;
+	out.signature = uint8_t(signature_of(String(doc.get("blueprint", "")).utf8().get_data()));
+	out.signature_x = front.x;
+	out.signature_y = front.y;
 	return true;
 }
 

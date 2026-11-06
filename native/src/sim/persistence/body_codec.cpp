@@ -18,7 +18,7 @@ constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; 
 // Bytes that start with the magic carry a version; the bytes before it (saves and the player's model files) start with
 // the plan's kind byte, never these four. 1: the flag of a roof mast (spire, lantern).
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
-constexpr uint32_t BODY_VERSION = 1, FLAG_VERSION = 1, UNVERSIONED = 0;
+constexpr uint32_t BODY_VERSION = 2, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -196,6 +196,8 @@ void write_body(ByteWriter &w, const Body &b) {
 	for (uint8_t x : { uint8_t(b.kind), uint8_t(b.use), uint8_t(b.ground), b.style }) w.put<uint8_t>(x);
 	for (int x : { b.palette, b.wall, b.roof, b.trim, b.entrance_volume }) w.put<int32_t>(x);
 	for (float x : { b.ground_h, b.storey_h, b.entrance_x }) w.put<float>(x);
+	w.put<uint8_t>(b.signature);
+	for (float x : { b.signature_x, b.signature_y }) w.put<float>(x);
 	w.put<uint32_t>(uint32_t(b.paints.size()));
 	for (const Paint &p : b.paints) {
 		w.put<int8_t>(p.finish);
@@ -223,6 +225,10 @@ bool read_body(ByteReader &r, Body &b) {
 	b.style = r.get<uint8_t>();
 	for (int *x : { &b.palette, &b.wall, &b.roof, &b.trim, &b.entrance_volume }) *x = r.get<int32_t>();
 	for (float *x : { &b.ground_h, &b.storey_h, &b.entrance_x }) *x = r.get<float>();
+	if (version >= SIGNATURE_VERSION) {
+		b.signature = r.get<uint8_t>();
+		for (float *x : { &b.signature_x, &b.signature_y }) *x = r.get<float>();
+	}
 	uint32_t n = r.get<uint32_t>();
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.paints.resize(n);

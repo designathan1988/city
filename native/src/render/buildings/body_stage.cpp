@@ -45,8 +45,11 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	shell.glass = &glass;
 	shell.sheer = &sheer;
 	shell.cards = &cards;
-	b40::emit_facades(shell, shell, pl);
-	b40::emit_roofs(shell, shell, pl);
+	const Ref<ArrayMesh> design = designs_ ? designs_->mesh(body.signature) : Ref<ArrayMesh>();
+	if (design.is_null()) {
+		b40::emit_facades(shell, shell, pl);
+		b40::emit_roofs(shell, shell, pl);
+	}
 	b40::emit_lot(shell, shell, pl);
 	for (const b40::PropInstance &p : shell.props) append_prop(shell, look.bay.models[p.kind], p);
 	shell.glass = nullptr;
@@ -55,10 +58,8 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	const int handle = next_++;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	const RID mesh = rs->mesh_create();
-	shell.commit_to(mesh, true);
-	glass.commit_to(mesh, true);
-	sheer.commit_to(mesh, true);
-	cards.commit_to(mesh, true);
+	for (b40::Shell *part : { &shell, &glass, &sheer, &cards }) // a design of its own leaves the shell with no more than its lot, or nothing
+		if (part->triangles() > 0) part->commit_to(mesh, true);
 	Vector3 lo, hi, glass_lo, glass_hi;
 	shell.bounds(lo, hi);
 	for (const b40::Shell *more : { &glass, &sheer, &cards }) {
@@ -79,12 +80,21 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());
+	if (design.is_valid()) { // the lot's frame here is the world's: its y runs along -z, as the design's own
+		const Design own{ rs->instance_create2(design->get_rid(), scenario), Transform3D(Basis(), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
+		rs->instance_set_layer_mask(own.inst, LAYER_BASE);
+		rs->instance_set_transform(own.inst, own.local);
+		if (ghost) rs->instance_geometry_set_material_override(own.inst, ghost_);
+		own_[handle] = own;
+	}
 	return handle;
 }
 
 void BodyStage::move(int handle, const Transform3D &at) {
 	auto it = shown_.find(handle);
 	if (it != shown_.end()) RenderingServer::get_singleton()->instance_set_transform(it->second.inst, at);
+	auto own = own_.find(handle);
+	if (own != own_.end()) RenderingServer::get_singleton()->instance_set_transform(own->second.inst, at * own->second.local);
 }
 
 int BodyStage::triangles(int handle) const {
@@ -94,6 +104,11 @@ int BodyStage::triangles(int handle) const {
 
 void BodyStage::remove(int handle) {
 	drawn_.erase(handle);
+	auto own = own_.find(handle);
+	if (own != own_.end()) {
+		RenderingServer::get_singleton()->free_rid(own->second.inst);
+		own_.erase(own);
+	}
 	auto it = shown_.find(handle);
 	if (it == shown_.end()) return;
 	it->second.free();
@@ -101,6 +116,8 @@ void BodyStage::remove(int handle) {
 }
 
 void BodyStage::clear() {
+	for (auto &e : own_) RenderingServer::get_singleton()->free_rid(e.second.inst);
+	own_.clear();
 	for (auto &e : shown_) e.second.free();
 	shown_.clear();
 	drawn_.clear();

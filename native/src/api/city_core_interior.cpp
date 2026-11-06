@@ -52,7 +52,7 @@ int CityCore::interior_revision() const {
 
 Dictionary CityCore::interior_cost(int id, int level, int dir) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const BuildingRenderer::InteriorCost c = render_.interior_cost(*state_, id, level, dir);
+	const BuildingInteriorCost c = render_.interior_cost(*state_, id, level, dir);
 	Dictionary d;
 	d["shell_triangles"] = c.shell_triangles;
 	d["shell_boxes"] = c.shell_boxes;

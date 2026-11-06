@@ -51,6 +51,7 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
+	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
 	material_fade_ = ctx.material("building_fade", errors);
 	material_glass_ = ctx.material("building_glass", errors);
@@ -77,6 +78,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 }
 
 void BuildingRenderer::reset() {
+	signatures_.reset();
 	{
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		done_.clear();
@@ -137,6 +139,7 @@ void BuildingRenderer::drop_chunk(int64_t key) {
 		requested_.erase(key);
 		requested_mask_.erase(key);
 	}
+	signatures_.drop(key);
 	auto it = chunks_.find(key);
 	if (it == chunks_.end()) return;
 	drop(it->second, LEVEL_NEAR);

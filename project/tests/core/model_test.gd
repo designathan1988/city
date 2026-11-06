@@ -79,6 +79,7 @@ func _lots(at: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"place_model", [church.bytes, fit.x, fit.z, fit.rot, church.function, church.zone])
 	print("igreja: ", r.get("error", "ok"), " tamanho ", size)
 	_check(r.get("ok", false) and CityStore.query(&"list_buildings").size() > before, "a igreja se coloca na rua: %s" % [r])
+	_check(CityStore.query(&"body_info", [r.get("placed", -1)]).get("signature", 0) > 0, "a igreja guarda o desenho próprio")
 	CityStore.dispatch(&"undo")
 
 

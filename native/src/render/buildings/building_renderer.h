@@ -21,6 +21,7 @@
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/building_bodies.h"
 #include "render/buildings/shell.h"
+#include "render/buildings/signature_bodies.h"
 #include "render/chunk_jobs.h"
 #include "render/chunk_queue.h"
 #include "render/render_context.h"
@@ -52,23 +53,17 @@ public:
 	// far mesh draws them whole either way, so its superchunk stays.
 	void restyle_chunk(int64_t key);
 	void submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority);
-	// chunk_max / super_max: the slowest single chunk / superchunk commit, ms (render_cost probe)
-	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max, double &super_max);
+	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max, double &super_max); // chunk_max, super_max: the slowest commit, ms
 	void drop_chunk(int64_t key); // frees every level of a chunk the camera left
 	float far_end() const { return far_end_; }
 	void set_ranges(const CityState &s);
 	void update_view(const godot::Vector3 &cam, BuildBudget &budget);
-	// What the inside of building `id` costs when it is cut open at `level` for a camera looking along step `dir`: the near
-	// level's triangles and instanced boxes of the facades and roofs, and of the interior alone (render_cost probe; the map
-	// lock held shared by the caller).
-	using InteriorCost = BuildingInteriorCost;
-	InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
+	// What the inside of building `id` costs cut open at `level` for a camera along step `dir` (the map's lock held shared by the caller).
+	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
 	godot::Dictionary building_cost() const; // triangles and bytes of every level's surfaces, whole city as it stands (tests)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
-	// What the view asked of the last frame and what the frame's budget left unasked.
-	using ViewNeed = BuildingViewNeed;
-	ViewNeed view_need() const;
+	BuildingViewNeed view_need() const;
 	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
 	int chunk_flags(float x, float z) const;
 	int64_t baking() const { return baking_bytes(baking_) + baking_bytes(super_baking_); } // bytes still on a worker
@@ -79,6 +74,7 @@ public:
 		return far_end_ + std::max(0.f, cam.y - s.terrain.height_at(cam.x, cam.z)) * look_.far_per_eye;
 	}
 	const CommitTimes &commit_times() const { return times_; }
+	SignatureBodies *own_designs() { return &signatures_; }
 
 private:
 	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
@@ -115,6 +111,7 @@ private:
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
+		int64_t key = 0;
 		std::array<int8_t, SUB_COUNT> wall_at{}, glass_at{}; // the near level's surfaces that carry a discarding twin; -1 none
 		std::array<bool, SUB_COUNT> fading{}, parts_fading{}; // wearing the twin: in the band of the hand-over
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
@@ -139,6 +136,7 @@ private:
 		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
 		std::array<OwnedMesh, SUB_COUNT> mid_hull;
+		std::vector<SignaturePlace> signatures; // the buildings of the chunk with a design of their own
 		float hull_error_m = 0;
 		std::array<std::array<godot::PackedFloat32Array, BAND_DRAWS>, SUB_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<std::array<OwnedMesh, BAND_DRAWS>, SUB_COUNT> band_mm; // their MultiMeshes, baked
@@ -189,6 +187,7 @@ private:
 	};
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
 	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
+	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
@@ -222,7 +221,7 @@ private:
 	godot::RID material_fade_, material_glass_fade_, material_parts_fade_;
 	std::array<godot::RID, 3> fade_warmers_; // never drawn: they ask the renderer for the twins' pipelines before the first band needs them
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_wash_, material_parts_;
-	ViewNeed need_;
+	BuildingViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
 	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)
 	const CityState *state_ = nullptr;
@@ -241,6 +240,7 @@ private:
 	std::unordered_map<int64_t, uint8_t> requested_mask_; // bit 1 far, 2 near, 4 mid
 	uint64_t seq_ = 0;
 	std::unordered_map<int64_t, Chunk> chunks_;
+	SignatureBodies signatures_;
 	Results<SuperBuilt> super_done_;
 	std::unordered_map<int64_t, uint64_t> super_requested_;
 	uint64_t super_seq_ = 0;

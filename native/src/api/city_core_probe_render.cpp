@@ -51,7 +51,7 @@ Dictionary CityCore::render_cost() const {
 	d["trees"] = c.trees;
 	d["overlays"] = overlays_ms_;
 	d["uploads"] = c.uploads; // MiB
-	const BuildingRenderer::ViewNeed need = render_.building_need();
+	const BuildingViewNeed need = render_.building_need();
 	d["backlog"] = c.backlog;
 	d["budget_left"] = c.budget_left;
 	d["b_want"] = need.want;

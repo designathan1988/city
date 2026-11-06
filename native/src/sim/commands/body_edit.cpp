@@ -66,6 +66,7 @@ EditResult edit_body(CityState &s, int id, const BodyOp &op) {
 	int top = 0;
 	for (const Volume &v : body.volumes) top = std::max(top, v.top());
 	rec.floors = uint16_t(top);
+	body.signature = 0; // an edit is the kit's to draw: a design drawn whole knows nothing of a moved wall
 	rec.body = s.buildings.designs.edited->add(std::move(body));
 	j_edit_building(s, id, rec);
 	float reach = std::max(rec.w, rec.d);

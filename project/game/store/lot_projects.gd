@@ -6,14 +6,14 @@ extends RefCounted
 const GROUP := "lots"
 const KEY_PREFIX := "lot:"
 const LABEL_PREFIX := "lot."
-const ZONE_OF := {"residential_low": "res_low", "residential_medium": "residential", "residential_high": "res_high", "commercial_low": "com_low",
+const USE_ZONES := {"residential_low": "res_low", "residential_medium": "residential", "residential_high": "res_high", "commercial_low": "com_low",
 	"commercial_medium": "commercial", "commercial_high": "com_high", "industrial_high": "industrial", "industrial_medium": "industrial", "mixed_high": "mixed", "mixed_medium": "mixed"}
 
 static var _entries: Array[Dictionary] = []
 
 
 static func _zone(doc: Dictionary) -> int:
-	var id: String = ZONE_OF.get("%s_%s" % [doc.use, doc.density], "")
+	var id: String = USE_ZONES.get("%s_%s" % [doc.use, doc.density], "")
 	for z: Dictionary in DataTables.catalog_table("zones").zones:
 		if z.id == id:
 			return int(z.code)

@@ -30,6 +30,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
 	ok = buildings_.init(ctx, errors) && ok;
+	stage_.use_designs(buildings_.own_designs());
 	stage_.init(ctx.material("building", errors), ctx.material("building_glass", errors), ctx.material("building_sheer", errors), ctx.material("building_card", errors), ctx.material("building_ghost", errors));
 	ok = agents_.init(ctx, errors) && ok;
 	ok = transit_.init(ctx, errors) && ok;

@@ -63,6 +63,7 @@ Dictionary CityBuilder::body_info(int id) const {
 	b40::Body body;
 	b40::record_body(s.buildings.designs, rec, body);
 	d["edited"] = rec.body != 0;
+	d["signature"] = int(body.signature);
 	d["digest"] = int64_t(body_digest(body));
 	d["problem"] = String(body_problem(s.catalog.tune, body).c_str());
 	d["ground_h"] = body.ground_h;

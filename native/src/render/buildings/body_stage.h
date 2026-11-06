@@ -5,6 +5,8 @@
 #include "render/buildings/facade.h"
 #include "render/rs_util.h"
 
+#include "render/buildings/signature_bodies.h"
+
 #include <godot_cpp/variant/transform3d.hpp>
 
 #include <unordered_map>
@@ -24,10 +26,17 @@ public:
 	void move(int handle, const godot::Transform3D &at);
 	void remove(int handle);
 	int triangles(int handle) const; // what a handle draws (the tests read it)
+	void use_designs(SignatureBodies *designs) { designs_ = designs; } // who draws the bodies with a design of their own
 	void clear();
 
 private:
 	godot::RID solid_, glass_, sheer_, card_, ghost_;
+	struct Design {
+		godot::RID inst;
+		godot::Transform3D local;
+	};
+	std::unordered_map<int, Design> own_; // a body's design of its own, beside its lot
+	SignatureBodies *designs_ = nullptr;
 	std::unordered_map<int, MeshDraw> shown_;
 	std::unordered_map<int, int> drawn_;
 	int next_ = 1;

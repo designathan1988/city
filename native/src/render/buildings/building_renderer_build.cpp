@@ -110,6 +110,32 @@ void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> 
 	for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
 }
 
+// Each shell of a chunk told where what it does not hold goes.
+void BuildingRenderer::link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts) {
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
+		out.near_shell[i].lawns = &out.near_lawns[i];
+		out.near_shell[i].washes = &out.near_washes[i];
+		out.mid_shell[i].lawns = &out.mid_lawns[i];
+		out.near_shell[i].box_sink = &out.parts_shell[i];
+		out.mid_shell[i].box_sink = &mid_parts[i];
+		out.near_shell[i].glass = &out.near_glass[i];
+		out.near_shell[i].sheer = &out.near_sheer[i];
+		out.near_shell[i].cards = &out.near_cards[i];
+		out.mid_shell[i].cards = &out.mid_cards[i];
+		out.mid_shell[i].veiled = true;
+		out.mid_shell[i].glass = &out.mid_glass[i];
+	}
+	for (b40::Shell &p : out.parts_shell) p.instanced = true;
+	for (size_t i = 0; i < SUB_COUNT; i++) out.parts_shell[i].cards = &out.near_cards[i];
+	for (b40::Shell &p : mid_parts) p.instanced = p.veiled = true;
+	for (size_t i = 0; i < SUB_COUNT; i++) mid_parts[i].cards = &out.mid_cards[i];
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		out.flat_glass[i].rooms = true;
+		out.flat_shell[i].glass = &out.flat_glass[i];
+	}
+}
+
 BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const {
 	thread_local BuildingBodies bodies;
 	Built out;
@@ -117,28 +143,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	if (!near && !mid) return out;
 	std::array<b40::Shell, SUB_COUNT> &near_shells = out.near_shell, &parts_shells = out.parts_shell, &mid_shells = out.mid_shell;
 	std::array<b40::Shell, SUB_COUNT> mid_parts;
-	for (size_t i = 0; i < SUB_COUNT; i++) {
-		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
-		near_shells[i].lawns = &out.near_lawns[i];
-		near_shells[i].washes = &out.near_washes[i];
-		mid_shells[i].lawns = &out.mid_lawns[i];
-		near_shells[i].box_sink = &parts_shells[i];
-		mid_shells[i].box_sink = &mid_parts[i];
-		near_shells[i].glass = &out.near_glass[i];
-		near_shells[i].sheer = &out.near_sheer[i];
-		near_shells[i].cards = &out.near_cards[i];
-		mid_shells[i].cards = &out.mid_cards[i];
-		mid_shells[i].veiled = true;
-		mid_shells[i].glass = &out.mid_glass[i];
-	}
-	for (b40::Shell &p : parts_shells) p.instanced = true;
-	for (size_t i = 0; i < SUB_COUNT; i++) parts_shells[i].cards = &out.near_cards[i];
-	for (b40::Shell &p : mid_parts) p.instanced = p.veiled = true;
-	for (size_t i = 0; i < SUB_COUNT; i++) mid_parts[i].cards = &out.mid_cards[i];
-	for (size_t i = 0; i < SUB_COUNT; i++) {
-		out.flat_glass[i].rooms = true;
-		out.flat_shell[i].glass = &out.flat_glass[i];
-	}
+	link_shells(out, mid_parts);
 	for (size_t r = 0; r < in.records.size(); r++) {
 		const Building &rec = in.records[r];
 		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
@@ -146,9 +151,16 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
+		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
+		if (own_design) {
+			const b40::Basis &l = pl.lot;
+			out.signatures.push_back({ int(pl.b->signature), Transform3D(Basis(l.e0, l.e2, -l.e1), l.at(-pl.b->signature_x, -pl.b->signature_y, 0)) });
+		}
 		if (near) {
-			b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			if (!own_design) {
+				b40::emit_facades(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+				b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
@@ -158,9 +170,11 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		}
 		pl.coarse = true;
 		mid_shells[size_t(sub)].flat = &out.flat_shell[size_t(sub)];
-		b40::emit_far(mid_shells[size_t(sub)], pl, true);
-		b40::emit_relief(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
-		b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+		if (!own_design) {
+			b40::emit_far(mid_shells[size_t(sub)], pl, true);
+			b40::emit_relief(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+			b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+		}
 		if (lots_drawn_.load()) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
@@ -200,8 +214,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	return out;
 }
 
-BuildingRenderer::InteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
-	InteriorCost out;
+BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id, int level, int dir) const {
+	BuildingInteriorCost out;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return out;
 	const Building &rec = s.buildings.items[size_t(id)];
 	const float reach = 0.5f * std::hypot(rec.w, rec.d) + LOT_GROUND_PAD_M;

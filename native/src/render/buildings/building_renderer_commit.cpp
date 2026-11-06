@@ -150,6 +150,9 @@ void BuildingRenderer::commit_one(Built &b) {
 	if (found == chunks_.end()) return; // dropped by the stream meanwhile (drop_chunk also forgets the request)
 	Chunk &ch = found->second;
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
+	ch.key = b.key;
+	signatures_.set_chunk(b.key, b.signatures);
+	signatures_.visible(b.key, ch.shown);
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
 			fade_near(ch, size_t(i), false, 1.f); // what it wore goes with the old mesh: the surfaces may not be the same
@@ -268,6 +271,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 	for (size_t i = 0; i < SUB_COUNT; i++) ch.mid_casts[i].visible(on && ch.mid_draws[i][MID_SOLIDS].count > 0);
 	for (const ShadowTwin &d : ch.mid_hulls) d.visible(on);
 	ch.flags.visible(on);
+	signatures_.visible(ch.key, on);
 }
 
 void BuildingRenderer::send_mask(Super &sp) {

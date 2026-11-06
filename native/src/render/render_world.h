@@ -111,14 +111,14 @@ public:
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
 	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
-	BuildingRenderer::InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
+	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) { overlays_.update(s, f, dt); }
 	const Cost &cost() const { return cost_; }
 	// The atmosphere's and the shore's fields: advanced by sync with the rest of the render, read by the sky and the terrain views.
 	const FogField &fog() const { return fog_; }
 	const CanyonField &canyon() const { return canyon_; }
 	const ShoreField &shore() const { return shore_; }
-	BuildingRenderer::ViewNeed building_need() const { return buildings_.view_need(); }
+	BuildingViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
 	RoadChunks::Count verge_count() const { return verges_.count(); }
