@@ -42,7 +42,7 @@ def check_single_doc(rules, files, err):
         if os.path.basename(f) in exempt:
             continue
         if os.path.splitext(f)[1].lower() in rules["doc_extensions"] and f not in allowed:
-            err("DOC_UNICO", f, "o único documento do projeto é CLAUDE.md; mova o conteúdo para lá")
+            err("DOC_UNICO", f, "os documentos do projeto são CLAUDE.md e log/; mova o conteúdo para lá")
 
 
 def count_lines(path):

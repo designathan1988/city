@@ -1,4 +1,4 @@
-"""Memory gates: CLAUDE.md must map every source file and must not list files that no longer exist."""
+"""Memory gates: the map file must list every source file and no file that no longer exists; CLAUDE.md stays short."""
 import os
 import re
 
@@ -19,11 +19,18 @@ def check_claude_md(root, rules, files, err):
         return
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
-    start, end = rules["map_markers"]
-    if start not in text or end not in text:
-        err("CLAUDE_MD", "CLAUDE.md", f"faltam os marcadores {start} / {end}")
+    map_file = rules["map_file"]
+    map_path = os.path.join(root, map_file)
+    if not os.path.exists(map_path):
+        err("CLAUDE_MD", map_file, "arquivo ausente")
         return
-    section = text.split(start, 1)[1].split(end, 1)[0]
+    with open(map_path, encoding="utf-8") as fh:
+        map_text = fh.read()
+    start, end = rules["map_markers"]
+    if start not in map_text or end not in map_text:
+        err("CLAUDE_MD", map_file, f"faltam os marcadores {start} / {end}")
+        return
+    section = map_text.split(start, 1)[1].split(end, 1)[0]
     listed = set(re.findall(r"`([^`\s]+\.[A-Za-z0-9]+)`", section))
     listed_dirs = set(re.findall(r"`([^`\s]+)/\*\*`", section))
     for f in files:
@@ -31,11 +38,11 @@ def check_claude_md(root, rules, files, err):
             continue
         if f in listed or any(f.startswith(d + "/") for d in listed_dirs):
             continue
-        err("MAPA_DESATUALIZADO", f, "arquivo ausente do mapa no CLAUDE.md (adicione uma linha com a responsabilidade)")
+        err("MAPA_DESATUALIZADO", f, f"arquivo ausente de {map_file} (adicione uma linha com a responsabilidade)")
     for p in sorted(listed):
         if not os.path.exists(os.path.join(root, p)):
-            err("MAPA_DESATUALIZADO", "CLAUDE.md", f"o mapa cita `{p}`, que não existe mais")
+            err("MAPA_DESATUALIZADO", map_file, f"o mapa cita `{p}`, que não existe mais")
     lines = text.count("\n")
     limit = rules["claude_md_max_lines"]
     if lines > limit:
-        err("CLAUDE_MD", "CLAUDE.md", f"{lines} linhas: mantenha conciso (até {limit}); remova o que não é regra nem mapa")
+        err("CLAUDE_MD", "CLAUDE.md", f"{lines} linhas: mantenha conciso (até {limit}); o detalhe vai para log/")

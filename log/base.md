@@ -124,3 +124,9 @@ LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e l
 - Custo por chave, vista de bairro, `high`, 12,3 ms (`tests/perf/layer_gpu.tscn -- --switches`): nível médio das fachadas −4,2 ms, sombras −2,5, mobiliário −1,65, vegetação −0,7, sombras dos prédios −0,65, pessoas −0,5, lotes −0,5, oclusão de tela −0,3; os outros passes de tela cheia ficam no ruído, então a "massa fixa" que supus não está neles. Hipótese errada: as poças de luz; de dia o vértice já colapsa.
 - Mobiliário lançava sombra a qualquer distância: uma cópia só-sombra até `wire.near_end` mais meio chunk (a 500 m um poste é menor que um texel), como os postes; −0,5 ms no bairro.
 - `building_bay_end_m` de 500 para 350 m: baias com geometria acabam antes, adiante retângulos fundidos. Bairro de 12,1 para 10,1 ms. Foto congelada do bairro igual; a da cidade muda 0,94% dos pixels, nas janelas entre 350 e 500 m, que perdem um pouco de relevo: aceito e abençoado.
+
+## 2026-11-06: CLAUDE.md curto
+- Ordem do usuário: `CLAUDE.md` leve, sem perder estrutura, metodologia e onde estão as coisas. Lido inteiro: 697 linhas e 149 KB, 71% de mapa. A documentação oficial pede menos de 200 linhas, porque arquivo maior reduz a aderência.
+- Agora 155 linhas e 12,6 KB. O texto original foi para `log/mapa.md`, `log/pendencias.md` e `log/ferramentas.md`, conferido linha por linha. O gate `MAPA_DESATUALIZADO` lê `log/mapa.md` (`map_file` em `rules.json`) e o limite do `CLAUDE.md` passou a 200 linhas.
+- A metodologia passou a ser os 7 passos do usuário. Regras que só existiam em pendências e logs subiram: nomes em inglês, nunca fechar o jogo aberto, testes sem janela, executável novo a cada entrega.
+- Hooks retirados por ordem do usuário: `hook_protect.py`, `hook_stop_gates.py` e `.claude/settings.json`. Seguem as 15 falhas de schema e `rules.json` do gate completo.

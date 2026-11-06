@@ -62,7 +62,7 @@ def main():
         problems = [f"[GATE_RUNNER] o verificador falhou: {e!r}"]
     if "--summary" in args:
         state = "OK" if not problems else f"{len(problems)} problema(s)"
-        print(f"Gates do projeto: {state}. Regras e mapa do código: CLAUDE.md. Rode python3 tools/gates/run_gates.py antes de concluir.")
+        print(f"Gates do projeto: {state}. Regras: CLAUDE.md. Mapa do código: log/mapa.md. Rode python3 tools/gates/run_gates.py antes de concluir.")
         for p in problems[:15]:
             print(p)
         return 0
