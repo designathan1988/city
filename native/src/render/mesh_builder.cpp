@@ -13,7 +13,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int BLOB_RINGS = 4, BLOB_SEGMENTS = 7;
+constexpr int BLOB_RINGS = 6, BLOB_SEGMENTS = 12; // a signal's lens reads round at the closest the camera comes
 // Unit directions of the two edges of ring segment i (XZ plane).
 void ring_dirs(int i, int seg, Vector3 &d0, Vector3 &d1) {
 	float a0 = TAU_F * i / seg, a1 = TAU_F * (i + 1) / seg;

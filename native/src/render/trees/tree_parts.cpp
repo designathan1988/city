@@ -111,12 +111,14 @@ void tree_tube(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float r0, fl
 	for (int i = 0; i < sides; i++) {
 		float a0 = TAU_F * i / sides, a1 = TAU_F * (i + 1) / sides;
 		Vector3 d0 = side * std::cos(a0) + fwd * std::sin(a0), d1 = side * std::cos(a1) + fwd * std::sin(a1);
-		Vector3 p[4] = { a + d0 * r0, a + d1 * r0, b + d1 * r1, b + d0 * r1 };
-		Vector3 out = (d0 + d1).normalized();
-		Color c = with_alpha(tones.tone(face_light(out)), 1);
-		const Vector3 t0[3] = { p[0], p[1], p[2] }, t1[3] = { p[0], p[2], p[3] };
-		flat_tri(mb, t0, out, c, part);
-		flat_tri(mb, t1, out, c, part);
+		// A round stem: the normal goes round with it, so the eight sides read as bark and not as planks.
+		const Vector3 out = (d0 + d1).normalized();
+		const Color c0 = with_alpha(tones.tone(face_light(d0)), 1), c1 = with_alpha(tones.tone(face_light(d1)), 1);
+		const Vector2 tag(float(int(part)), 0);
+		const int v0 = mb.add(a + d0 * r0, d0, c0, Vector2(), tag), v1 = mb.add(a + d1 * r0, d1, c1, Vector2(), tag);
+		const int v2 = mb.add(b + d1 * r1, d1, c1, Vector2(), tag), v3 = mb.add(b + d0 * r1, d0, c0, Vector2(), tag);
+		mb.tri(v0, v1, v2, out);
+		mb.tri(v0, v2, v3, out);
 	}
 }
 
