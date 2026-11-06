@@ -22,6 +22,7 @@ constexpr float G_SHADE = 0.92f, G_END = 0.103f, G_RAIL_OUT = 1.56f, G_WALL_T = 
 constexpr float GARDEN_WALL_U = 0.8195f, G_POST_D = 1.4f, G_POST_OUT = 0.9f, TRANSOM_MIN = 2.2f, TRANSOM_AT = 0.72f;
 constexpr float WINDOW_SILL_MIN = 0.3f, LAMP_W = 0.16f, LAMP_H = 0.26f, LAMP_D = 0.12f, LAMP_OFF = 0.4f, LAMP_DROP = 0.25f;
 constexpr float LAMP_OUT = -0.06f, LAMP_ROOM = 0.13f, HALF = 0.5f, SHUTTER_CHROMA = 0.06f, SHUTTER_MAX = 0.75f;
+constexpr float WASH_HALF = 1.1f, WASH_UP = 1.3f, WASH_FOOT = 0.3f, WASH_OUT = 0.03f; // a lantern's light on its wall, each way from it; off the wall
 constexpr uint32_t SHUTTER_BROWN = 0x7a5538, SHUTTER_BLUE = 0x557392;
 
 struct Ctx {
@@ -39,7 +40,10 @@ struct Ctx {
 	void lamp() const {
 		float x = am + w / 2 + LAMP_OFF;
 		if (x + LAMP_W / 2 > c.W - LAMP_ROOM) x = am - w / 2 - LAMP_OFF;
-		part_lamp(parts, at(x, o.h1 - LAMP_DROP, LAMP_OUT, LAMP_W, LAMP_H, LAMP_D));
+		const float hh = o.h1 - LAMP_DROP;
+		part_lamp(parts, at(x, hh, LAMP_OUT, LAMP_W, LAMP_H, LAMP_D));
+		const float half = std::min({ WASH_HALF, x + c.wall_before, c.W - x + c.wall_after }), up = std::min(WASH_UP, hh + WASH_FOOT); // the wall goes on past the bay
+		if (half > 0) shell.wash(c.f, x - half, x + half, hh - up, hh + up, WASH_OUT);
 	}
 	void canopy(float pad, float t, float out, float fascia, float room) const {
 		float cz = std::min(o.h1 + CANOPY_RISE, c.H - room);

@@ -126,6 +126,7 @@ struct Shell {
 	int custom_used = CUSTOM_ARRAYS; // how many of them go to the GPU: the far level takes its windows' code alone
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
+	Shell *washes = nullptr; // where this shell's lantern light goes: a surface added to what is behind it
 	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass
 	Shell *cards = nullptr; // where this shell's railings go: a surface whose bars the fragment draws
 	Shell *flat = nullptr; // the mid level: where its bays also go as merged rectangles, for where they are too small for their geometry
@@ -147,6 +148,8 @@ struct Shell {
 	// A glass pane of w x h metres at e2 = c.
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
+	// The light of a lantern on its wall: a quad over a..b, at c off it. UV over the quad, UV2 the lantern's place (x, z).
+	void wash(const Basis &f, float a0, float a1, float b0, float b1, float c);
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w);
 	void commit_to(const godot::RID &mesh, bool with_uv2 = true, bool blends = false) const; // a surface that blends keeps its order
 	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)

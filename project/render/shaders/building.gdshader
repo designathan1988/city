@@ -21,7 +21,8 @@ uniform float finish_m[13];
 uniform float finish_normal_k[13];
 uniform float finish_metal[13];
 uniform float wall_gain = 1.0;
-uniform float lamp_glow = 4.0;
+uniform float lamp_glow = 3.4;
+uniform vec3 lamp_light : source_color = vec3(1.0, 0.83, 0.6); // what a lit lamp gives, whatever its body is by day
 uniform float window_glow = 1.5;
 uniform float glass_reflect = 0.08;
 uniform vec3 glass_sky : source_color = vec3(0.45, 0.55, 0.66);
@@ -70,7 +71,7 @@ void fragment() {
 	vec3 albedo = to_linear(COLOR.rgb), emit = vec3(0.0), nn = n;
 	float rough = 0.86, metal = 0.0;
 	if (kind == 4) {
-		emit = albedo * night * lamp_glow * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
+		emit = uniform_linear(lamp_light) * night * lamp_glow * step(h01(uint(floor(v_world.x * 0.1) * 31.0 + floor(v_world.z * 0.1) * 977.0 + 65536.0)), outside_on);
 	} else if (kind == 5) {
 		albedo *= 0.8 + 0.25 * vnoise(v_world.xz * 0.7) + 0.15 * vnoise(v_world.xz * 3.1);
 		rough = 0.95;

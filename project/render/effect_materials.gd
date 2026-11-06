@@ -5,6 +5,7 @@ class_name EffectMaterials
 extends RefCounted
 
 ## Kept as text so the orphan gate sees the shaders the native effects load by name from materials.json.
+const TONE_INVERTED := ["puffs", "building_wash"] ## what tone_inverse.gdshaderinc reads
 const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader"]
 
 
@@ -13,7 +14,7 @@ static func make(key: String, row: Dictionary, environment: Environment) -> Shad
 	var m := ShaderMaterial.new()
 	m.shader = load(row.shader)
 	m.render_priority = int(row.get("render_priority", 0))
-	if key == "puffs":
+	if key in TONE_INVERTED:
 		m.set_shader_parameter("tone_exposure", environment.tonemap_exposure)
 		m.set_shader_parameter("tone_white", environment.tonemap_white)
 	elif key == "marks":

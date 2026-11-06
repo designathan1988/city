@@ -59,6 +59,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_cast_ = ctx.material("shadow_caster", errors);
 	material_far_ = ctx.material("building_far", errors);
 	material_lawn_ = ctx.material("verge", errors);
+	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;

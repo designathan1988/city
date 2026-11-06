@@ -75,20 +75,21 @@ void BuildingRenderer::put(MeshDraw &d, Surface &sf, const RID &scenario, const 
 void BuildingRenderer::put_level(MeshDraw &d, Surface &sf, const RID &glass, bool shown, RenderLayer layer, bool shadows) const {
 	if (sf.mesh.valid()) {
 		RenderingServer *rs = RenderingServer::get_singleton();
-		if (sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
+		if (sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0) rs->mesh_surface_set_material(sf.mesh.rid, 0, material_);
 		if (sf.glass_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.glass_at, glass);
 		if (sf.sheer_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.sheer_at, material_sheer_);
 		if (sf.card_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.card_at, material_card_);
 		if (sf.lawn_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.lawn_at, material_lawn_);
+		if (sf.wash_at >= 0) rs->mesh_surface_set_material(sf.mesh.rid, sf.wash_at, material_wash_);
 	}
 	put(d, sf, scenario_, RID(), shadows, shown, layer);
 }
 
-BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer, const b40::Shell *cards, const b40::Shell *lawns) {
+BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass, const b40::Shell *sheer, const b40::Shell *cards, const b40::Shell *lawns, const b40::Shell *washes) {
 	Surface sf;
 	const bool any_glass = glass && glass->triangles() > 0, any_sheer = sheer && sheer->triangles() > 0, any_cards = cards && cards->triangles() > 0;
-	const bool any_lawns = lawns && lawns->triangles() > 0;
-	if (shell.triangles() == 0 && !any_glass && !any_sheer && !any_cards && !any_lawns) return sf;
+	const bool any_lawns = lawns && lawns->triangles() > 0, any_washes = washes && washes->triangles() > 0;
+	if (shell.triangles() == 0 && !any_glass && !any_sheer && !any_cards && !any_lawns && !any_washes) return sf;
 	sf.mesh.rid = RenderingServer::get_singleton()->mesh_create();
 	shell.commit_to(sf.mesh.rid, with_uv2);
 	if (any_glass) {
@@ -107,9 +108,13 @@ BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool w
 		sf.lawn_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0) + (any_cards ? 1 : 0);
 		lawns->commit_to(sf.mesh.rid, with_uv2);
 	}
+	if (any_washes) {
+		sf.wash_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0) + (any_cards ? 1 : 0) + (any_lawns ? 1 : 0);
+		washes->commit_to(sf.mesh.rid, with_uv2, true);
+	}
 	Vector3 mn, mx, pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	shell.bounds(mn, mx);
-	for (const b40::Shell *more : { any_glass ? glass : nullptr, any_sheer ? sheer : nullptr, any_cards ? cards : nullptr, any_lawns ? lawns : nullptr }) {
+	for (const b40::Shell *more : { any_glass ? glass : nullptr, any_sheer ? sheer : nullptr, any_cards ? cards : nullptr, any_lawns ? lawns : nullptr, any_washes ? washes : nullptr }) {
 		if (!more) continue;
 		Vector3 gn, gx;
 		more->bounds(gn, gx);
@@ -147,7 +152,7 @@ PackedFloat32Array BuildingRenderer::bake_props(const std::vector<b40::PropInsta
 int64_t BuildingRenderer::Built::bytes() const {
 	int64_t n = 0;
 	for (int i = 0; i < SUB_COUNT; i++)
-		n += near_lawns[size_t(i)].bytes(true) + mid_lawns[size_t(i)].bytes(true) + flat_shell[size_t(i)].bytes(true) + flat_glass[size_t(i)].bytes(true) + near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
+		n += near_washes[size_t(i)].bytes(true) + near_lawns[size_t(i)].bytes(true) + mid_lawns[size_t(i)].bytes(true) + flat_shell[size_t(i)].bytes(true) + flat_glass[size_t(i)].bytes(true) + near_shell[size_t(i)].bytes(true) + parts_shell[size_t(i)].bytes(true) + mid_shell[size_t(i)].bytes(true) +
 				near_glass[size_t(i)].bytes(true) + mid_glass[size_t(i)].bytes(true) + near_sheer[size_t(i)].bytes(true) +
 				near_cards[size_t(i)].bytes(true) + mid_cards[size_t(i)].bytes(true);
 	for (const auto &sub : bands)
@@ -166,7 +171,7 @@ void BuildingRenderer::Built::bake() {
 			held[HELD_NEAR_GUARDS].add(near_sheer[size_t(i)], true);
 			held[HELD_NEAR_CARDS].add(near_cards[size_t(i)], true);
 			held[HELD_NEAR_PIECES].add(parts_shell[size_t(i)], true);
-			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)], &near_lawns[size_t(i)]);
+			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)], &near_lawns[size_t(i)], &near_washes[size_t(i)]);
 			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
 		}
 		if (has_mid) {
@@ -189,6 +194,7 @@ void BuildingRenderer::Built::bake() {
 		flat_shell[size_t(i)] = b40::Shell();
 		flat_glass[size_t(i)] = b40::Shell();
 		near_lawns[size_t(i)] = b40::Shell();
+		near_washes[size_t(i)] = b40::Shell();
 		mid_lawns[size_t(i)] = b40::Shell();
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++)

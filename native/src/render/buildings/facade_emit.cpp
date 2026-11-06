@@ -107,6 +107,8 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 		if (cl && cm && cr) continue;
 		float push = relief_push(v, sd.side, i, k);
 		c.f = Basis{ sd.f.at(a0, z, push), sd.f.e0, sd.f.e1, sd.f.e2 };
+		c.wall_before = a0;
+		c.wall_after = sd.length - a0 - W;
 		c.comp = component(v, k, sd.side, i);
 		c.plain = cl || cm || cr;
 		c.hash = bay_hash(vol, level, sd.side, i, plan_at(am).x, plan_at(am).y);

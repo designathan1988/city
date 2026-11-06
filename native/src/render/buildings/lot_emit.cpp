@@ -18,7 +18,7 @@ constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE
 constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f, BOLLARD_BAND_OUT = 0.01f;
 constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
-constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xffefcf;
+constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xf1ebdd;
 
 struct LotEmit {
 	Shell &shell, &parts;
