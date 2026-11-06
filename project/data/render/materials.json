@@ -237,6 +237,7 @@
  },
  "people": {
   "shader": "res://render/shaders/people.gdshader",
+  "body_shader": "res://render/shaders/people_body.gdshader",
   "params": {}
  },
  "people_held": {

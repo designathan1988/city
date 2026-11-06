@@ -9,6 +9,7 @@
 #include "render/agents/agent_meshes.h"
 #include "render/agents/held_things.h"
 #include "render/agents/helmets.h"
+#include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
@@ -63,6 +64,8 @@ public:
 	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
+	BodyRenderer &bodies() { return bodies_; }
+	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
 	int shown(int level) const; // people drawn at this level on the last frame
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
 	godot::Array clips() const;
@@ -70,6 +73,7 @@ public:
 
 private:
 	PeopleAsset asset_;
+	BodyRenderer bodies_;
 	godot::RID scenario_, material_, far_material_;
 	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
 	std::vector<InstanceRows> bufs_;

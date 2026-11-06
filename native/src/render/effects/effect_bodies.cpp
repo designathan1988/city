@@ -1,9 +1,7 @@
-// The people a blow or a bullet struck, as rigid pieces: head, trunk, arms and legs, each its own box tinted by the
-// walker's skin and clothes, thrown by the blow and settled by the rigid step of debris.h (no joints: the pieces of a
-// body fall apart on the ground instead of folding at the joints). A limb already lost is not there; a limb that comes off
-// at this blow is thrown clear with a spray of blood. Someone knocked down lies for as long as the simulation keeps them
-// down (the walker is not drawn meanwhile) and the pieces go when they get up. Also what a bullet draws: the tracer, the
-// wound's spray and a car's bodywork hit.
+// The people a blow or a bullet struck, thrown as themselves: the walker's own body on a ragdoll (render/agents/body_renderer.h). A limb already lost is
+// not there; a limb that comes off at this blow is thrown clear as a piece tinted by the skin and clothes, with a spray of blood. Someone knocked down lies for
+// as long as the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws: the tracer,
+// the wound's spray and a car's bodywork hit.
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
@@ -20,11 +18,10 @@ namespace {
 // box that holds the part): where the middle of each part is, and its box.
 constexpr float SKULL_CENTRE_M = 1.62f, TRUNK_CENTRE_M = 1.2f, ARM_CENTRE_M = 1.2f, LEG_CENTRE_M = 0.45f, ARM_SIDE_M = 0.24f, LEG_SIDE_M = 0.1f;
 constexpr float SKULL_W = 0.18f, SKULL_H = 0.23f, SKULL_D = 0.2f;
-constexpr float CHEST_W = 0.36f, CHEST_H = 0.58f, CHEST_D = 0.2f;
 constexpr float SLEEVE_W = 0.09f, SLEEVE_H = 0.6f, LEG_W = 0.13f, LEG_H = 0.9f, LEG_D = 0.14f;
-const Vector3 HEAD_BOX(SKULL_W, SKULL_H, SKULL_D), TRUNK_BOX(CHEST_W, CHEST_H, CHEST_D), ARM_BOX(SLEEVE_W, SLEEVE_H, SLEEVE_W), LEG_BOX(LEG_W, LEG_H, LEG_D);
+const Vector3 HEAD_BOX(SKULL_W, SKULL_H, SKULL_D), ARM_BOX(SLEEVE_W, SLEEVE_H, SLEEVE_W), LEG_BOX(LEG_W, LEG_H, LEG_D);
+constexpr float TOPPLE_MS = 2.2f; // the head of somebody going down, over their feet
 constexpr float LIMB_SCATTER_MS = 1.5f; // each part leaves a little differently from its neighbour
-constexpr float TRUNK_PUSH_SHARE = 0.7f; // the heavy trunk leaves slower than the limbs
 constexpr float TORN_PUSH = 1.5f; // a body blown apart flies faster
 constexpr float NO_PUSH_BELOW_M = 0.05f;
 constexpr float LEAST_LIFE_S = 0.2f;
@@ -41,6 +38,13 @@ constexpr int PART_KINDS = 5;
 constexpr uint32_t SALT_LOOK = 7;
 
 Color parse_color(const Variant &v) { return Color::html(String(v)); }
+
+// The ragdoll's parts a loss takes (ragdoll.ts LOST_PARTS: the arm from the forearm, the leg from the calf).
+uint32_t parts_gone(uint32_t limbs) {
+	constexpr uint32_t SKULL = 1u << 2, FOREARM_L = 1u << 4, FOREARM_R = 1u << 6, CALF_L = 3u << 8, CALF_R = 3u << 11;
+	return ((limbs & CAS_LIMB_HEAD) != 0 ? SKULL : 0) | ((limbs & CAS_LIMB_ARM_L) != 0 ? FOREARM_L : 0) | ((limbs & CAS_LIMB_ARM_R) != 0 ? FOREARM_R : 0) |
+			((limbs & CAS_LIMB_LEG_L) != 0 ? CALF_L : 0) | ((limbs & CAS_LIMB_LEG_R) != 0 ? CALF_R : 0);
+}
 } // namespace
 
 bool EffectWorld::load_looks(const RenderContext &ctx, PackedStringArray &errors) {
@@ -98,14 +102,23 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		p.spin = Vector3();
 		debris_.add(p);
 	};
-	if ((lost & CAS_LIMB_HEAD) == 0) lay(HEAD_BOX, parts[0].at, skin, params_.push_ms * power, life, true);
-	lay(TRUNK_BOX, Vector3(0, TRUNK_CENTRE_M, 0), top, params_.push_ms * power * TRUNK_PUSH_SHARE, life, false);
-	for (int k = 1; k < PART_KINDS; k++) {
-		if ((lost & parts[k].bit) != 0 && (severed & parts[k].bit) == 0) continue;
-		const bool off = (severed & parts[k].bit) != 0;
-		lay(parts[k].box, parts[k].at, parts[k].tint, off ? params_.limb_push_ms : params_.push_ms * power, life, true);
+	if (people_) {
+		BodySpec b;
+		b.at = Vector3(e.x, std::max(ground, e.y), e.z);
+		b.heading = yaw;
+		b.velocity = Vector3(px, 0, pz) * (params_.push_ms * power) + Vector3(0, power > 0.f ? params_.lift_ms : 0.f, 0);
+		b.tip = Vector3(px, 0, pz) * TOPPLE_MS;
+		b.scatter = power > 0.f ? LIMB_SCATTER_MS : 0.f;
+		b.life_s = life;
+		b.charred = charred;
+		b.lost = parts_gone(lost | severed);
+		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
+		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
+		people_->bodies().add(b);
+		for (int k = 1; k < PART_KINDS; k++)
+			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, life, true);
+		if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
 	}
-	if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
 	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);
 }
 

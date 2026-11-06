@@ -28,6 +28,8 @@ const FIRST_HEAVY := 6
 const BIG_FORCE := 45
 const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
+const BODY_FRAMES := 1200
+const BODY_SETTLE_FRAMES := 30
 const SLOT := "shoot_test_slot"
 var failures := 0
 
@@ -44,6 +46,7 @@ func _ready() -> void:
 	fright.reactions()
 	fright.stampede()
 	_walkers()
+	await _fallen()
 	_vehicles()
 	_demolish()
 	await _save_marks()
@@ -111,7 +114,26 @@ func _walkers() -> void:
 		_check(later.is_empty() or later.position.distance_to(wounded.position) > SAME_SPOT_M, "e morre do sangramento (a vaga foi para outro)")
 
 
-# A shot heard: the head round to it, some crouching near it, some filming far off, and then away (walk.ts frighten).
+## Somebody shot lies down as a body of their own, which comes to rest.
+func _fallen() -> void:
+	for f in BODY_SETTLE_FRAMES: # the blows above come and go first: their undo starts the effects over
+		await get_tree().process_frame
+	var walkers := _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
+	_check(not walkers.is_empty(), "alguém para o tiro do corpo")
+	var kill := _shoot(walkers[0].position + Vector3(0, HEAD_AIM_M * walkers[0].scale, 0))
+	print("tiro do corpo: ", kill)
+	for f in BODY_FRAMES:
+		if CityStore.query(&"effects_bodies") > 0:
+			break
+		await get_tree().process_frame
+	_check(CityStore.query(&"effects_bodies") > 0, "quem caiu é um corpo")
+	for f in BODY_FRAMES:
+		if CityStore.query(&"effects_bodies_moving") == 0:
+			break
+		await get_tree().process_frame
+	_check(CityStore.query(&"effects_bodies_moving") == 0, "o corpo pousa")
+
+
 func _vehicles() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [LIMIT])
 	var car: Dictionary = {}

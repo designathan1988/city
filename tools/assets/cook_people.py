@@ -28,8 +28,10 @@ import sys
 
 import numpy as np
 
+from cook_ragdoll import ragdoll
+
 MAGIC = b"RCPP"
-VERSION = 7
+VERSION = 8
 FEMALE, SENIOR, CHILD = 1, 2, 4
 BONE_TEXELS = 3
 IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly
@@ -272,6 +274,8 @@ def cook(root, clips_dir, out, png):
     blob += struct.pack("<Iffff", imp["frames"], imp["x"] / side, 1 - (imp["y"] + imp["height"]) / side, imp["width"] / side, imp["height"] / side)
     face_lines, face_bytes = face_texels(face_tables)
     blob += b"".join(heads) + b"".join(meshes) + fixed_point(tex).tobytes() + struct.pack("<I", face_lines) + face_bytes
+    parts, joint_bones, _ = ragdoll(bodies[0]["head"])
+    blob += bytes(parts) + bytes(joint_bones) + b"".join(ragdoll(b["head"])[2].tobytes() for b in bodies)
     open(f"{out}/people.bin", "wb").write(blob)
     licenses(root, out)
     print(f"palette values within {float(np.abs(pal).max()):.3f}")

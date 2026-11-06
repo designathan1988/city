@@ -1,7 +1,7 @@
 // How a cooked person is skinned, shared by every shader that poses one: 4 bones per vertex (BONE_INDICES / BONE_WEIGHTS, plain
 // data, no skeleton is bound), each bone's pose as the three rows of its 3x4 bind -> pose matrix, linear blend of the four.
-// What differs between shaders is only where the rows come from: the walk reads them from the palette (people.gdshader, two frames
-// mixed), a falling body from its bone-matrix texture (one pose: a = b, t = 0).
+// What differs between shaders is only where the rows come from: the walk reads them from the palette (two frames mixed), somebody off
+// their feet from the rows of their ragdoll (people_body.gdshader: one pose, a = b, t = 0).
 
 const int LAST_BONE = 52; // the Rocketbox skeleton's 53 bones
 

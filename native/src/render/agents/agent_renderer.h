@@ -29,6 +29,7 @@ public:
 	int drawn_vehicles() const { return drawn_vehicles_; }
 	int drawn_people() const { return drawn_people_; }
 	godot::Array people_clips() const { return people_.clips(); }
+	PeopleRenderer &people() { return people_; }
 	bool show_people_clip(const godot::String &name) { return people_.show_clip(name); }
 	// Per vehicle type and level: the triangles of its body and glass surfaces, the instances drawn last frame and the
 	// draws (surfaces of the shown MultiMeshes): counts, no clock (city_core_probe agent_cost).

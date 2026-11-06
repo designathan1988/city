@@ -26,10 +26,11 @@ namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
 constexpr uint32_t FACE_TEXELS = 8 * 13, FACE_TEXEL_BYTES = 8, MAX_FACE_LINES = 16384; // people_face.gdshaderinc FACE_SPAN, FACE_CHANNELS; half floats
 constexpr float FACE_ROW_STEP = 4.f; // the same: UV2.x is the region plus this many a row
-constexpr uint32_t VERSION = 7, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t VERSION = 8, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f;
+constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f, PALETTE_SPAN = 3.f; // cook_people.py fixed_point, PALETTE_SPAN
 constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn (cook_people.py fixed_point, decoded in people.gdshader)
 constexpr float CARD_HALF = 0.5f;
 
@@ -140,12 +141,50 @@ Ref<ArrayMesh> card_mesh() {
 	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
 	return m;
 }
+void read_fit(ByteReader &r, PersonFit &f) {
+	f.pelvis.x = r.get<float>();
+	f.pelvis.y = r.get<float>();
+	f.pelvis.z = r.get<float>();
+	f.above = r.get<float>();
+	f.below = r.get<float>();
+	f.ahead = r.get<float>();
+	f.side = r.get<float>();
+}
 } // namespace
 
 int PeopleAsset::clip(const char *name) const {
 	for (size_t i = 0; i < clips.size(); i++)
 		if (clips[i].name == name) return int(i);
 	return -1;
+}
+
+void PeopleAsset::read_card(ByteReader &r) {
+	card_frames = int(r.get<uint32_t>());
+	card_strip.r = r.get<float>();
+	card_strip.g = r.get<float>();
+	card_strip.b = r.get<float>();
+	card_strip.a = r.get<float>();
+}
+
+void PeopleAsset::read_ragdoll(ByteReader &r, uint32_t bones) {
+	bone_part.resize(bones);
+	joint_bone.resize(size_t(JOINT_COUNT));
+	if (!r.ok) return;
+	r.get_bytes(bone_part.data(), bone_part.size());
+	r.get_bytes(joint_bone.data(), joint_bone.size());
+	for (PersonVariation &pv : variations)
+		for (float &f : pv.joints) f = r.get<float>();
+}
+
+void PeopleAsset::standing_rows(int variation, float *rows) const {
+	const size_t row = size_t(variation) * size_t(block_rows) + size_t(clips[size_t(clip("idle"))].row);
+	const size_t values = bone_part.size() * BONE_TEXELS, line = values * TEXELS_PER_VALUE * RGBA;
+	const uint8_t *from = palette_bytes.ptr() + row * line;
+	for (size_t t = 0; t < values; t++)
+		for (size_t c = 0; c < RGBA; c++) { // cook_people.py fixed_point: high bytes in a texel, low bytes in the next
+			const float fixed = float(from[t * TEXELS_PER_VALUE * RGBA + c]) * BYTE_STEPS + float(from[(t * TEXELS_PER_VALUE + 1) * RGBA + c]);
+			rows[t * RGBA + c] = fixed / FIXED_MOST * 2.f * PALETTE_SPAN - PALETTE_SPAN;
+		}
 }
 
 bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStringArray &errors) {
@@ -174,11 +213,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
 	}
-	card_frames = int(r.get<uint32_t>());
-	card_strip.r = r.get<float>();
-	card_strip.g = r.get<float>();
-	card_strip.b = r.get<float>();
-	card_strip.a = r.get<float>();
+	read_card(r);
 	lods = int(lod_count);
 	variations.assign(count, PersonVariation());
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
@@ -198,22 +233,12 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		for (float &f : pv.helmet) f = r.get<float>();
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 		pv.fits.resize(clips.size());
-		for (PersonFit &f : pv.fits) {
-			f.pelvis.x = r.get<float>();
-			f.pelvis.y = r.get<float>();
-			f.pelvis.z = r.get<float>();
-			f.above = r.get<float>();
-			f.below = r.get<float>();
-			f.ahead = r.get<float>();
-			f.side = r.get<float>();
-		}
+		for (PersonFit &f : pv.fits) read_fit(r, f);
 	}
-	for (uint32_t v = 0; v < count && r.ok; v++)
-		for (uint32_t l = 0; l < lod_count && r.ok; l++) {
-			const LodSize &sz = sizes[v * lod_count + l];
-			if (sz.vertices > MAX_VERTICES) r.ok = false;
-			else variations[v].lods.push_back(read_mesh(r, sz));
-		}
+	for (uint32_t i = 0; i < count * lod_count && r.ok; i++) {
+		if (sizes[i].vertices > MAX_VERTICES) r.ok = false;
+		else variations[i / lod_count].lods.push_back(read_mesh(r, sizes[i]));
+	}
 	PackedByteArray texels;
 	texels.resize(int64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE);
 	if (r.ok) r.get_bytes(texels.ptrw(), size_t(texels.size()));
@@ -224,10 +249,12 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		face_bytes.resize(int64_t(face_lines) * FACE_TEXELS * FACE_TEXEL_BYTES);
 		r.get_bytes(face_bytes.ptrw(), size_t(face_bytes.size()));
 	}
+	read_ragdoll(r, bones);
 	if (!r.ok || r.o != r.n) {
 		errors.push_back("pessoas: arquivo truncado ou com sobra: " + path);
 		return false;
 	}
+	palette_bytes = texels;
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8, texels));
 	faces = ImageTexture::create_from_image(Image::create_from_data(int(FACE_TEXELS), int(face_lines), false, Image::FORMAT_RGBAH, face_bytes));
 	card = card_mesh();

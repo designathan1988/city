@@ -166,6 +166,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	rs->material_set_param(held_.material(), "fist", Vector3(float(fist[0]), float(fist[1]), float(fist[2])));
 	rs->material_set_param(material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(material_, "alpha_test", asset_.variations.front().alpha_test);
+	if (!bodies_.init(ctx, asset_, errors)) return false;
 	rs->material_set_param(far_material_, "atlas", asset_.atlas->get_rid());
 	rs->material_set_param(far_material_, "strip", asset_.card_strip);
 	rs->material_set_param(far_material_, "frames", float(asset_.card_frames));
@@ -186,6 +187,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 }
 
 void PeopleRenderer::reset() {
+	bodies_.release();
 	held_.reset();
 	helmets_.reset();
 	for (MultiMeshDraw &d : draws_) d.free();
@@ -242,6 +244,11 @@ int PeopleRenderer::held_level(uint64_t key, float dist) {
 	const int now = at(dist), place = keeper_.draw_of(key), was = place < 0 ? now : place % (asset_.lods + 1);
 	if (was == now) return now;
 	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
+}
+
+int PeopleRenderer::variation_of(uint32_t look, int age) const {
+	const std::vector<int> &bodies = by_age_[age >= 0 && age < PED_AGES ? age : int(PedAge::ADULT)];
+	return bodies.empty() ? 0 : bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 }
 
 void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened) {

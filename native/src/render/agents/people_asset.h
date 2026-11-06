@@ -6,6 +6,8 @@
 // card for the far off, showing the strip of yaw views each atlas holds (render/shaders/people_far.gdshader).
 #pragma once
 
+#include "core/bytes.h"
+
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/texture2d_array.hpp>
@@ -31,6 +33,7 @@ struct PersonFit {
 };
 
 constexpr int PALM_FLOATS = 12;
+constexpr int JOINT_COUNT = 18, JOINT_FLOATS = JOINT_COUNT * 3; // ragdoll.h RAGDOLL_JOINTS
 
 struct PersonVariation {
 	int walk_frames = 1;
@@ -38,6 +41,7 @@ struct PersonVariation {
 	bool female = false, senior = false, child = false;
 	float helmet[PALM_FLOATS] = {}; // three rows, a shell of width 1 fitted to this head, at rest
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
+	float joints[JOINT_FLOATS] = {}; // where the ragdoll's joints stand at rest
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 };
@@ -53,6 +57,12 @@ struct PeopleAsset {
 	int lods = 0;
 	std::vector<PersonClip> clips;
 	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's
+	std::vector<uint8_t> bone_part, joint_bone; // the ragdoll: which part each bone follows, which bone each joint sits on
+	godot::PackedByteArray palette_bytes; // the palette as the file has it
+	// A body's bones in the first frame of the idle, bind -> pose rows, twelve floats a bone.
+	void standing_rows(int variation, float *rows) const;
+	void read_card(ByteReader &r);
+	void read_ragdoll(ByteReader &r, uint32_t bones);
 	// The clip of that name, as its index in `clips`; -1 when the file has none.
 	int clip(const char *name) const;
 	// Reads and checks the file; false (with a message) when it is missing or malformed.
