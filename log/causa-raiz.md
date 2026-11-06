@@ -264,6 +264,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 
 - Causa 9, luz entre prédios: a normal de `canyon_keep` fazia 4 reconstruções com 2 matrizes inteiras cada, até o mundo, por pixel. Agora em espaço de vista, pelos termos da perspectiva, com uma rotação só no fim. Fotos: 0 a 111 pixels de 2 milhões. As 24 leituras do horizonte continuam; levá-las a um job em C++ fica a fazer.
 
+- Horizonte da luz entre prédios: uma direção para de ler quando nem o mais alto ao alcance (`near`, já no campo) subiria o que ela achou; a conta é a mesma, com menos leituras. Assar os 24 valores por célula em C++ foi rejeitado: 12 MB por janela contra 1 MB, enviados pela thread principal (engasgo), e todos os degraus numa borda só de 4 m, onde hoje cada direção cai numa célula diferente e a soma alisa.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
