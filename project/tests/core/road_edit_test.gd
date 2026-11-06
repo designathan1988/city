@@ -20,6 +20,7 @@ const MOVE_LEN_M := 60.0
 const MOVE_BY_M := 30.0
 const CONTROL_OFF_M := 420.0
 const TICKS_FOR_GRAPH := 3
+const RULE_STOP := 1
 const RULES_OFF_M := 540.0
 const SHARP_DEG := 15.0
 const OPEN_DEG := 40.0
@@ -128,6 +129,13 @@ func _control(e: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"set_node_control", [end.node, 1])
 	_check(r.get("error", "") == "hint.control.notJunction", "ponta não tem controle: %s" % r)
 	_lanes_by_hand(hit.node)
+	var legs: Array = CityStore.query(&"node_legs", [hit.node])
+	_check(legs.size() == 3, "regras: três vias no cruzamento (%d)" % legs.size())
+	var rule: Dictionary = CityStore.dispatch(&"set_approach_rule", [hit.node, legs[0].seg, RULE_STOP])
+	_check(rule.get("ok", false), "regras: Pare posto numa via")
+	_check(int(CityStore.query(&"node_legs", [hit.node])[0].rule) == RULE_STOP, "regras: a via ficou com Pare")
+	CityStore.dispatch(&"undo")
+	_check(int(CityStore.query(&"node_legs", [hit.node])[0].rule) == 0, "regras: desfazer tira a regra")
 
 
 ## A lane's connection taken away by hand, the traffic's graph following, and undo bringing it back.

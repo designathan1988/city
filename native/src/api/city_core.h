@@ -74,6 +74,8 @@ public:
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
+	godot::Array node_legs(int node);
+	godot::Dictionary set_approach_rule(int node, int seg, int rule);
 	godot::Dictionary node_lanes(int node), toggle_lane_link(int node, int from, int from_lane, int to, int to_lane);
 	godot::Dictionary road_spec(int profile) const, road_spec_limits() const;
 	godot::Array road_spec_issues(int base, const godot::Dictionary &spec) const;

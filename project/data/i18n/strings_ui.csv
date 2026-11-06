@@ -153,3 +153,4 @@ cmd.lot.delete,apagar lote,delete lot
 connector.title,Conexões das faixas,Lane connections
 hint.lane.last,Esta faixa precisa de ao menos uma saída,This lane needs at least one way out
 cmd.lane.link,Ligar faixas,Connect lanes
+cmd.lane.rule,Regra do cruzamento,Junction rule

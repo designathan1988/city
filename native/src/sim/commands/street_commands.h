@@ -22,6 +22,8 @@ ItemSnap snap_item(const CityState &s, ItemKind kind, double x, double z, double
 void snap_barrier_point(const CityState &s, BarrierKind kind, double &x, double &z);
 // Why a run cannot be built: "" or a strings.csv key.
 std::string barrier_problem(const CityState &s, BarrierKind kind, const std::vector<float> &pts);
+// A road's rule at a junction (SegRule), from the inspector: the junction goes by priority, as a plate makes it.
+EditResult set_approach_rule(CityState &s, int node, int seg, int rule);
 EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::string &text, double x, double z, double reach);
 // A row of items along the sidewalk from a to b, each where the tool would accept it, every_m apart (a drag).
 EditResult place_item_row(CityState &s, ItemKind kind, double ax, double az, double bx, double bz, double every_m);

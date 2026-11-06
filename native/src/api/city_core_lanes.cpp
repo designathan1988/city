@@ -4,6 +4,7 @@
 
 #include "api/edit_result.h"
 #include "sim/commands/commands.h"
+#include "sim/commands/street_commands.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -67,6 +68,31 @@ Dictionary CityCore::node_lanes(int node) {
 	out["leaving"] = leaving;
 	out["built"] = built;
 	return out;
+}
+
+// The roads of a junction: {seg, rule, dx, dz}, the way each leaves it and the plate it carries there.
+Array CityCore::node_legs(int node) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const RoadNetwork &net = state_->roads;
+	Array out;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[size_t(node)].alive) return out;
+	const RoadNode &n = net.nodes[size_t(node)];
+	for (int seg : n.segs) {
+		const RoadSegment &g = net.segs[size_t(seg)];
+		const RoadNode &there = net.nodes[size_t(g.a == node ? g.b : g.a)];
+		const int end = g.a == node ? 0 : 1;
+		Dictionary d;
+		d["seg"] = seg;
+		d["rule"] = (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
+		d["dx"] = there.x - n.x;
+		d["dz"] = there.z - n.z;
+		out.push_back(d);
+	}
+	return out;
+}
+
+Dictionary CityCore::set_approach_rule(int node, int seg, int rule) {
+	return run_edit(*state_, "cmd.lane.rule", [&](CityState &s) { return city::set_approach_rule(s, node, seg, rule); });
 }
 
 Dictionary CityCore::toggle_lane_link(int node, int from, int from_lane, int to, int to_lane) {

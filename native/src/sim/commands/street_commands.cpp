@@ -75,6 +75,20 @@ void each_piece_on(const CityState &s, int seg, F &&fn) {
 }
 } // namespace
 
+EditResult set_approach_rule(CityState &s, int node, int seg, int rule) {
+	EditResult r;
+	const std::vector<int> &legs = s.roads.nodes[size_t(node)].segs;
+	if (std::find(legs.begin(), legs.end(), seg) == legs.end() || legs.size() < 3) {
+		r.error = "hint.control.notJunction";
+		return r;
+	}
+	set_rule(s, seg, node, uint16_t(rule));
+	const RoadNode &n = s.roads.nodes[size_t(node)];
+	finish_edit(s, n.x, n.z, n.x, n.z);
+	r.ok = true;
+	return r;
+}
+
 EditResult place_item(CityState &s, ItemKind kind, SignType sign, const std::string &text, double x, double z, double reach) {
 	EditResult r;
 	const ItemSnap snap = snap_item(s, kind, x, z, reach);

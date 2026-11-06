@@ -94,6 +94,8 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
 	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
 	ClassDB::bind_method(D_METHOD("node_lanes", "node"), &CityCore::node_lanes);
+	ClassDB::bind_method(D_METHOD("node_legs", "node"), &CityCore::node_legs);
+	ClassDB::bind_method(D_METHOD("set_approach_rule", "node", "seg", "rule"), &CityCore::set_approach_rule);
 	ClassDB::bind_method(D_METHOD("toggle_lane_link", "node", "from", "from_lane", "to", "to_lane"), &CityCore::toggle_lane_link);
 	ClassDB::bind_method(D_METHOD("road_spec", "profile"), &CityCore::road_spec);
 	ClassDB::bind_method(D_METHOD("road_spec_limits"), &CityCore::road_spec_limits);
