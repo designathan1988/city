@@ -86,9 +86,21 @@ Array CityCore::node_legs(int node) {
 		d["rule"] = (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
 		d["dx"] = there.x - n.x;
 		d["dz"] = there.z - n.z;
+		Array banned;
+		for (int to : n.segs)
+			if (net.movement_banned(node, seg, to)) banned.push_back(to);
+		d["banned"] = banned;
 		out.push_back(d);
 	}
 	return out;
+}
+
+Dictionary CityCore::set_movement_banned(int node, int from, int to, bool banned) {
+	return run_edit(*state_, "cmd.lane.rule", [&](CityState &s) { return city::set_movement_banned(s, node, from, to, banned); });
+}
+
+Dictionary CityCore::remove_node(int node) {
+	return run_edit(*state_, "cmd.demolish.road", [&](CityState &s) { return city::remove_node(s, node); });
 }
 
 Dictionary CityCore::set_approach_rule(int node, int seg, int rule) {

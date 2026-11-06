@@ -219,6 +219,12 @@ int RoadNetwork::uturn_arm(int node) const {
 	return n.uturn == UTURN_FROM_LOW ? std::min(n.segs[0], n.segs[1]) : std::max(n.segs[0], n.segs[1]);
 }
 
+bool RoadNetwork::movement_banned(int node, int from, int to) const {
+	for (const LaneLink &l : nodes[size_t(node)].links)
+		if (l.from_lane == NO_LANE && l.from == from && l.to == to) return true;
+	return false;
+}
+
 bool RoadNetwork::crosswalk_on(int node, int seg) const {
 	return has_crosswalks(node) && (!mid_block(node) || seg == crossing_arm(node));
 }

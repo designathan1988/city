@@ -383,3 +383,7 @@ hint.uturn.narrow,O canteiro Ã© estreito demais para um carro fazer a volta.,T
 hint.uturn.tooShort,O retorno precisa de mais via dos dois lados.,A U-turn needs more road on both sides.
 inspector.addUturnToEnd,Retorno para quem vai ao fim,U-turn for traffic going to the end
 inspector.addUturnToStart,Retorno para quem vai ao início,U-turn for traffic going to the start
+inspector.direction,Sentido do tráfego,Traffic direction
+direction.both,Mão dupla,Two-way
+direction.aToB,Mão única: A → B,One-way: A → B
+direction.bToA,Mão única: B → A,One-way: B → A

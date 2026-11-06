@@ -38,6 +38,7 @@ func run(e: Vector3) -> void:
 	_join(a + (b - a) * QUARTER)
 	_crossing(a + (b - a) * QUARTER)
 	_uturn(e)
+	_movement(e)
 
 
 func _height(info: Dictionary) -> void:
@@ -106,6 +107,40 @@ func _uturn(e: Vector3) -> void:
 	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer o retorno volta Ã  mesma cidade")
 	CityStore.dispatch(&"add_uturn", [at, false])
 	CityStore.step_ticks(TICKS)
+	CityStore.dispatch(&"undo")
+
+
+func _movement(e: Vector3) -> void:
+	var a := e + Vector3(OFF_M, 0, UTURN_OFF_M * 4.0)
+	var b := a + Vector3(ROAD_M, 0, 0)
+	var mid := a + (b - a) * QUARTER
+	_lay(a, b, "urbanStreet")
+	_lay(mid, mid + Vector3(0, 0, UTURN_OFF_M), "urbanStreet")
+	var node: int = CityStore.query(&"node_at", [mid, PX]).get("node", -1)
+	var legs: Array = CityStore.query(&"node_legs", [node])
+	_check.call(legs.size() == 3, "três braços: %d" % legs.size())
+	CityStore.step_ticks(1)
+	var before: int = CityStore.query(&"node_traffic", [node]).movements
+	var hash_before: Dictionary = CityStore.query(&"state_hash")
+	var banned: Dictionary = CityStore.dispatch(&"set_movement_banned", [node, legs[0].seg, legs[1].seg, true])
+	_check.call(banned.get("ok", false), "proibir um movimento: %s" % [banned])
+	CityStore.step_ticks(1)
+	_check.call(int(CityStore.query(&"node_traffic", [node]).movements) < before, "proibido, o movimento some do cruzamento")
+	_check.call(CityStore.query(&"node_legs", [node])[0].banned.size() == 1, "o painel lê o movimento proibido")
+	CityStore.dispatch(&"undo")
+	CityStore.step_ticks(1)
+	_check.call(int(CityStore.query(&"node_traffic", [node]).movements) == before, "desfeito, o movimento volta")
+	var along := a + (mid - a) * 0.5
+	var two: Dictionary = CityStore.query(&"inspect", [along])
+	var spec: Dictionary = CityStore.query(&"road_spec", [two.profile_id])
+	var index: int = CityStore.query(&"road_spec_make", [two.profile_id, RoadSpecOps.directed(spec, 1)])
+	_check.call(index >= 0, "a via de mão única é um perfil")
+	var turned: Dictionary = CityStore.dispatch(&"upgrade_road", [along, index, false])
+	_check.call(turned.get("ok", false) and CityStore.query(&"inspect", [along]).one_way, "mão dupla vira mão única: %s" % [turned])
+	CityStore.dispatch(&"undo")
+	_check.call(not CityStore.query(&"inspect", [along]).one_way, "desfeito, volta a ser mão dupla")
+	var gone: Dictionary = CityStore.dispatch(&"remove_node", [node])
+	_check.call(gone.get("ok", false), "tirar o nó com as vias: %s" % [gone])
 	CityStore.dispatch(&"undo")
 
 

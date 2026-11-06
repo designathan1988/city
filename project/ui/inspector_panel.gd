@@ -172,10 +172,24 @@ func _node(col: Control) -> void:
 	_stats = HudWidgets.vbox(col)
 	_fill_node(_stats)
 	RoadPanel.point(col, _info, _redraw, close)
+	_impossible(col)
 	ApproachPanel.fill(col, _info.id, _redraw)
 	ConnectorPanel.fill(col, _info.id)
 	if _info.has("greens"): # a signal: what the player sets on it (JunctionPanel), drawn again from what the core reports
 		JunctionPanel.fill(col, _info, _redraw)
+
+
+## A junction that cannot close (Network.impossible): told, and it can be taken away with its roads.
+func _impossible(col: Control) -> void:
+	for n: Dictionary in CityStore.query(&"impossible_nodes"):
+		if n.id != _info.id:
+			continue
+		HudWidgets.label(col, &"BodyLabel", "%s · %s" % [tr("inspector.impossible"), tr("inspector.impossibleGap").format({"angle": roundi(n.gap_deg)})])
+		var off := HudWidgets.button(&"GhostDanger", "", tr("inspector.demolish"), "", "", "opt_row_h")
+		off.pressed.connect(func() -> void:
+			CityStore.dispatch(&"remove_node", [_info.id])
+			close())
+		col.add_child(off)
 
 
 func _fill_node(col: Control) -> void:

@@ -4,6 +4,15 @@ class_name RoadSpecOps
 extends RefCounted
 
 
+## The road with its lanes going `dir`: 1 towards its end, -1 towards its start, 0 half each way, as a road of two ways has them.
+static func directed(spec: Dictionary, dir: int) -> Dictionary:
+	var out := spec.duplicate(true)
+	var lanes: Array = out.elements.filter(func(e: Dictionary) -> bool: return e.kind == "lane")
+	for i in lanes.size():
+		lanes[i].dir = dir if dir != 0 else (-1 if i < lanes.size() / 2 else 1)
+	return out
+
+
 static func new_element(kind: String, spec: Dictionary, defaults: Dictionary, band_m: float) -> Dictionary:
 	match kind:
 		"laneForward", "laneBackward":

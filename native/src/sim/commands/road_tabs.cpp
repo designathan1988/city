@@ -161,6 +161,41 @@ EditResult set_road_end(CityState &s, int node, bool bulb) {
 	return r;
 }
 
+EditResult set_movement_banned(CityState &s, int node, int from, int to, bool banned) {
+	EditResult r;
+	RoadNetwork &net = s.roads;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[size_t(node)].alive || net.movement_banned(node, from, to) == banned) {
+		r.error = "hint.control.notJunction";
+		return r;
+	}
+	std::vector<LaneLink> rest;
+	for (const LaneLink &l : net.nodes[size_t(node)].links)
+		if (!(l.from_lane == NO_LANE && l.from == from && l.to == to)) rest.push_back(l);
+	if (banned) rest.push_back({ from, NO_LANE, to, NO_LANE });
+	j_links(s, node, std::move(rest));
+	r.ok = true;
+	return r;
+}
+
+EditResult remove_node(CityState &s, int node) {
+	EditResult r;
+	RoadNetwork &net = s.roads;
+	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[size_t(node)].alive) {
+		r.error = "hint.move";
+		return r;
+	}
+	RoadBox box;
+	const std::vector<int> arms = net.nodes[size_t(node)].segs;
+	for (int arm : arms) {
+		box.add(net.segs[size_t(arm)]);
+		demolish_segment(s, arm);
+	}
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (!settle_road_edit(s, r)) return r;
+	r.ok = true;
+	return r;
+}
+
 EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built) {
 	EditResult r;
 	const auto same_lane = [&](const LaneLink &l) { return l.from == link.from && l.from_lane == link.from_lane; };

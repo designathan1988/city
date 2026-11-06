@@ -32,3 +32,22 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 		HudWidgets.choices(row, items, leg.rule, func(rule: int) -> void:
 			CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
 			redraw.call())
+	_movements(col, node, legs, redraw)
+
+
+## The movements through it, a row per road they come from: pressed, allowed.
+static func _movements(col: Control, node: int, legs: Array, redraw: Callable) -> void:
+	HudWidgets.label(col, &"TitleLabel", col.tr("junction.movements"))
+	for from: Dictionary in legs:
+		var row := HudWidgets.option_row(col, _named(col, from))
+		for to: Dictionary in legs:
+			if to.seg == from.seg:
+				continue
+			var banned: bool = from.banned.has(to.seg)
+			var chip := HudWidgets.button(&"Ghost", "", _named(col, to), "junction.moveBlocked" if banned else "junction.moveAllowed", "", "opt_row_h")
+			chip.toggle_mode = true
+			chip.set_pressed_no_signal(not banned)
+			chip.pressed.connect(func() -> void:
+				CityStore.dispatch(&"set_movement_banned", [node, from.seg, to.seg, not banned])
+				redraw.call())
+			row.add_child(chip)

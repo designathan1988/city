@@ -21,6 +21,7 @@ const SIGNAL := 2
 
 ## `changed`: the panel is read again.
 static func road(col: Control, info: Dictionary, at: Vector3, changed: Callable, moved: Callable) -> void:
+	_direction(col, info, at, changed)
 	_stepper(col, "inspector.heightStart", info.node_a, info.lift_a, changed)
 	_stepper(col, "inspector.heightEnd", info.node_b, info.lift_b, changed)
 	var most := maxf(CURVE_LEAST_M, minf(CURVE_MOST_M, float(info.length_m) * CURVE_SHARE))
@@ -54,6 +55,20 @@ static func point(col: Control, info: Dictionary, changed: Callable, gone: Calla
 			if CityStore.dispatch(&"join_roads", [info.id]).get("ok", false):
 				gone.call())
 		col.add_child(b)
+
+
+## Both ways, or one: the road's own section with its lanes turned, as Editar perfil would leave it.
+static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Callable) -> void:
+	var spec: Dictionary = CityStore.query(&"road_spec", [info.profile_id])
+	var now := 0
+	if info.one_way:
+		now = 1 if spec.elements.any(func(e: Dictionary) -> bool: return e.kind == "lane" and e.dir > 0) else -1
+	var items := [[0, tr_key("direction.both")], [1, tr_key("direction.aToB")], [-1, tr_key("direction.bToA")]]
+	HudWidgets.dropdown(col, tr_key("inspector.direction"), items, now, func(dir: int) -> void:
+		var index: int = CityStore.query(&"road_spec_make", [info.profile_id, RoadSpecOps.directed(spec, dir)])
+		if index >= 0:
+			CityStore.dispatch(&"upgrade_road", [at, index, false])
+		changed.call())
 
 
 static func _stepper(col: Control, key: String, node: int, metres: float, changed: Callable) -> void:

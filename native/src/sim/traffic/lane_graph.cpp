@@ -98,7 +98,7 @@ bool link_stands(const CityState &s, int node, const LaneLink &l) {
 	const std::vector<int> &segs = net.nodes[size_t(node)].segs;
 	if (std::find(segs.begin(), segs.end(), l.from) == segs.end() || std::find(segs.begin(), segs.end(), l.to) == segs.end()) return false;
 	const DirSeg &in = g.ds[size_t(in_ds(net, l.from, node))], &out = g.ds[size_t(out_ds(net, l.to, node))];
-	return in.ok && out.ok && l.from_lane < in.lanes && l.to_lane < out.lanes;
+	return in.ok && out.ok && l.from_lane >= 0 && l.to_lane >= 0 && l.from_lane < in.lanes && l.to_lane < out.lanes;
 }
 
 // Whether the player said where this arriving lane goes.
@@ -233,7 +233,7 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 		Pose ph;
 		lane_pose(s, din, 0, g.ds[din].len, ph);
 		for (int so : arms) {
-			if (so == si && degree > 1 && net.uturn_arm(n) != si) continue;
+			if ((so == si && degree > 1 && net.uturn_arm(n) != si) || net.movement_banned(n, si, so)) continue;
 			int dout = out_ds(net, so, n);
 			if (!g.ds[dout].ok) continue;
 			Pose po;
