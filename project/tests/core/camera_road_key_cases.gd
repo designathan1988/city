@@ -2,6 +2,12 @@
 class_name CameraRoadKeyCases
 extends RefCounted
 
+const ZONE_ROAD_X := 700.0
+const ZONE_ROAD_Z := 620.0
+const ZONE_ROAD_M := 300.0
+const ZONE_BRUSH_M := 30.0
+const ZONE_KIND := 1
+
 var t: Node
 
 
@@ -22,7 +28,38 @@ func run() -> void:
 	await t._click(MOUSE_BUTTON_RIGHT, c)
 	t._check(road.chain == Vector3.INF, "clique direito cancela a via")
 	await _height_keys()
+	_zone_brush()
 	t.tools.set_tool(ToolController.Tool.NONE)
+
+
+## A fast drag reports two points far apart: the whole way between them is zoned, and with Shift held the same stroke takes the zone away.
+func _zone_brush() -> void:
+	var a := Vector3(ZONE_ROAD_X, 0, ZONE_ROAD_Z)
+	var b := a + Vector3(ZONE_ROAD_M, 0, 0)
+	var mid := a.lerp(b, 0.5)
+	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, 0, 0.25])
+	t._check(built.get("ok", false), "via para o pincel de zona: %s" % [built])
+	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": ZONE_KIND, "radius": ZONE_BRUSH_M})
+	var brush: Variant = t.tools.active
+	brush.click(a)
+	brush.drag(b)
+	brush.release(b)
+	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, ZONE_KIND])
+	t._check(again.get("error", "") == "tools.toast.zoneSame", "o arrasto rápido zoneia o meio do caminho: %s" % [again])
+	var shift := InputEventKey.new()
+	shift.keycode = KEY_SHIFT
+	shift.pressed = true
+	Input.parse_input_event(shift)
+	Input.flush_buffered_events()
+	brush.click(a)
+	brush.drag(b)
+	brush.release(b)
+	shift = shift.duplicate()
+	shift.pressed = false
+	Input.parse_input_event(shift)
+	Input.flush_buffered_events()
+	var none: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, 0])
+	t._check(none.get("error", "") == "tools.toast.zoneSame", "com Shift o traço tira a zona: %s" % [none])
 
 
 ## With the road tool in hand Page Up and Down are the road's height, landing on whole metres, and the camera does not tilt.
