@@ -10,7 +10,8 @@ sempre verdadeiros.
 
 - **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
 - **Primeira área no jogo (2026-11-05):** `src/sim/roads/flowStats.ts` e `controlAdvisor.ts` traduzidos sem edição, compilados no jogo e iguais ao 4.0; ver "Causa e prova" no histórico.
-- **Ainda não usar para o resto sem conferir:** a passada inteira (`--mode whole`) ainda deixa arquivos sem compilar; o caminho validado é `scripts/port-area.ts` com um plano de área, área por área.
+- **Estado do tradutor:** sistema de tipos aberto (`js::Value`), classes, genéricos, subclasses, setters. `--mode whole`: 4.130 unidades compilam, de 19.377 (11.238 traduzíveis), e 4 arquivos ficam fora; 370 s na pior passada. Compilar não é conferir: fora do `flow_control`, nada disso foi comparado com o 4.0.
+- **Caminho validado para portar:** `CXX=<clang++> node scripts/port-area.ts <plano> <saída>`, área por área: traduz e confere contra o 4.0 sem jogo (3.000 chamadas sorteadas em 2,1 s). Validado numa área só.
 - `tools/converter` (master `c3642d9`, conteúdo trazido ao repositório do jogo); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
   Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
@@ -334,3 +335,18 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 **Prova:** `project/tests/core/flow_control_test.gd`, nos dados do 4.0 por `call40`: `busy_major` 872,4247 contra 872,4241, `changed_at` 900 igual, `quiet_flow` 240 igual, id 33.554.433; 148 cruzamentos contados por veículos reais; um cruzamento da cidade virou semáforo. Tolerância 2e-5 (float contra double).
 
 **Fica por fazer:** o mesmo por área, na ordem do que falta no jogo. `whole` ainda não compila tudo (lista acima).
+
+### 2026-11-05 — A causa da cauda de recusas
+
+**Causa:** o sistema de tipos do tradutor era fechado: todo valor precisava de forma estática em C++, e o que não tinha era recusado (`translate/types.ts` `#unsupported`, `translate/flow.ts` `shapeOf`, `translate/expressions.ts` em `typeof`, `instanceof`, `in`, `??`). A tradução por módulo somava outra: dois módulos escreviam o mesmo arquivo de jeitos diferentes, e tipos com dependência cruzada não têm ordem em cabeçalhos separados.
+
+**Mudança:** `cpp/js/js_value.h` e o tipo `dynamic`, com caixa e descaixa nas fronteiras; o que a plataforma declara fica dinâmico; subclasses, setters, spread em objeto, `WeakMap`, laço sobre `x ?? []`; `--mode whole` com todos os tipos em `core/program_types.h` em ordem de dependência, cabeçalhos numa compilação só, recompilação só de quem inclui o que mudou; tipo que o compilador recusa vira dinâmico, erro sem dono leva só o módulo.
+
+**Prova:** suíte do conversor 116/116, com diferencial contra o TypeScript em `unknown`, `virtual`, setter e spread, e mutação que o check leve pega. Passada inteira: cabeçalhos sem erro, 4 arquivos `.cpp` de fora.
+
+**Limites, sem enfeite:**
+- 4.130 unidades compilam; não foram rodadas contra o 4.0, fora as 36 do `flow_control`.
+- Passou de 4.580 para 4.130 porque o número antigo contava arquivos que não compilavam.
+- 2.554 unidades ficam de fora por rodada e 8.139 são `method` ou `write` (desenho, interface, `hot-allocation`).
+- A área já no jogo não foi regenerada depois destas mudanças; o `js_value.h` ainda não está em `native/src/core`.
+- Interfaces implementadas por classes (`Sink`, `Path`) e classes que estendem `Map` continuam sem forma.

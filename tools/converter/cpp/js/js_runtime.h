@@ -7,6 +7,7 @@
 #include "js_map.h"
 #include "js_number.h"
 #include "js_string.h"
+#include "js_value.h"
 
 #include <cstdio>
 #include <cstdlib>

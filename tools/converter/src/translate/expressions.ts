@@ -8,9 +8,9 @@ import type * as TS from 'typescript';
 import type { FunctionPlan, Local, MemoPlan, TranslateContext } from './context.ts';
 import {
   BOOL, INT, INT64, LITERAL, NULL, STRING, VOID, bindTypeParameters, byValue, declare, holdsTypeParameter, integerLiteral, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
-  substitute, widerNumber, type CppType, arrow, isHandle } from './cpptype.ts';
+  substitute, widerNumber, type CppType, arrow, isHandle, DYNAMIC } from './cpptype.ts';
 import { Num } from './flow.ts';
-import { snake } from './names.ts';
+import { snake, upper } from './names.ts';
 
 /** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
 export const RUNTIME_INCLUDE = 'core/js_runtime.h';
@@ -109,8 +109,38 @@ export abstract class ExpressionEmitter {
     return this.coerce(this.value(e, want), want, e);
   }
 
+  /** A value put in a js::Value. */
+  protected box(v: Value): string {
+    this.c.includes.add(RUNTIME_INCLUDE);
+    if (v.type.k === 'dynamic') return v.code;
+    if (v.type.k === 'null') return 'js::Value(nullptr)';
+    if (v.type.k === 'literal') return `js::Value(std::string(${v.code}))`;
+    this.#boxing(v.type);
+    return `js::Value(${v.code})`;
+  }
+
+  /** A js::Value read as a static type: what the source's own types say it is here. */
+  protected unbox(code: string, want: CppType): string {
+    this.c.includes.add(RUNTIME_INCLUDE);
+    if (want.k === 'int' || want.k === 'real') return `${render(want)}(${code}.number())`;
+    if (want.k === 'bool') return `${code}.truthy()`;
+    if (want.k === 'string' || want.k === 'literal') return `${code}.text()`;
+    this.#boxing(want);
+    return `js::as<${render(want)}>(${code})`;
+  }
+
+  /** The structs and enums a boxed type holds: they get their conversions. */
+  #boxing(t: CppType): void {
+    if (t.k === 'struct' || t.k === 'enum') this.c.types.boxed.add(t.name);
+    else if (t.k === 'optional' || t.k === 'vector' || t.k === 'set') this.#boxing(t.of);
+    else if (t.k === 'ptr') this.#boxing(t.to);
+    else if (t.k === 'map') this.#boxing(t.of);
+  }
+
   protected coerce(v: Value, want: CppType | undefined, e?: TS.Expression): string {
     if (!want) return v.code;
+    if (want.k === 'dynamic') return this.box(v);
+    if (v.type.k === 'dynamic') return this.unbox(v.code, want);
     if (want.k === 'function' && want.ret.k === 'bool' && want.params.length === 1) {
       const from = target(v.type);
       const key = want.params[0]!;
@@ -207,13 +237,20 @@ export abstract class ExpressionEmitter {
       const inner = this.value(e.expression, want);
       return inner.type.k === 'optional' ? { code: `(*${inner.code})`, type: inner.type.of } : inner;
     }
-    if (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isTypeAssertionExpression(e)) return this.value(e.expression, want);
+    if (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isTypeAssertionExpression(e)) {
+      const inner = this.value(e.expression, want);
+      if (inner.type.k !== 'dynamic') return inner;
+      // `raw as T`: the source's promise of what it is, read as that
+      const asked = want ?? this.c.types.ofType(this.c.checker.getTypeAtLocation(e), 'local', null);
+      return asked.k === 'dynamic' || asked.k === 'void' ? inner : { code: this.unbox(inner.code, asked), type: asked };
+    }
     if (ts.isNumericLiteral(e)) return this.#number(e);
     if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) {
       if (want?.k === 'enum') return { code: this.#enumLiteral(want.name, e as TS.StringLiteral), type: want };
       return { code: JSON.stringify(e.text), type: LITERAL };
     }
     if (ts.isTemplateExpression(e)) return this.#template(e);
+    if (ts.isTypeOfExpression(e)) return this.#typeOf_(e);
     if (e.kind === ts.SyntaxKind.TrueKeyword) return { code: 'true', type: BOOL };
     if (e.kind === ts.SyntaxKind.FalseKeyword) return { code: 'false', type: BOOL };
     if (e.kind === ts.SyntaxKind.NullKeyword) return { code: 'nullptr', type: NULL };
@@ -242,6 +279,11 @@ export abstract class ExpressionEmitter {
         const written = ts.isBinaryExpression(e.parent) && e.parent.left === e && e.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && e.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment;
         if (written) return { code: `${obj.code}[${key}]`, type: dictionary.of };
         return this.#mapEntry(obj.code, dictionary, key);
+      }
+      if (target(obj.type).k === 'dynamic') {
+        const key = this.value(e.argumentExpression);
+        const code = key.type.k === 'string' || key.type.k === 'literal' ? `${obj.code}.get(${this.coerce(key, STRING)})` : `${obj.code}.at(${key.type.k === 'dynamic' ? `${key.code}.number()` : key.code})`;
+        return { code, type: DYNAMIC };
       }
       const tuple = this.#tupleField(obj.type, e.argumentExpression);
       if (tuple) return { code: `${obj.code}${arrow(obj.type)}${tuple.name}`, type: tuple.type };
@@ -279,7 +321,8 @@ export abstract class ExpressionEmitter {
     const text = int ? (wide ? `int64_t(${digits}LL)` : digits) : realLiteral(written, this.c.spec.number);
     if (this.#inConstant(e) || this.c.allowedNumbers.includes(value)) return { code: text, type };
     // A number the target's gates do not allow bare: a constant of this module, named from what receives it.
-    const name = this.c.literals.name(e, value, this.module);
+    const named = this.c.literals.name(e, value, this.module);
+    const name = this.c.spec.whole ? `${named}_${upper(this.module.replace(/^src\//, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'))}` : named;
     const key = `${this.module}|${name}`;
     if (!this.c.literalConstants.has(key)) {
       const line = e.getSourceFile().getLineAndCharacterOfPosition(e.getStart()).line + 1;
@@ -293,6 +336,7 @@ export abstract class ExpressionEmitter {
   #inConstant(e: TS.Node): boolean {
     for (let n: TS.Node | undefined = e.parent; n; n = n.parent) {
       if (this.c.ts.isVariableDeclaration(n)) return this.c.ts.isIdentifier(n.name) && /^[A-Z][A-Z0-9_]*$/.test(n.name.text);
+      if (this.c.ts.isPropertyDeclaration(n) && (this.c.ts.getCombinedModifierFlags(n) & this.c.ts.ModifierFlags.Static) !== 0) return true;
       if (this.c.ts.isFunctionLike(n) || this.c.ts.isBlock(n)) return false;
     }
     return false;
@@ -406,6 +450,43 @@ export abstract class ExpressionEmitter {
     return { code: `[&]() -> ${render(type)} { const auto &${held} = ${obj.code}; if (!${held}) return ${absent}; return ${read.code}; }()`, type };
   }
 
+  /** `typeof x`: what the static type says, or what the running value is. */
+  #typeOf_(e: TS.TypeOfExpression): Value {
+    const v = this.value(e.expression);
+    const named = (t: CppType): string => (t.k === 'int' || t.k === 'real' ? 'number' : t.k === 'string' || t.k === 'literal' || t.k === 'enum' ? 'string' : t.k === 'bool' ? 'boolean'
+      : t.k === 'function' || t.k === 'lambda' ? 'function' : 'object');
+    if (v.type.k === 'dynamic') return { code: `${v.code}.type_of()`, type: STRING };
+    if (v.type.k === 'optional' || v.type.k === 'ptr') {
+      const under = target(v.type);
+      return { code: `(${v.code} ? std::string(${JSON.stringify(named(under))}) : std::string("undefined"))`, type: STRING };
+    }
+    return { code: `std::string(${JSON.stringify(named(v.type))})`, type: STRING };
+  }
+
+  /** `a instanceof C`: the running value's kind, or what the static type already says. */
+  #instanceOf(e: TS.BinaryExpression, left: Value): Value {
+    const name = e.right.getText();
+    const t = target(left.type);
+    if (t.k === 'dynamic') return { code: name === 'Array' ? `${left.code}.is_array()` : `(${left.code}.kind() == js::Value::Kind::Object)`, type: BOOL };
+    const same = (t.k === 'vector' && /Array$/.test(name)) || (t.k === 'map' && name === 'Map') || (t.k === 'set' && name === 'Set') || (t.k === 'struct' && t.name === name);
+    if (!same) return { code: 'false', type: BOOL };
+    return { code: isHandle(left.type) || left.type.k === 'optional' ? `bool(${left.code})` : 'true', type: BOOL };
+  }
+
+  /** `k in o`: the key of a running value or a map; a struct's field by what the types say. */
+  #inObject(e: TS.BinaryExpression): Value {
+    const holder = this.value(e.right);
+    const t = target(holder.type);
+    if (t.k === 'dynamic') return { code: `${holder.code}.has(${this.expr(e.left, STRING)})`, type: BOOL };
+    if (t.k === 'map') return { code: `(${holder.code}${arrow(holder.type)}count(${this.expr(e.left, t.key)}) != 0)`, type: BOOL };
+    if (t.k === 'struct' && this.c.ts.isStringLiteralLike(e.left)) {
+      const field = this.c.types.structs.get(t.name)?.fields.find((f) => f.source === (e.left as TS.StringLiteral).text);
+      if (!field) return { code: 'false', type: BOOL };
+      return { code: field.type.k === 'optional' || isHandle(field.type) ? `bool(${holder.code}${arrow(holder.type)}${field.name})` : 'true', type: BOOL };
+    }
+    return this.fail(e, '`in` on something with no keys');
+  }
+
   /** A member of a value read: a list's length, a field, what a built-in has. */
   #member(e: TS.PropertyAccessExpression, obj: Value): Value {
     const name = e.name.text.replace(/^#/, '');
@@ -414,6 +495,7 @@ export abstract class ExpressionEmitter {
     if (getter?.owner?.kind === 'getter') return { code: `${obj.code}->${getter.cpp}()`, type: holdsTypeParameter(getter.ret) ? this.#typeOf(e) : getter.ret };
     const t = target(obj.type);
     const access = arrow(obj.type);
+    if (t.k === 'dynamic') return { code: `${obj.code}.get(${JSON.stringify(name)})`, type: DYNAMIC };
     if (name === 'length' && (t.k === 'vector' || t.k === 'string')) return { code: `int(${obj.code}${access}size())`, type: INT };
     // A Map's or a Set's size.
     if (name === 'size' && (t.k === 'map' || t.k === 'vector' || t.k === 'set')) return { code: `int(${obj.code}${access}size())`, type: INT };
@@ -431,8 +513,13 @@ export abstract class ExpressionEmitter {
         const flag = (this.c.checker.getTypeAtLocation(e).flags & this.c.ts.TypeFlags.BooleanLike) !== 0;
         return { code: `${obj.code}${access}${field}`, type: flag ? BOOL : this.c.types.number(Num.Float, 'local') };
       }
-      const struct = this.c.types.structs.get(t.name);
-      const field = struct?.fields.find((f) => f.source === name);
+      let struct = this.c.types.structs.get(t.name);
+      let field = struct?.fields.find((f) => f.source === name);
+      // a field of what the class extends
+      while (!field && struct?.base) {
+        struct = this.c.types.structs.get(struct.base);
+        field = struct?.fields.find((f) => f.source === name);
+      }
       if (!field) return this.fail(e, `${t.name} has no field ${name}`);
       const bound = new Map((struct?.typeParams ?? []).flatMap((p, i) => (t.args?.[i] ? [[p, t.args[i]!] as const] : [])));
       return { code: `${obj.code}${access}${field.name}`, type: substitute(field.type, bound) };
@@ -456,13 +543,21 @@ export abstract class ExpressionEmitter {
   protected call(e: TS.CallExpression, want?: CppType): Value {
     const ts = this.c.ts;
     const callee = e.expression;
+    if (callee.kind === ts.SyntaxKind.SuperKeyword) return { code: '/*super*/', type: VOID };
     if (ts.isPropertyAccessExpression(callee)) {
       const receiver = callee.expression;
       const method = callee.name.text;
       if (ts.isIdentifier(receiver) && receiver.text === 'Math') return this.#math(e, method);
       // a static built-in (Number.isInteger, String.fromCharCode, Array.isArray): the runtime's
       if (ts.isIdentifier(receiver) && this.#isBuiltin(receiver) && !(receiver.text === 'Number' && method === 'isFinite')) return this.builtin(e, null);
+      if (receiver.kind === ts.SyntaxKind.SuperKeyword) {
+        const inherited = this.#memberPlan(callee.name);
+        if (!inherited) return this.fail(e, 'a method of the base that was left out');
+        return { code: `${inherited.owner!.struct}::${inherited.cpp}(${this.#argumentsOf(inherited, e.arguments, new Map()).join(', ')})`, type: inherited.ret };
+      }
       if (ts.isIdentifier(receiver) && receiver.text === 'Number' && method === 'isFinite') {
+        const checked = this.value(e.arguments[0]!);
+        if (checked.type.k === 'dynamic') return { code: `(${checked.code}.kind() == js::Value::Kind::Number && std::isfinite(${checked.code}.number()))`, type: BOOL };
         this.c.includes.add('cmath');
         return { code: `std::isfinite(${this.expr(e.arguments[0]!)})`, type: BOOL };
       }
@@ -587,13 +682,25 @@ export abstract class ExpressionEmitter {
     const type: CppType = { k: 'ref', to: { k: 'struct', name: owner.struct, ...(params.length > 0 ? { args: params.map((name) => ({ k: 'tparam' as const, name })) } : {}) } };
     if (this.c.ts.isPropertyAccessExpression(e.parent) && e.parent.expression === e) return { code: 'this', type };
     if (owner.kind === 'constructor') return this.fail(e, '`this` given away by a constructor');
-    return { code: 'shared_from_this()', type };
+    // of a subclass, the base's handle read as its own
+    if (this.c.types.structs.get(owner.struct)?.base) return { code: `std::static_pointer_cast<${render(type.to)}>(this->shared_from_this())`, type };
+    return { code: 'this->shared_from_this()', type };
   }
 
   /** An optional the source has already proved present here (`if (x === undefined) return;`) is its value. The checker knows; the written side of an assignment stays the optional. */
   #narrowed(e: TS.Identifier, v: Value): Value {
-    if (v.type.k !== 'optional') return v;
     const ts = this.c.ts;
+    // a running value the source has proved a primitive (`typeof x === 'number'`) is one
+    if (v.type.k === 'dynamic') {
+      const at = this.c.checker.getTypeAtLocation(e);
+      const left = ts.isBinaryExpression(e.parent) && e.parent.left === e && e.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+      if (left || at.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return v;
+      if (at.flags & ts.TypeFlags.NumberLike) return { code: `${v.code}.number()`, type: this.c.types.number(Num.Float, 'local') };
+      if (at.flags & ts.TypeFlags.StringLike) return { code: `${v.code}.text()`, type: STRING };
+      if (at.flags & ts.TypeFlags.BooleanLike) return { code: `${v.code}.truthy()`, type: BOOL };
+      return v;
+    }
+    if (v.type.k !== 'optional') return v;
     const p = e.parent;
     if (ts.isBinaryExpression(p) && p.left === e && p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && p.operatorToken.kind <= ts.SyntaxKind.LastAssignment) return v;
     const here = this.c.checker.getTypeAtLocation(e);
@@ -617,6 +724,41 @@ export abstract class ExpressionEmitter {
       if (a && holdsTypeParameter(p.type) && p.type.k !== 'function') bindTypeParameters(p.type, this.#typeOf(a), out);
     });
     return out;
+  }
+
+  /** `{ ...a, x: 1, ...(c ? { y: 2 } : {}) }`: the struct filled in the order the source writes it. */
+  #objectBySteps(e: TS.ObjectLiteralExpression, type: Extract<CppType, { k: 'struct' }>): Value {
+    const ts = this.c.ts;
+    const out = this.temp('made');
+    const struct = this.c.types.structs.get(type.name);
+    const put = (name: string, value: TS.Expression): string => {
+      const field = struct?.fields.find((f) => f.source === name);
+      return field ? `${out}.${field.name} = ${this.expr(value, field.type)};` : this.fail(value, `${type.name} has no field ${name}`).code;
+    };
+    const members = (o: TS.ObjectLiteralExpression): string => o.properties.map((p) => step(p)).join(' ');
+    const step = (p: TS.ObjectLiteralElementLike): string => {
+      if (ts.isPropertyAssignment(p)) return put(p.name.getText(), p.initializer);
+      if (ts.isShorthandPropertyAssignment(p)) return put(p.name.text, p.name);
+      if (!ts.isSpreadAssignment(p)) return this.fail(p, 'an object member the translator does not know').code;
+      let s = p.expression;
+      while (ts.isParenthesizedExpression(s)) s = s.expression;
+      if (ts.isObjectLiteralExpression(s)) return members(s);
+      if (ts.isConditionalExpression(s)) {
+        let yes = s.whenTrue;
+        let no = s.whenFalse;
+        while (ts.isParenthesizedExpression(yes)) yes = yes.expression;
+        while (ts.isParenthesizedExpression(no)) no = no.expression;
+        if (ts.isObjectLiteralExpression(yes) && ts.isObjectLiteralExpression(no)) return `if (${this.expr(s.condition)}) { ${members(yes)} } else { ${members(no)} }`;
+      }
+      const from = this.value(s);
+      const t = target(from.type);
+      const read = isHandle(from.type) || from.type.k === 'optional' ? `*${from.code}` : from.code;
+      if (t.k === 'struct' && t.name === type.name) return `${out} = ${read};`;
+      const fields = t.k === 'struct' ? this.c.types.structs.get(t.name)?.fields ?? [] : [];
+      const held = this.temp('from');
+      return `{ const auto &${held} = ${read}; ${fields.filter((f) => struct?.fields.some((g) => g.source === f.source)).map((f) => `${out}.${struct!.fields.find((g) => g.source === f.source)!.name} = ${held}.${f.name};`).join(' ')} }`;
+    };
+    return { code: `[&] { ${type.name} ${out}; ${e.properties.map(step).join(' ')} return ${out}; }()`, type };
   }
 
   /** What a value the target owns is in C++: an object, the form of its source type (a type the spec maps); else a number. */
@@ -1048,7 +1190,7 @@ export abstract class ExpressionEmitter {
     const slot = this.c.flow.slotOfExpr(e);
     const type = want && (want.k === 'vector' || want.k === 'map' || want.k === 'set') ? want : slot ? this.c.types.slot(slot, 'local') : want;
     if (!type) return this.fail(e, `new ${name}`);
-    if (/^(Map|Set)$/.test(name)) {
+    if (/^(Map|Set|WeakMap|WeakSet)$/.test(name)) {
       this.c.includes.add(RUNTIME_INCLUDE);
       // new Set(items), new Map(pairs): the runtime's constructor reads any range
       return { code: e.arguments?.length ? `${render(type)}(${this.expr(e.arguments[0]!)})` : `${render(type)}{}`, type };
@@ -1110,7 +1252,12 @@ export abstract class ExpressionEmitter {
         }
         return { code: `(${left.code} ? ${left.code} : ${this.expr(e.right, left.type)})`, type: left.type };
       }
-      if (left.type.k !== 'optional') return this.fail(e, '?? on a value that is never absent in C++');
+      if (left.type.k === 'dynamic') {
+        const held = this.temp('held');
+        return { code: `[&] { const js::Value ${held} = ${left.code}; return ${held}.nullish() ? ${this.box(this.value(e.right))} : ${held}; }()`, type: DYNAMIC };
+      }
+      // what C++ holds as never absent cannot be: the left is the value
+      if (left.type.k !== 'optional') return left;
       return { code: `(${left.code} ? *${left.code} : ${this.expr(e.right, left.type.of)})`, type: left.type.of };
     }
     if (k === ts.SyntaxKind.BarBarToken && ts.isIdentifier(e.right) && e.right.text === 'undefined') {
@@ -1118,10 +1265,27 @@ export abstract class ExpressionEmitter {
     }
     const left = this.value(e.left);
     const assigns = k >= ts.SyntaxKind.FirstAssignment && k <= ts.SyntaxKind.LastAssignment;
+    if (e.operatorToken.kind === ts.SyntaxKind.InKeyword) return this.#inObject(e);
+    // a member set on a running value, or through a setter
+    if (e.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isPropertyAccessExpression(e.left)) {
+      const written = this.c.checker.getSymbolAtLocation(e.left.name)?.declarations?.find((d) => ts.isSetAccessorDeclaration(d));
+      const setter = written ? this.c.setters.get(written) : undefined;
+      if (setter) return { code: `${this.value(e.left.expression).code}->${setter.cpp}(${this.expr(e.right, setter.params[0]!.type)})`, type: VOID };
+      const holder = this.value(e.left.expression);
+      if (target(holder.type).k === 'dynamic') return { code: `${holder.code}.set(${JSON.stringify(e.left.name.text)}, ${this.box(this.value(e.right))})`, type: VOID };
+    }
     const enumSide = left.type.k === 'enum' ? left.type : undefined;
     const right = this.value(e.right, enumSide ?? (assigns ? left.type : undefined));
     const text = e.operatorToken.getText();
     const op = text === '===' ? '==' : text === '!==' ? '!=' : text;
+    if ((left.type.k === 'dynamic' || right.type.k === 'dynamic') && op !== '=' && op !== '&&' && op !== '||') {
+      if (op === '==' || op === '!=') return { code: `${op === '!=' ? '!' : ''}${this.box(left)}.same(${this.box(right)})`, type: BOOL };
+      const text2 = left.type.k === 'string' || left.type.k === 'literal' || right.type.k === 'string' || right.type.k === 'literal';
+      const side = (v: Value): string => (v.type.k === 'dynamic' ? (text2 ? `${v.code}.text()` : `${v.code}.number()`) : v.type.k === 'literal' ? `std::string(${v.code})` : v.code);
+      if (text2 && op === '+') return { code: `(${side(left)} + ${side(right)})`, type: STRING };
+      const real = this.c.types.number(Num.Float, 'local');
+      return { code: `(${side(left)} ${op} ${side(right)})`, type: /^[<>]=?$/.test(op) ? BOOL : real };
+    }
     if (op === '=') return { code: `${left.code} = ${this.coerce(right, left.type, e.right)}`, type: left.type };
     if (['==', '!=', '<', '>', '<=', '>=', '&&', '||'].includes(op)) {
       const leftCode = ts.isStringLiteral(e.left) && right.type.k === 'enum' ? this.#enumLiteral(right.type.name, e.left) : left.code;
@@ -1130,7 +1294,7 @@ export abstract class ExpressionEmitter {
       if (left.type.k === 'null' && right.type.k === 'optional') return { code: `${right.code} ${op} std::nullopt`, type: BOOL };
       return { code: `${leftCode} ${op} ${this.coerce(right, enumSide, e.right)}`, type: BOOL };
     }
-    if (op === 'instanceof' || op === 'in') return this.fail(e, op);
+    if (op === 'instanceof') return this.#instanceOf(e, left);
     // a ** b is Math.pow(a, b): C++ has no such operator
     if (op === '**=' || op === '**') {
       this.c.includes.add('cmath');
@@ -1190,10 +1354,22 @@ export abstract class ExpressionEmitter {
       if (fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return { code: this.callback(fn, asked.params, asked.ret), type: asked };
       if (ts.isMethodDeclaration(p) && p.name.getText() === 'has') return this.fail(p, 'a has() written as a method (write it as has: (k) => ...)');
     }
+    // an object that goes into a running value: built as one
+    if (asked?.k === 'dynamic') {
+      const made = this.temp('made');
+      const sets = e.properties.map((p) => {
+        if (ts.isPropertyAssignment(p)) return `${made}.set(${JSON.stringify(p.name.getText().replace(/^['"]|['"]$/g, ''))}, ${this.box(this.value(p.initializer))});`;
+        if (ts.isShorthandPropertyAssignment(p)) return `${made}.set(${JSON.stringify(p.name.text)}, ${this.box(this.value(p.name))});`;
+        return this.fail(p, 'a member of a running object').code;
+      });
+      this.c.includes.add(RUNTIME_INCLUDE);
+      return { code: `[&] { js::Value ${made} = js::Value::object(); ${sets.join(' ')} return ${made}; }()`, type: DYNAMIC };
+    }
     const slot = this.c.flow.slotOfExpr(e);
     const type: CppType = asked && asked.k === 'struct' ? asked
       : this.c.types.structFor((slot ? this.c.flow.shapeOf(slot) : null) ?? this.c.checker.getTypeAtLocation(e), 'value');
     if (type.k !== 'struct') return this.fail(e, 'an object that is no struct');
+    if (e.properties.some((p, i) => ts.isSpreadAssignment(p) && (i > 0 || ts.isParenthesizedExpression(p.expression) || ts.isConditionalExpression(p.expression)))) return this.#objectBySteps(e, type);
     const props = new Map<string, TS.Expression>();
     let spread: TS.Expression | null = null;
     for (const p of e.properties) {
@@ -1243,7 +1419,11 @@ export abstract class ExpressionEmitter {
       }
     }
     const type: CppType = want?.k === 'vector' ? want : slot ? this.c.types.slot(slot, 'local') : { k: 'vector', of: INT };
-    const element = elementOf(type)!;
+    if (type.k === 'dynamic') {
+      if (e.elements.some((x) => ts.isSpreadElement(x))) return this.fail(e, 'a spread into a running array');
+      return { code: `js::Value(std::vector<js::Value>{${e.elements.map((x) => this.box(this.value(x))).join(', ')}})`, type: DYNAMIC };
+    }
+    const element = elementOf(type) ?? DYNAMIC;
     // [...src]: a copy of src.
     if (e.elements.length === 1 && ts.isSpreadElement(e.elements[0]!)) {
       const src = this.value(e.elements[0]!.expression);

@@ -11,7 +11,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import { realLiteral, render, type CppType } from './cpptype.ts';
-import { upper } from './names.ts';
+import { enumName } from './types.ts';
 import type { ApiFunction, TranslationResult } from './run.ts';
 import type { CppEnum, CppStruct } from './types.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
@@ -103,6 +103,11 @@ class Scenario {
   }
 
   #number(type: CppType, name: string): Arg {
+    // ids past what a float holds, close enough to meet: a key kept as a float makes two of them one
+    if (type.k === 'int' && type.name === 'int64_t') {
+      const v = 33554432 + this.int(6);
+      return { js: String(v), cpp: `int64_t(${v})` };
+    }
     if (type.k === 'int') {
       const v = /id|track|segment|stop/i.test(name) || name === '' ? this.int(this.issued + 3) : this.int(25);
       return { js: String(v), cpp: String(v) };
@@ -127,10 +132,14 @@ class Scenario {
         const s = this.pick(['Alpha', 'Beta', 'Gamma', 'Delta', 'HTTP://a-b-c', '(alpha-beta)', '', 'a-']);
         return { js: JSON.stringify(s), cpp: `std::string(${JSON.stringify(s)})` };
       }
+      case 'set': {
+        const items = Array.from({ length: this.int(4) }, () => this.value(type.of, name, state));
+        return { js: `new Set([${items.map((x) => x.js).join(', ')}])`, cpp: `${render(type)}(std::vector<${render(type.of)}>{${items.map((x) => x.cpp).join(', ')}})` };
+      }
       case 'enum': {
         const e = this.#t.enums.find((x) => x.name === type.name)!;
         const v = this.pick(e.values);
-        return { js: JSON.stringify(v), cpp: `${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}` };
+        return { js: JSON.stringify(v), cpp: `${e.name}::${enumName(v)}` };
       }
       case 'optional':
         if (this.#rand() < 0.4) return { js: 'undefined', cpp: 'std::nullopt' };
@@ -225,7 +234,7 @@ function isTuple(s: CppStruct): boolean {
 function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes']): string {
   const lines: string[] = [];
   const enumPut = (e: CppEnum): string => `void put(std::ostream &o, ${e.name} v) {\n\tswitch (v) {\n${e.values.map((v) =>
-    `\tcase ${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}: o << ${JSON.stringify(JSON.stringify(v))}; return;`).join('\n')}\n\t}\n}`;
+    `\tcase ${e.name}::${enumName(v)}: o << ${JSON.stringify(JSON.stringify(v))}; return;`).join('\n')}\n\t}\n}`;
   const structPut = (s: CppStruct): string => {
     // a tuple prints as the JavaScript array it is
     if (isTuple(s)) {
@@ -243,6 +252,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::optional<T> &v);`,
     `template <class T> void put(std::ostream &o, const T *v);`,
     `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v);`,
+    `void put(std::ostream &o, const js::Value &v);`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`,
     `template <class T> void put(std::ostream &o, const js::Set<T> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
@@ -255,6 +265,28 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v) { if (v) put(o, *v); else o << "null"; }`,
+    `void put(std::ostream &o, const js::Value &v) {
+	using Kind = js::Value::Kind;
+	if (v.nullish()) { o << "null"; return; }
+	if (v.kind() == Kind::Boolean) { put(o, v.truthy()); return; }
+	if (v.kind() == Kind::Number) { put(o, v.number()); return; }
+	if (v.kind() == Kind::String) { put(o, v.text()); return; }
+	if (v.is_array()) { put(o, v.items()); return; }
+	std::vector<std::string> keys = v.keys();
+	std::sort(keys.begin(), keys.end());
+	o << "{";
+	bool first = true;
+	for (const std::string &k : keys) {
+		const js::Value x = v.get(k);
+		if (x.nullish() || (x.kind() == Kind::Boolean && !x.truthy())) continue;
+		if (!first) o << ",";
+		put(o, k);
+		o << ":";
+		put(o, x);
+		first = false;
+	}
+	o << "}";
+}`,
     `template <class T> void put(std::ostream &o, const js::Set<T> &v) { o << "["; bool first = true; for (const auto &x : v) { if (!first) o << ","; first = false; put(o, x); } o << "]"; }`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v) {`,
     // in insertion order, as JavaScript keeps a Map and js::Map keeps it
@@ -456,5 +488,99 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
   }
   fs.writeFileSync(path.join(input.work, 'source.jsonl'), sourceOut);
   fs.writeFileSync(path.join(input.work, 'translation.jsonl'), cppOut);
+  return { steps: input.steps, mismatches, calls };
+}
+
+/** What the light check needs beyond the comparison: the numbers the game's context holds (`tn.<name>`). */
+export interface ObjectDifferentialInput extends Omit<DifferentialInput, 'empty'> {
+  readonly context?: Readonly<Record<string, number>>;
+}
+
+/** A value that cannot be written as an argument: an instance, a callback. */
+const notAnArgument = (t: CppType): boolean => t.k === 'ref' || t.k === 'function' || t.k === 'lambda' || t.k === 'ptr' || t.k === 'struct'
+  || ((t.k === 'vector' || t.k === 'set' || t.k === 'optional') && notAnArgument(t.of));
+
+/**
+ * The classes of a translation against the source, with no game: one instance of each, its members called in a random order with
+ * random arguments, each answer compared. Only the translated files are compiled, so an area is checked in seconds and without a
+ * script written by hand; the free functions it exports are drawn among them.
+ */
+export function runObjectDifferential(input: ObjectDifferentialInput): DifferentialResult {
+  const t = input.translation;
+  if (t.errors.length > 0) throw new Error('the translation has errors: there is nothing to test');
+  fs.mkdirSync(input.work, { recursive: true });
+  const scenario = new Scenario(input.seed, t, input.valueTypes);
+  const ns = (module: string): string => `m${module.replace(/[^A-Za-z0-9]+/g, '_')}`;
+  const withContext = (args: string[], context?: readonly { readonly name: string }[]): string => [...args, ...(context ?? []).map((c) => c.name)].join(', ');
+  const js: string[] = [];
+  const cpp: string[] = [];
+  const calls: Record<string, number> = {};
+  const names: string[] = [];
+  type Call = { name: string; params: ApiFunction['params']; context?: ApiFunction['context']; ret: CppType; on: (args: string[], cpp: boolean) => string };
+  const callable: Call[] = [];
+  t.classes.forEach((c, i) => {
+    if (c.made.params.some((p) => notAnArgument(p.type))) return;
+    const args = c.made.params.map((p) => scenario.value(p.type, p.name, 'state'));
+    js.push(`const o${i} = new ${ns(c.module)}.${c.source}(${args.map((a) => a.js).join(', ')});`);
+    cpp.push(`\tauto o${i} = std::make_shared<${c.struct}>(${withContext(args.map((a) => a.cpp), c.made.context)});`);
+    for (const m of c.members) {
+      if (m.params.some((p) => notAnArgument(p.type) || p.mutable)) continue;
+      callable.push({ name: `${c.source}.${m.source}`, params: m.params, ...(m.context ? { context: m.context } : {}), ret: m.ret,
+        on: (a, native) => (native ? `o${i}->${m.cpp}(${withContext(a, m.context)})` : m.getter ? `o${i}.${m.source}` : `o${i}.${m.source}(${a.join(', ')})`) });
+    }
+  });
+  for (const f of t.api) {
+    if (f.edit || f.params.some((p) => notAnArgument(p.type)) || f.ret.k === 'ref') continue;
+    callable.push({ name: f.source, params: f.params, ...(f.context ? { context: f.context } : {}), ret: f.ret,
+      on: (a, native) => (native ? `${f.cpp}(${withContext(a, f.context)})` : `${jsName(f)}(${a.join(', ')})`) });
+  }
+  if (callable.length === 0) throw new Error('nothing of this translation can be called');
+  for (let i = 0; i < input.steps; i++) {
+    const c = scenario.pick(callable);
+    calls[c.name] = (calls[c.name] ?? 0) + 1;
+    const args = c.params.map((p) => scenario.value(p.type, p.name, 'state'));
+    names.push(`${c.name}(${args.map((a) => a.js).join(', ')})`);
+    // what returns an instance is called for what it does: the answers that follow show it
+    const silent = c.ret.k === 'void' || c.ret.k === 'ref';
+    const source = c.on(args.map((a) => a.js), false);
+    js.push(silent ? `${source}; emit(${i}, null);` : `emit(${i}, ${source});`);
+    const native = c.on(args.map((a) => a.cpp), true);
+    cpp.push(silent ? `\t${native}; emit(${i}, nullptr);` : `\temit(${i}, ${native});`);
+  }
+  fs.writeFileSync(path.join(input.work, 'hooks.mjs'), hooks({ ...input, empty: '' }));
+  const modules = [...new Set([...t.classes.map((c) => c.module), ...t.api.map((f) => f.module)])].sort();
+  fs.writeFileSync(path.join(input.work, 'source.mjs'), [
+    ...modules.map((m) => `import * as ${ns(m)} from ${JSON.stringify(pathToFileURL(path.join(input.sourceRoot, m)).href)};`), JS_SER,
+    'const lines = [];', 'const emit = (step, out) => lines.push(JSON.stringify({ step, out: ser(out) }));', ...js, `process.stdout.write(lines.join('\\n') + '\\n');`].join('\n'));
+  const sourceOut = execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--import', pathToFileURL(path.join(input.work, 'hooks.mjs')).href,
+    path.join(input.work, 'source.mjs')], { encoding: 'utf8', maxBuffer: 1 << 30 });
+  const cppDir = path.join(input.work, 'cpp');
+  for (const [file, text] of [...t.files, ...runtimeFiles()]) {
+    fs.mkdirSync(path.dirname(path.join(cppDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(cppDir, file), text);
+  }
+  const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h') && !f.endsWith('_enums.h')).sort();
+  fs.writeFileSync(path.join(input.work, 'harness.cpp'), [
+    `#include "${RUNTIME_INCLUDE}"`, ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
+    'std::ostringstream lines;', 'inline void put(std::ostream &o, std::nullptr_t) { o << "null"; }',
+    'template <class R> void emit(int step, const R &out) { lines << "{\\"out\\":"; put(lines, out); lines << ",\\"step\\":" << step << "}\\n"; }',
+    '} // namespace city', '', 'using namespace city;', '', 'int main() {',
+    ...(input.context ? ['\tTuning tn;', ...Object.entries(input.context).map(([k, v]) => `\ttn.${k} = ${v};`)] : []), ...cpp, '\tstd::cout << lines.str();', '\treturn 0;', '}', ''].join('\n'));
+  const exe = path.join(input.work, 'harness.exe');
+  const sources = [...t.files.keys()].filter((f) => f.endsWith('.cpp')).map((f) => path.join(cppDir, f));
+  try {
+    execFileSync(input.cxx, ['-std=c++17', '-O0', '-static', ...input.includes.map((i) => `-I${i}`), `-I${path.join(cppDir, 'native/src')}`, path.join(input.work, 'harness.cpp'), ...sources, '-o', exe], { stdio: 'pipe' });
+  } catch (error) {
+    throw new Error(`the check does not compile: ${String((error as { stderr?: Buffer }).stderr ?? error).split('\n').filter((l) => l.includes('error:')).slice(0, 6).join('\n')}`);
+  }
+  const cppOut = execFileSync(exe, { encoding: 'utf8', maxBuffer: 1 << 30 });
+  const a = sourceOut.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
+  const b = cppOut.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
+  const mismatches: Mismatch[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const found: { path: string; a: unknown; b: unknown }[] = [];
+    compare(a[i], b[i], input.tolerance, '', found);
+    for (const m of found) mismatches.push({ step: i, call: names[i] ?? '?', path: m.path, source: m.a, translation: m.b });
+  }
   return { steps: input.steps, mismatches, calls };
 }
