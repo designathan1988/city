@@ -26,7 +26,7 @@ namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
 constexpr uint32_t FACE_TEXELS = 8 * 13, FACE_TEXEL_BYTES = 8, MAX_FACE_LINES = 16384; // people_face.gdshaderinc FACE_SPAN, FACE_CHANNELS; half floats
 constexpr float FACE_ROW_STEP = 4.f; // the same: UV2.x is the region plus this many a row
-constexpr uint32_t VERSION = 6, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t VERSION = 7, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f;
@@ -156,6 +156,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	block_rows = int(r.get<uint32_t>());
 	const uint32_t clip_count = r.get<uint32_t>();
 	hand_bone = int(r.get<uint32_t>());
+	head_bone = int(r.get<uint32_t>());
 	const uint32_t pal_h = uint32_t(block_rows) * count;
 	bool sound = r.ok && magic == MAGIC && version == VERSION && count > 0 && count <= MAX_VARIATIONS && lod_count > 0 && lod_count <= MAX_LODS &&
 			pal_w == bones * BONE_TEXELS && clip_count > 0 && clip_count <= MAX_CLIPS;
@@ -194,6 +195,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		for (int k = 0; k < 3; k++) r.get<float>(); // where a helmet sits on this body, for the cook's own use
 		pv.mood = r.get<float>();
 		for (float &f : pv.palm) f = r.get<float>();
+		for (float &f : pv.helmet) f = r.get<float>();
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 		pv.fits.resize(clips.size());
 		for (PersonFit &f : pv.fits) {

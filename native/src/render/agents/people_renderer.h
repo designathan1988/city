@@ -8,6 +8,7 @@
 
 #include "render/agents/agent_meshes.h"
 #include "render/agents/held_things.h"
+#include "render/agents/helmets.h"
 #include "render/agents/people_asset.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
@@ -94,6 +95,7 @@ private:
 	};
 	Played crouch_at(int female, float since, float left) const; // `since` it began and `left` of it
 	HeldThings held_;
+	Helmets helmets_;
 	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;

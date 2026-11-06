@@ -23,7 +23,7 @@ namespace city {
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, HELMET = 5, SIGN = 6, ROOF = 7, GLOSS = 8 };
+enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SIGN = 6, ROOF = 7, GLOSS = 8 };
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
 enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3 }; // what the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge
 
@@ -158,9 +158,6 @@ int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictio
 int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 // heavy_meshes.cpp
 int build_truck(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
-// The helmet of whoever rides a two-wheeler astride (agents.json rider.head_m, in the model frame), of these radii. The rider is a
-// pedestrian in a clip, PeopleRenderer's; the helmet goes with the machine.
-void agent_helmet(MeshBuilder &mb, const godot::Dictionary &rider, const godot::Vector3 &radii);
 int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
 int build_bicycle(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
 // A tyre from its designation [section width mm, aspect ratio %, rim diameter inches] (ISO 4000-1, ETRTO): its radius

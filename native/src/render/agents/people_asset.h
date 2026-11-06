@@ -36,6 +36,7 @@ struct PersonVariation {
 	int walk_frames = 1;
 	float walk_advance = 1, height = 1, alpha_test = 0, mood = 0; // mood: -1 low .. 1 bright
 	bool female = false, senior = false, child = false;
+	float helmet[PALM_FLOATS] = {}; // three rows, a shell of width 1 fitted to this head, at rest
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
@@ -51,7 +52,7 @@ struct PeopleAsset {
 	godot::Color card_strip; // the strip in the atlas: x, y, a frame's width and height, in uv
 	int lods = 0;
 	std::vector<PersonClip> clips;
-	int block_rows = 0, hand_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things
+	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's
 	// The clip of that name, as its index in `clips`; -1 when the file has none.
 	int clip(const char *name) const;
 	// Reads and checks the file; false (with a message) when it is missing or malformed.

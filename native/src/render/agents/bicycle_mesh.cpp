@@ -10,7 +10,6 @@ namespace city {
 namespace {
 constexpr float STAY_X = 0.06f, FORK_X = 0.05f; // half the width of the rear stays and of the fork at the axle
 constexpr float SADDLE_LONG = 0.26f, SADDLE_HALF_W = 0.08f, SADDLE_TOP = 0.04f, BAR_HALF = 0.28f, THIN = 0.8f;
-constexpr float HELMET_TALL = 0.9f, HELMET_LONG = 1.2f;
 } // namespace
 
 int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
@@ -38,8 +37,6 @@ int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTr
 	const Vector3 size = agent_v3(rack["size_m"]);
 	agent_box(mb, Vector3(-size.x * 0.5f, at.y, at.x - size.z * 0.5f), Vector3(size.x * 0.5f, at.y + size.y, at.x + size.z * 0.5f), trim.blackout, AgentTag::FIXED);
 	agent_box(mb, Vector3(-lens.x * 0.5f, at.y + size.y, at.x - size.z * 0.5f), Vector3(lens.x * 0.5f, at.y + size.y + lens.y, at.x - size.z * 0.5f + lens.y), trim.tail, AgentTag::TAIL);
-	const float helmet = float(d["helmet_r"]);
-	agent_helmet(mb, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 

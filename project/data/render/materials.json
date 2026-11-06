@@ -201,7 +201,6 @@
    "sign_power": 2.0,
    "paint_roughness": 0.0,
    "lens_roughness": 0.0,
-   "helmet_roughness": 0.0,
    "trim_roughness": 0.7,
    "cloth_roughness": 1.0
   }
@@ -242,6 +241,10 @@
  },
  "people_held": {
   "shader": "res://render/shaders/people_held.gdshader",
+  "params": {}
+ },
+ "people_helmet": {
+  "shader": "res://render/shaders/people_helmet.gdshader",
   "params": {}
  },
  "people_far": {

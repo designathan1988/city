@@ -1,5 +1,5 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
-// 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader), 5 a rider's helmet,
+// 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
 // 6 a lit sign (the bus's destination, day and night), 7 a roof (the paint, or black on a share of the cars), 8 the gloss black round
 // the glass. The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
@@ -28,14 +28,12 @@ uniform vec3 sheen_sky : source_color; // what a clear coat mirrors above the ho
 uniform vec3 sheen_ground : source_color;
 uniform float sheen_power;
 uniform float lens_roughness;
-uniform float helmet_roughness;
 uniform float trim_roughness;
 
 const float BRAKE_FLAG = 8.0;
 #include "res://render/shaders/agent_door.gdshaderinc"
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
 uniform vec3 paints[24]; // the paints, then the colours of the transport lines
-uniform int paint_n = 1;
 varying flat float v_tag;
 varying flat vec4 v_custom;
 varying flat float v_seed;
@@ -102,9 +100,6 @@ void fragment() {
 	} else if (tag == 6) {
 		emit = source_linear(sign_glow) * sign_power;
 		rough = lens_roughness;
-	} else if (tag == 5) { // a rider's helmet, in one of the paints
-		c = srgb_to_linear(paints[int(pick(v_seed, 0.0, 4.0) * float(paint_n))]);
-		rough = helmet_roughness;
 	}
 	ALBEDO = linear_out(c);
 	ROUGHNESS = rough;

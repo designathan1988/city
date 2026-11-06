@@ -11,7 +11,7 @@ Output layout (little-endian):
   per clip: 16-byte name, u32 row, u32 frames (rows within a block; a walk's own frames are the variation's)
   impostor: u32 frames, f32 x, y, width, height (the strip of yaw views in the atlas, uv with v down)
   per variation: u32 walk_frames, f32 idle_seconds, f32 walk_advance, f32 height, u32 flags (1 female, 2 senior, 4 child),
-                 f32 alpha_test, f32 head x y z of the moto clip (where a helmet goes), f32 mood, the palm's three rows, per lod: u32 vertex_count, u32 index_count,
+                 f32 alpha_test, f32 head x y z of the moto clip (where a helmet goes), f32 mood, the palm's three rows, the helmet's three rows, per lod: u32 vertex_count, u32 index_count,
                  per clip, at its first frame: f32 pelvis x y z (root space, metres), f32 above, below, ahead, side (the body's
                  extent from the pelvis)
   per variation, per lod: vertices (f32 x y z, f32 nx ny nz, u8 r g b look, u8 bones[4], u8 weights[4], f32 u v, u32 face row),
@@ -29,7 +29,7 @@ import sys
 import numpy as np
 
 MAGIC = b"RCPP"
-VERSION = 6
+VERSION = 7
 FEMALE, SENIOR, CHILD = 1, 2, 4
 BONE_TEXELS = 3
 IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly
@@ -40,6 +40,9 @@ PALETTE_SPAN = 3.0  # people.gdshader BODY_SPAN: palette values lie within it, t
 FIXED_MAX = 65535
 STAND_FRAMES = {"talk": 120, "listen": 90, "look": 32, "phone": 110, "headphones": 100, "bag": 100, "crouchDown": 24, "crouchIdle": 40, "crouchUp": 24, "photo": 60}  # what one does waiting: 3 to 7 frames a second
 HAND = "Bip01_R_Hand"
+HEAD = "Bip01_Head"
+HELMET_SEGMENTS = (24, 16)  # riderPoses.ts: the facets the shell is padded for
+HELMET_PAD = 0.012  # room between the head and the shell, metres
 FINGERS = ("Bip01_R_Finger1", "Bip01_R_Finger2", "Bip01_R_Finger3", "Bip01_R_Finger4")  # index to little finger
 # name in the file, name of the baked clip for an adult and for a senior
 FACE_CHANNELS = ["faceBlink", "faceJoy", "faceSadness", "faceAnger", "faceSurprise", "faceBrowRaise", "mouthOpen", "mouthRound", "mouthPuckered", "mouthSpread",
@@ -114,6 +117,26 @@ def palm(head):
     y -= x * y.dot(x)
     y /= np.linalg.norm(y)
     return names.index(HAND), np.c_[x, y, np.cross(x, y), wrist]
+
+
+def helmet(b):
+    """The head bone's place in the file's bones, and a shell of width 1 fitted to this head as three rows at rest (riderPoses.ts helmetShape): round
+    every point of the head above the bone's joint, in the bone's own frame."""
+    m = b["head"]["mesh"]
+    bone = [b["head"]["nodes"][i].get("name") for i in m["bones"]].index(HEAD)
+    to_bone = np.array(m["inverses"], dtype=np.float64)[bone * 16:][:16].reshape(4, 4).T
+    weight = (b["weights"] * (b["bones"] == bone)).sum(axis=1)
+    points = (to_bone @ np.c_[b["rest"], np.ones(len(b["rest"]))].T).T[weight >= 0.5, :3]
+    points = points[points[:, 1] > 0]
+    low, high = points.min(axis=0), points.max(axis=0)
+    centre, half = (low + high) / 2, (high - low) / 2
+    reach = np.sqrt((((points - centre) / half) ** 2).sum(axis=1)).max()
+    facet = 1 / (np.cos(np.pi / HELMET_SEGMENTS[1]) * np.cos(np.pi / HELMET_SEGMENTS[0]))
+    width = (half * reach * facet + HELMET_PAD) * 2
+    shell = np.eye(4)
+    shell[:3, :3] = np.diag(width)
+    shell[:3, 3] = centre
+    return bone, (np.linalg.inv(to_bone) @ shell)[:3]
 
 
 def fixed_point(tex):
@@ -221,6 +244,8 @@ def cook(root, clips_dir, out, png):
         flags = (FEMALE if e["gender"] == "f" else 0) | (SENIOR if senior else 0) | (CHILD if e["ageBand"] == "child" else 0)
         hand, rows_of_palm = palm(b["head"])
         head = struct.pack("<IffIfffff", walk_frames, walk["stride"], e["height"], flags, alpha, hx, hy, hz, moods[e["id"]]) + rows_of_palm.astype("<f4").tobytes()
+        head_bone, shell = helmet(b)
+        head += shell.astype("<f4").tobytes()
         face_row, face_table = face_rows(b, next_face)
         face_tables.append(face_table)
         next_face += len(face_table)
@@ -241,7 +266,7 @@ def cook(root, clips_dir, out, png):
     m = bodies[0]["head"]["mesh"]
     side = float(bodies[0]["head"]["atlas"]["size"])
     imp = m["impostor"]
-    blob = struct.pack("<4sIIIIIIII", MAGIC, VERSION, len(index), nb, len(m["levels"]), nb * BONE_TEXELS, block_rows, len(table), hand)
+    blob = struct.pack("<4sIIIIIIIII", MAGIC, VERSION, len(index), nb, len(m["levels"]), nb * BONE_TEXELS, block_rows, len(table), hand, head_bone)
     blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sIIff", n.encode(), r, f, *seconds[n]) for n, r, f in table)
     # v over the atlas's rows as the mesh's uv reads them: a frame's y counts from the other end (cookedPerson.ts CookedImpostor)
     blob += struct.pack("<Iffff", imp["frames"], imp["x"] / side, 1 - (imp["y"] + imp["height"]) / side, imp["width"] / side, imp["height"] / side)

@@ -19,7 +19,7 @@ constexpr float LITRES_PER_M3 = 1000.f;
 constexpr float MIRROR_W = 0.08f, MIRROR_H = 0.32f, MIRROR_D = 0.12f, DOOR_SPLIT_W = 0.04f, CAB_DOOR_SEAM = 0.03f;
 constexpr float TAIL_LENS_H_M = 0.05f;
 // motorbike proportions (shares of the axle distance or of the body half width)
-constexpr float MOTO_LAMP_D = 0.03f, HELMET_TALL = 1.1f, HELMET_LONG = 1.15f;
+constexpr float MOTO_LAMP_D = 0.03f;
 
 struct Truck {
 	float L = 0, hl = 0, chw = 0, cab_back = 0, cab_bottom = 0, floor = 0, belt = 0, glass_top = 0, cab_top = 0, wall = 0;
@@ -180,10 +180,6 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 	return passengers;
 }
 
-void agent_helmet(MeshBuilder &mb, const Dictionary &rider, const Vector3 &radii) {
-	mb.blob(agent_v3(rider["head_m"]), radii, AGENT_WHITE, agent_tag(AgentTag::HELMET));
-}
-
 static std::vector<Vector2> profile_of(const Dictionary &part) {
 	std::vector<Vector2> out;
 	for (const Variant &p : Array(part["at"])) out.push_back(agent_v2(p));
@@ -218,7 +214,7 @@ static void moto_frame(MeshBuilder &mb, const Dictionary &sh, float rear_z, floa
 
 int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
 	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
-	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
+	const float az = float(d["wheelbase_m"]) * 0.5f;
 	const Dictionary sh = d["shape"];
 	const Vector2 head = agent_v2(sh["head"]);
 	for (int side : { -1, 1 }) {
@@ -236,7 +232,6 @@ int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim 
 	const Array cowl = Dictionary(sh["cowl"])["at"];
 	const Vector2 tail = agent_v2(cowl[2]);
 	agent_box(mb, Vector3(-lens.x * 0.5f, tail.y - TAIL_LENS_H_M, tail.x - MOTO_LAMP_D), Vector3(lens.x * 0.5f, tail.y, tail.x), trim.tail, AgentTag::TAIL);
-	agent_helmet(mb, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 

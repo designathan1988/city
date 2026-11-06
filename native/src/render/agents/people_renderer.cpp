@@ -117,14 +117,17 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 		errors.push_back("pessoas: variações demais para as tabelas dos corpos");
 		return false;
 	}
-	PackedVector4Array palms;
+	PackedVector4Array palms, shells;
 	palms.resize(BODY_TABLE * PALM_ROWS);
+	shells.resize(BODY_TABLE * PALM_ROWS);
 	for (std::vector<int> &list : by_age_) list.clear();
 	for (size_t v = 0; v < asset_.variations.size(); v++) {
 		const PersonVariation &pv = asset_.variations[v];
 		for (int r = 0; r < PALM_ROWS; r++) {
 			const float *row = pv.palm + r * PALM_ROW_FLOATS;
 			palms.set(int64_t(v) * PALM_ROWS + r, Vector4(row[0], row[1], row[2], row[3]));
+			const float *shell = pv.helmet + r * PALM_ROW_FLOATS;
+			shells.set(int64_t(v) * PALM_ROWS + r, Vector4(shell[0], shell[1], shell[2], shell[3]));
 		}
 		by_age_[int(pv.child ? PedAge::CHILD : pv.senior ? PedAge::ELDER : PedAge::ADULT)].push_back(int(v));
 	}
@@ -149,11 +152,14 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
 		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
 	}
-	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors)) return false;
+	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
 	set_faces(material_);
 	set_tables(held_.material());
+	set_tables(helmets_.material());
+	rs->material_set_param(helmets_.material(), "head_bone", asset_.head_bone);
+	rs->material_set_param(helmets_.material(), "helmet_rows", shells);
 	rs->material_set_param(held_.material(), "hand_bone", asset_.hand_bone);
 	rs->material_set_param(held_.material(), "palm_rows", palms);
 	const Array fist = held["fist"];
@@ -181,6 +187,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 
 void PeopleRenderer::reset() {
 	held_.reset();
+	helmets_.reset();
 	for (MultiMeshDraw &d : draws_) d.free();
 	blob_.free();
 }
@@ -211,6 +218,7 @@ bool PeopleRenderer::show_clip(const String &name) {
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "idle_clip", c);
 	rs->material_set_param(held_.material(), "idle_clip", c);
+	rs->material_set_param(helmets_.material(), "idle_clip", c);
 	return true;
 }
 
@@ -219,6 +227,7 @@ void PeopleRenderer::begin() {
 	blob_buf_.restart();
 	keeper_.begin();
 	held_.begin();
+	helmets_.begin();
 }
 
 int PeopleRenderer::level_at(float dist) const {
@@ -254,7 +263,9 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	at.x += vehicle.fz * off.x - vehicle.fx * up * off.y + vehicle.fx * flat * off.z;
 	at.y += flat * off.y + up * off.z;
 	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
-	place(PEOPLE_DENSE_KEYS + key, v, dist > blob_from_m_ ? asset_.lods : level_at(dist), at, look, 0.f, phase, CLIP_CODE_BASE + float(clip));
+	const int level = dist > blob_from_m_ ? asset_.lods : level_at(dist);
+	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, CLIP_CODE_BASE + float(clip));
+	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, CLIP_CODE_BASE + float(clip));
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
@@ -306,6 +317,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
 	held_.draw(scenario_, box, LAYER_PEOPLE);
+	helmets_.draw(scenario_, box, LAYER_PEOPLE);
 	return drawn;
 }
 
