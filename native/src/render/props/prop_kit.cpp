@@ -76,7 +76,16 @@ Color part_color(const Dictionary &p) {
 PropTag part_tag(const Dictionary &p) {
 	const String look = p.get("glow", "");
 	if (look == "night") return PropTag::NIGHT_GLOW;
+	if (bool(p.get("plank", false))) return PropTag::PLANK;
 	return bool(p.get("wood", false)) ? PropTag::WOOD : PropTag::FIXED;
+}
+
+// Where on itself a part's vertices lie, for the surface the shader gives it: a plank's length and across it, anything else its height off the ground (props.gdshader).
+void mark_surface(MeshBuilder &b, int64_t from, PropTag tag) {
+	for (int64_t i = from; i < b.v.size(); i++) {
+		const Vector3 &v = b.v[i];
+		b.uv.set(i, tag == PropTag::PLANK ? Vector2(v.x, v.y + v.z) : Vector2(0, v.y));
+	}
 }
 
 // A prop's parts, its lenses (parts with "lens") left to PropKit::lenses.
@@ -90,7 +99,9 @@ MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &
 	for (int i = 0; i < list.size(); i++) {
 		const Dictionary p = list[i];
 		if (p.has("lens")) continue;
+		const int64_t from = b.v.size();
 		shape(b, p, part_color(p), Vector2(float(int(part_tag(p))), float(p.get("part", 0))), errors);
+		mark_surface(b, from, part_tag(p));
 	}
 	return b;
 }

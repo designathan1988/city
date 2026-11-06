@@ -30,6 +30,8 @@ varying flat vec3 v_light;
 varying flat float v_layer; // a plate's layer of the sign sheets, UV2.y (sign_atlas.h)
 varying flat vec2 v_finish; // a barrier's metalness and roughness, INSTANCE_CUSTOM.b and .a (barrier_boxes.cpp)
 varying vec3 v_local;
+varying vec3 v_seen; // where it is in the world, and which way it faces
+varying vec3 v_faces;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
@@ -68,6 +70,39 @@ vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat
 	return hung + vec3(0.0, ring.x - sag * (1.0 - u * u), ring.y + swing);
 }
 
+// The surface of a thing out in the street, in world metres, for what the eye can tell apart: paint gone blotchy, dirt in the grain of it, and grime rising from the ground, as
+// far as UV.y, its height. Near only: past `DETAIL_END_M` a pixel holds more than the noise does.
+const float DETAIL_END_M = 90.0, DETAIL_FROM = 0.6;
+const vec3 GRIME = vec3(0.62, 0.58, 0.52);
+const float GRIME_REACH_M = 0.5;
+const float WEAR_LOW = 0.82, WEAR_HIGH = 1.1;
+const float WEAR_BLOTCH = 1.7, WEAR_SMUDGE = 7.1, WEAR_GRAIN = 37.0;
+const float ROUGH_BLOTCH = 0.22, ROUGH_GRAIN = 0.1;
+
+vec2 on_face(vec3 p, vec3 n) {
+	vec3 a = abs(n);
+	return a.y > a.x && a.y > a.z ? p.xz : a.x > a.z ? p.zy : p.xy;
+}
+
+void weather(vec3 p, vec3 n, float high, float near, inout vec3 c, inout float rough) {
+	vec2 at = on_face(p, n);
+	float blotch = vnoise(at * WEAR_BLOTCH) * 0.6 + vnoise(at * WEAR_SMUDGE) * 0.4, grain = vnoise(at * WEAR_GRAIN);
+	vec3 worn = c * mix(WEAR_LOW, WEAR_HIGH, blotch) * mix(GRIME, vec3(1.0), smoothstep(0.0, GRIME_REACH_M, high));
+	c = mix(c, worn, near);
+	rough = clamp(rough + near * ((blotch - 0.5) * ROUGH_BLOTCH + (grain - 0.5) * ROUGH_GRAIN), 0.05, 1.0);
+}
+
+// A plank: `along` its length, `across` it (Modo's wood: rings distorted by waves, and a layer of noise for the grain), the rings fading before they alias.
+const float PLANK_RINGS = 26.0, PLANK_WAVE = 7.0, PLANK_FIBRE = 110.0;
+void plank(float along, float across, float width, inout vec3 c, inout float rough) {
+	float wave = vnoise(vec2(along * 0.8, across * 5.0));
+	float rings = 0.5 + 0.5 * sin(across * PLANK_RINGS + wave * PLANK_WAVE);
+	float fibre = vnoise(vec2(along * 4.0, across * PLANK_FIBRE));
+	float keep = clamp(1.0 - width * PLANK_RINGS * 0.3, 0.0, 1.0);
+	c *= mix(1.0, mix(0.7, 1.12, rings) * (0.86 + 0.28 * fibre), keep);
+	rough = mix(rough, 0.5 + 0.3 * fibre, keep);
+}
+
 void vertex() {
 	v_tag = UV2.x;
 	v_tint = INSTANCE_CUSTOM.rgb;
@@ -83,6 +118,8 @@ void vertex() {
 			VERTEX = vec3(0.0); // a part this pole does not have
 		}
 	}
+	v_seen = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	v_faces = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	if (abs(v_tag - 3.0) < 0.5) {
 		float lens = UV2.y;
 		v_lit = abs(lens - INSTANCE_CUSTOM.r) < 0.5 || abs(lens - INSTANCE_CUSTOM.g) < 0.5 ? 1.0 : 0.0;
@@ -103,16 +140,25 @@ void fragment() {
 	if (abs(v_tag - 6.0) < 0.5) {
 		c = source_linear(texture(sign_atlas, vec3(UV, v_layer)).rgb);
 	}
-	ALBEDO = linear_out(c);
-	ROUGHNESS = roughness;
+	float rough = roughness;
 	if (abs(v_tag - 7.0) < 0.5) {
 		METALLIC = v_finish.x;
-		ROUGHNESS = v_finish.y;
+		rough = v_finish.y;
 	}
 	if (abs(v_tag - 8.0) < 0.5) {
 		METALLIC = post_metal;
-		ROUGHNESS = post_roughness;
+		rough = post_roughness;
 	}
+	float near = 1.0 - smoothstep(DETAIL_END_M * DETAIL_FROM, DETAIL_END_M, length(VERTEX));
+	if (near > 0.0) {
+		if (abs(v_tag - 9.0) < 0.5) {
+			plank(UV.x, UV.y, fwidth(UV.y), c, rough);
+		} else if (v_tag < 0.5 || abs(v_tag - 5.0) < 0.5 || abs(v_tag - 7.0) < 0.5 || abs(v_tag - 8.0) < 0.5) {
+			weather(v_seen, v_faces, abs(v_tag - 7.0) < 0.5 ? 1.0 : UV.y, near, c, rough);
+		}
+	}
+	ALBEDO = linear_out(c);
+	ROUGHNESS = rough;
 	if (abs(v_tag - 3.0) < 0.5) {
 		ALBEDO = linear_out(c * (1.0 - v_lit));
 		ROUGHNESS = lens_roughness;
