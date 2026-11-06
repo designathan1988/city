@@ -49,7 +49,10 @@ void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb
 		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
 			const float x0 = float(key_x(key) * CHUNKS_PER_SUPER + i) * CHUNK, z0 = float(key_y(key) * CHUNKS_PER_SUPER + j) * CHUNK;
 			const int64_t chunk = chunk_of(x0 + CHUNK * MID, z0 + CHUNK * MID);
-			each_owned_segment(s, chunk, [&](int sid) { emit_segment(e, sid); });
+			each_owned_segment(s, chunk, [&](int sid) {
+				emit_segment(e, sid);
+				emit_markings(e, sid);
+			});
 			s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 				const RoadNode &nd = s.roads.nodes[n];
 				if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == chunk) emit_node(e, n);

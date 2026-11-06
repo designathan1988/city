@@ -1,6 +1,9 @@
 // ChangeLog consumption and per-frame budgets (render.max_chunk_rebuilds_per_frame, commit_budget_ms, upload_budget_mb).
 #include "render/render_world.h"
 
+#include "render/owned_segments.h"
+#include "sim/roads/road_grade.h"
+
 #include "core/units.h"
 
 #include <chrono>
@@ -53,6 +56,7 @@ void RenderWorld::reset() {
 	overlays_.reset();
 	effects_.reset();
 	road_stream_.clear();
+	raised_stream_.clear();
 	props_stream_.clear();
 	building_stream_.clear();
 }
@@ -73,6 +77,7 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
 			road_stream_.mark(k);
 			far_roads_.mark(k);
+			if (structure_of(g.flags) != Structure::GROUND) raised_stream_.mark(k);
 			overlays_.mark_dirty(k);
 		}
 	for (const RoadNode &n : s.roads.nodes)
@@ -131,6 +136,10 @@ void RenderWorld::mark_changed(const CityState &s) {
 	for (int64_t k : road_keys_) {
 		road_stream_.mark(k);
 		far_roads_.mark(k);
+		each_owned_segment(s, k, [&](int sid) {
+			if (structure_of(s.roads.segs[size_t(sid)].flags) != Structure::GROUND) raised_stream_.mark(k);
+		});
+		if (raised_stream_.known.count(k)) raised_stream_.dirty.insert(k);
 		props_stream_.mark(k);
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
@@ -176,13 +185,15 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 				[&](int64_t k) {
 					roads_.submit(s, k, *s.jobs, 0.f);
 					verges_.submit(s, k, *s.jobs, 0.f);
-					structures_.submit(s, k, *s.jobs, 0.f);
+					if (!raised_stream_.known.count(k)) structures_.submit(s, k, *s.jobs, 0.f);
 				},
 				[&](int64_t k) {
 					roads_.drop_chunk(k);
 					verges_.drop_chunk(k);
-					structures_.drop_chunk(k);
+					if (!raised_stream_.known.count(k)) structures_.drop_chunk(k);
 				});
+		raised_stream_.update(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, budget,
+				[&](int64_t k) { structures_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { structures_.drop_chunk(k); });
 		far_roads_.update(s, *s.jobs, budget, cam);
 		props_stream_.update(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, budget,
 				[&](int64_t k) { props_.submit(s, k, *s.jobs, 0.f); }, [&](int64_t k) { props_.drop_chunk(k); });

@@ -53,6 +53,10 @@ uniform float pool_handover_m = 200.0;
 instance uniform int chunk_mask = 0;
 instance uniform float far_pull = 0.0;
 
+const float FAR_LINE_M = 0.12; // a lane line's width: from afar it is the share of the pixel it covers
+const float FAR_LINE_DUTY = 0.6; // of a line's length, painted: dashes and solid lines together
+const vec3 FAR_LINE_TONE = vec3(0.78);
+
 const int M_ROAD = 0;
 const int M_PLATE = 1;
 const int M_FOOTPATH = 2;
@@ -151,6 +155,12 @@ void fragment() {
 		if (v_mat == M_LANE) {
 			float grain = source_linear(texture(asphalt_map, uv / asphalt_m * 2.7).rgb).r;
 			albedo *= lane_wear(min(COLOR.r, COLOR.g) * WEAR_SPAN_M, COLOR.b * WEAR_LANE_M, grain);
+			if (far_pull > 0.0) { // the lines between the lanes, filtered: a box of the pixel's width over the line's
+				float edge = min(COLOR.r, COLOR.g) * WEAR_SPAN_M, lane = max(COLOR.b * WEAR_LANE_M, MEAN_FLOOR);
+				float off = abs(edge - max(round(edge / lane), 1.0) * lane), wide = max(fwidth(edge), FAR_LINE_M);
+				float seen = clamp(min(FAR_LINE_M * 0.5, off + wide * 0.5) - max(-FAR_LINE_M * 0.5, off - wide * 0.5), 0.0, FAR_LINE_M) / wide;
+				albedo = mix(albedo, FAR_LINE_TONE, seen * FAR_LINE_DUTY);
+			}
 		}
 		bend = (texture(asphalt_normal, uv / asphalt_m, near * detail_asphalt.z).xy - 0.5) * 2.0;
 		if (v_mat != M_PAINT) albedo = wear_asphalt(albedo, wear_at(v_world.xz).x, v_world.xz);

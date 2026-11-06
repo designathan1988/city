@@ -125,7 +125,7 @@ public:
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() + props_.pending() +
+		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
@@ -150,6 +150,7 @@ private:
 	EffectWorld effects_;
 	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
+	ChunkStream raised_stream_; // the chunks with a bridge, a viaduct or a tunnel: those stand out from afar, as far as the buildings
 	int budget_ = 1;
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
 	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;

@@ -530,6 +530,13 @@ Ressalvas abertas:
 - **Venezianas escuras:** o `FIN_WOOD` escurecia a cor. No 4.0 é tinta lisa (`louvreMaterial`), agora `PART_PAINT`; a terceira cor é `#55785c`.
 - Par com `20-dia-apartamento` no prédio 513: mesma cor de veneziana, deck, vasos e espreguiçadeiras. A pérgola difere pelo id do prédio, que aqui é outro.
 
+### Ciclo 15: pontes e pintura de longe, câmera em movimento (2026-11-05)
+- **Pontes e pilares:** os chunks com ponte, viaduto ou túnel têm stream própria (`raised_stream_`) com o alcance dos prédios. Foto de um viaduto de 800 m: de perto inteiro; a cerca de 4 km os pilares ainda aparecem.
+- **Pintura de longe:** as linhas entre faixas no fragmento de `road.gdshader`, por filtro de caixa da largura do pixel sobre a da linha (uma linha fina em geometria cintila; a pesquisa dá o mesmo caminho: filtrar pelo `fwidth` ou passar à média). A zebra é a média das barras. Sem linha de parada e sem pintura de vagas nesse nível. Ganho discreto nas fotos.
+- **Câmera:** `_walk_test` no `camera_input_test`: 90 passos sobre a cidade a 250 m, zoom variou 0,00 m nos dois renderizadores. O teste não foi rodado contra o código antigo.
+- Documentação: uniforms por instância até 16 por shader, nos valores por instância, com a nota do Compatibility só sobre índice de textura. `CUSTOM0` ausente na malha: a busca não achou resposta oficial; os testes no Compatibility e no Forward+ passaram com as vias detalhadas sem esse array.
+- Brilho do cômodo mais claro: a fórmula do cômodo é a mesma do 4.0 (`glassRoom.ts`, `pane_lamp`); o par não prova diferença, porque o id do prédio muda a sorte de cada cômodo. O limiar do glow não foi mexido.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

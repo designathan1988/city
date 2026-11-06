@@ -15,6 +15,11 @@ const STILL_S := 0.15
 const SETTLE_LIMIT_S := 12.0
 const EPS := 1e-3
 const OPEN_M := 600.0 # past the city: nothing for the eye to be pulled clear of
+const WALK_STEPS := 90
+const WALK_VIEW_M := 250.0 # the view over the blocks: well past the street, where the pull ends
+const WALK_RIGHT_M := 6.0
+const WALK_AHEAD_M := 3.0
+const WALK_HOLD_M := 1.0 # the ground under the point looked at moves it this much at most
 
 var failures := 0
 var rig: CityCamera
@@ -39,6 +44,7 @@ func _ready() -> void:
 	await _orbit_tests()
 	await _limit_tests()
 	await _key_tests()
+	await _walk_test()
 	await CameraRoadKeyCases.new(self).run()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -142,6 +148,21 @@ func _limit_tests() -> void:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
 	await _glide_settled()
 	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "zoom máximo: meia altura %.0f m" % rig.half)
+
+
+## Moving over the buildings at the city's view: the zoom holds. The pull is for the street, and the eye never jumps towards what it crosses.
+func _walk_test() -> void:
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	rig.jump((b.min + b.max) * 0.5, 35.0, 45.0, WALK_VIEW_M)
+	await _frames(1)
+	var from := rig.camera.global_position.distance_to(rig.focus)
+	var worst := 0.0
+	for i in WALK_STEPS:
+		rig.slide(WALK_RIGHT_M, WALK_AHEAD_M)
+		await _frames(1)
+		worst = maxf(worst, absf(rig.camera.global_position.distance_to(rig.focus) - from))
+	_check(rig.pull.shown < EPS, "andar sobre a cidade: o olho não é puxado (%.3f)" % rig.pull.shown)
+	_check(worst < WALK_HOLD_M, "andar sobre a cidade: o zoom fica (variou %.2f m de %.0f m)" % [worst, from])
 
 
 func _key_tests() -> void:
