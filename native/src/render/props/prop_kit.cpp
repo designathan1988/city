@@ -76,8 +76,8 @@ Color part_color(const Dictionary &p) {
 PropTag part_tag(const Dictionary &p) {
 	const String look = p.get("glow", "");
 	if (look == "night") return PropTag::NIGHT_GLOW;
-	if (bool(p.get("plank", false))) return PropTag::PLANK;
-	return bool(p.get("wood", false)) ? PropTag::WOOD : PropTag::FIXED;
+	if (!bool(p.get("wood", false))) return PropTag::FIXED;
+	return String(p.get("shape", "")) == "box" ? PropTag::PLANK : PropTag::WOOD; // sawn, or a trunk
 }
 
 // Where on itself a part's vertices lie, for the surface the shader gives it: a plank's length and across it, anything else its height off the ground (props.gdshader).

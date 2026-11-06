@@ -1,8 +1,11 @@
 // The body against a yard's field (way_body.h): the search's discs, and the cell-by-cell fit of the ways found.
 #include "sim/traffic/way_body.h"
 
+#include <immintrin.h>
+
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace city {
 namespace traffic {
@@ -14,13 +17,15 @@ constexpr double QUARTER_STEP = 0.25; // a corner of the body is tested in squar
 constexpr double FIT_SQUARE = 0.5; // the squares body_fits reads the clearance in
 
 // The squares of a corner that reach out of the end disc at `end`: `tip` the body's end there, `side` which flank.
-void corner_squares(Discs &d, double hw, double end, double tip, double side, std::vector<BodyPoint> &out) {
+void corner_squares(Discs &d, double hw, double end, double tip, double side, int corner) {
 	const int n = std::max(1, int(std::ceil(hw / QUARTER_STEP)));
 	const double w = hw / n, inward = tip > end ? -1 : 1;
 	for (int a = 0; a < n; a++)
 		for (int b = 0; b < n; b++) {
 			const double u = tip + inward * (a + HALF) * w, v = side * (hw - (b + HALF) * w);
-			if (std::hypot(std::fabs(u - end) + w * HALF, std::fabs(v) + w * HALF) > d.r) out.push_back({ u, v });
+			if (std::hypot(std::fabs(u - end) + w * HALF, std::fabs(v) + w * HALF) <= d.r) continue;
+			d.square_u[corner].push_back(u);
+			d.square_v[corner].push_back(v);
 		}
 	d.square_r = w * ROOT_HALF + (d.r - hw);
 }
@@ -39,7 +44,7 @@ Discs discs_of(const Steered &b) {
 	for (int k = 0; k < 4; k++) {
 		d.cu[k] = us[k / 2];
 		d.cv[k] = vs[k % 2];
-		corner_squares(d, hw, k / 2 ? u1 : u0, k / 2 ? front : -back, k % 2 ? 1 : -1, d.squares[k]);
+		corner_squares(d, hw, k / 2 ? u1 : u0, k / 2 ? front : -back, k % 2 ? 1 : -1, k);
 	}
 	d.corner_r = ROOT_HALF * hw + b.margin;
 	d.centre = b.rear;
@@ -47,22 +52,74 @@ Discs discs_of(const Steered &b) {
 	return d;
 }
 
+namespace {
+constexpr int LANES = 4;
+const float NOTHING_CLEAR = -std::numeric_limits<float>::infinity();
+
+// Four reads of the clearance at once: the hottest loop of the core, the search's. The sum, the floor and the bounds are Field::clear_at's, in the same order, so the
+// answers are the same bit for bit; the cells are fetched together (vgatherdps), where one at a time each waits for the last and for the branch on it.
+struct Lanes {
+	__m256d x0, z0, cell;
+	__m128i nx, nz;
+	const float *clear;
+	explicit Lanes(const Field &f) :
+			x0(_mm256_set1_pd(f.x0)), z0(_mm256_set1_pd(f.z0)), cell(_mm256_set1_pd(f.cell)), nx(_mm_set1_epi32(f.nx)), nz(_mm_set1_epi32(f.nz)), clear(f.clear.data()) {}
+	__m256d read(__m256d x, __m256d z) const {
+		const __m128i i = _mm256_cvttpd_epi32(_mm256_floor_pd(_mm256_div_pd(_mm256_sub_pd(x, x0), cell)));
+		const __m128i j = _mm256_cvttpd_epi32(_mm256_floor_pd(_mm256_div_pd(_mm256_sub_pd(z, z0), cell)));
+		const __m128i none = _mm_set1_epi32(-1);
+		const __m128i inside = _mm_and_si128(_mm_and_si128(_mm_cmpgt_epi32(i, none), _mm_cmpgt_epi32(j, none)), _mm_and_si128(_mm_cmpgt_epi32(nx, i), _mm_cmpgt_epi32(nz, j)));
+		const __m128i at = _mm_add_epi32(_mm_mullo_epi32(j, nx), i);
+		return _mm256_cvtps_pd(_mm_mask_i32gather_ps(_mm_set1_ps(NOTHING_CLEAR), clear, at, _mm_castsi128_ps(inside), sizeof(float)));
+	}
+};
+
+// The first of four below `least`, or LANES.
+int first_under(__m256d value, double least) {
+	const int under = _mm256_movemask_pd(_mm256_cmp_pd(value, _mm256_set1_pd(least), _CMP_LT_OQ));
+	return under == 0 ? LANES : __builtin_ctz(unsigned(under));
+}
+} // namespace
+
 bool discs_clear(const Field &f, const Discs &d, double x, double z, double c, double s, int64_t *looks) {
 	int64_t read = 0;
 	struct Count { int64_t *to; const int64_t &n; ~Count() { if (to) *to += n; } } count{ looks, read };
 	const double slack = f.cell * ROOT_HALF; // the field holds the distance at a cell's centre
 	read++;
 	if (f.clear_at(x + c * d.centre, z + s * d.centre) - slack >= d.whole) return true;
-	for (double u : d.at) {
+	const Lanes lanes(f);
+	const __m256d vx = _mm256_set1_pd(x), vz = _mm256_set1_pd(z), vc = _mm256_set1_pd(c), vs = _mm256_set1_pd(s), vslack = _mm256_set1_pd(slack);
+	const size_t discs = d.at.size();
+	size_t k = 0;
+	for (; k + LANES <= discs; k += LANES) {
+		const __m256d u = _mm256_loadu_pd(d.at.data() + k);
+		const __m256d room = _mm256_sub_pd(lanes.read(_mm256_add_pd(vx, _mm256_mul_pd(vc, u)), _mm256_add_pd(vz, _mm256_mul_pd(vs, u))), vslack);
+		const int under = first_under(room, d.r);
+		read += std::min(under + 1, LANES);
+		if (under < LANES) return false;
+	}
+	for (; k < discs; k++) {
+		const double u = d.at[k];
 		read++;
 		if (f.clear_at(x + c * u, z + s * u) - slack < d.r) return false;
 	}
-	for (int k = 0; k < 4; k++) {
+	for (int corner = 0; corner < LANES; corner++) {
 		read++;
-		if (f.clear_at(x + c * d.cu[k] - s * d.cv[k], z + s * d.cu[k] + c * d.cv[k]) - slack >= d.corner_r) continue;
-		for (const BodyPoint &q : d.squares[k]) {
+		if (f.clear_at(x + c * d.cu[corner] - s * d.cv[corner], z + s * d.cu[corner] + c * d.cv[corner]) - slack >= d.corner_r) continue;
+		const std::vector<double> &us = d.square_u[corner], &vs_of = d.square_v[corner];
+		const size_t squares = us.size();
+		size_t q = 0;
+		for (; q + LANES <= squares; q += LANES) {
+			const __m256d u = _mm256_loadu_pd(us.data() + q), v = _mm256_loadu_pd(vs_of.data() + q);
+			const __m256d px = _mm256_sub_pd(_mm256_add_pd(vx, _mm256_mul_pd(vc, u)), _mm256_mul_pd(vs, v));
+			const __m256d pz = _mm256_add_pd(_mm256_add_pd(vz, _mm256_mul_pd(vs, u)), _mm256_mul_pd(vc, v));
+			const int under = first_under(_mm256_sub_pd(lanes.read(px, pz), vslack), d.square_r);
+			read += std::min(under + 1, LANES);
+			if (under < LANES) return false;
+		}
+		for (; q < squares; q++) {
 			read++;
-			if (f.clear_at(x + c * q.u - s * q.v, z + s * q.u + c * q.v) - slack < d.square_r) return false;
+			if (f.clear_at(x + c * us[q] - s * vs_of[q], z + s * us[q] + c * vs_of[q]) - slack < d.square_r) return false;
 		}
 	}
 	return true;

@@ -103,11 +103,11 @@
    {"shape": "frustum", "base": [0, 0.905, 0], "radius": 0.245, "top_radius": 0.1, "height": 0.13, "segments": 12, "color": "#2f4a3a"}
   ],
   "bench": [
-   {"shape": "box", "min": [-0.9, 0.433, 0.11], "max": [0.9, 0.467, 0.23], "color": "#8d6540", "plank": true},
-   {"shape": "box", "min": [-0.9, 0.433, -0.03], "max": [0.9, 0.467, 0.09], "color": "#7f5a39", "plank": true},
-   {"shape": "box", "min": [-0.9, 0.433, -0.17], "max": [0.9, 0.467, -0.05], "color": "#8d6540", "plank": true},
-   {"shape": "box", "min": [-0.9, 0.55, -0.285], "max": [0.9, 0.65, -0.255], "color": "#7f5a39", "plank": true},
-   {"shape": "box", "min": [-0.9, 0.71, -0.305], "max": [0.9, 0.81, -0.275], "color": "#8d6540", "plank": true},
+   {"shape": "box", "min": [-0.9, 0.433, 0.11], "max": [0.9, 0.467, 0.23], "color": "#8d6540", "wood": true},
+   {"shape": "box", "min": [-0.9, 0.433, -0.03], "max": [0.9, 0.467, 0.09], "color": "#7f5a39", "wood": true},
+   {"shape": "box", "min": [-0.9, 0.433, -0.17], "max": [0.9, 0.467, -0.05], "color": "#8d6540", "wood": true},
+   {"shape": "box", "min": [-0.9, 0.55, -0.285], "max": [0.9, 0.65, -0.255], "color": "#7f5a39", "wood": true},
+   {"shape": "box", "min": [-0.9, 0.71, -0.305], "max": [0.9, 0.81, -0.275], "color": "#8d6540", "wood": true},
    {"shape": "box", "min": [-0.785, 0, 0.165], "max": [-0.735, 0.45, 0.215], "color": "#262b2a"},
    {"shape": "box", "min": [0.735, 0, 0.165], "max": [0.785, 0.45, 0.215], "color": "#262b2a"},
    {"shape": "box", "min": [-0.785, 0, -0.27], "max": [-0.735, 0.84, -0.22], "color": "#262b2a"},

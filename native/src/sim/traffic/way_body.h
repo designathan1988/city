@@ -10,10 +10,6 @@
 namespace city {
 namespace traffic {
 
-struct BodyPoint {
-	double u = 0, v = 0;
-};
-
 // Discs along the body's axis as wide as it and a little: they hold the flanks. The four corners the end discs leave out: one wide
 // disc each, which answers in the open but stands a fifth of the half width past the flank, so a lorry beside a kerb would not fit
 // its own lane; when it touches, the small squares of that corner say.
@@ -21,7 +17,7 @@ struct Discs {
 	std::vector<double> at;
 	double r = 0, corner_r = 0, centre = 0, whole = 0, square_r = 0;
 	double cu[4] = {}, cv[4] = {};
-	std::vector<BodyPoint> squares[4];
+	std::vector<double> square_u[4], square_v[4]; // each corner's squares, a list for each axis: read four at a time
 };
 
 Discs discs_of(const Steered &b);
