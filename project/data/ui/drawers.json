@@ -372,6 +372,7 @@
   "cuts": [{"kind": 0, "icon": "split_vertical", "label_key": "zone.split.vertical"}, {"kind": 1, "icon": "split_horizontal", "label_key": "zone.split.horizontal"},
    {"kind": 2, "icon": "split_line", "label_key": "zone.split.line"}]},
  "road_options": {
+  "cell_m": 10,
   "furniture": {
    "label_key": "roadFurniture.row", "tip_key": "roadFurniture.tip",
    "choices": [{"label_key": "roadFurniture.complete", "level": 0}, {"label_key": "roadFurniture.basic", "level": 1}, {"label_key": "roadFurniture.none", "level": 2}]

@@ -94,11 +94,11 @@ bool ray_hits(const Quad &q, double fx, double fz, double angle, double reach, d
 	return best <= 1;
 }
 
-double on_grid(double v, double step) { return std::round(v / step) * step; }
+double on_grid(double v, double step, double offset = 0) { return std::round((v - offset) / step) * step + offset; }
 
 // The end moved onto the grid: along an axis or diagonal from a start on the grid it stays on that heading.
-void onto_grid(const Anchor &start, double angle, double length, double step, double &x, double &z) {
-	bool start_on = std::fabs(start.x - on_grid(start.x, step)) < ON_HEADING && std::fabs(start.z - on_grid(start.z, step)) < ON_HEADING;
+void onto_grid(const Anchor &start, double angle, double length, double step, double offset, double &x, double &z) {
+	bool start_on = std::fabs(start.x - on_grid(start.x, step, offset)) < ON_HEADING && std::fabs(start.z - on_grid(start.z, step, offset)) < ON_HEADING;
 	for (int k = 0; start_on && k < GRID_HEADINGS; k++) {
 		double h = k * TAU / GRID_HEADINGS;
 		if (std::fabs(wrap(angle - h)) >= ON_HEADING) continue;
@@ -107,9 +107,11 @@ void onto_grid(const Anchor &start, double angle, double length, double step, do
 		z = start.z + std::sin(h) * steps * unit;
 		break;
 	}
-	x = on_grid(x, step);
-	z = on_grid(z, step);
+	x = on_grid(x, step, offset);
+	z = on_grid(z, step, offset);
 }
+
+double grid_step(const CityState &s, const SnapOptions &o) { return o.cell > 0 ? o.cell : double(s.catalog.tune.road_grid_m); }
 
 SnappedEnd end_at(const Anchor &start, double x, double z, SnapGuide guide) {
 	return { x, z, guide, std::atan2(z - start.z, x - start.x), std::hypot(x - start.x, z - start.z) };
@@ -163,8 +165,8 @@ Anchor find_anchor(const CityState &s, double x, double z, double px, std::optio
 Anchor snap_road_start(const CityState &s, const Anchor &a, const SnapOptions &o) {
 	if (a.node >= 0 || a.seg >= 0 || !o.on || !o.grid) return a;
 	Anchor free;
-	free.x = on_grid(a.x, s.catalog.tune.road_grid_m);
-	free.z = on_grid(a.z, s.catalog.tune.road_grid_m);
+	free.x = on_grid(a.x, grid_step(s, o), o.offset);
+	free.z = on_grid(a.z, grid_step(s, o), o.offset);
 	return free;
 }
 
@@ -198,7 +200,7 @@ SnappedEnd snap_road_end(const CityState &s, const Anchor &start, double x, doub
 	Heading h{ heading, SnapGuide::NONE };
 	if (o.angles) h = snap_heading(s, start, heading, false, 0);
 	double ex = start.x + std::cos(h.angle) * length, ez = start.z + std::sin(h.angle) * length;
-	if (o.grid) onto_grid(start, h.angle, length, s.catalog.tune.road_grid_m, ex, ez);
+	if (o.grid) onto_grid(start, h.angle, length, grid_step(s, o), o.offset, ex, ez);
 	return end_at(start, ex, ez, h.guide);
 }
 

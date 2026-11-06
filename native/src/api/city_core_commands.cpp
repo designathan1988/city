@@ -86,7 +86,7 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 }
 } // namespace
 
-Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid) {
+Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid, double cell, double offset) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (!s.ready) return Dictionary();
@@ -94,14 +94,16 @@ Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid)
 	o.on = on;
 	o.grid = grid;
 	o.px = px;
+	o.cell = cell;
+	o.offset = offset;
 	return anchor_dict(s, snap_road_start(s, find_anchor(s, p.x, p.z, px, s.new_road_lift), o));
 }
 
-Dictionary CityCore::road_end(const Vector3 &start, const Vector3 &p, double px, bool on, bool angles, bool grid) {
+Dictionary CityCore::road_end(const Vector3 &start, const Vector3 &p, double px, bool on, bool angles, bool grid, double cell, double offset) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (!s.ready) return Dictionary();
-	SnapOptions o{ on, angles, grid, px };
+	SnapOptions o{ on, angles, grid, px, cell, offset };
 	SnappedEnd e = snap_road_end(s, find_anchor(s, start.x, start.z, px), p.x, p.z, o);
 	Dictionary d;
 	d["position"] = Vector3(float(e.x), s.terrain.height_at(float(e.x), float(e.z)), float(e.z));

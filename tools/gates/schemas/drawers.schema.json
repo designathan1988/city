@@ -258,6 +258,7 @@
         "furniture"
       ],
       "properties": {
+        "cell_m": {"type": "number"},
         "_doc": {
           "type": "string"
         },

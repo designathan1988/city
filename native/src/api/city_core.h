@@ -61,8 +61,8 @@ public:
 	godot::Object *area(const godot::StringName &name) const;
 
 	// --- player commands and previews (city_core_commands.cpp)
-	godot::Dictionary road_start(const godot::Vector3 &p, double px, bool on, bool grid);
-	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid);
+	godot::Dictionary road_start(const godot::Vector3 &p, double px, bool on, bool grid, double cell, double offset);
+	godot::Dictionary road_end(const godot::Vector3 &start, const godot::Vector3 &p, double px, bool on, bool angles, bool grid, double cell, double offset);
 	godot::PackedVector3Array road_pieces(const godot::Vector3 &a, const godot::Vector3 &b, int alignment, bool has_control, const godot::Vector3 &c,
 			const godot::PackedVector3Array &samples, int profile, double px);
 	// from_lift: the height the road was begun at, over the grade line; HEIGHT_IN_HAND for the one the tool draws at now.

@@ -33,6 +33,8 @@ var draft: Dictionary = {}
 ## The curve with its end down, waiting for the click that sets its bend: start, lift, end, control.
 var bend: Dictionary = {}
 var _last_plan: Dictionary = {}
+var _cell := 0.0 # metres; 0: the fine grid of the core
+var _cell_offset := 0.0
 
 
 func enter() -> void:
@@ -40,10 +42,22 @@ func enter() -> void:
 	drawn = CityStore.dispatch(&"road_variant", [profile, params.get("lanes", 0), params.get("width", 0.0), params.get("parking", 0)])
 	if drawn < 0:
 		drawn = profile
+	_read_cell()
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
 	CityStore.dispatch(&"set_road_walls", [Settings.road.walls])
 	ctl.hint.emit("", true)
+
+
+## The grid drawn on the ground holds the road: it fills whole cells, an odd number of them wide with its middle in a cell's middle (roadTool.ts).
+func _read_cell() -> void:
+	_cell = 0.0
+	_cell_offset = 0.0
+	if not Settings.layer_on("grid"):
+		return
+	_cell = DataTables.ui("drawers").road_options.cell_m
+	var width: float = CityStore.query(&"road_profiles")[drawn].width
+	_cell_offset = _cell * 0.5 if maxi(1, roundi(width / _cell)) % 2 == 1 else 0.0
 
 
 func _clear_preview() -> void:
@@ -196,12 +210,12 @@ func _snap() -> Dictionary:
 
 func _start_at(p: Vector3) -> Vector3:
 	var s := _snap()
-	return CityStore.query(&"road_start", [p, ctl.px_at(p), s.on, s.grid]).position
+	return CityStore.query(&"road_start", [p, ctl.px_at(p), s.on, s.grid, _cell, _cell_offset]).position
 
 
 func _end_at(start: Vector3, p: Vector3) -> Dictionary:
 	var s := _snap()
-	return CityStore.query(&"road_end", [start, p, ctl.px_at(p), s.on, s.angles, s.grid])
+	return CityStore.query(&"road_end", [start, p, ctl.px_at(p), s.on, s.angles, s.grid, _cell, _cell_offset])
 
 
 func _sample(p: Vector3) -> void:
@@ -268,6 +282,7 @@ func _measure() -> String:
 
 
 func _lay(pieces: PackedVector3Array, from_lift: float) -> void:
+	var laid_plan := _last_plan
 	_clear_preview()
 	if pieces.is_empty():
 		return
@@ -276,4 +291,6 @@ func _lay(pieces: PackedVector3Array, from_lift: float) -> void:
 		ctl.hint.emit(refusal(r), false)
 		return
 	chain = Vector3.INF
+	if laid_plan.has("points"):
+		ctl.flash.flash(laid_plan.points, laid_plan.half_width)
 	ctl.hint.emit(Formatters.format_cost(r.money), true)

@@ -53,6 +53,7 @@ const SCRIPTS := {
 var rig: CityCamera
 var double_press := false # the press being handled ends a double click
 var preview: PreviewLine
+var flash: RoadFlash
 var tool: Tool = Tool.NONE
 var params: Dictionary = {}
 ## The params each tool was last used with: a category reopens with the tool and choice last used.
@@ -74,6 +75,8 @@ func _right_clicked() -> void:
 
 
 func _ready() -> void:
+	flash = RoadFlash.new()
+	add_child(flash)
 	preview = PreviewLine.new()
 	add_child(preview)
 

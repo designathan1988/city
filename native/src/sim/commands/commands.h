@@ -65,6 +65,7 @@ enum class SnapGuide : uint8_t { NONE, NETWORK, CONTINUE, PERPENDICULAR, ORTHOGO
 struct SnapOptions {
 	bool on = true, angles = true, grid = true;
 	double px = 1;
+	double cell = 0, offset = 0; // the grid drawn on the ground, with the road in its cells (0: the 1 m grid of road_grid_m)
 };
 
 struct SnappedEnd {
