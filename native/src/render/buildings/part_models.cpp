@@ -74,10 +74,16 @@ void part_louvre(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 }
 
 void part_brise(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
+	// Fins under a pixel are no geometry to draw, they beat against the pixels: one card, past where the blades end, and the fragment takes their share
+	const Basis m = centred(p);
+	s.card(m, -HALF * p.sx, HALF * p.sx, -HALF * p.sy, HALF * p.sy, HALF * p.sz, lin, CARD_BRISE, p.look->part_brise_fin_m / p.sx);
+	if (s.veiled) return;
+	s.slim = true;
 	for (int i = 0; i < BRISE_FINS; i++) {
 		float x = -HALF + (float(i) + HALF) / float(BRISE_FINS);
 		unit_box(s, p, x - p.look->part_brise_fin_m / 2, x + p.look->part_brise_fin_m / 2, -HALF, HALF, -HALF, HALF, lin, fin, SKIP_E2_NEG | SKIP_E1_NEG);
 	}
+	s.slim = false;
 }
 
 // Awning: canvas falling from the wall (y 0) out to z 1 at slope 0.75, valance under its front edge.

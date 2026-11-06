@@ -110,6 +110,8 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	viewport.use_taa = temporal == TEMPORAL_TAA
 	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2 if temporal == TEMPORAL_FSR2 else Viewport.SCALING_3D_MODE_BILINEAR
 	viewport.fsr_sharpness = float(q.temporal_sharpness)
+	# FSR2 and TAA sharpen every texture by a negative mipmap bias, counting on the frames to resolve it; a tiled wall under a pixel turns to moire
+	viewport.texture_mipmap_bias = float(q.temporal_mip_bias) if temporal != TEMPORAL_NONE else 0.0
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.occlusion.turn(q.ssao)
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])

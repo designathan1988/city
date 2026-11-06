@@ -112,11 +112,25 @@ vec3 straw_over(vec3 c, vec3 map_colour, vec2 xz, int biome) {
 }
 
 // The ground's grass at a world point, before soil and rock: g its map's colour, n its patches, for whoever carries on.
+// Land seen from afar is never one green: meadows, dry stretches and darker hollows, wider than any tile of the grass, so the map stops
+// reading as one colour however far the camera stands (macro variation over the detail texture).
+const float MACRO_WIDE_M = 1500.0, MACRO_MID_M = 430.0, MACRO_SMALL_M = 125.0, MACRO_DRY_M = 680.0;
+const vec3 MACRO_DARK = vec3(0.72, 0.8, 0.6), MACRO_LUSH = vec3(1.16, 1.1, 0.92), MACRO_STRAW = vec3(1.3, 1.08, 0.7);
+const float MACRO_DRY_SHARE = 0.55;
+
+vec3 macro_tone(vec2 xz) {
+	float small = vnoise(xz / MACRO_SMALL_M + 3.1);
+	float lush = vnoise(xz / MACRO_WIDE_M) * 0.5 + vnoise(xz / MACRO_MID_M + 7.3) * 0.32 + small * 0.18;
+	float dry = smoothstep(0.42, 0.68, vnoise(xz / MACRO_DRY_M + 11.0) * 0.6 + small * 0.4);
+	vec3 tone = mix(MACRO_DARK, MACRO_LUSH, smoothstep(0.25, 0.75, lush));
+	return mix(tone, tone * MACRO_STRAW, dry * MACRO_DRY_SHARE);
+}
+
 vec3 grass_ground(vec2 xz, float detail, vec3 tint, int biome, float per_pixel, out vec3 g, out float n) {
 	n = mix(0.5, vnoise(xz * patch_scale) * 0.7 + vnoise(xz * patch_scale * 6.0) * 0.3, detail);
 	vec2 gp = xz / grass_m;
 	g = grass(gp, detail);
 	float macro = clamp(dot(grass(gp * 0.137 + 0.21, detail), vec3(0.3, 0.6, 0.1)) / max(dot(g, vec3(0.3, 0.6, 0.1)), 0.02), 0.7, 1.3);
 	vec3 c = straw_over(g * mix(1.0, macro, 0.35) * tint * mix(0.9, 1.08, n), g, xz, biome);
-	return c * grass_grain(xz, per_pixel) * grass_speckle(xz, per_pixel);
+	return c * macro_tone(xz) * grass_grain(xz, per_pixel) * grass_speckle(xz, per_pixel);
 }

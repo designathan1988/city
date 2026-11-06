@@ -62,7 +62,7 @@
  "light_span": 0.25,
  "warm_k": 1.6,
  "dusk_share": 0.7,
-  "fog_density": 7.15e-05,
+  "fog_density": 1.5e-04,
  "air_high": "#3d5a82",
  "air_night_cut": 0.85,
  "air_height_m": 1200.0,

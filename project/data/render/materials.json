@@ -129,8 +129,6 @@
  "building_card": {
   "shader": "res://render/shaders/building_card.gdshader",
   "params": {
-   "thin_bar_m": 0.02,
-   "thin_behind": 0.16,
    "roughness": 0.45,
    "metalness": 0.55
   }

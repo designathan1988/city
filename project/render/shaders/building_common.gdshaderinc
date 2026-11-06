@@ -13,6 +13,9 @@ float vnoise(vec2 p) {
 	return textureLod(noise_lattice, (i + f + 0.5) / vec2(textureSize(noise_lattice, 0)), 0.0).r;
 }
 
+const float FINISH_WHOLE = 0.03, FINISH_GONE = 0.09; // repeats of the finish a pixel covers
+const float FINISH_MEAN_LOD = 12.0;
+
 // The finish of a face: albedo tone, perturbed world normal, roughness, metalness.
 void finish_layer(int fin, vec3 n, out vec3 tone, out vec3 nn, out float rough, out float metal) {
 	vec3 t = dot(n.xz, n.xz) < 0.0025 ? vec3(1.0, 0.0, 0.0) : normalize(vec3(n.z, 0.0, -n.x));
@@ -22,10 +25,14 @@ void finish_layer(int fin, vec3 n, out vec3 tone, out vec3 nn, out float rough, 
 	vec4 a = texture(finish_map, layer);
 	vec3 nm = texture(finish_normal, layer).rgb * 2.0 - 1.0;
 	vec4 r = texture(finish_rough, layer);
-	tone = a.rgb;
-	float k = finish_normal_k[fin];
+	// Tiles and joints under a pixel beat against the pixels: as the repeat of the finish falls under the screen, each map gives way to its own
+	// mean, its last mipmap, whatever the sampler's bias and whatever the angle of the wall.
+	float seen = smoothstep(FINISH_WHOLE, FINISH_GONE, max(length(dFdx(uv)), length(dFdy(uv))));
+	vec3 mean_at = vec3(0.5, 0.5, float(fin));
+	tone = mix(a.rgb, textureLod(finish_map, mean_at, FINISH_MEAN_LOD).rgb, seen);
+	float k = finish_normal_k[fin] * (1.0 - seen);
 	nn = normalize(t * nm.x * k + b * nm.y * k + n * max(nm.z, 0.2));
-	rough = r.g;
+	rough = mix(r.g, textureLod(finish_rough, mean_at, FINISH_MEAN_LOD).g, seen);
 	metal = finish_metal[fin] * (fin == 8 ? r.b : 1.0);
 }
 

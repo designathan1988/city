@@ -76,7 +76,7 @@
  ],
  "tiers": {
   "low": {
-   "temporal": 0, "temporal_sharpness": 0.25, "pixel_ratio": 1,
+   "temporal": 0, "temporal_sharpness": 0.25, "temporal_mip_bias": 0.9, "pixel_ratio": 1,
    "shadows": false,
    "shadow_px": 1024,
    "shadow_filter": 2,
@@ -98,7 +98,7 @@
    "cloud_shadows": false
   },
   "medium": {
-   "temporal": 1, "temporal_sharpness": 0.25, "pixel_ratio": 1.25,
+   "temporal": 1, "temporal_sharpness": 0.25, "temporal_mip_bias": 0.9, "pixel_ratio": 1.25,
    "shadows": true,
    "shadow_px": 2048,
    "shadow_filter": 4,
@@ -120,7 +120,7 @@
    "cloud_shadows": false
   },
   "high": {
-   "temporal": 2, "temporal_sharpness": 0.25, "pixel_ratio": 1.5,
+   "temporal": 2, "temporal_sharpness": 0.25, "temporal_mip_bias": 0.9, "pixel_ratio": 1.5,
    "shadows": true,
    "shadow_px": 4096,
    "shadow_filter": 4,
@@ -142,7 +142,7 @@
    "cloud_shadows": true
   },
   "ultra": {
-   "temporal": 2, "temporal_sharpness": 0.25, "pixel_ratio": 2,
+   "temporal": 2, "temporal_sharpness": 0.25, "temporal_mip_bias": 0.9, "pixel_ratio": 2,
    "shadows": true,
    "shadow_px": 4096,
    "shadow_filter": 4,

@@ -127,10 +127,13 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		near_shells[i].sheer = &out.near_sheer[i];
 		near_shells[i].cards = &out.near_cards[i];
 		mid_shells[i].cards = &out.mid_cards[i];
+		mid_shells[i].veiled = true;
 		mid_shells[i].glass = &out.mid_glass[i];
 	}
 	for (b40::Shell &p : parts_shells) p.instanced = true;
-	for (b40::Shell &p : mid_parts) p.instanced = true;
+	for (size_t i = 0; i < SUB_COUNT; i++) parts_shells[i].cards = &out.near_cards[i];
+	for (b40::Shell &p : mid_parts) p.instanced = p.veiled = true;
+	for (size_t i = 0; i < SUB_COUNT; i++) mid_parts[i].cards = &out.mid_cards[i];
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		out.flat_glass[i].rooms = true;
 		out.flat_shell[i].glass = &out.flat_glass[i];
@@ -165,7 +168,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		near_shells[i].washes = nullptr;
 		near_shells[i].box_sink = mid_shells[i].box_sink = nullptr;
 		near_shells[i].sheer = nullptr;
-		near_shells[i].cards = mid_shells[i].cards = nullptr;
+		near_shells[i].cards = mid_shells[i].cards = mid_parts[i].cards = parts_shells[i].cards = nullptr;
 	}
 	if (near) {
 		file_parts(out, parts_shells);

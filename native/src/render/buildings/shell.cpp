@@ -153,7 +153,7 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 		inst.origin[0] = centre.x; inst.origin[1] = centre.y; inst.origin[2] = centre.z;
 		inst.color = byte(c.r) << RGBA_R_SHIFT | byte(c.g) << RGBA_G_SHIFT | byte(c.b) << RGBA_B_SHIFT | byte(c.a);
 		inst.fin = fin;
-		inst.thick = m0 + m1 + m2 - lo - hi; // the second largest side: the bar's width
+		inst.thick = slim ? lo : m0 + m1 + m2 - lo - hi; // the second largest side: the bar's width; `slim`, what the eye sees of a blade
 		boxes.push_back(inst);
 		return;
 	}
@@ -175,13 +175,13 @@ void Shell::wash(const Basis &f, float a0, float a1, float b0, float b1, float c
 	sheet(f, a0, a1, b0, b1, c, Color(1, 1, 1, 1), Vector2(lantern.x, lantern.z));
 }
 
-void Shell::card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind) {
+void Shell::card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind, float share) {
 	if (cards) {
-		cards->card(f, a0, a1, b0, b1, c, lin, kind);
+		cards->card(f, a0, a1, b0, b1, c, lin, kind, share);
 		return;
 	}
 	if (a1 - a0 <= 0 || b1 - b0 <= 0) return;
-	sheet(f, a0, a1, b0, b1, c, shaded(f.at(a0, b0, c), lin, false, SK_SHELL), Vector2(float(kind), 0));
+	sheet(f, a0, a1, b0, b1, c, shaded(f.at(a0, b0, c), lin, false, SK_SHELL), Vector2(float(kind), share));
 }
 
 // A quad with UV 0..1 over it, the same colour and UV2 at its corners. Back: its first vertex.

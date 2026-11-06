@@ -75,6 +75,9 @@
           },
           "temporal_sharpness": {
             "type": "number"
+          },
+          "temporal_mip_bias": {
+            "type": "number"
           }
         },
         "required": [
@@ -87,7 +90,8 @@
           "smaa",
           "ssao",
           "temporal",
-          "temporal_sharpness"
+          "temporal_sharpness",
+          "temporal_mip_bias"
         ]
       }
     }

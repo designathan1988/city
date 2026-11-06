@@ -48,7 +48,7 @@ struct PaneLook {
 };
 
 // What a card draws (building_card.gdshader cardOn).
-enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE };
+enum CardKind : uint8_t { CARD_ROOF_RAILING = 2, CARD_RAILING_FRONT, CARD_RAILING_SIDE, CARD_BRISE };
 
 // A far wall's window row: shares of the bay and the storey, flags (building_pane.gdshaderinc far_window).
 constexpr int WINDOW_FLAG_BLANK = 4, WINDOW_FLAG_OFFICE = 8, WINDOW_DARK_SHIFT = 4; // the shift: PaneDark
@@ -129,6 +129,8 @@ struct Shell {
 	Shell *washes = nullptr; // where this shell's lantern light goes: a surface added to what is behind it
 	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass
 	Shell *cards = nullptr; // where this shell's railings go: a surface whose bars the fragment draws
+	bool veiled = false; // the mid level's parts: what repeats under a pixel goes to a card
+	bool slim = false; // boxes seen edge on, deep but thin: they leave by their thinnest side
 	Shell *flat = nullptr; // the mid level: where its bays also go as merged rectangles, for where they are too small for their geometry
 	Shell *glass = nullptr; // where this shell's panes and far walls go: a second surface, so only they pay for CUSTOM0..3
 
@@ -142,7 +144,7 @@ struct Shell {
 	void rect(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, int8_t fin, bool back = false);
 	void box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip = SKIP_NONE);
 	// A railing's face at e2 = c: one quad, its bars drawn by building_card.gdshader, so they hold at any distance.
-	void card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind);
+	void card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind, float share = 0);
 	// A bay with an opening, `f` at its left end on the storey floor: an instance, no triangles (bay_kit.h).
 	void bay(const Basis &f, float W, float H, const Lin &wall, int8_t fin, uint32_t seed, const FarWindows &w, float depth);
 	// A glass pane of w x h metres at e2 = c.
