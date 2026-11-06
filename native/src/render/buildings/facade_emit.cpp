@@ -123,13 +123,18 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 void SideEmit::storey(const Side &sd, int k, float z) {
 	const Body &b = *pl.b;
 	const int level = v.base + k;
+	WallRun run{ shell };
 	each_bay(sd, k, z, [&](const BayCtx &c, int i, int n, float push) {
-		if (b.cut_level >= 0 && level == b.cut_level && cut_bay(shell, pl, c, sd.n)) return; // the floor seen: this wall came down
-		emit_bay(shell, parts, pl, c);
+		if (b.cut_level >= 0 && level == b.cut_level && cut_bay(shell, pl, c, sd.n)) {
+			run.close();
+			return; // the floor seen: this wall came down
+		}
+		emit_bay(shell, parts, pl, c, run, i, push);
 		pushed_faces(c, sd, k, i, n, push);
 		pilaster(shell, c, v.faces[sd.side], i, level == 0 ? GROUND_LIFT : 0);
 		if (level == 0 && (c.comp == BAY_DOOR || c.comp == BAY_DOUBLE_DOOR) && v.base == 0) steps(shell, pl, c);
 	});
+	run.close();
 }
 
 // The same bays for the mid level: what stands out of the wall, a pilaster once for the whole height.

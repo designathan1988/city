@@ -467,6 +467,13 @@ Ressalvas abertas:
 - **Fotos** `z15`: fundo e frente combinam. Fundo mais cinza que antes, porque agora mostra a parcela real de vidro; sem par com o 4.0 nessa distância (ferramenta proibida).
 - **Método.** `quick.sh --ready`: as duas DLLs e o teste curto, deixa `dist/quick/passed`. O hook aceita essa prova (mudança aplicada pelo usuário).
 
+### Ciclo 9 (nível perto, P6 e P7)
+
+- **Causa, pela leitura do 4.0.** O jogo gravava 4 retângulos de parede por janela, e toda caixa de baia (peitoril, laje, marquise, moldura, brise) ia na malha do chunk, cerca de 20 vértices cada. O 4.0 desenha a parede por fileira (`emitFacadeRuns`, `byRun`) e põe o vidro sobre ela; as caixas são instâncias. E as peças em caixa do jogo não lançavam sombra nenhuma.
+- **Correção.** `WallRun`: bays lisas e com vidro embutido viram uma face de até 12 m (a escala do tom, escrito por vértice); o vidro sobe 2 cm da parede. Toda caixa de baia é instância em `parts`. Bandas de caixas, menos a mais fina, lançam sombra por `ShadowTwin` até `lod.cast_props_m`.
+- **Fotos.** `res_a`, `mid_a`, `res_c`, `lot_a`: varandas, peitoris e marquises iguais, sem briga de profundidade. `low3`: GPU 9,23 ms (8,93 sem as sombras novas), primitivas 4,81 M (5,00 M). A primeira leitura de 14,4 ms foi carga de outra sessão: repetida com a GPU livre.
+- **Falta medir:** a memória do nível perto depois disso.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

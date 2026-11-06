@@ -76,6 +76,7 @@ elif [ -n "$bless" ] || [ ! -f "$OUT/golden.txt" ]; then cp "$OUT/digest.txt" "$
 elif cmp -s "$OUT/digest.txt" "$OUT/golden.txt"; then echo "digest: equal to the golden"
 else echo "digest MOVED:"; diff "$OUT/golden.txt" "$OUT/digest.txt"; same=1
 fi
+grep -a "^UNSTABLE\|^FAILED" "$OUT/suite.txt"
 tail -1 "$OUT/suite.txt"
 tail -1 "$OUT/gates.txt"
 echo "total $((SECONDS - started)) s"
