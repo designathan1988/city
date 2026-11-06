@@ -139,3 +139,14 @@ lab.verdict.cpu,"Preso na CPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o 
 lab.verdict.gpu,"Preso na GPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o trabalho da GPU sobe os quadros; mexer na CPU não.","GPU-bound: GPU %s ms, CPU %s ms, budget %s ms. Cutting the GPU's work raises the frame rate; touching the CPU does not."
 lab.verdict.headroom,"Com folga: GPU %s ms, CPU %s ms, dentro do orçamento de %s ms.","Headroom: GPU %s ms, CPU %s ms, within the %s ms budget."
 lab.verdict.none,Nenhum quadro desenhado na medida: mexa a câmera e meça de novo.,No frame drawn during the measure: move the camera and measure again.
+hint.lot.small,Pequeno demais para um lote,Too small for a lot
+hint.lot.road,Uma via passa por aqui: desenhe o lote ao lado dela,A road runs here: draw the lot beside it
+hint.lot.overlap,Já há um lote aqui,There is a lot here already
+hint.lot.pick,Escolha um lote,Pick a lot
+hint.lot.same,Esse lado já é a frente,That side is the front already
+hint.lot.apart,Os lotes precisam dividir um lado,The lots must share a side
+cmd.place.lot,lote,lot
+cmd.lot.edit,editar lote,edit lot
+cmd.lot.split,dividir lote,split lot
+cmd.lot.join,juntar lotes,join lots
+cmd.lot.delete,apagar lote,delete lot

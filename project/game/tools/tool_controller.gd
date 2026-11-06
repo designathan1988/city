@@ -20,7 +20,7 @@ signal inspected(info: Dictionary)
 signal hovered(info: Dictionary)
 
 enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, STRIKE, SHOOT, BUILD, TRANSIT,
-	POLE, BARRIER, STREETSCAPE }
+	POLE, BARRIER, STREETSCAPE, LOTS }
 
 const SCRIPTS := {
 	Tool.ROAD: preload("res://game/tools/road_tool.gd"),
@@ -47,6 +47,7 @@ const SCRIPTS := {
 	Tool.POLE: preload("res://game/tools/pole_tool.gd"),
 	Tool.BARRIER: preload("res://game/tools/barrier_tool.gd"),
 	Tool.STREETSCAPE: preload("res://game/tools/streetscape_tool.gd"),
+	Tool.LOTS: preload("res://game/tools/lots_tool.gd"),
 }
 
 var rig: CityCamera

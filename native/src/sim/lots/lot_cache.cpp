@@ -15,6 +15,31 @@ constexpr double LOT_LOOK = 160; // streets this far past the cell can shape its
 constexpr size_t LOT_SERIAL_MAX = 4; // below this, the pool's hand-off costs more than the serial path
 } // namespace
 
+namespace {
+constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
+
+// The lots the streets propose give way to those the player drew, and a zoned one of the player's whose middle is in the cell joins them.
+std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int64_t key) {
+	if (s.lot_book.empty()) return lots;
+	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return s.lot_book.at(l.x, l.z) != 0; }), lots.end());
+	for (const PlayerLot &p : s.lot_book.lots) {
+		if (p.zone == 0) continue;
+		const LotStand st = lot_stand(p.corners);
+		if (chunk_of(float(st.x), float(st.z)) != key) continue;
+		Lot l;
+		l.x = st.x;
+		l.z = st.z;
+		l.w = st.w;
+		l.d = st.d;
+		l.rot = st.rot;
+		l.zone = p.zone;
+		l.seed = uint32_t(p.id) * PLAYER_LOT_SALT;
+		lots.push_back(l);
+	}
+	return lots;
+}
+} // namespace
+
 std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) {
 	double x0 = key_x(key) * double(CHUNK), z0 = key_y(key) * double(CHUNK);
 	LotGraph g;
@@ -40,11 +65,11 @@ std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) {
 		g.zl.push_back(seg.zl);
 		g.zr.push_back(seg.zr);
 	});
-	if (g.segs() == 0) return {};
+	if (g.segs() == 0) return with_player_lots(s, {}, key);
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return build_lots(g, s.catalog.profiles, ground, x0, z0);
+	return with_player_lots(s, build_lots(g, s.catalog.profiles, ground, x0, z0), key);
 }
 
 void LotCache::process_dirty(CityState &s) {

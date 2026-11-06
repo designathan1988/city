@@ -4,6 +4,7 @@
 ## Run: godot --headless --path project res://tests/core/road_commands_test.tscn -- --no-flow
 extends Node3D
 
+const LOT_OUT_M := 300.0 # past the city, on free land
 const TOWN_MAP := 0
 const SEED := 1
 const PROFILE := 0
@@ -79,6 +80,7 @@ func _ready() -> void:
 	print("demolir: ", d, " dinheiro ", m0, " -> ", CityStore.snapshot.money)
 	_check(d.ok, "demoliu")
 	RoadMoneyCases.new(_check).run(b)
+	LotCases.new(_check).run(Vector3(b.max.x + LOT_OUT_M, 0.0, b.max.z + LOT_OUT_M))
 	RoadHeightCases.new(_check).run(b)
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)

@@ -37,7 +37,7 @@ Os `tools/ports/*/coverage.md` estão velhos (elevação consta como a portar, e
 | Terreno | variação macro e neblina aérea feitas; falta estrato de rocha e sombra de contato |
 | Luz | SSIL no alto e no ultra, FSR2, cascatas por degraus |
 | Vias | Quarteirões de uma vez feito (`road_blocks.cpp`); faltam editor de perfil, Personalizar, Meus modelos, conectores, regras por acesso |
-| Zoneamento e lotes | FALTA: a aba Lotes do 4.0 (`editor/lotTool.ts`, `world/lots.ts`, `lotStore.ts`, `growth/zoning.ts`, `lotPlan.ts`, 4,7 mil linhas): lotes persistentes em polígono, retângulo, mover cantos, curvar lado, definir frente, dividir, juntar, apagar. No jogo o lote é derivado por célula e nunca salvo: pede o modelo novo em `CityState`, bloco no save, ferramenta e crescimento lendo o lote |
+| Zoneamento e lotes | feitos os lotes do jogador: `sim/lots/lot_book`, `lot_commands`, bloco no save, `lots_tool.gd`, aba Lotes, zona por lote, crescimento lendo o lote, fuzz; faltam `onLand` (hoje recusa sobre a via), `cutLotsByRoads`, `lotSnapper` e o lote de cor nas camadas |
 | Construir › Interior | FALTA ligar a aba (contrato em `ports/interior/report.md`) |
 | Tráfego, pedestres, água, paisagismo, bomba, pistola, transporte, mobília | a conferir, ver Pendências do CLAUDE.md |
 

@@ -184,6 +184,8 @@ func _build_strip(tab: Dictionary) -> void:
 		strip.add_child(catalog)
 	elif kind == "zone_cards" and tab.tool == "ZONE":
 		ZoneStrip.build(self)
+	elif tab.get("tool", "") == "LOTS":
+		LotStrip.build(self)
 	elif tab.get("tool", "") == "ROUNDABOUT":
 		var ring: Dictionary = category.ring
 		HudWidgets.range_row(options, tr(ring.label_key), DataTables.tuning("roundabout_radius_min_m"),
@@ -204,6 +206,13 @@ func _build_strip(tab: Dictionary) -> void:
 			strip.add_child(DrawerStrips.card(c, "fn", param("LOT", "fn", 0), retool.bind("LOT", "fn")))
 	_note(tab)
 	settle()
+
+
+## The tab in hand, built again: an option changed what it shows.
+func rebuild() -> void:
+	for t in category.tabs:
+		if _tabs[t.id].button_pressed:
+			_build_strip(t)
 
 
 func _note(tab: Dictionary) -> void:

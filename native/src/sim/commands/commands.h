@@ -4,6 +4,7 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
+#include "sim/lots/lot_book.h"
 #include "sim/roads/road_network.h"
 #include "sim/catalog/furniture_types.h"
 #include "sim/nature/nature_state.h"
@@ -113,6 +114,16 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+// Zones > Lots (lot_commands.cpp): the lots the player draws. Refusals name the hint.
+EditResult add_lot_rect(CityState &s, const LotPoint &a, const LotPoint &b, double angle);
+EditResult add_lot_polygon(CityState &s, const std::vector<LotPoint> &points, int front);
+EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &to);
+EditResult curve_lot_side(CityState &s, const LotPoint &a, const LotPoint &b, const LotPoint &through);
+EditResult set_lot_front(CityState &s, int id, int side);
+EditResult split_lot(CityState &s, int id, const LotCut &cut);
+EditResult join_lots(CityState &s, int a, int b);
+EditResult delete_lot(CityState &s, int id);
+EditResult zone_lot(CityState &s, int id, int zone);
 // A grid of streets laid in one gesture (road_blocks.cpp): `cols` by `rows` blocks of `block_m`, turned by `angle`, centred on (x, z).
 struct BlockGrid {
 	int cols = 1, rows = 1;

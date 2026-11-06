@@ -8,6 +8,7 @@
 #include "sim/catalog/catalog.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/demolition/damage_state.h"
+#include "sim/lots/lot_book.h"
 #include "sim/lots/lot_cache.h"
 #include "sim/nature/nature_state.h"
 #include "sim/roads/road_network.h"
@@ -43,6 +44,7 @@ struct CityState {
 	RoadNetwork roads;
 	StreetWorks street; // what the player built along the streets (sim/street)
 	LotCache lots;
+	LotBook lot_book; // the lots the player drew (sim/lots/lot_book.h); those of `lots` give way to them
 	BuildingStore buildings;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
 	TrafficState traffic; // vehicles and pedestrians (sim/traffic)

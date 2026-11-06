@@ -98,6 +98,14 @@ public:
 	godot::Dictionary node_at(const godot::Vector3 &p, float px);
 	godot::Array moved_roads(int node, const godot::Vector3 &p);
 	godot::Array recent_edits(int count); // the F9 World tab and the F8 marks: the latest undo steps, newest first
+	godot::Dictionary lot_add_rect(const godot::Vector3 &a, const godot::Vector3 &b, double angle), lot_add_polygon(const godot::PackedVector3Array &points, int front);
+	godot::Dictionary lot_move_corner(const godot::Vector3 &from, const godot::Vector3 &to), lot_curve_side(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &through);
+	godot::Dictionary lot_set_front(int id, int side), lot_split(int id, int kind, int parts, const godot::Vector3 &a, const godot::Vector3 &b);
+	godot::Dictionary lot_join(int a, int b), lot_delete(int id), lot_zone(int id, int zone);
+	int lot_at(const godot::Vector3 &p);
+	double lot_angle_at(const godot::Vector3 &p);
+	godot::Array lots();
+	godot::PackedVector3Array lot_cut_lines(int id, int kind, int parts, const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary build_blocks(const godot::Vector3 &at, int cols, int rows, double block_m, double angle, int profile);
 	godot::Array block_lines(const godot::Vector3 &at, int cols, int rows, double block_m, double angle, double step_m);
 	godot::Dictionary reverse_road(int seg), duplicate_road(int seg); // the inspector: the one-way runs the other way; a copy alongside (Ctrl+D)

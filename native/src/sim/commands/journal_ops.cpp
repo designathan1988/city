@@ -206,6 +206,16 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 	return id;
 }
 
+void j_lots(CityState &s, LotBook next) {
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::LOTS, -1);
+		op.lots_before = std::make_shared<const LotBook>(s.lot_book);
+		op.lots_after = std::make_shared<const LotBook>(next);
+	}
+	s.lot_book = std::move(next);
+	s.touch();
+}
+
 void j_transit(CityState &s, TransitData next) {
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::TRANSIT, -1);

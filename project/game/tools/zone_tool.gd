@@ -44,6 +44,10 @@ func exit() -> void:
 
 
 func _dab(p: Vector3) -> void:
+	var lot: int = CityStore.query(&"lot_at", [p])
+	if lot != 0: # a lot the player drew takes the zone whole
+		CityStore.dispatch(&"lot_zone", [lot, zone])
+		return
 	var r: Dictionary = CityStore.dispatch(&"paint_zone", [p, radius, zone])
 	if not r.get("ok", false) and r.get("error", "") != "tools.toast.zoneSame":
 		ctl.hint.emit(refusal(r), false)

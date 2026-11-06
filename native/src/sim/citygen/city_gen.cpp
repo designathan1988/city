@@ -73,6 +73,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate)
 	s.seed = exact_seed;
 	s.roads.init(&s.catalog, &s.log);
 	s.street.clear();
+	s.lot_book.clear();
 	s.buildings.init(&s.log, &s.catalog.occupancy);
 	s.lots.clear();
 	s.growth.clear();

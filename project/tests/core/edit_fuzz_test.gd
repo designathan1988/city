@@ -3,6 +3,7 @@
 ## makes the same city. A failure prints its seed and step; `--seed=N` and `--steps=N` run that one again.
 extends Node
 
+const LOT_M := 30.0
 const MAP := 0
 const CITY_SEED := 7
 const SEEDS := [1, 2, 3]
@@ -119,7 +120,7 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 15)
+	var kind := rng.randi_range(0, 16)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
@@ -159,6 +160,12 @@ func _other(kind: int, road: Vector3) -> void:
 			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND])
 		14:
 			CityStore.dispatch(&"transit_stop", [road])
+		16:
+			var lots: Array = CityStore.query(&"lots")
+			if lots.is_empty() or rng.randf() < 0.5:
+				CityStore.dispatch(&"lot_add_rect", [a, a + Vector3(LOT_M, 0, LOT_M), 0.0])
+			else:
+				CityStore.dispatch(&"lot_zone", [lots[rng.randi_range(0, lots.size() - 1)].id, ZONE_KIND])
 		_:
 			if rng.randf() < 0.5:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])

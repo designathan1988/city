@@ -73,6 +73,7 @@
     {
      "id": "lots",
      "icon": "lotEdit",
+     "tool": "LOTS",
      "label_key": "zone.lots"
     }
    ],
@@ -362,6 +363,13 @@
    "no_drawer": true
   }
  ],
+ "lot_cards": {"parts_least": 2, "parts_most": 6, "line_cut": 2, "cards": [
+   {"mode": "add", "label_key": "zone.lot.shape.rect", "icon": "plus"}, {"mode": "polygon", "label_key": "zone.lot.shape.polygon", "icon": "lotPolygon"},
+   {"mode": "edit", "label_key": "zone.lot.edit", "icon": "lotEdit"}, {"mode": "curve", "label_key": "zone.lot.curve", "icon": "lotCurve"},
+   {"mode": "front", "label_key": "zone.lot.front", "icon": "lotFront"}, {"mode": "split", "label_key": "zone.lot.split", "icon": "split"},
+   {"mode": "join", "label_key": "zone.lot.join", "icon": "join"}, {"mode": "delete", "label_key": "zone.lot.delete.short", "icon": "lotDelete"}],
+  "cuts": [{"kind": 0, "icon": "split_vertical", "label_key": "zone.split.vertical"}, {"kind": 1, "icon": "split_horizontal", "label_key": "zone.split.horizontal"},
+   {"kind": 2, "icon": "split_line", "label_key": "zone.split.line"}]},
  "road_options": {
   "furniture": {
    "label_key": "roadFurniture.row", "tip_key": "roadFurniture.tip",

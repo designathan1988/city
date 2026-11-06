@@ -468,6 +468,9 @@
     },
     "street": {
       "type": "object"
+    },
+    "lot_cards": {
+      "type": "object"
     }
   },
   "strict": true

@@ -81,6 +81,12 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			s.transit = fwd ? *op.transit_after : *op.transit_before;
 			s.transit_revision++;
 			break;
+		case OpKind::LOTS:
+			for (const LotBook *book : { op.lots_before.get(), op.lots_after.get() })
+				for (const PlayerLot &l : book->lots)
+					for (const LotPoint &p : l.corners) s.log.lot_cells.push_back(chunk_of(float(p.x), float(p.z)));
+			s.lot_book = fwd ? *op.lots_after : *op.lots_before;
+			break;
 		case OpKind::DMG_CRATER:
 		case OpKind::DMG_RUIN:
 		case OpKind::DMG_GONE:

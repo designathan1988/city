@@ -4,6 +4,7 @@
 #include "core/bytes.h"
 #include "sim/persistence/save_demolition.h"
 #include "sim/persistence/save_format.h"
+#include "sim/persistence/save_lots.h"
 #include "sim/persistence/save_street.h"
 #include "sim/state/city_state.h"
 
@@ -27,6 +28,8 @@ void write_extra_blocks(ByteWriter &w, const CityState &s, const std::function<v
 	written("demolition");
 	put_framed(w, SAVE_TAG_STREET, [&](ByteWriter &b) { return write_street_block(b, s.street); });
 	written("street");
+	put_framed(w, SAVE_TAG_LOTS, [&](ByteWriter &b) { return write_lots_block(b, s.lot_book); });
+	written("lots");
 }
 
 bool read_extra_blocks(ByteReader &r, CityState &s) {
@@ -39,6 +42,7 @@ bool read_extra_blocks(ByteReader &r, CityState &s) {
 		ByteReader block{ r.p + r.o, size };
 		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage)) return false;
 		if (tag == SAVE_TAG_STREET && !read_street_block(block, s.street)) return false;
+		if (tag == SAVE_TAG_LOTS && !read_lots_block(block, s.lot_book)) return false;
 		r.o += size; // a block this reader does not know is skipped by its size
 	}
 }
