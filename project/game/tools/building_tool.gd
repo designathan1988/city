@@ -148,6 +148,19 @@ func cancel() -> void:
 
 
 ## A tool of the strip (data/ui/builder.json): `spec.do` names what it does, `spec.value` its choice.
+## Construir > Interior: the building chosen cut open, a floor up or down (Roadcraft openInside, seeInside).
+func _inside(what: String, by: int) -> void:
+	var view: InteriorController = ctl.get_tree().get_first_node_in_group(&"interior_controller")
+	if view == null:
+		return
+	if what == "floor":
+		view.step_floor(by)
+	elif picked.is_empty():
+		ctl.hint.emit(tr("hint.builder.select"), false)
+	else:
+		view.see_inside(int(picked.get("building", picked.get("id", -1))))
+
+
 func act(spec: Dictionary) -> void:
 	var value: int = spec.get("value", 0)
 	match spec.do:
@@ -169,6 +182,9 @@ func act(spec: Dictionary) -> void:
 			scope = value
 		"paint_scope":
 			paint_scope = value
+		"inside", "floor":
+			_inside(spec.do, value)
+			return
 		_:
 			if picked.is_empty():
 				ctl.hint.emit(tr("hint.builder.select"), false)

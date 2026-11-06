@@ -145,6 +145,7 @@
     {
      "id": "interior",
      "icon": "interiorView",
+     "tool": "BUILD",
      "label_key": "builder.category.interior"
     },
     {

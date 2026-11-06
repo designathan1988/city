@@ -2,6 +2,12 @@
  "_doc": "What the Build tabs offer (ui/builder_strip.gd, game/tools/building_tool.gd). A tool: id (its icon b_<id> and text builder.tool.<id>, unless icon or label_key say otherwise), do (what it does) and value: a bay, scope, pattern, roof or finish code of native/src/sim/buildings/b40/types.h, or the storeys to add. Colours are each finish's own.",
  "model_groups": ["all", "homes", "public", "commerce", "work", "leisure", "generic", "mine"],
  "tabs": {
+  "interior": {
+   "sections": [
+    {"title_key": "builder.section.interiorView", "tools": [{"id": "interiorView", "do": "inside"}, {"id": "floorDown", "do": "floor", "value": -1},
+      {"id": "floorUp", "do": "floor", "value": 1}]}
+   ]
+  },
   "models": {
    "sections": [
     {

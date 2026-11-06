@@ -92,6 +92,18 @@ func _open(id: int, level: int) -> void:
 	_send(true, id, level)
 
 
+## Construir > Interior: the building opened, or closed when it is the one open.
+func see_inside(id: int) -> void:
+	if is_on() and _state.target == id:
+		_send(false, -1, 0)
+	elif id >= 0:
+		_open(id, 0)
+
+
+func step_floor(delta: int) -> void:
+	_move_floor(delta)
+
+
 func _move_floor(delta: int) -> void:
 	if is_on():
 		_send(true, _state.target, clampi(_state.level + delta, 0, maxi(_state.floors - 1, 0)))
