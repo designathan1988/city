@@ -615,3 +615,9 @@ Ressalvas abertas:
 - `LotElement::angle`: uma peça em ângulo é a mesma peça num referencial girado em volta do meio dela, porque tudo que um elemento desenha passa por `pl.lot`; nenhum tipo de peça mudou. Corpo gravado na versão 6.
 - Traçados (muro, cerca, calçada, escada): cada clique um canto, Enter assenta num passo de desfazer, Backspace volta um canto; uma peça por trecho, e a escada sobe o andar escolhido ao longo do traçado inteiro. Árvore na aba Peças. O grupo de equipamentos de telhado do 4.0 na aba Peças não foi repetido: ele está na aba Telhado.
 - Cores: Pintar liga o pincel, um acabamento o carrega, Copiar estilo carrega o que o escolhido usa.
+
+## 2026-11-06: modelar blocos e formas básicas
+- `body_model.cpp`: extrudar a face, tijolo contra a face, recuar a face numa moldura, crescer a planta, chanfrar, mover e criar pontos com o que estava nas paredes indo junto, copiar, centrar, girar, deslizar levando o que está em cima e encaixando nos outros blocos, e soltar num prédio à parte no mesmo lugar, um passo de desfazer.
+- Formas básicas: a primeira versão pedia um lote e foi recusada (`refuse.lot.small`): no 4.0 ela é um corpo, não um lote. Agora é um corpo de um bloco pelo `place_body`, com a planta e o telhado da carta. No telhado e na parede é um bloco a mais.
+- Diferenças de propósito: copiar e girar levam junto o que está no telhado; no 4.0 o que está no telhado fica para trás.
+- Fotos em `project/dist/rq/model`: as oito formas, bloco girado 15°, chanfrado, tijolo com face recuada, forma sobre recuo e na parede.

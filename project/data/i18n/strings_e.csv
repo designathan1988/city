@@ -431,3 +431,4 @@ builder.tool.removeBlock,Remover bloco,Remove block
 building.problem.noMass,O prédio precisa de ao menos um bloco de massa,The building needs at least one block of mass
 building.problem.noCore,Não há escada nem elevador aí,There is no stair or lift there
 building.problem.noPiece,Não há móvel aí,There is no piece of furniture there
+building.problem.noReference,Este bloco não tem outro para se alinhar,This block has no other to line up with

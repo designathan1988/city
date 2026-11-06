@@ -9,5 +9,7 @@ namespace city::b40 {
 bool has_modes(const Body &b);
 // `b` as its solid blocks: nothing changes in a body whose blocks are all solid.
 void resolve_blocks(Body &b);
+// A block's walls with nothing set on them, wall by wall: its windows' proportions, on every wall, as many bays as each holds.
+void plain_walls(Volume &v);
 
 } // namespace city::b40

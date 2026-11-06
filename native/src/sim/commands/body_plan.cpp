@@ -118,6 +118,11 @@ void carry_walls(const Volume &old, Volume &v) {
 }
 } // namespace
 
+Ring plan_ring(int shape) {
+	if (shape == PLAN_RECTANGLE) return { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+	return shape_points(shape);
+}
+
 std::string op_set_plan(Body &b, const Tuning &, int vol, int shape) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || shape < 0 || shape >= PLAN_COUNT) return NO_BLOCK;
 	Volume &v = b.volumes[size_t(vol)];

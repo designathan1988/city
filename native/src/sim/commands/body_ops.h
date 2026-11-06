@@ -8,6 +8,7 @@
 #include "sim/catalog/catalog.h"
 #include "sim/commands/commands.h"
 
+#include <set>
 #include <functional>
 #include <string>
 
@@ -43,10 +44,38 @@ std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level)
 enum PlanShape : int { PLAN_RECTANGLE, PLAN_L, PLAN_U, PLAN_CIRCLE, PLAN_HEXAGON, PLAN_OCTAGON, PLAN_CHAMFERED, PLAN_CROSS, PLAN_STEPPED, PLAN_COUNT };
 std::string op_set_plan(b40::Body &b, const Tuning &t, int vol, int shape);
 std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
+std::vector<b40::Point2> plan_ring(int shape); // the shape in the unit square, counter-clockwise
 // A rectangle dragged against a block (body_blocks.cpp): a block beside it on the ground, on its roof, or a void cut out of it; `from` and `to` in the lot frame.
 enum MassAction : int { MASS_GROUND, MASS_ROOF, MASS_CUT };
 std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, b40::Point2 from, b40::Point2 to, int action);
 std::string op_set_block_mode(b40::Body &b, int vol, int mode);
+
+// Modelling a block (body_model.cpp). A primitive is a plan (PlanShape) and a roof thrown at the building: on a roof (`side` < 0), against a wall, or alone on the ground.
+// A wall of a block: where it starts, along it and out of it.
+struct BlockWall {
+	b40::Point2 a;
+	float tx = 0, ty = 0, nx = 0, ny = 0, length = 0;
+};
+BlockWall block_wall(const b40::Volume &v, int side);
+std::set<int> riding_on(const b40::Body &b, int vol); // a block and what stands on it, and on that
+struct PrimitiveSpec {
+	int shape = 0, roof = 0;
+	float pitch = 0;
+};
+std::string op_extrude_face(b40::Body &b, const Tuning &t, int vol, int side, float distance);
+std::string op_extrude_block(b40::Body &b, const Tuning &t, int vol, int side, float depth);
+std::string op_inset_face(b40::Body &b, const Tuning &t, int vol, int side, float depth);
+std::string op_offset_block(b40::Body &b, int vol, float distance);
+std::string op_bevel(b40::Body &b, int vol, float distance, int only);
+std::string op_move_point(b40::Body &b, const Tuning &t, int vol, int index, float x, float y, bool snap);
+std::string op_change_point(b40::Body &b, int vol, int index, bool remove);
+std::string op_copy_block(b40::Body &b, const Tuning &t, int vol);
+std::string op_center_block(b40::Body &b, int vol);
+std::string op_turn_block(b40::Body &b, int vol, float degrees);
+std::string op_slide_block(b40::Body &b, const Tuning &t, int vol, float dx, float dy, bool snap);
+std::string op_primitive_on(b40::Body &b, const Tuning &t, int vol, int side, int storey, float x, float y, const PrimitiveSpec &p);
+EditResult detach_block(CityState &s, int id, int vol);
+EditResult place_primitive(CityState &s, double x, double z, const PrimitiveSpec &p);
 
 // The Interior tab (body_furnish.cpp), in the lot frame. A floor's first edit keeps what was made for it, so it asks what makes a floor.
 struct FloorEdit {

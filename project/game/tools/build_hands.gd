@@ -10,6 +10,7 @@ var mass: MassDrag
 var furnish: FurnishHand
 var run: RunHand
 var brush: PaintBrush
+var primitive := {}
 
 var _ctl: ToolController
 
@@ -23,13 +24,14 @@ func _init(ctl: ToolController) -> void:
 
 
 func armed() -> bool:
-	return mass.armed() or furnish.armed() or run.armed()
+	return mass.armed() or furnish.armed() or run.armed() or not primitive.is_empty()
 
 
 func disarm() -> void:
 	mass.disarm()
 	furnish.disarm()
 	run.disarm()
+	primitive = {}
 
 
 ## A card of the strip; true when one of the hands took it.
@@ -40,6 +42,8 @@ func act(spec: Dictionary, value: int, picked: Dictionary, report: Callable) -> 
 		furnish.disarm()
 	if spec.do != "run":
 		run.disarm()
+	if spec.do != "primitive":
+		primitive = {}
 	if not PAINT_CARDS.has(spec.do):
 		brush.painting = false
 	match spec.do:
@@ -48,6 +52,9 @@ func act(spec: Dictionary, value: int, picked: Dictionary, report: Callable) -> 
 		"run":
 			run.arm(spec)
 			_tell(run.armed(), spec)
+		"primitive":
+			primitive = {} if primitive == spec else spec
+			_tell(not primitive.is_empty(), spec)
 		"mass":
 			mass.arm(value)
 			_tell(mass.armed(), spec)
@@ -67,6 +74,9 @@ func _tell(armed_now: bool, spec: Dictionary) -> void:
 
 ## A press with something in hand; true when it was for the hand.
 func click(p: Vector3, picked: Dictionary, report: Callable) -> bool:
+	if not primitive.is_empty():
+		report.call(_throw(p))
+		return true
 	if picked.is_empty():
 		return false
 	if mass.armed():
@@ -78,6 +88,15 @@ func click(p: Vector3, picked: Dictionary, report: Callable) -> bool:
 	else:
 		return false
 	return true
+
+
+## The primitive in hand goes where the pointer's ray lands: on the roof or the wall it hits, or alone on the ground. Each click throws one, until Esc.
+func _throw(ground: Vector3) -> Dictionary:
+	var cam: Camera3D = _ctl.rig.camera
+	var hit: Dictionary = CityStore.query(&"body_pick", [cam.project_ray_origin(_ctl.pointer), cam.project_ray_normal(_ctl.pointer)])
+	if hit.is_empty():
+		return CityStore.dispatch(&"drop_primitive", [ground, primitive])
+	return CityStore.dispatch(&"body_add_primitive", [hit.id, hit.volume, hit.side, hit.storey, hit.point, primitive])
 
 
 func key(code: Key, picked: Dictionary, report: Callable) -> void:

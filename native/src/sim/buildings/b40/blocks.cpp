@@ -53,13 +53,7 @@ bool cut_piece(const Volume &whole, const PlanRing &piece, Volume &v) {
 	v = whole;
 	set_block_ring(v, ring);
 	if (v.w < SLIVER_M || v.d < SLIVER_M) return false;
-	v.bays.clear();
-	v.side_fill.clear();
-	v.storey_paint.clear();
-	v.reliefs.clear();
-	FaceGeometry face = whole.faces[0];
-	face.bays = -1;
-	for (FaceGeometry &f : v.faces) f = face;
+	plain_walls(v);
 	const Ring plan = ring_of(v);
 	v.gear.erase(std::remove_if(v.gear.begin(), v.gear.end(), [&](const RoofPart &p) { return !contains_point(plan, { p.x, p.y }); }), v.gear.end());
 	return true;
@@ -114,6 +108,16 @@ struct Resolver {
 	}
 };
 } // namespace
+
+void plain_walls(Volume &v) {
+	v.bays.clear();
+	v.side_fill.clear();
+	v.storey_paint.clear();
+	v.reliefs.clear();
+	FaceGeometry face = v.faces[0];
+	face.bays = -1;
+	for (FaceGeometry &f : v.faces) f = face;
+}
 
 bool has_modes(const Body &b) {
 	return std::any_of(b.volumes.begin(), b.volumes.end(), [](const Volume &v) { return v.mode != BLOCK_SOLID; });

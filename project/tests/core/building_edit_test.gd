@@ -6,6 +6,7 @@ extends Node3D
 
 const PlanCases := preload("res://tests/core/building_plan_cases.gd")
 const InsideCases := preload("res://tests/core/building_inside_cases.gd")
+const ModelCases := preload("res://tests/core/building_model_cases.gd")
 const PickCases := preload("res://tests/core/building_pick_cases.gd")
 const PartCases := preload("res://tests/core/building_part_cases.gd")
 const TOWN_MAP := 0
@@ -66,6 +67,7 @@ func _ready() -> void:
 	PartCases.run(id, made, _check)
 	PlanCases.run(id, made, _check)
 	InsideCases.run(id, made, _check)
+	ModelCases.run(id, made, _check)
 	_refusals(_one_block_on_the_ground())
 	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
 	await _save_round_trip(id)

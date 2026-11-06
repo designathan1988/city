@@ -47,6 +47,19 @@
   "draw": {
    "sections": [
     {
+     "title_key": "builder.section.primitives",
+     "tools": [
+      {"id": "primBox", "do": "primitive", "value": 0, "top_kind": 0, "top_deg": 0},
+      {"id": "primCylinder", "do": "primitive", "value": 3, "top_kind": 0, "top_deg": 0},
+      {"id": "primOctagonal", "do": "primitive", "value": 5, "top_kind": 0, "top_deg": 0},
+      {"id": "primPrism", "do": "primitive", "value": 0, "top_kind": 2, "top_deg": 35},
+      {"id": "primWedge", "do": "primitive", "value": 0, "top_kind": 4, "top_deg": 25},
+      {"id": "primPyramid", "do": "primitive", "value": 0, "top_kind": 3, "top_deg": 45},
+      {"id": "primCone", "do": "primitive", "value": 3, "top_kind": 3, "top_deg": 55},
+      {"id": "primCross", "do": "primitive", "value": 7, "top_kind": 0, "top_deg": 0}
+     ]
+    },
+    {
      "title_key": "builder.section.drawShape",
      "tools": [
       {"id": "rect", "do": "shape", "value": 0},
@@ -79,7 +92,20 @@
       {"id": "wing", "do": "mass", "value": 0},
       {"id": "stack", "do": "mass", "value": 1},
       {"id": "cut", "do": "mass", "value": 2},
+      {"id": "moveMass", "do": "mass", "value": 3},
       {"id": "removeBlock", "do": "remove", "icon": "vertexRemove"}
+     ]
+    },
+    {
+     "title_key": "builder.section.modelling",
+     "tools": [
+      {"id": "extrudeOut", "do": "extrude", "value": 100},
+      {"id": "extrudeIn", "do": "extrude", "value": -100},
+      {"id": "extrudeBlock", "do": "extrude_block", "value": 400},
+      {"id": "insetFace", "do": "inset_face", "value": 60},
+      {"id": "offsetOut", "do": "offset", "value": 100},
+      {"id": "offsetIn", "do": "offset", "value": -100},
+      {"id": "bevelAll", "do": "bevel", "value": 200}
      ]
     },
     {
@@ -89,6 +115,16 @@
       {"id": "blockVoid", "do": "block_mode", "value": 1},
       {"id": "blockIntersect", "do": "block_mode", "value": 2},
       {"id": "blockXor", "do": "block_mode", "value": 3}
+     ]
+    },
+    {
+     "title_key": "builder.section.block",
+     "tools": [
+      {"id": "copyBlock", "do": "copy_block"},
+      {"id": "detachBlock", "do": "detach"},
+      {"id": "centerBlock", "do": "center_block"},
+      {"id": "turnBlockLeft", "do": "turn_block", "value": 15},
+      {"id": "turnBlockRight", "do": "turn_block", "value": -15}
      ]
     },
     {

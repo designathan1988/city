@@ -36,7 +36,7 @@
 	X(roundabout, max_arc_deg) X(roundabout, disc_pad_m) \
 	X(edit, split_min_m) X(edit, street_cos) X(edit, max_floors) X(edit, duplicate_min_m) X(edit, duplicate_gap_m) \
 	X(inspect, lane_vehicle_m) X(inspect, min_leg_deg) \
-	X(build, grid_m) X(build, module_m) X(build, wing_modules) X(build, min_side_m) X(build, max_side_m) X(build, min_storey_m) \
+	X(build, grid_m) X(build, module_m) X(build, wing_modules) X(build, primitive_m) X(build, primitive_depth_m) X(build, primitive_storeys) X(build, primitive_ground_m) X(build, primitive_storey_m) X(build, roof_mass_storeys) X(build, min_side_m) X(build, max_side_m) X(build, min_storey_m) \
 	X(build, max_storey_m) X(build, max_ground_m) X(build, max_volumes) X(build, min_bearing) \
 	X(build, least_opening) X(build, most_opening) X(build, max_projection_m) X(build, max_recess_m) X(build, relief_step_m) \
 	X(build, max_bays) X(build, max_pier_every) X(build, min_pitch_deg) X(build, max_pitch_deg) X(build, pick_step_m) \

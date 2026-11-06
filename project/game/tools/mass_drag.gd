@@ -4,6 +4,7 @@ class_name MassDrag
 extends RefCounted
 
 const WING := 0
+const SLIDE := 3
 const NONE := -1
 
 var action := NONE
@@ -48,14 +49,25 @@ func press(ground: Vector3, picked: Dictionary) -> void:
 func move(ground: Vector3) -> void:
 	if not dragging():
 		return
-	var rect: Dictionary = CityStore.query(&"body_mass_rect", [_id, _from, _at(ground)])
+	var rect: Dictionary = CityStore.query(&"body_mass_rect", _slid(_at(ground)) if action == SLIDE else [_id, _from, _at(ground)])
 	_ctl.preview.show_ribbon(rect.points, rect.half_width, true)
 
 
 func finish(ground: Vector3) -> Dictionary:
-	var r: Dictionary = CityStore.dispatch(&"body_add_mass", [_id, _vol, _from, _at(ground), action])
+	var r: Dictionary
+	if action == SLIDE:
+		r = CityStore.dispatch(&"body_slide_block", [_id, _vol, _from, _at(ground), true])
+	else:
+		r = CityStore.dispatch(&"body_add_mass", [_id, _vol, _from, _at(ground), action])
 	cancel()
 	return r
+
+
+## The band of the block where the drag has it: across its box, moved by the drag.
+func _slid(to: Vector3) -> Array:
+	var outline: PackedVector3Array = CityStore.query(&"body_outline", [_id, _vol])
+	var shift := to - _from
+	return [_id, outline[0] + shift, outline[outline.size() / 4] + shift]
 
 
 func cancel() -> void:

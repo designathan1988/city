@@ -20,6 +20,24 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 			return CityStore.dispatch(&"body_set_plan", [id, vol, value])
 		"block_mode":
 			return CityStore.dispatch(&"body_set_block_mode", [id, vol, value])
+		"extrude":
+			return _on_face(&"body_extrude_face", picked, value * CM)
+		"extrude_block":
+			return _on_face(&"body_extrude_block", picked, value * CM)
+		"inset_face":
+			return _on_face(&"body_inset_face", picked, value * CM)
+		"offset":
+			return CityStore.dispatch(&"body_offset", [id, vol, value * CM])
+		"bevel":
+			return CityStore.dispatch(&"body_bevel", [id, vol, value * CM, -1])
+		"copy_block":
+			return CityStore.dispatch(&"body_copy_block", [id, vol])
+		"detach":
+			return CityStore.dispatch(&"body_detach", [id, vol])
+		"center_block":
+			return CityStore.dispatch(&"body_center_block", [id, vol])
+		"turn_block":
+			return CityStore.dispatch(&"body_turn_block", [id, vol, float(value)])
 		"relief":
 			if picked.side < 0 or picked.bay < 0:
 				return {"ok": false, "error": "building.relief.pickFace"}
@@ -34,3 +52,10 @@ static func run(spec: Dictionary, value: int, picked: Dictionary, paint_scope: i
 		"finish":
 			return CityStore.dispatch(&"body_paint", [id, paint_scope, vol, maxi(picked.side, 0), picked.storey, value, spec.rgb])
 	return {"ok": false, "error": "tool.failed"}
+
+
+## What needs a face: the pick must have one.
+static func _on_face(command: StringName, picked: Dictionary, amount: float) -> Dictionary:
+	if picked.side < 0:
+		return {"ok": false, "error": "builder.pickFace"}
+	return CityStore.dispatch(command, [picked.id, picked.volume, picked.side, amount])
