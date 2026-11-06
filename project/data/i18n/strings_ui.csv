@@ -178,3 +178,4 @@ lab.inspector.none,Ponha o ponteiro sobre o mapa,Put the pointer over the map
 lab.inspector.point,Ponto,Point
 lab.inspector.ground,Altura do chão,Ground height
 lab.inspector.pointer,Altura sob o ponteiro,Height under the pointer
+zone.lot.size,{w} x {d} m,{w} x {d} m

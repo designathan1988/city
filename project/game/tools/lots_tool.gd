@@ -14,7 +14,6 @@ const LINE_PX := 2.0
 const SNAP_PX := 16.0
 const SNAP_LEAST_M := 2.5
 const MARK_M := 0.9
-const CELL_M := 256.0 # core/grid.h CHUNK: proposals are read a cell at a time
 
 var mode := "add"
 var cut_kind := CUT_ACROSS
@@ -24,8 +23,8 @@ var _from := Vector3.INF # where the gesture began
 var _side: Array = [] # the side picked: [a, b]
 var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
-var _proposed: Array = [] # the lots the streets propose where the pointer is, each a ring
-var _proposed_at := Vector2i(1 << 30, 0) # their cell
+var _land := LotProposals.new()
+var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by id
 
 
 func enter() -> void:
@@ -39,6 +38,7 @@ func enter() -> void:
 
 func exit() -> void:
 	ctl.preview.clear()
+	ctl.tagged.emit("", Vector3.ZERO, true)
 
 
 func cancel() -> void:
@@ -46,27 +46,14 @@ func cancel() -> void:
 	_side = []
 	_points = PackedVector3Array()
 	_first_lot = 0
+	_erasing = {}
+	ctl.tagged.emit("", Vector3.ZERO, true)
 	_show()
 
 
 func _read() -> void:
 	_lots = CityStore.query(&"lots")
-	_proposed_at = Vector2i(1 << 30, 0) # what stands changed: read them again
-
-
-## The proposal under `p`, or an empty ring.
-func _proposal_at(p: Vector3) -> PackedVector3Array:
-	var cell := Vector2i(floori(p.x / CELL_M), floori(p.z / CELL_M))
-	if cell != _proposed_at:
-		_proposed_at = cell
-		_proposed = CityStore.query(&"lot_proposals", [p])
-	for ring: PackedVector3Array in _proposed:
-		var flat := PackedVector2Array()
-		for q in ring:
-			flat.push_back(Vector2(q.x, q.z))
-		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), flat):
-			return ring
-	return PackedVector3Array()
+	_land.forget()
 
 
 func _done(r: Dictionary) -> void:
@@ -175,18 +162,34 @@ func click(p: Vector3) -> void:
 			elif id != 0:
 				_done(CityStore.dispatch(&"lot_join", [_first_lot, id]))
 		"delete":
-			if id != 0:
-				_done(CityStore.dispatch(&"lot_delete", [id]))
+			_from = p # a stroke: all it passes over goes when it is let go
+			_erase_under(p)
+
+
+## The lots under the delete stroke, drawn thicker until it is let go.
+func _erase_under(p: Vector3) -> void:
+	var id: int = CityStore.query(&"lot_at", [p])
+	if id != 0:
+		_erasing[id] = true
+	var marked := []
+	for l: Dictionary in _lots:
+		if _erasing.has(l.id):
+			marked.push_back({"points": _closed(l.points), "half_width": _width(p) * 3.0})
+	_show(marked)
 
 
 func drag(p: Vector3) -> void:
 	if _from == Vector3.INF:
+		return
+	if mode == "delete":
+		_erase_under(p)
 		return
 	if mode == "curve" and not _side.is_empty():
 		_show([{"points": PackedVector3Array([_side[0], p, _side[1]]), "half_width": _width(p) * 2.0}])
 	elif mode == "add":
 		var ring: PackedVector3Array = CityStore.query(&"lot_land", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])])
 		_show([{"points": _closed(ring), "half_width": _width(p) * 2.0}] if ring.size() >= 3 else [])
+		ctl.tagged.emit(LotProposals.size_of(ring) if ring.size() >= 3 else "", p, true)
 	elif mode == "edit":
 		_show([{"points": PackedVector3Array([_from, _snap(p, _from)]), "half_width": _width(p) * 2.0}])
 	else:
@@ -194,12 +197,19 @@ func drag(p: Vector3) -> void:
 
 
 func release(p: Vector3) -> void:
+	if mode == "delete" and not _erasing.is_empty():
+		CityStore.dispatch(&"begin_stroke", ["cmd.lot.delete"])
+		for id: int in _erasing:
+			CityStore.dispatch(&"lot_delete", [id])
+		CityStore.dispatch(&"end_stroke")
+		_read()
+		cancel()
 	if _from == Vector3.INF or p == Vector3.INF:
 		_from = Vector3.INF
 		return
 	match mode:
 		"add":
-			var ring := _proposal_at(p)
+			var ring := _land.at(p)
 			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * PICK_PX and not ring.is_empty():
 				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
 			else:
@@ -226,9 +236,11 @@ func hover(p: Vector3) -> void:
 	elif mode == "add" or mode == "polygon":
 		var at := _snap(p)
 		extra.push_back(_mark(at))
-		var ring := _proposal_at(p) if mode == "add" else PackedVector3Array()
+		var ring := _land.at(p) if mode == "add" else PackedVector3Array()
 		if not ring.is_empty():
 			extra.push_back({"points": _closed(ring), "half_width": _width(p) * 2.0})
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
+	var over: PackedVector3Array = _lot_of(CityStore.query(&"lot_at", [p])).get("points", _land.at(p) if mode == "add" else PackedVector3Array())
+	ctl.tagged.emit(LotProposals.size_of(over) if over.size() >= 3 else "", LotProposals.middle(over) if over.size() >= 3 else p, true)
 	_show(extra)
