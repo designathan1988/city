@@ -215,6 +215,73 @@ Dictionary CityCore::probe_building(int id) {
 	return d;
 }
 
+// What the bodies of one kind are made of, on average: to hold a city against the 4.0's records.
+Dictionary CityCore::body_census(int kind) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	static constexpr const char *ELEMENTS[] = { "pavement", "slab", "pillar", "canopy", "awning", "wall", "fence", "railing", "hedge", "gate", "car_gate", "planter", "bench",
+		"bollard", "lamp", "bin", "ac", "surface", "stall", "dock", "drain", "tree", "shrub", "flowers", "pool", "lounger", "table", "swing", "shed", "line", "pallet", "cage",
+		"stair", "ramp", "rocks", "parking", "clock" };
+	int n = 0, volumes = 0;
+	double foot = 0, lot_w = 0, lot_d = 0, main = 0;
+	std::vector<int> elements(sizeof(ELEMENTS) / sizeof(ELEMENTS[0]));
+	Dictionary covers; // the ground the lot lays, by colour: its area
+	for (const Building &rec : s.buildings.items) {
+		if (!rec.alive) continue;
+		b40::Body body;
+		b40::record_body(s.buildings.designs, rec, body);
+		if (int(body.kind) != kind) continue;
+		n++;
+		lot_w += body.plan.W;
+		lot_d += body.plan.D;
+		double largest = 0;
+		for (const b40::Volume &v : body.volumes) {
+			volumes++;
+			foot += double(v.w) * v.d;
+			largest = std::max(largest, double(v.w) * v.d);
+		}
+		main += largest;
+		for (const b40::LotElement &e : body.elements) {
+			if (size_t(e.kind) < elements.size()) elements[size_t(e.kind)]++;
+			if (e.kind == b40::EL_SURFACE && e.paint >= 0 && size_t(e.paint) < body.paints.size()) {
+				const String tone = String::num_int64(int64_t(body.paints[size_t(e.paint)].rgb), 16);
+				covers[tone] = double(covers.get(tone, 0.0)) + double(e.w) * e.d;
+			}
+		}
+	}
+	Dictionary d, per;
+	const double each = 1.0 / std::max(n, 1);
+	for (const Variant &tone : covers.keys()) covers[tone] = double(covers[tone]) * each;
+	d["cover_m2"] = covers;
+	d["n"] = n;
+	d["volumes"] = volumes * each;
+	d["foot_m2"] = foot * each;
+	d["largest_m2"] = main * each;
+	d["lot_w"] = lot_w * each;
+	d["lot_d"] = lot_d * each;
+	for (size_t i = 0; i < elements.size(); i++)
+		if (elements[i] > 0) per[ELEMENTS[i]] = elements[i] * each;
+	d["elements"] = per;
+	return d;
+}
+
+// The network by road and by junction: metres of each profile, nodes by their arms.
+Dictionary CityCore::road_census() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const RoadNetwork &net = state_->roads;
+	Dictionary roads, arms, d;
+	for (const RoadSegment &g : net.segs) {
+		if (!g.alive) continue;
+		const String id = net.cat->profile(g.profile).id.c_str();
+		roads[id] = double(roads.get(id, 0.0)) + g.len;
+	}
+	for (const RoadNode &n : net.nodes)
+		if (n.alive) arms[int(n.segs.size())] = int(arms.get(int(n.segs.size()), 0)) + 1;
+	d["metres"] = roads;
+	d["arms"] = arms;
+	return d;
+}
+
 Array CityCore::list_buildings() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array a;

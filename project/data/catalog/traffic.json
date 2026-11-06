@@ -281,6 +281,7 @@
   "lorry_radius_m": 9.85,
   "lorry_rear_m": 1.62,
   "lorry_margin_m": 0.05,
+  "lorry_kerb_over_m": 0.3,
   "lorry_cell_m": 0.1,
   "lorry_street_reach_m": 16,
   "lorry_street_window_m": 22,

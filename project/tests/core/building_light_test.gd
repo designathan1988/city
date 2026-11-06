@@ -101,13 +101,18 @@ func _lamps_by_night() -> void:
 	await _frames(FRAMES)
 	var night: float = world.daylight.night
 	var img := get_viewport().get_texture().get_image()
-	_compare(img, a.position, _shown(_decode(GREY) * night * _param(near, "lamp_glow")), "lâmpada perto (night %.2f)" % night)
+	var lit: Color = Color(near.get_shader_parameter("lamp_light")).srgb_to_linear() # what a lit lamp gives, whatever its body is
+	_compare(img, a.position, _shown_rgb(Vector3(lit.r, lit.g, lit.b) * night * _param(near, "lamp_glow")), "lâmpada perto (night %.2f)" % night)
 	_compare(img, b.position, _shown(_decode(GREY) * _param(far, "wall_gain") * night), "lâmpada longe (night %.2f)" % night)
 
 
 ## The colour a linear grey radiance shows on screen, through the Environment's tone mapping (render/tone_map.gd).
 func _shown(radiance: float) -> Color:
-	var s := ToneMap.aces(Vector3(radiance, radiance, radiance), world.environment.tonemap_exposure, world.environment.tonemap_white)
+	return _shown_rgb(Vector3(radiance, radiance, radiance))
+
+
+func _shown_rgb(radiance: Vector3) -> Color:
+	var s := ToneMap.aces(radiance, world.environment.tonemap_exposure, world.environment.tonemap_white)
 	return Color(s.x, s.y, s.z).linear_to_srgb()
 
 

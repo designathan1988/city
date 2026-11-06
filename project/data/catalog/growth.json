@@ -30,7 +30,7 @@
    "green_tree_edge_m": 3,
    "green_tree_low_m": 9,
    "green_tree_high_m": 14,
-   "green_main_roads": ["avenue", "avenue4Lanes", "avenueWithCycleTrack", "boulevard", "curbsideBusLane", "urbanStreet"]
+   "green_main_roads": ["avenue", "avenue4Lanes", "avenueWithCycleTrack", "boulevard", "curbsideBusLane", "urbanStreet", "cityUrban", "cityAvenue"]
   }
  },
  "civic": {

@@ -21,20 +21,20 @@ namespace city {
 namespace {
 GenProfiles gen_profiles(const Catalog &c) {
 	GenProfiles g;
-	g.local = c.profile_id("streetWithParking");
-	g.avenue = c.profile_id("avenue4Lanes");
+	g.local = c.profile_id("cityLocal"); // the three sections of the 4.0's cities (world/cityGen)
+	g.avenue = c.profile_id("cityAvenue");
 	g.avenue_bike = c.profile_id("avenueWithCycleTrack");
 	g.expressway = c.profile_id("expressway");
-	g.collector = c.profile_id("urbanStreet");
+	g.collector = c.profile_id("cityUrban");
 	g.wide = c.profile_id("wideSidewalks");
-	g.urban = c.profile_id("urbanStreet");
+	g.urban = c.profile_id("cityUrban");
 	g.cobble = c.profile_id("cobblestoneStreet");
 	g.green = c.profile_id("streetWithMedian");
 	g.concrete = c.profile_id("concreteRoad");
 	g.bike = c.profile_id("streetWithBikeLane");
 	g.bus_side = c.profile_id("curbsideBusLane");
 	g.boulevard = c.profile_id("boulevard");
-	g.av4 = c.profile_id("avenue4Lanes");
+	g.av4 = c.profile_id("cityAvenue");
 	for (const Profile &p : c.profiles) g.asph_right.push_back(p.asph_right);
 	return g;
 }

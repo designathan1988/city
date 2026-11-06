@@ -21,20 +21,21 @@ std::vector<V2> rect_ring(const b40::LotFrame &f, float x0, float y0, float x1, 
 	return { f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) };
 }
 
-// The carriageway of every segment near, in short quads along its curve.
+// The carriageway of every segment near, in short quads along its curve, with what of a lorry's body may stand over the kerb: only its wheels are held by it.
 void asphalt_near(const CityState &s, double x0, double z0, double x1, double z1, YardInput &out) {
 	s.roads.for_segments_near(x0, z0, x1, z1, [&](int seg) {
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		const Profile &p = s.roads.profile_of(seg);
 		const int steps = std::max(1, int(std::ceil(g.len / ASPHALT_STEP_M)));
+		const float over = s.catalog.traffic.lorry_kerb_over_m;
 		Pose l0, r0;
-		seg_point(s, seg, 0, p.asph_left, l0);
-		seg_point(s, seg, 0, -p.asph_right, r0);
+		seg_point(s, seg, 0, p.asph_left + over, l0);
+		seg_point(s, seg, 0, -p.asph_right - over, r0);
 		for (int i = 1; i <= steps; i++) {
 			Pose l1, r1;
 			const float arc = float(g.len) * float(i) / float(steps);
-			seg_point(s, seg, arc, p.asph_left, l1);
-			seg_point(s, seg, arc, -p.asph_right, r1);
+			seg_point(s, seg, arc, p.asph_left + over, l1);
+			seg_point(s, seg, arc, -p.asph_right - over, r1);
 			out.open.push_back({ V2(l0.x, l0.z), V2(r0.x, r0.z), V2(r1.x, r1.z), V2(l1.x, l1.z) });
 			l0 = l1;
 			r0 = r1;

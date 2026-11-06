@@ -97,6 +97,8 @@ public:
 	void begin_stroke(const godot::String &label); // a held brush: every dab until end_stroke is one undo step
 	void end_stroke();
 	godot::Dictionary split_road(const godot::Vector3 &p);
+	godot::Dictionary body_census(int kind);
+	godot::Dictionary road_census();
 	godot::Dictionary set_node_height(int node, float metres);
 	godot::Dictionary bend_road(int seg, float height, float at);
 	godot::Dictionary join_roads(int node);
