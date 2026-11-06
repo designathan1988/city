@@ -85,7 +85,7 @@
                     "ROUNDABOUT",
                     "TERRAIN",
                     "BUILD",
-                    "LOT",
+                    "LOT", "LOTS",
                     "MOVE",
                     "CONTROL",
                     "PAINT",
