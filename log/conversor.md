@@ -10,7 +10,7 @@ sempre verdadeiros.
 
 - **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
 - **Primeira área no jogo (2026-11-05):** `src/sim/roads/flowStats.ts` e `controlAdvisor.ts` traduzidos sem edição, compilados no jogo e iguais ao 4.0; ver "Causa e prova" no histórico.
-- **Estado do tradutor:** sistema de tipos aberto (`js::Value`), classes, genéricos, subclasses, setters. `--mode whole`: 4.130 unidades compilam, de 19.377 (11.238 traduzíveis), e 4 arquivos ficam fora; 370 s na pior passada. Compilar não é conferir: fora do `flow_control`, nada disso foi comparado com o 4.0.
+- **Estado do tradutor:** sistema de tipos aberto (`js::Value`), classes, genéricos, subclasses, setters. `--mode whole`: 4.130 unidades compilam, de 19.377 (11.238 traduzíveis), 4 arquivos de fora. `scripts/check-all.ts` confere cada módulo contra o 4.0 sem jogo: 84 de 359 módulos batem.
 - **Caminho validado para portar:** `CXX=<clang++> node scripts/port-area.ts <plano> <saída>`, área por área: traduz e confere contra o 4.0 sem jogo (3.000 chamadas sorteadas em 2,1 s). Validado numa área só.
 - `tools/converter` (master `c3642d9`, conteúdo trazido ao repositório do jogo); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
@@ -350,3 +350,15 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - 2.554 unidades ficam de fora por rodada e 8.139 são `method` ou `write` (desenho, interface, `hot-allocation`).
 - A área já no jogo não foi regenerada depois destas mudanças; o `js_value.h` ainda não está em `native/src/core`.
 - Interfaces implementadas por classes (`Sink`, `Path`) e classes que estendem `Map` continuam sem forma.
+
+### 2026-11-05 — Conferência em massa
+
+`scripts/check-all.ts <ledger> <plano> <saída> <fatia> <fatias>`: cada módulo traduzido, chamadas sorteadas na fonte e no C++, cerca de 2 s por módulo, sem jogo. Achou o que nenhum compilador vê, tudo inteiro de 32 bits onde JavaScript não tem: produto, `**`, `>>>` e `Math.round` de real estouravam em silêncio (`flow.ts` `numOf`, `expressions.ts` `#math`). Achou também `x as T` de valor dinâmico perdendo o valor, `=== undefined` igual a `=== null`, e `a?.b?.[i] ?? d` lendo memória lixo.
+
+Resultado de 359 módulos, os que têm função ou classe:
+- 84 iguais ao 4.0;
+- 7 diferentes, nenhum erro de tradução em entrada válida: `keepCellKey` e `rampCellKey` são a chave do jogo de propósito (padrão da library), `fromFlat` e `segmentDistSq` recebem índice além da lista, `laneChangeOffset` é o limite de `float`, `woodsScale` e `idmAccel` são `NaN` de entrada sem sentido;
+- 144 sem nada a chamar (só constantes, ou parâmetros de callback e instância);
+- 60 cujo harness não compila, 46 em que a fonte não roda com argumento sorteado, 18 não traduzidos: **sem prova**.
+
+Diferença real que fica: `Math.max` do JavaScript propaga `NaN`, `std::max` não. `number` é `float`, por decisão do jogo.

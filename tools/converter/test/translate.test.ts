@@ -103,7 +103,7 @@ describe('translate', () => {
   });
 
   it('rounds the JavaScript way and edits in place', () => {
-    assert.match(file('yard_query.cpp'), /std::floor\(x_\d+\); return int\(x_\d+ - down >= 0\.5f \? down \+ 1 : down\)/);
+    assert.match(file('yard_query.cpp'), /std::floor\(x_\d+\); return int64_t\(x_\d+ - down >= 0\.5f \? down \+ 1 : down\)/);
     assert.match(file('yard_edit.cpp'), /t\.posts\.push_back\(Post\{id, x, y, \{\}\}\);/);
     assert.match(file('yard_edit.cpp'), /t\.posts\.erase\(std::remove_if\(t\.posts\.begin\(\), t\.posts\.end\(\), \[&\]\(const Post &p\) \{ return p\.id == id; \}\), t\.posts\.end\(\)\);/);
   });

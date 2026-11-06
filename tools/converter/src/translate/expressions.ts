@@ -241,8 +241,7 @@ export abstract class ExpressionEmitter {
       const inner = this.value(e.expression, want);
       if (inner.type.k !== 'dynamic') return inner;
       // `raw as T`: the source's promise of what it is, read as that
-      const asked = want ?? this.c.types.ofType(this.c.checker.getTypeAtLocation(e), 'local', null);
-      return asked.k === 'dynamic' || asked.k === 'void' ? inner : { code: this.unbox(inner.code, asked), type: asked };
+      return !want || want.k === 'dynamic' || want.k === 'void' ? inner : { code: this.unbox(inner.code, want), type: want };
     }
     if (ts.isNumericLiteral(e)) return this.#number(e);
     if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) {
@@ -795,6 +794,7 @@ export abstract class ExpressionEmitter {
       name = statics && statics !== 'Math' ? `${snake(statics)}_${snake(callee.name.text)}` : snake(callee.name.text);
     } else if (ts.isIdentifier(callee)) name = callee.text === 'String' ? 'to_string' : snake(callee.text);
     else return this.fail(e, 'a built-in called through an expression');
+    name = name.replace(/_na_n$/, '_nan'); // isNaN is one word, however it is capitalised
     const args: string[] = receiver ? [receiver.type.k === 'literal' ? `std::string(${receiver.code})` : receiver.code] : [];
     for (const a of call?.arguments ?? []) {
       if (ts.isArrowFunction(a) || ts.isFunctionExpression(a)) args.push(this.lambda(a).code);
@@ -824,13 +824,13 @@ export abstract class ExpressionEmitter {
     this.c.includes.add('cmath');
     const args = e.arguments.map((a) => this.value(a));
     const real = this.c.types.number(Num.Float, 'local');
-    if (INT_MATH.has(method)) return { code: `int(std::${method}(${args[0]!.code}))`, type: INT };
+    if (INT_MATH.has(method)) return isInt(args[0]!.type) ? { code: `int(std::${method}(${args[0]!.code}))`, type: INT } : { code: `int64_t(std::${method}(${args[0]!.code}))`, type: INT64 };
     if (method === 'round') {
       // JavaScript rounds halves toward +∞ (ECMAScript Math.round); std::round rounds them away from zero, and
       // floor(x + 0.5) is wrong just below a half (the sum rounds). x − floor(x) is exact, so this is JavaScript's.
       const x = this.temp('x');
       const number = this.c.spec.number;
-      return { code: `[&] { const ${number} ${x} = ${args[0]!.code}; const ${number} down = std::floor(${x}); return int(${x} - down >= ${realLiteral('0.5', number)} ? down + 1 : down); }()`, type: INT };
+      return { code: `[&] { const ${number} ${x} = ${args[0]!.code}; const ${number} down = std::floor(${x}); return int64_t(${x} - down >= ${realLiteral('0.5', number)} ? down + 1 : down); }()`, type: INT64 };
     }
     // the low 32 bits of the product of two int32 (wrapping: unsigned arithmetic in C++, signed overflow is undefined)
     // (an operand that is no integer is truncated first, as JavaScript's ToInt32 does)
@@ -1238,7 +1238,11 @@ export abstract class ExpressionEmitter {
         if (element) {
           const held = this.temp('list');
           const at = this.temp('at');
-          return { code: `[&] { const auto &${held} = ${list.type.k === 'vector' ? list.code : `*${list.code}`}; const auto ${at} = ${this.expr(e.left.argumentExpression, INT)}; return ${at} >= 0 && size_t(${at}) < ${held}.size() ? ${held}[size_t(${at})] : ${render(element)}(${this.expr(e.right, element)}); }()`, type: element };
+          const fallback = `${render(element)}(${this.expr(e.right, element)})`;
+          // the list itself may be absent (`a?.b?.[i] ?? d`): read past nothing, as past its end
+          const whole = this.temp('whole');
+          const guard = list.type.k === 'vector' ? `const auto &${held} = ${list.code};` : `const auto &${whole} = ${list.code}; if (!${whole}) return ${fallback}; const auto &${held} = *${whole};`;
+          return { code: `[&]() -> ${render(element)} { ${guard} const auto ${at} = ${this.expr(e.left.argumentExpression, INT)}; return ${at} >= 0 && size_t(${at}) < ${held}.size() ? ${held}[size_t(${at})] : ${fallback}; }()`, type: element };
         }
       }
       const left = this.value(e.left);
@@ -1279,7 +1283,15 @@ export abstract class ExpressionEmitter {
     const text = e.operatorToken.getText();
     const op = text === '===' ? '==' : text === '!==' ? '!=' : text;
     if ((left.type.k === 'dynamic' || right.type.k === 'dynamic') && op !== '=' && op !== '&&' && op !== '||') {
-      if (op === '==' || op === '!=') return { code: `${op === '!=' ? '!' : ''}${this.box(left)}.same(${this.box(right)})`, type: BOOL };
+      if (op === '==' || op === '!=') {
+        // null and undefined are two values to ===, one to ==
+        const nothing = (n: TS.Expression): string | null => (n.kind === ts.SyntaxKind.NullKeyword ? 'Null' : ts.isIdentifier(n) && n.text === 'undefined' ? 'Undefined' : null);
+        const kind = nothing(e.right) ?? nothing(e.left);
+        const held = left.type.k === 'dynamic' ? left : right;
+        const not = op === '!=' ? '!' : '';
+        if (kind) return { code: text.length === 3 ? `${not}(${held.code}.kind() == js::Value::Kind::${kind})` : `${not}${held.code}.nullish()`, type: BOOL };
+        return { code: `${not}${this.box(left)}.same(${this.box(right)})`, type: BOOL };
+      }
       const text2 = left.type.k === 'string' || left.type.k === 'literal' || right.type.k === 'string' || right.type.k === 'literal';
       const side = (v: Value): string => (v.type.k === 'dynamic' ? (text2 ? `${v.code}.text()` : `${v.code}.number()`) : v.type.k === 'literal' ? `std::string(${v.code})` : v.code);
       if (text2 && op === '+') return { code: `(${side(left)} + ${side(right)})`, type: STRING };
@@ -1324,6 +1336,10 @@ export abstract class ExpressionEmitter {
       return { code: `${left.type.k === 'literal' ? `std::string(${left.code})` : left.code} + ${right.code}`, type: STRING };
     }
     const type = this.numberType(e);
+    // integers whose result is wider than they are: widened before the operator, so it cannot wrap
+    if ((op === '*' || op === '+' || op === '-') && render(type) === 'int64_t' && isInt(left.type) && render(left.type) !== 'int64_t') {
+      return { code: `(int64_t(${left.code}) ${op} ${right.code})`, type };
+    }
     if (op === '/' && isInt(left.type) && isInt(right.type)) return { code: `${this.c.spec.number}(${left.code}) / ${right.code}`, type };
     if (op === '%' && !(isInt(left.type) && isInt(right.type))) {
       this.c.includes.add('cmath');

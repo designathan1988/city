@@ -178,6 +178,14 @@ export class Emitter extends ExpressionEmitter {
     const type = this.c.types.slot(slot, 'local');
     this.bind(symbol, { cpp: name, type });
     if (!init) return [`${at}${declare(type, name)}${this.#zero(type)};`];
+    // `const o = raw as T`: what the running value turns out to be is still in question; o stays one
+    if (ts.isAsExpression(init) && !this.#reassigned(symbol)) {
+      const held = this.value(init.expression);
+      if (held.type.k === 'dynamic') {
+        this.bind(symbol, { cpp: name, type: held.type });
+        return [`${at}const js::Value ${name} = ${held.code};`];
+      }
+    }
     const v = this.value(init, type);
     const reassigned = this.#reassigned(symbol);
     // Another owner's object or container, never pointed elsewhere and never absent: a reference to it.

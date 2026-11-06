@@ -16,16 +16,13 @@
 
 namespace city {
 
-// The 10 the source writes here (Roadcraft 4.0 src/sim/roads/controlAdvisor.ts:28)
-constexpr int CONSTANT_VALUE = 10;
-
 struct ControlAdvisor;
 // (Roadcraft 4.0 src/sim/roads/controlAdvisor.ts:24)
 struct ControlAdvisor : std::enable_shared_from_this<ControlAdvisor> {
 	js::Map<int64_t, AutoControl> choices;
 	js::Map<int64_t, float> changed_at;
 	float since = 0;
-	static inline const int every = CONSTANT_VALUE;
+	static inline const int every = 10;
 	std::optional<AutoControl> choice(int64_t node);
 	bool tick(float dt);
 	bool evaluate(int64_t node, float major, float minor_max, float minor_total, AutoControl initial, float now, const Tuning &tn);
