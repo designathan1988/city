@@ -510,6 +510,11 @@ Ressalvas abertas:
 - Foto de perto às 22h: lanterna acesa, com brilho, e poça suave na parede. Não há foto de perto de lanterna de parede no 4.0 arquivado: a referência foi o código e os balizadores de `35-noite-torre-perto`.
 - `gates_user.py` (scratch) ganhou `building_wash` e `lamp_light`; o schema de `materials` ainda depende de o usuário rodar o script.
 
+### Export do jogo (2026-11-05)
+- `tools/build/build.sh export` a pedido do usuário: `dist/windows/Roadcraft.exe` do commit `c8a63a4e` mais esta correção.
+- **Defeito achado ao abrir o exe:** `strings_ui`, `strings_d` e `strings_e` estavam com o importador `csv_translation`, que tira o CSV do pacote, e `DataTables.load_translations` lê o CSV. Os três agora são `keep`, como os outros. Toda parte nova de `strings*.csv` precisa do mesmo `.import`.
+- Aberto no desktop oculto por 600 quadros: 0 erros no log. A tela do exe não foi olhada.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
