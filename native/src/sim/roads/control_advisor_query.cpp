@@ -40,7 +40,7 @@ std::optional<AutoControl> ControlAdvisor::choice(int64_t node) {
 // Whether it is time to evaluate again.
 bool ControlAdvisor::tick(float dt) {
 	this->since += dt;
-	if (this->since < ControlAdvisor::every)
+	if (this->since < ControlAdvisor::EVERY)
 		return false;
 	this->since = 0;
 	return true;

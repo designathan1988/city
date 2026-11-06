@@ -10,7 +10,7 @@ import {
   BOOL, INT, INT64, LITERAL, NULL, STRING, VOID, bindTypeParameters, byValue, declare, holdsTypeParameter, integerLiteral, elementOf, isInt, isNumber, paramDecl, realLiteral, render, same, target,
   substitute, widerNumber, type CppType, arrow, isHandle, DYNAMIC } from './cpptype.ts';
 import { Num } from './flow.ts';
-import { snake, upper } from './names.ts';
+import { snake, staticName, upper } from './names.ts';
 
 /** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
 export const RUNTIME_INCLUDE = 'core/js_runtime.h';
@@ -266,7 +266,7 @@ export abstract class ExpressionEmitter {
       const decl = field?.valueDeclaration;
       if (field && decl && ts.isPropertyDeclaration(decl) && (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) !== 0) {
         const owner = target(this.c.types.ofType(this.c.checker.getTypeAtLocation(decl.parent), 'local', null));
-        return { code: `${owner.k === 'struct' ? owner.name : render(owner)}::${snake(e.name.text.replace(/^#/, ''))}`, type: this.c.types.slot(this.c.flow.symbolSlot(field), 'local') };
+        return { code: `${owner.k === 'struct' ? owner.name : render(owner)}::${staticName(e.name.text)}`, type: this.c.types.slot(this.c.flow.symbolSlot(field), 'local') };
       }
       return this.#property(e);
     }
