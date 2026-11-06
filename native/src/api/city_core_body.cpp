@@ -1,4 +1,5 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
+#include "sim/buildings/b40/blocks.h"
 #include "api/city_builder.h"
 #include "api/edit_result.h"
 #include "core/color.h"
@@ -84,12 +85,15 @@ Dictionary CityBuilder::body_info(int id) const {
 		for (int side = 0; side < v.sides(); side++) bays.push_back(b40::bays_of(v, side));
 		e["bays"] = bays;
 		e["gear"] = int(v.gear.size());
+		e["mode"] = int(v.mode);
 		int flags = 0;
 		for (const b40::RoofPart &p : v.gear) flags += p.flag.pattern != b40::FLAG_NONE ? 1 : 0;
 		e["flags"] = flags;
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
+	b40::resolve_blocks(body);
+	d["solids"] = int(body.volumes.size());
 	return d;
 }
 
@@ -143,6 +147,31 @@ Dictionary CityBuilder::body_resize(int id, int vol, int side, double delta, boo
 
 Dictionary CityBuilder::body_add_wing(int id, int vol, int side, double depth, double length) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_wing(b, t, vol, side, float(depth), float(length)); });
+}
+
+Dictionary CityBuilder::body_add_mass(int id, int vol, const Vector3 &from, const Vector3 &to, int action) {
+	const V2 a = lot_point(*state_, id, from), c = lot_point(*state_, id, to);
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_mass(b, t, vol, { a.x, a.y }, { c.x, c.y }, action); });
+}
+
+Dictionary CityBuilder::body_set_block_mode(int id, int vol, int mode) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &) { return op_set_block_mode(b, vol, mode); });
+}
+
+// The rectangle a drag makes, square to the lot, as a band for the preview: from the middle of one side to the middle of the other.
+Dictionary CityBuilder::body_mass_rect(int id, const Vector3 &from, const Vector3 &to) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Dictionary d;
+	PackedVector3Array points;
+	const V2 a = lot_point(*state_, id, from), c = lot_point(*state_, id, to);
+	const b40::LotFrame f = b40::lot_frame(state_->buildings.items[id]);
+	const float mid = (a.x + c.x) / 2;
+	const V2 p = f.at(mid, a.y), q = f.at(mid, c.y);
+	points.push_back(Vector3(p.x, from.y, p.y));
+	points.push_back(Vector3(q.x, from.y, q.y));
+	d["points"] = points;
+	d["half_width"] = std::fabs(a.x - c.x) / 2;
+	return d;
 }
 
 Dictionary CityBuilder::body_set_plan(int id, int vol, int shape) {

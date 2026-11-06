@@ -1,4 +1,5 @@
 // A building record's body and its lot's frame (record.h).
+#include "sim/buildings/b40/blocks.h"
 #include "sim/buildings/b40/record.h"
 
 #include "sim/buildings/b40/civic.h"
@@ -18,6 +19,11 @@ LotFrame lot_frame(const Building &rec) {
 	const float sn = std::sin(rec.rot), cs = std::cos(rec.rot);
 	// The record's centre is the lot's middle; its +z (rot 0) faces the street, so the front is half a depth that way.
 	return LotFrame{ V2(rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs), V2(cs, -sn), V2(-sn, -cs) };
+}
+
+void record_mass(const Data &data, const Building &rec, Body &b) {
+	record_body(data, rec, b);
+	resolve_blocks(b);
 }
 
 void record_body(const Data &data, const Building &rec, Body &b) {

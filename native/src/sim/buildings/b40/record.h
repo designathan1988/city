@@ -21,6 +21,8 @@ LotFrame lot_frame(const Building &rec);
 
 // The record's body: the version the player edited, or a civic building, an open lot or a grown building made from its seed.
 void record_body(const Data &data, const Building &rec, Body &b);
+// That body as what stands: its blocks resolved into solid ones (blocks.h). What draws it or walks round it reads this; what edits it reads the blocks.
+void record_mass(const Data &data, const Building &rec, Body &b);
 // What names that body: two records with the same key have the same body, wherever they stand.
 uint64_t body_key(const Building &rec);
 

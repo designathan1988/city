@@ -22,12 +22,16 @@ const BRUSH_DT := 0.2
 const BRUSH_MODES := 3
 const ITEM_KINDS := 7
 const PLAN_SHAPES := 8
+const MASS_KINDS := 2
+const BLOCK_FROM := 0.3
+const BLOCK_TO := 0.7
 const REACH_M := 12.0
 const STRIKE_MAX := 12
 ## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
 const GROWTH_QUEUE := "growth"
 
 var failures := 0
+var drawn := -1
 var rng := RandomNumberGenerator.new()
 var roads: Array[Vector3] = [] # the middles of what was laid, for the edits that need a road
 
@@ -107,6 +111,7 @@ func _walk(seed: int, steps: int) -> Array:
 	CityStore.new_map(MAP, CITY_SEED, false, true)
 	rng.seed = seed
 	roads.clear()
+	drawn = -1
 	var trail := [_hash()]
 	for i in steps:
 		var before: String = trail[-1].whole
@@ -187,7 +192,13 @@ func _other(kind: int, road: Vector3) -> void:
 		12:
 			CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, b]), rng.randi_range(0, 1)])
 		13:
-			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND, rng.randi_range(0, PLAN_SHAPES)])
+			var box: PackedVector3Array = CityStore.query(&"body_outline", [drawn, 0]) if drawn >= 0 else PackedVector3Array()
+			if not box.is_empty() and rng.randf() < 0.5:
+				var far: Vector3 = box[box.size() / 4]
+				CityStore.dispatch(&"body_add_mass", [drawn, 0, box[0].lerp(far, BLOCK_FROM), box[0].lerp(far, BLOCK_TO), rng.randi_range(0, MASS_KINDS)])
+			else:
+				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND, rng.randi_range(0, PLAN_SHAPES)])
+				drawn = r.get("placed", -1) if r.get("ok", false) else drawn
 		14:
 			CityStore.dispatch(&"transit_stop", [road])
 		17:

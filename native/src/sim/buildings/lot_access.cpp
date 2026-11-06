@@ -222,7 +222,7 @@ void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, st
 	Body body;
 	lots.query(g.minx - reach, g.minz - reach, g.maxx + reach, g.maxz + reach, [&](int id) {
 		const Building &rec = lots.items[size_t(id)];
-		record_body(lots.designs, rec, body);
+		record_mass(lots.designs, rec, body);
 		const LotFrame f = lot_frame(rec);
 		for (const LotElement &e : body.elements) {
 			if (e.kind != EL_CAR_GATE) continue;

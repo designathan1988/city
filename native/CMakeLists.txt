@@ -67,6 +67,7 @@ file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
 target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer mimalloc-static Clipper2)
+target_include_directories(citycore PRIVATE ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include/clipper2) # <clipper.h>, as <meshoptimizer.h>: a library by its own name
 
 # Every object of the link is compiled against the one profile: ThinLTO refuses two summaries, and Ninja knows nothing of a file read through
 # a flag, so a new profile would leave the libraries on the old one.

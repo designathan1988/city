@@ -113,6 +113,7 @@ BodyHit pick_body(const CityState &s, const Ray3 &ray, float reach) {
 		int before = best.volume;
 		float was = best.t;
 		for (size_t i = 0; i < body.volumes.size(); i++) {
+			if (body.volumes[i].mode == BLOCK_VOID || body.volumes[i].mode == BLOCK_INTERSECT) continue; // space, not a wall to hit
 			hit_sides(body, body.volumes[i], int(i), r, best);
 			hit_top(body, body.volumes[i], int(i), r, best);
 		}

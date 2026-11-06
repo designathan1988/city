@@ -55,7 +55,7 @@ void file_door(CityState &s, int id) {
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (!rec.alive || rec.floors == 0 || b40::is_open_lot(rec.fn)) return;
 	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	b40::record_mass(s.buildings.designs, rec, body);
 	LotDoor way;
 	const b40::LotFrame frame = b40::lot_frame(rec);
 	if (!lot_door(body, frame, p.ped_door_off_m, p.ped_gate_out_m, way)) return;

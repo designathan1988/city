@@ -6,7 +6,6 @@ class_name BuildingTool
 extends ToolBase
 
 const NO_BAY := -1
-const CM := 0.01
 ## What a click on a roof does with the card in hand: a thing set on it, or the flag of the mast clicked.
 const ROOF_TOOLS := ["gear", "flag", "flag_colour"]
 
@@ -25,6 +24,8 @@ var flag_slot := 0
 var hand := {}
 var turn := 0.0
 
+var mass: MassDrag
+
 var _box: SelectionBox
 var _ghost := 0
 var _extent := Vector3.ZERO
@@ -33,6 +34,7 @@ var _last := Vector3.INF
 
 
 func enter() -> void:
+	mass = MassDrag.new(ctl)
 	_box = SelectionBox.new()
 	ctl.add_child(_box)
 	ctl.hint.emit(tr("hint.builder.select"), true)
@@ -40,6 +42,7 @@ func enter() -> void:
 
 func exit() -> void:
 	_put_down()
+	mass.cancel()
 	_box.queue_free()
 
 
@@ -95,12 +98,25 @@ func click(p: Vector3) -> void:
 	if not hand.is_empty():
 		_set_down(p)
 		return
+	if mass.armed() and not picked.is_empty():
+		mass.press(p, picked)
+		return
 	var cam: Camera3D = ctl.rig.camera
 	var had := picked
 	pick(cam.project_ray_origin(ctl.pointer), cam.project_ray_normal(ctl.pointer))
 	if not part.is_empty() and part.do == "part" and picked.is_empty() and not had.is_empty():
 		picked = had
 		_report(CityStore.dispatch(&"body_add_part_at", [had.id, p, part]))
+		_show()
+
+
+func drag(p: Vector3) -> void:
+	mass.move(p)
+
+
+func release(p: Vector3) -> void:
+	if mass.dragging():
+		_report(mass.finish(p))
 		_show()
 
 
@@ -133,12 +149,14 @@ func _roof(hit: Dictionary) -> Dictionary:
 
 ## What Escape steps back first: the body in hand, the bay armed or the part held (the pick itself goes with the tool).
 func in_progress() -> bool:
-	return not hand.is_empty() or armed != NO_BAY or not part.is_empty()
+	return not hand.is_empty() or armed != NO_BAY or not part.is_empty() or mass.armed()
 
 
 func cancel() -> void:
 	if not hand.is_empty():
 		_put_down()
+	elif mass.armed():
+		mass.disarm()
 	elif armed != NO_BAY or not part.is_empty():
 		armed = NO_BAY
 		part = {}
@@ -163,6 +181,8 @@ func _inside(what: String, by: int) -> void:
 
 func act(spec: Dictionary) -> void:
 	var value: int = spec.get("value", 0)
+	if spec.do != "mass":
+		mass.disarm() # any other card ends the drag
 	match spec.do:
 		"arm":
 			armed = NO_BAY if armed == value else value
@@ -185,46 +205,22 @@ func act(spec: Dictionary) -> void:
 		"inside", "floor":
 			_inside(spec.do, value)
 			return
+		"mass":
+			mass.arm(value)
+			armed = NO_BAY
+			part = {}
+			if mass.armed():
+				ctl.hint.emit(tr("hint.builder.%s" % spec.id), true)
+				return
 		_:
 			if picked.is_empty():
 				ctl.hint.emit(tr("hint.builder.select"), false)
 				return
-			_report(_edit(spec, value))
-	_show()
-
-
-func _edit(spec: Dictionary, value: int) -> Dictionary:
-	var id: int = picked.id
-	var vol: int = picked.volume
-	match spec.do:
-		"storeys":
-			var v: Dictionary = CityStore.query(&"body_info", [id]).volumes[vol]
-			return CityStore.dispatch(&"body_storeys", [id, vol, v.storeys + value])
-		"split":
-			return CityStore.dispatch(&"body_split", [id, vol, picked.level])
-		"setback":
-			return CityStore.dispatch(&"body_add_setback", [id, vol, -1.0, 2])
-		"plan":
-			return CityStore.dispatch(&"body_set_plan", [id, vol, value])
-		"relief":
-			if picked.side < 0 or picked.bay < 0:
-				return {"ok": false, "error": "building.relief.pickFace"}
-			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * CM}
-			return CityStore.dispatch(&"body_set_relief", [id, vol, region, true])
-		"wing":
-			return CityStore.dispatch(&"body_add_wing", [id, vol, maxi(picked.side, 0), 0.0, 0.0])
-		"remove":
-			var r: Dictionary = CityStore.dispatch(&"body_remove_volume", [id, vol])
-			if r.get("ok", false):
+			var r := BodyEdits.run(spec, value, picked, paint_scope)
+			if spec.do == "remove" and r.get("ok", false):
 				picked = {}
-			return r
-		"pattern":
-			return CityStore.dispatch(&"body_set_pattern", [id, vol, -1, -1, value])
-		"roof":
-			return CityStore.dispatch(&"body_set_roof", [id, vol, value])
-		"finish":
-			return CityStore.dispatch(&"body_paint", [id, paint_scope, vol, maxi(picked.side, 0), picked.storey, value, spec.rgb])
-	return {"ok": false, "error": "tool.failed"}
+			_report(r)
+	_show()
 
 
 func _report(r: Dictionary) -> void:

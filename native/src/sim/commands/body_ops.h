@@ -42,7 +42,14 @@ std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level)
 enum PlanShape : int { PLAN_RECTANGLE, PLAN_L, PLAN_U, PLAN_CIRCLE, PLAN_HEXAGON, PLAN_OCTAGON, PLAN_CHAMFERED, PLAN_CROSS, PLAN_STEPPED, PLAN_COUNT };
 std::string op_set_plan(b40::Body &b, const Tuning &t, int vol, int shape);
 std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
-void set_block_ring(b40::Volume &v, std::vector<b40::Point2> ring);
+// A rectangle dragged against a block (body_blocks.cpp): a block beside it on the ground, on its roof, or a void cut out of it; `from` and `to` in the lot frame.
+enum MassAction : int { MASS_GROUND, MASS_ROOF, MASS_CUT };
+std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, b40::Point2 from, b40::Point2 to, int action);
+std::string op_set_block_mode(b40::Body &b, int vol, int mode);
+// A new block in the look of `v`; the storey it grows by; what stands on `v`'s roof inside `plan` goes.
+b40::Volume block_like(const b40::Volume &v, int count);
+uint8_t next_fill(const b40::Volume &v);
+void clear_roof_under(b40::Volume &v, const std::vector<b40::Point2> &plan);
 std::string op_remove_volume(b40::Body &b, const Tuning &t, int vol);
 std::string op_set_heights(b40::Body &b, const Tuning &t, float ground_h, float storey_h);
 

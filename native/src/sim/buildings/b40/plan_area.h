@@ -22,5 +22,7 @@ Ring clip_to_convex(const Ring &piece, const Ring &convex); // what of a convex 
 // A ring moved along its corners' bisectors: out with `distance` > 0 on a counter-clockwise ring. A sharp corner stops at MITRE_FLOOR.
 Ring offset_ring(const Ring &ring, float distance);
 bool simple_ring(const Ring &ring); // no two walls cross
+// A block on a ring in the lot frame: its box comes from the ring, turned counter-clockwise, and the outline is the ring in shares of the box. A box needs no outline.
+void set_block_ring(Volume &v, Ring ring);
 
 } // namespace city::b40

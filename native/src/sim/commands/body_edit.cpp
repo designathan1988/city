@@ -1,4 +1,5 @@
 // The one way an edit reaches a building's body, and what a body must be to stand (body_ops.h).
+#include "sim/buildings/b40/blocks.h"
 #include "sim/buildings/b40/body_table.h"
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/buildings/b40/record.h"
@@ -20,10 +21,10 @@ constexpr float SIZE_EPS = 1e-3f;
 
 // A block above the ground bears on the blocks that reach its floor; it may overhang them, up to the share in the tuning.
 bool supported(const Tuning &t, const Body &b, const Volume &v) {
-	if (v.base == 0) return true;
+	if (v.base == 0 || v.mode == BLOCK_VOID || v.mode == BLOCK_INTERSECT) return true;
 	std::vector<Ring> under;
 	for (const Volume &o : b.volumes)
-		if (&o != &v && o.base < v.base && o.top() >= v.base) under.push_back(ring_of(o));
+		if (&o != &v && o.base < v.base && o.top() >= v.base && o.mode != BLOCK_VOID && o.mode != BLOCK_INTERSECT) under.push_back(ring_of(o));
 	return support_share(ring_of(v), under) >= float(t.build_min_bearing);
 }
 
@@ -45,6 +46,11 @@ std::string body_problem(const Tuning &t, const Body &b) {
 	if (!on_ground) return "building.problem.footprint";
 	for (const Volume &v : b.volumes)
 		if (!supported(t, b, v)) return "building.problem.support";
+	if (has_modes(b)) { // what the blocks leave must stand
+		Body solid = b;
+		resolve_blocks(solid);
+		if (solid.volumes.empty()) return "building.problem.noMass";
+	}
 	return "";
 }
 

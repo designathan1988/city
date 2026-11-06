@@ -48,8 +48,19 @@
     {
      "title_key": "builder.section.volumes",
      "tools": [
-      {"id": "wing", "do": "wing"},
-      {"id": "removeBlock", "do": "remove", "icon": "cut", "label_key": "builder.tool.cut"}
+      {"id": "wing", "do": "mass", "value": 0},
+      {"id": "stack", "do": "mass", "value": 1},
+      {"id": "cut", "do": "mass", "value": 2},
+      {"id": "removeBlock", "do": "remove", "icon": "vertexRemove"}
+     ]
+    },
+    {
+     "title_key": "builder.section.boolean",
+     "tools": [
+      {"id": "blockSolid", "do": "block_mode", "value": 0},
+      {"id": "blockVoid", "do": "block_mode", "value": 1},
+      {"id": "blockIntersect", "do": "block_mode", "value": 2},
+      {"id": "blockXor", "do": "block_mode", "value": 3}
      ]
     },
     {

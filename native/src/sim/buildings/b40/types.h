@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace city::b40 {
@@ -102,6 +103,10 @@ struct RoofPart {
 	FlagDesign flag; // on a spire or a lantern
 };
 
+// How a block counts in the body (blocks.h): a solid one adds its space, a void takes it from the others, an intersect keeps of the others what lies in it, an exclusive
+// one does the first where it stands alone and the second where it meets another.
+enum BlockMode : uint8_t { BLOCK_SOLID, BLOCK_VOID, BLOCK_INTERSECT, BLOCK_XOR };
+
 struct Volume {
 	float x = 0, y = 0, w = 0, d = 0;
 	int base = 0, storeys = 1;
@@ -120,12 +125,26 @@ struct Volume {
 	Lines lines = LINES_NONE;
 	Crown crown = CROWN_NONE;
 	bool keep = false; // not composed (shop back store, works hall)
+	BlockMode mode = BLOCK_SOLID;
 	int top() const { return base + storeys; }
 	int sides() const { return outline.empty() ? 4 : int(outline.size()); }
 };
 
 inline uint32_t bay_key(int storey, int side, int bay) { return (uint32_t(storey) << KEY_STOREY_SHIFT) | (uint32_t(side) << KEY_SIDE_SHIFT) | uint32_t(bay); }
 inline uint32_t side_key(int storey, int side) { return (uint32_t(storey) << KEY_SIDE_SHIFT) | uint32_t(side); }
+
+// A map keyed by storey in another numbering, dropping what falls outside [0, count).
+template <typename M>
+void move_storeys(M &m, int shift_bits, int shift, int count) {
+	M next;
+	for (const auto &e : m) {
+		int k = int(e.first >> shift_bits) + shift;
+		if (k < 0 || k >= count) continue;
+		uint32_t rest = e.first & ((1u << shift_bits) - 1);
+		next[(uint32_t(k) << shift_bits) | rest] = e.second;
+	}
+	m = std::move(next);
+}
 
 // What a side of a storey is filled with, and what one bay of it holds: its own override, else the side's, else the storey's.
 inline uint8_t fill_at(const Volume &v, int storey, int side) {

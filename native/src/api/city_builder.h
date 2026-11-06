@@ -40,6 +40,9 @@ public:
 	godot::Dictionary body_add_wing(int id, int vol, int side, double depth, double length);
 	godot::Dictionary body_add_setback(int id, int vol, double inset, int storeys);
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
+	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
+	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
+	godot::Dictionary body_mass_rect(int id, const godot::Vector3 &from, const godot::Vector3 &to) const;
 	godot::Dictionary body_split(int id, int vol, int level);
 	godot::Dictionary body_remove_volume(int id, int vol);
 	godot::Dictionary body_heights(int id, double ground_h, double storey_h);

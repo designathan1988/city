@@ -5,7 +5,7 @@
 
 #include <iterator> // before Clipper2: its header needs it and does not say so
 
-#include "clipper2/clipper.h"
+#include <clipper.h>
 #include "sim/roads/junction.h"
 #include "sim/roads/road_network.h"
 #include "sim/street/footway.h"

@@ -20,7 +20,7 @@ std::vector<BodyWall> BodyWalls::near(const CityState &s, float x, float z, floa
 			const Building &rec = s.buildings.items[size_t(id)];
 			if (rec.floors == 0) return;
 			b40::Body b;
-			b40::record_body(s.buildings.designs, rec, b);
+			b40::record_mass(s.buildings.designs, rec, b);
 			const b40::LotFrame f = b40::lot_frame(rec);
 			const float ground = s.terrain.height_at(rec.x, rec.z);
 			for (const b40::Volume &v : b.volumes)

@@ -8,6 +8,7 @@ const SEED := 1
 const LOOK_FROM_M := 80.0
 const BAY_BALCONY := 7
 const SCOPE_ROW := 1
+const WING_M := 6.0
 
 var failures := 0
 
@@ -34,6 +35,7 @@ func _ready() -> void:
 	_inside(tool, id)
 	_every_tool(tool, id)
 	_arm_and_click(tool, id)
+	_drag_a_wing(tool, id)
 	tool.cancel()
 	tool.cancel()
 	_check(tool.picked.is_empty(), "Esc solta a seleção")
@@ -98,7 +100,7 @@ func _every_tool(tool: BuildingTool, id: int) -> void:
 func _one_tool(tool: BuildingTool, id: int, tab: String, spec: Dictionary) -> void:
 	var keep: Dictionary = tool.picked
 	var before: int = CityStore.query(&"body_info", [id]).digest
-	var r: Dictionary = tool._edit(spec, spec.get("value", 0))
+	var r: Dictionary = BodyEdits.run(spec, spec.get("value", 0), tool.picked, tool.paint_scope)
 	var after: int = CityStore.query(&"body_info", [id]).digest
 	tool.picked = keep
 	if r.get("ok", false) and after != before:
@@ -107,6 +109,25 @@ func _one_tool(tool: BuildingTool, id: int, tab: String, spec: Dictionary) -> vo
 		var why: String = r.get("error", "")
 		var said := why != "" and tr(why) != why
 		_check(r.get("ok", false) or said, "%s/%s responde: %s" % [tab, spec.id, r])
+
+
+## Massa › Ala as the player does it: the card, a press beside the block, a drag and a release make a block; pressing the card again ends it.
+func _drag_a_wing(tool: BuildingTool, id: int) -> void:
+	var card := {"id": "wing", "do": "mass", "value": 0}
+	var before: int = CityStore.query(&"body_info", [id]).volumes.size()
+	var outline := _outline(tool)
+	var corner: Vector3 = outline[0]
+	var along: Vector3 = (outline[1] - corner).normalized()
+	var out: Vector3 = (corner - outline[3]).normalized()
+	tool.act(card)
+	_check(tool.in_progress(), "o cartão arma o arrasto")
+	tool.click(corner)
+	tool.drag(corner + along * WING_M + out * WING_M)
+	tool.release(corner + along * WING_M + out * WING_M)
+	_check(CityStore.query(&"body_info", [id]).volumes.size() == before + 1, "o arrasto fez uma ala")
+	CityStore.dispatch(&"undo")
+	tool.act(card)
+	_check(not tool.in_progress(), "o cartão de novo desarma")
 
 
 func _arm_and_click(tool: BuildingTool, id: int) -> void:

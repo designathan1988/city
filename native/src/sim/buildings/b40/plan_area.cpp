@@ -7,7 +7,8 @@
 namespace city::b40 {
 
 namespace {
-constexpr float AREA_EPS = 1e-6f, MITRE_FLOOR = .3f;
+constexpr float AREA_EPS = 1e-6f, MITRE_FLOOR = .3f, BOX_AREA_EPS = 1e-3f;
+constexpr size_t BOX_CORNERS = 4;
 
 float cross(Point2 a, Point2 b, Point2 c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 
@@ -96,6 +97,24 @@ Ring offset_ring(const Ring &ring, float distance) {
 		out.push_back({ p.x + (nx + mx) * scale, p.y + (ny + my) * scale });
 	}
 	return out;
+}
+
+void set_block_ring(Volume &v, Ring ring) {
+	if (ring_area(ring) < 0) std::reverse(ring.begin(), ring.end());
+	float lo_x = ring[0].x, lo_y = ring[0].y, hi_x = lo_x, hi_y = lo_y;
+	for (const Point2 &p : ring) {
+		lo_x = std::min(lo_x, p.x);
+		lo_y = std::min(lo_y, p.y);
+		hi_x = std::max(hi_x, p.x);
+		hi_y = std::max(hi_y, p.y);
+	}
+	v.x = lo_x;
+	v.y = lo_y;
+	v.w = hi_x - lo_x;
+	v.d = hi_y - lo_y;
+	v.outline.clear();
+	if (ring.size() == BOX_CORNERS && std::fabs(ring_area(ring) - v.w * v.d) < BOX_AREA_EPS) return;
+	for (const Point2 &p : ring) v.outline.push_back(Point2{ (p.x - lo_x) / v.w, (p.y - lo_y) / v.d });
 }
 
 bool simple_ring(const Ring &ring) {

@@ -9,6 +9,12 @@ const BAY_BALCONY := 7
 const SCOPE_BAY := 0
 const SETBACK_STOREYS := 2
 const RELIEF_M := 0.5
+const ROOF_MASS := 1
+const CUT_MASS := 2
+const VOID_MODE := 1
+const CUT_FROM := 0.35
+const CUT_TO := 0.65
+const OFF_BLOCK := 2.0
 
 
 static func run(id: int, made: int, check: Callable) -> void:
@@ -24,6 +30,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 	_walls_carried(id, vol, made, check)
 	_relief_first(id, vol, made, check)
 	_shaped_block_grows(id, vol, made, check)
+	_masses(id, vol, made, check)
 
 
 static func _walls_carried(id: int, vol: int, made: int, check: Callable) -> void:
@@ -56,6 +63,28 @@ static func _shaped_block_grows(id: int, vol: int, made: int, check: Callable) -
 	r = CityStore.dispatch(&"body_add_wing", [id, vol, 1, 0.0, 0.0])
 	check.call(r.get("ok", false) and _info(id).volumes.size() == blocks + 1, "ala numa parede de bloco com forma: %s" % r)
 	_back_to(made, id, check, "ala")
+
+
+## A rectangle dragged against the block: a wing, a block on the roof and a cut; the void leaves the solid split, and a block can change how it counts.
+static func _masses(id: int, vol: int, made: int, check: Callable) -> void:
+	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, vol])
+	var corners := box.size() / 2
+	var a: Vector3 = box[0]
+	var c: Vector3 = box[corners / 2]
+	var mid := (a + c) * 0.5
+	var blocks: int = _info(id).volumes.size()
+	var r: Dictionary = CityStore.dispatch(&"body_add_mass", [id, vol, mid, c, ROOF_MASS])
+	check.call(r.get("ok", false) and _info(id).volumes.size() == blocks + 1, "bloco no telhado: %s" % r)
+	_back_to(made, id, check, "bloco no telhado")
+	r = CityStore.dispatch(&"body_add_mass", [id, vol, a.lerp(c, CUT_FROM), a.lerp(c, CUT_TO), CUT_MASS])
+	var info := _info(id)
+	check.call(r.get("ok", false) and info.volumes[blocks].mode == VOID_MODE, "recorte é um bloco vazio: %s" % r)
+	check.call(info.solids > blocks, "o recorte parte o bloco: %d sólidos de %d blocos" % [info.solids, blocks])
+	var mode: Dictionary = CityStore.dispatch(&"body_set_block_mode", [id, blocks, 0])
+	check.call(mode.get("ok", false) and _info(id).volumes[blocks].mode == 0, "o vazio volta a somar: %s" % mode)
+	_back_to(made, id, check, "recorte")
+	r = CityStore.dispatch(&"body_add_mass", [id, vol, a + (a - c) * OFF_BLOCK, a + (a - c) * (OFF_BLOCK + 1.0), CUT_MASS])
+	check.call(not r.get("ok", false) and r.get("error", "") == "building.problem.cut", "recorte fora do bloco recusado: %s" % r)
 
 
 static func _back_to(made: int, id: int, check: Callable, what: String) -> void:

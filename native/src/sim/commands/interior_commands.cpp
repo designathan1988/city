@@ -19,7 +19,7 @@ int interior_floors(const CityState &s, int id) {
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (rec.floors == 0) return 0;
 	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	b40::record_mass(s.buildings.designs, rec, body);
 	return b40::top_level(body) + 1;
 }
 
@@ -28,7 +28,7 @@ InteriorFocus interior_focus(const CityState &s, int id) {
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) return f;
 	const Building &rec = s.buildings.items[size_t(id)];
 	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	b40::record_mass(s.buildings.designs, rec, body);
 	f.floors = rec.floors == 0 ? 0 : b40::top_level(body) + 1;
 	if (body.volumes.empty()) {
 		f.at = V2(rec.x, rec.z);

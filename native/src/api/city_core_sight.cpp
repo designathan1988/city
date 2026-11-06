@@ -22,7 +22,7 @@ std::vector<Solid> solids_of(const CityState &s, const Building &rec) {
 	std::vector<Solid> out;
 	if (rec.floors == 0) return out;
 	b40::Body b;
-	b40::record_body(s.buildings.designs, rec, b);
+	b40::record_mass(s.buildings.designs, rec, b);
 	const b40::LotFrame f = b40::lot_frame(rec);
 	for (const b40::Volume &v : b.volumes) out.push_back({ f, v.x, v.y, v.x + v.w, v.y + v.d, b.level_z(v.base + v.storeys) });
 	return out;

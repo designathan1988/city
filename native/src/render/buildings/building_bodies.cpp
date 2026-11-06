@@ -28,7 +28,7 @@ const b40::Body &BuildingBodies::body(const b40::Data &data, const Building &rec
 	if (it != cache_.end()) return *it->second;
 	if (cache_.size() >= CACHE_MAX) clear();
 	auto b = std::make_unique<b40::Body>();
-	b40::record_body(data, rec, *b);
+	b40::record_mass(data, rec, *b);
 	return *(cache_[k] = std::move(b));
 }
 

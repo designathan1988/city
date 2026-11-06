@@ -160,6 +160,9 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_resize", "id", "vol", "side", "delta", "snap"), &CityBuilder::body_resize);
 	ClassDB::bind_method(D_METHOD("body_add_wing", "id", "vol", "side", "depth", "length"), &CityBuilder::body_add_wing);
 	ClassDB::bind_method(D_METHOD("body_set_plan", "id", "vol", "shape"), &CityBuilder::body_set_plan);
+	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action"), &CityBuilder::body_add_mass);
+	ClassDB::bind_method(D_METHOD("body_set_block_mode", "id", "vol", "mode"), &CityBuilder::body_set_block_mode);
+	ClassDB::bind_method(D_METHOD("body_mass_rect", "id", "from", "to"), &CityBuilder::body_mass_rect);
 	ClassDB::bind_method(D_METHOD("body_add_setback", "id", "vol", "inset", "storeys"), &CityBuilder::body_add_setback);
 	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityBuilder::body_split);
 	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityBuilder::body_remove_volume);

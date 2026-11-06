@@ -23,7 +23,7 @@ std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
 	const Building &rec = s.buildings.items[size_t(id)];
 	if (rec.floors == 0) return out;
 	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	b40::record_mass(s.buildings.designs, rec, body);
 	level = std::clamp(level, 0, b40::top_level(body));
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });

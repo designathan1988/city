@@ -13,7 +13,6 @@ using namespace b40;
 
 namespace {
 constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f, WING_SHARE = .6f, SHAPED_INSET_SHARE = .1f;
-constexpr int WING_FAR_SIDE = 2; // of the ring a wing off a wall is drawn with: the one away from the wall
 constexpr const char *NO_VOLUME = "tool.failed";
 
 bool has(const Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()); }
@@ -30,10 +29,14 @@ uint8_t above_street(uint8_t bay) {
 }
 
 // The storey a volume grows by: its top one, lifted off the street when the top one is the street floor.
+} // namespace
+
 uint8_t next_fill(const Volume &v) {
 	uint8_t top = v.fill.empty() ? uint8_t(BAY_WINDOW) : v.fill.back();
 	return v.top() == 1 ? above_street(top) : top;
 }
+
+namespace {
 
 bool overlaps(const Volume &a, const Volume &c) { return overlap_area(ring_of(a), ring_of(c)) > AREA_EPS; }
 
@@ -47,19 +50,6 @@ void ride_with(Body &b, const Volume &v, int old_top, int delta, std::vector<con
 		other.base += delta;
 		ride_with(b, other, other_top, delta, seen);
 	}
-}
-
-// Takes storeys `from`.. of a map keyed by storey into another numbering, dropping what falls outside [0, count).
-template <typename M>
-void move_storeys(M &m, int shift_bits, int shift, int count) {
-	M next;
-	for (const auto &e : m) {
-		int k = int(e.first >> shift_bits) + shift;
-		if (k < 0 || k >= count) continue;
-		uint32_t rest = e.first & ((1u << shift_bits) - 1);
-		next[(uint32_t(k) << shift_bits) | rest] = e.second;
-	}
-	m = std::move(next);
 }
 
 void set_count(Volume &v, int count) {
@@ -84,8 +74,27 @@ void shift_bays(Volume &v, int moved, int shift) {
 }
 
 // A new block built like `v`: its walls, roof paint, rhythm and dress, with `count` storeys of its fill.
-Volume block_like(const Volume &v, int count);
+} // namespace
 
+Volume block_like(const Volume &v, int count) {
+	Volume out;
+	out.base = v.base;
+	out.storeys = count;
+	out.roof = v.roof == ROOF_TERRACE ? ROOF_FLAT : v.roof;
+	out.wall = v.wall;
+	out.roof_paint = v.roof_paint;
+	out.lines = v.lines;
+	out.crown = v.crown;
+	for (int k = 0; k < count; k++) out.fill.push_back(v.fill[size_t(std::min(k, int(v.fill.size()) - 1))]);
+	for (int i = 0; i < MAX_FACES; i++) out.faces[i] = v.faces[i];
+	return out;
+}
+
+void clear_roof_under(Volume &v, const Ring &plan) {
+	v.gear.erase(std::remove_if(v.gear.begin(), v.gear.end(), [&](const RoofPart &p) { return contains_point(plan, { p.x, p.y }); }), v.gear.end());
+}
+
+namespace {
 // A wing off a wall of a shaped block: from the middle of the wall, along the wall's normal, itself a box at the wall's bearing.
 std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, float depth, float length) {
 	const Ring ring = ring_of(v);
@@ -100,23 +109,22 @@ std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, f
 	Volume wing = block_like(v, v.storeys);
 	for (FaceGeometry &f : wing.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
 	set_block_ring(wing, { q, p, { p.x + nx * out, p.y + ny * out }, { q.x + nx * out, q.y + ny * out } });
-	if (wing.base == 0) wing.bays[bay_key(0, WING_FAR_SIDE, bays_of(wing, WING_FAR_SIDE) / 2)] = BAY_DOOR; // its own way in, on its outer face
+	if (wing.base == 0) { // its own way in, on its outer face
+		const Ring plan = ring_of(wing);
+		int far = 0;
+		float most = -1;
+		for (int i = 0; i < int(plan.size()); i++) {
+			const Point2 e0 = plan[size_t(i)], e1 = plan[(size_t(i) + 1) % plan.size()];
+			const float along = (e1.y - e0.y) * nx - (e1.x - e0.x) * ny; // the wall's outward normal on the block's, scaled by the wall's length
+			if (along > most) {
+				most = along;
+				far = i;
+			}
+		}
+		wing.bays[bay_key(0, far, bays_of(wing, far) / 2)] = BAY_DOOR;
+	}
 	b.volumes.push_back(std::move(wing));
 	return "";
-}
-
-Volume block_like(const Volume &v, int count) {
-	Volume out;
-	out.base = v.base;
-	out.storeys = count;
-	out.roof = v.roof == ROOF_TERRACE ? ROOF_FLAT : v.roof;
-	out.wall = v.wall;
-	out.roof_paint = v.roof_paint;
-	out.lines = v.lines;
-	out.crown = v.crown;
-	for (int k = 0; k < count; k++) out.fill.push_back(v.fill[size_t(std::min(k, int(v.fill.size()) - 1))]);
-	for (int i = 0; i < MAX_FACES; i++) out.faces[i] = v.faces[i];
-	return out;
 }
 } // namespace
 
@@ -229,9 +237,7 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 	}
 	std::fill(up.fill.begin(), up.fill.end(), next_fill(v));
 	v.roof = ROOF_TERRACE;
-	// What stood where the new block stands goes: nothing is left inside it.
-	const Ring plan = ring_of(up);
-	v.gear.erase(std::remove_if(v.gear.begin(), v.gear.end(), [&](const RoofPart &p) { return contains_point(plan, { p.x, p.y }); }), v.gear.end());
+	clear_roof_under(v, ring_of(up)); // what stood where the new block stands goes: nothing is left inside it
 	b.volumes.push_back(std::move(up));
 	return "";
 }

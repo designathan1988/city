@@ -140,7 +140,10 @@ void emit_outline_roof(Shell &shell, const Placed &pl, const Volume &v, float ea
 			if (!contains_point(patch.ring, in)) continue;
 			const float hp = patch.at(p), hq = patch.at(q);
 			if (hp + hq < LOWEST_M) continue;
-			draw.quad(lot.at(p.x, p.y, eaves), lot.at(q.x, q.y, eaves), lot.at(q.x, q.y, eaves + hq), lot.at(p.x, p.y, eaves + hp), out, wall, wall_fin);
+			const Vector3 p0 = lot.at(p.x, p.y, eaves), q0 = lot.at(q.x, q.y, eaves), p1 = lot.at(p.x, p.y, eaves + hp), q1 = lot.at(q.x, q.y, eaves + hq);
+			if (hp < LOWEST_M) draw.tri(p0, q0, q1, out, wall, wall_fin); // a corner of the eaves is a triangle: a quad with two corners in one faces by its first three
+			else if (hq < LOWEST_M) draw.tri(p0, q0, p1, out, wall, wall_fin);
+			else draw.quad(p0, q0, q1, p1, out, wall, wall_fin);
 		}
 	}
 }

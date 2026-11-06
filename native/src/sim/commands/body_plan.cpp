@@ -118,24 +118,6 @@ void carry_walls(const Volume &old, Volume &v) {
 }
 } // namespace
 
-// The box comes from the ring, turned counterclockwise; `outline` is the ring in shares of it.
-void set_block_ring(Volume &v, Ring ring) {
-	if (ring_area(ring) < 0) std::reverse(ring.begin(), ring.end());
-	float lo_x = std::numeric_limits<float>::max(), lo_y = lo_x, hi_x = -lo_x, hi_y = -lo_x;
-	for (const Point2 &p : ring) {
-		lo_x = std::min(lo_x, p.x);
-		lo_y = std::min(lo_y, p.y);
-		hi_x = std::max(hi_x, p.x);
-		hi_y = std::max(hi_y, p.y);
-	}
-	v.x = lo_x;
-	v.y = lo_y;
-	v.w = hi_x - lo_x;
-	v.d = hi_y - lo_y;
-	v.outline.clear();
-	for (const Point2 &p : ring) v.outline.push_back(Point2{ (p.x - lo_x) / v.w, (p.y - lo_y) / v.d });
-}
-
 std::string op_set_plan(Body &b, const Tuning &, int vol, int shape) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || shape < 0 || shape >= PLAN_COUNT) return NO_BLOCK;
 	Volume &v = b.volumes[size_t(vol)];
