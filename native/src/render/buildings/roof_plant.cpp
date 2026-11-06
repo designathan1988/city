@@ -38,17 +38,6 @@ constexpr float CHIM_R = 0.45f, CHIM_TOP = 0.3f, DOOR_W = 0.9f, DOOR_H = 2.05f, 
 constexpr float LADDER = 0.1f, LADDER_UP = 0.9f;
 constexpr int CYL_SIDES = 12, CYL_SIDES_COARSE = 6;
 
-void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin) {
-	int sides = s.coarse ? CYL_SIDES_COARSE : CYL_SIDES;
-	for (int i = 0; i < sides; i++) {
-		float a0 = TAU_F * float(i) / float(sides), a1 = TAU_F * float(i + 1) / float(sides);
-		Vector3 p0 = b.at(cx + r * std::cos(a0), cy + r * std::sin(a0), z0), p1 = b.at(cx + r * std::cos(a1), cy + r * std::sin(a1), z0);
-		Vector3 out = (b.e0 * std::cos((a0 + a1) / 2) + b.e1 * std::sin((a0 + a1) / 2));
-		s.quad(p0, p1, p1 + b.e2 * (z1 - z0), p0 + b.e2 * (z1 - z0), out, side, fin);
-		s.tri(b.at(cx, cy, z1), p0 + b.e2 * (z1 - z0), p1 + b.e2 * (z1 - z0), b.e2, top, fin);
-	}
-}
-
 struct Packer {
 	int nx = 0, ny = 0;
 	std::vector<uint8_t> used;
@@ -154,6 +143,17 @@ float chance(PlantKind k, int use, int storeys, float area, float age, bool core
 	}
 }
 } // namespace
+
+void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped) {
+	int sides = s.coarse ? CYL_SIDES_COARSE : CYL_SIDES;
+	for (int i = 0; i < sides; i++) {
+		float a0 = TAU_F * float(i) / float(sides), a1 = TAU_F * float(i + 1) / float(sides);
+		Vector3 p0 = b.at(cx + r * std::cos(a0), cy + r * std::sin(a0), z0), p1 = b.at(cx + r * std::cos(a1), cy + r * std::sin(a1), z0);
+		Vector3 out = (b.e0 * std::cos((a0 + a1) / 2) + b.e1 * std::sin((a0 + a1) / 2));
+		s.quad(p0, p1, p1 + b.e2 * (z1 - z0), p0 + b.e2 * (z1 - z0), out, side, fin);
+		if (capped) s.tri(b.at(cx, cy, z1), p0 + b.e2 * (z1 - z0), p1 + b.e2 * (z1 - z0), b.e2, top, fin);
+	}
+}
 
 void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float roof_z) {
 	if (v.w < MIN_SIDE || v.d < MIN_SIDE) return;

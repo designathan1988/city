@@ -135,8 +135,8 @@ void Ctx::shuttered() {
 		Lin col = chroma ? tc : c.wall.b > c.wall.r ? lin_of(SHUTTER_BROWN) : c.wall.g > c.wall.b ? lin_of(SHUTTER_BLUE) : paint_lin(lv);
 		for (float s : { -1.f, 1.f }) {
 			Part p = at(am + s * (LOUVRE_SPREAD * w + SURROUND), hm, LOUVRE_OUT, w / 2, h, LOUVRE_T);
-			part_box(parts, p, col, FIN_WOOD);
-			if (!coarse) part_louvre(parts, Part{ p.f, p.a, p.h, p.depth - LOUVRE_T, p.sx, p.sy, LOUVRE_T }, col, FIN_WOOD);
+			part_box(parts, p, col, PART_PAINT);
+			if (!coarse) part_louvre(parts, Part{ p.f, p.a, p.h, p.depth - LOUVRE_T, p.sx, p.sy, LOUVRE_T }, col, PART_PAINT);
 		}
 	}
 	part_box(parts, at(am, o.h0 - SHUT_SILL_T / 2, (o.depth - SHUT_SILL_OUT) / 2, w + SHUT_SILL_PAST, SHUT_SILL_T, o.depth + SHUT_SILL_OUT), paint("sill"), FIN_CONCRETE);

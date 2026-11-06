@@ -524,6 +524,12 @@ Ressalvas abertas:
 - Fotos: mapa `km16`, semente 7, vistas de subúrbio e de longe em `ultra`, comparadas antes e depois. A paridade da cor da via na troca e a câmera em movimento não foram olhadas em foto.
 - Pendente: o `gates_user.py` (scratch) ganhou `pull_soft_m`, `far_step_m`, `far_pull_m` e `far_per_eye`.
 
+### Ciclo 14: terraço e venezianas (2026-11-05)
+- **Terraço sem deck:** `b.cores.empty()`, uma condição que o 4.0 não tem, tirava o terraço de todo prédio com núcleo de escada. Agora vale a regra dele, outro bloco no topo (`built_on`), e o nível médio também desenha.
+- `emit_roof_terrace` refeito pelo `emitTerrace`: vasos e caixa d'água redondos (`cylinder`, agora de todos os telhados), espreguiçadeiras na direção e no passo certos, pérgola independente delas, mesa e banquinhos na altura dele; a semente usa o id do bloco (`vol + 1`).
+- **Venezianas escuras:** o `FIN_WOOD` escurecia a cor. No 4.0 é tinta lisa (`louvreMaterial`), agora `PART_PAINT`; a terceira cor é `#55785c`.
+- Par com `20-dia-apartamento` no prédio 513: mesma cor de veneziana, deck, vasos e espreguiçadeiras. A pérgola difere pelo id do prédio, que aqui é outro.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

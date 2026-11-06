@@ -121,6 +121,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 				if (terrace) re.edge(sd, true, v.crown);
 			}
 			if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
+			if (terrace && !built_on(b, v)) emit_roof_terrace(shell, parts, pl, v, int(i), eaves);
 			continue;
 		}
 		if (!roof_flat(v.roof)) { emit_pitched(shell, pl, v, eaves); continue; }
@@ -134,7 +135,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl) {
 		}
 		re.machine_rooms();
 		if (!terrace && v.outline.empty()) emit_roof_plant(shell, parts, pl, v, int(i), eaves);
-		if (v.roof == ROOF_TERRACE && !on_top && b.cores.empty()) emit_roof_terrace(shell, parts, pl, v, int(i), eaves);
+		if (terrace && !built_on(b, v)) emit_roof_terrace(shell, parts, pl, v, int(i), eaves);
 	}
 }
 

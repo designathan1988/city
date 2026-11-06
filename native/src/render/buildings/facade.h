@@ -60,6 +60,8 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &pl);
 void emit_roof_gear(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves);
 void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float roof_z);
+// A round piece on a roof, standing on (cx, cy) of the frame `b`; `capped`: its top drawn, in `top`.
+void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped = true);
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl);
 // The lot's furniture and ground marks (lot_props.cpp); false for a kind it does not draw. `g`: ground over the floor.
 // A part only the player sets (lot_parts.cpp); false when `e` is not one.

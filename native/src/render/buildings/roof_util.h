@@ -7,6 +7,13 @@ namespace city::b40 {
 
 inline bool roof_flat(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 
+// Another block stands on this volume's top, anywhere: a terrace under one is left plain.
+inline bool built_on(const Body &b, const Volume &v) {
+	for (const Volume &o : b.volumes)
+		if (&o != &v && o.base == v.top()) return true;
+	return false;
+}
+
 // A volume standing on this volume's top covers it (another storey sits there).
 inline bool covered_by_above(const Body &b, const Volume &v) {
 	for (const Volume &o : b.volumes)

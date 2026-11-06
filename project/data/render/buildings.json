@@ -91,7 +91,7 @@
   "plinth": ["stone", "#7f786d"], "veranda_floor": ["ceramic", "#b5654a"], "machine_glass": ["concrete", "#a7a49c"],
   "machine_top": ["concrete", "#6c6a64"], "coping_metal": ["metal", "#b9bcbd"], "pane": ["glass", "#2b3034"],
   "sill": ["concrete", "#cfc9bd"], "door": ["wood", "#6b4a33"], "shutter": ["metal", "#9aa1a4"], "roof_railing": ["metal", "#33373a"],
-  "glass_rail": ["glass", "#a9c4c4"], "lamp": ["plaster", "#f1ebdd"], "louvre_default": ["wood", "#3d6b45"], "frame_default": ["metal", "#e8e6df"],
+  "glass_rail": ["glass", "#a9c4c4"], "lamp": ["plaster", "#f1ebdd"], "louvre_default": ["wood", "#55785c"], "frame_default": ["metal", "#e8e6df"],
   "plant_metal": ["metal", "#c9ccc9"], "plant_dark": ["metal", "#2d3033"], "plant_door": ["metal", "#5c6468"], "solar": ["glass", "#1d2b45"],
   "skylight": ["glass", "#8fb4c6"], "chimney": ["brick", "#8c4a35"], "column": ["concrete", "#cfc9bd"], "arcade_floor": ["stone", "#9d968a"],
   "deck": ["wood", "#9a7650"], "pot": ["ceramic", "#a8573a"], "soil": ["plaster", "#3a2a1d"], "parasol": ["plaster", "#e7dcc4"],
