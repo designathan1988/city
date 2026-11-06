@@ -289,7 +289,7 @@ void Shell::commit_to(const RID &mesh, bool with_uv2) const {
 		constexpr int ARRAYS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_CUSTOM0, RenderingServer::ARRAY_CUSTOM1, RenderingServer::ARRAY_CUSTOM2, RenderingServer::ARRAY_CUSTOM3 };
 		constexpr uint64_t SHIFTS[CUSTOM_ARRAYS] = { RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM1_SHIFT,
 			RenderingServer::ARRAY_FORMAT_CUSTOM2_SHIFT, RenderingServer::ARRAY_FORMAT_CUSTOM3_SHIFT };
-		for (int i = 0; i < CUSTOM_ARRAYS; i++) {
+		for (int i = 0; i < custom_used; i++) {
 			PackedByteArray bytes;
 			bytes.resize(int64_t(custom[i].size() * sizeof(uint32_t)));
 			std::memcpy(bytes.ptrw(), custom[i].data(), custom[i].size() * sizeof(uint32_t));

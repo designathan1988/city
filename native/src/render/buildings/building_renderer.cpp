@@ -158,8 +158,10 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 }
 
 void BuildingRenderer::drop_bands(Chunk &ch) {
-	for (ShadowTwin &d : ch.prop_casts) d.free();
-	for (MultiMeshDraw &d : ch.bands) d.free();
+	for (auto &sub : ch.prop_casts)
+		for (ShadowTwin &d : sub) d.free();
+	for (auto &sub : ch.bands)
+		for (MultiMeshDraw &d : sub) d.free();
 	for (auto &sub : ch.mid_draws)
 		for (MultiMeshDraw &d : sub) d.free();
 	for (MeshDraw &d : ch.flat) d.free();

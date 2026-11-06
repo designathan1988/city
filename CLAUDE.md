@@ -73,7 +73,7 @@ commit, e commite-o junto.
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
 | Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
-| Verificação de uma mudança, de uma vez | `tools/build/quick.sh [cena,cena]`: gates dos mudados, scripts e DLL de debug ao mesmo tempo, depois as cenas que os arquivos tocam e o `edit_fuzz_test`; `--all` refaz as duas DLLs e roda toda a suíte, a checagem antes do commit (~80 s; logs em `dist/quick`) |
+| Verificação de uma mudança, de uma vez | `tools/build/quick.sh [cena,cena]`: gates dos mudados, scripts e DLL de debug ao mesmo tempo, depois as cenas que os arquivos tocam e o `edit_fuzz_test`; `--ready` refaz as duas DLLs com o mesmo teste curto e deixa `dist/quick/passed`, a prova que o hook aceita para commitar (~20 s mais a compilação); `--bless` aceita fotos e hash que mudaram de propósito; `--all` roda toda a suíte (logs em `dist/quick`) |
 | Ciclo rápido (iteração) | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>`: scripts → DLL de debug (`-j` = núcleos) → o teste; cada job vigiado (log parado 180 s = travado, morto pelo PID), eventos em `<pasta>/events.log`. Jobs: `scripts`, `import`, `build`, `fast`, `gates`, `test:<cena>[@renderizador]`, `scene:<nome>:<cena>[:args]` |
 | Suíte inteira em paralelo | `python tools/analysis/suite.py [--root <cópia>] [--only=nomes] [--parallel N]` (logs em `dist/tests`, os que o hook de commit confere) |
 | Gates dos arquivos mudados | `tools/build/gates_changed.sh <cópia>` (`run_gates.py --file` de cada arquivo do `git status`) |

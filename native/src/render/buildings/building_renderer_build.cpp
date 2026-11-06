@@ -119,22 +119,19 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 				band++;
 			return std::min(band, BAND_COUNT - 1);
 		};
-		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
-		std::array<std::vector<b40::PropInstance>, b40::BAY_PROPS> props;
-		for (b40::Shell &p : parts_shells) {
+		for (size_t i = 0; i < SUB_COUNT; i++) {
+			b40::Shell &p = parts_shells[i];
+			std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
+			std::array<std::vector<b40::PropInstance>, b40::BAY_PROPS> props;
 			for (const b40::BoxInstance &inst : p.boxes) boxes[size_t(band_of(inst.thick))].push_back(inst);
 			for (const b40::PropInstance &inst : p.props) props[inst.kind].push_back(inst);
 			p.boxes = {}; // in the bands now
 			p.props = {};
+			for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)]);
+			for (int k = 0; k < b40::BAY_PROPS; k++) out.bands[i][size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
 		}
-		for (int b = 0; b < BAND_COUNT; b++) {
-			out.bands[size_t(b)] = bake_band(boxes[size_t(b)]);
-			out.band_mesh[size_t(b)] = unit_box_->get_rid();
-		}
-		for (int k = 0; k < b40::BAY_PROPS; k++) {
-			out.bands[size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
-			out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
-		}
+		for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_->get_rid();
+		for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
 		std::vector<b40::FlagInstance> flags;
 		for (b40::Shell &s : near_shells) { // the masts' flags, one cloth MultiMesh for the chunk
 			flags.insert(flags.end(), s.flags.begin(), s.flags.end());
@@ -188,6 +185,8 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
+	far.rooms = true; // each side's windows, as the other levels code them
+	far.custom_used = 1;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
