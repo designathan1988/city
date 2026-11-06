@@ -13,6 +13,7 @@ const LIVE_TABS := ["consumers", "cpu", "inspector", "gpu", "checks"]
 @onready var _live: VBoxContainer # what is read again as the panel stands open: nothing in it takes a click, a button rebuilt under the pointer loses it
 @onready var _tab := "switches"
 @onready var doctor: DoctorRun
+@onready var frame: FrameCapture
 @onready var recorder: LabRecorder
 @onready var _watch := ResourceWatch.new()
 @onready var cpu := CpuWatch.new(LabViews.core_zones(), DataTables.game("lab").cpu.window_frames)
@@ -37,6 +38,9 @@ func _ready() -> void:
 	scroll.add_child(inset)
 	_body = HudWidgets.vbox(inset, &"Pad")
 	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame = FrameCapture.new()
+	add_child(frame)
+	frame.changed.connect(func() -> void: _render.call_deferred())
 	doctor = DoctorRun.new()
 	add_child(doctor)
 	doctor.changed.connect(func() -> void:
@@ -99,6 +103,7 @@ func _render() -> void:
 		_live.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_read_live()
 		if _tab == "gpu":
+			LabTools.capture(_body, frame)
 			LabTools.views(_body, _render)
 	elif _tab == "recorder":
 		LabTools.recorder(_body, recorder, _render)

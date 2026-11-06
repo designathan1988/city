@@ -47,6 +47,7 @@ struct MeshBuilder {
 	godot::Ref<godot::ArrayMesh> commit() const;
 	// Adds the surface to an existing mesh RID (RenderingServer) instead of creating a resource.
 	void commit_to(const godot::RID &mesh) const;
+	bool levels = false; // the surface goes with fewer triangles for the distance (mesh_levels.h)
 	// The surface converted on the calling thread into a mesh of its own (rs_util.h OwnedMesh: a job bakes, the main
 	// thread only hands it to an instance); no mesh when the builder is empty.
 	OwnedMesh bake() const;

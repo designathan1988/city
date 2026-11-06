@@ -43,6 +43,19 @@ static func drawn(body: Control) -> void:
 			Formatters.format_int(rs.viewport_get_render_info(rid, kind[1], rs.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME))])
 
 
+## The frame by layer, after the button: what each draws, heaviest first.
+static func capture(body: Control, frame: FrameCapture) -> void:
+	HudWidgets.label(body, &"TitleLabel", body.tr("lab.capture.title").to_upper())
+	_button(body, body.tr("lab.capture.take"), frame.busy, frame.take)
+	if frame.busy:
+		HudWidgets.label(body, &"MetaLabel", body.tr("lab.capture.busy"))
+	for r: Dictionary in frame.rows:
+		if r.primitives > 0 or r.draws > 0:
+			_line(body, body.tr("lab.layer." + String(r.layer)), body.tr("lab.capture.row") % [r.gpu_ms, Formatters.format_int(r.draws), Formatters.format_int(r.primitives), Formatters.format_int(r.shadow_primitives)])
+	if frame.file != "":
+		HudWidgets.label(body, &"MutedLabel", body.tr("lab.capture.saved") % frame.file).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
 static func views(body: Control, redraw: Callable) -> void:
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.gpu.views").to_upper())
 	var items := []

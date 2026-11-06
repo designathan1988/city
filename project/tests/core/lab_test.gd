@@ -39,6 +39,7 @@ func _ready() -> void:
 	_comparison()
 	await _measure(hud)
 	await _cpu(hud)
+	await _capture(hud)
 	await _tools()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -120,6 +121,20 @@ func _stages_fit(run: DoctorRun) -> bool:
 
 
 ## As the player: F7, the tab, the button.
+## The frame taken apart by layer: buildings and terrain draw something, the camera ends as it began, and the file is there.
+func _capture(hud: RoadcraftHud) -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		_check(false, "há câmera para a captura")
+		return
+	var mask := camera.cull_mask
+	await hud.effects.frame.take()
+	print("quadro: ", hud.effects.frame.whole, " camadas: ", hud.effects.frame.rows)
+	_check(camera.cull_mask == mask, "a captura devolve a câmera como estava")
+	_check(not hud.effects.frame.rows.is_empty() and hud.effects.frame.rows[0].primitives > 0, "alguma camada desenha")
+	_check(FileAccess.file_exists(hud.effects.frame.file), "a captura ficou em arquivo")
+
+
 ## The CPU tab reads a window of frames, the heaviest zone first.
 func _cpu(hud: RoadcraftHud) -> void:
 	hud.effects.open_tab("cpu")

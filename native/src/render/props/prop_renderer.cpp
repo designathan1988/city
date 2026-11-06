@@ -40,8 +40,8 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(glow_material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
 	rs->material_set_param(glow_material_, "pool_handover_m", ctx.catalog->tune.render_pool_handover_m);
-	pole_mesh_ = kit_.pole().bake();
-	pole_cast_mesh_ = kit_.pole_cast().bake();
+	pole_mesh_ = kit_.pole_levels().bake();
+	pole_cast_mesh_ = kit_.pole_cast_levels().bake();
 	wire_near_mesh_ = kit_.wire(true).bake();
 	wire_far_mesh_ = kit_.wire(false).bake();
 	box_mesh_ = kit_.unit_box().bake();
@@ -67,6 +67,7 @@ void PropRenderer::reset() {
 }
 
 void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
+	mb.levels = true;
 	std::vector<PropPlace> props;
 	StreetInstances inst;
 	place_street_props(s, *look_, furniture_, key, props, inst);

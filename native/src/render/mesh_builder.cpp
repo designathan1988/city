@@ -1,6 +1,8 @@
 // Primitive emitters. Smooth normals only for blobs; everything else is flat shaded (toon look).
 #include "render/mesh_builder.h"
 
+#include "render/mesh_levels.h"
+
 #include "render/mesh_order.h"
 
 #include <godot_cpp/classes/mesh.hpp>
@@ -176,7 +178,8 @@ void MeshBuilder::commit_to(const RID &mesh) const {
 	if (empty()) return;
 	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
 	if (!tags.is_empty()) format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), Dictionary(), format);
+	const Dictionary lods = levels ? mesh_levels(v, idx, STREET_LEVELS_M) : Dictionary();
+	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), lods, format);
 }
 
 } // namespace city

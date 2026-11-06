@@ -7,6 +7,9 @@ const ROAD_M := 400.0
 const PX := 0.25
 const VIEW_UP := 0.55
 const VIEW_OUT := 1.1
+const OPEN_LEVEL := 1
+const OPEN_VIEW_M := 10.0
+const OPEN_UP_M := 30.0
 
 
 static func shots(cap: Node) -> void:
@@ -30,4 +33,10 @@ static func shots(cap: Node) -> void:
 		var reach: float = maxf(maxf(size.x, size.y), size.z)
 		var centre := at + inward * size.y * 0.5 + Vector3.UP * size.z * 0.4
 		await cap._shot("lote_" + name, centre - inward * reach * VIEW_OUT + Vector3.UP * reach * VIEW_UP, centre)
+		if cap.only.has("dentro"): # opened, it is the shared kit that draws it, with its rooms and furniture
+			var ids: Array = CityStore.query(&"list_buildings")
+			CityStore.dispatch(&"set_interior", [true, ids[ids.size() - 1], OPEN_LEVEL, 0])
+			await cap._shot("lote_dentro_" + name, at - inward * OPEN_VIEW_M + Vector3.UP * OPEN_UP_M, at + inward * size.y * 0.5)
+			print("aberto: ", CityStore.query(&"interior").keys())
+			CityStore.dispatch(&"set_interior", [false, -1, 0, 0])
 		CityStore.dispatch(&"undo")

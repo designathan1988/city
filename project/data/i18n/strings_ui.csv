@@ -225,3 +225,23 @@ lab.cpu.row,"%.2f ms, p95 %.2f, pior %.2f, %d%%","%.2f ms, p95 %.2f, worst %.2f,
 lab.cpu.note,Por zona do quadro. Por função: tools/analysis/sampler.py.,By zone of the frame. By function: tools/analysis/sampler.py.
 lab.core.draw,Desenho do motor,The engine's drawing
 lab.core.setup,Preparo do quadro,Frame setup
+lab.capture.title,Quadro por camada,The frame by layer
+lab.capture.take,Capturar quadro,Capture frame
+lab.capture.busy,"Tirando cada camada do quadro…","Taking each layer out of the frame…"
+lab.capture.saved,Salvo em %s,Saved to %s
+lab.capture.row,"%.2f ms de GPU, %s chamadas, %s primitivas, %s delas sombra","%.2f ms of GPU, %s draws, %s primitives, %s of them shadow"
+lab.layer.terrain,Terreno,Terrain
+lab.layer.water,Água,Water
+lab.layer.roads,Vias,Roads
+lab.layer.building_masses,Prédios: massas,Buildings: masses
+lab.layer.building_facades,Prédios: fachadas,Buildings: facades
+lab.layer.building_shells,Prédios: paredes,Buildings: shells
+lab.layer.building_parts,Prédios: peças,Buildings: parts
+lab.layer.building_details,Prédios: detalhes,Buildings: details
+lab.layer.building_flags,Bandeiras,Flags
+lab.layer.vegetation,Vegetação,Vegetation
+lab.layer.furniture,Mobiliário,Street furniture
+lab.layer.signals,Semáforos,Signals
+lab.layer.vehicles,Veículos,Vehicles
+lab.layer.people,Pessoas,People
+lab.layer.overlays,Camadas,Overlays
