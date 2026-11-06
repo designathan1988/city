@@ -286,6 +286,8 @@ export abstract class ExpressionEmitter {
       }
       const tuple = this.#tupleField(obj.type, e.argumentExpression);
       if (tuple) return { code: `${obj.code}${arrow(obj.type)}${tuple.name}`, type: tuple.type };
+      const named = this.#fieldByKey(obj, e.argumentExpression);
+      if (named) return named;
       const element = elementOf(obj.type);
       if (!element) return this.fail(e, `an element of ${render(obj.type)}`);
       return { code: `${obj.code}[${this.expr(e.argumentExpression)}]`, type: element };
@@ -857,6 +859,21 @@ export abstract class ExpressionEmitter {
     return this.builtin(e, null);
   }
 
+  /** `table[key]`: an object with a field for each value of the key's union, the field that value names. */
+  #fieldByKey(obj: Value, index: TS.Expression): Value | null {
+    const held = target(obj.type);
+    const struct = held.k === 'struct' ? this.c.types.structs.get(held.name) : undefined;
+    if (!struct) return null;
+    const key = this.value(index);
+    const e = key.type.k === 'enum' ? this.c.types.enums.get(key.type.name) : undefined;
+    const fields = e?.values.map((v) => struct.fields.find((f) => f.source === v));
+    if (!e || !fields || fields.length === 0 || fields.some((f) => !f || !same(f.type, fields[0]!.type))) return null;
+    const k = this.temp('k');
+    const at = (i: number): string => `${obj.code}${arrow(obj.type)}${fields[i]!.name}`;
+    const tests = e.values.slice(0, -1).map((v, i) => `${k} == ${this.c.types.enumValue(e, v)} ? ${at(i)} : `).join('');
+    return { code: `[&](${e.name} ${k}) { return ${tests}${at(fields.length - 1)}; }(${key.code})`, type: fields[0]!.type };
+  }
+
   /** A string's prefix, suffix and part tests (the same answer as JavaScript's for every string). */
   #stringMethod(e: TS.CallExpression, obj: Value, method: string): Value {
     if (method === 'replace' || method === 'replaceAll') return this.#replace(e, obj, method === 'replaceAll');
@@ -1226,7 +1243,12 @@ export abstract class ExpressionEmitter {
       const slot = this.c.flow.slotOfExpr(e);
       type = slot ? this.c.types.slot(slot, 'local') : b.type;
     } else type = a.type;
-    return { code: `(${this.expr(e.condition)} ? ${this.coerce(a, type, e.whenTrue)} : ${this.coerce(b, type, e.whenFalse)})`, type };
+    // `c ? x : null` asked as an optional: C++'s two sides must be one type, and nullopt converts to it
+    const side = (v: Value, node: TS.Expression): string => {
+      const code = this.coerce(v, type, node);
+      return type.k === 'optional' && v.type.k !== 'optional' && v.type.k !== 'null' ? `${render(type)}(${code})` : code;
+    };
+    return { code: `(${this.expr(e.condition)} ? ${side(a, e.whenTrue)} : ${side(b, e.whenFalse)})`, type };
   }
 
   #binary(e: TS.BinaryExpression, want?: CppType): Value {
@@ -1279,6 +1301,8 @@ export abstract class ExpressionEmitter {
       if (setter) return { code: `${this.value(e.left.expression).code}->${setter.cpp}(${this.expr(e.right, setter.params[0]!.type)})`, type: VOID };
       const holder = this.value(e.left.expression);
       if (target(holder.type).k === 'dynamic') return { code: `${holder.code}.set(${JSON.stringify(e.left.name.text)}, ${this.box(this.value(e.right))})`, type: VOID };
+      // a list's length set: the list cut, or filled, to it
+      if (e.left.name.text === 'length' && target(holder.type).k === 'vector') return { code: `${holder.code}${arrow(holder.type)}resize(size_t(${this.expr(e.right, INT)}))`, type: VOID };
     }
     const enumSide = left.type.k === 'enum' ? left.type : undefined;
     const right = this.value(e.right, enumSide ?? (assigns ? left.type : undefined));
@@ -1391,7 +1415,7 @@ export abstract class ExpressionEmitter {
     const props = new Map<string, TS.Expression>();
     let spread: TS.Expression | null = null;
     for (const p of e.properties) {
-      if (ts.isPropertyAssignment(p)) props.set(p.name.getText(), p.initializer);
+      if (ts.isPropertyAssignment(p)) props.set(ts.isStringLiteral(p.name) ? p.name.text : p.name.getText(), p.initializer);
       else if (ts.isShorthandPropertyAssignment(p)) props.set(p.name.text, p.name);
       else if (ts.isSpreadAssignment(p) && spread === null && e.properties.indexOf(p) === 0) spread = p.expression;
       else return this.fail(p, 'an object member the translator does not know');
@@ -1406,6 +1430,9 @@ export abstract class ExpressionEmitter {
     for (const name of props.keys()) if (!struct.fields.some((f) => f.source === name)) return this.fail(e, `${type.name} has no field ${name}`);
     let made: string;
     if (spread) {
+      // what is spread is another shape: its fields, one by one
+      const from = target(this.value(spread).type);
+      if (from.k === 'struct' && from.name !== type.name) return this.#objectBySteps(e, type);
       const copy = this.temp('copy');
       const sets = [...props].map(([name, v]) => {
         const field = struct.fields.find((f) => f.source === name)!;

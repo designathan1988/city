@@ -338,7 +338,11 @@ inline void put(std::ostream &o, float v) { put(o, double(v)); }
 inline void put(std::ostream &o, bool v) { o << (v ? "true" : "false"); }
 inline void put(std::ostream &o, const std::string &s) {
 	o << '"';
-	for (char c : s) { if (c == '"' || c == '\\\\') o << '\\\\'; o << c; }
+	for (char c : s) {
+		if (static_cast<unsigned char>(c) < 0x20) { char code[8]; std::snprintf(code, sizeof code, "\\\\u%04x", unsigned(c)); o << code; continue; }
+		if (c == '"' || c == '\\\\') o << '\\\\';
+		o << c;
+	}
 	o << '"';
 }
 template <class T> bool present(const std::optional<T> &v) { return v.has_value(); }
@@ -355,7 +359,7 @@ const JS_SER = `const ser = (v) => {
   if (typeof v !== 'object') return v;
   if (v instanceof Map) return [...v.entries()].map(([k, x]) => [ser(k), ser(x)]);
   if (v instanceof Set) return [...v].map(ser);
-  if (Array.isArray(v) || ArrayBuffer.isView(v)) return Array.from(v, ser);
+  if (typeof v[Symbol.iterator] === 'function') return Array.from(v, ser);
   const out = {};
   for (const k of Object.keys(v).sort()) {
     const x = ser(v[k]);
@@ -526,14 +530,18 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   const t = input.translation;
   if (t.errors.length > 0) throw new Error('the translation has errors: there is nothing to test');
   fs.mkdirSync(input.work, { recursive: true });
-  const scenario = new Scenario(input.seed, t, input.valueTypes);
+  // the target's value types this translation names: the others are in headers it does not include
+  const texts = [...t.files.values()];
+  const values = Object.fromEntries(Object.entries(input.valueTypes).filter(([name]) => texts.some((text) => text.includes(name))));
+  const scenario = new Scenario(input.seed, t, values);
   scenario.plain = true;
   const ns = (module: string): string => `m${module.replace(/[^A-Za-z0-9]+/g, '_')}`;
   const withContext = (args: string[], context?: readonly { readonly name: string }[]): string => [...args, ...(context ?? []).map((c) => c.name)].join(', ');
   const js: string[] = [];
   const cpp: string[] = [];
   const calls: Record<string, number> = {};
-  const names: string[] = [];
+  const names = new Map<number, string>();
+  const steps: { readonly step: number; readonly line: string }[] = [];
   type Call = { name: string; params: ApiFunction['params']; context?: ApiFunction['context']; ret: CppType; on: (args: string[], cpp: boolean) => string };
   const callable: Call[] = [];
   t.classes.forEach((c, i) => {
@@ -565,21 +573,27 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
       continue; // a value the scenario cannot make: this call is not drawn
     }
     calls[c.name] = (calls[c.name] ?? 0) + 1;
-    names.push(`${c.name}(${args.map((a) => a.js).join(', ')})`);
+    names.set(i, `${c.name}(${args.map((a) => a.js).join(', ')})`);
     // what returns an instance is called for what it does: the answers that follow show it
     const silent = c.ret.k === 'void' || c.ret.k === 'ref';
     const source = c.on(args.map((a) => a.js), false);
-    js.push(silent ? `${source}; emit(${i}, null);` : `emit(${i}, ${source});`);
+    // arguments drawn at random may be refused: what the source throws on is no call of the program, and the translation is not asked
+    js.push(`try { ${silent ? `${source}; emit(${i}, null);` : `emit(${i}, ${source});`} } catch { thrown.push(${i}); }`);
     const native = c.on(args.map((a) => a.cpp), true);
-    cpp.push(silent ? `\t${native}; emit(${i}, nullptr);` : `\temit(${i}, ${native});`);
+    steps.push({ step: i, line: silent ? `\t${native}; emit(${i}, nullptr);` : `\temit(${i}, ${native});` });
   }
   fs.writeFileSync(path.join(input.work, 'hooks.mjs'), hooks({ ...input, empty: '' }));
   const modules = [...new Set([...t.classes.map((c) => c.module), ...t.api.map((f) => f.module)])].sort();
   fs.writeFileSync(path.join(input.work, 'source.mjs'), [
     ...modules.map((m) => `import * as ${ns(m)} from ${JSON.stringify(pathToFileURL(path.join(input.sourceRoot, m)).href)};`), JS_SER,
-    'const lines = [];', 'const emit = (step, out) => lines.push(JSON.stringify({ step, out: ser(out) }));', ...js, `process.stdout.write(lines.join('\\n') + '\\n');`].join('\n'));
+    'const lines = [];', 'const thrown = [];', 'const emit = (step, out) => lines.push(JSON.stringify({ step, out: ser(out) }));', ...js,
+    `process.stdout.write([...lines, JSON.stringify({ thrown })].join('\\n') + '\\n');`].join('\n'));
   const sourceOut = execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--import', pathToFileURL(input.hooksFile ?? path.join(input.work, 'hooks.mjs')).href,
     path.join(input.work, 'source.mjs')], { encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'pipe'] });
+  const a = sourceOut.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
+  const refused = new Set((a.pop() as { thrown: number[] }).thrown);
+  if (a.length === 0) throw new Error('nothing of this translation can be called');
+  cpp.push(...steps.filter((s) => !refused.has(s.step)).map((s) => s.line));
   const cppDir = path.join(input.work, 'cpp');
   for (const [file, text] of [...t.files, ...runtimeFiles()]) {
     fs.mkdirSync(path.dirname(path.join(cppDir, file)), { recursive: true });
@@ -587,7 +601,7 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   }
   const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h') && !f.endsWith('_enums.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [
-    `#include "${RUNTIME_INCLUDE}"`, ...(input.context ? ['#include "sim/catalog/catalog.h"'] : []), ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
+    `#include "${RUNTIME_INCLUDE}"`, ...(input.context ? ['#include "sim/catalog/catalog.h"'] : []), ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, values),
     'std::ostringstream lines;', 'inline void put(std::ostream &o, std::nullptr_t) { o << "null"; }',
     'template <class R> void emit(int step, const R &out) { lines << "{\\"out\\":"; put(lines, out); lines << ",\\"step\\":" << step << "}\\n"; }',
     '} // namespace city', '', 'using namespace city;', '', 'int main() {',
@@ -601,13 +615,12 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
     throw new Error(`the check does not compile: ${String((error as { stderr?: Buffer }).stderr ?? error).split('\n').filter((l) => l.includes('error:')).slice(0, 6).join('\n')}`);
   }
   const cppOut = execFileSync(exe, { encoding: 'utf8', maxBuffer: 1 << 30 });
-  const a = sourceOut.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
   const b = cppOut.trim().split('\n').map((l) => JSON.parse(l) as Record<string, unknown>);
   const mismatches: Mismatch[] = [];
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const found: { path: string; a: unknown; b: unknown }[] = [];
     compare(a[i], b[i], input.tolerance, '', found);
-    for (const m of found) mismatches.push({ step: i, call: names[i] ?? '?', path: m.path, source: m.a, translation: m.b });
+    for (const m of found) mismatches.push({ step: i, call: names.get(a[i]?.['step'] as number) ?? '?', path: m.path, source: m.a, translation: m.b });
   }
   return { steps: input.steps, mismatches, calls };
 }

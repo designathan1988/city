@@ -110,6 +110,11 @@ export class FlowGraph {
     this.#solve();
   }
 
+  /** The files read: what declares the program's classes. */
+  get files(): readonly TS.SourceFile[] {
+    return [...this.#files];
+  }
+
   /** The node is in the source program (a declaration of the feature, of a feature it shares code with, of any). */
   inProgram(node: TS.Node): boolean {
     return this.#files.has(node.getSourceFile());
@@ -542,6 +547,41 @@ export class FlowGraph {
     return changed;
   }
 
+  /**
+   * A member that overrides or implements another has its signature: their parameters and answers are one slot each. Two
+   * numbers inferred apart would be two signatures, and C++ would hide the member in silence where the source overrides it.
+   */
+  #overrides(c: TS.ClassDeclaration): void {
+    const ts = this.#ts;
+    for (const clause of (c.heritageClauses ?? []).flatMap((h) => [...h.types])) {
+      const parent = this.#checker.getTypeAtLocation(clause);
+      for (const m of c.members) {
+        if (!m.name || !ts.isIdentifier(m.name) || ts.isSetAccessorDeclaration(m) || (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0) continue;
+        const above = parent.getProperty(m.name.text);
+        const decl = above?.valueDeclaration ?? above?.declarations?.[0];
+        if (above && decl && this.inProgram(decl)) this.#add(() => this.#sameMember(m, decl, above));
+      }
+    }
+  }
+
+  #sameMember(m: TS.ClassElement, above: TS.Declaration, symbol: TS.Symbol): boolean {
+    const ts = this.#ts;
+    const signature = (n: TS.Node): n is TS.SignatureDeclaration => ts.isMethodDeclaration(n) || ts.isMethodSignature(n) || ts.isGetAccessorDeclaration(n);
+    const answer = (n: TS.Node, s: TS.Symbol | undefined): Slot | null => (signature(n) ? this.returnSlot(n) : s ? this.symbolSlot(s) : null);
+    let changed = false;
+    if (signature(m) && signature(above)) {
+      m.parameters.forEach((p, i) => {
+        const a = this.symbolOf(p.name as TS.Identifier);
+        const q = above.parameters[i];
+        const b = q && this.symbolOf(q.name as TS.Identifier);
+        if (a && b) changed = this.unify(this.symbolSlot(a), this.symbolSlot(b)) || changed;
+      });
+    }
+    const own = answer(m, m.name ? this.symbolOf(m.name as TS.Identifier) ?? undefined : undefined);
+    const other = answer(above, symbol);
+    return own && other ? this.unify(own, other) || changed : changed;
+  }
+
   #gather(file: TS.SourceFile): void {
     const ts = this.#ts;
     const visit = (n: TS.Node): void => {
@@ -550,6 +590,7 @@ export class FlowGraph {
       // the emitter writes it, so nothing inside it (the outside object it reads) becomes a value of the feature
       const mapped = ts.isExpression(n) && !ts.isIdentifier(n) ? this.#patterns.match(n) : null;
       if (mapped) { for (const b of mapped.bound.values()) visit(b); return; } // its placeholders are the feature's values
+      if (ts.isClassDeclaration(n)) this.#overrides(n);
       if (ts.isVariableDeclaration(n)) this.#declaration(n);
       if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment) this.#assignment(n);
       if (ts.isBinaryExpression(n) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken,

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <random>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
@@ -210,6 +211,11 @@ inline double round(double x) {
 	if (x < 0 && x >= -0.5) return -0.0;
 	const double down = std::floor(x);
 	return x - down >= 0.5 ? down + 1 : down;
+}
+/** ECMA-262 21.3.2.27 Math.random: uniform in [0, 1), no seed the program can ask for. */
+inline double random() {
+	static thread_local std::mt19937_64 engine{std::random_device{}()};
+	return std::uniform_real_distribution<double>(0.0, 1.0)(engine);
 }
 /** ECMA-262 21.3.2.24 and 25 Math.max, Math.min of two reals: a NaN gives NaN, and +0 counts as above -0. */
 template <class T> T math_max(T a, T b) {

@@ -475,3 +475,32 @@ export function filled(n: number): number {
   const made: Filled = { ...base, c: n, ...(n > 0 ? { b: 7 } : {}) };
   return made.a + made.c + (made.b ?? 0);
 }
+
+/** What two classes share: a method and a value one holds in a field and the other works out. */
+export interface Gauge {
+  readonly level: number;
+  read(scale: number): number;
+}
+
+class Tank implements Gauge {
+  level = 3;
+  read(scale: number): number { return this.level * scale; }
+}
+
+class Dial implements Gauge {
+  #turns = 2;
+  get level(): number { return this.#turns + 1.5; }
+  read(scale: number): number { return this.level + scale; }
+}
+
+function gaugeSum(g: Gauge, scale: number): number {
+  return g.level + g.read(scale);
+}
+
+/** One function reads both through what they share. */
+export function gauged(scale: number): number {
+  const all: Gauge[] = [new Tank(), new Dial()];
+  let sum = 0;
+  for (const g of all) sum += gaugeSum(g, scale);
+  return sum;
+}

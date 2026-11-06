@@ -28,7 +28,9 @@ export interface MemberOwner {
   readonly source: string;
   readonly kind: 'method' | 'getter' | 'setter' | 'constructor';
   readonly isStatic: boolean;
-  readonly node: TS.ClassDeclaration;
+  readonly node: TS.ClassDeclaration | TS.InterfaceDeclaration;
+  /** A member of an interface: pure, each class answers it. */
+  readonly abstract?: boolean;
 }
 
 export interface FunctionPlan {

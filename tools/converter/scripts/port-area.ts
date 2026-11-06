@@ -37,8 +37,11 @@ if (result.errors.length === 0 && process.env['CXX']) {
   const typescriptDir = path.join(machine.source, 'node_modules', 'typescript');
   const started = Date.now();
   const check = runObjectDifferential({ ts: loadTypeScript(machine.source, typescriptDir), tsconfig: path.join(machine.source, 'tsconfig.json'), sourceRoot: machine.source, translation: result,
-    includes: [path.join(plan.targetRoot, 'native/src')], cxx: process.env['CXX'], work: path.join(out, 'check'), steps: Number(process.env['STEPS'] ?? 3000), seed: 7, tolerance: 2e-5, valueTypes: {}, context });
+    includes: [path.join(plan.targetRoot, 'native/src')], cxx: process.env['CXX'], work: path.join(out, 'check'), steps: Number(process.env['STEPS'] ?? 3000), seed: 7, tolerance: 2e-5, valueTypes: result.valueTypes, context });
   console.log(`checked in ${Date.now() - started} ms: ${check.steps} calls, ${check.mismatches.length} mismatches; ${JSON.stringify(check.calls)}`);
+  const byCall = new Map<string, number>();
+  for (const m of check.mismatches) byCall.set(`${m.call.replace(/\(.*$/s, '')}${m.path.replace(/\.\d+/g, '.N')}`, (byCall.get(`${m.call.replace(/\(.*$/s, '')}${m.path.replace(/\.\d+/g, '.N')}`) ?? 0) + 1);
+  if (byCall.size > 0) console.log(JSON.stringify([...byCall].sort((a, b) => b[1] - a[1]).slice(0, 12)));
   for (const m of check.mismatches.slice(0, 12)) console.log(`step ${m.step} ${m.call}${m.path}: source ${JSON.stringify(m.source)}, translation ${JSON.stringify(m.translation)}`);
   process.exitCode = check.mismatches.length > 0 ? 1 : 0;
 }

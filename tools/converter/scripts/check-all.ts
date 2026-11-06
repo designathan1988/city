@@ -51,7 +51,7 @@ for (const module of modules) {
     if (translation.errors.length > 0) row = { state: 'not-translated', why: translation.errors[0] };
     else {
       const check = runObjectDifferential({ ts, tsconfig: base.tsconfig, sourceRoot: machine.source, translation, includes: [path.join(plan.targetRoot, 'native/src')], cxx, work, steps: 400, seed: 7,
-        tolerance: 1e-4, valueTypes: {}, context, hooksFile: path.join(here, 'hooks40.mjs') });
+        tolerance: 1e-4, valueTypes: translation.valueTypes, context, hooksFile: path.join(here, 'hooks40.mjs') });
       row = { state: check.mismatches.length === 0 ? 'same' : 'different', calls: Object.keys(check.calls).length, mismatches: check.mismatches.length, first: check.mismatches[0] };
     }
   } catch (error) {

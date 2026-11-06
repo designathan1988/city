@@ -34,6 +34,10 @@ export interface CppStruct {
   typeParams?: string[];
   /** The class it extends, and whether its members are virtual. */
   base?: string;
+  /** An interface classes implement: an abstract struct, of pure members and no instance of its own. */
+  isInterface?: boolean;
+  /** The interfaces it implements. */
+  interfaces?: string[];
   polymorphic?: boolean;
   /** Its members as declared in the struct, and the types they name. */
   methods?: string[];
@@ -109,7 +113,10 @@ const FIELDS_IN_NAME = 3;
 const RUNTIME = 'core/js_runtime.h';
 
 /** A value of an enum of strings as a C++ name: the empty string has none of its own. */
-export const enumName = (value: string): string => upper(value.replace(/[^A-Za-z0-9]+/g, '_')) || 'EMPTY';
+export const enumName = (value: string): string => {
+  const name = upper(value.replace(/[^A-Za-z0-9]+/g, '_')) || 'EMPTY';
+  return /^\d/.test(name) ? `V${name}` : name; // no C++ name starts with a digit
+};
 
 export class TypeMapper {
   readonly structs = new Map<string, CppStruct>();
@@ -295,6 +302,7 @@ export class TypeMapper {
     if (made.k !== 'struct') return { k: 'ref', to: made };
     const struct = this.structs.get(made.name)!;
     struct.isClass = true;
+    if (this.#abstracts().has(type.getSymbol()!)) struct.isInterface = true;
     const params = declared.typeParameters ?? [];
     struct.typeParams = params.map((p) => p.symbol.name);
     if (params.length === 0) return { k: 'ref', to: made };
@@ -309,8 +317,65 @@ export class TypeMapper {
   isClass(type: TS.Type): boolean {
     const symbol = type.getSymbol();
     const decl = symbol?.valueDeclaration;
+    if (symbol !== undefined && this.#abstracts().has(symbol)) return true;
     return symbol !== undefined && (symbol.flags & this.#ts.SymbolFlags.Class) !== 0 && decl !== undefined && this.#flow.inProgram(decl)
       && !this.#spec.classes[symbol.name];
+  }
+
+  /** An interface a class implements is what its classes share: a value of it is an instance, whichever. */
+  isAbstract(type: TS.Type): boolean {
+    const symbol = type.getSymbol();
+    return symbol !== undefined && this.#abstracts().has(symbol);
+  }
+
+  #abstractSet: Set<TS.Symbol> | null = null;
+  #abstracts(): Set<TS.Symbol> {
+    if (this.#abstractSet) return this.#abstractSet;
+    const ts = this.#ts;
+    const out = new Set<TS.Symbol>();
+    this.#abstractSet = out;
+    const visit = (n: TS.Node): void => {
+      if (ts.isClassDeclaration(n)) {
+        for (const h of n.heritageClauses ?? []) {
+          if (h.token !== ts.SyntaxKind.ImplementsKeyword) continue;
+          for (const clause of h.types) {
+            const s = this.#checker.getTypeAtLocation(clause).getSymbol();
+            if (s && this.#pure(s)) this.#withParents(s, out);
+          }
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    for (const f of this.#flow.files) visit(f);
+    return out;
+  }
+
+  #withParents(s: TS.Symbol, out: Set<TS.Symbol>): void {
+    out.add(s);
+    for (const parent of this.#parentsOf(s)) this.#withParents(parent, out);
+  }
+
+  #parentsOf(s: TS.Symbol): TS.Symbol[] {
+    const ts = this.#ts;
+    return (s.declarations ?? []).flatMap((d) => (ts.isInterfaceDeclaration(d) ? [...(d.heritageClauses ?? [])] : []))
+      .flatMap((h) => [...h.types]).map((c) => this.#checker.getTypeAtLocation(c).getSymbol()).filter((p): p is TS.Symbol => p !== undefined);
+  }
+
+  /**
+   * An interface every class of it can answer for: of the program, not generic, every member a method or a value that is there
+   * (an optional member is no pure member, a function held in a field no method), and so are the ones it extends.
+   */
+  #pure(s: TS.Symbol): boolean {
+    const ts = this.#ts;
+    const decls = s.declarations ?? [];
+    if (decls.length === 0 || this.#spec.classes[s.name] || this.#spec.types[s.name]) return false;
+    const member = (m: TS.TypeElement): boolean => {
+      if (m.questionToken || !m.name || !ts.isIdentifier(m.name)) return false;
+      if (ts.isMethodSignature(m)) return !m.typeParameters;
+      return ts.isPropertySignature(m) && this.#checker.getTypeAtLocation(m).getCallSignatures().length === 0;
+    };
+    return decls.every((d) => ts.isInterfaceDeclaration(d) && this.#flow.inProgram(d) && !d.typeParameters && d.members.every(member))
+      && this.#parentsOf(s).every((p) => this.#pure(p));
   }
 
   /** The struct of an object type (or the target type it is the same as), declared on first use. */
@@ -354,7 +419,8 @@ export class TypeMapper {
     this.structs.set(name, made);
     const holder = this.#holder;
     this.#holder = made.module ?? holder;
-    for (const prop of this.#checker.getPropertiesOfType(type)) {
+    // an abstract struct holds nothing: its classes do, and answer through its pure members
+    for (const prop of symbol && this.#abstracts().has(symbol) ? [] : this.#checker.getPropertiesOfType(type)) {
       const propType = this.#checker.getTypeOfSymbol(prop);
       if (propType.getCallSignatures().length > 0 && !(prop.flags & this.#ts.SymbolFlags.Property)) continue;
       if (prop.flags & this.#ts.SymbolFlags.Accessor) continue;
