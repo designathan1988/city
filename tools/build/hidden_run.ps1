@@ -1,7 +1,7 @@
 ﻿# hidden_run.ps1 -Command "<cmd line>" -TimeoutS N: runs the command (through cmd.exe, so redirections work) on a separate
 # desktop of the interactive window station (WinSta0\roadcraft_tests): its windows never show on the user's desktop.
 # Returns the command's exit code; kills it (by its own process id) on timeout.
-param([Parameter(Mandatory = $true)][string]$Command, [int]$TimeoutS = 900, [string]$WorkDir = 'C:\Projects\Roadcraft-windows\fonte')
+param([Parameter(Mandatory = $true)][string]$Command, [int]$TimeoutS = 900, [string]$WorkDir = (Get-Location).Path)
 
 Add-Type -TypeDefinition @'
 using System;

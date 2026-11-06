@@ -31,7 +31,7 @@ commit, e commite-o junto.
    com atenção: a diferença contra o estado anterior (`tools/build/photodiff.py`) diz onde olhar e cada mudança é explicada
    pela causa; nenhuma perda de qualidade visual; todo problema achado é corrigido.
 6. Nunca esperar às cegas um processo lançado (tempo-limite e acompanhamento); parar só processos próprios, pelo PID.
-7. Commit por tema e push regular em `origin/main` (`https://github.com/designathan1988/city`, a pasta única do projeto: ver
+7. Trabalho direto na `main`, em `C:\Users\Jonathan\Desktop\city`, sem worktree (ordem do usuário, 2026-11-06). Commit por tema e push regular em `origin/main` (`https://github.com/designathan1988/city`, a pasta única do projeto: ver
    "Estrutura do projeto").
 - **Referência — sempre acessível:** `C:\Users\Jonathan\Documents\Projects\city\roadcraft` (Roadcraft 4.0, a cópia de 29/10; a `roadcraft-4.0-main`, de 23/10, é antiga e não vale: não tem, por exemplo, os postes urbano e rural) é a referência
   de visual e de comportamento de tudo (gráficos, prédios, tráfego, semáforos, pedestres, carros, postes e fios): o jogo

@@ -1,2 +1,2 @@
 #!/bin/sh
-exec python C:/Projects/Roadcraft-windows/tools/process/process.py "$@"
+exec python "$(dirname "$0")/../tools/process/process.py" "$@"

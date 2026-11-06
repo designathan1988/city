@@ -702,3 +702,7 @@ Ressalvas abertas:
 
 ## 2026-11-06: os gates de camada
 - `lot_land` lia vias e calçadas de dentro de `sim/lots`, camada que não pode. Em vez de pedir regra nova, foi para `sim/citygen`, ao lado do `lot_gen`: é o mesmo assunto, lotes contra as ruas, e a camada permite. Três gates a menos, sem tocar em `rules.json`.
+
+## 2026-11-06: a main é o lugar de trabalho
+- Ordem do usuário: nada de worktree; tudo em `Desktop\city`, na `main`. O código já era o mesmo (`c4f6848b`); vieram as referências de `dist/quick` (digest e fotos congeladas), que não estão no git. Nenhuma pasta fora do projeto foi tocada: a limpeza do disco é do usuário.
+- `hidden_run.ps1` e `tools/process/bin/gate*` ainda apontavam para `C:/Projects/Roadcraft-windows`: agora saem da própria pasta, e o projeto não depende mais dela.
