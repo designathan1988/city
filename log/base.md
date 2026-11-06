@@ -43,3 +43,12 @@ Os `tools/ports/*/coverage.md` estão velhos (elevação consta como a portar, e
 
 ## Falta depois
 LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e leves, e o resto das Pendências do CLAUDE.md.
+
+## 2026-11-06, depois do Interior
+
+- `0317b8c6`+: aba Interior provada por clique e foto (`torre695-andar10`). O clique ia para o lugar errado nas capturas porque três ferramentas liam o cursor do sistema: `ToolController.pointer` guarda a posição do evento.
+- Lotes contra as ruas: `sim/lots/lot_land` com Clipper2 (inteiros em mm, mesma resposta em toda máquina): `onLand`, `cutLotsByRoads` no passo de desfazer da edição (`EditHistory::end`), `lotSnapper`, frente pela rua, prévia e cor na camada de zonas.
+- O perfil do PGO não era dependência dos objetos: um perfil novo deixava as bibliotecas no antigo e o ThinLTO recusava. Agora todo objeto depende de `native/pgo/citycore.profdata`.
+- Salto de cor entre níveis de prédio: o médio e o distante desenhavam um "cômodo médio" fixo claro. `building_room_tone.gdshaderinc` dá o cômodo pelo ângulo e o que pende em cada janela; todos os níveis leem. O salto de geometria entre níveis segue seco: fazer dissolver pede material com `discard` só nas instâncias da faixa (o `discard` em todas tiraria o depth rápido) e a margem do motor deixa buraco em instância criada dentro da faixa (`_visibility_range_check`).
+- Veículos: porta da guia e vidro abaixado no vértice, sem draw a mais; aro, poço e disco de freio na roda perto.
+- Vias: Personalizar… e Meus modelos (`road_spec`, save v7).

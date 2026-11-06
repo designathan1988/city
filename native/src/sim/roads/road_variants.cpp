@@ -4,6 +4,7 @@
 #include "sim/roads/road_variants.h"
 
 #include "sim/roads/profiles.h"
+#include "sim/roads/road_spec.h"
 
 #include <algorithm>
 #include <cmath>
@@ -95,19 +96,51 @@ std::vector<Strip> strips_of(const Profile &b, const Section &s, int lanes, cons
 }
 
 bool same(const RoadVariant &a, const RoadVariant &b) {
-	return a.base == b.base && a.lanes == b.lanes && a.parking == b.parking && a.width == b.width;
+	return a.base == b.base && a.lanes == b.lanes && a.parking == b.parking && a.width == b.width && a.spec == b.spec;
+}
+
+// The kerb of the class's own section, or of the first road that has one: a road of the class with no kerb composes with the city's.
+float kerb_of(const Catalog &c, const Section &s) {
+	if (s.kerb > 0) return s.kerb;
+	for (const Profile &p : c.profiles)
+		for (const Strip &x : p.strips)
+			if (x.kind == StripKind::CURB) return x.width;
+	return 0;
+}
+
+// The road as the player composed it, in the class's asphalt and tone.
+Profile composed(const Catalog &c, const Profile &b, const Section &s, const RoadSpec &spec) {
+	Profile p = b;
+	p.id = b.id + "~" + std::to_string(c.variants.size());
+	p.category.clear();
+	p.custom = true;
+	p.class_card = false;
+	p.strips = spec_strips(spec, kerb_of(c, s));
+	p.speed = spec.speed;
+	p.priority = spec.priority;
+	p.centre = spec_centre(spec);
+	p.one_way = std::none_of(spec.elements.begin(), spec.elements.end(), [](const SpecElement &e) { return e.kind == SpecKind::LANE && e.dir < 0; })
+			|| std::none_of(spec.elements.begin(), spec.elements.end(), [](const SpecElement &e) { return e.kind == SpecKind::LANE && e.dir > 0; });
+	return p;
 }
 } // namespace
 
 int road_variant(Catalog &c, const RoadVariant &v) {
 	const Profile &b = c.profile(v.base);
-	const bool plain = v.lanes == 0 && v.width <= 0 && v.parking == 0;
-	if (!b.class_card || plain) return v.base;
+	const bool plain = v.lanes == 0 && v.width <= 0 && v.parking == 0, spec = !v.spec.elements.empty();
+	if (!spec && (!b.class_card || plain)) return v.base;
 	const size_t own = c.profiles.size() - c.variants.size();
 	for (size_t i = 0; i < c.variants.size(); i++)
 		if (same(c.variants[i], v)) return int(own + i);
 	if (c.profiles.size() == c.profiles.capacity()) return -1;
 	Section s = read_section(b);
+	if (spec) {
+		Profile p = composed(c, b, s, v.spec);
+		derive_profile(p, c.prices);
+		c.profiles.push_back(std::move(p));
+		c.variants.push_back(v);
+		return int(c.profiles.size()) - 1;
+	}
 	const int lanes = v.lanes > 0 ? v.lanes : s.lanes;
 	if (v.width > 0) fit_width(s, lanes, v.width, c.tune);
 	// highways and ramps park nothing (Roadcraft 4.0 parkingAllowed)

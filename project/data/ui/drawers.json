@@ -411,8 +411,21 @@
   [
    "trilhos",
    "catalog.cat.rails"
+  ],
+  [
+   "mine",
+   "catalog.cat.mine"
   ]
  ],
+ "profile_palette": [
+  ["footway", "profileEditor.palette.footway"],
+  ["laneBackward", "profileEditor.palette.laneBackward"],
+  ["laneForward", "profileEditor.palette.laneForward"],
+  ["median", "profileEditor.palette.median"],
+  ["parking", "profileEditor.palette.parking"],
+  ["cycle", "profileEditor.palette.cycle"]
+ ],
+ "profile_defaults": {"footway": 2, "lane": 3, "median": 2},
  "fn_keys": [
   "building.fn.none",
   "building.fn.school",

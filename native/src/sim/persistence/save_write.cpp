@@ -8,6 +8,8 @@
 #include "sim/persistence/save_demolition.h"
 #include "sim/state/city_state.h"
 
+#include <algorithm>
+
 namespace city {
 
 namespace {
@@ -40,6 +42,18 @@ void write_variants(ByteWriter &w, const std::vector<RoadVariant> &list) {
 		w.put<int32_t>(v.lanes);
 		w.put<int32_t>(v.parking);
 		w.put<float>(v.width);
+		w.put<uint32_t>(uint32_t(v.spec.elements.size()));
+		for (const SpecElement &e : v.spec.elements) {
+			w.put<uint8_t>(uint8_t(e.kind));
+			w.put<float>(e.width);
+			w.put<int32_t>(e.dir);
+			w.put<uint8_t>(uint8_t((e.bus ? 1 : 0) | (e.solid ? 2 : 0) | (e.flush ? 4 : 0)));
+			w.put<uint8_t>(uint8_t(e.pave));
+		}
+		if (v.spec.elements.empty()) continue;
+		w.put<float>(v.spec.speed);
+		w.put<int32_t>(v.spec.priority);
+		w.put<uint8_t>(uint8_t(std::find(CENTRE_LINES, CENTRE_LINES + CENTRE_LINE_COUNT, v.spec.centre) - CENTRE_LINES));
 	}
 }
 

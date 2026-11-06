@@ -148,7 +148,28 @@ namespace {
 constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 
 // Made again in the saved order, so each keeps the index the roads hold.
-bool read_variants(ByteReader &r, Catalog &c) {
+void read_spec(ByteReader &r, RoadSpec &spec) {
+	const uint32_t n = r.get<uint32_t>();
+	for (uint32_t i = 0; i < n && r.ok; i++) {
+		SpecElement e;
+		e.kind = SpecKind(r.get<uint8_t>());
+		e.width = r.get<float>();
+		e.dir = r.get<int32_t>();
+		const uint8_t flags = r.get<uint8_t>();
+		e.bus = flags & 1;
+		e.solid = flags & 2;
+		e.flush = flags & 4;
+		e.pave = Paving(r.get<uint8_t>());
+		spec.elements.push_back(e);
+	}
+	if (n == 0) return;
+	spec.speed = r.get<float>();
+	spec.priority = r.get<int32_t>();
+	const uint8_t centre = r.get<uint8_t>();
+	spec.centre = CENTRE_LINES[centre < CENTRE_LINE_COUNT ? centre : 0];
+}
+
+bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
 	const uint32_t n = r.get<uint32_t>();
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		RoadVariant v;
@@ -156,6 +177,7 @@ bool read_variants(ByteReader &r, Catalog &c) {
 		v.lanes = r.get<int32_t>();
 		v.parking = r.get<int32_t>();
 		v.width = r.get<float>();
+		if (version >= SPEC_SAVE_VERSION) read_spec(r, v.spec);
 		if (road_variant(c, v) < 0) return false;
 	}
 	return r.ok;
@@ -215,7 +237,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	s.clock.day_shift = r.get<double>();
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
 	clear_variants(s.catalog);
-	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog)) return false;
+	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog, version)) return false;
 	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
 	if (version < GRADE_SAVE_VERSION) drop_baked_road_ground(s);
 	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;

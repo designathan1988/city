@@ -44,11 +44,30 @@ struct LaneInfo {
 	uint8_t turns = 0;
 };
 
+// A road the player composes (road_spec.h): its elements, the left edge to the right looking from a to b.
+enum class SpecKind : uint8_t { FOOTWAY, PARKING, CYCLE, LANE, MEDIAN };
+struct SpecElement {
+	SpecKind kind = SpecKind::LANE;
+	float width = 0;
+	int dir = 1; // lanes: +1 towards b, -1 towards a
+	bool bus = false, solid = false, flush = false;
+	Paving pave = Paving::CONCRETE;
+	bool operator==(const SpecElement &o) const { return kind == o.kind && width == o.width && dir == o.dir && bus == o.bus && solid == o.solid && flush == o.flush && pave == o.pave; }
+};
+struct RoadSpec {
+	std::vector<SpecElement> elements;
+	float speed = 0;
+	int priority = 0;
+	std::string centre; // "auto", "none", "dashed", "solid", "double"
+	bool operator==(const RoadSpec &o) const { return elements == o.elements && speed == o.speed && priority == o.priority && centre == o.centre; }
+};
+
 // A class road as the tool's options lay it (Roadcraft 4.0 ui/v2/shell.ts): its lanes, total width and what runs by the kerbs.
 // 0 keeps the class's own. parking is the preset's index: none, both, right, left, cycle lanes, cycle lane and bays.
 struct RoadVariant {
 	int base = 0, lanes = 0, parking = 0;
 	float width = 0;
+	RoadSpec spec; // elements: the road as the player composed it, in place of the options
 };
 
 struct RoadPrices { // R$ per m2 (data/catalog/road_profiles.json "prices")

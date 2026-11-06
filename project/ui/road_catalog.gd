@@ -5,6 +5,9 @@ class_name RoadCatalog
 extends VBoxContainer
 
 signal profile_picked(index: int)
+signal customise(profile: Dictionary, spec: Dictionary) ## Personalizar… on the road picked
+
+const MINE := "mine"
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var _profiles: Array = []
@@ -31,6 +34,7 @@ func _ready() -> void:
 	_tabs_row = HudWidgets.hbox(strip)
 	for p in _profiles:
 		_counts[p.category] = _counts.get(p.category, 0) + 1
+	_counts[MINE] = RoadModels.list().size()
 	for t in DataTables.ui("drawers").catalog_tabs:
 		var count: int = _counts.get(t[0], 0)
 		var b := HudWidgets.button(&"RcTab", "", "%s %d" % [tr(t[1]), count], "", "", "tab_h")
@@ -38,6 +42,9 @@ func _ready() -> void:
 		b.pressed.connect(show_category.bind(t[0]))
 		_tabs_row.add_child(b)
 		_tab_buttons[t[0]] = b
+	var edit := HudWidgets.button(&"RcTab", "", tr("catalog.customise"), "", "", "tab_h")
+	edit.pressed.connect(_customise)
+	_tabs_row.add_child(edit)
 	_scroll = ScrollContainer.new()
 	var scroll := _scroll
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -117,7 +124,50 @@ func show_category(category: String) -> void:
 		widest = maxf(widest, p.width)
 	for p in _profiles:
 		if p.category == category:
-			_cards_row.add_child(_card(p, widest))
+			_cards_row.add_child(_card(p, widest, pick.bind(p.index)))
+	if category == MINE:
+		_mine(widest)
+
+
+## Meus modelos: the player's own roads, each made into a profile as it is picked.
+func _mine(widest: float) -> void:
+	var models := RoadModels.list()
+	if models.is_empty():
+		HudWidgets.label(_cards_row, &"MetaLabel", tr("catalog.mineEmpty"))
+	for m: Dictionary in models:
+		var p := {"id": "%s:%d" % [m.key, hash(m.spec)], "index": -1, "name_key": m.name, "strips": RoadSpecOps.strips(m.spec), "centre": "none", "width": RoadSpecOps.total(m.spec),
+			"cost_per_m": 0.0, "lanes": 0, "one_way": false, "speed": m.spec.speed}
+		_cards_row.add_child(_card(p, widest, _pick_mine.bind(m)))
+
+
+func _profile_of(id: String) -> Dictionary:
+	for p: Dictionary in _profiles:
+		if p.id == id:
+			return p
+	return _profiles[0]
+
+
+func _pick_mine(m: Dictionary) -> void:
+	var index: int = CityStore.query(&"road_spec_make", [_profile_of(m.base).index, m.spec])
+	if index >= 0:
+		pick(index)
+
+
+## The road in hand to the editor: as the core reads it, or a road of the player's when that is what is drawn.
+func _customise() -> void:
+	var index := picked()
+	for p: Dictionary in _profiles:
+		if p.index == index:
+			customise.emit(p, CityStore.query(&"road_spec", [index]))
+			return
+	customise.emit(_profiles[0], CityStore.query(&"road_spec", [index]))
+
+
+## A road was saved: its tab counts it and shows it.
+func saved_one() -> void:
+	_counts[MINE] = RoadModels.list().size()
+	relabel()
+	show_category(MINE)
 
 
 ## The profile the road tool last drew with (ToolController remembers it).
@@ -132,7 +182,7 @@ func pick(index: int) -> void:
 	profile_picked.emit(index)
 
 
-func _card(p: Dictionary, widest: float) -> Control:
+func _card(p: Dictionary, widest: float, act: Callable) -> Control:
 	var col := VBoxContainer.new()
 	col.custom_minimum_size.x = HudWidgets.px("rc_card_w")
 	var b := HudWidgets.button(&"RcCard", "", "", "", "rc_card_w", "rc_art_h")
@@ -143,7 +193,7 @@ func _card(p: Dictionary, widest: float) -> Control:
 	b.tooltip_text = tr("catalog.tip").format({"name": tr(p.name_key),
 		"lanes": tr("palette.lanes.count.other").format({"count": p.lanes}),
 		"way": tr("catalog.oneWay") if p.one_way else tr("catalog.twoWay"), "speed": int(p.speed)})
-	b.pressed.connect(pick.bind(p.index))
+	b.pressed.connect(act)
 	col.add_child(b)
 	col.set_meta(&"button", b)
 	col.set_meta(&"index", p.index)

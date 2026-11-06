@@ -407,6 +407,8 @@
         "maxItems": 2
       }
     },
+    "profile_palette": {"type": "array", "items": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}},
+    "profile_defaults": {"type": "object", "additionalProperties": {"type": "number"}},
     "fn_keys": {
       "type": "array",
       "items": {

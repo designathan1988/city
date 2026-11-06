@@ -24,6 +24,7 @@ const SHARP_DEG := 15.0
 const OPEN_DEG := 40.0
 const AVENUE_GAP_M := 20.0
 const SIDE_OFF_M := 720.0
+const COMPOSED_LANE_M := 4.5
 const SIDE_GAP_M := 8.0
 const CURVE_OFF_M := 800.0
 const CHORD_M := 100.0
@@ -56,6 +57,7 @@ func _ready() -> void:
 	_side_by_side(e)
 	_curves(e)
 	_stubs(e)
+	_composed_road()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -200,3 +202,22 @@ func _stubs(e: Vector3) -> void:
 func _check(ok: bool, what: String) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	failures += 0 if ok else 1
+
+
+## Personalizar: a road of the catalogue read as elements, what stops one from being built, and a road of the player's laid.
+func _composed_road() -> void:
+	var base: int = CityStore.first_road()
+	var spec: Dictionary = CityStore.query(&"road_spec", [base])
+	_check(spec.elements[0].kind == "footway" and spec.elements[-1].kind == "footway", "perfil: a via lida começa e acaba em calçada")
+	_check((CityStore.query(&"road_spec_issues", [base, spec]) as Array).is_empty(), "perfil: a via do catálogo pode ser construída")
+	var bad: Dictionary = spec.duplicate(true)
+	bad.elements.remove_at(0)
+	_check(not (CityStore.query(&"road_spec_issues", [base, bad]) as Array).is_empty(), "perfil: sem calçada na ponta há problema")
+	_check(int(CityStore.query(&"road_spec_make", [base, bad])) < 0, "perfil: o que tem problema não vira via")
+	var own: Dictionary = spec.duplicate(true)
+	RoadSpecOps.with_width(own, 1, COMPOSED_LANE_M)
+	var index: int = CityStore.query(&"road_spec_make", [base, own])
+	_check(index >= 0, "perfil: a via composta vira um perfil")
+	_check(int(CityStore.query(&"road_spec_make", [base, own])) == index, "perfil: a mesma via é o mesmo perfil")
+	var back: Dictionary = CityStore.query(&"road_spec", [index])
+	_check(is_equal_approx(RoadSpecOps.total(back), RoadSpecOps.total(own)), "perfil: a largura volta igual (%.2f)" % RoadSpecOps.total(back))

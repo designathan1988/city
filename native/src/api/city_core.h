@@ -74,6 +74,9 @@ public:
 	godot::Dictionary paint_zone(const godot::Vector3 &p, float radius, int zone);
 	godot::Array road_profiles() const;
 	int road_variant(int base, int lanes, float width, int parking);
+	godot::Dictionary road_spec(int profile) const, road_spec_limits() const;
+	godot::Array road_spec_issues(int base, const godot::Dictionary &spec) const;
+	int road_spec_make(int base, const godot::Dictionary &spec);
 
 	// --- the bomb (city_core_strike.cpp)
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground

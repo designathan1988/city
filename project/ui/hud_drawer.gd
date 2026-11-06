@@ -20,6 +20,7 @@ const FORCE_STEP := 1.0 # the bomb's force goes up by whole steps (data/catalog/
 @onready var road_options := RoadOptions.new()
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
+var _editor: RoadProfilePanel
 @onready var _head: HBoxContainer
 @onready var strip: Container
 @onready var _tabs: Dictionary = {}
@@ -60,7 +61,20 @@ func _ready() -> void:
 	catalog.profile_picked.connect(func(i: int) -> void:
 		var upgrading := tools != null and tools.tool == ToolController.Tool.UPGRADE
 		retool(i, "UPGRADE" if upgrading else "ROAD", "profile"))
+	catalog.customise.connect(_customise.bind(col))
 	hide()
+
+
+## Personalizar…: the editor docked over the strip, one at a time.
+func _customise(profile: Dictionary, spec: Dictionary, col: Control) -> void:
+	if not is_instance_valid(_editor):
+		_editor = RoadProfilePanel.new()
+		col.add_child(_editor)
+		col.move_child(_editor, 0)
+		_editor.closed.connect(_editor.queue_free)
+		_editor.used.connect(catalog.pick)
+		_editor.saved.connect(catalog.saved_one)
+	_editor.open(profile, spec)
 
 
 ## The catalogue and the road options leave the tree while another strip shows (_build_strip); a node out of the tree is not
