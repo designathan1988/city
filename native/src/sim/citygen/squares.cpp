@@ -22,7 +22,7 @@ using namespace b40;
 
 namespace {
 constexpr double FILE_CELL_M = 60; // the grid lots are filed in while they are joined
-constexpr float LAWN_H = 0.06f;
+constexpr float LAWN_H = 0.06f, LATTICE_FROM_M = 200, SEAM_M = 0.35f;
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
 constexpr float PLAZA_WIDE = 0.45f; // the round plaza's rectangles: full size, and this share across
@@ -57,7 +57,8 @@ bool inside(const Plot &p, V2 at) {
 	const Lot &l = *p.lot;
 	const float sn = std::sin(float(l.rot)), cs = std::cos(float(l.rot));
 	const V2 rel = at - p.centre;
-	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2;
+	// a lot stands a little short of the next (lot_place.cpp WIDTH_TRIM): the seam between two is the block's, and no edge to a tree
+	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SEAM_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SEAM_M;
 }
 
 struct Joined {
@@ -133,9 +134,9 @@ void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uin
 		const V2 p = c.centre + along * a + in * b;
 		return std::any_of(c.block.begin(), c.block.end(), [&](int i) { return inside(plots[size_t(i)], p); });
 	};
-	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m), span = std::max(W, D);
-	for (float a = -span; a <= span; a += step)
-		for (float b = -span; b <= span; b += step) {
+	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m);
+	for (float a = -LATTICE_FROM_M; a <= LATTICE_FROM_M; a += step) // squares.ts: the grid starts here, so it lies the same on any block
+		for (float b = -LATTICE_FROM_M; b <= LATTICE_FROM_M; b += step) {
 			if (!in_block(a, b) || std::fabs(a) < w || std::fabs(b) < w || std::hypot(a, b) < plaza) continue;
 			if (!in_block(a + clear, b) || !in_block(a - clear, b) || !in_block(a, b + clear) || !in_block(a, b - clear)) continue;
 			random = random * LCG_MUL + LCG_ADD;

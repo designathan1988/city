@@ -57,6 +57,8 @@ func _buses() -> void:
 	print("ônibus: ", run)
 	_check(int(run.buses) > 0, "ônibus na linha")
 	_check(int(run.stops_called) > 0, "ônibus atendeu parada")
+	_check(int(run.alighted) > 0, "gente desce do ônibus: %s" % run.alighted)
+	_check(int(run.boarded) > 0, "gente sobe no ônibus: %s" % run.boarded)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are
 	CityStore.step_ticks(1)

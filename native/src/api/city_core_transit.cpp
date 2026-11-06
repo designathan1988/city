@@ -106,6 +106,8 @@ Dictionary CityTransit::transit_run() {
 	d["buses"] = int(run.buses.size());
 	d["on_road"] = on_road;
 	d["stops_called"] = run.stops_called;
+	d["boarded"] = state_->traffic.bus_boarded;
+	d["alighted"] = state_->traffic.bus_alighted;
 	d["trains"] = trains;
 	d["trains_at_stations"] = run.trains_at_stations;
 	int crossings = 0, held = 0;

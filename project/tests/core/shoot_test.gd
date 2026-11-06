@@ -28,6 +28,10 @@ const FIRST_HEAVY := 6
 const BIG_FORCE := 45
 const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
+const BLAST_OFF_M := 30.0
+const BLAST_FORCE := 2
+const BLAST_LOOKS := 12
+const BLAST_TICKS := 40
 const HEARD_M := 40.0
 const CROWD := 2000
 const HEARD_OFF_M := 1.5
@@ -47,6 +51,7 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	CityStore.step_ticks(WARM_TICKS)
 	_reactions()
+	_stampede()
 	_walkers()
 	_vehicles()
 	_demolish()
@@ -145,6 +150,23 @@ func _reactions() -> void:
 			away += 1
 	print("longe do tiro depois: ", away, " de ", left)
 	_check(left == 0 or float(away) / left >= AWAY_SHARE, "quem ouviu foge para longe (%d de %d)" % [away, left])
+
+
+# A blast is a stampede: those near go down or crouch where they are, and none stays on its way toward it.
+func _stampede() -> void:
+	var found: Array = CityStore.query(&"shot_targets", [CROWD]).walkers
+	if found.is_empty():
+		_check(false, "há pedestres para o estouro")
+		return
+	var at: Vector3 = found[0].position + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
+	CityStore.dispatch(&"strike", [at, BLAST_FORCE])
+	var down := 0
+	for i in BLAST_LOOKS:
+		CityStore.step_ticks(BLAST_TICKS)
+		down = maxi(down, int(CityStore.query(&"people_census", [Vector3.ZERO, 0.0]).acts.get("crouch", 0)))
+	print("no estouro, agachados no máximo: ", down)
+	_check(down > 0, "no estouro alguém cai ou agacha")
+	CityStore.dispatch(&"undo")
 
 
 func _vehicles() -> void:

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "sim/state/pose_buffer.h"
+#include "sim/transit/bus_call.h"
 #include "sim/transit/transit_data.h"
 
 #include <unordered_map>
@@ -18,6 +19,7 @@ struct Bus {
 	int line = 0, vehicle = -1;
 	int next = 0, dir = 1; // the index of the stop it is going to, and the way along the line
 	float dwell = 0, wait = 0; // seconds at the stop; seconds before it is put on the road
+	traffic::BusCall call; // who gets off and on at this stop
 };
 
 struct Train {
@@ -74,7 +76,7 @@ struct TransitRun {
 	std::unordered_map<int, StopLane> stop_lanes; // per bus stop
 	std::unordered_map<int, std::vector<std::pair<int, int>>> crossings_by_lane; // key: (rail, crossing)
 	std::vector<TrainZone> zones; // made again each tick, for the trains near the walkers
-	int stops_called = 0, trains_at_stations = 0; // counted for the probe
+	int stops_called = 0, trains_at_stations = 0; // counted for the probe; passengers are the traffic's (bus_boarded, bus_alighted)
 };
 
 namespace transit {

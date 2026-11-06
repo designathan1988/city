@@ -1,6 +1,8 @@
 // Buses and the plan's rebuild (transit_sim.h). Trains and level crossings: rail_run.cpp.
 #include "sim/transit/transit_sim.h"
 
+#include "sim/traffic/kerb_stops.h"
+
 #include "sim/state/city_state.h"
 #include "sim/transit/rail_run.h"
 #include "sim/traffic/traffic_system.h"
@@ -144,8 +146,10 @@ void step_bus(CityState &s, Bus &b, float dt) {
 	const bool here = v.conn < 0 && v.ds == it->second.ds && v.v < p.bus_stopped_ms && v.s >= v.bus_stop_at - p.bus_at_stop_m;
 	if (!here) return;
 	b.dwell += dt;
-	if (b.dwell < (is_end(s, *l, b) ? p.bus_terminal_s : p.bus_dwell_s)) return;
+	const bool served = traffic::bus_call(s, b.vehicle, b.call, dt);
+	if (!served || b.dwell < (is_end(s, *l, b) ? p.bus_terminal_s : p.bus_dwell_s)) return;
 	b.dwell = 0;
+	traffic::bus_call_over(s, b.call);
 	s.transit_run.stops_called++;
 	turn_on(b, *l);
 	send_bus(s, *l, b, v);
@@ -256,6 +260,7 @@ void bus_gone(CityState &s, int vehicle) {
 	if (v.bus < 0) return;
 	Bus &b = s.transit_run.buses[size_t(v.bus)];
 	const TrafficParams &p = s.catalog.traffic;
+	traffic::bus_call_over(s, b.call);
 	b.vehicle = -1;
 	b.wait = p.bus_spacing_s;
 	v.bus = -1;
@@ -272,7 +277,8 @@ float bus_door_share(const CityState &s, const Bus &b) {
 	if (!l || l->stops.empty() || b.dwell <= 0) return 0;
 	const TrafficParams &p = s.catalog.traffic;
 	const float total = is_end(s, *l, b) ? p.bus_terminal_s : p.bus_dwell_s;
-	return std::clamp(std::min(b.dwell, total - b.dwell) / p.kerb_door_open_s, 0.f, 1.f);
+	const float shut_in = b.call.begun && b.dwell >= total ? p.kerb_door_open_s : total - b.dwell; // somebody still coming holds the door
+	return std::clamp(std::min(b.dwell, shut_in) / p.kerb_door_open_s, 0.f, 1.f);
 }
 
 } // namespace transit
