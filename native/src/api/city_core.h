@@ -139,7 +139,7 @@ public:
 	godot::Dictionary roundabout(const godot::Vector3 &p, float radius, bool cut), preview_roundabout(const godot::Vector3 &p, float radius, bool cut);
 	godot::Dictionary segment_at(const godot::Vector3 &p); // the segment a click there edits (preview)
 	godot::Dictionary terrain_brush(const godot::Vector3 &p, float radius, float strength, float dt, int mode, float hardness);
-	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone);
+	godot::Dictionary draw_building(const godot::Vector3 &a, const godot::Vector3 &b, int fn, int zone, int shape);
 	godot::Dictionary preview_lot(const godot::Vector3 &a, const godot::Vector3 &b);
 	godot::Dictionary set_building(int id, int fn, int floors);
 

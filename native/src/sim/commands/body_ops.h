@@ -38,6 +38,11 @@ std::string op_resize(b40::Body &b, const Tuning &t, int vol, int side, float de
 std::string op_add_wing(b40::Body &b, const Tuning &t, int vol, int side, float depth, float length);
 std::string op_add_setback(b40::Body &b, const Tuning &t, int vol, float inset, int storeys);
 std::string op_split_at_floor(b40::Body &b, const Tuning &t, int vol, int level);
+// A block's plan in a shape (body_plan.cpp), on its box; what was set on its walls stays on the wall facing the same way. `whole`: the body as that one block, its height kept.
+enum PlanShape : int { PLAN_RECTANGLE, PLAN_L, PLAN_U, PLAN_CIRCLE, PLAN_HEXAGON, PLAN_OCTAGON, PLAN_CHAMFERED, PLAN_CROSS, PLAN_STEPPED, PLAN_COUNT };
+std::string op_set_plan(b40::Body &b, const Tuning &t, int vol, int shape);
+std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
+void set_block_ring(b40::Volume &v, std::vector<b40::Point2> ring);
 std::string op_remove_volume(b40::Body &b, const Tuning &t, int vol);
 std::string op_set_heights(b40::Body &b, const Tuning &t, float ground_h, float storey_h);
 

@@ -1,5 +1,6 @@
 // Undo / redo, strokes and the drawer edits (split, upgrade, roundabout, relief brush, drawn buildings) as the script
 // API. Each edit is one undo entry (a stroke between begin_stroke and end_stroke is one entry).
+#include "sim/commands/body_ops.h"
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
@@ -245,8 +246,14 @@ Dictionary CityCore::terrain_brush(const Vector3 &p, float radius, float strengt
 	return run_edit(*state_, "cmd.place.terrainBrush", [&](CityState &s) { return terrain_dab(s, p.x, p.z, radius, strength, dt, mode, hardness); });
 }
 
-Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, int zone) {
-	return run_edit(*state_, "cmd.build.lotDrawn", [&](CityState &s) { return place_building(s, a.x, a.z, b.x, b.z, fn, zone); });
+Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, int zone, int shape) {
+	return run_edit(*state_, "cmd.build.lotDrawn", [&](CityState &s) {
+		EditResult r = place_building(s, a.x, a.z, b.x, b.z, fn, zone);
+		if (!r.ok || shape == PLAN_RECTANGLE) return r;
+		const EditResult planned = edit_body(s, r.placed, [&](b40::Body &body) { return op_whole_plan(body, s.catalog.tune, shape); });
+		if (!planned.ok) r.note = planned.error;
+		return r;
+	});
 }
 
 Dictionary CityCore::preview_lot(const Vector3 &a, const Vector3 &b) {

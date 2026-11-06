@@ -21,6 +21,7 @@ const BRUSH_M := 30.0
 const BRUSH_DT := 0.2
 const BRUSH_MODES := 3
 const ITEM_KINDS := 7
+const PLAN_SHAPES := 8
 const REACH_M := 12.0
 const STRIKE_MAX := 12
 ## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
@@ -186,7 +187,7 @@ func _other(kind: int, road: Vector3) -> void:
 		12:
 			CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, b]), rng.randi_range(0, 1)])
 		13:
-			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND])
+			CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND, rng.randi_range(0, PLAN_SHAPES)])
 		14:
 			CityStore.dispatch(&"transit_stop", [road])
 		17:

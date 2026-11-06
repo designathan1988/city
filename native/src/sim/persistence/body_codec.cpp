@@ -18,7 +18,9 @@ constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; 
 // Bytes that start with the magic carry a version; the bytes before it (saves and the player's model files) start with
 // the plan's kind byte, never these four. 1: the flag of a roof mast (spire, lantern).
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
-constexpr uint32_t BODY_VERSION = 2, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
+constexpr uint32_t FACES_VERSION = 3;
+constexpr uint32_t BODY_VERSION = 3, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -141,7 +143,8 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 	}
 	r.get_vec(v.fill);
 	if (!get_map(r, v.bays) || !get_map(r, v.side_fill) || !get_map(r, v.storey_paint)) return false;
-	for (FaceGeometry &f : v.faces) f = get_face(r);
+	const int faces = version >= FACES_VERSION ? MAX_FACES : FACES_BEFORE;
+	for (int i = 0; i < faces; i++) v.faces[i] = get_face(r);
 	n = r.get<uint32_t>();
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	v.reliefs.resize(n);

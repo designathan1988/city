@@ -216,6 +216,7 @@ func _build_strip(tab: Dictionary) -> void:
 	elif tab.get("kind", "") == "line":
 		TransitStrip.build(strip)
 	elif kind == "build_cards" and tab.get("tool", "") == "LOT":
+		BuilderStrip.fill(strip, tab.id, tools)
 		for c in category.cards:
 			strip.add_child(DrawerStrips.card(c, "fn", param("LOT", "fn", 0), retool.bind("LOT", "fn")))
 	_note(tab)

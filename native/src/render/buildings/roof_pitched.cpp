@@ -128,6 +128,10 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 	shell.grime_floor = -FAR_AWAY;
 	RoofHide hidden(pl, v);
 	if (hidden.any()) P.hide = &hidden;
+	if (!v.outline.empty()) {
+		emit_outline_roof(shell, pl, v, eaves, P.roof, P.roof_fin, P.wall_fin, P.hide);
+		return;
+	}
 	const Basis &lot = pl.lot;
 	if (v.roof == ROOF_SHED) {
 		int fall = std::max(0, v.fall);

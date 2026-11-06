@@ -3,6 +3,7 @@
 ## park, square, … or a building of the land use). The ribbon previews the rectangle green or red.
 extends ToolBase
 
+static var shape := 0 # the plan picked on the strip (body_ops.h PlanShape): it stays when the card changes
 var fn := 0
 var zone := 1
 var _a := Vector3.INF
@@ -16,6 +17,11 @@ func enter() -> void:
 
 func exit() -> void:
 	ctl.preview.clear()
+
+
+## A card of the strip: the plan what is drawn next will have.
+func act(spec: Dictionary) -> void:
+	shape = spec.get("value", 0)
 
 
 func click(p: Vector3) -> void:
@@ -35,7 +41,7 @@ func drag(p: Vector3) -> void:
 func release(p: Vector3) -> void:
 	if _a == Vector3.INF or p == Vector3.INF:
 		return
-	var r: Dictionary = CityStore.dispatch(&"draw_building", [_a, p, fn, zone])
+	var r: Dictionary = CityStore.dispatch(&"draw_building", [_a, p, fn, zone, shape])
 	_a = Vector3.INF
 	ctl.preview.clear()
 	ctl.hint.emit(tr("ui.build.placed") if r.get("ok", false) else refusal(r), r.get("ok", false))

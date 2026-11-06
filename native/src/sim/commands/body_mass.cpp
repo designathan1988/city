@@ -12,7 +12,8 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f;
+constexpr float CENTIMETRES = 100.f, AREA_EPS = 1e-3f, WING_SHARE = .6f, SHAPED_INSET_SHARE = .1f;
+constexpr int WING_FAR_SIDE = 2; // of the ring a wing off a wall is drawn with: the one away from the wall
 constexpr const char *NO_VOLUME = "tool.failed";
 
 bool has(const Body &b, int vol) { return vol >= 0 && vol < int(b.volumes.size()); }
@@ -83,6 +84,27 @@ void shift_bays(Volume &v, int moved, int shift) {
 }
 
 // A new block built like `v`: its walls, roof paint, rhythm and dress, with `count` storeys of its fill.
+Volume block_like(const Volume &v, int count);
+
+// A wing off a wall of a shaped block: from the middle of the wall, along the wall's normal, itself a box at the wall's bearing.
+std::string wing_off_wall(Body &b, const Tuning &t, const Volume &v, int side, float depth, float length) {
+	const Ring ring = ring_of(v);
+	const Point2 a = ring[size_t(side)], c = ring[(size_t(side) + 1) % ring.size()];
+	const float run = std::hypot(c.x - a.x, c.y - a.y), lo = float(t.build_min_side_m);
+	if (run < lo) return "building.problem.size";
+	const float tx = (c.x - a.x) / run, ty = (c.y - a.y) / run, nx = ty, ny = -tx;
+	const float len = std::min(run, std::max(lo, snapped(t, length > 0 ? length : run * WING_SHARE)));
+	const float out = std::max(lo, snapped(t, depth > 0 ? depth : float(t.build_wing_modules * t.build_module_m)));
+	const float from = (run - len) / 2;
+	const Point2 p{ a.x + tx * from, a.y + ty * from }, q{ p.x + tx * len, p.y + ty * len };
+	Volume wing = block_like(v, v.storeys);
+	for (FaceGeometry &f : wing.faces) f.bays = -1; // its openings' proportions, but as many bays as its own walls hold
+	set_block_ring(wing, { q, p, { p.x + nx * out, p.y + ny * out }, { q.x + nx * out, q.y + ny * out } });
+	if (wing.base == 0) wing.bays[bay_key(0, WING_FAR_SIDE, bays_of(wing, WING_FAR_SIDE) / 2)] = BAY_DOOR; // its own way in, on its outer face
+	b.volumes.push_back(std::move(wing));
+	return "";
+}
+
 Volume block_like(const Volume &v, int count) {
 	Volume out;
 	out.base = v.base;
@@ -163,10 +185,10 @@ std::string op_resize(Body &b, const Tuning &t, int vol, int side, float delta, 
 }
 
 std::string op_add_wing(Body &b, const Tuning &t, int vol, int side, float depth, float length) {
-	if (!has(b, vol) || side < 0 || side > 3) return NO_VOLUME;
+	if (!has(b, vol) || side < 0 || side >= b.volumes[size_t(vol)].sides()) return NO_VOLUME;
 	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
 	const Volume v = b.volumes[size_t(vol)];
-	if (!v.outline.empty()) return "building.problem.outline";
+	if (!v.outline.empty()) return wing_off_wall(b, t, v, side, depth, length);
 	float module = float(t.build_module_m), lo = float(t.build_min_side_m), hi = float(t.build_max_side_m);
 	float run = side == 0 || side == 2 ? v.w : v.d;
 	float half = std::max(2 * module, std::ceil(run / 2 / module) * module);
@@ -190,8 +212,8 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 	if (!has(b, vol)) return NO_VOLUME;
 	if (int(b.volumes.size()) >= int(t.build_max_volumes)) return "building.problem.size";
 	Volume &v = b.volumes[size_t(vol)];
-	if (!v.outline.empty()) return "building.problem.outline";
 	float step = std::max(0.f, snapped(t, inset >= 0 ? inset : float(t.build_module_m))), lo = float(t.build_min_side_m);
+	if (!v.outline.empty() && inset < 0) step = std::min(step, std::max(float(t.build_grid_m), snapped(t, std::min(v.w, v.d) * SHAPED_INSET_SHARE)));
 	float ix = v.w - 2 * step >= lo ? step : 0, iy = v.d - 2 * step >= lo ? step : 0;
 	int count = std::clamp(storeys, 1, std::max(1, int(t.edit_max_floors) - v.top()));
 	Volume up = block_like(v, count);
@@ -200,6 +222,11 @@ std::string op_add_setback(Body &b, const Tuning &t, int vol, float inset, int s
 	up.y = v.y + iy;
 	up.w = v.w - 2 * ix;
 	up.d = v.d - 2 * iy;
+	if (!v.outline.empty()) {
+		const Ring ring = offset_ring(ring_of(v), -step);
+		if (!simple_ring(ring) || ring_area(ring) <= 0) return "building.problem.outline";
+		set_block_ring(up, ring);
+	}
 	std::fill(up.fill.begin(), up.fill.end(), next_fill(v));
 	v.roof = ROOF_TERRACE;
 	// What stood where the new block stands goes: nothing is left inside it.

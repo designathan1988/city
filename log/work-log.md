@@ -588,3 +588,13 @@ Ressalvas abertas:
 - **Arquivos do usuário:** gates, hooks, schemas e `.claude/settings*`. Um comando que cite `tools/gates` é recusado pelo hook: use as ferramentas Read/Grep ou um script.
 - **Commit:** `git add` e `git commit` separados, com logs de `dist/tests` mais novos que o código. Identidade Coordenadora `<coordenadora@roadcraft.local>`, trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - **Nomes de arquivos, pastas e código em inglês.**
+
+## 2026-11-06: as plantas do Construir
+- Desenhar e Massa › Forma do bloco: retângulo, L, U, círculo, hexágono, octógono, chanfrado, cruz e cruz escalonada (`body_plan.cpp`). `MAX_FACES` foi a 24, porque o círculo tem 24 lados e `faces[side]` é lido sem conferir; o corpo gravado foi à versão 3 e abre os de 16 faces.
+- Trocar a forma leva o que estava na parede para a nova parede virada para o mesmo lado, como o `reshapeTier` do 4.0, e divide os vãos pela razão dos comprimentos. Com relevo, recusa e pede para alinhar. Reaplicar a mesma forma não muda nada: numa planta côncava várias paredes olham para o mesmo lado e o mapa trocava os ritmos, achado pelo teste.
+- Telhado inclinado sobre planta: antes cobria a caixa inteira e passava por cima do vão de um L. Agora cada plano é uma placa convexa cortada pelos triângulos da planta e as paredes sobem até ele, com o topo exato em cada pedaço (`roof_outline.cpp`; o 4.0 divide a parede em módulos).
+- `bays_of` contava os vãos de uma parede de planta pela largura da caixa: agora pelo comprimento da parede. Recuo e ala recusavam bloco com forma: agora valem (`offset_ring`, `simple_ring`, ala saindo do meio da parede).
+- Diferença de propósito: no 4.0 o hexágono é mais estreito que a caixa e cada clique encolhe o bloco; aqui a forma ocupa a caixa, e clicar de novo não muda nada.
+- Fotos analisadas em `project/dist/rq/shapes`: as 9 formas com telhado plano, duas águas e quatro águas. A linha preta num prédio branco era o meu plano de foto, que pôs duas águas no bloco de baixo de um corpo de dois volumes.
+- Falta do Desenhar: primitivas e os gestos de ala, empilhar e cortar por arrasto.
+- O sorteio do `edit_fuzz_test` mudou com a forma do prédio desenhado e achou um defeito antigo: pôr a mesma faixa onde ela já estava deixava um passo de desfazer vazio (`j_set_crossing`). O hash do estado mudou só pela versão do corpo gravado (grades, graph, heights e lots iguais).

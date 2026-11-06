@@ -86,6 +86,7 @@ void j_set_lift(CityState &s, int n, float lift) {
 
 void j_set_crossing(CityState &s, int n, uint8_t kind) {
 	RoadNode &nd = s.roads.nodes[n];
+	if (nd.crossing == kind) return; // the same crossing again is nothing to undo
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::NODE_CROSSING, n);
 		op.from = nd.crossing;

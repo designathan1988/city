@@ -99,7 +99,7 @@ float side_length(const Volume &v, int side) {
 
 int bays_of(const Volume &v, int side) {
 	if (v.faces[side].bays >= 0) return v.faces[side].bays;
-	return std::max(1, int(std::round(steps_in(side == 0 || side == 2 ? v.w : v.d, DEFAULT_BAY))));
+	return std::max(1, int(std::round(steps_in(side_length(v, side), DEFAULT_BAY))));
 }
 
 void compose_facades(const Data &data, Body &b, Xoshiro128 &r) {

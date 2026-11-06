@@ -3,7 +3,7 @@
 class_name BuilderStrip
 extends RefCounted
 
-const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope"]
+const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape"]
 
 
 static func fill(strip: Container, tab_id: String, tools: ToolController) -> void:
@@ -28,7 +28,7 @@ static func _card(spec: Dictionary, row: Container, tools: ToolController) -> Bu
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = false
 	b.pressed.connect(func() -> void:
-		if tools.active is BuildingTool:
+		if tools.active != null and tools.active.has_method("act"):
 			tools.active.act(spec)
 		if choice:
 			_light(row, b))

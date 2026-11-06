@@ -145,6 +145,10 @@ Dictionary CityBuilder::body_add_wing(int id, int vol, int side, double depth, d
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_wing(b, t, vol, side, float(depth), float(length)); });
 }
 
+Dictionary CityBuilder::body_set_plan(int id, int vol, int shape) {
+	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_set_plan(b, t, vol, shape); });
+}
+
 Dictionary CityBuilder::body_add_setback(int id, int vol, double inset, int storeys) {
 	return edit(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_setback(b, t, vol, float(inset), storeys); });
 }

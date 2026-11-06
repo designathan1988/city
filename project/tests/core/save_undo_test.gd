@@ -73,7 +73,7 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	_round("rotatória", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
 	var lot := mid + Vector3(0, 0, LOT_M)
 	_round("prédio desenhado", func() -> Dictionary:
-		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), PARK_FN, ZONE_RES]))
+		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), PARK_FN, ZONE_RES, 0]))
 	var hill := _hill(e)
 	var h0 := _height(hill)
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.terrainBrush"])

@@ -11,7 +11,7 @@
 namespace city::b40 {
 
 constexpr float EPS = 1e-3f, FAR_AWAY = 1e9f; // geometric tolerance; 'no bound yet'
-constexpr int MAX_FACES = 16, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
+constexpr int MAX_FACES = 24, KEY_STOREY_SHIFT = 16, KEY_SIDE_SHIFT = 8;
 constexpr float RISER_M = 0.17f; // the rise of a step, drawn at entrances and flights (ABNT NBR 9050 6.8: 0.16 to 0.18 m)
 
 // The components a bay of a facade can hold (names in buildings.json "openings" and the styles' rhythms).

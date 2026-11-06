@@ -24,7 +24,7 @@ const COMMANDS := {
 	&"clear_relief": "landscape/clear_relief",
 	&"body_storeys": "builder/body_storeys",
 	&"body_insert_storey": "builder/body_insert_storey", &"body_resize": "builder/body_resize", &"body_add_wing": "builder/body_add_wing",
-	&"body_add_setback": "builder/body_add_setback", &"body_split": "builder/body_split", &"body_remove_volume": "builder/body_remove_volume",
+	&"body_add_setback": "builder/body_add_setback", &"body_set_plan": "builder/body_set_plan", &"body_split": "builder/body_split", &"body_remove_volume": "builder/body_remove_volume",
 	&"body_heights": "builder/body_heights", &"body_set_bay": "builder/body_set_bay", &"body_set_zone": "builder/body_set_zone",
 	&"body_set_pattern": "builder/body_set_pattern", &"body_set_face": "builder/body_set_face", &"body_set_relief": "builder/body_set_relief",
 	&"body_set_roof": "builder/body_set_roof", &"body_roof_shape": "builder/body_roof_shape", &"body_paint": "builder/body_paint",

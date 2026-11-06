@@ -158,7 +158,7 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 	b.style = uint16_t(b.seed & BUILDING_AUTO_STYLE_MASK);
 	b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	b.built = s.clock.minutes.load();
-	j_add_building(s, b);
+	r.placed = j_add_building(s, b);
 	finish_edit(s, b.x - reach, b.z - reach, b.x + reach, b.z + reach);
 	r.ok = true;
 	r.buildings_removed = int(doomed.size());

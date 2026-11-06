@@ -79,7 +79,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("node_at", "position", "px"), &CityCore::node_at);
 	ClassDB::bind_method(D_METHOD("moved_roads", "node", "position"), &CityCore::moved_roads);
 	ClassDB::bind_method(D_METHOD("terrain_brush", "position", "radius", "strength", "dt", "mode", "hardness"), &CityCore::terrain_brush);
-	ClassDB::bind_method(D_METHOD("draw_building", "corner_a", "corner_b", "function", "zone"), &CityCore::draw_building);
+	ClassDB::bind_method(D_METHOD("draw_building", "corner_a", "corner_b", "function", "zone", "shape"), &CityCore::draw_building);
 	ClassDB::bind_method(D_METHOD("preview_lot", "corner_a", "corner_b"), &CityCore::preview_lot);
 	ClassDB::bind_method(D_METHOD("set_building", "id", "function", "floors"), &CityCore::set_building);
 	ClassDB::bind_method(D_METHOD("save_city", "path"), &CityCore::save_city);

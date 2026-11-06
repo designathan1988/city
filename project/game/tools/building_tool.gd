@@ -6,6 +6,7 @@ class_name BuildingTool
 extends ToolBase
 
 const NO_BAY := -1
+const CM := 0.01
 ## What a click on a roof does with the card in hand: a thing set on it, or the flag of the mast clicked.
 const ROOF_TOOLS := ["gear", "flag", "flag_colour"]
 
@@ -203,6 +204,13 @@ func _edit(spec: Dictionary, value: int) -> Dictionary:
 			return CityStore.dispatch(&"body_split", [id, vol, picked.level])
 		"setback":
 			return CityStore.dispatch(&"body_add_setback", [id, vol, -1.0, 2])
+		"plan":
+			return CityStore.dispatch(&"body_set_plan", [id, vol, value])
+		"relief":
+			if picked.side < 0 or picked.bay < 0:
+				return {"ok": false, "error": "building.relief.pickFace"}
+			var region := {"side": picked.side, "bay0": picked.bay, "bay1": picked.bay, "storey0": picked.storey, "storey1": picked.storey, "depth": value * CM}
+			return CityStore.dispatch(&"body_set_relief", [id, vol, region, true])
 		"wing":
 			return CityStore.dispatch(&"body_add_wing", [id, vol, maxi(picked.side, 0), 0.0, 0.0])
 		"remove":

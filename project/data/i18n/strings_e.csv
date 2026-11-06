@@ -425,3 +425,5 @@ lot.twinNavy,Torres gêmeas azuis,Navy twins
 lot.twistGreen,Torre torcida,Twisted tower
 lot.waveWhite,Onda branca,White wave
 lot.whiteBalcony,Sacadas brancas,White balconies
+building.reshapeRelief,Alinhe os relevos da fachada antes de trocar o contorno deste bloco,Flatten the face reliefs before changing this block's outline
+building.relief.pickFace,Clique num vão da parede para dar relevo a ele,Click a bay of a wall to give it relief

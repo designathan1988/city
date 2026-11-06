@@ -38,4 +38,7 @@ private:
 	godot::Vector3 o_, ex_, ey_;
 };
 
+// A pitched roof over a shaped plan (roof_outline.cpp): what `emit_pitched` draws when the block is not its box.
+void emit_outline_roof(Shell &shell, const Placed &pl, const Volume &v, float eaves, const Lin &roof, int8_t roof_fin, int8_t wall_fin, const RoofHide *hide);
+
 } // namespace city::b40

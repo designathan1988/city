@@ -7,7 +7,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float AREA_EPS = 1e-6f;
+constexpr float AREA_EPS = 1e-6f, MITRE_FLOOR = .3f;
 
 float cross(Point2 a, Point2 b, Point2 c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 
@@ -82,6 +82,32 @@ Ring ring_of(const Volume &v) {
 }
 
 std::vector<Ring> plan_triangles(const Ring &ring) { return triangles_of(ring); }
+
+Ring clip_to_convex(const Ring &piece, const Ring &convex) { return clipped(piece, convex); }
+
+Ring offset_ring(const Ring &ring, float distance) {
+	Ring out;
+	const size_t n = ring.size();
+	for (size_t i = 0; i < n; i++) {
+		const Point2 p = ring[i], a = ring[(i + n - 1) % n], b = ring[(i + 1) % n];
+		const float la = std::max(std::hypot(p.x - a.x, p.y - a.y), AREA_EPS), lb = std::max(std::hypot(b.x - p.x, b.y - p.y), AREA_EPS);
+		const float nx = (p.y - a.y) / la, ny = (a.x - p.x) / la, mx = (b.y - p.y) / lb, my = (p.x - b.x) / lb;
+		const float scale = distance / std::max(MITRE_FLOOR, 1 + nx * mx + ny * my);
+		out.push_back({ p.x + (nx + mx) * scale, p.y + (ny + my) * scale });
+	}
+	return out;
+}
+
+bool simple_ring(const Ring &ring) {
+	const size_t n = ring.size();
+	for (size_t i = 0; i < n; i++)
+		for (size_t k = i + 2; k < n; k++) {
+			if (i == 0 && k == n - 1) continue; // these two share a corner
+			const Point2 a = ring[i], b = ring[(i + 1) % n], c = ring[k], d = ring[(k + 1) % n];
+			if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return false;
+		}
+	return true;
+}
 
 float ring_area(const Ring &ring) {
 	float twice = 0;

@@ -4,6 +4,7 @@
 ## Run: godot --headless --path project res://tests/core/building_edit_test.tscn -- --no-flow
 extends Node3D
 
+const PlanCases := preload("res://tests/core/building_plan_cases.gd")
 const PickCases := preload("res://tests/core/building_pick_cases.gd")
 const PartCases := preload("res://tests/core/building_part_cases.gd")
 const TOWN_MAP := 0
@@ -62,6 +63,7 @@ func _ready() -> void:
 	_bays_stay_put(id, made)
 	PickCases.run(id, _check)
 	PartCases.run(id, made, _check)
+	PlanCases.run(id, made, _check)
 	_refusals(_one_block_on_the_ground())
 	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
 	await _save_round_trip(id)

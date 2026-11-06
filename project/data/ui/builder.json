@@ -16,6 +16,24 @@
     }
    ]
   },
+  "draw": {
+   "sections": [
+    {
+     "title_key": "builder.section.drawShape",
+     "tools": [
+      {"id": "rect", "do": "shape", "value": 0},
+      {"id": "shapeL", "do": "shape", "value": 1},
+      {"id": "shapeU", "do": "shape", "value": 2},
+      {"id": "circle", "do": "shape", "value": 3},
+      {"id": "hexagon", "do": "shape", "value": 4},
+      {"id": "octagon", "do": "shape", "value": 5},
+      {"id": "chamfered", "do": "shape", "value": 6},
+      {"id": "shapeCross", "do": "shape", "value": 7},
+      {"id": "shapeStepped", "do": "shape", "value": 8}
+     ]
+    }
+   ]
+  },
   "mass": {
    "sections": [
     {
@@ -32,6 +50,20 @@
      "tools": [
       {"id": "wing", "do": "wing"},
       {"id": "removeBlock", "do": "remove", "icon": "cut", "label_key": "builder.tool.cut"}
+     ]
+    },
+    {
+     "title_key": "builder.section.blockShape",
+     "tools": [
+      {"id": "tierRect", "do": "plan", "value": 0},
+      {"id": "tierChamfered", "do": "plan", "value": 6},
+      {"id": "tierOctagon", "do": "plan", "value": 5},
+      {"id": "tierHexagon", "do": "plan", "value": 4},
+      {"id": "tierCircle", "do": "plan", "value": 3},
+      {"id": "tierL", "do": "plan", "value": 1},
+      {"id": "tierU", "do": "plan", "value": 2},
+      {"id": "tierCross", "do": "plan", "value": 7},
+      {"id": "tierStepped", "do": "plan", "value": 8}
      ]
     }
    ]
@@ -90,6 +122,14 @@
       {"id": "shopfront", "do": "arm", "value": 11},
       {"id": "pillarBay", "do": "arm", "value": 13},
       {"id": "wallBay", "do": "arm", "value": 0}
+     ]
+    },
+    {
+     "title_key": "builder.section.relief",
+     "tools": [
+      {"id": "inset", "do": "relief", "value": -50},
+      {"id": "outset", "do": "relief", "value": 50},
+      {"id": "flush", "do": "relief", "value": 0}
      ]
     }
    ]
