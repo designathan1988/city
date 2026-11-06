@@ -11,6 +11,8 @@ static func run(cap: Node, only: PackedStringArray) -> bool:
 		await CapturePeople.shots(cap)
 	elif only.has("tiro"):
 		await CapturePeople.bang(cap)
+	elif only.has("lotes"):
+		await CaptureLots.shots(cap)
 	elif only.has("clipes"):
 		await CapturePeople.clips(cap)
 	elif only.has("varredura"):

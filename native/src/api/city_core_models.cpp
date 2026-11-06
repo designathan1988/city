@@ -60,6 +60,10 @@ Dictionary CityBuilder::doc_body(const Dictionary &doc) const {
 	int function = 0;
 	PackedStringArray errors;
 	if (body_from_doc(doc, state_->buildings.designs, b, front_x, front_y, function, errors)) {
+		// a document may ask more than a storey takes: read as the 4.0 reads it (serialize.ts height), up to the limit
+		const Tuning &t = state_->catalog.tune;
+		b.storey_h = std::min(b.storey_h, float(t.build_max_storey_m));
+		b.ground_h = std::min(b.ground_h, float(t.build_max_ground_m));
 		out["bytes"] = bytes_of(b);
 		out["front"] = Vector2(front_x, front_y);
 		out["function"] = function;

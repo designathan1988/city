@@ -34,7 +34,8 @@ constexpr Named DOC_ROOFS[] = { { "flat", ROOF_FLAT }, { "terrace", ROOF_TERRACE
 	{ "sawtooth", ROOF_SAWTOOTH } };
 constexpr Named DOC_LINES[] = { { "every", LINES_EVERY }, { "base", LINES_BASE }, { "slab", LINES_SLAB }, { "none", LINES_NONE } };
 constexpr Named DOC_CROWNS[] = { { "cornice", CROWN_CORNICE }, { "deco", CROWN_DECO }, { "slab", CROWN_SLAB }, { "attic", CROWN_ATTIC }, { "none", CROWN_NONE } };
-constexpr Named DOC_USES[] = { { "residential", USE_RESIDENTIAL }, { "commercial", USE_COMMERCIAL }, { "industrial", USE_INDUSTRIAL } };
+// mixed: homes over shops; what a storey is used for it says itself, and what is left is homes
+constexpr Named DOC_USES[] = { { "residential", USE_RESIDENTIAL }, { "mixed", USE_RESIDENTIAL }, { "commercial", USE_COMMERCIAL }, { "industrial", USE_INDUSTRIAL } };
 constexpr Named DOC_ELEMENTS[] = { { "pavement", EL_PAVEMENT }, { "slab", EL_SLAB }, { "pillar", EL_PILLAR }, { "canopy", EL_CANOPY }, { "awning", EL_AWNING },
 	{ "wall", EL_WALL }, { "fence", EL_FENCE }, { "railing", EL_RAILING }, { "hedge", EL_HEDGE }, { "gate", EL_GATE }, { "carGate", EL_CAR_GATE },
 	{ "planter", EL_PLANTER }, { "bench", EL_BENCH }, { "bollard", EL_BOLLARD }, { "lamp", EL_LAMP }, { "bin", EL_BIN }, { "ac", EL_AC },

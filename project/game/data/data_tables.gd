@@ -63,6 +63,8 @@ const GAME := {
 ## The regional style a city's tables read (session-rules.md, section 10): this one until a city carries its own. The tables that
 ## keep what changes with it under `styles.<id>`, laid over the table when it is read.
 const REGIONAL_STYLE := "roadcraft"
+const LOT_PROJECTS := "res://assets/lots"
+const LOT_EXT := "json"
 const STYLED := ["res://data/catalog/street_furniture.json", "res://data/render/streets.json"]
 const STRINGS := [
 	"res://data/i18n/strings.csv",
@@ -178,6 +180,17 @@ static func ui(name: String) -> Dictionary:
 	if name == "land_panels" and not table.has("ELEMENTS"):
 		table.merge(_read(UI.land_elements)) # one panel, kept apart for the size of the file
 	return table
+
+
+## The lots of the lot lab: each document with `key`, its file's name (LotProjects).
+static func lot_projects() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for file in DirAccess.get_files_at(LOT_PROJECTS):
+		if file.get_extension() == LOT_EXT:
+			var doc: Dictionary = _parse("%s/%s" % [LOT_PROJECTS, file])
+			doc.key = file.get_basename()
+			out.append(doc)
+	return out
 
 
 static func game(name: String) -> Dictionary:

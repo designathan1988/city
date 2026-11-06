@@ -387,3 +387,41 @@ inspector.direction,Sentido do tráfego,Traffic direction
 direction.both,Mão dupla,Two-way
 direction.aToB,Mão única: A → B,One-way: A → B
 direction.bToA,Mão única: B → A,One-way: B → A
+lot.artDeco,Torre art déco,Art deco tower
+lot.balconyMid,Prédio de sacadas,Balcony block
+lot.bank,Banco,Bank
+lot.beauxArts,Hotel Beaux-Arts,Beaux-Arts hotel
+lot.beigeClassic,Clássico bege,Beige classic
+lot.brickFrame,Tijolo e concreto,Brick frame
+lot.cemetery,Cemitério,Cemetery
+lot.church,Igreja,Church
+lot.cityHallBrick,Prefeitura de tijolo,Brick city hall
+lot.cityHallWhite,Prefeitura branca,White city hall
+lot.cubeBalcony,Cubos com sacada,Balcony cubes
+lot.darkGlass,Vidro escuro,Dark glass
+lot.darkGrid,Malha escura,Dark grid
+lot.decoSpire,Agulha art déco,Deco spire
+lot.decoTower,Torre deco,Deco tower
+lot.fireStation,Quartel de bombeiros,Fire station
+lot.forum,Fórum,Courthouse
+lot.glassBalcony,Vidro e sacadas,Glass balconies
+lot.glassOffice,Escritório de vidro,Glass office
+lot.glassSpire,Agulha de vidro,Glass spire
+lot.hexTerracotta,Hexágono de terracota,Terracotta hexagon
+lot.hospitalA,Hospital,Hospital
+lot.hospitalB,Hospital geral,General hospital
+lot.loftBrick,Lofts de tijolo,Brick lofts
+lot.modernOffice,Escritório moderno,Modern office
+lot.octCopper,Octógono de cobre,Copper octagon
+lot.pinkCorner,Esquina rosa,Pink corner
+lot.police,Delegacia,Police station
+lot.residentialTerrace,Terraços residenciais,Residential terraces
+lot.roundGlass,Torre redonda,Round tower
+lot.school,Escola,School
+lot.stackedBlocks,Blocos empilhados,Stacked blocks
+lot.stepGarden,Jardim em degraus,Stepped garden
+lot.triangleDark,Triângulo escuro,Dark triangle
+lot.twinNavy,Torres gêmeas azuis,Navy twins
+lot.twistGreen,Torre torcida,Twisted tower
+lot.waveWhite,Onda branca,White wave
+lot.whiteBalcony,Sacadas brancas,White balconies

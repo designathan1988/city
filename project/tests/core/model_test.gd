@@ -13,7 +13,10 @@ const REACH_M := 12.0
 const WAIT_FRAMES := 240
 const SEARCH_STEP_M := 36.0
 
-const OPEN_OFF_M := 120.0
+const LOT_PROJECTS := 38
+const LOT_TRIES := 12
+const LOT_TRY_M := 10.0
+const OPEN_OFF_M := 300.0 # past a lot of the lot lab, the church 125 m deep: it stands clear of the ring road
 const OPEN_ROAD_M := 200.0
 const OPEN_REACH_M := 40.0
 const OPEN_PX := 0.25
@@ -35,6 +38,7 @@ func _ready() -> void:
 	_catalogue()
 	var road: Vector3 = _a_road()
 	_snap_and_refuse(road)
+	_lots(road)
 	_place_undo_redo(tools.active, road)
 	_weld(road)
 	_library()
@@ -54,6 +58,28 @@ func _catalogue() -> void:
 		_check(TranslationServer.translate("model.%s" % m.id) != "model.%s" % m.id, "%s: tem nome" % m.id)
 		var problem: String = CityStore.query(&"place_check", [a, 0.0, 0.0, 0.0])
 		_check(not problem in ["building.problem.size", "building.problem.footprint", "building.problem.support"], "%s: corpo válido: %s" % [m.id, problem])
+
+
+## The lots of the lot lab: all made into bodies, and one set down.
+func _lots(at: Vector3) -> void:
+	var lots := LotProjects.entries()
+	_check(lots.size() == LOT_PROJECTS, "todos os projetos de lote viram corpo: %d" % lots.size())
+	for e: Dictionary in lots:
+		_check(not (e.bytes as PackedByteArray).is_empty() and e.label != "lot." + e.key.trim_prefix("lot:"), "%s tem corpo e nome" % e.key)
+	var church: Dictionary = lots.filter(func(e: Dictionary) -> bool: return e.key == "lot:church")[0]
+	var size: Vector3 = CityStore.query(&"body_size", [church.bytes])
+	var fit: Dictionary = {}
+	var where := at
+	for k in LOT_TRIES: # the church is wider than a house: along the street till it stands clear of the other end
+		fit = CityStore.query(&"place_fit", [where, Vector2(size.x, size.y), 0.0])
+		if CityStore.query(&"place_check", [church.bytes, fit.x, fit.z, fit.rot]) == "":
+			break
+		where += Vector3(0, 0, LOT_TRY_M)
+	var before: int = CityStore.query(&"list_buildings").size()
+	var r: Dictionary = CityStore.dispatch(&"place_model", [church.bytes, fit.x, fit.z, fit.rot, church.function, church.zone])
+	print("igreja: ", r.get("error", "ok"), " tamanho ", size)
+	_check(r.get("ok", false) and CityStore.query(&"list_buildings").size() > before, "a igreja se coloca na rua: %s" % [r])
+	CityStore.dispatch(&"undo")
 
 
 ## A point by a road with nothing built where a house would stand: tried by setting one down, and taken back.

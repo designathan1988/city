@@ -88,6 +88,7 @@ func _entries() -> Array[Dictionary]:
 		out.append({"key": m.id, "label": tr("model.%s" % m.id), "group": m.group, "function": m.function, "zone": m.zone})
 	for m in ModelLibrary.list():
 		out.append({"key": m.key, "label": m.name, "group": MINE, "function": m.function, "zone": m.zone, "bytes": m.bytes})
+	out.append_array(LotProjects.entries())
 	return out
 
 
