@@ -17,12 +17,12 @@ constexpr float RAMP_CURVE_M = 8.f; // RAMP_CURVE: the sag curve at the foot of 
 constexpr float VERTICAL_CURVE_M = 4.8f; // VERTICAL_CURVE_REACH: half the length of the parabola at a change of grade
 constexpr float PLATE_TANGENT_M = 16.f; // PLATE_TANGENT_REACH: decay of the grade correction past a flat plate
 constexpr float PLATE_TANGENT_SHARE = 0.55f; // PLATE_TANGENT_SHARE: of the incoming grade cancelled at the plate
-constexpr float RAMP_CREST_RUN_M = 3.2f; // RAMP_CREST: the crest's rounding, as run at the ramp's grade
+constexpr float CREST_ROUND_RUN = 3.2f; // RAMP_CREST: the crest's rounding, as run at the ramp's grade
 constexpr float CURVE_PEAK = 1.5f; // CURVE_PEAK: peak-to-mean slope of the smoothstep of a vertical curve
 constexpr float TIE_REACH_M = 28.f; // TIE_REACH: how far past its plate a line is tied back to its node
 constexpr float TIE_MIN_M = 0.4f; // solveGround tieFor: the shortest tie, and its share of the road
 constexpr float TIE_ROAD_SHARE = 0.4f;
-constexpr float PLATE_BLEND_M = 16.f; // PLATE_BLEND: past a plate the ground stops being a ramp's floor
+constexpr float PLATE_FADE_OUT = 16.f; // PLATE_BLEND: past a plate the ground stops being a ramp's floor
 constexpr float RAMP_RELAX = 0.8f; // RAMP_RELAX: the share of a ramp over which the ground stops being a floor
 constexpr float STEEP_SHARE = 0.75f; // roundPlateJoins: a join is rounded where the limiter held it this near the grade
 constexpr float GRADE_SLACK = 1.1f; // the grade a span is given over what its two ends need
@@ -71,6 +71,15 @@ void envelope(std::vector<float> &h, float step, float grade, bool up) {
 	}
 }
 
+// The plates at their heights, and what `between` says for the stations between them (its index and its distance along).
+template <typename F>
+void between_plates(GradeProfile &p, float ha, float hb, F &&between) {
+	for (size_t i = 0; i < p.h.size(); i++) {
+		const float s = p.step * float(i);
+		p.h[i] = s <= p.plate_a ? ha : s >= p.len - p.plate_b ? hb : between(i, s);
+	}
+}
+
 // What a rounding of the grade starts from: its reach in samples, a copy of the heights and where the plates end.
 struct Rounding {
 	int radius, last;
@@ -86,14 +95,13 @@ void round_grade_breaks(GradeProfile &p, bool raise, bool into_plates) {
 	const Rounding g(p);
 	const int radius = g.radius, last = g.last;
 	const std::vector<float> &src = g.src;
-	const Means &m = g.means;
 	const float edge_a = g.edge_a, edge_b = g.edge_b;
 	for (int i = 0; i <= last; i++) {
 		if (float(i) <= edge_a || float(i) >= edge_b) continue;
 		const int r = into_plates ? std::min({ radius, i, last - i })
 								  : std::min({ radius, int(std::floor(float(i) - edge_a)), int(std::floor(edge_b - float(i))) });
 		if (r < 1) continue;
-		const float mean = m.inside(i, r);
+		const float mean = g.means.inside(i, r);
 		p.h[size_t(i)] = raise ? std::max(src[size_t(i)], mean) : mean;
 	}
 }
@@ -103,7 +111,6 @@ void round_plate_joins(GradeProfile &p, const GradeTune &t) {
 	const Rounding g(p);
 	const int radius = g.radius, last = g.last;
 	const std::vector<float> &src = g.src;
-	const Means &m = g.means;
 	const float edge_a = g.edge_a, edge_b = g.edge_b;
 	auto steep = [&](float from, int dir) {
 		const int i0 = int(std::lround(from)), i1 = i0 + dir * radius;
@@ -115,7 +122,7 @@ void round_plate_joins(GradeProfile &p, const GradeTune &t) {
 		if (float(i) <= edge_a || float(i) >= edge_b) continue;
 		if (!((near_a && float(i) - edge_a <= float(radius)) || (near_b && edge_b - float(i) <= float(radius)))) continue;
 		const int r = std::min({ radius, i, last - i });
-		if (r >= 1) p.h[size_t(i)] = m.inside(i, r);
+		if (r >= 1) p.h[size_t(i)] = g.means.inside(i, r);
 	}
 }
 
@@ -205,15 +212,10 @@ void solve_ground(GradeProfile &p, float ha, float hb, const GradeTune &t) {
 		return std::min(std::max(TIE_MIN_M, p.len * TIE_ROAD_SHARE), std::max(TIE_REACH_M, std::fabs(shift) * CURVE_PEAK / (t.ground * 0.5f)));
 	};
 	const float tie_a = tie_for(shift_a), tie_b = tie_for(shift_b);
-	for (size_t i = 0; i < p.h.size(); i++) {
-		const float s = p.step * float(i);
-		if (s <= p.plate_a) p.h[i] = ha;
-		else if (s >= p.len - p.plate_b) p.h[i] = hb;
-		else {
-			const float wa = 1.f - smoothstep(p.plate_a, p.plate_a + tie_a, s), wb = 1.f - smoothstep(p.plate_b, p.plate_b + tie_b, p.len - s);
-			p.h[i] = p.base[i] + shift_a * wa + shift_b * wb;
-		}
-	}
+	between_plates(p, ha, hb, [&](size_t i, float s) {
+		const float wa = 1.f - smoothstep(p.plate_a, p.plate_a + tie_a, s), wb = 1.f - smoothstep(p.plate_b, p.plate_b + tie_b, p.len - s);
+		return p.base[i] + shift_a * wa + shift_b * wb;
+	});
 	const float free = std::max(p.step, p.len - p.plate_a - p.plate_b);
 	const float grade = std::max(t.ground, std::fabs(hb - ha) / free * GRADE_SLACK);
 	for (int round = 0; round < PIN_ROUNDS; round++) {
@@ -256,7 +258,7 @@ void solve_variable(GradeProfile &p, float ha, float hb, const GradeTune &t) {
 }
 
 void solve_raised(GradeProfile &p, float ha, float hb, const RaisedEnds &e, const GradeTune &t) {
-	const float clearance = t.of(p.structure).clearance, crest = RAMP_CREST_RUN_M * t.ramp;
+	const float clearance = t.of(p.structure).clearance, crest = CREST_ROUND_RUN * t.ramp;
 	const bool near_landing = e.cap_a || e.cap_b;
 	const float edge_b = p.len - p.plate_b, run = std::max(TINY_RUN, edge_b - p.plate_a);
 	// The straight deck from end to end, nothing under it closer than its structure.
@@ -282,7 +284,7 @@ void solve_raised(GradeProfile &p, float ha, float hb, const RaisedEnds &e, cons
 	}
 	const float ramp_a = e.land_a ? ramp_length(std::max(0.f, start_h - ha), t) : 0.f;
 	const float ramp_b = e.land_b ? ramp_length(std::max(0.f, end_h - hb), t) : 0.f;
-	const float reach_a = std::max(PLATE_BLEND_M, ramp_a * RAMP_RELAX), reach_b = std::max(PLATE_BLEND_M, ramp_b * RAMP_RELAX);
+	const float reach_a = std::max(PLATE_FADE_OUT, ramp_a * RAMP_RELAX), reach_b = std::max(PLATE_FADE_OUT, ramp_b * RAMP_RELAX);
 	for (size_t i = 0; i < p.h.size(); i++) {
 		// The ground floor relaxed towards each junction.
 		const float s = p.step * float(i);
@@ -310,17 +312,12 @@ void solve_sunken(GradeProfile &p, float ha, float hb, float wanted, const Grade
 	const float need = (drop_a + drop_b) / slope, scale = need > run ? run / need : 1.f;
 	const float floor = std::min({ ha, hb, target + (1.f - scale) * std::max(drop_a, drop_b) });
 	const float ramp_a = std::max(0.f, (ha - floor) / slope), ramp_b = std::max(0.f, (hb - floor) / slope);
-	for (size_t i = 0; i < p.h.size(); i++) {
-		const float s = p.step * float(i);
-		if (s <= p.plate_a) p.h[i] = ha;
-		else if (s >= p.len - p.plate_b) p.h[i] = hb;
-		else {
-			const float along = s - p.plate_a, back = run - along;
-			const float down = ramp_a <= 0 ? floor : ha + (floor - ha) * ease(along / ramp_a);
-			const float up = ramp_b <= 0 ? floor : hb + (floor - hb) * ease(back / ramp_b);
-			p.h[i] = std::max(down, up); // the higher end wins, as the raised solver takes the lower
-		}
-	}
+	between_plates(p, ha, hb, [&](size_t, float s) {
+		const float along = s - p.plate_a, back = run - along;
+		const float down = ramp_a <= 0 ? floor : ha + (floor - ha) * ease(along / ramp_a);
+		const float up = ramp_b <= 0 ? floor : hb + (floor - hb) * ease(back / ramp_b);
+		return std::max(down, up); // the higher end wins, as the raised solver takes the lower
+	});
 	envelope(p.h, p.step, t.tunnel, false);
 	flatten_plates(p, ha, hb);
 }

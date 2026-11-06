@@ -10,7 +10,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
+constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
 constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
 constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
 constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
@@ -49,7 +49,7 @@ struct RoofEmit {
 void RoofEmit::edge(const Side &sd, bool terrace, Crown crown) {
 	const Body &b = *pl.b;
 	int n = bays_of(v, sd.side);
-	float W = sd.length / float(n), H = crown == CROWN_ATTIC ? ATTIC_H : PARAPET_H;
+	float W = sd.length / float(n), H = crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 	Paint cp = moulding_of(pl);
 	Lin coping = paint_lin(cp), roof = paint_lin(b.roof_of(v)) * INNER_SHADE, wall = wall_lin(pl, v, v.storeys - 1, sd.side);
 	int8_t wf = b.wall_of(v).finish;

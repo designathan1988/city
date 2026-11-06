@@ -103,7 +103,16 @@ func _step(step: Dictionary) -> void:
 		await ui.button(at, false)
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
-	elif step.has("record"):
+	elif step.has("until"):
+		await _until(step)
+	elif not await _measure_step(step):
+		failures += 1
+		print("FAIL unknown step: ", step)
+
+
+## The steps that read the servers. False: not one of them.
+func _measure_step(step: Dictionary) -> bool:
+	if step.has("record"):
 		measure.record()
 		recording = str(step.record)
 	elif step.has("recordEnd"):
@@ -121,11 +130,9 @@ func _step(step: Dictionary) -> void:
 		print("passes: %s" % [measure.passes()])
 	elif step.has("view"):
 		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(step.view)).to_upper())
-	elif step.has("until"):
-		await _until(step)
 	else:
-		failures += 1
-		print("FAIL unknown step: ", step)
+		return false
+	return true
 
 
 ## A plan's arguments for a command: {"at": [x, z]} the ground's point there, {"profile": id} a road class's index,

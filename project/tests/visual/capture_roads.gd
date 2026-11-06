@@ -76,7 +76,7 @@ func _run() -> void:
 		_spots(probe)
 	print("erro do ponteiro: %.2f px" % await ui.pointer_error(at(0, -120), TOP, POINTER_VIEWS_M, POINTER_AIMS))
 	if "--tool-only" in OS.get_cmdline_user_args():
-		await _tool()
+		await CaptureRoadTools.new(self).run()
 		print("FALHAS: ", failures)
 		get_tree().quit(1 if failures > 0 else 0)
 		return
@@ -108,7 +108,7 @@ func _run() -> void:
 	await _photo("t_close", at(90, 100), [0.0, 90.0], CLOSE_M)
 	await _night()
 	if only.is_empty():
-		await _tool()
+		await CaptureRoadTools.new(self).run()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -197,69 +197,6 @@ func _worn(p: Vector3) -> void:
 
 
 ## The tool as the player uses it: the drawer, a stretch held by a click, a curve waiting for its bend, a freehand stroke.
-func _tool() -> void:
-	rig.jump(at(40, -320), 0.0, 70.0, WIDE_M)
-	await ui.drawn()
-	hud.open_category("roads")
-	await ui.frames(4)
-	await ui.shot("tool_drawer")
-	await ui.click(at(-120, -380))
-	await ui.hover(at(120, -380))
-	await ui.shot("tool_chain")
-	tools.active.cancel()
-	var street: int = profiles["urbanStreet"]
-	tools.set_tool(ToolController.Tool.ROAD, {"profile": street, "alignment": 1, "curve": true})
-	await ui.click(at(-120, -300))
-	await ui.click(at(120, -300))
-	await ui.hover(at(0, -420))
-	await ui.shot("tool_curve_bend")
-	tools.active.cancel()
-	if StoreApi.COMMANDS.has(&"build_road_path"):
-		await _freehand(street)
-	if ToolController.Tool.has("MOVE"):
-		await _node_tools()
-	hud.drawer.close()
-
-
-## The Controle and Mover tabs on the urban crossing.
-func _node_tools() -> void:
-	var junction := at(0, -120)
-	rig.jump(junction, 0.0, 70.0, NODE_VIEW_M)
-	await ui.drawn()
-	tools.set_tool(ToolController.Tool.CONTROL, {})
-	await ui.hover(junction)
-	await ui.shot("tool_control")
-	await ui.click(junction)
-	await ui.hover(at(60, -60))
-	await ui.shot("tool_control_signal")
-	tools.set_tool(ToolController.Tool.MOVE, {})
-	await ui.hover(junction)
-	await ui.button(rig.camera.unproject_position(junction), true)
-	for i in range(1, DRAG_STEPS + 1):
-		await ui.hover(junction.lerp(at(30, -100), float(i) / DRAG_STEPS))
-	await ui.shot("tool_move")
-	await ui.button(rig.camera.unproject_position(at(30, -100)), false)
-	await ui.drawn()
-	await ui.shot("tool_moved")
-
-
-func _freehand(street: int) -> void:
-	tools.set_tool(ToolController.Tool.ROAD, {"profile": street, "alignment": 2})
-	var s0: int = CityStore.snapshot.segments
-	var start := at(-180, -470)
-	await ui.hover(start)
-	await ui.button(rig.camera.unproject_position(start), true)
-	var end := start
-	for i in range(1, STROKE_STEPS + 1):
-		end = at(-180 + i * 9.0, -470 + STROKE_SWING_M * sin(i * 0.3))
-		await ui.hover(end)
-	await ui.shot("tool_free_stroke")
-	await ui.button(rig.camera.unproject_position(end), false)
-	await ui.drawn()
-	_check(CityStore.snapshot.segments > s0, "traço à mão assentado (%d -> %d)" % [s0, CityStore.snapshot.segments])
-	await ui.shot("tool_free_laid")
-
-
 func _check(ok: bool, what: String) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	if not ok:

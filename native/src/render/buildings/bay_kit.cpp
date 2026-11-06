@@ -12,7 +12,7 @@ namespace city::b40 {
 namespace {
 // The lines of a bay (building_bay.gdshaderinc).
 constexpr float LEFT = 0, SILL_LEFT = 0.5f, JAMB_LEFT = 1, JAMB_RIGHT = 2, SILL_RIGHT = 2.5f, RIGHT = 3;
-constexpr float FLOOR = 0, UNDER_SILL = 0.5f, SILL = 1, HEAD = 2, TOP = 3;
+constexpr float WALL_FOOT = 0, UNDER_SILL = 0.5f, SILL = 1, HEAD = 2, TOP = 3;
 constexpr float WALL_PLANE = 0, PANE_PLANE = -1, SILL_PLANE = 1;
 enum PieceKind { PIECE_WALL, PIECE_REVEAL, PIECE_PANE, PIECE_SILL };
 const Vector3 ALONG(1, 0, 0), UP(0, 1, 0), OUT(0, 0, 1);
@@ -30,9 +30,9 @@ void wall(MeshBuilder &mb, float x0, float x1, float y0, float y1) {
 
 Ref<ArrayMesh> bay_mesh() {
 	MeshBuilder mb;
-	wall(mb, LEFT, JAMB_LEFT, FLOOR, TOP);
-	wall(mb, JAMB_RIGHT, RIGHT, FLOOR, TOP);
-	wall(mb, JAMB_LEFT, JAMB_RIGHT, FLOOR, SILL);
+	wall(mb, LEFT, JAMB_LEFT, WALL_FOOT, TOP);
+	wall(mb, JAMB_RIGHT, RIGHT, WALL_FOOT, TOP);
+	wall(mb, JAMB_LEFT, JAMB_RIGHT, WALL_FOOT, SILL);
 	wall(mb, JAMB_LEFT, JAMB_RIGHT, HEAD, TOP);
 	const Vector3 bl(JAMB_LEFT, SILL, WALL_PLANE), br(JAMB_RIGHT, SILL, WALL_PLANE), tl(JAMB_LEFT, HEAD, WALL_PLANE), tr(JAMB_RIGHT, HEAD, WALL_PLANE);
 	const Vector3 deep(0, 0, PANE_PLANE);

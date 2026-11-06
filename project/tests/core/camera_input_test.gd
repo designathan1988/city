@@ -38,7 +38,8 @@ func _ready() -> void:
 	await _zoom_test()
 	await _orbit_tests()
 	await _limit_tests()
-	await CameraKeyCases.new(self).run()
+	await _key_tests()
+	await CameraRoadKeyCases.new(self).run()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -141,6 +142,24 @@ func _limit_tests() -> void:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
 	await _glide_settled()
 	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "zoom máximo: meia altura %.0f m" % rig.half)
+
+
+func _key_tests() -> void:
+	_home()
+	await _frames(1)
+	var f0 := rig.focus
+	var fwd := Vector3(-sin(rig.yaw), 0, -cos(rig.yaw))
+	await _hold_key(KEY_W, false, 0.5)
+	_check((rig.focus - f0).dot(fwd) > 0.0, "W anda para a frente (%.1f m)" % (rig.focus - f0).dot(fwd))
+	var yaw0 := rig.yaw
+	await _hold_key(KEY_Q, false, 0.3)
+	_check(angle_difference(yaw0, rig.yaw) > 0.0, "Q gira")
+	await _glide_settled()
+	yaw0 = rig.yaw
+	await _hold_key(KEY_E, true, 0.05)
+	await _glide_settled()
+	var quarter := angle_difference(yaw0, rig.yaw)
+	_check(absf(quarter + deg_to_rad(cfg.quarter_turn_deg)) < EPS, "Shift+E: um quarto de volta (%.1f graus)" % rad_to_deg(quarter))
 
 
 func _drag(button: MouseButton, from: Vector2, to: Vector2, shift: bool, still: bool) -> void:

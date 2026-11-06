@@ -53,7 +53,7 @@ func press(event: InputEvent) -> bool:
 	var h := rig.height_under(at)
 	drag = {"kind": &"pan" if pan else &"orbit", "button": b, "pressed": at, "last": at, "height": h,
 			"moved": false, "grabbed": null}
-	if pan and rig.holds(at, h):
+	if pan and CameraAim.holds(rig, at, h):
 		drag.grabbed = rig.hit_at(at, h)
 	samples = [Vector3(at.x, at.y, _now())]
 	return true

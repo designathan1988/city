@@ -26,7 +26,7 @@ constexpr float DISC_INSIDE_FADE_M = 8.f; // balancedAtNode: the disc stops this
 constexpr int DISC_RINGS = 2, DISC_POINTS = 8;
 constexpr float DISC_TWIST = 0.4f; // radians a ring turns from the one inside it
 constexpr float TAU_F = 6.28318531f;
-const float NONE = std::numeric_limits<float>::infinity();
+const float NONE = INFINITY;
 
 struct Solve {
 	RoadGrade &g;

@@ -14,7 +14,7 @@ namespace city {
 namespace {
 constexpr int COMPOSE_BLOCK = 64; // samples per side of a block of the held composition (256 m at 4 m spacing)
 constexpr float EDGE_M = 0.01f; // regions of the pieces overlap this much: a sample on an edge, rounded, is never left out
-constexpr float PIECE_MIN_M = 1e-4f; // a piece (or a half-plane normal component) shorter than this has no direction
+constexpr float SHORTEST_EDGE = 1e-4f; // a piece (or a half-plane normal component) shorter than this has no direction
 
 struct Half { // the half-plane nx * x + nz * z <= c
 	float nx, nz, c;
@@ -117,7 +117,7 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 	for (size_t i = 0; i < pieces; i++) {
 		const V2 d = at(i + 1) - at(i);
 		const float l = d.len();
-		if (l > PIECE_MIN_M) dir[i] = d * (1.f / l); // a piece shorter than that has no direction: its disc covers it
+		if (l > SHORTEST_EDGE) dir[i] = d * (1.f / l); // a piece shorter than that has no direction: its disc covers it
 	}
 	const float r = reach + EDGE_M;
 	auto visit = [&](size_t i, int x, int z) {
@@ -138,7 +138,7 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 			float lo = std::max(minx, x_of(ax0)), hi = std::min(maxx, x_of(ax1));
 			for (int k = 0; k < nh && lo <= hi; k++) {
 				const float rest = h[k].c - h[k].nz * zw;
-				if (std::fabs(h[k].nx) < PIECE_MIN_M) {
+				if (std::fabs(h[k].nx) < SHORTEST_EDGE) {
 					if (rest < 0.f) lo = hi + 1.f;
 				} else if (h[k].nx > 0.f) {
 					hi = std::min(hi, rest / h[k].nx);

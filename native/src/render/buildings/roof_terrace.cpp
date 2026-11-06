@@ -20,7 +20,7 @@ constexpr float BEAM_W = 0.12f, BEAM_LO = 2.25f, SLAT_EVERY = 0.6f, SLAT_W = 0.0
 constexpr float TANK_IN = 1.4f, TANK = 1.4f, TANK_H = 0.95f, RIM = 1.56f, RIM_H = 0.2f, RIM_SHADE = 0.82f;
 constexpr float HALF = 0.5f, POTS = 0.8f, LOUNGERS = 0.6f, PERGOLA = 0.45f, TANKS = 0.65f;
 constexpr uint32_t ID_MUL = 2654435761u, VOL_MUL = 40503u, K_MUL = 131u, SEED_MOD = 1000u;
-constexpr int K_DECK = 1, K_POT = 5, K_POTS = 6, K_TABLES = 7, K_LOUNGE = 8, K_PERGOLA = 9, K_TANK = 10, K_TANK_COL = 11;
+constexpr int K_BOARDS = 1, K_POT = 5, K_POTS = 6, K_TABLES = 7, K_LOUNGE = 8, K_PERGOLA = 9, K_TANK = 10, K_TANK_COL = 11;
 
 float seed_k(uint32_t id, int vol, int k) {
 	return float((id * ID_MUL + uint32_t(vol) * VOL_MUL + uint32_t(k) * K_MUL) % SEED_MOD) / float(SEED_MOD);
@@ -34,7 +34,7 @@ void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volum
 	auto sd = [&](int k) { return seed_k(pl.id, vol, k); };
 	Lin wood = paint_lin(data.color("deck")), pot = paint_lin(data.color("pot")), soil = paint_lin(data.color("soil"));
 	Lin plaster = paint_lin(data.color("parasol")), trim = trim_lin(pl);
-	float x0 = v.x + DECK_IN, x1 = v.x + v.w * (DECK_SHARE + DECK_SPAN * sd(K_DECK)), y0 = v.y + DECK_IN, y1 = v.y + v.d - DECK_IN;
+	float x0 = v.x + DECK_IN, x1 = v.x + v.w * (DECK_SHARE + DECK_SPAN * sd(K_BOARDS)), y0 = v.y + DECK_IN, y1 = v.y + v.d - DECK_IN;
 	shell.box(L, x0, x1, y0, y1, z, z + DECK_T, wood, FIN_WOOD, SKIP_E2_NEG);
 	float top = z + DECK_T;
 	if (sd(K_POTS) < POTS)

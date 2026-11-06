@@ -15,7 +15,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float ROUGH = 1.f, METAL = 0.02f; // the material's UV: a kind of box's roughness and metal
+constexpr float BOX_ROUGHNESS = 1.f, METAL = 0.02f; // the material's UV: a kind of box's roughness and metal
 constexpr uint32_t CONCRETE_RGB = 0x9fa4a2U; // the 4.0's piers and mouths
 constexpr uint32_t DECK_RGB = 0xa7a6a1U; // the 4.0's deck's tone
 constexpr float SOFFIT_BAND_M = 0.144f; // the road's own build-up over the deck's structure (structures.ts)
@@ -29,7 +29,7 @@ constexpr float FOOT_SINK_M = 0.5f; // a column goes this far into the ground
 constexpr float ABUTMENT_SINK_M = 1.f;
 constexpr float BENT_FIRST = 0.5f, BENT_LAST = 0.35f; // of a spacing: the first bent of a road, and how far from its end the last
 constexpr float EDGE_IN_M = 0.02f; // a parapet stands this far in from the casing's edge
-constexpr float PARAPET_FOOT_UNDER_M = 0.12f;
+constexpr float GUARD_BASE_UNDER_M = 0.12f;
 constexpr float GROWN = 0.001f; // a parapet of less than this share of its height is none
 constexpr float PORTAL_STEP_MOST_M = 2.4f, PORTAL_STEP_LEAST_M = 0.8f, PORTAL_STEP_SHARE = 1.f / 200.f;
 constexpr float JAMB_M = 0.88f, CROWN_OVER_M = 0.6f, GROUND_OVER_M = 0.8f, LINTEL_LEAST_M = 0.32f, HEADWALL_OUT_M = 0.64f, HEADWALL_H_M = 0.36f;
@@ -62,7 +62,7 @@ void slab(MeshBuilder &mb, const Vector3 &o, const Vector3 &fwd, const Vector3 &
 
 // A column: `width` the radius of its head, its foot flared, open under the ground.
 void column(MeshBuilder &mb, const Vector3 &foot, float top, float width, const Color &col) {
-	const Vector2 t(ROUGH, METAL);
+	const Vector2 t(BOX_ROUGHNESS, METAL);
 	std::vector<int> rim;
 	for (int i = 0; i <= PIER_SIDES; i++) {
 		const float a = TAU_F * float(i) / float(PIER_SIDES);
@@ -197,7 +197,7 @@ struct Deck {
 			const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
 			const Vector3 o = f.left * side, at = f.c + o * edge;
 			const float grow = smooth(tn.structure_parapet_from_m, tn.structure_parapet_full_m, f.c.y - ground(at));
-			sec.push_back({ at, -o, f.c.y - PARAPET_FOOT_UNDER_M, f.c.y + SOFFIT_BAND_M + tn.structure_parapet_height_m * grow, grow, f.fwd });
+			sec.push_back({ at, -o, f.c.y - GUARD_BASE_UNDER_M, f.c.y + SOFFIT_BAND_M + tn.structure_parapet_height_m * grow, grow, f.fwd });
 		}
 		const float foot_w = tn.structure_parapet_foot_m, top_w = tn.structure_parapet_top_m;
 		auto point = [&](const Section &q, float in, float y) { return Vector3(q.out.x + q.in.x * in, y, q.out.z + q.in.z * in); };
@@ -270,7 +270,7 @@ void portals(const RoadEmit &e, int sid, const Tuning &tn) {
 Color structure_concrete() { return rgb8_to_color(CONCRETE_RGB); }
 
 void structure_face(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &d, const Color &col, const Vector3 &out) {
-	const Vector2 uv[4] = { Vector2(ROUGH, METAL), Vector2(ROUGH, METAL), Vector2(ROUGH, METAL), Vector2(ROUGH, METAL) };
+	const Vector2 uv[4] = { Vector2(BOX_ROUGHNESS, METAL), Vector2(BOX_ROUGHNESS, METAL), Vector2(BOX_ROUGHNESS, METAL), Vector2(BOX_ROUGHNESS, METAL) };
 	mb.quad(a, b, c, d, col, out, uv);
 }
 

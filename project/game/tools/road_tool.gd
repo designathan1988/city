@@ -42,7 +42,7 @@ func enter() -> void:
 		drawn = profile
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
-	CityStore.dispatch(&"set_road_walls", [Settings.road_walls])
+	CityStore.dispatch(&"set_road_walls", [Settings.road.walls])
 	ctl.hint.emit("", true)
 
 
@@ -127,9 +127,9 @@ func key(keycode: Key) -> void:
 	match RoadKeys.action_of(keycode):
 		RoadKeys.ALIGNMENT:
 			ctl.set_tool(ToolController.Tool.ROAD, params.merged({"alignment": (alignment + 1) % Alignment.size()}, true))
-		RoadKeys.HEIGHT_UP:
+		RoadKeys.RAISE:
 			step_height(1)
-		RoadKeys.HEIGHT_DOWN:
+		RoadKeys.LOWER:
 			step_height(-1)
 
 
@@ -160,7 +160,7 @@ func _aim(ground: Vector3) -> Vector3:
 
 
 func _snap() -> Dictionary:
-	return Settings.road_snap
+	return Settings.road.snap
 
 
 func _start_at(p: Vector3) -> Vector3:

@@ -132,24 +132,6 @@ func hit_at(screen: Vector2, h: float) -> Variant:
 	return o + d * t if t > 0.0 else null
 
 
-## The plane a zoom or turn holds: the ground's own if the ray meets it within `hold_reach` view distances, else
-## the height the ray has reached there (a pointer over the horizon holds a point in the air, not one at infinity).
-func hold_height(screen: Vector2, h: float) -> float:
-	var o := camera.project_ray_origin(screen)
-	var d := camera.project_ray_normal(screen)
-	var limit: float = cfg.hold_reach * camera.global_position.distance_to(focus)
-	if absf(d.y) >= PARALLEL:
-		var t := (h - o.y) / d.y
-		if t > 0.0 and t <= limit:
-			return h
-	return o.y + d.y * limit
-
-
-## Whether a pan can grab the ground under the pointer (else it slides by the drag).
-func holds(screen: Vector2, h: float) -> bool:
-	return is_equal_approx(hold_height(screen, h), h)
-
-
 ## Screen pixels per metre at the point looked at.
 func px_per_m() -> float:
 	var h := get_viewport().get_visible_rect().size.y
@@ -194,7 +176,7 @@ func slide(right: float, forward: float) -> void:
 
 ## Applies `change` and brings the ground point that was under `screen` back under it.
 func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = null) -> void:
-	var at_h := h if grabbed != null else hold_height(screen, h)
+	var at_h := h if grabbed != null else CameraAim.hold_height(self, screen, h)
 	var before: Variant = grabbed if grabbed != null else hit_at(screen, at_h)
 	change.call()
 	_apply()
