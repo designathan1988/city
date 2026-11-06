@@ -253,6 +253,9 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 
 - Erro meu, corrigido pela sessão de migração (`7e82f8c5`): o `ShadowTwin` das peças de sacada usava `chunk_box`, com centro a 250 m de altura, e a faixa de visibilidade mede até esse centro; os 200 m de `cast_props_m` nunca o alcançavam, e do chão as peças perderam a sombra entre `df5a319f` e esse commit. Eu não tinha fotografado o caso. Com `rows_box`, a foto de perto mostra a sombra do condensador na parede. Os custos de `perto` medidos neste ciclo são de antes dessa correção e não valem mais para prédios.
 
+- Causa 6, filtro da sombra: `medium`, `high` e `ultra` usavam Soft Ultra, 32 amostras por pixel de todo o que recebe sol (`renderer_scene_render_rd.cpp`; o padrão do Godot, Soft Low, usa 4), e a largura da borda estava presa ao filtro. `Daylight.set_filter` mantém a largura em qualquer filtro; os três níveis passam a Soft High, 16 amostras. Fotos em 4 vistas com a mesma largura: 16 indistinguível de 32, ampliado; 8 já mostra grão.
+- Achado: as medidas deste ciclo são do `medium` (`tests_preset`), mas numa RTX 3060 o `auto` escolhe `ultra`, com oclusão de tela, SMAA, pós-processamento e 4x a vegetação. Ninguém mediu o `ultra` em `perto`: o quadro real do jogador nesta máquina não é o da tabela.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
