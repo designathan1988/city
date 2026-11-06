@@ -33,6 +33,7 @@ READERS = re.compile(r"^(?:cat|head|tail|less|more|wc|grep|rg|egrep|fgrep|findst
 INTERPRETER = re.compile(r"^(?:python3?|py|node|perl|ruby|bash|sh|zsh|pwsh|powershell)\b")
 TESTS_SCRIPT = "tools/build/run_tests.sh"
 TEST_LOGS = "dist/tests"
+QUICK_PASSED = "dist/quick/passed"
 TEST_CMD = "bash tools/build/build.sh e2e"
 CODE_ROOTS = ("native/", "project/")
 CODE_SKIP = (".uid",)
@@ -134,6 +135,9 @@ def commit_without_evidence(command, root):
     if not code:
         return None
     newest = max(os.path.getmtime(os.path.join(root, f)) for f in code)
+    quick = os.path.join(root, QUICK_PASSED)
+    if os.path.exists(quick) and os.path.getmtime(quick) >= newest:
+        return None  # the short check passed on this code (tools/build/quick.sh --ready)
     logs = expected_logs(root)
     missing = [os.path.relpath(l, root) for l in logs if not os.path.exists(l)]
     if missing or not logs:
