@@ -233,7 +233,7 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 		Pose ph;
 		lane_pose(s, din, 0, g.ds[din].len, ph);
 		for (int so : arms) {
-			if (so == si && degree > 1) continue;
+			if (so == si && degree > 1 && net.uturn_arm(n) != si) continue;
 			int dout = out_ds(net, so, n);
 			if (!g.ds[dout].ok) continue;
 			Pose po;

@@ -56,6 +56,8 @@ constexpr uint16_t flags_reversed(uint16_t f) {
 // What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
+// A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.
+enum NodeUturn : uint8_t { UTURN_NONE, UTURN_FROM_LOW, UTURN_FROM_HIGH };
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
 // What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
 // stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
@@ -85,6 +87,7 @@ struct RoadNode {
 	bool joint = false; // two arms in line: one street going on
 	bool plain = false; // a dead end ends in a straight cut: every player road's, until set_road_end asks for a bulb
 	uint8_t crossing = CROSSING_NONE; // NodeCrossing
+	uint8_t uturn = UTURN_NONE; // NodeUturn
 	std::vector<LaneLink> links; // an arriving lane named here goes only where these say (save_links.h)
 };
 
@@ -152,6 +155,7 @@ public:
 	bool mid_block(int node) const; // a crossing between junctions
 	int crossing_arm(int node) const; // which of its two arms carries the crosswalk: a rule, no id to outlive an edit
 	bool crosswalk_on(int node, int seg) const; // a crosswalk painted over `seg` at that node
+	int uturn_arm(int node) const; // the arm whose traffic may turn back at a node of two arms, -1 none
 	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).
 	void refresh_node(int n);
 	void mark_segment(int s); // its road chunks and lot cells

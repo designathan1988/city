@@ -69,6 +69,7 @@ std::vector<Arm> network_arms(const CityState &s, int n) {
 
 Control decide(const RoadNode &node, const std::vector<Arm> &arms, const TrafficParams &tp) {
 	if (node.crossing != CROSSING_NONE && arms.size() == 2) return node.crossing == CROSSING_SIGNAL ? Control::SIGNAL : Control::PRIORITY;
+	if (node.uturn != UTURN_NONE && arms.size() == 2) return Control::PRIORITY; // who turns back gives way to who goes on (outranks)
 	if (arms.size() < 3) return Control::NONE;
 	if (node.ctl == CTL_SIGNAL) return Control::SIGNAL;
 	if (node.ctl != CTL_AUTO) return Control::PRIORITY; // stop, yield, none and mini: by rank, each leg's set in build_junction

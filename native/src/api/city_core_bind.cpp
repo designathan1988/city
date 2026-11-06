@@ -65,6 +65,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("join_roads", "node"), &CityCore::join_roads);
 	ClassDB::bind_method(D_METHOD("add_crossing", "position", "kind"), &CityCore::add_crossing);
 	ClassDB::bind_method(D_METHOD("remove_crossing", "node"), &CityCore::remove_crossing);
+	ClassDB::bind_method(D_METHOD("add_uturn", "position", "toward_b"), &CityCore::add_uturn);
 	ClassDB::bind_method(D_METHOD("set_road_end", "node", "bulb"), &CityCore::set_road_end);
 	ClassDB::bind_method(D_METHOD("upgrade_road", "position", "profile", "whole_street"), &CityCore::upgrade_road);
 	ClassDB::bind_method(D_METHOD("roundabout", "position", "radius", "cut"), &CityCore::roundabout);

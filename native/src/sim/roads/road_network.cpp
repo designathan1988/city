@@ -213,6 +213,12 @@ int RoadNetwork::crossing_arm(int node) const {
 	return std::min(n.segs[0], n.segs[1]);
 }
 
+int RoadNetwork::uturn_arm(int node) const {
+	const RoadNode &n = nodes[size_t(node)];
+	if (n.uturn == UTURN_NONE || n.segs.size() != 2) return -1;
+	return n.uturn == UTURN_FROM_LOW ? std::min(n.segs[0], n.segs[1]) : std::max(n.segs[0], n.segs[1]);
+}
+
 bool RoadNetwork::crosswalk_on(int node, int seg) const {
 	return has_crosswalks(node) && (!mid_block(node) || seg == crossing_arm(node));
 }

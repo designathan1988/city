@@ -178,6 +178,8 @@ EditResult join_roads(CityState &s, int node);
 // A crossing where the road passes (x, z), between junctions, or where it passes one (road_crossing.cpp); taken away by its node.
 EditResult add_crossing(CityState &s, double x, double z, int kind);
 EditResult remove_crossing(CityState &s, int node);
+// A U-turn through the median where the road passes (x, z), for the traffic heading for its end b or for its end a.
+EditResult add_uturn(CityState &s, double x, double z, bool toward_b);
 // The Controle tab: what a junction of three or more arms runs by (NodeControl).
 EditResult set_node_control(CityState &s, int node, int ctl);
 // The Move tab: the node goes to (x, z) and its roads are laid again to it, each keeping its shape, zones and direction;

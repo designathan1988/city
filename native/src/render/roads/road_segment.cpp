@@ -11,6 +11,9 @@ using namespace godot;
 namespace city {
 
 namespace {
+
+constexpr double UTURN_NOSES = 3; // the entry side of a U-turn's opening, in median noses
+
 constexpr float BIG_D = 1e9f;
 constexpr float ROAD_MIN_SPAN = 0.05f, ISLAND_MIN_M = 1.f; // shorter than this no island is drawn
 
@@ -209,7 +212,13 @@ void emit_segment(const RoadEmit &e, int sid) {
 	float island0, island1;
 	const bool island = island_span(p, island0, island1);
 	const double nose = e.s.catalog.furniture.crossing.zebra_to_m + e.L.median_nose;
-	const double lo = island && ca ? v0 + nose : v0, hi = island && cb ? v1 - nose : v1;
+	// A U-turn's opening: a nose on the side it is entered from, a car's half circle on the other (landscape.ts medianNose).
+	const auto opening = [&](int node) {
+		const int arm = e.s.roads.uturn_arm(node);
+		return arm < 0 ? 0.0 : arm == sid ? double(e.L.median_nose) * UTURN_NOSES : double(e.s.catalog.tune.road_uturn_opening_m);
+	};
+	const double open_a = opening(g.a), open_b = opening(g.b);
+	const double lo = island && (ca || open_a > 0) ? v0 + std::max(ca ? nose : 0.0, open_a) : v0, hi = island && (cb || open_b > 0) ? v1 - std::max(cb ? nose : 0.0, open_b) : v1;
 	std::vector<Sample> sm = samples(e, sid, v0, v1, ca, cb, lo, hi);
 	std::vector<Piece> ps = pieces_of(e.L, p);
 	const LampRow lamp = lamp_row(e.s.roads, sid);

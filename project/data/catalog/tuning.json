@@ -48,6 +48,8 @@
  },
  "road": {
   "min_len_m": 8,
+  "uturn_opening_m": 10,
+  "uturn_radius_m": 3,
   "snap_m": 8,
   "snap_end_m": 6,
   "max_seg_m": 112,

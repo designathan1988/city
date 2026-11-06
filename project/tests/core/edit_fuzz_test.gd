@@ -125,7 +125,7 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 21)
+	var kind := rng.randi_range(0, 22)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
@@ -162,6 +162,8 @@ func _shape(kind: int, road: Vector3) -> void:
 		CityStore.dispatch(&"join_roads", [node])
 	elif kind == 21:
 		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(1, 2)])
+	elif kind == 22:
+		CityStore.dispatch(&"add_uturn", [road, rng.randf() < 0.5])
 
 
 ## What is not a road: relief, street pieces, a barrier, a drawn building, a stop, a bomb, the demolish box.

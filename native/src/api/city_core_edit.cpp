@@ -108,6 +108,10 @@ Dictionary CityCore::add_crossing(const Vector3 &p, int kind) {
 	return run_edit(*state_, "cmd.place.crossing", [&](CityState &s) { return city::add_crossing(s, p.x, p.z, kind); });
 }
 
+Dictionary CityCore::add_uturn(const Vector3 &p, bool toward_b) {
+	return run_edit(*state_, "cmd.place.uturn", [&](CityState &s) { return city::add_uturn(s, p.x, p.z, toward_b); });
+}
+
 Dictionary CityCore::remove_crossing(int node) {
 	return run_edit(*state_, "cmd.place.crossing", [&](CityState &s) { return city::remove_crossing(s, node); });
 }

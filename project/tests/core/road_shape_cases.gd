@@ -13,6 +13,7 @@ const BEND_M := 30.0
 const MIDDLE := 0.5
 const SAME_M := 2.0
 const TICKS := 5
+const UTURN_OFF_M := 80.0
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
 
 var _check: Callable
@@ -36,6 +37,7 @@ func run(e: Vector3) -> void:
 	_bend(info, mid)
 	_join(a + (b - a) * QUARTER)
 	_crossing(a + (b - a) * QUARTER)
+	_uturn(e)
 
 
 func _height(info: Dictionary) -> void:
@@ -83,6 +85,38 @@ func _crossing(at: Vector3) -> void:
 		CityStore.dispatch(&"add_crossing", [at, kind])
 		CityStore.step_ticks(TICKS)
 		CityStore.dispatch(&"undo")
+
+
+func _uturn(e: Vector3) -> void:
+	var a := e + Vector3(OFF_M, 0, UTURN_OFF_M)
+	var b := a + Vector3(ROAD_M, 0, 0)
+	var at := a + (b - a) * QUARTER
+	var refused: Dictionary = CityStore.dispatch(&"add_uturn", [_lay(a, b, "urbanStreet"), true])
+	_check.call(not refused.get("ok", true), "sem canteiro nÃ£o hÃ¡ retorno: %s" % [refused.get("error", "")])
+	a += Vector3(0, 0, UTURN_OFF_M)
+	b += Vector3(0, 0, UTURN_OFF_M)
+	at = a + (b - a) * QUARTER
+	_lay(a, b, "cityAvenue")
+	var before: Dictionary = CityStore.query(&"state_hash")
+	var made: Dictionary = CityStore.dispatch(&"add_uturn", [at, true])
+	_check.call(made.get("ok", false), "retorno pelo canteiro: %s" % [made])
+	var node: Dictionary = CityStore.query(&"inspect", [at])
+	_check.call(node.get("kind", "") == "node" and int(node.uturn) != 0, "o Inspecionar pega o retorno")
+	CityStore.dispatch(&"undo")
+	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer o retorno volta Ã  mesma cidade")
+	CityStore.dispatch(&"add_uturn", [at, false])
+	CityStore.step_ticks(TICKS)
+	CityStore.dispatch(&"undo")
+
+
+func _lay(a: Vector3, b: Vector3, id: String) -> Vector3:
+	var index := -1
+	for p: Dictionary in CityStore.query(&"road_profiles"):
+		if p.id == id:
+			index = p.index
+	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, index, PX, 0.0])
+	_check.call(laid.get("ok", false), "via %s: %s" % [id, laid])
+	return (a + b) * 0.5
 
 
 func _join(mid: Vector3) -> void:

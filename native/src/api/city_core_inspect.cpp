@@ -68,6 +68,7 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 	const RoadBend bend = road_bend_of(road_line(s.roads, seg));
 	d["bend_m"] = bend.height;
 	d["bend_at"] = bend.at;
+	d["median"] = std::any_of(p.strips.begin(), p.strips.end(), [](const Strip &st) { return st.kind == StripKind::MEDIAN; }) && !p.one_way;
 }
 
 // A node: what it is, and when a signal rules it what the player set on it (a change shows at once, the traffic takes it up on its
@@ -78,6 +79,7 @@ void put_node(const CityState &s, const TrafficView &view, Dictionary &d, int no
 	d["lift"] = s.roads.nodes[size_t(node)].lift;
 	d["arms"] = int(s.roads.nodes[size_t(node)].segs.size());
 	d["crossing"] = int(s.roads.nodes[size_t(node)].crossing);
+	d["uturn"] = int(s.roads.nodes[size_t(node)].uturn);
 	if (size_t(node) >= view.junction.size() || !view.junction[size_t(node)].signal) return;
 	const JunctionView &j = view.junction[size_t(node)];
 	if (j.stages == 0 || size_t(j.least_from + j.stages) > view.least.size()) return;
@@ -125,7 +127,7 @@ int nearest_building(const CityState &s, const Vector3 &p) {
 static bool is_point(const RoadNetwork &net, int node) {
 	const std::vector<int> &arms = net.nodes[size_t(node)].segs;
 	if (arms.size() != 2) return arms.size() > 2;
-	if (net.nodes[size_t(node)].crossing != CROSSING_NONE) return true;
+	if (net.nodes[size_t(node)].crossing != CROSSING_NONE || net.nodes[size_t(node)].uturn != UTURN_NONE) return true;
 	const std::vector<int> road = net.pieces_of(arms[0]);
 	return std::find(road.begin(), road.end(), arms[1]) == road.end();
 }

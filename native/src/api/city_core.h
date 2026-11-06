@@ -104,6 +104,7 @@ public:
 	godot::Dictionary join_roads(int node);
 	godot::Dictionary add_crossing(const godot::Vector3 &p, int kind);
 	godot::Dictionary remove_crossing(int node);
+	godot::Dictionary add_uturn(const godot::Vector3 &p, bool toward_b);
 	godot::Dictionary set_road_end(int node, bool bulb);
 	godot::Dictionary move_node(int node, const godot::Vector3 &p);
 	godot::Dictionary set_node_control(int node, int ctl);

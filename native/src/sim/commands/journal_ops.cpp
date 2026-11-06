@@ -96,6 +96,18 @@ void j_set_crossing(CityState &s, int n, uint8_t kind) {
 	s.log.net_node(n);
 }
 
+void j_set_uturn(CityState &s, int n, uint8_t kind) {
+	RoadNode &nd = s.roads.nodes[n];
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_UTURN, n);
+		op.from = nd.uturn;
+		op.to = kind;
+		grow_point(s, nd.x, nd.z, 0);
+	}
+	nd.uturn = kind;
+	s.log.net_node(n);
+}
+
 void j_set_plain(CityState &s, int n, bool plain) {
 	RoadNode &nd = s.roads.nodes[n];
 	if (nd.plain == plain) return;

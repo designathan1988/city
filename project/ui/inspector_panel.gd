@@ -104,6 +104,14 @@ func _road(col: Control, info: Dictionary) -> void:
 			if CityStore.dispatch(&"add_crossing", [_at, kind[1]]).get("ok", false):
 				_redraw())
 		row.add_child(crossing)
+	if info.median:
+		for way: Array in [["inspector.addUturnToEnd", true], ["inspector.addUturnToStart", false]]:
+			var back := HudWidgets.button(&"Ghost", "", tr(way[0]), "", "", "opt_row_h")
+			back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			back.pressed.connect(func() -> void:
+				if CityStore.dispatch(&"add_uturn", [_at, way[1]]).get("ok", false):
+					_redraw())
+			row.add_child(back)
 	_demolish_button(row)
 
 
