@@ -70,7 +70,8 @@ void lay_pieces(CityState &s, const RoadPlan &plan, const std::vector<double> &t
 		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
 		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
 		// A road laid at grade over water is a bridge, decided as it is laid so the journal keeps it (road_grade_sync.h).
-		const uint16_t flags = structure_of(keeps.flags) == Structure::GROUND && crosses_water(s, sub) ? with_structure(keeps.flags, Structure::BRIDGE) : keeps.flags;
+		const uint16_t kept = uint16_t((keeps.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | (k > 1 ? SEG_RUNS_ON_A : 0) | (k < pieces ? SEG_RUNS_ON_B : 0));
+		const uint16_t flags = structure_of(kept) == Structure::GROUND && crosses_water(s, sub) ? with_structure(kept, Structure::BRIDGE) : kept;
 		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, flags));
 		prev = next;
 	}
@@ -108,12 +109,6 @@ EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx
 	return r;
 }
 
-EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
-	EditResult r = place_road(s, a, has_control, cx, cz, b, profile);
-	if (r.ok && !settle_road_edit(s, r)) r.ok = false; // the caller rolls the journal back
-	return r;
-}
-
 // The curve through both ends of two pieces of one road: their end tangents meet at its control point.
 bool joined_quad(const Quad &first, const Quad &second, Quad &out) {
 	if (first.is_straight(STRAIGHT_JOIN_M) && second.is_straight(STRAIGHT_JOIN_M)) {
@@ -125,6 +120,12 @@ bool joined_quad(const Quad &first, const Quad &second, Quad &out) {
 				second.cz - second.z1, u, v)) return false;
 	out = { first.x0, first.z0, first.x0 + (first.cx - first.x0) * u, first.z0 + (first.cz - first.z0) * u, second.x1, second.z1 };
 	return true;
+}
+
+EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+	EditResult r = place_road(s, a, has_control, cx, cz, b, profile);
+	if (r.ok && !settle_road_edit(s, r)) r.ok = false; // the caller rolls the journal back
+	return r;
 }
 
 // A junction beside a place where a road was only cut in pieces (lay_pieces) has its mouth capped by the stub between them,
@@ -142,7 +143,7 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 		const RoadSegment o = net.segs[size_t(joint.segs[0] == seg ? joint.segs[1] : joint.segs[0])];
 		const int other = joint.segs[0] == seg ? joint.segs[1] : joint.segs[0];
 		const bool onward = g.b == far && o.a == far, back = g.a == far && o.b == far;
-		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || o.flags != g.flags) continue;
+		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || ((o.flags ^ g.flags) & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B))) continue;
 		const RoadSegment &first = onward ? g : o, &second = onward ? o : g;
 		Quad q;
 		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) continue;
@@ -150,7 +151,8 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 		box.add(o);
 		j_remove_segment(s, seg);
 		j_remove_segment(s, other);
-		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, g.flags);
+		const uint16_t runs = uint16_t((first.flags & SEG_RUNS_ON_A) | (second.flags & SEG_RUNS_ON_B));
+		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, uint16_t((g.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | runs));
 		const size_t was = made.size();
 		made.erase(std::remove_if(made.begin(), made.end(), [&](int m) { return m == seg || m == other; }), made.end());
 		if (made.size() != was) made.push_back(merged);
@@ -197,22 +199,6 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	return r;
 }
 
-// The pieces of one street from junction to junction, `seg` among them: a road is laid in pieces, and the player took down a road, not a piece.
-static std::vector<int> street_of(const RoadNetwork &net, int seg) {
-	std::vector<int> street{ seg };
-	for (const int end : { net.segs[size_t(seg)].a, net.segs[size_t(seg)].b }) {
-		int at = seg, node = end;
-		while (net.nodes[size_t(node)].joint && net.nodes[size_t(node)].segs.size() == JOINT_ARMS) {
-			const std::vector<int> &arms = net.nodes[size_t(node)].segs;
-			at = arms[0] == at ? arms[1] : arms[0];
-			if (std::find(street.begin(), street.end(), at) != street.end()) break; // round a ring
-			street.push_back(at);
-			node = net.segs[size_t(at)].a == node ? net.segs[size_t(at)].b : net.segs[size_t(at)].a;
-		}
-	}
-	return street;
-}
-
 EditResult demolish_at(CityState &s, double x, double z) {
 	EditResult r;
 	int hit = -1;
@@ -251,7 +237,7 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.error = "help.tool.bulldoze";
 		return r;
 	}
-	const std::vector<int> street = street_of(net, seg);
+	const std::vector<int> street = net.pieces_of(seg);
 	RoadBox box;
 	for (int piece : street) {
 		box.add(net.segs[size_t(piece)]);

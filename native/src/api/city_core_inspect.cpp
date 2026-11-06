@@ -44,7 +44,9 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 	d["speed_ms"] = p.speed / KMH_PER_MS;
 	d["width_m"] = p.right + p.left;
 	d["cost_per_m"] = p.cost_per_m;
-	d["length_m"] = s.roads.segs[seg].len;
+	double length = 0;
+	for (int piece : s.roads.pieces_of(seg)) length += s.roads.segs[size_t(piece)].len;
+	d["length_m"] = length;
 	Array ends; // its dead ends, start first: the node and whether it turns in a bulb
 	for (int n : { s.roads.segs[seg].a, s.roads.segs[seg].b }) {
 		if (s.roads.nodes[size_t(n)].segs.size() != 1) continue;
@@ -132,13 +134,19 @@ PackedVector3Array CityCore::segment_path(int seg) {
 	const RoadNetwork &net = state_->roads;
 	PackedVector3Array out;
 	if (seg < 0 || seg >= int(net.segs.size()) || !net.segs[size_t(seg)].alive) return out;
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const float ya = net.nodes[size_t(g.a)].y, yb = net.nodes[size_t(g.b)].y;
-	for (int i = 0; i <= ROAD_ARC_STEPS; i++) {
-		const double t = double(i) / ROAD_ARC_STEPS;
-		double x, z;
-		g.q.at(t, x, z);
-		out.push_back(Vector3(float(x), ya + (yb - ya) * float(t), float(z)));
+	const std::vector<int> pieces = net.pieces_of(seg);
+	for (size_t k = 0; k < pieces.size(); k++) {
+		const RoadSegment &g = net.segs[size_t(pieces[k])];
+		// A piece may run against the road: it is followed from the end the last one left at.
+		const bool turned = k + 1 < pieces.size() ? (g.a == net.segs[size_t(pieces[k + 1])].a || g.a == net.segs[size_t(pieces[k + 1])].b)
+				: k > 0 && (g.b == net.segs[size_t(pieces[k - 1])].a || g.b == net.segs[size_t(pieces[k - 1])].b);
+		const float ya = net.nodes[size_t(g.a)].y, yb = net.nodes[size_t(g.b)].y;
+		for (int i = 0; i <= ROAD_ARC_STEPS; i++) {
+			const double t = double(turned ? ROAD_ARC_STEPS - i : i) / ROAD_ARC_STEPS;
+			double x, z;
+			g.q.at(t, x, z);
+			out.push_back(Vector3(float(x), ya + (yb - ya) * float(t), float(z)));
+		}
 	}
 	return out;
 }
@@ -149,7 +157,17 @@ Dictionary CityCore::segment_traffic(int seg) {
 	const TrafficView &v = state_->traffic_views.acquire();
 	Dictionary d;
 	if (seg < 0 || seg >= int(s.roads.segs.size()) || !s.roads.segs[size_t(seg)].alive || size_t(seg) >= v.seg.size()) return d;
-	put_tally(d, v.seg[size_t(seg)], volume_of(v, seg));
+	TrafficTally whole = v.seg[size_t(seg)]; // the road's: what is on all of its pieces
+	whole.clear_fleet();
+	for (int piece : s.roads.pieces_of(seg)) {
+		if (size_t(piece) >= v.seg.size()) continue;
+		const TrafficTally &t = v.seg[size_t(piece)];
+		whole.vehicles += t.vehicles;
+		whole.queued += t.queued;
+		whole.seen += t.seen;
+		whole.speed += t.speed;
+	}
+	put_tally(d, whole, volume_of(v, seg));
 	return d;
 }
 

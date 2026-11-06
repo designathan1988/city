@@ -263,6 +263,31 @@ bool RoadNetwork::bulb_clear(int n) const {
 	return clear;
 }
 
+std::vector<int> RoadNetwork::pieces_of(int seg) const {
+	// The piece past `node`, -1 where the road ends there.
+	const auto beyond = [&](int at, int node) {
+		const RoadNode &nd = nodes[size_t(node)];
+		if (nd.segs.size() != 2) return -1;
+		const int next = nd.segs[0] == at ? nd.segs[1] : nd.segs[0];
+		const auto runs = [&](int s) { return (segs[size_t(s)].flags & (segs[size_t(s)].a == node ? SEG_RUNS_ON_A : SEG_RUNS_ON_B)) != 0; };
+		return runs(at) && runs(next) ? next : -1;
+	};
+	const auto walk = [&](int node, std::vector<int> &out) {
+		for (int at = seg, next = beyond(at, node); next >= 0 && next != seg; next = beyond(at, node)) {
+			out.push_back(next);
+			node = segs[size_t(next)].a == node ? segs[size_t(next)].b : segs[size_t(next)].a;
+			at = next;
+		}
+	};
+	std::vector<int> back, ahead;
+	walk(segs[size_t(seg)].a, back);
+	walk(segs[size_t(seg)].b, ahead);
+	std::vector<int> out(back.rbegin(), back.rend());
+	out.push_back(seg);
+	out.insert(out.end(), ahead.begin(), ahead.end());
+	return out;
+}
+
 void RoadNetwork::refresh_node(int n) {
 	RoadNode &nd = nodes[n];
 	if (!nd.alive) return;

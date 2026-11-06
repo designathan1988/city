@@ -39,8 +39,8 @@ int split_segment(CityState &s, int seg, double t) {
 	const float lift = net.nodes[size_t(rec.a)].lift + (net.nodes[size_t(rec.b)].lift - net.nodes[size_t(rec.a)].lift) * float(along);
 	j_remove_segment(s, seg);
 	int n = j_add_node(s, halves[0].x1, halves[0].z1, y, lift);
-	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, rec.flags);
-	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, rec.flags);
+	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_B)); // a node of the player's: the road ends there
+	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_A));
 	return n;
 }
 

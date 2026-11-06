@@ -113,14 +113,14 @@ func _edits() -> void:
 	var mid := Vector3(ROAD_LEN_M * 0.5, 0, 0)
 	var info := _road_at(mid)
 	_check(info.get("kind", "") == "road", "inspecionar acha a via")
-	_check(info.length_m > 0.0 and info.length_m <= DataTables.tuning("road_max_seg_m"), "comprimento do trecho: %.1f m" % info.length_m)
+	_check(absf(info.length_m - ROAD_LEN_M) < 1.0, "a via em pedaços é uma só: %.1f m" % info.length_m)
 	if one_way >= 0:
 		_check(CityStore.dispatch(&"reverse_road", [info.id]).ok, "inverter mão única")
 		_check(_road_at(mid).get("kind", "") == "road", "a via segue lá depois de invertida")
 		_check(CityStore.dispatch(&"undo"), "desfazer a inversão")
 	var before: int = CityStore.snapshot.segments
 	_check(CityStore.dispatch(&"duplicate_road", [_road_at(mid).id]).ok, "duplicar")
-	_check(CityStore.snapshot.segments == before + 1, "uma via a mais")
+	_check(CityStore.snapshot.segments > before, "uma via a mais")
 	await _save_after_edit()
 	_check(CityStore.dispatch(&"undo"), "desfazer a duplicação")
 	_check(CityStore.snapshot.segments == before, "a cópia saiu")

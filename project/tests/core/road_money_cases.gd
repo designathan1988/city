@@ -44,6 +44,7 @@ func _init(check: Callable) -> void:
 
 func run(b: Dictionary) -> void:
 	_paying(b)
+	_split_road(b)
 	_generated_roads(b)
 	_refusals(b)
 	_build_table()
@@ -83,6 +84,25 @@ func _paying(b: Dictionary) -> void:
 	_check.call(_money() == m1, "desfazer repôs o dinheiro: %s" % _money())
 	CityStore.dispatch(&"undo")
 	_check.call(_money() == m0, "desfazer a via devolveu tudo: %s" % _money())
+
+
+## A road laid in pieces is one road, and Split makes it two: a click on one half leaves the other.
+func _split_road(b: Dictionary) -> void:
+	var a := _field(b)
+	var e := a + Vector3(FIELD_ROAD_M, 0, 0)
+	var mid := a + Vector3(FIELD_ROAD_M * 0.3, 0, 0)
+	var r: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
+	_check.call(r.ok and r.segments > 1, "a via longa tem %d pedaços" % r.get("segments", 0))
+	_check.call(CityStore.dispatch(&"split_road", [mid]).get("ok", false), "dividiu a via")
+	var d: Dictionary = CityStore.dispatch(&"demolish", [a + Vector3(WALK_M * 2.0, 0, 0)])
+	_check.call(d.ok, "demoliu um lado")
+	var near: Dictionary = CityStore.query(&"segment_at", [a + Vector3(WALK_M * 2.0, 0, 0)])
+	var far: Dictionary = CityStore.query(&"segment_at", [e - Vector3(WALK_M * 2.0, 0, 0)])
+	_check.call(near.get("seg", -1) < 0 and far.get("seg", -1) >= 0, "o outro lado do Dividir ficou (%s, %s)" % [near.get("seg", -1), far.get("seg", -1)])
+	var all: Dictionary = CityStore.dispatch(&"demolish", [e - Vector3(WALK_M * 2.0, 0, 0)])
+	_check.call(all.ok and all.segments > 1, "o que sobrou caiu de uma vez: %d pedaços" % all.get("segments", 0))
+	for i in 4:
+		CityStore.dispatch(&"undo")
 
 
 ## A point on the axis of the first road found walking east from the middle of town: the pick finds a road from road_pick_m

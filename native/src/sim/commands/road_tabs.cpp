@@ -86,7 +86,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		r.error = seg < 0 ? "tools.hint.upgradePick" : "ui.insp.ring";
 		return r;
 	}
-	std::vector<int> segs = whole_street ? street_chain(s.roads, seg) : std::vector<int>{ seg };
+	std::vector<int> segs = whole_street ? street_chain(s.roads, seg) : s.roads.pieces_of(seg);
 	std::map<int, bool> along;
 	if (!mirror_symmetric(np)) along = along_street(s, segs, seg);
 	RoadBox box;

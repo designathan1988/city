@@ -24,6 +24,7 @@ enum SegFlag : uint16_t {
 	SEG_ZONED_LEFT = 0x100, // the player zoned this side (what the Zones layer shows)
 	SEG_ZONED_RIGHT = 0x200,
 	SEG_CUT_WALLS = 0x40, // its cutting is held by retaining walls (Roadcraft 4.0 RoadSegment.cutWalls)
+	SEG_RUNS_ON_A = 0x08, SEG_RUNS_ON_B = 0x10, // the road goes on past this end: a cut of the laying, no node the player made
 	SEG_RULE_A_MASK = 0x0C00, // bits 10-11, 12-13: the plate the player put on its a and b approach (SegRule)
 	SEG_RULE_B_MASK = 0x3000,
 	SEG_STRUCTURE_MASK = 0xC000, // bits 14-15: how it is built (Structure: ground, elevated, bridge, tunnel)
@@ -45,10 +46,11 @@ constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : 
 constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
 // The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
 constexpr uint16_t flags_reversed(uint16_t f) {
-	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK));
+	const uint16_t keep = uint16_t(f & ~(SEG_ZONED_LEFT | SEG_ZONED_RIGHT | SEG_RULE_A_MASK | SEG_RULE_B_MASK | SEG_RUNS_ON_A | SEG_RUNS_ON_B));
 	const uint16_t sides = uint16_t(((f & SEG_ZONED_LEFT) ? SEG_ZONED_RIGHT : 0) | ((f & SEG_ZONED_RIGHT) ? SEG_ZONED_LEFT : 0));
 	const uint16_t rules = uint16_t((((f & SEG_RULE_A_MASK) >> SEG_RULE_A_SHIFT) << SEG_RULE_B_SHIFT) | (((f & SEG_RULE_B_MASK) >> SEG_RULE_B_SHIFT) << SEG_RULE_A_SHIFT));
-	return uint16_t(keep | sides | rules);
+	const uint16_t runs = uint16_t(((f & SEG_RUNS_ON_A) ? SEG_RUNS_ON_B : 0) | ((f & SEG_RUNS_ON_B) ? SEG_RUNS_ON_A : 0));
+	return uint16_t(keep | sides | rules | runs);
 }
 
 // What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
@@ -123,6 +125,8 @@ public:
 	int find_node_near(double x, double z, double radius, const std::function<bool(float)> &level) const;
 	float lift_on(int seg, double t) const; // the height over the grade line at share t of a segment
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
+	// The pieces of the road `seg` is one of, in order along it: a road is laid in pieces (lay_pieces) and to the player it is one thing.
+	std::vector<int> pieces_of(int seg) const;
 	// Height of segment s at arc length `at` from node a: its solved profile (linear between its nodes until solved).
 	double seg_y(int s, double at) const;
 	// Where a ray (origin o, direction d, up to max_t) first comes down onto a road deck: the surface the player sees there

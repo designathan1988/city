@@ -23,13 +23,18 @@ EditResult reverse_road(CityState &s, int seg) {
 		r.error = "tools.hint.upgradePick";
 		return r;
 	}
-	const RoadSegment rec = s.roads.segs[size_t(seg)];
-	j_remove_segment(s, seg);
-	const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-	j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
-	finish_edit(s, rec.minx, rec.minz, rec.maxx, rec.maxz);
+	const std::vector<int> pieces = s.roads.pieces_of(seg); // the whole road turns: half of one running against the other would stop it
+	RoadBox box;
+	for (int piece : pieces) {
+		const RoadSegment rec = s.roads.segs[size_t(piece)];
+		box.add(rec);
+		j_remove_segment(s, piece);
+		const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
+		j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+	}
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
-	r.segments = 1;
+	r.segments = int(pieces.size());
 	return r;
 }
 
@@ -41,22 +46,29 @@ EditResult duplicate_road(CityState &s, int seg) {
 		r.error = "tools.hint.upgradePick";
 		return r;
 	}
-	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	const Profile &p = s.roads.profile_of(seg);
-	const double dx = g.q.x1 - g.q.x0, dz = g.q.z1 - g.q.z0, len = std::hypot(dx, dz);
+	const int profile = s.roads.segs[size_t(seg)].profile;
+	const Tuning &t = s.catalog.tune;
+	const double offset = std::max(double(t.edit_duplicate_min_m), double(p.right + p.left) + t.edit_duplicate_gap_m);
+	const std::vector<int> pieces = s.roads.pieces_of(seg);
+	Quad line = s.roads.segs[size_t(pieces.front())].q; // the road as it was drawn: its pieces are cuts of one curve
+	for (size_t k = 1; k < pieces.size(); k++) {
+		const Quad &next = s.roads.segs[size_t(pieces[k])].q;
+		Quad joined;
+		line = joined_quad(line, next, joined) ? joined : Quad::straight(line.x0, line.z0, next.x1, next.z1);
+	}
+	const double dx = line.x1 - line.x0, dz = line.z1 - line.z0, len = std::hypot(dx, dz);
 	if (len <= 0) {
 		r.error = "tools.hint.upgradePick";
 		return r;
 	}
-	const Tuning &t = s.catalog.tune;
-	const double offset = std::max(double(t.edit_duplicate_min_m), double(p.right + p.left) + t.edit_duplicate_gap_m);
 	const double nx = -dz / len * offset, nz = dx / len * offset;
 	Anchor a, b;
-	a.x = g.q.x0 + nx;
-	a.z = g.q.z0 + nz;
-	b.x = g.q.x1 + nx;
-	b.z = g.q.z1 + nz;
-	return build_road(s, a, true, g.q.cx + nx, g.q.cz + nz, b, g.profile);
+	a.x = line.x0 + nx;
+	a.z = line.z0 + nz;
+	b.x = line.x1 + nx;
+	b.z = line.z1 + nz;
+	return build_road(s, a, true, line.cx + nx, line.cz + nz, b, profile);
 }
 
 EditResult set_marking_style(CityState &s, int style) {

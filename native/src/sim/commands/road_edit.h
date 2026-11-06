@@ -43,6 +43,8 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 		std::vector<int> *laid = nullptr); // laid: the segments it leaves standing
 // build_road without the money: laid and checked (a stretch squeezed between junctions refused); the command settles.
 EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+// The curve through both ends of two pieces of one road, false where their tangents never meet.
+bool joined_quad(const Quad &first, const Quad &second, Quad &out);
 // The area an edit touches.
 struct RoadBox {
 	double minx = std::numeric_limits<double>::max(), minz = minx, maxx = std::numeric_limits<double>::lowest(), maxz = maxx;

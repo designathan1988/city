@@ -554,6 +554,13 @@ Ressalvas abertas:
 - **Lente apagada:** cor e brilho próprio do `signals.ts` (`props.lens_dark`, `dark_radiance`), no lugar de `lens_dim` 0,1. Decisão pela referência visual; deixa de valer a razão 16 da EN 12368. Foto de perto, de dia e à noite.
 - O teste de minirrotatória e o de preferência em toda perna não existem ainda; a regra deles só foi lida no código.
 
+### Ciclo 18: a via é uma só para o jogador (2026-11-05)
+- **Canteiro:** a gradação de filme é a mesma do 4.0 e o histograma do par `92-poste-noite` bate nos escuros (20,5 % contra 21,2 % abaixo de 8). O "mais escuro" vinha de amostras em lugares diferentes; pendência retirada.
+- **Por que o corte fica:** a malha de um trecho mora no chunk do meio dele, com a caixa do chunk; sem o limite de 112 m uma via longa sumiria da tela. Quem manda é o render, não a altura.
+- **Defeito meu do ciclo 16:** `street_of` atravessava o nó do Dividir. Agora o corte é marcado nas duas pontas (`SEG_RUNS_ON_A/B`, nas flags, que o save, o desfazer e o inverter carregam) e `RoadNetwork::pieces_of` só anda pelas marcas. Saves antigos não têm as marcas: cada pedaço segue sendo um.
+- **Inteira agora:** demolir, Melhorar sem Shift, Informação (comprimento, faixa desenhada, tráfego somado), inverter mão única e duplicar (a curva refeita com `joined_quad`).
+- Teste novo em `road_money_cases`: via de 5 pedaços, Dividir, um clique leva um lado, o outro fica.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
