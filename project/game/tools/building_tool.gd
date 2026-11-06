@@ -95,9 +95,8 @@ func click(p: Vector3) -> void:
 		_set_down(p)
 		return
 	var cam: Camera3D = ctl.rig.camera
-	var screen := ctl.get_viewport().get_mouse_position()
 	var had := picked
-	pick(cam.project_ray_origin(screen), cam.project_ray_normal(screen))
+	pick(cam.project_ray_origin(ctl.pointer), cam.project_ray_normal(ctl.pointer))
 	if not part.is_empty() and part.do == "part" and picked.is_empty() and not had.is_empty():
 		picked = had
 		_report(CityStore.dispatch(&"body_add_part_at", [had.id, p, part]))

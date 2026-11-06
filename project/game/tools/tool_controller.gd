@@ -58,6 +58,7 @@ var params: Dictionary = {}
 ## The params each tool was last used with: a category reopens with the tool and choice last used.
 var remembered: Dictionary = {}
 var active: ToolBase
+var pointer := Vector2.ZERO # where the mouse event being handled happened: the OS's cursor may already be elsewhere
 var _dragging := false
 
 
@@ -140,6 +141,8 @@ func step_road_height(metres: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if active == null:
 		return
+	if event is InputEventMouse:
+		pointer = event.position
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
 		var p: Variant = ground_at(event.position)

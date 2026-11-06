@@ -4,7 +4,7 @@ extends ToolBase
 
 
 func click(_p: Vector3) -> void:
-	var screen: Vector2 = ctl.get_viewport().get_mouse_position()
+	var screen: Vector2 = ctl.pointer
 	var camera: Camera3D = ctl.rig.camera
 	var r: Dictionary = CityStore.dispatch(&"shoot", [camera.project_ray_origin(screen), camera.project_ray_normal(screen)])
 	if r.get("hit", 0) == 0:

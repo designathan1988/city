@@ -22,6 +22,7 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	var tools := ToolController.new(rig)
 	add_child(tools)
+	add_child(InteriorController.new())
 	await get_tree().process_frame
 	tools.set_tool(ToolController.Tool.BUILD)
 	var tool: BuildingTool = tools.active
@@ -30,6 +31,7 @@ func _ready() -> void:
 	tool.pick(aim[0], aim[1])
 	_check(tool.picked.get("id", -1) == id, "o raio escolhe o prédio %d: %s" % [id, tool.picked])
 	_check(_outline(tool).size() >= 8, "o bloco escolhido tem contorno")
+	_inside(tool, id)
 	_every_tool(tool, id)
 	_arm_and_click(tool, id)
 	tool.cancel()
@@ -37,6 +39,20 @@ func _ready() -> void:
 	_check(tool.picked.is_empty(), "Esc solta a seleção")
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
+
+
+## Construir > Interior from its cards in the data: the building chosen opens, goes up a floor, and closes.
+func _inside(tool: BuildingTool, id: int) -> void:
+	var cards: Array = DataTables.ui("builder").tabs.interior.sections[0].tools
+	tool.act(cards[0])
+	var open: Dictionary = CityStore.query(&"interior")
+	_check(open.on and open.target == id, "Cortar e ver abre o prédio escolhido: %s" % open)
+	tool.act(cards[2])
+	_check(int(CityStore.query(&"interior").level) == 1, "Andar acima sobe um andar")
+	tool.act(cards[1])
+	_check(int(CityStore.query(&"interior").level) == 0, "Andar abaixo desce")
+	tool.act(cards[0])
+	_check(not CityStore.query(&"interior").on, "Cortar e ver de novo fecha")
 
 
 func _tall_building() -> int:

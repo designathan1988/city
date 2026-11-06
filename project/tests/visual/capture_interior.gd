@@ -11,7 +11,7 @@ const SEED := 7
 const SHOTS := [
 	[146, 0, 0.0, 38.0, 75.0, 12.0, "casa146-terreo"],
 	[146, 1, 90.0, 38.0, 75.0, 12.0, "casa146-andar1-giro90"],
-	[1604, 10, 0.0, 20.0, 65.0, 12.0, "torre1604-andar10"],
+	[695, 10, 0.0, 20.0, 65.0, 12.0, "torre695-andar10"],
 	[1090, 1, 0.0, 30.0, 70.0, 12.0, "comercial1090-andar1"],
 	[146, 0, 0.0, 38.0, 75.0, 22.0, "casa146-noite-terreo"],
 	[146, 0, 0.0, 8.0, 60.0, 12.0, "cidade-camada-146", "toggle"],
@@ -70,9 +70,21 @@ func _shot(layer: InteriorController, s: Array) -> void:
 		rig.jump(info.focus, yaw, s[4], _distance_for(info.focus, yaw, s[4], s[3])) # the switch frames the building: this shot is the city
 	else:
 		layer.call("_send", true, s[0], s[1])
+		_aim_at_floor(info.focus, yaw, s[4], s[3])
 	await _settled()
 	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out_dir, s[6]])
 	print("shot ", s[6], " ", CityStore.query(&"interior").level, "/", CityStore.query(&"interior").floors)
+
+
+## The rig stands on the ground: the floor open high in a tower is framed by the point of the ground behind it on the line of sight.
+func _aim_at_floor(at: Vector3, yaw: float, pitch: float, px: float) -> void:
+	var lamps: Array = CityStore.query(&"interior").lamps
+	if lamps.is_empty():
+		return
+	var ahead := -rig.camera.global_transform.basis.z
+	ahead.y = 0.0
+	var ground: Vector3 = at + ahead.normalized() * ((lamps[0].y - at.y) / tan(deg_to_rad(pitch)))
+	rig.jump(ground, yaw, pitch, _distance_for(ground, yaw, pitch, px))
 
 
 ## The camera's distance that gives `px` pixels a metre at the focus: the lens depends on the distance, so it is searched.

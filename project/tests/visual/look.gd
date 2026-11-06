@@ -59,7 +59,9 @@ func _ready() -> void:
 	if "--frozen" in OS.get_cmdline_user_args():
 		Engine.time_scale = 0.0 # shaders' TIME, the clock and every delta stand: the same plan gives the same picture, by frames alone
 	ui = UiDriver.new(rig, get_tree(), out_dir)
+	add_child(ToolController.new(rig))
 	add_child(RoadcraftHud.new())
+	add_child(InteriorController.new())
 	measure = LookMeasure.new(get_viewport())
 	add_child(measure)
 	for step: Dictionary in plan.get("steps", []):

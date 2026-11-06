@@ -32,8 +32,7 @@ func enter() -> void:
 
 func _ray() -> Array:
 	var cam := ctl.get_viewport().get_camera_3d()
-	var at := ctl.get_viewport().get_mouse_position()
-	return [cam.project_ray_origin(at), cam.project_ray_normal(at)]
+	return [cam.project_ray_origin(ctl.pointer), cam.project_ray_normal(ctl.pointer)]
 
 
 ## Where the pointer's ray meets the level `y`.
