@@ -120,19 +120,7 @@ private:
 		godot::Vector3 centre;
 		ChunkOccluder occluder; // the near level's walls (occluders.h)
 	};
-	struct Super {
-		MeshDraw far;
-		Held held;
-		bool dirty = false;
-		bool built = false; // the far mesh of the current content is committed
-		bool has_content = false; // and holds buildings
-		int mask = 0; // its chunks drawn in detail (bit = chunk in the superchunk): hidden in the far mesh
-		int mask_sent = -1; // the chunk_mask last given to the far instance (-1: none yet)
-		int chunks = 0; // its streamed chunks: the superchunk lives while one is
-		// A built far mesh is rebuilt on its own clock: not before `due` (a delay
-		// after the first change it waits for) nor within an interval of the previous request (`asked`).
-		double due = 0, asked = -std::numeric_limits<double>::infinity();
-	};
+	using Super = FarDraw;
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
 	struct Built {
@@ -145,6 +133,7 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_glass, mid_glass; // their panes and far walls: a surface of the same mesh
 		std::array<b40::Shell, SUB_COUNT> near_sheer; // their glass guards: another
 		std::array<b40::Shell, SUB_COUNT> near_cards, mid_cards; // their railings: another
+		std::array<b40::Shell, SUB_COUNT> near_washes; // the lanterns' light on the walls: another, added to the wall
 		std::array<b40::Shell, SUB_COUNT> near_lawns, mid_lawns; // their lawns: another, in the terrain's grass
 		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
@@ -199,7 +188,7 @@ private:
 	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
-	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr);
+	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,
 			RenderLayer layer);
 	void put_level(MeshDraw &d, Surface &sf, const godot::RID &glass, bool shown, RenderLayer layer, bool shadows = true) const;
@@ -223,7 +212,7 @@ private:
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
-	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_parts_;
+	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_wash_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box
 	godot::Ref<godot::ArrayMesh> unit_box_, unit_flag_, unit_bay_; // the instanced parts' box and the flags' cloth (resources: freed with the renderer)

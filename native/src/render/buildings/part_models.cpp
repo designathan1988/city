@@ -20,7 +20,7 @@ constexpr int SLATS = 9;
 constexpr int BRISE_FINS = 6;
 constexpr float CANVAS_SLOPE = 0.75f, VALANCE_H = 0.28f, VALANCE_T = 0.025f;
 constexpr float HALF = 0.5f;
-constexpr uint32_t BRASS = 0xb08d57, LAMP_WARM = 0xffefcf;
+constexpr uint32_t BRASS = 0xb08d57, LAMP_BODY = 0xf1ebdd;
 
 Basis centred(const Part &p) { return Basis{ p.f->at(p.a, p.h, -p.depth), p.f->e0, p.f->e1, p.f->e2 }; }
 // Box in unit model coordinates (centre-relative, before scaling).
@@ -92,13 +92,18 @@ void part_awning(Shell &s, const Part &p, const Lin &lin, int8_t fin) {
 }
 
 void part_lamp(Shell &s, const Part &p) {
-	Basis m = centred(p);
-	Vector3 c = m.at(0, 0, 0);
-	Vector3 q[4] = { c + m.e0 * (-p.sx / 2) + m.e1 * (-p.sy / 2) + m.e2 * (p.sz / 2), c + m.e0 * (p.sx / 2) + m.e1 * (-p.sy / 2) + m.e2 * (p.sz / 2),
-		c + m.e0 * (p.sx / 2) + m.e1 * (p.sy / 2) + m.e2 * (p.sz / 2), c + m.e0 * (-p.sx / 2) + m.e1 * (p.sy / 2) + m.e2 * (p.sz / 2) };
-	Lin warm = lin_of(LAMP_WARM);
-	s.quad(q[0], q[1], q[2], q[3], m.e2, warm, FIN_NONE, SK_LAMP);
-	part_box(s, Part{ p.f, p.a, p.h, p.depth - p.sz / 2, p.sx, p.sy, p.sz / 2 }, warm * HALF, FIN_METAL);
+	// All of it is the lamp: its five faces are lit, as a box of the Roadcraft's `lamp` material is.
+	const Basis m = centred(p);
+	const Vector3 c = m.at(0, 0, 0), x = m.e0 * (p.sx / 2), y = m.e1 * (p.sy / 2), z = m.e2 * (p.sz / 2);
+	const Lin body = lin_of(LAMP_BODY);
+	const auto face = [&](const Vector3 &mid, const Vector3 &u, const Vector3 &v, const Vector3 &out) {
+		s.quad(mid - u - v, mid + u - v, mid + u + v, mid - u + v, out, body, FIN_NONE, SK_LAMP);
+	};
+	face(c + z, x, y, m.e2);
+	face(c + x, y, z, m.e0);
+	face(c - x, y, z, -m.e0);
+	face(c + y, x, z, m.e1);
+	face(c - y, x, z, -m.e1);
 }
 
 } // namespace city::b40

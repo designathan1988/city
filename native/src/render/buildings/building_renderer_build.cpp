@@ -92,6 +92,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
 		near_shells[i].lawns = &out.near_lawns[i];
+		near_shells[i].washes = &out.near_washes[i];
 		mid_shells[i].lawns = &out.mid_lawns[i];
 		near_shells[i].box_sink = &parts_shells[i];
 		mid_shells[i].box_sink = &mid_parts[i];
@@ -134,6 +135,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
 		near_shells[i].glass = mid_shells[i].glass = out.flat_shell[i].glass = nullptr;
 		near_shells[i].lawns = mid_shells[i].lawns = nullptr;
+		near_shells[i].washes = nullptr;
 		near_shells[i].box_sink = mid_shells[i].box_sink = nullptr;
 		near_shells[i].sheer = nullptr;
 		near_shells[i].cards = mid_shells[i].cards = nullptr;

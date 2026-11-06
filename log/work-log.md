@@ -521,3 +521,11 @@ Ressalvas abertas:
 - **Arquivos do usuário:** gates, hooks, schemas e `.claude/settings*`. Um comando que cite `tools/gates` é recusado pelo hook: use as ferramentas Read/Grep ou um script.
 - **Commit:** `git add` e `git commit` separados, com logs de `dist/tests` mais novos que o código. Identidade Coordenadora `<coordenadora@roadcraft.local>`, trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - **Nomes de arquivos, pastas e código em inglês.**
+
+### Ciclo 12: a lanterna da porta à noite (2026-11-05)
+- **Causa 1, a lanterna preta:** `part_lamp` punha o corpo de metal na frente do vidro (`p.depth - p.sz / 2` anda para fora, porque a profundidade cresce para dentro), e o vidro ficava dentro da caixa. No 4.0 a caixa inteira é a lâmpada (material `lamp`): agora as cinco faces são `SK_LAMP`.
+- **Causa 2, a cor da lâmpada:** `kind == 4` emitia o albedo, então a lâmpada não podia ser clara de dia e quente de noite. O corpo é `#f1ebdd` e a luz é `lamp_light` `#ffd49a` x `lamp_glow` 3,4 (2,4 / luminância da cor, `kit.ts`).
+- **Luz na parede:** `emitPorchLight` portado pelo comportamento: superfície `building_wash` do nível perto, aditiva, mesma regra de acesa da lanterna. O 4.0 soma depois do tom, na cor da tela (`#e4d3b3` é `#ffd49a` pelo ACES do three); o jogo soma antes do ACES, e a cor crua dava laranja saturado. Por isso o shader soma `display_to_radiance` dessa cor.
+- **Diferença de propósito:** o raio vai até o fim da parede, não até o fim da baia (`wall_before`/`wall_after`); no 4.0 a baia cortava a luz numa elipse estreita.
+- Foto de perto às 22h: lanterna acesa, com brilho, e poça suave na parede. Não há foto de perto de lanterna de parede no 4.0 arquivado: a referência foi o código e os balizadores de `35-noite-torre-perto`.
+- `gates_user.py` (scratch) ganhou `building_wash` e `lamp_light`; o schema de `materials` ainda depende de o usuário rodar o script.

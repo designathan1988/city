@@ -166,6 +166,15 @@ void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0
 	}
 }
 
+void Shell::wash(const Basis &f, float a0, float a1, float b0, float b1, float c) {
+	if (washes) {
+		washes->wash(f, a0, a1, b0, b1, c);
+		return;
+	}
+	const Vector3 lantern = f.at((a0 + a1) / 2, (b0 + b1) / 2, c);
+	sheet(f, a0, a1, b0, b1, c, Color(1, 1, 1, 1), Vector2(lantern.x, lantern.z));
+}
+
 void Shell::card(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, CardKind kind) {
 	if (cards) {
 		cards->card(f, a0, a1, b0, b1, c, lin, kind);

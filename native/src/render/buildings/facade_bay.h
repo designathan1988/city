@@ -21,6 +21,7 @@ struct BayCtx {
 	int level = 0;
 	uint32_t hash = 0;
 	Lin wall, trim, mould;
+	float wall_before = 0, wall_after = 0; // how far the wall runs on past this bay, each way along its side
 	int8_t wall_fin = FIN_PLASTER, trim_fin = FIN_PLASTER, mould_fin = FIN_PLASTER; // trim_fin: the reveals and fascias, faces of the shell
 	const FaceGeometry *geo = nullptr;
 	bool open_left = false, open_right = false; // the neighbouring bay is also a gourmet balcony
