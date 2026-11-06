@@ -305,7 +305,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/roads/geometry.cpp` · `native/src/sim/roads/geometry.h` — geometria pura das vias (Bézier, tabelas de comprimento e o parâmetro de um comprimento e vice-versa, interseções)
 - `native/src/sim/roads/junction.cpp` · `native/src/sim/roads/junction.h` — braços, recuos, esquinas e balões
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
-- `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`)
+- `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`)
 - `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — **traduzidos do 4.0 pelo conversor, sem edição** (`tools/converter/configs/plans/flow-control.json`): o fluxo medido em cada cruzamento e o controle que ele pede; muda-se regerando, nunca à mão
 - `native/src/sim/roads/road_grade.cpp` · `native/src/sim/roads/road_grade.h` · `native/src/sim/roads/road_grade_internal.h` · `native/src/sim/roads/road_grade_profile.cpp` · `native/src/sim/roads/road_grade_solve.cpp` — dono único da altura das vias (elevation.ts do 4.0): estações de cada trecho, chão lido em 7 pontos, placas das junções e das transições, os solvers de chão, variável, elevada e afundada, as rodadas até os nós pararem; a estrutura de um trecho (chão, elevada, ponte, túnel)
 - `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` — via de classe com as faixas, a largura e as vagas das opções da ferramenta, um perfil a mais no catálogo
@@ -447,6 +447,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/trees/garden_place.cpp` · `native/src/render/trees/garden_place.h` — os jardins dos lotes (gardenPlace.ts do 4.0): árvores, arbustos, sebes e canteiros do corpo postos no chão como plantas, as de cada corpo guardadas pela chave dele; um canteiro é um modelo por trecho e não lança sombra
 
 **Godot — project/**
+- `project/game/camera/camera_aim.gd` — até onde o ponteiro segura uma altura
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_pull.gd` — o olho nunca dentro nem atrás de prédio, com os tempos do Deoccluder
@@ -460,6 +461,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/game/flow/game_keys.gd` · `project/game/flow/build_stamp.gd` — as teclas do jogo (regras nos dados); o carimbo da versão
 - `project/game/health/health_log.gd` — registro de saúde: erros do motor (Logger), quadros longos, sessão anterior
 - `project/game/play.gd` · `project/game/play.tscn` — cena de jogo: mundo, câmera, HUD e captura por linha de comando
+- `project/game/settings/road_prefs.gd` — o que a ferramenta de via guarda entre sessões: encaixes, teclas e muros do corte
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
 - `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
 - `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
@@ -506,6 +508,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/render/shaders/tone_inverse.gdshaderinc` — a radiância de cena que o ACES do Environment mostra como uma cor de tela (o inverso do `project/render/tone_map.gd` no shader; o que é desenhado sem luz com cor de tela, como as fumaças e chamas)
 - `project/render/shaders/puffs.gdshader` · `project/render/shaders/debris.gdshader` · `project/render/shaders/marks.gdshader` — fumaça, chama, faísca, sangue, água e papel movidos pela idade na GPU; peças jogadas; crateras, fuligem, sangue e anel de onda no chão
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — ponta a ponta: mundo + HUD reais, chunks desenhados, frota e buffers de instância
+- `project/tests/core/camera_road_key_cases.gd` — o que a ferramenta de via faz com mouse e teclas, no `camera_input_test`
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — câmera por entrada real; luzes da rua na tela (lentes, brilho noturno, luz das vias) e cor e luz dos prédios, nos dois renderizadores
 - `project/tests/perf/camera_pan.gd` · `project/tests/perf/camera_pan.tscn` · `project/tests/perf/tier_gpu.gd` · `project/tests/perf/tier_gpu.tscn` — tempos de quadro com pan, giro e zoom sobre a cidade e rente às paredes; triângulos e bytes dos prédios por superfície; o que cada nível gráfico custa à GPU nas três vistas: tempo medido em amostras e contagens
 - `project/tests/perf/open_probe.gd` · `project/tests/perf/open_probe.tscn` — onde vai a abertura de uma cidade salva: cada etapa como o núcleo a mediu (`load_city`, chave `ms`)
@@ -515,6 +518,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/core/road_commands_test.gd` · `project/tests/core/road_commands_test.tscn` · `project/tests/core/road_money_cases.gd` · `project/tests/core/road_height_cases.gd` — comandos de via/zona/demolir pelo store; o dinheiro das vias (preço pago, devolução, vias geradas, desfazer, recusa sem saldo, modos de construir); a altura em que a via é desenhada (rampa, greide máximo, passar por cima, recusa por pouca diferença, o que o ponteiro pega, muros)
 - `project/tests/core/people_test.gd` · `project/tests/core/people_test.tscn` — quem anda a pé: portas, idades, pares, criança acompanhada e gente por hora
 - `project/tests/core/road_edit_test.gd` · `project/tests/core/road_edit_test.tscn` — opções da via de classe, Mover, Controle e regras de edição
+- `project/tests/core/road_grade_seam_cases.gd` — túneis e placas de junção do `road_grade_test`
 - `project/tests/core/road_grade_test.gd` · `project/tests/core/road_grade_test.tscn` — o greide contra as cenas e limites de tests/world/elevation.spec.ts do 4.0 (cruzamento plano e no morro, elevadas, rampas, ponte, túneis, a matriz das placas)
 - `project/render/shaders/water_plain.gdshader` — a água numa cor só, para a aba Otimizações ver o que o sombreamento dela custa
 - `project/tests/core/shell_test.gd` · `project/tests/core/shell_test.tscn` — níveis gráficos, governador, chaves de render, painéis e Esc
@@ -541,6 +545,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/capture_demolition.gd` · `project/tests/visual/capture_demolition.tscn` — capturas da bomba (casa, rua, terra, bomba grande) em instantes depois do golpe
 - `project/tests/core/shoot_test.gd` · `project/tests/core/shoot_test.tscn` — a pistola pela store (cabeça mata, tronco fere, o ferido sangra, tiro no céu erra, rajada faz o carro explodir) e o que um golpe deixa num save: ida e volta de crateras, ruínas e mobiliário
 - `project/tests/visual/capture_vehicles.gd` — capturas de perto do ônibus, do caminhão, da moto, da van e de um sedã (vidro, cabine, pessoas e pontas)
+- `project/tests/visual/capture_road_tools.gd` — a ferramenta de via em uso, nas capturas de vias
 - `project/tests/visual/capture_roads.gd` · `project/tests/visual/capture_roads.tscn` — vias de perto em chão livre (cruzamentos, T, ponta, curva) e a ferramenta em uso, nos ângulos das fotos do 4.0
 - `project/tests/visual/capture_transit.gd` · `project/tests/visual/capture_transit_site.gd` — parada, estação e trilho nas capturas; a rua com o outro lado livre, onde valem as poses do 4.0
 - `project/tests/visual/capture_people.gd` — pessoas nas capturas: o casal, a família, a criança, o idoso, quem sai de uma porta, quem entra e quem espera na guia, como as fotos do 4.0, e uma multidão por baixo das sombras reais
@@ -591,7 +596,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/assets/make_pole_parts.py` — os postes de cada estilo em streets.json: o urbano (cruzeta sobre a rua, B1, e o rack S1) e o rural (cruzeta no topo, N1), os assentos dos fios e a altura da luz, das medidas do 4.0 (CELESC E-313.0002)
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
-- `tools/build/quick.sh` · `tools/build/runq.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a verificação de uma mudança num comando; fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
+- `tools/build/quick.sh` · `tools/build/runq.sh` · `tools/build/runq_jobs.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a verificação de uma mudança num comando; fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
 - `tools/gates/gate_docs.py` · `tools/gates/gate_files.py` · `tools/gates/gate_tuning.py` — mapa deste documento; lixo,

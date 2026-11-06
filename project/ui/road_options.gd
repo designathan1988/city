@@ -1,6 +1,6 @@
 ## The road tool's options (Roadcraft ui/v2/shell.ts renderRoads): a row per choice, each a label and its toggles, standing in the
 ## drawer's options panel while the road tool is in hand (hud_drawer.gd). Alignment is the tool's own parameter; snapping is the
-## player's setting (Settings.road_snap). The rows and their icons come from data/ui/drawers.json "road_options".
+## player's setting (Settings.road.snap). The rows and their icons come from data/ui/drawers.json "road_options".
 class_name RoadOptions
 extends VBoxContainer
 
@@ -35,7 +35,7 @@ func refresh() -> void:
 		var c: Dictionary = spec.trace.choices[i]
 		_toggle(row, c, i == picked, true, func() -> void: alignment_picked.emit(i))
 	row = _row(spec.snap.label_key)
-	var snap: Dictionary = Settings.road_snap
+	var snap: Dictionary = Settings.road.snap
 	for c in spec.snap.choices:
 		var key: String = c.key
 		var live: bool = key == "on" or snap.on
@@ -98,7 +98,7 @@ func _height_rows() -> void:
 	HudWidgets.label(row, &"BodyLabel", Formatters.format_length(metres) if whole else Formatters.format_length_tenths(metres))
 	_height_step(row, "plus", 1)
 	row = _row("cutSides.row")
-	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], Settings.road_walls, func(on: bool) -> void:
+	HudWidgets.choices(row, [[false, tr("cutSides.batter")], [true, tr("cutSides.walls")]], Settings.road.walls, func(on: bool) -> void:
 		Settings.set_road_walls(on)
 		CityStore.dispatch(&"set_road_walls", [on]))
 

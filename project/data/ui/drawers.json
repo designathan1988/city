@@ -695,7 +695,6 @@
    {"label_key": "sign.type.direction", "sign": 7, "text_hint": "sign.text"},
    {"label_key": "sign.type.street", "sign": 8, "text_hint": "sign.text"},
    {"label_key": "sign.type.info", "sign": 9, "text_hint": "sign.text"}],
-  "name_kind": 11,
-  "name_hint": "sign.street.placeholder"
+  "name_kind": 11, "name_hint": "sign.street.placeholder"
  }
 }

@@ -15,7 +15,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float PARAPET_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
+constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
 constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
 constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
@@ -131,7 +131,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, bool roofs) {
 	const Body &b = *pl.b;
 	float z0 = b.level_z(v.base);
 	bool parapet = roofs && roof_flat(v.roof) && v.roof != ROOF_TERRACE && !covered_by_above(b, v);
-	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : PARAPET_H;
+	float ph = v.crown == CROWN_ATTIC ? ATTIC_H : ROOF_EDGE_H;
 	Paint mp = moulding_of(pl);
 	for (const Side &sd : sides_of(pl, v, 0)) {
 		Point2 mid{ (sd.p0.x + sd.p1.x) / 2 + sd.n.x * TEST_OUT, (sd.p0.y + sd.p1.y) / 2 + sd.n.y * TEST_OUT };

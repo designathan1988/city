@@ -10,7 +10,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float WALL_THICK = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
+constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
 constexpr float GATE_POST = 0.2f; // a car gate is its drive less a post each side
 constexpr float GATE_GAP = 0.05f; // a run stops this short of a gate
 constexpr float ATTACH = 0.3f; // a building this near an edge closes it
@@ -20,7 +20,7 @@ constexpr float HALF = 0.5f;
 
 using Span = std::pair<float, float>;
 
-float thickness(Element k) { return k == EL_HEDGE ? HEDGE_THICK : k == EL_WALL ? WALL_THICK : FENCE_THICK; }
+float thickness(Element k) { return k == EL_HEDGE ? HEDGE_THICK : k == EL_WALL ? BOUNDARY_WALL_T : FENCE_THICK; }
 
 // [a, b] less the cuts, the stretches at least SHORTEST_RUN long.
 std::vector<Span> runs(float a, float b, std::vector<Span> cuts) {

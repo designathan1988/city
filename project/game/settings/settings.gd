@@ -10,14 +10,9 @@ signal changed
 
 const PATH := "user://settings.cfg"
 const SECTION := "graphics"
-const SNAP_SECTION := "road_snap"
 
 var preset := ""
-## The road tool's snapping: one switch for all of it, then each kind (Roadcraft editor/snap.ts RoadSnap).
-var road_snap := {"on": true, "angles": true, "grid": true}
-## The road tool's keys the player changed (RoadKeys), and the sides of a cutting they chose.
-var road_keys := {}
-var road_walls := false
+var road := RoadPrefs.new()
 var kept: Dictionary = {} # shadows, ssao, smaa chosen over the tier
 var level := "" # the tier in use
 var hardware := ""
@@ -53,10 +48,7 @@ func _ready() -> void:
 	switches = RenderSwitches.new(cfg.get_value(SECTION, "switches", {}))
 	optimizations = cfg.get_value(SECTION, "optimizations", {})
 	layers = cfg.get_value(SECTION, "layers", t.layers.duplicate())
-	for key in road_snap:
-		road_snap[key] = cfg.get_value(SNAP_SECTION, key, road_snap[key])
-	road_keys = cfg.get_value(SNAP_SECTION, "keys", {})
-	road_walls = cfg.get_value(SNAP_SECTION, "walls", false)
+	road.read(cfg)
 	hardware = QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name())
 	level = QualityTier.level_of(preset, hardware)
 	_quality_governor = FrameGovernor.Quality.new(t.governor, t.levels, level, hardware)
@@ -86,26 +78,23 @@ func _save() -> void:
 	cfg.set_value(SECTION, "switches", switches.saved())
 	cfg.set_value(SECTION, "optimizations", optimizations)
 	cfg.set_value(SECTION, "layers", layers)
-	for key in road_snap:
-		cfg.set_value(SNAP_SECTION, key, road_snap[key])
-	cfg.set_value(SNAP_SECTION, "keys", road_keys)
-	cfg.set_value(SNAP_SECTION, "walls", road_walls)
+	road.write(cfg)
 	if not GameFlow.tests_drive:
 		cfg.save(PATH)
 
 
 func set_road_snap(key: String, value: bool) -> void:
-	road_snap[key] = value
+	road.snap[key] = value
 	_save()
 
 
 func set_road_keys(keys: Dictionary) -> void:
-	road_keys = keys
+	road.keys = keys
 	_save()
 
 
 func set_road_walls(on: bool) -> void:
-	road_walls = on
+	road.walls = on
 	_save()
 
 

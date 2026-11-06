@@ -483,6 +483,10 @@ Ressalvas abertas:
 
 - **Cidade distante contra o 4.0.** Sem a ferramenta proibida: foto `par1/ref/p1-cidade` do arquivo, mesma câmera, prédios `predios-40.json` da mesma data. Antes: jogo mais claro e azulado (mediana 111,120,124 contra 93,101,99). `MEAN_BOOST` inflava a janela real; sem ele: mediana 101,113,117, p90 174,169,161 contra 171,165,153. Limite: o jogo não tem as ruas nesse par, o chão entra na mediana. As faces na sombra ainda ficam um pouco mais azuis que as do 4.0.
 
+- **Segunda leva.** Arquivos longos divididos por responsabilidade (`road_prefs.gd`, `camera_aim.gd`, `road_network_deck.cpp`, `runq_jobs.sh`, casos de teste à parte), nomes coincidentes com chaves de dados trocados pelo que são. Hash e fotos congeladas iguais: nada mudou no jogo. `capture_roads` compila, mas não foi rodada depois da divisão.
+- `quick.sh` apaga `dist/quick/passed` logo no início: nenhuma aprovação sobrevive a uma verificação que falha.
+- O restante do gate é schema e `rules.json` (do usuário), mais o que é da sessão do conversor.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

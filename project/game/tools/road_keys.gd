@@ -1,15 +1,15 @@
 ## The road tool's keys, rebindable (Roadcraft ui/roads/keys.ts): the height up and down and the alignment. What the game keeps for
 ## itself comes from data/ui/keys.json and the camera's table, so a key can only be given when nothing else answers it. Page Up and
-## Page Down tilt the camera and are lent to the road by default. The player's choices live in Settings.road_keys.
+## Page Down tilt the camera and are lent to the road by default. The player's choices live in Settings.road.keys.
 class_name RoadKeys
 extends RefCounted
 
-const HEIGHT_UP := "height_up"
-const HEIGHT_DOWN := "height_down"
+const RAISE := "height_up"
+const LOWER := "height_down"
 const ALIGNMENT := "alignment"
-const ACTIONS: Array[String] = [HEIGHT_UP, HEIGHT_DOWN, ALIGNMENT]
-const DEFAULTS := {HEIGHT_UP: KEY_PAGEUP, HEIGHT_DOWN: KEY_PAGEDOWN, ALIGNMENT: KEY_V}
-const LABEL_KEYS := {HEIGHT_UP: "roadKeys.heightUp", HEIGHT_DOWN: "roadKeys.heightDown", ALIGNMENT: "roadKeys.alignment"}
+const ACTIONS: Array[String] = [RAISE, LOWER, ALIGNMENT]
+const DEFAULTS := {RAISE: KEY_PAGEUP, LOWER: KEY_PAGEDOWN, ALIGNMENT: KEY_V}
+const LABEL_KEYS := {RAISE: "roadKeys.heightUp", LOWER: "roadKeys.heightDown", ALIGNMENT: "roadKeys.alignment"}
 const LENT_BY_THE_CAMERA := [KEY_PAGEUP, KEY_PAGEDOWN]
 
 ## The action whose chip waits for a key, and the line under the chips.
@@ -20,7 +20,7 @@ const ALWAYS_THE_GAMES := [KEY_ESCAPE, KEY_ENTER, KEY_TAB, KEY_SPACE, KEY_DELETE
 
 
 static func key_of(action: String) -> Key:
-	return Settings.road_keys.get(action, DEFAULTS[action])
+	return Settings.road.keys.get(action, DEFAULTS[action])
 
 
 ## The action a key asks for, or "".
@@ -51,7 +51,7 @@ static func bind(action: String, code: Key) -> bool:
 		return false
 	var other := action_of(code)
 	var old := key_of(action)
-	var next: Dictionary = Settings.road_keys.duplicate()
+	var next: Dictionary = Settings.road.keys.duplicate()
 	if other != "" and other != action:
 		next[other] = old
 	next[action] = code

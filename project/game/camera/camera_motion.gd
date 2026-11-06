@@ -105,7 +105,7 @@ func _key(k: InputEventKey) -> bool:
 func wheel(log_factor: float, at: Vector2) -> void:
 	if pending_zoom == 0.0 or at.distance_to(zoom_point) > cfg.wheel_new_point_px:
 		var ground := rig.height_under(at)
-		var h := rig.hold_height(at, ground)
+		var h := CameraAim.hold_height(rig, at, ground)
 		zoom_point = at
 		zoom_height = h
 		zoom_grabbed = rig.hit_at(at, h)

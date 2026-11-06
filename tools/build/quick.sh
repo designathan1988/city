@@ -13,6 +13,7 @@ export MINGW="${MINGW:-C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64}"
 PY="C:/Users/Jonathan/AppData/Local/Programs/Python/Python312/python.exe"
 OUT="$ROOT/dist/quick"
 mkdir -p "$OUT"
+rm -f "$OUT/passed" # no approval outlives the check that follows
 started=$SECONDS
 all=""; picked=""; bless=""; ready=""
 for a in "$@"; do
@@ -83,7 +84,6 @@ wait $photos
 if [ -n "$bless" ] || [ ! -d "$OUT/golden_photos" ]; then rm -rf "$OUT/golden_photos"; cp -r "$OUT/photos" "$OUT/golden_photos"; echo "photos: golden written"
 else "$PY" tools/build/photodiff.py "$OUT/golden_photos" "$OUT/photos" "$OUT/photos_diff" 0.1 || same=1
 fi
-rm -f "$OUT/passed"
 [ "$suite" = 0 ] && [ "$gated" = 0 ] && [ "$same" = 0 ] || exit 1
 [ -n "$ready" ] && touch "$OUT/passed"
 exit 0

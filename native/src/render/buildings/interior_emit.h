@@ -12,7 +12,7 @@ namespace city::b40 {
 // this height; the rest keep theirs and show a face of render inside.
 constexpr float CUT_WALL_LOW_M = 0.9f;
 // How thick the outside wall is seen from inside (the inner face stands this far behind the outer one).
-constexpr float CUT_WALL_THICK_M = 0.25f;
+constexpr float CUT_SHELL_DEPTH = 0.25f;
 
 // The floor, cores, walls of the plan and furniture of floor `pl.b->cut_level`; nothing when the body is not cut.
 void emit_interior(Shell &shell, Shell &parts, const Placed &pl);

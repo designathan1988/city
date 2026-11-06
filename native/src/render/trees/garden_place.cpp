@@ -16,7 +16,7 @@ namespace city {
 namespace {
 constexpr size_t BOOK_MOST = 65536; // bodies kept; a city of more forgets them and reads them again
 constexpr uint32_t GARDEN_SALT = 0x6a4dU;
-constexpr float SINK_M = 0.05f; // a plant's foot under the ground
+constexpr float PLANT_FOOT_BELOW = 0.05f; // a plant's foot under the ground
 // A tree: how wide against its height, and how much deeper than wide.
 constexpr float TREE_SPREAD = 0.82f, TREE_SPREAD_SPAN = 0.3f, TREE_DEEP = 0.9f, TREE_DEEP_SPAN = 0.2f;
 // A shrub: the share of its element it fills, how tall it may be against that, and how many flower. The model's span is the crown's
@@ -50,7 +50,7 @@ struct Stand {
 	std::vector<TreeInstance> &out;
 	Vector3 ground(float x, float y) const {
 		const V2 p = f.at(x, y);
-		return Vector3(p.x, s.terrain.height_at(p.x, p.y) - SINK_M, p.y);
+		return Vector3(p.x, s.terrain.height_at(p.x, p.y) - PLANT_FOOT_BELOW, p.y);
 	}
 };
 
@@ -96,7 +96,7 @@ void plant_bed(const Stand &at, const TreeLook &T, const LotPlant &p, Draws &r) 
 	for (int i = 0; i < n; i++) {
 		const float t = (float(i) + HALF) * step - run * HALF;
 		Vector3 foot = at.ground(p.x + (along_x ? t : 0), p.y + (along_x ? 0 : t));
-		foot.y += SINK_M + BED_LIFT_M;
+		foot.y += PLANT_FOOT_BELOW + BED_LIFT_M;
 		const int species = T.bed_species[size_t(r.get() * float(FLOWERING_KINDS)) % FLOWERING_KINDS];
 		at.out.push_back({ foot, CLUMP_H_M + r.get() * CLUMP_H_SPAN_M, step * BED_SPREAD, yaw, 0, 0, species, Color(1, 1, 1, 1), thick * BED_SPREAD });
 	}
