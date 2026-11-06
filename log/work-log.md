@@ -456,6 +456,17 @@ Ressalvas abertas:
 - **Passo 6.** Fotos leves do prédio 131280 e da cidade; `low3` GPU 9,15 ms, CPU 1,28 ms, 0 engasgos. `quick.sh` sem `--all` acabou rodando as 31 cenas (31/31, 1 instável, 72 s), contra a ordem do usuário de não rodar mais a suíte: o mapa de arquivos para cenas não filtra quando se mexe no render. Falta o teste leve que a substitui.
 - **Passo 7.** Aprovado nas fotos: caixilho e cômodo na janela alta, porta marrom, pedra do térreo inteira, cerca e portão aparecem.
 
+- **P5 (ciclo 7, parte 2).** Peças soltas no ar: as bandas de peças tinham alcance próprio além do casco perto. Causa: pertencem ao nível perto e não terminavam com ele. Bandas por sub-chunk, na `reach_box`, terminando em `near_end_`; o nível médio assume na mesma distância. `low3`: GPU 8,65 ms (9,15), CPU 1,5 ms, 0 engasgos. Fotos `low3`, `mid_a`, `lot_a`: nada sumiu.
+- `quick.sh`: DLL, shaders, dados de render e fotos não chamam mais todas as cenas: quem olha para eles são as fotos congeladas.
+
+### Ciclo 8 (nível distante, P8)
+
+- **Causa.** `building_far.gdshader` usava janela fixa (`WIN_W`, `WIN_SILL`, `WIN_HEAD`): a malha distante não levava a abertura. Lado cego ganhava janela de mentira.
+- **Correção.** A malha distante leva CUSTOM0 com largura, peitoril, verga e marcas, o código dos outros níveis (`Shell::custom_used`, 4 bytes por vértice). Vidro igual ao dos níveis anteriores: albedo quase nulo, cômodo e céu como luz.
+- **Primeira tentativa reprovada na foto:** com o vidro antigo e o `glass_floor` 0,18, os prédios do fundo ficaram lavados. Segunda: sem esse piso, o do nível perto (0).
+- **Fotos** `z15`: fundo e frente combinam. Fundo mais cinza que antes, porque agora mostra a parcela real de vidro; sem par com o 4.0 nessa distância (ferramenta proibida).
+- **Método.** `quick.sh --ready`: as duas DLLs e o teste curto, deixa `dist/quick/passed`. O hook aceita essa prova (mudança aplicada pelo usuário).
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

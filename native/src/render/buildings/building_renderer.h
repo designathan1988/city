@@ -103,8 +103,8 @@ private:
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MeshDraw, SUB_COUNT> flat; // past bay_end_: the mid level's bays as merged rectangles, a bay too small on the screen to pay for its triangles
-		std::array<MultiMeshDraw, BAND_DRAWS> bands;
-		std::array<ShadowTwin, b40::BAY_PROP_SHADOWED> prop_casts; // what the balcony pieces throw, to lod.cast_props_m
+		std::array<std::array<MultiMeshDraw, BAND_DRAWS>, SUB_COUNT> bands; // by sub-chunk: they end with the near shell they stand on
+		std::array<std::array<ShadowTwin, b40::BAY_PROP_SHADOWED>, SUB_COUNT> prop_casts; // what the balcony pieces throw, to lod.cast_props_m
 		std::array<std::array<MultiMeshDraw, MID_DRAWS>, SUB_COUNT> mid_draws;
 		// A visibility range is measured to the centre of the instance's box (docs: Visibility ranges): every level of a sub-chunk takes this
 		// one box, so they hand over at one distance, with neither both drawn nor a hole between them.
@@ -156,15 +156,15 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_lawns, mid_lawns; // their lawns: another, in the terrain's grass
 		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
-		std::array<godot::PackedFloat32Array, BAND_DRAWS> bands; // the instanced parts, MultiMesh layout (rs_util.h)
-		std::array<OwnedMesh, BAND_DRAWS> band_mm; // their MultiMeshes, baked
-		std::array<int, BAND_DRAWS> band_count{};
+		std::array<std::array<godot::PackedFloat32Array, BAND_DRAWS>, SUB_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
+		std::array<std::array<OwnedMesh, BAND_DRAWS>, SUB_COUNT> band_mm; // their MultiMeshes, baked
+		std::array<std::array<int, BAND_DRAWS>, SUB_COUNT> band_count{};
 		std::array<godot::RID, BAND_DRAWS> band_mesh; // what each draws
 		std::array<std::array<godot::PackedFloat32Array, MID_DRAWS>, SUB_COUNT> mid_buf; // the mid level's instances, as the bands, by sub-chunk
 		std::array<std::array<OwnedMesh, MID_DRAWS>, SUB_COUNT> mid_mm;
 		std::array<std::array<int, MID_DRAWS>, SUB_COUNT> mid_count{};
 		std::array<std::array<godot::AABB, MID_DRAWS>, SUB_COUNT> mid_box;
-		std::array<godot::AABB, BAND_DRAWS> band_box; // what each band really covers: its range is measured to that box's centre
+		std::array<std::array<godot::AABB, BAND_DRAWS>, SUB_COUNT> band_box; // what each band really covers
 		godot::AABB flag_box;
 		std::array<godot::RID, MID_DRAWS> mid_mesh;
 		godot::PackedFloat32Array flags; // the flags, MultiMesh layout (flag_cloth.h bake_flags)

@@ -53,8 +53,11 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
 		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
 	}
-	for (ShadowTwin &d : ch.prop_casts) d.range(look_.cast_props_m);
-	for (int b = 0; b < BAND_DRAWS; b++) ch.bands[size_t(b)].range(0, band_end_[size_t(b)] * detail_scale_);
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		for (const ShadowTwin &d : ch.prop_casts[i]) d.range(look_.cast_props_m);
+		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
+		for (size_t b = 0; b < BAND_DRAWS; b++) ch.bands[i][b].range(0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
+	}
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0;
 	for (auto &sub : ch.mid_draws) {
 		sub[MID_BAYS].range(mid_from, bay_end_);

@@ -122,6 +122,7 @@ struct Shell {
 	bool coarse = false; // mid/far levels: fewer sides on round pieces
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	bool rooms = false; // carries CUSTOM0..3 (the material reads them on panes and far walls alone)
+	int custom_used = CUSTOM_ARRAYS; // how many of them go to the GPU: the far level takes its windows' code alone
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
 	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass
