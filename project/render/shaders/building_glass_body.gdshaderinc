@@ -55,7 +55,7 @@ void vertex() {
 
 void fragment() {
 #ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy, TIME) >= level_keep) discard;
+	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
 #endif
 	int coded = int(COLOR.a * 255.0 + 0.5);
 	uint code = uint(COLOR.r * 255.0 + 0.5) | (uint(COLOR.g * 255.0 + 0.5) << 8u);

@@ -73,7 +73,8 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		for (const MultiMeshDraw &d : sub) put_param(d.inst, BACK_PARAM, look_.level_back_m);
 	}
 	for (const MeshDraw &d : ch.mid) put_param(d.inst, BACK_PARAM, look_.level_back_m);
-	for (const ShadowTwin &d : ch.mid_casts)
+	for (const std::array<ShadowTwin, SUB_COUNT> *casts : { &ch.mid_casts, &ch.mid_hulls })
+		for (const ShadowTwin &d : *casts)
 		if (d.inst.is_valid())
 			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);

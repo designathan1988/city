@@ -21,6 +21,7 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 	far_hysteresis = float(at(lod, "far_hysteresis"));
 	far_per_eye = float(at(lod, "far_per_eye"));
 	cast_props_m = float(at(lod, "cast_props_m"));
+	hull_error_m = float(at(lod, "hull_error_m"));
 	level_fade_m = float(at(lod, "level_fade_m"));
 	level_back_m = float(at(lod, "level_back_m"));
 	far_rebuild_delay_s = float(at(lod, "far_rebuild_delay_s"));

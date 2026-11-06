@@ -2,11 +2,12 @@
 // band, only on the sub-chunks in it: `discard` costs the depth prepass of whatever carries it (Godot's shading language docs), so the shaders that
 // discard are variants, put on by instance (LEVEL_FADE); the mid level stands whole behind it, `level_back` metres further along the eye's ray, the same on
 // screen, so the two never fight over a depth.
+global uniform float dither_clock; // a new pattern a frame for the temporal filter, and one that stands still in a frozen picture (TIME stops wherever it was)
 instance uniform float level_keep : instance_index(0) = 1.0; // the share of the near level still drawn
 instance uniform float level_back : instance_index(1) = 0.0;
 
-float level_noise(vec2 px, float clock) {
-	return fract(52.9829189 * fract(dot(px + fract(clock) * 61.0, vec2(0.06711056, 0.00583715)))); // Jimenez 2014, a new pattern a frame for the temporal filter
+float level_noise(vec2 px) {
+	return fract(52.9829189 * fract(dot(px + dither_clock * 61.0, vec2(0.06711056, 0.00583715)))); // Jimenez 2014
 }
 
 // `d` (world) in the frame of `model`, whose axes are square to each other at any scale.

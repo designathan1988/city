@@ -29,6 +29,7 @@ var daylight: Daylight
 var sky: SkyView
 var occlusion: MeshInstance3D = preload("res://render/occlusion_pass.gd").new() # the corners of the town: the one owner of the screen-space occlusion
 var _materials := {} # kept alive here: the core draws with their RIDs
+var _dither := 0.0
 var _terrain_material: Resource
 
 
@@ -191,7 +192,16 @@ func follow_clock(hour: float) -> void:
 	daylight.follow_clock(hour)
 
 
+## The clock of the dissolves' noise back to its start: with the game's time stopped, the same picture every run.
+func still_dither() -> void:
+	_dither = 0.0
+	RenderingServer.global_shader_parameter_set(&"dither_clock", 0.0)
+
+
 func _process(_delta: float) -> void:
+	if _delta > 0.0:
+		_dither = fmod(_dither + _delta, 1.0)
+		RenderingServer.global_shader_parameter_set(&"dither_clock", _dither)
 	if daylight.mode == "cycle" and CityStore.ready_to_read():
 		daylight.follow_clock(CityStore.snapshot.hour)
 	var cam := get_viewport().get_camera_3d()

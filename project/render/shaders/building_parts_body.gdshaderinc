@@ -105,7 +105,7 @@ void vertex() {
 
 void fragment() {
 #ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy, TIME) >= level_keep) discard;
+	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
 #endif
 	vec3 n = normalize(v_wn);
 	if (v_cloth > 0.5) {

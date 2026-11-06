@@ -182,7 +182,10 @@ void BuildingRenderer::commit_one(Built &b) {
 	}
 	if (b.has_mid) {
 		for (int i = 0; i < SUB_COUNT; i++) {
-			put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES);
+			put_level(ch.mid[size_t(i)], b.mid[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // its hull throws the shadow
+			OwnedMesh hull = std::move(b.mid_hull[size_t(i)]);
+			ch.mid_hulls[size_t(i)].bind(scenario_, hull.rid, material_cast_, b.mid[size_t(i)].box, LAYER_BUILDING_FACADES);
+			ch.mid_hull_meshes[size_t(i)] = std::move(hull); // the old one goes after the instance left it
 			put_level(ch.flat[size_t(i)], b.flat[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // the plain side behind throws the shadow
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
@@ -226,6 +229,7 @@ void BuildingRenderer::fit_reach(Chunk &ch, const Built &b) {
 		for (const ShadowTwin &d : ch.prop_casts[i])
 			if (d.inst.is_valid()) rs->instance_set_custom_aabb(d.inst, box);
 		if (ch.mid_casts[i].inst.is_valid()) rs->instance_set_custom_aabb(ch.mid_casts[i].inst, box);
+		if (ch.mid_hulls[i].inst.is_valid()) rs->instance_set_custom_aabb(ch.mid_hulls[i].inst, box);
 	}
 }
 
@@ -262,6 +266,7 @@ void BuildingRenderer::show(Chunk &ch, bool on) {
 	for (const auto &sub : ch.mid_draws)
 		for (const MultiMeshDraw &d : sub) d.visible(on);
 	for (size_t i = 0; i < SUB_COUNT; i++) ch.mid_casts[i].visible(on && ch.mid_draws[i][MID_SOLIDS].count > 0);
+	for (const ShadowTwin &d : ch.mid_hulls) d.visible(on);
 	ch.flags.visible(on);
 }
 

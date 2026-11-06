@@ -108,6 +108,8 @@ private:
 		std::array<std::array<ShadowTwin, BAND_CASTS>, SUB_COUNT> prop_casts; // what the boxes and the balcony pieces throw, to lod.cast_props_m
 		std::array<std::array<MultiMeshDraw, MID_DRAWS>, SUB_COUNT> mid_draws;
 		std::array<ShadowTwin, SUB_COUNT> mid_casts; // what the mid level's solids throw
+		std::array<ShadowTwin, SUB_COUNT> mid_hulls; // what its walls throw (cast_hull.h)
+		std::array<OwnedMesh, SUB_COUNT> mid_hull_meshes;
 		// A visibility range is measured to the centre of the instance's box (docs: Visibility ranges): every level of a sub-chunk takes this
 		// one box, so they hand over at one distance, with neither both drawn nor a hole between them.
 		std::array<godot::AABB, SUB_COUNT> reach_box;
@@ -142,6 +144,8 @@ private:
 		std::array<b40::Shell, SUB_COUNT> near_lawns, mid_lawns; // their lawns: another, in the terrain's grass
 		std::array<b40::Shell, SUB_COUNT> flat_shell, flat_glass; // the mid level's far bays (Chunk::flat): its walls are all far walls, in the glass surface
 		std::array<Surface, SUB_COUNT> near, parts, mid, flat;
+		std::array<OwnedMesh, SUB_COUNT> mid_hull;
+		float hull_error_m = 0;
 		std::array<std::array<godot::PackedFloat32Array, BAND_DRAWS>, SUB_COUNT> bands; // the instanced parts, MultiMesh layout (rs_util.h)
 		std::array<std::array<OwnedMesh, BAND_DRAWS>, SUB_COUNT> band_mm; // their MultiMeshes, baked
 		std::array<std::array<int, BAND_DRAWS>, SUB_COUNT> band_count{};

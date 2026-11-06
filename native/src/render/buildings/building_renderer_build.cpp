@@ -4,6 +4,7 @@
 // and the per-superchunk far/HLOD shell are then built from that copy without the lock. A later job bakes them into
 // meshes when the frame's upload budget admits it (Built::bake, building_renderer_commit.cpp; chunk_jobs.h).
 #include "render/buildings/building_renderer.h"
+#include "render/buildings/cast_hull.h"
 
 #include "sim/buildings/b40/civic.h"
 #include "render/buildings/facade.h"
@@ -182,6 +183,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.has_near = true;
 	}
 	out.has_mid = mid;
+	out.hull_error_m = look_.hull_error_m;
 	if (mid) {
 		for (size_t i = 0; i < SUB_COUNT; i++) {
 			out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
@@ -265,6 +267,7 @@ void BuildingRenderer::Built::bake() {
 			held[HELD_MID_PANES].add(mid_glass[size_t(i)], true);
 			held[HELD_MID_CARDS].add(mid_cards[size_t(i)], true);
 			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)], &mid_lawns[size_t(i)]);
+			mid_hull[size_t(i)] = cast_hull(mid_shell[size_t(i)], mid_glass[size_t(i)], hull_error_m);
 			held[HELD_MID_PANES].add(flat_glass[size_t(i)], true);
 			flat[size_t(i)] = BuildingRenderer::bake(flat_shell[size_t(i)], true, &flat_glass[size_t(i)]);
 		}

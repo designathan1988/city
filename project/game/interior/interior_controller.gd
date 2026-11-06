@@ -121,7 +121,8 @@ func _send(on: bool, target: int, level: int, step := -1) -> void:
 func _refresh() -> void:
 	_state = CityStore.query(&"interior")
 	_revision = _state.revision
-	_bar.show_state(_state)
+	if _bar.is_inside_tree(): # with no HUD the layer still works: nothing shows its floor
+		_bar.show_state(_state)
 	_lights.set_lamps(_state.lamps if is_on() else PackedVector3Array())
 
 

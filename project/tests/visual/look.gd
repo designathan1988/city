@@ -14,6 +14,7 @@
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
 
+const JITTER_PHASES := 16 # a common multiple of TAA's 16 and FSR2's 8 at full scale (renderer_scene_render_rd)
 const SETTLE_FRAMES := 4
 const MS_PER_S := 1000.0
 const UNTIL_TIMEOUT_MS := 60000.0
@@ -57,7 +58,8 @@ func _ready() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))
 	if "--frozen" in OS.get_cmdline_user_args():
-		Engine.time_scale = 0.0 # shaders' TIME, the clock and every delta stand: the same plan gives the same picture, by frames alone
+		Engine.time_scale = 0.0 # the clock and every delta stand: the same plan gives the same picture, by frames alone
+		world.still_dither()
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	add_child(ToolController.new(rig))
 	add_child(RoadcraftHud.new())
@@ -76,6 +78,8 @@ func _step(step: Dictionary) -> void:
 		await PairCamera.stand(rig, ui, ui.ground(v[0], v[1]), v[3], v[4], v[2])
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
+		while "--frozen" in OS.get_cmdline_user_args() and Engine.get_frames_drawn() % JITTER_PHASES != 0: # the same step of the temporal filter's jitter, however long the jobs took
+			await get_tree().process_frame
 		await ui.shot("%02d-%s" % [shots, step.shot])
 		shots += 1
 	elif step.has("wait"):

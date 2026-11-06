@@ -157,6 +157,8 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 			ch.near[size_t(i)].free();
 			ch.parts[size_t(i)].free();
 		} else {
+			ch.mid_hulls[size_t(i)].free();
+			ch.mid_hull_meshes[size_t(i)].reset();
 			ch.mid[size_t(i)].free();
 		}
 	}

@@ -56,6 +56,10 @@ canyon_light={
 "type": "float",
 "value": 1.0
 }
+dither_clock={
+"type": "float",
+"value": 0.0
+}
 map_grid={
 "type": "float",
 "value": 0.0

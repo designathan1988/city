@@ -51,11 +51,11 @@ float cover(int kind, vec2 q, vec2 fw, float share) {
 
 void fragment() {
 	int kind = int(UV2.x + 0.5);
-	if (level_noise(FRAGCOORD.xy, TIME) >= level_keep) discard;
+	if (level_noise(FRAGCOORD.xy) >= level_keep) discard;
 	if (kind == BRISE && length(v_world - CAMERA_POSITION_WORLD) < veil_from_m) discard;
 	vec2 fw = max(fwidth(UV), vec2(1e-5));
 	// the share of the pixel kept as a share of the pixels that stay: a screen of bars under a pixel is a veil and no moire; the frames resolve the grain
-	float grain = fract(52.9829189 * fract(dot(FRAGCOORD.xy + fract(TIME) * 61.0, vec2(0.06711056, 0.00583715))));
+	float grain = level_noise(FRAGCOORD.xy);
 	if (cover(kind, UV, fw, UV2.y) <= grain) discard;
 	ALBEDO = surface_out(to_linear(COLOR.rgb));
 	ROUGHNESS = roughness;
