@@ -122,7 +122,9 @@ public:
 	godot::PackedVector3Array segment_path(int seg); // the road's line in the world, for what the Information tool draws
 	godot::Dictionary segment_traffic(int seg), node_traffic(int node); // the Inspect tool's live numbers (city_core_inspect.cpp)
 	godot::Array impossible_nodes(); // the top bar's warning: nodes whose legs meet too sharply
-	float clear_reach(const godot::Vector3 &from, const godot::Vector3 &to, int samples); // the camera's line of sight
+	float clear_reach(const godot::Vector3 &from, const godot::Vector3 &to, int samples); // the camera's line of sight (city_core_sight.cpp)
+	float sight_pull(const godot::Vector3 &focus, const godot::Vector3 &eye, int samples, float soft);
+	godot::PackedVector3Array eye_free(const godot::Vector3 &focus, const godot::Vector3 &eye, float lift);
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses

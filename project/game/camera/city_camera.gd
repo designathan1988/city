@@ -231,5 +231,8 @@ func _apply() -> void:
 	if pulled != pos: # the pull goes by time, towards the focus: the floor holds wherever it leaves the eye
 		pos = pulled
 		pos.y = maxf(pos.y, _ground_height(pos.x, pos.z) + cfg.ground_clearance)
+	var free: PackedVector3Array = CityStore.query(&"eye_free", [focus, pos, CameraProfile.eye_lift(cfg, half)]) # at any distance, never inside a building
+	focus = free[0]
+	pos = free[1]
 	camera.global_transform = Transform3D(basis, pos)
 	camera.near = clampf(pos.distance_to(focus) * cfg.near_per_m, cfg.near_min, cfg.near_max)

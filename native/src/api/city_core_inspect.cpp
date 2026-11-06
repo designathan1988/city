@@ -91,16 +91,6 @@ void put_building(const CityState &s, Dictionary &d, int id) {
 	d["jobs"] = jobs;
 }
 
-std::vector<Solid> solids_of(const CityState &s, const Building &rec) {
-	std::vector<Solid> out;
-	if (rec.floors == 0) return out;
-	b40::Body b;
-	b40::record_body(s.buildings.designs, rec, b);
-	const b40::LotFrame f = b40::lot_frame(rec);
-	for (const b40::Volume &v : b.volumes) out.push_back({ f, v.x, v.y, v.x + v.w, v.y + v.d, b.level_z(v.base + v.storeys) });
-	return out;
-}
-
 // The building whose lot centre is nearest within reach, or -1.
 int nearest_building(const CityState &s, const Vector3 &p) {
 	int best = -1;
@@ -208,36 +198,6 @@ Array CityCore::impossible_nodes() {
 		out.push_back(d);
 	}
 	return out;
-}
-
-// How far from `from` towards `to` the line of sight stays out of the buildings' volumes, as a share of it, in `samples` steps
-// (Roadcraft isoViewport: the pull in front of a building). The volumes come from each record's body, kept until the city changes.
-float CityCore::clear_reach(const Vector3 &from, const Vector3 &to, int samples) {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	const CityState &s = *state_;
-	if (inspect_.solids_revision != s.revision) {
-		inspect_.solids.clear();
-		inspect_.solids_revision = s.revision;
-	}
-	std::vector<const std::vector<Solid> *> near;
-	const float x0 = std::min(from.x, to.x), x1 = std::max(from.x, to.x), z0 = std::min(from.z, to.z), z1 = std::max(from.z, to.z);
-	s.buildings.query(x0, z0, x1, z1, [&](int id) {
-		auto found = inspect_.solids.find(id);
-		if (found == inspect_.solids.end()) found = inspect_.solids.emplace(id, solids_of(s, s.buildings.items[id])).first;
-		near.push_back(&found->second);
-	});
-	for (int i = 1; i <= samples; i++) {
-		const float t = float(i) / float(samples);
-		const Vector3 p = from.lerp(to, t);
-		const float ground = s.terrain.height_at(p.x, p.z);
-		for (const std::vector<Solid> *list : near)
-			for (const Solid &v : *list) {
-				const V2 rel = V2(p.x, p.z) - v.f.o;
-				const float lx = rel.dot(v.f.e0), ly = rel.dot(v.f.e1);
-				if (lx >= v.x0 && lx <= v.x1 && ly >= v.y0 && ly <= v.y1 && p.y < ground + v.top) return float(i - 1) / float(samples);
-			}
-	}
-	return 1.f;
 }
 
 } // namespace city

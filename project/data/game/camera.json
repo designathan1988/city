@@ -64,7 +64,8 @@
  "pull_in_s": 0.12,
  "pull_hold_s": 0.4,
  "pull_out_s": 0.6,
- "pull_full_half": 60,
- "pull_none_half": 240,
+ "pull_full_half": 4.8,
+ "pull_none_half": 19.2,
+ "pull_soft_m": 1.5,
  "pinch_min_spread_px": 40
 }
