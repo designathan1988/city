@@ -10,7 +10,7 @@
 
 namespace city {
 
-enum RoadShapeKind : uint8_t { SHAPE_RAISED = 1, SHAPE_SUNKEN = 2, SHAPE_MANUAL = 4, SHAPE_WALLS = 8 };
+enum RoadShapeKind : uint8_t { SHAPE_RAISED = 1, SHAPE_SUNKEN = 2, SHAPE_MANUAL = 4, SHAPE_WALLS = SHAPE_MANUAL << 1 };
 
 struct RoadShape {
 	bool alive = false;

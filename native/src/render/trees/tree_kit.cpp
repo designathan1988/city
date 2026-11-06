@@ -3,6 +3,8 @@
 // mean crown tone its far card is tinted with.
 #include "render/trees/tree_kit.h"
 
+#include "render/agents/agent_lod.h"
+
 #include "core/color.h"
 #include "core/random.h"
 #include "render/trees/tree_parts.h"
@@ -86,7 +88,7 @@ void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Tone
 	}
 }
 
-TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, PackedStringArray &errors) {
+TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, TreePictures &pictures, PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
 		"heart_shrink", "crown_reach", "cards_cast" };
@@ -120,6 +122,7 @@ TreeSpecies make_species(const Dictionary &d, int row, TreePictures &pictures, P
 	sp.far_tone.a = 1;
 	pictures.draw(row, body, cards, sp.far_tone);
 	sp.body = body.commit();
+	sp.caster = simplify_whole(body, caster_error_m).commit();
 	if (!cards.empty()) sp.cards = cards.commit();
 	sp.crown_reach = d["crown_reach"];
 	sp.cards_cast = d["cards_cast"];
@@ -136,7 +139,7 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
 	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.image(), errors)) return false;
-	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, pictures_, errors));
+	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, trees["caster_error_m"], pictures_, errors));
 	pictures_.finish();
 	return errors.is_empty();
 }

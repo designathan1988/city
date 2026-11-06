@@ -22,8 +22,10 @@ constexpr float TUNNEL_CLOSE_PAD_M = 0.4f; // structures.ts TUNNEL_CLOSE: headro
 constexpr float TUNNEL_BAND_M = 0.16f; // TUNNEL_ROOF / TUNNEL_BORE: the band either side of it the bore closes over
 constexpr float CASING_BAND_SHAPE_M = 1.f; // roadTypes.ts CASING_BAND: past the footway, inside the casing (sim/terrain does not see sim/roads)
 
+constexpr float LEAST_SPAN = 1e-6f; // a step's span never quite nothing
+
 float smoothstep(float a, float b, float v) {
-	const float u = std::min(1.f, std::max(0.f, (v - a) / std::max(1e-6f, b - a)));
+	const float u = std::min(1.f, std::max(0.f, (v - a) / std::max(LEAST_SPAN, b - a)));
 	return u * u * (3.f - 2.f * u);
 }
 } // namespace

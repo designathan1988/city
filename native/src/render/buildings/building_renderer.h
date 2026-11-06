@@ -14,8 +14,8 @@
 // indices. A chunk lives while RenderWorld streams it (within far_end), a superchunk while one of its chunks does.
 #pragma once
 
+#include "render/buildings/building_surface.h"
 #include "render/buildings/occluders.h"
-#include <atomic>
 
 #include "core/job_pool.h"
 #include "sim/buildings/b40/data.h"
@@ -89,22 +89,18 @@ private:
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
 	static constexpr int BAND_DRAWS = BAND_COUNT + b40::BAY_PROPS;
+	// Under the first band's thickness a part is finer than a shadow texel: the others cast, and the first balcony pieces after them.
+	static constexpr int BAND_CASTS = BAND_COUNT - 1 + b40::BAY_PROP_SHADOWED;
+	static constexpr int cast_of(int band) { return band == 0 || band >= BAND_COUNT + b40::BAY_PROP_SHADOWED ? -1 : band - 1; }
 	enum MidDraw { MID_BAYS, MID_BOXES, MID_DRAWS }; // the mid level's instances: its openings, and what stands out of its walls
 	static constexpr float REACH_PAD = 0.25f; // of a chunk: the stream starts a level a little before its range reaches the eye
-	// What the meshes hold, surface by surface (building_cost).
-	enum SurfaceKind { HELD_NEAR_WALLS, HELD_NEAR_PANES, HELD_NEAR_GUARDS, HELD_NEAR_CARDS, HELD_NEAR_PIECES, HELD_MID_WALLS, HELD_MID_PANES, HELD_MID_CARDS, HELD_KINDS };
-	struct Held {
-		int64_t triangles = 0, bytes = 0;
-		void add(const b40::Shell &shell, bool with_uv2) {
-			triangles += shell.triangles();
-			bytes += shell.bytes(with_uv2);
-		}
-	};
+	using Held = HeldCost;
+	using Surface = LevelSurface;
 	struct Chunk {
 		std::array<MeshDraw, SUB_COUNT> near, parts, mid;
 		std::array<MeshDraw, SUB_COUNT> flat; // past bay_end_: the mid level's bays as merged rectangles, a bay too small on the screen to pay for its triangles
 		std::array<std::array<MultiMeshDraw, BAND_DRAWS>, SUB_COUNT> bands; // by sub-chunk: they end with the near shell they stand on
-		std::array<std::array<ShadowTwin, b40::BAY_PROP_SHADOWED>, SUB_COUNT> prop_casts; // what the balcony pieces throw, to lod.cast_props_m
+		std::array<std::array<ShadowTwin, BAND_CASTS>, SUB_COUNT> prop_casts; // what the boxes and the balcony pieces throw, to lod.cast_props_m
 		std::array<std::array<MultiMeshDraw, MID_DRAWS>, SUB_COUNT> mid_draws;
 		// A visibility range is measured to the centre of the instance's box (docs: Visibility ranges): every level of a sub-chunk takes this
 		// one box, so they hand over at one distance, with neither both drawn nor a hole between them.
@@ -133,13 +129,6 @@ private:
 		// A built far mesh is rebuilt on its own clock: not before `due` (a delay
 		// after the first change it waits for) nor within an interval of the previous request (`asked`).
 		double due = 0, asked = -std::numeric_limits<double>::infinity();
-	};
-	// A level surface the job made (bake: the arrays converted on the job's thread, rs_util.h OwnedMesh); no mesh when
-	// the shell held no triangle.
-	struct Surface {
-		OwnedMesh mesh;
-		godot::AABB box;
-		int glass_at = -1, sheer_at = -1, card_at = -1, lawn_at = -1; // the mesh surfaces of the panes, the glass guards, the railings and the lawns, -1: none
 	};
 	// A job's result: the shells it built, baked into surfaces by a later job the frame's upload budget admits
 	// (chunk_jobs.h commit_baked), then handed to the chunk's instances.
@@ -204,6 +193,7 @@ private:
 		uint8_t mask;
 	};
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
+	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr);

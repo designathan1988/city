@@ -29,7 +29,6 @@ varying vec3 v_wn;
 varying flat vec4 v_opening; // width, sill and head as shares of the bay and the storey; flags
 
 const int WINDOW_BLANK = 4; // shell.h WINDOW_FLAG_BLANK: a side with no openings
-const float MEAN_BOOST = 1.45; // a window under a pixel keeps the glass the detail shows, not washed into the wall
 const float FOOT_SHADE = 0.62; // the foot of a wall in the street's shade
 const float FOOT_STOREYS = 0.47; // its height, storeys (1.4 m of a 3 m storey)
 const vec3 MEAN_SEEN = vec3(0.42, 0.45, 0.47); // a room under a pixel by day (building.gdshader PANE_MEAN_SEEN)
@@ -65,7 +64,7 @@ void fragment() {
 	if (kind == 3) {
 		vec2 foot = grid_footprint(UV);
 		float open = (int(v_opening.a * 255.0 + 0.5) & WINDOW_BLANK) != 0 ? 0.0 : 1.0;
-		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b) * MEAN_BOOST, 0.0, 1.0);
+		float m = open * clamp(pulse(UV.x, foot.x, 0.5 - 0.5 * v_opening.r, 0.5 + 0.5 * v_opening.r) * pulse(UV.y, foot.y, v_opening.g, v_opening.b), 0.0, 1.0);
 		vec2 room = floor(UV);
 		float lot = h01(uint(room.x + 512.0) * 131u + uint(room.y + 512.0) * 7177u);
 		float sub = smoothstep(0.5, 1.5, max(foot.x, foot.y));

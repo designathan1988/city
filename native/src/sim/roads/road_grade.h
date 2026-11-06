@@ -48,6 +48,7 @@ constexpr float UNDER_DECK_ROOM_M = 0.4f; // solveRaised: nothing comes closer t
 // A segment's solved profile: heights at arc i * step from its a node (h), the ground read under it (ceil: the highest
 // across the casing, dilated, plus the surface clearance; base: the mean, smoothed and graded, the line it is designed
 // on), and the plates flat at each end.
+constexpr int CURVE_NUMBERS = 6; // what the curve of a segment is: its two ends and its control point
 struct GradeProfile {
 	bool valid = false;
 	Structure structure = Structure::GROUND;
@@ -57,7 +58,7 @@ struct GradeProfile {
 	float len = 0, step = 0, half = 0, plate_a = 0, plate_b = 0;
 	std::vector<float> h, ceil, base;
 	// what the ground was read along: kept while the curve, the casing and the ground under it stand
-	double q[6] = {};
+	double q[CURVE_NUMBERS] = {};
 	float read_half = -1;
 };
 

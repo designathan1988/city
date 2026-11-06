@@ -40,8 +40,10 @@ constexpr int BOX_FACES = 6;
 
 const Vector3 UP(0, 1, 0);
 
+constexpr float LEAST_SPAN = 1e-6f, LEAST_LEAN_M = 0.04f; // a step's span and a pier's rise never quite nothing
+
 float smooth(float a, float b, float v) {
-	const float u = std::min(1.f, std::max(0.f, (v - a) / std::max(1e-6f, b - a)));
+	const float u = std::min(1.f, std::max(0.f, (v - a) / std::max(LEAST_SPAN, b - a)));
 	return u * u * (3.f - 2.f * u);
 }
 
@@ -211,7 +213,7 @@ struct Deck {
 			const Vector3 outward = -(a.in + b.in) * HALF;
 			structure_face(e.mb, point(a, 0, a.foot), point(b, 0, b.foot), point(b, 0, b.top), point(a, 0, a.top), deck_tone, outward);
 			structure_face(e.mb, point(a, 0, a.top), point(b, 0, b.top), point(b, top_w, b.top), point(a, top_w, a.top), deck_tone, UP);
-			const float lean = (foot_w - top_w) / std::max(0.04f, a.top - a.foot);
+			const float lean = (foot_w - top_w) / std::max(LEAST_LEAN_M, a.top - a.foot);
 			structure_face(e.mb, point(a, top_w, a.top), point(b, top_w, b.top), point(b, foot_w, b.foot), point(a, foot_w, a.foot), deck_tone, (-outward + UP * lean).normalized());
 			if (k + 2 == sec.size() && b.grow > GROWN) structure_face(e.mb, point(b, 0, b.foot), point(b, foot_w, b.foot), point(b, top_w, b.top), point(b, 0, b.top), deck_tone, b.fwd);
 		}

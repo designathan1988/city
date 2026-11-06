@@ -27,11 +27,12 @@ namespace city {
 
 namespace {
 constexpr uint64_t FNV_BASIS = 14695981039346656037ULL, FNV_PRIME = 1099511628211ULL; // FNV-1a, 64 bits
+constexpr int HEX = 16; // the base a hash is written in
 
 String hex_of(const uint8_t *from, const uint8_t *to) {
 	uint64_t h = FNV_BASIS;
 	for (const uint8_t *p = from; p != to; p++) h = (h ^ *p) * FNV_PRIME;
-	return String::num_uint64(h, 16);
+	return String::num_uint64(h, HEX);
 }
 
 constexpr uint64_t WORD_MUL = 0xff51afd7ed558ccdull; // eight bytes at a time: a whole map's heights in milliseconds
@@ -67,7 +68,7 @@ uint64_t fleet_hash(const TrafficState &t) {
 
 Dictionary derived_of(const CityState &s) {
 	Dictionary d;
-	d["heights"] = String::num_uint64(fold(FNV_BASIS, s.terrain.final_h.data(), s.terrain.final_h.size() * sizeof(float)), 16);
+	d["heights"] = String::num_uint64(fold(FNV_BASIS, s.terrain.final_h.data(), s.terrain.final_h.size() * sizeof(float)), HEX);
 	std::vector<int64_t> cells;
 	for (const auto &kv : s.lots.by_cell) cells.push_back(kv.first);
 	std::sort(cells.begin(), cells.end());
@@ -77,7 +78,7 @@ Dictionary derived_of(const CityState &s) {
 			const double f[] = { l.x, l.z, l.w, l.d, l.rot, double(l.zone), double(l.profile), double(l.seed) };
 			lots = fold(lots, f, sizeof(f));
 		}
-	d["lots"] = String::num_uint64(lots, 16);
+	d["lots"] = String::num_uint64(lots, HEX);
 	uint64_t graph = FNV_BASIS;
 	for (const Conn &c : s.traffic.g.conns) {
 		const float f[] = { c.x0, c.z0, c.x1, c.z1, c.len, float(c.alive), float(c.node) };
@@ -85,10 +86,10 @@ Dictionary derived_of(const CityState &s) {
 		graph = fold(graph, c.conflicts.data(), c.conflicts.size() * sizeof(int));
 		graph = fold(graph, c.conflict_at.data(), c.conflict_at.size() * sizeof(float));
 	}
-	d["graph"] = String::num_uint64(graph, 16);
+	d["graph"] = String::num_uint64(graph, HEX);
 	uint64_t grades = FNV_BASIS;
 	for (const GradeProfile &p : s.roads.grade.prof) grades = fold(grades, p.h.data(), p.h.size() * sizeof(float));
-	d["grades"] = String::num_uint64(grades, 16);
+	d["grades"] = String::num_uint64(grades, HEX);
 	return d;
 }
 } // namespace
@@ -112,7 +113,7 @@ PackedStringArray CityProbes::traffic_hashes(int ticks) {
 	PackedStringArray out;
 	for (int k = 0; k < ticks; k++) {
 		traffic::step(*state_, dt);
-		out.push_back(String::num_uint64(fleet_hash(state_->traffic), 16));
+		out.push_back(String::num_uint64(fleet_hash(state_->traffic), HEX));
 	}
 	return out;
 }

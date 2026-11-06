@@ -63,7 +63,8 @@ float plate_reach(const RoadNetwork &net, int n, double retreat) {
 }
 
 bool same_curve(const GradeProfile &p, const Quad &q) {
-	return p.q[0] == q.x0 && p.q[1] == q.z0 && p.q[2] == q.cx && p.q[3] == q.cz && p.q[4] == q.x1 && p.q[5] == q.z1;
+	const double now[CURVE_NUMBERS] = { q.x0, q.z0, q.cx, q.cz, q.x1, q.z1 };
+	return std::equal(now, now + CURVE_NUMBERS, p.q);
 }
 
 // The ground under the road at its stations: ceil, the highest across the casing (dilated) over the surface clearance;
@@ -107,8 +108,8 @@ void grade_inputs(RoadGrade &grade, const RoadNetwork &net, int s, const GroundA
 	p.half = half;
 	if (!keep) {
 		read_stations(g, p, count, ground, t);
-		const double q[6] = { g.q.x0, g.q.z0, g.q.cx, g.q.cz, g.q.x1, g.q.z1 };
-		std::copy(q, q + 6, p.q);
+		const double q[CURVE_NUMBERS] = { g.q.x0, g.q.z0, g.q.cx, g.q.cz, g.q.x1, g.q.z1 };
+		std::copy(q, q + CURVE_NUMBERS, p.q);
 		p.read_half = half;
 	}
 	p.a = g.a;

@@ -17,6 +17,7 @@
 
 namespace city {
 
+constexpr int CAR_MODELS = int(VehicleType::MOTO); // sedan .. pickup come from agents.json "cars", then the wagon
 constexpr int WAGON_MODEL = VEHICLE_TYPES, AGENT_MODELS = VEHICLE_TYPES + 1; // a model per type and the sedans' estate
 
 class AgentRenderer {

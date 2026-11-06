@@ -266,6 +266,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 
 - Horizonte da luz entre prédios: uma direção para de ler quando nem o mais alto ao alcance (`near`, já no campo) subiria o que ela achou; a conta é a mesma, com menos leituras. Assar os 24 valores por célula em C++ foi rejeitado: 12 MB por janela contra 1 MB, enviados pela thread principal (engasgo), e todos os degraus numa borda só de 4 m, onde hoje cada direção cai numa célula diferente e a soma alisa.
 
+- Causa 10, árvores: cada árvore perto lançava sombra com o corpo inteiro, e o `ultra` tem mais de 4x a vegetação do `medium`. Cada espécie ganhou `caster`, o corpo simplificado inteiro (`simplify_whole`, `trees.caster_error_m`), desenhado só na sombra com o mesmo material; o vento continua, porque o simplificador só remove vértices. Fotos: até 0,01% dos pixels; copa, tronco e posição iguais, contorno um pouco mais simples. O balanço não foi visto em movimento.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.

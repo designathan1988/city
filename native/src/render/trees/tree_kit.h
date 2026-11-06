@@ -28,6 +28,7 @@ constexpr float FAR_CARD_CENTRE = 0.5f;
 struct TreeSpecies {
 	godot::String name;
 	godot::Ref<godot::ArrayMesh> body, cards; // cards empty when the species has none
+	godot::Ref<godot::ArrayMesh> caster; // the body simplified: what it throws on the ground, swaying as it does
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card

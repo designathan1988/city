@@ -87,16 +87,16 @@ void Heightfield::compose_rect(const SampleRect &r) {
 	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f);
 	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
 	std::vector<int> ids;
-	mod_hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
-	std::sort(ids.begin(), ids.end());
-	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-	for (int id : ids)
+	auto found = [&](const auto &hash) -> const std::vector<int> & {
+		ids.clear();
+		hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
+		std::sort(ids.begin(), ids.end());
+		ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+		return ids;
+	};
+	for (int id : found(mod_hash))
 		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
-	ids.clear();
-	shape_hash.query(minx, minz, maxx, maxz, [&](int id) { ids.push_back(id); });
-	std::sort(ids.begin(), ids.end());
-	ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-	for (int id : ids)
+	for (int id : found(shape_hash))
 		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w);
 }
 

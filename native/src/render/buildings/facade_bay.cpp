@@ -17,6 +17,7 @@ constexpr float STREAK_OUT = 0.012f, STREAK_MIN_SILL = 0.5f, STREAK_LO = 0.05f, 
 constexpr float STREAK_HALF = 0.32f, STREAK_HALF_STEP = 0.03f, STREAK_TOP = 0.02f, STREAK_DARK = 0.93f, STREAK_MID = 0.965f;
 constexpr int STREAK_SKIP = 3, STREAK_REACH = 7, STREAK_WIDTH = 5;
 constexpr float FRENCH_STREAK_SILL = 0.3f, FRAME_D = 0.06f, FRAME_THIN = 0.05f;
+constexpr float WALL_RUN_M = 12.f, PANE_ON_WALL_M = 0.02f; // a run's length, the macro tone's scale; a pane's rise off the wall behind it
 
 bool glazed(uint8_t c) {
 	return c != BAY_DOOR && c != BAY_GARAGE_DOOR && c != BAY_LOADING_DOOR && c != BAY_WALL && c != BAY_PILLAR;
@@ -130,21 +131,43 @@ void emit_reveal(Shell &shell, const BayCtx &c, const Opening &o, float from, fl
 	shell.rect(flat, o.a0, o.a1, from, to, o.h1, head, fin, true);
 }
 
-void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c) {
+void WallRun::add(const BayCtx &c, int bay, float at_push) {
+	const bool joins = last >= 0 && bay == last + 1 && at_push == push && fin == c.wall_fin && width + c.W <= WALL_RUN_M && wall.r == c.wall.r && wall.g == c.wall.g && wall.b == c.wall.b;
+	if (!joins) {
+		close();
+		f = c.f;
+		width = 0;
+		height = c.H;
+		push = at_push;
+		wall = c.wall;
+		fin = c.wall_fin;
+	}
+	width += c.W;
+	last = bay;
+}
+
+void WallRun::close() {
+	if (last >= 0) shell.rect(f, 0, width, 0, height, 0, wall, fin);
+	last = -1;
+}
+
+void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, WallRun &run, int bay, float push) {
 	Opening o = opening_of(*pl.data, c);
 	if (!o.has) {
-		shell.rect(c.f, 0, c.W, 0, c.H, 0, c.wall, c.wall_fin);
+		run.add(c, bay, push);
 		return;
 	}
-	shell.rect(c.f, 0, o.a0, 0, c.H, 0, c.wall, c.wall_fin);
-	shell.rect(c.f, o.a1, c.W, 0, c.H, 0, c.wall, c.wall_fin);
-	shell.rect(c.f, o.a0, o.a1, 0, o.h0, 0, c.wall, c.wall_fin);
-	shell.rect(c.f, o.a0, o.a1, o.h1, c.H, 0, c.wall, c.wall_fin);
 	if (pl.b->cut_level < 0 && flush(c, o)) { // a body cut open has clear glass in the reveal (no recess drawn by the shader)
+		run.add(c, bay, push);
 		PaneLook look = pane_look(pl, c, o.a0, o.a1, o.h0, o.h1, dark_pane(c), frame_of(c.comp));
 		look.recess = o.depth;
-		shell.pane(c.f, o.a0, o.a1, o.h0, o.h1, 0, look);
+		shell.pane(c.f, o.a0, o.a1, o.h0, o.h1, PANE_ON_WALL_M, look);
 	} else {
+		run.close();
+		shell.rect(c.f, 0, o.a0, 0, c.H, 0, c.wall, c.wall_fin);
+		shell.rect(c.f, o.a1, c.W, 0, c.H, 0, c.wall, c.wall_fin);
+		shell.rect(c.f, o.a0, o.a1, 0, o.h0, 0, c.wall, c.wall_fin);
+		shell.rect(c.f, o.a0, o.a1, o.h1, c.H, 0, c.wall, c.wall_fin);
 		reveals(shell, c, o);
 		closing(shell, pl, c, o);
 	}

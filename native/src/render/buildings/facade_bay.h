@@ -45,7 +45,19 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 // How many of a component's panes take the darker glass: the far level's grid fades to the same share (far_window).
 enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIFTH };
 PaneDark pane_dark(uint8_t comp);
-void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c);
+// The wall of bays side by side with nothing cut in it, as one face: a flush pane stands on it, so a storey of windows is a few faces
+// and a pane each, not four rectangles a bay. Short enough that the macro tone, written per vertex, still moves along it.
+struct WallRun {
+	Shell &shell;
+	int last = -1; // the bay it reaches, -1: none open
+	Basis f;
+	float width = 0, height = 0, push = 0;
+	Lin wall;
+	int8_t fin = FIN_NONE;
+	void add(const BayCtx &c, int bay, float at_push);
+	void close();
+};
+void emit_bay(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, WallRun &run, int bay, float push);
 // Every bay of a placed body with its opening (the census of the bays, building_renderer_probe.cpp).
 void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at);
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o);

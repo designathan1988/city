@@ -11,6 +11,10 @@ const ACTIONS: Array[String] = [HEIGHT_UP, HEIGHT_DOWN, ALIGNMENT]
 const DEFAULTS := {HEIGHT_UP: KEY_PAGEUP, HEIGHT_DOWN: KEY_PAGEDOWN, ALIGNMENT: KEY_V}
 const LABEL_KEYS := {HEIGHT_UP: "roadKeys.heightUp", HEIGHT_DOWN: "roadKeys.heightDown", ALIGNMENT: "roadKeys.alignment"}
 const LENT_BY_THE_CAMERA := [KEY_PAGEUP, KEY_PAGEDOWN]
+
+## The action whose chip waits for a key, and the line under the chips.
+static var waiting := ""
+static var note := ""
 const SHORT_NAMES := {KEY_PAGEUP: "PgUp", KEY_PAGEDOWN: "PgDn"}
 const ALWAYS_THE_GAMES := [KEY_ESCAPE, KEY_ENTER, KEY_TAB, KEY_SPACE, KEY_DELETE, KEY_BACKSPACE, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
 

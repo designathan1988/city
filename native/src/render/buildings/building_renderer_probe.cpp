@@ -43,6 +43,7 @@ int BuildingRenderer::chunk_flags(float x, float z) const {
 }
 
 Dictionary BuildingRenderer::bay_census() {
+	constexpr int BAY_KEY_CHARS = 96;
 	constexpr float FINE = 100.f, COARSE = 4.f; // bays per metre told apart: by the centimetre, by the 25 cm
 	if (!state_) return Dictionary(); // no chunk was asked yet
 	const CityState &s = *state_;
@@ -56,7 +57,7 @@ Dictionary BuildingRenderer::bay_census() {
 			if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
 	}
 	const auto key = [](float grain, const b40::BayCtx &c, const b40::Opening &o) {
-		char text[96];
+		char text[BAY_KEY_CHARS];
 		const auto q = [grain](float v) { return int(std::round(v * grain)); };
 		std::snprintf(text, sizeof(text), "%d/%d/%d/%d/%d/%d/%d", int(c.comp), q(c.W), q(c.H), q(o.w), q(o.h0), q(o.h1), q(o.depth));
 		return std::string(text);

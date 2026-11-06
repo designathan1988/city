@@ -20,7 +20,7 @@ for a in "$@"; do
 done
 changed="$(git status --short | awk '{print $2}')"
 
-# The scenes a path touches; a path of native/ or project/ with no row here runs every scene.
+# The scenes a path touches; a path with no row here asks for none: the hashes, the digest and the frozen photographs look at it. --all runs every scene.
 scenes_of() {
 	case "$1" in
 		native/src/sim/roads/*|native/src/sim/commands/road*|native/src/render/roads/*|project/game/tools/road*) echo road_commands_test road_edit_test road_grade_test ;;
@@ -36,7 +36,7 @@ scenes_of() {
 		log/*|tools/*|CLAUDE.md|*.md) ;;
 		# What only changes the picture: the frozen photographs below look at it, with no scene. A DLL is built from sources that have their row.
 		project/bin/*|project/render/*|project/data/render/*|project/tests/visual/*) ;;
-		*) echo ALL ;;
+		*) ;;
 	esac
 }
 
@@ -44,7 +44,6 @@ scenes="edit_fuzz_test traffic_hash_test"
 for f in $changed; do scenes="$scenes $(scenes_of "$f")"; done
 [ -n "$picked" ] && scenes="$scenes ${picked//,/ }"
 scenes="$(echo "$scenes" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//; s/^,//')"
-case ",$scenes," in *,ALL,*) all=1 ;; esac
 
 bash tools/build/gates_changed.sh "$ROOT" > "$OUT/gates.txt" 2>&1 & gates=$!
 # A class new to the project, written here or merged, is known only after an import.
@@ -76,6 +75,7 @@ elif [ -n "$bless" ] || [ ! -f "$OUT/golden.txt" ]; then cp "$OUT/digest.txt" "$
 elif cmp -s "$OUT/digest.txt" "$OUT/golden.txt"; then echo "digest: equal to the golden"
 else echo "digest MOVED:"; diff "$OUT/golden.txt" "$OUT/digest.txt"; same=1
 fi
+grep -a "^UNSTABLE\|^FAILED" "$OUT/suite.txt"
 tail -1 "$OUT/suite.txt"
 tail -1 "$OUT/gates.txt"
 echo "total $((SECONDS - started)) s"

@@ -467,6 +467,22 @@ Ressalvas abertas:
 - **Fotos** `z15`: fundo e frente combinam. Fundo mais cinza que antes, porque agora mostra a parcela real de vidro; sem par com o 4.0 nessa distância (ferramenta proibida).
 - **Método.** `quick.sh --ready`: as duas DLLs e o teste curto, deixa `dist/quick/passed`. O hook aceita essa prova (mudança aplicada pelo usuário).
 
+### Ciclo 9 (nível perto, P6 e P7)
+
+- **Causa, pela leitura do 4.0.** O jogo gravava 4 retângulos de parede por janela, e toda caixa de baia (peitoril, laje, marquise, moldura, brise) ia na malha do chunk, cerca de 20 vértices cada. O 4.0 desenha a parede por fileira (`emitFacadeRuns`, `byRun`) e põe o vidro sobre ela; as caixas são instâncias. E as peças em caixa do jogo não lançavam sombra nenhuma.
+- **Correção.** `WallRun`: bays lisas e com vidro embutido viram uma face de até 12 m (a escala do tom, escrito por vértice); o vidro sobe 2 cm da parede. Toda caixa de baia é instância em `parts`. Bandas de caixas, menos a mais fina, lançam sombra por `ShadowTwin` até `lod.cast_props_m`.
+- **Fotos.** `res_a`, `mid_a`, `res_c`, `lot_a`: varandas, peitoris e marquises iguais, sem briga de profundidade. `low3`: GPU 9,23 ms (8,93 sem as sombras novas), primitivas 4,81 M (5,00 M). A primeira leitura de 14,4 ms foi carga de outra sessão: repetida com a GPU livre.
+- **Falta medir:** a memória do nível perto depois disso.
+
+### Ciclo 10 (os gates de verdade)
+
+- **Causa da lentidão.** `tools/converter-slice` (91 GB, no `.gitignore`) e as outras ferramentas entraram na árvore sem entrar em `exclude_dirs`: o gate anda pelo disco, não pelo git. Sem elas, o gate completo roda em 15 a 26 s. O conserto em `rules.json` é do usuário.
+- **O que isso escondia.** 82 problemas reais, de várias sessões. Corrigidos aqui: código duplicado (linha de instância, baias, ids, arredondamento do greide), números mágicos, `build_cpu` longo, estado na interface, mapa. Restam 55.
+- **Cena instável.** O nome sempre esteve em `dist/quick/suite.txt` (`UNSTABLE`); `quick.sh` só mostrava a última linha, e meu `grep` não casava. Agora mostra. Na rodada com as 31 cenas: 0 instáveis.
+- `quick.sh`: arquivo sem linha no mapa não chama mais todas as cenas. Aquela rodada de 31 cenas foi mais uma contra a ordem do usuário, por `native/src/api` não ter linha.
+
+- **Cidade distante contra o 4.0.** Sem a ferramenta proibida: foto `par1/ref/p1-cidade` do arquivo, mesma câmera, prédios `predios-40.json` da mesma data. Antes: jogo mais claro e azulado (mediana 111,120,124 contra 93,101,99). `MEAN_BOOST` inflava a janela real; sem ele: mediana 101,113,117, p90 174,169,161 contra 171,165,153. Limite: o jogo não tem as ruas nesse par, o chão entra na mediana. As faces na sombra ainda ficam um pouco mais azuis que as do 4.0.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

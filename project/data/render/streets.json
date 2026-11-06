@@ -193,6 +193,7 @@
    "frond_tone_min": 0.6,
    "seed": 7
   },
+  "caster_error_m": 0.12,
   "species": [
    {"name": "broadleaf", "seed": 101, "trunk": {"top": 0.38, "r0": 0.056, "r1": 0.037, "facets": 8, "dark": "#4a3c2f", "lit": "#7d6853", "lean": 0.0, "rings": 4, "flare": 0.35, "flare_h": 0.1}, "limbs": {"count": 3, "reach": 0.146, "rise": 0.146, "r": 0.022}, "crowns": [{"center": [0, 0.564, 0], "radius": [0.181, 0.156, 0.181], "rough": 0.22, "seed": 11, "subdiv": 1, "cards": 27, "card": 0.4, "taper": 0.0}, {"center": [0.118, 0.582, 0.04], "radius": [0.118, 0.104, 0.118], "rough": 0.2, "seed": 17, "subdiv": 1, "cards": 13, "card": 0.4, "taper": 0.0}], "dark": "#24401c", "lit": "#4f7a34", "crown_reach": 0.34, "cards_cast": false, "jitter": 0.0, "shade_bottom": 0.62, "heart_shade": 0.5, "heart_shrink": 0.62},
    {"name": "broadleaf_b", "seed": 109, "trunk": {"top": 0.38, "r0": 0.056, "r1": 0.037, "facets": 8, "dark": "#4a3c2f", "lit": "#7d6853", "lean": 0.0, "rings": 4, "flare": 0.35, "flare_h": 0.1}, "limbs": {"count": 3, "reach": 0.146, "rise": 0.146, "r": 0.022}, "crowns": [{"center": [0, 0.564, 0], "radius": [0.181, 0.156, 0.181], "rough": 0.22, "seed": 13, "subdiv": 1, "cards": 27, "card": 0.4, "taper": 0.0}, {"center": [0.118, 0.582, 0.04], "radius": [0.118, 0.104, 0.118], "rough": 0.2, "seed": 19, "subdiv": 1, "cards": 13, "card": 0.4, "taper": 0.0}], "dark": "#24401c", "lit": "#4f7a34", "crown_reach": 0.34, "cards_cast": false, "jitter": 0.0, "shade_bottom": 0.62, "heart_shade": 0.5, "heart_shrink": 0.62},
