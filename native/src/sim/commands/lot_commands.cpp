@@ -5,7 +5,7 @@
 #include "sim/commands/road_edit.h"
 #include "core/grid.h"
 #include "sim/lots/lot_book.h"
-#include "sim/lots/lot_land.h"
+#include "sim/citygen/lot_land.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>

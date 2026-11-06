@@ -1,7 +1,7 @@
 // The paving as polygons in whole millimetres (Clipper2 works in integers, so a cut is the same on every machine): each road's ribbon
 // between its mouths, each junction's plate out to the point where two footways meet, each turning bulb. Read only round the box
 // asked: the whole map's outline is never made.
-#include "sim/lots/lot_land.h"
+#include "sim/citygen/lot_land.h"
 
 #include <iterator> // before Clipper2: its header needs it and does not say so
 

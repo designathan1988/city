@@ -309,7 +309,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/zone_commands.cpp` — pincel de zona
 - `native/src/sim/economy/road_economy.cpp` · `native/src/sim/economy/road_economy.h` — dono do dinheiro das vias: modos de construir, preço, a regra da cobrança e o acerto da edição aberta pelo diário
 - `native/src/sim/lots/lot_cache.cpp` · `native/src/sim/lots/lot_cache.h` — lotes por célula recalculados em paralelo; os do jogador têm a preferência
-- `native/src/sim/lots/lot_land.cpp` · `native/src/sim/lots/lot_land.h` — o lote contra as ruas (onLand, cutLotsByRoads, lotSnapper do 4.0): a calçada ao redor de uma caixa como polígonos em milímetros (Clipper2), o que sobra fora dela, a frente e o encaixe
+- `native/src/sim/citygen/lot_land.cpp` · `native/src/sim/citygen/lot_land.h` — o lote contra as ruas (onLand, cutLotsByRoads, lotSnapper do 4.0): a calçada ao redor de uma caixa como polígonos em milímetros (Clipper2), o que sobra fora dela, a frente e o encaixe
 - `native/src/sim/lots/lot_book.cpp` · `native/src/sim/lots/lot_book.h` · `native/src/sim/commands/lot_commands.cpp` · `native/src/sim/persistence/save_lots.cpp` · `native/src/sim/persistence/save_lots.h` · `native/src/api/city_core_lots.cpp` — os lotes que o jogador desenha (world/lots.ts do 4.0): polígono com frente, onde um prédio cabe, cortar, juntar, curvar um lado; as edições pelo diário, o bloco do save e a API de script
 - `native/src/sim/nature/elements.cpp` · `native/src/sim/nature/elements.h` — elementos do pincel (objetos pequenos e efeitos) por chunk
 - `native/src/sim/nature/ecology.cpp` · `native/src/sim/nature/ecology.h` — o que cresce onde por bioma (fitofisionomias), calculado por chunk onde é lido

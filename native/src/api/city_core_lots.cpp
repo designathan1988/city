@@ -2,7 +2,7 @@
 #include "api/city_core.h"
 #include "api/edit_result.h"
 #include "sim/lots/lot_book.h"
-#include "sim/lots/lot_land.h"
+#include "sim/citygen/lot_land.h"
 
 #include <algorithm>
 #include <cmath>

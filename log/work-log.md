@@ -699,3 +699,6 @@ Ressalvas abertas:
 - Save 8: o header guarda o lado da terra. Sem isso um arquivo antigo abriria noutro chão, porque a terra vem da semente e do lado. O arquivo antigo abre em 10 km, e o teste corta um save real de volta ao formato 7 para provar.
 - Fim do mapa: o 4.0 acaba no vazio e o jogo no mar. Fica o mar: melhor que a referência.
 - Pedido do usuário: o `dist\\windows\\Roadcraft.exe` da pasta `city` era de 05/11 23:53 e a pasta estava 77 commits atrás. "Enviado para main" não chega ao jogo que ele abre: cada entrega precisa de um executável novo, e isso deve ser dito.
+
+## 2026-11-06: os gates de camada
+- `lot_land` lia vias e calçadas de dentro de `sim/lots`, camada que não pode. Em vez de pedir regra nova, foi para `sim/citygen`, ao lado do `lot_gen`: é o mesmo assunto, lotes contra as ruas, e a camada permite. Três gates a menos, sem tocar em `rules.json`.
