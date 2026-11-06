@@ -273,6 +273,7 @@ void step_pedestrians(CityState &s, float dt) {
 		Pedestrian &after = t.peds[size_t(id)];
 		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms;
 		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
+		step_act(t, p, after, dt);
 		pose(s, after);
 	}
 	follow_leaders(s, dt);

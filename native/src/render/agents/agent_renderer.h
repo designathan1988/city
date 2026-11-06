@@ -50,6 +50,7 @@ private:
 	// One more than the built levels: the cabin simplified, glass and people still seen, past cabin_close_m (agent_lod.h).
 	static constexpr int MID_DRAW = LEVELS, DRAWS = LEVELS + 1;
 	static constexpr uint64_t VEHICLE_DENSE_KEYS = 1u << 20;
+	static constexpr uint64_t ROW_KINDS = 2, PARKED_ROW = 1; // a key says whose id it is: the fleet's and the bays' both count from 0
 	// Who rides in one type: its passenger seats, the cumulative shares of its vehicles in each band of how full they
 	// run, and the strides its seats may fill in (1 alone: in their own order, front first).
 	struct Load {
@@ -75,6 +76,7 @@ private:
 	bool astride_[AGENT_MODELS] = {}; // its rider shows at any distance: nothing hides them
 	InstanceRows seen_rows_[AGENT_MODELS][DRAWS], cast_rows_[AGENT_MODELS][DRAWS]; // the rows of the frame, kept at their size
 	RowKeeper keeper_{ VEHICLE_DENSE_KEYS }; // each vehicle's row among what the camera sees
+	int rows_lost_ = 0; // seen on the last frame and with no row: never, or a vehicle goes undrawn with its driver at the wheel
 	MultiMeshDraw shadow_draws_[AGENT_MODELS][DRAWS]; // a level's instances with a lighter mesh; none for the far level, FleetShadow's
 	FleetShadow fleet_shadow_; // what the far level casts
 	float reach_m_[AGENT_MODELS] = {}; // from a model's origin to its farthest corner

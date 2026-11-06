@@ -61,6 +61,7 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
 // ped_party.cpp
 void add_company(CityState &s, int leader); // somebody at the leader's side
 void follow_leaders(CityState &s, float dt); // after the leaders moved
+void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
 
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it

@@ -11,10 +11,14 @@ const SHOT_UP_RAD := 0.157 # 9 degrees
 const SHOT_ALONG := 0.5 # the camera stands over the street, this share of the way ahead of the walker
 const LOOK_Y := 0.9
 const SHOTS := {"couple": "30_casal", "family": "31_familia", "child": "32_crianca", "elder": "33_idoso",
-	"coming_out": "34_saindo", "going_in": "35_entrando", "wait": "36_espera"}
+	"coming_out": "34_saindo", "going_in": "35_entrando", "wait": "36_espera", "phone": "39_celular", "bag": "40_sacola", "talk": "41_conversa",
+	"look": "42_olhando", "headphones": "43_fones", "listen": "44_ouvindo"}
 const FAR_FROM := Vector3(-58, 9, 150) # from the ground under FAR_AT
 const FAR_AT := Vector3(-58, 1, 0)
 const CLIPS := ["chairSit", "carDrive", "carRide", "cabDrive", "motoRide", "motoStop", "bikeStop", "bikePedal"]
+const HANDS := ["phone", "bag"] # looked at again from where the hand reads
+const HANDS_M := 2.2
+const HANDS_Y := 1.1
 const WAIT_TICKS := 200
 const TRIES := 16
 
@@ -38,6 +42,8 @@ static func shots(cap: Node) -> void:
 				continue
 			var spot: Array = census.spots[key]
 			await cap._shot(left[key], _from(spot[0], spot[1], spot[2]), spot[0] + Vector3.UP * LOOK_Y)
+			if key in HANDS:
+				await cap._shot(left[key] + "_perto", spot[0] + (_from(spot[0], spot[1], spot[2]) - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
 			left.erase(key)
 		if left.is_empty():
 			break

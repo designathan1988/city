@@ -6,10 +6,14 @@ extends RefCounted
 
 ## sim VehicleType (native/src/sim/catalog/traffic_params.h)
 const SEDAN := 0
+const HATCH := 1
+const SUV := 2
+const PICKUP := 4
 const VAN := 3
 const MOTO := 5
 const BUS := 6
 const TRUCK := 7
+const BICYCLE := 8
 const CAR_VIEW_FROM := Vector3(3, 2.5, 14) # x to its left, y up, z ahead, as in VIEWS
 const CAR_HIGH_FROM := Vector3(0, 45, 50)
 const CAR_VIEW_AT := Vector3(0, 0.5, 0)
@@ -22,9 +26,13 @@ const ORBIT := [[Vector3(3.5, 1.4, 3.5), 0.7], [Vector3(-3.5, 1.4, 3.5), 0.7], [
 const VIEWS := {
 	BUS: [["22_onibus", Vector3(4, 3, 16), 1.6], ["22_onibus_lado", Vector3(-7, 2.6, 1), 1.6], ["22_onibus_alto", Vector3(7, 9, 4), 1.0]],
 	TRUCK: [["23_caminhao", Vector3(3, 3, 11), 1.8], ["23_caminhao_lado", Vector3(-5, 2.8, 4), 2.0], ["23_caminhao_alto", Vector3(5, 8, 3), 1.5]],
-	MOTO: [["24_moto", Vector3(2, 1.6, 5), 1.0]],
+	MOTO: [["24_moto", Vector3(2, 1.6, 5), 1.0], ["24_moto_longe", Vector3(5, 2.2, 13), 1.0]],
+	BICYCLE: [["27_bicicleta", Vector3(2, 1.6, 5), 1.0], ["27_bicicleta_longe", Vector3(5, 2.2, 13), 1.0]],
 	VAN: [["25_van", Vector3(3, 2.4, 8), 1.1], ["25_van_tras", Vector3(3, 2.4, -8), 1.1]],
 	SEDAN: [["26_sedan_tras", Vector3(0.8, 2.4, -7.5), 0.7]],
+	HATCH: [["28_hatch", Vector3(3, 2.4, 8), 0.7], ["28_hatch_perto", Vector3(2, 1.8, 5), 0.7], ["28_hatch_longe", Vector3(4, 2.4, 12), 0.7]],
+	SUV: [["28_suv", Vector3(3, 2.4, 8), 0.7], ["28_suv_longe", Vector3(4, 2.4, 12), 0.7]],
+	PICKUP: [["28_picape", Vector3(3, 2.4, 8), 0.7]],
 }
 
 

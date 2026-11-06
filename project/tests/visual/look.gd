@@ -14,6 +14,7 @@
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
 
+const FORGET_FRAMES := 96 # the temporal filter forgets on which frame the last mesh came, which the load on the machine decides
 const JITTER_PHASES := 16 # a common multiple of TAA's 16 and FSR2's 8 at full scale (renderer_scene_render_rd)
 const SETTLE_FRAMES := 4
 const MS_PER_S := 1000.0
@@ -78,6 +79,9 @@ func _step(step: Dictionary) -> void:
 		await PairCamera.stand(rig, ui, ui.ground(v[0], v[1]), v[3], v[4], v[2])
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
+		if "--frozen" in OS.get_cmdline_user_args():
+			for i in FORGET_FRAMES:
+				await get_tree().process_frame
 		while "--frozen" in OS.get_cmdline_user_args() and Engine.get_frames_drawn() % JITTER_PHASES != 0: # the same step of the temporal filter's jitter, however long the jobs took
 			await get_tree().process_frame
 		await ui.shot("%02d-%s" % [shots, step.shot])

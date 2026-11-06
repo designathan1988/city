@@ -77,6 +77,8 @@ struct Pedestrian {
 	float down_until = 0, panic_until = 0, flinch_until = 0; // t.time until which a blow keeps it on the ground / running / bent over a wound
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
+	float act_share = 0; // how far into `act` it is, eased
+	PedAct act = PedAct::NONE; // what it does while it stands (ped_acts.cpp)
 	// among the others (ped_crowd.cpp): across its way (on a sidewalk from its middle, on a line round a corner or over
 	// a zebra from that line; +u on the left of a -> b, of the line), the stripe aimed at, how long that has held, the
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)

@@ -25,6 +25,8 @@ namespace city {
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \
 	X(ped_child_share) X(ped_elder_share) X(ped_child_pace) X(ped_elder_pace) X(ped_rest_fade_s) \
+	X(ped_act_fade_s) X(ped_look_after_s) X(ped_look_hold_s) X(ped_phone_after_s) X(ped_hands_after_s) X(ped_talk_after_s) X(ped_talk_turn_s) \
+	X(ped_talk_stagger_s) \
 	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \
 	X(ped_door_reach_m) X(ped_door_budget) X(work_stay_h) X(errand_stay_h) \
 	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \

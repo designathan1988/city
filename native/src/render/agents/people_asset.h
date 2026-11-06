@@ -21,6 +21,7 @@ namespace city {
 struct PersonClip {
 	std::string name;
 	int row = 0, frames = 0;
+	float seconds[2] = { 1, 1 }; // a man's and a woman's: the library's takes differ
 };
 
 // A clip on one body, at its first frame: where the pelvis is in root space, and how far the body runs from it (metres).
@@ -29,10 +30,13 @@ struct PersonFit {
 	float above = 0, below = 0, ahead = 0, side = 0;
 };
 
+constexpr int PALM_FLOATS = 12;
+
 struct PersonVariation {
 	int walk_frames = 1;
-	float idle_s = 1, walk_advance = 1, height = 1, alpha_test = 0;
+	float walk_advance = 1, height = 1, alpha_test = 0;
 	bool female = false, senior = false, child = false;
+	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 };
@@ -46,7 +50,7 @@ struct PeopleAsset {
 	godot::Color card_strip; // the strip in the atlas: x, y, a frame's width and height, in uv
 	int lods = 0;
 	std::vector<PersonClip> clips;
-	int block_rows = 0, idle_row = 0, idle_frames = 0; // each variation's rows of the palette; the idle, as the shader asks it
+	int block_rows = 0, hand_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things
 	// The clip of that name, as its index in `clips`; -1 when the file has none.
 	int clip(const char *name) const;
 	// Reads and checks the file; false (with a message) when it is missing or malformed.

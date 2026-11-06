@@ -163,6 +163,8 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.look = w.look;
 		rec.walked = w.walked;
 		rec.rest = w.rest;
+		rec.act = uint8_t(w.act);
+		rec.act_share = w.act_share;
 		rec.age = uint8_t(w.age);
 		f.people.push_back(rec);
 	}

@@ -28,16 +28,22 @@ import sys
 import numpy as np
 
 MAGIC = b"RCPP"
-VERSION = 4
+VERSION = 5
 FEMALE, SENIOR, CHILD = 1, 2, 4
 BONE_TEXELS = 3
 IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly
 SEATED = ("carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit")
 SEATED_FRAMES = 12  # somebody sitting hardly moves: the breath of the baked 36 frames, the shader mixes between them
 CLIP_NAME_BYTES = 16
+PALETTE_SPAN = 3.0  # people.gdshader BODY_SPAN: palette values lie within it, the cook prints them
+FIXED_MAX = 65535
+STAND_FRAMES = {"talk": 120, "listen": 90, "look": 32, "phone": 110, "headphones": 100, "bag": 100}  # what one does waiting: 3 to 7 frames a second
+HAND = "Bip01_R_Hand"
+FINGERS = ("Bip01_R_Finger1", "Bip01_R_Finger2", "Bip01_R_Finger3", "Bip01_R_Finger4")  # index to little finger
 # name in the file, name of the baked clip for an adult and for a senior
 CLIPS = [("walk", "walk", "walkElder"), ("idle", "idle", "idle"), ("carDrive",) * 3, ("carRide",) * 3, ("carRearRide",) * 3, ("cabDrive",) * 3,
-         ("cabRide",) * 3, ("chairSit",) * 3, ("motoRide",) * 3, ("motoStop",) * 3, ("bikePedal",) * 3, ("bikeStop",) * 3]
+         ("cabRide",) * 3, ("chairSit",) * 3, ("motoRide",) * 3, ("motoStop",) * 3, ("bikePedal",) * 3, ("bikeStop",) * 3,
+         ("talk",) * 3, ("listen",) * 3, ("look",) * 3, ("phone",) * 3, ("headphones",) * 3, ("bag",) * 3]
 
 
 def buffer(raw, base, ref):
@@ -63,6 +69,29 @@ def body(path):
         "head": head, "rest": rest, "normals": normals, "col": col.reshape(count, 4), "uv": uv.reshape(count, 2).astype(np.float64) / 65535.0,
         "bones": bones.reshape(count, 4), "weights": weights.reshape(count, 4).astype(np.float64) / 255.0, "index": buffer(raw, base, m["index"]),
     }
+
+
+def palm(head):
+    """The hand bone's place in the file's bones, and the palm at rest as three rows: X along the fingers, Y to the thumb, Z out of the back."""
+    m = head["mesh"]
+    names = [head["nodes"][i].get("name") for i in m["bones"]]
+
+    def at(name):
+        return np.linalg.inv(np.array(m["inverses"], dtype=np.float64)[names.index(name) * 16:][:16].reshape(4, 4).T)[:3, 3]
+
+    wrist = at(HAND)
+    x = np.mean([at(f) for f in FINGERS], axis=0) - wrist
+    x /= np.linalg.norm(x)
+    y = at(FINGERS[0]) - at(FINGERS[-1])
+    y -= x * y.dot(x)
+    y /= np.linalg.norm(y)
+    return names.index(HAND), np.c_[x, y, np.cross(x, y), wrist]
+
+
+def fixed_point(tex):
+    """The palette as the shader reads it: 16-bit fixed point, texel 2x the high bytes of texel x's channels, texel 2x + 1 the low."""
+    q = np.round((np.clip(tex, -PALETTE_SPAN, PALETTE_SPAN) + PALETTE_SPAN) / (2 * PALETTE_SPAN) * FIXED_MAX).astype("<u2")
+    return np.stack([(q >> 8).astype("u1"), (q & 255).astype("u1")], axis=2)
 
 
 def clip_rows(blob, clip, bones):
@@ -127,10 +156,13 @@ def cook(root, clips_dir, out, png):
     frames_of["idle"] = IDLE_FRAMES
     for name in SEATED:
         frames_of[name] = SEATED_FRAMES
+    frames_of.update(STAND_FRAMES)
     table, row = [], 0
     for name, _, _ in CLIPS:
         table.append((name, row, frames_of[name]))
         row += frames_of[name]
+    seconds = {name: [float(np.mean([e["clips"][name if name != "walk" else adult]["duration"] for e in index if e["gender"] == g])) for g in "mf"]
+               for name, adult, _ in CLIPS}
     block_rows = row
     heads, meshes, rows = [], [], []
     alpha = None
@@ -154,10 +186,11 @@ def cook(root, clips_dir, out, png):
         rows.append(block)
         m = b["head"]["mesh"]
         alpha = m["alphaTest"]
-        walk, idle, moto = e["clips"]["walkElder" if senior else "walk"], e["clips"]["idle"], e["clips"]["motoRide"]
+        walk, moto = e["clips"]["walkElder" if senior else "walk"], e["clips"]["motoRide"]
         hx, hy, hz = (moto["head"][12], moto["head"][13], moto["head"][14]) if moto.get("head") else (0.0, 0.0, 0.0)
         flags = (FEMALE if e["gender"] == "f" else 0) | (SENIOR if senior else 0) | (CHILD if e["ageBand"] == "child" else 0)
-        head = struct.pack("<IfffIffff", walk_frames, idle["duration"], walk["stride"], e["height"], flags, alpha, hx, hy, hz)
+        hand, rows_of_palm = palm(b["head"])
+        head = struct.pack("<IffIffff", walk_frames, walk["stride"], e["height"], flags, alpha, hx, hy, hz) + rows_of_palm.astype("<f4").tobytes()
         for level in m["levels"]:
             tri = b["index"][level["start"]:level["start"] + level["count"]].reshape(-1, 3)[:, [0, 2, 1]].reshape(-1)  # three's front is Godot's back
             used, local = np.unique(tri, return_inverse=True)
@@ -174,11 +207,11 @@ def cook(root, clips_dir, out, png):
     m = bodies[0]["head"]["mesh"]
     side = float(bodies[0]["head"]["atlas"]["size"])
     imp = m["impostor"]
-    blob = struct.pack("<4sIIIIIII", MAGIC, VERSION, len(index), nb, len(m["levels"]), nb * BONE_TEXELS, block_rows, len(table))
-    blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sII", n.encode(), r, f) for n, r, f in table)
+    blob = struct.pack("<4sIIIIIIII", MAGIC, VERSION, len(index), nb, len(m["levels"]), nb * BONE_TEXELS, block_rows, len(table), hand)
+    blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sIIff", n.encode(), r, f, *seconds[n]) for n, r, f in table)
     # v over the atlas's rows as the mesh's uv reads them: a frame's y counts from the other end (cookedPerson.ts CookedImpostor)
     blob += struct.pack("<Iffff", imp["frames"], imp["x"] / side, 1 - (imp["y"] + imp["height"]) / side, imp["width"] / side, imp["height"] / side)
-    blob += b"".join(heads) + b"".join(meshes) + tex.tobytes()
+    blob += b"".join(heads) + b"".join(meshes) + fixed_point(tex).tobytes()
     open(f"{out}/people.bin", "wb").write(blob)
     licenses(root, out)
     print(f"palette values within {float(np.abs(pal).max()):.3f}")

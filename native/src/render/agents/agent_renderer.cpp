@@ -54,7 +54,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	people_r_ = float(t["people_radius_m"]);
 	jump_m_ = float(t["wheel_jump_m"]);
 	people_.set_level_hold(level_hold_);
-	return people_.init(ctx, t["people"], errors);
+	return people_.init(ctx, t["people"], t["held"], errors);
 }
 
 bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors) {
@@ -151,6 +151,7 @@ Dictionary AgentRenderer::cost() const {
 	Dictionary out;
 	out["cabins"] = cabins_drawn();
 	out["people_near"] = people_.shown(0);
+	out["rows_lost"] = rows_lost_;
 	int draws = 0, tris = 0;
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) {
@@ -228,13 +229,14 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
 	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
 	auto rank = [](int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; };
-	auto level_of = [&](uint32_t id, float d2) {
-		const int now = plain_level(d2), place = keeper_.draw_of(id), was = place < 0 ? now : place % DRAWS;
+	auto level_of = [&](uint64_t key, float d2) {
+		const int now = plain_level(d2), place = keeper_.draw_of(key), was = place < 0 ? now : place % DRAWS;
 		if (was == now) return now;
 		return rank(now) > rank(was) ? (rank(plain_level(d2 / hold2)) > rank(was) ? now : was) : (rank(plain_level(d2 * hold2)) < rank(was) ? now : was);
 	};
 	near_d2_.clear();
 	drawn_vehicles_ = 0;
+	int placed = 0; // what the camera sees has a row each
 	// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
 	auto seen = [&](int model, const Pose &p, float d2) { return view.sees(Vector3(p.x, p.y, p.z), reach_m_[model] + std::sqrt(d2) * view_slack_); };
 	for (const AgentRecord &rec : f.vehicles) {
@@ -257,10 +259,12 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, p, d2);
 		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
-		const int level = level_of(rec.id, d2);
+		const uint64_t key = rec.id * ROW_KINDS;
+		const int level = level_of(key, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
-		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
+		placed += shown ? 1 : 0;
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
 		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}
@@ -272,13 +276,18 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, rec.at, d2);
 		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
-		const int level = level_of(rec.id, d2);
+		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
+		const int level = level_of(key, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
 		if (!shown && level == FAR_LEVEL) continue;
-		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
+		placed += shown ? 1 : 0;
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
 		drawn_vehicles_++;
 	}
 	keeper_.sweep([&](int d) -> InstanceRows & { return bufs[d / DRAWS][d % DRAWS]; });
+	rows_lost_ = placed;
+	for (int i = 0; i < AGENT_MODELS; i++)
+		for (int level = 0; level < DRAWS; level++) rows_lost_ -= bufs[i][level].count();
 	if (cabin_cap_ > 0 && int(near_d2_.size()) > cabin_cap_) { // the next frame's limit: the nearest cabin_cap_ keep theirs
 		std::nth_element(near_d2_.begin(), near_d2_.begin() + cabin_cap_, near_d2_.end());
 		cabin_limit2_ = near_d2_[size_t(cabin_cap_)];

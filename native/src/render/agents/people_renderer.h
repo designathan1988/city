@@ -1,11 +1,13 @@
 // Pedestrians near the camera drawn with the cooked MakeHuman people (people_asset.h): one MultiMesh per variation and
 // level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
-// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle. Past blob_from_m
+// the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
+// they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
 // a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
 // (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/held_things.h"
 #include "render/agents/people_asset.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
@@ -47,7 +49,7 @@ inline void agent_row(float *row, const Pose &p, float scale, float c0, float c1
 
 class PeopleRenderer {
 public:
-	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
+	bool init(const RenderContext &ctx, const godot::Dictionary &people, const godot::Dictionary &held, godot::PackedStringArray &errors);
 	void reset();
 	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.
@@ -83,10 +85,13 @@ private:
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
+	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
+	HeldThings held_;
+	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;
 	// The instance of a body at `p`.
-	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float frames, float phase, float pose_code);
+	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code);
 	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
 };

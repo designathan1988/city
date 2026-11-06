@@ -92,6 +92,8 @@ Array CityProbes::people_clips() const { return render_->people_clips(); }
 
 bool CityProbes::show_people_clip(const String &name) { return render_->show_people_clip(name); }
 
+static constexpr const char *ACT_NAMES[int(PedAct::COUNT)] = { "", "talk", "listen", "look", "phone", "headphones", "bag" };
+
 Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
@@ -100,7 +102,7 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	Dictionary d, modes;
 	int ages[PED_AGES] = {}, solo = 0, parties = 0, family = 0, child_alone = 0, total = 0, touching = 0;
 	float widest = 0, longest = 0;
-	int on_foot_line = 0;
+	int on_foot_line = 0, acting[int(PedAct::COUNT)] = {};
 	std::map<std::string, Nearest> spots;
 	for (const Pedestrian &w : t.peds) {
 		if (!w.alive) continue;
@@ -115,6 +117,10 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 		if (w.age == PedAge::CHILD) spots["child"].offer(s, w, at);
 		if (w.age == PedAge::ELDER) spots["elder"].offer(s, w, at);
 		if (w.mode == PedMode::WAIT) spots["wait"].offer(s, w, at);
+		if (w.act != PedAct::NONE && w.act_share >= 1) {
+			acting[int(w.act)]++;
+			spots[ACT_NAMES[int(w.act)]].offer(s, w, at);
+		}
 		if (w.mode == PedMode::LOT) {
 			spots[w.entering ? "going_in" : "coming_out"].offer(s, w, at);
 			longest = std::max(longest, w.llen);
@@ -130,6 +136,9 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 		touching += apart < 2 * s.catalog.traffic.ped_body_m ? 1 : 0;
 		spots[child ? "family" : "couple"].offer(s, w, at);
 	}
+	Dictionary acts;
+	for (int a = 1; a < int(PedAct::COUNT); a++) acts[ACT_NAMES[a]] = acting[a];
+	d["acts"] = acts;
 	d["total"] = total;
 	d["adults"] = ages[int(PedAge::ADULT)];
 	d["children"] = ages[int(PedAge::CHILD)];

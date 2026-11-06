@@ -131,6 +131,7 @@ void follow_leaders(CityState &s, float dt) {
 		w.pace = step / std::max(dt, MIN_STEP_S);
 		const bool standing = l.mode == PedMode::WAIT || w.pace <= p.ped_moving_ms;
 		w.rest = clampf(w.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
+		step_act(s.traffic, p, w, dt);
 	}
 }
 

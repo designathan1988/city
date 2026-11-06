@@ -239,6 +239,10 @@
   "shader": "res://render/shaders/people.gdshader",
   "params": {}
  },
+ "people_held": {
+  "shader": "res://render/shaders/people_held.gdshader",
+  "params": {}
+ },
  "people_far": {
   "shader": "res://render/shaders/people_far.gdshader",
   "params": {}

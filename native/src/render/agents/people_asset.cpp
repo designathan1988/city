@@ -24,33 +24,14 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
-constexpr uint32_t VERSION = 4, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t VERSION = 5, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
-constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.9, 1.9]: the cook prints it
-constexpr int TEXELS_PER_VALUE = 2;
-constexpr uint32_t FIXED_MAX = 65535;
+constexpr float SRGB_GAMMA = 2.2f;
+constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn (cook_people.py fixed_point, decoded in people.gdshader)
 constexpr float CARD_HALF = 0.5f;
 
 // Float textures are not sampled reliably in the Compatibility renderer (Godot may fall back to 8 bits and clamp), so
-// each palette value goes out as 16-bit fixed point over [-PALETTE_SPAN, PALETTE_SPAN]: texel 2x holds the high
-// bytes of texel x's four channels, texel 2x + 1 the low bytes (decoded in people.gdshader).
-PackedByteArray fixed_point(const PackedByteArray &floats) {
-	const float *f = reinterpret_cast<const float *>(floats.ptr());
-	int64_t n = floats.size() / int64_t(sizeof(float)), texels = n / RGBA;
-	PackedByteArray out;
-	out.resize(n * TEXELS_PER_VALUE);
-	uint8_t *o = out.ptrw();
-	for (int64_t t = 0; t < texels; t++)
-		for (int c = 0; c < int(RGBA); c++) {
-			float v = std::clamp(f[t * RGBA + c], -PALETTE_SPAN, PALETTE_SPAN);
-			uint32_t q = uint32_t(std::lround((v + PALETTE_SPAN) / (2 * PALETTE_SPAN) * float(FIXED_MAX)));
-			o[(t * TEXELS_PER_VALUE) * RGBA + c] = uint8_t(q >> BYTE_BITS);
-			o[(t * TEXELS_PER_VALUE + 1) * RGBA + c] = uint8_t(q & BYTE_MAX);
-		}
-	return out;
-}
-
 struct LodSize {
 	uint32_t vertices = 0, indices = 0;
 };
@@ -171,6 +152,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	uint32_t lod_count = r.get<uint32_t>(), pal_w = r.get<uint32_t>();
 	block_rows = int(r.get<uint32_t>());
 	const uint32_t clip_count = r.get<uint32_t>();
+	hand_bone = int(r.get<uint32_t>());
 	const uint32_t pal_h = uint32_t(block_rows) * count;
 	bool sound = r.ok && magic == MAGIC && version == VERSION && count > 0 && count <= MAX_VARIATIONS && lod_count > 0 && lod_count <= MAX_LODS &&
 			pal_w == bones * BONE_TEXELS && clip_count > 0 && clip_count <= MAX_CLIPS;
@@ -181,10 +163,10 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		c.name = name;
 		c.row = int(r.get<uint32_t>());
 		c.frames = int(r.get<uint32_t>());
+		for (float &s : c.seconds) s = r.get<float>();
 		sound = sound && c.frames > 0 && c.row + c.frames <= block_rows;
 	}
-	const int idle = clip("idle");
-	if (!r.ok || !sound || idle < 0) {
+	if (!r.ok || !sound || clip("idle") < 0 || hand_bone < 0 || uint32_t(hand_bone) >= bones) {
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
 	}
@@ -193,15 +175,12 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	card_strip.g = r.get<float>();
 	card_strip.b = r.get<float>();
 	card_strip.a = r.get<float>();
-	idle_row = clips[size_t(idle)].row;
-	idle_frames = clips[size_t(idle)].frames;
 	lods = int(lod_count);
 	variations.assign(count, PersonVariation());
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
 	for (uint32_t v = 0; v < count; v++) {
 		PersonVariation &pv = variations[v];
 		pv.walk_frames = int(r.get<uint32_t>());
-		pv.idle_s = r.get<float>();
 		pv.walk_advance = r.get<float>();
 		pv.height = r.get<float>();
 		uint32_t flags = r.get<uint32_t>();
@@ -210,6 +189,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		pv.child = flags & FLAG_CHILD;
 		pv.alpha_test = r.get<float>();
 		for (int k = 0; k < 3; k++) r.get<float>(); // where a helmet sits on this body, for the cook's own use
+		for (float &f : pv.palm) f = r.get<float>();
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 		pv.fits.resize(clips.size());
 		for (PersonFit &f : pv.fits) {
@@ -229,14 +209,13 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 			else variations[v].lods.push_back(read_mesh(r, sz));
 		}
 	PackedByteArray texels;
-	texels.resize(int64_t(pal_w) * pal_h * RGBA * sizeof(float));
+	texels.resize(int64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE);
 	if (r.ok) r.get_bytes(texels.ptrw(), size_t(texels.size()));
 	if (!r.ok || r.o != r.n) {
 		errors.push_back("pessoas: arquivo truncado ou com sobra: " + path);
 		return false;
 	}
-	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8,
-			fixed_point(texels)));
+	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8, texels));
 	card = card_mesh();
 	atlas = read_atlas(atlas_path, count);
 	if (atlas.is_null()) {

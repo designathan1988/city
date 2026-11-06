@@ -47,6 +47,7 @@ func _ready() -> void:
 	_check(int(probe.drawn_people) >= MIN_DRAWN_PEOPLE, "pessoas no buffer de instâncias")
 	_check(int(CityStore.query(&"building_cost").props) > 0, "mobiliário das sacadas no buffer de instâncias")
 	_check(int(CityStore.query(&"agent_cost").plants_near) > 0, "plantas dos jardins dos lotes no buffer de instâncias")
+	_check(int(CityStore.query(&"agent_cost").rows_lost) == 0, "todo veículo visto tem sua linha no buffer de instâncias")
 	_check(int(probe.vehicles) > 0 and int(probe.people) > 0, "frota e pedestres vivos")
 	_check(int(probe.moving) > 0, "veículos andando")
 	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published

@@ -41,16 +41,22 @@ constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIF
 enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);
 
+// What somebody standing does with their hands and face, past the idle.
+enum class PedAct : uint8_t { NONE = 0, TALK, LISTEN, LOOK, PHONE, HEADPHONES, BAG, COUNT };
+
 struct AgentRecord {
 	Pose at[POSE_TRAIL]; // the agent's PoseTrail
 	uint32_t id = 0; // vehicle or pedestrian id (wheel odometer, look)
 	uint32_t look = 0; // pedestrians: look hash; vehicles: type | paint << 8 | brake << 16
 	float walked = 0; // pedestrians: metres walked (walk phase); vehicles: 0
 	float rest = 0; // pedestrians: 0 walking .. 1 standing (the idle's share of the pose)
+	float act_share = 0; // pedestrians: how far into `act` they are (0 standing idle .. 1)
 	uint8_t age = 0; // pedestrians: PedAge
+	uint8_t act = 0; // pedestrians: PedAct
 };
 
-// A car standing in a bay (no trail: it does not move). id and look as AgentRecord's; ids are their own, past the fleet's.
+// A car standing in a bay (no trail: it does not move). look as AgentRecord's; ids are their own, counted from 0 as the fleet's: the same number names
+// a car on the road and another in a bay.
 struct ParkedRecord {
 	Pose at;
 	uint32_t id = 0, look = 0;

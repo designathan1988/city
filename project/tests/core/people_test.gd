@@ -62,6 +62,10 @@ func _ready() -> void:
 	CityStore.step_ticks(MORE_TICKS)
 	var later: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 	print("depois: ", later)
+	var doing := 0
+	for act in later.acts:
+		doing += int(later.acts[act])
+	_check(doing > 0, "quem espera na guia não faz nada: %s" % later.acts)
 	var indoors := float(later.went_in) / maxf(float(later.arrived), 1.0)
 	_check(indoors >= MIN_INDOORS, "chegaram por uma porta: %.2f" % indoors)
 	var afternoon := float(c.wanted)
