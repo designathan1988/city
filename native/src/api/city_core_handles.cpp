@@ -19,7 +19,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float SIDE_OUT_M = 1.6f, CORNER_OUT_M = 1.4f, SCALE_OUT_M = 0.8f, ABOVE_ROOF_M = 1.8f, OFF_FLOOR_M = 0.3f;
+constexpr float SIDE_OUT_M = 1.6f, CORNER_OUT_M = 1.4f, SCALE_OUT_M = 0.8f, ABOVE_ROOF_M = 1.8f, OFF_FLOOR_M = 0.3f, LIFT_OUT_M = 0.6f, RELIEF_OUT_M = 1.12f;
 constexpr float SHORTEST_M = 1e-3f;
 constexpr int MOST_SIDES_WITH_ARROWS = 8, BOX_CORNERS = 4;
 constexpr const char *MOVE_LABEL = "cmd.place.editBuilding";
@@ -45,6 +45,8 @@ HandleEdit edit_of(const CityState &s, int id, const Dictionary &spec) {
 	e.factor = float(spec.get("factor", 1.0));
 	e.wing = bool(spec.get("wing", false));
 	e.snap = bool(spec.get("snap", true));
+	if (spec.has("card")) e.part = part_spec(Dictionary(spec["card"]));
+	if (spec.has("shape")) e.shape = primitive_of(Dictionary(spec["shape"]));
 	const V2 at = lot_point(s, id, Vector3(spec.get("at", Vector3())));
 	e.x = at.x;
 	e.y = at.y;
@@ -52,7 +54,7 @@ HandleEdit edit_of(const CityState &s, int id, const Dictionary &spec) {
 }
 } // namespace
 
-Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye) const {
+Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye, const Dictionary &pick) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;
 	const CityState &s = *state_;
@@ -70,8 +72,8 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 		const V2 d = f.dir(x, y);
 		return Vector3(d.x, 0, d.y);
 	};
-	out.push_back(handle("storeys", world(v.x + v.w / 2, v.y + v.d / 2, floor + body.level_z(v.top()) + b40::roof_rise(v) + ABOVE_ROOF_M), Vector3(0, 1, 0), -1, -1));
-	const float foot = floor + body.level_z(v.base) + OFF_FLOOR_M;
+	out.push_back(handle("storeys", world(v.x + v.w / 2, v.y + v.d / 2, floor + body.block_z(v, v.top()) + b40::roof_rise(v) + ABOVE_ROOF_M), Vector3(0, 1, 0), -1, -1));
+	const float foot = floor + body.block_z(v, v.base) + OFF_FLOOR_M;
 	const b40::Ring ring = b40::ring_of(v);
 	if (v.sides() <= MOST_SIDES_WITH_ARROWS)
 		for (int side = 0; side < v.sides(); side++) {
@@ -89,7 +91,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 			x1 = std::max(x1, p.x);
 			y1 = std::max(y1, p.y);
 		}
-		eaves = std::max(eaves, body.level_z(o.top()));
+		eaves = std::max(eaves, body.block_z(o, o.top()));
 	}
 	const std::array<b40::Point2, BOX_CORNERS> box{ b40::Point2{ x0, y0 }, b40::Point2{ x1, y0 }, b40::Point2{ x1, y1 }, b40::Point2{ x0, y1 } };
 	std::array<int, BOX_CORNERS> order{ 0, 1, 2, 3 };
@@ -103,6 +105,30 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 	};
 	out.push_back(handle("move", off_corner(order[0], CORNER_OUT_M, floor), Vector3(), -1, -1));
 	out.push_back(handle("rotate", off_corner(order[1], CORNER_OUT_M, floor), Vector3(), -1, -1));
+	if (v.base == 0) { // the block's own floor, raised or lowered: at its nearest corner
+		float lx = v.x, ly = v.y, nearest = BIG;
+		for (const b40::Point2 &p : ring) {
+			const float d = world(p.x, p.y, floor).distance_squared_to(eye);
+			if (d < nearest) {
+				nearest = d;
+				lx = p.x;
+				ly = p.y;
+			}
+		}
+		const float dx = lx - (v.x + v.w / 2), dy = ly - (v.y + v.d / 2), length = std::max(std::hypot(dx, dy), SHORTEST_M);
+		out.push_back(handle("lift", world(lx + dx / length * LIFT_OUT_M, ly + dy / length * LIFT_OUT_M, floor + body.block_z(v, 0) + body.level_h(0) / 2), Vector3(0, 1, 0), -1, -1));
+	}
+	const int side = int(pick.get("side", -1)), bay = int(pick.get("bay", -1)), storey = int(pick.get("storey", 0));
+	if (side >= 0 && side < v.sides() && bay >= 0) { // the bay picked pushed and pulled: an arrow off its middle, at the depth it stands at
+		const BlockWall w = block_wall(v, side);
+		const float a = (float(bay) + 0.5f) * w.length / float(b40::bays_of(v, side)), depth = b40::relief_depth(v, side, bay, storey), off = depth + RELIEF_OUT_M;
+		const float z = floor + body.block_z(v, v.base + storey) + body.level_h(v.base + storey) / 2;
+		Dictionary h = handle("relief", world(w.a.x + w.tx * a + w.nx * off, w.a.y + w.ty * a + w.ny * off, z), along(w.nx, w.ny), side, -1);
+		h["depth"] = depth;
+		h["bay"] = bay;
+		h["storey"] = storey;
+		out.push_back(h);
+	}
 	const b40::Point2 near = box[size_t(order[0])];
 	out.push_back(handle("scale", off_corner(order[0], SCALE_OUT_M, floor + eaves), along(near.x - mid_x, near.y - mid_y).normalized(), -1, -1));
 	return out;

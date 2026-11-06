@@ -24,7 +24,7 @@ std::vector<Solid> solids_of(const CityState &s, const Building &rec) {
 	b40::Body b;
 	b40::record_mass(s.buildings.designs, rec, b);
 	const b40::LotFrame f = b40::lot_frame(rec);
-	for (const b40::Volume &v : b.volumes) out.push_back({ f, v.x, v.y, v.x + v.w, v.y + v.d, b.level_z(v.base + v.storeys) });
+	for (const b40::Volume &v : b.volumes) out.push_back({ f, v.x, v.y, v.x + v.w, v.y + v.d, b.block_z(v, v.base + v.storeys) });
 	return out;
 }
 

@@ -34,13 +34,13 @@ LocalRay in_lot(const Ray3 &r, const LotFrame &f, float floor) {
 
 int storey_at(const Body &b, const Volume &v, float z) {
 	for (int k = v.storeys - 1; k > 0; k--)
-		if (z >= b.level_z(v.base + k)) return k;
+		if (z >= b.block_z(v, v.base + k)) return k;
 	return 0;
 }
 
 void hit_sides(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit &best) {
 	const Ring ring = ring_of(v);
-	float z0 = b.level_z(v.base), z1 = b.level_z(v.top());
+	float z0 = b.block_z(v, v.base), z1 = b.block_z(v, v.top());
 	for (size_t i = 0; i < ring.size(); i++) {
 		Point2 p = ring[i], q = ring[(i + 1) % ring.size()];
 		float ex = q.x - p.x, ey = q.y - p.y, len = std::hypot(ex, ey);
@@ -66,7 +66,7 @@ void hit_sides(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyH
 void hit_top(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit &best) {
 	if (r.dz > -GRAZING) return;
 	// Down from the ridge's height to the eaves, the first point under the roof's surface: a pitched roof is hit on its slope.
-	float eaves = b.level_z(v.top()), rise = roof_rise(v), t = -1;
+	float eaves = b.block_z(v, v.top()), rise = roof_rise(v), t = -1;
 	const Ring ring = ring_of(v);
 	for (int i = 0; i <= ROOF_STEPS; i++) {
 		float z = eaves + rise * (1 - float(i) / float(ROOF_STEPS)), at = (z - r.oz) / r.dz, x = r.ox + r.dx * at, y = r.oy + r.dy * at;
@@ -82,6 +82,19 @@ void hit_top(const Body &b, const Volume &v, int vol, const LocalRay &r, BodyHit
 	best.storey = v.storeys - 1;
 	best.level = v.top() - 1;
 	best.t = t;
+}
+
+// A hit that lands where a void block has taken the wall away is a click on the void: it is the only way to reach one.
+void in_a_void(const Body &b, const LocalRay &r, BodyHit &best) {
+	const Point2 at{ r.ox + r.dx * best.t, r.oy + r.dy * best.t };
+	const float z = r.oz + r.dz * best.t;
+	for (int i = 0; i < int(b.volumes.size()); i++) {
+		const Volume &v = b.volumes[size_t(i)];
+		if (v.mode != BLOCK_VOID || z < b.block_z(v, v.base) || z > b.block_z(v, v.top()) || !contains_point(ring_of(v), at)) continue;
+		best.volume = i;
+		best.side = -1;
+		return;
+	}
 }
 
 // Whether the ray's track on the map passes within `radius` of the point.
@@ -117,7 +130,10 @@ BodyHit pick_body(const CityState &s, const Ray3 &ray, float reach) {
 			hit_sides(body, body.volumes[i], int(i), r, best);
 			hit_top(body, body.volumes[i], int(i), r, best);
 		}
-		if (best.t < was || best.volume != before) best.id = id;
+		if (best.t < was || best.volume != before) {
+			best.id = id;
+			in_a_void(body, r, best);
+		}
 	};
 	for (float at = 0; at <= reach; at += step) {
 		float x = ray.ox + ray.dx * at, z = ray.oz + ray.dz * at, pad = step + wide;

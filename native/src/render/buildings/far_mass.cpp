@@ -217,9 +217,11 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 }
 } // namespace
 
-void emit_far(Shell &shell, const Placed &pl, bool roofs) {
-	for (size_t i = 0; i < pl.b->volumes.size(); i++) {
-		const Volume &v = pl.b->volumes[i];
+void emit_far(Shell &shell, const Placed &whole, bool roofs) {
+	for (size_t i = 0; i < whole.b->volumes.size(); i++) {
+		const Volume &v = whole.b->volumes[i];
+		Placed raised;
+		const Placed &pl = block_frame(whole, v, raised);
 		walls(shell, pl, v, roofs);
 		if (roofs) roof(shell, pl, v, int(i));
 	}

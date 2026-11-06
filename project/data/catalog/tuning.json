@@ -139,6 +139,8 @@
   "wing_modules": 3,
   "primitive_m": 6,
   "primitive_depth_m": 4,
+  "max_lift_m": 6,
+  "hung_reach_m": 1.2,
   "primitive_storeys": 3,
   "primitive_ground_m": 3.6,
   "primitive_storey_m": 3.1,

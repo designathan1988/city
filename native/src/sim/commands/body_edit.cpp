@@ -19,12 +19,19 @@ using namespace b40;
 namespace {
 constexpr float SIZE_EPS = 1e-3f;
 
+// Whether `o` reaches `v`'s floor: by levels at the same height, by metres on a split level.
+bool bears(const Body &b, const Volume &o, const Volume &v) {
+	if (o.lift == v.lift) return o.base < v.base && o.top() >= v.base;
+	const float floor = b.block_z(v, v.base);
+	return b.block_z(o, o.base) < floor - SIZE_EPS && b.block_z(o, o.top()) >= floor - SIZE_EPS;
+}
+
 // A block above the ground bears on the blocks that reach its floor; it may overhang them, up to the share in the tuning.
 bool supported(const Tuning &t, const Body &b, const Volume &v) {
 	if (v.base == 0 || v.mode == BLOCK_VOID || v.mode == BLOCK_INTERSECT) return true;
 	std::vector<Ring> under;
 	for (const Volume &o : b.volumes)
-		if (&o != &v && o.base < v.base && o.top() >= v.base && o.mode != BLOCK_VOID && o.mode != BLOCK_INTERSECT) under.push_back(ring_of(o));
+		if (&o != &v && o.mode != BLOCK_VOID && o.mode != BLOCK_INTERSECT && bears(b, o, v)) under.push_back(ring_of(o));
 	return support_share(ring_of(v), under) >= float(t.build_min_bearing);
 }
 

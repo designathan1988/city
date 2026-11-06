@@ -20,8 +20,8 @@ constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; 
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6;
-constexpr uint32_t BODY_VERSION = 6, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7;
+constexpr uint32_t BODY_VERSION = 7, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -127,6 +127,7 @@ void put_volume(ByteWriter &w, const Volume &v) {
 		for (uint32_t c : p.flag.rgb) w.put<uint32_t>(c);
 	}
 	w.put<uint8_t>(uint8_t(v.mode));
+	w.put<float>(v.lift);
 }
 
 bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
@@ -165,6 +166,7 @@ bool get_volume(ByteReader &r, Volume &v, uint32_t version) {
 		for (uint32_t &c : p.flag.rgb) c = r.get<uint32_t>();
 	}
 	if (version >= MODE_VERSION) v.mode = BlockMode(r.get<uint8_t>());
+	if (version >= LIFT_VERSION) v.lift = r.get<float>();
 	return r.ok;
 }
 

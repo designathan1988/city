@@ -16,7 +16,7 @@ void OccluderWalls::add(const b40::Placed &pl, int min_storeys) {
 	const b40::Body &b = *pl.b;
 	for (const b40::Volume &v : b.volumes) {
 		if (v.base != 0 || v.storeys < min_storeys || !v.outline.empty()) continue;
-		const float top = b.level_z(v.storeys);
+		const float top = b.block_z(v, v.storeys);
 		const float x[CORNERS] = { v.x, v.x + v.w, v.x + v.w, v.x };
 		const float y[CORNERS] = { v.y, v.y, v.y + v.d, v.y + v.d };
 		for (int side = 0; side < CORNERS; side++) {

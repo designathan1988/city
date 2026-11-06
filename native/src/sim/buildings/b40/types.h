@@ -127,9 +127,17 @@ struct Volume {
 	Crown crown = CROWN_NONE;
 	bool keep = false; // not composed (shop back store, works hall)
 	BlockMode mode = BLOCK_SOLID;
+	float lift = 0; // a split level: how far the block's floors stand from the building's, metres
 	int top() const { return base + storeys; }
 	int sides() const { return outline.empty() ? 4 : int(outline.size()); }
 };
+
+// How far a bay of a storey stands from its wall.
+inline float relief_depth(const Volume &v, int side, int bay, int k) {
+	for (const Relief &r : v.reliefs)
+		if (r.side == side && bay >= r.bay0 && bay <= r.bay1 && k >= r.storey0 && k <= r.storey1) return r.depth;
+	return 0;
+}
 
 inline uint32_t bay_key(int storey, int side, int bay) { return (uint32_t(storey) << KEY_STOREY_SHIFT) | (uint32_t(side) << KEY_SIDE_SHIFT) | uint32_t(bay); }
 inline uint32_t side_key(int storey, int side) { return (uint32_t(storey) << KEY_SIDE_SHIFT) | uint32_t(side); }
@@ -220,6 +228,7 @@ struct Body {
 	}
 	float level_h(int level) const { return level == 0 ? ground_h : storey_h; }
 	float level_z(int level) const { return level <= 0 ? 0.f : ground_h + storey_h * float(level - 1); }
+	float block_z(const Volume &v, int level) const { return v.lift + level_z(level); } // a level of a block, over the building's floor
 	const Paint &wall_of(const Volume &v) const { return paints[v.wall >= 0 ? v.wall : wall]; }
 	const Paint &roof_of(const Volume &v) const { return paints[v.roof_paint >= 0 ? v.roof_paint : roof]; }
 };

@@ -56,6 +56,16 @@ int CityBuilder::body_piece_at(int id, int level, const Vector3 &at) const {
 	return piece_at(body, floor_of(s, body, id, level), p.x, p.y);
 }
 
+Vector3 CityBuilder::body_piece_size(const String &kind) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	for (int k = 0; k < b40::FK_COUNT; k++)
+		if (kind == b40::FURNITURE_NAMES[k]) {
+			const float *size = state_->buildings.designs.interior.size[k];
+			return Vector3(size[0], size[1], size[2]);
+		}
+	return Vector3();
+}
+
 double CityBuilder::body_floor_y(int id, int level) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;

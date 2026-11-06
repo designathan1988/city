@@ -10,6 +10,8 @@
 namespace city::b40 {
 
 namespace {
+constexpr float FLIGHT_LEAST_M = .3f, FLIGHT_OVER_M = .05f, FLIGHT_LINE_M = 1.2f, MEET_M = 1e-3f, FLIGHT_RISE_M = .18f, RISER_SLACK = 1e-3f, FLIGHT_ROOM_M = .6f;
+constexpr float FLIGHT_TREAD_M = .28f, FLIGHT_TREAD_MIN_M = .24f, FLIGHT_WIDTH_M = 1.f, FLIGHT_SIDE_M = .4f, FLIGHT_CLEAR_M = .2f;
 constexpr float ROOM_REACH = 4.5f, UNIT_MODULES = 4.f, SPLIT_EPS = 1e-6f;
 constexpr int OFFICE_ROOM_BAYS = 2, CLASS_ROOM_BAYS = 3, HOTEL_ROOM_BAYS = 1, WARD_ROOM_BAYS = 2, LIGHT_SHARE = 10, WOOD_SHARE = 3;
 constexpr float WARD_FROM_GROUND = 10.f;
@@ -166,6 +168,50 @@ FloorFinish floor_finish(Purpose p, int level, uint32_t seed) {
 	return int((seed * PICK_SALT >> PICK_SHIFT) % LIGHT_SHARE) < WOOD_SHARE ? FLOOR_WOOD : FLOOR_PORCELAIN;
 }
 
+float lift_at(const Body &b, int level, float x, float y) {
+	const Volume *best = nullptr;
+	for (const Volume &v : b.volumes) {
+		if (level < v.base || level >= v.top() || x < v.x || x > v.x + v.w || y < v.y || y > v.y + v.d) continue;
+		if (best == nullptr || v.w * v.d < best->w * best->d) best = &v;
+	}
+	return best != nullptr ? best->lift : 0;
+}
+
+std::vector<LevelFlight> level_flights(const Body &b, int level) {
+	std::vector<LevelFlight> out;
+	std::vector<const Volume *> blocks;
+	for (const Volume &v : b.volumes)
+		if (v.outline.empty() && v.base <= level && v.top() > level) blocks.push_back(&v);
+	for (size_t i = 0; i < blocks.size(); i++)
+		for (size_t k = i + 1; k < blocks.size(); k++) {
+			const float zp = b.block_z(*blocks[i], level), zq = b.block_z(*blocks[k], level), rise = std::fabs(zq - zp);
+			if (rise < FLIGHT_LEAST_M || rise > b.level_h(level) + FLIGHT_OVER_M) continue;
+			const Volume &low = zp < zq ? *blocks[i] : *blocks[k], &high = zp < zq ? *blocks[k] : *blocks[i];
+			// The line they meet along: a side of the lower block against a side of the higher.
+			const float ox0 = std::max(low.x, high.x), ox1 = std::min(low.x + low.w, high.x + high.w), oy0 = std::max(low.y, high.y), oy1 = std::min(low.y + low.d, high.y + high.d);
+			float a = 0, c = 0, at = 0, inward = 0;
+			bool along_x = false;
+			if (ox1 - ox0 > FLIGHT_LINE_M && std::fabs(low.y + low.d - high.y) < MEET_M) { a = ox0; c = ox1; at = low.y + low.d; inward = -1; along_x = true; }
+			else if (ox1 - ox0 > FLIGHT_LINE_M && std::fabs(high.y + high.d - low.y) < MEET_M) { a = ox0; c = ox1; at = low.y; inward = 1; along_x = true; }
+			else if (oy1 - oy0 > FLIGHT_LINE_M && std::fabs(low.x + low.w - high.x) < MEET_M) { a = oy0; c = oy1; at = low.x + low.w; inward = -1; }
+			else if (oy1 - oy0 > FLIGHT_LINE_M && std::fabs(high.x + high.w - low.x) < MEET_M) { a = oy0; c = oy1; at = low.x; inward = 1; }
+			else continue;
+			const int risers = int(std::ceil(rise / FLIGHT_RISE_M - RISER_SLACK));
+			const float room = (along_x ? low.d : low.w) - FLIGHT_ROOM_M, tread = std::min(FLIGHT_TREAD_M, room / float(risers));
+			if (tread < FLIGHT_TREAD_MIN_M) continue;
+			const float run = tread * float(risers), mid = (a + c) / 2;
+			LevelFlight f;
+			f.top = along_x ? Point2{ mid, at } : Point2{ at, mid };
+			f.foot = along_x ? Point2{ mid, at + inward * run } : Point2{ at + inward * run, mid };
+			f.z0 = std::min(zp, zq);
+			f.z1 = std::max(zp, zq);
+			f.width = std::min(FLIGHT_WIDTH_M, c - a - FLIGHT_SIDE_M);
+			f.risers = risers;
+			out.push_back(f);
+		}
+	return out;
+}
+
 std::string Interior::type_of(int level) const {
 	if (body_.furnishing.count(level) != 0) return "p" + std::to_string(level); // a floor the player arranged is like no other
 	std::string key = level == 0 ? "g" : "u";
@@ -176,6 +222,7 @@ std::string Interior::type_of(int level) const {
 		if (level < v.base || level >= v.top()) continue;
 		const int k = level - v.base;
 		key += '|' + std::to_string(i) + ':' + std::to_string(v.fill[size_t(k)]) + (k == 0 ? "f" : "") + (k == v.storeys - 1 ? "t" : "");
+		if (v.lift != 0) key += '^' + std::to_string(v.lift);
 	}
 	return key;
 }
@@ -199,6 +246,13 @@ const FloorInterior &Interior::at(int level) {
 			floor->furniture.insert(floor->furniture.end(), plan.items.begin(), plan.items.end());
 			floor->partitions.insert(floor->partitions.end(), plan.walls.begin(), plan.walls.end());
 			floor->spaces.insert(floor->spaces.end(), spaces.begin(), spaces.end());
+		}
+		// Nothing made for the floor stands on the flight between its levels.
+		for (const LevelFlight &f : level_flights(body_, level)) {
+			const float x0 = std::min(f.foot.x, f.top.x) - f.width / 2 - FLIGHT_CLEAR_M, x1 = std::max(f.foot.x, f.top.x) + f.width / 2 + FLIGHT_CLEAR_M;
+			const float y0 = std::min(f.foot.y, f.top.y) - f.width / 2 - FLIGHT_CLEAR_M, y1 = std::max(f.foot.y, f.top.y) + f.width / 2 + FLIGHT_CLEAR_M;
+			auto on_it = [&](const Furniture &p) { return p.x + p.w / 2 > x0 && p.x - p.w / 2 < x1 && p.y + p.d / 2 > y0 && p.y - p.d / 2 < y1; };
+			floor->furniture.erase(std::remove_if(floor->furniture.begin(), floor->furniture.end(), on_it), floor->furniture.end());
 		}
 		auto stored = body_.furnishing.find(level);
 		if (stored == body_.furnishing.end()) room_lights(data_, floor->furniture);

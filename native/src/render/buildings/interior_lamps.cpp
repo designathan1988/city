@@ -28,12 +28,11 @@ std::vector<Vector3> interior_lamps(const CityState &s, int id, int level) {
 	const b40::LotFrame f = b40::lot_frame(rec);
 	const float floor = b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); });
 	b40::Interior inside(s.buildings.designs, body, b40::purpose_of(body, rec.fn, rec.seed));
-	const float z0 = floor + body.level_z(level);
 	for (const b40::Furniture &p : inside.at(level).furniture) {
 		if (p.kind != b40::FK_CEILING_LAMP && p.kind != b40::FK_FLOOR_LAMP && p.kind != b40::FK_TABLE_LAMP) continue;
 		const V2 w = f.at(p.x, p.y);
 		const float up = p.kind == b40::FK_CEILING_LAMP ? body.level_h(level) - LAMP_DROP_M : p.h * LAMP_RISE;
-		out.push_back(Vector3(w.x, z0 + up, w.y));
+		out.push_back(Vector3(w.x, floor + b40::lift_at(body, level, p.x, p.y) + body.level_z(level) + up, w.y));
 	}
 	return out;
 }

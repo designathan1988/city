@@ -184,11 +184,7 @@ void SideEmit::plinth(const Side &sd) {
 }
 } // namespace
 
-float relief_push(const Volume &v, int side, int bay, int k) {
-	for (const Relief &r : v.reliefs)
-		if (r.side == side && bay >= r.bay0 && bay <= r.bay1 && k >= r.storey0 && k <= r.storey1) return r.depth;
-	return 0;
-}
+float relief_push(const Volume &v, int side, int bay, int k) { return relief_depth(v, side, bay, k); }
 
 uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by) {
 	uint32_t h = (uint32_t(vol + 1) * HV) ^ (uint32_t(level + LEVEL_OFF) * HL) ^ (uint32_t(side + SIDE_OFF) * HS) ^ (uint32_t(index + INDEX_OFF) * HI);
@@ -197,20 +193,29 @@ uint32_t bay_hash(int vol, int level, int side, int index, float bx, float by) {
 	return h ^ (h >> HASH_SH2);
 }
 
-void emit_relief(Shell &shell, Shell &parts, const Placed &pl) {
-	const Body &b = *pl.b;
+// Each side of each block, in the block's frame, with the storeys walked from its foot.
+template <typename F>
+static void each_side(Shell &shell, Shell &parts, const Placed &whole, F &&side) {
+	const Body &b = *whole.b;
 	for (size_t i = 0; i < b.volumes.size(); i++) {
 		const Volume &v = b.volumes[i];
+		Placed raised;
+		const Placed &pl = block_frame(whole, v, raised);
 		SideEmit se{ shell, parts, pl, v, int(i) };
-		for (const Side &sd : sides_of(pl, v, b.level_z(v.base))) {
-			float z = 0;
-			for (int k = 0; k < v.storeys; k++) {
-				se.relief(sd, k, z);
-				z += b.level_h(v.base + k);
-			}
-			se.lines(parts, sd);
-		}
+		for (const Side &sd : sides_of(pl, v, b.level_z(v.base))) side(se, sd);
 	}
+}
+
+void emit_relief(Shell &shell, Shell &parts, const Placed &whole) {
+	const Body &b = *whole.b;
+	each_side(shell, parts, whole, [&](SideEmit &se, const Side &sd) {
+		float z = 0;
+		for (int k = 0; k < se.v.storeys; k++) {
+			se.relief(sd, k, z);
+			z += b.level_h(se.v.base + k);
+		}
+		se.lines(parts, sd);
+	});
 }
 
 void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, const Opening &)> &at) {
@@ -231,22 +236,17 @@ void for_each_bay(const Placed &pl, const std::function<void(const BayCtx &, con
 			}
 }
 
-void emit_facades(Shell &shell, Shell &parts, const Placed &pl) {
-	const Body &b = *pl.b;
-	for (size_t i = 0; i < b.volumes.size(); i++) {
-		const Volume &v = b.volumes[i];
-		SideEmit se{ shell, parts, pl, v, int(i) };
-		float z0 = b.level_z(v.base);
-		for (const Side &sd : sides_of(pl, v, z0)) {
-			float z = 0;
-			for (int k = 0; k < v.storeys; k++) {
-				se.storey(sd, k, z);
-				z += b.level_h(v.base + k);
-			}
-			se.lines(shell, sd);
-			if (v.base == 0) se.plinth(sd);
+void emit_facades(Shell &shell, Shell &parts, const Placed &whole) {
+	const Body &b = *whole.b;
+	each_side(shell, parts, whole, [&](SideEmit &se, const Side &sd) {
+		float z = 0;
+		for (int k = 0; k < se.v.storeys; k++) {
+			se.storey(sd, k, z);
+			z += b.level_h(se.v.base + k);
 		}
-	}
+		se.lines(shell, sd);
+		if (se.v.base == 0) se.plinth(sd);
+	});
 }
 
 } // namespace city::b40

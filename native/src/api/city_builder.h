@@ -42,7 +42,7 @@ public:
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
 	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
-	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye) const;
+	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye, const godot::Dictionary &pick) const;
 	godot::Dictionary body_draft(int id, const godot::Dictionary &spec) const;
 	godot::Dictionary body_apply(int id, const godot::Dictionary &spec);
 	godot::Dictionary building_place(int id, double x, double z, double rot);
@@ -70,6 +70,7 @@ public:
 	godot::Dictionary body_remove_piece(int id, int level, const godot::Vector3 &at);
 	int body_piece_at(int id, int level, const godot::Vector3 &at) const;
 	double body_floor_y(int id, int level) const;
+	godot::Vector3 body_piece_size(const godot::String &kind) const;
 	godot::Dictionary body_mass_rect(int id, const godot::Vector3 &from, const godot::Vector3 &to) const;
 	godot::Dictionary body_split(int id, int vol, int level);
 	godot::Dictionary body_remove_volume(int id, int vol);

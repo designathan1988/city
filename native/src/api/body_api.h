@@ -7,9 +7,31 @@
 #include "sim/commands/body_ops.h"
 #include "sim/state/city_state.h"
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 namespace city {
+
+constexpr int SIZE_AXES = 3;
+
+// A card of the strip as what it sets.
+inline PartSpec part_spec(const godot::Dictionary &d) {
+	PartSpec s;
+	godot::Array size = d.get("size", godot::Array());
+	s.kind = int(d.get("value", 0));
+	s.fit = int(d.get("fit_kind", 0));
+	if (size.size() == SIZE_AXES) {
+		s.w = float(size[0]);
+		s.d = float(size[1]);
+		s.h = float(size[2]);
+	}
+	s.out = float(d.get("standoff_m", 0.0));
+	s.rise = float(d.get("rise_m", 0.0));
+	s.drop = float(d.get("drop_m", 0.0));
+	return s;
+}
+
+inline PrimitiveSpec primitive_of(const godot::Dictionary &spec) { return { int(spec.get("value", 0)), int(spec.get("top_kind", 0)), float(spec.get("top_deg", 0.0)) }; }
 
 // The body of a building that stands; false when there is none by that id.
 inline bool body_of_record(const CityState &s, int id, b40::Body &body) {

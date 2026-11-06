@@ -69,6 +69,8 @@ func _put_down() -> void:
 
 func hover(p: Vector3) -> void:
 	hands.run.hover(p)
+	hands.furnish.hover(picked)
+	handles.ghost_in_hand(part if not part.is_empty() and part.do == "part" else hands.primitive)
 	if hand.is_empty():
 		return
 	_last = p
@@ -183,6 +185,7 @@ func cancel() -> void:
 ## A tool of the strip (data/ui/builder.json): `spec.do` names what it does, `spec.value` its choice.
 func act(spec: Dictionary) -> void:
 	var value: int = spec.get("value", 0)
+	handles.preview(-1, {})
 	if hands.act(spec, value, picked, _report):
 		armed = NO_BAY
 		part = {}

@@ -120,7 +120,7 @@ std::set<int> riding_on(const Body &b, int vol) {
 		for (int i = 0; i < int(b.volumes.size()); i++) {
 			if (moving.count(i) != 0) continue;
 			for (int u : moving)
-				if (b.volumes[size_t(i)].base == b.volumes[size_t(u)].top() && overlap_area(ring_of(b.volumes[size_t(i)]), ring_of(b.volumes[size_t(u)])) > TOUCH_AREA_M2) {
+				if (b.volumes[size_t(i)].base == b.volumes[size_t(u)].top() && b.volumes[size_t(i)].lift == b.volumes[size_t(u)].lift && overlap_area(ring_of(b.volumes[size_t(i)]), ring_of(b.volumes[size_t(u)])) > TOUCH_AREA_M2) {
 					moving.insert(i);
 					grew = true;
 					break;

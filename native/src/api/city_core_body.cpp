@@ -20,23 +20,7 @@ namespace city {
 namespace {
 constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
 constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
-constexpr int SIZE_AXES = 3, RGB_BASE = 16, RGB_DIGITS = 6;
-
-PartSpec part_spec(const Dictionary &d) {
-	PartSpec s;
-	Array size = d.get("size", Array());
-	s.kind = int(d.get("value", 0));
-	s.fit = int(d.get("fit_kind", 0));
-	if (size.size() == SIZE_AXES) {
-		s.w = float(size[0]);
-		s.d = float(size[1]);
-		s.h = float(size[2]);
-	}
-	s.out = float(d.get("standoff_m", 0.0));
-	s.rise = float(d.get("rise_m", 0.0));
-	s.drop = float(d.get("drop_m", 0.0));
-	return s;
-}
+constexpr int RGB_BASE = 16, RGB_DIGITS = 6;
 } // namespace
 
 Dictionary CityBuilder::body_info(int id) const {
@@ -70,6 +54,7 @@ Dictionary CityBuilder::body_info(int id) const {
 		e["bays"] = bays;
 		e["gear"] = int(v.gear.size());
 		e["mode"] = int(v.mode);
+		e["lift"] = v.lift;
 		int flags = 0;
 		for (const b40::RoofPart &p : v.gear) flags += p.flag.pattern != b40::FLAG_NONE ? 1 : 0;
 		e["flags"] = flags;
@@ -112,7 +97,7 @@ PackedVector3Array CityBuilder::body_outline(int id, int vol) const {
 	for (int level : { v.base, v.top() })
 		for (const b40::Point2 &p : b40::ring_of(v)) {
 			V2 at = f.at(p.x, p.y);
-			out.push_back(Vector3(at.x, floor + body.level_z(level), at.y));
+			out.push_back(Vector3(at.x, floor + body.block_z(v, level), at.y));
 		}
 	return out;
 }

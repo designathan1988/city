@@ -21,7 +21,7 @@ std::shared_ptr<RuinMesh> ruin_of(const b40::Data &data, const b40::BuildingLook
 	for (const b40::Volume &v : pl.b->volumes)
 		for (int level = v.base + 1; level < v.top(); level++) {
 			RuinSlab ring;
-			for (const b40::Side &sd : b40::sides_of(pl, v, pl.b->level_z(level))) ring.push_back(sd.f.o);
+			for (const b40::Side &sd : b40::sides_of(pl, v, pl.b->block_z(v, level))) ring.push_back(sd.f.o);
 			slabs.push_back(std::move(ring));
 		}
 	return fracture_shell(shell, glass, slabs, rec.seed);

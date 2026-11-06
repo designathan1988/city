@@ -120,8 +120,37 @@ std::string op_scale_plan(Body &b, const Tuning &t, float factor, bool snap) {
 	return "";
 }
 
+// A block's floors raised or lowered (a split level), by half ground storeys when snapped; what stands on it and what hangs on its walls go with it.
+std::string op_set_lift(Body &b, const Tuning &t, int vol, float lift, bool snap) {
+	if (vol < 0 || vol >= int(b.volumes.size())) return NO_BLOCK;
+	const float most = float(t.build_max_lift_m), step = b.ground_h / 2;
+	const float wanted = snap ? std::round(lift / step) * step : lift;
+	const float limit = snap ? std::floor(most / step) * step : most;
+	const float dz = std::clamp(wanted, -limit, limit) - b.volumes[size_t(vol)].lift;
+	if (dz == 0) return "";
+	const float reach = float(t.build_hung_reach_m);
+	for (int i : riding_on(b, vol)) {
+		Volume &v = b.volumes[size_t(i)];
+		v.lift += dz;
+		for (LotElement &e : b.elements)
+			if (e.z > 0 && e.x >= v.x - reach && e.x <= v.x + v.w + reach && e.y >= v.y - reach && e.y <= v.y + v.d + reach) e.z += dz;
+	}
+	return "";
+}
+
 std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
 	if (e.kind.empty()) return "";
+	if (e.kind == "lift") return op_set_lift(b, t, e.vol, e.along, e.snap);
+	if (e.kind == "relief") {
+		Relief r;
+		r.side = e.side;
+		r.bay0 = r.bay1 = e.index;
+		r.storey0 = r.storey1 = e.count;
+		r.depth = e.along;
+		return op_set_relief(b, t, e.vol, r, e.snap);
+	}
+	if (e.kind == "part") return op_add_part(b, t, e.vol, e.count, e.side, e.index, e.part);
+	if (e.kind == "primitive") return op_primitive_on(b, t, e.vol, e.side, e.count, e.x, e.y, e.shape);
 	if (e.kind == "storeys") return op_set_storeys(b, t, e.vol, e.count);
 	if (e.kind == "vertex") return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
 	if (e.kind == "scale") return op_scale_plan(b, t, e.factor, e.snap);

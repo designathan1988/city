@@ -82,6 +82,16 @@ func _open(id: int) -> void:
 	CityStore.dispatch(&"set_interior", [true, id, 0, -1])
 
 
+## Where the piece in hand would stand: its footprint on the floor cut open.
+func hover(picked: Dictionary) -> void:
+	if picked.is_empty() or piece == NONE or piece == MOVE or piece == TAKE:
+		return
+	var at := _on_floor(picked.id)
+	var size: Vector3 = CityStore.query(&"body_piece_size", [piece])
+	var along := Vector3.RIGHT.rotated(Vector3.UP, -angle) * size.x * 0.5
+	_ctl.preview.show_ribbon(PackedVector3Array([at - along, at + along]), size.y * 0.5, true)
+
+
 ## A quarter turn for the piece in hand, or for the one being moved.
 func turn(id: int) -> Dictionary:
 	angle = fmod(angle + QUARTER, TAU)

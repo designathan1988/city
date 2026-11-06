@@ -58,12 +58,12 @@ func _draw() -> void:
 		draw_circle(p, r, dark)
 		draw_arc(p, r, 0.0, TAU, ARC_POINTS * 2, ink, line, true)
 		match String(h.kind):
-			"side":
+			"side", "relief":
 				_arrow(p, camera.unproject_position(h.at + h.dir) - p, r, ink, line)
 			"scale":
 				_arrow(p, camera.unproject_position(h.at + h.dir) - p, r, ink, line)
 				_arrow(p, p - camera.unproject_position(h.at + h.dir), r, ink, line)
-			"storeys":
+			"storeys", "lift":
 				_arrow(p, Vector2.UP, r, ink, line)
 				_arrow(p, Vector2.DOWN, r, ink, line)
 			"move":

@@ -49,7 +49,7 @@ static func _points(id: int, vol: int, made: int, check: Callable) -> void:
 
 ## What a handle asks: the handles stand where they should, a draft changes nothing, and the release is one step of undo.
 static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
-	var list: Array = CityStore.query(&"body_handles", [id, vol, true, Vector3.UP * EYE_M])
+	var list: Array = CityStore.query(&"body_handles", [id, vol, true, Vector3.UP * EYE_M, {}])
 	var kinds := {}
 	for h: Dictionary in list:
 		kinds[h.kind] = true
@@ -63,6 +63,19 @@ static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
 	_edit(id, made, "alça da face", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": OUT_M}], check)
 	_edit(id, made, "alça de ala", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": BRICK_M, "wing": true}], check)
 	_edit(id, made, "alça de escala", &"body_apply", [id, {"op": "scale", "factor": SCALE}], check)
+	_edit(id, made, "alça de relevo", &"body_apply", [id, {"op": "relief", "vol": vol, "side": SIDE, "index": 0, "count": 0, "along": OUT_M}], check)
+	var ground: int = _ground_block(id)
+	var r: Dictionary = CityStore.dispatch(&"body_apply", [id, {"op": "lift", "vol": ground, "along": OUT_M, "snap": false}])
+	check.call(r.get("ok", false) and _info(id).volumes[ground].lift == OUT_M, "cota do bloco: %s" % r)
+	_back_to(made, id, check, "cota")
+
+
+static func _ground_block(id: int) -> int:
+	var blocks: Array = _info(id).volumes
+	for i in blocks.size():
+		if blocks[i].base == 0:
+			return i
+	return 0
 
 
 static func _edit(id: int, made: int, what: String, command: StringName, args: Array, check: Callable) -> void:

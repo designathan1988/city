@@ -7,6 +7,7 @@
 #include "sim/buildings/b40/data.h"
 #include "render/buildings/shell.h"
 
+#include <algorithm>
 #include <functional>
 #include <vector>
 
@@ -29,6 +30,15 @@ struct Placed {
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
 	bool lean = false; // far level: one wall band per side, no coping or machine rooms (a third of the far memory)
 };
+
+// The frame a block is drawn in: the lot's, raised by the block's lift. What a block draws, it draws through the frame, so a split level needs nothing else of the emitters.
+inline const Placed &block_frame(const Placed &pl, const Volume &v, Placed &raised) {
+	if (v.lift == 0) return pl;
+	raised = pl;
+	raised.lot.o += pl.lot.e2 * v.lift;
+	raised.ground_lo = std::min(pl.ground_lo - v.lift, 0.f);
+	return raised;
+}
 
 // One face of a volume at a height: the frame (e0 along the face left to right seen from outside, e1 up, e2 out),
 // its length and its plan endpoints (lot frame).

@@ -3,7 +3,7 @@
 const BLOCK_FROM := 0.3
 const BLOCK_TO := 0.7
 const KINDS := 2
-const LAST_KIND := 9
+const LAST_KIND := 10
 const PRIMITIVE := {"value": 7, "top_kind": 0, "top_deg": 0}
 const TURN_DEG := 15.0
 const OUT_M := 1.0
@@ -29,6 +29,8 @@ static func run(rng: RandomNumberGenerator, id: int, box: PackedVector3Array) ->
 			CityStore.dispatch(&"body_add_primitive", [id, 0, -1, 0, mid, PRIMITIVE])
 		7:
 			CityStore.dispatch(&"body_detach", [id, int(CityStore.query(&"body_info", [id]).volumes.size()) - 1])
+		9:
+			CityStore.dispatch(&"body_apply", [id, {"op": "lift", "vol": 0, "along": OUT_M, "snap": false}])
 		8:
 			CityStore.dispatch(&"drop_primitive", [mid + (mid - box[0]) * DROP_OUT, PRIMITIVE])
 		2:

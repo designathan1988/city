@@ -24,7 +24,7 @@ std::vector<BodyWall> BodyWalls::near(const CityState &s, float x, float z, floa
 			const b40::LotFrame f = b40::lot_frame(rec);
 			const float ground = s.terrain.height_at(rec.x, rec.z);
 			for (const b40::Volume &v : b.volumes)
-				found->second.push_back(BodyWall{ Vector2(f.o.x, f.o.y), Vector2(f.e0.x, f.e0.y), Vector2(f.e1.x, f.e1.y), v.x, v.y, v.x + v.w, v.y + v.d, ground + b.level_z(v.base + v.storeys) });
+				found->second.push_back(BodyWall{ Vector2(f.o.x, f.o.y), Vector2(f.e0.x, f.e0.y), Vector2(f.e1.x, f.e1.y), v.x, v.y, v.x + v.w, v.y + v.d, ground + b.block_z(v, v.base + v.storeys) });
 		}
 		out.insert(out.end(), found->second.begin(), found->second.end());
 	});

@@ -626,3 +626,8 @@ Ressalvas abertas:
 - `body_handles` diz onde ficam (faces, pontos, andares, mover, girar, escalar; os três últimos no canto mais perto do olho), `body_draft` faz o corpo numa cópia para o fantasma, `body_apply` edita ao soltar, `building_place` leva o prédio inteiro e funde se pousar em outro (`place_body`). `HandleMarks` desenha sobre a imagem pela projeção da câmera.
 - Provado com entrada real (`look.gd`: `tap`, `press`, `moveTo`, `letGo`): face puxada com o fantasma e a etiqueta (10,3 m), andares, mover e girar. Fotos em `project/dist/rq/hand*`.
 - As fotos acharam: girar trocava a cara do prédio, porque `place_body` tira semente da posição. Um prédio movido guarda semente, estilo e idade.
+
+## 2026-11-06: o meio-nível
+- `Volume::lift`: os emissores desenham um bloco pelo referencial dele, então um bloco erguido é o mesmo bloco num referencial mais alto (`block_frame`). O que mede altura fora deles passou a `Body::block_z`. Uma parede só some atrás de outro bloco se ele a cobre inteira na altura (`covered`).
+- No corte, cada ponto do piso, parede, núcleo e móvel fica na cota do bloco onde está (`lift_at`) e os blocos que se encontram em cotas diferentes ganham o lance entre eles (`level_flights`). Clicar onde um bloco vazio tirou a parede escolhe o vazio. Corpo gravado na versão 7.
+- Alças da cota e do relevo do vão escolhido.

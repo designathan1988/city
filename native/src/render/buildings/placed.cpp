@@ -45,9 +45,12 @@ std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z) {
 }
 
 bool covered(const Body &b, const Volume &self, int level, Point2 p) {
+	const float z0 = b.block_z(self, level), z1 = z0 + b.level_h(level);
 	for (const Volume &o : b.volumes) {
-		if (&o == &self || level < o.base || level >= o.top()) continue;
-		if (p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
+		if (&o == &self) continue;
+		// At the same height a block stands against the storey or not; on a split level it must stand against all of it, or the wall shows.
+		const bool against = o.lift == self.lift ? level >= o.base && level < o.top() : (o.base == 0 || b.block_z(o, o.base) <= z0) && b.block_z(o, o.top()) >= z1;
+		if (against && p.x > o.x && p.x < o.x + o.w && p.y > o.y && p.y < o.y + o.d) return true;
 	}
 	return false;
 }

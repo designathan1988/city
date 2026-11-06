@@ -11,7 +11,6 @@ namespace city {
 namespace {
 constexpr const char *DETACH_LABEL = "cmd.place.editBuilding", *DROP_LABEL = "cmd.build.lotDrawn";
 
-PrimitiveSpec primitive_of(const Dictionary &spec) { return { int(spec.get("value", 0)), int(spec.get("top_kind", 0)), float(spec.get("top_deg", 0.0)) }; }
 } // namespace
 
 Dictionary CityBuilder::body_extrude_face(int id, int vol, int side, double distance) {
