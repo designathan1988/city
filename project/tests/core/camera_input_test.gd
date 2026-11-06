@@ -11,7 +11,8 @@ const SEED := 1
 const PX_TOL_SHARE := 0.005
 const STEPS := 8
 const STILL_S := 0.15
-const SETTLE_S := 1.2
+## The longest a glide may take to end, in the frames' own time: past it the glide never ends, and the check after it says so.
+const SETTLE_LIMIT_S := 12.0
 const EPS := 1e-3
 const OPEN_M := 600.0 # past the city: nothing for the eye to be pulled clear of
 
@@ -37,8 +38,7 @@ func _ready() -> void:
 	await _zoom_test()
 	await _orbit_tests()
 	await _limit_tests()
-	await _key_tests()
-	await _tool_tests()
+	await CameraKeyCases.new(self).run()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -91,7 +91,7 @@ func _zoom_test() -> void:
 	await _move(at)
 	for i in 3:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, at)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	await _pull_settled()
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
@@ -130,7 +130,7 @@ func _limit_tests() -> void:
 	_check(absf(rig.pitch - lo) < EPS, "inclinação mínima de longe %.1f graus (limite %.1f)" % [rad_to_deg(rig.pitch), rad_to_deg(lo)])
 	for i in 80:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, c)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	_check(rig.half >= cfg.view_half_min - EPS and rig.half < cfg.view_half_min * 2.0, "zoom mínimo: meia altura %.2f m" % rig.half)
 	await _drag(MOUSE_BUTTON_RIGHT, c, c - Vector2(0, 2000), false, true)
 	lo = CameraProfile.min_tilt(cfg, rig.half)
@@ -139,73 +139,8 @@ func _limit_tests() -> void:
 	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "olho acima do chão (olho %.3f, chão %s)" % [rig.camera.global_position.y, under])
 	for i in 120:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "zoom máximo: meia altura %.0f m" % rig.half)
-
-
-func _key_tests() -> void:
-	_home()
-	await _frames(1)
-	var f0 := rig.focus
-	var fwd := Vector3(-sin(rig.yaw), 0, -cos(rig.yaw))
-	await _hold_key(KEY_W, false, 0.5)
-	_check((rig.focus - f0).dot(fwd) > 0.0, "W anda para a frente (%.1f m)" % (rig.focus - f0).dot(fwd))
-	var yaw0 := rig.yaw
-	await _hold_key(KEY_Q, false, 0.3)
-	_check(angle_difference(yaw0, rig.yaw) > 0.0, "Q gira")
-	await get_tree().create_timer(SETTLE_S).timeout
-	yaw0 = rig.yaw
-	await _hold_key(KEY_E, true, 0.05)
-	await get_tree().create_timer(SETTLE_S).timeout
-	var quarter := angle_difference(yaw0, rig.yaw)
-	_check(absf(quarter + deg_to_rad(cfg.quarter_turn_deg)) < EPS, "Shift+E: um quarto de volta (%.1f graus)" % rad_to_deg(quarter))
-
-
-func _tool_tests() -> void:
-	_home()
-	tools.set_tool(ToolController.Tool.ROAD, {"profile": 0})
-	await _frames(1)
-	var c := _screen() * 0.5
-	await _click(MOUSE_BUTTON_LEFT, c)
-	var road: Variant = tools.active
-	_check(road.chain != Vector3.INF, "esquerdo chega à ferramenta (via começada)")
-	await _drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(80, 0), false, true)
-	_check(road.chain != Vector3.INF, "arrastar com o direito não cancela a via")
-	await _click(MOUSE_BUTTON_RIGHT, c)
-	_check(road.chain == Vector3.INF, "clique direito cancela a via")
-	await _height_keys()
-	tools.set_tool(ToolController.Tool.NONE)
-
-
-## With the road tool in hand Page Up and Down are the road's height, landing on whole metres, and the camera does not tilt.
-func _height_keys() -> void:
-	var pitch0 := rig.pitch
-	await _hold_key(KEY_PAGEUP, false, 0.05)
-	await _hold_key(KEY_PAGEUP, false, 0.05)
-	await get_tree().create_timer(SETTLE_S).timeout
-	_check(is_equal_approx(CityStore.query(&"road_height"), 2.0), "Page Up sobe a via (%.1f m)" % CityStore.query(&"road_height"))
-	_check(is_equal_approx(rig.pitch, pitch0), "a câmera não inclina com a via na mão")
-	CityStore.dispatch(&"set_road_height", [1.5])
-	tools.active.height = 1.5
-	await _hold_key(KEY_PAGEDOWN, false, 0.05)
-	_check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "Page Down pousa no metro inteiro (%.1f m)" % CityStore.query(&"road_height"))
-	CityStore.dispatch(&"set_road_height", [0.0])
-	tools.active.height = 0.0
-	await _rebound_keys()
-
-
-## A key of the road's can be changed, and then it is that key that works; one the game keeps is refused; two actions swap.
-func _rebound_keys() -> void:
-	_check(not RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_W), "a camera key is refused")
-	_check(not RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_Z), "a tool's key is refused")
-	_check(RoadKeys.bind(RoadKeys.HEIGHT_UP, KEY_N), "a free key is taken")
-	await _hold_key(KEY_N, false, 0.05)
-	_check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "the new key raises the road")
-	_check(RoadKeys.bind(RoadKeys.HEIGHT_DOWN, KEY_N), "a key of another action is taken")
-	_check(RoadKeys.key_of(RoadKeys.HEIGHT_UP) == KEY_PAGEDOWN, "and that action takes the old key")
-	RoadKeys.reset()
-	_check(RoadKeys.key_of(RoadKeys.HEIGHT_UP) == KEY_PAGEUP, "the defaults come back")
-	CityStore.dispatch(&"set_road_height", [0.0])
 
 
 func _drag(button: MouseButton, from: Vector2, to: Vector2, shift: bool, still: bool) -> void:
@@ -254,6 +189,15 @@ func _pull_settled() -> void:
 	var limit: float = cfg.pull_hold_s + cfg.pull_out_s * log(1.0 / EPS)
 	var waited := 0.0
 	while rig.pull.shown >= EPS and waited < limit:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+
+
+## Waits for the glide to end: the state is checked, not a fixed time, so a machine sharing its cores cannot fail it.
+func _glide_settled() -> void:
+	await _frames(1)
+	var waited := 0.0
+	while rig.motion.moving() and waited < SETTLE_LIMIT_S:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 

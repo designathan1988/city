@@ -365,4 +365,6 @@ Resultado de 359 módulos, os que têm função ou classe:
 
 `suite.py` guarda o log da falha sob carga em `<cena>_<renderizador>.loaded`: a repetição sozinha escrevia por cima e a prova sumia. Dois instáveis de uma rodada com outra sessão na máquina (`lab_test` forward_plus, `camera_input_test` gl_compatibility) ficaram sem causa provada por isso.
 
+Causa lida no código, sem repetir a falha: `camera_input_test` esperava o fim do deslize por 1,2 s de relógio (agora `_glide_settled`, por `rig.motion.moving()`), e `lab_test` exigia o efeito de uma só janela de GPU (agora mede de novo até uma janela limpa, `CLEAN_TRIES`, porque com a placa dividida o painel responde "dentro do ruído" com razão).
+
 `tools/converter-slice/out` (91 GB de fotos de replay, ignorado pelo git) saiu de `tools/` para `city-worktrees/converter-slice-out`, sem apagar nada: o gate completo o percorria.

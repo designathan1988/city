@@ -6,18 +6,22 @@ extends Node
 ## A frame over this is a hitch the player sees (look.mjs frameStats).
 const HITCH_MS := 25.0
 ## The display's period is read off the intervals: their 10th percentile (no frame comes faster than the display), kept
-## between these refresh rates; 60 Hz otherwise.
-const FASTEST_HZ := 240.0
-const SLOWEST_HZ := 30.0
-const DEFAULT_HZ := 60.0
+## between these periods (past a 250 Hz panel, and a 30 Hz one); a 60 Hz panel's otherwise.
+const SHORTEST_PERIOD_MS := 4.0
+const LONGEST_PERIOD_MS := MS_PER_S / 30.0
+const USUAL_PERIOD_MS := MS_PER_S / 60.0
 const FAST_SHARE := 0.1
 const US_PER_MS := 1000.0
 const NS_PER_MS := 1000000.0 # the device gives the GPU's stamps in nanoseconds, the CPU's in microseconds
 const MS_PER_S := 1000.0
 const PERCENTILES := [0.5, 0.95, 0.99]
+const PERCENT := 100
+## What a report keeps of a time: hundredths of a millisecond, thousandths for a single stamp.
+const SHOWN_MS := 0.01
+const STAMP_SHOWN_MS := 0.001
 ## The engine's own stamp on a measured viewport, before its id; a band that starts there has no clock of its own.
 const VIEWPORT_STAMP := "vp_begin_"
-const OPENING := "begin"
+const VIEWPORT_BAND := "begin"
 const STAGE_CONSTANT := "EFFECT_CALLBACK_TYPE_"
 
 var _viewport: RID
@@ -47,7 +51,7 @@ func clock_on(camera: Camera3D, bands: Array) -> void:
 	var effects: Array[CompositorEffect] = []
 	_stamps = {}
 	for band: Dictionary in bands:
-		if band.from == OPENING:
+		if band.from == VIEWPORT_BAND:
 			_stamps[VIEWPORT_STAMP + str(_viewport.get_id())] = band.id
 			continue
 		var stage := ClassDB.class_get_integer_constant(&"CompositorEffect", STAGE_CONSTANT + band.from)
@@ -128,14 +132,14 @@ func record_end() -> Dictionary:
 	_recording = false
 	var gaps := _sorted(_gaps)
 	var fast: float = gaps[int(gaps.size() * FAST_SHARE)] if gaps.size() > 0 else 0.0
-	var vsync := fast if fast >= MS_PER_S / FASTEST_HZ and fast <= MS_PER_S / SLOWEST_HZ else MS_PER_S / DEFAULT_HZ
+	var vsync := fast if fast >= SHORTEST_PERIOD_MS and fast <= LONGEST_PERIOD_MS else USUAL_PERIOD_MS
 	var dropped := 0
 	var hitches := 0
 	for g in _gaps:
 		dropped += maxi(0, roundi(g / vsync) - 1)
 		if g > HITCH_MS:
 			hitches += 1
-	var out := {"frames": _gaps.size(), "hitches": hitches, "dropped": dropped, "vsync_ms": snappedf(vsync, 0.01)}
+	var out := {"frames": _gaps.size(), "hitches": hitches, "dropped": dropped, "vsync_ms": snappedf(vsync, SHOWN_MS)}
 	out.merge(_spread("interval", gaps))
 	out.merge(_spread("cpu", _sorted(_cpu)))
 	out.merge(_spread("gpu", _sorted(_gpu)))
@@ -150,8 +154,8 @@ func passes() -> Array[Dictionary]:
 		return out
 	for i in range(rd.get_captured_timestamps_count() - 1):
 		out.append({"pass": rd.get_captured_timestamp_name(i),
-			"gpu_ms": snappedf(float(rd.get_captured_timestamp_gpu_time(i + 1) - rd.get_captured_timestamp_gpu_time(i)) / NS_PER_MS, 0.001),
-			"cpu_ms": snappedf(float(rd.get_captured_timestamp_cpu_time(i + 1) - rd.get_captured_timestamp_cpu_time(i)) / US_PER_MS, 0.001)})
+			"gpu_ms": snappedf(float(rd.get_captured_timestamp_gpu_time(i + 1) - rd.get_captured_timestamp_gpu_time(i)) / NS_PER_MS, STAMP_SHOWN_MS),
+			"cpu_ms": snappedf(float(rd.get_captured_timestamp_cpu_time(i + 1) - rd.get_captured_timestamp_cpu_time(i)) / US_PER_MS, STAMP_SHOWN_MS)})
 	return out
 
 
@@ -181,6 +185,6 @@ static func _spread(name: String, sorted: PackedFloat64Array) -> Dictionary:
 	if sorted.is_empty():
 		return out
 	for p: float in PERCENTILES:
-		out["%s_p%d" % [name, roundi(p * 100)]] = snappedf(sorted[mini(sorted.size() - 1, ceili(sorted.size() * p) - 1)], 0.01)
-	out["%s_max" % name] = snappedf(sorted[-1], 0.01)
+		out["%s_p%d" % [name, roundi(p * PERCENT)]] = snappedf(sorted[mini(sorted.size() - 1, ceili(sorted.size() * p) - 1)], SHOWN_MS)
+	out["%s_max" % name] = snappedf(sorted[-1], SHOWN_MS)
 	return out

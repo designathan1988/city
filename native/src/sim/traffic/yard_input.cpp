@@ -15,7 +15,7 @@ namespace traffic {
 
 namespace {
 constexpr float HALF = 0.5f, ASPHALT_STEP_M = 4.f;
-constexpr float NO_BOUND = std::numeric_limits<float>::max();
+constexpr float NO_EDGE = std::numeric_limits<float>::max();
 
 std::vector<V2> rect_ring(const b40::LotFrame &f, float x0, float y0, float x1, float y1) {
 	return { f.at(x0, y0), f.at(x1, y0), f.at(x1, y1), f.at(x0, y1) };
@@ -84,7 +84,7 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	lot_bays(body, f, acc);
 	out.body = { p.classes[int(VehicleType::TRUCK)].length, p.classes[int(VehicleType::TRUCK)].half_width * 2, p.lorry_rear_m, p.lorry_radius_m, p.lorry_margin_m };
 	out.lot = rect_ring(f, -rec.w * HALF, 0, rec.w * HALF, rec.d);
-	float lo_x = NO_BOUND, lo_z = NO_BOUND, hi_x = -NO_BOUND, hi_z = -NO_BOUND;
+	float lo_x = NO_EDGE, lo_z = NO_EDGE, hi_x = -NO_EDGE, hi_z = -NO_EDGE;
 	for (const V2 &q : out.lot) {
 		lo_x = std::min(lo_x, q.x);
 		lo_z = std::min(lo_z, q.y);

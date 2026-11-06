@@ -23,7 +23,7 @@ namespace city {
 namespace {
 constexpr float RAY_MAX_M = 30000.f;
 constexpr float RAY_DIR_MIN = 1e-6f; // a ray with a shorter ground direction is vertical
-constexpr float NO_BOUND = 1e9f; // an empty city_bounds still has finite numbers
+constexpr float NO_EDGE = 1e9f; // an empty city_bounds still has finite numbers
 constexpr float HALF = 0.5f;
 
 // The size of a body for the city statistics: storeys of its highest volume, the top of its walls (m), its footprint
@@ -226,7 +226,7 @@ Array CityCore::list_buildings() {
 
 Dictionary CityCore::city_bounds() const {
 	Dictionary d;
-	float minx = NO_BOUND, minz = NO_BOUND, maxx = -NO_BOUND, maxz = -NO_BOUND;
+	float minx = NO_EDGE, minz = NO_EDGE, maxx = -NO_EDGE, maxz = -NO_EDGE;
 	for (const RoadNode &n : state_->roads.nodes) {
 		if (!n.alive) continue;
 		minx = std::min(minx, float(n.x)); maxx = std::max(maxx, float(n.x));
