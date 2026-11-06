@@ -60,3 +60,6 @@ LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e l
 - Via nova acende (`road_flash.gd`); com a camada Grade a via encaixa em células de 10 m. Regra de cada via no Inspecionar (`approach_panel.gd`).
 - Veículo queimado: o corpo do modelo amassado (`agent_wreck.cpp`). Quem perdeu um membro pinga (`DRIP`), sem foto que o mostre: o tiro de captura não arrancou membro; quem só leva tiro leve não pinga, como no 4.0.
 - `quick.sh`: ler a linha `FAILED`; a última linha diz "photos: golden written" mesmo com teste falho.
+- Histerese: veículos e pedestres seguram o nível 10% além da borda; alcances de mobília, árvores e cobertura seguram 3% pelas margens do Godot. Prédios perto-médio ficam sem margem: a dissolução depende da distância exata.
+- Sombras por camada (`camera_pan --casters-cycle`, sem vsync): sem sombra 5,2 ms contra 8,4 ms com; com só uma camada lançando, o custo fica igual ao de todas. Os 8 milhões de triângulos de sombra não são o gargalo: o custo está na amostragem da sombra na luz, não na geometria. Reduzir polígono não reduz GPU aqui. Carro distante passou a ser simplificado inteiro, sem ganho medido de GPU (9,1 ms).
+- F7: abas Consumidores e Inspetor (`lab_views.gd`). Faltam, do laboratório do 4.0: gravador, testes, perfil de CPU, passes da GPU, edição ao vivo no Inspetor.

@@ -154,3 +154,27 @@ connector.title,Conexões das faixas,Lane connections
 hint.lane.last,Esta faixa precisa de ao menos uma saída,This lane needs at least one way out
 cmd.lane.link,Ligar faixas,Connect lanes
 cmd.lane.rule,Regra do cruzamento,Junction rule
+fx.tab.consumers,Consumidores,Consumers
+fx.tab.inspector,Inspetor,Inspector
+lab.consumers.memory,Memória dos prédios por superfície,Buildings' memory by surface
+lab.consumers.frame,Núcleo no último quadro,Core in the last frame
+lab.surface.near_walls,Paredes de perto,Near walls
+lab.surface.near_panes,Vidros de perto,Near panes
+lab.surface.near_guards,Guarda-corpos de vidro,Glass guards
+lab.surface.near_cards,Grades de perto,Near railings
+lab.surface.near_pieces,Peças de perto,Near pieces
+lab.surface.mid_walls,Paredes do médio,Mid walls
+lab.surface.mid_panes,Vidros do médio,Mid panes
+lab.surface.mid_cards,Grades do médio,Mid railings
+lab.surface.far,Massas distantes,Far masses
+lab.core.agents,Agentes,Agents
+lab.core.stream,Fluxo de chunks,Chunk stream
+lab.core.levels,Níveis,Levels
+lab.core.flush,Envio,Flush
+lab.core.roads,Vias,Roads
+lab.core.props,Mobiliário,Street furniture
+lab.core.buildings,Prédios,Buildings
+lab.inspector.none,Ponha o ponteiro sobre o mapa,Put the pointer over the map
+lab.inspector.point,Ponto,Point
+lab.inspector.ground,Altura do chão,Ground height
+lab.inspector.pointer,Altura sob o ponteiro,Height under the pointer

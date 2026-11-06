@@ -142,10 +142,10 @@ func step_road_height(metres: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if active == null:
-		return
 	if event is InputEventMouse:
 		pointer = event.position
+	if active == null:
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
 		var p: Variant = ground_at(event.position)

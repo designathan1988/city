@@ -104,7 +104,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 				commit_mesh(i, MID_DRAW, simplify_parts(mb, cabin_error));
 				commit_mesh(i, level, mb);
 			} else {
-				commit_mesh(i, level, simplify_parts(mb, level == BODY_LEVEL ? body_error : far_error));
+				commit_mesh(i, level, level == BODY_LEVEL ? simplify_parts(mb, body_error) : simplify_whole(mb, far_error)); // far, a shell of few pixels: the parts need not keep their borders
 			}
 		}
 	return errors.is_empty();

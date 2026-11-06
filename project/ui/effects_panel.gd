@@ -74,7 +74,8 @@ func _render() -> void:
 	_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_child(_stats)
 	_read_stats()
-	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")]], _tab,
+	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")],
+		["consumers", tr("fx.tab.consumers")], ["inspector", tr("fx.tab.inspector")]], _tab,
 		func(t: String) -> void:
 			_tab = t
 			_render.call_deferred())
@@ -82,6 +83,10 @@ func _render() -> void:
 		_switches()
 	elif _tab == "doctor":
 		LabDoctor.draw(_body, doctor)
+	elif _tab == "consumers":
+		LabViews.consumers(_body)
+	elif _tab == "inspector":
+		LabViews.inspector(_body)
 	else:
 		_optimizations()
 
@@ -176,4 +181,6 @@ func _process(delta: float) -> void:
 	_since += delta
 	if _since >= DataTables.game("render_switches").stats_every_s:
 		_since = 0.0
+		if _tab == "consumers" or _tab == "inspector":
+			_render()
 		_read_stats()
