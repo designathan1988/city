@@ -96,7 +96,7 @@ func _zoom_test() -> void:
 	await _pull_settled()
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
-	_check(rig.pull.shown < EPS, "roda: longe dos prédios o olho não é puxado (%.3f)" % rig.pull.shown)
+	_check(rig.pull.shown() < EPS, "roda: longe dos prédios o olho não é puxado (%.3f)" % rig.pull.shown())
 	_check(err < _tol(), "roda: o ponto sob o cursor fica sob o cursor (erro %.2f px)" % err)
 	_check(absf(rig.half - want) < want * 0.01, "roda: 3 entalhes aproximam (meia altura %.1f -> %.1f)" % [half0, rig.half])
 
@@ -207,7 +207,7 @@ func _button(button: MouseButton, at: Vector2, pressed: bool, shift: bool) -> vo
 func _pull_settled() -> void:
 	var limit: float = cfg.pull_hold_s + cfg.pull_out_s * log(1.0 / EPS)
 	var waited := 0.0
-	while rig.pull.shown >= EPS and waited < limit:
+	while rig.pull.shown() >= EPS and waited < limit:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 

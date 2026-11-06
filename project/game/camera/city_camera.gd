@@ -9,6 +9,7 @@ signal right_clicked
 ## Below this the ray runs along the plane and meets it nowhere.
 const PARALLEL := 1e-6
 const CM := 0.01
+const FIRST := -100
 
 var cfg: Dictionary
 var camera: Camera3D
@@ -25,6 +26,11 @@ var gestures: CameraGestures
 var motion: CameraMotion
 var pull: CameraPull
 var _ground_y := 0.0
+var _ground := CameraDamp.new() # the height the view rests on
+var _rise := CameraDamp.new() # how far the eye stands over its orbit, clear of the ground
+var _over := CameraDamp.new() # how far the whole view stands over the roof the point looked at is in
+var _out := CameraDamp.new() # the share of the line of sight taken off to leave a building
+var _eye_ground := -INF # the ground under the eye, as last read
 
 
 func _ready() -> void:
@@ -42,11 +48,12 @@ func _ready() -> void:
 	far_tilt = deg_to_rad(cfg.start_pitch)
 	half = cfg.start_view_half
 	_apply()
+	process_priority = FIRST # the view of this frame, before anything reads it
 
 
 func look_at_ground(p: Vector3) -> void:
 	focus = p
-	_apply()
+	_settle(0.0)
 
 
 ## Camera popover: a step of turn (eased, the way Q/E turn) or tilt.
@@ -70,6 +77,7 @@ func jump(p: Vector3, yaw_deg: float, pitch_deg: float, dist: float) -> void:
 	half = CameraProfile.half_for_distance(cfg, dist)
 	_ask_tilt(deg_to_rad(pitch_deg))
 	_apply()
+	_settle(0.0)
 
 
 ## Home: the start bearing, tilt and zoom over the same point.
@@ -79,6 +87,7 @@ func reset_view() -> void:
 	half = cfg.start_view_half
 	_ask_tilt(deg_to_rad(cfg.start_pitch))
 	_apply()
+	_settle(0.0)
 
 
 ## Everything moving stops at once (a jump, the window losing focus).
@@ -90,8 +99,7 @@ func stop() -> void:
 func _process(dt: float) -> void:
 	motion.step(dt)
 	gestures.advance(dt)
-	if pull.settle(dt):
-		_apply()
+	_settle(dt)
 
 
 ## A drag in progress owns the pointer, over the interface too.
@@ -185,8 +193,7 @@ func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = nul
 	_bring(screen, before, at_h)
 
 
-## Moves the point looked at until `point` (on the plane at `h`) is under `screen`: one step is exact on flat ground,
-## the terrain under the moved point changes the view's height, so it is repeated until it holds.
+## Moves the point looked at until `point` (on the plane at `h`) is under `screen`.
 func _bring(screen: Vector2, point: Vector3, h: float) -> void:
 	for pass_i in int(cfg.keep_passes):
 		var found: Variant = hit_at(screen, h)
@@ -213,26 +220,49 @@ func _ground_height(x: float, z: float) -> float:
 	return hit.position.y if hit.get("hit", false) else CityStore.query(&"height_at", [x, z])
 
 
+## The view from what the player asks and what the settled heights say: arithmetic alone, so a gesture may place it many times a frame.
 func _apply() -> void:
 	var profile: float = CameraProfile.profile_tilt(cfg, half)
 	pitch = clampf(profile + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, half),
 			deg_to_rad(cfg.max_tilt_deg))
 	CameraProfile.lens(camera, cfg, half)
 	distance = CameraProfile.view_distance(cfg, half)
-	_ground_y = _ground_height(focus.x, focus.z)
-	focus.y = _ground_y + CameraProfile.eye_lift(cfg, half)
+	_ground_y = _ground.x
+	focus.y = _ground.x + CameraProfile.eye_lift(cfg, half) + _over.x
 	var basis := Basis.from_euler(Vector3(-pitch, yaw, 0.0))
-	var pos := focus + basis.z * distance
-	var floor_y: float = _ground_height(pos.x, pos.z) + cfg.ground_clearance
-	if pos.y < floor_y:
-		pos.y = floor_y
+	var orbit_eye := focus.lerp(focus + basis.z * distance, 1.0 - maxf(pull.shown(), _out.x))
+	var pos := orbit_eye
+	pos.y = maxf(pos.y + _rise.x, _eye_ground + cfg.ground_touch_m)
+	if pos.y != orbit_eye.y: # raised over the ground, still looking at the same point
 		basis = Basis.looking_at(focus - pos, basis.y)
-	var pulled: Vector3 = pull.eye(focus, pos, half)
-	if pulled != pos: # the pull goes by time, towards the focus: the floor holds wherever it leaves the eye
-		pos = pulled
-		pos.y = maxf(pos.y, _ground_height(pos.x, pos.z) + cfg.ground_clearance)
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [focus, pos, CameraProfile.eye_lift(cfg, half)]) # at any distance, never inside a building
-	focus = free[0]
-	pos = free[1]
 	camera.global_transform = Transform3D(basis, pos)
 	camera.near = clampf(pos.distance_to(focus) * cfg.near_per_m, cfg.near_min, cfg.near_max)
+
+
+## Once a frame: what stands under and in front of the view, each height and share moved towards it on its own spring. Nothing the terrain,
+## a road's edge, a roof or a wall asks of the view reaches the screen as a step. `dt` 0 takes it all at once (a jump).
+func _settle(dt: float) -> void:
+	_ground.to(_ground_height(focus.x, focus.z), dt, cfg.ground_smooth_s) if dt > 0.0 else _ground.snap(_ground_height(focus.x, focus.z))
+	var base := Vector3(focus.x, _ground.x + CameraProfile.eye_lift(cfg, half), focus.z)
+	var far_eye := base + Basis.from_euler(Vector3(-pitch, yaw, 0.0)).z * distance
+	pull.ask(base, far_eye, half)
+	if dt > 0.0:
+		pull.settle(dt)
+	else:
+		pull.snap()
+	var eye := far_eye.lerp(base, pull.shown())
+	_eye_ground = _ground_height(eye.x, eye.z)
+	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
+	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye + Vector3.UP * rise, CameraProfile.eye_lift(cfg, half)]) # at any distance, never inside a building
+	var over: float = free[0].y - base.y
+	var line := maxf(far_eye.distance_to(base), PARALLEL)
+	var out := clampf(1.0 - free[1].distance_to(free[0]) / line, 0.0, 1.0)
+	if dt > 0.0:
+		_rise.to(rise, dt, cfg.eye_rise_s if rise > _rise.x else cfg.eye_fall_s)
+		_over.to(over, dt, cfg.eye_out_s if over > _over.x else cfg.eye_back_s)
+		_out.to(out, dt, cfg.eye_out_s if out > _out.x else cfg.eye_back_s)
+	else:
+		_rise.snap(rise)
+		_over.snap(over)
+		_out.snap(out)
+	_apply()

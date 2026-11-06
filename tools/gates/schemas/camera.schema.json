@@ -40,7 +40,6 @@
     "speed_min_span_ms",
     "max_fling_px_s",
     "wheel_log_per_notch",
-    "wheel_ease_ms",
     "wheel_new_point_px",
     "key_pan_px_s",
     "key_turn_rad_s",
@@ -49,14 +48,21 @@
     "key_shift",
     "key_ease_s",
     "key_stop_pct",
-    "turn_ease_s",
     "quarter_turn_deg",
     "spend_snap_deg",
     "aim_close_deg",
     "aim_snap_deg",
     "aim_max_s",
     "turn_step_deg",
-    "tilt_step_deg"
+    "tilt_step_deg",
+    "wheel_smooth_s",
+    "turn_smooth_s",
+    "ground_smooth_s",
+    "ground_touch_m",
+    "eye_rise_s",
+    "eye_fall_s",
+    "eye_out_s",
+    "eye_back_s"
   ],
   "additional": {
     "type": "number",
@@ -77,6 +83,30 @@
       "maximum": 90
     },
     "pull_soft_m": {
+      "type": "number"
+    },
+    "wheel_smooth_s": {
+      "type": "number"
+    },
+    "turn_smooth_s": {
+      "type": "number"
+    },
+    "ground_smooth_s": {
+      "type": "number"
+    },
+    "ground_touch_m": {
+      "type": "number"
+    },
+    "eye_rise_s": {
+      "type": "number"
+    },
+    "eye_fall_s": {
+      "type": "number"
+    },
+    "eye_out_s": {
+      "type": "number"
+    },
+    "eye_back_s": {
       "type": "number"
     }
   }

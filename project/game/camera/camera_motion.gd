@@ -1,7 +1,7 @@
 ## The camera's motion over time: held keys and wheel notches turned into a glide.
 ## W A S D / arrows pan, Q/E turn (Shift: a quarter turn), Page Up/Down tilt, + / - zoom about the centre, Shift held
 ## goes `key_shift` times faster, Home resets. A held key eases to its speed and back (time constant `key_ease_s`);
-## each wheel notch is spent over `wheel_ease_s` about the ground point it was turned over.
+## each wheel notch is spent on a spring (`wheel_smooth_s`) about the ground point it was turned over.
 class_name CameraMotion
 extends RefCounted
 
@@ -12,7 +12,6 @@ const KEYS := {
 	KEY_Q: [&"turn", -1], KEY_E: [&"turn", 1], KEY_PAGEUP: [&"tilt", 1], KEY_PAGEDOWN: [&"tilt", -1],
 	KEY_EQUAL: [&"zoom", 1], KEY_KP_ADD: [&"zoom", 1], KEY_MINUS: [&"zoom", -1], KEY_KP_SUBTRACT: [&"zoom", -1],
 }
-const MS_PER_S := 1000.0
 const PCT := 0.01
 const AXES: Array[StringName] = [&"forward", &"right", &"turn", &"tilt", &"zoom"]
 
@@ -22,12 +21,12 @@ var held := {}
 var velocity := {}
 var shift := false
 ## Zoom still to spend (log factor), the pointer it is about and the ground point it holds there.
-var pending_zoom := 0.0
+var pending_zoom := CameraDamp.new()
 var zoom_point := Vector2.ZERO
 var zoom_height := 0.0
 var zoom_grabbed: Variant = null
 ## Yaw still to spend (Shift+Q/E, popover steps), radians; aiming: turning to north.
-var pending_turn := 0.0
+var pending_turn := CameraDamp.new()
 var aiming := false
 var aimed_for := 0.0
 
@@ -42,19 +41,19 @@ func stop() -> void:
 	held.clear()
 	for axis in AXES:
 		velocity[axis] = 0.0
-	pending_zoom = 0.0
-	pending_turn = 0.0
+	pending_zoom.snap(0.0)
+	pending_turn.snap(0.0)
 	aiming = false
 
 
 func moving() -> bool:
-	return not held.is_empty() or pending_zoom != 0.0 or pending_turn != 0.0 or aiming \
+	return not held.is_empty() or pending_zoom.x != 0.0 or pending_turn.x != 0.0 or aiming \
 			or AXES.any(func(a: StringName) -> bool: return velocity[a] != 0.0)
 
 
 ## A turn to spend smoothly, radians of yaw.
 func turn(angle: float) -> void:
-	pending_turn += angle
+	pending_turn.x += angle
 
 
 func aim_north() -> void:
@@ -103,13 +102,13 @@ func _key(k: InputEventKey) -> bool:
 
 ## A notch of the wheel: `log_factor` of zoom (positive: closer) about the pointer at `at`.
 func wheel(log_factor: float, at: Vector2) -> void:
-	if pending_zoom == 0.0 or at.distance_to(zoom_point) > cfg.wheel_new_point_px:
+	if pending_zoom.x == 0.0 or at.distance_to(zoom_point) > cfg.wheel_new_point_px:
 		var ground := rig.height_under(at)
 		var h := CameraAim.hold_height(rig, at, ground)
 		zoom_point = at
 		zoom_height = h
 		zoom_grabbed = rig.hit_at(at, h)
-	pending_zoom += log_factor
+	pending_zoom.x += log_factor
 
 
 ## One frame of glide, `dt` seconds (the exact closed form of the eased speed, so any frame length is right).
@@ -146,16 +145,19 @@ func step(dt: float) -> void:
 	_spend_zoom(dt, centre)
 
 
-func _eased(left: float, dt: float, ease_s: float) -> float:
-	return left if absf(left) < deg_to_rad(cfg.spend_snap_deg) else left * (1.0 - exp(-dt / ease_s))
+## What a remainder gives up this frame: it goes to nothing on a spring, so a notch or a turn starts and ends without a jerk.
+func _spent(left: CameraDamp, dt: float, smooth_s: float) -> float:
+	var before := left.x
+	left.to(0.0, dt, smooth_s)
+	if absf(left.x) < deg_to_rad(cfg.spend_snap_deg) and absf(left.v) < deg_to_rad(cfg.spend_snap_deg):
+		left.snap(0.0)
+	return before - left.x
 
 
 func _spend_turn(dt: float) -> float:
 	var spend := 0.0
-	if pending_turn != 0.0:
-		var s := _eased(pending_turn, dt, cfg.turn_ease_s)
-		pending_turn -= s
-		spend += s
+	if pending_turn.x != 0.0:
+		spend += _spent(pending_turn, dt, cfg.turn_smooth_s)
 	if aiming:
 		var left := angle_difference(rig.yaw, 0.0)
 		aimed_for += dt
@@ -167,10 +169,9 @@ func _spend_turn(dt: float) -> float:
 
 
 func _spend_zoom(dt: float, centre: Vector2) -> void:
-	if pending_zoom == 0.0:
+	if pending_zoom.x == 0.0:
 		return
-	var s := _eased(pending_zoom, dt, cfg.wheel_ease_ms / MS_PER_S)
-	pending_zoom -= s
+	var s := _spent(pending_zoom, dt, cfg.wheel_smooth_s)
 	if zoom_grabbed != null:
 		rig.zoom_at(zoom_point, exp(s), zoom_height, zoom_grabbed)
 	else:

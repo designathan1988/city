@@ -454,6 +454,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 
 **Godot — project/**
 - `project/game/camera/camera_aim.gd` — até onde o ponteiro segura uma altura
+- `project/game/camera/camera_damp.gd` — mola criticamente amortecida, exata em qualquer quadro: o dono de todo movimento suave da câmera
 - `project/game/camera/camera_gestures.gd` — gestos do mouse (arrastar gira/inclina, meio ou Shift+direito move o chão)
 - `project/game/camera/camera_motion.gd` — teclas e roda com suavização
 - `project/game/camera/camera_pull.gd` — o olho nunca dentro nem atrás de prédio, com os tempos do Deoccluder
