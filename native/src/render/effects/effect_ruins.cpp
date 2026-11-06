@@ -19,10 +19,12 @@ constexpr float PIECES_PER_STOREY = 0.25f;
 constexpr int HEAP_FEWEST = 14, HEAP_MOST = 60;
 constexpr float STOREYS_PER_M = 0.3125f; // a storey is about 3.2 m: a building's height for the fall
 constexpr float SLAB_MIN_M = 0.35f, PIECE_SPAN_M = 1.6f, PIECE_FLAT_MIN = 0.08f, PIECE_FLAT_SPAN = 0.22f; // slabs of wall, roof and glass
-constexpr float HEAP_HEIGHT_K = 0.35f; // a heap's centre rises this share of the building's height (capped)
-constexpr float HEAP_MAX_M = 3.5f;
+constexpr float HEAP_HEIGHT_K = 0.07f; // a heap rises this share of the building's height: most of a building is air (a design choice, no measured source)
+constexpr float HEAP_MIN_M = 0.8f, HEAP_MAX_M = 4.5f;
+constexpr float MOUND_SPREAD = 1.15f; // it slumps past the walls it fell from
 constexpr float FALL_OUT_M = 2.5f; // the pieces of a falling building are thrown out a little
 constexpr float FALL_DOWN_M = 1.5f;
+constexpr double MOUND_LONG_AGO_S = -1e6; // a heap read from the state stands whole
 constexpr uint32_t PALETTE = 6;
 const Color WALL_CREAM = Color(0.78f, 0.72f, 0.6f);
 const Color WALL_BRICK = Color(0.54f, 0.29f, 0.21f);
@@ -37,9 +39,10 @@ void EffectWorld::pile(const Ruin &r, bool falling) {
 	Rng rng(uint64_t(r.seed) * 2654435761ULL + 1);
 	const float storeys = float(r.record.floors);
 	const int n = std::clamp(int(r.w * r.d * PIECES_PER_M2 + storeys * r.w * PIECES_PER_STOREY), HEAP_FEWEST, HEAP_MOST);
-	const float height = storeys / STOREYS_PER_M, heap = std::min(HEAP_MAX_M, height * HEAP_HEIGHT_K);
+	const float height = storeys / STOREYS_PER_M, heap = std::clamp(height * HEAP_HEIGHT_K, HEAP_MIN_M, HEAP_MAX_M);
 	const float c = std::cos(r.rot), sn = std::sin(r.rot);
 	const Color wall = PALETTE_TINTS[hash_u32(r.seed) % 4]; // each building its own wall; the roof and glass are common to all
+	mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & 0xFFFu) / 4096.f, falling ? now_ : MOUND_LONG_AGO_S);
 	for (int i = 0; i < n; i++) {
 		const float u = (rng.f() - 0.5f) * r.w, v = (rng.f() - 0.5f) * r.d;
 		const float x = r.x + u * c + v * sn, z = r.z - u * sn + v * c;
@@ -56,7 +59,7 @@ void EffectWorld::pile(const Ruin &r, bool falling) {
 			s.at = Vector3(x, ground + rng.f() * height + FALL_DOWN_M, z);
 			s.velocity = Vector3((rng.f() - 0.5f) * FALL_OUT_M, 0, (rng.f() - 0.5f) * FALL_OUT_M);
 		} else {
-			s.at = Vector3(x, ground + s.size.y * 0.5f + heap * edge * rng.f(), z);
+			s.at = Vector3(x, ground + s.size.y * 0.5f + heap * std::min(1.f, edge * 2.f), z); // on the mound's top
 			s.still = true;
 		}
 		debris_.add(s);
@@ -65,6 +68,7 @@ void EffectWorld::pile(const Ruin &r, bool falling) {
 
 void EffectWorld::rebuild_ruins(const CityState &s) {
 	debris_.reset();
+	mounds_.reset();
 	for (const Ruin &r : s.damage.ruins) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
 		pile(r, false);

@@ -22,7 +22,7 @@ uniform float bed_from_m; // the depth the bed has taken over the ground by
 uniform float silt_m; // the depth it is all silt by
 uniform float bed_cover; // how much of the ground the bed hides
 uniform float bed_wet; // what the wet leaves of the bed's light
-uniform vec3 absorb_m; // what a metre of water takes of each colour (Pope and Fry 1997, with a river's fine silt): the bed goes blue-green as it sinks
+uniform vec3 absorb_m; // what a metre of water takes of each colour, red most: a choice by eye held to the 4.0's blue, not a measured water. The bed goes blue-green as it sinks
 uniform float wave_scale; // cells a metre: one over the peak wavelength
 uniform float peak_hz; // the peak's frequency: cells a second the main layer drifts
 uniform float detail_ratio; // the detail layer's wavelength ratio (frequency ratio squared)

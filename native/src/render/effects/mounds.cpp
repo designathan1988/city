@@ -1,0 +1,100 @@
+// See mounds.h. The hill is a grid with a flattened bell for its shape, broken by three octaves of a lattice noise: a heap of rubble slumps at
+// its angle of repose with lumps in it, and its edge dies into the ground.
+#include "render/effects/mounds.h"
+
+#include "core/random.h"
+
+#include <godot_cpp/classes/array_mesh.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_vector3_array.hpp>
+
+#include <algorithm>
+#include <cmath>
+
+using namespace godot;
+
+namespace city {
+
+namespace {
+constexpr int GRID = 40;
+constexpr float BELL_POWER = 2.2f, BELL_SHOULDER = 1.1f; // how flat its top, how soon it falls away
+constexpr float LUMP_SHARE = 0.28f; // what the noise moves of its height
+constexpr uint32_t LATTICE_SEED = 7741;
+constexpr uint32_t BYTE = 255;
+
+float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / 65535.f; }
+
+float value_noise(float x, float z) {
+	const int i = int(std::floor(x)), j = int(std::floor(z));
+	const float fx = x - float(i), fz = z - float(j), sx = fx * fx * (3 - 2 * fx), sz = fz * fz * (3 - 2 * fz);
+	const float a = lattice(i, j) + (lattice(i + 1, j) - lattice(i, j)) * sx, b = lattice(i, j + 1) + (lattice(i + 1, j + 1) - lattice(i, j + 1)) * sx;
+	return a + (b - a) * sz;
+}
+
+// Height of the unit hill at (x, z), both -0.5..0.5.
+float hill(float x, float z) {
+	const float r = std::min(1.f, std::pow(std::pow(std::fabs(x) * 2, 3.f) + std::pow(std::fabs(z) * 2, 3.f), 1.f / 3.f)); // a rounded square, as the footprint
+	const float bell = std::pow(std::max(0.f, 1 - std::pow(r, BELL_POWER)), BELL_SHOULDER);
+	const float lumps = value_noise(x * 5, z * 5) * 0.55f + value_noise(x * 12, z * 12) * 0.3f + value_noise(x * 27, z * 27) * 0.15f;
+	return bell * (1 - LUMP_SHARE + LUMP_SHARE * 2 * lumps);
+}
+
+Ref<ArrayMesh> hill_mesh() {
+	PackedVector3Array v, n;
+	PackedInt32Array idx;
+	const float step = 1.f / float(GRID);
+	for (int j = 0; j <= GRID; j++)
+		for (int i = 0; i <= GRID; i++) {
+			const float x = float(i) * step - 0.5f, z = float(j) * step - 0.5f;
+			v.push_back(Vector3(x, hill(x, z), z));
+			n.push_back(Vector3(hill(x - step, z) - hill(x + step, z), 2 * step, hill(x, z - step) - hill(x, z + step)).normalized());
+		}
+	for (int j = 0; j < GRID; j++)
+		for (int i = 0; i < GRID; i++) {
+			const int a = j * (GRID + 1) + i, b = a + 1, c = a + GRID + 1, d = c + 1;
+			for (int k : { a, b, c, b, d, c }) idx.push_back(k);
+		}
+	Array arrays;
+	arrays.resize(Mesh::ARRAY_MAX);
+	arrays[Mesh::ARRAY_VERTEX] = v;
+	arrays[Mesh::ARRAY_NORMAL] = n;
+	arrays[Mesh::ARRAY_INDEX] = idx;
+	Ref<ArrayMesh> mesh;
+	mesh.instantiate();
+	mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+	return mesh;
+}
+} // namespace
+
+void Mounds::init(const RID &scenario, const RID &material, int capacity) {
+	material_ = material;
+	capacity_ = capacity;
+	layer_.init(scenario, hill_mesh(), material, capacity, true, AABB(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M)));
+	layer_.count(0);
+}
+
+void Mounds::reset() {
+	shown_ = 0;
+	dirty_ = true;
+}
+
+void Mounds::release() { layer_.release(); }
+
+void Mounds::add(const Vector3 &at, float rot, float w, float d, float h, const Color &wall, float seed, double born) {
+	if (shown_ >= capacity_) return;
+	const float c = std::cos(rot), s = std::sin(rot);
+	const uint32_t packed = uint32_t(wall.r * float(BYTE)) | uint32_t(wall.g * float(BYTE)) << 8 | uint32_t(wall.b * float(BYTE)) << 16;
+	layer_.put(shown_++, Vector3(c * w, 0, -s * w), Vector3(0, h, 0), Vector3(s * d, 0, c * d), at, float(born), seed, float(packed), 0);
+	dirty_ = true;
+}
+
+void Mounds::update(double now) {
+	RenderingServer::get_singleton()->material_set_param(material_, "now", float(now));
+	if (!dirty_) return;
+	layer_.count(shown_);
+	layer_.shown(shown_ > 0);
+	layer_.upload();
+	dirty_ = false;
+}
+
+} // namespace city

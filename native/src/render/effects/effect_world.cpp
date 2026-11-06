@@ -15,6 +15,7 @@ namespace city {
 namespace {
 constexpr float MAX_FRAME_S = 0.1f; // a stalled frame never advances the effects by more
 constexpr float MARK_SLOTS = 1400.f; // craters, soot, blood and rings drawn at once
+constexpr int MOUND_SLOTS = 2000; // the ruins of a city razed
 constexpr float ROOF_FLAME_BASE_M = 2.f; // a burning building flames from this high over its ground...
 constexpr float ROOF_FLAME_SPAN_M = 10.f; // ...up to this much higher
 constexpr float FLAME_SPAN_SHARE = 0.3f; // a flame's size is at most this share of the building's span
@@ -28,12 +29,13 @@ constexpr float GEYSER_LIFT_M = 0.4f, JET_SPREAD_M = 0.1f, JET_LIFE_S = 4.2f;
 bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
 	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
-	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors);
+	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
 	puffs_.init(scenario_, puffs, params_.pool);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
 	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
+	mounds_.init(scenario_, rubble, MOUND_SLOTS);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	light_ = rs->omni_light_create();
 	rs->light_set_shadow(light_, false);
@@ -48,6 +50,7 @@ void EffectWorld::reset() {
 	puffs_.reset();
 	marks_.reset();
 	debris_.reset();
+	mounds_.reset();
 	geysers_.clear();
 	sources_.clear();
 	fire_carry_.clear();
@@ -66,6 +69,7 @@ void EffectWorld::release() {
 	light_ = RID();
 	puffs_.release();
 	marks_.release();
+	mounds_.release();
 	debris_.release();
 }
 
@@ -150,6 +154,7 @@ void EffectWorld::sync(CityState &s) {
 	if (shake_ < SHAKE_FLOOR) shake_ = 0;
 	light_update(dt);
 	marks_.update(now_);
+	mounds_.update(now_);
 	puffs_.update(now_);
 }
 

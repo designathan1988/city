@@ -7,6 +7,7 @@
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
 #include "render/effects/marks.h"
+#include "render/effects/mounds.h"
 #include "render/effects/puffs.h"
 #include "render/render_context.h"
 #include "sim/state/city_state.h"
@@ -60,6 +61,7 @@ private:
 	EffectParams params_;
 	Puffs puffs_;
 	Marks marks_;
+	Mounds mounds_;
 	Debris debris_;
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
