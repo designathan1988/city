@@ -93,6 +93,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.near_glass[i].rooms = out.mid_glass[i].rooms = true;
 		near_shells[i].lawns = &out.near_lawns[i];
 		mid_shells[i].lawns = &out.mid_lawns[i];
+		near_shells[i].box_sink = &parts_shells[i];
+		mid_shells[i].box_sink = &mid_parts[i];
 		near_shells[i].glass = &out.near_glass[i];
 		near_shells[i].sheer = &out.near_sheer[i];
 		near_shells[i].cards = &out.near_cards[i];
@@ -132,6 +134,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
 		near_shells[i].glass = mid_shells[i].glass = out.flat_shell[i].glass = nullptr;
 		near_shells[i].lawns = mid_shells[i].lawns = nullptr;
+		near_shells[i].box_sink = mid_shells[i].box_sink = nullptr;
 		near_shells[i].sheer = nullptr;
 		near_shells[i].cards = mid_shells[i].cards = nullptr;
 	}
@@ -150,12 +153,15 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	if (mid) {
 		for (size_t i = 0; i < SUB_COUNT; i++) {
 			out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
-			out.mid_buf[i][MID_BOXES] = bake_band(mid_parts[i].boxes);
+			std::vector<b40::BoxInstance> thin, solid;
+			for (const b40::BoxInstance &inst : mid_parts[i].boxes) (inst.thick > look_.part_bands[size_t(MID_SOLID_BAND - 1)].thick_max ? solid : thin).push_back(inst);
+			out.mid_buf[i][MID_BOXES] = bake_band(thin);
+			out.mid_buf[i][MID_SOLIDS] = bake_band(solid);
 			mid_shells[i].bays = {};
 			mid_shells[i].flat = nullptr;
 		}
 		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
-		out.mid_mesh[MID_BOXES] = unit_box_->get_rid();
+		out.mid_mesh[MID_BOXES] = out.mid_mesh[MID_SOLIDS] = unit_box_->get_rid();
 	}
 	return out;
 }

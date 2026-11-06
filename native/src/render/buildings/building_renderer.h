@@ -92,7 +92,9 @@ private:
 	// Under the first band's thickness a part is finer than a shadow texel: the others cast, and the first balcony pieces after them.
 	static constexpr int BAND_CASTS = BAND_COUNT - 1 + b40::BAY_PROP_SHADOWED;
 	static constexpr int cast_of(int band) { return band == 0 || band >= BAND_COUNT + b40::BAY_PROP_SHADOWED ? -1 : band - 1; }
-	enum MidDraw { MID_BAYS, MID_BOXES, MID_DRAWS }; // the mid level's instances: its openings, and what stands out of its walls
+	// The mid level's instances: its openings, what stands out of its walls, and of those the boxes large enough for its shadow map.
+	enum MidDraw { MID_BAYS, MID_BOXES, MID_SOLIDS, MID_DRAWS };
+	static constexpr int MID_SOLID_BAND = 3; // of the part bands: past this far a shadow texel is a hand wide, and a thinner box is under it
 	static constexpr float REACH_PAD = 0.25f; // of a chunk: the stream starts a level a little before its range reaches the eye
 	using Held = HeldCost;
 	using Surface = LevelSurface;
@@ -102,6 +104,7 @@ private:
 		std::array<std::array<MultiMeshDraw, BAND_DRAWS>, SUB_COUNT> bands; // by sub-chunk: they end with the near shell they stand on
 		std::array<std::array<ShadowTwin, BAND_CASTS>, SUB_COUNT> prop_casts; // what the boxes and the balcony pieces throw, to lod.cast_props_m
 		std::array<std::array<MultiMeshDraw, MID_DRAWS>, SUB_COUNT> mid_draws;
+		std::array<ShadowTwin, SUB_COUNT> mid_casts; // what the mid level's solids throw
 		// A visibility range is measured to the centre of the instance's box (docs: Visibility ranges): every level of a sub-chunk takes this
 		// one box, so they hand over at one distance, with neither both drawn nor a hole between them.
 		std::array<godot::AABB, SUB_COUNT> reach_box;

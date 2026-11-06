@@ -132,6 +132,12 @@ void Shell::rect(const Basis &f, float a0, float a1, float b0, float b1, float c
 
 void Shell::box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip) {
 	if (a1 <= a0 || b1 <= b0 || c1 <= c0) return;
+	if (box_sink && !tube(skip)) {
+		box_sink->shade = shade;
+		box_sink->tone = tone;
+		box_sink->box(f, a0, a1, b0, b1, c0, c1, lin, fin, skip);
+		return;
+	}
 	if (instanced && !tube(skip)) {
 		float m0 = a1 - a0, m1 = b1 - b0, m2 = c1 - c0;
 		float lo = std::min({ m0, m1, m2 }), hi = std::max({ m0, m1, m2 });

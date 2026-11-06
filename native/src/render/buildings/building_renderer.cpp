@@ -164,6 +164,7 @@ void BuildingRenderer::drop_bands(Chunk &ch) {
 		for (MultiMeshDraw &d : sub) d.free();
 	for (auto &sub : ch.mid_draws)
 		for (MultiMeshDraw &d : sub) d.free();
+	for (ShadowTwin &d : ch.mid_casts) d.free();
 	for (MeshDraw &d : ch.flat) d.free();
 	ch.flags.free();
 }
