@@ -9,6 +9,7 @@
 // instances: the engine's own shadow mesh is ignored for a material with a vertex(), as the agents' (uses_shared_shadow_material).
 #pragma once
 
+#include <godot_cpp/classes/array_mesh.hpp>
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -110,6 +111,12 @@ void agent_box(MeshBuilder &mb, const godot::Vector3 &mn, const godot::Vector3 &
 void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, float w, float d, const godot::Color &c, AgentTag tag,
 		Limb limb = Limb::NONE);
 // A pane of glass a-b-c-d facing `out`.
+// A vehicle burnt out (agent_wreck.cpp), centred on its box; `size` its box.
+struct AgentWreck {
+	godot::Ref<godot::ArrayMesh> mesh;
+	godot::Vector3 size;
+};
+AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed);
 void agent_pane(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
 		const AgentTrim &trim);
 // A wheel turning about X: tyre tread, sidewall and hubcap on the outer face (`side` = +1 left, -1 right).

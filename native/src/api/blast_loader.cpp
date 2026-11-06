@@ -111,6 +111,7 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.startle_m = number(shot, "shot", "startle_m", errors);
 	p.pace_light = number(shot, "shot", "pace_light", errors);
 	p.pace_leg = number(shot, "shot", "pace_leg", errors);
+	p.drips_per_s = number(shot, "shot", "drips_per_s", errors);
 	p.pace_grave = number(shot, "shot", "pace_grave", errors);
 	p.max_range_m = number(shot, "shot", "max_range_m", errors);
 	Array boxes = shot.has("vehicle_box_m") ? Array(shot["vehicle_box_m"]) : Array();

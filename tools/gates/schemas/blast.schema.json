@@ -431,6 +431,7 @@
     "pace_light": {
      "type": "number"
     },
+    "drips_per_s": {"type": "number"},
     "pace_leg": {
      "type": "number"
     },

@@ -21,6 +21,7 @@ namespace city {
 class EffectWorld {
 public:
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
+	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
 	void reset(); // a new city or a load: every effect gone
 	void release();
 	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects.
@@ -29,6 +30,7 @@ public:
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || flash_left_ > 0; }
 	int pieces() const { return debris_.count(); }
+	int blood_marks() const { return marks_.blood(); }
 	size_t events_played() const { return played_; }
 
 private:
@@ -48,6 +50,7 @@ private:
 	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
 	void wound(const DamageEvent &e);
+	void drip(const DamageEvent &e);
 	void vehicle_hit(const DamageEvent &e);
 	void vehicle(const DamageEvent &e, const CityState &s);
 	void casualty(const DamageEvent &e, const CityState &s);
@@ -58,6 +61,8 @@ private:
 	void light_update(float dt);
 	void piece(const godot::Vector3 &at, const godot::Vector3 &size, const godot::Vector3 &v, const godot::Color &tint, bool cylinder = false, float burn = 0.f);
 
+	godot::RID debris_material_;
+	std::vector<godot::Vector3> wreck_sizes_; // by vehicle type: the box of its burnt body
 	EffectParams params_;
 	Puffs puffs_;
 	Marks marks_;

@@ -33,7 +33,6 @@ constexpr float SPARK_PUFFS = 18.f, SPARK_SPREAD = 0.3f, SPARK_SIZE = 0.12f, SPA
 constexpr float WRECK_L = 4.4f, WRECK_H = 1.4f, WRECK_W = 1.8f, CAR_BURN_S = 40.f, CAR_THROW_SPEED = 9.f, WRECK_LIFT = 3.f;
 constexpr float MOPED_BURN_S = 10.f; // a moped or a bike burns less
 constexpr float TRUNK_BURN_S = 10.f; // a thrown trunk smoulders as long
-constexpr float MOPED_L = 0.45f, MOPED_H = 0.7f, MOPED_W = 0.3f; // its box as shares of a car's
 constexpr float ROLL_R = 0.32f, ROLL_W = 0.22f;
 constexpr float FIRE_PUFFS_CAR = 40.f, FIRE_PUFFS_BIKE = 15.f, FIRE_SPREAD_CAR = 1.2f, FIRE_SPREAD_BIKE = 0.6f, FIRE_SIZE = 1.4f, FIRE_LIFE = 1.f;
 constexpr float BLOOD_PUFFS = 40.f, BLOOD_SPREAD_M = 0.2f, BLOOD_SIZE_M = 0.04f, BLOOD_LIFE_S = 0.8f;
@@ -43,6 +42,7 @@ constexpr int ORGANS_MIN = 4, ORGANS_SPAN = 4;
 constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
 constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
 constexpr int TORN_POOLS = 3;
+constexpr float DRIP_SCATTER_M = 0.3f, DRIP_MIN_M = 0.12f, DRIP_SPAN_M = 0.16f; // playEffects.ts: 6 to 14 cm of radius
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
 
 Vector3 scatter(Rng &r, float k) { return Vector3((r.f() - 0.5f) * k, r.f() * k, (r.f() - 0.5f) * k); }
@@ -83,8 +83,10 @@ void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 	const bool rider = two_wheeler(VehicleType(e.u & VEHICLE_TYPE_MASK));
 	PieceSpec shell;
-	shell.at = Vector3(e.x, e.y + WRECK_H * TRUNK_HALF, e.z);
-	shell.size = rider ? Vector3(WRECK_L * MOPED_L, WRECK_H * MOPED_H, WRECK_W * MOPED_W) : Vector3(WRECK_L, WRECK_H, WRECK_W);
+	const size_t type = e.u & VEHICLE_TYPE_MASK;
+	shell.wreck = type < wreck_sizes_.size() ? int(type) : -1;
+	shell.size = shell.wreck >= 0 ? wreck_sizes_[type] : Vector3(WRECK_W, WRECK_H, WRECK_L);
+	shell.at = Vector3(e.x, e.y + shell.size.y * TRUNK_HALF, e.z);
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
 	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 	shell.tint = PAINT_GREY;
@@ -101,6 +103,19 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 		debris_.add(w);
 	}
 	if (!drop) puffs_.burst(e.x, e.y + 1.f, e.z, int(rider ? FIRE_PUFFS_BIKE : FIRE_PUFFS_CAR), PUFF_FLAME, rider ? FIRE_SPREAD_BIKE : FIRE_SPREAD_CAR, FIRE_SIZE, FIRE_LIFE);
+}
+
+// A few drops where somebody bleeding walks.
+void EffectWorld::drip(const DamageEvent &e) {
+	Mark m;
+	m.kind = MARK_SPLAT;
+	m.x = e.x + (rng_.f() - 0.5f) * DRIP_SCATTER_M;
+	m.z = e.z + (rng_.f() - 0.5f) * DRIP_SCATTER_M;
+	m.y = e.y + Marks::SURFACE_LIFT_M;
+	m.size = DRIP_MIN_M + rng_.f() * DRIP_SPAN_M;
+	m.seed = rng_.f();
+	m.born = now_;
+	marks_.add_blood(m);
 }
 
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
@@ -140,6 +155,7 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::CASUALTY: casualty(e, s); break;
 		case DamageEvent::SHOT: tracer(e); break;
 		case DamageEvent::WOUND: wound(e); break;
+		case DamageEvent::DRIP: drip(e); break;
 		case DamageEvent::VEHICLE_HIT: vehicle_hit(e); break;
 		case DamageEvent::VEHICLE_DROP: vehicle(e, s); break;
 		case DamageEvent::GEYSER: geysers_.push_back({ e.x, e.y, e.z, now_ + double(params_.geyser_s), 0.f }); break;

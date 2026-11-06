@@ -20,6 +20,8 @@ struct PieceSpec {
 	godot::Quaternion turn;
 	godot::Color tint; // sRGB
 	bool cylinder = false; // size = (radius, length, radius)
+	bool dusty = false; // of a building: concrete dust over it
+	int wreck = -1; // drawn as this vehicle's burnt body, whose box `size` is
 	float burn_s = 0; // seconds it burns (a wreck), 0 none
 	bool still = false; // laid where it is, never moved
 	bool random_spin = true;
@@ -31,6 +33,8 @@ public:
 	void init(const godot::RID &scenario, const godot::RID &material, const EffectParams &params);
 	void reset();
 	void release();
+	// The bodies a wreck may be: drawn with the pieces' material, a layer each.
+	void set_wrecks(const godot::RID &scenario, const godot::RID &material, const std::vector<godot::Ref<godot::Mesh>> &bodies);
 	void add(const PieceSpec &spec);
 	// One frame: `ground_of(x, z)` the ground's height, puffs for what burns. Writes only when something moved or came.
 	template <typename F>
@@ -58,7 +62,8 @@ private:
 		godot::Vector3 corners[CORNERS];
 		float inv_inertia = 0, rest = 0, burn_until = 0, carry = 0;
 		float life = 0;
-		bool cylinder = false, asleep = false, still = false, charred = false;
+		bool cylinder = false, asleep = false, still = false, charred = false, dusty = false;
+		int wreck = -1;
 	};
 	template <typename F>
 	void step(Piece &b, F &&ground_of);
@@ -66,6 +71,7 @@ private:
 	void reap(float dt); // the pieces whose time is up leave
 	void flush();
 	MmLayer boxes_, cylinders_;
+	std::vector<MmLayer> wrecks_;
 	std::deque<Piece> pieces_;
 	EffectParams params_;
 	Rng rng_{ 0xd3b415ULL };

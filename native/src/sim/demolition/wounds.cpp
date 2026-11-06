@@ -13,7 +13,15 @@ void bleed_step(CityState &s, double dt) {
 	TrafficState &t = s.traffic;
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		Pedestrian &w = t.peds[size_t(id)];
-		if (!w.alive || w.bleed <= 0.f) continue;
+		if (!w.alive) continue;
+		const float rate = s.catalog.blast.drips_per_s;
+		if (w.lost != 0 && std::floor(s.damage.now * rate) != std::floor((s.damage.now - dt) * rate)) { // a trail behind who lost a limb, as the 4.0's onBleed
+			DamageEvent drop;
+			drop.kind = DamageEvent::DRIP;
+			drop.x = w.cur.x; drop.y = w.cur.y; drop.z = w.cur.z;
+			s.log.damage_events.push_back(drop);
+		}
+		if (w.bleed <= 0.f) continue;
 		w.hp -= w.bleed * float(dt);
 		if (w.hp > 0.f) continue;
 		DamageEvent e; // CAS_BLED: the body already lies on the ground, the render adds only the blood

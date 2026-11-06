@@ -21,9 +21,10 @@ namespace city {
 //   GEYSER         x y z, a = seconds       LEAK / SPARK: x y z, a = seconds
 //   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = 1 when it burst into splinters
 //   IGNITE         id = building, x z
+//   DRIP           x y z: somebody hurt walked there, bleeding
 struct DamageEvent {
 	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
-		LEAK, SPARK, FURNITURE, IGNITE };
+		LEAK, SPARK, FURNITURE, IGNITE, DRIP };
 	Kind kind = BLAST;
 	int id = -1;
 	float x = 0, y = 0, z = 0, dx = 0, dz = 0, a = 0, b = 0, c = 0, d = 0;

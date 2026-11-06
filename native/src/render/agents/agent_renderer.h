@@ -22,6 +22,7 @@ constexpr int WAGON_MODEL = VEHICLE_TYPES, AGENT_MODELS = VEHICLE_TYPES + 1; // 
 
 class AgentRenderer {
 public:
+	const std::array<AgentWreck, AGENT_MODELS> &wrecks() const { return wrecks_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at);
@@ -43,6 +44,7 @@ public:
 	int cabins_drawn() const;
 
 private:
+	std::array<AgentWreck, AGENT_MODELS> wrecks_;
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
 	// One more than the built levels: the cabin simplified, glass and people still seen, past cabin_close_m (agent_lod.h).
 	static constexpr int MID_DRAW = LEVELS, DRAWS = LEVELS + 1;

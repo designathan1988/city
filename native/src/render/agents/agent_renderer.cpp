@@ -26,6 +26,7 @@ namespace {
 
 constexpr int WAGON_EVERY = 3; // one sedan in three is an estate, by its paint: a car keeps its shape from the road to its bay
 constexpr float NOBODY_ABOARD = -1.f; // passengers of a car standing in a bay: not even a driver (agents.gdshader)
+constexpr uint32_t WRECK_SEED = 2654435761u; // each model buckled its own way
 constexpr float DOOR_FLAG = 16.f; // each step the kerb door stands open, over the brake's flag and the wheel's angle (agent_door.gdshaderinc)
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
@@ -90,6 +91,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 				seats_[i].push_back({ agent_v3(Dictionary(d["rider"])["hip"]), i == int(VehicleType::MOTO) ? SeatPose::MOTO : SeatPose::BICYCLE, DRIVER_SEAT });
 			}
 			if (level == FAR_LEVEL) fleet_shadow_.set_model(i, mb);
+			if (level == BODY_LEVEL) wrecks_[size_t(i)] = agent_wreck(mb, uint32_t(i + 1) * WRECK_SEED);
 			if (level == CABIN_LEVEL) {
 				const AABB box = mesh_outline(mb);
 				reach_m_[i] = box.position.abs().max(box.get_end().abs()).length();

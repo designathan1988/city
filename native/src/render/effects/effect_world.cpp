@@ -35,6 +35,7 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
 	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
 	debris_.init(scenario_, debris, params_);
+	debris_material_ = debris;
 	mounds_.init(scenario_, rubble, MOUND_SLOTS);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	light_ = rs->omni_light_create();
@@ -44,6 +45,11 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	rs->light_set_param(light_, RenderingServer::LIGHT_PARAM_ATTENUATION, LIGHT_ATTEN);
 	light_inst_ = rs->instance_create2(light_, scenario_);
 	return true;
+}
+
+void EffectWorld::set_wrecks(const std::vector<Ref<Mesh>> &bodies, const std::vector<Vector3> &sizes) {
+	debris_.set_wrecks(scenario_, debris_material_, bodies);
+	wreck_sizes_ = sizes;
 }
 
 void EffectWorld::reset() {

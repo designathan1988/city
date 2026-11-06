@@ -51,6 +51,7 @@ void EffectWorld::pile(const Ruin &r, bool falling) {
 		const uint32_t pick = rng.next() % (PALETTE + 2);
 		const Color tint = pick < 3 ? wall : PALETTE_TINTS[std::min(pick - 2, PALETTE - 1)];
 		PieceSpec s;
+		s.dusty = true;
 		s.size = Vector3(sz, sz * (PIECE_FLAT_MIN + rng.f() * PIECE_FLAT_SPAN), sz * (PIECE_FLAT_MIN + rng.f()));
 		s.turn = Quaternion(Vector3(0, 1, 0), rng.f() * TAU_F);
 		s.tint = tint;

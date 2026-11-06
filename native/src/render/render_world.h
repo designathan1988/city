@@ -75,6 +75,7 @@ public:
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int effect_pieces() const { return effects_.pieces(); }
+	int blood_marks() const { return effects_.blood_marks(); }
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int street_instances() const { return props_.instances(); }

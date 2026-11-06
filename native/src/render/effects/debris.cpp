@@ -21,6 +21,8 @@ constexpr float FLAME_OVER_M = 0.3f; // flames rise from a burning piece
 constexpr float SMOKE_OVER_M = 1.0f;
 constexpr float SMOKE_SPREAD_M = 0.4f;
 constexpr float FLAME_FOLLOW_SHARE = 0.4f; // the flame's size follows the piece's, to this share
+constexpr int WRECKS_KEPT = 40; // of a model (blast.ts): past it the oldest goes
+constexpr float MARK_CHARRED = 1.f, MARK_DUSTY = 2.f; // INSTANCE_CUSTOM.a (debris.gdshader)
 } // namespace
 
 void Debris::init(const RID &scenario, const RID &material, const EffectParams &params) {
@@ -41,6 +43,15 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	cylinders_.count(0);
 }
 
+void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vector<Ref<Mesh>> &bodies) {
+	const AABB world(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M));
+	wrecks_.resize(bodies.size());
+	for (size_t i = 0; i < bodies.size(); i++) {
+		wrecks_[i].init(scenario, bodies[i], material, WRECKS_KEPT, true, world);
+		wrecks_[i].count(0);
+	}
+}
+
 void Debris::reset() {
 	pieces_.clear();
 	dirty_ = true;
@@ -50,6 +61,7 @@ void Debris::reset() {
 void Debris::release() {
 	boxes_.release();
 	cylinders_.release();
+	for (MmLayer &l : wrecks_) l.release();
 }
 
 void Debris::add(const PieceSpec &s) {
@@ -68,6 +80,8 @@ void Debris::add(const PieceSpec &s) {
 	b.burn_until = s.burn_s;
 	b.life = s.life_s;
 	b.charred = s.burn_s > 0;
+	b.dusty = s.dusty;
+	b.wreck = s.wreck;
 	const Vector3 half = s.cylinder ? Vector3(s.size.x, s.size.y * 0.5f, s.size.z) : s.size * 0.5f;
 	int k = 0;
 	for (int x = -1; x <= 1; x += 2)
@@ -116,13 +130,24 @@ void Debris::flush() {
 	const bool burning = std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.burn_until > 0; });
 	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
 	int nb = 0, nc = 0;
+	std::vector<int> nw(wrecks_.size(), 0);
 	for (const Piece &p : pieces_) {
+		const Basis rot(p.q);
+		const float mark = p.charred ? MARK_CHARRED : p.dusty ? MARK_DUSTY : 0.f;
+		if (p.wreck >= 0 && size_t(p.wreck) < wrecks_.size()) {
+			int &k = nw[size_t(p.wreck)];
+			if (k < WRECKS_KEPT) wrecks_[size_t(p.wreck)].put(k++, rot.get_column(0), rot.get_column(1), rot.get_column(2), p.p, p.tint.r, p.tint.g, p.tint.b, mark);
+			continue;
+		}
 		MmLayer &layer = p.cylinder ? cylinders_ : boxes_;
 		int &n = p.cylinder ? nc : nb;
 		if (n >= params_.debris_max) continue;
-		const Basis rot(p.q);
-		layer.put(n++, rot.get_column(0) * p.size.x, rot.get_column(1) * p.size.y, rot.get_column(2) * p.size.z, p.p, p.tint.r, p.tint.g, p.tint.b,
-				p.charred ? 1.f : 0.f);
+		layer.put(n++, rot.get_column(0) * p.size.x, rot.get_column(1) * p.size.y, rot.get_column(2) * p.size.z, p.p, p.tint.r, p.tint.g, p.tint.b, mark);
+	}
+	for (size_t i = 0; i < wrecks_.size(); i++) {
+		wrecks_[i].count(nw[i]);
+		wrecks_[i].shown(nw[i] > 0);
+		if (nw[i] > 0) wrecks_[i].upload();
 	}
 	boxes_.count(nb);
 	cylinders_.count(nc);

@@ -190,6 +190,7 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 		elapsed = t
 		await ui.drawn()
 		await ui.shot("%s_t%d" % [label, int(t * 10)])
+		print(label, " sangue no chão: ", CityStore.query(&"damage_probe").blood_marks)
 
 
 ## The houses with between `lo` and `hi` floors, as the point on their roof the blow lands on.

@@ -35,6 +35,15 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
 	ok = effects_.init(ctx, errors) && ok;
+	if (ok) {
+		std::vector<Ref<Mesh>> bodies;
+		std::vector<Vector3> sizes;
+		for (const AgentWreck &w : agents_.wrecks()) {
+			bodies.push_back(w.mesh);
+			sizes.push_back(w.size);
+		}
+		effects_.set_wrecks(bodies, sizes);
+	}
 	ok = wear_.init(ctx, errors) && ok;
 	return ok && errors.is_empty();
 }

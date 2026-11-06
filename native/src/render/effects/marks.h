@@ -26,6 +26,7 @@ public:
 	void init(const godot::RID &scenario, const godot::RID &material, int capacity, int soot_kept, int blood_kept);
 	void reset();
 	void release();
+	int blood() const { return int(blood_.size()); }
 	// The craters as the state has them (`ground_of`: the terrain's height at a point, before any digging for earth).
 	template <typename F>
 	void set_craters(const std::vector<Crater> &list, F &&ground_of) {
