@@ -20,6 +20,7 @@ public:
 	explicit RowKeeper(uint64_t dense = 0) : dense_limit_(dense) {}
 	void begin() { frame_++; }
 	void draws(size_t n) { owners_.resize(n); }
+	int draw_of(uint64_t key) { return slot(key).draw; } // where it stood on the last frame, -1 nowhere
 	// The row of `key` in draw `draw`, its rows `rows`: its own if it was there on the last frame, else a new one at the end.
 	float *place(uint64_t key, int draw, InstanceRows &rows) {
 		Slot &s = slot(key);

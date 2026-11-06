@@ -110,6 +110,7 @@ public:
 	godot::Dictionary lot_join(int a, int b), lot_delete(int id), lot_zone(int id, int zone);
 	godot::PackedVector3Array lot_land(const godot::Vector3 &a, const godot::Vector3 &b, double angle);
 	godot::Vector3 lot_snap_point(const godot::Vector3 &p, double reach, const godot::Vector3 &apart);
+	godot::Array lot_proposals(const godot::Vector3 &p);
 	int lot_at(const godot::Vector3 &p);
 	double lot_angle_at(const godot::Vector3 &p);
 	godot::Array lots();

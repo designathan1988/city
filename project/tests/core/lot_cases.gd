@@ -72,5 +72,10 @@ func _against_a_road(at: Vector3, before: int) -> void:
 	for q: Vector3 in drawn[-1].points:
 		deepest = maxf(deepest, q.z)
 	_check.call(deepest < at.z + SIDE_M * 0.45, "lote: cortado de volta à calçada (%.1f)" % deepest)
+	var offered: Array = CityStore.query(&"lot_proposals", [(a + b) * 0.5])
+	_check.call(not offered.is_empty(), "lote: a via propõe lotes (%d)" % offered.size())
+	var taken: Dictionary = CityStore.dispatch(&"lot_add_polygon", [offered[0]])
+	_check.call(taken.get("ok", false), "lote: a proposta vira lote (%s)" % taken.get("error", ""))
+	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")

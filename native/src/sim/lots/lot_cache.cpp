@@ -1,6 +1,7 @@
 // Lot cells recomputed from the streets around them, in parallel (each cell is a pure function of its streets).
 #include "sim/lots/lot_cache.h"
 
+#include "sim/citygen/road_gen.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -40,7 +41,8 @@ std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int
 }
 } // namespace
 
-std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) {
+// The lots of a cell from the streets; `every_side`: as if each side of each road were zoned, the proposal the Lots tab offers on land nobody cut yet.
+static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_side) {
 	double x0 = key_x(key) * double(CHUNK), z0 = key_y(key) * double(CHUNK);
 	LotGraph g;
 	std::unordered_map<int, int> map;
@@ -62,15 +64,19 @@ std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) {
 		g.sa.push_back(node(seg.a));
 		g.sb.push_back(node(seg.b));
 		g.profile.push_back(seg.profile);
-		g.zl.push_back(seg.zl);
-		g.zr.push_back(seg.zr);
+		g.zl.push_back(every_side != 0 ? uint8_t(every_side) : seg.zl);
+		g.zr.push_back(every_side != 0 ? uint8_t(every_side) : seg.zr);
 	});
-	if (g.segs() == 0) return with_player_lots(s, {}, key);
+	if (g.segs() == 0) return {};
 	LotGround ground;
 	ground.height = [&s](double x, double z) { return double(s.terrain.base_height_at(float(x), float(z))); };
 	ground.water = [&s](double x, double z) { return double(s.terrain.water_at(float(x), float(z))); };
-	return with_player_lots(s, build_lots(g, s.catalog.profiles, ground, x0, z0), key);
+	return build_lots(g, s.catalog.profiles, ground, x0, z0);
 }
+
+std::vector<Lot> LotCache::compute(const CityState &s, int64_t key) { return with_player_lots(s, lots_of_cell(s, key, 0), key); }
+
+std::vector<Lot> LotCache::proposal(const CityState &s, int64_t key) { return lots_of_cell(s, key, ZONE_RES_LOW); }
 
 void LotCache::process_dirty(CityState &s) {
 	std::vector<int64_t> cells = s.log.lot_cells;

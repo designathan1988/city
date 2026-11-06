@@ -14,6 +14,7 @@ const LINE_PX := 2.0
 const SNAP_PX := 16.0
 const SNAP_LEAST_M := 2.5
 const MARK_M := 0.9
+const CELL_M := 256.0 # core/grid.h CHUNK: proposals are read a cell at a time
 
 var mode := "add"
 var cut_kind := CUT_ACROSS
@@ -23,6 +24,8 @@ var _from := Vector3.INF # where the gesture began
 var _side: Array = [] # the side picked: [a, b]
 var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
+var _proposed: Array = [] # the lots the streets propose where the pointer is, each a ring
+var _proposed_at := Vector2i(1 << 30, 0) # their cell
 
 
 func enter() -> void:
@@ -48,6 +51,22 @@ func cancel() -> void:
 
 func _read() -> void:
 	_lots = CityStore.query(&"lots")
+	_proposed_at = Vector2i(1 << 30, 0) # what stands changed: read them again
+
+
+## The proposal under `p`, or an empty ring.
+func _proposal_at(p: Vector3) -> PackedVector3Array:
+	var cell := Vector2i(floori(p.x / CELL_M), floori(p.z / CELL_M))
+	if cell != _proposed_at:
+		_proposed_at = cell
+		_proposed = CityStore.query(&"lot_proposals", [p])
+	for ring: PackedVector3Array in _proposed:
+		var flat := PackedVector2Array()
+		for q in ring:
+			flat.push_back(Vector2(q.x, q.z))
+		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), flat):
+			return ring
+	return PackedVector3Array()
 
 
 func _done(r: Dictionary) -> void:
@@ -180,7 +199,11 @@ func release(p: Vector3) -> void:
 		return
 	match mode:
 		"add":
-			_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])]))
+			var ring := _proposal_at(p)
+			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * PICK_PX and not ring.is_empty():
+				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
+			else:
+				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])]))
 		"edit":
 			_done(CityStore.dispatch(&"lot_move_corner", [_from, _snap(p, _from)]))
 		"curve":
@@ -203,6 +226,9 @@ func hover(p: Vector3) -> void:
 	elif mode == "add" or mode == "polygon":
 		var at := _snap(p)
 		extra.push_back(_mark(at))
+		var ring := _proposal_at(p) if mode == "add" else PackedVector3Array()
+		if not ring.is_empty():
+			extra.push_back({"points": _closed(ring), "half_width": _width(p) * 2.0})
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
 	_show(extra)

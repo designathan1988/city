@@ -106,6 +106,24 @@ Vector3 CityCore::lot_snap_point(const Vector3 &p, double reach, const Vector3 &
 	return Vector3(float(hit.p.x), state_->terrain.height_at(float(hit.p.x), float(hit.p.z)), float(hit.p.z));
 }
 
+// The lots the streets propose in the cell of a point, each a ring on the ground, past what the player already holds there.
+Array CityCore::lot_proposals(const Vector3 &p) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	Array out;
+	for (const Lot &l : LotCache::proposal(s, chunk_of(p.x, p.z))) {
+		if (s.lot_book.at(l.x, l.z) != 0) continue;
+		const double c = std::cos(l.rot), n = std::sin(l.rot), hw = l.w / 2, hd = l.d / 2;
+		PackedVector3Array ring;
+		for (const double *k : { (const double[2]){ -hw, hd }, (const double[2]){ hw, hd }, (const double[2]){ hw, -hd }, (const double[2]){ -hw, -hd } }) {
+			const float x = float(l.x + k[0] * c + k[1] * n), z = float(l.z - k[0] * n + k[1] * c);
+			ring.push_back(Vector3(x, s.terrain.height_at(x, z), z));
+		}
+		out.push_back(ring);
+	}
+	return out;
+}
+
 int CityCore::lot_at(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return state_->lot_book.at(p.x, p.z);

@@ -169,6 +169,14 @@ int PeopleRenderer::level_at(float dist) const {
 	return lod;
 }
 
+// A walker keeps its level until it is past the edge by the hold, or it flickers there.
+int PeopleRenderer::held_level(uint64_t key, float dist) {
+	const auto at = [&](float d) { return d > blob_from_m_ ? asset_.lods : level_at(d); };
+	const int now = at(dist), place = keeper_.draw_of(key), was = place < 0 ? now : place % (asset_.lods + 1);
+	if (was == now) return now;
+	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
+}
+
 void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float frames, float phase, float pose_code) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
 	const size_t k = slot(size_t(v), level);
@@ -208,13 +216,14 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 		const PersonVariation &pv = asset_.variations[size_t(v)];
 		float phase = rec.walked / pv.walk_advance;
-		const bool blob = dist > blob_from_m_;
+		const int level = held_level(rec.id, dist);
+		const bool blob = level == lods;
 		if (blob) {
 			Pose under = p;
 			under.y += blob_lift_m_;
 			agent_row(blob_buf_.add(), under, blob_radius_m_, 0, 0, 0, 0);
 		}
-		place(rec.id, v, blob ? lods : level_at(dist), p, rec.look, float(pv.walk_frames), phase - std::floor(phase), 1.f - rec.rest);
+		place(rec.id, v, level, p, rec.look, float(pv.walk_frames), phase - std::floor(phase), 1.f - rec.rest);
 		drawn++;
 	}
 	keeper_.sweep([&](int k) -> InstanceRows & { return bufs_[size_t(k)]; });

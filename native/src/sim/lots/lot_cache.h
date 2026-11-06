@@ -21,6 +21,8 @@ public:
 	void process_dirty(CityState &s);
 	// The lots of one cell computed from the current streets.
 	static std::vector<Lot> compute(const CityState &s, int64_t key);
+	// What the streets would cut there, every side taken as zoned: the lots the Lots tab proposes (planLots of the 4.0).
+	static std::vector<Lot> proposal(const CityState &s, int64_t key);
 	const std::vector<Lot> *lots_of(int64_t key) const {
 		auto it = by_cell.find(key);
 		return it == by_cell.end() ? nullptr : &it->second;

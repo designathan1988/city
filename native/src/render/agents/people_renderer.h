@@ -49,6 +49,7 @@ class PeopleRenderer {
 public:
 	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
 	void reset();
+	void set_level_hold(float share) { level_hold_ = share; }
 	// Who rides is keyed from here on, past the walkers' ids.
 	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
 	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
@@ -70,6 +71,8 @@ private:
 	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
 	std::vector<InstanceRows> bufs_;
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
+	int held_level(uint64_t key, float dist);
+	float level_hold_ = 0;
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age

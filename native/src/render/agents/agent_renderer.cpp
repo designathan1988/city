@@ -48,10 +48,12 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	vehicle_r_ = float(t["vehicle_radius_m"]);
 	cabin_r_ = float(t["cabin_radius_m"]);
 	far_r_ = float(t["far_radius_m"]);
+	level_hold_ = float(Dictionary(t["lod"])["hold"]);
 	view_slack_ = float(t["view_slack"]);
 	cabin_close_m_ = float(Dictionary(t["lod"])["cabin_close_m"]);
 	people_r_ = float(t["people_radius_m"]);
 	jump_m_ = float(t["wheel_jump_m"]);
+	people_.set_level_hold(level_hold_);
 	return people_.init(ctx, t["people"], errors);
 }
 
@@ -222,7 +224,15 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	const float far2 = far_r_ * far_r_;
 	const float people_r2 = people_r_ * people_r_;
 	const float close2 = std::min(cabin_close_m_ * cabin_close_m_, near2);
-	auto level_at = [&](float d2) { return d2 < close2 ? CABIN_LEVEL : (d2 < near2 ? MID_DRAW : (d2 < far2 ? BODY_LEVEL : FAR_LEVEL)); };
+	auto plain_level = [&](float d2) { return d2 < close2 ? CABIN_LEVEL : (d2 < near2 ? MID_DRAW : (d2 < far2 ? BODY_LEVEL : FAR_LEVEL)); };
+	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
+	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
+	auto rank = [](int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; };
+	auto level_of = [&](uint32_t id, float d2) {
+		const int now = plain_level(d2), place = keeper_.draw_of(id), was = place < 0 ? now : place % DRAWS;
+		if (was == now) return now;
+		return rank(now) > rank(was) ? (rank(plain_level(d2 / hold2)) > rank(was) ? now : was) : (rank(plain_level(d2 * hold2)) < rank(was) ? now : was);
+	};
 	near_d2_.clear();
 	drawn_vehicles_ = 0;
 	// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
@@ -247,7 +257,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, p, d2);
 		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
-		const int level = level_at(d2);
+		const int level = level_of(rec.id, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
 		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
@@ -262,7 +272,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, rec.at, d2);
 		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
-		const int level = level_at(d2);
+		const int level = level_of(rec.id, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
 		if (!shown && level == FAR_LEVEL) continue;
 		agent_row(shown ? keeper_.place(rec.id, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));

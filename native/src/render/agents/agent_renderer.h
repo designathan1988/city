@@ -45,6 +45,7 @@ public:
 
 private:
 	std::array<AgentWreck, AGENT_MODELS> wrecks_;
+	float level_hold_ = 0; // of a level's edge: how far past it a vehicle or a walker changes level
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;
 	// One more than the built levels: the cabin simplified, glass and people still seen, past cabin_close_m (agent_lod.h).
 	static constexpr int MID_DRAW = LEVELS, DRAWS = LEVELS + 1;
