@@ -336,6 +336,7 @@ export abstract class ExpressionEmitter {
   #inConstant(e: TS.Node): boolean {
     for (let n: TS.Node | undefined = e.parent; n; n = n.parent) {
       if (this.c.ts.isVariableDeclaration(n)) return this.c.ts.isIdentifier(n.name) && /^[A-Z][A-Z0-9_]*$/.test(n.name.text);
+      if (this.c.ts.isPropertyDeclaration(n) && (this.c.ts.getCombinedModifierFlags(n) & this.c.ts.ModifierFlags.Static) !== 0) return true;
       if (this.c.ts.isFunctionLike(n) || this.c.ts.isBlock(n)) return false;
     }
     return false;

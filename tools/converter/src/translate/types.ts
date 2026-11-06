@@ -108,6 +108,9 @@ const FIELDS_IN_NAME = 3;
 
 const RUNTIME = 'core/js_runtime.h';
 
+/** A value of an enum of strings as a C++ name: the empty string has none of its own. */
+export const enumName = (value: string): string => upper(value.replace(/[^A-Za-z0-9]+/g, '_')) || 'EMPTY';
+
 export class TypeMapper {
   readonly structs = new Map<string, CppStruct>();
   readonly enums = new Map<string, CppEnum>();
@@ -192,7 +195,7 @@ export class TypeMapper {
         return present.length === type.types.length ? n : { k: 'optional', of: n };
       }
       if (present.length > 0 && present.every((t) => t.flags & ts.TypeFlags.StringLiteral)) {
-        const e: CppType = { k: 'enum', name: this.#enumOf(present, type.aliasSymbol, slot?.name ?? 'value').name };
+        const e: CppType = this.#enumType(this.#enumOf(present, type.aliasSymbol, slot?.name ?? 'value'));
         return present.length === type.types.length ? e : { k: 'optional', of: e };
       }
       if (present.length === type.types.length) return this.#unsupported();
@@ -201,7 +204,7 @@ export class TypeMapper {
       this.includes.add('optional');
       return { k: 'optional', of: inner };
     }
-    if (f & ts.TypeFlags.StringLiteral) return { k: 'enum', name: this.#enumOf([type], type.aliasSymbol, slot?.name ?? 'value').name };
+    if (f & ts.TypeFlags.StringLiteral) return this.#enumType(this.#enumOf([type], type.aliasSymbol, slot?.name ?? 'value'));
     if (f & ts.TypeFlags.StringLike) {
       this.includes.add('string');
       return STRING;
@@ -223,7 +226,10 @@ export class TypeMapper {
     if (typed) return this.#vector({ k: 'int', name: `${typed[1] === 'Ui' ? 'u' : ''}int${typed[2]}_t` as IntName });
     if (/^(Set|ReadonlySet|WeakSet)$/.test(name)) {
       const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
-      return { k: 'set', of: this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null) };
+      const held = this.ofType(element, 'element', slot ? this.#flow.elemOf(slot) : null);
+      if (held.k === 'function') return this.#unsupported();
+      // an object in a set is the object itself, as a key of a Map
+      return { k: 'set', of: held.k === 'struct' || held.k === 'vector' ? { k: 'ptr', to: held } : held };
     }
     if (checker.isArrayType(type) || /^(ReadonlyArray|ArrayLike|Iterable|IterableIterator|Iterator|MapIterator|SetIterator|ArrayIterator)$/.test(name)) {
       const element = checker.getTypeArguments(type as TS.TypeReference)[0]!;
@@ -238,6 +244,7 @@ export class TypeMapper {
       const asKey = this.#flow.underlying(k!).flags & ts.TypeFlags.NumberLike ? { k: 'int', name: 'int64_t' } as const : this.ofType(k!, 'element', slot ? this.#flow.keyOf(slot) : null);
       // an object as a key is the object itself, as in JavaScript: its identity, never its fields
       const key: CppType = asKey.k === 'struct' || asKey.k === 'vector' ? { k: 'ptr', to: asKey } : asKey;
+      if (key.k === 'function') return this.#unsupported();
       return { k: 'map', key, of: this.ofType(v!, 'element', slot ? this.#flow.elemOf(slot) : null) };
     }
     // a type that extends Array (interface Path extends Array<Point>): a list
@@ -329,7 +336,9 @@ export class TypeMapper {
     const home = this.#moduleOf(inLib ? undefined : symbol?.declarations?.[0]);
     const namesake = declared ? this.structs.get(name) : undefined;
     if (namesake && namesake.declared === declared && namesake.module !== home) name = `${stem}${declared}`;
-    if (declared && this.enums.has(name)) name = `${stem}${declared}`;
+    if (this.enums.has(name)) name = declared ? `${stem}${declared}` : `${name}Shape`;
+    // a type the compiler refused: what held it holds a running value, and the translation goes on
+    if (this.#spec.left?.includes(`type#${name}`)) return this.#unsupported();
     const known = this.structs.get(name);
     if (known) {
       this.#seen(known);
@@ -349,6 +358,8 @@ export class TypeMapper {
       const propType = this.#checker.getTypeOfSymbol(prop);
       if (propType.getCallSignatures().length > 0 && !(prop.flags & this.#ts.SymbolFlags.Property)) continue;
       if (prop.flags & this.#ts.SymbolFlags.Accessor) continue;
+      // a symbol's property (`[Symbol.toStringTag]`) has no name a struct can hold
+      if (prop.name.startsWith('__@')) continue;
       // a class holds its own fields: what it inherits is its base's
       const home = decl?.kind === this.#ts.SyntaxKind.ClassDeclaration ? decl : undefined;
       const from = prop.valueDeclaration?.parent;
@@ -369,7 +380,8 @@ export class TypeMapper {
       if (cpp.k === 'optional') this.includes.add('optional');
       // a private name: the field `steps` of `#steps` (the checker may write it __#1@#steps)
       const field = prop.name.replace(/^(__#\d+@)?#/, '');
-      made.fields.push({ source: field, name: snake(field), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
+      // a position of a tuple read as a field: no C++ name starts with a digit
+      made.fields.push({ source: field, name: /^\d/.test(field) ? `v${field}` : snake(field), type: cpp, init: this.#init(cpp), comment: this.#doc(prop) });
     }
     this.#holder = holder;
     return { k: 'struct', name };
@@ -398,7 +410,9 @@ export class TypeMapper {
     elements.forEach((el, i) => {
       const prop = this.#checker.getPropertyOfType(type, String(i));
       // a string literal at a position (`as const`) is a string: a position names no enum
-      const cpp = el.flags & this.#ts.TypeFlags.StringLiteral ? STRING : this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
+      const read = el.flags & this.#ts.TypeFlags.StringLiteral ? STRING : this.ofType(el, 'field', prop ? this.#flow.symbolSlot(prop) : null);
+      // a tuple's struct has no template: a T at a position is what only the running program knows
+      const cpp = holdsTypeParameter(read) ? this.#unsupported() : read;
       made.fields.push({ source: String(i), name: FIELDS[i] ?? `v${i}`, type: cpp, init: this.#init(cpp), comment: null });
     });
     return { k: 'struct', name };
@@ -420,11 +434,15 @@ export class TypeMapper {
   }
 
   /** The enum holding a string-literal union: its alias, or the declared enum holding all its values. */
+  #enumType(e: CppEnum): CppType {
+    return this.#spec.left?.includes(`type#${e.name}`) ? this.#unsupported() : { k: 'enum', name: e.name };
+  }
+
   #enumOf(types: readonly TS.Type[], alias: TS.Symbol | undefined, hint: string): CppEnum {
     const values = types.map((t) => (t as TS.StringLiteralType).value);
     if (alias) {
       const stem = pascal((alias.declarations?.[0]?.getSourceFile().fileName ?? '').replace(/^.*[\\/]/, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'));
-      const name = this.#reserved.has(alias.name) ? `${stem}${alias.name}` : alias.name;
+      const name = this.#reserved.has(alias.name) || this.structs.has(alias.name) ? `${stem}${alias.name}` : alias.name;
       const existing = this.enums.get(name);
       if (existing) return this.#seen(existing);
       const made = { name, module: this.#moduleOf(alias.declarations?.[0]), comment: this.#doc(alias), values };
@@ -442,7 +460,7 @@ export class TypeMapper {
   }
 
   enumValue(e: CppEnum, value: string): string {
-    return `${e.name}::${upper(value.replace(/[^A-Za-z0-9]+/g, '_'))}`;
+    return `${e.name}::${enumName(value)}`;
   }
 
   /** The target type an anonymous shape is (the same field names as a mapped or declared type), or null. */

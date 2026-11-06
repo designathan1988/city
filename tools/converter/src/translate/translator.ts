@@ -446,11 +446,14 @@ export class Translator extends Emitter {
   readonly #constantNames = new Map<string, string>();
   #constantName(name: string, module: string): string {
     const cpp = upper(name);
+    const id = `${module}#${name}`;
     const owner = this.#constantNames.get(cpp);
-    if (owner === undefined || owner === module) {
-      this.#constantNames.set(cpp, module);
+    if (owner === undefined || owner === id) {
+      this.#constantNames.set(cpp, id);
       return cpp;
     }
+    // barrierKinds and BARRIER_KINDS in one module: named apart by the spelling
+    if (owner.startsWith(`${module}#`)) return `${cpp}_OF_${snake(name).toUpperCase().replace(/_/g, '')}`;
     return `${cpp}_${upper(module.replace(/^src\//, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'))}`;
   }
 

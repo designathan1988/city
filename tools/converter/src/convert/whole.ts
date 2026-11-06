@@ -48,6 +48,8 @@ function placeOf(text: string, line: number): { name: string; struct: string | n
       const declared = /(\w+)\(/.exec(at) ?? /(\w+)(?:\{\}| = [^;]*)?;/.exec(at);
       return { name: struct[1]!, struct: struct[1]!, member: declared?.[1] ?? null };
     }
+    const enumerated = /^enum class (\w+)/.exec(l);
+    if (enumerated) return { name: enumerated[1]!, struct: null, member: null };
     const constant = /^(?:constexpr|inline const) .*?(\w+)(?:\(\) \{| = )/.exec(l);
     if (constant) return { name: constant[1]!, struct: null, member: null };
     if (/^};?$/.test(l) && i < line - 1) return null;
@@ -93,18 +95,40 @@ function attribute(findings: readonly { file: string; detail: string }[], result
       const units = unitsOfFile(file, result.units, prepared);
       const module = moduleOfFile(file, result, prepared);
       const why = `does not compile: ${f.detail.slice(0, 200)}`;
-      if (place.struct && place.member && module) {
-        left.set(`${module}#${place.struct}.${place.member}`, why);
-        const member = units.get(place.member);
+      const home = place.struct ? result.structs.find((s) => s.name === place.struct)?.module ?? module : module;
+      if (place.struct && place.member && home) {
+        left.set(`${home}#${place.struct}.${place.member}`, why);
+        const member = [...result.units].find((u) => u.source === `${home}#${place.struct}.${place.member}`) ?? units.get(place.member);
         if (member) left.set(member.source, why);
         placed++;
         continue;
       }
-      const unit = units.get(place.name);
+      const unit = units.get(place.name) ?? result.units.find((u) => u.cpp === place.name);
       if (unit) {
         left.set(unit.source, why);
         placed++;
+        continue;
       }
+      // a type the compiler refuses: a running value in its place
+      if (place.struct || /^enum class/.test(text.split('\n')[Number(m[2]) - 1] ?? '')) {
+        left.set(`type#${place.struct ?? place.name}`, why);
+        placed++;
+      }
+    }
+    // a name that clashes with one of the game's own headers: the error is there, the unit is ours
+    for (const m of f.detail.matchAll(/redefinition of '(\w+)'/g)) {
+      const unit = result.units.find((u) => u.cpp === m[1]);
+      if (unit) {
+        left.set(unit.source, `its name is the game's: ${m[1]}`);
+        placed++;
+      } else if (result.structs.some((s) => s.name === m[1])) {
+        left.set(`type#${m[1]}`, `its name is the game's: ${m[1]}`);
+        placed++;
+      }
+    }
+    for (const m of f.detail.matchAll(/use of '(\w+)' with tag type/g)) {
+      left.set(`type#${m[1]}`, `two kinds of type of one name: ${m[1]}`);
+      placed++;
     }
     if (placed === 0) lost.push(f.file);
   }
@@ -166,7 +190,14 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
     const findings = await compileFiles(input.cxx, overlay, input.targetRoot, result.files);
     const placed = attribute(findings, result, input.prepared);
     for (const [id, why] of placed.left) left.set(id, why);
-    failing = placed.lost;
+    // what the compiler refuses and no unit owns, or a unit left out already: the units of that file's module leave
+    if (left.size === before) {
+      for (const f of findings) {
+        const module = moduleOfFile(f.file, result, input.prepared);
+        for (const u of result.units) if (module && u.source.startsWith(`${module}#`)) left.set(u.source, `its file does not compile: ${f.detail.slice(0, 200)}`);
+      }
+    }
+    failing = findings.map((f) => f.file);
     log(`round ${round}: ${findings.length} files do not compile, ${left.size} left out, ${placed.lost.length} files unplaced (${translated - started} + ${Date.now() - translated} ms)`);
     if (findings.length === 0 || left.size === before) break;
   }

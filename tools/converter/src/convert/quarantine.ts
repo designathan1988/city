@@ -91,7 +91,7 @@ export async function compileHeaders(cxx: string, overlay: string, targetRoot: s
     execFile(cxx, ['-std=c++17', '-fsyntax-only', '-ferror-limit=0', '-I', path.join(overlay, 'native', 'src'), '-I', path.join(targetRoot, 'native', 'src'), all],
       { encoding: 'utf8', windowsHide: true, maxBuffer: MAX_CHILD_OUTPUT_BYTES }, (_error, _stdout, err) => resolve(err));
   });
-  return stderr.split(/\r?\n/).filter((l) => l.includes(': error:'));
+  return stderr.split(/\r?\n/).filter((l) => l.includes(': error:') || l.includes('requested here'));
 }
 
 export async function compileFiles(cxx: string, overlay: string, targetRoot: string, files: ReadonlyMap<string, string>): Promise<QuarantineFinding[]> {
