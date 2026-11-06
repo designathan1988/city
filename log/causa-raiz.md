@@ -262,6 +262,8 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Causa 8, oclusão: `view_at` e a projeção rodavam matriz 4x4 inteira 37 vezes por pixel, e o `pow` de cada passo era refeito em cada fatia. Só os termos de uma perspectiva agora, passos calculados uma vez. Prova: a oclusão ligada afeta 50 a 380 mil pixels por foto; a conta nova muda 63 a 1.786 de 2 milhões (até 0,09%), por arredondamento nos limites de espessura.
 - Correção de leitura: `look` usa sempre o nível `high` (`PairCamera.PRESET`) e ignora `--preset=`, que só `capture_landscape` lê. As fotos congeladas deste ciclo são do `high`, não do `medium`; `camera_pan` e a suíte é que rodam no `tests_preset`.
 
+- Causa 9, luz entre prédios: a normal de `canyon_keep` fazia 4 reconstruções com 2 matrizes inteiras cada, até o mundo, por pixel. Agora em espaço de vista, pelos termos da perspectiva, com uma rotação só no fim. Fotos: 0 a 111 pixels de 2 milhões. As 24 leituras do horizonte continuam; levá-las a um job em C++ fica a fazer.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
