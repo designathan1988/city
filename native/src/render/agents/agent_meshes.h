@@ -107,6 +107,10 @@ AgentTrim read_trim(const godot::Dictionary &t);
 CabinPaint read_cabin_paint(const godot::Dictionary &d);
 // A box with a tag; colour white for tinted tags.
 void agent_box(MeshBuilder &mb, const godot::Vector3 &mn, const godot::Vector3 &mx, const godot::Color &c, AgentTag tag, Limb limb = Limb::NONE);
+// A housing as a mirror's is: a rounded shell `depth` long towards +Z, closing to a blunt nose, flat at its back (`centre`, `half` wide and high).
+void agent_pod(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
+// The flat of that shape, facing -Z: its back, or the glass set in it.
+void agent_pod_face(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, const godot::Color &c, AgentTag tag);
 // A bar from a to b, `w` across (along X where it can be) and `d` the other way: limbs, torsos, steering wheels.
 void agent_strut(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b, float w, float d, const godot::Color &c, AgentTag tag,
 		Limb limb = Limb::NONE);

@@ -14,6 +14,8 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr int POD_SIDES = 12, POD_RINGS = 4;
+constexpr float POD_SQUARENESS = 3.f, POD_NOSE = 2.4f; // how flat its sides are, and how blunt its nose
 constexpr float HUB_SHARE = 0.62f, HUB_PROUD_M = 0.01f, RIM_SHARE = 0.5f, SPOKE_SHADE = 0.45f;
 constexpr float PAN_GAP_M = 0.02f; // the floor pan's top under the cabin floor
 constexpr float ALONG_X = 0.01f;   // a bar this close to X (its square off X) takes Y for its width
@@ -64,6 +66,60 @@ CabinPaint read_cabin_paint(const Dictionary &d) {
 	p.seat = agent_hex(d["seat"]);
 	p.dash = agent_hex(d["dash"]);
 	return p;
+}
+
+// Round to the eye and flat at the sides: a superellipse, at one of its POD_SIDES turns.
+static Vector2 pod_turn(int i) {
+	const float a = TAU_F * float(i) / float(POD_SIDES), c = std::cos(a), s = std::sin(a), e = 2.f / POD_SQUARENESS;
+	return Vector2(std::copysign(std::pow(std::fabs(c), e), c), std::copysign(std::pow(std::fabs(s), e), s));
+}
+
+void agent_pod_face(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half, const Color &c, AgentTag tag) {
+	const Vector3 out(0, 0, -1);
+	const Vector2 t2 = agent_tag(tag);
+	const int hub = mb.add(centre, out, c, Vector2(), t2);
+	int first = -1, last = -1;
+	for (int i = 0; i < POD_SIDES; i++) {
+		const Vector2 r = pod_turn(i) * half;
+		const int v = mb.add(centre + Vector3(r.x, r.y, 0), out, c, Vector2(), t2);
+		if (last >= 0) mb.tri(hub, last, v, out);
+		else first = v;
+		last = v;
+	}
+	mb.tri(hub, last, first, out);
+}
+
+void agent_pod(MeshBuilder &mb, const Vector3 &centre, const Vector2 &half, float depth, const Color &c, AgentTag tag) {
+	Vector3 p[POD_RINGS + 1][POD_SIDES];
+	for (int k = 0; k <= POD_RINGS; k++) {
+		const float t = float(k) / float(POD_RINGS), shrink = std::pow(1.f - std::pow(t, POD_NOSE), 1.f / POD_NOSE);
+		for (int i = 0; i < POD_SIDES; i++) {
+			const Vector2 r = pod_turn(i) * half * shrink;
+			p[k][i] = centre + Vector3(r.x, r.y, t * depth);
+		}
+	}
+	const Vector2 t2 = agent_tag(tag);
+	int v[POD_RINGS][POD_SIDES];
+	for (int k = 0; k < POD_RINGS; k++) {
+		for (int i = 0; i < POD_SIDES; i++) {
+			const Vector3 around = p[k][(i + 1) % POD_SIDES] - p[k][(i + POD_SIDES - 1) % POD_SIDES], along = p[k + 1][i] - p[std::max(k - 1, 0)][i];
+			Vector3 n = around.cross(along).normalized();
+			if (n.dot(p[k][i] - centre - Vector3(0, 0, p[k][i].z - centre.z)) < 0) n = -n;
+			v[k][i] = mb.add(p[k][i], n, c, Vector2(), t2);
+		}
+	}
+	for (int k = 0; k + 1 < POD_RINGS; k++) {
+		for (int i = 0; i < POD_SIDES; i++) {
+			const int j = (i + 1) % POD_SIDES;
+			const Vector3 out = p[k][i] - centre - Vector3(0, 0, p[k][i].z - centre.z);
+			mb.tri(v[k][i], v[k][j], v[k + 1][j], out);
+			mb.tri(v[k][i], v[k + 1][j], v[k + 1][i], out);
+		}
+	}
+	const Vector3 forward(0, 0, 1);
+	const int tip = mb.add(centre + forward * depth, forward, c, Vector2(), t2);
+	for (int i = 0; i < POD_SIDES; i++) mb.tri(v[POD_RINGS - 1][i], v[POD_RINGS - 1][(i + 1) % POD_SIDES], tip, forward);
+	agent_pod_face(mb, centre, half, c, tag);
 }
 
 void agent_box(MeshBuilder &mb, const Vector3 &mn, const Vector3 &mx, const Color &c, AgentTag tag, Limb limb) {

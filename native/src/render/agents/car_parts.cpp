@@ -24,7 +24,7 @@ constexpr float PLATE_THICK_M = 0.012f, PLATE_PROUD_M = 0.009f, PLATE_FRONT = 0.
 constexpr float HANDLE_SINK_M = 0.007f, HANDLE_DROP_M = 0.09f, HANDLE_REACH_M = 0.2f, HANDLE_SHARE = 0.25f, HANDLE_AHEAD_M = 0.06f;
 constexpr float ROOT_IN_M = 0.02f, ROOT_DROP_M = 0.03f, TIP_BACK_M = 0.04f, TIP_OUT_M = 0.1f; // a mirror's arm, out of the door to its housing
 constexpr float HOUSING_BACK_M = 0.06f, HOUSING_DROP_M = 0.02f, HOUSING_OUT_M = 0.17f; // its housing's middle from the door
-constexpr float MIRROR_GLASS_THICK_M = 0.012f, MIRROR_GLASS_RISE_M = 0.035f;
+constexpr float MIRROR_GLASS_PROUD_M = 0.003f; // off the housing's back, or the two fight for the pixel
 // SAE J1100 counts 254 mm (10 in) more in its leg room dimensions (L33, L51) than the leg's own reach.
 constexpr float SAE_EXTRA_M = 0.254f;
 
@@ -51,11 +51,10 @@ void mirror(MeshBuilder &mb, const CarStyle &s, const Dictionary &m, int side, c
 	const float z = s.doors[0] * s.L - float(m["back_m"]), y = belt_y(s, z / s.L) + float(m["rise_m"]), x = skin_x(s, z / s.L);
 	const float along = m["long_m"], out = m["wide_m"], high = m["high_m"], arm = m["stalk_m"], cz = z - HOUSING_BACK_M, cx = x + HOUSING_OUT_M;
 	agent_strut(mb, Vector3(side * (x - ROOT_IN_M), y - ROOT_DROP_M, z), Vector3(side * (x + TIP_OUT_M), y, z - TIP_BACK_M), arm, arm, trim.blackout, AgentTag::FIXED);
-	const float low = y - HOUSING_DROP_M;
-	agent_box(mb, Vector3(side * (cx - out * 0.5f), low, cz - along * 0.5f), Vector3(side * (cx + out * 0.5f), low + high, cz + along * 0.5f), AGENT_WHITE, AgentTag::PAINT);
+	const Vector3 back(side * cx, y - HOUSING_DROP_M + high * 0.5f, cz - along * 0.5f);
+	agent_pod(mb, back, Vector2(out, high) * 0.5f, along, AGENT_WHITE, AgentTag::PAINT);
 	const Vector2 g = agent_v2(m["glass_m"]); // high, across
-	const float gy = y + MIRROR_GLASS_RISE_M, gz = cz - along * 0.5f;
-	agent_box(mb, Vector3(side * (cx - g.y * 0.5f), gy - g.x * 0.5f, gz - MIRROR_GLASS_THICK_M), Vector3(side * (cx + g.y * 0.5f), gy + g.x * 0.5f, gz), trim.mirror, AgentTag::FIXED);
+	agent_pod_face(mb, back - Vector3(0, 0, MIRROR_GLASS_PROUD_M), Vector2(g.y, g.x) * 0.5f, trim.mirror, AgentTag::FIXED);
 }
 
 // A mirror on each front door by the A pillar's foot, its arm dark and its housing painted; a handle on each door under the belt.

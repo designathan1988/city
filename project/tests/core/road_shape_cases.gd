@@ -14,6 +14,11 @@ const MIDDLE := 0.5
 const SAME_M := 2.0
 const TICKS := 5
 const UTURN_OFF_M := 80.0
+const RING_OFF_M := 1500.0
+const RING_ROAD_M := 300.0
+const RING_RADIUS_M := 40.0
+const RING_STUB_M := 4.0 # from the ring to the junction: nothing of a road
+const RING_CLEAR_M := 80.0
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
 
 const STUB_OFF_M := 900.0
@@ -185,3 +190,21 @@ func stubs(e: Vector3) -> void:
 	CityStore.dispatch(&"build_road", [t, t + Vector3(0, 0, STUB_ARM_M), false, Vector3.ZERO, urban, STUB_PX])
 	CityStore.refresh()
 	_check.call(CityStore.snapshot.segments == laid + 1, "the stub is a road again: %d against %d" % [CityStore.snapshot.segments, laid + 1])
+
+
+## A ring laid over a road cuts it: what is left up to the next junction must still be a road, or the ring is refused like any tight stretch.
+func ring_stub(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, RING_OFF_M)
+	var cross := a + Vector3(RING_ROAD_M, 0, 0)
+	var laid: bool = CityStore.dispatch(&"build_road", [a, a + Vector3(RING_ROAD_M * 2, 0, 0), false, Vector3.ZERO, URBAN, PX]).get("ok", false)
+	laid = laid and CityStore.dispatch(&"build_road", [cross - Vector3(0, 0, ROAD_M), cross + Vector3(0, 0, ROAD_M), false, Vector3.ZERO, URBAN, PX]).get("ok", false)
+	_check.call(laid, "the roads a ring will cut")
+	CityStore.refresh()
+	var before: int = CityStore.snapshot.segments
+	var r: Dictionary = CityStore.dispatch(&"roundabout", [cross - Vector3(RING_RADIUS_M + RING_STUB_M, 0, 0), RING_RADIUS_M, true])
+	_check.call(r.get("error", "") == "hint.rule.squeezed", "a ring leaving a stub at a junction is refused: %s" % r)
+	CityStore.refresh()
+	_check.call(CityStore.snapshot.segments == before, "the refused ring leaves the roads as they were")
+	r = CityStore.dispatch(&"roundabout", [cross - Vector3(RING_RADIUS_M + RING_CLEAR_M, 0, 0), RING_RADIUS_M, true])
+	_check.call(r.get("ok", false), "a ring with room to its next junction is built: %s" % r)
+	CityStore.dispatch(&"undo")

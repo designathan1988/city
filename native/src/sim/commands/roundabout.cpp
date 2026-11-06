@@ -166,6 +166,11 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	r.error = roundabout_refusal(s, cx, cz, radius, cut);
 	if (!r.error.empty()) return r;
 	int ring = ring_profile(s.catalog);
+	const double reach = radius + s.catalog.profile(ring).right + s.catalog.tune.roundabout_approach_m;
+	RoadBox box;
+	box.add(cx - reach, cz - reach);
+	box.add(cx + reach, cz + reach);
+	const std::map<int, double> before = squeezes_in(s, box);
 	Builder b{ s, cx, cz, radius, double(s.terrain.base_height_at(float(cx), float(cz))), ring, {}, {} };
 	std::vector<Hit> hits;
 	s.roads.for_segments_near(cx - radius, cz - radius, cx + radius, cz + radius, [&](int sg) {
@@ -192,8 +197,11 @@ EditResult build_roundabout(CityState &s, double cx, double cz, double radius, b
 	for (int sg : ring_segs) r.buildings_removed += clear_under(s, sg);
 	for (int sg : b.approaches)
 		if (s.roads.segs[sg].alive) r.buildings_removed += clear_under(s, sg);
-	double reach = disc + tn.roundabout_approach_m;
-	finish_edit(s, cx - reach, cz - reach, cx + reach, cz + reach);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
+	if (squeezed_worse(s, before, box)) { // what a cut road leaves between the ring and its next junction
+		r.error = "hint.rule.squeezed";
+		return r;
+	}
 	r.ok = true;
 	r.segments = int(ring_segs.size() + b.approaches.size());
 	return r;

@@ -56,6 +56,7 @@ func _ready() -> void:
 	_curves(e)
 	RoadShapeCases.new(_check).stubs(e)
 	RoadShapeCases.new(_check).run(e)
+	RoadShapeCases.new(_check).ring_stub(e)
 	_composed_road()
 	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
