@@ -48,7 +48,7 @@
  "key_shift": 3,
  "key_ease_s": 0.1,
  "key_stop_pct": 0.2,
- "turn_smooth_s": 0.22, "ground_smooth_s": 0.22, "ground_touch_m": 0.35, "eye_rise_s": 0.1, "eye_fall_s": 0.4, "eye_out_s": 0.09, "eye_back_s": 0.5,
+ "turn_smooth_s": 0.22, "ground_smooth_s": 0.22, "ground_touch_m": 0.35, "eye_rise_s": 0.1, "eye_fall_s": 0.4, "eye_out_s": 0.3, "eye_back_s": 0.6, "look_ahead_s": 0.55, "trend_s": 0.12, "trend_still": 0.02,
  "quarter_turn_deg": 90,
  "spend_snap_deg": 0.01,
  "aim_close_deg": 0.06,

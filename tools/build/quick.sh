@@ -33,7 +33,7 @@ scenes_of() {
 		native/src/sim/buildings/*|native/src/sim/commands/body*|native/src/render/buildings/*) echo building_edit_test building_tool_test model_test ;;
 		native/src/sim/persistence/*|native/src/core/bytes.h) echo save_undo_test ;;
 		project/ui/*) echo shell_test ;;
-		project/game/camera/*) echo camera_input_test ;;
+		project/game/camera/*) echo camera_input_test camera_feel_test ;;
 		log/*|tools/*|CLAUDE.md|*.md) ;;
 		# What only changes the picture: the frozen photographs below look at it, with no scene. A DLL is built from sources that have their row.
 		project/bin/*|project/render/*|project/data/render/*|project/tests/visual/*) ;;

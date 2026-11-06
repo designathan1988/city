@@ -31,6 +31,13 @@ var _rise := CameraDamp.new() # how far the eye stands over its orbit, clear of 
 var _over := CameraDamp.new() # how far the whole view stands over the roof the point looked at is in
 var _out := CameraDamp.new() # the share of the line of sight taken off to leave a building
 var _eye_ground := -INF # the ground under the eye, as last read
+# Where the view is heading, eased: what the buildings ask of it is read there too, so the eye starts round a wall before it reaches it.
+var _focus_rate := Vector3.ZERO
+var _yaw_rate := 0.0
+var _half_rate := 0.0 # of the logarithm
+var _last_focus := Vector3.ZERO
+var _last_yaw := 0.0
+var _last_half := 1.0
 
 
 func _ready() -> void:
@@ -253,10 +260,11 @@ func _settle(dt: float) -> void:
 	var eye := far_eye.lerp(base, pull.shown())
 	_eye_ground = _ground_height(eye.x, eye.z)
 	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye + Vector3.UP * rise, CameraProfile.eye_lift(cfg, half)]) # at any distance, never inside a building
-	var over: float = free[0].y - base.y
-	var line := maxf(far_eye.distance_to(base), PARALLEL)
-	var out := clampf(1.0 - free[1].distance_to(free[0]) / line, 0.0, 1.0)
+	_note_trend(dt)
+	var clear := _clear_of_buildings(base, eye + Vector3.UP * rise, far_eye.distance_to(base), half)
+	var coming := _coming_clear(dt)
+	var over := maxf(clear.x, coming.x)
+	var out := maxf(clear.y, coming.y)
 	if dt > 0.0:
 		_rise.to(rise, dt, cfg.eye_rise_s if rise > _rise.x else cfg.eye_fall_s)
 		_over.to(over, dt, cfg.eye_out_s if over > _over.x else cfg.eye_back_s)
@@ -266,3 +274,40 @@ func _settle(dt: float) -> void:
 		_over.snap(over)
 		_out.snap(out)
 	_apply()
+
+
+## At any distance, never inside a building: how far the view must stand over the roof at its point, and the share of the line of sight to take off.
+func _clear_of_buildings(base: Vector3, eye: Vector3, line: float, at_half: float) -> Vector2:
+	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye, CameraProfile.eye_lift(cfg, at_half)])
+	return Vector2(free[0].y - base.y, clampf(1.0 - free[1].distance_to(free[0]) / maxf(line, PARALLEL), 0.0, 1.0))
+
+
+## How the view has been moving, eased so that one frame's gesture is not read as a course.
+func _note_trend(dt: float) -> void:
+	if dt <= 0.0:
+		_focus_rate = Vector3.ZERO
+		_yaw_rate = 0.0
+		_half_rate = 0.0
+	else:
+		var keep := exp(-dt / cfg.trend_s)
+		_focus_rate = (focus - _last_focus) / dt * (1.0 - keep) + _focus_rate * keep
+		_yaw_rate = angle_difference(_last_yaw, yaw) / dt * (1.0 - keep) + _yaw_rate * keep
+		_half_rate = log(half / _last_half) / dt * (1.0 - keep) + _half_rate * keep
+	_last_focus = focus
+	_last_yaw = yaw
+	_last_half = half
+
+
+## What the buildings will ask where the view is heading (the Deoccluder's look ahead): nothing to read while it stands still.
+func _coming_clear(dt: float) -> Vector2:
+	var moving := Vector2(_focus_rate.x, _focus_rate.z).length() / half + absf(_yaw_rate) + absf(_half_rate)
+	if dt <= 0.0 or moving < cfg.trend_still:
+		return Vector2.ZERO
+	var ahead_s: float = cfg.look_ahead_s
+	var at := focus + _focus_rate * ahead_s
+	var at_half := clampf(half * exp(_half_rate * ahead_s), cfg.view_half_min, cfg.view_half_max)
+	var base := Vector3(at.x, _ground_height(at.x, at.z) + CameraProfile.eye_lift(cfg, at_half), at.z)
+	var tilt := clampf(CameraProfile.profile_tilt(cfg, at_half) + far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, at_half), deg_to_rad(cfg.max_tilt_deg))
+	var away := CameraProfile.view_distance(cfg, at_half)
+	var eye := base + Basis.from_euler(Vector3(-tilt, yaw + _yaw_rate * ahead_s, 0.0)).z * away
+	return _clear_of_buildings(base, eye, away, at_half)
