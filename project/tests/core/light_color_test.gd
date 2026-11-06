@@ -63,6 +63,7 @@ func _ready() -> void:
 
 
 func _lenses(material: ShaderMaterial) -> void:
+	world.environment.glow_enabled = false # a lens's own colour: the glow of the one beside it is another thing
 	var centres: Array[Vector3] = []
 	var nodes: Array[Node3D] = []
 	for k in LENSES:

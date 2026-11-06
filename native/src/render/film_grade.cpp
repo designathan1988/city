@@ -12,7 +12,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int CHANNELS = 3;
+constexpr int CHANNELS = 3, TEXEL_FLOATS = 4;
 constexpr float BYTE_TOP = 255.f;
 constexpr float ROUND_UP = 0.5f;
 constexpr float REC709_R = 0.2126f, REC709_G = 0.7152f, REC709_B = 0.0722f; // luma weights, ITU-R BT.709
@@ -47,17 +47,21 @@ TypedArray<Image> film_grade_slices(const Dictionary &d) {
 	int side = int(d["lut_side"]);
 	TypedArray<Image> slices;
 	PackedByteArray bytes;
-	bytes.resize(side * side * CHANNELS);
+	bytes.resize(int64_t(side) * side * TEXEL_FLOATS * int64_t(sizeof(float)));
 	for (int b = 0; b < side; b++) {
-		uint8_t *out = bytes.ptrw();
+		float *out = reinterpret_cast<float *>(bytes.ptrw());
 		for (int y = 0; y < side; y++) {
 			for (int x = 0; x < side; x++) {
 				float c[CHANNELS] = { (x + ROUND_UP) / side, (y + ROUND_UP) / side, (b + ROUND_UP) / side };
 				g.apply(c);
-				for (int i = 0; i < CHANNELS; i++) *out++ = uint8_t(c[i] * BYTE_TOP + ROUND_UP);
+				for (int i = 0; i < CHANNELS; i++) *out++ = c[i];
+				*out++ = 1.f;
 			}
 		}
-		slices.push_back(Image::create_from_data(side, side, false, Image::FORMAT_RGB8, bytes));
+		// In half floats: at a byte a channel the table's own rounding moved what it graded by a step of the picture, and steps show in a sky's gradient.
+		Ref<Image> slice = Image::create_from_data(side, side, false, Image::FORMAT_RGBAF, bytes);
+		slice->convert(Image::FORMAT_RGBAH);
+		slices.push_back(slice);
 	}
 	return slices;
 }

@@ -10,7 +10,7 @@ const UNDER_THE_HUD := -1
 static func grade(environment: Environment, look: Dictionary) -> void:
 	var table := ImageTexture3D.new()
 	var side := int(look.lut_side)
-	table.create(Image.FORMAT_RGB8, side, side, side, false, CityStore.query(&"film_grade", [look]))
+	table.create(Image.FORMAT_RGBAH, side, side, side, false, CityStore.query(&"film_grade", [look]))
 	environment.adjustment_enabled = true
 	environment.adjustment_color_correction = table
 

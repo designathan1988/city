@@ -234,6 +234,10 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (was == now) return now;
 		return rank(now) > rank(was) ? (rank(plain_level(d2 / hold2)) > rank(was) ? now : was) : (rank(plain_level(d2 * hold2)) < rank(was) ? now : was);
 	};
+	// In the race for the cabins a vehicle that has one stands as near as the hold makes it: the cap counts what the hold keeps, and no more than that stay.
+	auto count_for_cap = [&](int level, float d2) {
+		if (cabin_cap_ > 0 && d2 <= reach * reach * hold2) near_d2_.push_back(level == CABIN_LEVEL || level == MID_DRAW ? d2 / hold2 : d2);
+	};
 	near_d2_.clear();
 	drawn_vehicles_ = 0;
 	int placed = 0; // what the camera sees has a row each
@@ -258,9 +262,9 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, p, d2);
-		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
 		const uint64_t key = rec.id * ROW_KINDS;
 		const int level = level_of(key, d2);
+		if (shown) count_for_cap(level, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;
@@ -275,9 +279,9 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);
 		const bool shown = seen(model, rec.at, d2);
-		if (shown && cabin_cap_ > 0 && d2 <= reach * reach) near_d2_.push_back(d2);
 		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
 		const int level = level_of(key, d2);
+		if (shown) count_for_cap(level, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;

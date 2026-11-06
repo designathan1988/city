@@ -24,6 +24,7 @@ const GREY := 0.5 # sRGB
 const FRAMES := 10
 const BYTE := 255.0
 const TOLERANCE := 1
+const LAMP_GLOW := 0.5
 
 var failures := 0
 var world: CityWorld
@@ -93,6 +94,8 @@ func _part(m: ShaderMaterial, at: Vector3) -> MultiMeshInstance3D:
 func _lamps_by_night() -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
 	world.environment.ambient_light_energy = 0.0
+	world.environment.glow_enabled = false # a lamp's own light: what it blooms over is another thing
+	world.materials()["building"].set_shader_parameter("lamp_glow", LAMP_GLOW) # under 1 after the exposure: without the glow, Compatibility's picture before the tone mapping stops there
 	world.sun.light_energy = 0.0
 	var near: ShaderMaterial = world.materials()["building"]
 	var far: ShaderMaterial = world.materials()["building_far"]
