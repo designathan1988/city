@@ -18,6 +18,8 @@ const STEP_TICKS := 200
 const GROW_STEPS := 60
 const PLAN_STEPS := 900 # the plans run one at a time on a worker, by the clock: the steps only bound the wait
 const PLANNED_DOCKS := 12
+const LEAVE_TRIES := 12
+const LEAVE_STEP_M := 12.0
 const ROUND_STEPS := 120
 const CAMERA_UP_M := 30.0
 const NO_STOP := 1 # traffic::YardReach YARD_NO_STOP
@@ -57,9 +59,17 @@ func _far_in(sample: Array, angle: float, width: float) -> Vector3:
 
 func _site(camera: Camera3D, far: Vector3) -> void:
 	var before: int = CityStore.query(&"dock_count", [])
-	var end := far + Vector3(far.x, 0, far.z).normalized() * STREET_M
-	var built: Dictionary = CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX])
-	var at := (far + end) * 0.5
+	# a vehicle stands anywhere on its street: a new street leaves it clear of the junctions either side, so it is walked along until the rule takes it
+	var out := Vector3(far.x, 0, far.z).normalized()
+	var along := Vector3(out.z, 0, -out.x)
+	var built := {}
+	var from := far
+	for k in LEAVE_TRIES:
+		from = far + along * (LEAVE_STEP_M * (k + 1) / 2 * (1 if k % 2 == 0 else -1))
+		built = CityStore.dispatch(&"build_road", [from, from + out * STREET_M, false, Vector3.ZERO, PROFILE, PX])
+		if built.ok:
+			break
+	var at := from + out * STREET_M * 0.5
 	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL])
 	print("lugar ", at, " via ", built.ok, " ", built.error, " zona ", zoned.zoned_sides)
 	camera.global_position = at + Vector3.UP * CAMERA_UP_M

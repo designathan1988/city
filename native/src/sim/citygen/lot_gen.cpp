@@ -12,11 +12,14 @@
 namespace city {
 
 namespace {
-constexpr double RES = 2, ROAD_PAD = 0.4, PLATE_PAD = 4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
-constexpr double BUSY_SHARE = 0.03, FACING_PROBE = 4, FACING_PAD = 8;
-constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32, MIN_PLATE_ARMS = 3;
+constexpr double RES = 2, ROAD_PAD = 0.4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
+constexpr double FACING_PROBE = 4, FACING_PAD = 8;
+constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32;
 constexpr double EPS = 1e-6;
-constexpr int CORNERS = 8;
+constexpr uint8_t PAVED = 1, TAKEN = 2; // what the grid says of a cell
+constexpr double LOT_END_IN = 3; // a cell and a half: past any rounding of a point to its cell
+constexpr int MIN_THROUGH_ARMS = 3;
+constexpr float STRAIGHT_ON = -0.95f; // two ways out of a node this opposed are one street
 } // namespace
 
 double lot_gen::curve_distance(const Quad &q, double x, double z) {
@@ -42,7 +45,6 @@ LotStrips::LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, co
 
 std::vector<Lot> LotStrips::run() {
 	mark_roads();
-	mark_corners();
 	place_blocks();
 	place_strips();
 	return std::move(out_);
@@ -54,43 +56,43 @@ void LotStrips::mark(double x, double z, double r, uint8_t v) {
 	fill_disc(grid_.data(), W_, ax_, az_, RES, x, z, r, box, v);
 }
 
-void LotStrips::mark_roads() {
-	for (int s = 0; s < g_.segs(); s++) {
-		int n = std::max(2, int(std::ceil(len(s) / RES)) + 1);
-		for (int i = 0; i < n; i++) {
-			double x, z;
-			g_.quad[s].at(t_at_length(tables_[s], len(s) * i / (n - 1)), x, z);
-			mark(x, z, half_[s] + ROAD_PAD, 1);
-		}
-	}
+// The way out of node `n` along street `s`.
+V2 LotStrips::way_out(int s, int n) const {
+	const Quad &q = g_.quad[s];
+	return (g_.sa[s] == n ? V2(float(q.cx - q.x0), float(q.cz - q.z0)) : V2(float(q.cx - q.x1), float(q.cz - q.z1))).norm();
 }
 
-void LotStrips::mark_corners() {
-	retreat_.assign(size_t(g_.segs()) * 2, 0.0);
-	std::vector<std::vector<std::pair<int, int>>> arms(g_.nodes());
+// How far short of node `n` the paving of street `s` stops: a street that ends against one running straight on stops at that one's edge, and past
+// it, on the side with no arm, the footway goes on. A street that runs on itself, or a corner, reaches the node.
+double LotStrips::stops_short(int s, int n, const std::vector<int> &arms) const {
+	if (int(arms.size()) < MIN_THROUGH_ARMS) return 0;
+	const V2 way = way_out(s, n);
+	for (int other : arms)
+		if (other != s && way.dot(way_out(other, n)) < STRAIGHT_ON) return 0;
+	for (int u : arms)
+		for (int v : arms)
+			if (u != s && v != s && u < v && way_out(u, n).dot(way_out(v, n)) < STRAIGHT_ON) return std::max(half_[u], half_[v]);
+	return 0;
+}
+
+void LotStrips::mark_roads() {
+	std::vector<std::vector<int>> arms(size_t(g_.nodes()));
 	for (int s = 0; s < g_.segs(); s++) {
-		arms[g_.sa[s]].push_back({ s, 0 });
-		arms[g_.sb[s]].push_back({ s, 1 });
+		arms[size_t(g_.sa[s])].push_back(s);
+		arms[size_t(g_.sb[s])].push_back(s);
 	}
-	for (int n = 0; n < g_.nodes(); n++) {
-		const auto &list = arms[n];
-		if (list.size() == 1 && g_.bulb[n]) {
-			int s = list[0].first;
-			retreat_[s * 2 + list[0].second] = bulb_retreat(arm_of(g_.quad[s], prof_[g_.profile[s]], list[0].second), len(s));
+	for (int n = 0; n < g_.nodes(); n++)
+		if (arms[size_t(n)].size() == 1 && g_.bulb[n]) mark(g_.nx[n], g_.nz[n], BULB_R + BULB_WALK, PAVED);
+	for (int s = 0; s < g_.segs(); s++) {
+		const double from = stops_short(s, g_.sa[s], arms[size_t(g_.sa[s])]), to = len(s) - stops_short(s, g_.sb[s], arms[size_t(g_.sb[s])]);
+		int n = std::max(2, int(std::ceil(len(s) / RES)) + 1);
+		for (int i = 0; i < n; i++) {
+			const double at = len(s) * i / (n - 1);
+			if (at < from || at > to) continue;
+			double x, z;
+			g_.quad[s].at(t_at_length(tables_[s], at), x, z);
+			mark(x, z, half_[s] + ROAD_PAD, PAVED);
 		}
-		if (list.size() < 2) continue;
-		std::vector<Arm> a;
-		std::vector<double> lens, tmp;
-		std::vector<int> order;
-		double max_half = 0;
-		for (const auto &r : list) {
-			a.push_back(arm_of(g_.quad[r.first], prof_[g_.profile[r.first]], r.second));
-			lens.push_back(len(r.first));
-			max_half = std::max(max_half, double(prof_[g_.profile[r.first]].right));
-		}
-		junction_retreats(a, lens, tmp, order);
-		for (size_t i = 0; i < list.size(); i++) retreat_[list[i].first * 2 + list[i].second] = tmp[i];
-		if (list.size() >= MIN_PLATE_ARMS) mark(g_.nx[n], g_.nz[n], max_half + PLATE_PAD, 1);
 	}
 }
 
@@ -137,53 +139,21 @@ bool LotStrips::unfit(const Frame &f) const {
 	return hi - lo > MAX_RELIEF;
 }
 
-void LotStrips::corners(const Frame &f, double inset, double *c) {
-	double hw = f.w / 2 - inset, hd = f.d / 2 - inset;
-	const double v[CORNERS] = { f.cx - f.tx * hw - f.lx * hd, f.cz - f.tz * hw - f.lz * hd, f.cx + f.tx * hw - f.lx * hd, f.cz + f.tz * hw - f.lz * hd,
-		f.cx + f.tx * hw + f.lx * hd, f.cz + f.tz * hw + f.lz * hd, f.cx - f.tx * hw + f.lx * hd, f.cz - f.tz * hw + f.lz * hd };
-	std::copy(v, v + CORNERS, c);
-}
-
 void LotStrips::mark_lot(const Frame &f) {
-	for (double a = -f.w / 2; a <= f.w / 2; a += RES / 2) {
+	// a cell short of its ends: a cell of the grid is wider than the gap to the next lot, and the next street's strip starts right there
+	for (double a = -f.w / 2 + LOT_END_IN; a <= f.w / 2 - LOT_END_IN; a += RES / 2) {
 		const double x = f.cx + f.tx * a, z = f.cz + f.tz * a;
 		for (double b = -f.d / 2; b <= f.d / 2; b += RES / 2) {
 			int i = ifloor((x + f.lx * b - ax_) / RES), j = ifloor((z + f.lz * b - az_) / RES);
-			if (i >= 0 && j >= 0 && i < W_ && j < W_) grid_[size_t(j) * W_ + i] = 2;
+			if (i >= 0 && j >= 0 && i < W_ && j < W_) grid_[size_t(j) * W_ + i] = TAKEN;
 		}
 	}
 }
 
-bool LotStrips::lot_free(const Frame &f) const {
-	int across = 0, deep = 0, busy = 0;
-	for (double a = -f.w / 2 + 1; a <= f.w / 2 - 1; a += RES) across++;
-	for (double b = -f.d / 2 + 1; b <= f.d / 2 - 1; b += RES) deep++;
-	const double most = across * deep * BUSY_SHARE; // past it the answer is known: most frames tried are refused
-	for (double a = -f.w / 2 + 1; a <= f.w / 2 - 1; a += RES) {
-		const double x = f.cx + f.tx * a, z = f.cz + f.tz * a;
-		for (double b = -f.d / 2 + 1; b <= f.d / 2 - 1; b += RES) {
-			int i = ifloor((x + f.lx * b - ax_) / RES), j = ifloor((z + f.lz * b - az_) / RES);
-			if (i < 0 || j < 0 || i >= W_ || j >= W_) continue;
-			if (grid_[size_t(j) * W_ + i] && ++busy > most) return false;
-		}
-	}
-	return true;
-}
-
-bool rects_overlap(const double *a, const double *b) {
-	for (int pass = 0; pass < 2; pass++) {
-		const double *p = pass ? b : a;
-		for (int e = 0; e < 4; e++) {
-			double ex = p[((e + 1) % 4) * 2] - p[e * 2], ez = p[((e + 1) % 4) * 2 + 1] - p[e * 2 + 1];
-			double amin = NO_ROOM, amax = -NO_ROOM, bmin = NO_ROOM, bmax = -NO_ROOM;
-			for (int v = 0; v < 4; v++) {
-				double pa = a[v * 2] * ez - a[v * 2 + 1] * ex, pb = b[v * 2] * ez - b[v * 2 + 1] * ex;
-				amin = std::min(amin, pa); amax = std::max(amax, pa); bmin = std::min(bmin, pb); bmax = std::max(bmax, pb);
-			}
-			if (amax <= bmin || bmax <= amin) return false;
-		}
-	}
-	return true;
+bool LotStrips::land_at(double x, double z) const {
+	const int i = ifloor((x - ax_) / RES), j = ifloor((z - az_) / RES);
+	if (i < 0 || j < 0 || i >= W_ || j >= W_) return true;
+	return grid_[size_t(j) * W_ + i] == 0;
 }
 
 } // namespace city

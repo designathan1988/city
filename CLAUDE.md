@@ -257,7 +257,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/citygen/squares.cpp` · `native/src/sim/citygen/squares.h` — as praças da cidade gerada: em cada bairro, a quadra em via principal mais perto do meio vira gramado com caminhos e árvores
 - `native/src/sim/citygen/city_gen.cpp` · `native/src/sim/citygen/city_gen.h` — pipeline da cidade gerada
 - `native/src/sim/citygen/lot_gen.cpp` · `native/src/sim/citygen/lot_gen.h` — lotes ao longo das ruas zonadas: grade de ocupação, recuos, testes
-- `native/src/sim/citygen/lot_place.cpp` — colocação dos lotes: quarteirões fechados e testadas das ruas
+- `native/src/sim/citygen/lot_place.cpp` — colocação dos lotes: quarteirões fechados e as ruas abertas em faixa contínua (`streetPlan` do 4.0)
 - `native/src/sim/citygen/lot_strips.h` — cortador de lotes de uma célula (interno de sim/citygen)
 - `native/src/sim/citygen/road_gen.cpp` · `native/src/sim/citygen/road_gen.h` — linhas da malha e marcha sobre o terreno
 - `native/src/sim/citygen/road_gen_graph.cpp` — grafo planar das ruas geradas (cruzamentos, nós fundidos)

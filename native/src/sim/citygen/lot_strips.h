@@ -27,26 +27,32 @@ private:
 	int W_;
 	std::vector<uint8_t> grid_;
 	std::vector<std::vector<double>> tables_;
-	std::vector<double> half_, retreat_, taken_;
-	std::vector<double> taken_box_; // each of taken_ as minx, maxx, minz, maxz: the separated ones never reach rects_overlap
+	std::vector<double> half_;
 	std::vector<Lot> out_;
 
 	double len(int s) const { return tables_[s].back(); }
 	void mark(double x, double z, double r, uint8_t v);
 	void mark_roads();
-	void mark_corners();
+	V2 way_out(int s, int n) const;
+	double stops_short(int s, int n, const std::vector<int> &arms) const;
 	void facing(double fx, double fz, double ox, double oz, int &zone, int &profile) const;
 	bool unfit(const Frame &f) const;
-	static void corners(const Frame &f, double inset, double *c);
 	void mark_lot(const Frame &f);
-	bool lot_free(const Frame &f) const;
-	double exact_shift(const Frame &f) const;
+	bool land_at(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);
 	void place_blocks();
 	void place_strips();
+	struct Along {
+		double px, pz, tx, tz, lx, lz;
+	};
+	Along along(int s, double at, double sign) const;
 	void place_side(int s, int side, int zone);
+	struct Strip {
+		int s;
+		double sign, face, depth, frontage;
+		int zone;
+	};
+	void cut_run(const Strip &strip, double from, double to);
 };
-
-bool rects_overlap(const double *a, const double *b);
 
 } // namespace city

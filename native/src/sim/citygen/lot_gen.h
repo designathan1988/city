@@ -1,6 +1,6 @@
 // Lots are a pure function of the streets around a 256 m cell (Roadcraft src/jobs/lots.ts + blockLots.ts): closed
 // blocks are cut as Roadcraft 4.0 cuts them (rows back to back, equal columns of about 22 m), then the open land
-// left along zoned street sides is sliced into strips of the zone's frontage and depth. A lot belongs to the cell
+// left along zoned street sides is one strip of a lot's depth, cut in equal lots. A lot belongs to the cell
 // holding its centre; every cell that sees the same streets cuts them the same way.
 #pragma once
 
