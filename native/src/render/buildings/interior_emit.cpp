@@ -14,6 +14,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
+constexpr int FLIGHT_STEPS = 12;
 constexpr float FLOOR_LIFT = 0.04f; // the floor over the storey's slab: it never fights the slab's face
 constexpr float WALL_HALF = 0.06f; // an inner wall is 12 cm thick
 constexpr float WALL_CLEAR = 0.4f, WALL_MAX = 2.7f; // an inner wall stands the storey's height less this, at most this high
@@ -39,21 +40,28 @@ void floors(Shell &shell, const Placed &pl, const InteriorLook &look, int cut, F
 // A lift shaft: four walls (the front one with a doorway) from the floor up under the next one, and the car at this floor.
 void cores(Shell &shell, const Placed &pl, const InteriorLook &look, int cut) {
 	const Body &b = *pl.b;
-	const Paint &shaft = look.paint("shaft"), &cab = look.paint("cab");
-	const Lin sl = lin_of_paint(shaft), cl = lin_of_paint(cab);
+	const Paint &shaft = look.paint("shaft"), &cab = look.paint("cab"), &step = look.paint("step");
+	const Lin sl = lin_of_paint(shaft), cl = lin_of_paint(cab), tl = lin_of_paint(step);
 	const float z = b.level_z(cut), top = b.level_z(cut + 1) - SHAFT_CLEAR;
 	for (const Core &c : b.cores) {
 		if (cut > c.to) continue;
-		const float x0 = c.x, y0 = c.y, x1 = c.x + b40::CORE_SIDE_M, y1 = c.y + b40::CORE_SIDE_M;
+		const float x0 = c.x, y0 = c.y, x1 = c.x + b40::core_width(c), y1 = c.y + b40::CORE_SIDE_M;
 		shell.box(pl.lot, x0, x1, y1 - SHAFT_WALL, y1, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x0, x0 + SHAFT_WALL, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, x1 - SHAFT_WALL, x1, y0, y1 - SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
-		const float door = std::min(b40::CORE_SIDE_M * DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
+		const float door = std::min(b40::core_width(c) * DOOR_SHARE, LIFT_DOOR_W), mid = (x0 + x1) / 2;
 		shell.box(pl.lot, x0 + SHAFT_WALL, mid - door / 2, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid + door / 2, x1 - SHAFT_WALL, y0, y0 + SHAFT_WALL, z, top, sl, shaft.finish, SKIP_E2_NEG);
 		shell.box(pl.lot, mid - door / 2, mid + door / 2, y0, y0 + SHAFT_WALL, z + DOOR_H, top, sl, shaft.finish, SKIP_E2_NEG);
-		shell.box(pl.lot, x0 + SHAFT_WALL + CAB_GAP, x1 - SHAFT_WALL - CAB_GAP, y0 + SHAFT_WALL + CAB_GAP, y1 - SHAFT_WALL - CAB_GAP, z + CAB_LIFT,
-				z + CAB_H, cl, cab.finish, SKIP_E2_NEG);
+		if (c.kind != b40::CORE_STAIR)
+			shell.box(pl.lot, x0 + SHAFT_WALL + CAB_GAP, x1 - SHAFT_WALL - CAB_GAP, y0 + SHAFT_WALL + CAB_GAP, y1 - SHAFT_WALL - CAB_GAP, z + CAB_LIFT,
+					z + CAB_H, cl, cab.finish, SKIP_E2_NEG);
+		if (c.kind == b40::CORE_LIFT) continue;
+		const float run = (x1 - x0 - 2 * SHAFT_WALL) / float(FLIGHT_STEPS), rise = b.level_h(cut) / float(FLIGHT_STEPS), back = (y0 + y1) / 2; // along the back of the shaft
+		for (int k = 0; k < FLIGHT_STEPS; k++) {
+			const float sx = x0 + SHAFT_WALL + run * float(k);
+			shell.box(pl.lot, sx, sx + run, back, y1 - SHAFT_WALL, z, z + rise * float(k + 1), tl, step.finish, SKIP_E2_NEG);
+		}
 	}
 }
 

@@ -221,7 +221,8 @@ void Reader::building(const Dictionary &doc) {
 	for (const Variant &e : Array(doc.get("elements", Array()))) element(e);
 	for (const Variant &row : Array(doc.get("cores", Array()))) {
 		const Dictionary c = row;
-		b_.cores.push_back(Core{ float(c.get("x", 0)), float(c.get("y", 0)), int(c.get("to", 0)) });
+		const String kind = c.get("kind", "lift");
+		b_.cores.push_back(Core{ float(c.get("x", 0)), float(c.get("y", 0)), int(c.get("to", 0)), kind == "stair" ? CORE_STAIR : kind == "stairLift" ? CORE_STAIR_LIFT : CORE_LIFT });
 	}
 }
 } // namespace

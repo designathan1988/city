@@ -53,6 +53,7 @@
   "partition": ["plaster", "#ece6da"],
   "inner_wall": ["plaster", "#eee8dc"],
   "shaft": ["concrete", "#b9b6ae"],
+  "step": ["stone", "#c9c2b3"],
   "cab": ["metal", "#9aa3a8"],
   "step": ["stone", "#c9c2b3"],
   "book0": ["plaster", "#8b2c2c"],

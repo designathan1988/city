@@ -3,6 +3,7 @@
 // checked before it is kept, and saves with the city. Lengths in metres in the lot frame; `vol` an index into the volumes.
 #pragma once
 
+#include "sim/buildings/b40/data.h"
 #include "sim/buildings/b40/types.h"
 #include "sim/catalog/catalog.h"
 #include "sim/commands/commands.h"
@@ -46,6 +47,21 @@ std::string op_whole_plan(b40::Body &b, const Tuning &t, int shape);
 enum MassAction : int { MASS_GROUND, MASS_ROOF, MASS_CUT };
 std::string op_add_mass(b40::Body &b, const Tuning &t, int vol, b40::Point2 from, b40::Point2 to, int action);
 std::string op_set_block_mode(b40::Body &b, int vol, int mode);
+
+// The Interior tab (body_furnish.cpp), in the lot frame. A floor's first edit keeps what was made for it, so it asks what makes a floor.
+struct FloorEdit {
+	const b40::Data *data = nullptr;
+	b40::Purpose purpose{};
+	int level = 0;
+};
+std::string op_add_core(b40::Body &b, const Tuning &t, float x, float y, int kind);
+std::string op_remove_core(b40::Body &b, float x, float y);
+int piece_at(b40::Body &b, const FloorEdit &e, float x, float y);
+std::string op_put_piece(b40::Body &b, const Tuning &t, const FloorEdit &e, int kind, float x, float y, float angle);
+std::string op_move_piece(b40::Body &b, const Tuning &t, const FloorEdit &e, int index, float x, float y);
+std::string op_turn_piece(b40::Body &b, const FloorEdit &e, int index);
+std::string op_remove_piece(b40::Body &b, const FloorEdit &e, float x, float y);
+
 // A new block in the look of `v`; the storey it grows by; what stands on `v`'s roof inside `plan` goes.
 b40::Volume block_like(const b40::Volume &v, int count);
 uint8_t next_fill(const b40::Volume &v);

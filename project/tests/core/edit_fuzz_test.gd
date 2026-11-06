@@ -3,6 +3,7 @@
 ## makes the same city. A failure prints its seed and step; `--seed=N` and `--steps=N` run that one again.
 extends Node
 
+const BodyEdits := preload("res://tests/core/fuzz_body_edits.gd")
 const LOT_M := 30.0
 const MAP := 0
 const CITY_SEED := 7
@@ -22,9 +23,6 @@ const BRUSH_DT := 0.2
 const BRUSH_MODES := 3
 const ITEM_KINDS := 7
 const PLAN_SHAPES := 8
-const MASS_KINDS := 2
-const BLOCK_FROM := 0.3
-const BLOCK_TO := 0.7
 const REACH_M := 12.0
 const STRIKE_MAX := 12
 ## The cells waiting to grow are a queue, not an edit: an undone road leaves its cells there, and a cell with no lot leaves it alone.
@@ -194,8 +192,7 @@ func _other(kind: int, road: Vector3) -> void:
 		13:
 			var box: PackedVector3Array = CityStore.query(&"body_outline", [drawn, 0]) if drawn >= 0 else PackedVector3Array()
 			if not box.is_empty() and rng.randf() < 0.5:
-				var far: Vector3 = box[box.size() / 4]
-				CityStore.dispatch(&"body_add_mass", [drawn, 0, box[0].lerp(far, BLOCK_FROM), box[0].lerp(far, BLOCK_TO), rng.randi_range(0, MASS_KINDS)])
+				BodyEdits.run(rng, drawn, box)
 			else:
 				var r: Dictionary = CityStore.dispatch(&"draw_building", [a, b, 0, ZONE_KIND, rng.randi_range(0, PLAN_SHAPES)])
 				drawn = r.get("placed", -1) if r.get("ok", false) else drawn

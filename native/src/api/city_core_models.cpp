@@ -163,6 +163,14 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_add_mass", "id", "vol", "from", "to", "action"), &CityBuilder::body_add_mass);
 	ClassDB::bind_method(D_METHOD("body_set_block_mode", "id", "vol", "mode"), &CityBuilder::body_set_block_mode);
 	ClassDB::bind_method(D_METHOD("body_mass_rect", "id", "from", "to"), &CityBuilder::body_mass_rect);
+	ClassDB::bind_method(D_METHOD("body_add_core", "id", "at", "kind"), &CityBuilder::body_add_core);
+	ClassDB::bind_method(D_METHOD("body_remove_core", "id", "at"), &CityBuilder::body_remove_core);
+	ClassDB::bind_method(D_METHOD("body_put_piece", "id", "level", "kind", "at", "angle"), &CityBuilder::body_put_piece);
+	ClassDB::bind_method(D_METHOD("body_move_piece", "id", "level", "index", "at"), &CityBuilder::body_move_piece);
+	ClassDB::bind_method(D_METHOD("body_turn_piece", "id", "level", "index"), &CityBuilder::body_turn_piece);
+	ClassDB::bind_method(D_METHOD("body_remove_piece", "id", "level", "at"), &CityBuilder::body_remove_piece);
+	ClassDB::bind_method(D_METHOD("body_piece_at", "id", "level", "at"), &CityBuilder::body_piece_at);
+	ClassDB::bind_method(D_METHOD("body_floor_y", "id", "level"), &CityBuilder::body_floor_y);
 	ClassDB::bind_method(D_METHOD("body_add_setback", "id", "vol", "inset", "storeys"), &CityBuilder::body_add_setback);
 	ClassDB::bind_method(D_METHOD("body_split", "id", "vol", "level"), &CityBuilder::body_split);
 	ClassDB::bind_method(D_METHOD("body_remove_volume", "id", "vol"), &CityBuilder::body_remove_volume);

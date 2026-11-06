@@ -167,6 +167,7 @@ FloorFinish floor_finish(Purpose p, int level, uint32_t seed) {
 }
 
 std::string Interior::type_of(int level) const {
+	if (body_.furnishing.count(level) != 0) return "p" + std::to_string(level); // a floor the player arranged is like no other
 	std::string key = level == 0 ? "g" : "u";
 	for (size_t i = 0; i < body_.cores.size(); i++)
 		if (body_.cores[i].to >= level) key += 'c' + std::to_string(i);
@@ -199,7 +200,15 @@ const FloorInterior &Interior::at(int level) {
 			floor->partitions.insert(floor->partitions.end(), plan.walls.begin(), plan.walls.end());
 			floor->spaces.insert(floor->spaces.end(), spaces.begin(), spaces.end());
 		}
-		room_lights(data_, floor->furniture);
+		auto stored = body_.furnishing.find(level);
+		if (stored == body_.furnishing.end()) room_lights(data_, floor->furniture);
+		else {
+			floor->furniture.clear();
+			for (const PlacedPiece &p : stored->second) {
+				const float *size = data_.interior.size[p.kind];
+				floor->furniture.push_back({ FurnitureKind(p.kind), p.x, p.y, size[0], size[1], size[2], p.angle });
+			}
+		}
 	}
 	levels_[level] = floor.get();
 	return *floor;

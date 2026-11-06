@@ -5,7 +5,35 @@
   "interior": {
    "sections": [
     {"title_key": "builder.section.interiorView", "tools": [{"id": "interiorView", "do": "inside"}, {"id": "floorDown", "do": "floor", "value": -1},
-      {"id": "floorUp", "do": "floor", "value": 1}]}
+      {"id": "floorUp", "do": "floor", "value": 1}]},
+    {"title_key": "builder.section.cores", "tools": [{"id": "coreLift", "do": "core", "value": 0}, {"id": "coreStair", "do": "core", "value": 1},
+      {"id": "coreBoth", "do": "core", "value": 2}, {"id": "coreRemove", "do": "core", "value": -1}]},
+    {"title_key": "builder.section.furnishing", "tools": [{"id": "furnMove", "do": "piece", "piece": "move"}, {"id": "furnTurn", "do": "turn"},
+      {"id": "furnRemove", "do": "piece", "piece": "remove"}]},
+    {"title_key": "builder.section.furniture", "tools": [
+      {"id": "furn_sofa", "do": "piece", "piece": "sofa"},
+      {"id": "furn_armchair", "do": "piece", "piece": "armchair"},
+      {"id": "furn_table", "do": "piece", "piece": "table"},
+      {"id": "furn_chair", "do": "piece", "piece": "chair"},
+      {"id": "furn_bed", "do": "piece", "piece": "bed"},
+      {"id": "furn_singleBed", "do": "piece", "piece": "singleBed"},
+      {"id": "furn_wardrobe", "do": "piece", "piece": "wardrobe"},
+      {"id": "furn_tv", "do": "piece", "piece": "tv"},
+      {"id": "furn_desk", "do": "piece", "piece": "desk"},
+      {"id": "furn_officeChair", "do": "piece", "piece": "officeChair"},
+      {"id": "furn_bookshelf", "do": "piece", "piece": "bookshelf"},
+      {"id": "furn_shelf", "do": "piece", "piece": "shelf"},
+      {"id": "furn_counter", "do": "piece", "piece": "counter"},
+      {"id": "furn_fridge", "do": "piece", "piece": "fridge"},
+      {"id": "furn_stove", "do": "piece", "piece": "stove"},
+      {"id": "furn_sink", "do": "piece", "piece": "sink"},
+      {"id": "furn_bath", "do": "piece", "piece": "bath"},
+      {"id": "furn_toilet", "do": "piece", "piece": "toilet"},
+      {"id": "furn_plant", "do": "piece", "piece": "plant"},
+      {"id": "furn_ceilingLamp", "do": "piece", "piece": "ceilingLamp"},
+      {"id": "furn_floorLamp", "do": "piece", "piece": "floorLamp"},
+      {"id": "furn_tableLamp", "do": "piece", "piece": "tableLamp"}
+    ]}
    ]
   },
   "models": {

@@ -68,7 +68,7 @@ Plan::Plan(const Data &tables, const Body &body, const Volume &block, int at, fl
 	else
 		for (const Point2 &q : v.outline) ring_.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
 	for (const Core &c : b.cores)
-		if (c.to >= level) cores_.push_back({ c.x - CORE_X, c.y - CORE_Y, c.x + module + CORE_X, c.y + module + CORE_X });
+		if (c.to >= level) cores_.push_back({ c.x - CORE_X, c.y - CORE_Y, c.x + core_width(c, module) + CORE_X, c.y + module + CORE_X });
 }
 
 float Plan::y_start() const { return y0 + (level == 0 ? FRONT_ROOM : 0); }

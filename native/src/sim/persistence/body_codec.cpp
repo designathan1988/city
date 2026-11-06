@@ -20,8 +20,8 @@ constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; 
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4;
-constexpr uint32_t BODY_VERSION = 4, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5;
+constexpr uint32_t BODY_VERSION = 5, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -218,6 +218,16 @@ void write_body(ByteWriter &w, const Body &b) {
 		w.put<float>(c.x);
 		w.put<float>(c.y);
 		w.put<int32_t>(c.to);
+		w.put<uint8_t>(uint8_t(c.kind));
+	}
+	w.put<uint32_t>(uint32_t(b.furnishing.size()));
+	for (const auto &floor : b.furnishing) {
+		w.put<int32_t>(floor.first);
+		w.put<uint32_t>(uint32_t(floor.second.size()));
+		for (const PlacedPiece &p : floor.second) {
+			w.put<uint8_t>(p.kind);
+			for (float x : { p.x, p.y, p.angle }) w.put<float>(x);
+		}
 	}
 }
 
@@ -258,6 +268,20 @@ bool read_body(ByteReader &r, Body &b) {
 		c.x = r.get<float>();
 		c.y = r.get<float>();
 		c.to = r.get<int32_t>();
+		if (version >= INSIDE_VERSION) c.kind = CoreKind(r.get<uint8_t>());
+	}
+	if (version < INSIDE_VERSION) return r.ok;
+	n = r.get<uint32_t>();
+	if (!r.ok || n > FILE_CLAIM_CAP) return false;
+	for (uint32_t i = 0; i < n; i++) {
+		std::vector<PlacedPiece> &floor = b.furnishing[r.get<int32_t>()];
+		const uint32_t pieces = r.get<uint32_t>();
+		if (!r.ok || pieces > FILE_CLAIM_CAP) return false;
+		floor.resize(pieces);
+		for (PlacedPiece &p : floor) {
+			p.kind = r.get<uint8_t>();
+			for (float *x : { &p.x, &p.y, &p.angle }) *x = r.get<float>();
+		}
 	}
 	return r.ok;
 }

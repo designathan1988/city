@@ -25,6 +25,7 @@ var hand := {}
 var turn := 0.0
 
 var mass: MassDrag
+var hand_piece: FurnishHand
 
 var _box: SelectionBox
 var _ghost := 0
@@ -35,6 +36,7 @@ var _last := Vector3.INF
 
 func enter() -> void:
 	mass = MassDrag.new(ctl)
+	hand_piece = FurnishHand.new(ctl)
 	_box = SelectionBox.new()
 	ctl.add_child(_box)
 	ctl.hint.emit(tr("hint.builder.select"), true)
@@ -75,6 +77,8 @@ func hover(p: Vector3) -> void:
 
 
 func key(code: Key) -> void:
+	if hand_piece.armed() and code == KEY_R and not picked.is_empty():
+		_report(hand_piece.turn(picked.id))
 	if hand.is_empty() or code != KEY_R:
 		return
 	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else PI / 2.0
@@ -100,6 +104,9 @@ func click(p: Vector3) -> void:
 		return
 	if mass.armed() and not picked.is_empty():
 		mass.press(p, picked)
+		return
+	if hand_piece.armed() and not picked.is_empty():
+		_report(hand_piece.click(picked.id))
 		return
 	var cam: Camera3D = ctl.rig.camera
 	var had := picked
@@ -149,14 +156,15 @@ func _roof(hit: Dictionary) -> Dictionary:
 
 ## What Escape steps back first: the body in hand, the bay armed or the part held (the pick itself goes with the tool).
 func in_progress() -> bool:
-	return not hand.is_empty() or armed != NO_BAY or not part.is_empty() or mass.armed()
+	return not hand.is_empty() or armed != NO_BAY or not part.is_empty() or mass.armed() or hand_piece.armed()
 
 
 func cancel() -> void:
 	if not hand.is_empty():
 		_put_down()
-	elif mass.armed():
+	elif mass.armed() or hand_piece.armed():
 		mass.disarm()
+		hand_piece.disarm()
 	elif armed != NO_BAY or not part.is_empty():
 		armed = NO_BAY
 		part = {}
@@ -166,23 +174,12 @@ func cancel() -> void:
 
 
 ## A tool of the strip (data/ui/builder.json): `spec.do` names what it does, `spec.value` its choice.
-## Construir > Interior: the building chosen cut open, a floor up or down (Roadcraft openInside, seeInside).
-func _inside(what: String, by: int) -> void:
-	var view: InteriorController = ctl.get_tree().get_first_node_in_group(&"interior_controller")
-	if view == null:
-		return
-	if what == "floor":
-		view.step_floor(by)
-	elif picked.is_empty():
-		ctl.hint.emit(tr("hint.builder.select"), false)
-	else:
-		view.see_inside(int(picked.get("building", picked.get("id", -1))))
-
-
 func act(spec: Dictionary) -> void:
 	var value: int = spec.get("value", 0)
 	if spec.do != "mass":
 		mass.disarm() # any other card ends the drag
+	if not ["core", "piece", "turn"].has(spec.do):
+		hand_piece.disarm()
 	match spec.do:
 		"arm":
 			armed = NO_BAY if armed == value else value
@@ -203,7 +200,10 @@ func act(spec: Dictionary) -> void:
 		"paint_scope":
 			paint_scope = value
 		"inside", "floor":
-			_inside(spec.do, value)
+			hand_piece.inside(spec.do, value, picked)
+			return
+		"core", "piece", "turn":
+			_report(hand_piece.act(spec, picked))
 			return
 		"mass":
 			mass.arm(value)

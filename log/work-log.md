@@ -604,3 +604,9 @@ Ressalvas abertas:
 - `core/polygon_ops`: as booleanas em milímetros inteiros pelo Clipper2, com o furo cortado em dois porque uma planta não tem furo. O cabeçalho entra como `<clipper.h>`, igual a `<meshoptimizer.h>`, com a pasta dele em `CMakeLists.txt`: o gate `CAMADA` só aceita biblioteca sem barra no caminho. A regra não foi tocada.
 - Ala, Empilhar e Recortar: a carta arma, o arrasto faz o retângulo no referencial do lote e a grade o assenta. A ala se desenha no chão; o bloco no telhado e o recorte, na altura do telhado, onde o raio do ponteiro é lido (o chão sob o ponteiro fica muito atrás de um prédio alto). Uma caixa não ganha contorno: o retângulo fica um bloco comum.
 - Fotos em `project/dist/rq/blocks`: canto recortado, pátio fechado (dois sólidos), bloco no telhado, ala, corte de lado a lado, interseção, exclusão e corte só no bloco de cima. As fotos acharam um defeito meu: faltava a parede sob uma das águas do dente de serra, porque um quadrilátero com dois cantos no mesmo ponto vira pelo primeiro triângulo; agora é um triângulo.
+
+## 2026-11-06: a aba Interior
+- `Core` ganhou tipo (elevador, escada e os dois) e o render a escada de 12 degraus ao longo do fundo do poço; a escada sozinha ocupa dois módulos, como no 4.0. `Body::furnishing` guarda os andares arrumados pelo jogador: a primeira mudança num andar guarda o que estava lá, e um andar arrumado não é igual a nenhum outro (`Interior::type_of`).
+- Cartões de núcleo, de arrumar e as 22 peças; o clique lê o raio na altura do andar cortado, porque o chão do lote pode estar noutra altura. R gira. Abrir a aba com um prédio escolhido abre o térreo cortado.
+- Corpo gravado na versão 5, com leitura dos antigos. O hash muda só por isso.
+- Fotos em `project/dist/rq/inside`: escada, elevador, os dois e as peças postas no térreo cortado. Falta o fantasma da peça sob o ponteiro.

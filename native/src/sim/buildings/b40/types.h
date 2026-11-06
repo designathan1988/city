@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -175,9 +176,18 @@ struct LotElement {
 // A core (stair and lift shaft) is a square of this side in the lot frame, from its (x, y) corner: the generator places it, the cut view draws it.
 constexpr float CORE_SIDE_M = 3.f;
 
+enum CoreKind : uint8_t { CORE_LIFT, CORE_STAIR, CORE_STAIR_LIFT };
 struct Core {
 	float x = 0, y = 0;
 	int to = 0;
+	CoreKind kind = CORE_LIFT;
+};
+inline float core_width(const Core &c, float side = CORE_SIDE_M) { return c.kind == CORE_STAIR ? 2 * side : side; } // a flight alone runs two modules
+
+// A piece of furniture or a light as the player arranged it, in the lot frame; `kind` a FurnitureKind, `angle` the way it faces.
+struct PlacedPiece {
+	uint8_t kind = 0;
+	float x = 0, y = 0, angle = 0;
 };
 
 // One lot's building: plan, heights, paints, volumes, elements (all in the lot frame).
@@ -194,6 +204,7 @@ struct Body {
 	std::vector<Volume> volumes;
 	std::vector<LotElement> elements;
 	std::vector<Core> cores;
+	std::map<int, std::vector<PlacedPiece>> furnishing; // by level: the floors the player arranged
 	float entrance_x = 0;
 	int entrance_volume = 0;
 	// A design of its own (signature_kinds.h): its number, and where the lot's front lay in the design's frame. 0 is the facade kit. An edit gives it back to the kit.

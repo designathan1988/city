@@ -42,6 +42,14 @@ public:
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
 	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
+	godot::Dictionary body_add_core(int id, const godot::Vector3 &at, int kind);
+	godot::Dictionary body_remove_core(int id, const godot::Vector3 &at);
+	godot::Dictionary body_put_piece(int id, int level, const godot::String &kind, const godot::Vector3 &at, double angle);
+	godot::Dictionary body_move_piece(int id, int level, int index, const godot::Vector3 &at);
+	godot::Dictionary body_turn_piece(int id, int level, int index);
+	godot::Dictionary body_remove_piece(int id, int level, const godot::Vector3 &at);
+	int body_piece_at(int id, int level, const godot::Vector3 &at) const;
+	double body_floor_y(int id, int level) const;
 	godot::Dictionary body_mass_rect(int id, const godot::Vector3 &from, const godot::Vector3 &to) const;
 	godot::Dictionary body_split(int id, int vol, int level);
 	godot::Dictionary body_remove_volume(int id, int vol);
