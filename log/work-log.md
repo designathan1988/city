@@ -474,6 +474,13 @@ Ressalvas abertas:
 - **Fotos.** `res_a`, `mid_a`, `res_c`, `lot_a`: varandas, peitoris e marquises iguais, sem briga de profundidade. `low3`: GPU 9,23 ms (8,93 sem as sombras novas), primitivas 4,81 M (5,00 M). A primeira leitura de 14,4 ms foi carga de outra sessão: repetida com a GPU livre.
 - **Falta medir:** a memória do nível perto depois disso.
 
+### Ciclo 10 (os gates de verdade)
+
+- **Causa da lentidão.** `tools/converter-slice` (91 GB, no `.gitignore`) e as outras ferramentas entraram na árvore sem entrar em `exclude_dirs`: o gate anda pelo disco, não pelo git. Sem elas, o gate completo roda em 15 a 26 s. O conserto em `rules.json` é do usuário.
+- **O que isso escondia.** 82 problemas reais, de várias sessões. Corrigidos aqui: código duplicado (linha de instância, baias, ids, arredondamento do greide), números mágicos, `build_cpu` longo, estado na interface, mapa. Restam 55.
+- **Cena instável.** O nome sempre esteve em `dist/quick/suite.txt` (`UNSTABLE`); `quick.sh` só mostrava a última linha, e meu `grep` não casava. Agora mostra. Na rodada com as 31 cenas: 0 instáveis.
+- `quick.sh`: arquivo sem linha no mapa não chama mais todas as cenas. Aquela rodada de 31 cenas foi mais uma contra a ordem do usuário, por `native/src/api` não ter linha.
+
 ### Próximo ciclo
 
 2. Nível distante pelos dados reais (P8).

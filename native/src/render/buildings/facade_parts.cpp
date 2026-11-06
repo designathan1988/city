@@ -60,11 +60,32 @@ struct Ctx {
 		part_box(shell.sheer ? *shell.sheer : shell, at(a, floor + pane / 2, depth, width, pane, LOGGIA_PANE), paint("glass_rail"), FIN_GLASS);
 		part_box(parts, at(a, floor + pane + CAP_H / 2, depth, width, CAP_H, CAP_T), c.trim, PART_PAINT);
 	}
+	bool stands_out();
 	void door();
 	void double_door();
 	void gourmet();
 	void shuttered();
 };
+
+// What stands out of the wall alike on the near and the mid level. False: this component has nothing of the kind.
+bool Ctx::stands_out() {
+	switch (c.comp) {
+		case BAY_BALCONY:
+			part_box(parts, at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), paint("sill"), FIN_CONCRETE);
+			part_railing(shell, at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
+			return true;
+		case BAY_SHOPFRONT: {
+			uint32_t aw = pl.data->shop_awnings[size_t(pl.b->palette) % pl.data->shop_awnings.size()];
+			part_awning(shell, at(c.W / 2, o.h1 + AWNING_UP, 0, c.W - AWNING_TRIM, AWNING_H, BAL_OUT), lin_of(aw), FIN_PLASTER);
+			return true;
+		}
+		case BAY_LOGGIA: glass_guard(am, o.h0, GLASS_RAIL_IN, w); return true;
+		case BAY_BRISE: part_brise(parts, at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, PART_PAINT); return true;
+		case BAY_SHUTTERED: shuttered(); return true;
+		case BAY_GOURMET: gourmet(); return true;
+		default: return false;
+	}
+}
 
 void Ctx::door() {
 	part_door(parts, at(am, hm, o.depth + FRAME_IN, w, h, FRAME_D), paint("door"), FIN_WOOD);
@@ -119,57 +140,23 @@ void Ctx::shuttered() {
 } // namespace
 
 void emit_bay_relief(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
-	Ctx x{ parts, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0, true };
-	switch (c.comp) {
-		case BAY_BALCONY:
-			part_box(parts, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
-			part_railing(shell, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
-			break;
-		case BAY_SHOPFRONT: {
-			uint32_t aw = pl.data->shop_awnings[size_t(pl.b->palette) % pl.data->shop_awnings.size()];
-			part_awning(shell, x.at(c.W / 2, o.h1 + AWNING_UP, 0, c.W - AWNING_TRIM, AWNING_H, BAL_OUT), lin_of(aw), FIN_PLASTER);
-			break;
-		}
-		case BAY_DOOR:
-			if (c.level == 0) x.canopy(CANOPY_PAD, CANOPY_T, CANOPY_OUT, FASCIA_H, CANOPY_ROOM);
-			break;
-		case BAY_DOUBLE_DOOR:
-			if (c.level == 0) x.canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM);
-			break;
-		case BAY_LOGGIA: x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w); break;
-		case BAY_BRISE: part_brise(parts, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, PART_PAINT); break;
-		case BAY_SHUTTERED: x.shuttered(); break;
-		case BAY_GOURMET: x.gourmet(); break;
-		default: break;
-	}
+	Ctx x{ shell, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0, true };
+	if (x.stands_out()) return;
+	if (c.level != 0) return;
+	if (c.comp == BAY_DOOR) x.canopy(CANOPY_PAD, CANOPY_T, CANOPY_OUT, FASCIA_H, CANOPY_ROOM);
+	if (c.comp == BAY_DOUBLE_DOOR) x.canopy(DD_PAD, DD_T, DD_OUT, DD_FASCIA, DD_ROOM);
 }
 
 void emit_bay_parts(Shell &shell, Shell &parts, const Placed &pl, const BayCtx &c, const Opening &o) {
 	Ctx x{ shell, parts, pl, c, o, c.W / 2, (o.h0 + o.h1) / 2, o.w, o.h1 - o.h0 };
+	if (x.stands_out()) return;
 	switch (c.comp) {
 		case BAY_WINDOW: case BAY_SASH: x.sill(SILL_PAST, SILL_T, SILL_OUT); break;
-		case BAY_BALCONY:
-			part_box(parts, x.at(c.W / 2, -BAL_SLAB / 2, -BAL_OUT / 2, c.W - BAL_EDGE, BAL_SLAB, BAL_OUT), x.paint("sill"), FIN_CONCRETE);
-			part_railing(shell, x.at(c.W / 2, 0, 0, c.W - BAL_EDGE, pl.look->guard_h_m, BAL_OUT), c.trim, c.trim_fin);
-			break;
 		case BAY_DOOR: x.door(); break;
 		case BAY_DOUBLE_DOOR: x.double_door(); break;
-		case BAY_SHOPFRONT: {
-			uint32_t aw = pl.data->shop_awnings[size_t(pl.b->palette) % pl.data->shop_awnings.size()];
-			part_awning(shell, x.at(c.W / 2, o.h1 + AWNING_UP, 0, c.W - AWNING_TRIM, AWNING_H, BAL_OUT), lin_of(aw), FIN_PLASTER);
-			break;
-		}
 		case BAY_LOADING_DOOR: case BAY_GARAGE_DOOR:
 			part_box(parts, x.at(x.am, x.hm, o.depth - FRAME_IN, x.w, x.h, FRAME_IN), x.paint("shutter"), FIN_METAL);
 			break;
-		case BAY_LOGGIA:
-			x.glass_guard(x.am, o.h0, GLASS_RAIL_IN, x.w);
-			break;
-		case BAY_BRISE:
-			part_brise(parts, x.at(c.W / 2, c.H / 2, -BRISE_OUT / 2, c.W, c.H, BRISE_OUT), c.trim, PART_PAINT);
-			break;
-		case BAY_SHUTTERED: x.shuttered(); break;
-		case BAY_GOURMET: x.gourmet(); break;
 		case BAY_FRENCH: case BAY_BAY_WINDOW: case BAY_RIBBON:
 			if (x.h > TRANSOM_MIN) part_box(parts, x.at(x.am, o.h0 + TRANSOM_AT * x.h, o.depth - FRAME_IN, x.w, TRANSOM_T, SILL_OUT), c.trim, PART_PAINT);
 			if (o.h0 > WINDOW_SILL_MIN) x.sill(SILL_PAST, SILL_T, SILL_OUT);

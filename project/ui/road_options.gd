@@ -11,7 +11,7 @@ signal option_picked(key: String, value: Variant)
 signal road_picked(id: String)
 
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
-var _keys_panel: RoadKeysPanel
+@onready var _keys_panel := RoadKeysPanel.new()
 
 
 func _ready() -> void:
@@ -137,8 +137,7 @@ func _keys_row() -> void:
 
 
 func _open_keys(anchor: Control) -> void:
-	if _keys_panel == null:
-		_keys_panel = RoadKeysPanel.new()
+	if _keys_panel.get_parent() == null:
 		_keys_panel.theme = ThemeBuilder.theme()
 		add_child(_keys_panel)
 		_keys_panel.keys_changed.connect(refresh)

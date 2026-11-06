@@ -59,6 +59,29 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 	return in;
 }
 
+// The near level's parts into their bands, sub-chunk by sub-chunk.
+void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const {
+	auto band_of = [this](float thick) {
+		int band = 0;
+		while (band + 1 < BAND_COUNT && thick > look_.part_bands[size_t(std::min(band, int(look_.part_bands.size()) - 1))].thick_max)
+			band++;
+		return std::min(band, BAND_COUNT - 1);
+	};
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		b40::Shell &p = parts_shells[i];
+		std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
+		std::array<std::vector<b40::PropInstance>, b40::BAY_PROPS> props;
+		for (const b40::BoxInstance &inst : p.boxes) boxes[size_t(band_of(inst.thick))].push_back(inst);
+		for (const b40::PropInstance &inst : p.props) props[inst.kind].push_back(inst);
+		p.boxes = {}; // in the bands now
+		p.props = {};
+		for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)]);
+		for (int k = 0; k < b40::BAY_PROPS; k++) out.bands[i][size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
+	}
+	for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_->get_rid();
+	for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
+}
+
 BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const {
 	thread_local BuildingBodies bodies;
 	Built out;
@@ -113,25 +136,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		near_shells[i].cards = mid_shells[i].cards = nullptr;
 	}
 	if (near) {
-		auto band_of = [this](float thick) {
-			int band = 0;
-			while (band + 1 < BAND_COUNT && thick > look_.part_bands[size_t(std::min(band, int(look_.part_bands.size()) - 1))].thick_max)
-				band++;
-			return std::min(band, BAND_COUNT - 1);
-		};
-		for (size_t i = 0; i < SUB_COUNT; i++) {
-			b40::Shell &p = parts_shells[i];
-			std::array<std::vector<b40::BoxInstance>, BAND_COUNT> boxes;
-			std::array<std::vector<b40::PropInstance>, b40::BAY_PROPS> props;
-			for (const b40::BoxInstance &inst : p.boxes) boxes[size_t(band_of(inst.thick))].push_back(inst);
-			for (const b40::PropInstance &inst : p.props) props[inst.kind].push_back(inst);
-			p.boxes = {}; // in the bands now
-			p.props = {};
-			for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)]);
-			for (int k = 0; k < b40::BAY_PROPS; k++) out.bands[i][size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
-		}
-		for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_->get_rid();
-		for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
+		file_parts(out, parts_shells);
 		std::vector<b40::FlagInstance> flags;
 		for (b40::Shell &s : near_shells) { // the masts' flags, one cloth MultiMesh for the chunk
 			flags.insert(flags.end(), s.flags.begin(), s.flags.end());

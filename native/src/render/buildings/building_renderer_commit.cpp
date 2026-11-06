@@ -18,7 +18,7 @@ namespace city {
 namespace {
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
-constexpr int ROW_STEP = 4, ROW_ORIGIN = 3; // a row of a plain MultiMesh buffer: three lines of a basis and an origin (rs_util.h mm_push_plain)
+constexpr int LINE_FLOATS = 4, LINE_ORIGIN = 3; // a plain MultiMesh buffer: three lines of a basis and an origin each (rs_util.h mm_push_plain)
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 
 // The box of a chunk with nothing to bound yet.
@@ -35,14 +35,20 @@ AABB rows_box(const PackedFloat32Array &buf, int64_t key) {
 	const float *r = buf.ptr();
 	Vector3 mn, mx;
 	for (int64_t i = 0; i < rows; i++, r += MM_PLAIN_STRIDE) {
-		const Vector3 o(r[ROW_ORIGIN], r[ROW_ORIGIN + ROW_STEP], r[ROW_ORIGIN + 2 * ROW_STEP]);
-		const Vector3 reach(std::abs(r[0]) + std::abs(r[1]) + std::abs(r[2]), std::abs(r[ROW_STEP]) + std::abs(r[ROW_STEP + 1]) + std::abs(r[ROW_STEP + 2]),
-				std::abs(r[2 * ROW_STEP]) + std::abs(r[2 * ROW_STEP + 1]) + std::abs(r[2 * ROW_STEP + 2]));
+		const Vector3 o(r[LINE_ORIGIN], r[LINE_ORIGIN + LINE_FLOATS], r[LINE_ORIGIN + 2 * LINE_FLOATS]);
+		const Vector3 reach(std::abs(r[0]) + std::abs(r[1]) + std::abs(r[2]), std::abs(r[LINE_FLOATS]) + std::abs(r[LINE_FLOATS + 1]) + std::abs(r[LINE_FLOATS + 2]),
+				std::abs(r[2 * LINE_FLOATS]) + std::abs(r[2 * LINE_FLOATS + 1]) + std::abs(r[2 * LINE_FLOATS + 2]));
 		mn = i == 0 ? o - reach : mn.min(o - reach);
 		mx = i == 0 ? o + reach : mx.max(o + reach);
 	}
 	const Vector3 pad(AABB_PAD, AABB_PAD, AABB_PAD);
 	return AABB(mn - pad, mx - mn + pad * 2);
+}
+
+// An instance whose basis is three columns in a row.
+void push_row(PackedFloat32Array &buf, const float *bs, const float *origin, float c0, float c1, float c2, float c3) {
+	const Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]), z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]);
+	mm_push_plain(buf, x, y, z, Vector3(origin[0], origin[1], origin[2]), c0, c1, c2, c3);
 }
 
 void grow(AABB &box, const AABB &more) {
@@ -117,22 +123,15 @@ BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool w
 PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstance> &boxes) {
 	PackedFloat32Array buf;
 	for (const b40::BoxInstance &inst : boxes) {
-		Color c = unpack(inst.color);
-		const float *bs = inst.basis;
-		Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]);
-		Vector3 z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]), o(inst.origin[0], inst.origin[1], inst.origin[2]);
-		mm_push_plain(buf, x, y, z, o, c.r, c.g, c.b, float(inst.fin));
+		const Color c = unpack(inst.color);
+		push_row(buf, inst.basis, inst.origin, c.r, c.g, c.b, float(inst.fin));
 	}
 	return buf;
 }
 
 PackedFloat32Array BuildingRenderer::bake_bays(const std::vector<b40::BayInstance> &bays) {
 	PackedFloat32Array buf;
-	for (const b40::BayInstance &inst : bays) {
-		const float *bs = inst.basis;
-		const Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]), z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]);
-		mm_push_plain(buf, x, y, z, Vector3(inst.origin[0], inst.origin[1], inst.origin[2]), inst.shares, inst.wall, inst.trim, inst.code);
-	}
+	for (const b40::BayInstance &inst : bays) push_row(buf, inst.basis, inst.origin, inst.shares, inst.wall, inst.trim, inst.code);
 	return buf;
 }
 
@@ -140,9 +139,7 @@ PackedFloat32Array BuildingRenderer::bake_props(const std::vector<b40::PropInsta
 	PackedFloat32Array buf;
 	for (const b40::PropInstance &inst : props) {
 		const Color c = unpack(inst.color);
-		const float *bs = inst.basis;
-		const Vector3 x(bs[0], bs[1], bs[2]), y(bs[BASIS], bs[BASIS + 1], bs[BASIS + 2]), z(bs[2 * BASIS], bs[2 * BASIS + 1], bs[2 * BASIS + 2]);
-		mm_push_plain(buf, x, y, z, Vector3(inst.origin[0], inst.origin[1], inst.origin[2]), c.r, c.g, c.b, 0);
+		push_row(buf, inst.basis, inst.origin, c.r, c.g, c.b, 0);
 	}
 	return buf;
 }

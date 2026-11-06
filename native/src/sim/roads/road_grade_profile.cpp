@@ -71,13 +71,23 @@ void envelope(std::vector<float> &h, float step, float grade, bool up) {
 	}
 }
 
+// What a rounding of the grade starts from: its reach in samples, a copy of the heights and where the plates end.
+struct Rounding {
+	int radius, last;
+	std::vector<float> &src;
+	Means means;
+	float edge_a, edge_b;
+	explicit Rounding(const GradeProfile &p) : radius(radius_of(VERTICAL_CURVE_M, p.step)), last(int(p.h.size()) - 1), src(scratch() = p.h), means(src),
+			edge_a(p.plate_a / p.step), edge_b((p.len - p.plate_b) / p.step) {}
+};
+
 // Vertical curves wherever the grade changes, off the plates (into_plates: the window may reach into them); `raise`: only up.
 void round_grade_breaks(GradeProfile &p, bool raise, bool into_plates) {
-	const int radius = radius_of(VERTICAL_CURVE_M, p.step), last = int(p.h.size()) - 1;
-	std::vector<float> &src = scratch();
-	src = p.h;
-	const Means m(src);
-	const float edge_a = p.plate_a / p.step, edge_b = (p.len - p.plate_b) / p.step;
+	const Rounding g(p);
+	const int radius = g.radius, last = g.last;
+	const std::vector<float> &src = g.src;
+	const Means &m = g.means;
+	const float edge_a = g.edge_a, edge_b = g.edge_b;
 	for (int i = 0; i <= last; i++) {
 		if (float(i) <= edge_a || float(i) >= edge_b) continue;
 		const int r = into_plates ? std::min({ radius, i, last - i })
@@ -90,11 +100,11 @@ void round_grade_breaks(GradeProfile &p, bool raise, bool into_plates) {
 
 // The join of a level plate and the grade past it rounded, only where the limiter held the grade right at the edge.
 void round_plate_joins(GradeProfile &p, const GradeTune &t) {
-	const int radius = radius_of(VERTICAL_CURVE_M, p.step), last = int(p.h.size()) - 1;
-	std::vector<float> &src = scratch();
-	src = p.h;
-	const Means m(src);
-	const float edge_a = p.plate_a / p.step, edge_b = (p.len - p.plate_b) / p.step;
+	const Rounding g(p);
+	const int radius = g.radius, last = g.last;
+	const std::vector<float> &src = g.src;
+	const Means &m = g.means;
+	const float edge_a = g.edge_a, edge_b = g.edge_b;
 	auto steep = [&](float from, int dir) {
 		const int i0 = int(std::lround(from)), i1 = i0 + dir * radius;
 		if (i1 < 0 || i1 > last) return false;

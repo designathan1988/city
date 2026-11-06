@@ -193,6 +193,7 @@ private:
 		uint8_t mask;
 	};
 	Inputs gather(const CityState &s, const int64_t *chunk_keys, int count) const;
+	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr);
