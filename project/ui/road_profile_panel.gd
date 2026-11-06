@@ -8,24 +8,19 @@ signal applied(index: int, street: bool) # the road the Inspector has picked
 signal saved
 signal closed
 
-const WIDTH_STEP_M := 0.5
-const SPEED_STEP := 10.0
+const WIDEN_BY_M := 0.5
+const PACE_BY := 10.0
 const SPEED_LEAST := 10.0
 const SPEED_MOST := 130.0
 
-var _base := 0
-var _base_id := ""
-var _spec: Dictionary = {}
-var _selected := 1
-var _limits: Dictionary = {}
-var _view: RoadSectionView
-var _total: Label
-var _problem: Label
-var _props: HBoxContainer
-var _name: LineEdit
-var _use: Button
-var _street: Button
-var _on_road := false
+@export var edit := RoadSpecEdit.new()
+@onready var _view: RoadSectionView
+@onready var _total: Label
+@onready var _problem: Label
+@onready var _props: HBoxContainer
+@onready var _name: LineEdit
+@onready var _use: Button
+@onready var _street: Button
 
 
 func _init() -> void:
@@ -33,7 +28,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	_limits = CityStore.query(&"road_spec_limits")
+	edit.limits = CityStore.query(&"road_spec_limits")
 	var col := HudWidgets.vbox(self, &"Pad")
 	var head := HudWidgets.hbox(col)
 	HudWidgets.label(head, &"CardLabel", tr("profileEditor.title"))
@@ -51,12 +46,12 @@ func _ready() -> void:
 	_view = RoadSectionView.new()
 	col.add_child(_view)
 	_view.picked.connect(func(i: int) -> void:
-		_selected = i
+		edit.selected = i
 		_refresh())
 	_view.widened.connect(_set_width)
 	_view.moved.connect(func(from: int, to: int) -> void:
-		RoadSpecOps.moved(_spec, from, to)
-		_selected = to
+		RoadSpecOps.moved(edit.spec, from, to)
+		edit.selected = to
 		_refresh())
 	var palette := HudWidgets.hbox(col)
 	HudWidgets.label(palette, &"MetaLabel", tr("profileEditor.add"))
@@ -68,10 +63,10 @@ func _ready() -> void:
 
 ## The road to start from: a profile of the catalogue, or a saved road's elements.
 func open(profile: Dictionary, spec: Dictionary) -> void:
-	_base = profile.index
-	_base_id = profile.id
-	_spec = spec.duplicate(true)
-	_selected = mini(1, _spec.elements.size() - 1)
+	edit.base = profile.index
+	edit.base_id = profile.id
+	edit.spec = spec.duplicate(true)
+	edit.selected = mini(1, edit.spec.elements.size() - 1)
 	_refresh()
 
 
@@ -83,30 +78,30 @@ func _action(row: Control, key: String, act: Callable) -> Button:
 
 
 func _add(kind: String) -> void:
-	var at := RoadSpecOps.insertion_index(_spec, kind, _selected)
-	_spec.elements.insert(at, RoadSpecOps.new_element(kind, _spec, DataTables.ui("drawers").profile_defaults, _limits.band))
-	_selected = at
+	var at := RoadSpecOps.insertion_index(edit.spec, kind, edit.selected)
+	edit.spec.elements.insert(at, RoadSpecOps.new_element(kind, edit.spec, DataTables.ui("drawers").profile_defaults, edit.limits.band))
+	edit.selected = at
 	_refresh()
 
 
 func _set_width(index: int, metres: float) -> void:
-	var e: Dictionary = _spec.elements[index]
-	if not _limits.has(e.kind):
+	var e: Dictionary = edit.spec.elements[index]
+	if not edit.limits.has(e.kind):
 		return
-	var lo: Vector2 = _limits[e.kind]
-	RoadSpecOps.with_width(_spec, index, clampf(snappedf(metres, WIDTH_STEP_M), lo.x, lo.y))
+	var lo: Vector2 = edit.limits[e.kind]
+	RoadSpecOps.with_width(edit.spec, index, clampf(snappedf(metres, WIDEN_BY_M), lo.x, lo.y))
 	_refresh()
 
 
 func _refresh() -> void:
-	var issues: Array = CityStore.query(&"road_spec_issues", [_base, _spec])
+	var issues: Array = CityStore.query(&"road_spec_issues", [edit.base, edit.spec])
 	var flagged := []
 	var texts := PackedStringArray()
 	for i: Dictionary in issues:
 		flagged.append_array(i.elements)
 		texts.push_back(tr("profile.problem." + String(i.problem)))
-	_view.show_spec(_spec, _selected, flagged)
-	_total.text = tr("profileEditor.totalWidth").format({"width": Formatters.format_measure(RoadSpecOps.total(_spec))})
+	_view.show_spec(edit.spec, edit.selected, flagged)
+	_total.text = tr("profileEditor.totalWidth").format({"width": Formatters.format_measure(RoadSpecOps.total(edit.spec))})
 	_problem.text = " · ".join(texts) if not issues.is_empty() else tr("profileEditor.ok")
 	_use.disabled = not issues.is_empty()
 	_fill_props()
@@ -121,11 +116,11 @@ func _button(row: Control, key: String, act: Callable) -> void:
 ## What the element picked can change, then the road's own.
 func _fill_props() -> void:
 	HudWidgets.clear(_props)
-	if _selected >= 0 and _selected < _spec.elements.size():
-		var e: Dictionary = _spec.elements[_selected]
-		if _limits.has(e.kind):
-			_button(_props, "profileEditor.narrower", _set_width.bind(_selected, e.width - WIDTH_STEP_M))
-			_button(_props, "profileEditor.wider", _set_width.bind(_selected, e.width + WIDTH_STEP_M))
+	if edit.selected >= 0 and edit.selected < edit.spec.elements.size():
+		var e: Dictionary = edit.spec.elements[edit.selected]
+		if edit.limits.has(e.kind):
+			_button(_props, "profileEditor.narrower", _set_width.bind(edit.selected, e.width - WIDEN_BY_M))
+			_button(_props, "profileEditor.wider", _set_width.bind(edit.selected, e.width + WIDEN_BY_M))
 		if e.kind == "lane":
 			_button(_props, "profileEditor.dirForward" if e.dir < 0 else "profileEditor.dirBackward", func() -> void: e.dir = -e.dir)
 			_button(_props, "profileEditor.useBus" if not e.get("bus", false) else "profileEditor.useAll", func() -> void: e.bus = not e.get("bus", false))
@@ -133,34 +128,34 @@ func _fill_props() -> void:
 		if e.kind == "footway" or e.kind == "median":
 			_button(_props, "profileEditor.flush", func() -> void: e.flush = not e.get("flush", false))
 		_button(_props, "profileEditor.remove", func() -> void:
-			_spec.elements.remove_at(_selected)
-			_selected = mini(_selected, _spec.elements.size() - 1))
-	_button(_props, "profileEditor.slower", func() -> void: _spec.speed = maxf(_spec.speed - SPEED_STEP, SPEED_LEAST))
-	HudWidgets.label(_props, &"MetaLabel", tr("profileEditor.speedValue").format({"speed": int(_spec.speed)}))
-	_button(_props, "profileEditor.faster", func() -> void: _spec.speed = minf(_spec.speed + SPEED_STEP, SPEED_MOST))
+			edit.spec.elements.remove_at(edit.selected)
+			edit.selected = mini(edit.selected, edit.spec.elements.size() - 1))
+	_button(_props, "profileEditor.slower", func() -> void: edit.spec.speed = maxf(edit.spec.speed - PACE_BY, SPEED_LEAST))
+	HudWidgets.label(_props, &"MetaLabel", tr("profileEditor.speedValue").format({"speed": int(edit.spec.speed)}))
+	_button(_props, "profileEditor.faster", func() -> void: edit.spec.speed = minf(edit.spec.speed + PACE_BY, SPEED_MOST))
 
 
 ## Opened from a road of the city: applied to it or to its whole street, instead of the road tool's.
 func on_road() -> void:
-	_on_road = true
+	edit.on_road = true
 	_use.text = tr("profileEditor.apply")
 	_street.show()
 
 
 func _apply() -> void:
-	var index: int = CityStore.query(&"road_spec_make", [_base, _spec])
-	if index >= 0 and _on_road:
+	var index: int = CityStore.query(&"road_spec_make", [edit.base, edit.spec])
+	if index >= 0 and edit.on_road:
 		applied.emit(index, false)
 	elif index >= 0:
 		used.emit(index)
 
 
 func _apply_street() -> void:
-	var index: int = CityStore.query(&"road_spec_make", [_base, _spec])
+	var index: int = CityStore.query(&"road_spec_make", [edit.base, edit.spec])
 	if index >= 0:
 		applied.emit(index, true)
 
 
 func _save() -> void:
-	if RoadModels.save(_name.text, _base_id, _spec):
+	if RoadModels.save(_name.text, edit.base_id, edit.spec):
 		saved.emit()

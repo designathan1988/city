@@ -35,10 +35,6 @@ const TIGHT_CHORD_M := 20.0
 const TIGHT_CONTROL_M := 30.0
 const TIGHTEST_M := 8.7
 const NEAR_M := 0.01
-const STUB_OFF_M := 900.0
-const STUB_LEN_M := 300.0
-const STUB_AT_M := 110.0
-const STUB_ARM_M := 60.0
 
 var failures := 0
 
@@ -58,8 +54,8 @@ func _ready() -> void:
 	_rules(e)
 	_side_by_side(e)
 	_curves(e)
+	RoadShapeCases.new(_check).stubs(e)
 	RoadShapeCases.new(_check).run(e)
-	_stubs(e)
 	_composed_road()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -215,19 +211,6 @@ func _curves(e: Vector3) -> void:
 	var rise := q[1].distance_to((q[0] + q[2]) * 0.5)
 	var radius := TIGHT_CHORD_M * TIGHT_CHORD_M / (4 * rise)
 	_check(radius >= TIGHTEST_M - NEAR_M, "raio mínimo do carro de projeto: %s" % radius)
-
-
-## A T laid beside a place where a long road was cut takes the stub back: no short piece caps its mouth.
-func _stubs(e: Vector3) -> void:
-	var a := e + Vector3(0, 0, STUB_OFF_M)
-	var urban: int = CityStore.first_road()
-	CityStore.dispatch(&"build_road", [a, a + Vector3(STUB_LEN_M, 0, 0), false, Vector3.ZERO, urban, PX])
-	CityStore.refresh()
-	var laid: int = CityStore.snapshot.segments
-	var t := a + Vector3(STUB_AT_M, 0, 0)
-	CityStore.dispatch(&"build_road", [t, t + Vector3(0, 0, STUB_ARM_M), false, Vector3.ZERO, urban, PX])
-	CityStore.refresh()
-	_check(CityStore.snapshot.segments == laid + 1, "o toco volta a ser via: %d contra %d" % [CityStore.snapshot.segments, laid])
 
 
 func _check(ok: bool, what: String) -> void:

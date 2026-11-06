@@ -12,7 +12,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float EDGE_IN = 0.01f, OUT_TEST = 0.03f, HALF = 0.5f, PILASTER_K = 1.08f, PIER_MAX_SHARE = 0.3f;
+constexpr float FACE_CLEAR_IN = 0.01f, OUT_TEST = 0.03f, HALF = 0.5f, PILASTER_K = 1.08f, PIER_MAX_SHARE = 0.3f;
 constexpr float PIER_FROM = 0.35f, PIER_TO = 1.35f, GROUND_LIFT = 0.012f, BAND_OUT = 0.07f, BAND_H = 0.22f;
 constexpr float BASE_OUT = 0.12f, BASE_H = 0.32f, SLAB_OUT = 0.03f, SLAB_H = 0.24f;
 constexpr float SLAB_SHADE = 0.86f, PLINTH_OUT = 0.12f, PLINTH_BURY = 0.8f, STEP_MIN = 0.255f;
@@ -103,7 +103,7 @@ void SideEmit::each_bay(const Side &sd, int k, float z, F &&at) {
 		float a0 = W * float(i), am = a0 + W / 2;
 		Point2 dir{ (sd.p1.x - sd.p0.x) / sd.length, (sd.p1.y - sd.p0.y) / sd.length };
 		auto plan_at = [&](float a) { return Point2{ sd.p0.x + dir.x * a + sd.n.x * OUT_TEST, sd.p0.y + dir.y * a + sd.n.y * OUT_TEST }; };
-		bool cl = covered(b, v, level, plan_at(a0 + EDGE_IN)), cm = covered(b, v, level, plan_at(am)), cr = covered(b, v, level, plan_at(a0 + W - EDGE_IN));
+		bool cl = covered(b, v, level, plan_at(a0 + FACE_CLEAR_IN)), cm = covered(b, v, level, plan_at(am)), cr = covered(b, v, level, plan_at(a0 + W - FACE_CLEAR_IN));
 		if (cl && cm && cr) continue;
 		float push = relief_push(v, sd.side, i, k);
 		c.f = Basis{ sd.f.at(a0, z, push), sd.f.e0, sd.f.e1, sd.f.e2 };

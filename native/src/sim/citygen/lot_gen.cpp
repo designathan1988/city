@@ -16,7 +16,7 @@ constexpr double RES = 2, ROAD_PAD = 0.4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RE
 constexpr double FACING_PROBE = 4, FACING_PAD = 8;
 constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32;
 constexpr double EPS = 1e-6;
-constexpr uint8_t PAVED = 1, TAKEN = 2; // what the grid says of a cell
+constexpr uint8_t ROADWAY = 1, TAKEN = 2; // what the grid says of a cell
 constexpr double LOT_END_IN = 3; // a cell and a half: past any rounding of a point to its cell
 constexpr int MIN_THROUGH_ARMS = 3;
 constexpr float STRAIGHT_ON = -0.95f; // two ways out of a node this opposed are one street
@@ -82,7 +82,7 @@ void LotStrips::mark_roads() {
 		arms[size_t(g_.sb[s])].push_back(s);
 	}
 	for (int n = 0; n < g_.nodes(); n++)
-		if (arms[size_t(n)].size() == 1 && g_.bulb[n]) mark(g_.nx[n], g_.nz[n], BULB_R + BULB_WALK, PAVED);
+		if (arms[size_t(n)].size() == 1 && g_.bulb[n]) mark(g_.nx[n], g_.nz[n], BULB_R + BULB_WALK, ROADWAY);
 	for (int s = 0; s < g_.segs(); s++) {
 		const double from = stops_short(s, g_.sa[s], arms[size_t(g_.sa[s])]), to = len(s) - stops_short(s, g_.sb[s], arms[size_t(g_.sb[s])]);
 		int n = std::max(2, int(std::ceil(len(s) / RES)) + 1);
@@ -91,7 +91,7 @@ void LotStrips::mark_roads() {
 			if (at < from || at > to) continue;
 			double x, z;
 			g_.quad[s].at(t_at_length(tables_[s], at), x, z);
-			mark(x, z, half_[s] + ROAD_PAD, PAVED);
+			mark(x, z, half_[s] + ROAD_PAD, ROADWAY);
 		}
 	}
 }
@@ -150,7 +150,7 @@ void LotStrips::mark_lot(const Frame &f) {
 	}
 }
 
-bool LotStrips::land_at(double x, double z) const {
+bool LotStrips::lot_free(double x, double z) const {
 	const int i = ifloor((x - ax_) / RES), j = ifloor((z - az_) / RES);
 	if (i < 0 || j < 0 || i >= W_ || j >= W_) return true;
 	return grid_[size_t(j) * W_ + i] == 0;

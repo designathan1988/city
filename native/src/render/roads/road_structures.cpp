@@ -28,7 +28,7 @@ constexpr int PIER_SIDES = 16;
 constexpr float FOOT_SINK_M = 0.5f; // a column goes this far into the ground
 constexpr float ABUTMENT_SINK_M = 1.f;
 constexpr float BENT_FIRST = 0.5f, BENT_LAST = 0.35f; // of a spacing: the first bent of a road, and how far from its end the last
-constexpr float EDGE_IN_M = 0.02f; // a parapet stands this far in from the casing's edge
+constexpr float DECK_CLEAR_IN_M = 0.02f; // a parapet stands this far in from the casing's edge
 constexpr float GUARD_BASE_UNDER_M = 0.12f;
 constexpr float GROWN = 0.001f; // a parapet of less than this share of its height is none
 constexpr float PORTAL_STEP_MOST_M = 2.4f, PORTAL_STEP_LEAST_M = 0.8f, PORTAL_STEP_SHARE = 1.f / 200.f;
@@ -190,7 +190,7 @@ struct Deck {
 	// The barrier along one edge: its traffic face leans back, and it grows out of the road as the deck leaves the ground.
 	void parapet(double v0, double v1, float side) const {
 		const int n = std::max(1, int(std::ceil((v1 - v0) / tn.structure_parapet_step_m)));
-		const float edge = casing_of(p) - EDGE_IN_M;
+		const float edge = casing_of(p) - DECK_CLEAR_IN_M;
 		struct Section { Vector3 out, in; float foot, top, grow; Vector3 fwd; };
 		std::vector<Section> sec;
 		for (int k = 0; k <= n; k++) {

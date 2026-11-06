@@ -4,19 +4,19 @@
 class_name RoadPanel
 extends RefCounted
 
-const HEIGHT_STEP_M := 0.5
+const RAISE_BY_M := 0.5
 const CURVE_LEAST_M := 20.0
 const CURVE_MOST_M := 280.0
 const CURVE_SHARE := 0.65 # of the road's length
 const CURVE_STRAIGHT_M := 0.5
 const CURVE_STEP_M := 1.0
-const AT_LEAST := 0.15
-const AT_MOST := 0.85
+const CURVE_FROM := 0.15
+const CURVE_TO := 0.85
 const AT_STEP := 0.01
 const AT_MIDDLE := 0.5
 const JOINT_ARMS := 2
-const ZEBRA := 1 # road_network.h NodeCrossing
-const SIGNAL := 2
+const CROSS_ZEBRA := 1 # road_network.h NodeCrossing
+const CROSS_SIGNAL := 2
 
 
 ## `changed`: the panel is read again.
@@ -27,7 +27,7 @@ static func road(col: Control, info: Dictionary, at: Vector3, changed: Callable,
 	var most := maxf(CURVE_LEAST_M, minf(CURVE_MOST_M, float(info.length_m) * CURVE_SHARE))
 	var bent := absf(float(info.bend_m)) >= CURVE_STRAIGHT_M
 	var curve := HudWidgets.range_row(col, tr_key("inspector.curvature"), -most, most, CURVE_STEP_M, clampf(info.bend_m, -most, most), _metres, _noop)
-	var place := HudWidgets.range_row(col, tr_key("inspector.curvePosition"), AT_LEAST, AT_MOST, AT_STEP, float(info.bend_at) if bent else AT_MIDDLE, _percent, _noop)
+	var place := HudWidgets.range_row(col, tr_key("inspector.curvePosition"), CURVE_FROM, CURVE_TO, AT_STEP, float(info.bend_at) if bent else AT_MIDDLE, _percent, _noop)
 	place.editable = bent
 	curve.drag_ended.connect(func(did: bool) -> void:
 		if did:
@@ -74,7 +74,7 @@ static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Cal
 static func _stepper(col: Control, key: String, node: int, metres: float, changed: Callable) -> void:
 	var row := HudWidgets.option_row(col, tr_key(key))
 	var label := "%.1f m" % metres
-	for step: float in [-HEIGHT_STEP_M, HEIGHT_STEP_M]:
+	for step: float in [-RAISE_BY_M, RAISE_BY_M]:
 		var b := HudWidgets.button(&"Ghost", "", "\u2212" if step < 0.0 else "+", "junction.lower" if step < 0.0 else "junction.raise", "icon_btn", "icon_btn")
 		b.pressed.connect(func() -> void:
 			CityStore.dispatch(&"set_node_height", [node, metres + step])
@@ -98,3 +98,36 @@ static func _percent(v: float) -> String:
 
 static func _noop(_v: float) -> void:
 	pass
+
+
+static func _work(row: Control, text: String, command: StringName, args: Array, redraw: Callable) -> void:
+	var b := HudWidgets.button(&"Ghost", "", text, "", "", "opt_row_h")
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.pressed.connect(func() -> void:
+		if CityStore.dispatch(command, args).get("ok", false):
+			redraw.call())
+	row.add_child(b)
+
+
+## What can be put on a road: a height point, a crossing, a way back through its median.
+static func works(row: Control, info: Dictionary, at: Vector3, redraw: Callable) -> void:
+	_work(row, row.tr("inspector.addHeightPoint"), &"split_road", [at], redraw)
+	_work(row, row.tr("inspector.addZebra"), &"add_crossing", [at, CROSS_ZEBRA], redraw)
+	_work(row, row.tr("inspector.addSignalCrossing"), &"add_crossing", [at, CROSS_SIGNAL], redraw)
+	if info.median:
+		_work(row, row.tr("inspector.addUturnToEnd"), &"add_uturn", [at, true], redraw)
+		_work(row, row.tr("inspector.addUturnToStart"), &"add_uturn", [at, false], redraw)
+
+
+## A dead end of the road: "Ponta inicial [balão]"; the choice comes back from the core, so a refused one stays off.
+static func end_row(col: Control, e: Dictionary, redraw: Callable) -> void:
+	var row := HudWidgets.hbox(col)
+	var name := HudWidgets.label(row, &"MutedLabel", col.tr("inspector.endStart" if e.start else "inspector.endEnd"))
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var b := HudWidgets.button(&"IconButton", "roundabout", "", "inspector.end.bulb", "icon_btn", "icon_btn")
+	b.toggle_mode = true
+	b.set_pressed_no_signal(e.bulb)
+	b.pressed.connect(func() -> void:
+		CityStore.dispatch(&"set_road_end", [e.node, not e.bulb])
+		redraw.call())
+	row.add_child(b)

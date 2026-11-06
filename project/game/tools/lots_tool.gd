@@ -6,12 +6,12 @@ extends ToolBase
 ## The kinds of cut, as the core takes them (LotCutKind).
 const CUT_ACROSS := 0
 const CUT_ALONG := 1
-const CUT_LINE := 2
+const CUT_DRAWN := 2
 ## What of a corner or a side the pointer takes, in screen pixels.
-const PICK_PX := 14.0
-const LINE_PX := 2.0
+const TAKE_PX := 14.0
+const DRAWN_PX := 2.0
 ## How far a lot's point reaches for a footway or a corner: pixels at this zoom, and never less than these metres.
-const SNAP_PX := 16.0
+const CATCH_PX := 16.0
 const SNAP_LEAST_M := 2.5
 const MARK_M := 0.9
 
@@ -64,7 +64,7 @@ func _done(r: Dictionary) -> void:
 
 
 func _width(at: Vector3) -> float:
-	return ctl.px_at(at) * LINE_PX
+	return ctl.px_at(at) * DRAWN_PX
 
 
 func _closed(points: PackedVector3Array) -> PackedVector3Array:
@@ -86,7 +86,7 @@ func _show(extra: Array = []) -> void:
 
 ## A point of a lot by the footways, the blocks' corners and the other lots' corners; `apart` is the corner being dragged.
 func _snap(p: Vector3, apart := Vector3.INF) -> Vector3:
-	return CityStore.query(&"lot_snap_point", [p, maxf(SNAP_LEAST_M, ctl.px_at(p) * SNAP_PX), apart])
+	return CityStore.query(&"lot_snap_point", [p, maxf(SNAP_LEAST_M, ctl.px_at(p) * CATCH_PX), apart])
 
 
 func _mark(p: Vector3) -> Dictionary:
@@ -95,7 +95,7 @@ func _mark(p: Vector3) -> Dictionary:
 
 ## The corner under `p`, or INF.
 func _corner(p: Vector3) -> Vector3:
-	var reach := ctl.px_at(p) * PICK_PX
+	var reach := ctl.px_at(p) * TAKE_PX
 	var best := Vector3.INF
 	for l: Dictionary in _lots:
 		for q: Vector3 in l.points:
@@ -133,7 +133,7 @@ func click(p: Vector3) -> void:
 		"add":
 			_from = _snap(p)
 		"polygon":
-			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * PICK_PX:
+			if _points.size() >= 3 and Vector2(p.x - _points[0].x, p.z - _points[0].z).length() < ctl.px_at(p) * TAKE_PX:
 				_done(CityStore.dispatch(&"lot_add_polygon", [_points]))
 			else:
 				_points.push_back(_snap(p))
@@ -142,7 +142,7 @@ func click(p: Vector3) -> void:
 			_from = _corner(p)
 		"curve":
 			for l: Dictionary in _lots:
-				var k := _side_at(l, p, ctl.px_at(p) * PICK_PX)
+				var k := _side_at(l, p, ctl.px_at(p) * TAKE_PX)
 				if k >= 0:
 					_side = [l.points[k], l.points[(k + 1) % l.points.size()]]
 					_from = p
@@ -152,7 +152,7 @@ func click(p: Vector3) -> void:
 				var k := _side_at(lot, p, INF)
 				_done(CityStore.dispatch(&"lot_set_front", [id, k]))
 		"split":
-			if cut_kind == CUT_LINE:
+			if cut_kind == CUT_DRAWN:
 				_from = p
 			elif id != 0:
 				_done(CityStore.dispatch(&"lot_split", [id, cut_kind, parts, p, p]))
@@ -210,7 +210,7 @@ func release(p: Vector3) -> void:
 	match mode:
 		"add":
 			var ring := _land.at(p)
-			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * PICK_PX and not ring.is_empty():
+			if Vector2(p.x - _from.x, p.z - _from.z).length() < ctl.px_at(p) * TAKE_PX and not ring.is_empty():
 				_done(CityStore.dispatch(&"lot_add_polygon", [ring])) # a click takes what the streets propose
 			else:
 				_done(CityStore.dispatch(&"lot_add_rect", [_from, _snap(p), CityStore.query(&"lot_angle_at", [_from])]))
@@ -222,13 +222,13 @@ func release(p: Vector3) -> void:
 		"split":
 			var id: int = CityStore.query(&"lot_at", [_from.lerp(p, 0.5)])
 			if id != 0:
-				_done(CityStore.dispatch(&"lot_split", [id, CUT_LINE, parts, _from, p]))
+				_done(CityStore.dispatch(&"lot_split", [id, CUT_DRAWN, parts, _from, p]))
 	_from = Vector3.INF
 
 
 func hover(p: Vector3) -> void:
 	var extra := []
-	if mode == "split" and cut_kind != CUT_LINE:
+	if mode == "split" and cut_kind != CUT_DRAWN:
 		var id: int = CityStore.query(&"lot_at", [p])
 		var lines: PackedVector3Array = CityStore.query(&"lot_cut_lines", [id, cut_kind, parts, p, p]) if id != 0 else PackedVector3Array()
 		for i in range(0, lines.size() - 1, 2):

@@ -5,7 +5,7 @@ extends ToolBase
 
 ## A drag shorter than this is a click.
 const DRAG_MIN_M := 2.0
-const LINE_PX := 2.0
+const DRAWN_PX := 2.0
 
 var _corner := Vector3.INF
 
@@ -26,7 +26,7 @@ func drag(p: Vector3) -> void:
 	var ring := PackedVector3Array()
 	for at: Vector2 in [Vector2(_corner.x, _corner.z), Vector2(p.x, _corner.z), Vector2(p.x, p.z), Vector2(_corner.x, p.z), Vector2(_corner.x, _corner.z)]:
 		ring.push_back(Vector3(at.x, CityStore.query(&"height_at", [at.x, at.y]), at.y))
-	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * LINE_PX}])
+	ctl.preview.show_ribbons([{"points": ring, "half_width": ctl.px_at(p) * DRAWN_PX}])
 
 
 func click(p: Vector3) -> void:

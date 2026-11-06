@@ -61,19 +61,13 @@ public:
 	// What the inside of building `id` costs when it is cut open at `level` for a camera looking along step `dir`: the near
 	// level's triangles and instanced boxes of the facades and roofs, and of the interior alone (render_cost probe; the map
 	// lock held shared by the caller).
-	struct InteriorCost {
-		int shell_triangles = 0, shell_boxes = 0; // the cut building without its inside
-		int inside_triangles = 0, inside_boxes = 0; // the floor, cores, walls and furniture
-		int64_t inside_bytes = 0;
-	};
+	using InteriorCost = BuildingInteriorCost;
 	InteriorCost interior_cost(const CityState &s, int id, int level, int dir) const;
 	godot::Dictionary building_cost() const; // triangles and bytes of every level's surfaces, whole city as it stands (tests)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones, at two grains of size
 	int pending() const; // what the view asks and has not got: unasked for want of budget, asked, or done and not yet drawn
 	// What the view asked of the last frame and what the frame's budget left unasked.
-	struct ViewNeed {
-		int want = 0, unmet = 0, requested = 0, done = 0;
-	};
+	using ViewNeed = BuildingViewNeed;
 	ViewNeed view_need() const;
 	// The chunk at a point as the frame left it (the tests read it): bit 0 near built, 1 mid built, 2 shown, 3 detail, 4 known, 5 far mesh.
 	int chunk_flags(float x, float z) const;

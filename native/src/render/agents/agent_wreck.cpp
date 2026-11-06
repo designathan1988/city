@@ -16,10 +16,10 @@ namespace {
 constexpr float DENT_WIDE_M = 0.45f, DENT_FINE_M = 0.18f, DENT_WIDE_DEEP_M = 0.04f, DENT_FINE_DEEP_M = 0.015f, SAG_M = 0.12f;
 constexpr float DENT_X = 0.5f, DENT_Z = 0.6f, Z_PACE = 1.3f, Y_PACE = 0.7f;
 constexpr int CORNERS = 3;
-constexpr float SEED_A = 97.f, SEED_B = 61.f, SEED_C = 13.f;
+constexpr float WRECK_HASH_A = 97.f, SEED_B = 61.f, SEED_C = 13.f;
 
 float wave(const Vector3 &p, float k, uint32_t seed) {
-	return std::sin(p.x * k + float(seed % uint32_t(SEED_A))) * std::cos(p.z * k * Z_PACE + float(seed % uint32_t(SEED_B))) + std::sin(p.y * k * Y_PACE + float(seed % uint32_t(SEED_C)));
+	return std::sin(p.x * k + float(seed % uint32_t(WRECK_HASH_A))) * std::cos(p.z * k * Z_PACE + float(seed % uint32_t(SEED_B))) + std::sin(p.y * k * Y_PACE + float(seed % uint32_t(SEED_C)));
 }
 } // namespace
 

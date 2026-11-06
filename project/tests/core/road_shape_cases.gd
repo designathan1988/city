@@ -16,6 +16,12 @@ const TICKS := 5
 const UTURN_OFF_M := 80.0
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
 
+const STUB_OFF_M := 900.0
+const STUB_LEN_M := 300.0
+const STUB_AT_M := 110.0
+const STUB_ARM_M := 60.0
+const STUB_PX := 0.25
+
 var _check: Callable
 var _mid := Vector3.ZERO
 
@@ -70,7 +76,7 @@ func _bend(info: Dictionary, mid: Vector3) -> void:
 
 func _crossing(at: Vector3) -> void:
 	var before: Dictionary = CityStore.query(&"state_hash")
-	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]:
+	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]:
 		var made: Dictionary = CityStore.dispatch(&"add_crossing", [at, kind])
 		_check.call(made.get("ok", false), "faixa no meio da quadra: %s" % [made])
 		var node: Dictionary = CityStore.query(&"inspect", [at])
@@ -80,9 +86,9 @@ func _crossing(at: Vector3) -> void:
 		CityStore.dispatch(&"undo")
 		CityStore.dispatch(&"undo")
 	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer a faixa volta à mesma cidade")
-	var near_end: Dictionary = CityStore.dispatch(&"add_crossing", [at - Vector3(ROAD_M * QUARTER - 1.0, 0, 0), RoadPanel.ZEBRA])
+	var near_end: Dictionary = CityStore.dispatch(&"add_crossing", [at - Vector3(ROAD_M * QUARTER - 1.0, 0, 0), RoadPanel.CROSS_ZEBRA])
 	_check.call(not near_end.get("ok", true), "sem lugar para os carros pararem, a faixa é recusada")
-	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]: # the lanes and the junction are made again round it, with the fleet on
+	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]: # the lanes and the junction are made again round it, with the fleet on
 		CityStore.dispatch(&"add_crossing", [at, kind])
 		CityStore.step_ticks(TICKS)
 		CityStore.dispatch(&"undo")
@@ -166,3 +172,16 @@ func _join(mid: Vector3) -> void:
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer a união volta à mesma cidade")
+
+
+## A T laid beside a place where a long road was cut takes the stub back: no short piece caps its mouth.
+func stubs(e: Vector3) -> void:
+	var a := e + Vector3(0, 0, STUB_OFF_M)
+	var urban: int = CityStore.first_road()
+	CityStore.dispatch(&"build_road", [a, a + Vector3(STUB_LEN_M, 0, 0), false, Vector3.ZERO, urban, STUB_PX])
+	CityStore.refresh()
+	var laid: int = CityStore.snapshot.segments
+	var t := a + Vector3(STUB_AT_M, 0, 0)
+	CityStore.dispatch(&"build_road", [t, t + Vector3(0, 0, STUB_ARM_M), false, Vector3.ZERO, urban, STUB_PX])
+	CityStore.refresh()
+	_check.call(CityStore.snapshot.segments == laid + 1, "o toco volta a ser via: %d contra %d" % [CityStore.snapshot.segments, laid + 1])

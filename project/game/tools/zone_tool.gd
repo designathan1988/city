@@ -7,7 +7,7 @@ const DAB_SPACING := 0.5
 ## A fast drag reports the pointer far apart: the whole way is painted, up to this many dabs at a report (lotTool.ts move).
 const MOST_DABS := 400
 ## What the brush paints with Shift held: no zone (lotTool.ts `remove`).
-const NO_ZONE := 0
+const UNZONED := 0
 
 var zone := 1
 var radius := 0.0
@@ -23,7 +23,7 @@ func enter() -> void:
 
 func click(p: Vector3) -> void:
 	_last = p
-	_painting = NO_ZONE if Input.is_key_pressed(KEY_SHIFT) else zone
+	_painting = UNZONED if Input.is_key_pressed(KEY_SHIFT) else zone
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 	_dab(p)
 

@@ -16,7 +16,7 @@ namespace city {
 static constexpr double FAR_OFF_M = 1e18; // a box before its first point
 
 namespace {
-constexpr double CORNER_REACH_M = 0.8, SIDE_REACH_M = 1.2;
+constexpr double CORNER_TAKE_M = 0.8, SIDE_REACH_M = 1.2;
 
 void bounds(const std::vector<LotPoint> &q, double &x0, double &z0, double &x1, double &z1) {
 	for (const LotPoint &p : q) {
@@ -121,7 +121,7 @@ EditResult move_lot_corner(CityState &s, const LotPoint &from, const LotPoint &t
 		bool moved = false;
 		std::vector<LotPoint> before = l.corners;
 		for (LotPoint &q : l.corners)
-			if (lot_point_near(q, from, CORNER_REACH_M)) {
+			if (lot_point_near(q, from, CORNER_TAKE_M)) {
 				q = to;
 				moved = true;
 			}

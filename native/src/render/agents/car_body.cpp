@@ -21,7 +21,7 @@ namespace {
 
 constexpr float DEGENERATE_AREA = 1e-10f; // a band with no area: not drawn
 constexpr float BED_LIP_M = 0.04f; // a pick-up's bed cover stops this short of the cab
-constexpr float CARD_IN_M = 0.03f; // a door's card, this far inside its skin
+constexpr float PANEL_IN_M = 0.03f; // a door's card, this far inside its skin
 constexpr float SILL_SPAN_M = 4.f; // a pane's colour: its sill's height over this (agent_door.gdshaderinc)
 constexpr int KERB_SIDE = -1; // the door that opens at the kerb: the front one on the -X side, the driver's on +X (kerb_stops.cpp door_places)
 constexpr int FINE_ROWS[RING] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
@@ -199,7 +199,7 @@ void gap(MeshBuilder &mb, const Loft &lf, const Rows &rows, const std::vector<fl
 			if (!swings || reg[r] == Region::GLASS) continue;
 			// Its inside: what an open door shows, facing the cabin.
 			const Vector2 card = agent_tag(AgentTag::FIXED, Limb::DOOR);
-			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * CARD_IN_M) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
+			for (int c = 0; c < 4; c++) v[c] = mb.add((pos[c] - nrm[c] * PANEL_IN_M) * mirror, -nrm[c] * mirror, trim.blackout, hinge, card);
 			mb.tri(v[0], v[2], v[1], -face * mirror);
 			mb.tri(v[0], v[3], v[2], -face * mirror);
 		}

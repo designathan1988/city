@@ -24,8 +24,8 @@ using Clipper2Lib::Point64;
 
 namespace {
 constexpr double UNITS_PER_M = 1000;
-constexpr double RIBBON_STEP_M = 4; // a curve's outline in chords of this length
-constexpr int BULB_STEPS = 24;
+constexpr double ALONG_PACE_M = 4; // a curve's outline in chords of this length
+constexpr int ROUND_STEPS = 24;
 constexpr double PAVING_MARGIN_M = 2; // past the box, so the cut inside it is the whole map's
 constexpr double PLATE_REACH_M = 40; // how far a junction's plate may stand from the roads that meet it
 constexpr double CROSSED_AREA_M2 = 1; // less off a lot is the paving's own outline, not a road through it
@@ -68,7 +68,7 @@ void add_ribbon(const RoadNetwork &net, int seg, Paths64 &out) {
 	const Profile &p = net.profile_of(seg);
 	const double from = g.retreat_a, to = g.len - g.retreat_b;
 	if (p.rail || p.edges.empty() || to <= from) return;
-	const int steps = std::max(1, int(std::ceil((to - from) / RIBBON_STEP_M)));
+	const int steps = std::max(1, int(std::ceil((to - from) / ALONG_PACE_M)));
 	Path64 left, right;
 	for (int k = 0; k <= steps; k++) {
 		const double v = from + (to - from) * k / steps;
@@ -114,8 +114,8 @@ void add_junction(const RoadNetwork &net, int node, Paths64 &out) {
 		if (!nd.bulb) return;
 		Path64 circle;
 		const double r = BULB_R + BULB_WALK;
-		for (int i = 0; i < BULB_STEPS; i++) {
-			const double a = 2 * PI_D * i / BULB_STEPS;
+		for (int i = 0; i < ROUND_STEPS; i++) {
+			const double a = 2 * PI_D * i / ROUND_STEPS;
 			circle.push_back(unit_point(nd.x + r * std::cos(a), nd.z + r * std::sin(a)));
 		}
 		add_positive(out, std::move(circle));

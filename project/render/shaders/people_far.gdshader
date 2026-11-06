@@ -11,7 +11,7 @@ uniform float frames;
 const float TAU_RAD = 6.28318530718;
 const float CARD_ASPECT = 0.5; // a frame is twice as tall as wide
 const float CUT = 0.5; // the texels of the picture that are drawn
-const float ROUGH = 0.85;
+const float FAR_ROUGH = 0.85;
 
 varying flat float v_layer;
 varying vec2 v_uv;
@@ -36,5 +36,5 @@ void fragment() {
 	ALBEDO = texel.rgb;
 	ALPHA = texel.a;
 	ALPHA_SCISSOR_THRESHOLD = CUT;
-	ROUGHNESS = ROUGH;
+	ROUGHNESS = FAR_ROUGH;
 }

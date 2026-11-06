@@ -7,7 +7,7 @@
 namespace city {
 
 namespace {
-constexpr double JOIN_PX = 4; // a line's end takes a junction or road this near, as a pointer would
+constexpr double MEET_PX = 4; // a line's end takes a junction or road this near, as a pointer would
 } // namespace
 
 std::vector<BlockLine> block_lines(double x, double z, const BlockGrid &g) {
@@ -24,7 +24,7 @@ EditResult lay_blocks(CityState &s, double x, double z, const BlockGrid &g, int 
 	EditResult all;
 	all.error = "hint.road.invalid";
 	for (const BlockLine &l : block_lines(x, z, g)) {
-		const Anchor a = find_anchor(s, l.a.x, l.a.z, JOIN_PX), b = find_anchor(s, l.b.x, l.b.z, JOIN_PX);
+		const Anchor a = find_anchor(s, l.a.x, l.a.z, MEET_PX), b = find_anchor(s, l.b.x, l.b.z, MEET_PX);
 		if (!plan_road(s, a, false, 0, 0, b, profile).ok) continue; // a line the land refuses: the others stand
 		const EditResult r = build_road(s, a, false, 0, 0, b, profile);
 		if (!r.ok) return r; // no money left half way: the caller rolls the whole grid back

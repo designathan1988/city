@@ -14,7 +14,7 @@
 
 namespace city {
 
-constexpr int HOLD_SHARE = 8; // the view goes this share of a field's window from where it was made before it is made again
+constexpr int LINGER_SHARE = 8; // the view goes this share of a field's window from where it was made before it is made again
 
 class FogField {
 public:

@@ -20,7 +20,7 @@ const FORCE_STEP := 1.0 # the bomb's force goes up by whole steps (data/catalog/
 @onready var road_options := RoadOptions.new()
 @onready var category: Dictionary = {}
 @onready var catalog: RoadCatalog
-var _editor: RoadProfilePanel
+@onready var _editor: RoadProfilePanel
 @onready var _head: HBoxContainer
 @onready var strip: Container
 @onready var _tabs: Dictionary = {}
@@ -53,8 +53,8 @@ func _ready() -> void:
 	for p in CityStore.query(&"road_profiles"):
 		_profile_ids[p.id] = p.index
 	catalog = RoadCatalog.new()
-	catalog.minimum_size_changed.connect(_fit)
-	get_viewport().size_changed.connect(_fit)
+	catalog.minimum_size_changed.connect(DrawerStrips.fit.bind(self))
+	get_viewport().size_changed.connect(DrawerStrips.fit.bind(self))
 	road_options.alignment_picked.connect(func(a: int) -> void: retool(a, "ROAD", "alignment"))
 	road_options.option_picked.connect(func(key: String, value: Variant) -> void: retool(value, "ROAD", key))
 	road_options.road_picked.connect(pick_road)
@@ -241,22 +241,4 @@ func settle() -> void:
 	options_panel.visible = options.get_child_count() > 0
 	options_panel.reset_size()
 	options_panel.offset_top = -options_panel.size.y - HudWidgets.px("margin")
-	_fit.call_deferred()
-
-
-## The room left by the options; the catalogue takes all it needs of it, the panel stands centred there, on its bottom edge.
-func _fit() -> void:
-	if not visible:
-		return
-	var margin := HudWidgets.px("margin")
-	var vw := get_viewport_rect().size.x
-	var left := margin + (HudWidgets.px("opts_w") + margin if options_panel.visible else 0.0)
-	var room := vw - margin - left
-	if catalog.is_inside_tree(): # built when it first shows (road_catalog.gd _ready)
-		catalog.fit(room - HudWidgets.px("gap"))
-	get_tree().call_group(FITS, &"fit", room - HudWidgets.px("gap"))
-	var need := get_combined_minimum_size()
-	var width := minf(need.x, room)
-	offset_left = left + (room - width) * 0.5 - vw * 0.5
-	offset_right = offset_left + width
-	offset_top = offset_bottom - need.y
+	DrawerStrips.fit.call_deferred(self)

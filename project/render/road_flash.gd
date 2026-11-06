@@ -2,8 +2,8 @@
 class_name RoadFlash
 extends MeshInstance3D
 
-const RISE_S := 0.1
-const FADE_S := 0.75
+const GLOW_IN_S := 0.1
+const DIE_OUT_S := 0.75
 
 var _mesh := ImmediateMesh.new()
 var _material := StandardMaterial3D.new()
@@ -49,7 +49,7 @@ func _alpha(share: float) -> void:
 
 func _process(delta: float) -> void:
 	_born += delta
-	_alpha(smoothstep(0.0, RISE_S, _born) * (1.0 - smoothstep(RISE_S, FADE_S, _born)))
-	if _born > FADE_S:
+	_alpha(smoothstep(0.0, GLOW_IN_S, _born) * (1.0 - smoothstep(GLOW_IN_S, DIE_OUT_S, _born)))
+	if _born > DIE_OUT_S:
 		hide()
 		set_process(false)

@@ -18,21 +18,7 @@ static func path(key: String) -> String:
 
 ## Every model saved, by name: {key, name, bytes, function, zone}.
 static func list() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	if not DirAccess.dir_exists_absolute(dir()): # nothing saved yet
-		return out
-	for file in DirAccess.get_files_at(dir()):
-		if file.get_extension() != EXT:
-			continue
-		var f := FileAccess.open("%s/%s" % [dir(), file], FileAccess.READ)
-		if f == null:
-			continue
-		var entry: Variant = f.get_var()
-		if entry is Dictionary:
-			entry.key = file.get_basename()
-			out.append(entry)
-	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.name.naturalnocasecmp_to(b.name) < 0)
-	return out
+	return SavedEntries.list(dir(), EXT)
 
 
 ## False when the file could not be written: a save that did not happen is told, not left for the player to find.

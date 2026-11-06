@@ -40,7 +40,7 @@ inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &n
 // A second instance of what a draw shows, in the shadow maps alone and only out to `end`: what stops being wider than a texel of the
 // sun stops being drawn four times over, and the picture keeps it. The draw itself casts nothing.
 // A range holds this share of itself either way of its edge (Godot: margins with the fade disabled are a hysteresis): a camera standing at the edge does not flicker.
-constexpr float RANGE_HOLD_SHARE = 0.03f;
+constexpr float RANGE_LINGER_SHARE = 0.03f;
 
 struct ShadowTwin {
 	godot::RID inst;
@@ -62,7 +62,7 @@ struct ShadowTwin {
 	}
 	void range(float end) const {
 		if (inst.is_valid())
-			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, 0, end, 0, end * RANGE_HOLD_SHARE,
+			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, 0, end, 0, end * RANGE_LINGER_SHARE,
 					godot::RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	}
 	void visible(bool on) const {
@@ -126,7 +126,7 @@ struct MultiMeshDraw {
 	}
 	void range(float begin, float end) const {
 		if (inst.is_valid())
-			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, begin, end, begin * RANGE_HOLD_SHARE, end * RANGE_HOLD_SHARE,
+			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, begin, end, begin * RANGE_LINGER_SHARE, end * RANGE_LINGER_SHARE,
 					godot::RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	}
 	void free() {

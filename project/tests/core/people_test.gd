@@ -101,7 +101,7 @@ func _clips() -> void:
 
 ## People go over a crossing between junctions, a zebra and one with a signal of its own: put where walkers are, and counted while they use it.
 func _mid_block() -> void:
-	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]:
+	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]:
 		var made := false
 		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 		for key: String in census.spots:

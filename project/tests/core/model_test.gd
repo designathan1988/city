@@ -13,6 +13,10 @@ const REACH_M := 12.0
 const WAIT_FRAMES := 240
 const SEARCH_STEP_M := 36.0
 
+const OPEN_OFF_M := 120.0
+const OPEN_ROAD_M := 200.0
+const OPEN_REACH_M := 40.0
+const OPEN_PX := 0.25
 var failures := 0
 
 
@@ -56,7 +60,12 @@ func _catalogue() -> void:
 func _a_road() -> Vector3:
 	var bytes: PackedByteArray = CityStore.query(&"model_bytes", [HOUSE])
 	var size: Vector3 = CityStore.query(&"body_size", [bytes])
-	var bounds: Dictionary = CityStore.query(&"city_bounds")
+	# every street of the town has its lots built, as in the 4.0: a new one out on the open land has room
+	var edge: Dictionary = CityStore.query(&"city_bounds")
+	var a := Vector3(edge.max.x + OPEN_OFF_M, 0, 0)
+	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, a + Vector3(0, 0, OPEN_ROAD_M), false, Vector3.ZERO, CityStore.first_road(), OPEN_PX])
+	_check(laid.get("ok", false), "via no campo aberto: %s" % [laid])
+	var bounds := {"min": a - Vector3(OPEN_REACH_M, 0, 0), "max": a + Vector3(OPEN_REACH_M, 0, OPEN_ROAD_M)}
 	var x: float = bounds.min.x
 	while x < bounds.max.x:
 		var z: float = bounds.min.z

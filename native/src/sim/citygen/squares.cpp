@@ -21,7 +21,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr double CELL_M = 60; // the grid lots are filed in while they are joined
+constexpr double FILE_CELL_M = 60; // the grid lots are filed in while they are joined
 constexpr float LAWN_H = 0.06f;
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
@@ -69,7 +69,7 @@ std::vector<std::vector<int>> blocks_of(const std::vector<Plot> &plots, float re
 	Joined j{ std::vector<int>(plots.size()) };
 	std::iota(j.parent.begin(), j.parent.end(), 0);
 	std::map<std::pair<int, int>, std::vector<int>> grid;
-	auto cell = [](float v) { return int(std::floor(v / CELL_M)); };
+	auto cell = [](float v) { return int(std::floor(v / FILE_CELL_M)); };
 	for (size_t i = 0; i < plots.size(); i++) grid[{ cell(plots[i].centre.x), cell(plots[i].centre.y) }].push_back(int(i));
 	for (size_t i = 0; i < plots.size(); i++)
 		for (int dx = -1; dx <= 1; dx++)

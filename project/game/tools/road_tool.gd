@@ -10,9 +10,6 @@ extends ToolBase
 enum Alignment { STRAIGHT, CURVE, FREE }
 
 ## A long stroke keeps every sample up to DENSE_SAMPLES, then one a metre, up to MOST_SAMPLES.
-const DENSE_SAMPLES := 256
-const MOST_SAMPLES := 4096
-const SPARSE_SAMPLE_M := 1.0
 const WHOLE_M := 0.000001 # a height this near a whole metre is on it
 
 var alignment: Alignment = Alignment.STRAIGHT
@@ -24,7 +21,6 @@ var chain_lift := 0.0
 var height := 0.0
 ## The ground under the pointer, the last it was heard of: a change of height moves the road in hand under it.
 var pointer := Vector3.INF
-const ROUND_TO_M := 10
 
 ## The profile the road is laid with: `profile` under the options of the class (road_variant).
 var drawn := 0
@@ -92,7 +88,7 @@ func drag(ground: Vector3) -> void:
 		_bend_to(p)
 	elif not draft.is_empty():
 		draft.end = _end_at(draft.start, p)
-		_sample(p)
+		RoadDraft.sample(draft, p)
 		draft.dragged = draft.dragged or p.distance_to(draft.pressed) > ctl.px_at(p) * DataTables.tuning("road_click_px")
 		_preview(_draft_pieces(), draft.lift)
 
@@ -118,7 +114,7 @@ func release(ground: Vector3) -> void:
 	var p := ground if ground == Vector3.INF else _aim(ground)
 	var d := draft
 	var click_m: float = ctl.px_at(d.pressed) * DataTables.tuning("road_click_px")
-	var traveled := _traveled(d)
+	var traveled := RoadDraft.traveled(d)
 	var clicked: bool = not d.dragged and (p == Vector3.INF or p.distance_to(d.pressed) < click_m)
 	var pieces := _draft_pieces()
 	draft = {}
@@ -194,24 +190,6 @@ func _end_at(start: Vector3, p: Vector3) -> Dictionary:
 	return CityStore.query(&"road_end", [start, p, ctl.px_at(p), s.on, s.angles, s.grid, _cell, _cell_offset])
 
 
-func _sample(p: Vector3) -> void:
-	var samples: PackedVector3Array = draft.samples
-	if samples.size() >= MOST_SAMPLES:
-		return
-	if samples.size() >= DENSE_SAMPLES and p.distance_to(samples[-1]) < SPARSE_SAMPLE_M:
-		return
-	samples.push_back(p)
-	draft.samples = samples
-
-
-func _traveled(d: Dictionary) -> float:
-	var total := 0.0
-	var samples: PackedVector3Array = d.samples
-	for i in range(1, samples.size()):
-		total += samples[i].distance_to(samples[i - 1])
-	return total + samples[-1].distance_to(d.end.position)
-
-
 func _draft_pieces() -> PackedVector3Array:
 	return _pieces(draft.start, draft.end.position, false, Vector3.ZERO, draft.samples)
 
@@ -234,27 +212,13 @@ func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 		_clear_preview()
 		return
 	var ok: bool = _last_plan.ok and _last_plan.affordable
-	ctl.preview.show_road(_last_plan, _paint(), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
-	var text := _measure()
+	ctl.preview.show_road(_last_plan, RoadDraft.paint(drawn), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
+	var text := RoadDraft.measure(_last_plan)
 	if not _last_plan.ok:
 		text += " · " + reason(_last_plan)
 	elif not _last_plan.affordable:
 		text += " · " + tr("rule.short.funds")
 	ctl.tagged.emit(text, pieces[-1], ok)
-
-
-## The paint the preview draws: none on a road without lines.
-func _paint() -> String:
-	var p: Dictionary = CityStore.query(&"road_profiles")[drawn]
-	if not p.painted:
-		return ""
-	return "yellow" if p.yellow else "white"
-
-
-## "120 m · R$ 150.000": the length in tens of metres and its cost (Roadcraft main.ts drawRoadPreview).
-func _measure() -> String:
-	var tens := roundi(_last_plan.length / ROUND_TO_M) * ROUND_TO_M
-	return "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(_last_plan.price)]
 
 
 func _lay(pieces: PackedVector3Array, from_lift: float) -> void:

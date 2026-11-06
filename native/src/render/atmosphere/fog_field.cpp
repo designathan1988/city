@@ -15,7 +15,7 @@ namespace city {
 
 namespace {
 constexpr int FOG_RES = 512; // texels across the window
-// HOLD_SHARE: fog_field.h; the view goes this share of the window from its middle before it follows
+// LINGER_SHARE: fog_field.h; the view goes this share of the window from its middle before it follows
 constexpr int CHANNELS = 4;
 constexpr float SLAB_HEIGHTS = 3.f; // thin to under a twentieth three heights up
 constexpr float BUCKET_M = 160.f;
@@ -99,7 +99,7 @@ void FogField::sync(const CityState &s, float cam_x, float cam_z) {
 	}
 	if (busy_ || !s.jobs) return;
 	const FogDef &def = s.catalog.nature.fog;
-	float side = def.texel_m * FOG_RES, hold = side / HOLD_SHARE;
+	float side = def.texel_m * FOG_RES, hold = side / LINGER_SHARE;
 	bool moved = any_ && (std::fabs(cam_x - (ox_ + side * 0.5f)) > hold || std::fabs(cam_z - (oz_ + side * 0.5f)) > hold);
 	uint64_t rev = s.nature.fog_revision;
 	if (rev == seen_ && !moved) return;

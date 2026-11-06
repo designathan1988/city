@@ -8,7 +8,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float EDGE_IN = 0.15f; // a part keeps this far inside the lot's edge (the boundary stands on it)
+constexpr float LOT_CLEAR_IN = 0.15f; // a part keeps this far inside the lot's edge (the boundary stands on it)
 constexpr float PART_GAP = 0.05f; // two solid parts never touch
 constexpr float COVER_H = 0.06f, COVER_STEP = 0.02f; // ground covers' thickness and the lift of each later layer
 constexpr uint32_t BYTE = 0xff;
@@ -86,7 +86,7 @@ bool LotSpace::on_building(const Rect &rc) const {
 }
 
 bool LotSpace::clear(const Rect &rc) const {
-	if (rc.x0 < L + EDGE_IN || rc.x1 > R - EDGE_IN || rc.y0 < EDGE_IN || rc.y1 > D - EDGE_IN) return false;
+	if (rc.x0 < L + LOT_CLEAR_IN || rc.x1 > R - LOT_CLEAR_IN || rc.y0 < LOT_CLEAR_IN || rc.y1 > D - LOT_CLEAR_IN) return false;
 	if (on_building(rc)) return false;
 	for (const Rect &w : ways_)
 		if (w.meets(rc)) return false;

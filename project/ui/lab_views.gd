@@ -4,7 +4,7 @@ class_name LabViews
 extends RefCounted
 
 const MIB := 1048576.0
-const LEAST_MS := 0.01 # the bars' full length, when nothing took longer
+const BAR_FULL_MS := 0.01 # the bars' full length, when nothing took longer
 const SECTIONS := ["near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards", "far"]
 const CORE_SECTIONS := ["agents", "stream", "levels", "flush", "roads", "props", "buildings"]
 
@@ -37,7 +37,7 @@ static func consumers(body: Control) -> void:
 		_row(body, body.tr("lab.surface." + String(r[0])), "%.1f MiB · %s" % [r[1] / MIB, Formatters.format_int(r[2])], r[1] / most)
 	HudWidgets.label(body, &"TitleLabel", body.tr("lab.consumers.frame"))
 	var frame: Dictionary = CityStore.query(&"render_cost")
-	var longest := LEAST_MS
+	var longest := BAR_FULL_MS
 	for key: String in CORE_SECTIONS:
 		longest = maxf(longest, float(frame.get(key, 0.0)))
 	for key: String in CORE_SECTIONS:

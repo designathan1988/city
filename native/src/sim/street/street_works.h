@@ -135,8 +135,8 @@ public:
 	int barrier_near(float x, float z, float reach) const;
 
 private:
-	static constexpr float CELL_M = 64.f; // a few pole spacings (Roadcraft poleIndex.ts)
-	SpatialHash item_hash_{ CELL_M, {} }, pole_hash_{ CELL_M, {} }, barrier_hash_{ CELL_M, {} }, cut_hash_{ CELL_M, {} };
+	static constexpr float WORKS_CELL_M = 64.f; // a few pole spacings (Roadcraft poleIndex.ts)
+	SpatialHash item_hash_{ WORKS_CELL_M, {} }, pole_hash_{ WORKS_CELL_M, {} }, barrier_hash_{ WORKS_CELL_M, {} }, cut_hash_{ WORKS_CELL_M, {} };
 
 	template <typename F>
 	static void unique(const SpatialHash &h, float x0, float z0, float x1, float z1, F &&fn) {

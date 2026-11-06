@@ -14,7 +14,7 @@ namespace city {
 using namespace b40;
 
 namespace {
-constexpr float CELL = 0.25f; // grid cell (m): a gate a car fits through is a few cells wide
+constexpr float YARD_CELL = 0.25f; // grid cell (m): a gate a car fits through is a few cells wide
 constexpr float OUTSIDE = 2.f; // the grid reaches this far out over the footway, past the front gates
 constexpr float GATE_IN = 2.f; // a gate's way starts this far inside it
 constexpr float LEAD = 1.f; // a bay's way starts this far in front of its open end
@@ -54,17 +54,17 @@ struct Grid {
 	std::vector<int> gate;
 	int at(int i, int j) const { return j * nx + i; }
 	bool inside(int i, int j) const { return i >= 0 && j >= 0 && i < nx && j < ny; }
-	int cell_of(float x, float y) const { return at(int(std::floor((x - x0) / CELL)), int(std::floor((y - y0) / CELL))); }
-	V2 centre(int c) const { return V2(x0 + (float(c % nx) + HALF) * CELL, y0 + (float(c / nx) + HALF) * CELL); }
+	int cell_of(float x, float y) const { return at(int(std::floor((x - x0) / YARD_CELL)), int(std::floor((y - y0) / YARD_CELL))); }
+	V2 centre(int c) const { return V2(x0 + (float(c % nx) + HALF) * YARD_CELL, y0 + (float(c / nx) + HALF) * YARD_CELL); }
 	void block(float ax, float ay, float bx, float by) {
-		int i0 = std::max(0, int(std::floor((ax - x0) / CELL))), i1 = std::min(nx - 1, int(std::floor((bx - x0) / CELL)));
-		int j0 = std::max(0, int(std::floor((ay - y0) / CELL))), j1 = std::min(ny - 1, int(std::floor((by - y0) / CELL)));
+		int i0 = std::max(0, int(std::floor((ax - x0) / YARD_CELL))), i1 = std::min(nx - 1, int(std::floor((bx - x0) / YARD_CELL)));
+		int j0 = std::max(0, int(std::floor((ay - y0) / YARD_CELL))), j1 = std::min(ny - 1, int(std::floor((by - y0) / YARD_CELL)));
 		for (int j = j0; j <= j1; j++)
 			for (int i = i0; i <= i1; i++) blocked[size_t(at(i, j))] = 1;
 	}
 	// The free cell nearest a point within FREE_LOOK cells, or -1.
 	int free_near(float x, float y) const {
-		int ci = int(std::floor((x - x0) / CELL)), cj = int(std::floor((y - y0) / CELL)), best = -1, best_d = FREE_LOOK * FREE_LOOK + 1;
+		int ci = int(std::floor((x - x0) / YARD_CELL)), cj = int(std::floor((y - y0) / YARD_CELL)), best = -1, best_d = FREE_LOOK * FREE_LOOK + 1;
 		for (int dj = -FREE_LOOK; dj <= FREE_LOOK; dj++)
 			for (int di = -FREE_LOOK; di <= FREE_LOOK; di++) {
 				int i = ci + di, j = cj + dj;
@@ -78,20 +78,20 @@ struct Grid {
 	template <typename F>
 	void steps(int c, bool strict, F &&fn) const {
 		const int i = c % nx, j = c / nx;
-		const float diag = CELL * std::sqrt(2.f);
+		const float diag = YARD_CELL * std::sqrt(2.f);
 		for (int dj = -1; dj <= 1; dj++)
 			for (int di = -1; di <= 1; di++) {
 				if ((!di && !dj) || !inside(i + di, j + dj)) continue;
 				if (strict && di && dj && (blocked[size_t(at(i + di, j))] || blocked[size_t(at(i, j + dj))])) continue;
-				fn(at(i + di, j + dj), di && dj ? diag : CELL);
+				fn(at(i + di, j + dj), di && dj ? diag : YARD_CELL);
 			}
 	}
 	bool sees(const V2 &a, const V2 &b) const {
 		float len = (b - a).len();
-		int n = std::max(1, int(std::ceil(len / (CELL * LOOK_STEP))));
+		int n = std::max(1, int(std::ceil(len / (YARD_CELL * LOOK_STEP))));
 		for (int k = 0; k <= n; k++) {
 			V2 p = lerp_v2(a, b, float(k) / float(n));
-			int i = int(std::floor((p.x - x0) / CELL)), j = int(std::floor((p.y - y0) / CELL));
+			int i = int(std::floor((p.x - x0) / YARD_CELL)), j = int(std::floor((p.y - y0) / YARD_CELL));
 			if (!inside(i, j) || blocked[size_t(at(i, j))]) return false;
 		}
 		return true;
@@ -103,8 +103,8 @@ Grid grid_of(const Data &data, const Body &b, float half) {
 	Grid g;
 	g.x0 = -b.plan.W * HALF;
 	g.y0 = -OUTSIDE;
-	g.nx = int(std::ceil(b.plan.W / CELL));
-	g.ny = int(std::ceil((b.plan.D + OUTSIDE) / CELL));
+	g.nx = int(std::ceil(b.plan.W / YARD_CELL));
+	g.ny = int(std::ceil((b.plan.D + OUTSIDE) / YARD_CELL));
 	g.blocked.assign(size_t(g.nx * g.ny), 0);
 	for (const Volume &v : b.volumes) {
 		if (v.base != 0) continue;

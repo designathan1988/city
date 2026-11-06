@@ -8,7 +8,7 @@
 namespace city {
 
 namespace {
-constexpr float WIDEST_M = 48.f; // no profile reaches farther from its centre line (a query's pad)
+constexpr float BROADEST_M = 48.f; // no profile reaches farther from its centre line (a query's pad)
 constexpr int ARMS_WITH_CROSSWALK = 3;
 constexpr float BESIDE_M = 0.05f; // the closest-point search's own error: under this a point is beside the segment
 
@@ -32,7 +32,7 @@ bool strip_at(const Profile &p, float u, StripKind kind, float &centre) {
 template <typename F>
 bool on_band(const RoadNetwork &net, double x, double z, F &&band) {
 	bool on = false;
-	net.for_segments_near(x - WIDEST_M, z - WIDEST_M, x + WIDEST_M, z + WIDEST_M, [&](int sid) {
+	net.for_segments_near(x - BROADEST_M, z - BROADEST_M, x + BROADEST_M, z + BROADEST_M, [&](int sid) {
 		const Profile &p = net.profile_of(sid);
 		if (on || p.edges.empty()) return;
 		double v;
@@ -81,7 +81,7 @@ void segment_place(const RoadNetwork &net, int seg, double x, double z, double &
 FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) {
 	FootwayHit best;
 	best.away = std::numeric_limits<float>::max();
-	const double r = reach + WIDEST_M;
+	const double r = reach + BROADEST_M;
 	net.for_segments_near(x - r, z - r, x + r, z + r, [&](int sid) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
@@ -113,7 +113,7 @@ FootwayHit footway_at(const RoadNetwork &net, double x, double z, double reach) 
 
 FootwayHit median_at(const RoadNetwork &net, double x, double z, double reach) {
 	FootwayHit hit;
-	net.for_segments_near(x - WIDEST_M, z - WIDEST_M, x + WIDEST_M, z + WIDEST_M, [&](int sid) {
+	net.for_segments_near(x - BROADEST_M, z - BROADEST_M, x + BROADEST_M, z + BROADEST_M, [&](int sid) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
 		double v;

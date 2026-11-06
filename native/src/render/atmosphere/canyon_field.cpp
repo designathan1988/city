@@ -20,8 +20,8 @@ namespace city {
 
 namespace {
 constexpr int RES = 512; // texels across the window
-constexpr float CELL_M = 4.f;
-constexpr float FIELD_SPAN = RES * CELL_M;
+constexpr float CANYON_SQUARE_M = 4.f;
+constexpr float FIELD_SPAN = RES * CANYON_SQUARE_M;
 constexpr int REACH_CELLS = 12; // as far as a pixel looks for what stands over it (the shader's longest step)
 constexpr float NOTHING_Y = -9000.f; // no solid here: under every ground
 constexpr float EDGE_REACH_M = 64.f; // a lot's centre this far past the window may still reach into it
@@ -59,11 +59,11 @@ void lay(std::vector<float> &cells, const b40::LotFrame &f, const b40::Volume &v
 		minz = std::min(minz, c.y);
 		maxz = std::max(maxz, c.y);
 	}
-	int i0 = std::max(0, int(std::floor((minx - ox) / CELL_M))), i1 = std::min(RES - 1, int(std::floor((maxx - ox) / CELL_M)));
-	int j0 = std::max(0, int(std::floor((minz - oz) / CELL_M))), j1 = std::min(RES - 1, int(std::floor((maxz - oz) / CELL_M)));
+	int i0 = std::max(0, int(std::floor((minx - ox) / CANYON_SQUARE_M))), i1 = std::min(RES - 1, int(std::floor((maxx - ox) / CANYON_SQUARE_M)));
+	int j0 = std::max(0, int(std::floor((minz - oz) / CANYON_SQUARE_M))), j1 = std::min(RES - 1, int(std::floor((maxz - oz) / CANYON_SQUARE_M)));
 	for (int j = j0; j <= j1; j++)
 		for (int i = i0; i <= i1; i++) {
-			float dx = ox + (i + 0.5f) * CELL_M - f.o.x, dz = oz + (j + 0.5f) * CELL_M - f.o.y;
+			float dx = ox + (i + 0.5f) * CANYON_SQUARE_M - f.o.x, dz = oz + (j + 0.5f) * CANYON_SQUARE_M - f.o.y;
 			float lx = dx * f.e0.x + dz * f.e0.y, ly = dx * f.e1.x + dz * f.e1.y;
 			if (lx < v.x || lx > v.x + v.w || ly < v.y || ly > v.y + v.d) continue;
 			float &c = cells[size_t(j) * RES + i];
@@ -134,12 +134,12 @@ void CanyonField::sync(const CityState &s, float cam_x, float cam_z) {
 		}
 	}
 	if (busy_ || !s.jobs) return;
-	float hold = FIELD_SPAN / HOLD_SHARE;
+	float hold = FIELD_SPAN / LINGER_SHARE;
 	bool moved = std::fabs(cam_x - (ox_ + FIELD_SPAN * 0.5f)) > hold || std::fabs(cam_z - (oz_ + FIELD_SPAN * 0.5f)) > hold;
 	uint64_t rev = revision_;
 	if (rev == seen_ && !moved) return;
 	busy_ = true;
-	float ox = std::floor((cam_x - FIELD_SPAN * 0.5f) / CELL_M) * CELL_M, oz = std::floor((cam_z - FIELD_SPAN * 0.5f) / CELL_M) * CELL_M;
+	float ox = std::floor((cam_x - FIELD_SPAN * 0.5f) / CANYON_SQUARE_M) * CANYON_SQUARE_M, oz = std::floor((cam_z - FIELD_SPAN * 0.5f) / CANYON_SQUARE_M) * CANYON_SQUARE_M;
 	s.jobs->submit(JobKey{ JobLane::CANYON, 0 }, 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
 }
 

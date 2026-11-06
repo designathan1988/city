@@ -34,7 +34,7 @@ constexpr float COOK_FROM = 0.8f, COOK_END = 2.5f, COOK_GAP = 1.f, COOK_S = 0.45
 constexpr float DINE_Y = 1.f, DINE_X = 1.4f, DINE_ROW = 2.6f, DINE_COL = 2.8f, DINE_SCALE = 0.6f, DINE_SEAT = 0.9f;
 constexpr int COOK_KINDS = 3;
 // Cells and malls.
-constexpr float CELL = 3.f, CELL_BED = 1.1f, CELL_TABLE_IN = 1.f, CELL_TABLE_TO = 5.f, CELL_TABLE_GX = 3.5f, GRID_EPS = 1e-6f;
+constexpr float ROOM_CELL = 3.f, CELL_BED = 1.1f, CELL_TABLE_IN = 1.f, CELL_TABLE_TO = 5.f, CELL_TABLE_GX = 3.5f, GRID_EPS = 1e-6f;
 constexpr float MALL_UNIT = 8.f, MALL_DOOR = 4.f, MALL_COUNTER = 1.5f, MALL_SHELF = 1.f, MALL_SHELF_S = 5.f, SOFA_IN = 4.f, SOFA_FROM = 3.f;
 constexpr float SOFA_TO = 11.f, SOFA_GX = 8.f, SOFA_GY = 6.f, MALL_PLANT_IN = 2.f, MALL_PLANT_FROM = 2.f, MALL_PLANT_GX = 6.f, MALL_PLANT_GY = 1.f;
 
@@ -177,12 +177,12 @@ void wards(Plan &p, float from) {
 }
 
 void cells(Plan &p, float from) {
-	for (float x = p.x0; x + CELL <= p.x1 + GRID_EPS; x += CELL) {
-		p.wall(x, p.y1 - CELL, x, p.y1);
-		p.put(FK_BARS, x + CELL / 2, p.y1 - CELL, 0);
-		p.put(FK_SINGLE_BED, x + CELL / 2, p.y1 - CELL_BED, PI_F);
+	for (float x = p.x0; x + ROOM_CELL <= p.x1 + GRID_EPS; x += ROOM_CELL) {
+		p.wall(x, p.y1 - ROOM_CELL, x, p.y1);
+		p.put(FK_BARS, x + ROOM_CELL / 2, p.y1 - ROOM_CELL, 0);
+		p.put(FK_SINGLE_BED, x + ROOM_CELL / 2, p.y1 - CELL_BED, PI_F);
 	}
-	p.grid(FK_TABLE, p.x0 + CELL_TABLE_IN, from + CELL_TABLE_IN, p.x1 - CELL_TABLE_IN, p.y1 - CELL_TABLE_TO, CELL_TABLE_GX, CELL);
+	p.grid(FK_TABLE, p.x0 + CELL_TABLE_IN, from + CELL_TABLE_IN, p.x1 - CELL_TABLE_IN, p.y1 - CELL_TABLE_TO, CELL_TABLE_GX, ROOM_CELL);
 }
 
 void shop_floor(Plan &p) {

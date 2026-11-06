@@ -9,7 +9,7 @@ signal right_clicked
 ## Below this the ray runs along the plane and meets it nowhere.
 const PARALLEL := 1e-6
 const CM := 0.01
-const FIRST := -100
+const EARLIEST := -100
 
 var cfg: Dictionary
 var camera: Camera3D
@@ -48,7 +48,7 @@ func _ready() -> void:
 	far_tilt = deg_to_rad(cfg.start_pitch)
 	half = cfg.start_view_half
 	_apply()
-	process_priority = FIRST # the view of this frame, before anything reads it
+	process_priority = EARLIEST # the view of this frame, before anything reads it
 
 
 func look_at_ground(p: Vector3) -> void:

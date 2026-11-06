@@ -3,7 +3,7 @@
 class_name Thunder
 extends Node
 
-const LANE := &"Thunder"
+const BOLT_LANE := &"Thunder"
 const PCM_BYTES := 2
 const PCM_TOP := 32767.0
 
@@ -17,14 +17,14 @@ func _init(d: Dictionary) -> void:
 
 
 func _ready() -> void:
-	if AudioServer.get_bus_index(LANE) < 0:
+	if AudioServer.get_bus_index(BOLT_LANE) < 0:
 		AudioServer.add_bus()
 		var bus := AudioServer.bus_count - 1
-		AudioServer.set_bus_name(bus, LANE)
+		AudioServer.set_bus_name(bus, BOLT_LANE)
 		AudioServer.add_bus_effect(bus, AudioEffectLowPassFilter.new())
-	_filter = AudioServer.get_bus_effect(AudioServer.get_bus_index(LANE), 0)
+	_filter = AudioServer.get_bus_effect(AudioServer.get_bus_index(BOLT_LANE), 0)
 	_player = AudioStreamPlayer.new()
-	_player.bus = LANE
+	_player.bus = BOLT_LANE
 	_player.stream = _noise()
 	add_child(_player)
 

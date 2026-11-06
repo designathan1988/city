@@ -14,7 +14,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float EDGE = 0.5f, SURFACE_H = 0.06f, PATH_W = 3.f, RING_SHARE = 0.2f, RING_W = 2.2f, TREE_CLEAR = 1.6f, RING_MIN = 34.f;
+constexpr float LAWN_CLEAR = 0.5f, SURFACE_H = 0.06f, PATH_W = 3.f, RING_SHARE = 0.2f, RING_W = 2.2f, TREE_CLEAR = 1.6f, RING_MIN = 34.f;
 constexpr float BASIN = 5.f, POOL_PLAZA = 11.f, RIM_H = 0.5f, RIM_T = 0.35f, SPOUT = 0.7f, SPOUT_H = 1.8f, BOWL = 1.6f, BOWL_H = 0.25f;
 constexpr float FOUNTAIN_MIN = 22.f, PLAY = 10.f, PLAY_MIN = 46.f, HEDGE_H = 1.1f, HEDGE_T = 0.8f;
 constexpr float BENCH_W = 1.8f, BENCH_D = 0.55f, BENCH_H = 0.45f, BENCH_EVERY = 9.f, LAMP = 0.2f, LAMP_H = 4.2f, LAMP_EVERY = 14.f;
@@ -86,7 +86,7 @@ void Lay::playground(float cx, float cy) {
 
 void Lay::hedges(float gap) {
 	int h = paint("hedge");
-	float x0 = -W / 2 + EDGE, x1 = W / 2 - EDGE, y0 = EDGE, y1 = D - EDGE;
+	float x0 = -W / 2 + LAWN_CLEAR, x1 = W / 2 - LAWN_CLEAR, y0 = LAWN_CLEAR, y1 = D - LAWN_CLEAR;
 	for (float y : { y0, y1 }) {
 		put(b, EL_HEDGE, x0, y, -gap / 2, y + HEDGE_T, HEDGE_H, h);
 		put(b, EL_HEDGE, gap / 2, y, x1, y + HEDGE_T, HEDGE_H, h);
@@ -107,20 +107,20 @@ float play_y(float W, float D) { return (D / 2 + PATH_W / 2 + D - ring_of(W, D))
 
 void park(Lay &L) {
 	const float W = L.W, D = L.D, rg = ring_of(W, D);
-	L.surface(-W / 2 + EDGE, EDGE, W / 2 - EDGE, D - EDGE, L.paint("square_lawn"));
+	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
 	int path = L.paint("path");
-	L.surface(-W / 2 + EDGE, D / 2 - PATH_W / 2, W / 2 - EDGE, D / 2 + PATH_W / 2, path, 2);
-	L.surface(-PATH_W / 2, EDGE, PATH_W / 2, D - EDGE, path, 2);
+	L.surface(-W / 2 + LAWN_CLEAR, D / 2 - PATH_W / 2, W / 2 - LAWN_CLEAR, D / 2 + PATH_W / 2, path, 2);
+	L.surface(-PATH_W / 2, LAWN_CLEAR, PATH_W / 2, D - LAWN_CLEAR, path, 2);
 	float rx0 = -W / 2 + rg, rx1 = W / 2 - rg, ry0 = rg, ry1 = D - rg;
 	if (has_ring(W, D)) {
 		for (float y : { ry0, ry1 }) L.surface(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path, 2);
 		for (float x : { rx0, rx1 }) L.surface(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path, 2);
 	}
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post"), bin = L.paint("bin");
-	L.benches_along_x(D / 2, -W / 2 + EDGE, -POOL_PLAZA / 2, bench, lamp, bin);
-	L.benches_along_x(D / 2, POOL_PLAZA / 2, W / 2 - EDGE, bench, lamp, bin);
-	L.benches_along_y(0, EDGE, D / 2 - POOL_PLAZA / 2, bench, lamp, bin);
-	L.benches_along_y(0, D / 2 + POOL_PLAZA / 2, D - EDGE, bench, lamp, bin);
+	L.benches_along_x(D / 2, -W / 2 + LAWN_CLEAR, -POOL_PLAZA / 2, bench, lamp, bin);
+	L.benches_along_x(D / 2, POOL_PLAZA / 2, W / 2 - LAWN_CLEAR, bench, lamp, bin);
+	L.benches_along_y(0, LAWN_CLEAR, D / 2 - POOL_PLAZA / 2, bench, lamp, bin);
+	L.benches_along_y(0, D / 2 + POOL_PLAZA / 2, D - LAWN_CLEAR, bench, lamp, bin);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, true);
 	if (play_fits(W, D)) L.playground(play_x(W, D), play_y(W, D));
 	L.hedges(PATH_W + RING_W);
@@ -128,9 +128,9 @@ void park(Lay &L) {
 
 void square(Lay &L) {
 	const float W = L.W, D = L.D;
-	L.surface(-W / 2 + EDGE, EDGE, W / 2 - EDGE, D - EDGE, L.paint("square_paving"));
+	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_paving"));
 	int lawn = L.paint("square_lawn");
-	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - EDGE - LOT_EDGE : -W / 2 + EDGE, EDGE, s > 0 ? W / 2 - EDGE : -W / 2 + EDGE + LOT_EDGE, D - EDGE, lawn, 2);
+	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - LAWN_CLEAR - LOT_EDGE : -W / 2 + LAWN_CLEAR, LAWN_CLEAR, s > 0 ? W / 2 - LAWN_CLEAR : -W / 2 + LAWN_CLEAR + LOT_EDGE, D - LAWN_CLEAR, lawn, 2);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, false);
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post");
 	float rb = BASIN / 2 + PATH_W;
@@ -140,7 +140,7 @@ void square(Lay &L) {
 		for (float t : { -1.f, 1.f }) put_at(L.b, EL_LAMP, s * rb, D / 2 + t * rb, LAMP, LAMP, LAMP_H, lamp);
 	}
 	if (std::min(W, D) < BAND_MIN) return;
-	float bx = 0, by = D - EDGE - LOT_EDGE - BAND; // bandstand (coreto) at the back
+	float bx = 0, by = D - LAWN_CLEAR - LOT_EDGE - BAND; // bandstand (coreto) at the back
 	int col = L.paint("column"), roof = L.paint("edicula_roof");
 	put_at(L.b, EL_SLAB, bx, by, BAND, BAND, BAND_DECK, L.paint("pool_coping"));
 	for (float a : { -1.f, 1.f })
@@ -153,7 +153,7 @@ void square(Lay &L) {
 
 void court(Lay &L) {
 	const float W = L.W, D = L.D;
-	L.surface(-W / 2 + EDGE, EDGE, W / 2 - EDGE, D - EDGE, L.paint("square_lawn"));
+	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
 	float cw = std::min(COURT_W, W - 2 * COURT_RUN), cd = std::min(COURT_D, D - 2 * COURT_RUN), cy = D / 2;
 	if (cw <= 0 || cd <= 0) return;
 	L.surface(-cw / 2 - COURT_RUN / 2, cy - cd / 2 - COURT_RUN / 2, cw / 2 + COURT_RUN / 2, cy + cd / 2 + COURT_RUN / 2, L.paint("court_run"), 2);
@@ -188,12 +188,12 @@ void open_lot_body(const Data &data, Body &b, int fn, float W, float D) {
 }
 
 bool open_lot_tree_ok(int fn, float W, float D, float x, float y) {
-	if (fn == FN_SQUARE) return std::fabs(x) > W / 2 - EDGE - LOT_EDGE && std::fabs(x) < W / 2 - EDGE;
+	if (fn == FN_SQUARE) return std::fabs(x) > W / 2 - LAWN_CLEAR - LOT_EDGE && std::fabs(x) < W / 2 - LAWN_CLEAR;
 	if (fn == FN_SPORTS_COURT)
 		return std::fabs(x) > std::min(COURT_W, W) / 2 + COURT_RUN + TREE_CLEAR || std::fabs(y - D / 2) > std::min(COURT_D, D) / 2 + COURT_RUN + TREE_CLEAR;
 	float rg = ring_of(W, D), c = TREE_CLEAR;
 	if (std::fabs(y - D / 2) < PATH_W / 2 + c || std::fabs(x) < PATH_W / 2 + c) return false;
-	if (x < -W / 2 + EDGE + HEDGE_T + c || x > W / 2 - EDGE - HEDGE_T - c || y < EDGE + HEDGE_T + c || y > D - EDGE - HEDGE_T - c) return false;
+	if (x < -W / 2 + LAWN_CLEAR + HEDGE_T + c || x > W / 2 - LAWN_CLEAR - HEDGE_T - c || y < LAWN_CLEAR + HEDGE_T + c || y > D - LAWN_CLEAR - HEDGE_T - c) return false;
 	bool on_ring_x = std::fabs(std::fabs(x) - (W / 2 - rg)) < RING_W / 2 + c, on_ring_y = std::fabs(y - rg) < RING_W / 2 + c || std::fabs(y - (D - rg)) < RING_W / 2 + c;
 	if (has_ring(W, D) && (on_ring_x || on_ring_y)) return false;
 	if (play_fits(W, D) && std::fabs(x - play_x(W, D)) < PLAY / 2 + c && std::fabs(y - play_y(W, D)) < PLAY / 2 + c) return false;

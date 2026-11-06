@@ -13,7 +13,7 @@ namespace city {
 
 namespace {
 constexpr int COMPOSE_BLOCK = 64; // samples per side of a block of the held composition (256 m at 4 m spacing)
-constexpr float EDGE_M = 0.01f; // regions of the pieces overlap this much: a sample on an edge, rounded, is never left out
+constexpr float BLOCK_CLEAR_M = 0.01f; // regions of the pieces overlap this much: a sample on an edge, rounded, is never left out
 constexpr float SHORTEST_EDGE = 1e-4f; // a piece (or a half-plane normal component) shorter than this has no direction
 
 struct Half { // the half-plane nx * x + nz * z <= c
@@ -119,7 +119,7 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 		const float l = d.len();
 		if (l > SHORTEST_EDGE) dir[i] = d * (1.f / l); // a piece shorter than that has no direction: its disc covers it
 	}
-	const float r = reach + EDGE_M;
+	const float r = reach + BLOCK_CLEAR_M;
 	auto visit = [&](size_t i, int x, int z) {
 		const float *a = &pts[i * 3], *b = a + 3;
 		float t;
@@ -165,19 +165,19 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 			continue;
 		}
 		const V2 n = u.perp();
-		const Half slab[4] = { { -u.x, -u.y, -u.dot(a) + EDGE_M }, { u.x, u.y, u.dot(b) + EDGE_M },
+		const Half slab[4] = { { -u.x, -u.y, -u.dot(a) + BLOCK_CLEAR_M }, { u.x, u.y, u.dot(b) + BLOCK_CLEAR_M },
 			{ n.x, n.y, n.dot(a) + r }, { -n.x, -n.y, -n.dot(a) + r } };
 		scan(i, slab, 4, false, a, std::min(a.x, b.x) - r, std::min(a.y, b.y) - r, std::max(a.x, b.x) + r, std::max(a.y, b.y) + r);
 		if (i == 0) {
-			const Half cap[1] = { { u.x, u.y, u.dot(a) + EDGE_M } };
+			const Half cap[1] = { { u.x, u.y, u.dot(a) + BLOCK_CLEAR_M } };
 			round(i, a, cap, 1);
 		}
 		if (i + 1 == pieces) {
-			const Half cap[1] = { { -u.x, -u.y, -u.dot(b) + EDGE_M } };
+			const Half cap[1] = { { -u.x, -u.y, -u.dot(b) + BLOCK_CLEAR_M } };
 			round(i, b, cap, 1);
 		} else if (dir[i + 1].len2() > 0.f) { // a next piece with no direction covers the vertex with its disc
 			const V2 v = dir[i + 1];
-			const Half wedge[2] = { { -u.x, -u.y, -u.dot(b) + EDGE_M }, { v.x, v.y, v.dot(b) + EDGE_M } };
+			const Half wedge[2] = { { -u.x, -u.y, -u.dot(b) + BLOCK_CLEAR_M }, { v.x, v.y, v.dot(b) + BLOCK_CLEAR_M } };
 			round(i, b, wedge, 2);
 		}
 	}

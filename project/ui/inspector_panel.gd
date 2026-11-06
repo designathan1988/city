@@ -75,7 +75,7 @@ func _road(col: Control, info: Dictionary) -> void:
 	_stats = HudWidgets.vbox(col)
 	_rows(_stats, InspectorRows.segment_rows(info))
 	for e in info.get("ends", []):
-		_end_row(col, e)
+		RoadPanel.end_row(col, e, _redraw)
 	var picks := []
 	for p: Dictionary in CityStore.query(&"road_profiles"):
 		picks.append([p.index, tr(p.name_key)])
@@ -91,27 +91,7 @@ func _road(col: Control, info: Dictionary) -> void:
 	profile.pressed.connect(func() -> void:
 		edit_profile.emit({"index": info.profile_id, "id": ""}, CityStore.query(&"road_spec", [info.profile_id]), _at))
 	row.add_child(profile)
-	var height := HudWidgets.button(&"Ghost", "", tr("inspector.addHeightPoint"), "", "", "opt_row_h")
-	height.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	height.pressed.connect(func() -> void:
-		if CityStore.dispatch(&"split_road", [_at]).get("ok", false):
-			_redraw())
-	row.add_child(height)
-	for kind: Array in [["inspector.addZebra", RoadPanel.ZEBRA], ["inspector.addSignalCrossing", RoadPanel.SIGNAL]]:
-		var crossing := HudWidgets.button(&"Ghost", "", tr(kind[0]), "", "", "opt_row_h")
-		crossing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		crossing.pressed.connect(func() -> void:
-			if CityStore.dispatch(&"add_crossing", [_at, kind[1]]).get("ok", false):
-				_redraw())
-		row.add_child(crossing)
-	if info.median:
-		for way: Array in [["inspector.addUturnToEnd", true], ["inspector.addUturnToStart", false]]:
-			var back := HudWidgets.button(&"Ghost", "", tr(way[0]), "", "", "opt_row_h")
-			back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			back.pressed.connect(func() -> void:
-				if CityStore.dispatch(&"add_uturn", [_at, way[1]]).get("ok", false):
-					_redraw())
-			row.add_child(back)
+	RoadPanel.works(row, info, _at, _redraw)
 	_demolish_button(row)
 
 
@@ -121,20 +101,6 @@ func _bent(result: Dictionary) -> void:
 		_at = result.at
 	_redraw()
 	laid_again.emit(_info)
-
-
-## A dead end of the road: "Ponta inicial [balão]"; the choice comes back from the core, so a refused one stays off.
-func _end_row(col: Control, e: Dictionary) -> void:
-	var row := HudWidgets.hbox(col)
-	var name := HudWidgets.label(row, &"MutedLabel", tr("inspector.endStart" if e.start else "inspector.endEnd"))
-	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var b := HudWidgets.button(&"IconButton", "roundabout", "", "inspector.end.bulb", "icon_btn", "icon_btn")
-	b.toggle_mode = true
-	b.set_pressed_no_signal(e.bulb)
-	b.pressed.connect(func() -> void:
-		CityStore.dispatch(&"set_road_end", [e.node, not e.bulb])
-		_redraw())
-	row.add_child(b)
 
 
 func _redraw() -> void:

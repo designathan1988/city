@@ -17,7 +17,7 @@ namespace traffic {
 
 namespace {
 
-constexpr float MIN_LANE_M = 0.5f;
+constexpr float SHORTEST_PIECE_M = 0.5f;
 constexpr float UTURN_NODE_PAD_M = 3.f; // dead-end U-turn: the control point goes this far past the node, doubled
 
 // Vehicles and meso entries of one lane leave the simulation.
@@ -66,7 +66,7 @@ void make_curve(const CityState &s, Conn &c, const TrafficParams &tp) {
 		c.table[i] = c.table[i - 1] + (q - prev).len();
 		prev = q;
 	}
-	c.len = std::max(c.table[CONN_STEPS], MIN_LANE_M);
+	c.len = std::max(c.table[CONN_STEPS], SHORTEST_PIECE_M);
 }
 
 // One connection, allocated from the pool and threaded onto the node and lane lists.
@@ -188,7 +188,7 @@ void build_dir(CityState &s, int seg) {
 		if (p.rail) continue;
 		const std::vector<LaneInfo> &lanes = dir == 0 ? p.fwd : p.back;
 		if (lanes.empty()) continue;
-		const float len = std::max(MIN_LANE_M, float(sg.len - sg.retreat_a - sg.retreat_b));
+		const float len = std::max(SHORTEST_PIECE_M, float(sg.len - sg.retreat_a - sg.retreat_b));
 		d.ok = true;
 		d.seg = seg;
 		d.from = dir == 0 ? sg.a : sg.b;

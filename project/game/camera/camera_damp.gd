@@ -4,7 +4,7 @@
 class_name CameraDamp
 extends RefCounted
 
-const LEAST_S := 1e-4
+const SHORTEST_S := 1e-4
 
 var x := 0.0
 var v := 0.0
@@ -16,7 +16,7 @@ func snap(value: float) -> void:
 
 
 func to(target: float, dt: float, smooth_s: float) -> float:
-	var w := 2.0 / maxf(smooth_s, LEAST_S)
+	var w := 2.0 / maxf(smooth_s, SHORTEST_S)
 	var e := exp(-w * dt)
 	var d := x - target
 	var t := (v + w * d) * dt

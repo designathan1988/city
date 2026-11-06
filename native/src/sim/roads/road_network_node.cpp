@@ -23,7 +23,7 @@ int RoadNetwork::uturn_arm(int node) const {
 
 bool RoadNetwork::movement_banned(int node, int from, int to) const {
 	for (const LaneLink &l : nodes[size_t(node)].links)
-		if (l.from_lane == NO_LANE && l.from == from && l.to == to) return true;
+		if (l.from_lane == LINK_BANNED && l.from == from && l.to == to) return true;
 	return false;
 }
 

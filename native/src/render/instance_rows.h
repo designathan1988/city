@@ -18,22 +18,21 @@ constexpr int MM_STRIDE = 20;
 // repeats by the thousand and has no colour of its own goes without.
 constexpr int MM_PLAIN_STRIDE = 16;
 
-// Appends one instance in the documented MultiMesh layout (row-major 3x4 transform, colour, custom).
-inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
-		const godot::Vector3 &o, const godot::Color &col, float c0, float c1, float c2, float c3) {
-	const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, col.r, col.g, col.b, col.a, c0, c1, c2, c3 };
-	int64_t at = buf.size();
-	buf.resize(at + MM_STRIDE);
-	float *w = buf.ptrw() + at;
-	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
-}
-
-// The same into a row of InstanceRows.
+// One instance into a row of InstanceRows, in the documented MultiMesh layout (row-major 3x4 transform, colour, custom).
 inline void mm_row(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, const godot::Color &col,
 		float c0, float c1, float c2, float c3) {
 	const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, col.r, col.g, col.b, col.a, c0, c1, c2, c3 };
 	std::memcpy(w, v, sizeof(v));
 }
+
+// Appended to a buffer.
+inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
+		const godot::Vector3 &o, const godot::Color &col, float c0, float c1, float c2, float c3) {
+	int64_t at = buf.size();
+	buf.resize(at + MM_STRIDE);
+	mm_row(buf.ptrw() + at, x, y, z, o, col, c0, c1, c2, c3);
+}
+
 inline void mm_row_plain(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, float c0, float c1,
 		float c2, float c3) {
 	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
@@ -43,11 +42,9 @@ inline void mm_row_plain(float *w, const godot::Vector3 &x, const godot::Vector3
 // The same without the colour, for a material that reads only INSTANCE_CUSTOM.
 inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
 		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
-	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
 	int64_t at = buf.size();
 	buf.resize(at + MM_PLAIN_STRIDE);
-	float *w = buf.ptrw() + at;
-	for (int i = 0; i < MM_PLAIN_STRIDE; i++) w[i] = v[i];
+	mm_row_plain(buf.ptrw() + at, x, y, z, o, c0, c1, c2, c3);
 }
 
 // The rows of a MultiMesh refilled every frame. The array lives from frame to frame at the size of the draw's room, so a frame costs

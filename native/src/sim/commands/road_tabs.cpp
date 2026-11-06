@@ -170,8 +170,8 @@ EditResult set_movement_banned(CityState &s, int node, int from, int to, bool ba
 	}
 	std::vector<LaneLink> rest;
 	for (const LaneLink &l : net.nodes[size_t(node)].links)
-		if (!(l.from_lane == NO_LANE && l.from == from && l.to == to)) rest.push_back(l);
-	if (banned) rest.push_back({ from, NO_LANE, to, NO_LANE });
+		if (!(l.from_lane == LINK_BANNED && l.from == from && l.to == to)) rest.push_back(l);
+	if (banned) rest.push_back({ from, LINK_BANNED, to, LINK_BANNED });
 	j_links(s, node, std::move(rest));
 	r.ok = true;
 	return r;

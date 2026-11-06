@@ -38,7 +38,7 @@ private:
 	void facing(double fx, double fz, double ox, double oz, int &zone, int &profile) const;
 	bool unfit(const Frame &f) const;
 	void mark_lot(const Frame &f);
-	bool land_at(double x, double z) const; // no paving and no lot there
+	bool lot_free(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);
 	void place_blocks();
 	void place_strips();

@@ -58,7 +58,7 @@ constexpr uint16_t flags_reversed(uint16_t f) {
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
 // A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.
 enum NodeUturn : uint8_t { UTURN_NONE, UTURN_FROM_LOW, UTURN_FROM_HIGH };
-constexpr int NO_LANE = -1;
+constexpr int LINK_BANNED = -1;
 enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_YIELD, CTL_NONE, CTL_MINI, CTL_COUNT };
 // What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
 // stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
@@ -71,7 +71,7 @@ struct SignalSettings {
 
 // A connection through a junction the player made by hand (Roadcraft world/roads/connectors.ts): the arriving road and lane, the leaving ones.
 struct LaneLink {
-	int from = -1, from_lane = 0, to = -1, to_lane = 0; // both lanes NO_LANE: not a lane's link but the movement from arm to arm banned
+	int from = -1, from_lane = 0, to = -1, to_lane = 0; // both lanes LINK_BANNED: not a lane's link but the movement from arm to arm banned
 	bool operator==(const LaneLink &o) const { return from == o.from && from_lane == o.from_lane && to == o.to && to_lane == o.to_lane; }
 };
 

@@ -6,7 +6,6 @@ extends Node3D
 const TERRAIN_SHADER := "res://render/shaders/terrain.gdshader"
 const LUMA := Vector3(0.3, 0.6, 0.1) # the weights terrain_layers.gdshaderinc reads a colour's luma with
 const SKY_SHADER := "res://render/shaders/sky.gdshader"
-const PLACEHOLDER_TEX_PX := 16
 ## Kept as text so the orphan gate sees every shader the native renderers load by name from materials.json.
 const NATIVE_SHADERS := [
 	"res://render/shaders/road.gdshader", "res://render/shaders/building.gdshader", "res://render/shaders/building_far.gdshader",
@@ -15,7 +14,8 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/vegetation.gdshader", "res://render/shaders/lamp_glow.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
 	"res://render/shaders/building_wash.gdshader",
-	"res://render/shaders/verge.gdshader",
+	"res://render/shaders/verge.gdshader", "res://render/shaders/people_far.gdshader", "res://render/shaders/people_held.gdshader",
+	"res://render/shaders/people_helmet.gdshader", "res://render/shaders/rubble.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
 	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
@@ -227,31 +227,13 @@ func set_terrain_lod(divide: int) -> void:
 
 
 func _build_terrain(palette: Dictionary) -> void:
-	terrain = ClassDB.instantiate(&"Terrain3D")
-	terrain.name = "Terrain3D"
-	var mat: Resource = ClassDB.instantiate(&"Terrain3DMaterial")
-	mat.shader_override = load(TERRAIN_SHADER)
-	mat.shader_override_enabled = true
-	terrain.material = mat
-	_terrain_material = mat
-	# One tiny placeholder texture keeps off Terrain3D's checkered debug view: the override shader paints its own ground.
-	var assets: Resource = ClassDB.instantiate(&"Terrain3DAssets")
-	var tex_asset: Resource = ClassDB.instantiate(&"Terrain3DTextureAsset")
-	var img := Image.create(PLACEHOLDER_TEX_PX, PLACEHOLDER_TEX_PX, true, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	img.generate_mipmaps()
-	tex_asset.albedo_texture = ImageTexture.create_from_image(img)
-	assets.set_texture_asset(0, tex_asset)
-	terrain.assets = assets
-	terrain.collision_mode = 0 # disabled: picking uses the core's raycast
-	terrain.free_editor_textures = false
-	terrain.cast_shadows = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # the ground only receives (Roadcraft terrain.ts)
-	terrain.render_layers = int(CityStore.constants.render_layers.terrain)
+	_terrain_material = ClassDB.instantiate(&"Terrain3DMaterial")
+	terrain = CityTerrain.make(_terrain_material, load(TERRAIN_SHADER))
 	_follow_view(null) # a target before its first physics frame, even with no camera yet
 	add_child(terrain)
 	_mesh_size = terrain.get("mesh_size")
-	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene.
+	# Terrain3D drops parameters set before it enters the tree: the look is applied once the terrain is in the scene
 	for key in palette.terrain:
 		if not key.begins_with("_"):
-			mat.set_shader_param(key, shader_value(palette.terrain[key]))
-	mat.set_shader_param("grass_mean", _grass_mean(palette.terrain))
+			_terrain_material.set_shader_param(key, shader_value(palette.terrain[key]))
+	_terrain_material.set_shader_param("grass_mean", _grass_mean(palette.terrain))

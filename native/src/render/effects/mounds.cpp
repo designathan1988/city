@@ -16,14 +16,14 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr int GRID = 40;
+constexpr int RELIEF_CELLS = 40;
 constexpr float BELL_POWER = 2.2f, BELL_SHOULDER = 1.1f; // how flat its top, how soon it falls away
 constexpr float LUMP_SHARE = 0.28f; // what the noise moves of its height
 constexpr uint32_t LATTICE_SEED = 7741;
 constexpr uint32_t BYTE = 255, GREEN_SHIFT = 8, BLUE_SHIFT = 16;
 constexpr float HASH_TOP = 65535.f;
 constexpr float LUMP_WIDE = 5, LUMP_MID = 12, LUMP_FINE = 27; // the relief's three scales
-constexpr float WIDE_SHARE = 0.55f, MID_SHARE = 0.3f, FINE_SHARE = 0.15f;
+constexpr float COARSE_SHARE = 0.55f, MID_SHARE = 0.3f, FINE_SHARE = 0.15f;
 
 float lattice(int i, int j) { return float(hash_u32(uint32_t(i) * 73856093u ^ uint32_t(j) * 19349663u ^ LATTICE_SEED) & 0xFFFFu) / HASH_TOP; }
 
@@ -38,23 +38,23 @@ float value_noise(float x, float z) {
 float hill(float x, float z) {
 	const float r = std::min(1.f, std::pow(std::pow(std::fabs(x) * 2, 3.f) + std::pow(std::fabs(z) * 2, 3.f), 1.f / 3.f)); // a rounded square, as the footprint
 	const float bell = std::pow(std::max(0.f, 1 - std::pow(r, BELL_POWER)), BELL_SHOULDER);
-	const float lumps = value_noise(x * LUMP_WIDE, z * LUMP_WIDE) * WIDE_SHARE + value_noise(x * LUMP_MID, z * LUMP_MID) * MID_SHARE + value_noise(x * LUMP_FINE, z * LUMP_FINE) * FINE_SHARE;
+	const float lumps = value_noise(x * LUMP_WIDE, z * LUMP_WIDE) * COARSE_SHARE + value_noise(x * LUMP_MID, z * LUMP_MID) * MID_SHARE + value_noise(x * LUMP_FINE, z * LUMP_FINE) * FINE_SHARE;
 	return bell * (1 - LUMP_SHARE + LUMP_SHARE * 2 * lumps);
 }
 
 Ref<ArrayMesh> hill_mesh() {
 	PackedVector3Array v, n;
 	PackedInt32Array idx;
-	const float step = 1.f / float(GRID);
-	for (int j = 0; j <= GRID; j++)
-		for (int i = 0; i <= GRID; i++) {
+	const float step = 1.f / float(RELIEF_CELLS);
+	for (int j = 0; j <= RELIEF_CELLS; j++)
+		for (int i = 0; i <= RELIEF_CELLS; i++) {
 			const float x = float(i) * step - 0.5f, z = float(j) * step - 0.5f;
 			v.push_back(Vector3(x, hill(x, z), z));
 			n.push_back(Vector3(hill(x - step, z) - hill(x + step, z), 2 * step, hill(x, z - step) - hill(x, z + step)).normalized());
 		}
-	for (int j = 0; j < GRID; j++)
-		for (int i = 0; i < GRID; i++) {
-			const int a = j * (GRID + 1) + i, b = a + 1, c = a + GRID + 1, d = c + 1;
+	for (int j = 0; j < RELIEF_CELLS; j++)
+		for (int i = 0; i < RELIEF_CELLS; i++) {
+			const int a = j * (RELIEF_CELLS + 1) + i, b = a + 1, c = a + RELIEF_CELLS + 1, d = c + 1;
 			for (int k : { a, b, c, b, d, c }) idx.push_back(k);
 		}
 	Array arrays;

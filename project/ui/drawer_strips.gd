@@ -39,3 +39,21 @@ static func use_of(zone: int) -> int:
 		if int(z.code) == zone:
 			return int(z.base)
 	return zone
+
+
+## The room left by the options; the catalogue takes all it needs of it, the panel stands centred there, on its own width.
+static func fit(drawer: HudDrawer) -> void:
+	if not drawer.visible:
+		return
+	var margin := HudWidgets.px("margin")
+	var vw := drawer.get_viewport_rect().size.x
+	var left := margin + (HudWidgets.px("opts_w") + margin if drawer.options_panel.visible else 0.0)
+	var room := vw - margin - left
+	if drawer.catalog.is_inside_tree(): # built when it first shows (road_catalog.gd _ready)
+		drawer.catalog.fit(room - HudWidgets.px("gap"))
+	drawer.get_tree().call_group(HudDrawer.FITS, &"fit", room - HudWidgets.px("gap"))
+	var need := drawer.get_combined_minimum_size()
+	var width := minf(need.x, room)
+	drawer.offset_left = left + (room - width) * 0.5 - vw * 0.5
+	drawer.offset_right = drawer.offset_left + width
+	drawer.offset_top = drawer.offset_bottom - need.y

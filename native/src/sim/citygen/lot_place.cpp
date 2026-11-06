@@ -17,7 +17,7 @@ constexpr double FRONT_PAD = 0.3, WIDTH_TRIM = 0.6;
 constexpr double STRIP_DEPTH = 32, STRIP_FRONTAGE = 22, STRIP_LEAST = 10; // lots.ts LOT_DEPTH, LOT_FRONTAGE, MIN_LOT
 // Works take more than the 4.0 gives them: a lorry has to turn in the yard. On its lots a tenth of the docks had no way in (yard_test).
 constexpr double WORKS_DEPTH = 50, WORKS_FRONTAGE = 42;
-constexpr double RUN_STEP = 1, BEHIND_FOOTWAY = 1.5, BACK_IN = 1; // where a run reads the land: lots.ts streetPlan
+constexpr double ALONG_STEP = 1, BEHIND_FOOTWAY = 1.5, BACK_IN = 1; // where a run reads the land: lots.ts streetPlan
 constexpr double KEY_SCALE = 4, SEED_SCALE = 2;
 constexpr uint32_t SIDE_KEY = 77;
 
@@ -85,16 +85,16 @@ void LotStrips::place_side(int s, int side, int zone) {
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);
 		const double near = face + BEHIND_FOOTWAY, far = face + depth - BACK_IN;
-		return land_at(a.px + a.lx * near, a.pz + a.lz * near) && land_at(a.px + a.lx * far, a.pz + a.lz * far);
+		return lot_free(a.px + a.lx * near, a.pz + a.lz * near) && lot_free(a.px + a.lx * far, a.pz + a.lz * far);
 	};
 	double from = -1;
-	for (double at = 0;; at += RUN_STEP) {
-		const bool last = at + RUN_STEP > length;
+	for (double at = 0;; at += ALONG_STEP) {
+		const bool last = at + ALONG_STEP > length;
 		const double here = last ? length : at; // the run reaches the street's end: the next street's strip starts there
 		const bool ok = clear(here);
 		if (ok && from < 0) from = here;
 		if ((!ok || last) && from >= 0) {
-			cut_run({ s, sign, face, depth, frontage, zone }, from, ok ? here : here - RUN_STEP);
+			cut_run({ s, sign, face, depth, frontage, zone }, from, ok ? here : here - ALONG_STEP);
 			from = -1;
 		}
 		if (last) break;

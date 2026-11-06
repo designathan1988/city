@@ -42,4 +42,16 @@ struct FarDraw {
 	double due = 0, asked = -std::numeric_limits<double>::infinity();
 };
 
+// What the inside of a building costs cut open (BuildingRenderer::interior_cost).
+struct BuildingInteriorCost {
+	int shell_triangles = 0, shell_boxes = 0; // the cut building without its inside
+	int inside_triangles = 0, inside_boxes = 0; // the floor, cores, walls and furniture
+	int64_t inside_bytes = 0;
+};
+
+// What the view asked of the last frame and what the frame's budget left unasked.
+struct BuildingViewNeed {
+	int want = 0, unmet = 0, requested = 0, done = 0;
+};
+
 } // namespace city

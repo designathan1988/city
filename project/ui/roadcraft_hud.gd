@@ -15,7 +15,7 @@ signal category_pressed(id: String)
 @onready var drawer: HudDrawer
 @onready var popover: HudPopover
 @onready var inspector: InspectorPanel
-var _road_editor: RoadProfilePanel
+@onready var _road_editor: RoadProfilePanel
 @onready var actions: HudActions
 @onready var health: HealthPanel
 @onready var profiler: ProfilerHud

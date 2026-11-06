@@ -3,29 +3,17 @@
 class_name RoadModels
 extends RefCounted
 
-const DIR := "user://road_models"
+const FOLDER := "user://road_models"
 const TEST_DIR := "user://road_models_tests"
 const EXT := "via"
 
 
 static func dir() -> String:
-	return TEST_DIR if GameFlow.tests_drive else DIR
+	return TEST_DIR if GameFlow.tests_drive else FOLDER
 
 
 static func list() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	if not DirAccess.dir_exists_absolute(dir()): # nothing saved yet
-		return out
-	for file in DirAccess.get_files_at(dir()):
-		if file.get_extension() != EXT:
-			continue
-		var f := FileAccess.open("%s/%s" % [dir(), file], FileAccess.READ)
-		var entry: Variant = f.get_var() if f != null else null
-		if entry is Dictionary:
-			entry.key = file.get_basename()
-			out.append(entry)
-	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.name.naturalnocasecmp_to(b.name) < 0)
-	return out
+	return SavedEntries.list(dir(), EXT)
 
 
 ## Under its name, replacing one of that name. False when the file could not be written: what was not kept is told.

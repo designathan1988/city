@@ -30,7 +30,7 @@ constexpr uint32_t WRECK_SEED = 2654435761u; // each model buckled its own way
 constexpr float DOOR_FLAG = 16.f; // each step the kerb door stands open, over the brake's flag and the wheel's angle (agent_door.gdshaderinc)
 constexpr float BRAKE_FLAG = 8.f; // added to the roll angle (0..TAU) when the brake light is on; agents.gdshader
 constexpr uint32_t SEED_SALT = 0x5ea7u, LOAD_SALT = 0x10adu, ORDER_SHIFT = 8, SEAT_SALT = 0x9e3779b1u;
-constexpr float STILL_M = 0.002f; // a frame's movement under this is standing
+constexpr float ROLL_LEAST_M = 0.002f; // a frame's movement under this is standing
 constexpr int STILL_FRAMES = 12; // so many in a row and a rider puts a foot down
 constexpr uint64_t SEAT_KEYS = 128; // more than any vehicle's seats: a rider's key is the vehicle's and the seat's
 
@@ -188,7 +188,7 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 	Odometer &o = odo_[size_t(id)];
 	float dx = p.x - o.x, dz = p.z - o.z, moved = dx * p.fx + dz * p.fz;
 	if (o.seen && std::fabs(moved) < jump_m_ && wheel_r > 0) o.angle = std::fmod(o.angle + moved / wheel_r, TAU_F);
-	o.still = std::fabs(moved) > STILL_M ? 0 : std::min(o.still + 1, STILL_FRAMES);
+	o.still = std::fabs(moved) > ROLL_LEAST_M ? 0 : std::min(o.still + 1, STILL_FRAMES);
 	o.x = p.x;
 	o.z = p.z;
 	o.seen = true;
