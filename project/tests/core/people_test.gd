@@ -18,6 +18,8 @@ const MIN_CHILDREN := 0.05
 const MAX_CHILDREN := 0.25
 const FAR_PARTY_M := 4.0 # the two of a pair are never further apart than a few steps
 const MAX_TOUCHING := 0.01 # a stride's overlap as one turns while the other stands: not more than one pair in a hundred
+const CROSS_STEPS := 1500 # a street sees few people an hour: as long as it takes somebody to cross
+const CROSS_TICKS := 30
 const NEAR_M := 150.0 # the census of the Roadcraft 4.0: 86 people within this of the camera at 16:00
 const MORE_TICKS := 9000
 const MIN_INDOORS := 0.5 # of those who arrive; the others, on a street without a door, end at the node
@@ -68,6 +70,7 @@ func _ready() -> void:
 	_check(doing > 0, "quem espera na guia não faz nada: %s" % later.acts)
 	var indoors := float(later.went_in) / maxf(float(later.arrived), 1.0)
 	_check(indoors >= MIN_INDOORS, "chegaram por uma porta: %.2f" % indoors)
+	_mid_block()
 	var afternoon := float(c.wanted)
 	CityStore.query(&"set_city_hour", [SMALL_HOURS])
 	var night: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
@@ -94,6 +97,33 @@ func _clips() -> void:
 	_check(CityStore.query(&"show_people_clip", ["chairSit"]), "toca um clipe pelo nome")
 	_check(not CityStore.query(&"show_people_clip", ["sem nome"]), "recusa clipe que não há")
 	CityStore.query(&"show_people_clip", ["idle"])
+
+
+## People go over a crossing between junctions, a zebra and one with a signal of its own: put where walkers are, and counted while they use it.
+func _mid_block() -> void:
+	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]:
+		var made := false
+		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
+		for key: String in census.spots:
+			var seg: Dictionary = CityStore.query(&"segment_at", [census.spots[key][0]])
+			if seg.get("seg", -1) >= 0:
+				var points: Array = seg.points
+				made = CityStore.dispatch(&"add_crossing", [points[points.size() / 2], kind]).get("ok", false)
+			if made:
+				break
+		_check(made, "faixa no meio da quadra onde há gente, tipo %d" % kind)
+		var crossed := 0
+		var waited := 0
+		for i in CROSS_STEPS:
+			CityStore.step_ticks(CROSS_TICKS)
+			var now: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
+			crossed = maxi(crossed, now.mid_crossing)
+			waited = maxi(waited, now.mid_waiting)
+			if crossed > 0:
+				break
+		print("faixa tipo ", kind, ": atravessando ", crossed, " esperando ", waited)
+		_check(crossed > 0, "ninguém usou a faixa no meio da quadra, tipo %d (esperando: %d)" % [kind, waited])
+		CityStore.dispatch(&"undo")
 
 
 func _check(ok: bool, what: String) -> void:

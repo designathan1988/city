@@ -376,3 +376,4 @@ inspector.toStreet,Rua inteira,Whole street
 profile.cityLocal,Rua de bairro,Neighbourhood street
 profile.cityUrban,Rua larga,Wide street
 profile.cityAvenue,Avenida com canteiro,Avenue with a median
+cmd.place.crossing,faixa de pedestres,pedestrian crossing

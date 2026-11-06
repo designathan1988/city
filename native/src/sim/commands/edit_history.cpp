@@ -39,6 +39,11 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			net.nodes[op.id].plain = (fwd ? op.to : op.from) != 0;
 			s.log.net_node(op.id);
 			break;
+		case OpKind::NODE_CROSSING:
+			net.nodes[op.id].crossing = uint8_t(fwd ? op.to : op.from);
+			for (int seg : net.nodes[op.id].segs) net.mark_segment(seg);
+			s.log.net_node(op.id);
+			break;
 		case OpKind::NODE_LIFT:
 			net.set_lift(op.id, fwd ? op.lift_to : op.lift_from);
 			s.log.net_node(op.id);

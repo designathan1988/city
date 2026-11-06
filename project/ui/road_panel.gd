@@ -15,6 +15,8 @@ const AT_MOST := 0.85
 const AT_STEP := 0.01
 const AT_MIDDLE := 0.5
 const JOINT_ARMS := 2
+const ZEBRA := 1 # road_network.h NodeCrossing
+const SIGNAL := 2
 
 
 ## `changed`: the panel is read again.
@@ -40,6 +42,12 @@ static func point(col: Control, info: Dictionary, changed: Callable, gone: Calla
 	if int(info.arms) > JOINT_ARMS:
 		return
 	_stepper(col, "cmd.place.nodeHeight", info.id, info.lift, changed)
+	if int(info.crossing) != 0:
+		var off := HudWidgets.button(&"Ghost", "", tr_key("inspector.removeCrossing"), "", "", "opt_row_h")
+		off.pressed.connect(func() -> void:
+			CityStore.dispatch(&"remove_crossing", [info.id])
+			changed.call())
+		col.add_child(off)
 	if int(info.arms) == JOINT_ARMS:
 		var b := HudWidgets.button(&"Ghost", "", tr_key("inspector.joinAligned"), "", "", "opt_row_h")
 		b.pressed.connect(func() -> void:

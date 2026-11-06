@@ -84,6 +84,7 @@
   "ped_child_pace": 0.9,
   "ped_elder_pace": 0.83,
   "ped_rest_fade_s": 0.3,
+  "ped_crossing_share": 0.4,
   "ped_act_fade_s": 0.3,
   "ped_look_after_s": 1.5,
   "ped_look_hold_s": 4.5,

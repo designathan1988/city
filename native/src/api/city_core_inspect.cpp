@@ -77,6 +77,7 @@ void put_node(const CityState &s, const TrafficView &view, Dictionary &d, int no
 	d["id"] = node;
 	d["lift"] = s.roads.nodes[size_t(node)].lift;
 	d["arms"] = int(s.roads.nodes[size_t(node)].segs.size());
+	d["crossing"] = int(s.roads.nodes[size_t(node)].crossing);
 	if (size_t(node) >= view.junction.size() || !view.junction[size_t(node)].signal) return;
 	const JunctionView &j = view.junction[size_t(node)];
 	if (j.stages == 0 || size_t(j.least_from + j.stages) > view.least.size()) return;
@@ -124,6 +125,7 @@ int nearest_building(const CityState &s, const Vector3 &p) {
 static bool is_point(const RoadNetwork &net, int node) {
 	const std::vector<int> &arms = net.nodes[size_t(node)].segs;
 	if (arms.size() != 2) return arms.size() > 2;
+	if (net.nodes[size_t(node)].crossing != CROSSING_NONE) return true;
 	const std::vector<int> road = net.pieces_of(arms[0]);
 	return std::find(road.begin(), road.end(), arms[1]) == road.end();
 }

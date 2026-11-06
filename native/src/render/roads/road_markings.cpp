@@ -73,7 +73,7 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	}
 }
 
-void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb) {
+void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb, bool za, bool zb_end) {
 	const StreetLook &L = pt.e.L;
 	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const CrossingDef &x = pt.e.s.catalog.furniture.crossing;
@@ -82,26 +82,27 @@ void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool c
 	for (int end = 0; end < 2; end++) {
 		if (!(end == 0 ? ca : cb)) continue;
 		auto from = [&](double d) { return end == 0 ? v0 + d : v1 - d; };
-		double za = from(x.zebra_from_m), zb = from(x.zebra_to_m);
+		const bool zebra = end == 0 ? za : zb_end;
+		double z0 = from(x.zebra_from_m), z1 = from(x.zebra_to_m);
 		// as many bars as fit across each stretch of carriageway, clear of its kerbs, the pattern centred on it
 		auto across = [&](float from, float to) {
 			const float wide = to - from, gap = st.zebra_period - st.zebra_bar;
 			if (wide < st.zebra_bar) return;
 			if (pt.e.far) { // bars under a pixel shimmer: what stands for them is their mean over the carriageway
-				pt.rect(from, to, std::min(za, zb), std::max(za, zb), L.carriage(p).lerp(L.white, st.zebra_bar / st.zebra_period));
+				pt.rect(from, to, std::min(z0, z1), std::max(z0, z1), L.carriage(p).lerp(L.white, st.zebra_bar / st.zebra_period));
 				return;
 			}
 			const int bars = int(std::floor((wide + gap) / st.zebra_period));
 			const float first = from + (wide - (bars * st.zebra_period - gap)) / 2;
 			for (int k = 0; k < bars; k++) {
 				const float u = first + k * st.zebra_period;
-				pt.rect(u, u + st.zebra_bar, std::min(za, zb), std::max(za, zb), L.white);
+				pt.rect(u, u + st.zebra_bar, std::min(z0, z1), std::max(z0, z1), L.white);
 			}
 		};
-		if (island) {
+		if (zebra && island) {
 			across(ar + st.zebra_edge, isle0 - st.zebra_edge);
 			across(isle1 + st.zebra_edge, al - st.zebra_edge);
-		} else across(ar + st.zebra_edge, al - st.zebra_edge);
+		} else if (zebra) across(ar + st.zebra_edge, al - st.zebra_edge);
 		// stop line on the approach half (end a: traffic arrives on the +u side; one-way roads arrive only at b)
 		if (pt.e.far || (end == 0 && p.one_way)) continue;
 		float su0 = p.one_way ? ar : (end == 0 ? isle1 : ar), su1 = p.one_way ? al : (end == 0 ? al : isle0);
@@ -146,7 +147,7 @@ void emit_markings(const RoadEmit &e, int sid) {
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
 	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
-	crossings(pt, p, v0, v1, ca, cb);
+	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
 	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
 	parking_paint(pt);

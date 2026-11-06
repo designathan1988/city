@@ -107,6 +107,8 @@ void begin_line(CityState &s, int id) {
 }
 
 // At the end of a sidewalk: arrived, or plan the way round the node onto the next street's sidewalk.
+constexpr uint32_t CROSS_MASK = 0xFFFF;
+
 void at_node(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
@@ -114,7 +116,12 @@ void at_node(CityState &s, int id) {
 	if (w.ri + 1 >= w.route.len) { despawn(t, id, true); return; }
 	int next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1)), side_out = 0;
 	const bool last = w.ri + 2 >= w.route.len;
-	int k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, last ? w.goal_side : -1, w.ways, side_out);
+	int want = last ? w.goal_side : -1;
+	if (next >= 0 && want < 0 && s.roads.mid_block(n) && float(hash_combine(w.look, uint32_t(n)) & CROSS_MASK) < s.catalog.traffic.ped_crossing_share * float(CROSS_MASK)) {
+		int stays = 0; // going over to the other sidewalk: what a crossing between junctions is there for
+		if (plan_corner(s, n, w.seg, w.side, next, -1, w.ways, stays) >= 0) want = 1 - stays;
+	}
+	int k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, want, w.ways, side_out);
 	if (k < 0) { despawn(t, id, false); return; }
 	const RoadSegment &ng = s.roads.segs[next];
 	w.ri++;

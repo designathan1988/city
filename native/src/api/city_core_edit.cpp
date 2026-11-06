@@ -104,6 +104,14 @@ Dictionary CityCore::join_roads(int node) {
 	return run_edit(*state_, "cmd.place.joinRoads", [&](CityState &s) { return city::join_roads(s, node); });
 }
 
+Dictionary CityCore::add_crossing(const Vector3 &p, int kind) {
+	return run_edit(*state_, "cmd.place.crossing", [&](CityState &s) { return city::add_crossing(s, p.x, p.z, kind); });
+}
+
+Dictionary CityCore::remove_crossing(int node) {
+	return run_edit(*state_, "cmd.place.crossing", [&](CityState &s) { return city::remove_crossing(s, node); });
+}
+
 Dictionary CityCore::split_road(const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.splitRoad", [&](CityState &s) { return split_road_at(s, p.x, p.z); });
 }

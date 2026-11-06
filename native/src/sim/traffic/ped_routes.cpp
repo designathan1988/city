@@ -16,6 +16,8 @@ namespace traffic {
 namespace {
 
 
+constexpr size_t JUNCTION_ARMS = 2; // a node of more arms than this is a junction
+
 V2 node_xz(const CityState &s, int n) { return V2(float(s.roads.nodes[n].x), float(s.roads.nodes[n].z)); }
 
 struct Arm {
@@ -88,7 +90,8 @@ bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &o
 		for (int seg : net.nodes[k].segs) {
 			if (!walkable(s, seg)) continue;
 			const RoadSegment &g = net.segs[seg];
-			relax(g.a == k ? g.b : g.a, float(g.len) / pace + tp.walk_cost_extra_s);
+			// the fixed extra is a junction's: a road cut in pieces, or with a crossing on it, is no longer than the parallel one
+			relax(g.a == k ? g.b : g.a, float(g.len) / pace + (net.nodes[k].segs.size() > JUNCTION_ARMS ? tp.walk_cost_extra_s : 0.f));
 		}
 	};
 	return astar(sc, net.nodes.size(), from, goal, int(tp.ped_route_max_expanded), h, expand, out);
@@ -121,6 +124,7 @@ int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out,
 		}
 	}
 	if (best < 0) return -1;
+	if (s.roads.mid_block(n) && best_steps > 0) best_dir = arms[size_t((ci + 1) % deg)].seg == s.roads.crossing_arm(n) ? 1 : -1; // over the arm that has the crosswalk
 	int w = 0, cur = ci;
 	for (int k = 0; k < best_steps && w + 3 <= MAX_WAYS; k++) {
 		// increasing: cross arm cur + 1 from its far side to the side facing the next arm; decreasing: arm cur back

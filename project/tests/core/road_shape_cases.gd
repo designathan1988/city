@@ -12,6 +12,7 @@ const TOO_HIGH_M := 500.0
 const BEND_M := 30.0
 const MIDDLE := 0.5
 const SAME_M := 2.0
+const TICKS := 5
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
 
 var _check: Callable
@@ -34,6 +35,7 @@ func run(e: Vector3) -> void:
 	_height(info)
 	_bend(info, mid)
 	_join(a + (b - a) * QUARTER)
+	_crossing(a + (b - a) * QUARTER)
 
 
 func _height(info: Dictionary) -> void:
@@ -61,6 +63,26 @@ func _bend(info: Dictionary, mid: Vector3) -> void:
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer a curva volta à mesma cidade")
+
+
+func _crossing(at: Vector3) -> void:
+	var before: Dictionary = CityStore.query(&"state_hash")
+	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]:
+		var made: Dictionary = CityStore.dispatch(&"add_crossing", [at, kind])
+		_check.call(made.get("ok", false), "faixa no meio da quadra: %s" % [made])
+		var node: Dictionary = CityStore.query(&"inspect", [at])
+		_check.call(node.get("kind", "") == "node" and int(node.crossing) == kind, "o Inspecionar pega a faixa: %s" % [node.get("crossing", "?")])
+		var off: Dictionary = CityStore.dispatch(&"remove_crossing", [node.id])
+		_check.call(off.get("ok", false), "tirar a faixa: %s" % [off])
+		CityStore.dispatch(&"undo")
+		CityStore.dispatch(&"undo")
+	_check.call(CityStore.query(&"state_hash").whole == before.whole, "desfazer a faixa volta à mesma cidade")
+	var near_end: Dictionary = CityStore.dispatch(&"add_crossing", [at - Vector3(ROAD_M * QUARTER - 1.0, 0, 0), RoadPanel.ZEBRA])
+	_check.call(not near_end.get("ok", true), "sem lugar para os carros pararem, a faixa é recusada")
+	for kind: int in [RoadPanel.ZEBRA, RoadPanel.SIGNAL]: # the lanes and the junction are made again round it, with the fleet on
+		CityStore.dispatch(&"add_crossing", [at, kind])
+		CityStore.step_ticks(TICKS)
+		CityStore.dispatch(&"undo")
 
 
 func _join(mid: Vector3) -> void:

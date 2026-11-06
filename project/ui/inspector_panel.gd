@@ -97,6 +97,13 @@ func _road(col: Control, info: Dictionary) -> void:
 		if CityStore.dispatch(&"split_road", [_at]).get("ok", false):
 			_redraw())
 	row.add_child(height)
+	for kind: Array in [["inspector.addZebra", RoadPanel.ZEBRA], ["inspector.addSignalCrossing", RoadPanel.SIGNAL]]:
+		var crossing := HudWidgets.button(&"Ghost", "", tr(kind[0]), "", "", "opt_row_h")
+		crossing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		crossing.pressed.connect(func() -> void:
+			if CityStore.dispatch(&"add_crossing", [_at, kind[1]]).get("ok", false):
+				_redraw())
+		row.add_child(crossing)
 	_demolish_button(row)
 
 

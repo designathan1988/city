@@ -175,6 +175,9 @@ RoadBend road_bend_of(const Quad &line);
 EditResult set_node_lift(CityState &s, int node, float metres);
 EditResult set_road_bend(CityState &s, int seg, double height, double at, double &mid_x, double &mid_z); // mid: where the road's middle stands after it
 EditResult join_roads(CityState &s, int node);
+// A crossing where the road passes (x, z), between junctions, or where it passes one (road_crossing.cpp); taken away by its node.
+EditResult add_crossing(CityState &s, double x, double z, int kind);
+EditResult remove_crossing(CityState &s, int node);
 // The Controle tab: what a junction of three or more arms runs by (NodeControl).
 EditResult set_node_control(CityState &s, int node, int ctl);
 // The Move tab: the node goes to (x, z) and its roads are laid again to it, each keeping its shape, zones and direction;

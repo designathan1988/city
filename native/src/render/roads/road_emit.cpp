@@ -56,6 +56,7 @@ double street_start(const RoadNetwork &net, int sid) {
 }
 
 bool crossing_node(const CityState &s, int node) { return s.roads.has_crosswalks(node); }
+bool crosswalk_at(const CityState &s, int node, int seg) { return s.roads.crosswalk_on(node, seg); }
 
 void emit_chunk(const RoadEmit &e, int64_t chunk) {
 	const float x0 = key_x(chunk) * CHUNK, z0 = key_y(chunk) * CHUNK;

@@ -205,7 +205,7 @@ void emit_segment(const RoadEmit &e, int sid) {
 		return;
 	}
 	bool ring_or_rail = p.ring || p.rail;
-	bool ca = !ring_or_rail && crossing_node(e.s, g.a), cb = !ring_or_rail && crossing_node(e.s, g.b);
+	bool ca = !ring_or_rail && crosswalk_at(e.s, g.a, sid), cb = !ring_or_rail && crosswalk_at(e.s, g.b, sid);
 	float island0, island1;
 	const bool island = island_span(p, island0, island1);
 	const double nose = e.s.catalog.furniture.crossing.zebra_to_m + e.L.median_nose;

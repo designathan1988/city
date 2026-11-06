@@ -203,9 +203,23 @@ int RoadNetwork::find_segment_near(double x, double z, double radius, double &t_
 	return best;
 }
 
+bool RoadNetwork::mid_block(int node) const {
+	const RoadNode &n = nodes[size_t(node)];
+	return n.crossing != CROSSING_NONE && n.segs.size() == 2;
+}
+
+int RoadNetwork::crossing_arm(int node) const {
+	const RoadNode &n = nodes[size_t(node)];
+	return std::min(n.segs[0], n.segs[1]);
+}
+
+bool RoadNetwork::crosswalk_on(int node, int seg) const {
+	return has_crosswalks(node) && (!mid_block(node) || seg == crossing_arm(node));
+}
+
 bool RoadNetwork::has_crosswalks(int node) const {
 	const RoadNode &n = nodes[size_t(node)];
-	if (int(n.segs.size()) < CROSSWALK_ARMS) return false;
+	if (int(n.segs.size()) < CROSSWALK_ARMS && !mid_block(node)) return false;
 	for (int seg : n.segs) {
 		const Profile &p = profile_of(seg);
 		if (p.ring || p.rail) return false;

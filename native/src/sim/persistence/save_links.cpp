@@ -39,4 +39,28 @@ bool read_links_block(ByteReader &r, RoadNetwork &net) {
 	return r.ok;
 }
 
+bool write_crossings_block(ByteWriter &w, const RoadNetwork &net) {
+	uint32_t nodes = 0;
+	for (const RoadNode &n : net.nodes) nodes += n.alive && n.crossing != CROSSING_NONE ? 1 : 0;
+	if (nodes == 0) return false;
+	w.put<uint32_t>(nodes);
+	for (size_t i = 0; i < net.nodes.size(); i++) {
+		if (!net.nodes[i].alive || net.nodes[i].crossing == CROSSING_NONE) continue;
+		w.put<uint32_t>(uint32_t(i));
+		w.put<uint8_t>(net.nodes[i].crossing);
+	}
+	return true;
+}
+
+bool read_crossings_block(ByteReader &r, RoadNetwork &net) {
+	const uint32_t nodes = r.get<uint32_t>();
+	for (uint32_t k = 0; k < nodes && r.ok; k++) {
+		const uint32_t i = r.get<uint32_t>();
+		const uint8_t kind = r.get<uint8_t>();
+		if (!r.ok || i >= net.nodes.size()) return false;
+		net.nodes[i].crossing = kind;
+	}
+	return r.ok;
+}
+
 } // namespace city
