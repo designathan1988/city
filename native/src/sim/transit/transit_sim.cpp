@@ -267,5 +267,13 @@ void bus_gone(CityState &s, int vehicle) {
 	b.wait = travel_time(p, (V2(v.cur.x, v.cur.z) - V2(d.ex, d.ez)).len(), d.speed);
 }
 
+float bus_door_share(const CityState &s, const Bus &b) {
+	const TransitLine *l = s.transit.line(b.line);
+	if (!l || l->stops.empty() || b.dwell <= 0) return 0;
+	const TrafficParams &p = s.catalog.traffic;
+	const float total = is_end(s, *l, b) ? p.bus_terminal_s : p.bus_dwell_s;
+	return std::clamp(std::min(b.dwell, total - b.dwell) / p.kerb_door_open_s, 0.f, 1.f);
+}
+
 } // namespace transit
 } // namespace city

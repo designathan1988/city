@@ -20,7 +20,7 @@ uniform float roughness = 0.0;
 
 void vertex() {
 	if (COLOR.g > PANE_MARK) VERTEX.y = mix(VERTEX.y, COLOR.r * SILL_SPAN_M, pane_drop(COLOR.a, VERTEX.x));
-	if (UV2.y > DOOR_MARK) door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g);
+	if (UV2.y > DOOR_MARK) door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
 }
 
 void fragment() {

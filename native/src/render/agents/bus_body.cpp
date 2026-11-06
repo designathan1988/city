@@ -243,6 +243,17 @@ std::vector<float> posts(const Bus &b, int side, float z0, float z1) {
 	return out;
 }
 
+// One leaf of a door, from its hinge at `jamb` to `free`: the vertex stage swings what is marked with its hinge in UV.
+void leaf(MeshBuilder &mb, const Bus &b, float jamb, float free, Limb limb, const AgentTrim &trim) {
+	const float xd = -b.hw - HEAVY_PROUD_M, low = b.clear;
+	const Vector2 hinge(xd, jamb), uvs[4] = { hinge, hinge, hinge, hinge };
+	mb.quad(Vector3(xd, low, jamb), Vector3(xd, low, free), Vector3(xd, b.cant, free), Vector3(xd, b.cant, jamb), trim.glass, Vector3(-1, 0, 0), uvs, agent_tag(AgentTag::GLASS, limb));
+	const size_t from = mb.uv.size();
+	for (float z : { jamb, free })
+		agent_box(mb, Vector3(xd - HEAVY_PROUD_M, low, z - DOOR_SPLIT_W), Vector3(-b.hw + HEAVY_PROUD_M, b.cant, z + DOOR_SPLIT_W), trim.blackout, AgentTag::FIXED, limb);
+	for (size_t i = from; i < mb.uv.size(); i++) mb.uv[i] = hinge;
+}
+
 void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 	const float z0 = -b.hl + HEAVY_PILLAR_M, z1 = b.hl - HEAVY_PILLAR_M, hp = HEAVY_PILLAR_M * 0.5f;
 	for (int side : { -1, 1 }) {
@@ -254,13 +265,11 @@ void band(MeshBuilder &mb, const Bus &b, const AgentTrim &trim) {
 			agent_box(mb, Vector3(side * (b.hw - HEAVY_PROUD_M), b.sill, z - hp), Vector3(side * (b.hw + HEAVY_PROUD_M), b.cant, z + hp), trim.blackout,
 					AgentTag::FIXED);
 	}
-	// the doors' leaves on the kerb side: glazed from the bottom strip to the cant rail, split in the middle
-	const float xd = -b.hw - HEAVY_PROUD_M, low = b.clear;
+	// the doors' leaves on the kerb side: glazed from the bottom strip to the cant rail, split in the middle, each hung at its jamb
 	for (const Vector2 &d : b.doors) {
-		agent_pane(mb, Vector3(xd, low, d.x), Vector3(xd, low, d.y), Vector3(xd, b.cant, d.y), Vector3(xd, b.cant, d.x), Vector3(-1, 0, 0), trim);
-		for (float z : { d.x, (d.x + d.y) * 0.5f, d.y })
-			agent_box(mb, Vector3(xd - HEAVY_PROUD_M, low, z - DOOR_SPLIT_W), Vector3(-b.hw + HEAVY_PROUD_M, b.cant, z + DOOR_SPLIT_W), trim.blackout,
-					AgentTag::FIXED);
+		const float mid = (d.x + d.y) * 0.5f;
+		leaf(mb, b, d.y, mid, Limb::DOOR, trim);
+		leaf(mb, b, d.x, mid, Limb::DOOR_BACK, trim);
 	}
 }
 

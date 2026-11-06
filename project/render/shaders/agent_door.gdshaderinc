@@ -4,6 +4,7 @@ const float DOOR_FLAG = 16.0;
 const float DOOR_LEVELS = 31.0; // pose_buffer.h LOOK_DOOR_MASK
 const float DOOR_SWING = 1.15; // radians, fully open (Roadcraft occupants.ts)
 const float DOOR_MARK = 1.5; // UV2.y over this: a door's vertex
+const float DOOR_BACK_MARK = 2.5; // and over this, one hung at its back edge
 
 const float SILL_SPAN_M = 4.0; // a pane's COLOR.r: its sill's height over this
 const float PANE_MARK = 0.5; // COLOR.g over this: a front door's pane, which goes down
@@ -16,8 +17,8 @@ float pane_drop(float seed, float x) {
 	return down ? (part < 0.5 ? 0.45 : 1.0) : 0.0;
 }
 
-void door_swing(inout vec3 p, inout vec3 n, vec2 hinge, float wheel_and_door) {
-	float a = floor(wheel_and_door / DOOR_FLAG) / DOOR_LEVELS * DOOR_SWING;
+void door_swing(inout vec3 p, inout vec3 n, vec2 hinge, float wheel_and_door, float mark) {
+	float a = floor(wheel_and_door / DOOR_FLAG) / DOOR_LEVELS * DOOR_SWING * sign(hinge.x) * (mark > DOOR_BACK_MARK ? -1.0 : 1.0); // always out of the body
 	float c = cos(a), s = sin(a);
 	vec2 d = p.xz - hinge;
 	p.xz = hinge + vec2(d.x * c - d.y * s, d.x * s + d.y * c);

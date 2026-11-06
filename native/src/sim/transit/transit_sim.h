@@ -78,6 +78,7 @@ struct TransitRun {
 };
 
 namespace transit {
+float bus_door_share(const CityState &s, const Bus &b); // how far its doors stand open: open through its dwell, shutting at the end of it
 
 void step(CityState &s, float dt);
 void reset(CityState &s); // a new map or a load: nothing running

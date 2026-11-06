@@ -49,7 +49,7 @@ void vertex() {
 	v_custom = INSTANCE_CUSTOM;
 	v_seed = COLOR.a;
 	if (UV2.y > DOOR_MARK) {
-		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g);
+		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
 	} else if (UV2.y > 0.5) {
 		float a = mod(INSTANCE_CUSTOM.g, BRAKE_FLAG);
 		vec2 d = VERTEX.yz - UV;

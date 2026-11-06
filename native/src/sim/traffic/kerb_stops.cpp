@@ -6,6 +6,7 @@
 
 #include "core/random.h"
 #include "sim/roads/parking_layout.h"
+#include "sim/transit/transit_sim.h"
 
 #include <algorithm>
 #include <cmath>
@@ -82,7 +83,7 @@ DoorPlaces door_places(const CityState &s, const Vehicle &v) {
 	Pose lane, foot;
 	lane_pose(s, v.ds, v.lane, at, lane);
 	sidewalk_pose(s, d.seg, kerb_side(d), arc_of(d, at), 0, foot);
-	const V2 right(lane.fz, -lane.fx);
+	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
 	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z) };
 }
 
@@ -330,6 +331,7 @@ void step_kerb_stops(CityState &s, float dt) {
 }
 
 uint32_t kerb_door_level(const CityState &s, const Vehicle &v) {
+	if (v.bus >= 0) return uint32_t(transit::bus_door_share(s, s.transit_run.buses[size_t(v.bus)]) * float(LOOK_DOOR_MASK) + 0.5f);
 	if (v.kerb < 0) return 0;
 	const KerbStop &k = s.traffic.kerb_stops[size_t(v.kerb)];
 	const TrafficParams &p = s.catalog.traffic;

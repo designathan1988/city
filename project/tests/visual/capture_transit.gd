@@ -8,6 +8,7 @@ const TRAIN := 1
 const METRO := 2
 const HOUR := 16.0
 const STOP_REACH_M := 18.0
+const DOORS_OPEN_TICKS := 40
 const RAIL_APART_M := 150.0 # out of the bus street's photos
 const TRACK_HALVES := [280.0, 220.0, 160.0, 120.0]
 const STATION_SHARE := 0.68
@@ -208,6 +209,8 @@ static func _bus_shots(cap: Node, terminal: Dictionary) -> void:
 	if now.has("bus_at"):
 		var ahead: Vector3 = now.bus_heading
 		await _look(cap, "43_onibus", now.bus_at, ahead, Vector3(ahead.z, 0, -ahead.x), BUS)
+		CityStore.step_ticks(DOORS_OPEN_TICKS)
+		await _look(cap, "43_onibus_portas", now.bus_at, ahead, Vector3(-ahead.z, 0, ahead.x), BUS) # from the kerb, its doors open
 
 
 ## How far the nearest car of any train is from `at`, on the ground.
