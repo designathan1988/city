@@ -26,9 +26,9 @@ void put_param(const RID &inst, const char *name, float value) {
 	if (has_them && inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(inst, name, value);
 }
 
-void range(const MeshDraw &d, float begin, float end) {
+void range(const MeshDraw &d, float begin, float end, float begin_margin = 0) {
 	if (d.inst.is_valid())
-		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, 0, 0,
+		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, begin_margin, 0,
 				RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 } // namespace
@@ -80,7 +80,9 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		for (const ShadowTwin &d : *casts)
 		if (d.inst.is_valid())
 			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
-	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);
+	// Where the bays end, by the margin of theirs: the engine's hysteresis moves each edge by the way the eye comes, and with no margin here a
+	// camera coming in lost the flat before the bays were back, and for those metres the plain side behind them stood bare.
+	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0, bay_end_ * RANGE_LINGER_SHARE);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 
