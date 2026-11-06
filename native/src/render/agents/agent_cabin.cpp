@@ -1,7 +1,6 @@
 // The cabin of any vehicle behind its see-through glass: a lining facing in (the shell's own faces are seen from behind
-// there and culled) with its doorways, floor, liner and dashboard; the seats in their styles (car, truck cab, bus chair);
-// in each a sitting person at its hip point (a driver's hands on the wheel) whose parts carry, for the shader, the
-// seat's place in the order the seats fill and the vehicle's passenger seats (UV).
+// there and culled) with its doorways, floor, liner and dashboard; the seats in their styles (car, truck cab, bus chair). Who sits
+// in them is not here: the cooked people, posed by PeopleRenderer at the hip points this leaves in CabinLook::spots.
 #include "render/agents/agent_meshes.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -15,7 +14,6 @@ namespace city {
 
 namespace {
 
-constexpr float SHOULDER_DROP = 0.06f; // arms hang from this far under the top of the torso
 constexpr int RIM_SIDES = 16;          // segments of a steering wheel's rim
 constexpr float SPOKE_ANGLES[3] = { 1.82f, -1.82f, 3.14159f }; // its spokes from the rim's top, radians
 constexpr float SPOKE_W_M = 0.04f, SPOKE_T_M = 0.018f, BOSS_W_M = 0.13f, BOSS_L_M = 0.05f;
@@ -23,7 +21,6 @@ constexpr float SEAT_NOSE_M = 0.04f, SEAT_NOSE_DROP_M = 0.05f, SEAT_LIP_M = 0.03
 constexpr float BACK_TOP_ROUND_M = 0.02f, BACK_TOP_IN_M = 0.01f;
 constexpr float REST_DEPTH_M = 0.1f, HEADREST_ROD_M = 0.015f, HEADREST_ROD_SHARE = 0.25f;
 constexpr float DASH_LIP_M = 0.02f, DASH_FOOT_M = 0.12f, DASH_WAIST = 0.5f;
-constexpr float HANDS = 1.05f;         // the hands on the rim at ten to two: radians from its top
 constexpr float ROW_EPS_M = 0.01f;
 constexpr int WHEEL_KEYS = 5; // agents.json cabin.seats.*.wheel
 
@@ -137,15 +134,11 @@ void steering(MeshBuilder &mb, const Wheel &w, const CabinLook &l, const CabinPa
 	agent_strut(mb, w.hub, w.hub + (w.column - w.hub).normalized() * BOSS_L_M, BOSS_W_M, BOSS_W_M, p.dash, AgentTag::FIXED);
 }
 
-// Somebody sitting in `s` facing +Z: thighs level on the cushion, shins straight down to the floor.
-Figure seated(const Person &p, const Seat &s) {
-	const float hip = s.floor + s.style->hip_m, kx = s.x + p.thigh.x * 0.5f, kz = s.z + p.thigh.z;
-	Figure f;
-	f.hip = Vector3(s.x, hip, s.z);
-	f.shoulders = Vector3(s.x, hip + p.torso.y * std::cos(s.style->recline), s.z - p.torso.y * std::sin(s.style->recline));
-	f.knee = Vector3(kx, hip + p.thigh.y * 0.5f, kz);
-	f.ankle = Vector3(kx, s.floor + p.foot.y, kz);
-	return f;
+// How somebody sits in `s`: by the kind of seat, whether they drive and, in a car, whether they are in the row of the driver.
+SeatPose pose_of(const Seat &s, const Seat &first, const CabinLook &l) {
+	if (s.style == &l.car) return s.driver ? SeatPose::CAR_DRIVER : (s.z >= first.z - ROW_EPS_M ? SeatPose::CAR_FRONT : SeatPose::CAR_REAR);
+	if (s.style == &l.cab) return s.driver ? SeatPose::CAB_DRIVER : SeatPose::CAB_RIDE;
+	return SeatPose::CHAIR;
 }
 
 } // namespace
@@ -162,75 +155,24 @@ void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width) {
 	c.dash_w = width;
 }
 
-void agent_person(MeshBuilder &mb, const Person &p, const Figure &f) {
-	const Vector3 &t = p.torso, &g = p.thigh;
-	const Vector2 shoe = agent_tag(AgentTag::FIXED, Limb::SEAT);
-	agent_strut(mb, f.hip, f.shoulders, t.x, t.z, AGENT_WHITE, AgentTag::CLOTH, Limb::SEAT);
-	for (int side : { -1, 1 }) {
-		auto at = [&](const Vector3 &v) { return side > 0 ? v : Vector3(2 * f.hip.x - v.x, v.y, v.z); };
-		const Vector3 knee = at(f.knee), ankle = at(f.ankle);
-		agent_strut(mb, Vector3(f.hip.x + side * g.x * 0.5f, f.hip.y + g.y * 0.5f, f.hip.z), knee, g.x, g.y, AGENT_WHITE, AgentTag::LEGS, Limb::SEAT);
-		agent_strut(mb, knee, ankle, p.shin_w, p.shin_w, AGENT_WHITE, AgentTag::LEGS, Limb::SEAT);
-		const float heel = ankle.z - p.shin_w * 0.5f;
-		mb.box(Vector3(ankle.x - p.foot.x * 0.5f, ankle.y - p.foot.y, heel), Vector3(ankle.x + p.foot.x * 0.5f, ankle.y, heel + p.foot.z), p.shoes, shoe, true);
-		const Vector3 shoulder(f.shoulders.x + side * (t.x + p.arm.x) * 0.5f, f.shoulders.y - SHOULDER_DROP - p.arm.x * 0.5f, f.shoulders.z);
-		const Vector3 hand = f.holds ? at(f.hand) : shoulder - Vector3(0, p.arm.y, 0);
-		agent_strut(mb, shoulder, hand, p.arm.x, p.arm.z, AGENT_WHITE, AgentTag::CLOTH, Limb::SEAT);
-	}
-	const Vector3 &s = f.shoulders;
-	const float neck = p.head_r * 0.5f;
-	const Vector3 head = s + Vector3(0, p.neck_m + p.head_r, 0);
-	mb.box(Vector3(s.x - neck, s.y, s.z - neck), Vector3(s.x + neck, s.y + p.neck_m + p.head_r * 0.5f, s.z + neck), AGENT_WHITE,
-			agent_tag(AgentTag::SKIN, Limb::SEAT), true);
-	if (f.helmet.x > 0) {
-		mb.blob(head, f.helmet, AGENT_WHITE, agent_tag(AgentTag::HELMET, Limb::SEAT));
-		return;
-	}
-	mb.blob(head, Vector3(p.head_r, p.head_r, p.head_r), AGENT_WHITE, agent_tag(AgentTag::SKIN, Limb::SEAT));
-	const float hr = p.head_r * (1 + p.hair_drop);
-	mb.blob(head + Vector3(0, p.head_r * p.hair_drop, -p.hair_back_m), Vector3(hr, hr * (1 - p.hair_drop), hr), AGENT_WHITE,
-			agent_tag(AgentTag::HAIR, Limb::SEAT));
-	const Vector3 &lh = p.long_hair; // down the back of the head to the shoulders
-	mb.box(Vector3(head.x - lh.x * 0.5f, head.y - lh.y, head.z - hr - p.hair_back_m), Vector3(head.x + lh.x * 0.5f, head.y, head.z - hr - p.hair_back_m + lh.z),
-			AGENT_WHITE, agent_tag(AgentTag::HAIR_LONG, Limb::SEAT), true);
-}
-
-void seat_order(MeshBuilder &mb, int64_t from, float order) {
-	for (int64_t i = from; i < mb.v.size(); i++) mb.uv.set(i, Vector2(order, 0));
-}
-
 bool CabinLook::load(const Dictionary &d) {
 	lining_inset_m = d["lining_inset_m"]; liner_drop_m = d["liner_drop_m"]; rim_m = d["steering_rim_m"];
 	const Dictionary p = d["person"], seats = d["seats"];
-	person.torso = agent_v3(p["torso_m"]); person.arm = agent_v3(p["arm_m"]); person.thigh = agent_v3(p["thigh_m"]); person.foot = agent_v3(p["foot_m"]);
-	person.shin_w = p["shin_w_m"]; person.head_r = p["head_r_m"]; person.neck_m = p["neck_m"]; person.hair_drop = p["hair_drop"];
-	person.hair_back_m = p["hair_back_m"]; person.long_hair = agent_v3(p["long_hair_m"]); person.shoes = agent_hex(p["shoes"]);
+	person.torso = agent_v3(p["torso_m"]); person.thigh = agent_v3(p["thigh_m"]); person.foot = agent_v3(p["foot_m"]);
+	person.shin_w = p["shin_w_m"];
 	const bool styles = load_style(seats["car"], car) && load_style(seats["cab"], cab) && load_style(seats["chair"], chair);
 	return styles && person.torso.y > 0 && person.thigh.z > 0 && rim_m > 0;
 }
 
 int agent_cabin(MeshBuilder &mb, const Cabin &c, const std::vector<Seat> &seats, const CabinLook &l) {
-	const int64_t first = mb.v.size();
 	lining(mb, c, l);
 	int passengers = 0;
 	for (const Seat &s : seats) {
 		seat_shell(mb, s, l, c.paint);
-		Wheel w;
-		if (s.driver && s.style->wheel_r_m > 0) {
-			w = wheel_of(s, l);
-			steering(mb, w, l, c.paint);
-		}
-		Figure f = seated(l.person, s);
-		if (s.driver && s.style->wheel_r_m > 0) {
-			f.holds = true;
-			f.hand = w.rim(HANDS); // the left hand at ten to two
-		}
-		const int64_t from = mb.v.size();
-		agent_person(mb, l.person, f);
-		seat_order(mb, from, s.driver ? DRIVER_ORDER : float(passengers++));
+		if (s.driver && s.style->wheel_r_m > 0) steering(mb, wheel_of(s, l), l, c.paint);
+		if (l.spots) l.spots->push_back({ Vector3(s.x, s.floor + s.style->hip_m, s.z), pose_of(s, seats.front(), l), s.driver ? DRIVER_SEAT : passengers });
+		if (!s.driver) passengers++;
 	}
-	for (int64_t i = first; i < mb.v.size(); i++)
-		if (mb.uv2[i].y == float(int(Limb::SEAT))) mb.uv.set(i, Vector2(mb.uv[i].x, float(passengers)));
 	return passengers;
 }
 

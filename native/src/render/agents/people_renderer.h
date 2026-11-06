@@ -5,7 +5,9 @@
 // (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
+#include "render/agents/agent_meshes.h"
 #include "render/agents/people_asset.h"
+#include "render/row_keeper.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/view_cull.h"
@@ -36,19 +38,25 @@ inline Pose record_pose(const AgentRecord &rec, const PoseSample &at) {
 
 // One agent instance: model +Z along the heading, +X to its left, uniform scale.
 // `seed` goes in the instance colour's alpha (a vehicle's occupants, agents.gdshader); the colour stays white.
-inline void push_agent(godot::PackedFloat32Array &buf, const Pose &p, float scale, float c0, float c1, float c2, float c3,
-		float seed = 1.f) {
+inline void agent_row(float *row, const Pose &p, float scale, float c0, float c1, float c2, float c3, float seed = 1.f) {
 	// on a grade the body turns about its own left: along the heading it rises, its up leans back
 	const float flat = scale / std::sqrt(1.f + p.rise * p.rise), up = flat * p.rise;
 	godot::Vector3 x(p.fz * scale, 0, -p.fx * scale), y(-p.fx * up, flat, -p.fz * up), z(p.fx * flat, up, p.fz * flat);
-	mm_push(buf, x, y, z, godot::Vector3(p.x, p.y, p.z), godot::Color(1, 1, 1, seed), c0, c1, c2, c3);
+	mm_row(row, x, y, z, godot::Vector3(p.x, p.y, p.z), godot::Color(1, 1, 1, seed), c0, c1, c2, c3);
 }
 
 class PeopleRenderer {
 public:
 	bool init(const RenderContext &ctx, const godot::Dictionary &people, godot::PackedStringArray &errors);
 	void reset();
-	// Returns how many people were drawn.
+	// Who rides is keyed from here on, past the walkers' ids.
+	static constexpr uint64_t PEOPLE_DENSE_KEYS = 1u << 20;
+	// The frame's rows open: riders first (seat), then the walkers and the draws (update).
+	void begin();
+	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, the bicycle's cranks at `phase` (0..1),
+	// a two-wheeler's rider with a foot down when `stopped`.
+	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
+	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
 	int shown(int level) const; // people drawn at this level on the last frame
@@ -60,17 +68,23 @@ private:
 	PeopleAsset asset_;
 	godot::RID scenario_, material_;
 	std::vector<MultiMeshDraw> draws_; // variation * (lods + 1) + level; the last, the far mesh casting no shadow
-	std::vector<godot::PackedFloat32Array> bufs_;
+	std::vector<InstanceRows> bufs_;
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age
 	OwnedMesh blob_mesh_;
 	MultiMeshDraw blob_;
-	godot::PackedFloat32Array blob_buf_;
+	InstanceRows blob_buf_;
 	godot::RID blob_material_;
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
+	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
+	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
+	int level_at(float dist) const;
+	// The instance of a body at `p`.
+	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float frames, float phase, float pose_code);
+	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
 };
 

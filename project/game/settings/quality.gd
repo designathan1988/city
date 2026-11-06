@@ -13,6 +13,12 @@ const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
 const COMPATIBILITY := "gl_compatibility"
+const FORWARD_PLUS := "forward_plus"
+## settings.json tiers "temporal": what resolves the shimmer of edges, shaders and shadows over the frames. FSR2 at the full resolution
+## is the sharper of the two, and pays its own pass (Godot docs: FSR2 as the antialiasing when the GPU has room).
+const TEMPORAL_NONE := 0
+const TEMPORAL_TAA := 1
+const TEMPORAL_FSR2 := 2
 const FALLBACK_AA := 1 # where SMAA does not exist the same tier asks for this entry of MSAA_MODES
 ## pedestrian_detail 0: the people's nearest level is this one (their far level).
 const PEOPLE_FAR := 1
@@ -76,6 +82,11 @@ static func has_smaa() -> bool:
 	return RenderingServer.get_current_rendering_method() != COMPATIBILITY
 
 
+## TAA and FSR2 read the motion vectors of Forward+ alone (Godot docs, 3D antialiasing).
+static func has_temporal() -> bool:
+	return RenderingServer.get_current_rendering_method() == FORWARD_PLUS
+
+
 ## The cabin level's reach: where a vehicle stands at occupant_zoom, drawn out by the error the tier accepts (a fixed shape's error on
 ## the screen falls with the distance).
 static func cabin_reach(q: Dictionary, height_px: float) -> float:
@@ -92,9 +103,13 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	world.daylight.shadow_side_px = float(q.shadow_px)
 	world.daylight.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
 	var smaa: bool = q.smaa and has_smaa()
-	viewport.msaa_3d = MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
+	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
+	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
+	viewport.use_taa = temporal == TEMPORAL_TAA
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2 if temporal == TEMPORAL_FSR2 else Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.fsr_sharpness = float(q.temporal_sharpness)
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.occlusion.turn(q.ssao)
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])

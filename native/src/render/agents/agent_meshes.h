@@ -1,9 +1,7 @@
 // Low-poly meshes of the traffic agents, built once at startup from project/data/render/agents.json: lofted car bodies
-// (sedan, hatch, SUV, van, pickup), bus, truck, motorbike with rider (pedestrians are the cooked people, people_asset.h). Model frame: +Z forward,
+// (sedan, hatch, SUV, van, pickup), bus, truck, motorbike (whoever walks or rides is the cooked people, people_asset.h). Model frame: +Z forward,
 // +X the driver's left, Y up, origin = body centre on the road. UV2.x tags each part for render/shaders/agents.gdshader
-// (AgentTag); UV2.y = 1 marks wheel vertices (UV = their hub), turned by the shader, and UV2.y = 2 a person's (Limb::SEAT,
-// UV = the seat's place in the order the seats fill, -1 the driver, and the vehicle's passenger seats): shown or folded
-// away by the shader from the vehicle's load and order. Each vehicle comes at three levels: near, its glass a surface of
+// (AgentTag); UV2.y = 1 marks wheel vertices (UV = their hub), turned by the shader. Each vehicle comes at three levels: near, its glass a surface of
 // its own (split_tag) drawn see-through by render/shaders/agent_glass.gdshader over its cabin (agent_cabin); the body, no
 // cabin and the glass opaque; far, the body's outline alone (agents.json far_radius_m: past it no lamp, grille, plate or
 // mirror is a pixel), fewer stations, rows and wheel sides. A shadow takes no more than its silhouette: each level casts with
@@ -24,23 +22,29 @@ namespace city {
 constexpr int AGENT_CABIN_LEVEL = 0, AGENT_BODY_LEVEL = 1, AGENT_FAR_LEVEL = 2, AGENT_LEVELS = 3;
 constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what the far fleet casts (fleet_shadow.h): one more entry
 
-enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, SKIN, CLOTH, HAIR, HELMET, LEGS, HAIR_LONG, SIGN, ROOF, GLOSS };
-// Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle; SEAT is a person's.
-enum class Limb : int { NONE = 0, WHEEL = 1, SEAT = 2 };
-constexpr float DRIVER_ORDER = -1.f; // UV.x of the driver's parts: always there
+enum class AgentTag : int { FIXED = 0, PAINT = 1, HEAD = 2, TAIL = 3, GLASS = 4, HELMET = 5, SIGN = 6, ROOF = 7, GLOSS = 8 };
+// Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
+enum class Limb : int { NONE = 0, WHEEL = 1 };
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {
 	godot::Color tyre, hub, under, blackout, grille, plate, glass, headlamp, tail, truck_box, chrome, roof, indicator, mirror;
 };
 
-// A person sitting (agents.json "cabin.person"): torso, arm, thigh and foot as [w, h, d] (the thigh's d from the hip to
-// the knee, the foot's from the heel to the toes) and long hair falling behind the head [w, below the head's middle, d]
-// (HAIR_LONG: only the long cut keeps it).
+// The body a cabin is laid out for (agents.json "cabin.person"): torso and thigh as [w, h, d] (the thigh's d from the hip to the
+// knee), the foot's from the heel to the toes; the people who sit there are the cooked pedestrians (PeopleRenderer).
 struct Person {
-	godot::Vector3 torso, arm, thigh, foot, long_hair;
-	godot::Color shoes;
-	float shin_w = 0, head_r = 0, neck_m = 0, hair_drop = 0, hair_back_m = 0;
+	godot::Vector3 torso, thigh, foot;
+	float shin_w = 0;
+};
+// How somebody sits, one clip of people.bin each (people_renderer.cpp SEAT_CLIPS); a two-wheeler's rider has a second clip, stopped.
+enum class SeatPose : uint8_t { CAR_DRIVER, CAR_FRONT, CAR_REAR, CAB_DRIVER, CAB_RIDE, CHAIR, MOTO, BICYCLE, COUNT };
+// Somebody's place in a vehicle: the hip point in the model frame and, for a passenger, the seat's place in the order they fill.
+constexpr int DRIVER_SEAT = -1;
+struct SeatSpot {
+	godot::Vector3 hip;
+	SeatPose pose = SeatPose::CAR_DRIVER;
+	int order = DRIVER_SEAT;
 };
 // A kind of seat (agents.json "cabin.seats"): hip point over its floor, cushion, backrest, the base under the cushion as
 // a share of it, a headrest over the backrest [w, h, gap] and a grab handle on top of it [share of the width, thick]
@@ -62,13 +66,8 @@ struct CabinLook {
 	float lining_inset_m = 0, liner_drop_m = 0, rim_m = 0;
 	Person person;
 	SeatStyle car, cab, chair;
+	mutable std::vector<SeatSpot> *spots = nullptr; // where agent_cabin writes the seats of the vehicle being built
 	bool load(const godot::Dictionary &d);
-};
-// A person's joints in the model frame: the hip point (where they sit), the middle of the shoulders, the left (+X) knee,
-// ankle and, when they hold something, hand (the right ones mirrored about the hips); a helmet's radii, or hair.
-struct Figure {
-	godot::Vector3 hip, shoulders, knee, ankle, hand, helmet;
-	bool holds = false;
 };
 // One seat: hip point (x, z) over the floor it stands on.
 struct Seat {
@@ -128,8 +127,7 @@ void agent_tub(MeshBuilder &mb, const Tub &t, const AgentTrim &trim);
 // [z0, z1] less the spans of `gaps` (sorted or not).
 std::vector<godot::Vector2> spans_between(float z0, float z1, const std::vector<godot::Vector2> &gaps);
 
-// agent_cabin.cpp: the lining, dashboard, seats and people of `c`; the seats fill in their order, the drivers' always.
-// Returns the passenger seats.
+// agent_cabin.cpp: the lining, dashboard and seats of `c`; the seats fill in their order, the drivers' always. Returns the passenger seats.
 int agent_cabin(MeshBuilder &mb, const Cabin &c, const std::vector<Seat> &seats, const CabinLook &l);
 // The driver's hip point z in `c`: their toes on the pedals at the front lining (seated() below: the thigh level to the
 // knee, the shin straight down, the foot ahead of the heel).
@@ -137,10 +135,6 @@ float pedal_hip_z(const Cabin &c, const CabinLook &l);
 // The dashboard of `c` in front of `driver`: from the front wall back to the steering wheel's hub and down to the top of
 // the knees, `width` in from the driver's side wall.
 void dash_for(Cabin &c, const Seat &driver, const CabinLook &l, float width);
-// A person (Limb::SEAT parts: shirt, trousers, shoes, skin, hair or helmet) posed by `f`.
-void agent_person(MeshBuilder &mb, const Person &p, const Figure &f);
-// The parts of the person from vertex `from` on fill the seat that is `order`-th to fill (DRIVER_ORDER: always there).
-void seat_order(MeshBuilder &mb, int64_t from, float order);
 // Seats in rows from z_first back by `pitch` while z >= z_last, one at each x of a row; `keep` may raise a seat (its
 // floor) or leave it out.
 void seat_rows(std::vector<Seat> &out, float z_first, float z_last, float pitch, const std::vector<float> &xs, float floor, const SeatStyle &style,
@@ -157,10 +151,11 @@ int build_car(MeshBuilder &mb, const godot::Dictionary &car, const godot::Dictio
 int build_bus(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
 // heavy_meshes.cpp
 int build_truck(MeshBuilder &mb, const godot::Dictionary &d, int sides, const CabinLook *cabin, const AgentTrim &trim);
-// Whoever rides a two-wheeler astride (agents.json rider joints), in a helmet of these radii.
-void agent_rider(MeshBuilder &mb, const Person &rider, const godot::Dictionary &pose, const godot::Vector3 &helmet);
-int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Person &rider, const AgentTrim &trim);
-int build_bicycle(MeshBuilder &mb, const godot::Dictionary &d, int sides, const Person &rider, const AgentTrim &trim);
+// The helmet of whoever rides a two-wheeler astride (agents.json rider.head_m, in the model frame), of these radii. The rider is a
+// pedestrian in a clip, PeopleRenderer's; the helmet goes with the machine.
+void agent_helmet(MeshBuilder &mb, const godot::Dictionary &rider, const godot::Vector3 &radii);
+int build_moto(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
+int build_bicycle(MeshBuilder &mb, const godot::Dictionary &d, int sides, const AgentTrim &trim);
 // A tyre from its designation [section width mm, aspect ratio %, rim diameter inches] (ISO 4000-1, ETRTO): its radius
 // (half the rim's diameter plus the sidewall, width times aspect) and width, metres.
 godot::Vector2 agent_tyre(const godot::Variant &designation);

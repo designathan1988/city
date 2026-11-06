@@ -54,13 +54,13 @@ void FleetShadow::add(int model, const Pose &p) {
 	const Vector3 &k = f.scale;
 	const Vector3 side(p.fz, 0, -p.fx), along(p.fx, 0, p.fz);
 	const int i = int(std::floor(p.x / sector_m_)), j = int(std::floor(p.z / sector_m_));
-	mm_push_plain(sectors_[cell_key(i, j)].buf, side * k.x, Vector3(0, k.y, 0), along * k.z, Vector3(p.x, p.y, p.z) + side * f.side + along * f.along, 0, 0, 0, 0);
+	mm_row_plain(sectors_[cell_key(i, j)].buf.add(), side * k.x, Vector3(0, k.y, 0), along * k.z, Vector3(p.x, p.y, p.z) + side * f.side + along * f.along, 0, 0, 0, 0);
 }
 
 void FleetShadow::draw() {
 	for (auto it = sectors_.begin(); it != sectors_.end();) {
 		Sector &s = it->second;
-		if (s.buf.is_empty()) {
+		if (s.buf.count() == 0) {
 			s.draw.free();
 			it = sectors_.erase(it);
 			continue;
@@ -68,8 +68,8 @@ void FleetShadow::draw() {
 		const float x0 = float(key_x(it->first)) * sector_m_ - SECTOR_PAD_M, z0 = float(key_y(it->first)) * sector_m_ - SECTOR_PAD_M;
 		const float side = sector_m_ + SECTOR_PAD_M * 2;
 		s.draw.shadow_only = true;
-		s.draw.set(scenario_, hull_.rid, material_, s.buf, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(side, AABB_H, side)), true, LAYER_VEHICLES, false);
-		s.buf.resize(0);
+		s.draw.set(scenario_, hull_.rid, material_, s.buf, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(side, AABB_H, side)), true, LAYER_VEHICLES);
+		s.buf.restart();
 		++it;
 	}
 }

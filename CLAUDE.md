@@ -10,6 +10,7 @@ histórico de uma linha de trabalho: o que foi feito, o estado, os comandos e o 
 - `log/conversor.md`: tradutor.
 - `log/causa-raiz.md`: desempenho e causas.
 - `log/lab.md`: laboratório F7.
+- `log/base.md`: otimização da base e qualidade (compilação, memória, CPU, GPU, pessoas).
 
 Ao terminar cada tarefa, ou ao saber algo novo, atualize o registro da sua linha (crie um se a linha for nova), com hora e
 commit, e commite-o junto.
@@ -72,7 +73,8 @@ commit, e commite-o junto.
 | Testes core + e2e (precisa de display) | `GODOT=/caminho/godot tools/build/build.sh e2e` |
 | Capturas de tela do jogo real | `tools/build/build.sh capture /pasta` |
 | Exportar + zip | `tools/build/build.sh export && tools/build/build.sh package` |
-| Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`) |
+| Rodar o jogo | `godot --path project` (Forward+; sem Vulkan use `--rendering-method gl_compatibility`). A DLL pede x86-64-v3 (AVX2, FMA, BMI: Haswell e Excavator em diante) |
+| Perfil da DLL de release | `tools/build/pgo.sh` (DLL instrumentada joga escondida; refazer depois de mudar os laços quentes; `llvm-profdata show --topn=50 native/pgo/citycore.profdata` lista as funções quentes) |
 | Verificação de uma mudança, de uma vez | `tools/build/quick.sh [cena,cena]`: gates dos mudados, scripts e DLL de debug ao mesmo tempo, depois as cenas que os arquivos tocam e o `edit_fuzz_test`; `--ready` refaz as duas DLLs com o mesmo teste curto e deixa `dist/quick/passed`, a prova que o hook aceita para commitar (~20 s mais a compilação); `--bless` aceita fotos e hash que mudaram de propósito; `--all` roda toda a suíte (logs em `dist/quick`) |
 | Ciclo rápido (iteração) | `tools/build/runq.sh <cópia> <pasta> fast test:tests/core/<cena>`: scripts → DLL de debug (`-j` = núcleos) → o teste; cada job vigiado (log parado 180 s = travado, morto pelo PID), eventos em `<pasta>/events.log`. Jobs: `scripts`, `import`, `build`, `fast`, `gates`, `test:<cena>[@renderizador]`, `scene:<nome>:<cena>[:args]` |
 | Suíte inteira em paralelo | `python tools/analysis/suite.py [--root <cópia>] [--only=nomes] [--parallel N]` (logs em `dist/tests`, os que o hook de commit confere) |
@@ -217,6 +219,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — o que o código traduzido do 4.0 chama: os built-ins com a semântica da ECMAScript (runtime de `tools/converter/cpp/js`; não se edita aqui)
 - `native/src/core/math.h` — vetores 2D no plano XZ
+- `native/src/core/memory.cpp` — `new` e `delete` do núcleo no mimalloc: um heap por thread, sem a trava do runtime de C
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
 - `native/src/core/seeded.h` — geradores com os números do Roadcraft bit a bit
 - `native/src/core/units.h` · `native/src/core/laps.h` — unidades físicas e de calendário (único dono dos fatores); cronômetro das sondas
@@ -439,7 +442,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/wear/wear_field.cpp` · `native/src/render/wear/wear_field.h` — desgaste das ruas e calçadas: campo em janela que dá a volta, em camadas de uma textura em array, só as alteradas enviadas
 - `native/src/render/mesh_order.cpp` · `native/src/render/mesh_order.h` — a ordem dos triângulos de uma superfície para o cache de vértices da GPU, no job que assa a malha
-- `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
+- `native/src/render/rs_util.h` · `native/src/render/row_keeper.h` — instâncias RenderingServer sem nós de cena e as linhas de MultiMesh que vivem entre quadros; cada agente na mesma linha de quadro a quadro, para o vetor de movimento do TAA e do FSR2
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` · `native/src/render/cover/shore_stones.cpp` · `native/src/render/cover/shore_stones.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores), as pedras da margem e do leito e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/shore_field.cpp` · `native/src/render/water/shore_field.h` · `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — o nível da água ao lado de cada terra, para a praia; superfície dos lagos e rios acima do mar, por chunk
 - `native/src/render/terrain_bridge.cpp` · `native/src/render/terrain_bridge.h` — API de scripting do Terrain3D
@@ -602,6 +605,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/assets/make_pole_parts.py` — os postes de cada estilo em streets.json: o urbano (cruzeta sobre a rua, B1, e o rack S1) e o rural (cruzeta no topo, N1), os assentos dos fios e a altura da luz, das medidas do 4.0 (CELESC E-313.0002)
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
 - `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
+- `tools/build/pgo.sh` — o perfil da DLL de release: uma DLL instrumentada joga escondida e as contagens vão para `native/pgo/citycore.profdata`
 - `tools/build/quick.sh` · `tools/build/runq.sh` · `tools/build/runq_jobs.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a verificação de uma mudança num comando; fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI
@@ -628,7 +632,6 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - Vias de longe (`FarRoadRenderer`): depois de `road_end_m` não há talude, linha de parada nem pintura de vagas; as linhas são filtradas no shader como se todas fossem iguais (o 4.0 pinta cada uma).
 - Elevação (porte do elevation.ts): o greide e o chão moldado batem com o 4.0 nos números (road_grade_test). O editor tem altura na ferramenta (PageUp/PageDown e a linha Altura, um metro por vez), a via sai da altura em que foi começada, a prévia sobe pela rampa, o ponteiro segura a via na altura e não no chão, o encaixe só pega o que está na mesma altura, passar por cima e a recusa por pouca diferença (`hint.road.clearance`), o greide máximo de 12% e a linha Corte (talude ou muro). O render tem tabuleiro, encontros, pilares, guarda-corpos, emboques e muros de arrimo com aterro. Preço por como a via é construída, a escolha do corte lembrada e as teclas remapeáveis existem. Faltam o par com o 4.0 (a sessão do conversor faz a foto sem navegador) e conferir em foto veículos e pedestres no tabuleiro e no túnel (as faixas já leem `seg_y`). O `raycast` acerta o que o jogador vê (`RoadNetwork::ray_deck`: o tabuleiro de uma via antes do chão, como o `worldAtScreen` do 4.0; `road_commands_test`).
 - Carroceria de perto (`capture --only=trafego`, `09_carro_orbita_*`): um fio escuro sai do arco da roda pela lateral, e o retrovisor é uma caixa.
-- Ocupantes, motociclista e ciclista: ainda de blocos. Desenho decidido: uma instância por ocupante no MultiMesh dos pedestres, pelve no ponto H do assento, até `cabin_radius_m`, fileiras de trás até 1/1,6 disso; faltam os clipes sentados e de pilotar em `people.bin`.
 - Transporte: ônibus param na faixa sem baia e sem embarque (o `kerb_stops` ainda não atende ônibus); sem cancelas desenhadas nas passagens (nem o 4.0 tem); edição de via reencontra as faixas de todas as paradas e passagens, não só as da área; paradas e trilhos procurados em lista, sem índice por célula; a prévia do trilho é opaca e refeita a cada movimento do ponteiro; passagem fecha a 160 m (valor do 4.0: 7 s a 22 m/s; 49 CFR 234.225 pede 20 s). Escolas com alunos não são simuladas. Veículos: portas e vidros não abrem e quem vai dentro não se mexe (o 4.0 anima).
 - Contorno, iluminação e shaders validados em Forward+ na RTX 3060 (capturas em `dist/captures`, incluindo HLOD
   distante e peças de fachada); falta conferir em GPU AMD/Intel e à noite com o jogo em movimento contínuo.

@@ -5,7 +5,7 @@
 // INSTANCE_CUSTOM (half floats in Compatibility, small exact integers) = (variation, walk frames + 64 * top,
 // bottom + 17 * hair + 256 * skin, walk phase 0..1); see people_color.gdshaderinc for the look codes. The instance colour's
 // alpha (COLOR.a in vertex()) = the share of the walk in the pose, the rest the idle: a walker slows into standing and out of
-// it (Pedestrian::rest).
+// it (Pedestrian::rest); from CLIP_CODE_BASE on, the clip of that number alone: somebody in a vehicle.
 shader_type spatial;
 
 #include "res://render/shaders/people_color.gdshaderinc"
@@ -17,11 +17,14 @@ uniform int idle_row;
 uniform int idle_frames;
 uniform float idle_seconds[32]; // by variation (people_renderer.cpp IDLE_TABLE)
 uniform float idle_clock; // the simulation's seconds, for the idles
+uniform int clip_row[16]; // people_renderer.cpp CLIP_TABLE: each clip's first row in a variation's block
+uniform int clip_frames[16];
 
 const int TEXELS = 3;
 const float BYTE = 255.0;
 const float BODY_SPAN = 2.0; // people_asset.cpp PALETTE_SPAN
 const float IDLE_SPREAD = 0.61803; // each person in another place of the idle (the golden ratio spreads whole numbers evenly)
+const float CLIP_CODE_BASE = 2.0; // people_renderer.cpp: an alpha from here on is a clip, held at the phase in INSTANCE_CUSTOM.a
 
 // One palette row value: 16-bit fixed point over [-BODY_SPAN, BODY_SPAN], high bytes in texel 2x, low bytes in 2x + 1.
 vec4 palette_row(int texel, int row) {
@@ -54,7 +57,11 @@ void vertex() {
 	ivec4 bones = skin_bones(BONE_INDICES);
 	float walking = COLOR.a;
 	vec3 pos = vec3(0.0), nor = vec3(0.0);
-	if (walking > 0.0) {
+	if (walking >= CLIP_CODE_BASE - 0.5) {
+		int clip = int(walking - CLIP_CODE_BASE + 0.5);
+		add_clip(block + clip_row[clip], clip_frames[clip], INSTANCE_CUSTOM.a, 1.0, bones, BONE_WEIGHTS, VERTEX, NORMAL, pos, nor);
+		walking = 1.0;
+	} else if (walking > 0.0) {
 		add_clip(block, int(floor(mod(code, 64.0))), INSTANCE_CUSTOM.a, walking, bones, BONE_WEIGHTS, VERTEX, NORMAL, pos, nor);
 	}
 	if (walking < 1.0) {

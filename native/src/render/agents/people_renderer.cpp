@@ -12,6 +12,7 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_color_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -26,6 +27,11 @@ constexpr uint32_t HAIR_SHIFT = 18, SKIN_SHIFT = 21, CLOTHES = 16, HAIRS = 8, GR
 constexpr float FRAMES_BASE = 64.f, HAIR_BASE = 17.f, SKIN_BASE = 256.f;
 constexpr int IDLE_TABLE = 32; // people.gdshader idle_seconds
 constexpr int BLOB_SIDES = 10;
+constexpr int CLIP_TABLE = 16; // people.gdshader clip_row, clip_frames
+constexpr float CLIP_CODE_BASE = 2.f; // an instance colour's alpha from here on: the clip of that number, held (people.gdshader)
+// The clip of each SeatPose and, for who puts a foot down, the one stopped.
+constexpr const char *SEAT_CLIPS[int(SeatPose::COUNT)] = { "carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit", "motoRide", "bikePedal" };
+constexpr const char *STOP_CLIPS[int(SeatPose::COUNT)] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "motoStop", "bikeStop" };
 constexpr double NS_PER_S = 1e9, CLOCK_WRAP_S = 86400.0; // the idles' clock wraps once a day: a float keeps its milliseconds
 
 // The unit disc, its centre in the mesh's vertex 0: people_blob.gdshader fades it from the middle out.
@@ -81,12 +87,31 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 			errors.push_back("pessoas: falta corpo de alguma idade");
 			return false;
 		}
+	if (asset_.clips.size() > size_t(CLIP_TABLE)) {
+		errors.push_back("pessoas: clipes demais para a tabela do shader");
+		return false;
+	}
+	PackedInt32Array clip_rows, clip_frames;
+	clip_rows.resize(CLIP_TABLE);
+	clip_frames.resize(CLIP_TABLE);
+	for (size_t i = 0; i < asset_.clips.size(); i++) {
+		clip_rows.set(int64_t(i), asset_.clips[i].row);
+		clip_frames.set(int64_t(i), asset_.clips[i].frames);
+	}
+	for (int i = 0; i < int(SeatPose::COUNT); i++) {
+		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
+		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
+		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
+	}
+	if (!errors.is_empty()) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "palette", asset_.palette->get_rid());
 	rs->material_set_param(material_, "block_rows", asset_.block_rows);
 	rs->material_set_param(material_, "idle_row", asset_.idle_row);
 	rs->material_set_param(material_, "idle_frames", asset_.idle_frames);
 	rs->material_set_param(material_, "idle_seconds", idle_s);
+	rs->material_set_param(material_, "clip_row", clip_rows);
+	rs->material_set_param(material_, "clip_frames", clip_frames);
 	rs->material_set_param(material_, "clothes", hex_list(people["clothes"]));
 	rs->material_set_param(material_, "hairs", hex_list(people["hair"]));
 	rs->material_set_param(material_, "greys", hex_list(people["grey"]));
@@ -100,7 +125,9 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 	blob_mesh_ = disc.bake();
 	size_t n = asset_.variations.size() * size_t(asset_.lods + 1);
 	draws_.assign(n, MultiMeshDraw());
-	bufs_.assign(n, PackedFloat32Array());
+	bufs_.assign(n, InstanceRows());
+	keeper_.clear();
+	keeper_.draws(n);
 	return true;
 }
 
@@ -138,10 +165,47 @@ bool PeopleRenderer::show_clip(const String &name) {
 	return true;
 }
 
+void PeopleRenderer::begin() {
+	for (InstanceRows &b : bufs_) b.reopen();
+	blob_buf_.restart();
+	keeper_.begin();
+}
+
+int PeopleRenderer::level_at(float dist) const {
+	int lod = std::min(floor_, asset_.lods - 1);
+	while (lod < asset_.lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
+	return lod;
+}
+
+void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float frames, float phase, float pose_code) {
+	const PersonVariation &pv = asset_.variations[size_t(v)];
+	const float top = (h & TWO_BITS) ? float((h >> TOP_SHIFT) % CLOTHES + 1) : 0.f;
+	const float bottom = ((h >> BOTTOM_TEST) & TWO_BITS) ? float((h >> BOTTOM_SHIFT) % CLOTHES + 1) : 0.f;
+	const bool grey = pv.senior && ((h >> GREY_TEST) & TWO_BITS);
+	const float hair = grey ? float(HAIRS + (h >> GREY_SHIFT) % GREYS) : float((h >> HAIR_SHIFT) % HAIRS);
+	const float skin = float((h >> SKIN_SHIFT) % SKINS);
+	const size_t k = slot(size_t(v), level);
+	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), frames + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin, phase, pose_code);
+}
+
+void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped) {
+	if (draws_.empty()) return;
+	const int pose = int(spot.pose), clip = stopped && stop_clips_[pose] >= 0 ? stop_clips_[pose] : seat_clips_[pose];
+	if (clip < 0) return;
+	const std::vector<int> &bodies = by_age_[int(PedAge::ADULT)];
+	const int v = bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
+	// the pelvis on the hip point, in the vehicle's frame: its left, its up on a grade, its heading
+	const Vector3 off = spot.hip - asset_.variations[size_t(v)].fits[size_t(clip)].pelvis;
+	const float flat = 1.f / std::sqrt(1.f + vehicle.rise * vehicle.rise), up = flat * vehicle.rise;
+	Pose at = vehicle;
+	at.x += vehicle.fz * off.x - vehicle.fx * up * off.y + vehicle.fx * flat * off.z;
+	at.y += flat * off.y + up * off.z;
+	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
+	place(PEOPLE_DENSE_KEYS + key, v, dist > blob_from_m_ ? asset_.lods : level_at(dist), at, look, 1.f, phase, CLIP_CODE_BASE + float(clip));
+}
+
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
-	for (PackedFloat32Array &b : bufs_) b.resize(0);
-	blob_buf_.resize(0);
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
 	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock",
@@ -153,28 +217,20 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);
 		if (!view.sees(Vector3(p.x, p.y, p.z), view_reach_m_)) continue; // their shadow included: this far out of the view it reaches nothing seen
-		int lod = std::min(floor_, lods - 1);
-		while (lod < lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
 		const std::vector<int> &bodies = by_age_[rec.age < PED_AGES ? rec.age : int(PedAge::ADULT)];
 		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 		const PersonVariation &pv = asset_.variations[size_t(v)];
-		uint32_t h = rec.look;
-		float top = (h & TWO_BITS) ? float((h >> TOP_SHIFT) % CLOTHES + 1) : 0.f;
-		float bottom = ((h >> BOTTOM_TEST) & TWO_BITS) ? float((h >> BOTTOM_SHIFT) % CLOTHES + 1) : 0.f;
-		bool grey = pv.senior && ((h >> GREY_TEST) & TWO_BITS);
-		float hair = grey ? float(HAIRS + (h >> GREY_SHIFT) % GREYS) : float((h >> HAIR_SHIFT) % HAIRS);
-		float skin = float((h >> SKIN_SHIFT) % SKINS);
 		float phase = rec.walked / pv.walk_advance;
 		const bool blob = dist > blob_from_m_;
 		if (blob) {
 			Pose under = p;
 			under.y += blob_lift_m_;
-			push_agent(blob_buf_, under, blob_radius_m_, 0, 0, 0, 0);
+			agent_row(blob_buf_.add(), under, blob_radius_m_, 0, 0, 0, 0);
 		}
-		push_agent(bufs_[slot(size_t(v), blob ? lods : lod)], p, 1.f, float(v), float(pv.walk_frames) + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin,
-				phase - std::floor(phase), 1.f - rec.rest);
+		place(rec.id, v, blob ? lods : level_at(dist), p, rec.look, float(pv.walk_frames), phase - std::floor(phase), 1.f - rec.rest);
 		drawn++;
 	}
+	keeper_.sweep([&](int k) -> InstanceRows & { return bufs_[size_t(k)]; });
 	AABB box(Vector3(cam.x - radius, cam.y - AABB_HALF_H, cam.z - radius), Vector3(radius * 2, AABB_HALF_H * 2, radius * 2));
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
@@ -187,7 +243,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 
 int PeopleRenderer::shown(int level) const {
 	int n = 0;
-	for (size_t v = 0; v < asset_.variations.size(); v++) n += int(bufs_[slot(v, level)].size() / MM_STRIDE);
+	for (size_t v = 0; v < asset_.variations.size(); v++) n += bufs_[slot(v, level)].count();
 	return n;
 }
 

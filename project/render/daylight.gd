@@ -22,6 +22,7 @@ var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
 var direct_share := 0.0 # the sun's or moon's share of the light on level ground
 var mode := "day"
 var shadow_least_m := 0.0 # the quality's own reach (game/settings/settings.gd)
+var _first_m := 0.0 # where the first cascade ends
 var _clock_shown := -1.0
 var _hour := 0.0
 var _overcast := 0.0
@@ -159,7 +160,12 @@ func _fit_cascades(camera: Camera3D) -> void:
 	if absf(depth - _sun.directional_shadow_max_distance) > depth * _d.shadow_reach_step:
 		_sun.directional_shadow_max_distance = depth
 	var end: float = _sun.directional_shadow_max_distance
-	var first: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), end * _d.shadow_first_share)
+	var fitted: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), end * _d.shadow_first_share)
+	# by steps, as the far end: a slice that changes size with every metre of the ground under the eye changes the width of the
+	# cascade's texels with it, and every edge of every shadow crawls while the camera moves
+	if absf(fitted - _first_m) > fitted * _d.shadow_reach_step or _first_m > end * _d.shadow_first_share:
+		_first_m = fitted
+	var first: float = _first_m
 	var second: float = sqrt(first * end)
 	_sun.directional_shadow_split_1 = first / end
 	_sun.directional_shadow_split_2 = second / end

@@ -21,6 +21,7 @@ namespace {
 constexpr float NEAR_END_LOOKS = 2.f; // a sidewalk walker this many ped_look_m from a junction is filed with it
 constexpr float SHORT_ARM_LOOKS = 3.f; // walkers round a junction also meet those of the next over an arm this short
 constexpr int MAX_FILED = 1 + NODE_ARMS_MAX; // junctions a walker is filed with: its own and those over short arms
+constexpr size_t POOLED_SIDEWALKS = 32; // below this many sidewalks with walkers, waking the pool costs more than it gives
 
 
 // A sidewalk's ends as the crowd step reads them: where it starts and ends along the arc and their junctions.
@@ -238,6 +239,56 @@ void file_walkers(CityState &s) {
 	}
 }
 
+using Choice = std::pair<int, StripeChoice>;
+
+// What the walkers of the sidewalks choose. All of them read the step's start and nothing of each other's choice, so the sidewalks
+// run on every core, each writing its own stretch of `next`: the same list, in the same order, as one after the other. The furniture
+// is read first, on this thread: it fills a cache.
+void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float touch, float reach, std::vector<Choice> &next) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	std::vector<size_t> &first = t.crowd_first;
+	first.resize(t.crowd_keys.size());
+	size_t total = 0;
+	for (size_t i = 0; i < t.crowd_keys.size(); i++) {
+		const int key = t.crowd_keys[i];
+		first[i] = total;
+		total += t.crowd[size_t(key)].size();
+		if (walkable(s, key / 2)) sidewalk_furniture(s, key / 2);
+	}
+	next.assign(total, Choice(-1, StripeChoice()));
+	const TrafficState &seen = t;
+	const auto one = [&](size_t i) {
+		const int key = seen.crowd_keys[i];
+		const auto &list = seen.crowd[size_t(key)];
+		const int seg = key / 2;
+		if (!walkable(s, seg)) return;
+		const SidewalkEnds ends(s, seg);
+		const SidewalkFurniture &sf = seen.furniture.find(seg)->second;
+		const auto &pieces = sf.side[key % 2];
+		const float half = walk_half(s, seg, key % 2);
+		Body bodies[MAX_BODIES];
+		int near[MAX_FILED];
+		size_t from = 0; // the first piece within look behind the walker (the walkers come in order of arc)
+		for (size_t k = 0; k < list.size(); k++) {
+			const CrowdEntry &w = list[k];
+			if (w.follows) continue;
+			const int nn = ends.ahead(w.s, w.dir, zone, near);
+			WayFrame f;
+			sidewalk_frame(w, half, nn > 0, f);
+			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
+			see_sidewalk(list, k, sn);
+			for (int j = 0; j < nn; j++) see_junction(seen, near[j], w.party, key, sn);
+			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
+			see_sidewalk_furniture(pieces, from, w, sn);
+			next[first[i] + k] = Choice(w.id, choose_stripe(rules, w, f, bodies, sn.n));
+		}
+	};
+	if (s.jobs && t.crowd_keys.size() >= POOLED_SIDEWALKS) s.jobs->parallel_for(t.crowd_keys.size(), one);
+	else
+		for (size_t i = 0; i < t.crowd_keys.size(); i++) one(i);
+}
+
 } // namespace
 
 float walk_half(const CityState &s, int seg, int side) {
@@ -257,37 +308,14 @@ void crowd_step(CityState &s, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	file_walkers(s);
 	const StripeRules rules(p, dt);
-	std::vector<std::pair<int, StripeChoice>> next;
+	std::vector<Choice> next;
 	std::vector<const StreetObstacle *> around;
-	next.reserve(t.peds.size());
 	Body bodies[MAX_BODIES];
 	const float touch = 2 * p.ped_body_m, reach = p.ped_body_m;
 	int near[MAX_FILED];
 	// a junction's walking area reaches this far along its arms: the zebra, a corner line's room either side, a body
 	const float zone = s.catalog.furniture.crossing.zebra_to_m + widest_walk_half(s) + p.ped_body_m;
-	for (int key : t.crowd_keys) { // on the sidewalks (all read the step's start)
-		const auto &list = t.crowd[size_t(key)];
-		const int seg = key / 2;
-		if (!walkable(s, seg)) continue;
-		const SidewalkEnds ends(s, seg);
-		const SidewalkFurniture &sf = sidewalk_furniture(s, seg);
-		const auto &pieces = sf.side[key % 2];
-		const float half = walk_half(s, seg, key % 2);
-		size_t from = 0; // the first piece within look behind the walker (the walkers come in order of arc)
-		for (size_t k = 0; k < list.size(); k++) {
-			const CrowdEntry &w = list[k];
-			if (w.follows) continue;
-			const int nn = ends.ahead(w.s, w.dir, zone, near);
-			WayFrame f;
-			sidewalk_frame(w, half, nn > 0, f);
-			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
-			see_sidewalk(list, k, sn);
-			for (int j = 0; j < nn; j++) see_junction(t, near[j], w.party, key, sn);
-			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
-			see_sidewalk_furniture(pieces, from, w, sn);
-			next.emplace_back(w.id, choose_stripe(rules, w, f, bodies, sn.n));
-		}
-	}
+	sidewalk_choices(s, rules, zone, touch, reach, next);
 	for (int node : t.node_keys) { // round the corners and over the zebras of each junction
 		bool gathered = false;
 		for (const CrowdEntry &e : t.node_walkers[size_t(node)]) {
@@ -303,7 +331,8 @@ void crowd_step(CityState &s, float dt) {
 			next.emplace_back(e.id, choose_stripe(rules, e, f, bodies, sn.n));
 		}
 	}
-	for (const auto &d : next) {
+	for (const Choice &d : next) {
+		if (d.first < 0) continue; // a follower's place: its leader chooses
 		Pedestrian &w = t.peds[size_t(d.first)];
 		w.u = d.second.u;
 		w.u_goal = d.second.u_goal;

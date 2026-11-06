@@ -180,18 +180,8 @@ int build_truck(MeshBuilder &mb, const Dictionary &d, int sides, const CabinLook
 	return passengers;
 }
 
-void agent_rider(MeshBuilder &mb, const Person &rider, const Dictionary &pose, const Vector3 &helmet) {
-	Figure f;
-	f.hip = agent_v3(pose["hip"]);
-	f.shoulders = agent_v3(pose["shoulders"]);
-	f.knee = agent_v3(pose["knee"]);
-	f.ankle = agent_v3(pose["ankle"]);
-	f.hand = agent_v3(pose["hand"]);
-	f.holds = true;
-	f.helmet = helmet;
-	const int64_t from = mb.v.size();
-	agent_person(mb, rider, f);
-	seat_order(mb, from, DRIVER_ORDER);
+void agent_helmet(MeshBuilder &mb, const Dictionary &rider, const Vector3 &radii) {
+	mb.blob(agent_v3(rider["head_m"]), radii, AGENT_WHITE, agent_tag(AgentTag::HELMET));
 }
 
 static std::vector<Vector2> profile_of(const Dictionary &part) {
@@ -226,7 +216,7 @@ static void moto_frame(MeshBuilder &mb, const Dictionary &sh, float rear_z, floa
 	}
 }
 
-int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
+int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
 	const Vector2 rear = agent_tyre(d["tyre"]), front = agent_tyre(d["front_tyre"]);
 	const float az = float(d["wheelbase_m"]) * 0.5f, helmet = float(d["helmet_r"]);
 	const Dictionary sh = d["shape"];
@@ -246,7 +236,7 @@ int build_moto(MeshBuilder &mb, const Dictionary &d, int sides, const Person &ri
 	const Array cowl = Dictionary(sh["cowl"])["at"];
 	const Vector2 tail = agent_v2(cowl[2]);
 	agent_box(mb, Vector3(-lens.x * 0.5f, tail.y - TAIL_LENS_H_M, tail.x - MOTO_LAMP_D), Vector3(lens.x * 0.5f, tail.y, tail.x), trim.tail, AgentTag::TAIL);
-	agent_rider(mb, rider, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
+	agent_helmet(mb, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 

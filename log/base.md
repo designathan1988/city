@@ -1,0 +1,27 @@
+# Base do jogo: otimização da arquitetura e qualidade (2026-11-06)
+
+Ordem do usuário: otimizar a base (memória, CPU, GPU), pesquisar também assembly, soluções caras, à mão, respeitando a arquitetura do CLAUDE.md. A ferramenta de porte e tradução voltou a ser permitida (2026-11-06); a otimização é sempre à mão. A janela do jogo aberta na tela do usuário nunca é fechada por mim.
+
+## Feito
+- `7be4db8a`: vias em relevo, inclinação dos veículos, normais do terreno, janela ao vivo, `free_dll.sh`.
+- Compilação (`native/CMakeLists.txt`): x86-64-v3 (AVX2, FMA, BMI), `-ffp-contract=off` (mesmos bits com ou sem FMA), sem errno, `-fno-exceptions`. `-fno-rtti` não dá: o godot-cpp faz `dynamic_cast` nas nossas classes (crash achado no assembly: `__dynamic_cast` lendo `vptr[-1]`). Digest e fotos congeladas iguais bit a bit com AVX2.
+- DLL de release: ThinLTO e PGO (`tools/build/pgo.sh` treina escondido e grava `native/pgo/citycore.profdata`; 36,7 G contagens). O perfil dá as funções quentes sem rodada de medida: `llvm-profdata show --topn`.
+- `InstanceRows` (`rs_util.h`): as linhas do MultiMesh vivem entre quadros, um `ptrw` por quadro, sem `resize` por instância nem cópia da folga.
+- `RowKeeper` (`render/row_keeper.h`): cada agente mantém sua linha, para o vetor de movimento do TAA/FSR2 (o motor lê a linha do quadro anterior).
+- Multidão: `sidewalk_choices` em paralelo, cada calçada escreve o próprio trecho: mesma lista, mesma ordem, bit a bit.
+- TAA (medium) e FSR2 em resolução cheia (high, ultra): `temporal` e `temporal_sharpness` em `settings.json`.
+- Cascatas da sombra por degraus (`_first_m`): o corte não muda mais a cada metro de chão sob o olho.
+- Ocupantes: gente de verdade (pedestres cozidos em clipes sentados) nos veículos; bonecos de caixas removidos da malha e o shader do veículo perdeu o `look()`.
+- mimalloc em `new`/`delete` do núcleo (`core/memory.cpp`).
+
+## Assembly (pesquisa)
+Agner Fog, Optimizing subroutines in assembly: compiladores atuais superam o programador na maioria dos casos; intrínsecos dão as mesmas instruções e mantêm inlining, alocação de registros e propagação de constantes; função em assembly bloqueia isso. Inline asm chegou a custar 40% num caso medido (arXiv 2101.06039). Assembly à mão ganha só em núcleo pequeno onde o agendamento importa. Método adotado: AVX2 pelo compilador e intrínsecos, olhando o assembly gerado (`llvm-objdump`), e `.S` só onde a saída do compilador for ruim.
+
+## Em andamento: o elenco novo de pessoas
+Causa das pessoas feias: nosso `people.bin` veio do pacote antigo (`public/cooked/people`), cor por vértice, roupa e cabelo com borda rasgada. O 4.0 atual tem 16 corpos em `public/models/citizens/people/<id>.bin` + `<id>.ktx2`: malha com atlas 1024, 5.000 e 2.500 triângulos, esqueleto Bip01 de 53 ossos, expressões do rosto e tira de impostor (8 guinadas, 32x64).
+- Clipes: `scratchpad/cast/castbake.spec.ts` roda o `bake` do próprio 4.0 (vitest com config de fora, sem tocar a pasta de referência) e grava `<id>.clips` + `index.json`: paleta de 12 floats por osso, coluna a coluna, `frames + 2` linhas; `pelvis`, `head`, `stride`.
+- Pele do three: mundo = Σ w·B·(bind·v); `bind` leva o vértice quantizado a metros.
+- Passos: cook (malha, atlas, paleta) → `people.bin` v4 + `atlas.bin` (DXT5 com mips, comprimido pelo Godot) → `people.gdshader` lê `sampler2DArray` pela variação, corte alfa do cabelo, dois lados → impostor além do nível 1 → capacete na cabeça do clipe (`head`).
+
+## Falta depois
+LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e leves, e o resto das Pendências do CLAUDE.md.

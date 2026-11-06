@@ -105,6 +105,7 @@ struct TrafficState {
 	// it: SUMO's walking area) and the junctions with walkers.
 	std::vector<std::vector<CrowdEntry>> crowd;
 	std::vector<int> crowd_keys;
+	std::vector<size_t> crowd_first; // per crowd key: where its walkers' choices start in the step's list
 	std::vector<std::vector<CrowdEntry>> node_walkers;
 	std::vector<int> node_keys;
 	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);

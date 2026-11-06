@@ -13,7 +13,7 @@ constexpr float SADDLE_LONG = 0.26f, SADDLE_HALF_W = 0.08f, SADDLE_TOP = 0.04f, 
 constexpr float HELMET_TALL = 0.9f, HELMET_LONG = 1.2f;
 } // namespace
 
-int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const Person &rider, const AgentTrim &trim) {
+int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const AgentTrim &trim) {
 	const Vector2 tyre = agent_tyre(d["tyre"]);
 	const float az = float(d["wheelbase_m"]) * 0.5f, r = tyre.x, tube = float(d["tube_m"]), saddle = float(d["saddle_m"]);
 	const Vector2 bracket = agent_v2(d["bracket"]), head = agent_v2(d["head"]); // [z, y]
@@ -39,7 +39,7 @@ int build_bicycle(MeshBuilder &mb, const Dictionary &d, int sides, const Person 
 	agent_box(mb, Vector3(-size.x * 0.5f, at.y, at.x - size.z * 0.5f), Vector3(size.x * 0.5f, at.y + size.y, at.x + size.z * 0.5f), trim.blackout, AgentTag::FIXED);
 	agent_box(mb, Vector3(-lens.x * 0.5f, at.y + size.y, at.x - size.z * 0.5f), Vector3(lens.x * 0.5f, at.y + size.y + lens.y, at.x - size.z * 0.5f + lens.y), trim.tail, AgentTag::TAIL);
 	const float helmet = float(d["helmet_r"]);
-	agent_rider(mb, rider, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
+	agent_helmet(mb, d["rider"], Vector3(helmet, helmet * HELMET_TALL, helmet * HELMET_LONG));
 	return 0;
 }
 

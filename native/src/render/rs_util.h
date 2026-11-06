@@ -9,6 +9,9 @@
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
+#include <algorithm>
+#include <cstring>
+
 namespace city {
 
 // The vertical span every chunk's and every camera-wide box is given: the map's lowest ground to past its tallest building.
@@ -32,6 +35,18 @@ inline void mm_push(godot::PackedFloat32Array &buf, const godot::Vector3 &x, con
 	for (int i = 0; i < MM_STRIDE; i++) w[i] = v[i];
 }
 
+// The same into a row of InstanceRows.
+inline void mm_row(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, const godot::Color &col,
+		float c0, float c1, float c2, float c3) {
+	const float v[MM_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, col.r, col.g, col.b, col.a, c0, c1, c2, c3 };
+	std::memcpy(w, v, sizeof(v));
+}
+inline void mm_row_plain(float *w, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z, const godot::Vector3 &o, float c0, float c1,
+		float c2, float c3) {
+	const float v[MM_PLAIN_STRIDE] = { x.x, y.x, z.x, o.x, x.y, y.y, z.y, o.y, x.z, y.z, z.z, o.z, c0, c1, c2, c3 };
+	std::memcpy(w, v, sizeof(v));
+}
+
 // The same without the colour, for a material that reads only INSTANCE_CUSTOM.
 inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &x, const godot::Vector3 &y, const godot::Vector3 &z,
 		const godot::Vector3 &o, float c0, float c1, float c2, float c3) {
@@ -41,6 +56,49 @@ inline void mm_push_plain(godot::PackedFloat32Array &buf, const godot::Vector3 &
 	float *w = buf.ptrw() + at;
 	for (int i = 0; i < MM_PLAIN_STRIDE; i++) w[i] = v[i];
 }
+
+// The rows of a MultiMesh refilled every frame. The array lives from frame to frame at the size of the draw's room, so a frame costs
+// one ptrw, a cursor per row and no allocation, and what goes to the RenderingServer is the array itself, the size it asks.
+class InstanceRows {
+public:
+	explicit InstanceRows(int stride = MM_STRIDE) : stride_(stride) {}
+	void restart() {
+		count_ = 0;
+		base_ = rows_.is_empty() ? nullptr : rows_.ptrw();
+	}
+	float *add() {
+		if (int64_t(count_ + 1) * stride_ > rows_.size()) grow(count_ + 1);
+		return base_ + int64_t(count_++) * stride_;
+	}
+	void append(const InstanceRows &more) {
+		if (more.count_ == 0) return;
+		if (int64_t(count_ + more.count_) * stride_ > rows_.size()) grow(count_ + more.count_);
+		std::memcpy(base_ + int64_t(count_) * stride_, more.base_, sizeof(float) * size_t(more.count_) * size_t(stride_));
+		count_ += more.count_;
+	}
+	int count() const { return count_; }
+	int stride() const { return stride_; }
+	// RowKeeper's: the rows stay from the last frame, each one written or dropped.
+	void reopen() { base_ = rows_.is_empty() ? nullptr : rows_.ptrw(); }
+	float *row(int i) { return base_ + int64_t(i) * stride_; }
+	void drop_last() { count_--; }
+	const godot::PackedFloat32Array &fitted(int room) {
+		if (rows_.size() != int64_t(room) * stride_) {
+			rows_.resize(int64_t(room) * stride_);
+			base_ = rows_.ptrw();
+		}
+		return rows_;
+	}
+
+private:
+	void grow(int wanted) {
+		rows_.resize(int64_t(std::max(wanted, count_ * 2)) * stride_);
+		base_ = rows_.ptrw();
+	}
+	godot::PackedFloat32Array rows_;
+	float *base_ = nullptr;
+	int count_ = 0, stride_;
+};
 
 // `inst` (made on first use in `scenario`, on render `layer`, with `material` when valid, casting shadows or not) shows
 // `next` in place of `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
@@ -113,25 +171,10 @@ struct MultiMeshDraw {
 
 	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
 			const godot::AABB &bounds, bool shadows, RenderLayer layer, bool coloured = true) {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		const int stride = coloured ? MM_STRIDE : MM_PLAIN_STRIDE;
 		const int n = int(buf.size() / stride);
-		if (n == 0 && !mm.is_valid()) return; // nothing drawn here yet
-		if (!mm.is_valid()) {
-			mm = rs->multimesh_create();
-			inst = rs->instance_create2(mm, scenario);
-			rs->instance_set_layer_mask(inst, layer);
-			rs->instance_geometry_set_cast_shadows_setting(inst, shadow_only ? godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY :
-					(shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF));
-		}
-		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
-		if (n > capacity || n + 2 * MM_ROOM_STEP < capacity || coloured != coloured_) {
-			capacity = (n + MM_ROOM_STEP - 1) / MM_ROOM_STEP * MM_ROOM_STEP;
-			coloured_ = coloured;
-			rs->multimesh_allocate_data(mm, capacity, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
-			rs->multimesh_set_mesh(mm, mesh);
-		}
-		rs->multimesh_set_custom_aabb(mm, bounds);
+		if (!make_room(scenario, mesh, material, n, shadows, layer, coloured)) return;
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (n > 0 && n == capacity) {
 			rs->multimesh_set_buffer(mm, buf);
 		} else if (n > 0) { // the buffer fills the whole room (the size the RenderingServer asks); the rest is not drawn
@@ -139,10 +182,15 @@ struct MultiMeshDraw {
 			room.resize(int64_t(capacity) * stride);
 			rs->multimesh_set_buffer(mm, room);
 		}
-		rs->multimesh_set_visible_instances(mm, n);
-		count = n;
-		rs->instance_set_custom_aabb(inst, bounds);
-		rs->instance_set_visible(inst, n > 0);
+		show(n, bounds);
+	}
+	// The same from rows kept between frames: the room is the array's own size, nothing is copied on this side.
+	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, InstanceRows &rows, const godot::AABB &bounds,
+			bool shadows, RenderLayer layer) {
+		const int n = rows.count();
+		if (!make_room(scenario, mesh, material, n, shadows, layer, rows.stride() == MM_STRIDE)) return;
+		if (n > 0) godot::RenderingServer::get_singleton()->multimesh_set_buffer(mm, rows.fitted(capacity));
+		show(n, bounds);
 	}
 	// Shows `next` (a MultiMesh of `count` instances a job filled, bake_multimesh, now owned here): swap_base.
 	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count_in,
@@ -164,9 +212,43 @@ struct MultiMeshDraw {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (inst.is_valid()) rs->free_rid(inst);
 		if (mm.is_valid()) rs->free_rid(mm);
-		inst = mm = godot::RID();
+		inst = mm = material_ = godot::RID();
 		capacity = -1;
 		count = 0;
+	}
+
+private:
+	godot::RID material_; // the override the instance has
+	// False when there is nothing to draw and nothing drawn yet.
+	bool make_room(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, int n, bool shadows, RenderLayer layer, bool coloured) {
+		if (n == 0 && !mm.is_valid()) return false;
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		if (!mm.is_valid()) {
+			mm = rs->multimesh_create();
+			inst = rs->instance_create2(mm, scenario);
+			rs->instance_set_layer_mask(inst, layer);
+			rs->instance_geometry_set_cast_shadows_setting(inst, shadow_only ? godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY :
+					(shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF));
+		}
+		if (material != material_) {
+			material_ = material;
+			if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
+		}
+		if (n > capacity || n + 2 * MM_ROOM_STEP < capacity || coloured != coloured_) {
+			capacity = (n + MM_ROOM_STEP - 1) / MM_ROOM_STEP * MM_ROOM_STEP;
+			coloured_ = coloured;
+			rs->multimesh_allocate_data(mm, capacity, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
+			rs->multimesh_set_mesh(mm, mesh);
+		}
+		return true;
+	}
+	void show(int n, const godot::AABB &bounds) {
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		rs->multimesh_set_custom_aabb(mm, bounds);
+		rs->multimesh_set_visible_instances(mm, n);
+		count = n;
+		rs->instance_set_custom_aabb(inst, bounds);
+		rs->instance_set_visible(inst, n > 0);
 	}
 };
 

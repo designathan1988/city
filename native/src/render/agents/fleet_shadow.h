@@ -30,7 +30,7 @@ private:
 		float side = 0, along = 0;
 	};
 	struct Sector {
-		godot::PackedFloat32Array buf;
+		InstanceRows buf{ MM_PLAIN_STRIDE };
 		MultiMeshDraw draw;
 	};
 	godot::RID scenario_, material_;
