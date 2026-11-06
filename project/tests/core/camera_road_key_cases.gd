@@ -30,7 +30,7 @@ func _height_keys() -> void:
 	var pitch0 = t.rig.pitch
 	await t._hold_key(KEY_PAGEUP, false, 0.05)
 	await t._hold_key(KEY_PAGEUP, false, 0.05)
-	await t.get_tree().create_timer(t.SETTLE_S).timeout
+	await t._glide_settled()
 	t._check(is_equal_approx(CityStore.query(&"road_height"), 2.0), "Page Up sobe a via (%.1f m)" % CityStore.query(&"road_height"))
 	t._check(is_equal_approx(t.rig.pitch, pitch0), "a câmera não inclina com a via na mão")
 	CityStore.dispatch(&"set_road_height", [1.5])

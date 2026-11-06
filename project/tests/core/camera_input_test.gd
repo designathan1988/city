@@ -11,7 +11,8 @@ const SEED := 1
 const PX_TOL_SHARE := 0.005
 const STEPS := 8
 const STILL_S := 0.15
-const SETTLE_S := 1.2
+## The longest a glide may take to end, in the frames' own time: past it the glide never ends, and the check after it says so.
+const SETTLE_LIMIT_S := 12.0
 const EPS := 1e-3
 const OPEN_M := 600.0 # past the city: nothing for the eye to be pulled clear of
 
@@ -91,7 +92,7 @@ func _zoom_test() -> void:
 	await _move(at)
 	for i in 3:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, at)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	await _pull_settled()
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
@@ -130,7 +131,7 @@ func _limit_tests() -> void:
 	_check(absf(rig.pitch - lo) < EPS, "inclinação mínima de longe %.1f graus (limite %.1f)" % [rad_to_deg(rig.pitch), rad_to_deg(lo)])
 	for i in 80:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, c)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	_check(rig.half >= cfg.view_half_min - EPS and rig.half < cfg.view_half_min * 2.0, "zoom mínimo: meia altura %.2f m" % rig.half)
 	await _drag(MOUSE_BUTTON_RIGHT, c, c - Vector2(0, 2000), false, true)
 	lo = CameraProfile.min_tilt(cfg, rig.half)
@@ -139,7 +140,7 @@ func _limit_tests() -> void:
 	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "olho acima do chão (olho %.3f, chão %s)" % [rig.camera.global_position.y, under])
 	for i in 120:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "zoom máximo: meia altura %.0f m" % rig.half)
 
 
@@ -153,10 +154,10 @@ func _key_tests() -> void:
 	var yaw0 := rig.yaw
 	await _hold_key(KEY_Q, false, 0.3)
 	_check(angle_difference(yaw0, rig.yaw) > 0.0, "Q gira")
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	yaw0 = rig.yaw
 	await _hold_key(KEY_E, true, 0.05)
-	await get_tree().create_timer(SETTLE_S).timeout
+	await _glide_settled()
 	var quarter := angle_difference(yaw0, rig.yaw)
 	_check(absf(quarter + deg_to_rad(cfg.quarter_turn_deg)) < EPS, "Shift+E: um quarto de volta (%.1f graus)" % rad_to_deg(quarter))
 
@@ -207,6 +208,15 @@ func _pull_settled() -> void:
 	var limit: float = cfg.pull_hold_s + cfg.pull_out_s * log(1.0 / EPS)
 	var waited := 0.0
 	while rig.pull.shown >= EPS and waited < limit:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+
+
+## Waits for the glide to end: the state is checked, not a fixed time, so a machine sharing its cores cannot fail it.
+func _glide_settled() -> void:
+	await _frames(1)
+	var waited := 0.0
+	while rig.motion.moving() and waited < SETTLE_LIMIT_S:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 
