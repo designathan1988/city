@@ -279,6 +279,19 @@ Dictionary CityCore::road_census() {
 		if (n.alive) arms[int(n.segs.size())] = int(arms.get(int(n.segs.size()), 0)) + 1;
 	d["metres"] = roads;
 	d["arms"] = arms;
+	Array open; // what has no building: where, how big, what function, how many trees and surfaces
+	for (const Building &rec : state_->buildings.items) {
+		if (!rec.alive || (rec.fn != FN_SQUARE && rec.fn != FN_PARK)) continue;
+		b40::Body body;
+		b40::record_body(state_->buildings.designs, rec, body);
+		int trees = 0, covers = 0;
+		for (const b40::LotElement &e : body.elements) {
+			trees += e.kind == b40::EL_TREE ? 1 : 0;
+			covers += e.kind == b40::EL_SURFACE ? 1 : 0;
+		}
+		open.push_back(Array::make(int(rec.fn), Vector3(rec.x, 0, rec.z), rec.w, rec.d, trees, covers));
+	}
+	d["open"] = open;
 	return d;
 }
 

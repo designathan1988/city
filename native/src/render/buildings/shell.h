@@ -18,7 +18,7 @@
 namespace city::b40 {
 
 // Surface kinds (COLOR.a byte), read by project/render/shaders/building.gdshader.
-enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_PANE_CLEAR, SK_COUNT };
+enum SurfaceKind : uint8_t { SK_SHELL, SK_PANE, SK_PANE_DARK, SK_FAR_WALL, SK_LAMP, SK_LAWN, SK_PANE_CLEAR, SK_GROUND, SK_COUNT }; // SK_GROUND: a shell face lying on the lot, which stays on it when a level steps back
 
 // A byte's 1.0 in CUSTOM0..3 (building_pane.gdshaderinc ROOM_SPAN_M, FRAME_SPAN_M): 5 cm and 1 mm steps, more than a
 // pane shows.

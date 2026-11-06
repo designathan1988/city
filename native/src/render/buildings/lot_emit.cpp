@@ -55,7 +55,7 @@ void LotEmit::surface(const LotElement &e) {
 			const float a0 = x0 + (x1 - x0) * float(i) / float(nx), a1 = x0 + (x1 - x0) * float(i + 1) / float(nx);
 			const float b0 = y0 + (y1 - y0) * float(j) / float(ny), b1 = y0 + (y1 - y0) * float(j + 1) / float(ny);
 			to.quad(pl.lot.at(a0, b0, ground(a0, b0) + lift), pl.lot.at(a1, b0, ground(a1, b0) + lift), pl.lot.at(a1, b1, ground(a1, b1) + lift),
-					pl.lot.at(a0, b1, ground(a0, b1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_SHELL);
+					pl.lot.at(a0, b1, ground(a0, b1) + lift), pl.lot.e2, lin, fin(e), lawn ? SK_LAWN : SK_GROUND);
 		}
 }
 
@@ -180,7 +180,7 @@ void LotEmit::element(const LotElement &e) {
 	bool along_x = e.w >= e.d;
 	float len = along_x ? e.w : e.d;
 	int pieces = std::max(1, int(std::ceil(len / PIECE)));
-	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING) return;
+	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING && e.kind != EL_POOL) return;
 	if (!pl.coarse && e.kind == EL_HEDGE) return; // near, a hedge is the gardens' plants (render/trees/garden_place.h)
 	switch (e.kind) {
 		case EL_SURFACE: surface(e); break;
