@@ -215,6 +215,9 @@ void drop_baked_road_ground(CityState &s) {
 	}
 }
 
+// The planned cities stood on this much land before the file said so: the land comes from the seed and the side, and another side moves its water.
+constexpr int PLANNED_TILES_BEFORE = 10;
+
 // Everything the file holds, read into `s` (the land founded again from its seed first, or only sized when `checking`):
 // false at the first thing that is not a city, with `s` left half replaced.
 bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error, bool checking) {
@@ -229,7 +232,10 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	int map = r.get<int32_t>();
 	uint32_t seed = r.get<uint32_t>();
 	if (!r.ok || map < 0 || size_t(map) >= s.catalog.maps.size()) return false;
-	found_land(s, map, seed, !checking);
+	const MapDef &def = s.catalog.maps[size_t(map)];
+	const int tiles = version >= LAND_SAVE_VERSION ? r.get<int32_t>() : def.medium ? PLANNED_TILES_BEFORE : def.tiles;
+	if (!r.ok || tiles <= 0) return false;
+	found_land(s, map, seed, !checking, tiles);
 	s.money = r.get<double>();
 	if (!std::isfinite(s.money)) return false;
 	s.unlimited_money = r.get<uint8_t>() != 0;

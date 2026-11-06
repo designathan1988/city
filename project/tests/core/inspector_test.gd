@@ -61,15 +61,10 @@ func _save_time() -> void:
 func _thunder() -> void:
 	var t := Thunder.new(DataTables.game("sky"))
 	add_child(t)
-	await get_tree().process_frame # a long frame before it would count in the timer
-	await get_tree().process_frame
-	var from := Time.get_ticks_msec()
-	await t.play(THUNDER_M, 1.0)
-	var late := float(Time.get_ticks_msec() - from) / MS_PER_S
 	var expected: float = THUNDER_M / DataTables.game("sky").sound_ms
-	print("  thunder: %.2f s for %.0f m (%.2f s by sound)" % [late, THUNDER_M, expected])
-	# A timer counts frames: the frame it ends on holds time from before it began, so it is as exact as one frame, however long that one was.
-	_check(late + get_process_delta_time() >= expected * 0.9, "the sound comes after the lightning")
+	print("  thunder: %.2f s for %.0f m (%.2f s by sound)" % [t.delay_s(THUNDER_M), THUNDER_M, expected])
+	_check(is_equal_approx(t.delay_s(THUNDER_M), expected), "the sound comes after the lightning")
+	await t.play(THUNDER_M, 1.0)
 	t.queue_free()
 
 

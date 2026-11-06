@@ -143,6 +143,7 @@ std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *part
 	w.put<uint32_t>(SAVE_VERSION);
 	w.put<int32_t>(s.map_index);
 	w.put<uint32_t>(s.seed);
+	w.put<int32_t>(s.map_tiles);
 	mark("header");
 	w.put<double>(s.money);
 	w.put<uint8_t>(s.unlimited_money ? 1 : 0);

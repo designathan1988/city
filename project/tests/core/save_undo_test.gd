@@ -197,6 +197,7 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	CityStore.step_ticks(SignalCases.SIGNAL_TICKS)
 	_check(CityStore.query(&"inspect", [signal_at]) == plan, "the same signal %s" % [plan])
 	_check(_landscape() == landscape, "the same landscape %s == %s" % [_landscape(), landscape])
+	await SaveLandCases.run(SLOT, _save, _check)
 	_drop(SLOT)
 
 

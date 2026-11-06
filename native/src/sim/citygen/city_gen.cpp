@@ -63,13 +63,14 @@ void mark_all_lot_cells(CityState &s) {
 		for (int i = first; i < first + cells; i++) s.log.lot_cells.push_back(cell_key(i, j));
 }
 
-void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate) {
+void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate, int tiles) {
 	s.transit = TransitData(); // a new map has no public transport; a save reads its own after this
 	s.transit_revision++;
 	const Catalog &c = s.catalog;
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	s.map_index = map_index;
-	s.map_half = float(map.tiles * c.tune.world_tile_m / 2);
+	s.map_tiles = tiles > 0 ? tiles : map.tiles;
+	s.map_half = float(s.map_tiles * c.tune.world_tile_m / 2);
 	s.seed = exact_seed;
 	s.roads.init(&s.catalog, &s.log);
 	s.street.clear();
@@ -86,7 +87,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate)
 	s.unlimited_money = false;
 	s.clock.minutes.store(0);
 	s.clock.day_shift = c.tune.sim_day_start_min;
-	s.terrain.init(map.tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
+	s.terrain.init(s.map_tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
 	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
 	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
 	if (!generate) return;

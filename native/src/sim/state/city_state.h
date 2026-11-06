@@ -66,6 +66,7 @@ struct CityState {
 	bool unlimited_money = false;
 	uint32_t seed = 0;
 	int map_index = 0; // entry of data/catalog/maps.json chosen at creation
+	int map_tiles = 0; // the land's side as it was founded: a city keeps it when the table changes
 	float map_half = 0; // metres from the middle to each edge
 	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
 	bool ready = false;

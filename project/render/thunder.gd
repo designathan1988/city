@@ -47,6 +47,11 @@ func _noise() -> AudioStreamWAV:
 	return s
 
 
+## How long the sound of a strike `metres` away takes.
+func delay_s(metres: float) -> float:
+	return minf(_d.thunder_late_s, metres / _d.sound_ms)
+
+
 ## A clap for a strike `metres` away, at `volume` (0..1).
 func play(metres: float, volume: float) -> void:
 	if volume <= 0.0 or _player == null:
@@ -54,5 +59,5 @@ func play(metres: float, volume: float) -> void:
 	var near: float = 1.0 / (1.0 + metres / _d.thunder_near_m)
 	_filter.cutoff_hz = _d.thunder_low_hz + _d.thunder_crack_hz * near * near
 	_player.volume_db = linear_to_db(volume * (_d.thunder_far_gain + _d.thunder_near_gain * near))
-	await get_tree().create_timer(minf(_d.thunder_late_s, metres / _d.sound_ms)).timeout
+	await get_tree().create_timer(delay_s(metres)).timeout
 	_player.play(randf() * _d.thunder_noise_s * _d.thunder_start_share) # no two claps the same stretch of the noise

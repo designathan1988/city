@@ -667,7 +667,7 @@ Ressalvas abertas:
 - A lua: à noite o passe de sombra do sol rodava para a lua, invisível sob os postes. `Daylight` agora é o dono do interruptor (eram dois lugares) e tira o passe da noite fechada em diante.
 - Medido em `high`, à noite, RTX 3060: perto 10,06 -> 9,15 ms, rua 7,43 -> 5,56, bairro 10,86 -> 8,78: mais luz, mais barata que antes.
 - Armadilha: `capture` roda no `tests_preset` (`medium`, sem sombra de poste); `look` em `high`. Para julgar a sombra, `look`.
-- `inspector_test` instável sob carga (`the sound comes after the lightning`): só apareceu agora porque `FAIL` passou a ser lido. O timer conta quadros e tem a precisão de um; o teste comparava com o relógio de parede. O teste passou a descontar o quadro em que o timer acabou.
+- `inspector_test` instável sob carga (`the sound comes after the lightning`): só apareceu agora porque `FAIL` passou a ser lido. O timer conta quadros e tem a precisão de um; o teste comparava com o relógio de parede. Descontar o quadro não bastou sob carga; o teste agora confere o atraso em si (`Thunder.delay_s`), sem relógio de parede.
 - Os dados: `lamp_light` de `streets.json` é estrito (li só o começo do schema e supus aberto). Os números foram para `tuning.json render.lamp_*`, a cor é o `glow_color` do `lamp_glow`, e `pool_along`, `pool_sides` e `pool_lift_m` ficam sem uso enquanto o schema pedir.
 
 ## 2026-11-06: o chão aberto contra o 4.0 rodando
@@ -692,3 +692,10 @@ Ressalvas abertas:
 - O mapa 0 tem 97 docas: a pendência "sem indústria" era o espelho. Saiu do `CLAUDE.md`. A foto `park_sample` segue achando docas; `capture --only=trafego` avisa que não acha guia nem ciclofaixa sem prédio alto perto, com a cidade nova.
 - Copas brancas contra o sol (também no 4.0, mais fracas): sem o especular o branco some, então é ele. A normal da copa é de volume, e o Fresnel raspando a borda ilumina como superfície lisa o que são centenas de folhas. `leaf_sheen` tira o brilho onde o olhar raspa a normal e deixa o de frente. Melhoria sobre a referência.
 - Asfalto à sombra: a `s3` deu metade em sRGB, mas por prédios diferentes naquele trecho. Medido por pixels escuros cinzas em quatro vistas: claro igual (p85 0,09 contra 0,10), escuro 7 a 37% abaixo do 4.0. Sem o `canyon` sobe e sem a oclusão nada muda. Fica como pendência; a causa não foi achada, e não mexi na luz.
+
+## 2026-11-06: o mapa do tamanho do 4.0
+- Par do mapa inteiro: o 4.0 tem 20 km de lado (`MAP_TILES`) e o `town` do jogo tinha 10, um quarto da área, com o mar onde o 4.0 ainda é terra. `town` e `metropolis` passaram a 20; o rio e os lagos, que dependem do meio-lado, também vão para onde o 4.0 os põe.
+- Custo medido com a mesma cidade: GPU igual (perto 10,04 contra 10,09 ms, cidade 5,70 contra 5,66), abertura 96 contra 69 ms, e +250 MiB de memória e +260 MiB de vídeo. Isso passa da regra de memória; são 300 tiles de chão a 0,78 MiB, os três mapas do Terrain3D em 256², e é o preço da área pedida.
+- Save 8: o header guarda o lado da terra. Sem isso um arquivo antigo abriria noutro chão, porque a terra vem da semente e do lado. O arquivo antigo abre em 10 km, e o teste corta um save real de volta ao formato 7 para provar.
+- Fim do mapa: o 4.0 acaba no vazio e o jogo no mar. Fica o mar: melhor que a referência.
+- Pedido do usuário: o `dist\\windows\\Roadcraft.exe` da pasta `city` era de 05/11 23:53 e a pasta estava 77 commits atrás. "Enviado para main" não chega ao jogo que ele abre: cada entrega precisa de um executável novo, e isso deve ser dito.
