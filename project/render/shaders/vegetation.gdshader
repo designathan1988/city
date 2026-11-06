@@ -25,5 +25,5 @@ void fragment() {
 		ALBEDO *= bark(v_model, length(VERTEX));
 	}
 	ROUGHNESS = roughness;
-	SPECULAR = leaf_specular;
+	SPECULAR = v_part > PART_BARK - 0.5 ? leaf_specular : leaf_sheen(NORMAL, VIEW);
 }

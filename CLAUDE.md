@@ -660,6 +660,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 <!-- MAPA:FIM -->
 
 ## Pendências
+- Sombra nas ruas: 7 a 37% abaixo do 4.0 no lado escuro (linear, pixels escuros cinzas em quatro vistas do par), com o lado claro igual; a causa não foi achada, e a do reflexo do céu não fecha (`envMapIntensity` 0,55 da via).
 - Schemas (do usuário): `streets.json lamp_light.pool_along`, `pool_sides`, `pool_lift_m` e `materials.json lamp_glow.params.pool_gain` não são mais lidos e só ficam porque o schema exige.
 - Nomes só em inglês (regra do usuário, 2026-11-05: arquivos, pastas e código; nada misturado com português). Feito:
   `tools/process` e `tools/ports` com os ~205 nomes de dentro (`tools/build/rename_english.py`: `git mv` e as referências trocadas

@@ -31,6 +31,13 @@ uniform float turbulence = 0.19;
 uniform float sway_hz = 0.25;
 uniform float roughness = 0.85;
 uniform float leaf_specular = 0.15; // materials.json
+const float SHEEN_WHOLE_FROM = 0.6; // of the cosine of the view on the crown's normal
+
+// A crown's normal is the bulk's, not a leaf's: where the eye grazes it, against the sun, the Fresnel of one smooth surface would
+// light as white what is hundreds of leaves facing every way. Only a crown seen from the front has a sheen.
+float leaf_sheen(vec3 n, vec3 view) {
+	return leaf_specular * smoothstep(0.0, SHEEN_WHOLE_FROM, abs(dot(n, view)));
+}
 
 uniform int picture_frames = 1;
 uniform int picture_rows = 1;
