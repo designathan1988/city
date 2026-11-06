@@ -18,7 +18,7 @@ namespace city {
 	X(signal_sat_flow_lane_h) X(signal_cycle_max_s) X(signal_reaction_s) X(signal_decel) X(signal_vehicle_m) X(amber_low_kmh) X(amber_mid_kmh) \
 	X(amber_min_s) X(amber_min_mid_s) X(amber_min_high_s) X(amber_max_s) X(signal_ped_red_s) X(ped_reaction_s) \
 	X(ped_clear_speed) X(ped_all_red_s) X(ped_safety_green_s) X(stage_opposite_dot) \
-	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
+	X(through_pair_dot) X(yield_look_s) X(yield_near_m) X(stop_sign_ms) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
 	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \

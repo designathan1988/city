@@ -60,6 +60,7 @@ struct Vehicle {
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
+	int stood_at = -1; // approach whose Stop it has come to a stand at: it may go on from there
 	int bus = -1; // its place in TransitRun::buses
 	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
 	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
@@ -148,6 +149,7 @@ struct TrafficState {
 	std::vector<double> exit_claim_t;
 	std::vector<double> last_admit, release_at; // per node
 	std::vector<int> pass_count; // per node: vehicles let in (pedestrian courtesy, tests)
+	int stop_entries = 0, stop_skipped = 0; // vehicles let in past a Stop, and those that had not stood at it (tests)
 	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;

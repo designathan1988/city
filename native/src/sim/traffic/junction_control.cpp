@@ -69,8 +69,9 @@ std::vector<Arm> network_arms(const CityState &s, int n) {
 Control decide(const RoadNode &node, const std::vector<Arm> &arms, const TrafficParams &tp) {
 	if (arms.size() < 3) return Control::NONE;
 	if (node.ctl == CTL_SIGNAL) return Control::SIGNAL;
-	if (node.ctl != CTL_AUTO) return Control::PRIORITY; // stop, yield, none and mini still drive as a priority junction
-	if (node.auto_signal > 0) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
+	if (node.ctl != CTL_AUTO) return Control::PRIORITY; // stop, yield, none and mini: by rank, each leg's set in build_junction
+	if (node.auto_signal == AUTO_SIGNAL) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
+	if (node.auto_signal == AUTO_ALL_STOP) return Control::PRIORITY;
 	std::vector<int> high;
 	int lo = arms[0].priority, hi = lo;
 	for (size_t i = 0; i < arms.size(); i++) {
@@ -186,7 +187,7 @@ void build_junction(CityState &s, int n) {
 	std::vector<Arm> arms = arms_of(s, n);
 	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
 	for (const Arm &a : arms)
-		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
+		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].must_stop = false; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
 	if (s.roads.has_crosswalks(n))
 		for (const Arm &a : arms)
@@ -197,8 +198,20 @@ void build_junction(CityState &s, int n) {
 	std::vector<int> order;
 	for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
 	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
-	for (size_t k = 0; k < order.size(); k++)
-		if (arms[order[k]].in >= 0) g.ds[arms[order[k]].in].rank = k < 2 && !plate_rule(s.roads, arms[order[k]].seg, n) ? RANK_MAIN : RANK_YIELD;
+	const int everyone = leg_rule(s.roads.nodes[size_t(n)]);
+	for (size_t k = 0; k < order.size(); k++) {
+		const Arm &a = arms[order[k]];
+		if (a.in < 0) continue;
+		const int plate = plate_rule(s.roads, a.seg, n);
+		g.ds[a.in].rank = k < 2 && !plate && !everyone ? RANK_MAIN : RANK_YIELD;
+		g.ds[a.in].must_stop = everyone == RULE_STOP || plate == RULE_STOP;
+	}
+}
+
+// The rule of every leg of a junction under one: a Stop on all of them, or a mini-roundabout's and a yield's give way. RULE_NONE: each leg its own.
+int leg_rule(const RoadNode &node) {
+	if (node.ctl == CTL_STOP || (node.ctl == CTL_AUTO && node.auto_signal == AUTO_ALL_STOP)) return RULE_STOP;
+	return node.ctl == CTL_YIELD || node.ctl == CTL_MINI ? RULE_YIELD : RULE_NONE;
 }
 
 int plate_rule(const RoadNetwork &net, int seg, int n) {
@@ -219,6 +232,7 @@ int approach_rule(const CityState &s, int n, int seg) {
 	if (control_of(s, n) != Control::PRIORITY) return RULE_NONE;
 	const int plate = plate_rule(s.roads, seg, n);
 	if (plate) return plate;
+	if (const int everyone = leg_rule(s.roads.nodes[size_t(n)])) return everyone;
 	std::vector<Arm> arms = network_arms(s, n); // build_junction's ranking of arms_of, without the lane graph
 	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
 	for (size_t k = 0; k < arms.size(); k++)
@@ -261,6 +275,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	if (is_splice(s, c.node)) return true;
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
 	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
+	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
 	if (!has_exit(s, c, vid)) return false;
 	const float top = top_speed(s, me, conn_speed(s, c));
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;

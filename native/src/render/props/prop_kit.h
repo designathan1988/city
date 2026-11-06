@@ -36,7 +36,7 @@ class PropKit {
 public:
 	bool build(const godot::Dictionary &props, const godot::Dictionary &wires, const godot::Array &beam_section, godot::PackedStringArray &errors);
 	const MeshBuilder &mesh(PropKind k) const { return meshes_[int(k)]; }
-	// Every lens of the signal, in its space: COLOR the lens unlit (its colour times lens_dim), UV2 (PropTag::LENS, which
+	// Every lens of the signal, in its space: COLOR the lens unlit (props.lens_dark), UV2 (PropTag::LENS, which
 	// Lens) for render/shaders/props.gdshader.
 	const MeshBuilder &lenses() const { return lenses_; }
 	const MeshBuilder &pole() const { return pole_; }

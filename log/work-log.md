@@ -547,6 +547,13 @@ Ressalvas abertas:
 ### O zip (2026-11-05)
 - `build.sh package` copiava a fonte arquivo por arquivo: quebrava em caminho com acento (`git ls-files` devolve entre aspas) e, corrigido isso, passava de 9 minutos com 16 mil arquivos. Agora é `git archive` da HEAD: 17 s, `dist/Roadcraft.zip` com o exe do commit `700ced28`.
 
+### Ciclo 17: o Pare e as lentes apagadas (2026-11-05)
+- **Pare:** `DirSeg::must_stop` por placa `RULE_STOP` ou por controle de toda perna; `may_enter` só deixa entrar quem parou na linha (`Vehicle::stood_at`, `traffic.stop_sign_ms` 0,16 m/s, o `admission.ts` do 4.0). A primeira versão, só pela velocidade, travou o cruzamento: o carro arrancava, passava de 0,16 e perdia a vez; o teste pegou.
+- **Controle por perna:** parada, preferência e minirrotatória não têm mais via principal (`leg_rule`); `approach_rule` levanta a placa em toda perna; o automático aceita Pare (`AUTO_ALL_STOP`).
+- Teste `flow_control_test`: Pare nos 156 cruzamentos da cidade, 679 veículos passaram, nenhum sem parar antes.
+- **Lente apagada:** cor e brilho próprio do `signals.ts` (`props.lens_dark`, `dark_radiance`), no lugar de `lens_dim` 0,1. Decisão pela referência visual; deixa de valer a razão 16 da EN 12368. Foto de perto, de dia e à noite.
+- O teste de minirrotatória e o de preferência em toda perna não existem ainda; a regra deles só foi lida no código.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

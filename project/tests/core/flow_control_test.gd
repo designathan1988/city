@@ -12,6 +12,10 @@ const ORACLE := {"busy_major": 872.4241116004741, "busy_minor": 290.646944251653
 ## Past the trend window, with room for the first evaluation after it.
 const PUSH_S := 1000
 const DRIVE_FRAMES := 240
+const STOP_FRAMES := 1200
+const STOP_NODES := 320 # every node of the town: the traffic flows with a Stop at every junction
+const STOP_LEAST := 40
+const CTL_STOP := 3 # road_network.h NodeControl
 
 var failures := 0
 
@@ -31,6 +35,7 @@ func _ready() -> void:
 	_replay()
 	await _driven()
 	_junction()
+	await _stop_sign()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -55,6 +60,21 @@ func _driven() -> void:
 	print("rodando: ", state)
 	_check(state.measured > 0.0, "o tempo do tráfego chega à medida")
 	_check(state.advised > 0, "veículos contados em cruzamentos")
+
+
+## A Stop on every leg: who goes through has come to a stand at the line.
+func _stop_sign() -> void:
+	var signed := 0
+	for n in STOP_NODES:
+		signed += 1 if CityStore.dispatch(&"set_node_control", [n, CTL_STOP]).get("ok", false) else 0
+	_check(signed > 0, "Pare posto em %d cruzamentos" % signed)
+	CityStore.dispatch(&"set_speed", [2])
+	for i in STOP_FRAMES:
+		await get_tree().process_frame
+	CityStore.dispatch(&"set_speed", [0])
+	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
+	_check(probe.stop_entries >= STOP_LEAST, "veículos passaram pelo Pare: %d" % probe.stop_entries)
+	_check(probe.stop_skipped == 0, "todos pararam antes: %d passaram sem parar" % probe.stop_skipped)
 
 
 func _junction() -> void:

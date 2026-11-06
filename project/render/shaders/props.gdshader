@@ -13,6 +13,7 @@ uniform vec3 glow_color : source_color;
 uniform float glow_gain = 6.0;
 uniform float roughness = 0.85;
 uniform vec3 lit_radiance[5]; // per Lens (prop_kit.h Lens::COUNT)
+uniform vec3 dark_radiance[5]; // an unlit lens's faint glow (render/lamp_radiance.gd)
 uniform float lens_roughness = 0.0;
 uniform float lens_ior = 1.5;
 uniform float wire_min_px = 0.7; // a wire never narrower than this on the screen
@@ -85,7 +86,8 @@ void vertex() {
 	if (abs(v_tag - 3.0) < 0.5) {
 		float lens = UV2.y;
 		v_lit = abs(lens - INSTANCE_CUSTOM.r) < 0.5 || abs(lens - INSTANCE_CUSTOM.g) < 0.5 ? 1.0 : 0.0;
-		v_light = lit_radiance[clamp(int(lens + 0.5), 0, 4)] * v_lit;
+		int which = clamp(int(lens + 0.5), 0, 4);
+		v_light = mix(dark_radiance[which], lit_radiance[which], v_lit);
 	}
 }
 

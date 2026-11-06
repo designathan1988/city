@@ -86,6 +86,7 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	Vehicle &v = t.vehicles[id];
 	released = false;
 	const float line = dist - t.g.ds[v.ds].stop_back;
+	if (head && line < p.at_line_m && t.g.ds[v.ds].must_stop && v.v <= p.stop_sign_ms) v.stood_at = v.ds;
 	if (head && line < p.at_line_m && ci >= 0) {
 		if (v.wait > p.detour_after_s && v.lc_cool <= 0 && t.g.conns[ci].from_lane == v.lane && !has_exit(s, t.g.conns[ci], id)) {
 			v.lc_cool = p.lc_cooldown_s;
@@ -119,6 +120,10 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	const float b = p.classes[int(v.type)].b, commit_at = std::max(p.commit_min_m, v.v * v.v / (2 * b));
 	if (line >= commit_at) return true;
 	if (!box_clear(s, ci)) return false; // it commits only into a clear box
+	if (t.g.ds[v.ds].must_stop) {
+		t.stop_entries++;
+		t.stop_skipped += v.stood_at == v.ds ? 0 : 1;
+	}
 	commit(s, id, ci);
 	return true;
 }
@@ -227,6 +232,7 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 		lane_del(s, key, id);
 		v.cs = v.s - t.g.ds[size_t(ds)].len;
 		v.conn = ci;
+		v.stood_at = -1;
 		count_entry(s, ci);
 		v.pass = -1;
 		v.stood = false;

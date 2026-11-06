@@ -215,7 +215,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 	sheet_mesh(beam_, beam_section);
 	light_mesh(light_);
 	if (!props.has("signal")) return false;
-	const float dim = float(props.get("lens_dim", 0.f));
+	const Array dark = props["lens_dark"]; // each lens unlit: its colour and its own faint glow
 	bool seen[int(Lens::COUNT)] = {};
 	Array list = props["signal"];
 	for (int i = 0; i < list.size(); i++) {
@@ -226,8 +226,8 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 			errors.push_back("streets.json props.signal: lente fora de 0..4");
 			continue;
 		}
-		const Color lit = part_color(p);
-		shape(lenses_, p, Color(lit.r * dim, lit.g * dim, lit.b * dim, lit.a), Vector2(float(int(PropTag::LENS)), float(k)), errors);
+		const Array row = dark[k];
+		shape(lenses_, p, Color::html(String(row[0])), Vector2(float(int(PropTag::LENS)), float(k)), errors);
 		seen[k] = true;
 	}
 	for (bool s : seen)

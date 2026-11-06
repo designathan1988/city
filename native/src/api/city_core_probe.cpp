@@ -160,6 +160,8 @@ void park_probe(const TrafficState &t, Dictionary &d) {
 	Array ms;
 	for (double x : t.step_ms) ms.push_back(x);
 	d["step_ms"] = ms;
+	d["stop_entries"] = t.stop_entries;
+	d["stop_skipped"] = t.stop_skipped;
 	d["red_last"] = Array::make(t.red_last[0], t.red_last[1], t.red_last[2], t.red_last[3]);
 	d["parked_rows"] = int(p.rows.size()); // scenery cars standing in bays near the camera
 	d["lot_cars"] = int(p.cars.size());

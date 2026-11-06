@@ -81,7 +81,7 @@ void apply_flow_control(CityState &s) {
 		const std::optional<AutoControl> choice = c.advisor->choice(n);
 		if (!choice || n >= int(s.roads.nodes.size())) continue;
 		RoadNode &node = s.roads.nodes[size_t(n)];
-		const int8_t signal = *choice == AutoControl::SIGNAL ? 1 : 0;
+		const int8_t signal = *choice == AutoControl::SIGNAL ? AUTO_SIGNAL : *choice == AutoControl::STOP ? AUTO_ALL_STOP : int8_t(0);
 		if (!node.alive || node.auto_signal == signal) continue;
 		node.auto_signal = signal;
 		s.log.net_node(n);

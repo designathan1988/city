@@ -27,6 +27,7 @@ struct DirSeg {
 	float ex = 0, ez = 0; // endpoint (s = len) in world XZ, computed once at graph build (A* heuristic)
 	int stage = -1; // signal stage serving this approach at node `to`
 	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
+	bool must_stop = false; // a Stop at node `to`: nobody goes over the line still rolling
 	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
 	float cycle_shift = 0; // a bike strip beside lane 0: how far across (u, a -> b frame), 0 for none
 	float edge_shift = 0; // no strip: how far across a bicycle rides within lane 0, on the kerb edge of the carriageway

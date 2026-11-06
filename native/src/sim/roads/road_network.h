@@ -40,6 +40,7 @@ constexpr uint16_t with_structure(uint16_t flags, Structure s) {
 }
 constexpr int SEG_RULE_A_SHIFT = 10, SEG_RULE_B_SHIFT = 12;
 enum SegRule : uint16_t { RULE_NONE = 0, RULE_STOP = 1, RULE_YIELD = 2 };
+constexpr int8_t AUTO_SIGNAL = 1, AUTO_ALL_STOP = 2;
 constexpr uint16_t seg_rule_mask(int end) { return end == 0 ? SEG_RULE_A_MASK : SEG_RULE_B_MASK; }
 constexpr int seg_rule_shift(int end) { return end == 0 ? SEG_RULE_A_SHIFT : SEG_RULE_B_SHIFT; }
 // The flags of a segment laid the other way round: what was on its left is on its right, its a end is its b end.
@@ -68,7 +69,7 @@ struct RoadNode {
 	float lift = 0; // the height the player gave it over the grade line, metres (Roadcraft 4.0 RoadNode.heightOffset)
 	std::vector<int> segs;
 	uint8_t ctl = CTL_AUTO; // NodeControl
-	int8_t auto_signal = -1; // what the flows chose on automatic (sim/traffic/flow_control.h): -1 nothing yet, 0 none, 1 a signal; derived, never saved
+	int8_t auto_signal = -1; // what the flows chose on automatic (sim/traffic/flow_control.h): -1 nothing yet, 0 none, 1 a signal, AUTO_ALL_STOP a Stop on every leg; derived, never saved
 	SignalSettings signal;
 	bool bulb = false; // dead end with a turning bulb
 	bool joint = false; // two arms in line: one street going on

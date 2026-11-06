@@ -18,6 +18,14 @@ static func lenses(m: ShaderMaterial, environment: Environment) -> void:
 			lit[int(part.lens)] = ToneMap.radiance(Color.html(part.color), environment.tonemap_exposure,
 					environment.tonemap_white)
 	m.set_shader_parameter("lit_radiance", lit)
+	var dark := PackedVector3Array()
+	dark.resize(LENSES)
+	var gain: float = DataTables.game("daylight").sky_gain
+	var rows: Array = DataTables.render().streets.props.lens_dark
+	for k in LENSES: # the 4.0's faint glow of an unlit lens, a radiance of its scale in ours
+		var glow := Color.html(rows[k][1]).srgb_to_linear()
+		dark[k] = Vector3(glow.r, glow.g, glow.b) * gain
+	m.set_shader_parameter("dark_radiance", dark)
 
 
 ## A vehicle's lamps burning by day (data/render/agents.json trim): shown as their colour, like the signal lenses.
