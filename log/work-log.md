@@ -544,6 +544,9 @@ Ressalvas abertas:
 - **Canteiro preto:** o disco da poça estava a 0,164 m (calçada 0,15 + `pool_lift_m` 0,014) e o canteiro tem 0,17 m. `pool_lift_m` 0,03.
 - Aberto: entre as poças o canteiro fica mais escuro que no 4.0 (5,12,1 contra 22,26,10); a luz pelas contas é a mesma, causa não provada.
 
+### O zip (2026-11-05)
+- `build.sh package` copiava a fonte arquivo por arquivo: quebrava em caminho com acento (`git ls-files` devolve entre aspas) e, corrigido isso, passava de 9 minutos com 16 mil arquivos. Agora é `git archive` da HEAD: 17 s, `dist/Roadcraft.zip` com o exe do commit `700ced28`.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

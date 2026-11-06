@@ -68,10 +68,7 @@ package() {
 	local stage="$OUT/stage"
 	rm -rf "$stage" "$OUT/Roadcraft.zip" && mkdir -p "$stage/jogo" "$stage/fonte"
 	cp -r "$OUT/windows/." "$stage/jogo/" && cp "$OUT/READ-ME.txt" "$stage/"
-	(cd "$ROOT" && git ls-files 2>/dev/null || find CLAUDE.md .claude native/src native/CMakeLists.txt native/toolchain-mingw.cmake \
-		project tools -type f ! -path "*/.godot/*" ! -path "*/__pycache__/*") | while read -r f; do
-		mkdir -p "$stage/fonte/$(dirname "$f")" && cp "$ROOT/$f" "$stage/fonte/$f"
-	done
+	git -C "$ROOT" archive --format=tar HEAD | tar -x -C "$stage/fonte" # the source as committed, in one pass
 	(cd "$stage" && if command -v zip >/dev/null 2>&1; then zip -qr "$OUT/Roadcraft.zip" .; else tar.exe -a -cf "$OUT/Roadcraft.zip" .; fi)
 	rm -rf "$stage"
 	echo "$OUT/Roadcraft.zip"
