@@ -26,7 +26,7 @@ int bit_of(int64_t chunk, int64_t super) {
 
 bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	material_ = ctx.material("road", errors);
+	material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
 	look_ = &look;
 	return errors.is_empty();
 }

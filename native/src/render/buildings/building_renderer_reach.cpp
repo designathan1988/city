@@ -19,8 +19,11 @@ constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
 const char *const KEEP_PARAM = "level_keep", *const BACK_PARAM = "level_back"; // building_level.gdshaderinc
 
+// Compatibility has no dissolve (building_level.gdshaderinc). A value set on an instance takes a place in that renderer's few, whether its shader declares it or not
+// (Godot instance_uniforms.cpp materials_finish).
 void put_param(const RID &inst, const char *name, float value) {
-	if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(inst, name, value);
+	static const bool has_them = RenderingServer::get_singleton()->get_current_rendering_method() != "gl_compatibility";
+	if (has_them && inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(inst, name, value);
 }
 
 void range(const MeshDraw &d, float begin, float end) {
