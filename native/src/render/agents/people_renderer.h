@@ -66,8 +66,8 @@ public:
 
 private:
 	PeopleAsset asset_;
-	godot::RID scenario_, material_;
-	std::vector<MultiMeshDraw> draws_; // variation * (lods + 1) + level; the last, the far mesh casting no shadow
+	godot::RID scenario_, material_, far_material_;
+	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
 	std::vector<InstanceRows> bufs_;
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }

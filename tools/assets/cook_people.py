@@ -1,61 +1,75 @@
-"""Converts Roadcraft's cooked people (people.bin/people.json: MakeHuman CC0 bodies, Microsoft Rocketbox MIT walk) into
-project/assets/people/people.bin, read by native/src/render/agents/people_asset.cpp, and its LICENSES.json. The walk and the
-idle of the pack and the poses of people in and on vehicles (rider_poses.py) go out as a float palette (3 RGBA texels per
-bone per frame), and two LODs per variation, re-indexed per variation. Each variation has one block of palette rows with its
-clips at the same rows, named in the header, so the shader finds a person's clip from the person's block.
+"""Cooks Roadcraft's cast (public/models/citizens/people/<id>.bin and .ktx2: MakeHuman CC0 bodies with their clothes, one texture atlas
+each, Microsoft Rocketbox MIT skeleton) into project/assets/people/people.bin, read by native/src/render/agents/people_asset.cpp, and
+its LICENSES.json. The atlases go out as PNG for tools/assets/compress_atlas.gd. The clips come baked per body (`clips_dir`: <id>.clips,
+index.json) as bone palettes; each body has one block of palette rows with its clips at the same rows, named in the header, so the
+shader finds a person's clip from the person's block.
 
-Usage: python3 tools/assets/cook_people.py <roadcraft public/cooked/people dir> <out dir>
-(the Rocketbox licence is read from ../../models/citizens/LICENSE-MICROSOFT.txt beside the cooked pack)
+Usage: python3 tools/assets/cook_people.py <roadcraft dir> <clips dir> <out dir> <png dir>
 
 Output layout (little-endian):
   header  : magic b"RCPP", u32 version, u32 variations, u32 bones, u32 lods, u32 palette_w, u32 block_rows, u32 clips
   per clip: 16-byte name, u32 row, u32 frames (rows within a block; a walk's own frames are the variation's)
+  impostor: u32 frames, f32 x, y, width, height (the strip of yaw views in the atlas, uv with v down)
   per variation: u32 walk_frames, f32 idle_seconds, f32 walk_advance, f32 height, u32 flags (1 female, 2 senior, 4 child),
-                 per lod: u32 vertex_count, u32 index_count,
-                 per clip, at its first frame: f32 pelvis x y z (root space, metres), f32 above, below, ahead, side (the
-                 body's extent from the pelvis)
-  per variation, per lod: vertices (f32 x y z, f32 nx ny nz, u8 r g b region, u8 bones[4], u8 weights[4], f32 detail),
-                 then u16 indices
+                 f32 alpha_test, f32 head x y z of the moto clip (where a helmet goes), per lod: u32 vertex_count, u32 index_count,
+                 per clip, at its first frame: f32 pelvis x y z (root space, metres), f32 above, below, ahead, side (the body's
+                 extent from the pelvis)
+  per variation, per lod: vertices (f32 x y z, f32 nx ny nz, u8 r g b look, u8 bones[4], u8 weights[4], f32 u v),
+                 then u16 indices; look: bits 6-7 region (0 cloth, 1 skin, 2 hair, 3 eye), bits 0-5 roughness
   palette : palette_w * variations * block_rows * 4 f32 (bone b, frame f of a clip: texels 3b..3b+2 of row
-            variation * block_rows + the clip's row + f = the 3x4 rows); a block's walk starts at its row 0
+            variation * block_rows + the clip's row + f = the rows of the 3x4 bind -> pose matrix)
 """
 import json
+import os
 import struct
+import subprocess
 import sys
 
 import numpy as np
 
-import people_clean
-import rider_poses
-
 MAGIC = b"RCPP"
-VERSION = 3
-LODS = (0, 1)  # Roadcraft LOD0 (~4k tris) near, LOD1 (~600 tris) far
+VERSION = 4
 FEMALE, SENIOR, CHILD = 1, 2, 4
 BONE_TEXELS = 3
-IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly: the cook prints what the resampling costs
+IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly
+SEATED = ("carDrive", "carRide", "carRearRide", "cabDrive", "cabRide", "chairSit")
+SEATED_FRAMES = 12  # somebody sitting hardly moves: the breath of the baked 36 frames, the shader mixes between them
 CLIP_NAME_BYTES = 16
-FIRST_PROP = 8  # regions >= 8 are held props (phone, cup, bag, paper, umbrella, helmet): the walk carries none
+# name in the file, name of the baked clip for an adult and for a senior
+CLIPS = [("walk", "walk", "walkElder"), ("idle", "idle", "idle"), ("carDrive",) * 3, ("carRide",) * 3, ("carRearRide",) * 3, ("cabDrive",) * 3,
+         ("cabRide",) * 3, ("chairSit",) * 3, ("motoRide",) * 3, ("motoStop",) * 3, ("bikePedal",) * 3, ("bikeStop",) * 3]
 
 
-def octa_decode(w0):
-    x = (w0 & 0xFFFF).astype(np.float32) / 65535.0 * 2.0 - 1.0
-    y = (w0 >> 16).astype(np.float32) / 65535.0 * 2.0 - 1.0
-    z = 1.0 - np.abs(x) - np.abs(y)
-    t = np.clip(-z, 0.0, None)
-    x = x + np.where(x >= 0, -t, t)
-    y = y + np.where(y >= 0, -t, t)
-    n = np.stack([x, y, z], axis=1)
-    return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-6)
+def buffer(raw, base, ref):
+    kinds = {"f32": "<f4", "u32": "<u4", "u16": "<u2", "i16": "<i2", "u8": "u1", "i8": "i1"}
+    return np.frombuffer(raw, dtype=kinds[ref["kind"]], count=ref["length"], offset=base + ref["at"])
 
 
-def section(raw, layout, name, dtype):
-    s = layout[name]
-    return np.frombuffer(raw, dtype=dtype, count=s["count"], offset=s["byteOffset"])
+def body(path):
+    raw = open(path, "rb").read()
+    n = struct.unpack("<I", raw[:4])[0]
+    head = json.loads(raw[4:4 + n])
+    base = 4 + ((n + 3) & ~3)
+    m = head["mesh"]
+    pos, nor, col, uv, bones, weights = (buffer(raw, base, r) for r in m["attributes"])
+    count = m["vertexCount"]
+    pos = pos.reshape(count, 3).astype(np.float64) / 32767.0
+    bind = np.array(m["bind"], dtype=np.float64).reshape(4, 4).T  # column-major in the file
+    rest = (bind @ np.c_[pos, np.ones(count)].T).T[:, :3]
+    normals = nor.reshape(count, 4)[:, :3].astype(np.float64) / 127.0
+    normals = (bind[:3, :3] @ normals.T).T
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-6)
+    return {
+        "head": head, "rest": rest, "normals": normals, "col": col.reshape(count, 4), "uv": uv.reshape(count, 2).astype(np.float64) / 65535.0,
+        "bones": bones.reshape(count, 4), "weights": weights.reshape(count, 4).astype(np.float64) / 255.0, "index": buffer(raw, base, m["index"]),
+    }
 
 
-def clip_rows(palette, start, clip):
-    return palette[start + clip["start"]:start + clip["start"] + clip["frames"]]
+def clip_rows(blob, clip, bones):
+    """A clip's frames as bind -> pose rows, frames x bones x 12 (row x, row y, row z)."""
+    data = np.frombuffer(blob, dtype="<f4", count=clip["floats"], offset=clip["at"]).reshape(-1, bones, 4, 3)  # column-major: 4 columns of 3
+    data = data[:max(clip["frames"], 1)]
+    return np.ascontiguousarray(data.transpose(0, 1, 3, 2)).reshape(-1, bones, 12)
 
 
 def resampled(rows, count):
@@ -66,136 +80,113 @@ def resampled(rows, count):
     return rows[first % len(rows)] * (1 - mix) + rows[(first + 1) % len(rows)] * mix
 
 
-def resampling_error(rows, kept):
-    """The most a pose matrix entry strays from the source when `kept` is played back."""
-    at = np.arange(len(rows)) * (len(kept) / len(rows))
-    first = np.floor(at).astype(int)
-    mix = (at - first)[:, None, None]
-    back = kept[first % len(kept)] * (1 - mix) + kept[(first + 1) % len(kept)] * mix
-    return float(np.abs(back - rows).max())
+def posed(frame, b):
+    """The body's vertices in one frame."""
+    rows = frame.reshape(-1, 3, 4)
+    p = np.c_[b["rest"], np.ones(len(b["rest"]))]
+    out = np.zeros((len(p), 3))
+    for k in range(4):
+        out += b["weights"][:, k:k + 1] * np.einsum("vij,vj->vi", rows[b["bones"][:, k]], p)
+    return out
 
 
-def licenses(src, out):
-    text = open(f"{src}/../../models/citizens/LICENSE-MICROSOFT.txt", encoding="utf8").read().strip()
+def licenses(root, out):
+    text = open(f"{root}/public/models/citizens/LICENSE-MICROSOFT.txt", encoding="utf8").read().strip()
     doc = {
-        "_doc": "Provenance of people.bin (made by tools/assets/cook_people.py from Roadcraft public/cooked/people).",
+        "_doc": "Provenance of people.bin and atlas.bin (made by tools/assets/cook_people.py from Roadcraft public/models/citizens/people).",
         "makehuman": {
-            "what": "bodies, clothes, hair, shoes and skin colours (MakeHuman hm08 base mesh, MPFB2 system assets, game_engine rig)",
+            "what": "bodies, clothes, hair, shoes and their textures (MakeHuman hm08 base mesh, MPFB2 system assets)",
             "source": "https://github.com/makehumancommunity/mpfb2 @ afb9f530a7c2741dedb8df0ebae2e0b183caec21",
             "license": "CC0-1.0",
             "holders": "Data Collection AB, Joel Palmius, Jonas Hauquier (MakeHuman team)",
         },
         "rocketbox": {
-            "what": "walk and idle animation (Microsoft Rocketbox), retargeted and baked to bone palettes",
+            "what": "skeleton, walk and idle animation (Microsoft Rocketbox), retargeted and baked to bone palettes",
             "source": "https://github.com/microsoft/Microsoft-Rocketbox",
             "license": "MIT",
             "copyright": "Copyright (c) 2020 Microsoft",
             "license_text": text,
         },
-        "riders": {"what": "the clips of people in and on vehicles: poses solved on the same skeleton by inverse kinematics (tools/assets/rider_poses.py), no third-party animation"},
+        "riders": {"what": "the clips of people in and on vehicles: poses solved on the same skeleton by inverse kinematics"},
     }
     json.dump(doc, open(f"{out}/LICENSES.json", "w", encoding="utf8", newline="\n"), indent=1, ensure_ascii=False)
 
 
-def skin_of(vpos, vattr, index, lod):
-    """A body's skin in the bind pose, its held props left out: positions, bones and weights, four a vertex."""
-    first, tris = lod
-    tri = index[first:first + tris * 3].reshape(-1, 3)
-    used = np.unique(tri[(vattr[tri, 1] >> 24).max(axis=1) < FIRST_PROP])
-    bones = np.stack([(vattr[used, 2] >> (8 * k)) & 255 for k in range(4)], axis=1).astype(int)
-    weights = np.stack([(vattr[used, 3] >> (8 * k)) & 255 for k in range(4)], axis=1).astype(np.float64)
-    return vpos[used, :3].astype(np.float64), bones, weights / np.maximum(weights.sum(axis=1, keepdims=True), 1)
-
-
-def rider_rows(palette, start, clip, names, parents, skin):
-    """A body's joints and its clips of vehicles, name -> frames x bones x 12."""
-    frames = np.concatenate([clip_rows(palette, start, clip[n]) for n in ("walk", "idle", "sit", "pedal")]).reshape(-1, len(names), 3, 4)
-    joints = rider_poses.joints_of(frames.astype(np.float64), clip_rows(palette, start, clip["pedal"])[0].reshape(-1, 3, 4), parents, *skin)
-    rows = {"bikePedal": rider_poses.pedalling(names, parents, joints)}
-    for name, ask in rider_poses.POSES.items():
-        rows[name] = np.repeat(rider_poses.solve(names, parents, joints, ask, *skin)[None], rider_poses.STILL_FRAMES, axis=0)
-    return joints, {n: r.reshape(len(r), len(names), 12) for n, r in rows.items()}
-
-
-def fit_of(pose, joints, skin):
-    """What the file says of a clip for one body: where the pelvis is, and how far the body runs from it."""
-    m = pose.astype(np.float64).reshape(-1, 3, 4)
-    pelvis = m[rider_poses.PELVIS, :, :3] @ joints[rider_poses.PELVIS] + m[rider_poses.PELVIS, :, 3]
-    return struct.pack("<7f", *pelvis, *rider_poses.reach_of(m, pelvis, *skin))
-
-
-def cook(src, out):
-    meta = json.load(open(f"{src}/people.json"))
-    raw = open(f"{src}/people.bin", "rb").read()
-    lay = meta["layout"]
-    vpos = section(raw, lay, "vpos", "<f4").reshape(-1, 4)
-    vattr = section(raw, lay, "vattr", "<u4").reshape(-1, 4)
-    index = section(raw, lay, "index", "<u4")
-    nb = len(meta["bones"])
-    palette = section(raw, lay, "palette", "<f4").reshape(-1, nb, 12)
-    normals = octa_decode(vattr[:, 0])
-    variations = meta["variations"]
-    clips = [{c["name"]: c for c in s} for s in meta["clipSets"]]
-    names, parents = meta["bones"], meta["parents"]
-    idle_row = max(c["walk"]["frames"] for c in clips)
-    table = [("walk", 0, idle_row), ("idle", idle_row, IDLE_FRAMES), ("bikePedal", idle_row + IDLE_FRAMES, rider_poses.PEDAL_FRAMES)]
-    for name in rider_poses.POSES:
-        table.append((name, table[-1][1] + table[-1][2], rider_poses.STILL_FRAMES))
-    block_rows = table[-1][1] + table[-1][2]
-    heads, bodies, rows = [], [], []
-    worst = 0.0
-    head_verts = waist_verts = 0
-    for v in variations:
-        clip = clips[v["clipSet"]]
+def cook(root, clips_dir, out, png):
+    index = json.load(open(f"{clips_dir}/index.json"))
+    os.makedirs(png, exist_ok=True)
+    bodies, blobs = [], []
+    for e in index:
+        bodies.append(body(f"{root}/public/models/citizens/people/{e['id']}.bin"))
+        blobs.append(open(f"{clips_dir}/{e['id']}.clips", "rb").read())
+    nb = index[0]["bones"]
+    frames_of = {}
+    for name, adult, senior in CLIPS:
+        counts = {max(e["clips"][senior if e["ageBand"] == "senior" else adult]["frames"], 1) for e in index}
+        frames_of[name] = max(counts)
+    frames_of["idle"] = IDLE_FRAMES
+    for name in SEATED:
+        frames_of[name] = SEATED_FRAMES
+    table, row = [], 0
+    for name, _, _ in CLIPS:
+        table.append((name, row, frames_of[name]))
+        row += frames_of[name]
+    block_rows = row
+    heads, meshes, rows = [], [], []
+    alpha = None
+    for e, b, blob in zip(index, bodies, blobs):
+        senior = e["ageBand"] == "senior"
         block = np.zeros((block_rows, nb, 12), dtype="<f4")
-        walk, idle = clip_rows(palette, v["paletteStart"], clip["walk"]), clip_rows(palette, v["paletteStart"], clip["idle"])
-        kept = resampled(idle, IDLE_FRAMES)
-        worst = max(worst, resampling_error(idle, kept))
-        block[:len(walk)] = walk
-        block[idle_row:idle_row + IDLE_FRAMES] = kept
-        skin = skin_of(vpos, vattr, index, v["lod"][LODS[0]])
-        joints, riders = rider_rows(palette, v["paletteStart"], clip, names, parents, skin)
-        for name, row, frames in table[2:]:
-            block[row:row + frames] = riders[name]
+        fits = []
+        walk_frames = 1
+        for (name, adult, old), (_, at, count) in zip(CLIPS, table):
+            clip = e["clips"][old if senior else adult]
+            data = clip_rows(blob, clip, nb)
+            if name == "walk":
+                walk_frames = len(data)
+            elif len(data) != count:
+                data = resampled(data, count)
+            block[at:at + len(data)] = data
+            shape = posed(block[at], b)
+            pelvis = np.array(clip["pelvis"])
+            fits.append(struct.pack("<7f", *pelvis, shape[:, 1].max() - pelvis[1], pelvis[1] - shape[:, 1].min(), shape[:, 2].max() - pelvis[2],
+                                    np.abs(shape[:, 0] - pelvis[0]).max()))
         rows.append(block)
-        flags = (FEMALE if v["sex"] == "female" else 0) | (SENIOR if v["band"] == "senior" else 0) | (CHILD if v["band"] == "child" else 0)
-        head = struct.pack("<IfffI", len(walk), clip["idle"]["frames"] / clip["idle"]["fps"], v["walkAdvance"], v["height"], flags)
-        for lod in LODS:
-            first, tris = v["lod"][lod]
-            tri = index[first:first + tris * 3].reshape(-1, 3)
-            region = (vattr[tri, 1] >> 24).max(axis=1)
-            tri = tri[region < FIRST_PROP].reshape(-1)
+        m = b["head"]["mesh"]
+        alpha = m["alphaTest"]
+        walk, idle, moto = e["clips"]["walkElder" if senior else "walk"], e["clips"]["idle"], e["clips"]["motoRide"]
+        hx, hy, hz = (moto["head"][12], moto["head"][13], moto["head"][14]) if moto.get("head") else (0.0, 0.0, 0.0)
+        flags = (FEMALE if e["gender"] == "f" else 0) | (SENIOR if senior else 0) | (CHILD if e["ageBand"] == "child" else 0)
+        head = struct.pack("<IfffIffff", walk_frames, idle["duration"], walk["stride"], e["height"], flags, alpha, hx, hy, hz)
+        for level in m["levels"]:
+            tri = b["index"][level["start"]:level["start"] + level["count"]].reshape(-1, 3)[:, [0, 2, 1]].reshape(-1)  # three's front is Godot's back
             used, local = np.unique(tri, return_inverse=True)
-            if len(used) > 65535:
-                raise SystemExit(f"variation with {len(used)} vertices does not fit u16 indices")
             head += struct.pack("<II", len(used), len(tri))
-            if lod == LODS[-1]:
-                head += b"".join(fit_of(block[row], joints, skin) for _, row, _ in table)
-            vert = np.zeros(len(used), dtype=[("p", "<f4", 3), ("n", "<f4", 3), ("c", "<u4"), ("b", "<u4"), ("w", "<u4"), ("d", "<f4")])
-            vert["p"] = vpos[used, :3]
-            vert["n"] = normals[used]
-            colour, faces = people_clean.clean_head(vattr[used, 1], vattr[used, 2], meta["bones"])
-            vert["c"], detail, waist = people_clean.clean_waist(colour, vpos[used, 1], vpos[used, 3], vattr[used, 2], meta["bones"])
-            head_verts += faces
-            waist_verts += waist
-            vert["b"] = vattr[used, 2]
-            vert["w"] = vattr[used, 3]
-            vert["d"] = detail
-            bodies.append(vert.tobytes() + local.astype("<u2").tobytes())
-        heads.append(head)
-    pal = np.concatenate(rows, axis=0)  # frames x bones x 12
+            vert = np.zeros(len(used), dtype=[("p", "<f4", 3), ("n", "<f4", 3), ("c", "u1", 4), ("b", "u1", 4), ("w", "u1", 4), ("t", "<f4", 2)])
+            vert["p"], vert["n"], vert["c"], vert["b"] = b["rest"][used], b["normals"][used], b["col"][used], b["bones"][used]
+            vert["w"], vert["t"] = np.round(b["weights"][used] * 255).astype("u1"), b["uv"][used]
+            meshes.append(vert.tobytes() + local.astype("<u2").tobytes())
+        heads.append(head + b"".join(fits))
+        subprocess.run(["node", os.path.join(os.path.dirname(__file__), "ktx2_to_png.mjs"), f"{root}/public/models/citizens/people/{e['id']}.ktx2",
+                        f"{png}/{e['id']}.png"], check=True, stdout=subprocess.DEVNULL)
+    pal = np.concatenate(rows, axis=0)
     tex = pal.reshape(pal.shape[0], nb * BONE_TEXELS, 4).astype("<f4")
-    blob = struct.pack("<4sIIIIIII", MAGIC, VERSION, len(variations), nb, len(LODS), nb * BONE_TEXELS, block_rows, len(table))
-    blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sII", n.encode(), row, frames) for n, row, frames in table)
-    blob += b"".join(heads) + b"".join(bodies) + tex.tobytes()
+    m = bodies[0]["head"]["mesh"]
+    side = float(bodies[0]["head"]["atlas"]["size"])
+    imp = m["impostor"]
+    blob = struct.pack("<4sIIIIIII", MAGIC, VERSION, len(index), nb, len(m["levels"]), nb * BONE_TEXELS, block_rows, len(table))
+    blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sII", n.encode(), r, f) for n, r, f in table)
+    # v over the atlas's rows as the mesh's uv reads them: a frame's y counts from the other end (cookedPerson.ts CookedImpostor)
+    blob += struct.pack("<Iffff", imp["frames"], imp["x"] / side, 1 - (imp["y"] + imp["height"]) / side, imp["width"] / side, imp["height"] / side)
+    blob += b"".join(heads) + b"".join(meshes) + tex.tobytes()
     open(f"{out}/people.bin", "wb").write(blob)
-    licenses(src, out)
+    licenses(root, out)
     print(f"palette values within {float(np.abs(pal).max()):.3f}")
-    print(f"{len(variations)} variations, palette {nb * BONE_TEXELS}x{pal.shape[0]}, {len(blob) / 1e6:.2f} MB, idle resampled to within {worst:.4f}")
-    print(f"{head_verts} head vertices in the body's skin, {waist_verts} waist vertices dressed")
+    print(f"{len(index)} bodies, palette {nb * BONE_TEXELS}x{pal.shape[0]}, {len(blob) / 1e6:.2f} MB; rest height {bodies[0]['rest'][:, 1].min():.3f}..{bodies[0]['rest'][:, 1].max():.3f}")
+    print("frames", {n: f for n, _, f in table}, "alpha", alpha)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 5:
         raise SystemExit(__doc__)
-    cook(sys.argv[1], sys.argv[2])
+    cook(*sys.argv[1:5])

@@ -1,12 +1,14 @@
-// The cooked pedestrians (project/assets/people/people.bin, made by tools/assets/cook_people.py from Roadcraft's
-// MakeHuman CC0 people with the Rocketbox MIT walk): per variation and level an ArrayMesh in the bind pose (T pose,
-// metres, +Z forward, feet at y = 0) whose bone attributes carry four bone indices and their weights (summing to 1),
-// UV2 = (region, tint detail), COLOR = linear texture colour; and the walk as a float palette texture (3 RGBA texels per
-// bone and frame = the rows of the 3x4 bind -> pose matrix) that render/shaders/people.gdshader skins with.
+// The cast (project/assets/people/people.bin and atlas.bin, made by tools/assets/cook_people.py and compress_atlas.gd from Roadcraft's
+// MakeHuman CC0 people on the Rocketbox MIT skeleton): per body and level an ArrayMesh in the bind pose (metres, +Z forward, feet at
+// y = 0) whose bone attributes carry four bone indices and their weights (summing to 1), UV = where in the body's atlas, UV2 = (region,
+// roughness), COLOR = the vertex's own colour over the atlas; the atlases as one array, a layer a body; the clips as a palette texture
+// (3 RGBA texels per bone and frame = the rows of the 3x4 bind -> pose matrix) that render/shaders/people.gdshader skins with; and a
+// card for the far off, showing the strip of yaw views each atlas holds (render/shaders/people_far.gdshader).
 #pragma once
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/texture2d_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
@@ -14,9 +16,6 @@
 #include <vector>
 
 namespace city {
-
-// Regions painted per instance (Roadcraft people.json "regions").
-enum PersonRegion : int { REGION_SKIN = 0, REGION_HAIR = 1, REGION_TOP = 2, REGION_BOTTOM = 3 };
 
 // A clip of a variation's block of palette rows; a walk's own frames are the variation's.
 struct PersonClip {
@@ -32,7 +31,7 @@ struct PersonFit {
 
 struct PersonVariation {
 	int walk_frames = 1;
-	float idle_s = 1, walk_advance = 1, height = 1;
+	float idle_s = 1, walk_advance = 1, height = 1, alpha_test = 0;
 	bool female = false, senior = false, child = false;
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
@@ -41,13 +40,17 @@ struct PersonVariation {
 struct PeopleAsset {
 	std::vector<PersonVariation> variations;
 	godot::Ref<godot::ImageTexture> palette;
+	godot::Ref<godot::Texture2DArray> atlas; // a layer a body
+	godot::Ref<godot::ArrayMesh> card; // the quad of the far off
+	int card_frames = 1;
+	godot::Color card_strip; // the strip in the atlas: x, y, a frame's width and height, in uv
 	int lods = 0;
 	std::vector<PersonClip> clips;
 	int block_rows = 0, idle_row = 0, idle_frames = 0; // each variation's rows of the palette; the idle, as the shader asks it
 	// The clip of that name, as its index in `clips`; -1 when the file has none.
 	int clip(const char *name) const;
 	// Reads and checks the file; false (with a message) when it is missing or malformed.
-	bool load(const godot::String &path, godot::PackedStringArray &errors);
+	bool load(const godot::String &path, const godot::String &atlas_path, godot::PackedStringArray &errors);
 };
 
 } // namespace city

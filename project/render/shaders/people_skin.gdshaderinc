@@ -3,7 +3,7 @@
 // What differs between shaders is only where the rows come from: the walk reads them from the palette (people.gdshader, two frames
 // mixed), a falling body from its bone-matrix texture (one pose: a = b, t = 0).
 
-const int LAST_BONE = 22; // 23 bones (people.json "bones")
+const int LAST_BONE = 52; // the Rocketbox skeleton's 53 bones
 
 struct BonePose {
 	vec4 row_x;

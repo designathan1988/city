@@ -1,19 +1,19 @@
 {
- "_doc": "Provenance of people.bin (made by tools/assets/cook_people.py from Roadcraft public/cooked/people).",
+ "_doc": "Provenance of people.bin and atlas.bin (made by tools/assets/cook_people.py from Roadcraft public/models/citizens/people).",
  "makehuman": {
-  "what": "bodies, clothes, hair, shoes and skin colours (MakeHuman hm08 base mesh, MPFB2 system assets, game_engine rig)",
+  "what": "bodies, clothes, hair, shoes and their textures (MakeHuman hm08 base mesh, MPFB2 system assets)",
   "source": "https://github.com/makehumancommunity/mpfb2 @ afb9f530a7c2741dedb8df0ebae2e0b183caec21",
   "license": "CC0-1.0",
   "holders": "Data Collection AB, Joel Palmius, Jonas Hauquier (MakeHuman team)"
  },
  "rocketbox": {
-  "what": "walk and idle animation (Microsoft Rocketbox), retargeted and baked to bone palettes",
+  "what": "skeleton, walk and idle animation (Microsoft Rocketbox), retargeted and baked to bone palettes",
   "source": "https://github.com/microsoft/Microsoft-Rocketbox",
   "license": "MIT",
   "copyright": "Copyright (c) 2020 Microsoft",
   "license_text": "MIT License\n\nCopyright (c) 2020 Microsoft\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
  },
  "riders": {
-  "what": "the clips of people in and on vehicles: poses solved on the same skeleton by inverse kinematics (tools/assets/rider_poses.py), no third-party animation"
+  "what": "the clips of people in and on vehicles: poses solved on the same skeleton by inverse kinematics"
  }
 }

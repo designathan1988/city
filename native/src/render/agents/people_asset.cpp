@@ -1,5 +1,5 @@
-// Reads project/assets/people/people.bin (layout in tools/assets/cook_people.py) into ArrayMeshes and the palette
-// texture. The file is checked end to end: a short or inconsistent file is refused with a message.
+// Reads project/assets/people/people.bin (layout in tools/assets/cook_people.py) into ArrayMeshes and the palette texture, and atlas.bin
+// into the array of atlases. The file is checked end to end: a short or inconsistent file is refused with a message.
 #include "render/agents/people_asset.h"
 
 #include "core/bytes.h"
@@ -13,6 +13,7 @@
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -23,12 +24,13 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
-constexpr uint32_t VERSION = 3, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t VERSION = 4, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f, PALETTE_SPAN = 2.f; // palette values lie in [-1.9, 1.9]: the cook prints it
 constexpr int TEXELS_PER_VALUE = 2;
 constexpr uint32_t FIXED_MAX = 65535;
+constexpr float CARD_HALF = 0.5f;
 
 // Float textures are not sampled reliably in the Compatibility renderer (Godot may fall back to 8 bits and clamp), so
 // each palette value goes out as 16-bit fixed point over [-PALETTE_SPAN, PALETTE_SPAN]: texel 2x holds the high
@@ -58,25 +60,26 @@ float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_
 Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
-	PackedVector2Array uv2;
+	PackedVector2Array uv, uv2;
 	PackedInt32Array bones;
 	PackedFloat32Array weights;
 	PackedInt32Array idx;
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
+	uv.resize(sz.vertices);
 	uv2.resize(sz.vertices);
 	bones.resize(int64_t(sz.vertices) * CHANNELS);
 	weights.resize(int64_t(sz.vertices) * CHANNELS);
 	uint8_t b8[CHANNELS], w8[CHANNELS];
 	for (uint32_t i = 0; i < sz.vertices; i++) {
-		float p[3], n[3];
+		float p[3], n[3], t[2];
 		for (float &v : p) v = r.get<float>();
 		for (float &v : n) v = r.get<float>();
 		uint32_t c = r.get<uint32_t>();
 		r.get_bytes(b8, CHANNELS);
 		r.get_bytes(w8, CHANNELS);
-		float detail = r.get<float>();
+		for (float &v : t) v = r.get<float>();
 		pos.set(i, Vector3(p[0], p[1], p[2]));
 		nor.set(i, Vector3(n[0], n[1], n[2]));
 		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), 1));
@@ -88,7 +91,9 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 			bones.set(int64_t(i) * CHANNELS + k, int32_t(b8[k]));
 			weights.set(int64_t(i) * CHANNELS + k, sum > 0 ? float(w8[k]) / float(sum) : (k == 0 ? 1.f : 0.f));
 		}
-		uv2.set(i, Vector2(float(c >> (3 * BYTE_BITS)), detail));
+		const uint32_t look = c >> (3 * BYTE_BITS);
+		uv.set(i, Vector2(t[0], t[1]));
+		uv2.set(i, Vector2(float(look >> REGION_SHIFT), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
 	}
 	idx.resize(sz.indices);
 	for (uint32_t i = 0; i < sz.indices; i++) idx.set(i, int32_t(r.get<uint16_t>()));
@@ -98,6 +103,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	arr[Mesh::ARRAY_VERTEX] = pos;
 	arr[Mesh::ARRAY_NORMAL] = nor;
 	arr[Mesh::ARRAY_COLOR] = col;
+	arr[Mesh::ARRAY_TEX_UV] = uv;
 	arr[Mesh::ARRAY_TEX_UV2] = uv2;
 	arr[Mesh::ARRAY_BONES] = bones;
 	arr[Mesh::ARRAY_WEIGHTS] = weights;
@@ -105,6 +111,46 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 	// no skeleton is bound (the MultiMesh is skinned by people.gdshader from the palette), so the bone attributes stay as
 	// data. Not CUSTOM0/1: Godot 4.7.2's Compatibility renderer gives an RGBA8 custom attribute one component
 	// (drivers/gles3/storage/mesh_storage.cpp: size = fmtsize / sizeof(float)), so g, b, a read 0, 0, 1
+	Ref<ArrayMesh> m;
+	m.instantiate();
+	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
+	return m;
+}
+// The atlases of atlas.bin (tools/assets/compress_atlas.gd), compressed and with their mipmaps as they are to be drawn: nothing to decode.
+Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
+	const PackedByteArray raw = FileAccess::get_file_as_bytes(path);
+	ByteReader r{ raw.ptr(), size_t(raw.size()) };
+	const uint32_t layers = r.get<uint32_t>(), side = r.get<uint32_t>(), each = r.get<uint32_t>();
+	if (!r.ok || layers != count || side == 0 || size_t(each) * layers + r.o != r.n) return Ref<Texture2DArray>();
+	TypedArray<Image> images;
+	for (uint32_t i = 0; i < layers; i++) {
+		PackedByteArray data;
+		data.resize(each);
+		r.get_bytes(data.ptrw(), each);
+		images.push_back(Image::create_from_data(int(side), int(side), true, Image::FORMAT_DXT5, data));
+	}
+	Ref<Texture2DArray> out;
+	out.instantiate();
+	return out->create_from_images(images) == OK ? out : Ref<Texture2DArray>();
+}
+
+// One quad, x and y in -0.5..0.5: people_far.gdshader turns it to the eye.
+Ref<ArrayMesh> card_mesh() {
+	PackedVector3Array pos, nor;
+	PackedVector2Array uv;
+	PackedInt32Array idx;
+	for (const Vector2 &corner : { Vector2(-CARD_HALF, -CARD_HALF), Vector2(CARD_HALF, -CARD_HALF), Vector2(CARD_HALF, CARD_HALF), Vector2(-CARD_HALF, CARD_HALF) }) {
+		pos.push_back(Vector3(corner.x, corner.y, 0));
+		nor.push_back(Vector3(0, 0, 1));
+		uv.push_back(corner);
+	}
+	for (int i : { 0, 2, 1, 0, 3, 2 }) idx.push_back(i);
+	Array arr;
+	arr.resize(Mesh::ARRAY_MAX);
+	arr[Mesh::ARRAY_VERTEX] = pos;
+	arr[Mesh::ARRAY_NORMAL] = nor;
+	arr[Mesh::ARRAY_TEX_UV] = uv;
+	arr[Mesh::ARRAY_INDEX] = idx;
 	Ref<ArrayMesh> m;
 	m.instantiate();
 	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
@@ -118,7 +164,7 @@ int PeopleAsset::clip(const char *name) const {
 	return -1;
 }
 
-bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
+bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStringArray &errors) {
 	PackedByteArray raw = FileAccess::get_file_as_bytes(path);
 	ByteReader r{ raw.ptr(), size_t(raw.size()) };
 	uint32_t magic = r.get<uint32_t>(), version = r.get<uint32_t>(), count = r.get<uint32_t>(), bones = r.get<uint32_t>();
@@ -142,6 +188,11 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
 		return false;
 	}
+	card_frames = int(r.get<uint32_t>());
+	card_strip.r = r.get<float>();
+	card_strip.g = r.get<float>();
+	card_strip.b = r.get<float>();
+	card_strip.a = r.get<float>();
 	idle_row = clips[size_t(idle)].row;
 	idle_frames = clips[size_t(idle)].frames;
 	lods = int(lod_count);
@@ -157,6 +208,8 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 		pv.female = flags & FLAG_FEMALE;
 		pv.senior = flags & FLAG_SENIOR;
 		pv.child = flags & FLAG_CHILD;
+		pv.alpha_test = r.get<float>();
+		for (int k = 0; k < 3; k++) r.get<float>(); // where a helmet sits on this body, for the cook's own use
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 		pv.fits.resize(clips.size());
 		for (PersonFit &f : pv.fits) {
@@ -184,6 +237,12 @@ bool PeopleAsset::load(const String &path, PackedStringArray &errors) {
 	}
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8,
 			fixed_point(texels)));
+	card = card_mesh();
+	atlas = read_atlas(atlas_path, count);
+	if (atlas.is_null()) {
+		errors.push_back("pessoas: atlas ausente ou inválido: " + atlas_path);
+		return false;
+	}
 	return true;
 }
 

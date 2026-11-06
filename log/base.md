@@ -17,11 +17,12 @@ Ordem do usuário: otimizar a base (memória, CPU, GPU), pesquisar também assem
 ## Assembly (pesquisa)
 Agner Fog, Optimizing subroutines in assembly: compiladores atuais superam o programador na maioria dos casos; intrínsecos dão as mesmas instruções e mantêm inlining, alocação de registros e propagação de constantes; função em assembly bloqueia isso. Inline asm chegou a custar 40% num caso medido (arXiv 2101.06039). Assembly à mão ganha só em núcleo pequeno onde o agendamento importa. Método adotado: AVX2 pelo compilador e intrínsecos, olhando o assembly gerado (`llvm-objdump`), e `.S` só onde a saída do compilador for ruim.
 
-## Em andamento: o elenco novo de pessoas
+## O elenco novo de pessoas (feito)
 Causa das pessoas feias: nosso `people.bin` veio do pacote antigo (`public/cooked/people`), cor por vértice, roupa e cabelo com borda rasgada. O 4.0 atual tem 16 corpos em `public/models/citizens/people/<id>.bin` + `<id>.ktx2`: malha com atlas 1024, 5.000 e 2.500 triângulos, esqueleto Bip01 de 53 ossos, expressões do rosto e tira de impostor (8 guinadas, 32x64).
 - Clipes: `scratchpad/cast/castbake.spec.ts` roda o `bake` do próprio 4.0 (vitest com config de fora, sem tocar a pasta de referência) e grava `<id>.clips` + `index.json`: paleta de 12 floats por osso, coluna a coluna, `frames + 2` linhas; `pelvis`, `head`, `stride`.
 - Pele do three: mundo = Σ w·B·(bind·v); `bind` leva o vértice quantizado a metros.
-- Passos: cook (malha, atlas, paleta) → `people.bin` v4 + `atlas.bin` (DXT5 com mips, comprimido pelo Godot) → `people.gdshader` lê `sampler2DArray` pela variação, corte alfa do cabelo, dois lados → impostor além do nível 1 → capacete na cabeça do clipe (`head`).
+- Ordem dos triângulos: a frente do three é o verso do Godot; com `cull_disabled` o corpo saía visto por dentro, escuro (o cook troca os índices).
+- Feito: cook (malha, atlas, paleta) → `people.bin` v4 + `atlas.bin` (DXT5 com mips, comprimido pelo Godot) → `people.gdshader` lê `sampler2DArray` pela variação, corte alfa do cabelo, dois lados → impostor além do nível 1 → capacete na cabeça do clipe (`head`).
 
 ## Falta depois
 LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e leves, e o resto das Pendências do CLAUDE.md.

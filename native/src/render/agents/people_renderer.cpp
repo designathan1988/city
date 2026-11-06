@@ -1,9 +1,6 @@
-// Fills one instance buffer per (variation, level) every frame. Look hash bits (Roadcraft looks.ts): variation 24..31,
-// top tinted unless bits 0..1 are 0 (colour 4..7), bottom unless bits 2..3 are 0 (colour 9..12), grey hair for seniors
-// unless bits 14..15 are 0 (grey 16..17), hair 18..20, skin 21..23. The Compatibility renderer keeps instance custom
-// data as half floats (exact integers to 2048), so the codes are packed small: INSTANCE_CUSTOM = (variation,
-// walk frames + 64 * top, bottom + 17 * hair + 256 * skin, walk phase); top / bottom 0 = the texture colour, k + 1 =
-// clothes k; hair 0..7 = hairs, 8..11 = greys. The instance colour's alpha: the share of the walk in the pose.
+// Fills one instance buffer per (body, level) every frame. Look hash bits: body 24..31; the low ones spread the idles. INSTANCE_CUSTOM =
+// (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
+// walk in the pose, or from CLIP_CODE_BASE a clip held (somebody in a vehicle).
 #include "render/agents/people_renderer.h"
 
 #include "core/color.h"
@@ -11,7 +8,6 @@
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 
 #include <algorithm>
@@ -22,9 +18,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t VARIATION_SHIFT = 24, TWO_BITS = 3, TOP_SHIFT = 4, BOTTOM_TEST = 2, BOTTOM_SHIFT = 9, GREY_TEST = 14, GREY_SHIFT = 16;
-constexpr uint32_t HAIR_SHIFT = 18, SKIN_SHIFT = 21, CLOTHES = 16, HAIRS = 8, GREYS = 4, SKINS = 8;
-constexpr float FRAMES_BASE = 64.f, HAIR_BASE = 17.f, SKIN_BASE = 256.f;
+constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023;
 constexpr int IDLE_TABLE = 32; // people.gdshader idle_seconds
 constexpr int BLOB_SIDES = 10;
 constexpr int CLIP_TABLE = 16; // people.gdshader clip_row, clip_frames
@@ -51,11 +45,6 @@ void disc_mesh(MeshBuilder &b) {
 	}
 }
 
-PackedColorArray hex_list(const Array &a) {
-	PackedColorArray out;
-	for (int i = 0; i < a.size(); i++) out.push_back(rgba8_to_color(parse_hex_color(String(a[i]).utf8().get_data())));
-	return out;
-}
 } // namespace
 
 bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, PackedStringArray &errors) {
@@ -63,7 +52,8 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("people", errors);
 	blob_material_ = ctx.material("people_blob", errors);
-	if (!errors.is_empty() || !asset_.load(String(people["asset"]), errors)) return false;
+	far_material_ = ctx.material("people_far", errors);
+	if (!errors.is_empty() || !asset_.load(String(people["asset"]), String(people["atlas"]), errors)) return false;
 	lod_m_.clear();
 	for (const Variant &m : Array(people["lod_m"])) lod_m_.push_back(float(m));
 	if (int(lod_m_.size()) != asset_.lods) {
@@ -112,9 +102,11 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, Pa
 	rs->material_set_param(material_, "idle_seconds", idle_s);
 	rs->material_set_param(material_, "clip_row", clip_rows);
 	rs->material_set_param(material_, "clip_frames", clip_frames);
-	rs->material_set_param(material_, "clothes", hex_list(people["clothes"]));
-	rs->material_set_param(material_, "hairs", hex_list(people["hair"]));
-	rs->material_set_param(material_, "greys", hex_list(people["grey"]));
+	rs->material_set_param(material_, "atlas", asset_.atlas->get_rid());
+	rs->material_set_param(material_, "alpha_test", asset_.variations.front().alpha_test);
+	rs->material_set_param(far_material_, "atlas", asset_.atlas->get_rid());
+	rs->material_set_param(far_material_, "strip", asset_.card_strip);
+	rs->material_set_param(far_material_, "frames", float(asset_.card_frames));
 	const Dictionary blob = people["blob"];
 	blob_from_m_ = float(blob["from_m"]);
 	view_reach_m_ = float(people["view_reach_m"]);
@@ -179,13 +171,8 @@ int PeopleRenderer::level_at(float dist) const {
 
 void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float frames, float phase, float pose_code) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
-	const float top = (h & TWO_BITS) ? float((h >> TOP_SHIFT) % CLOTHES + 1) : 0.f;
-	const float bottom = ((h >> BOTTOM_TEST) & TWO_BITS) ? float((h >> BOTTOM_SHIFT) % CLOTHES + 1) : 0.f;
-	const bool grey = pv.senior && ((h >> GREY_TEST) & TWO_BITS);
-	const float hair = grey ? float(HAIRS + (h >> GREY_SHIFT) % GREYS) : float((h >> HAIR_SHIFT) % HAIRS);
-	const float skin = float((h >> SKIN_SHIFT) % SKINS);
 	const size_t k = slot(size_t(v), level);
-	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), frames + FRAMES_BASE * top, bottom + HAIR_BASE * hair + SKIN_BASE * skin, phase, pose_code);
+	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == asset_.lods ? pv.height : frames, float(h & SEED_MASK), phase, pose_code);
 }
 
 void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped) {
@@ -235,7 +222,8 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
 			size_t k = slot(size_t(v), l);
-			draws_[k].set(scenario_, asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))]->get_rid(), material_, bufs_[k], box, l < lods, LAYER_PEOPLE);
+			draws_[k].set(scenario_, l < lods ? asset_.variations[size_t(v)].lods[size_t(l)]->get_rid() : asset_.card->get_rid(), l < lods ? material_ : far_material_,
+					bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
 	return drawn;

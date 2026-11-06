@@ -236,13 +236,11 @@
  },
  "people": {
   "shader": "res://render/shaders/people.gdshader",
-  "params": {
-   "tint_mix": 0.85,
-   "skin_base": 0.86,
-   "skin_step": 0.04,
-   "roughness_body": 0.82,
-   "eye_color": "#1c1611"
-  }
+  "params": {}
+ },
+ "people_far": {
+  "shader": "res://render/shaders/people_far.gdshader",
+  "params": {}
  },
  "overlay": {
   "shader": "res://render/shaders/overlay.gdshader",
