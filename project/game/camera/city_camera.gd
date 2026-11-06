@@ -186,11 +186,15 @@ func slide(right: float, forward: float) -> void:
 func keeping(screen: Vector2, change: Callable, h: float, grabbed: Variant = null) -> void:
 	var at_h := h if grabbed != null else CameraAim.hold_height(self, screen, h)
 	var before: Variant = grabbed if grabbed != null else hit_at(screen, at_h)
+	var from := camera.project_ray_origin(screen)
+	var along := camera.project_ray_normal(screen)
 	change.call()
 	_apply()
 	if before == null:
 		return
-	CameraAim.bring(self, screen, before, at_h)
+	var reach := from.distance_to(before)
+	var swing := (camera.project_ray_origin(screen) + camera.project_ray_normal(screen) * reach).distance_to(from + along * reach)
+	CameraAim.bring(self, screen, before, at_h, CameraAim.firm_reach(self, screen, before, at_h, swing))
 
 
 ## The tilt the player asks for, kept as the far tilt it means at this distance.

@@ -16,8 +16,22 @@ static func hold_height(rig: CityCamera, screen: Vector2, h: float) -> float:
 	return o.y + d.y * limit
 
 
-## Moves the point looked at until `point` (on the plane at `h`) is under `screen`.
-static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float) -> void:
+## How far a change may bring the held point back. A ray grazing the plane meets it ever farther for ever less of a turn, so the hold lets go between
+## `keep_firm_deg` and `keep_grazing_deg` of the ray over the plane and under that the view turns about its centre: what `swing` moved the ray's own point
+## over the sine of the shallowest hold, and the share of the way the hold still has.
+static func firm_reach(rig: CityCamera, screen: Vector2, point: Vector3, h: float, swing: float) -> float:
+	var found: Variant = rig.hit_at(screen, h)
+	if found == null:
+		return 0.0
+	var loose := sin(deg_to_rad(rig.cfg.keep_grazing_deg))
+	var share := smoothstep(loose, sin(deg_to_rad(rig.cfg.keep_firm_deg)), -rig.camera.project_ray_normal(screen).y)
+	if share >= 1.0:
+		return INF
+	return minf(swing / loose, share * Vector2(point.x - found.x, point.z - found.z).length())
+
+
+## Moves the point looked at until `point` (on the plane at `h`) is under `screen`, by at most `most` metres.
+static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float, most := INF) -> void:
 	for pass_i in int(rig.cfg.keep_passes):
 		var found: Variant = rig.hit_at(screen, h)
 		if found == null:
@@ -25,9 +39,13 @@ static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float) ->
 		var d: Vector3 = point - found
 		if absf(d.x) + absf(d.z) < rig.cfg.keep_tolerance_cm * CityCamera.CM:
 			return
-		rig.focus.x += d.x
-		rig.focus.z += d.z
+		var step := Vector2(d.x, d.z).limit_length(most)
+		most -= step.length()
+		rig.focus.x += step.x
+		rig.focus.z += step.y
 		rig._apply()
+		if most <= CityCamera.PARALLEL:
+			return
 
 
 ## Whether a pan can grab the ground under the pointer (else it slides by the drag).

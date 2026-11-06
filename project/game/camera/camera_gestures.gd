@@ -1,7 +1,8 @@
 ## The camera's mouse gestures, the left button stays the
 ## tools': right drag turns and tilts about the ground under the press (a turntable: the near side follows the hand,
 ## dragging down lifts towards a plan view); middle drag or Shift + right drag grabs the ground and drags it (the point
-## under the cursor stays under it; past the hold reach it slides). A right press that moves less than
+## under the cursor stays under it; past the hold reach it slides). A turn is spent on a short spring, `orbit_smooth_s`: the mouse gives whole
+## pixels, unevenly a frame, and a turn about a far point would swing the near view by each of them. A right press that moves less than
 ## `click_slop_px` is a click (CityCamera.right_clicked). Let go while moving, the camera coasts and slows down.
 class_name CameraGestures
 extends RefCounted
@@ -22,6 +23,10 @@ var _fingers := {} # touch index -> where it is
 var _pinch := {} # the last spread between two fingers
 ## The coast after a drag let go: kind, velocity (px/s or ground m/s), pointer speed px/s, pivot and its height.
 var coast := {}
+## The turn the hand asked for and the view has not made yet, radians, and what it turns about.
+var turn_left := Vector2.ZERO
+var turn_pivot := Vector2.ZERO
+var turn_height := 0.0
 
 
 func _init(camera_rig: CityCamera) -> void:
@@ -37,6 +42,7 @@ func active() -> bool:
 func cancel() -> void:
 	drag = {}
 	coast = {}
+	turn_left = Vector2.ZERO
 	samples.clear()
 
 
@@ -81,7 +87,9 @@ func move(at: Vector2) -> void:
 			drag.moved = true
 		var d: Vector2 = at - drag.last
 		drag.last = at
-		rig.orbit(-d.x * rad_per_px, d.y * rad_per_px, drag.pressed, drag.height)
+		turn_left += Vector2(-d.x, d.y) * rad_per_px
+		turn_pivot = drag.pressed
+		turn_height = drag.height
 		return
 	var dp: Vector2 = at - drag.last
 	drag.last = at
@@ -189,8 +197,19 @@ func _throw() -> void:
 	coast = {"kind": &"pan", "v": -g, "px": v.length()}
 
 
-## One frame of coast, `dt` seconds.
+## How much of a tilt there is room for: it eases into the limit it goes to, so the turn does not stop dead on it.
+func _tilt_room(towards: float) -> float:
+	var limit: float = deg_to_rad(cfg.max_tilt_deg) if towards > 0.0 else CameraProfile.min_tilt(cfg, rig.half)
+	return clampf(absf(limit - rig.pitch) / deg_to_rad(cfg.tilt_ease_deg), 0.0, 1.0)
+
+
+## One frame of what the hand left: the turn still to make, then the coast, `dt` seconds.
 func advance(dt: float) -> void:
+	if turn_left != Vector2.ZERO:
+		var keep := exp(-dt / cfg.orbit_smooth_s)
+		var spent := turn_left * (1.0 - keep) if turn_left.length() > cfg.coast_min_orbit * dt else turn_left
+		turn_left -= spent
+		rig.orbit(spent.x, spent.y * _tilt_room(spent.y), turn_pivot, turn_height)
 	if coast.is_empty():
 		return
 	var orbit: bool = coast.kind == &"orbit"

@@ -5,6 +5,7 @@
 ## Run: godot --headless --path project res://tests/core/camera_input_test.tscn -- --no-flow
 extends Node3D
 
+const TURN_SPENT_FRAMES := 30 # the spring that spends a turn (orbit_smooth_s), well run out
 const TOWN_MAP := 0
 const SEED := 1
 ## Allowed drift of a held point, as a share of the view's height (headless views are tiny).
@@ -111,6 +112,7 @@ func _orbit_tests() -> void:
 	var yaw0 := rig.yaw
 	var dx := 120.0
 	await _drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(dx, 0), false, true)
+	await _frames(TURN_SPENT_FRAMES)
 	var turned := angle_difference(yaw0, rig.yaw)
 	_check(absf(turned + dx * rig.gestures.rad_per_px) < EPS, "direito: gira %.3f rad (esperado %.3f)" % [turned, -dx * rig.gestures.rad_per_px])
 	_check(rig.camera.unproject_position(g_pivot).distance_to(c) < _tol(), "direito: gira em torno do chão sob o clique")
