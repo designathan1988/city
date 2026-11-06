@@ -18,32 +18,7 @@ namespace city {
 namespace {
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
-constexpr int LINE_FLOATS = 4, LINE_ORIGIN = 3; // a plain MultiMesh buffer: three lines of a basis and an origin each (rs_util.h mm_push_plain)
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
-
-// The box of a chunk with nothing to bound yet.
-AABB chunk_box(int64_t key) {
-	return AABB(Vector3(float(key_x(key)) * CHUNK, AABB_MIN_Y, float(key_y(key)) * CHUNK), Vector3(CHUNK, AABB_H, CHUNK));
-}
-
-// What the instances of a plain MultiMesh buffer cover: each one's origin and its three axes, a unit model at most each way. A band's and
-// a mid level's visibility range is measured to the centre of this box, so it has to stand where they stand: the chunk's own box has
-// its centre hundreds of metres over the street.
-AABB rows_box(const PackedFloat32Array &buf, int64_t key) {
-	const int64_t rows = buf.size() / MM_PLAIN_STRIDE;
-	if (rows == 0) return chunk_box(key);
-	const float *r = buf.ptr();
-	Vector3 mn, mx;
-	for (int64_t i = 0; i < rows; i++, r += MM_PLAIN_STRIDE) {
-		const Vector3 o(r[LINE_ORIGIN], r[LINE_ORIGIN + LINE_FLOATS], r[LINE_ORIGIN + 2 * LINE_FLOATS]);
-		const Vector3 reach(std::abs(r[0]) + std::abs(r[1]) + std::abs(r[2]), std::abs(r[LINE_FLOATS]) + std::abs(r[LINE_FLOATS + 1]) + std::abs(r[LINE_FLOATS + 2]),
-				std::abs(r[2 * LINE_FLOATS]) + std::abs(r[2 * LINE_FLOATS + 1]) + std::abs(r[2 * LINE_FLOATS + 2]));
-		mn = i == 0 ? o - reach : mn.min(o - reach);
-		mx = i == 0 ? o + reach : mx.max(o + reach);
-	}
-	const Vector3 pad(AABB_PAD, AABB_PAD, AABB_PAD);
-	return AABB(mn - pad, mx - mn + pad * 2);
-}
 
 // An instance whose basis is three columns in a row.
 void push_row(PackedFloat32Array &buf, const float *bs, const float *origin, float c0, float c1, float c2, float c3) {
@@ -161,65 +136,6 @@ int64_t BuildingRenderer::Built::bytes() const {
 		for (const PackedFloat32Array &buf : sub) n += buf.size() * int64_t(sizeof(float));
 	n += flags.size() * int64_t(sizeof(float));
 	return n;
-}
-
-void BuildingRenderer::Built::bake() {
-	for (int i = 0; i < SUB_COUNT; i++) {
-		if (has_near) {
-			held[HELD_NEAR_WALLS].add(near_shell[size_t(i)], true);
-			held[HELD_NEAR_PANES].add(near_glass[size_t(i)], true);
-			held[HELD_NEAR_GUARDS].add(near_sheer[size_t(i)], true);
-			held[HELD_NEAR_CARDS].add(near_cards[size_t(i)], true);
-			held[HELD_NEAR_PIECES].add(parts_shell[size_t(i)], true);
-			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)], &near_lawns[size_t(i)], &near_washes[size_t(i)]);
-			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
-		}
-		if (has_mid) {
-			held[HELD_MID_WALLS].add(mid_shell[size_t(i)], true);
-			held[HELD_MID_PANES].add(mid_glass[size_t(i)], true);
-			held[HELD_MID_CARDS].add(mid_cards[size_t(i)], true);
-			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)], &mid_lawns[size_t(i)]);
-			held[HELD_MID_PANES].add(flat_glass[size_t(i)], true);
-			flat[size_t(i)] = BuildingRenderer::bake(flat_shell[size_t(i)], true, &flat_glass[size_t(i)]);
-		}
-		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
-		near_shell[size_t(i)] = b40::Shell();
-		parts_shell[size_t(i)] = b40::Shell();
-		mid_shell[size_t(i)] = b40::Shell();
-		near_glass[size_t(i)] = b40::Shell();
-		near_sheer[size_t(i)] = b40::Shell();
-		near_cards[size_t(i)] = b40::Shell();
-		mid_cards[size_t(i)] = b40::Shell();
-		mid_glass[size_t(i)] = b40::Shell();
-		flat_shell[size_t(i)] = b40::Shell();
-		flat_glass[size_t(i)] = b40::Shell();
-		near_lawns[size_t(i)] = b40::Shell();
-		near_washes[size_t(i)] = b40::Shell();
-		mid_lawns[size_t(i)] = b40::Shell();
-	}
-	for (size_t i = 0; i < SUB_COUNT; i++)
-		for (size_t b = 0; b < BAND_DRAWS; b++) {
-			band_count[i][b] = int(bands[i][b].size() / MM_PLAIN_STRIDE);
-			if (band_count[i][b] > 0) {
-				band_box[i][b] = rows_box(bands[i][b], key);
-				band_mm[i][b] = bake_multimesh(band_mesh[b], bands[i][b], band_box[i][b]);
-			}
-			bands[i][b] = PackedFloat32Array();
-		}
-	for (size_t i = 0; i < SUB_COUNT; i++)
-		for (size_t k = 0; k < MID_DRAWS; k++) {
-			mid_count[i][k] = int(mid_buf[i][k].size() / MM_PLAIN_STRIDE);
-			if (mid_count[i][k] > 0) {
-				mid_box[i][k] = rows_box(mid_buf[i][k], key);
-				mid_mm[i][k] = bake_multimesh(mid_mesh[k], mid_buf[i][k], mid_box[i][k]);
-			}
-			mid_buf[i][k] = PackedFloat32Array();
-		}
-	flag_count = int(flags.size() / MM_PLAIN_STRIDE);
-	flag_box = rows_box(flags, key);
-	flag_mm = bake_multimesh(unit_flag, flags, flag_box);
-	flags = PackedFloat32Array();
-	baked = true;
 }
 
 void BuildingRenderer::SuperBuilt::bake() {

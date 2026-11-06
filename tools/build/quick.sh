@@ -49,14 +49,13 @@ scenes="$(echo "$scenes" | tr ' ' '\n' | sort -u | tr '\n' ',' | sed 's/,$//; s/
 bash tools/build/gates_changed.sh "$ROOT" > "$OUT/gates.txt" 2>&1 & gates=$!
 # A class new to the project, written here or merged, is known only after an import.
 "$GODOT" --headless --path project --import > "$OUT/import.txt" 2>&1
-"$GODOT" --headless --path project -s "$(cygpath -m "$ROOT/tools/build/check_scripts.gd")" > "$OUT/scripts.txt" 2>&1 & scripts=$!
+"$GODOT" --headless --path project -s "$(cygpath -m "$ROOT/tools/build/check_scripts.gd")" > "$OUT/scripts.txt" 2>&1; scripted=$? # before the link: a Godot open holds the DLL the linker writes
 if [ -n "$all$ready" ]; then
 	bash tools/build/build.sh core-windows > "$OUT/build.txt" 2>&1
 else
 	cmake --build native/build-win-debug --target citycore > "$OUT/build.txt" 2>&1
 fi
 built=$?
-wait $scripts; scripted=$?
 echo "build $built, scripts $scripted: $((SECONDS - started)) s"
 [ "$built" = 0 ] || { grep -m12 "error:" "$OUT/build.txt"; exit 1; }
 [ "$scripted" = 0 ] || { grep -m12 "ERROR\|FALHA" "$OUT/scripts.txt"; exit 1; }

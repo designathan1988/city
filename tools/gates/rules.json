@@ -10,7 +10,13 @@
     "project/bin",
     "dist",
     "__pycache__",
-    ".claude/worktrees"
+    ".claude/worktrees",
+    "tools/converter",
+    "tools/converter-slice",
+    "tools/oracle-4.0",
+    "tools/process",
+    "tools/ports",
+    "log"
   ],
   "root_allowed": [
     "CLAUDE.md",
@@ -19,10 +25,12 @@
     "native",
     "project",
     "tools",
-    "dist"
+    "dist",
+    "log"
   ],
   "allowed_docs": [
-    "CLAUDE.md"
+    "CLAUDE.md",
+    ".claude/REGISTRO-GOAL.md"
   ],
   "doc_exempt_names": [
     "CMakeLists.txt"
@@ -209,7 +217,14 @@
     ]
   },
   "forbidden": [
-  {"id": "JOB_SEM_CHAVE", "paths": ["native/src/"], "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))", "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"},
+    {
+      "id": "JOB_SEM_CHAVE",
+      "paths": [
+        "native/src/"
+      ],
+      "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))",
+      "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"
+    },
     {
       "id": "SIM_SEM_GODOT",
       "paths": [
@@ -380,16 +395,37 @@
       "project/ui/",
       "project/render/"
     ],
-    "data_copy_ignore_files": ["project/data/render/furniture.json"], "_data_copy_ignore_doc": "furniture.json holds the coordinates of each piece's parts (modelling), not values any code owns.", "data_copy_allow": [
-      "native/src/render/trees/tree_look.cpp:CAL_SIDE", "native/src/sim/lots/lot_cache.cpp:LOT_LOOK", "native/src/sim/roads/road_network.cpp:LOT_LOOK_M", "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
-      "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START", "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
+    "data_copy_ignore_files": [
+      "project/data/render/furniture.json"
+    ],
+    "_data_copy_ignore_doc": "furniture.json holds the coordinates of each piece's parts (modelling), not values any code owns.",
+    "data_copy_allow": [
       "native/src/render/trees/tree_look.cpp:CAL_SIDE",
       "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
-      "native/src/sim/buildings/b40/model.h:NO_BAY", "project/game/tools/building_tool.gd:NO_BAY",
       "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
-      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H", "native/src/render/atmosphere/fog_field.cpp:BUCKET_M", "native/src/render/effects/effect_blast.cpp:SOIL_TINT",
-      "native/src/render/effects/effect_things.cpp:FLESH", "native/src/sim/traffic/way_search.cpp:FINE_HEADINGS"],
+      "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
+      "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
+      "native/src/sim/terrain/heightfield.cpp:BANK_START",
+      "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
+      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
+      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
+      "native/src/sim/buildings/b40/model.h:NO_BAY",
+      "project/game/tools/building_tool.gd:NO_BAY",
+      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
+      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H",
+      "native/src/render/atmosphere/fog_field.cpp:BUCKET_M",
+      "native/src/render/effects/effect_blast.cpp:SOIL_TINT",
+      "native/src/render/effects/effect_things.cpp:FLESH",
+      "native/src/sim/traffic/way_search.cpp:FINE_HEADINGS",
+      "native/src/render/buildings/bay_kit.cpp:WALL_FOOT",
+      "native/src/render/buildings/facade_props.cpp:INSET_IN",
+      "native/src/sim/buildings/interior/plan.cpp:INSET",
+      "native/src/sim/roads/road_grade.h:MAX_STATIONS",
+      "native/src/sim/citygen/block_lots.cpp:MAX_BLOCK",
+      "native/src/sim/citygen/road_gen.cpp:MAX_WET",
+      "native/src/sim/citygen/block_lots.cpp:LOT_FRONTAGE",
+      "native/src/sim/citygen/road_gen.cpp:EDGE_PAD"
+    ],
     "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
   },
   "clones": {

@@ -1,6 +1,8 @@
 // Small helpers every road mesher piece shares: frames along a segment, crossing nodes and the textured quad.
 #include "render/roads/road_mesh.h"
 
+#include "render/owned_segments.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -54,6 +56,18 @@ double street_start(const RoadNetwork &net, int sid) {
 }
 
 bool crossing_node(const CityState &s, int node) { return s.roads.has_crosswalks(node); }
+
+void emit_chunk(const RoadEmit &e, int64_t chunk) {
+	const float x0 = key_x(chunk) * CHUNK, z0 = key_y(chunk) * CHUNK;
+	each_owned_segment(e.s, chunk, [&](int sid) {
+		emit_segment(e, sid);
+		emit_markings(e, sid);
+	});
+	e.s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
+		const RoadNode &nd = e.s.roads.nodes[n];
+		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == chunk) emit_node(e, n);
+	});
+}
 
 void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color &col, const Vector3 &out) {
 	const Color cols[4] = { col, col, col, col };

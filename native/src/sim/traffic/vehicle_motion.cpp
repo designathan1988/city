@@ -14,7 +14,7 @@ namespace city {
 namespace traffic {
 
 namespace {
-constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f, SAFE_PAD_M = 0.3f;
+constexpr float SAFE_PAD_M = 0.3f;
 constexpr float WAIT_SPEED = 0.5f, STUCK_SPEED = 0.3f, LC_DECAY = 1.f;
 constexpr float MOVING_OFF_SHARE = 0.5f; // box_hold: obstacles that leave it this share of its free-road pickup do not hold it
 
@@ -312,22 +312,6 @@ BoxHold box_hold(const CityState &s, int id) {
 		idm_accel(vc, v.v, top, light, 0.f) };
 	const int most = int(std::min_element(by, by + int(BoxHold::STARTING)) - by);
 	return by[most] > MOVING_OFF_SHARE * idm_accel(vc, v.v, top, NO_LEADER, 0.f) ? BoxHold::STARTING : BoxHold(most);
-}
-
-float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {
-	v0 = std::max(v0, MIN_V0);
-	float free;
-	if (v <= v0) {
-		const float r = v / v0, r2 = r * r;
-		free = c.a * (1 - r2 * r2); // IDM_DELTA is 4: no pow in the per-vehicle path
-	} else {
-		free = -c.b * (1 - std::pow(v0 / v, c.a * IDM_DELTA / c.b));
-	}
-	if (gap >= NO_LEADER) return free;
-	float s_star = c.min_gap + std::max(0.f, v * c.headway + v * (v - vl) / (2 * std::sqrt(c.a * c.b)));
-	float z = s_star / std::max(gap, MIN_GAP);
-	if (v <= v0) return z >= 1 ? c.a * (1 - z * z) : (free > 0 ? free * (1 - std::pow(z, 2 * c.a / free)) : free);
-	return z >= 1 ? free + c.a * (1 - z * z) : free;
 }
 
 void step_vehicles(CityState &s, float dt) {

@@ -14,6 +14,7 @@ namespace {
 
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
+constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
 constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
@@ -35,7 +36,7 @@ std::vector<Arm> arms_of(const CityState &s, int n) {
 		Arm a;
 		a.seg = si;
 		a.in = g.ds[din].ok ? din : -1;
-		a.priority = s.roads.profile_of(si).priority;
+		a.priority = s.roads.profile_of(si).ring ? RING_PRIORITY : s.roads.profile_of(si).priority;
 		Pose p;
 		if (a.in >= 0) { lane_pose(s, din, 0, g.ds[din].len, p); a.out = V2(-p.fx, -p.fz); }
 		else { lane_pose(s, dout, 0, 0.f, p); a.out = V2(p.fx, p.fz); }
@@ -59,7 +60,7 @@ std::vector<Arm> network_arms(const CityState &s, int n) {
 		const city::Arm out = arm_of(g.q, p, g.a == n ? 0 : 1);
 		Arm a;
 		a.seg = si;
-		a.priority = p.priority;
+		a.priority = p.ring ? RING_PRIORITY : p.priority;
 		a.out = V2(float(out.dx), float(out.dz));
 		arms.push_back(a);
 	}
@@ -70,6 +71,8 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 	if (arms.size() < 3) return Control::NONE;
 	if (node.ctl == CTL_SIGNAL) return Control::SIGNAL;
 	if (node.ctl != CTL_AUTO) return Control::PRIORITY; // stop, yield, none and mini: by rank, each leg's set in build_junction
+	for (const Arm &a : arms)
+		if (a.priority == RING_PRIORITY) return Control::PRIORITY; // a roundabout's entry gives way, and never takes a signal by itself
 	if (node.auto_signal == AUTO_SIGNAL) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
 	if (node.auto_signal == AUTO_ALL_STOP) return Control::PRIORITY;
 	std::vector<int> high;
@@ -206,18 +209,6 @@ void build_junction(CityState &s, int n) {
 		g.ds[a.in].rank = k < 2 && !plate && !everyone ? RANK_MAIN : RANK_YIELD;
 		g.ds[a.in].must_stop = everyone == RULE_STOP || plate == RULE_STOP;
 	}
-}
-
-// The rule of every leg of a junction under one: a Stop on all of them, or a mini-roundabout's and a yield's give way. RULE_NONE: each leg its own.
-int leg_rule(const RoadNode &node) {
-	if (node.ctl == CTL_STOP || (node.ctl == CTL_AUTO && node.auto_signal == AUTO_ALL_STOP)) return RULE_STOP;
-	return node.ctl == CTL_YIELD || node.ctl == CTL_MINI ? RULE_YIELD : RULE_NONE;
-}
-
-int plate_rule(const RoadNetwork &net, int seg, int n) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const int end = g.a == n ? 0 : 1;
-	return (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
 }
 
 std::vector<int> main_legs(const CityState &s, int n) {

@@ -65,5 +65,17 @@ void junction_signs(const CityState &s, int n, std::vector<SignStand> &out) {
 	}
 }
 
+// The rule of every leg of a junction under one: a Stop on all of them, or a mini-roundabout's and a yield's give way. RULE_NONE: each leg its own.
+int leg_rule(const RoadNode &node) {
+	if (node.ctl == CTL_STOP || (node.ctl == CTL_AUTO && node.auto_signal == AUTO_ALL_STOP)) return RULE_STOP;
+	return node.ctl == CTL_YIELD || node.ctl == CTL_MINI ? RULE_YIELD : RULE_NONE;
+}
+
+int plate_rule(const RoadNetwork &net, int seg, int n) {
+	const RoadSegment &g = net.segs[size_t(seg)];
+	const int end = g.a == n ? 0 : 1;
+	return (g.flags & seg_rule_mask(end)) >> seg_rule_shift(end);
+}
+
 } // namespace traffic
 } // namespace city

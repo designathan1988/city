@@ -36,5 +36,25 @@ float desired_speed(const CityState &s, const Vehicle &v, int ds) {
 	return top_speed(s, v, d.speed) * (1 + drift);
 }
 
+namespace {
+constexpr float IDM_DELTA = 4.f, MIN_V0 = 0.5f, MIN_GAP = 0.02f;
+} // namespace
+
+float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl) {
+	v0 = std::max(v0, MIN_V0);
+	float free;
+	if (v <= v0) {
+		const float r = v / v0, r2 = r * r;
+		free = c.a * (1 - r2 * r2); // IDM_DELTA is 4: no pow in the per-vehicle path
+	} else {
+		free = -c.b * (1 - std::pow(v0 / v, c.a * IDM_DELTA / c.b));
+	}
+	if (gap >= NO_LEADER) return free;
+	float s_star = c.min_gap + std::max(0.f, v * c.headway + v * (v - vl) / (2 * std::sqrt(c.a * c.b)));
+	float z = s_star / std::max(gap, MIN_GAP);
+	if (v <= v0) return z >= 1 ? c.a * (1 - z * z) : (free > 0 ? free * (1 - std::pow(z, 2 * c.a / free)) : free);
+	return z >= 1 ? free + c.a * (1 - z * z) : free;
+}
+
 } // namespace traffic
 } // namespace city

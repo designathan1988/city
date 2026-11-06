@@ -3,8 +3,6 @@
 // pools repeat every lamp step of the simulation's street furniture (its only owner).
 #include "render/roads/road_renderer.h"
 
-#include "render/owned_segments.h"
-
 #include "render/roads/road_mesh.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
@@ -45,16 +43,7 @@ void RoadChunks::reset() {
 }
 
 void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
-	RoadEmit e{ s, look_, mb };
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	each_owned_segment(s, key, [&](int sid) {
-		emit_segment(e, sid);
-		emit_markings(e, sid);
-	});
-	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
-		const RoadNode &nd = s.roads.nodes[n];
-		if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) emit_node(e, n);
-	});
+	emit_chunk(RoadEmit{ s, look_, mb }, key);
 }
 
 void RoadChunks::commit_one(BuiltMesh &b) {

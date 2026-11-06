@@ -114,6 +114,11 @@ func _edits() -> void:
 	var info := _road_at(mid)
 	_check(info.get("kind", "") == "road", "inspecionar acha a via")
 	_check(absf(info.length_m - ROAD_LEN_M) < 1.0, "a via em pedaços é uma só: %.1f m" % info.length_m)
+	var path: PackedVector3Array = CityStore.query(&"segment_path", [info.id])
+	var gap := 0.0
+	for i in range(1, path.size()):
+		gap = maxf(gap, path[i].distance_to(path[i - 1]))
+	_check(absf(path[0].distance_to(path[path.size() - 1]) - ROAD_LEN_M) < 1.0 and gap < ROAD_LEN_M * 0.5, "a faixa da Informação cobre a via, sem salto (maior passo %.1f m)" % gap)
 	if one_way >= 0:
 		_check(CityStore.dispatch(&"reverse_road", [info.id]).ok, "inverter mão única")
 		_check(_road_at(mid).get("kind", "") == "road", "a via segue lá depois de invertida")
