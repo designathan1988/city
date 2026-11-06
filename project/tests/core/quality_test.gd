@@ -29,6 +29,9 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
+var _sky: SkyView
+
+
 func _ready() -> void:
 	_player_file_read()
 	var kept := FileAccess.get_file_as_bytes(Settings.PATH)
@@ -39,6 +42,7 @@ func _ready() -> void:
 	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	Settings.attach(world, get_viewport())
+	_sky = world.sky
 	await _frames(SETTLE_FRAMES)
 	await _tiers(rig)
 	await _occlusion(rig)
@@ -235,6 +239,6 @@ func _occlusion(rig: CityCamera) -> void:
 ## Sky fields: what the sky's owner reads on `changed`.
 func _entry() -> void:
 	Settings.set_preset("low")
-	_check(Settings.current().sky_clouds == false, "low has no clouds for who draws the sky")
+	_check(not _sky.clouds_drawn, "low draws no clouds")
 	Settings.set_preset("ultra")
-	_check(Settings.current().cloud_shadows == true, "ultra has cloud shadow for who draws the sky")
+	_check(_sky.clouds_drawn, "ultra draws the clouds")

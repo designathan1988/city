@@ -165,7 +165,7 @@ func _build_environment(_palette: Dictionary) -> void:
 	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 	environment.tonemap_exposure = day.exposure
 	environment.tonemap_white = day.tonemap_white
-	environment.fog_enabled = day.fog_density > 0.0 # the map is seen clear to its edges: the 4.0 has no fog, by the player's own order
+	environment.fog_enabled = true
 	environment.fog_sky_affect = 0.0
 	environment.fog_light_energy = day.sky_gain
 	environment.glow_hdr_threshold = day.glow_threshold

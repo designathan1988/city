@@ -47,6 +47,7 @@ func _ready() -> void:
 
 
 func _wall_by_day() -> void:
+	world.environment.fog_enabled = false # the surface under the same light: the air over it is another thing
 	var cases := [["parede perto", "building", WALL_ROUGHNESS, false], ["parede longe", "building_far", FAR_ROUGHNESS, false],
 			["a piece with no finish", "building_parts", WALL_ROUGHNESS, true]]
 	var made: Array[Node3D] = []

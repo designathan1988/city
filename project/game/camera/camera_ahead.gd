@@ -35,8 +35,8 @@ func settle(dt: float, base: Vector3, eye: Vector3, line: float) -> void:
 	var high := maxf(clear.x, ahead.x)
 	var off := maxf(clear.y, ahead.y)
 	if dt > 0.0:
-		over.to(high, dt, cfg.eye_out_s if high > over.x else cfg.eye_back_s)
-		out.to(off, dt, cfg.eye_out_s if off > out.x else cfg.eye_back_s)
+		over.ease_to(high, dt, cfg.eye_out_s if high > over.x else cfg.eye_back_s)
+		out.ease_to(off, dt, cfg.eye_out_s if off > out.x else cfg.eye_back_s)
 	else:
 		over.snap(high)
 		out.snap(off)

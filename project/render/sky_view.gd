@@ -23,6 +23,7 @@ const SALT_R := 8
 var drift := Vector2.ZERO
 var weather := {}
 var clouds: Array = []
+var clouds_drawn := true # what the graphics tier pays for: the pass of the clouds, their bodies and their shadows
 
 var _d: Dictionary
 var _world: CityWorld
@@ -177,7 +178,7 @@ func _lay() -> void:
 		var t := -cam.global_position.y / ahead.y if ahead.y < -LEVEL_VIEW else 0.0
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
 	var span: float = _d.cloud_span_m
-	var n := mini(clouds.size(), SLOTS)
+	var n := mini(clouds.size(), SLOTS) if clouds_drawn else 0
 	for i in n:
 		var c: Dictionary = clouds[i]
 		var dx := wrapf(c.x + drift.x - about.x, -span * 0.5, span * 0.5)

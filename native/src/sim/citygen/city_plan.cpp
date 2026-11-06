@@ -23,8 +23,8 @@ CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def) {
 	p.radius = radius;
 	const uint32_t start = seed * SEED_MUL;
 	Xoshiro128 r(start != 0 ? start : 1);
-	const double x = range(r, -radius, radius) * def.main_offset, z = range(r, -radius, radius) * def.main_offset;
-	p.centres.push_back({ x, z });
+	const double x = range(r, -radius, radius) * def.main_offset, y = range(r, -radius, radius) * def.main_offset;
+	p.centres.push_back({ x, y });
 	for (int i = 1; i < def.centres; i++) {
 		const double a = range(r, 0, TURN) + i * def.centre_turn, d = radius * range(r, def.second_from, def.second_to);
 		p.centres.push_back({ std::cos(a) * d, std::sin(a) * d });
@@ -36,18 +36,19 @@ CityPlan plan_city(uint32_t seed, double radius, const CityPlanDef &def) {
 
 int zone_at(const CityPlan &p, double x, double z, bool on_main) {
 	const CityPlanDef &d = p.def;
+	const double y = -z; // the seed's centres, sector and noise are the map's: read on the world's z they land mirrored
 	double near_share = NO_CENTRE;
 	for (size_t i = 0; i < p.centres.size(); i++) {
-		const double far = std::hypot(x - p.centres[i][0], z - p.centres[i][1]);
+		const double far = std::hypot(x - p.centres[i][0], y - p.centres[i][1]);
 		near_share = std::min(near_share, far / (i == 0 ? 1.0 : d.second_pull));
 	}
 	const double k = near_share / p.radius; // 0 at a centre, about 1 at the edge
 	if (k > d.industry_from) {
-		double off = std::fmod(std::fabs(std::atan2(z, x) - p.industry_angle), TURN);
+		double off = std::fmod(std::fabs(std::atan2(y, x) - p.industry_angle), TURN);
 		if (off > TURN / 2) off = TURN - off;
 		if (off < d.industry_half_angle) return ZONE_IND;
 	}
-	const double heat = 1 - k + (d.density - 0.5) * d.density_pull + value_noise(x / d.noise_cell_m, z / d.noise_cell_m) * d.noise_heat;
+	const double heat = 1 - k + (d.density - 0.5) * d.density_pull + value_noise(x / d.noise_cell_m, y / d.noise_cell_m) * d.noise_heat;
 	const int density = heat > d.high_heat ? 2 : heat > d.medium_heat ? 1 : 0;
 	static constexpr int COMMERCIAL[3] = { ZONE_COM_LOW, ZONE_COM, ZONE_COM_HIGH }, RESIDENTIAL[3] = { ZONE_RES_LOW, ZONE_RES, ZONE_RES_HIGH };
 	return heat > d.commerce_heat || (on_main && heat > d.main_commerce_heat) ? COMMERCIAL[density] : RESIDENTIAL[density];

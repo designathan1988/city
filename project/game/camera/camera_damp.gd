@@ -5,14 +5,18 @@ class_name CameraDamp
 extends RefCounted
 
 const SHORTEST_S := 1e-4
+const HALF := 0.5
 
 var x := 0.0
 var v := 0.0
+var _goal: CameraDamp # the spring ahead of this one, for a target that jumps
 
 
 func snap(value: float) -> void:
 	x = value
 	v = 0.0
+	if _goal != null:
+		_goal.snap(value)
 
 
 func to(target: float, dt: float, smooth_s: float) -> float:
@@ -23,3 +27,12 @@ func to(target: float, dt: float, smooth_s: float) -> float:
 	x = target + (d + t) * e
 	v = (v - w * t) * e
 	return x
+
+
+## For a target that jumps, as a roof does under a moving view: one spring takes a step with its whole acceleration in the first frame, and that is the jolt. A second ahead
+## of it, each with half the time, arrives when one would, and starts and ends from rest.
+func ease_to(target: float, dt: float, smooth_s: float) -> float:
+	if _goal == null:
+		_goal = CameraDamp.new()
+		_goal.snap(x)
+	return to(_goal.to(target, dt, smooth_s * HALF), dt, smooth_s * HALF)

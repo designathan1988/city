@@ -35,6 +35,7 @@ const SCOPE_COLUMN := 2
 const PATTERN_OFFICE := 2
 const RELIEF_M := 0.5
 const FACE_BAYS := 7
+const FEW_BLOCKS := 2
 const BAY_WIDTH_M := 3.0
 const ROOF_GABLE := 2
 const ROOF_HIP := 3
@@ -93,7 +94,8 @@ func _every_body_stands() -> void:
 func _a_tall_building() -> int:
 	for id: int in CityStore.query(&"list_buildings"):
 		var volumes: Array = _info(id).volumes
-		if not volumes.is_empty() and volumes[0].base == 0 and volumes[0].storeys >= MIN_FLOORS:
+		# with room for a block more, and whose face is not already what the test asks of it: an edit here must change the body
+		if not volumes.is_empty() and volumes[0].base == 0 and volumes[0].storeys >= MIN_FLOORS and volumes.size() <= FEW_BLOCKS and volumes[0].bays[FACE] != FACE_BAYS:
 			return id
 	_check(false, "found a tall building")
 	return -1
@@ -118,7 +120,7 @@ func _mass_edits(id: int, made: int) -> void:
 	_round(id, made, "storey inserted", &"body_insert_storey", [id, 0, 1, true], func(i: Dictionary) -> bool:
 		return i.volumes[0].storeys == v.storeys + 1)
 	_round(id, made, "lado", &"body_resize", [id, 0, RESIZE_SIDE, RESIZE_M, true], func(i: Dictionary) -> bool:
-		return is_equal_approx(i.volumes[0].w, v.w + RESIZE_M))
+		return i.volumes[0].w > v.w) # to the grid: from a width off it, not by exactly the metres asked
 	_round(id, made, "ala", &"body_add_wing", [id, 0, WING_SIDE, WING_DEPTH, WING_LENGTH], func(i: Dictionary) -> bool:
 		return i.volumes.size() == blocks + 1)
 	_round(id, made, "recuo", &"body_add_setback", [id, 0, SETBACK_INSET, SETBACK_STOREYS], func(i: Dictionary) -> bool:

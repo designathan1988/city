@@ -1,8 +1,8 @@
 ## LOOK AT THE GAME FROM A PLAN, as the Roadcraft 4.0's scripts/look.mjs does: a JSON plan of steps, so a view is a line of
 ## data and not a scene of its own, and one plan serves both games (the same setView, in metres, gives the same camera:
-## PairCamera). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
+## PairCamera; its y is the 4.0's, whose map north is our -z). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
 ## bare land of the map, with no town to make and draw.
-## Steps: {"setView": [x, z, zoom, azimuth, elevation]} (degrees, the 4.0's), {"shot": name} (after the world is drawn),
+## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
@@ -76,7 +76,7 @@ func _ready() -> void:
 func _step(step: Dictionary) -> void:
 	if step.has("setView"):
 		var v: Array = step.setView
-		await PairCamera.stand(rig, ui, ui.ground(v[0], v[1]), v[3], v[4], v[2])
+		await PairCamera.stand(rig, ui, ui.ground(v[0], -v[1]), v[3], v[4], v[2])
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
 		if "--frozen" in OS.get_cmdline_user_args():

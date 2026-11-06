@@ -114,6 +114,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	viewport.texture_mipmap_bias = float(q.temporal_mip_bias) if temporal != TEMPORAL_NONE else 0.0
 	viewport.scaling_3d_scale = cap_scale(q.pixel_ratio) * dynamic_scale
 	world.occlusion.turn(q.ssao)
+	world.sky.clouds_drawn = q.sky_clouds or q.cloud_shadows
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility
