@@ -30,10 +30,8 @@ constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swi
 // kind_a + 2 kind_b, which props.gdshader takes apart to pick each end's seats.
 constexpr float KIND_STRIDE = 8.f;
 constexpr int KIND_B_WEIGHT = 2;
-constexpr float LIGHT_POOL = 1.f; // the part of the lamp's light it is (lamp_glow.gdshader)
 constexpr int JOINT_ARMS = 2; // a street going on through a node
 const Vector3 UP(0, 1, 0);
-const Color WHITE(1, 1, 1, 1);
 
 Vector3 world_of(const CityState &s, const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
 	const SegFrame f = seg_frame(s, p.seg, p.v);
@@ -65,51 +63,15 @@ void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const
 
 Vector3 flat(ArmDir a) { return Vector3(a.x, 0, a.z); }
 
-// What a lamp's pool lies on: how far it reaches across (the street's width, sim/roads lamp_row) and the rise per metre
-// along `along` of the road under it.
-struct PoolBed {
-	float across = 0, rise = 0;
-};
-
-PoolBed pool_bed(const CityState &s, int seg, double v, float half, const Vector3 &along) {
-	const LampDef &d = s.catalog.furniture.lamps;
-	if (seg < 0) return { d.pool_least_m, 0 };
-	const RoadSegment &g = s.roads.segs[size_t(seg)];
-	const double a = std::max(0.0, v - half), b = std::min(g.len, v + half);
-	const float grade = b > a ? float((s.roads.seg_y(seg, b) - s.roads.seg_y(seg, a)) / (b - a)) : 0.f;
-	return { std::max(lamp_row(s.roads, seg).across, d.pool_least_m), grade * along.dot(seg_frame(s, seg, v).fwd) };
-}
-
-// The pool's polygon round its disc, UV over the disc from -1 to 1: a fan from the middle, its flats touching the rim.
-void pool_disc(MeshBuilder &b, const Vector3 &middle, const Vector3 &a, const Vector3 &c, int sides) {
-	const Vector2 part(0, LIGHT_POOL);
-	const int hub = b.add(middle, UP, WHITE, Vector2(), part);
-	const float out = 1.f / std::cos(PI_F / float(sides));
-	const int first = int(b.v.size());
-	for (int i = 0; i < sides; i++) {
-		const float at = (float(i) + 0.5f) * TAU_F / float(sides), u = std::cos(at) * out, v = std::sin(at) * out;
-		b.add(middle + a * u + c * v, UP, WHITE, Vector2(u, v), part);
-	}
-	for (int i = 0; i < sides; i++) b.tri(hub, first + i, first + (i + 1) % sides, UP);
-}
-
-// What the light of a lamp asks of it: how far out its lens hangs, how tall it stands, and whether it is a lighting column.
+// What the light of a lamp asks of it: how far out its lens hangs and how tall it stands.
 struct LampLens {
 	float reach = 0, height = 0;
-	bool column = false;
 };
 
-// A lamp's light, on segment `seg` at arc `v` (-1: off the streets), added to whatever lies under it, so a junction or a
-// corner is lit like the rest. A lighting column lays one long disc over the road and the footway, a road luminaire's patch;
-// the lamp of a utility pole a round spot of pool_least_m under its head, and the road between them goes dark (Roadcraft 4.0).
-void push_light(StreetInstances &inst, const CityState &s, const FurnitureLook &F, int seg, double v, const Vector3 &foot, const Vector3 &toward, const LampLens &lens) {
-	const LampDef &d = s.catalog.furniture.lamps;
-	const Vector3 head = foot + toward * lens.reach, along = toward.cross(UP);
-	const float half = lens.column ? lens.height * F.pool_along : d.pool_least_m;
-	const PoolBed bed = pool_bed(s, seg, v, half, along);
-	const float across = lens.column ? bed.across : d.pool_least_m;
-	const float out = lens.column ? std::max(lens.reach, across - d.pool_back_m) : lens.reach;
-	pool_disc(inst.pools, foot + toward * out + UP * F.pool_lift, (along + UP * bed.rise) * half, toward * across, F.pool_sides);
+// A lamp's light: its lens for the lights of render/props/lamp_lights.h, and the lit air under it.
+void push_light(StreetInstances &inst, const FurnitureLook &F, const Vector3 &foot, const Vector3 &toward, const LampLens &lens) {
+	const Vector3 head = foot + toward * lens.reach;
+	inst.lamps.push_back(head + UP * lens.height);
 	if (F.beams) // lit air: rain and storm, and there is no weather yet
 		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * lens.height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
 }
@@ -148,7 +110,7 @@ void place_pole(const CityState &s, const StreetLook &L, const FurnitureLook &F,
 	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(rural ? PolePart::CAN_RURAL : PolePart::CAN);
 	push_part(inst.poles, PropKit::facing(f.kerb), f.foot, mask);
 	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(flat(street_arm(a, toward))), f.foot, int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
-	if (p.lamp) push_light(inst, s, F, f.seg, f.v, f.foot, f.kerb, { F.lamp_reach, F.lamp_height, false });
+	if (p.lamp) push_light(inst, F, f.foot, f.kerb, { F.lamp_reach, F.lamp_height });
 	for (size_t i = 0; i < p.spans.size(); i++) {
 		const UtilitySpan &sp = s.street.spans.items[size_t(p.spans[i])];
 		if (sp.a != id) continue;
@@ -192,13 +154,13 @@ void join_rows(const CityState &s, const StreetLook &L, const FurnitureLook &F, 
 }
 
 // A row pole: one instance, its arm across the street; a pole of the row on the other side is a lighting column.
-void place_row_pole(const CityState &s, const FurnitureLook &F, const FurnitureSpot &p, int sid, const PropPlace &at, StreetInstances &inst) {
+void place_row_pole(const FurnitureLook &F, const FurnitureSpot &p, int sid, const PropPlace &at, StreetInstances &inst) {
 	const uint32_t h = hash_combine(uint32_t(sid), uint32_t(p.station));
 	const bool column = p.row != 0 || p.kind == FurnitureKind::COLUMN;
 	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | (p.lit ? int(PolePart::LAMP) : 0);
 	if (!column && h % uint32_t(CAN_PERIOD) == uint32_t(CAN_PHASE)) mask |= int(PolePart::CAN);
 	push_part(inst.poles, at.basis, at.origin, mask);
-	if (p.lit) push_light(inst, s, F, sid, p.v, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height, column });
+	if (p.lit) push_light(inst, F, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height });
 }
 
 PropKind prop_kind(FurnitureKind k) {
@@ -224,7 +186,7 @@ void place_segment(const CityState &s, const StreetLook &L, const FurnitureLook 
 		PropPlace place;
 		place.origin = world_of(s, L, p, &place.basis);
 		if (p.kind == FurnitureKind::LAMP || p.kind == FurnitureKind::COLUMN) {
-			place_row_pole(s, F, p, sid, place, inst);
+			place_row_pole(F, p, sid, place, inst);
 			if (p.kind != FurnitureKind::LAMP || p.row != 0) continue;
 			row_side = p.side;
 			if (wired && p.station == last_station + 1) {
@@ -323,7 +285,7 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	Dictionary w = t["wires"], l = t["lamp_light"];
 	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
 	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
-	pool_along = l["pool_along"]; pool_lift = l["pool_lift_m"]; pool_sides = int(l["pool_sides"]); beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
+	beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
 	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
 	return true;
 }

@@ -68,7 +68,8 @@ func _thunder() -> void:
 	var late := float(Time.get_ticks_msec() - from) / MS_PER_S
 	var expected: float = THUNDER_M / DataTables.game("sky").sound_ms
 	print("  thunder: %.2f s for %.0f m (%.2f s by sound)" % [late, THUNDER_M, expected])
-	_check(late >= expected * 0.9, "the sound comes after the lightning")
+	# A timer counts frames: the frame it ends on holds time from before it began, so it is as exact as one frame, however long that one was.
+	_check(late + get_process_delta_time() >= expected * 0.9, "the sound comes after the lightning")
 	t.queue_free()
 
 

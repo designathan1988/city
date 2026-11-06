@@ -23,7 +23,6 @@ void PropRenderer::Draws::free() {
 	boxes.free();
 	beams.free();
 	light.free();
-	pools.free();
 	count = 0;
 }
 
@@ -40,9 +39,6 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	}
 	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;
 	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.blade_w, signs_.blade_h);
-	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(glow_material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
-	rs->material_set_param(glow_material_, "pool_handover_m", ctx.catalog->tune.render_pool_handover_m);
 	pole_mesh_ = kit_.pole_levels().bake();
 	pole_cast_mesh_ = kit_.pole_cast_levels().bake();
 	wire_near_mesh_ = kit_.wire(true).bake();
@@ -52,6 +48,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	light_mesh_ = kit_.light().bake();
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
+	lights_.init(scenario_, LampLightLook::of(ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color")));
 	return true;
 }
 
@@ -64,6 +61,7 @@ void PropRenderer::reset() {
 	preview_.free();
 	instances_ = 0;
 	lamps_.reset();
+	lights_.reset();
 	atlas_.reset();
 	std::lock_guard<std::mutex> lk(placed_mutex_);
 	placed_.clear();
@@ -78,7 +76,6 @@ void PropRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 	place_signs(s, *look_, signs_, atlas_, key, mb);
 	for (const PropPlace &p : props) PropKit::append(mb, kit_.mesh(p.kind), p.basis, p.origin);
 	for (const SignalHead &h : inst.heads) PropKit::append(mb, kit_.mesh(PropKind::SIGNAL), h.basis, h.origin);
-	inst.pool_mesh = inst.pools.bake();
 	std::lock_guard<std::mutex> lk(placed_mutex_);
 	placed_[key] = std::move(inst);
 }
@@ -98,8 +95,6 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true, LAYER_FURNITURE);
 	d.beams.set(scenario_, beam_mesh_.rid, material_, inst.beams, box, true, LAYER_FURNITURE);
 	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false, LAYER_FURNITURE, false);
-	d.pools.adopt(scenario_, glow_material_, false, inst.pool_mesh.release(), LAYER_FURNITURE);
-	if (d.pools.inst.is_valid()) RenderingServer::get_singleton()->instance_set_custom_aabb(d.pools.inst, box);
 	d.wires_near.range(NEVER_END, furniture_.wire.near_end);
 	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
 }
@@ -144,6 +139,7 @@ void PropRenderer::commit_one(BuiltMesh &b) {
 	}
 	show(draws_[b.key], inst, box);
 	lamps_.set_chunk(b.key, std::move(inst.heads));
+	lights_.set_chunk(b.key, std::move(inst.lamps));
 }
 
 void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
@@ -153,6 +149,7 @@ void PropRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float 
 void PropRenderer::drop_chunk(int64_t key) {
 	forget(key);
 	lamps_.drop_chunk(key);
+	lights_.drop_chunk(key);
 	{
 		std::lock_guard<std::mutex> lk(placed_mutex_);
 		placed_.erase(key);
@@ -172,7 +169,6 @@ void PropRenderer::drop_chunk(int64_t key) {
 void PropRenderer::set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 	StreetInstances inst;
 	place_pole_preview(s, *look_, furniture_, poles, inst);
-	inst.pool_mesh = inst.pools.bake();
 	Vector3 lo, hi;
 	for (size_t i = 0; i < poles.size(); i++) {
 		const Vector3 &at = poles[i].at;

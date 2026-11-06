@@ -27,6 +27,7 @@
  "fill_turn_deg": 100.0,
  "clock_step_h": 0.0166,
  "moon_energy": 0.224,
+ "moon_casts_until": 0.9,
  "sun_day": "#fffaf3",
  "sun_low": "#ffeccd",
  "moon": "#9fb4d8",

@@ -1,13 +1,14 @@
 // Street furniture chunks: every small prop and plate of a 256 m chunk (render/props/street_props.h, street_signs.h) merged
 // into one mesh drawn with the "prop" material (data/render/materials.json), and its poles, wires, barrier boxes and lamp
-// beams as one MultiMesh each, its lamp pools as a mesh. Rebuilt with the road chunks and when the player places something
-// there. The chunk's signal posts go with its mesh to SignalLamps, which lights their lenses.
+// beams as one MultiMesh each. Rebuilt with the road chunks and when the player places something there. The chunk's signal
+// posts go with its mesh to SignalLamps, which lights their lenses, and its street lamps to LampLights, which lights the street.
 #pragma once
 
 #include "core/job_pool.h"
 #include "render/mesh_builder.h"
 #include "render/mesh_queue.h"
 #include "render/props/barrier_boxes.h"
+#include "render/props/lamp_lights.h"
 #include "render/props/prop_kit.h"
 #include "render/props/sign_atlas.h"
 #include "render/props/signal_lamps.h"
@@ -31,6 +32,11 @@ public:
 	void drop_chunk(int64_t key);
 	void update_signals(const PoseFrame &f) { lamps_.update(f); }
 	int lit_lenses() const { return lamps_.lit(); }
+	void update_lamps(const godot::Vector3 &eye, const ViewCull &view, float frame_s) { lights_.update(eye, view, frame_s); }
+	void set_lamp_budget(int count, int casting) { lights_.set_budget(count, casting); }
+	void set_lamp_night(float night) { lights_.set_night(night); }
+	int lit_lamps() const { return lights_.lit(); }
+	godot::Vector2 lamps_hand_over() const { return lights_.handed_over(); }
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
@@ -42,7 +48,6 @@ private:
 	struct Draws {
 		MultiMeshDraw poles, wires_near, wires_far, boxes, beams, light;
 		MultiMeshDraw pole_shadow_near, pole_shadow_far; // the poles' shadow: the whole mesh in the near chunks, the light one past them
-		MeshDraw pools;
 		godot::RID cast; // the chunk's mesh in the shadow maps alone, as far as a thin thing's shadow reads
 		int count = 0;
 		void free();
@@ -64,6 +69,7 @@ private:
 	std::unordered_map<int64_t, Draws> draws_;
 	Draws preview_;
 	SignalLamps lamps_;
+	LampLights lights_;
 	int instances_ = 0;
 	// what each chunk's newest job placed, handed over with its mesh (a stale result never commits)
 	mutable std::mutex placed_mutex_;

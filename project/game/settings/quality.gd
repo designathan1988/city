@@ -96,7 +96,7 @@ static func cabin_reach(q: Dictionary, height_px: float) -> float:
 
 ## Everything a tier sets, live.
 static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_scale: float) -> void:
-	world.sun.shadow_enabled = q.shadows
+	world.daylight.shadows_on = q.shadows
 	world.daylight.shadow_least_m = q.shadow_least_m
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
@@ -116,6 +116,8 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	world.occlusion.turn(q.ssao)
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
+	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility
+	CityStore.dispatch(&"set_lamp_lights", [int(q.lamp_lights) if lamps else 0, int(q.lamp_shadows) if lamps else 0])
 	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
 	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),
 			0 if q.pedestrian_detail > 0 else PEOPLE_FAR])

@@ -31,8 +31,7 @@ struct WireLook {
 struct FurnitureLook {
 	WireLook wire;
 	bool beams = false;
-	int pool_sides = 0;
-	float pool_along = 0, pool_lift = 0, beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
+	float beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
 
@@ -52,10 +51,8 @@ struct TreeSpot {
 // What a chunk draws as instances, each list one MultiMesh (rs_util.h layout).
 struct StreetInstances {
 	godot::PackedFloat32Array poles, wires, boxes, beams, light;
-	// The lamps' pools: every one has its own shape, so nothing repeats, and four corners cost less than an instance.
-	MeshBuilder pools;
-	OwnedMesh pool_mesh; // `pools` baked (a job's work; the main thread only shows it)
 	std::vector<SignalHead> heads;
+	std::vector<godot::Vector3> lamps; // the lenses of the street lamps
 };
 
 // The height of what stands on the footway at (x, z), or on the ground off it.

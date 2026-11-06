@@ -44,8 +44,7 @@ uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it end
 uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
 uniform float pool_gain = 0.32;
 uniform float plate_glow = 0.55;
-uniform float pool_far_m = 900.0; // render.props_end_m and render.pool_handover_m, set by the road renderer
-uniform float pool_handover_m = 200.0;
+global uniform vec2 lamp_lit; // where the lamps with a light of their own give way to these pools (render/props/lamp_lights.h)
 
 // The far level (render/roads/far_road_renderer.h): a superchunk's mesh, whose vertices carry their chunk in CUSTOM0; the chunks drawn in detail fold
 // away, and the rest stands `far_pull` metres towards the eye, along its ray, so the coarser ground out there never comes through.
@@ -230,7 +229,7 @@ void fragment() {
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
 	float fade = 1.0 - smoothstep(0.02, 0.5, pix);
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
-	float far = pool_handed_over(v_eye_m, pool_far_m, pool_handover_m);
+	float far = pool_handed_over(v_eye_m, lamp_lit);
 	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
-	EMISSION = linear_out(source_linear(pool_color) * pools * night * pool_gain); // light added, as an additive pool adds it: pale paving does not burn
+	EMISSION = linear_out(albedo * source_linear(pool_color) * pools * night * pool_gain); // the surface's own colour: dark asphalt stays dark, the paint shows
 }

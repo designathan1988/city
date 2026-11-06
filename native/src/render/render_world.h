@@ -72,6 +72,11 @@ public:
 	}
 	// The signal posts' lit lenses, from the lights the frame published.
 	void update_signals(const PoseFrame &f) { props_.update_signals(f); }
+	void update_lamps(const godot::Vector3 &eye, const ViewCull &view, float frame_s) { props_.update_lamps(eye, view, frame_s); }
+	void set_lamp_budget(int count, int casting) { props_.set_lamp_budget(count, casting); }
+	void set_lamp_night(float night) { props_.set_lamp_night(night); }
+	int lit_lamps() const { return props_.lit_lamps(); }
+	godot::Vector2 lamps_hand_over() const { return props_.lamps_hand_over(); }
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int ruin_pieces() const { return effects_.ruin_pieces(); }

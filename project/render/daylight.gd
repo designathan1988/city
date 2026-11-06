@@ -17,6 +17,10 @@ var _under: DirectionalLight3D
 var _env: Environment
 var _sky: ShaderMaterial
 var night := 0.0
+var shadows_on := true: # what the graphics tier asks of the sun; the moon's shadow goes with the night (_cast)
+	set(on):
+		shadows_on = on
+		_cast()
 var shadow_side_px := 2048.0 # a cascade's side: game/settings/settings.gd
 var shadow_filter_radius := 1.0 # the engine's radius for the filter in use
 var direct_share := 0.0 # the sun's or moon's share of the light on level ground
@@ -113,6 +117,7 @@ func set_hour(hour: float) -> void:
 	var fill: float = _fill.light_energy * maxf(_fill.basis.z.y, 0.0) if _fill.visible else 0.0
 	direct_share = direct / maxf(direct + fill + _env.ambient_light_energy + _top.light_energy, LEAST_LIGHT)
 	_set_sky(elev)
+	_cast()
 	_env.glow_enabled = glow_on and night > _d.glow_from_night
 	_env.glow_intensity = _d.glow_intensity * night
 	RenderingServer.global_shader_parameter_set(&"night", night)
@@ -121,6 +126,14 @@ func set_hour(hour: float) -> void:
 	RenderingServer.global_shader_parameter_set(&"rooms_awake", awake)
 	RenderingServer.global_shader_parameter_set(&"outside_on", _d.outside_all_night + (1.0 - _d.outside_all_night) * awake)
 	RenderingServer.global_shader_parameter_set(&"room_daylight", (1.0 - night) * _d.room_daylight)
+
+
+## Under the street lamps no one can see the moon's shadow, and it is the whole city drawn again for its maps: it fades with the dusk and the pass goes.
+func _cast() -> void:
+	if _sun == null:
+		return
+	_sun.shadow_opacity = 1.0 - minf(night / _d.moon_casts_until, 1.0)
+	_sun.shadow_enabled = shadows_on and night < _d.moon_casts_until
 
 
 ## The share of people awake at a clock time, between the survey's hourly figures: the rooms lit at night.

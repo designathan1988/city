@@ -7,11 +7,9 @@
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
 ##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
 ##   saturate and hide an error);
-## - by night likewise, a black road surface under the even light of a junction plate, seen as the road draws it past the
-##   lamps' own pools (pool_far_m 0), must show pool_color x plate_glow x
-##   pool_gain x night (road.gdshader: the pool adds its light whatever the surface's albedo), with plate_glow
-##   raised on a copy of the material so the light stays mid range: at the game's own it is nearly black, where
-##   Compatibility itself is measured two steps off the blue (and its glow two more), on any material.
+## - by night likewise, a grey road surface under the even light of a junction plate, seen as the road draws it past the lamps
+##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x pool_gain x night (road.gdshader);
+##   the concrete's own mottle is +-6% of that, so this one is looser.
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
@@ -30,10 +28,12 @@ const VIEW_M := 9.0 # orthographic camera's height
 const CAMERA_Z := 5.0
 const GLOW_AT := Vector3(-1.0, -2.0, 0)
 const ROAD_AT := Vector3(1.0, -2.0, 0)
-const ROAD_CONCRETE := 5 # road.gdshader M_CONCRETE: no map, albedo = the strip colour (black here)
+const ROAD_CONCRETE := 5 # road.gdshader M_CONCRETE: no map, albedo = the strip colour
+const ROAD_GREY := 0.5 # sRGB
+const ROAD_STEPS := 16 # the mottle
 const ROAD_IDS := 16.0 # road.gdshader: the material id is COLOR.a * 16
 const ROAD_PLATE := Vector2(-1000.0, 0.0) # road.gdshader UV2 of a junction plate, lit evenly
-const ROAD_PLATE_GLOW := 3.0 # the plate's light shows e9d8b0, mid range
+const ROAD_PLATE_GLOW := 1.0
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
 const BYTE := 255.0
@@ -98,7 +98,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	world.environment.glow_enabled = false
 	road = road.duplicate()
 	road.set_shader_parameter("plate_glow", ROAD_PLATE_GLOW)
-	road.set_shader_parameter("pool_far_m", 0.0)
+	RenderingServer.global_shader_parameter_set(&"lamp_lit", Vector2.ZERO)
 	var node := MeshInstance3D.new()
 	node.mesh = _square(Vector2(GLOW_TAG, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
 	node.material_override = material
@@ -106,7 +106,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	node.position = GLOW_AT
 	add_child(node)
 	var plate := MeshInstance3D.new()
-	plate.mesh = _square(ROAD_PLATE, Color(0, 0, 0, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
+	plate.mesh = _square(ROAD_PLATE, Color(ROAD_GREY, ROAD_GREY, ROAD_GREY, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
 	plate.material_override = road
 	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	plate.position = ROAD_AT
@@ -123,8 +123,9 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	_compare(img, GLOW_AT, want, "brilho noturno (night %.2f)" % night)
 	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
 	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
-	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit, world.environment.tonemap_exposure, world.environment.tonemap_white)
-	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)")
+	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
+	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment.tonemap_exposure, world.environment.tonemap_white)
+	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
 
 
 ## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.

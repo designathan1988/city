@@ -37,6 +37,7 @@ var _air := 0.0
 var _fog_field: Dictionary = {}
 var _canyon_field: Dictionary = {}
 var _fog_seen := -1 # the fog_revision / canyon_revision last applied
+var _lamp_night := -1.0 # what the core was last told
 var _canyon_seen := -1
 
 
@@ -108,6 +109,9 @@ func _process(dt: float) -> void:
 	_light(way)
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
+	if _world.daylight.night != _lamp_night:
+		_lamp_night = _world.daylight.night
+		CityStore.dispatch(&"set_lamp_night", [_lamp_night])
 	var sun: Vector3 = _world.sun.global_basis.z
 	_world.contact.follow(sun, _d.contact_most * _world.daylight.direct_share * clampf(sun.y * _d.contact_sun_gain, 0.0, 1.0))
 	var fog_rev: int = CityStore.query(&"fog_revision") # the render takes new windows in; read and bound only then

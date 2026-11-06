@@ -6,8 +6,8 @@
 set -uo pipefail
 GODOT="$1"; PROJECT="$2"; LOGS="$3"; shift 3
 TEST_TIMEOUT_S="${TEST_TIMEOUT_S:-600}"
-TESTS=(tests/core/reference_test tests/core/street_crossing_test tests/core/camera_feel_test tests/core/flow_control_test tests/core/lab_test tests/core/boot_refusal_test tests/core/edit_fuzz_test tests/core/traffic_hash_test tests/core/road_grade_test tests/core/road_commands_test tests/core/road_edit_test tests/core/save_undo_test tests/core/street_works_test tests/core/people_test tests/core/strike_test tests/core/shoot_test tests/core/transit_test tests/core/yard_test tests/core/building_edit_test tests/core/interior_test tests/core/model_test tests/core/city_mass_test tests/core/job_pool_test tests/core/building_tool_test tests/core/camera_input_test tests/core/shell_test tests/core/quality_test tests/core/inspector_test tests/e2e/e2e tests/core/light_color_test tests/core/building_light_test)
-BOTH_RENDERERS=(tests/core/lab_test tests/core/light_color_test tests/core/building_light_test) # what the screen shows: also on Forward+, the game's renderer
+TESTS=(tests/core/lamp_light_test tests/core/reference_test tests/core/street_crossing_test tests/core/camera_feel_test tests/core/flow_control_test tests/core/lab_test tests/core/boot_refusal_test tests/core/edit_fuzz_test tests/core/traffic_hash_test tests/core/road_grade_test tests/core/road_commands_test tests/core/road_edit_test tests/core/save_undo_test tests/core/street_works_test tests/core/people_test tests/core/strike_test tests/core/shoot_test tests/core/transit_test tests/core/yard_test tests/core/building_edit_test tests/core/interior_test tests/core/model_test tests/core/city_mass_test tests/core/job_pool_test tests/core/building_tool_test tests/core/camera_input_test tests/core/shell_test tests/core/quality_test tests/core/inspector_test tests/e2e/e2e tests/core/light_color_test tests/core/building_light_test)
+BOTH_RENDERERS=(tests/core/lamp_light_test tests/core/lab_test tests/core/light_color_test tests/core/building_light_test) # what the screen shows: also on Forward+, the game's renderer
 mkdir -p "$LOGS"
 failed=0
 run_one() { # <test> <rendering method>

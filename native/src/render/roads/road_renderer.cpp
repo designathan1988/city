@@ -27,8 +27,6 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	}
 	RenderingServer *rs = RenderingServer::get_singleton();
 	rs->material_set_param(material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
-	rs->material_set_param(material_, "pool_far_m", ctx.catalog->tune.render_props_end_m);
-	rs->material_set_param(material_, "pool_handover_m", ctx.catalog->tune.render_pool_handover_m);
 	if (!look_.load(t, errors)) return false;
 	look_.ramp_full = ctx.catalog->furniture.crossing.zebra_from_m; // a dropped kerb is the zebra's: its ramp lands where the zebra does
 	look_.ramp_flat = ctx.catalog->furniture.crossing.zebra_to_m;

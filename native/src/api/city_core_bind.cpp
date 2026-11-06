@@ -22,6 +22,8 @@ void CityCore::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_levels", "traffic", "people", "demand"), &CityCore::set_levels);
 	ClassDB::bind_method(D_METHOD("set_sim_switch", "name", "on"), &CityCore::set_sim_switch);
 	ClassDB::bind_method(D_METHOD("set_detail_scale", "scale"), &CityCore::set_detail_scale);
+	ClassDB::bind_method(D_METHOD("set_lamp_lights", "count", "casting"), &CityCore::set_lamp_lights);
+	ClassDB::bind_method(D_METHOD("set_lamp_night", "night"), &CityCore::set_lamp_night);
 	ClassDB::bind_method(D_METHOD("set_vegetation", "share"), &CityCore::set_vegetation);
 	ClassDB::bind_method(D_METHOD("set_agent_detail", "cabin_m", "cabin_cap", "people_floor"), &CityCore::set_agent_detail);
 	ClassDB::bind_method(D_METHOD("set_population", "share"), &CityCore::set_population);

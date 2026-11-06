@@ -164,6 +164,7 @@ void CityCore::_process(double delta) {
 	if (fresh) wear_stamp_ns_ = published;
 	render_.update_wear(poses, fresh, float(ticks / state_->catalog.tune.sim_tick_hz), cam_, float(delta));
 	render_.update_signals(poses);
+	render_.update_lamps(cam_, view, float(delta));
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex
@@ -196,6 +197,8 @@ void CityCore::set_sim_switch(const String &name, bool on) {
 }
 
 void CityCore::set_detail_scale(float scale) { render_.set_detail_scale(scale); }
+void CityCore::set_lamp_lights(int count, int casting) { render_.set_lamp_budget(count, casting); }
+void CityCore::set_lamp_night(float night) { render_.set_lamp_night(night); }
 void CityCore::set_vegetation(float share) { render_.set_vegetation(share); }
 void CityCore::set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { render_.set_agent_detail(cabin_m, cabin_cap, people_floor); }
 void CityCore::set_population(float share) {
