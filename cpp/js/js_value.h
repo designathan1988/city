@@ -230,4 +230,12 @@ template <class T> T as(const Value &x) {
 	return out;
 }
 
+inline bool operator==(const Value &a, const Value &b) { return a.same(b); }
+inline bool operator!=(const Value &a, const Value &b) { return !a.same(b); }
+
 } // namespace js
+
+/** A running value as a key of a Map. */
+template <> struct std::hash<js::Value> {
+	size_t operator()(const js::Value &v) const { return std::hash<std::string>()(v.text()); }
+};

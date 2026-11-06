@@ -21,8 +21,7 @@ export function runtimeFiles(): Map<string, string> {
 export const isRuntimeFile = (file: string): boolean => path.posix.dirname(file) === RUNTIME_ROOT && /^js_\w+\.h$/.test(path.posix.basename(file));
 import { declare, render, type CppType } from './cpptype.ts';
 import type { ModuleId } from './modules.ts';
-import { upper } from './names.ts';
-import type { CppStruct } from './types.ts';
+import { enumName, type CppStruct } from './types.ts';
 import type { EmittedFunction, EmittedMemo } from './translator.ts';
 
 /**
@@ -143,12 +142,8 @@ function ordered(structs: readonly CppStruct[]): CppStruct[] {
       case 'struct':
         return [t.name];
       case 'optional':
-      case 'vector':
-      case 'deque':
-      case 'list':
         return held(t.of);
-      case 'map':
-        return [...held(t.key), ...held(t.of)];
+      // a container holds no value in its own bytes: it may name a type declared after it, which is what lets two types hold each other
       default:
         return [];
     }
@@ -158,6 +153,8 @@ function ordered(structs: readonly CppStruct[]): CppStruct[] {
   const visit = (s: CppStruct): void => {
     if (seen.has(s.name)) return;
     seen.add(s.name);
+    const parent = s.base ? byName.get(s.base) : undefined;
+    if (parent) visit(parent);
     for (const f of s.fields) for (const n of held(f.type)) {
       const dep = byName.get(n);
       if (dep && dep !== s) visit(dep);
@@ -216,11 +213,11 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const summary = (source && summaryOf(source, c.ts)) ?? `Roadcraft 4.0 ${m}`;
     const top = (what: string): string[] => [`// ${summary}: ${what}.`, `// Translated from Roadcraft 4.0 ${m} by the converter; the owner is ${id.owner}.`];
     const isState = m === stateModule;
-    const enums = [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
+    const enums = c.spec.whole ? [] : [...c.types.enums.values()].filter((e) => (e.module ?? stateModule) === m);
     const allConstants = [...[...c.literalConstants.values()].filter((k) => k.module === m), ...[...c.constants.values()].filter((k) => (k.module ?? stateModule) === m)];
     const constants = allConstants.filter((k) => !k.calling);
     const calling = allConstants.filter((k) => k.calling);
-    const structs = ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
+    const structs = c.spec.whole ? [] : ordered([...c.types.structs.values()].filter((s) => structModule(s) === m && s.name !== state && !c.types.indexStructs.has(s.name)));
     const memoStructs = isState ? builders : [];
     const own = functions.filter((f) => f.plan.module === m);
 
@@ -233,7 +230,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     for (const b of memoStructs) for (const owned of b.plan.stores.keys()) typeRefs.push({ k: 'struct', name: owned });
     const types: string[] = [...top('types and constants'), '#pragma once', ''];
     // a module's enums have a header of their own: they hold nothing, so no cycle of two modules' types can hide one
-    const enumHeaders = [...new Set(typeRefs.flatMap(namesIn).filter((n) => c.types.enums.has(n)).map((n) => nameModule.get(n)!).filter((u) => placed.has(u)))].sort();
+    const enumHeaders = c.spec.whole ? [] : [...new Set(typeRefs.flatMap(namesIn).filter((n) => c.types.enums.has(n)).map((n) => nameModule.get(n)!).filter((u) => placed.has(u)))].sort();
     if (enums.length > 0) {
       const list: string[] = [...top('enums'), '#pragma once', '', `namespace ${ns} {`, ''];
       for (const e of enums) list.push(...comment(e.comment), `enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`, '');
@@ -243,6 +240,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     }
     for (const u of enumHeaders) if (u !== m && c.types.enums.size > 0 && [...c.types.enums.values()].some((e) => (e.module ?? stateModule) === u)) types.push(`#include "${header(u, 'enums')}"`);
     types.push(PROJECT_MARK);
+    if (c.spec.whole) types.push(`#include "${PROGRAM_TYPES.replace(/^native\/src\//, '')}"`);
     const constantUses = [...new Set(constants.flatMap((k) => [...(k.uses ?? [])]))].filter((u) => u !== m && placed.has(u));
     for (const d of [...new Set([...depsOf(typeRefs, m), ...constantUses])].sort()) types.push(`#include "${header(d, 'types')}"`);
     types.push('', STD_MARK, '', `namespace ${ns} {`, '');
@@ -257,8 +255,9 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     const early = constants.filter((k) => !late.includes(k));
     types.push(...constantLines(early));
     if (early.length > 0) types.push('');
-    // a class may hold itself, or one declared after it: named first
-    for (const s of structs.filter((x) => x.isClass)) types.push(`${templateHead(s)}struct ${s.name};`);
+    // a type may hold itself, or one declared after it in a container: named first
+    for (const s of structs) types.push(`${templateHead(s)}struct ${s.name};`);
+    if (isState && !c.spec.whole) types.push(...targetBoxLines(c, boxed));
     for (const e of enums.filter((x) => boxed.has(x.name))) types.push(...enumBoxLines(e));
     for (const s of structs) {
       types.push(...structLines(s, m));
@@ -297,7 +296,9 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     api.push('', `namespace ${ns} {`, '');
     for (const f of visible.filter((x) => x.exported)) api.push(...comment(f.plan.doc), `${f.signature};`, '');
     // a constant that calls a function: after the declarations of what it calls
-    for (const f of own.filter((x) => !x.exported && !x.member && !x.plan.edit && calling.length > 0)) api.push(`${f.signature};`);
+    // what a constant calls, or a template written in this header, is seen from outside its .cpp
+    const exposed = calling.length > 0 || own.some((x) => x.inHeader);
+    for (const f of own.filter((x) => !x.exported && !x.member && !x.plan.edit && exposed)) api.push(`${f.signature};`);
     api.push(...constantLines(calling));
     // a public template: its callers instantiate it, so its body is here; the modules it uses come with it
     const templates = own.filter((x) => x.inHeader || (x.exported && x.plan.typeParams.length > 0));
@@ -326,7 +327,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
       out.push('', `namespace ${ns} {`, '');
       const internal = fns.filter((f) => !f.exported && !f.member && !f.plan.edit);
       // a module whose constants call its functions declares them in its header: none is local to this file
-      if (calling.length > 0) for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
+      if (calling.length > 0 || own.some((x) => x.inHeader)) for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
       else if (internal.length > 0) {
         out.push('namespace {', '', ...internal.map((f) => `${f.signature};`), '');
         for (const f of internal) out.push(...comment(f.plan.doc), `${f.signature} {`, ...f.lines, '}', '');
@@ -355,6 +356,7 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     }
   }
   // a module's types header includes what the module's own files name (each of them includes it first): the standard
+  if (c.spec.whole) files.set(PROGRAM_TYPES, programTypes(c, ns));
   // headers of the std:: names written, the target headers of the names the spec says they declare. From the text,
   // so a module shared by two translations is written the same by both
   const owners = projectHeaderNames(c);
@@ -369,6 +371,13 @@ export function translationFiles(c: TranslateContext, functions: readonly Emitte
     files.set(types, files.get(types)!
       .replace(`${PROJECT_MARK}\n`, project.map((h) => `#include "${h}"\n`).join(''))
       .replace(STD_MARK, [...std].sort().map((h) => `#include <${h}>`).join('\n')));
+  }
+  if (c.spec.whole) {
+    const text = files.get(PROGRAM_TYPES)!;
+    const words = new Set(text.match(/\b[A-Za-z_]\w*\b/g) ?? []);
+    const project = [...owners].filter(([, names]) => [...names].some((n) => words.has(n))).map(([h]) => h).sort();
+    files.set(PROGRAM_TYPES, text.replace(`${PROJECT_MARK}\n`, project.map((h) => `#include "${h}"\n`).join(''))
+      .replace(STD_MARK, [...stdHeadersIn(text)].sort().map((h) => `#include <${h}>`).join('\n')));
   }
   // the runtime of the built-ins, written beside the translation when its text calls it (core/js_runtime.h)
   if ([...files.values()].some((text) => /\bjs::/.test(text))) for (const [name, text] of runtimeFiles()) files.set(name, text);
@@ -400,9 +409,43 @@ function boxLines(s: CppStruct): string[] {
 
 /** An enum of strings as the strings the source writes. */
 function enumBoxLines(e: { readonly name: string; readonly values: readonly string[] }): string[] {
-  const cpp = (v: string): string => `${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}`;
+  const cpp = (v: string): string => `${e.name}::${enumName(v)}`;
   return [`inline js::Value to_value(${e.name} v) {`, ...e.values.map((v) => `\tif (v == ${cpp(v)}) return js::Value(std::string(${JSON.stringify(v)}));`), '\treturn js::Value();', '}',
     `inline void read(const js::Value &x, ${e.name} &out) {`, '\tconst std::string text = x.text();', ...e.values.map((v) => `\tif (text == ${JSON.stringify(v)}) out = ${cpp(v)};`), '}', ''];
+}
+
+/**
+ * A whole translation's types in one header, in the order their values hold each other. Two modules can need each other's types, so a
+ * header per module has no order that works; a single one has, and each module's header includes it.
+ */
+const PROGRAM_TYPES = 'native/src/core/program_types.h';
+
+function programTypes(c: TranslateContext, ns: string): string {
+  const boxed = boxedNames(c);
+  const structs = ordered([...c.types.structs.values()].filter((s) => !c.types.indexStructs.has(s.name)));
+  const enums = [...c.types.enums.values()];
+  const out = ['// Every type of the whole translation, in dependency order.', '#pragma once', '', PROJECT_MARK, '#include "core/js_runtime.h"', '', STD_MARK, '', `namespace ${ns} {`, ''];
+  for (const e of enums) out.push(`enum class ${e.name} : int { ${e.values.map((v) => c.types.enumValue(e, v).split('::')[1]).join(', ')} };`);
+  out.push('');
+  for (const s of structs) out.push(`${templateHead(s)}struct ${s.name};`);
+  out.push('', ...targetBoxLines(c, boxed));
+  for (const e of enums.filter((x) => boxed.has(x.name))) out.push(...enumBoxLines(e));
+  for (const s of structs) {
+    out.push(...structLines(s, s.module ?? ''));
+    if (boxed.has(s.name) && !s.isClass) out.push(...boxLines(s));
+  }
+  out.push(`} // namespace ${ns}`, '');
+  return out.join('\n');
+}
+
+/** The game's own value types (V2) into and out of a js::Value, by the fields the spec maps. */
+function targetBoxLines(c: TranslateContext, boxed: ReadonlySet<string>): string[] {
+  const once = new Map(Object.values(c.spec.types).filter((t) => t.fields && boxed.has(t.type)).map((t) => [t.type, t]));
+  return [...once.values()].flatMap((t) => {
+    const fields = Object.entries(t.fields!);
+    return [`inline js::Value to_value(const ${t.type} &v) {`, '\tjs::Value out = js::Value::object();', ...fields.map(([source, cpp]) => `\tout.set(${JSON.stringify(source)}, js::Value(v.${cpp}));`), '\treturn out;', '}',
+      `inline void read(const js::Value &x, ${t.type} &out) {`, '\tusing js::read;', ...fields.map(([source, cpp]) => `\tread(x.get(${JSON.stringify(source)}), out.${cpp});`), '}', ''];
+  });
 }
 
 const templateHead = (s: CppStruct): string => (s.typeParams?.length ? `template <${s.typeParams.map((t) => `class ${t}`).join(', ')}> ` : '');

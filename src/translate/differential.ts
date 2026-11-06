@@ -11,7 +11,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { TypeScriptApi } from '../graph/typescript.ts';
 import { realLiteral, render, type CppType } from './cpptype.ts';
-import { upper } from './names.ts';
+import { enumName } from './types.ts';
 import type { ApiFunction, TranslationResult } from './run.ts';
 import type { CppEnum, CppStruct } from './types.ts';
 import { RUNTIME_INCLUDE } from './expressions.ts';
@@ -139,7 +139,7 @@ class Scenario {
       case 'enum': {
         const e = this.#t.enums.find((x) => x.name === type.name)!;
         const v = this.pick(e.values);
-        return { js: JSON.stringify(v), cpp: `${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}` };
+        return { js: JSON.stringify(v), cpp: `${e.name}::${enumName(v)}` };
       }
       case 'optional':
         if (this.#rand() < 0.4) return { js: 'undefined', cpp: 'std::nullopt' };
@@ -234,7 +234,7 @@ function isTuple(s: CppStruct): boolean {
 function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes']): string {
   const lines: string[] = [];
   const enumPut = (e: CppEnum): string => `void put(std::ostream &o, ${e.name} v) {\n\tswitch (v) {\n${e.values.map((v) =>
-    `\tcase ${e.name}::${upper(v.replace(/[^A-Za-z0-9]+/g, '_'))}: o << ${JSON.stringify(JSON.stringify(v))}; return;`).join('\n')}\n\t}\n}`;
+    `\tcase ${e.name}::${enumName(v)}: o << ${JSON.stringify(JSON.stringify(v))}; return;`).join('\n')}\n\t}\n}`;
   const structPut = (s: CppStruct): string => {
     // a tuple prints as the JavaScript array it is
     if (isTuple(s)) {
