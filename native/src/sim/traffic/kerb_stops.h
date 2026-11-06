@@ -2,6 +2,7 @@
 // between the door and the footway; the IDM holds it at its stop.
 #pragma once
 
+#include "sim/traffic/bus_call.h"
 #include "sim/traffic/traffic_system.h"
 
 namespace city {

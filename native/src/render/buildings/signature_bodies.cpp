@@ -11,9 +11,14 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+
+#include <meshoptimizer.h>
+
+#include <cstring>
 
 using namespace godot;
 
@@ -23,10 +28,35 @@ namespace {
 constexpr const char *FOLDER = "res://assets/lots/";
 constexpr const char *SOLID_SHADER = "res://render/shaders/signature.gdshader", *BLENDED_SHADER = "res://render/shaders/signature_glass.gdshader";
 constexpr uint32_t MAGIC_LOOKS = 0x4D534352u, MAGIC_BODY = 0x42534352u; // "RCSM", "RCSB"
-constexpr uint32_t FLAG_BLENDED = 1, FLAG_TWO_SIDED = 2, MOST_SURFACES = 64, MOST_LOOKS = 1024;
-constexpr int NAME_BYTES = 24, RECORD_FLOATS = 10, RGBA = 4, NORMAL_BYTES = 4;
+constexpr uint32_t FLAG_BLENDED = 1, FLAG_TWO_SIDED = 2, FLAG_WINDOWS = 4, FLAG_PAINTED_WINDOWS = 8, MOST_SURFACES = 64, MOST_LOOKS = 1024;
+constexpr float LOD_ERRORS_M[] = { 0.05f, 0.25f, 1.f, 4.f }; // what a level may move the surface by, and the key that sets its distance
+constexpr unsigned LEAST_LOD_INDICES = 300; // under this a surface is what it is
+constexpr int NAME_BYTES = 24, RECORD_FLOATS = 10, RGBA = 4, NORMAL_BYTES = 4, AXES = 3;
 constexpr int RED = 0, ROUGHNESS = 3, METALLIC = 4, GLOW = 5, OPACITY = 8, ALPHA_CUT = 9; // a record's floats
 constexpr float NORMAL_SCALE = 127.f;
+
+// The surface with fewer triangles for the distance, the engine picking by the key (ArrayMesh.add_surface_from_arrays `lods`).
+Dictionary levels_of(const PackedVector3Array &pos, const PackedInt32Array &idx) {
+	Dictionary out;
+	if (idx.size() < int64_t(LEAST_LOD_INDICES)) return out;
+	const unsigned *from = reinterpret_cast<const unsigned *>(idx.ptr());
+	const size_t count = size_t(idx.size());
+	std::vector<float> xyz(size_t(pos.size()) * AXES);
+	for (int64_t i = 0; i < pos.size(); i++)
+		for (int a = 0; a < AXES; a++) xyz[size_t(i) * AXES + size_t(a)] = pos[i][a];
+	std::vector<unsigned> kept(count);
+	size_t before = count;
+	for (float error : LOD_ERRORS_M) {
+		const size_t left = meshopt_simplify(kept.data(), from, count, xyz.data(), size_t(pos.size()), sizeof(float) * AXES, 0, error, meshopt_SimplifyErrorAbsolute | meshopt_SimplifyPrune, nullptr);
+		if (left == 0 || left >= before) continue;
+		PackedInt32Array level;
+		level.resize(int64_t(left));
+		std::memcpy(level.ptrw(), kept.data(), left * sizeof(unsigned));
+		out[error] = level;
+		before = left;
+	}
+	return out;
+}
 
 // A file: u32 magic, u32 size unpacked, then the packed bytes.
 PackedByteArray unpacked(const String &path, uint32_t magic) {
@@ -86,6 +116,8 @@ Ref<ShaderMaterial> SignatureBodies::look(uint32_t index) {
 	l.made->set_shader_parameter("emission", Color(v[GLOW], v[GLOW + 1], v[GLOW + 2]));
 	l.made->set_shader_parameter("alpha_cut", v[ALPHA_CUT]);
 	l.made->set_shader_parameter("two_sided", (flags & FLAG_TWO_SIDED) != 0);
+	l.made->set_shader_parameter("windows", (flags & FLAG_WINDOWS) != 0);
+	l.made->set_shader_parameter("painted_windows", (flags & FLAG_PAINTED_WINDOWS) != 0);
 	if (w > 0) {
 		Ref<Image> image = Image::create_from_data(int(w), int(h), false, Image::FORMAT_RGBA8, table_.slice(int64_t(r.o), int64_t(r.o) + int64_t(w) * h * RGBA));
 		image->generate_mipmaps();
@@ -124,13 +156,14 @@ Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
 			uv.set(i, Vector2(u, v));
 		}
 		for (uint32_t i = 0; i < indices; i++) idx.set(i, int32_t(r.get<uint32_t>()));
+		const Dictionary lods = levels_of(pos, idx);
 		Array arr;
 		arr.resize(Mesh::ARRAY_MAX);
 		arr[Mesh::ARRAY_VERTEX] = pos;
 		arr[Mesh::ARRAY_NORMAL] = nor;
 		arr[Mesh::ARRAY_TEX_UV] = uv;
 		arr[Mesh::ARRAY_INDEX] = idx;
-		m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
+		m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr, Array(), lods);
 		m->surface_set_material(int(s), look(material));
 	}
 	if (!r.ok) return Ref<ArrayMesh>();

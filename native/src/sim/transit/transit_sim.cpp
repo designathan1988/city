@@ -219,7 +219,10 @@ void rebuild(CityState &s) {
 void step(CityState &s, float dt) {
 	TransitRun &run = s.transit_run;
 	if (!run.built || run.plan_seen != s.transit_revision || run.roads_seen != uint64_t(s.roads.version)) rebuild(s);
-	for (Bus &b : run.buses) step_bus(s, b, dt);
+	for (Bus &b : run.buses) {
+		step_bus(s, b, dt);
+		if (b.vehicle >= 0) s.traffic.vehicles[size_t(b.vehicle)].bus_doors = bus_door_share(s, b);
+	}
 	for (RailLine &r : run.rails)
 		for (Train &tr : r.trains) step_train(s, r, tr, dt);
 	train_zones(s);

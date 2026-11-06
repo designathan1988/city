@@ -62,6 +62,7 @@ struct Vehicle {
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
 	int stood_at = -1; // approach whose Stop it has come to a stand at: it may go on from there
 	int bus = -1; // its place in TransitRun::buses
+	float bus_doors = 0; // how far the bus's doors stand open, left here by the transit step
 	float bus_stop_at = -1; // a bus: on its last lane it stops with its front here
 	bool off = false; // off the lanes (in or out of a lot): on no lane list, not in the fleet count; `cur` is its pose
 	int car = -1; // its index in ParkingState::cars

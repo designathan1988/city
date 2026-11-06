@@ -4,7 +4,7 @@
 #pragma once
 
 #include "sim/state/pose_buffer.h"
-#include "sim/transit/bus_call.h"
+#include "sim/traffic/bus_call.h"
 #include "sim/transit/transit_data.h"
 
 #include <unordered_map>

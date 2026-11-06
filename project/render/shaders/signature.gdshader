@@ -12,7 +12,7 @@ void fragment() {
 	ALBEDO = c.rgb;
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
-	EMISSION = emission;
+	EMISSION = windows || painted_windows ? emission + room_light(UV, painted_windows ? c.a : 1.0) : emission;
 	if (alpha_cut > 0.0) {
 		ALPHA = c.a;
 		ALPHA_SCISSOR_THRESHOLD = alpha_cut;

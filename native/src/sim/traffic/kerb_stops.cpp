@@ -6,7 +6,6 @@
 
 #include "core/random.h"
 #include "sim/roads/parking_layout.h"
-#include "sim/transit/transit_sim.h"
 
 #include <algorithm>
 #include <cmath>
@@ -337,18 +336,6 @@ void step_kerb_stops(CityState &s, float dt) {
 		KerbStop &k = t.kerb_stops[i];
 		if (k.vehicle >= 0) step_stop(s, k.vehicle, k, dt);
 	}
-}
-
-uint32_t kerb_door_level(const CityState &s, const Vehicle &v) {
-	if (v.bus >= 0) return uint32_t(transit::bus_door_share(s, s.transit_run.buses[size_t(v.bus)]) * float(LOOK_DOOR_MASK) + 0.5f);
-	if (v.kerb < 0) return 0;
-	const KerbStop &k = s.traffic.kerb_stops[size_t(v.kerb)];
-	const TrafficParams &p = s.catalog.traffic;
-	float open = 0;
-	if (k.phase == KerbPhase::OPEN) open = k.t / p.kerb_door_open_s;
-	else if (k.phase == KerbPhase::TRANSFER || k.phase == KerbPhase::AWAY) open = 1;
-	else if (k.phase == KerbPhase::CLOSE) open = 1 - k.t / p.kerb_door_shut_s;
-	return uint32_t(std::clamp(open, 0.f, 1.f) * float(LOOK_DOOR_MASK) + 0.5f);
 }
 
 } // namespace traffic

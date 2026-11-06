@@ -11,7 +11,7 @@ const VIEW_OUT := 1.1
 
 static func shots(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
-	UiDriver.at_hour(cap.world, 16.0)
+	UiDriver.at_hour(cap.world, 22.0 if cap.only.has("noite") else 16.0)
 	var a := Vector3(OFF_M, 0, -ROAD_M * 0.5)
 	CityStore.dispatch(&"build_road", [a, a + Vector3(0, 0, ROAD_M), false, Vector3.ZERO, CityStore.first_road(), PX])
 	var mid := a + Vector3(0, 0, ROAD_M * 0.5)
