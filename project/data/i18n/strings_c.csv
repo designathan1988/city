@@ -33,6 +33,8 @@ streetscape.shrub,Arbusto,Shrub
 streetscape.sign,Placa,Sign
 streetscape.tree,Árvore,Tree
 strike.force,Força,Force
+strike.force.less,Força −,Force −
+strike.force.more,Força +,Force +
 terrain.brush,Pincel,Brush
 terrain.canyon,Cânion (arenito),Canyon (sandstone)
 terrain.clear,Aplainar mapa inteiro,Flatten the whole map

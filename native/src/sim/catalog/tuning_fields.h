@@ -41,6 +41,7 @@
 	X(build, least_opening) X(build, most_opening) X(build, max_projection_m) X(build, max_recess_m) X(build, relief_step_m) \
 	X(build, max_bays) X(build, max_pier_every) X(build, min_pitch_deg) X(build, max_pitch_deg) X(build, pick_step_m) \
 	X(build, max_parts) X(build, dial_share) X(build, step_run_m) X(build, ramp_run_per_rise) X(build, max_gear) X(build, gear_turn_deg) X(build, road_probe_m) X(build, world_margin_m) X(build, max_plinth_m) \
+	X(strike, force_start) X(strike, force_fine) X(strike, force_coarse) \
 	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;

@@ -706,3 +706,9 @@ Ressalvas abertas:
 ## 2026-11-06: a main é o lugar de trabalho
 - Ordem do usuário: nada de worktree; tudo em `Desktop\city`, na `main`. O código já era o mesmo (`c4f6848b`); vieram as referências de `dist/quick` (digest e fotos congeladas), que não estão no git. Nenhuma pasta fora do projeto foi tocada: a limpeza do disco é do usuário.
 - `hidden_run.ps1` e `tools/process/bin/gate*` ainda apontavam para `C:/Projects/Roadcraft-windows`: agora saem da própria pasta, e o projeto não depende mais dela.
+
+## 2026-11-06: a bomba na cidade, em par por clique real
+- `look.gd` ganhou `{"control": "o que diz"}`, o `press` do `look.mjs`: o mesmo plano aperta os mesmos botões nos dois jogos.
+- O par mostrou: força inicial 1 (no 4.0, 5), bomba só no chão sob o ponteiro e deslizante no lugar do passo. Agora ela cai no primeiro prédio da linha de visão (`body_pick`), abre em 5 e anda de 1 em 1 até 10 e de 5 em 5 depois (`StrikeStrip`, valores em `tuning.strike`).
+- O primeiro passo que escrevi parava em 6: lambda de GDScript guarda cópia do local. `shell_test` agora aperta o botão sete vezes.
+- Falta, visto no par de força 45: a nuvem da explosão em prédio é bem menor que a do 4.0, e os vizinhos caem inteiros (21 ruínas) onde no 4.0 perdem só a parte atingida e ficam de pé.

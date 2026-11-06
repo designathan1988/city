@@ -3,6 +3,7 @@
 extends Node3D
 
 const DRAWER_FRAMES := 6
+const FORCE_PRESSES := 7
 const RELIEF_SLIDERS := 3
 const TOWN_MAP := 0
 const SEED := 1
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_panels(hud)
 	await _session(rig)
 	await _drawers(hud)
+	await _bomb_force(hud)
 	_new_city(hud)
 	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -167,6 +169,18 @@ func _new_city(hud: RoadcraftHud) -> void:
 	_check(asked == [[0, CHOSEN_SEED]], "the form's seed goes to the new city: %s" % [asked])
 	hud.actions.new_city_at(0, CHOSEN_SEED)
 	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "the core opens that seed's city")
+
+
+## The force steps on at every press, and the tool in hand is the one that has it.
+func _bomb_force(hud: RoadcraftHud) -> void:
+	hud.open_tab("demolish", "bomb")
+	await _wait(DRAWER_FRAMES)
+	var keys: Array[Node] = hud.drawer.options.find_children("*", "Button", true, false)
+	var at := int(DataTables.tuning("strike_force_start"))
+	for i in FORCE_PRESSES:
+		keys.back().pressed.emit()
+		at = StrikeStrip.next_force(at, 1)
+	_check(hud.drawer.param("STRIKE", "strength", 0) == at, "the bomb's force steps on at every press (%d)" % at)
 
 
 ## The Landscape drawer: the brush's sliders on the left, inside its width; the Models shelf scrolls inside the window.

@@ -207,5 +207,10 @@
  "zone": {
   "side_offset_m": 14,
   "sample_m": 8
+ },
+ "strike": {
+  "force_start": 5,
+  "force_fine": 10,
+  "force_coarse": 5
  }
 }

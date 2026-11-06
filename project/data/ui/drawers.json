@@ -101,8 +101,8 @@
    "danger": true,
    "tabs": [
     {"id": "bulldoze", "icon": "demolish", "label_key": "tool.bulldoze", "tool": "DEMOLISH", "note_key": "help.tool.bulldoze"},
-    {"id": "pistol", "icon": "actions", "label_key": "actions.pistol", "tool": "SHOOT", "note_key": "help.tool.shoot"},
-    {"id": "bomb", "icon": "bomb", "label_key": "actions.bomb", "tool": "STRIKE", "note_key": "help.tool.strike"}
+    {"id": "pistol", "icon": "actions", "label_key": "actions.pistol", "tool": "SHOOT", "note_key": "help.strike.shoot"},
+    {"id": "bomb", "icon": "bomb", "label_key": "actions.bomb", "tool": "STRIKE", "note_key": "help.strike.strike"}
    ]
   },
   {

@@ -11,7 +11,6 @@ signal tool_requested(tool: String, params: Dictionary)
 signal closed
 
 const DENSITY_FIRST := 0
-const FORCE_STEP := 1.0 # the bomb's force goes up by whole steps (data/catalog/blast.json strength_min..max)
 
 ## The panel at the bottom left that holds the tool's options (the HUD makes it).
 @export var options_panel: PanelContainer
@@ -206,9 +205,7 @@ func _build_strip(tab: Dictionary) -> void:
 			DataTables.tuning("roundabout_radius_max_m"), ring.step, param("ROUNDABOUT", "radius", ring.default), Formatters.format_length,
 			retool.bind("ROUNDABOUT", "radius"))
 	elif tab.get("tool", "") == "STRIKE":
-		var blast: Dictionary = DataTables.catalog_table("blast")
-		HudWidgets.range_row(options, tr("strike.force"), blast.strength_min, blast.strength_max, FORCE_STEP,
-			param("STRIKE", "strength", blast.strength_min), Formatters.format_int, retool.bind("STRIKE", "strength"))
+		StrikeStrip.build(self)
 	elif kind == "land_panels":
 		LandStrips.build(self, strip, tab.get("tool", ""))
 	elif tab.get("tool", "") == "BUILD":

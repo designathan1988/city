@@ -4,7 +4,7 @@
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
 ## {"wait": ms}, {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
@@ -19,6 +19,7 @@ const JITTER_PHASES := 16 # a common multiple of TAA's 16 and FSR2's 8 at full s
 const SETTLE_FRAMES := 4
 const MS_PER_S := 1000.0
 const UNTIL_TIMEOUT_MS := 60000.0
+const TIP_SHORTCUT := " · " # a tip says the name, then the key (HudWidgets)
 
 var out_dir := "user://captures"
 var plan_path := ""
@@ -120,6 +121,8 @@ func _step(step: Dictionary) -> void:
 		await ui.button(Vector2(step.letGo[0], step.letGo[1]), false)
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
+	elif step.has("control"): # the `press` of scripts/look.mjs: a control found by what it says, pressed with the mouse where it stands
+		await _press_control(str(step.control))
 	elif step.has("reference"):
 		_reference(step.reference)
 	elif step.has("until"):
@@ -127,6 +130,22 @@ func _step(step: Dictionary) -> void:
 	elif not await _measure_step(step):
 		failures += 1
 		print("FAIL unknown step: ", step)
+
+
+## The last control on screen that says `said` (its text or its tip, a tip's shortcut left out).
+func _press_control(said: String) -> void:
+	var found: BaseButton = null
+	var seen: Array[Node] = [self]
+	while not seen.is_empty():
+		var n: Node = seen.pop_back()
+		seen.append_array(n.get_children())
+		if n is BaseButton and n.is_visible_in_tree() and (n.get("text") == said or n.tooltip_text.get_slice(TIP_SHORTCUT, 0) == said):
+			found = n
+	if found == null:
+		failures += 1
+		print("FAIL no control says: ", said)
+		return
+	await ui.press(found)
 
 
 ## The steps that read the servers. False: not one of them.

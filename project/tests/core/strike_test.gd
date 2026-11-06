@@ -36,6 +36,7 @@ func _ready() -> void:
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	CityStore.step_ticks(WARM_TICKS)
+	_force_steps()
 	_model()
 	_effects()
 	_roads()
@@ -192,3 +193,16 @@ func _check(ok: bool, what: String) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	if not ok:
 		failures += 1
+
+
+## The force goes by ones up to the fine limit and by the coarse step past it, inside the limits of the data.
+func _force_steps() -> void:
+	var fine := int(DataTables.tuning("strike_force_fine"))
+	var coarse := int(DataTables.tuning("strike_force_coarse"))
+	var blast: Dictionary = DataTables.catalog_table("blast")
+	_check(StrikeStrip.next_force(fine - 1, 1) == fine, "force: up by one below the fine limit")
+	_check(StrikeStrip.next_force(fine, 1) == fine + coarse, "force: up by the coarse step from the fine limit")
+	_check(StrikeStrip.next_force(fine + coarse, -1) == fine, "force: back down to the fine limit")
+	_check(StrikeStrip.next_force(fine, -1) == fine - 1, "force: down by one at the fine limit")
+	_check(StrikeStrip.next_force(int(blast.strength_min), -1) == int(blast.strength_min), "force: stops at the least")
+	_check(StrikeStrip.next_force(int(blast.strength_max), 1) == int(blast.strength_max), "force: stops at the most")
