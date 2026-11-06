@@ -71,8 +71,8 @@ vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat
 }
 
 // The surface of a thing out in the street, in world metres, for what the eye can tell apart: paint gone blotchy, dirt in the grain of it, and grime rising from the ground, as
-// far as UV.y, its height. Near only: past `DETAIL_END_M` a pixel holds more than the noise does.
-const float DETAIL_END_M = 90.0, DETAIL_FROM = 0.6;
+// far as UV.y, its height. Near only: past `SURFACE_END_M` a pixel holds more than the noise does.
+const float SURFACE_END_M = 90.0, SURFACE_FROM = 0.6;
 const vec3 GRIME = vec3(0.62, 0.58, 0.52);
 const float GRIME_REACH_M = 0.5;
 const float WEAR_LOW = 0.82, WEAR_HIGH = 1.1;
@@ -149,7 +149,7 @@ void fragment() {
 		METALLIC = post_metal;
 		rough = post_roughness;
 	}
-	float near = 1.0 - smoothstep(DETAIL_END_M * DETAIL_FROM, DETAIL_END_M, length(VERTEX));
+	float near = 1.0 - smoothstep(SURFACE_END_M * SURFACE_FROM, SURFACE_END_M, length(VERTEX));
 	if (near > 0.0) {
 		if (abs(v_tag - 9.0) < 0.5) {
 			plank(UV.x, UV.y, fwidth(UV.y), c, rough);
