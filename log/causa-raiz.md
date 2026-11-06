@@ -259,6 +259,9 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Causa 7, ordem dos triângulos (C++): as malhas iam à GPU na ordem em que foram montadas, e o cache de vértices prontos errava, na imagem e nas 4 cascatas. `render/mesh_order.cpp` reordena com `meshopt_optimizeVertexCache`, no job que assa a malha, nos dois caminhos únicos (`MeshBuilder`, `Shell`); a superfície que mistura (`sheer`) mantém a ordem. Fotos congeladas em 7 vistas contra a versão anterior: 7 de 7 iguais; carros de perto com vidro íntegros. Ganho não medido, por ordem do usuário.
 - Assembly não entra: o quadro é limitado pela GPU, e assembly só acelera a CPU. O que a CPU pode fazer pela GPU é entregar menos e melhor (causas 1, 2 e 7).
 
+- Causa 8, oclusão: `view_at` e a projeção rodavam matriz 4x4 inteira 37 vezes por pixel, e o `pow` de cada passo era refeito em cada fatia. Só os termos de uma perspectiva agora, passos calculados uma vez. Prova: a oclusão ligada afeta 50 a 380 mil pixels por foto; a conta nova muda 63 a 1.786 de 2 milhões (até 0,09%), por arredondamento nos limites de espessura.
+- Correção de leitura: `look` usa sempre o nível `high` (`PairCamera.PRESET`) e ignora `--preset=`, que só `capture_landscape` lê. As fotos congeladas deste ciclo são do `high`, não do `medium`; `camera_pan` e a suíte é que rodam no `tests_preset`.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
