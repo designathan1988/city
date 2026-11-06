@@ -197,6 +197,22 @@ EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, 
 	return r;
 }
 
+// The pieces of one street from junction to junction, `seg` among them: a road is laid in pieces, and the player took down a road, not a piece.
+static std::vector<int> street_of(const RoadNetwork &net, int seg) {
+	std::vector<int> street{ seg };
+	for (const int end : { net.segs[size_t(seg)].a, net.segs[size_t(seg)].b }) {
+		int at = seg, node = end;
+		while (net.nodes[size_t(node)].joint && net.nodes[size_t(node)].segs.size() == JOINT_ARMS) {
+			const std::vector<int> &arms = net.nodes[size_t(node)].segs;
+			at = arms[0] == at ? arms[1] : arms[0];
+			if (std::find(street.begin(), street.end(), at) != street.end()) break; // round a ring
+			street.push_back(at);
+			node = net.segs[size_t(at)].a == node ? net.segs[size_t(at)].b : net.segs[size_t(at)].a;
+		}
+	}
+	return street;
+}
+
 EditResult demolish_at(CityState &s, double x, double z) {
 	EditResult r;
 	int hit = -1;
@@ -235,12 +251,16 @@ EditResult demolish_at(CityState &s, double x, double z) {
 		r.error = "help.tool.bulldoze";
 		return r;
 	}
-	const RoadSegment g = net.segs[seg];
-	demolish_segment(s, seg);
+	const std::vector<int> street = street_of(net, seg);
+	RoadBox box;
+	for (int piece : street) {
+		box.add(net.segs[size_t(piece)]);
+		demolish_segment(s, piece);
+	}
 	settle_road_edit(s, r); // what comes back is always affordable
-	finish_edit(s, g.minx, g.minz, g.maxx, g.maxz);
+	finish_edit(s, box.minx, box.minz, box.maxx, box.maxz);
 	r.ok = true;
-	r.segments = 1;
+	r.segments = int(street.size());
 	return r;
 }
 

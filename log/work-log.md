@@ -537,6 +537,13 @@ Ressalvas abertas:
 - Documentação: uniforms por instância até 16 por shader, nos valores por instância, com a nota do Compatibility só sobre índice de textura. `CUSTOM0` ausente na malha: a busca não achou resposta oficial; os testes no Compatibility e no Forward+ passaram com as vias detalhadas sem esse array.
 - Brilho do cômodo mais claro: a fórmula do cômodo é a mesma do 4.0 (`glassRoom.ts`, `pane_lamp`); o par não prova diferença, porque o id do prédio muda a sorte de cada cômodo. O limiar do glow não foi mexido.
 
+### Ciclo 16: provas, demolir e o canteiro à noite (2026-11-05)
+- **Teste da câmera contra o antigo:** com `pull_full_half`/`pull_none_half` em 60/240 o `_walk_test` falha nas duas checagens (o olho puxado, zoom variando 1,24 m); com 4,8/19,2 passa.
+- **Código do Godot:** atributo ausente na malha liga o buffer padrão, zeros em `CUSTOM0` (`mesh_storage.cpp`), então a mesma `road.gdshader` serve aos chunks sem o array. O glow recebe `environment_get_exposure` (`renderer_scene_render_rd.cpp`).
+- **Demolir:** o clique leva a rua de cruzamento a cruzamento (`street_of`), um passo de desfazer. O corte em `road_max_seg_m` fica, porque decide por pedaço o que é ponte.
+- **Canteiro preto:** o disco da poça estava a 0,164 m (calçada 0,15 + `pool_lift_m` 0,014) e o canteiro tem 0,17 m. `pool_lift_m` 0,03.
+- Aberto: entre as poças o canteiro fica mais escuro que no 4.0 (5,12,1 contra 22,26,10); a luz pelas contas é a mesma, causa não provada.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**
