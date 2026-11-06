@@ -545,7 +545,7 @@ Ressalvas abertas:
 - Aberto: entre as poças o canteiro fica mais escuro que no 4.0 (5,12,1 contra 22,26,10); a luz pelas contas é a mesma, causa não provada.
 
 ### O zip (2026-11-05)
-- `build.sh package` copiava a fonte arquivo por arquivo: quebrava em caminho com acento (`git ls-files` devolve entre aspas) e, corrigido isso, passava de 9 minutos com 16 mil arquivos. Agora é `git archive` da HEAD: 17 s, `dist/Roadcraft.zip` com o exe do commit `700ced28`.
+- `build.sh package` copiava a fonte arquivo por arquivo: quebrava em caminho com acento (`git ls-files` devolve entre aspas) e, corrigido isso, passava de 9 minutos com 16 mil arquivos. Agora é `git archive` da HEAD. O arquivo que saiu desse jeito não era zip: o `tar.exe` do Git Bash ignora o `.zip` e grava tar sem compressão (954 MB, múltiplo de 10.240). O zip agora é do `shutil.make_archive`: 452 MB, formato conferido com `zipfile`.
 
 ### Ciclo 17: o Pare e as lentes apagadas (2026-11-05)
 - **Pare:** `DirSeg::must_stop` por placa `RULE_STOP` ou por controle de toda perna; `may_enter` só deixa entrar quem parou na linha (`Vehicle::stood_at`, `traffic.stop_sign_ms` 0,16 m/s, o `admission.ts` do 4.0). A primeira versão, só pela velocidade, travou o cruzamento: o carro arrancava, passava de 0,16 e perdia a vez; o teste pegou.

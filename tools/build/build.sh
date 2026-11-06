@@ -69,7 +69,7 @@ package() {
 	rm -rf "$stage" "$OUT/Roadcraft.zip" && mkdir -p "$stage/jogo" "$stage/fonte"
 	cp -r "$OUT/windows/." "$stage/jogo/" && cp "$OUT/READ-ME.txt" "$stage/"
 	git -C "$ROOT" archive --format=tar HEAD | tar -x -C "$stage/fonte" # the source as committed, in one pass
-	(cd "$stage" && if command -v zip >/dev/null 2>&1; then zip -qr "$OUT/Roadcraft.zip" .; else tar.exe -a -cf "$OUT/Roadcraft.zip" .; fi)
+	(cd "$stage" && python3 -c "import shutil; shutil.make_archive('../Roadcraft', 'zip', '.')") # a tar with a .zip name is what Git Bash's tar.exe -a writes
 	rm -rf "$stage"
 	echo "$OUT/Roadcraft.zip"
 }
