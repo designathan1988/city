@@ -6,6 +6,8 @@ class_name InspectorPanel
 extends PanelContainer
 
 signal closed
+signal edit_profile(profile: Dictionary, spec: Dictionary, at: Vector3)
+signal laid_again(info: Dictionary) # the road shown stands somewhere else now
 
 const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
 
@@ -78,12 +80,32 @@ func _road(col: Control, info: Dictionary) -> void:
 	for p: Dictionary in CityStore.query(&"road_profiles"):
 		picks.append([p.index, tr(p.name_key)])
 	HudWidgets.dropdown(col, tr("inspector.roadClass"), picks, info.profile_id, _set_class)
+	RoadPanel.road(col, info, _at, _redraw, _bent)
 	var row := _actions(col)
 	if info.one_way:
 		_action(row, "inspector.reverse", &"reverse_road")
 	_action(row, "inspector.duplicate", &"duplicate_road")
 	_action(row, "inspector.splitMiddle", &"split_road")
+	var profile := HudWidgets.button(&"Ghost", "", tr("profileEditor.open"), "", "", "opt_row_h")
+	profile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	profile.pressed.connect(func() -> void:
+		edit_profile.emit({"index": info.profile_id, "id": ""}, CityStore.query(&"road_spec", [info.profile_id]), _at))
+	row.add_child(profile)
+	var height := HudWidgets.button(&"Ghost", "", tr("inspector.addHeightPoint"), "", "", "opt_row_h")
+	height.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	height.pressed.connect(func() -> void:
+		if CityStore.dispatch(&"split_road", [_at]).get("ok", false):
+			_redraw())
+	row.add_child(height)
 	_demolish_button(row)
+
+
+## The road was laid again: the panel goes on with it, where it stands now.
+func _bent(result: Dictionary) -> void:
+	if result.get("ok", false) and result.has("at"):
+		_at = result.at
+	_redraw()
+	laid_again.emit(_info)
 
 
 ## A dead end of the road: "Ponta inicial [balão]"; the choice comes back from the core, so a refused one stays off.
@@ -134,6 +156,7 @@ func _node(col: Control) -> void:
 	_head(col, tr("inspector.junction"))
 	_stats = HudWidgets.vbox(col)
 	_fill_node(_stats)
+	RoadPanel.point(col, _info, _redraw, close)
 	ApproachPanel.fill(col, _info.id, _redraw)
 	ConnectorPanel.fill(col, _info.id)
 	if _info.has("greens"): # a signal: what the player sets on it (JunctionPanel), drawn again from what the core reports

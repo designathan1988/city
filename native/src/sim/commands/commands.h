@@ -164,6 +164,17 @@ EditResult set_marking_style(CityState &s, int style);
 EditResult change_profile_at(CityState &s, double x, double z, int profile, bool whole_street);
 // How a dead end finishes (Roadcraft doc.ts setNodeEnd): a straight cut, or a turning bulb when there is room for one.
 EditResult set_road_end(CityState &s, int node, bool bulb);
+// A road as it was drawn, its pieces being cuts of one curve; how far its curve stands from the line between its ends, metres, and where along that line.
+Quad road_line(const RoadNetwork &net, int seg);
+struct RoadBend {
+	double height = 0, at = 0.5;
+};
+RoadBend road_bend_of(const Quad &line);
+// What the Inspector does (road_bend.cpp): a node's height over the grade line, kept within the steepest grade to the nodes round it; the whole road bent by
+// `height` at `at` of its length (0: straight); and the two roads in line at a node made one.
+EditResult set_node_lift(CityState &s, int node, float metres);
+EditResult set_road_bend(CityState &s, int seg, double height, double at, double &mid_x, double &mid_z); // mid: where the road's middle stands after it
+EditResult join_roads(CityState &s, int node);
 // The Controle tab: what a junction of three or more arms runs by (NodeControl).
 EditResult set_node_control(CityState &s, int node, int ctl);
 // The Move tab: the node goes to (x, z) and its roads are laid again to it, each keeping its shape, zones and direction;

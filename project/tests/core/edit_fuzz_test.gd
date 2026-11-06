@@ -34,6 +34,11 @@ var roads: Array[Vector3] = [] # the middles of what was laid, for the edits tha
 var last_kind := 0
 
 
+const BEND_M := 30.0
+const BEND_AT_LEAST := 0.2
+const BEND_LIFT_M := 4.0
+
+
 func _ready() -> void:
 	var world := CityWorld.new()
 	add_child(world)
@@ -120,11 +125,13 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, 17)
+	var kind := rng.randi_range(0, 20)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
 		_lay()
+	elif kind >= 18:
+		_shape(kind, road)
 	elif kind >= 10:
 		_other(kind, road)
 	elif kind == 5:
@@ -141,6 +148,18 @@ func _edit() -> void:
 		var seg: Dictionary = CityStore.query(&"segment_at", [road])
 		if seg.get("id", -1) >= 0:
 			CityStore.dispatch(&"reverse_road", [seg.id])
+
+
+## What the Inspector does to a road's shape.
+func _shape(kind: int, road: Vector3) -> void:
+	var seg: Dictionary = CityStore.query(&"segment_at", [road])
+	var node: int = CityStore.query(&"node_at", [road, PX]).get("node", -1)
+	if kind == 18 and seg.get("id", -1) >= 0:
+		CityStore.dispatch(&"bend_road", [seg.id, rng.randf_range(-BEND_M, BEND_M), rng.randf_range(BEND_AT_LEAST, 1.0 - BEND_AT_LEAST)])
+	elif kind == 19 and node >= 0:
+		CityStore.dispatch(&"set_node_height", [node, rng.randf_range(-BEND_LIFT_M, BEND_LIFT_M)])
+	elif node >= 0:
+		CityStore.dispatch(&"join_roads", [node])
 
 
 ## What is not a road: relief, street pieces, a barrier, a drawn building, a stop, a bomb, the demolish box.

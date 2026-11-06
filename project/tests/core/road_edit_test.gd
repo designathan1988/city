@@ -58,6 +58,7 @@ func _ready() -> void:
 	_rules(e)
 	_side_by_side(e)
 	_curves(e)
+	RoadShapeCases.new(_check).run(e)
 	_stubs(e)
 	_composed_road()
 	print("FALHAS: ", failures)

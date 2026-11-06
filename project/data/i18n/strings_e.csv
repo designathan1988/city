@@ -370,3 +370,6 @@ builder.field.flagColour2,Terceira cor,Third colour
 builder.section.flagColours,Cores da bandeira,Flag colours
 building.problem.noMast,Não há mastro aí: clique numa agulha ou num farol,No mast there: click a spire or a lantern
 hint.builder.flag,Clique numa agulha ou num farol para trocar a bandeira,Click a spire or a lantern to change its flag
+cmd.build.curve,curva da via,road curve
+hint.road.join,Só vias iguais em linha podem ser unidas.,Only like roads in line can be joined.
+inspector.toStreet,Rua inteira,Whole street

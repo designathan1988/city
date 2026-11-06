@@ -26,7 +26,7 @@ struct CityState;
 
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
 	MONEY, MARKING, NATURE, TRANSIT, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT, ADD_ITEM, REM_ITEM, ADD_POLE, REM_POLE, ADD_SPAN, REM_SPAN,
-	ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, SEG_RULE, LOTS, NODE_LINKS };
+	ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, SEG_RULE, LOTS, NODE_LINKS, NODE_LIFT };
 
 // A change to the landscape (sim/commands/nature_commands.cpp): how to run it again (true) or take it back (false).
 using NatureEdit = std::function<void(CityState &, bool forward)>;
@@ -37,6 +37,7 @@ struct EditOp {
 	int side = 0, from = 0, to = 0; // PROFILE / ZONE / NODE_PLAIN / NODE_CTL / SEG_RULE
 	bool player = false; // ZONE: the side was the player's before
 	double money = 0; // MONEY: what the command added to the funds (negative = charged)
+	float lift_from = 0, lift_to = 0; // NODE_LIFT
 	RoadNode node;
 	SignalSettings signal_from, signal_to; // NODE_SIGNAL
 	RoadSegment seg;
@@ -122,6 +123,7 @@ void apply_entry(CityState &s, const EditEntry &e, bool forward);
 int j_add_node(CityState &s, double x, double z, double y, float lift = 0); // lift: its authored height (RoadNode.lift)
 void j_remove_node_if_orphan(CityState &s, int n);
 void j_set_plain(CityState &s, int n, bool plain);
+void j_set_lift(CityState &s, int n, float lift);
 void j_set_control(CityState &s, int n, uint8_t ctl);
 void j_set_signal(CityState &s, int n, const SignalSettings &to);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);

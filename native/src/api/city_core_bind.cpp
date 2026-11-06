@@ -58,6 +58,9 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("begin_stroke", "label"), &CityCore::begin_stroke);
 	ClassDB::bind_method(D_METHOD("end_stroke"), &CityCore::end_stroke);
 	ClassDB::bind_method(D_METHOD("split_road", "position"), &CityCore::split_road);
+	ClassDB::bind_method(D_METHOD("set_node_height", "node", "metres"), &CityCore::set_node_height);
+	ClassDB::bind_method(D_METHOD("bend_road", "segment", "height", "at"), &CityCore::bend_road);
+	ClassDB::bind_method(D_METHOD("join_roads", "node"), &CityCore::join_roads);
 	ClassDB::bind_method(D_METHOD("set_road_end", "node", "bulb"), &CityCore::set_road_end);
 	ClassDB::bind_method(D_METHOD("upgrade_road", "position", "profile", "whole_street"), &CityCore::upgrade_road);
 	ClassDB::bind_method(D_METHOD("roundabout", "position", "radius", "cut"), &CityCore::roundabout);

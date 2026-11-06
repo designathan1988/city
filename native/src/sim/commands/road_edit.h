@@ -13,6 +13,8 @@
 
 namespace city {
 
+constexpr size_t JOINT_ARMS = 2; // a road going on through a node
+
 // Arc length at curve parameter t from an arc_table (plan.ts arcAtT).
 // Splits segment `seg` at t; returns the new node (height linear along the segment).
 int split_segment(CityState &s, int seg, double t);
@@ -57,6 +59,9 @@ struct RoadBox {
 		add(double(g.maxx), double(g.maxz));
 	}
 };
+// The two arms of `joint` made one road, when they run on and are the same road but for it; false, nothing done, when not. `past`: only if one of them is
+// this arm (-1: either). What the arms were in `made` is the merged road there.
+bool merge_joint(CityState &s, int joint, int past, RoadBox &box, std::vector<int> &made);
 // How far from node `n` the junction wants the mouth of `seg`, before the road's length caps it (road_rules.cpp).
 double wanted_retreat(const RoadNetwork &net, int n, int seg);
 // The roads of the box whose two mouths overlap, and by how many metres (road_rules.cpp).

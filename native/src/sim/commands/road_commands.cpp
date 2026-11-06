@@ -19,7 +19,7 @@
 namespace city {
 
 namespace {
-constexpr size_t MIN_JUNCTION_ARMS = 3, JOINT_ARMS = 2;
+constexpr size_t MIN_JUNCTION_ARMS = 3;
 constexpr double STRAIGHT_JOIN_M = 0.05; // two pieces this close to their chords are straight
 constexpr double STRAIGHT_JOIN_COS = -0.999; // the arms of a joint leave it this close to opposite ways
 
@@ -138,15 +138,22 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 		const RoadSegment g = net.segs[size_t(seg)];
 		if (wanted_retreat(net, node, seg) <= g.len * MOUTH_SHARE) continue;
 		const int far = g.a == node ? g.b : g.a;
-		const RoadNode &joint = net.nodes[size_t(far)];
-		if (joint.segs.size() != JOINT_ARMS) continue;
-		const RoadSegment o = net.segs[size_t(joint.segs[0] == seg ? joint.segs[1] : joint.segs[0])];
-		const int other = joint.segs[0] == seg ? joint.segs[1] : joint.segs[0];
+		if (net.nodes[size_t(far)].segs.size() == JOINT_ARMS) merge_joint(s, far, seg, box, made);
+	}
+}
+
+bool merge_joint(CityState &s, int far, int past, RoadBox &box, std::vector<int> &made) {
+	RoadNetwork &net = s.roads;
+	const std::vector<int> arms = net.nodes[size_t(far)].segs;
+	if (past >= 0 && arms[0] != past && arms[1] != past) return false;
+	const int seg = past >= 0 ? past : arms[0], other = arms[0] == seg ? arms[1] : arms[0];
+	const RoadSegment g = net.segs[size_t(seg)], o = net.segs[size_t(other)];
+	{
 		const bool onward = g.b == far && o.a == far, back = g.a == far && o.b == far;
-		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || ((o.flags ^ g.flags) & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B))) continue;
+		if ((!onward && !back) || o.profile != g.profile || o.zl != g.zl || o.zr != g.zr || ((o.flags ^ g.flags) & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B))) return false;
 		const RoadSegment &first = onward ? g : o, &second = onward ? o : g;
 		Quad q;
-		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) continue;
+		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) return false;
 		box.add(g);
 		box.add(o);
 		j_remove_segment(s, seg);
@@ -159,6 +166,7 @@ void merge_stubs(CityState &s, int node, RoadBox &box, std::vector<int> &made) {
 		j_remove_node_if_orphan(s, far);
 		net.mark_segment(merged);
 	}
+	return true;
 }
 
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps,

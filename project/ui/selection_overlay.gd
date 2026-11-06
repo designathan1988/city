@@ -25,6 +25,7 @@ func _ready() -> void:
 		tools.inspected.connect(_pick)
 		tools.hovered.connect(_on_hover)
 	_hud.inspector.closed.connect(clear)
+	_hud.inspector.laid_again.connect(_pick)
 
 
 func clear() -> void:

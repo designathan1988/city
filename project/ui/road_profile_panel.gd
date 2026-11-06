@@ -4,6 +4,7 @@ class_name RoadProfilePanel
 extends PanelContainer
 
 signal used(index: int)
+signal applied(index: int, street: bool) # the road the Inspector has picked
 signal saved
 signal closed
 
@@ -23,10 +24,12 @@ var _problem: Label
 var _props: HBoxContainer
 var _name: LineEdit
 var _use: Button
+var _street: Button
+var _on_road := false
 
 
 func _init() -> void:
-	theme_type_variation = &"Panel"
+	theme_type_variation = &"SidePanel"
 
 
 func _ready() -> void:
@@ -42,6 +45,8 @@ func _ready() -> void:
 	head.add_child(_name)
 	_action(head, "profileEditor.saveShort", _save)
 	_use = _action(head, "profileEditor.newRoads", _apply)
+	_street = _action(head, "inspector.toStreet", _apply_street)
+	_street.hide()
 	_action(head, "profileEditor.close", func() -> void: closed.emit())
 	_view = RoadSectionView.new()
 	col.add_child(_view)
@@ -71,7 +76,7 @@ func open(profile: Dictionary, spec: Dictionary) -> void:
 
 
 func _action(row: Control, key: String, act: Callable) -> Button:
-	var b := HudWidgets.button(&"RcTab", "", tr(key), "", "", "tab_h")
+	var b := HudWidgets.button(&"Ghost", "", tr(key), "", "", "tab_h")
 	b.pressed.connect(act)
 	row.add_child(b)
 	return b
@@ -135,10 +140,25 @@ func _fill_props() -> void:
 	_button(_props, "profileEditor.faster", func() -> void: _spec.speed = minf(_spec.speed + SPEED_STEP, SPEED_MOST))
 
 
+## Opened from a road of the city: applied to it or to its whole street, instead of the road tool's.
+func on_road() -> void:
+	_on_road = true
+	_use.text = tr("profileEditor.apply")
+	_street.show()
+
+
 func _apply() -> void:
 	var index: int = CityStore.query(&"road_spec_make", [_base, _spec])
-	if index >= 0:
+	if index >= 0 and _on_road:
+		applied.emit(index, false)
+	elif index >= 0:
 		used.emit(index)
+
+
+func _apply_street() -> void:
+	var index: int = CityStore.query(&"road_spec_make", [_base, _spec])
+	if index >= 0:
+		applied.emit(index, true)
 
 
 func _save() -> void:

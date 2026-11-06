@@ -89,6 +89,21 @@ Dictionary CityCore::set_style(const String &id) {
 	return d;
 }
 
+Dictionary CityCore::set_node_height(int node, float metres) {
+	return run_edit(*state_, "cmd.place.nodeHeight", [&](CityState &s) { return set_node_lift(s, node, metres); });
+}
+
+Dictionary CityCore::bend_road(int seg, float height, float at) {
+	double x = 0, z = 0;
+	Dictionary d = run_edit(*state_, "cmd.build.curve", [&](CityState &s) { return set_road_bend(s, seg, height, at, x, z); });
+	d["at"] = Vector3(float(x), 0, float(z));
+	return d;
+}
+
+Dictionary CityCore::join_roads(int node) {
+	return run_edit(*state_, "cmd.place.joinRoads", [&](CityState &s) { return city::join_roads(s, node); });
+}
+
 Dictionary CityCore::split_road(const Vector3 &p) {
 	return run_edit(*state_, "cmd.place.splitRoad", [&](CityState &s) { return split_road_at(s, p.x, p.z); });
 }

@@ -72,6 +72,18 @@ void j_set_control(CityState &s, int n, uint8_t ctl) {
 	s.log.net_node(n);
 }
 
+void j_set_lift(CityState &s, int n, float lift) {
+	RoadNode &nd = s.roads.nodes[n];
+	if (s.history.recording) {
+		EditOp &op = record(s, OpKind::NODE_LIFT, n);
+		op.lift_from = nd.lift;
+		op.lift_to = lift;
+		grow_point(s, nd.x, nd.z, 0);
+	}
+	s.roads.set_lift(n, lift);
+	s.log.net_node(n);
+}
+
 void j_set_plain(CityState &s, int n, bool plain) {
 	RoadNode &nd = s.roads.nodes[n];
 	if (nd.plain == plain) return;

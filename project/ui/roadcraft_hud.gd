@@ -15,6 +15,7 @@ signal category_pressed(id: String)
 @onready var drawer: HudDrawer
 @onready var popover: HudPopover
 @onready var inspector: InspectorPanel
+var _road_editor: RoadProfilePanel
 @onready var actions: HudActions
 @onready var health: HealthPanel
 @onready var profiler: ProfilerHud
@@ -58,6 +59,7 @@ func _ready() -> void:
 	top_bar.impossible_pressed.connect(actions.show_impossible)
 	inspector = InspectorPanel.new()
 	root.add_child(inspector)
+	inspector.edit_profile.connect(_edit_road_profile.bind(root))
 	var selection := SelectionOverlay.new(self)
 	root.add_child(selection)
 	root.move_child(selection, 0)
@@ -75,6 +77,25 @@ func _ready() -> void:
 		tools.tool_changed.connect(func(t: ToolController.Tool, _p: Dictionary) -> void: Settings.set_zone_tool(t == ToolController.Tool.ZONE))
 		tools.set_tool(ToolController.Tool.INSPECT) # with nothing in hand a click asks what is there, as in the reference
 	top_bar.set_sky(world.sky_mode if world else "day")
+
+
+## "Editar perfil" of the Inspector: the same editor as the road tool's, over the dock, working on that road.
+func _edit_road_profile(profile: Dictionary, spec: Dictionary, at: Vector3, root: Control) -> void:
+	if is_instance_valid(_road_editor):
+		_road_editor.queue_free()
+	_road_editor = RoadProfilePanel.new()
+	root.add_child(_road_editor)
+	_road_editor.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE)
+	_road_editor.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_road_editor.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_road_editor.offset_bottom = -HudWidgets.px("dock_h") - 2.0 * HudWidgets.px("margin")
+	_road_editor.closed.connect(_road_editor.queue_free)
+	_road_editor.applied.connect(func(index: int, street: bool) -> void:
+		CityStore.dispatch(&"upgrade_road", [at, index, street])
+		_road_editor.queue_free()
+		inspector.refresh())
+	_road_editor.on_road()
+	_road_editor.open(profile, spec)
 
 
 func _on_inspector(info: Dictionary) -> void:

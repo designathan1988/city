@@ -50,13 +50,7 @@ EditResult duplicate_road(CityState &s, int seg) {
 	const int profile = s.roads.segs[size_t(seg)].profile;
 	const Tuning &t = s.catalog.tune;
 	const double offset = std::max(double(t.edit_duplicate_min_m), double(p.right + p.left) + t.edit_duplicate_gap_m);
-	const std::vector<int> pieces = s.roads.pieces_of(seg);
-	Quad line = s.roads.segs[size_t(pieces.front())].q; // the road as it was drawn: its pieces are cuts of one curve
-	for (size_t k = 1; k < pieces.size(); k++) {
-		const Quad &next = s.roads.segs[size_t(pieces[k])].q;
-		Quad joined;
-		line = joined_quad(line, next, joined) ? joined : Quad::straight(line.x0, line.z0, next.x1, next.z1);
-	}
+	const Quad line = road_line(s.roads, seg); // the road as it was drawn: its pieces are cuts of one curve
 	const double dx = line.x1 - line.x0, dz = line.z1 - line.z0, len = std::hypot(dx, dz);
 	if (len <= 0) {
 		r.error = "tools.hint.upgradePick";

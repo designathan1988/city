@@ -4,6 +4,7 @@
 
 #include "core/units.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/commands/commands.h"
 #include "sim/roads/junction.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -57,6 +58,16 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 		ends.push_back(e);
 	}
 	d["ends"] = ends;
+	const std::vector<int> pieces = s.roads.pieces_of(seg);
+	const RoadSegment &first = s.roads.segs[size_t(pieces.front())], &last = s.roads.segs[size_t(pieces.back())];
+	const int from = first.a, to = pieces.size() == 1 ? first.b : (last.b == first.a || last.b == first.b ? last.a : last.b);
+	d["node_a"] = from;
+	d["node_b"] = to;
+	d["lift_a"] = s.roads.nodes[size_t(from)].lift;
+	d["lift_b"] = s.roads.nodes[size_t(to)].lift;
+	const RoadBend bend = road_bend_of(road_line(s.roads, seg));
+	d["bend_m"] = bend.height;
+	d["bend_at"] = bend.at;
 }
 
 // A node: what it is, and when a signal rules it what the player set on it (a change shows at once, the traffic takes it up on its
@@ -64,6 +75,8 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 void put_node(const CityState &s, const TrafficView &view, Dictionary &d, int node) {
 	d["kind"] = "node";
 	d["id"] = node;
+	d["lift"] = s.roads.nodes[size_t(node)].lift;
+	d["arms"] = int(s.roads.nodes[size_t(node)].segs.size());
 	if (size_t(node) >= view.junction.size() || !view.junction[size_t(node)].signal) return;
 	const JunctionView &j = view.junction[size_t(node)];
 	if (j.stages == 0 || size_t(j.least_from + j.stages) > view.least.size()) return;
@@ -107,6 +120,14 @@ int nearest_building(const CityState &s, const Vector3 &p) {
 } // namespace
 
 // A road's own surface first, its junction when the click is on the node, then the building, then the nearest road.
+// A junction, or a point the player has between two roads: not where a road was only cut in pieces.
+static bool is_point(const RoadNetwork &net, int node) {
+	const std::vector<int> &arms = net.nodes[size_t(node)].segs;
+	if (arms.size() != 2) return arms.size() > 2;
+	const std::vector<int> road = net.pieces_of(arms[0]);
+	return std::find(road.begin(), road.end(), arms[1]) == road.end();
+}
+
 Dictionary CityCore::inspect(const Vector3 &p) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -116,7 +137,7 @@ Dictionary CityCore::inspect(const Vector3 &p) {
 	const bool on_road = seg >= 0 && dist <= (s.roads.profile_of(seg).right + s.roads.profile_of(seg).left) * HALF;
 	if (on_road) {
 		const int node = s.roads.find_node_near(p.x, p.z, s.catalog.tune.road_pick_m);
-		if (node >= 0 && s.roads.nodes[size_t(node)].segs.size() > 2) {
+		if (node >= 0 && is_point(s.roads, node)) {
 			put_node(s, state_->traffic_views.acquire(), d, node);
 			return d;
 		}
