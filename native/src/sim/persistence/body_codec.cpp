@@ -20,8 +20,8 @@ constexpr uint32_t FILE_CLAIM_CAP = 1u << 20; // what a damaged file may claim; 
 constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
-constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5;
-constexpr uint32_t BODY_VERSION = 5, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6;
+constexpr uint32_t BODY_VERSION = 6, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -183,14 +183,16 @@ void put_element(ByteWriter &w, const LotElement &e) {
 	for (float x : { e.x, e.y, e.w, e.d, e.z, e.h, e.base }) w.put<float>(x);
 	w.put<int32_t>(e.facing);
 	w.put<int32_t>(e.paint);
+	w.put<float>(e.angle);
 }
 
-LotElement get_element(ByteReader &r) {
+LotElement get_element(ByteReader &r, uint32_t version) {
 	LotElement e;
 	e.kind = Element(r.get<uint8_t>());
 	for (float *x : { &e.x, &e.y, &e.w, &e.d, &e.z, &e.h, &e.base }) *x = r.get<float>();
 	e.facing = r.get<int32_t>();
 	e.paint = r.get<int32_t>();
+	if (version >= ANGLE_VERSION) e.angle = r.get<float>();
 	return e;
 }
 } // namespace
@@ -260,7 +262,7 @@ bool read_body(ByteReader &r, Body &b) {
 	n = r.get<uint32_t>();
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.elements.resize(n);
-	for (LotElement &e : b.elements) e = get_element(r);
+	for (LotElement &e : b.elements) e = get_element(r, version);
 	n = r.get<uint32_t>();
 	if (!r.ok || n > FILE_CLAIM_CAP) return false;
 	b.cores.resize(n);

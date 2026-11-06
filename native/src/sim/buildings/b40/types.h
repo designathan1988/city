@@ -170,7 +170,8 @@ struct LotElement {
 	float x = 0, y = 0, w = 1, d = 1, z = 0, h = 1;
 	int facing = 0;
 	int paint = -1;
-	float base = 0; // walls/fences: the base wall under a fence
+	float base = 0; // walls/fences: the base wall under a fence; a flight of a traced stair: how far up it starts
+	float angle = 0; // radians about its middle: a piece of a run traced across the lot
 };
 
 // A core (stair and lift shaft) is a square of this side in the lot frame, from its (x, y) corner: the generator places it, the cut view draws it.

@@ -24,8 +24,7 @@ var flag_slot := 0
 var hand := {}
 var turn := 0.0
 
-var mass: MassDrag
-var hand_piece: FurnishHand
+var hands: BuildHands
 
 var _box: SelectionBox
 var _ghost := 0
@@ -35,8 +34,7 @@ var _last := Vector3.INF
 
 
 func enter() -> void:
-	mass = MassDrag.new(ctl)
-	hand_piece = FurnishHand.new(ctl)
+	hands = BuildHands.new(ctl)
 	_box = SelectionBox.new()
 	ctl.add_child(_box)
 	ctl.hint.emit(tr("hint.builder.select"), true)
@@ -44,7 +42,7 @@ func enter() -> void:
 
 func exit() -> void:
 	_put_down()
-	mass.cancel()
+	hands.disarm()
 	_box.queue_free()
 
 
@@ -66,6 +64,7 @@ func _put_down() -> void:
 
 
 func hover(p: Vector3) -> void:
+	hands.run.hover(p)
 	if hand.is_empty():
 		return
 	_last = p
@@ -77,8 +76,7 @@ func hover(p: Vector3) -> void:
 
 
 func key(code: Key) -> void:
-	if hand_piece.armed() and code == KEY_R and not picked.is_empty():
-		_report(hand_piece.turn(picked.id))
+	hands.key(code, picked, _report)
 	if hand.is_empty() or code != KEY_R:
 		return
 	turn += deg_to_rad(DataTables.tuning("build_gear_turn_deg")) if Input.is_key_pressed(KEY_SHIFT) else PI / 2.0
@@ -102,11 +100,7 @@ func click(p: Vector3) -> void:
 	if not hand.is_empty():
 		_set_down(p)
 		return
-	if mass.armed() and not picked.is_empty():
-		mass.press(p, picked)
-		return
-	if hand_piece.armed() and not picked.is_empty():
-		_report(hand_piece.click(picked.id))
+	if hands.click(p, picked, _report):
 		return
 	var cam: Camera3D = ctl.rig.camera
 	var had := picked
@@ -118,12 +112,12 @@ func click(p: Vector3) -> void:
 
 
 func drag(p: Vector3) -> void:
-	mass.move(p)
+	hands.mass.move(p)
 
 
 func release(p: Vector3) -> void:
-	if mass.dragging():
-		_report(mass.finish(p))
+	if hands.mass.dragging():
+		_report(hands.mass.finish(p))
 		_show()
 
 
@@ -131,7 +125,9 @@ func release(p: Vector3) -> void:
 func pick(origin: Vector3, dir: Vector3) -> void:
 	var hit: Dictionary = CityStore.query(&"body_pick", [origin, dir])
 	picked = hit
-	if not hit.is_empty() and hit.side < 0 and not part.is_empty() and ROOF_TOOLS.has(part.do):
+	if not hit.is_empty() and hands.brush.on():
+		_report(hands.brush.paint(hit, paint_scope))
+	elif not hit.is_empty() and hit.side < 0 and not part.is_empty() and ROOF_TOOLS.has(part.do):
 		_report(_roof(hit))
 	elif hit.is_empty() or hit.side < 0:
 		pass
@@ -156,15 +152,14 @@ func _roof(hit: Dictionary) -> Dictionary:
 
 ## What Escape steps back first: the body in hand, the bay armed or the part held (the pick itself goes with the tool).
 func in_progress() -> bool:
-	return not hand.is_empty() or armed != NO_BAY or not part.is_empty() or mass.armed() or hand_piece.armed()
+	return not hand.is_empty() or armed != NO_BAY or not part.is_empty() or hands.armed()
 
 
 func cancel() -> void:
 	if not hand.is_empty():
 		_put_down()
-	elif mass.armed() or hand_piece.armed():
-		mass.disarm()
-		hand_piece.disarm()
+	elif hands.armed():
+		hands.disarm()
 	elif armed != NO_BAY or not part.is_empty():
 		armed = NO_BAY
 		part = {}
@@ -176,10 +171,10 @@ func cancel() -> void:
 ## A tool of the strip (data/ui/builder.json): `spec.do` names what it does, `spec.value` its choice.
 func act(spec: Dictionary) -> void:
 	var value: int = spec.get("value", 0)
-	if spec.do != "mass":
-		mass.disarm() # any other card ends the drag
-	if not ["core", "piece", "turn"].has(spec.do):
-		hand_piece.disarm()
+	if hands.act(spec, value, picked, _report):
+		armed = NO_BAY
+		part = {}
+		return
 	match spec.do:
 		"arm":
 			armed = NO_BAY if armed == value else value
@@ -200,18 +195,8 @@ func act(spec: Dictionary) -> void:
 		"paint_scope":
 			paint_scope = value
 		"inside", "floor":
-			hand_piece.inside(spec.do, value, picked)
+			hands.furnish.inside(spec.do, value, picked)
 			return
-		"core", "piece", "turn":
-			_report(hand_piece.act(spec, picked))
-			return
-		"mass":
-			mass.arm(value)
-			armed = NO_BAY
-			part = {}
-			if mass.armed():
-				ctl.hint.emit(tr("hint.builder.%s" % spec.id), true)
-				return
 		_:
 			if picked.is_empty():
 				ctl.hint.emit(tr("hint.builder.select"), false)

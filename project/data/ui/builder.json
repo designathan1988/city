@@ -252,6 +252,13 @@
   "paint": {
    "sections": [
     {
+     "tools": [
+      {"id": "paint", "do": "brush"},
+      {"id": "copyStyle", "do": "copy_style"}
+     ],
+     "title_key": "builder.tool.paint"
+    },
+    {
      "title_key": "builder.section.scope",
      "tools": [
       {"id": "wall", "do": "paint_scope", "value": 3, "icon": "paint", "label_key": "builder.tool.wall"},
@@ -296,14 +303,17 @@
     {
      "title_key": "builder.section.runs",
      "tools": [
-      {"id": "fence", "do": "part", "value": 6, "fit_kind": 1, "size": [2, 0.12, 1.1], "standoff_m": 3},
+      {"id": "wallRun", "do": "run", "value": 5, "fit_kind": 1, "size": [4, 0.25, 1.8]},
+      {"id": "fenceRun", "do": "run", "value": 6, "fit_kind": 1, "size": [2, 0.12, 1.1]},
+      {"id": "pavementRun", "do": "run", "value": 0, "fit_kind": 1, "size": [4, 1.6, 0.12]},
       {"id": "railing", "do": "part", "value": 7, "fit_kind": 1, "size": [2, 0.12, 1.05], "standoff_m": 3},
-      {"id": "pavement", "do": "part", "value": 0, "fit_kind": 1, "size": [4, 3, 0.12], "standoff_m": 1.5}
+      {"id": "stairRun", "do": "run", "value": 32, "fit_kind": 1, "size": [1.2, 3, 1]}
      ]
     },
     {
      "title_key": "builder.section.greenery",
      "tools": [
+      {"id": "tree", "do": "part", "value": 21, "fit_kind": 0, "size": [3, 3, 6], "standoff_m": 3},
       {"id": "shrub", "do": "part", "value": 22, "fit_kind": 0, "size": [1.4, 1.4, 1.2], "standoff_m": 1.2},
       {"id": "hedge", "do": "part", "value": 8, "fit_kind": 1, "size": [3, 0.7, 1.2], "standoff_m": 3},
       {"id": "flowers", "do": "part", "value": 23, "fit_kind": 0, "size": [1.4, 1.4, 0.4], "standoff_m": 1.2},

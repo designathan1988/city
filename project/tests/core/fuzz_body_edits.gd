@@ -3,7 +3,8 @@
 const BLOCK_FROM := 0.3
 const BLOCK_TO := 0.7
 const KINDS := 2
-const LAST_KIND := 2
+const LAST_KIND := 3
+const RUN := {"value": 5, "fit_kind": 1, "size": [4, 0.25, 1.8]}
 
 
 static func run(rng: RandomNumberGenerator, id: int, box: PackedVector3Array) -> void:
@@ -14,5 +15,7 @@ static func run(rng: RandomNumberGenerator, id: int, box: PackedVector3Array) ->
 			CityStore.dispatch(&"body_add_mass", [id, 0, box[0].lerp(far, BLOCK_FROM), box[0].lerp(far, BLOCK_TO), rng.randi_range(0, KINDS)])
 		1:
 			CityStore.dispatch(&"body_add_core", [id, mid, rng.randi_range(0, KINDS)])
+		2:
+			CityStore.dispatch(&"body_add_run", [id, 0, 0, PackedVector3Array([box[0], far]), RUN])
 		_:
 			CityStore.dispatch(&"body_put_piece", [id, 0, "sofa", mid, 0.0])

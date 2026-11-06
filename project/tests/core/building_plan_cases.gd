@@ -15,6 +15,8 @@ const VOID_MODE := 1
 const CUT_FROM := 0.35
 const CUT_TO := 0.65
 const OFF_BLOCK := 2.0
+const RUN_OFF_M := 3.0
+const RUN_LEG_M := 5.0
 
 
 static func run(id: int, made: int, check: Callable) -> void:
@@ -31,6 +33,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 	_relief_first(id, vol, made, check)
 	_shaped_block_grows(id, vol, made, check)
 	_masses(id, vol, made, check)
+	_runs(id, made, check)
 
 
 static func _walls_carried(id: int, vol: int, made: int, check: Callable) -> void:
@@ -85,6 +88,20 @@ static func _masses(id: int, vol: int, made: int, check: Callable) -> void:
 	_back_to(made, id, check, "recorte")
 	r = CityStore.dispatch(&"body_add_mass", [id, vol, a + (a - c) * OFF_BLOCK, a + (a - c) * (OFF_BLOCK + 1.0), CUT_MASS])
 	check.call(not r.get("ok", false) and r.get("error", "") == "building.problem.cut", "recorte fora do bloco recusado: %s" % r)
+
+
+## A run along a bent path: a piece a leg, one step of undo; a stair too.
+static func _runs(id: int, made: int, check: Callable) -> void:
+	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, 0])
+	var start: Vector3 = box[0] + (box[0] - box[box.size() / 4]).normalized() * RUN_OFF_M
+	var path := PackedVector3Array([start, start + Vector3(RUN_LEG_M, 0, RUN_LEG_M), start + Vector3(RUN_LEG_M * 2.0, 0, 0)])
+	for spec: Dictionary in DataTables.ui("builder").tabs.parts.sections[1].tools:
+		if spec.do != "run":
+			continue
+		var parts: int = _info(id).parts
+		var r: Dictionary = CityStore.dispatch(&"body_add_run", [id, 0, 0, path, spec])
+		check.call(r.get("ok", false) and _info(id).parts == parts + path.size() - 1, "%s: uma peça por trecho: %s" % [spec.id, r])
+		check.call(CityStore.dispatch(&"undo") and _info(id).digest == made, "%s desfeito num passo" % spec.id)
 
 
 static func _back_to(made: int, id: int, check: Callable, what: String) -> void:

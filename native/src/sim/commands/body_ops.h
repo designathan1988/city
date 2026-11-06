@@ -94,6 +94,8 @@ std::string op_flag_colour(b40::Body &b, int vol, float x, float y, int slot, ui
 // The parts. `part` an index into the elements; a free part stands at (x, y) of the lot frame, facing a b40::Facing.
 std::string op_add_part(b40::Body &b, const Tuning &t, int vol, int storey, int side, int bay, const PartSpec &s);
 std::string op_add_part_at(b40::Body &b, const Tuning &t, float x, float y, int facing, const PartSpec &s);
+// A wall, fence, footpath or stair along a path in the lot frame, one piece a leg; a stair climbs `level` over the whole of it.
+std::string op_add_run(b40::Body &b, const Tuning &t, const std::vector<b40::Point2> &path, int level, const PartSpec &s);
 std::string op_remove_part(b40::Body &b, int part);
 std::string op_turn_part(b40::Body &b, int part);
 std::string op_repeat_part(b40::Body &b, const Tuning &t, int part, float spacing);

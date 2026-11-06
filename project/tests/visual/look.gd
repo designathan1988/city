@@ -163,6 +163,11 @@ func _args(raw: Array) -> Array:
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
 			out.push_back(Vector3(a.v3[0], a.v3[1], a.v3[2]))
+		elif a is Dictionary and a.has("path"):
+			var path := PackedVector3Array()
+			for p: Array in a.path:
+				path.push_back(_point(p))
+			out.push_back(path)
 		else:
 			out.push_back(a)
 	return out

@@ -198,6 +198,18 @@ void LotEmit::element(const LotElement &e) {
 		default: prop(e); break;
 	}
 }
+// A piece at an angle to the lot is the same piece in a frame turned about its middle: everything a part draws, it draws through the frame.
+void turned_element(Shell &shell, Shell &parts, const Placed &pl, const LotElement &e) {
+	Placed at = pl;
+	const float c = std::cos(e.angle), s = std::sin(e.angle);
+	at.lot.o = pl.lot.at(e.x, e.y, 0);
+	at.lot.e0 = pl.lot.e0 * c + pl.lot.e1 * s;
+	at.lot.e1 = pl.lot.e1 * c - pl.lot.e0 * s;
+	LotElement local = e;
+	local.x = 0;
+	local.y = 0;
+	LotEmit{ shell, parts, at, pl.lot.o.y }.element(local);
+}
 } // namespace
 
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl) {
@@ -205,7 +217,8 @@ void emit_lot(Shell &shell, Shell &parts, const Placed &pl) {
 	const Body &b = *pl.b;
 	for (const LotElement &e : b.elements) {
 		if (b.cut_level >= 0 && e.z >= b.level_z(b.cut_level + 1) - EPS) continue; // cut open: what hangs above the floor seen is gone
-		le.element(e);
+		if (e.angle != 0) turned_element(shell, parts, pl, e);
+		else le.element(e);
 	}
 }
 

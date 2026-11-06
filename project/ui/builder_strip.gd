@@ -3,7 +3,7 @@
 class_name BuilderStrip
 extends RefCounted
 
-const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece"]
+const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style"]
 
 
 static func fill(strip: Container, tab_id: String, tools: ToolController) -> void:

@@ -610,3 +610,8 @@ Ressalvas abertas:
 - Cartões de núcleo, de arrumar e as 22 peças; o clique lê o raio na altura do andar cortado, porque o chão do lote pode estar noutra altura. R gira. Abrir a aba com um prédio escolhido abre o térreo cortado.
 - Corpo gravado na versão 5, com leitura dos antigos. O hash muda só por isso.
 - Fotos em `project/dist/rq/inside`: escada, elevador, os dois e as peças postas no térreo cortado. Falta o fantasma da peça sob o ponteiro.
+
+## 2026-11-06: traçados e pincel
+- `LotElement::angle`: uma peça em ângulo é a mesma peça num referencial girado em volta do meio dela, porque tudo que um elemento desenha passa por `pl.lot`; nenhum tipo de peça mudou. Corpo gravado na versão 6.
+- Traçados (muro, cerca, calçada, escada): cada clique um canto, Enter assenta num passo de desfazer, Backspace volta um canto; uma peça por trecho, e a escada sobe o andar escolhido ao longo do traçado inteiro. Árvore na aba Peças. O grupo de equipamentos de telhado do 4.0 na aba Peças não foi repetido: ele está na aba Telhado.
+- Cores: Pintar liga o pincel, um acabamento o carrega, Copiar estilo carrega o que o escolhido usa.

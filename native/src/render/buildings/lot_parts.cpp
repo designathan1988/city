@@ -41,7 +41,8 @@ void stair(Shell &shell, const Placed &pl, const LotElement &e, float g, const L
 		float x1 = std::max({ ax - side_x * half, ax + side_x * half, bx - side_x * half, bx + side_x * half });
 		float y0 = std::min({ ay - side_y * half, ay + side_y * half, by - side_y * half, by + side_y * half });
 		float y1 = std::max({ ay - side_y * half, ay + side_y * half, by - side_y * half, by + side_y * half });
-		shell.box(pl.lot, x0, x1, y0, y1, g + e.h * float(i) / float(steps), g + e.h * float(i + 1) / float(steps), lin, fin);
+		const float under = i == 0 ? g : g + e.base + e.h * float(i) / float(steps); // a flight further up a traced stair stands on the ground, not in the air
+		shell.box(pl.lot, x0, x1, y0, y1, under, g + e.base + e.h * float(i + 1) / float(steps), lin, fin);
 	}
 }
 

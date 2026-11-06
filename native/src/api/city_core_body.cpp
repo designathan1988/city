@@ -20,7 +20,7 @@ namespace city {
 namespace {
 constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
 constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
-constexpr int SIZE_AXES = 3;
+constexpr int SIZE_AXES = 3, RGB_BASE = 16, RGB_DIGITS = 6;
 
 PartSpec part_spec(const Dictionary &d) {
 	PartSpec s;
@@ -266,6 +266,36 @@ Dictionary CityBuilder::body_add_part_at(int id, const Vector3 &at, const Dictio
 	PartSpec s = part_spec(spec);
 	V2 local = lot_point(*state_, id, at);
 	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) { return op_add_part_at(b, t, local.x, local.y, b40::FACE_STREET, s); });
+}
+
+Dictionary CityBuilder::body_add_run(int id, int vol, int storey, const PackedVector3Array &points, const Dictionary &spec) {
+	const PartSpec s = part_spec(spec);
+	std::vector<b40::Point2> path;
+	for (const Vector3 &p : points) {
+		const V2 at = lot_point(*state_, id, p);
+		path.push_back({ at.x, at.y });
+	}
+	return edit_of_body(*state_, id, [&](b40::Body &b, const Tuning &t) {
+		const int level = vol >= 0 && vol < int(b.volumes.size()) ? b.volumes[size_t(vol)].base + storey : 0;
+		return op_add_run(b, t, path, level, s);
+	});
+}
+
+// What a face of a block is finished in: the side of its storey, else the block's, else the building's.
+Dictionary CityBuilder::body_paint_at(int id, int vol, int side, int storey) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Dictionary d;
+	const CityState &s = *state_;
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return d;
+	b40::Body body;
+	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	if (vol < 0 || vol >= int(body.volumes.size())) return d;
+	const b40::Volume &v = body.volumes[size_t(vol)];
+	auto own = v.storey_paint.find(b40::side_key(storey, side));
+	const b40::Paint &p = own != v.storey_paint.end() ? body.paints[size_t(own->second)] : body.wall_of(v);
+	d["finish"] = int(p.finish);
+	d["rgb"] = "#" + String::num_int64(int64_t(p.rgb), RGB_BASE).pad_zeros(RGB_DIGITS);
+	return d;
 }
 
 Dictionary CityBuilder::body_remove_part(int id, int part) {

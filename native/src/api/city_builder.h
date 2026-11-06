@@ -42,6 +42,8 @@ public:
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
 	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
+	godot::Dictionary body_add_run(int id, int vol, int storey, const godot::PackedVector3Array &points, const godot::Dictionary &spec);
+	godot::Dictionary body_paint_at(int id, int vol, int side, int storey) const;
 	godot::Dictionary body_add_core(int id, const godot::Vector3 &at, int kind);
 	godot::Dictionary body_remove_core(int id, const godot::Vector3 &at);
 	godot::Dictionary body_put_piece(int id, int level, const godot::String &kind, const godot::Vector3 &at, double angle);

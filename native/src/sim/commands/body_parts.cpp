@@ -12,6 +12,7 @@ namespace city {
 using namespace b40;
 
 namespace {
+constexpr float SHORTEST_LEG_M = .4f, LOWEST_FLIGHT_M = .5f, LOWEST_STEP_M = .2f, FLIGHT_WIDTH_M = 1.2f, BAND_WIDTH_M = 1.6f, THINNEST_M = .12f, QUARTER_TURN = 1.57079633f;
 constexpr const char *NO_TARGET = "tool.failed";
 constexpr float AREA_EPS = 1e-3f, TOUCH_EPS = 1e-3f;
 constexpr int MAX_REPEAT = 64;
@@ -139,6 +140,40 @@ std::string op_add_part_at(Body &b, const Tuning &t, float x, float y, int facin
 	set_size(e, s.w, s.d);
 	if (clash(b, e, false)) return "building.problem.overlap";
 	b.elements.push_back(e);
+	return "";
+}
+
+std::string op_add_run(Body &b, const Tuning &t, const std::vector<Point2> &path, int level, const PartSpec &s) {
+	float total = 0;
+	for (size_t i = 1; i < path.size(); i++) total += std::hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+	if (total < SHORTEST_LEG_M) return "building.problem.size";
+	const float rise = std::max(LOWEST_FLIGHT_M, b.level_z(level + 1) - b.level_z(level));
+	float climbed = b.level_z(level);
+	for (size_t i = 1; i < path.size(); i++) {
+		const Point2 p = path[i - 1], q = path[i];
+		const float leg = std::hypot(q.x - p.x, q.y - p.y);
+		if (leg < SHORTEST_LEG_M) continue;
+		if (int(b.elements.size()) >= int(t.build_max_parts)) return "building.problem.size";
+		LotElement e;
+		e.kind = Element(s.kind);
+		e.x = (p.x + q.x) / 2;
+		e.y = (p.y + q.y) / 2;
+		e.angle = std::atan2(q.y - p.y, q.x - p.x);
+		if (e.kind == EL_STAIR) { // a flight runs along its own y
+			const float step = rise * leg / total;
+			e.w = std::max(s.w, FLIGHT_WIDTH_M);
+			e.d = leg;
+			e.h = std::max(LOWEST_STEP_M, step);
+			e.base = climbed;
+			e.angle -= QUARTER_TURN;
+			climbed += step;
+		} else {
+			e.w = leg;
+			e.d = std::max(s.d, e.kind == EL_PAVEMENT ? BAND_WIDTH_M : THINNEST_M);
+			e.h = std::max(s.h, THINNEST_M);
+		}
+		b.elements.push_back(e);
+	}
 	return "";
 }
 

@@ -164,6 +164,8 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_set_block_mode", "id", "vol", "mode"), &CityBuilder::body_set_block_mode);
 	ClassDB::bind_method(D_METHOD("body_mass_rect", "id", "from", "to"), &CityBuilder::body_mass_rect);
 	ClassDB::bind_method(D_METHOD("body_add_core", "id", "at", "kind"), &CityBuilder::body_add_core);
+	ClassDB::bind_method(D_METHOD("body_add_run", "id", "vol", "storey", "points", "spec"), &CityBuilder::body_add_run);
+	ClassDB::bind_method(D_METHOD("body_paint_at", "id", "vol", "side", "storey"), &CityBuilder::body_paint_at);
 	ClassDB::bind_method(D_METHOD("body_remove_core", "id", "at"), &CityBuilder::body_remove_core);
 	ClassDB::bind_method(D_METHOD("body_put_piece", "id", "level", "kind", "at", "angle"), &CityBuilder::body_put_piece);
 	ClassDB::bind_method(D_METHOD("body_move_piece", "id", "level", "index", "at"), &CityBuilder::body_move_piece);
