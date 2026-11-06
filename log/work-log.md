@@ -561,6 +561,14 @@ Ressalvas abertas:
 - **Inteira agora:** demolir, Melhorar sem Shift, Informação (comprimento, faixa desenhada, tráfego somado), inverter mão única e duplicar (a curva refeita com `joined_quad`).
 - Teste novo em `road_money_cases`: via de 5 pedaços, Dividir, um clique leva um lado, o outro fica.
 
+### Ciclo 19: vias em relevo, ao vivo (2026-11-06)
+- **Janela ao vivo:** `play.gd -- --live=<pasta>` carrega `tests/visual/live_driver.gd`: o jogo aberto na tela do usuário toma passos de fora (câmera, comandos, fotos). A ordem é não fechar a janela: `tools/build/free_dll.sh` tira a DLL em uso do caminho e a compilação segue com o jogo aberto.
+- **Via que quebra no morro:** a linha de base era feita e limitada a 12 % pedaço a pedaço; em encosta os pedaços chegavam ao nó com alturas diferentes, o nó ficava na média e a via mergulhava 14 m nos últimos 8 m. `grade_chains` faz a linha da via inteira, como um perfil só, que é o que o 4.0 tem. Medido depois: rampa máxima 0,120.
+- **Grama sobre o asfalto:** empate de peso entre dois pedaços em volta do corte; o primeiro ganhava e deixava a amostra 0,7 m acima da pista. Desempate pelo mais perto (`best_d`).
+- **Veículos:** a pose não tinha inclinação. `Pose::rise` vem da frente e da traseira na via, e a carroceria gira por ela.
+- **Rocha em mosaico:** a normal do terreno era uma por célula, e ela decide grama, terra e rocha. Agora vem dos vértices, interpolada.
+- **Borda do mapa:** os vértices de fora do mapa andavam com a câmera. Ficam presos em `map_half`, com rocha no plano da parede. A foto ainda não enquadrou a parede.
+
 ## Próximos passos (em ordem)
 
 1. **Integrar a tradução do 4.0 novo:**

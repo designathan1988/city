@@ -34,7 +34,7 @@ float road_shape_reach() { return SHAPE_INNER_M + SHAPE_SHOULDER_MAX_M; }
 
 float cut_wall_reach() { return SHAPE_INNER_M + CUT_SHOULDER_M; }
 
-void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w) {
+void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d) {
 	const int ax0 = std::max(x0, ix_of(r.minx)), ax1 = std::min(x1, ix_of(r.maxx) + 1);
 	const int az0 = std::max(z0, ix_of(r.minz)), az1 = std::min(z1, ix_of(r.maxz) + 1);
 	if (ax0 > ax1 || az0 > az1) return;
@@ -64,8 +64,10 @@ void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, i
 			if ((r.kind & SHAPE_RAISED) != 0 || (manual && surface > natural)) w *= 1.f - smoothstep(lift_on, lift_off, surface - natural);
 			else if (sunken) w *= 1.f - smoothstep(roof, bore, natural - surface);
 			const size_t li = size_t(z - z0) * size_t(BW) + size_t(x - x0);
-			if (w <= best_w[li]) continue;
+			// two pieces of a road both weigh whole round the cut between them: the nearest one says, or a sample past the cut keeps the height of the piece before it
+			if (w < best_w[li] || (w == best_w[li] && n.d >= best_d[li])) continue;
 			best_w[li] = w;
+			best_d[li] = n.d;
 			final_h[gi] = lerpf(natural, height, w);
 		}
 }

@@ -250,6 +250,7 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 		ends.push_back(prof[size_t(s)].a);
 		ends.push_back(prof[size_t(s)].b);
 	}
+	grade_chains(*this, net, read, sv.t.ground, ends);
 	std::sort(ends.begin(), ends.end());
 	ends.erase(std::unique(ends.begin(), ends.end()), ends.end());
 	reach_nodes(sv, ends, all);

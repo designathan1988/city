@@ -147,7 +147,7 @@ private:
 	// Distance to the nearest piece of a polyline (x, height, z triples) for the samples of the box within `reach` of it.
 	const std::vector<NearSample> &nearest(const std::vector<float> &pts, float reach, int ax0, int az0, int ax1, int az1) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
-	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w); // road_shape.cpp
+	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d); // road_shape.cpp
 };
 
 // A held composition for the length of a scope (Heightfield::hold): composed when it ends, or dropped with `compose` false.

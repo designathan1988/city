@@ -4,6 +4,7 @@ extends Node3D
 
 const TOWN_MAP := 0
 const SHOT_DELAY_S := 25.0
+const LIVE_DRIVER := "res://tests/visual/live_driver.gd"
 
 
 func _ready() -> void:
@@ -27,7 +28,15 @@ func _ready() -> void:
 	add_child(hud)
 	add_child(InteriorController.new())
 	_title(hud, saved)
+	_maybe_live()
 	_maybe_screenshot()
+
+
+## -- --live=<dir>: the window takes steps from outside while the player watches (tests/visual/live_driver.gd; no export carries it).
+func _maybe_live() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--live="):
+			add_child(load(LIVE_DRIVER).new())
 
 
 ## The city of the last session, if it reads; one that does not goes aside and the game starts afresh.

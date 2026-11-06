@@ -129,6 +129,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 			v.cur.z = (front.z + rear.z) * 0.5f;
 			v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
 			V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
+			v.cur.rise = axis.len() > MIN_AXIS_M ? (front.y - rear.y) / axis.len() : 0.f;
 			v.cur.fx = h.x;
 			v.cur.fz = h.y;
 		}

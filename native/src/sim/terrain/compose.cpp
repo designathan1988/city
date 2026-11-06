@@ -84,7 +84,7 @@ void Heightfield::compose_rect(const SampleRect &r) {
 	const int x0 = r.x0, z0 = r.z0, x1 = r.x1, z1 = r.z1;
 	for (int z = z0; z <= z1; z++)
 		for (int x = x0; x <= x1; x++) final_h[size_t(z) * N + x] = dequant(base_q[size_t(z) * N + x]);
-	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f);
+	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f), best_d(best_w.size(), 0.f); // best_d: how far the road that shaped it; 0: none has, a tie stays with what stands
 	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
 	std::vector<int> ids;
 	auto found = [&](const auto &hash) -> const std::vector<int> & {
@@ -97,7 +97,7 @@ void Heightfield::compose_rect(const SampleRect &r) {
 	for (int id : found(mod_hash))
 		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
 	for (int id : found(shape_hash))
-		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w);
+		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w, best_d);
 }
 
 // Each piece visits only the samples whose nearest point of the polyline can lie on it: the slab along it, the wedge

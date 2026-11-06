@@ -15,6 +15,7 @@ core_linux() {
 
 core_windows() { # template_release ships in the export; template_debug is what the editor, tests and captures load
 	local dir target failed=0
+	bash "$ROOT/tools/build/free_dll.sh"
 	for target in template_release template_debug; do # at once: the link of one runs beside the compile of the other
 		dir="$ROOT/native/build-win"; [ "$target" = template_debug ] && dir="$dir-debug"
 		(cmake -S "$ROOT/native" -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \

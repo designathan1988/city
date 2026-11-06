@@ -18,6 +18,7 @@ constexpr int POSE_TRAIL = 3; // publications kept per agent: k-2, k-1, k
 
 struct Pose {
 	float x = 0, y = 0, z = 0, fx = 0, fz = 1; // position and unit heading in the XZ plane
+	float rise = 0; // metres up per metre along the heading: what a body on a grade tilts by
 };
 
 // An agent's poses at the last publications (oldest first). An agent missing from a publication (far, or new) starts

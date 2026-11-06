@@ -53,6 +53,7 @@ bash tools/build/gates_changed.sh "$ROOT" > "$OUT/gates.txt" 2>&1 & gates=$!
 if [ -n "$all$ready" ]; then
 	bash tools/build/build.sh core-windows > "$OUT/build.txt" 2>&1
 else
+	bash tools/build/free_dll.sh
 	cmake --build native/build-win-debug --target citycore > "$OUT/build.txt" 2>&1
 fi
 built=$?

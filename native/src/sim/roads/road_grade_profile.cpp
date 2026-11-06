@@ -205,8 +205,9 @@ void pin_plates(GradeProfile &p, float ha, float hb) {
 void solve_ground(GradeProfile &p, float ha, float hb, const GradeTune &t) {
 	const float shift_a = ha - p.base[size_t(station_index(p, p.plate_a))];
 	const float shift_b = hb - p.base[size_t(station_index(p, p.len - p.plate_b))];
-	const float slope_a = (base_at(p, p.plate_a + p.step) - base_at(p, p.plate_a - p.step)) / (2.f * p.step);
-	const float slope_b = (base_at(p, p.len - p.plate_b + p.step) - base_at(p, p.len - p.plate_b - p.step)) / (2.f * p.step);
+	// no plate at a cut of the road: the line runs through it, with nothing flat to take the slope off against
+	const float slope_a = p.plate_a > 0.f ? (base_at(p, p.plate_a + p.step) - base_at(p, p.plate_a - p.step)) / (2.f * p.step) : 0.f;
+	const float slope_b = p.plate_b > 0.f ? (base_at(p, p.len - p.plate_b + p.step) - base_at(p, p.len - p.plate_b - p.step)) / (2.f * p.step) : 0.f;
 	// The transition is sized from the correction it carries.
 	auto tie_for = [&](float shift) {
 		return std::min(std::max(TIE_MIN_M, p.len * TIE_ROAD_SHARE), std::max(TIE_REACH_M, std::fabs(shift) * CURVE_PEAK / (t.ground * 0.5f)));

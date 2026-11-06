@@ -68,6 +68,7 @@ run_gates() { watch_job gates "$EV/gates.txt" bash -c "\"$PY\" tools/gates/run_g
 J="${BUILD_J:-$(nproc)}" # every core: ninja keeps them busy, the build is the long pole
 build_one() { # <release|debug>
 	local d=native/build-win; [ "$1" = debug ] && d="$d-debug"
+	bash "$(dirname "${BASH_SOURCE[0]}")/free_dll.sh"
 	watch_job "build-$1" "$EV/build-$1.txt" bash -c "cmake --build $d -j $J > \"$EV/build-$1.txt\" 2>&1"
 }
 run_builds() {

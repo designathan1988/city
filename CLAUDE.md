@@ -558,6 +558,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `project/tests/visual/pair_camera.gd` — a câmera exata de uma foto do 4.0: pose e lente
 - `project/tests/visual/capture_ui.gd` · `project/tests/visual/capture_ui.tscn` · `project/tests/visual/capture_shell.gd` · `project/tests/visual/capture_shell.tscn` — capturas da interface por cliques; a casca inteira nas vistas das fotos do 4.0
 - `project/tests/visual/ui_driver.gd` — entrada real (mouse/teclas) para as capturas
+- `project/tests/visual/live_driver.gd` — o jogo aberto na tela do jogador, dirigido de fora enquanto ele olha (`-- --live=<pasta>`): cidade nova, câmera, comandos, consultas e fotos
 - `project/tests/visual/frozen_plan.json` — as vistas congeladas do `tools/build/quick.sh` (`look --frozen`): o mundo parado, bit a bit
 - `project/tests/visual/look.gd` · `project/tests/visual/look.tscn` · `project/tests/visual/look_measure.gd` — o jogo olhado por um plano JSON (o formato do scripts/look.mjs do 4.0): setView, shot, wait, frames, hour, dispatch, query, key, click, drag; um plano serve aos dois jogos; as medidas dos servidores do Godot (quadros, uso, render, passes da GPU)
 - `project/ui/builder_strip.gd` · `project/ui/model_shelf.gd` — seções e cartões das abas do Construir; prateleira de Modelos (busca, categorias, fotos, salvar e remover)
@@ -600,6 +601,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/assets/make_pole_parts.py` — os postes de cada estilo em streets.json: o urbano (cruzeta sobre a rua, B1, e o rack S1) e o rural (cruzeta no topo, N1), os assentos dos fios e a altura da luz, das medidas do 4.0 (CELESC E-313.0002)
 - `tools/build/build.sh` · `tools/build/run_tests.sh` · `tools/build/hidden_run.ps1` — compilar, testar (todas as cenas, com tempo-limite), capturar, exportar e empacotar; rodar o jogo num desktop do Windows à parte (testes e capturas nunca abrem janela na tela do usuário)
+- `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
 - `tools/build/quick.sh` · `tools/build/runq.sh` · `tools/build/runq_jobs.sh` · `tools/build/check_scripts.gd` · `tools/build/gates_changed.sh` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a verificação de uma mudança num comando; fila de jobs vigiados (ciclo `fast`: scripts, DLL de debug, o teste afetado); todo GDScript compilado de uma vez; os gates dos arquivos mudados; a diferença de duas rodadas de fotos; a renomeação para o inglês das pastas de ferramentas (pendente: o plano sem `--apply`)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —
   código duplicado; camadas, padrões proibidos e órfãos; schemas; números mágicos, cópias de dados, donos e estado na UI

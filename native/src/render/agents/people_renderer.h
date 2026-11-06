@@ -11,6 +11,7 @@
 #include "render/view_cull.h"
 #include "sim/state/city_state.h"
 
+#include <cmath>
 #include <vector>
 
 namespace city {
@@ -24,6 +25,7 @@ inline Pose lerp_pose(const Pose &a, const Pose &b, float t) {
 	V2 f = V2(lerpf(a.fx, b.fx, t), lerpf(a.fz, b.fz, t)).norm();
 	p.fx = f.x;
 	p.fz = f.y;
+	p.rise = lerpf(a.rise, b.rise, t);
 	return p;
 }
 
@@ -36,7 +38,9 @@ inline Pose record_pose(const AgentRecord &rec, const PoseSample &at) {
 // `seed` goes in the instance colour's alpha (a vehicle's occupants, agents.gdshader); the colour stays white.
 inline void push_agent(godot::PackedFloat32Array &buf, const Pose &p, float scale, float c0, float c1, float c2, float c3,
 		float seed = 1.f) {
-	godot::Vector3 x(p.fz * scale, 0, -p.fx * scale), y(0, scale, 0), z(p.fx * scale, 0, p.fz * scale);
+	// on a grade the body turns about its own left: along the heading it rises, its up leans back
+	const float flat = scale / std::sqrt(1.f + p.rise * p.rise), up = flat * p.rise;
+	godot::Vector3 x(p.fz * scale, 0, -p.fx * scale), y(-p.fx * up, flat, -p.fz * up), z(p.fx * flat, up, p.fz * flat);
 	mm_push(buf, x, y, z, godot::Vector3(p.x, p.y, p.z), godot::Color(1, 1, 1, seed), c0, c1, c2, c3);
 }
 

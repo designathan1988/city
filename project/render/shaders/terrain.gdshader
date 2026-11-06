@@ -64,6 +64,7 @@ group_uniforms;
 // Some are required for editor functions
 global uniform float map_grid;
 varying vec3 v_vertex;
+varying vec3 v_ground_n; // the ground's normal at the vertices, interpolated: what slope and light read, with no step at each cell
 varying float v_vertex_xz_dist;
 varying vec3 v_camera_pos;
 
@@ -176,6 +177,15 @@ void vertex() {
 			h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
 		}
 		v_vertex.y = v_region.z < 0 ? past_map_y_m : h;
+		// past the map a vertex stands at its end: the clipmap follows the camera, and the wall it makes must not
+		if (v_region.z < 0) v_vertex.xz = clamp(v_vertex.xz, vec2(-map_half), vec2(map_half));
+		float cells = max(1.0, scale * _vertex_density);
+		vec2 at = round(UV);
+		ivec3 left = get_index_coord(at - vec2(cells, 0.0)), right = get_index_coord(at + vec2(cells, 0.0));
+		ivec3 back = get_index_coord(at - vec2(0.0, cells)), ahead = get_index_coord(at + vec2(0.0, cells));
+		v_ground_n = min(min(left.z, right.z), min(back.z, ahead.z)) < 0 ? vec3(0.0, 1.0, 0.0)
+				: vec3(texelFetch(_height_maps, left, 0).r - texelFetch(_height_maps, right, 0).r, 2.0 * cells * _vertex_spacing,
+				texelFetch(_height_maps, back, 0).r - texelFetch(_height_maps, ahead, 0).r);
 	}
 
 	// Convert model space to view space w/ skip_vertex_transform render mode
@@ -200,10 +210,11 @@ void fragment() {
 	ivec3 i0 = get_index_coord(index_id + vec2(0, 1));
 	ivec3 i2 = get_index_coord(index_id + vec2(1, 0));
 	ivec3 i3 = get_index_coord(index_id);
-	float h3 = texelFetch(_height_maps, i3, 0).r;
-	float h2 = texelFetch(_height_maps, i2, 0).r;
-	float h0 = texelFetch(_height_maps, i0, 0).r;
-	vec3 w_normal = normalize(vec3(h3 - h2, _vertex_spacing, h3 - h0));
+	vec3 w_normal = normalize(v_ground_n);
+	vec2 past = abs(v_vertex.xz);
+	if (max(past.x, past.y) >= map_half - 0.5) { // the wall at the end of the map: rock on its own plane
+		w_normal = past.x > past.y ? vec3(sign(v_vertex.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(v_vertex.z));
+	}
 	ivec3 i1 = get_index_coord(index_id + vec2(1, 1));
 	vec2 fc = fract(uv);
 	PaintCorner p00 = read_paint(i3), p10 = read_paint(i2), p01 = read_paint(i0), p11 = read_paint(i1);
