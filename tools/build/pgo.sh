@@ -7,7 +7,7 @@ cd "$ROOT" || exit 2
 export MINGW="${MINGW:-C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64}"
 GODOT="C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe"
 OUT="$ROOT/dist/pgo"
-BUILD="$ROOT/native/build-win-pgo"
+BUILD="$ROOT/dist/build-pgo"
 SCENES="tests/perf/camera_pan tests/core/edit_fuzz_test tests/core/road_commands_test tests/core/people_test tests/core/yard_test"
 DEADLINE_S=900
 win() { cygpath -m "$1"; }
