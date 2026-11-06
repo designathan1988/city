@@ -119,6 +119,17 @@ describe('translate', () => {
     assert.doesNotMatch(file('yard_types.h'), /\bnamed\(\);/);
   });
 
+  it('makes an interface classes implement an abstract struct, a value of it read through an accessor', () => {
+    const types = file('yard_types.h');
+    assert.match(types, /struct Gauge \{\n\tvirtual ~Gauge\(\) = default;/, types);
+    assert.match(types, /virtual float get_level\(\) = 0;/);
+    assert.match(types, /virtual float read\(float scale\) = 0;/);
+    assert.match(types, /struct Tank : std::enable_shared_from_this<Tank>, Gauge \{/);
+    assert.match(types, /float get_level\(\) override \{ return this->level; \}/);
+    assert.match(types, /float get_level\(\) override \{ return this->level\(\); \}/);
+    assert.match(file('yard_query.cpp'), /g->get_level\(\) \+ g->read\(scale\)/);
+  });
+
   it('checks classes against the source with no game, and catches a wrong member', (t) => {
     const cxx = process.env['CONVERTER_CXX'];
     if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');

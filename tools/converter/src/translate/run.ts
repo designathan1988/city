@@ -205,7 +205,7 @@ export function translate(input: TranslateInput): TranslationResult {
   const exportedClass = (node: TS.ClassDeclaration): boolean => (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword) && !node.typeParameters?.length;
   const classes = new Map<TS.ClassDeclaration, ApiClass & { members: ApiClass['members'][number][] }>();
   for (const f of c.functions.values()) {
-    if (!f.owner || !exportedClass(f.owner.node) || c.dropped.has(f)) continue;
+    if (!f.owner || f.owner.abstract || !exportedClass(f.owner.node as TS.ClassDeclaration) || c.dropped.has(f)) continue;
     const row = classes.get(f.owner.node) ?? { source: f.owner.source, module: f.module, struct: f.owner.struct, made: { params: [] }, members: [] };
     classes.set(f.owner.node, row);
     const name = f.source.slice(f.source.indexOf('.') + 1);
