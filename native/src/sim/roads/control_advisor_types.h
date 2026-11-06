@@ -21,7 +21,7 @@ struct ControlAdvisor : std::enable_shared_from_this<ControlAdvisor> {
 	js::Map<int64_t, AutoControl> choices;
 	js::Map<int64_t, float> changed_at;
 	float since = 0;
-	static inline const int every = 10;
+	static inline const int EVERY = 10;
 	std::optional<AutoControl> choice(int64_t node);
 	bool tick(float dt);
 	bool evaluate(int64_t node, float major, float minor_max, float minor_total, AutoControl initial, float now, const Tuning &tn);

@@ -368,3 +368,5 @@ Resultado de 359 módulos, os que têm função ou classe:
 Causa lida no código, sem repetir a falha: `camera_input_test` esperava o fim do deslize por 1,2 s de relógio (agora `_glide_settled`, por `rig.motion.moving()`), e `lab_test` exigia o efeito de uma só janela de GPU (agora mede de novo até uma janela limpa, `CLEAN_TRIES`, porque com a placa dividida o painel responde "dentro do ruído" com razão).
 
 `tools/converter-slice/out` (91 GB de fotos de replay, ignorado pelo git) saiu de `tools/` para `city-worktrees/converter-slice-out`, sem apagar nada: o gate completo o percorria.
+
+Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/process`, `tools/oracle-4.0`, `tools/converter`, `tools/ports` e `log/`, pastas que entraram no repositório sem entrar nas regras (`rules.json`, do usuário). No jogo restam 16: 10 `DADOS` (chaves novas sem schema), 6 `SEGUNDO_DONO` e `VALOR_DUPLICADO` por chaves novas de `agents.json` (`far_shadow`). O tradutor mantém em maiúsculas uma constante estática (`staticName`), que o gate lê como nome.

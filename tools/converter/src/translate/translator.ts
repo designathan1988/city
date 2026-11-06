@@ -8,7 +8,7 @@
 import type * as TS from 'typescript';
 import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './context.ts';
 import { holdsTypeParameter, paramType, render, type CppType, target } from './cpptype.ts';
-import { pascal, snake, upper } from './names.ts';
+import { pascal, snake, staticName, upper } from './names.ts';
 import { Emitter } from './statements.ts';
 
 export interface EmittedFunction {
@@ -591,7 +591,7 @@ export class Translator extends Emitter {
       const symbol = this.symbolOf(field.name);
       if (!symbol || !field.initializer) { this.fail(field, 'a static field with no value'); continue; }
       const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
-      this.c.types.structs.get(struct)!.methods!.push(`static inline const ${render(type)} ${snake(field.name.getText().replace(/^#/, ''))} = ${this.expr(field.initializer, type)};`);
+      this.c.types.structs.get(struct)!.methods!.push(`static inline const ${render(type)} ${staticName(field.name.getText())} = ${this.expr(field.initializer, type)};`);
     }
   }
 

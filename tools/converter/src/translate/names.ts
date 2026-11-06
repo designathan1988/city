@@ -6,6 +6,12 @@ const CPP_RESERVED = new Set(['auto', 'class', 'default', 'delete', 'new', 'oper
   'private', 'protected', 'public', 'virtual', 'inline', 'static', 'extern', 'typename', 'mutable', 'explicit', 'and', 'or',
   'not', 'xor', 'goto', 'asm', 'export', 'concept', 'requires']);
 
+/** A static field's name: a constant written in capitals stays one, as the target's rules read a constant by its capitals. */
+export function staticName(name: string): string {
+  const bare = name.replace(/^#/, '');
+  return /^[A-Z][A-Z0-9_]*$/.test(bare) ? bare : snake(bare);
+}
+
 export function snake(name: string): string {
   const out = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2').toLowerCase();
   return CPP_RESERVED.has(out) ? `${out}_` : out;
