@@ -181,6 +181,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_draft", "id", "spec"), &CityBuilder::body_draft);
 	ClassDB::bind_method(D_METHOD("body_apply", "id", "spec"), &CityBuilder::body_apply);
 	ClassDB::bind_method(D_METHOD("building_place", "id", "x", "z", "rot"), &CityBuilder::building_place);
+	ClassDB::bind_method(D_METHOD("build_reference", "triangles", "views", "x", "z", "rot", "replaced"), &CityBuilder::build_reference);
 	ClassDB::bind_method(D_METHOD("body_add_core", "id", "at", "kind"), &CityBuilder::body_add_core);
 	ClassDB::bind_method(D_METHOD("body_add_run", "id", "vol", "storey", "points", "spec"), &CityBuilder::body_add_run);
 	ClassDB::bind_method(D_METHOD("body_paint_at", "id", "vol", "side", "storey"), &CityBuilder::body_paint_at);

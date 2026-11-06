@@ -631,3 +631,8 @@ Ressalvas abertas:
 - `Volume::lift`: os emissores desenham um bloco pelo referencial dele, então um bloco erguido é o mesmo bloco num referencial mais alto (`block_frame`). O que mede altura fora deles passou a `Body::block_z`. Uma parede só some atrás de outro bloco se ele a cobre inteira na altura (`covered`).
 - No corte, cada ponto do piso, parede, núcleo e móvel fica na cota do bloco onde está (`lift_at`) e os blocos que se encontram em cotas diferentes ganham o lance entre eles (`level_flights`). Clicar onde um bloco vazio tirou a parede escolhe o vazio. Corpo gravado na versão 7.
 - Alças da cota e do relevo do vão escolhido.
+
+## 2026-11-06: a referência 3D
+- `ReferenceModel` abre .glb e .gltf em tempo de execução pelo `GLTFDocument`, translúcido, e alinha, gira, espelha, esmaece, esconde e tira. As fotos do levantamento saem de um SubViewport próprio com `DEBUG_DRAW_UNSHADED`; a profundidade não é um shader (a saída de 8 bits passa pela conversão sRGB): os triângulos são rasterizados em C++, o que também dá a mesma resposta em qualquer placa.
+- `body_survey.cpp`: blocos pelas faces de cima, base de outra cor, cor das paredes pela mediana do que é claro, cada vão pelo escuro que mostra, telhado de cima, lanterna no que passa do topo. `reference_test` escreve um .glb, lê de volta e confere: dois blocos, a torre sobre a base, parede #cc804d (0,8/0,5/0,3), um passo de desfazer.
+- Limite: o teste usa caixas; um modelo real de prédio não foi lido, porque não há um na máquina.

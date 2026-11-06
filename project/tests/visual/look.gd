@@ -120,6 +120,8 @@ func _step(step: Dictionary) -> void:
 		await ui.button(Vector2(step.letGo[0], step.letGo[1]), false)
 	elif step.has("drag"):
 		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
+	elif step.has("reference"):
+		_reference(step.reference)
 	elif step.has("until"):
 		await _until(step)
 	elif not await _measure_step(step):
@@ -150,6 +152,16 @@ func _measure_step(step: Dictionary) -> bool:
 	else:
 		return false
 	return true
+
+
+## A model translucent over the map: [file, x, z, scale].
+func _reference(args: Array) -> void:
+	var model := ReferenceModel.new()
+	add_child(model)
+	print("reference ", model.load_file(args[0]))
+	var at := _point([args[1], args[2]])
+	model.place_on(at.x, at.z, at.y, 0.0)
+	model.scale = Vector3.ONE * float(args[3])
 
 
 ## A plan's arguments for a command: {"at": [x, z]} the ground's point there, {"profile": id} a road class's index,

@@ -20,7 +20,8 @@ namespace city {
 namespace {
 constexpr int ALPHA_BITS = 8; // parse_hex_color packs RGBA; a body paints in RGB
 constexpr float PICK_REACH_M = 20000.f; // past any camera the game has
-constexpr int RGB_BASE = 16, RGB_DIGITS = 6;
+constexpr int RGB_BASE = 16;
+constexpr uint32_t RGB_LEAD = 1u << 24;
 } // namespace
 
 Dictionary CityBuilder::body_info(int id) const {
@@ -279,7 +280,7 @@ Dictionary CityBuilder::body_paint_at(int id, int vol, int side, int storey) con
 	auto own = v.storey_paint.find(b40::side_key(storey, side));
 	const b40::Paint &p = own != v.storey_paint.end() ? body.paints[size_t(own->second)] : body.wall_of(v);
 	d["finish"] = int(p.finish);
-	d["rgb"] = "#" + String::num_int64(int64_t(p.rgb), RGB_BASE).pad_zeros(RGB_DIGITS);
+	d["rgb"] = "#" + String::num_int64(int64_t(p.rgb | RGB_LEAD), RGB_BASE).substr(1); // the leading digit keeps the zeros of a dark red
 	return d;
 }
 

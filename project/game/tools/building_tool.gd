@@ -47,6 +47,7 @@ func exit() -> void:
 	hands.disarm()
 	handles.cancel()
 	handles.marks.get_parent().queue_free()
+	hands.reference.model.queue_free()
 	_box.queue_free()
 
 

@@ -91,6 +91,8 @@ func _every_tool(tool: BuildingTool, id: int) -> void:
 	for tab: String in tabs:
 		for section: Dictionary in tabs[tab].sections:
 			for spec: Dictionary in section.get("tools", []):
+				if spec.do == "ref_load": # the operating system's file dialog: nobody here to answer it
+					continue
 				if BuilderStrip.CHOICES.has(spec.do):
 					tool.act(spec)
 					continue

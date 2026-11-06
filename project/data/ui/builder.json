@@ -78,6 +78,20 @@
   "mass": {
    "sections": [
     {
+     "title_key": "builder.section.reference",
+     "tools": [
+      {"id": "refLoad", "do": "ref_load"},
+      {"id": "refBuild", "do": "ref_build"},
+      {"id": "refAlign", "do": "ref_align"},
+      {"id": "refTurn", "do": "ref_turn"},
+      {"id": "refFlip", "do": "ref_flip"},
+      {"id": "refFainter", "do": "ref_fade", "value": -1},
+      {"id": "refStronger", "do": "ref_fade", "value": 1},
+      {"id": "refToggle", "do": "ref_toggle"},
+      {"id": "refRemove", "do": "ref_remove"}
+     ]
+    },
+    {
      "title_key": "builder.section.floors",
      "tools": [
       {"id": "storey", "do": "storeys", "value": 1},

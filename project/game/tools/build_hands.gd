@@ -11,6 +11,7 @@ var furnish: FurnishHand
 var run: RunHand
 var brush: PaintBrush
 var primitive := {}
+var reference: ReferenceHand
 
 var _ctl: ToolController
 
@@ -21,6 +22,7 @@ func _init(ctl: ToolController) -> void:
 	furnish = FurnishHand.new(ctl)
 	run = RunHand.new(ctl)
 	brush = PaintBrush.new(ctl)
+	reference = ReferenceHand.new(ctl)
 
 
 func armed() -> bool:
@@ -60,6 +62,8 @@ func act(spec: Dictionary, value: int, picked: Dictionary, report: Callable) -> 
 			_tell(mass.armed(), spec)
 		"brush", "copy_style":
 			brush.act(spec, value, picked)
+		"ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove":
+			report.call(reference.act(spec, picked))
 		"finish":
 			return brush.act(spec, value, picked)
 		_:

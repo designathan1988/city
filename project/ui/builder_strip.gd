@@ -3,7 +3,8 @@
 class_name BuilderStrip
 extends RefCounted
 
-const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner"]
+const CHOICES := ["arm", "part", "gear", "flag", "flag_colour", "flag_slot", "scope", "paint_scope", "shape", "mass", "core", "piece", "run", "brush", "copy_style", "primitive", "points", "point_add", "point_remove", "bevel_corner",
+	"ref_load", "ref_build", "ref_align", "ref_turn", "ref_flip", "ref_fade", "ref_toggle", "ref_remove"]
 
 
 static func fill(strip: Container, tab_id: String, tools: ToolController) -> void:
