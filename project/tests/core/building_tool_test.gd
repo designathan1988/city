@@ -9,6 +9,7 @@ const LOOK_FROM_M := 80.0
 const BAY_BALCONY := 7
 const SCOPE_ROW := 1
 const WING_M := 6.0
+const MOVE_M := 4.0
 
 var failures := 0
 
@@ -36,6 +37,7 @@ func _ready() -> void:
 	_every_tool(tool, id)
 	_arm_and_click(tool, id)
 	_drag_a_wing(tool, id)
+	_moved_by_its_corner(tool, id)
 	tool.cancel()
 	tool.cancel()
 	_check(tool.picked.is_empty(), "Esc solta a seleção")
@@ -128,6 +130,17 @@ func _drag_a_wing(tool: BuildingTool, id: int) -> void:
 	CityStore.dispatch(&"undo")
 	tool.act(card)
 	_check(not tool.in_progress(), "o cartão de novo desarma")
+
+
+## The Move handle's edit: the building goes, one step of undo brings it back.
+func _moved_by_its_corner(tool: BuildingTool, id: int) -> void:
+	var d: Dictionary = CityStore.query(&"body_draft", [id, {}])
+	var r: Dictionary = CityStore.dispatch(&"building_place", [id, d.x + MOVE_M, d.z + MOVE_M, d.rot])
+	if not r.get("ok", false):
+		var why: String = r.get("error", "")
+		_check(why != "" and tr(why) != why, "mover responde: %s" % r)
+		return
+	_check(CityStore.dispatch(&"undo") and not CityStore.query(&"body_info", [id]).is_empty(), "mover desfeito")
 
 
 func _arm_and_click(tool: BuildingTool, id: int) -> void:

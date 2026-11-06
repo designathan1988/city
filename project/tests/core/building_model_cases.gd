@@ -10,6 +10,8 @@ const SLIDE_M := 3.0
 const SIDE := 1
 const CHAMFERED := 6
 const CHAMFERED_SIDES := 8
+const EYE_M := 100.0
+const SCALE := 1.2
 
 
 static func run(id: int, made: int, check: Callable) -> void:
@@ -26,6 +28,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 	var a: Vector3 = box[0]
 	_edit(id, made, "deslizar", &"body_slide_block", [id, vol, a, a + (box[1] - a).normalized() * SLIDE_M, false], check)
 	_points(id, vol, made, check)
+	_handles(id, vol, made, check)
 	check.call(_info(id).volumes.size() == blocks, "os blocos voltaram")
 
 
@@ -42,6 +45,24 @@ static func _points(id: int, vol: int, made: int, check: Callable) -> void:
 	r = CityStore.dispatch(&"body_move_point", [id, vol, 0, box[0] + out, false])
 	check.call(r.get("ok", false) and _info(id).digest != shaped, "ponto movido: %s" % r)
 	_back_to(made, id, check, "pontos")
+
+
+## What a handle asks: the handles stand where they should, a draft changes nothing, and the release is one step of undo.
+static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
+	var list: Array = CityStore.query(&"body_handles", [id, vol, true, Vector3.UP * EYE_M])
+	var kinds := {}
+	for h: Dictionary in list:
+		kinds[h.kind] = true
+	for kind: String in ["storeys", "side", "vertex", "move", "rotate", "scale"]:
+		check.call(kinds.has(kind), "há alça de %s" % kind)
+	var storeys: int = _info(id).volumes[vol].storeys
+	var spec := {"op": "storeys", "vol": vol, "count": storeys + 1}
+	var d: Dictionary = CityStore.query(&"body_draft", [id, spec])
+	check.call(not d.bytes.is_empty() and _info(id).digest == made, "o rascunho não muda o corpo")
+	_edit(id, made, "alça de andares", &"body_apply", [id, spec], check)
+	_edit(id, made, "alça da face", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": OUT_M}], check)
+	_edit(id, made, "alça de ala", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": BRICK_M, "wing": true}], check)
+	_edit(id, made, "alça de escala", &"body_apply", [id, {"op": "scale", "factor": SCALE}], check)
 
 
 static func _edit(id: int, made: int, what: String, command: StringName, args: Array, check: Callable) -> void:

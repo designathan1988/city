@@ -25,6 +25,7 @@ var hand := {}
 var turn := 0.0
 
 var hands: BuildHands
+var handles: HandleDrag
 
 var _box: SelectionBox
 var _ghost := 0
@@ -35,6 +36,7 @@ var _last := Vector3.INF
 
 func enter() -> void:
 	hands = BuildHands.new(ctl)
+	handles = HandleDrag.new(ctl)
 	_box = SelectionBox.new()
 	ctl.add_child(_box)
 	ctl.hint.emit(tr("hint.builder.select"), true)
@@ -43,6 +45,8 @@ func enter() -> void:
 func exit() -> void:
 	_put_down()
 	hands.disarm()
+	handles.cancel()
+	handles.marks.get_parent().queue_free()
 	_box.queue_free()
 
 
@@ -102,6 +106,8 @@ func click(p: Vector3) -> void:
 		return
 	if hands.click(p, picked, _report):
 		return
+	if armed == NO_BAY and part.is_empty() and handles.press():
+		return
 	var cam: Camera3D = ctl.rig.camera
 	var had := picked
 	pick(cam.project_ray_origin(ctl.pointer), cam.project_ray_normal(ctl.pointer))
@@ -113,11 +119,17 @@ func click(p: Vector3) -> void:
 
 func drag(p: Vector3) -> void:
 	hands.mass.move(p)
+	handles.move(Input.is_key_pressed(KEY_SHIFT))
 
 
 func release(p: Vector3) -> void:
 	if hands.mass.dragging():
 		_report(hands.mass.finish(p))
+		_show()
+	elif handles.dragging():
+		_report(handles.finish())
+		if handles.building() != picked.id:
+			picked = {"id": handles.building(), "volume": 0, "side": -1, "storey": 0, "level": 0, "bay": NO_BAY}
 		_show()
 
 
@@ -197,6 +209,8 @@ func act(spec: Dictionary) -> void:
 		"inside", "floor":
 			hands.furnish.inside(spec.do, value, picked)
 			return
+		"points", "point_add", "point_remove", "bevel_corner":
+			_report(handles.act(spec, value, picked))
 		_:
 			if picked.is_empty():
 				ctl.hint.emit(tr("hint.builder.select"), false)
@@ -214,6 +228,7 @@ func _report(r: Dictionary) -> void:
 
 
 func _show() -> void:
+	handles.refresh(picked)
 	if picked.is_empty():
 		_box.clear()
 		ctl.hint.emit(tr("hint.builder.select"), true)

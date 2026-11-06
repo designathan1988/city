@@ -42,6 +42,10 @@ public:
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
 	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
+	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye) const;
+	godot::Dictionary body_draft(int id, const godot::Dictionary &spec) const;
+	godot::Dictionary body_apply(int id, const godot::Dictionary &spec);
+	godot::Dictionary building_place(int id, double x, double z, double rot);
 	godot::Dictionary body_extrude_face(int id, int vol, int side, double distance);
 	godot::Dictionary body_extrude_block(int id, int vol, int side, double depth);
 	godot::Dictionary body_inset_face(int id, int vol, int side, double depth);

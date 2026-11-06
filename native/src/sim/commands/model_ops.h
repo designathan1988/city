@@ -30,7 +30,8 @@ PlaceSnap snap_place(const CityState &s, float w, float d, double x, double z, d
 
 // Why the body cannot stand with the middle of its front at (ax, az): a strings.csv key, or "".
 std::string place_problem(const CityState &s, const b40::Body &body, double ax, double az, double rot);
-EditResult place_body(CityState &s, const b40::Body &body, double ax, double az, double rot, int fn, int zone);
+// `same`: the record it was, for a building that only moved: it keeps its seed, its style and its age, so it looks as it looked.
+EditResult place_body(CityState &s, const b40::Body &body, double ax, double az, double rot, int fn, int zone, const Building *same = nullptr);
 
 // `other` (its lot framed by `of`) joins `into` (framed by `at`): its blocks keep their walls and roofs and its parts stay where they
 // stand; nothing is cut.

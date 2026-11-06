@@ -58,6 +58,16 @@ struct BlockWall {
 };
 BlockWall block_wall(const b40::Volume &v, int side);
 std::set<int> riding_on(const b40::Body &b, int vol); // a block and what stands on it, and on that
+// What a drag on a handle asks (city_core_handles.cpp): `kind` the handle's, the rest what it reads.
+struct HandleEdit {
+	std::string kind;
+	int vol = 0, side = 0, index = 0, count = 0;
+	float along = 0, factor = 1, x = 0, y = 0;
+	bool wing = false, snap = true;
+};
+std::string op_handle(b40::Body &b, const Tuning &t, const HandleEdit &e);
+std::string op_scale_plan(b40::Body &b, const Tuning &t, float factor, bool snap);
+EditResult move_building(CityState &s, int id, double x, double z, double rot);
 struct PrimitiveSpec {
 	int shape = 0, roof = 0;
 	float pitch = 0;

@@ -621,3 +621,8 @@ Ressalvas abertas:
 - Formas básicas: a primeira versão pedia um lote e foi recusada (`refuse.lot.small`): no 4.0 ela é um corpo, não um lote. Agora é um corpo de um bloco pelo `place_body`, com a planta e o telhado da carta. No telhado e na parede é um bloco a mais.
 - Diferenças de propósito: copiar e girar levam junto o que está no telhado; no 4.0 o que está no telhado fica para trás.
 - Fotos em `project/dist/rq/model`: as oito formas, bloco girado 15°, chanfrado, tijolo com face recuada, forma sobre recuo e na parede.
+
+## 2026-11-06: as alças do bloco
+- `body_handles` diz onde ficam (faces, pontos, andares, mover, girar, escalar; os três últimos no canto mais perto do olho), `body_draft` faz o corpo numa cópia para o fantasma, `body_apply` edita ao soltar, `building_place` leva o prédio inteiro e funde se pousar em outro (`place_body`). `HandleMarks` desenha sobre a imagem pela projeção da câmera.
+- Provado com entrada real (`look.gd`: `tap`, `press`, `moveTo`, `letGo`): face puxada com o fantasma e a etiqueta (10,3 m), andares, mover e girar. Fotos em `project/dist/rq/hand*`.
+- As fotos acharam: girar trocava a cara do prédio, porque `place_body` tira semente da posição. Um prédio movido guarda semente, estilo e idade.

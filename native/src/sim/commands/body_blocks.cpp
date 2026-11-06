@@ -28,6 +28,16 @@ constexpr int PRIMITIVE_ZONE = 1;
 
 float on_grid(const Tuning &t, float x) { return std::round(x / float(t.build_grid_m)) * float(t.build_grid_m); }
 
+// The body of a building that stands, or why not.
+bool standing(const CityState &s, int id, Body &body, EditResult &r) {
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) {
+		r.error = NO_BLOCK;
+		return false;
+	}
+	record_body(s.buildings.designs, s.buildings.items[size_t(id)], body);
+	return true;
+}
+
 // The biggest piece of `box` standing on the block: a mass on a roof is kept to the roof.
 Ring on_roof(const Ring &box, const Volume &v) {
 	PlanRing a, c;
@@ -78,6 +88,61 @@ std::string op_add_mass(Body &b, const Tuning &t, int vol, Point2 from, Point2 t
 	return "";
 }
 
+// The whole plan bigger or smaller about its middle (opScalePlan): the width lands on the grid, so walls still meet.
+std::string op_scale_plan(Body &b, const Tuning &t, float factor, bool snap) {
+	if (b.volumes.empty() || factor <= 0) return NO_BLOCK;
+	float x0 = std::numeric_limits<float>::max(), y0 = x0, x1 = -x0, y1 = -x0;
+	for (const Volume &v : b.volumes)
+		for (const Point2 &p : ring_of(v)) {
+			x0 = std::min(x0, p.x);
+			y0 = std::min(y0, p.y);
+			x1 = std::max(x1, p.x);
+			y1 = std::max(y1, p.y);
+		}
+	const float width = x1 - x0, grid = float(t.build_grid_m), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+	const float k = snap ? std::max(grid, std::round(width * factor / grid) * grid) / width : factor;
+	for (Volume &v : b.volumes) {
+		v.x = cx + (v.x - cx) * k;
+		v.y = cy + (v.y - cy) * k;
+		v.w *= k;
+		v.d *= k;
+		v.reliefs.clear();
+		for (RoofPart &p : v.gear) {
+			p.x = cx + (p.x - cx) * k;
+			p.y = cy + (p.y - cy) * k;
+		}
+		for (FaceGeometry &f : v.faces) f.bays = -1;
+	}
+	for (LotElement &e : b.elements) {
+		e.x = cx + (e.x - cx) * k;
+		e.y = cy + (e.y - cy) * k;
+	}
+	return "";
+}
+
+std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
+	if (e.kind.empty()) return "";
+	if (e.kind == "storeys") return op_set_storeys(b, t, e.vol, e.count);
+	if (e.kind == "vertex") return op_move_point(b, t, e.vol, e.index, e.x, e.y, e.snap);
+	if (e.kind == "scale") return op_scale_plan(b, t, e.factor, e.snap);
+	if (e.kind != "side") return NO_BLOCK;
+	if (e.wing) return e.along >= float(t.build_min_side_m) ? op_add_wing(b, t, e.vol, e.side, e.along, 0) : "";
+	const float grid = float(t.build_grid_m), along = e.snap ? std::round(e.along / grid) * grid : e.along;
+	return along != 0 ? op_extrude_face(b, t, e.vol, e.side, along) : "";
+}
+
+// Out of where it stood and into the new place, as a body lands: on another building it welds, and it may leave a road behind it.
+EditResult move_building(CityState &s, int id, double x, double z, double rot) {
+	EditResult r;
+	Body body;
+	if (!standing(s, id, body, r)) return r;
+	const Building rec = s.buildings.items[size_t(id)];
+	r.error = place_problem(s, body, x, z, rot);
+	if (!r.error.empty()) return r;
+	j_remove_building(s, id);
+	return place_body(s, body, x, z, rot, rec.fn, rec.zone, &rec);
+}
+
 std::string op_set_block_mode(Body &b, int vol, int mode) {
 	if (vol < 0 || vol >= int(b.volumes.size()) || mode < BLOCK_SOLID || mode > BLOCK_XOR) return NO_BLOCK;
 	b.volumes[size_t(vol)].mode = BlockMode(mode);
@@ -121,13 +186,9 @@ std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int sto
 // The block and what stands on it taken out into a building of its own, in the same place, as one step of undo.
 EditResult detach_block(CityState &s, int id, int vol) {
 	EditResult r;
-	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) {
-		r.error = NO_BLOCK;
-		return r;
-	}
-	const Building rec = s.buildings.items[size_t(id)];
 	Body body;
-	record_body(s.buildings.designs, rec, body);
+	if (!standing(s, id, body, r)) return r;
+	const Building rec = s.buildings.items[size_t(id)];
 	if (vol < 0 || vol >= int(body.volumes.size())) {
 		r.error = NO_BLOCK;
 		return r;

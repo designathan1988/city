@@ -105,7 +105,11 @@
       {"id": "insetFace", "do": "inset_face", "value": 60},
       {"id": "offsetOut", "do": "offset", "value": 100},
       {"id": "offsetIn", "do": "offset", "value": -100},
-      {"id": "bevelAll", "do": "bevel", "value": 200}
+      {"id": "bevelAll", "do": "bevel", "value": 200},
+      {"id": "pointMode", "do": "points"},
+      {"id": "bevelCorner", "do": "bevel_corner", "value": 200},
+      {"id": "vertexAdd", "do": "point_add"},
+      {"id": "vertexRemove", "do": "point_remove"}
      ]
     },
     {

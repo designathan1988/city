@@ -11,6 +11,13 @@
 
 namespace city {
 
+// The body of a building that stands; false when there is none by that id.
+inline bool body_of_record(const CityState &s, int id, b40::Body &body) {
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return false;
+	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	return true;
+}
+
 inline V2 lot_point(const CityState &s, int id, const godot::Vector3 &at) {
 	if (id < 0 || id >= int(s.buildings.items.size())) return V2(0, 0);
 	b40::LotFrame f = b40::lot_frame(s.buildings.items[id]);

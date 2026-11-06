@@ -95,7 +95,7 @@ std::string place_problem(const CityState &s, const Body &body, double ax, doubl
 	return hi - lo > float(t.build_max_plinth_m) ? "building.problem.slope" : "";
 }
 
-EditResult place_body(CityState &s, const Body &src, double ax, double az, double rot, int fn, int zone) {
+EditResult place_body(CityState &s, const Body &src, double ax, double az, double rot, int fn, int zone, const Building *same) {
 	EditResult r;
 	if (fn < 0 || fn >= FN_COUNT || zone < 1 || zone >= ZONE_CODES) {
 		r.error = "tool.failed";
@@ -133,6 +133,11 @@ EditResult place_body(CityState &s, const Body &src, double ax, double az, doubl
 	b.seed = hash_combine(uint32_t(int32_t(std::lround(ax / SEED_GRID_M))), uint32_t(int32_t(std::lround(az / SEED_GRID_M))) ^ PLACE_SALT);
 	b.style = uint16_t(b.seed & BUILDING_AUTO_STYLE_MASK);
 	b.built = s.clock.minutes.load();
+	if (same != nullptr) {
+		b.seed = same->seed;
+		b.style = same->style;
+		b.built = same->built;
+	}
 	b.body = s.buildings.designs.edited->add(std::move(body));
 	r.placed = j_add_building(s, b);
 	const float reach = std::max(b.w, b.d);
