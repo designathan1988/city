@@ -3,6 +3,8 @@
 // one surface to a RenderingServer mesh.
 #include "render/buildings/shell.h"
 
+#include "render/mesh_order.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -262,7 +264,7 @@ int64_t Shell::bytes(bool with_uv2) const {
 			(rooms ? pos.size() * CUSTOM_ARRAYS * sizeof(uint32_t) : 0));
 }
 
-void Shell::commit_to(const RID &mesh, bool with_uv2) const {
+void Shell::commit_to(const RID &mesh, bool with_uv2, bool blends) const {
 	if (idx.empty()) return;
 	auto copy = [](auto &dst, const auto &src) {
 		dst.resize(int64_t(src.size()));
@@ -273,6 +275,7 @@ void Shell::commit_to(const RID &mesh, bool with_uv2) const {
 	PackedVector2Array pu, pu2;
 	PackedInt32Array pi;
 	copy(pv, pos); copy(pn, nrm); copy(pc, col); copy(pu, uv); copy(pi, idx);
+	if (!blends) order_triangles(pi.ptrw(), size_t(pi.size()), pos.size());
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;

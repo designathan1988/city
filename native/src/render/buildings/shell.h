@@ -147,7 +147,7 @@ struct Shell {
 	void pane(const Basis &f, float a0, float a1, float b0, float b1, float c, const PaneLook &look);
 	// A far wall rectangle carrying painted windows: uv = (bays, storeys) at its corners.
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w);
-	void commit_to(const godot::RID &mesh, bool with_uv2 = true) const;
+	void commit_to(const godot::RID &mesh, bool with_uv2 = true, bool blends = false) const; // a surface that blends keeps its order
 	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 

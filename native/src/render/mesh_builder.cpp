@@ -1,6 +1,8 @@
 // Primitive emitters. Smooth normals only for blobs; everything else is flat shaded (toon look).
 #include "render/mesh_builder.h"
 
+#include "render/mesh_order.h"
+
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -133,7 +135,9 @@ static Array surface_arrays(const MeshBuilder &b) {
 	arr[Mesh::ARRAY_COLOR] = b.c;
 	arr[Mesh::ARRAY_TEX_UV] = b.uv;
 	arr[Mesh::ARRAY_TEX_UV2] = b.uv2;
-	arr[Mesh::ARRAY_INDEX] = b.idx;
+	PackedInt32Array ordered = b.idx;
+	order_triangles(ordered.ptrw(), size_t(ordered.size()), size_t(b.v.size()));
+	arr[Mesh::ARRAY_INDEX] = ordered;
 	return arr;
 }
 

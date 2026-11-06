@@ -256,6 +256,14 @@ Rodada completa com a última mudança, sobre o `origin/main` `2e80e670`: 28/28.
 - Causa 6, filtro da sombra: `medium`, `high` e `ultra` usavam Soft Ultra, 32 amostras por pixel de todo o que recebe sol (`renderer_scene_render_rd.cpp`; o padrão do Godot, Soft Low, usa 4), e a largura da borda estava presa ao filtro. `Daylight.set_filter` mantém a largura em qualquer filtro; os três níveis passam a Soft High, 16 amostras. Fotos em 4 vistas com a mesma largura: 16 indistinguível de 32, ampliado; 8 já mostra grão.
 - Achado: as medidas deste ciclo são do `medium` (`tests_preset`), mas numa RTX 3060 o `auto` escolhe `ultra`, com oclusão de tela, SMAA, pós-processamento e 4x a vegetação. Ninguém mediu o `ultra` em `perto`: o quadro real do jogador nesta máquina não é o da tabela.
 
+- Causa 7, ordem dos triângulos (C++): as malhas iam à GPU na ordem em que foram montadas, e o cache de vértices prontos errava, na imagem e nas 4 cascatas. `render/mesh_order.cpp` reordena com `meshopt_optimizeVertexCache`, no job que assa a malha, nos dois caminhos únicos (`MeshBuilder`, `Shell`); a superfície que mistura (`sheer`) mantém a ordem. Fotos congeladas em 7 vistas contra a versão anterior: 7 de 7 iguais; carros de perto com vidro íntegros. Ganho não medido, por ordem do usuário.
+- Assembly não entra: o quadro é limitado pela GPU, e assembly só acelera a CPU. O que a CPU pode fazer pela GPU é entregar menos e melhor (causas 1, 2 e 7).
+
+- Causa 8, oclusão: `view_at` e a projeção rodavam matriz 4x4 inteira 37 vezes por pixel, e o `pow` de cada passo era refeito em cada fatia. Só os termos de uma perspectiva agora, passos calculados uma vez. Prova: a oclusão ligada afeta 50 a 380 mil pixels por foto; a conta nova muda 63 a 1.786 de 2 milhões (até 0,09%), por arredondamento nos limites de espessura.
+- Correção de leitura: `look` usa sempre o nível `high` (`PairCamera.PRESET`) e ignora `--preset=`, que só `capture_landscape` lê. As fotos congeladas deste ciclo são do `high`, não do `medium`; `camera_pan` e a suíte é que rodam no `tests_preset`.
+
+- Causa 9, luz entre prédios: a normal de `canyon_keep` fazia 4 reconstruções com 2 matrizes inteiras cada, até o mundo, por pixel. Agora em espaço de vista, pelos termos da perspectiva, com uma rotação só no fim. Fotos: 0 a 111 pixels de 2 milhões. As 24 leituras do horizonte continuam; levá-las a um job em C++ fica a fazer.
+
 ## Como trabalhar (o que funcionou)
 - **Prova visual é do elemento, de perto e de vários ângulos**, nunca um quadro em que ele ocupa pouco.
 - **Primeiro `tools/build/quick.sh`** (`--all` antes do commit): digest igual ao golden = otimização exata; foto só para o que ele não vê.
