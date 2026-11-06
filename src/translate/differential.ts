@@ -85,6 +85,10 @@ class Scenario {
   readonly #values: DifferentialInput['valueTypes'];
   /** Ids issued so far (an edit that returns an integer issues one): the range ids are drawn from. */
   issued = 0;
+  /** No state to make values from: a struct is written field by field. */
+  plain = false;
+  /** The call being drawn answers an integer: a fraction is no value of its domain. */
+  whole = false;
   /** Points the scenario has made (vertices, positions): later points are drawn near them, so queries find things. */
   readonly #points: [number, number][] = [];
 
@@ -112,8 +116,8 @@ class Scenario {
       const v = /id|track|segment|stop/i.test(name) || name === '' ? this.int(this.issued + 3) : this.int(25);
       return { js: String(v), cpp: String(v) };
     }
-    // Multiples of 0.5: exact in float and double.
-    const v = (this.int(1201) - 600) / 2;
+    // Multiples of 0.5: exact in float and double; whole where the call gives an integer back (an id, a count)
+    const v = this.whole ? this.int(601) - 300 : (this.int(1201) - 600) / 2;
     const reach = /reach|radius|dist/i.test(name);
     const r = reach ? this.int(241) / 2 : v;
     return { js: String(r), cpp: type.k === 'real' ? realLiteral(String(r), type.name) : String(r) };
@@ -132,6 +136,10 @@ class Scenario {
         const s = this.pick(['Alpha', 'Beta', 'Gamma', 'Delta', 'HTTP://a-b-c', '(alpha-beta)', '', 'a-']);
         return { js: JSON.stringify(s), cpp: `std::string(${JSON.stringify(s)})` };
       }
+      case 'dynamic': {
+        const n = this.int(41) - 20;
+        return this.pick([{ js: String(n), cpp: `js::Value(${n})` }, { js: '"ab"', cpp: 'js::Value("ab")' }, { js: 'null', cpp: 'js::Value(nullptr)' }, { js: 'true', cpp: 'js::Value(true)' }]);
+      }
       case 'set': {
         const items = Array.from({ length: this.int(4) }, () => this.value(type.of, name, state));
         return { js: `new Set([${items.map((x) => x.js).join(', ')}])`, cpp: `${render(type)}(std::vector<${render(type.of)}>{${items.map((x) => x.cpp).join(', ')}})` };
@@ -146,7 +154,8 @@ class Scenario {
         return this.value(type.of, name, state);
       case 'vector': {
         if (type.of.k === 'struct' && this.#values[type.of.name]) return this.#walk(type.of.name);
-        const n = 2 + this.int(3);
+        // the light check's indexes are drawn apart from its lists: long enough to hold them
+        const n = this.plain ? 30 : 2 + this.int(3);
         const items = Array.from({ length: n }, () => this.value(type.of, name, state));
         return { js: `[${items.map((i) => i.js).join(', ')}]`, cpp: `${render(type)}{${items.map((i) => i.cpp).join(', ')}}` };
       }
@@ -200,7 +209,7 @@ class Scenario {
   #struct(name: string, hint: string, state: string): Arg {
     if (this.#values[name]) return this.#pointArg(name, this.#point());
     // A struct another public function makes from the state (a rail graph): made by that function.
-    const maker = this.#t.api.find((f) => !f.edit && f.ret.k === 'struct' && f.ret.name === name);
+    const maker = this.plain ? undefined : this.#t.api.find((f) => !f.edit && f.ret.k === 'struct' && f.ret.name === name);
     if (maker) {
       const args = maker.params.slice(1).map((p) => this.value(p.type, p.name, state));
       return { js: `${jsName(maker)}(state${args.map((a) => `, ${a.js}`).join('')})`, cpp: `${maker.cpp}(state${args.map((a) => `, ${a.cpp}`).join('')})` };
@@ -253,6 +262,8 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const T *v);`,
     `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v);`,
     `void put(std::ostream &o, const js::Value &v);`,
+    `template <class R, class... A> void put(std::ostream &o, const std::function<R(A...)> &) { o << "null"; }`,
+    `template <class A, class B> void put(std::ostream &o, const std::pair<A, B> &v);`,
     `template <class K, class V> void put(std::ostream &o, const js::Map<K, V> &v);`,
     `template <class T> void put(std::ostream &o, const js::Set<T> &v);`);
   lines.push(...t.enums.map(enumPut), ...t.structs.map(structPut));
@@ -265,6 +276,7 @@ function cppPrinter(t: TranslationResult, values: DifferentialInput['valueTypes'
     `template <class T> void put(std::ostream &o, const std::optional<T> &v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const T *v) { if (v) put(o, *v); else o << "null"; }`,
     `template <class T> void put(std::ostream &o, const std::shared_ptr<T> &v) { if (v) put(o, *v); else o << "null"; }`,
+    `template <class A, class B> void put(std::ostream &o, const std::pair<A, B> &v) { o << "["; put(o, v.first); o << ","; put(o, v.second); o << "]"; }`,
     `void put(std::ostream &o, const js::Value &v) {
 	using Kind = js::Value::Kind;
 	if (v.nullish()) { o << "null"; return; }
@@ -303,6 +315,7 @@ function putHead(s: { readonly name: string; readonly typeParams?: readonly stri
 }
 
 const CPP_HEAD = `#include <algorithm>
+#include <functional>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -338,6 +351,7 @@ template <class T> bool present(const T &) { return true; }
 const JS_SER = `const ser = (v) => {
   if (v === null || v === undefined) return null;
   if (typeof v === 'number') return Number.isFinite(v) ? (Object.is(v, -0) ? 0 : v) : null;
+  if (typeof v === 'function') return null;
   if (typeof v !== 'object') return v;
   if (v instanceof Map) return [...v.entries()].map(([k, x]) => [ser(k), ser(x)]);
   if (v instanceof Set) return [...v].map(ser);
@@ -387,6 +401,7 @@ registerHooks({
 
 /** Two printed values equal: numbers within the relative tolerance, everything else exactly. */
 function compare(a: unknown, b: unknown, tolerance: number, where: string, out: { path: string; a: unknown; b: unknown }[]): void {
+  if ((a === null || a === undefined) && (b === null || b === undefined)) return;
   if (typeof a === 'number' && typeof b === 'number') {
     if (Math.abs(a - b) > tolerance * Math.max(1, Math.abs(a), Math.abs(b))) out.push({ path: where, a, b });
     return;
@@ -494,10 +509,12 @@ export function runDifferential(input: DifferentialInput): DifferentialResult {
 /** What the light check needs beyond the comparison: the numbers the game's context holds (`tn.<name>`). */
 export interface ObjectDifferentialInput extends Omit<DifferentialInput, 'empty'> {
   readonly context?: Readonly<Record<string, number>>;
+  /** A module to --import that resolves the source as its bundler does; default: the paths of the tsconfig. */
+  readonly hooksFile?: string;
 }
 
 /** A value that cannot be written as an argument: an instance, a callback. */
-const notAnArgument = (t: CppType): boolean => t.k === 'ref' || t.k === 'function' || t.k === 'lambda' || t.k === 'ptr' || t.k === 'struct'
+const notAnArgument = (t: CppType): boolean => t.k === 'ref' || t.k === 'function' || t.k === 'lambda' || t.k === 'ptr' || t.k === 'tparam'
   || ((t.k === 'vector' || t.k === 'set' || t.k === 'optional') && notAnArgument(t.of));
 
 /**
@@ -510,6 +527,7 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   if (t.errors.length > 0) throw new Error('the translation has errors: there is nothing to test');
   fs.mkdirSync(input.work, { recursive: true });
   const scenario = new Scenario(input.seed, t, input.valueTypes);
+  scenario.plain = true;
   const ns = (module: string): string => `m${module.replace(/[^A-Za-z0-9]+/g, '_')}`;
   const withContext = (args: string[], context?: readonly { readonly name: string }[]): string => [...args, ...(context ?? []).map((c) => c.name)].join(', ');
   const js: string[] = [];
@@ -530,15 +548,23 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
     }
   });
   for (const f of t.api) {
-    if (f.edit || f.params.some((p) => notAnArgument(p.type)) || f.ret.k === 'ref') continue;
+    // a state is made by its edits, with its indexes: never written as a value
+    const takesState = f.params.some((p) => p.type.k === 'struct' && p.type.name === t.state);
+    if (f.edit || takesState || f.params.some((p) => notAnArgument(p.type)) || f.ret.k === 'ref') continue;
     callable.push({ name: f.source, params: f.params, ...(f.context ? { context: f.context } : {}), ret: f.ret,
       on: (a, native) => (native ? `${f.cpp}(${withContext(a, f.context)})` : `${jsName(f)}(${a.join(', ')})`) });
   }
   if (callable.length === 0) throw new Error('nothing of this translation can be called');
   for (let i = 0; i < input.steps; i++) {
     const c = scenario.pick(callable);
+    let args: Arg[];
+    scenario.whole = c.ret.k === 'int';
+    try {
+      args = c.params.map((p) => scenario.value(p.type, p.name, 'state'));
+    } catch {
+      continue; // a value the scenario cannot make: this call is not drawn
+    }
     calls[c.name] = (calls[c.name] ?? 0) + 1;
-    const args = c.params.map((p) => scenario.value(p.type, p.name, 'state'));
     names.push(`${c.name}(${args.map((a) => a.js).join(', ')})`);
     // what returns an instance is called for what it does: the answers that follow show it
     const silent = c.ret.k === 'void' || c.ret.k === 'ref';
@@ -552,8 +578,8 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   fs.writeFileSync(path.join(input.work, 'source.mjs'), [
     ...modules.map((m) => `import * as ${ns(m)} from ${JSON.stringify(pathToFileURL(path.join(input.sourceRoot, m)).href)};`), JS_SER,
     'const lines = [];', 'const emit = (step, out) => lines.push(JSON.stringify({ step, out: ser(out) }));', ...js, `process.stdout.write(lines.join('\\n') + '\\n');`].join('\n'));
-  const sourceOut = execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--import', pathToFileURL(path.join(input.work, 'hooks.mjs')).href,
-    path.join(input.work, 'source.mjs')], { encoding: 'utf8', maxBuffer: 1 << 30 });
+  const sourceOut = execFileSync(process.execPath, ['--experimental-transform-types', '--no-warnings', '--import', pathToFileURL(input.hooksFile ?? path.join(input.work, 'hooks.mjs')).href,
+    path.join(input.work, 'source.mjs')], { encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'pipe'] });
   const cppDir = path.join(input.work, 'cpp');
   for (const [file, text] of [...t.files, ...runtimeFiles()]) {
     fs.mkdirSync(path.dirname(path.join(cppDir, file)), { recursive: true });
@@ -561,7 +587,7 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   }
   const apiHeaders = [...t.files.keys()].filter((f) => f.endsWith('.h') && !f.endsWith('_types.h') && !f.endsWith('_enums.h')).sort();
   fs.writeFileSync(path.join(input.work, 'harness.cpp'), [
-    `#include "${RUNTIME_INCLUDE}"`, ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
+    `#include "${RUNTIME_INCLUDE}"`, ...(input.context ? ['#include "sim/catalog/catalog.h"'] : []), ...apiHeaders.map((h) => `#include "${h.replace(/^native\/src\//, '')}"`), CPP_HEAD, cppPrinter(t, input.valueTypes),
     'std::ostringstream lines;', 'inline void put(std::ostream &o, std::nullptr_t) { o << "null"; }',
     'template <class R> void emit(int step, const R &out) { lines << "{\\"out\\":"; put(lines, out); lines << ",\\"step\\":" << step << "}\\n"; }',
     '} // namespace city', '', 'using namespace city;', '', 'int main() {',
@@ -569,7 +595,8 @@ export function runObjectDifferential(input: ObjectDifferentialInput): Different
   const exe = path.join(input.work, 'harness.exe');
   const sources = [...t.files.keys()].filter((f) => f.endsWith('.cpp')).map((f) => path.join(cppDir, f));
   try {
-    execFileSync(input.cxx, ['-std=c++17', '-O0', '-static', ...input.includes.map((i) => `-I${i}`), `-I${path.join(cppDir, 'native/src')}`, path.join(input.work, 'harness.cpp'), ...sources, '-o', exe], { stdio: 'pipe' });
+    // the translation's own headers first: the game may hold an older copy of the runtime
+    execFileSync(input.cxx, ['-std=c++17', '-O0', '-static', `-I${path.join(cppDir, 'native/src')}`, ...input.includes.map((i) => `-I${i}`), path.join(input.work, 'harness.cpp'), ...sources, '-o', exe], { stdio: 'pipe' });
   } catch (error) {
     throw new Error(`the check does not compile: ${String((error as { stderr?: Buffer }).stderr ?? error).split('\n').filter((l) => l.includes('error:')).slice(0, 6).join('\n')}`);
   }
