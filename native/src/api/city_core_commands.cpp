@@ -174,6 +174,28 @@ Dictionary CityCore::build_road(const Vector3 &a, const Vector3 &b, bool has_con
 	return build_road_path(one, profile, px, from_lift);
 }
 
+Dictionary CityCore::build_blocks(const Vector3 &at, int cols, int rows, double block_m, double angle, int profile) {
+	return run_edit(*state_, "cmd.place.blocks", [&](CityState &s) { return lay_blocks(s, at.x, at.z, BlockGrid{ cols, rows, block_m, angle }, profile); });
+}
+
+// The streets of a grid on the ground, a line of points each: what the next click lays.
+Array CityCore::block_lines(const Vector3 &at, int cols, int rows, double block_m, double angle, double step_m) {
+	Array out;
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	if (!state_->ready) return out;
+	for (const BlockLine &l : city::block_lines(at.x, at.z, BlockGrid{ cols, rows, block_m, angle })) {
+		const double len = std::hypot(l.b.x - l.a.x, l.b.z - l.a.z);
+		const int steps = std::max(1, int(std::ceil(len / step_m)));
+		PackedVector3Array line;
+		for (int k = 0; k <= steps; k++) {
+			const double t = double(k) / steps, x = l.a.x + (l.b.x - l.a.x) * t, z = l.a.z + (l.b.z - l.a.z) * t;
+			line.push_back(Vector3(float(x), state_->terrain.height_at(float(x), float(z)), float(z)));
+		}
+		out.push_back(line);
+	}
+	return out;
+}
+
 Dictionary CityCore::demolish_box(const Vector3 &a, const Vector3 &b) {
 	return run_edit(*state_, "cmd.demolish.box", [&](CityState &s) { return ::city::demolish_box(s, a.x, a.z, b.x, b.z); });
 }

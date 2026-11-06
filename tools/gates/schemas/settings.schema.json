@@ -98,6 +98,41 @@
           "ssil"
         ]
       }
+    },
+    "road_blocks": {
+      "type": "object",
+      "properties": {
+        "cols": {
+          "type": "number"
+        },
+        "rows": {
+          "type": "number"
+        },
+        "size_m": {
+          "type": "number"
+        },
+        "most": {
+          "type": "number"
+        },
+        "least_m": {
+          "type": "number"
+        },
+        "widest_m": {
+          "type": "number"
+        },
+        "step_m": {
+          "type": "number"
+        },
+        "turn_step_deg": {
+          "type": "number"
+        },
+        "preview_step_m": {
+          "type": "number"
+        },
+        "preview_half_px": {
+          "type": "number"
+        }
+      }
     }
   }
 }

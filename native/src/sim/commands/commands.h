@@ -113,6 +113,16 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+// A grid of streets laid in one gesture (road_blocks.cpp): `cols` by `rows` blocks of `block_m`, turned by `angle`, centred on (x, z).
+struct BlockGrid {
+	int cols = 1, rows = 1;
+	double block_m = 100, angle = 0;
+};
+struct BlockLine {
+	StrokePoint a, b;
+};
+std::vector<BlockLine> block_lines(double x, double z, const BlockGrid &g);
+EditResult lay_blocks(CityState &s, double x, double z, const BlockGrid &g, int profile);
 // Bulldoze at (x, z) (Roadcraft tool `bulldoze`): the building under the point, else the nearest segment within
 // road_pick_m (loose nodes go with it; refund road_refund_share of its value unless it was free).
 EditResult demolish_at(CityState &s, double x, double z);

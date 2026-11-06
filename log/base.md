@@ -24,5 +24,22 @@ Causa das pessoas feias: nosso `people.bin` veio do pacote antigo (`public/cooke
 - Ordem dos triângulos: a frente do three é o verso do Godot; com `cull_disabled` o corpo saía visto por dentro, escuro (o cook troca os índices).
 - Feito: cook (malha, atlas, paleta) → `people.bin` v4 + `atlas.bin` (DXT5 com mips, comprimido pelo Godot) → `people.gdshader` lê `sampler2DArray` pela variação, corte alfa do cabelo, dois lados → impostor além do nível 1 → capacete na cabeça do clipe (`head`).
 
+## Conferência geral contra o 4.0 (ordem do usuário, 2026-11-06; branch `porte/total`, worktree `city-worktrees/porte-total`)
+Os `tools/ports/*/coverage.md` estão velhos (elevação consta como a portar, e está no jogo): a conferência é pela leitura do 4.0 e por foto, área por área. Estado:
+
+| Área | Estado |
+|---|---|
+| Câmera | feita: molas criticamente amortecidas (`camera_damp.gd`), núcleo consultado uma vez por quadro, teste de solavanco (`camera_walk_cases`) |
+| Pessoas (corpos) | feito o elenco; faltam expressões, luz de pele e cabelo, objetos na mão, tingir roupa |
+| Ocupantes | feito; faltam olhares (`carDriveMirror`...), portas, entrar e sair animado |
+| Veículos | pintura com verniz e traseira na cor do carro; falta remodelar lanternas, rodas e proporções, portas que abrem, `farCarPictures` |
+| Fachadas de longe | filtradas (parapeitos, brises, acabamento); falta transição suave entre níveis (dither) |
+| Terreno | variação macro e neblina aérea feitas; falta estrato de rocha e sombra de contato |
+| Luz | SSIL no alto e no ultra, FSR2, cascatas por degraus |
+| Vias | Quarteirões de uma vez feito (`road_blocks.cpp`); faltam editor de perfil, Personalizar, Meus modelos, conectores, regras por acesso |
+| Zoneamento e lotes | FALTA: a aba Lotes do 4.0 (`editor/lotTool.ts`, `world/lots.ts`, `lotStore.ts`, `growth/zoning.ts`, `lotPlan.ts`, 4,7 mil linhas): lotes persistentes em polígono, retângulo, mover cantos, curvar lado, definir frente, dividir, juntar, apagar. No jogo o lote é derivado por célula e nunca salvo: pede o modelo novo em `CityState`, bloco no save, ferramenta e crescimento lendo o lote |
+| Construir › Interior | FALTA ligar a aba (contrato em `ports/interior/report.md`) |
+| Tráfego, pedestres, água, paisagismo, bomba, pistola, transporte, mobília | a conferir, ver Pendências do CLAUDE.md |
+
 ## Falta depois
 LOD com transição suave (dither), detalhe de longe, veículos mais bonitos e leves, e o resto das Pendências do CLAUDE.md.

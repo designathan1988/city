@@ -177,6 +177,7 @@
   120,
   144
  ],
+ "road_blocks": {"cols": 3, "rows": 2, "size_m": 100, "most": 12, "least_m": 30, "widest_m": 300, "step_m": 10, "turn_step_deg": 15, "preview_step_m": 20, "preview_half_px": 3},
  "frame_cap": {
   "max_fps": 60,
   "background_fps": 30

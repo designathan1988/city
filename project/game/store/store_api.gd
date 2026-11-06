@@ -6,7 +6,7 @@ extends RefCounted
 
 ## Commands the UI/tools may send, with the core method that executes each one.
 const COMMANDS := {
-	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"demolish": "demolish", &"paint_zone": "paint_zone",
+	&"set_speed": "set_speed", &"set_day_hour": "set_day_hour", &"build_road": "build_road", &"build_blocks": "build_blocks", &"demolish": "demolish", &"paint_zone": "paint_zone",
 	&"preview_road": "preview_road", &"preview_road_path": "preview_road_path",
 	&"build_road_path": "build_road_path", &"undo": "undo", &"redo": "redo", &"begin_stroke": "begin_stroke",
 	&"end_stroke": "end_stroke", &"split_road": "split_road", &"set_road_end": "set_road_end",
@@ -39,6 +39,7 @@ const COMMANDS := {
 	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture", &"set_road_height": "street/set_road_height", &"set_road_walls": "street/set_road_walls",
 }
 const QUERIES := {
+	&"block_lines": "block_lines",
 	&"raycast": "raycast", &"height_at": "height_at", &"inspect": "inspect", &"probe_building": "probe_building",
 	&"list_buildings": "list_buildings", &"building_chunk": "building_chunk", &"job_pool_probe": "probes/job_pool_probe", &"flow_replay": "probes/flow_replay", &"flow_junction": "probes/flow_junction", &"flow_push": "probes/flow_push", &"flow_state": "probes/flow_state", &"city_bounds": "city_bounds", &"film_grade": "film_grade", &"film_graded": "film_graded", &"render_pending": "render_pending",
 	&"render_cost": "render_cost", &"wear_probe": "wear_probe", &"road_mesh_counts": "road_mesh_counts", &"draw_verges": "draw_verges", &"wear_paint": "wear_paint", &"pose_stats": "pose_stats", &"agent_cost": "agent_cost", &"building_cost": "building_cost",

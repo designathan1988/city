@@ -98,6 +98,8 @@ public:
 	godot::Dictionary node_at(const godot::Vector3 &p, float px);
 	godot::Array moved_roads(int node, const godot::Vector3 &p);
 	godot::Array recent_edits(int count); // the F9 World tab and the F8 marks: the latest undo steps, newest first
+	godot::Dictionary build_blocks(const godot::Vector3 &at, int cols, int rows, double block_m, double angle, int profile);
+	godot::Array block_lines(const godot::Vector3 &at, int cols, int rows, double block_m, double angle, double step_m);
 	godot::Dictionary reverse_road(int seg), duplicate_road(int seg); // the inspector: the one-way runs the other way; a copy alongside (Ctrl+D)
 	godot::Dictionary set_marking_style(int style, bool undoable); // Menu > Paint; false: a city coming back from its session
 	godot::Dictionary upgrade_road(const godot::Vector3 &p, int profile, bool whole_street);

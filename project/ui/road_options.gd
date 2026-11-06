@@ -23,6 +23,9 @@ func _ready() -> void:
 		tools.road_height_changed.connect(func() -> void:
 			if is_inside_tree():
 				refresh())
+		tools.options_changed.connect(func() -> void:
+			if is_inside_tree():
+				refresh())
 
 
 ## The rows again from the tool's parameters and the player's settings.
@@ -33,7 +36,14 @@ func refresh() -> void:
 	var row := _row(spec.trace.label_key)
 	for i in spec.trace.choices.size():
 		var c: Dictionary = spec.trace.choices[i]
-		_toggle(row, c, i == picked, true, func() -> void: alignment_picked.emit(i))
+		_toggle(row, c, i == picked and not Settings.road.blocks.armed, true, func() -> void:
+			Settings.road.blocks.armed = false
+			alignment_picked.emit(i))
+	_toggle(row, spec.blocks, Settings.road.blocks.armed, true, func() -> void:
+		Settings.road.blocks.armed = not Settings.road.blocks.armed
+		refresh())
+	if Settings.road.blocks.armed:
+		_block_rows(spec.blocks)
 	row = _row(spec.snap.label_key)
 	var snap: Dictionary = Settings.road.snap
 	for c in spec.snap.choices:
@@ -85,6 +95,31 @@ func _class_rows(spec: Dictionary) -> void:
 		var back := HudWidgets.button(&"IconButton", "undo", "", "palette.width.auto", "icon_btn", "icon_btn")
 		back.pressed.connect(func() -> void: option_picked.emit("width", 0.0))
 		row.add_child(back)
+
+
+## How many blocks and how big (shell.ts): columns and rows, the block's side and the grid's turn.
+func _block_rows(spec: Dictionary) -> void:
+	var d: Dictionary = DataTables.game("settings").road_blocks
+	var b: Dictionary = Settings.road.blocks
+	if b.cols == 0:
+		b.merge({"cols": int(d.cols), "rows": int(d.rows), "size": float(d.size_m), "turn": 0.0}, true)
+	var row := _row(spec.count_key)
+	_stepper(row, "palette.blocks.cols", str(b.cols), func(by: int) -> void: b.cols = clampi(b.cols + by, 1, int(d.most)))
+	_stepper(row, "palette.blocks.rows", str(b.rows), func(by: int) -> void: b.rows = clampi(b.rows + by, 1, int(d.most)))
+	row = _row(spec.measure_key)
+	_stepper(row, "palette.blocks.size", Formatters.format_length(b.size), func(by: int) -> void: b.size = clampf(b.size + by * d.step_m, d.least_m, d.widest_m))
+	_stepper(row, "palette.blocks.angle", "%d°" % int(b.turn), func(by: int) -> void: b.turn += by * d.turn_step_deg)
+
+
+func _stepper(row: Control, tip_key: String, value: String, step: Callable) -> void:
+	for by: int in [-1, 1]:
+		var b := HudWidgets.button(&"IconButton", "minus" if by < 0 else "plus", "", tip_key, "icon_btn", "icon_btn")
+		b.pressed.connect(func() -> void:
+			step.call(by)
+			refresh())
+		row.add_child(b)
+		if by < 0:
+			HudWidgets.label(row, &"BodyLabel", value)
 
 
 ## The height the road is drawn at, a bridge above and a cutting or tunnel below, and the sides of a cutting (shell.ts).

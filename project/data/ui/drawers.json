@@ -370,6 +370,7 @@
   "_doc": "The road tool's option rows (Roadcraft ui/v2/shell.ts renderRoads). trace: the alignment, in ToolController order; snap: key = Settings.road_snap.",
   "trace": {"label_key": "palette.trace", "choices": [{"icon": "straight", "label_key": "palette.alignment.straight"},
     {"icon": "curve", "label_key": "palette.alignment.curve"}, {"icon": "free", "label_key": "palette.alignment.free"}]},
+  "blocks": {"icon": "blocks", "label_key": "palette.blocks", "count_key": "v2.blocks.count", "measure_key": "v2.blocks.measure"},
   "snap": {"label_key": "v2.snap.title", "choices": [{"icon": "magnet", "label_key": "v2.snap.on", "key": "on"},
     {"icon": "angle", "label_key": "v2.snap.angles", "key": "angles"}, {"icon": "cells", "label_key": "v2.snap.grid", "key": "grid"}]},
   "lanes": {"label_key": "v2.row.lanes", "median_road": "boulevard", "choices": [{"icon": "lanes2", "count": 2}, {"icon": "lanes4", "count": 4},

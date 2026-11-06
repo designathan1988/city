@@ -282,6 +282,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/sim/commands/road_commands.cpp` · `native/src/sim/commands/signal_commands.cpp` — construir e demolir vias; tempo fixo, defasagem e onda verde de um semáforo
 - `native/src/sim/commands/demolish_box.cpp` — demolir na caixa: prédios, entulho e vias com o meio dentro do retângulo, num passo de desfazer
 - `native/src/sim/commands/road_copies.cpp` — inverter mão única, duplicar via e a pintura do mapa
+- `native/src/sim/commands/road_blocks.cpp` — quarteirões de uma vez: uma grade de ruas num gesto, um passo de desfazer
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
 - `native/src/sim/commands/road_grade_sync.cpp` · `native/src/sim/commands/road_grade_sync.h` — o greide resolvido depois de uma edição (chão = terreno, água e nível do mar) e o chão moldado às vias movidas; se um trecho cruza água (vira ponte)
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)

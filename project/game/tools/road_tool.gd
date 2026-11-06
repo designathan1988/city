@@ -55,7 +55,35 @@ func exit() -> void:
 	_clear_preview()
 
 
+## The grid armed in the options: the click lays it, the pointer shows it.
+func _blocks() -> Dictionary:
+	if Settings.road.blocks.cols == 0:
+		var d: Dictionary = DataTables.game("settings").road_blocks
+		Settings.road.blocks.merge({"cols": int(d.cols), "rows": int(d.rows), "size": float(d.size_m), "turn": 0.0}, true)
+	return Settings.road.blocks
+
+
+func _lay_blocks(at: Vector3) -> void:
+	var b := _blocks()
+	var r: Dictionary = CityStore.dispatch(&"build_blocks", [at, int(b.cols), int(b.rows), float(b.size), deg_to_rad(b.turn), drawn])
+	b.armed = false
+	_clear_preview()
+	ctl.hint.emit("tools.toast.blocksBuilt" if r.get("ok", false) else "hint.road.invalid", true)
+	ctl.options_changed.emit()
+
+
+func _show_blocks(at: Vector3) -> void:
+	var b := _blocks()
+	var roads := []
+	for line: PackedVector3Array in CityStore.query(&"block_lines", [at, int(b.cols), int(b.rows), float(b.size), deg_to_rad(b.turn), DataTables.game("settings").road_blocks.preview_step_m]):
+		roads.push_back({"points": line, "half_width": ctl.px_at(at) * DataTables.game("settings").road_blocks.preview_half_px})
+	ctl.preview.show_ribbons(roads)
+
+
 func click(ground: Vector3) -> void:
+	if _blocks().armed:
+		_lay_blocks(ground)
+		return
 	var p := _aim(ground)
 	if not bend.is_empty():
 		var b := bend
@@ -80,6 +108,9 @@ func drag(ground: Vector3) -> void:
 
 
 func hover(ground: Vector3) -> void:
+	if _blocks().armed:
+		_show_blocks(ground)
+		return
 	var p := _aim(ground)
 	if not bend.is_empty():
 		_bend_to(p)

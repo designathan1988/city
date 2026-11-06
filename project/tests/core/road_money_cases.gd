@@ -4,6 +4,7 @@ class_name RoadMoneyCases
 extends RefCounted
 
 const PROFILE := 0
+const BLOCK_STREETS := 6
 ## Metres a screen pixel covers (the tool asks the camera; here a close view).
 const PX := 0.25
 const FIELD_OUT_M := 500.0
@@ -42,7 +43,21 @@ func _init(check: Callable) -> void:
 	_check = check
 
 
+## A grid of blocks in one click: every line laid, one step of undo, and the streets gone with it.
+func _blocks(b: Dictionary) -> void:
+	var before: int = CityStore.snapshot.segments
+	var at := _field(b)
+	var r: Dictionary = CityStore.dispatch(&"build_blocks", [at, 2, 2, LEN_M, 0.0, PROFILE])
+	CityStore.refresh()
+	_check.call(r.get("ok", false), "quarteirões: a grade é construída (%s)" % r.get("error", ""))
+	_check.call(CityStore.snapshot.segments >= before + BLOCK_STREETS, "quarteirões: as ruas todas (%d)" % (CityStore.snapshot.segments - before))
+	CityStore.dispatch(&"undo")
+	CityStore.refresh()
+	_check.call(CityStore.snapshot.segments == before, "quarteirões: um desfazer leva a grade toda")
+
+
 func run(b: Dictionary) -> void:
+	_blocks(b)
 	_paying(b)
 	_split_road(b)
 	_generated_roads(b)

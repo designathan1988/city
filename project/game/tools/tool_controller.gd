@@ -127,6 +127,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 ## A step of the height the road tool draws at, from its options.
+## The tool changed what the options panel shows.
+signal options_changed
+
+
 func step_road_height(metres: int) -> void:
 	if tool == Tool.ROAD:
 		active.step_height(metres)

@@ -93,6 +93,8 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("recent_edits", "count"), &CityCore::recent_edits);
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
 	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);
+	ClassDB::bind_method(D_METHOD("build_blocks", "at", "cols", "rows", "block_m", "angle", "profile"), &CityCore::build_blocks);
+	ClassDB::bind_method(D_METHOD("block_lines", "at", "cols", "rows", "block_m", "angle", "step_m"), &CityCore::block_lines);
 	ClassDB::bind_method(D_METHOD("set_marking_style", "style", "undoable"), &CityCore::set_marking_style);
 	ClassDB::bind_method(D_METHOD("segment_path", "segment"), &CityCore::segment_path);
 	ClassDB::bind_method(D_METHOD("probe_building", "id"), &CityCore::probe_building);
