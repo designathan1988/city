@@ -47,7 +47,7 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 		if q.get("ok", false):
 			across = q.position
 			break
-	cap._check(across != a, "calçada em frente")
+	cap._check(across != a, "pavement in front")
 	cap._across = across
 	var count: int = DataTables.ui("drawers").street.signs.size()
 	var walked := 0.0
@@ -120,7 +120,7 @@ static func _check_ink(cap: Node) -> void:
 				var seen := image.get_pixel(x, y)
 				if absf(seen.r - ink.r) + absf(seen.g - ink.g) + absf(seen.b - ink.b) < INK_NEAR:
 					found += 1
-		cap._check(found > r.get_area() * INK_LEAST, "tinta na placa %d \"%s\": %d" % [c[0], c[1], found])
+		cap._check(found > r.get_area() * INK_LEAST, "paint on sign %d \"%s\": %d" % [c[0], c[1], found])
 
 
 ## More names than any sheet holds: each one painted, none left blank (the sheet grows a layer when it fills).
@@ -133,7 +133,7 @@ static func many_names(cap: Node, road: Vector3) -> void:
 		if sheet.drawn.size() >= had + NAMES_TRIED:
 			break
 		await cap.ui.frames(1)
-	cap._check(sheet.drawn.size() >= had + NAMES_TRIED, "%d nomes pintados em %d camadas" % [sheet.drawn.size(), sheet.layers.get_layers()])
+	cap._check(sheet.drawn.size() >= had + NAMES_TRIED, "%d names painted in %d layers" % [sheet.drawn.size(), sheet.layers.get_layers()])
 	_check_ink(cap)
 
 
@@ -175,9 +175,9 @@ static func _eye(cap: Node, name: String, from: Vector3, at: Vector3, lift: bool
 		rose += LIFT_STEP_M
 		eye += Vector3.UP * LIFT_STEP_M
 		blocker = _blocker(look, eye)
-	cap._check(blocker < 0, "%s vê a rua (prédio %d no caminho, olho %s)" % [name, blocker, eye])
+	cap._check(blocker < 0, "%s sees the street (building %d in the way, eye %s)" % [name, blocker, eye])
 	if rose > 0:
-		print("  %s: olho %.0f m acima, sobre o prédio no caminho" % [name, rose])
+		print("  %s: eye %.0f m above, over the building in the way" % [name, rose])
 	cap.rig.camera.global_position = eye
 	cap.rig.camera.look_at(look)
 	await cap.ui.drawn()

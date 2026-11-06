@@ -131,7 +131,7 @@ static func _look(cap: Node, name: String, at: Vector3, along: Vector3, out: Vec
 static func _lay_bus(site: Dictionary) -> Array:
 	for at: Vector3 in [site.others[0].at, site.place.at, site.third.at]:
 		CityStore.dispatch(&"transit_stop", [at])
-	print("transporte: rua em ", site.place.at)
+	print("transit: street at ", site.place.at)
 	var plan: Dictionary = CityStore.query(&"transit_plan")
 	var ids := PackedInt32Array()
 	for s: Dictionary in plan.stops:
@@ -155,9 +155,9 @@ static func _lay_rail(bus: Array) -> Dictionary:
 				continue
 			seen += 1
 			if CaptureTransitSite.open_run(road, place.along) and _lay_run(road, s.out):
-				print("transporte: trilho em ", road)
+				print("transit: rail at ", road)
 				return { "road": road, "along": place.along, "out": place.out }
-	print("transporte: trilho sem lugar, ", seen, " com as duas vistas")
+	print("transit: rail with no place, ", seen, " with both views")
 	return {}
 
 

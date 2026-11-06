@@ -91,7 +91,7 @@ func _costs() -> void:
 func _bye() -> void:
 	CityStore.dispatch(&"set_interior", [false, -1, 0, 0])
 	_check(not CityStore.query(&"interior").on, "closing leaves the layer off")
-	print("interior_test: ", "OK" if failures == 0 else "%d FALHAS" % failures)
+	print("interior_test: ", "OK" if failures == 0 else "%d FAILURES" % failures)
 	get_tree().quit(failures)
 
 

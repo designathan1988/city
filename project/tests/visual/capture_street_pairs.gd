@@ -56,7 +56,7 @@ static func run(cap: Node, a: Vector3, dir: Vector3) -> void:
 				continue
 			var at: Vector3 = a if thing in ["poste", "sol-pole", "sol-rua"] else cap.spots.get(KEYS.get(thing, ""), Vector3.INF)
 			if at == Vector3.INF:
-				print("par sem objeto: ", name)
+				print("a pair with no object: ", name)
 				continue
 			var out := -side if thing in ON_THE_RUN else side
 			await _shot(cap, name, poses[name], at, _handed(dir, out, poses[name].hand), out)
@@ -79,7 +79,7 @@ static func _clear_spot(cap: Node, dir: Vector3) -> Vector3:
 
 static func _plate(cap: Node, name: String, pose: Dictionary, type: int, at: Vector3, along: Vector3, out: Vector3) -> void:
 	var made: Dictionary = CityStore.dispatch(&"place_item", [at, cap.ITEM_SIGN, type, cap.SIGN_WORDS, 1.0])
-	cap._check(made.get("ok", false), "par: placa %d em pé" % type)
+	cap._check(made.get("ok", false), "pair: sign %d standing" % type)
 	await _shot(cap, name, pose, at, along, out)
 	CityStore.dispatch(&"remove_street", [at, 1.0])
 

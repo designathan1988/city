@@ -39,7 +39,7 @@ func _ready() -> void:
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	CityStore.dispatch(&"set_speed", [0])
 	var a := _on_footway()
-	_check(a != Vector3.INF, "uma calçada para começar")
+	_check(a != Vector3.INF, "a pavement to start on")
 	if a != Vector3.INF:
 		_poles(a)
 		_items(a)
@@ -47,7 +47,7 @@ func _ready() -> void:
 		_rule_and_kit(a)
 		StreetMoveCases.new(_check).run()
 		await StreetSaveCases.new(self, _check).run()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -79,27 +79,27 @@ func _run_from(a: Vector3) -> Vector3:
 
 func _poles(a: Vector3) -> void:
 	var b := _run_from(a)
-	_check(b != Vector3.INF, "plano de postes")
+	_check(b != Vector3.INF, "a plan of poles")
 	if b == Vector3.INF:
 		return
 	var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, b, REACH, LAMPS_ALL, URBAN])
 	var before := _counts()
 	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [a, b, REACH, LAMPS_ALL, URBAN])
-	_check(r.get("ok", false), "linha construída")
+	_check(r.get("ok", false), "line built")
 	var after := _counts()
 	var fresh: int = plan.poles.filter(func(p: Dictionary) -> bool: return not p.standing).size()
-	_check(after.poles == before.poles + fresh and after.spans == before.spans + plan.poles.size() - 1, "postes e vãos contados")
+	_check(after.poles == before.poles + fresh and after.spans == before.spans + plan.poles.size() - 1, "poles and spans counted")
 	CityStore.dispatch(&"undo")
-	_check(_counts().poles == before.poles and _counts().spans == before.spans, "desfazer a linha")
+	_check(_counts().poles == before.poles and _counts().spans == before.spans, "undoing the line")
 	CityStore.dispatch(&"redo")
-	_check(_counts().poles == after.poles and _counts().spans == after.spans, "refazer a linha")
+	_check(_counts().poles == after.poles and _counts().spans == after.spans, "redoing the line")
 	var far := a + Vector3(AWAY_M, 0, AWAY_M)
 	var refused: Dictionary = CityStore.query(&"preview_pole_run", [far, far + Vector3(10, 0, 0), REACH, LAMPS_ALL, URBAN])
-	_check(refused.get("error", "") == "hint.pole.offFootway", "fora da calçada recusa")
+	_check(refused.get("error", "") == "hint.pole.offFootway", "off the pavement refuses")
 	var gone: Dictionary = CityStore.dispatch(&"remove_street", [plan.poles[0].position, 1.0])
-	_check(gone.get("ok", false) and _counts().poles == after.poles - 1 and _counts().spans == after.spans - 1, "poste sai com seu fio")
+	_check(gone.get("ok", false) and _counts().poles == after.poles - 1 and _counts().spans == after.spans - 1, "a pole leaves with its wire")
 	CityStore.dispatch(&"undo")
-	_check(_counts().poles == after.poles and _counts().spans == after.spans, "desfazer a remoção")
+	_check(_counts().poles == after.poles and _counts().spans == after.spans, "undoing the removal")
 	_rural(b)
 
 
@@ -112,11 +112,11 @@ func _rural(a: Vector3) -> void:
 	var plan: Dictionary = CityStore.query(&"preview_pole_run", [a, b, REACH, LAMPS_ALL, RURAL])
 	var before := _counts()
 	var r: Dictionary = CityStore.dispatch(&"build_pole_run", [a, b, REACH, LAMPS_ALL, RURAL])
-	_check(r.get("ok", false), "linha rural construída")
+	_check(r.get("ok", false), "rural line built")
 	var fresh: Array = plan.poles.filter(func(p: Dictionary) -> bool: return not p.standing)
-	_check(fresh.all(func(p: Dictionary) -> bool: return p.kind == RURAL), "postes novos rurais")
-	_check(plan.poles.filter(func(p: Dictionary) -> bool: return p.standing).all(func(p: Dictionary) -> bool: return p.kind == URBAN), "poste reaproveitado continua urbano")
-	_check(_counts().rural_poles == before.rural_poles + fresh.size(), "contagem dos rurais %s" % _counts())
+	_check(fresh.all(func(p: Dictionary) -> bool: return p.kind == RURAL), "new rural poles")
+	_check(plan.poles.filter(func(p: Dictionary) -> bool: return p.standing).all(func(p: Dictionary) -> bool: return p.kind == URBAN), "a pole reused stays urban")
+	_check(_counts().rural_poles == before.rural_poles + fresh.size(), "count of the rural %s" % _counts())
 
 
 ## A place on the footway where `kind` can stand, walking along from `a`.
@@ -131,7 +131,7 @@ func _free_for(kind: int, a: Vector3) -> Vector3:
 
 func _items(a: Vector3) -> void:
 	var at := _free_for(ITEM_BENCH, a)
-	_check(at != Vector3.INF, "lugar para o banco")
+	_check(at != Vector3.INF, "a place for the bench")
 	var before := _counts()
 	var r: Dictionary = CityStore.dispatch(&"place_item", [at, ITEM_BENCH, 0, "", REACH])
 	_check(r.get("ok", false), "banco colocado")
@@ -139,11 +139,11 @@ func _items(a: Vector3) -> void:
 	var twice: Dictionary = CityStore.dispatch(&"place_item", [at, ITEM_BENCH, 0, "", 1.0])
 	_check(twice.get("error", "") == "hint.streetscape.occupied", "lugar ocupado recusa")
 	CityStore.dispatch(&"undo")
-	_check(_counts().items == before.items, "desfazer o banco")
+	_check(_counts().items == before.items, "undoing the bench")
 	CityStore.dispatch(&"redo")
-	_check(_counts().items == before.items + 1, "refazer o banco")
+	_check(_counts().items == before.items + 1, "redoing the bench")
 	var off: Dictionary = CityStore.dispatch(&"place_item", [a + Vector3(AWAY_M, 0, AWAY_M), ITEM_SIGN, SIGN_STOP, "", 1.0])
-	_check(off.get("error", "") == "hint.streetscape.offFootway", "placa fora da calçada recusa")
+	_check(off.get("error", "") == "hint.streetscape.offFootway", "a sign off the pavement refuses")
 
 
 ## Open ground for a fence: a run the core does not refuse, scanned out from `a`.
@@ -159,21 +159,21 @@ func _open_run(a: Vector3) -> PackedVector3Array:
 
 func _barriers(a: Vector3) -> void:
 	var run := _open_run(a)
-	_check(run.size() == 2, "chão aberto para a cerca")
+	_check(run.size() == 2, "open ground for the fence")
 	if run.is_empty():
 		return
 	var before := _counts()
 	var r: Dictionary = CityStore.dispatch(&"build_barrier", [run, FENCE])
-	_check(r.get("ok", false), "cerca construída")
+	_check(r.get("ok", false), "fence built")
 	_check(_counts().barriers == before.barriers + 1, "barreira contada")
 	CityStore.dispatch(&"undo")
-	_check(_counts().barriers == before.barriers, "desfazer a barreira")
+	_check(_counts().barriers == before.barriers, "undoing the barrier")
 	CityStore.dispatch(&"redo")
-	_check(_counts().barriers == before.barriers + 1, "refazer a barreira")
+	_check(_counts().barriers == before.barriers + 1, "redoing the barrier")
 	var short: Dictionary = CityStore.dispatch(&"build_barrier", [PackedVector3Array([run[0], run[0] + Vector3(0.1, 0, 0)]), FENCE])
 	_check(short.get("error", "") == "hint.barrier.short", "barreira curta recusa")
 	var over_road: Dictionary = CityStore.dispatch(&"build_barrier", [PackedVector3Array([a, a + Vector3(0, 0, FENCE_M)]), FENCE])
-	_check(over_road.get("error", "") == "hint.barrier.road", "cerca sobre a calçada recusa")
+	_check(over_road.get("error", "") == "hint.barrier.road", "a fence on the pavement refuses")
 
 
 ## A Stop plate at an approach becomes the rule of that leg and undoes as one step; a piece of the street's own kit taken
@@ -189,19 +189,19 @@ func _rule_and_kit(a: Vector3) -> void:
 		var r: Dictionary = CityStore.dispatch(&"place_item", [at.position, ITEM_SIGN, SIGN_STOP, "", 1.0])
 		if r.get("note", "") == "hint.streetscape.rule.stop":
 			ruled = true
-			_check(_counts().items == before.items, "a regra não é uma peça")
+			_check(_counts().items == before.items, "the rule is no piece")
 			CityStore.step_ticks(1) # the traffic takes the junction's control up on its next step
 			var node: Dictionary = CityStore.query(&"node_at", [at.position, NODE_FIND_M / DataTables.tuning("road_snap_node_px")])
 			var control: int = CityStore.query(&"node_traffic", [node.get("node", -1)]).get("control", -1)
 			_check(node.get("ctl", -1) == CTL_PRIORITY and control == CONTROL_PRIORITY,
-				"a placa põe o cruzamento por preferência, como o 4.0: ctl %s, tráfego %s" % [node.get("ctl", -1), control])
+				"the sign puts the junction on priority, as the 4.0: ctl %s, traffic %s" % [node.get("ctl", -1), control])
 			CityStore.dispatch(&"undo")
 			var again: Dictionary = CityStore.dispatch(&"place_item", [at.position, ITEM_SIGN, SIGN_STOP, "", 1.0])
-			_check(again.get("note", "") == "hint.streetscape.rule.stop", "a regra desfeita pode voltar")
+			_check(again.get("note", "") == "hint.streetscape.rule.stop", "the undone rule can come back")
 			CityStore.dispatch(&"undo")
 			break
 		CityStore.dispatch(&"undo")
-	_check(ruled, "placa de Pare vira regra")
+	_check(ruled, "a Stop sign becomes a rule")
 	var cut := false
 	for i in SCAN_STEPS * SCAN_ROWS:
 		var p := a + Vector3((i % SCAN_STEPS) * SCAN_M, 0, (i / SCAN_STEPS) * SCAN_M)
@@ -213,13 +213,13 @@ func _rule_and_kit(a: Vector3) -> void:
 		if r.get("ok", false) and _counts().cuts == was.cuts + 1:
 			cut = true
 			CityStore.dispatch(&"undo")
-			_check(_counts().cuts == was.cuts, "desfazer o corte")
+			_check(_counts().cuts == was.cuts, "undoing the cut")
 			break
 		if r.get("ok", false):
 			CityStore.dispatch(&"undo")
-	_check(cut, "peça do kit cortada")
+	_check(cut, "a piece of the kit cut")
 
 
 func _check(ok: bool, what: String) -> void:
-	print("ok: " if ok else "FALHOU: ", what)
+	print("ok: " if ok else "FAIL: ", what)
 	failures += 0 if ok else 1

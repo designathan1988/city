@@ -120,7 +120,7 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		GameFlow.quit_now()
 		return
-	print("cidade: ", CityStore.new_map(map, SEED, true))
+	print("city: ", CityStore.new_map(map, SEED, true))
 	Settings.attach(world, get_viewport()) # the tier reaches the core: after the boot
 	_knobs(world)
 	rig.look_at_ground(Vector3.ZERO)
@@ -137,7 +137,7 @@ func _ready() -> void:
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
 		await get_tree().process_frame
 		waited += 1
-	print("cidade %s .. %s, desenhada em %d quadros" % [lo, hi, waited])
+	print("city %s .. %s, drawn in %d frames" % [lo, hi, waited])
 	print("malhas: ", CityStore.query(&"road_mesh_counts"))
 	if "--verges=0" in OS.get_cmdline_user_args():
 		CityStore.query(&"draw_verges", [false])
@@ -212,28 +212,28 @@ func _report(name: String) -> void:
 	order.sort_custom(func(a: int, b: int) -> bool: return frames[a] > frames[b])
 	for i in order.slice(0, BROKEN_DOWN):
 		var parts := COST_PARTS.map(func(k: StringName) -> String: return "%s %.1f" % [k, costs[i][k]])
-		print("    quadro %d de %d: %.0f ms | núcleo %.1f ms (%s; envios %.1f MiB) | gpu %.1f ms, cpu de render %.1f ms" % [i,
+		print("    frame %d of %d: %.0f ms | core %.1f ms (%s; uploads %.1f MiB) | gpu %.1f ms, render cpu %.1f ms" % [i,
 			frames.size(), frames[i], process_ms[i], ", ".join(parts), costs[i].uploads, gpu_ms[i], cpu_ms[i]])
-	print("  gpu %s | cpu de render %s | núcleo %s" % [_stats(gpu_ms), _stats(cpu_ms), _stats(process_ms)])
+	print("  gpu %s | render cpu %s | core %s" % [_stats(gpu_ms), _stats(cpu_ms), _stats(process_ms)])
 	for key: String in cycle_sum:
-		print("  gpu de %s: %.2f ms" % [key, cycle_sum[key][0] / maxf(1.0, cycle_sum[key][1])])
+		print("  gpu of %s: %.2f ms" % [key, cycle_sum[key][0] / maxf(1.0, cycle_sum[key][1])])
 	cycle_sum.clear()
 	var vp := get_viewport().get_viewport_rid()
 	var info := func(kind: int, what: int) -> int: return RenderingServer.viewport_get_render_info(vp, kind, what)
-	print("  visível: %d mil triângulos, %d draw calls | sombra: %d mil triângulos, %d draw calls" % [
+	print("  visible: %d thousand triangles, %d draw calls | shadow: %d thousand triangles, %d draw calls" % [
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME) / 1000,
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME) / 1000,
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
 	var ps: Dictionary = CityStore.query(&"pose_stats")
-	print("  poses: %d publicações (intervalo %.1f-%.1f ms; %d coladas, %d atrasadas); de %d quadros, %d além da última e %d antes da mais velha" % [
+	print("  poses: %d published (interval %.1f-%.1f ms; %d together, %d late); of %d frames, %d past the last and %d before the oldest" % [
 		ps.publications, ps.gap_min_ms, ps.gap_max_ms, ps.early, ps.late, ps.frames, ps.held, ps.behind])
-	print("  memória: estática %.0f MiB, vídeo %.0f MiB, buffers %.0f MiB | chunks a desenhar: %d" % [
+	print("  memory: static %.0f MiB, video %.0f MiB, buffers %.0f MiB | chunks to draw: %d" % [
 		Performance.get_monitor(Performance.MEMORY_STATIC) / MIB, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / MIB,
 		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / MIB, CityStore.query(&"render_pending")])
-	print("  maior HLOD de superchunk construído: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
-	print("  prédios: ", JSON.stringify(CityStore.query(&"building_cost")))
-	print("  veículos: ", JSON.stringify(CityStore.query(&"agent_cost")))
+	print("  largest superchunk HLOD built: %.1f MiB" % float(CityStore.query(&"render_cost").get("super_mb_max", 0.0)))
+	print("  buildings: ", JSON.stringify(CityStore.query(&"building_cost")))
+	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))
 
 
 ## Mean, 95th percentile and maximum of per-frame milliseconds.
@@ -246,4 +246,4 @@ func _stats(values: Array[float]) -> String:
 	for v in sorted:
 		mean += v
 	mean /= sorted.size()
-	return "média %.1f ms, p95 %.1f ms, máx %.1f ms" % [mean, sorted[mini(int(0.95 * sorted.size()), sorted.size() - 1)], sorted.back()]
+	return "mean %.1f ms, p95 %.1f ms, max %.1f ms" % [mean, sorted[mini(int(0.95 * sorted.size()), sorted.size() - 1)], sorted.back()]

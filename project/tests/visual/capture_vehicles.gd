@@ -50,7 +50,7 @@ static func car_shots(cap: Node, probe: Dictionary, ground: Vector3) -> void:
 		for i in ORBIT.size():
 			await cap._shot("09_carro_orbita_%d" % i, _eye(probe, k, ORBIT[i][0]), car + Vector3.UP * ORBIT[i][1])
 		return
-	print("captura: nenhum carro com a câmera fora de geometria")
+	print("capture: no car with the camera clear of geometry")
 
 
 ## `cap` is the capture scene (its _shot).
@@ -58,12 +58,12 @@ static func shots(cap: Node, probe: Dictionary, ground: Vector3) -> void:
 	for type in VIEWS:
 		var k := _nearest_of(probe, type, ground)
 		if k < 0:
-			print("captura: nenhum veículo do tipo ", type, " na amostra")
+			print("capture: no vehicle of kind ", type, " in the sample")
 			continue
 		var at: Vector3 = probe.sample[k]
 		for v in VIEWS[type]:
 			await cap._shot(v[0], _eye(probe, k, v[1]), at + Vector3.UP * v[2])
-			print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
+			print("cost of the vehicles at ", v[0], ": ", CityStore.query(&"agent_cost"))
 
 
 ## Where the camera stands for sample `k`, `off` in the vehicle's frame.

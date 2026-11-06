@@ -28,7 +28,7 @@ func _init(check: Callable, shoot: Callable, walker_of: Callable) -> void:
 func reactions() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [CROWD])
 	if found.walkers.is_empty():
-		_check.call(false, "há pedestres para ouvir o tiro")
+		_check.call(false, "there are pedestrians to hear the shot")
 		return
 	var at: Vector3 = found.walkers[0].position
 	var near := []
@@ -36,12 +36,12 @@ func reactions() -> void:
 		if w.position.distance_to(at) < HEARD_M:
 			near.append(w)
 	var round: Dictionary = _shoot.call(at + Vector3(HEARD_OFF_M, 0, HEARD_OFF_M))
-	_check.call(round.get("hit", 1) == 0, "o tiro cai no chão, sem acertar ninguém %s" % [round])
+	_check.call(round.get("hit", 1) == 0, "the shot lands on the ground, hitting nobody %s" % [round])
 	CityStore.step_ticks(REACT_TICKS)
 	var acts: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0]).acts
 	var reacting: int = int(acts.get("crouch", 0)) + int(acts.get("photo", 0)) + int(acts.get("look", 0))
-	print("quem ouviu: ", near.size(), " perto; ", acts)
-	_check.call(reacting > 0, "quem ouve o tiro para: %s" % [acts])
+	print("who heard: ", near.size(), " perto; ", acts)
+	_check.call(reacting > 0, "who hears the shot stops: %s" % [acts])
 	CityStore.step_ticks(FLEE_TICKS)
 	var away := 0
 	var left := 0
@@ -52,15 +52,15 @@ func reactions() -> void:
 		left += 1
 		if now.position.distance_to(at) > w.position.distance_to(at):
 			away += 1
-	print("longe do tiro depois: ", away, " de ", left)
-	_check.call(left == 0 or float(away) / left >= AWAY_SHARE, "quem ouviu foge para longe (%d de %d)" % [away, left])
+	print("far from the shot after: ", away, " de ", left)
+	_check.call(left == 0 or float(away) / left >= AWAY_SHARE, "who heard runs far away (%d of %d)" % [away, left])
 
 
 # A blast is a stampede: those near go down or crouch where they are, and none stays on its way toward it.
 func stampede() -> void:
 	var found: Array = CityStore.query(&"shot_targets", [CROWD]).walkers
 	if found.is_empty():
-		_check.call(false, "há pedestres para o estouro")
+		_check.call(false, "there are pedestrians for the blast")
 		return
 	var at: Vector3 = found[0].position + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
 	CityStore.dispatch(&"strike", [at, BLAST_FORCE])
@@ -68,6 +68,6 @@ func stampede() -> void:
 	for i in BLAST_LOOKS:
 		CityStore.step_ticks(BLAST_TICKS)
 		down = maxi(down, int(CityStore.query(&"people_census", [Vector3.ZERO, 0.0]).acts.get("crouch", 0)))
-	print("no estouro, agachados no máximo: ", down)
-	_check.call(down > 0, "no estouro alguém cai ou agacha")
+	print("in the blast, crouching at most: ", down)
+	_check.call(down > 0, "in the blast someone falls or crouches")
 	CityStore.dispatch(&"undo")

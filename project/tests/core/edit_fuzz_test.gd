@@ -56,7 +56,7 @@ func _ready() -> void:
 			steps = arg.trim_prefix("--steps=").to_int()
 	for s: int in seeds:
 		await _run(s, steps)
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 

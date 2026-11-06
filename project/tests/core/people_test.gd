@@ -45,20 +45,20 @@ func _ready() -> void:
 	print("censo: ", c)
 	print("perto: ", CityStore.query(&"people_census", [Vector3.ZERO, NEAR_M]).total, " em ", NEAR_M, " m")
 	var total := float(c.total)
-	_check(total > 0, "gente na rua")
+	_check(total > 0, "people in the street")
 	_check(int(c.doors) > 0, "portas lidas: %d" % c.doors)
-	_check(int(c.doors_across) == 0, "caminho da porta cruza a rua: %d" % c.doors_across)
-	_check(int(c.came_out) > 0, "gente saiu de porta: %d" % c.came_out)
-	_check(int(c.went_in) > 0, "gente entrou em porta: %d" % c.went_in)
+	_check(int(c.doors_across) == 0, "a door's way crosses the street: %d" % c.doors_across)
+	_check(int(c.came_out) > 0, "people left by a door: %d" % c.came_out)
+	_check(int(c.went_in) > 0, "people went in by a door: %d" % c.went_in)
 	var share := 1.0 - float(c.solo) / total
-	_check(share >= MIN_PARTY_SHARE and share <= MAX_PARTY_SHARE, "em grupo: %.2f" % share)
+	_check(share >= MIN_PARTY_SHARE and share <= MAX_PARTY_SHARE, "in a group: %.2f" % share)
 	_check(float(c.elders) / total >= MIN_ELDERS and float(c.elders) / total <= MAX_ELDERS, "idosos: %d" % c.elders)
-	_check(float(c.children) / total >= MIN_CHILDREN and float(c.children) / total <= MAX_CHILDREN, "crianças: %d" % c.children)
-	_check(int(c.children_alone) == 0, "criança sozinha: %d" % c.children_alone)
+	_check(float(c.children) / total >= MIN_CHILDREN and float(c.children) / total <= MAX_CHILDREN, "children: %d" % c.children)
+	_check(int(c.children_alone) == 0, "a child alone: %d" % c.children_alone)
 	_check(float(c.party_gap_m) <= FAR_PARTY_M, "par longe: %.2f m" % c.party_gap_m)
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
-	print("corpos: ", probe.people_overlaps, " móveis: ", probe.people_in_furniture)
-	_check(int(probe.people_in_furniture) == 0, "dentro de móvel: %d" % probe.people_in_furniture)
+	print("corpos: ", probe.people_overlaps, " furniture: ", probe.people_in_furniture)
+	_check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
 	_check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "par encostado: %d" % c.party_touching)
 	_clips()
 	CityStore.step_ticks(MORE_TICKS)
@@ -67,16 +67,16 @@ func _ready() -> void:
 	var doing := 0
 	for act in later.acts:
 		doing += int(later.acts[act])
-	_check(doing > 0, "quem espera na guia não faz nada: %s" % later.acts)
+	_check(doing > 0, "who waits at the kerb does nothing: %s" % later.acts)
 	var indoors := float(later.went_in) / maxf(float(later.arrived), 1.0)
-	_check(indoors >= MIN_INDOORS, "chegaram por uma porta: %.2f" % indoors)
+	_check(indoors >= MIN_INDOORS, "arrived by a door: %.2f" % indoors)
 	_mid_block()
 	var afternoon := float(c.wanted)
 	CityStore.query(&"set_city_hour", [SMALL_HOURS])
 	var night: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
-	print("à tarde ", afternoon, " às 3 h ", night.wanted)
-	_check(float(night.wanted) < afternoon, "menos gente de madrugada")
-	print("FALHAS: ", failures)
+	print("in the afternoon ", afternoon, " at 3 h ", night.wanted)
+	_check(float(night.wanted) < afternoon, "fewer people before dawn")
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -92,10 +92,10 @@ func _clips() -> void:
 	for c: Dictionary in clips:
 		named[c.name] = c
 	for name: String in RIDER_CLIPS:
-		_check(named.has(name), "clipe no arquivo: %s" % name)
-		_check(named.has(name) and float(named[name].pelvis.y) > 0.0 and float(named[name].above) > 0.0, "pelve e alcance de %s" % name)
-	_check(CityStore.query(&"show_people_clip", ["chairSit"]), "toca um clipe pelo nome")
-	_check(not CityStore.query(&"show_people_clip", ["sem nome"]), "recusa clipe que não há")
+		_check(named.has(name), "a clip in the file: %s" % name)
+		_check(named.has(name) and float(named[name].pelvis.y) > 0.0 and float(named[name].above) > 0.0, "pelvis and reach of %s" % name)
+	_check(CityStore.query(&"show_people_clip", ["chairSit"]), "plays a clip by name")
+	_check(not CityStore.query(&"show_people_clip", ["no name"]), "refuses a clip that does not exist")
 	CityStore.query(&"show_people_clip", ["idle"])
 
 
@@ -111,7 +111,7 @@ func _mid_block() -> void:
 				made = CityStore.dispatch(&"add_crossing", [points[points.size() / 2], kind]).get("ok", false)
 			if made:
 				break
-		_check(made, "faixa no meio da quadra onde há gente, tipo %d" % kind)
+		_check(made, "a mid-block crossing where there are people, kind %d" % kind)
 		var crossed := 0
 		var waited := 0
 		for i in CROSS_STEPS:
@@ -121,12 +121,12 @@ func _mid_block() -> void:
 			waited = maxi(waited, now.mid_waiting)
 			if crossed > 0:
 				break
-		print("faixa tipo ", kind, ": atravessando ", crossed, " esperando ", waited)
-		_check(crossed > 0, "ninguém usou a faixa no meio da quadra, tipo %d (esperando: %d)" % [kind, waited])
+		print("crossing kind ", kind, ": atravessando ", crossed, " esperando ", waited)
+		_check(crossed > 0, "nobody used the mid-block crossing, kind %d (waiting: %d)" % [kind, waited])
 		CityStore.dispatch(&"undo")
 
 
 func _check(ok: bool, what: String) -> void:
 	if not ok:
 		failures += 1
-		print("FALHOU: ", what)
+		print("FAIL: ", what)

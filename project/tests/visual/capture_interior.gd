@@ -48,7 +48,7 @@ func _ready() -> void:
 	await _frames(SETTLE_FRAMES)
 	for s in SHOTS:
 		await _shot(layer, s)
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 

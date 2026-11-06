@@ -18,9 +18,9 @@ const TRAIN_TOP_M := 4.0
 static func drawn(viewport: RID) -> String:
 	var parts: Array[String] = []
 	for kind: int in [RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW]:
-		parts.append("%d triângulos, %d draw calls" % [RenderingServer.viewport_get_render_info(viewport, kind, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME),
+		parts.append("%d triangles, %d draw calls" % [RenderingServer.viewport_get_render_info(viewport, kind, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME),
 				RenderingServer.viewport_get_render_info(viewport, kind, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)])
-	return "visível %s; sombra %s" % parts
+	return "visible %s; shadow %s" % parts
 
 
 ## A view from a place: {at, along, out}; view = [along, out, up, lens].
@@ -93,7 +93,7 @@ static func street(views: Array, others: Array) -> Dictionary:
 		var third := _clear_along(place, [], taken)
 		if found.size() == others.size() and not third.is_empty():
 			return {"place": place, "others": found, "third": third}
-	print("transporte: nenhuma rua com o outro lado livre em ", scanned.size(), " calçadas")
+	print("transit: no street with the other side free at ", scanned.size(), " pavements")
 	return {}
 
 

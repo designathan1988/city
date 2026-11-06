@@ -294,7 +294,9 @@ void emit_structures(const RoadEmit &e, int sid) {
 		const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 		if (v1 > v0) {
 			deck.slabs(v0, v1);
-			deck.bents(v0, v1, deck.abutments(v0, v1));
+			const std::vector<double> near_abutment = deck.abutments(v0, v1);
+			if (stayed(e, sid)) emit_stays(e, sid, v0, v1, casing_of(p));
+			else deck.bents(v0, v1, near_abutment);
 			deck.parapet(v0, v1, 1.f);
 			deck.parapet(v0, v1, -1.f);
 		}

@@ -69,7 +69,7 @@ func _run() -> void:
 	await _click(e)
 	tools.set_tool(ToolController.Tool.NONE)
 	var s1 := CityStore.snapshot.duplicate()
-	_check(s1.segments > s0.segments, "via nova: segmentos %d -> %d" % [s0.segments, s1.segments])
+	_check(s1.segments > s0.segments, "new road: segments %d -> %d" % [s0.segments, s1.segments])
 	_check(s1.money < s0.money, "cobrou %s" % Formatters.format_money(s0.money - s1.money))
 	await _drawn()
 	await _shot("ui_03_via_construida")
@@ -82,8 +82,8 @@ func _run() -> void:
 	await _shot("ui_04_gaveta_zonas")
 	CityStore.step_ticks(GROW_TICKS)
 	var s2 := CityStore.snapshot
-	print("cresceram ", s2.grown, " prédios; veículos ", s2.vehicles, " pessoas ", s2.people)
-	_check(s2.grown > 0, "prédios cresceram na rua nova")
+	print("cresceram ", s2.grown, " buildings; vehicles ", s2.vehicles, " pessoas ", s2.people)
+	_check(s2.grown > 0, "buildings grew on the new street")
 	hud.open_category("zones")
 	await _drawn()
 	hud.open_popover("sim")
@@ -95,7 +95,7 @@ func _run() -> void:
 	hud.open_category("demolish")
 	await _click(e.lerp(a, 0.1))
 	await _shot("ui_07_demolir")
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 

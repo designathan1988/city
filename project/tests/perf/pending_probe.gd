@@ -39,8 +39,8 @@ func _ready() -> void:
 		await _pace()
 	elif "--tail" in args:
 		CityStore.dispatch(&"set_speed", [SPEED_FASTEST])
-		await _tail("com o limite do jogo", DataTables.game("settings").frame_cap.max_fps, DisplayServer.VSYNC_ENABLED)
-		await _tail("sem limite", 0, DisplayServer.VSYNC_DISABLED)
+		await _tail("with the game's limit", DataTables.game("settings").frame_cap.max_fps, DisplayServer.VSYNC_ENABLED)
+		await _tail("no limit", 0, DisplayServer.VSYNC_DISABLED)
 	else:
 		await _default_run()
 	GameFlow.quit_now()
@@ -58,7 +58,7 @@ func _boot() -> bool:
 	add_child(rig)
 	if not CityStore.boot(world.terrain, world.materials()).is_empty():
 		return false
-	print("cidade: ", CityStore.new_map(map, SEED, true))
+	print("city: ", CityStore.new_map(map, SEED, true))
 	add_child(RoadcraftHud.new())
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	rig.look_at_ground((b.min + b.max) * 0.5)
@@ -75,19 +75,19 @@ func _boot() -> bool:
 ## The shadow settings, the clicks on a signal and the pause.
 func _default_run() -> void:
 	var sun := world.sun
-	print("sol: modo %d, distância %.0f m, divisões %.3f %.3f %.3f, blend %s" % [sun.directional_shadow_mode,
+	print("sun: mode %d, distance %.0f m, splits %.3f %.3f %.3f, blend %s" % [sun.directional_shadow_mode,
 		sun.directional_shadow_max_distance, sun.directional_shadow_split_1, sun.directional_shadow_split_2,
 		sun.directional_shadow_split_3, sun.directional_shadow_blend_splits])
 	await _variant("como configurado", func() -> void: pass)
-	await _variant("sem sombras", func() -> void: sun.shadow_enabled = false)
+	await _variant("no shadows", func() -> void: sun.shadow_enabled = false)
 	sun.shadow_enabled = true
-	await _variant("sem blend_splits", func() -> void: sun.directional_shadow_blend_splits = false)
+	await _variant("no blend_splits", func() -> void: sun.directional_shadow_blend_splits = false)
 	sun.directional_shadow_blend_splits = true
-	await _variant("2 divisões", func() -> void: sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
-	await _variant("1 divisão (ortogonal)", func() -> void: sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL)
+	await _variant("2 splits", func() -> void: sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
+	await _variant("1 split (orthogonal)", func() -> void: sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL)
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	print("agentes: ", JSON.stringify(CityStore.query(&"agent_cost")))
-	print("prédios: ", JSON.stringify(CityStore.query(&"building_cost")))
+	print("buildings: ", JSON.stringify(CityStore.query(&"building_cost")))
 	await _clicks()
 	await _pause()
 
@@ -102,12 +102,12 @@ func _pause() -> void:
 		await get_tree().process_frame
 		t += get_process_delta_time()
 	var woke_after: int = CityStore.query(&"pose_stats").get("sim_wakeups", -1)
-	print("thread da simulação em pausa: %d acordadas em %.1f s" % [woke_after - woke, t])
+	print("simulation thread paused: %d wakes in %.1f s" % [woke_after - woke, t])
 	CityStore.dispatch(&"set_speed", [1])
 	var t1: int = CityStore.query(&"pose_stats").get("sim_wakeups", -1)
 	for i in SETTLE_FRAMES:
 		await get_tree().process_frame
-	print("depois de retomar: %d acordadas em %d quadros (a simulação voltou a andar)" % [
+	print("after resuming: %d wakes in %d frames (the simulation moved again)" % [
 		int(CityStore.query(&"pose_stats").get("sim_wakeups", -1)) - t1, SETTLE_FRAMES])
 	print("PAUSA_FIM %d" % Time.get_unix_time_from_system())
 
@@ -128,7 +128,7 @@ func _variant(name: String, setup: Callable) -> void:
 		last = now
 		gpu += RenderingServer.viewport_get_measured_render_time_gpu(vp)
 	var info := func(kind: int, what: int) -> int: return RenderingServer.viewport_get_render_info(vp, kind, what)
-	print("%s: gpu %.2f ms, quadro %.2f ms | sombra %d mil prim., %d draws | visível %d mil prim., %d draws" % [name,
+	print("%s: gpu %.2f ms, frame %.2f ms | shadow %d thousand prim., %d draws | visible %d thousand prim., %d draws" % [name,
 		gpu / MEASURE_FRAMES, frame / MEASURE_FRAMES,
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME) / 1000,
 		info.call(RenderingServer.VIEWPORT_RENDER_INFO_TYPE_SHADOW, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME),
@@ -139,8 +139,8 @@ func _variant(name: String, setup: Callable) -> void:
 ## The frame and GPU time under each way of pacing the frames: the game's cap with vsync, the cap alone, vsync alone, none.
 func _pace() -> void:
 	var cap: int = DataTables.game("settings").frame_cap.max_fps
-	var ways := [["cap+vsync", cap, DisplayServer.VSYNC_ENABLED], ["só cap", cap, DisplayServer.VSYNC_DISABLED],
-		["só vsync", 0, DisplayServer.VSYNC_ENABLED], ["nenhum", 0, DisplayServer.VSYNC_DISABLED],
+	var ways := [["cap+vsync", cap, DisplayServer.VSYNC_ENABLED], ["cap only", cap, DisplayServer.VSYNC_DISABLED],
+		["vsync only", 0, DisplayServer.VSYNC_ENABLED], ["nenhum", 0, DisplayServer.VSYNC_DISABLED],
 		["cap+vsync de novo", cap, DisplayServer.VSYNC_ENABLED]]
 	print("tela: %.1f Hz" % DisplayServer.screen_get_refresh_rate())
 	for w in ways:
@@ -178,7 +178,7 @@ func _tail(name: String, cap: int, vsync: int) -> void:
 		for i in range(from, to):
 			s += rows[i][k]
 		return s / maxf(1.0, to - from)
-	print("%s (%d quadros): [quadro ms, gpu ms, visível mil, sombra mil, veículos mil tri., núcleo ms, envios MiB]" % [name, rows.size()])
+	print("%s (%d frames): [frame ms, gpu ms, visible thousand, shadow thousand, vehicles thousand tri., core ms, uploads MiB]" % [name, rows.size()])
 	print("  10%% mais lentos (gpu): %s" % [range(7).map(func(k: int) -> String: return "%.2f" % mean.call(0, cut, k))])
 	print("  demais 90%%:            %s" % [range(7).map(func(k: int) -> String: return "%.2f" % mean.call(cut, rows.size(), k))])
 	print("  piores 5: %s" % [rows.slice(0, 5).map(func(r: Array) -> String: return str(r.map(func(v: float) -> String: return "%.1f" % v)))])
@@ -204,5 +204,5 @@ func _clicks() -> void:
 	var sum := 0.0
 	for v in times:
 		sum += v
-	print("inspect num semáforo (velocidade máxima): média %.3f ms, p95 %.3f ms, p99 %.3f ms, máx %.3f ms" % [
+	print("inspect on a signal (top speed): mean %.3f ms, p95 %.3f ms, p99 %.3f ms, max %.3f ms" % [
 		sum / times.size(), times[int(0.95 * times.size())], times[int(0.99 * times.size())], times[-1]])

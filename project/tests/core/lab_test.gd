@@ -41,7 +41,7 @@ func _ready() -> void:
 	await _cpu(hud)
 	await _capture(hud)
 	await _tools()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -54,24 +54,24 @@ func _tools() -> void:
 	Settings.switches_changed()
 	await get_tree().create_timer(REC_WAIT_S).timeout
 	var path := rec.stop()
-	_check(rec.stretches.size() == 2, "a mudança corta a gravação: %d trechos" % rec.stretches.size())
-	_check(rec.stretches.size() > 0 and rec.stretches[0].frames > 0, "o trecho tem quadros")
-	_check(path != "" and FileAccess.file_exists(path), "o relatório foi salvo: %s" % path)
+	_check(rec.stretches.size() == 2, "the change cuts the recording: %d stretches" % rec.stretches.size())
+	_check(rec.stretches.size() > 0 and rec.stretches[0].frames > 0, "the stretch has frames")
+	_check(path != "" and FileAccess.file_exists(path), "the report was saved: %s" % path)
 	DirAccess.remove_absolute(path)
 	var rising: Array[Dictionary] = [{"t": 0.0, "v": 10.0}, {"t": 30.0, "v": 15.0}, {"t": 60.0, "v": 20.0}]
-	_check(is_equal_approx(ResourceWatch.slope(rising, "v"), 10.0), "a inclinação é por minuto")
+	_check(is_equal_approx(ResourceWatch.slope(rising, "v"), 10.0), "the slope is per minute")
 	var watch := ResourceWatch.new()
 	watch.sample(0.0)
 	watch.sample(1.0)
-	_check(watch.checks().size() >= CHECKS_LEAST, "as verificações vêm com veredito")
+	_check(watch.checks().size() >= CHECKS_LEAST, "the checks come with a verdict")
 	LabTools.set_view(get_viewport(), "OVERDRAW")
-	_check(get_viewport().debug_draw == Viewport.DEBUG_DRAW_OVERDRAW, "a vista da GPU troca o desenho")
+	_check(get_viewport().debug_draw == Viewport.DEBUG_DRAW_OVERDRAW, "the GPU view changes the drawing")
 	LabTools.set_view(get_viewport(), "DISABLED")
 	var run := DoctorRun.new()
 	add_child(run)
 	var keys := run.all_switches()
 	await run.sweep(keys.slice(0, 1))
-	_check(run.results.has(keys[0]), "a varredura mede a chave")
+	_check(run.results.has(keys[0]), "the sweep measures the switch")
 
 
 func _frames(interval: float, cpu: float, gpu: Variant) -> Dictionary:
@@ -85,20 +85,20 @@ func _verdicts() -> void:
 	var rules: Dictionary = DataTables.game("render_switches").doctor
 	for row: Array in GPU_ROWS:
 		var out: Dictionary = CityStore.query(&"lab_diagnose", [_frames(row[0], row[1], row[2]), rules])
-		_check(out.bound == row[3], "veredito de %s: %s" % [row, out.bound])
+		_check(out.bound == row[3], "verdict of %s: %s" % [row, out.bound])
 	var no_timer: Dictionary = CityStore.query(&"lab_diagnose", [_frames(20.0, 18.0, null), rules])
-	_check(no_timer.bound == "cpu" and no_timer.gpu_ms == null, "sem timer a CPU decide")
+	_check(no_timer.bound == "cpu" and no_timer.gpu_ms == null, "with no timer the CPU decides")
 	var empty := _frames(0.0, 0.0, null)
 	empty.interval = PackedFloat64Array()
 	empty.cpu = PackedFloat64Array()
-	_check(CityStore.query(&"lab_diagnose", [empty, rules]).bound == "none", "sem quadro não há veredito")
+	_check(CityStore.query(&"lab_diagnose", [empty, rules]).bound == "none", "with no frame there is no verdict")
 
 
 func _comparison() -> void:
 	var c: Dictionary = CityStore.query(&"lab_compare", [_frames(16.0, 3.0, 8.0), _frames(16.0, 3.0, 5.0), _frames(16.0, 3.0, 8.2)])
-	_check(is_equal_approx(c.gpu_before, 8.1) and is_equal_approx(c.noise_gpu, 0.2) and c.real, "antes é a média, o ruído é a distância: %s" % c)
+	_check(is_equal_approx(c.gpu_before, 8.1) and is_equal_approx(c.noise_gpu, 0.2) and c.real, "before is the mean, the noise is the distance: %s" % c)
 	var same: Dictionary = CityStore.query(&"lab_compare", [_frames(16.0, 3.0, 8.0), _frames(16.0, 3.0, 8.1), _frames(16.0, 3.0, 8.4)])
-	_check(not same.real, "dentro do ruído não é efeito: %s" % same)
+	_check(not same.real, "within the noise is no effect: %s" % same)
 
 
 func _button(root: Node, text: String) -> Button:
@@ -125,14 +125,14 @@ func _stages_fit(run: DoctorRun) -> bool:
 func _capture(hud: RoadcraftHud) -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
-		_check(false, "há câmera para a captura")
+		_check(false, "there is a camera for the capture")
 		return
 	var mask := camera.cull_mask
 	await hud.effects.frame.take()
 	print("quadro: ", hud.effects.frame.whole, " camadas: ", hud.effects.frame.rows)
-	_check(camera.cull_mask == mask, "a captura devolve a câmera como estava")
+	_check(camera.cull_mask == mask, "the capture gives the camera back as it was")
 	_check(not hud.effects.frame.rows.is_empty() and hud.effects.frame.rows[0].primitives > 0, "alguma camada desenha")
-	_check(FileAccess.file_exists(hud.effects.frame.file), "a captura ficou em arquivo")
+	_check(FileAccess.file_exists(hud.effects.frame.file), "the capture stayed in a file")
 
 
 ## The CPU tab reads a window of frames, the heaviest zone first.
@@ -142,8 +142,8 @@ func _cpu(hud: RoadcraftHud) -> void:
 		await get_tree().process_frame
 	var rows: Array[Dictionary] = hud.effects.cpu.rows(CPU_TAIL)
 	print("cpu: ", rows.slice(0, 3))
-	_check(hud.effects.cpu.frames() >= CPU_FRAMES - 1, "a aba de CPU juntou os quadros (%d)" % hud.effects.cpu.frames())
-	_check(not rows.is_empty() and rows[0].mean >= rows[-1].mean and rows[0].tail >= 0.0, "as zonas vêm da mais pesada à mais leve")
+	_check(hud.effects.cpu.frames() >= CPU_FRAMES - 1, "the CPU tab gathered the frames (%d)" % hud.effects.cpu.frames())
+	_check(not rows.is_empty() and rows[0].mean >= rows[-1].mean and rows[0].tail >= 0.0, "the zones come heaviest first")
 
 
 func _measure(hud: RoadcraftHud) -> void:
@@ -152,7 +152,7 @@ func _measure(hud: RoadcraftHud) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var go := _button(hud.effects, tr("lab.measure"))
-	_check(go != null, "a aba tem o botão de medir")
+	_check(go != null, "the tab has the measure button")
 	if go == null:
 		return
 	var run := hud.effects.doctor
@@ -161,13 +161,13 @@ func _measure(hud: RoadcraftHud) -> void:
 		await _idle(run)
 		if _stages_fit(run):
 			break
-	print("relatório: ", run.report)
-	_check(run.report.frames > 0 and run.report.bound != "none", "a medida leu quadros: %s" % run.report.bound)
+	print("report: ", run.report)
+	_check(run.report.frames > 0 and run.report.bound != "none", "the measure read frames: %s" % run.report.bound)
 	if RenderingServer.get_rendering_device() == null:
-		_check(run.report.findings.is_empty(), "sem dispositivo não há estágios")
+		_check(run.report.findings.is_empty(), "with no device there are no stages")
 		return
-	_check(_stages_fit(run), "os estágios somam a GPU: %.2f de %.2f" % [run.report.stages_ms, run.report.gpu_mean_ms])
-	_check(get_viewport().get_camera_3d().compositor == null, "o relógio saiu da câmera")
+	_check(_stages_fit(run), "the stages add up to the GPU: %.2f of %.2f" % [run.report.stages_ms, run.report.gpu_mean_ms])
+	_check(get_viewport().get_camera_3d().compositor == null, "the clock left the camera")
 	var c: Dictionary
 	for i in CLEAN_TRIES:
 		run.compare("shadows")
@@ -176,6 +176,6 @@ func _measure(hud: RoadcraftHud) -> void:
 		if c.real:
 			break
 	print("sombras: ", c)
-	_check(c.gpu_after < c.gpu_before and c.real, "desligar as sombras corta a GPU")
-	_check(c.primitives_after < c.primitives_before, "e o que é desenhado")
-	_check(Settings.switches.is_on("shadows"), "a chave voltou como estava")
+	_check(c.gpu_after < c.gpu_before and c.real, "turning shadows off cuts the GPU")
+	_check(c.primitives_after < c.primitives_before, "and what is drawn")
+	_check(Settings.switches.is_on("shadows"), "the switch came back as it was")

@@ -68,5 +68,5 @@ func _freehand(street: int) -> void:
 	await t.ui.shot("tool_free_stroke")
 	await t.ui.button(t.rig.camera.unproject_position(end), false)
 	await t.ui.drawn()
-	t._check(CityStore.snapshot.segments > s0, "traço à mão assentado (%d -> %d)" % [s0, CityStore.snapshot.segments])
+	t._check(CityStore.snapshot.segments > s0, "freehand stroke laid (%d -> %d)" % [s0, CityStore.snapshot.segments])
 	await t.ui.shot("tool_free_laid")

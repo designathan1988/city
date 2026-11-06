@@ -31,7 +31,7 @@ func _ready() -> void:
 	CityStore.step_ticks(WARM_TICKS)
 	_zebras()
 	_openings()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -53,7 +53,7 @@ func _zebras() -> void:
 			made += 1
 		if made == BUSY_STREETS:
 			break
-	_check(made > 0, "faixas postas em ruas com carro: %d" % made)
+	_check(made > 0, "crossings put on streets with cars: %d" % made)
 	var crossers := 0
 	var near := 0
 	var held := 0
@@ -67,11 +67,11 @@ func _zebras() -> void:
 		closest = minf(closest, w.closest_m)
 		if near > 0 and held > 0 and i * TICKS > WARM_TICKS:
 			break
-	print("na faixa ", crossers, " carros perto ", near, " parados ", held, " o mais perto ", closest)
+	print("on the crossing ", crossers, " cars near ", near, " parados ", held, " the nearest ", closest)
 	_check(crossers > 0, "gente atravessa")
-	_check(near > 0, "com carro chegando")
-	_check(held > 0, "carro para para quem atravessa")
-	_check(closest >= CLEAR_M, "nenhum carro alcança quem está na faixa (%.2f m)" % closest)
+	_check(near > 0, "with a car coming")
+	_check(held > 0, "a car stops for who crosses")
+	_check(closest >= CLEAR_M, "no car reaches who is on the crossing (%.2f m)" % closest)
 
 
 ## Openings along the avenues, and somebody using one.
@@ -87,11 +87,11 @@ func _openings() -> void:
 			made += 1
 		if made == OPENINGS:
 			break
-	_check(made > 0, "aberturas postas no canteiro: %d" % made)
+	_check(made > 0, "openings put in the median: %d" % made)
 	var turning := 0
 	for i in STEPS:
 		CityStore.step_ticks(TICKS)
 		turning = maxi(turning, CityStore.query(&"street_watch", [NEAR_M]).turning_back)
 		if turning > 0:
 			break
-	_check(turning > 0, "um carro volta pela abertura do canteiro")
+	_check(turning > 0, "a car turns back through the median's opening")

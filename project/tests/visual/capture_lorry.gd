@@ -25,21 +25,21 @@ static func _new_street() -> Vector3:
 			far = p
 	var out := Vector3(far.x, 0, far.z).normalized()
 	var end := far + out * STREET_M
-	print("via nova: ", CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX]))
+	print("new road: ", CityStore.dispatch(&"build_road", [far, end, false, Vector3.ZERO, PROFILE, PX]))
 	return (far + end) * 0.5
 
 
 ## `cap` is the capture scene (its camera, _frames and _shot).
 static func shots(cap: Node) -> void:
 	var at := _new_street()
-	print("zona industrial em ", at, ": ", CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL]))
+	print("industrial zone at ", at, ": ", CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL]))
 	cap.camera.global_position = at + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK)
 	for i in GROW_STEPS:
 		await cap._frames(1)
 		CityStore.step_ticks(STEP_TICKS)
 		if CityStore.query(&"dock_count", []) > 0:
 			break
-	print("docas depois de crescer: ", CityStore.query(&"dock_count", []))
+	print("docks after growing: ", CityStore.query(&"dock_count", []))
 	var seen := {}
 	for i in WAIT_STEPS:
 		await cap._frames(1)
@@ -48,11 +48,11 @@ static func shots(cap: Node) -> void:
 		var key := "%d %d %d" % [s.lorries_sent, s.lorries_docked, s.lorries_left]
 		if not seen.has(key):
 			seen[key] = true
-			print("caminhões (chamados, encostados, saíram) ", key, " passo ", i)
+			print("lorries (called, docked, left) ", key, " passo ", i)
 			if s.has("lorry"):
 				await CaptureSignals.at_hour(cap, cap.DAY) # the wait moved the clock on
 				await cap._shot("36_doca_%d" % seen.size(), s.lorry + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK), s.lorry)
 		if s.lorries_left > 0:
 			return
-	print("captura: nenhum caminhão fez o ciclo em ", WAIT_STEPS * STEP_TICKS, " ticks")
+	print("capture: no lorry made the cycle in ", WAIT_STEPS * STEP_TICKS, " ticks")
 	print(CityStore.query(&"park_sample", []))

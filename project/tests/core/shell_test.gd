@@ -43,7 +43,7 @@ func _ready() -> void:
 	await _session(rig)
 	await _drawers(hud)
 	_new_city(hud)
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -62,24 +62,24 @@ func _governor() -> void:
 	while next == "" and frames < 2000:
 		next = g.sample(DT, COST_SLOW_MS, BUDGET_MS)
 		frames += 1
-	_check(next == "medium", "quadros acima do orçamento descem um nível (%s em %d quadros)" % [next, frames])
+	_check(next == "medium", "frames over budget go down a tier (%s in %d frames)" % [next, frames])
 	var expected: int = int(t.governor.settle) + int(t.governor.window) * int(t.governor.down_windows)
-	_check(frames == expected, "desce depois de %d janelas, passada a espera" % int(t.governor.down_windows))
+	_check(frames == expected, "goes down after %d windows, the wait over" % int(t.governor.down_windows))
 	g.set_level(next)
 	next = ""
 	frames = 0
 	while next == "" and frames < 4000:
 		next = g.sample(DT, COST_FAST_MS, BUDGET_MS)
 		frames += 1
-	_check(next == "high", "folga sobe de novo (%s)" % next)
+	_check(next == "high", "headroom goes up again (%s)" % next)
 	g.set_level("high")
 	var stay := ""
 	for i in 2000:
 		stay = g.sample(DT, COST_FAST_MS, BUDGET_MS)
 		if stay != "":
 			break
-	_check(stay == "", "nunca passa do teto do hardware")
-	_check(g.sample(1.0, COST_SLOW_MS, BUDGET_MS) == "", "travada não é janela")
+	_check(stay == "", "never past the hardware's ceiling")
+	_check(g.sample(1.0, COST_SLOW_MS, BUDGET_MS) == "", "a hitch is no window")
 
 
 func _resolution() -> void:
@@ -90,41 +90,41 @@ func _resolution() -> void:
 		if s > 0.0:
 			scale = s
 			break
-	_check(scale > 0.0 and scale < 1.0, "resolução dinâmica cai quando a GPU não cabe (%.2f)" % scale)
+	_check(scale > 0.0 and scale < 1.0, "dynamic resolution falls when the GPU does not fit (%.2f)" % scale)
 	r.reset()
-	_check(is_equal_approx(r.scale, 1.0), "desligada volta à resolução inteira")
+	_check(is_equal_approx(r.scale, 1.0), "off, it returns to the whole resolution")
 
 
 func _options(world: CityWorld, rig: CityCamera) -> void:
 	Settings.set_preset("ultra")
 	var aa := Viewport.SCREEN_SPACE_AA_SMAA if QualityTier.has_smaa() else Viewport.SCREEN_SPACE_AA_DISABLED
-	_check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra liga oclusão e SMAA onde eles existem")
+	_check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra turns occlusion and SMAA on where they exist")
 	Settings.set_preset("low")
-	_check(not world.sun.shadow_enabled and not world.occlusion.visible, "baixa tira sombra e oclusão")
+	_check(not world.sun.shadow_enabled and not world.occlusion.visible, "low takes shadow and occlusion off")
 	var names: Dictionary = CityStore.constants.render_layers
-	_check(rig.camera.cull_mask & int(names.furniture) == 0, "baixa esconde o mobiliário pela máscara")
+	_check(rig.camera.cull_mask & int(names.furniture) == 0, "low hides the furniture by the mask")
 	Settings.keep("shadows", 2048)
-	_check(world.sun.shadow_enabled, "sombra escolhida vale sobre o nível")
+	_check(world.sun.shadow_enabled, "a chosen shadow stands over the tier")
 	Settings.set_preset("high")
-	_check(Settings.kept.is_empty(), "um nível escolhido esquece as escolhas do anterior")
+	_check(Settings.kept.is_empty(), "a chosen tier forgets the previous one's choices")
 	Settings.switches.set_on("roads", false)
 	Settings.switches_changed()
-	_check(rig.camera.cull_mask & int(names.roads) == 0, "chave desliga a camada de vias")
+	_check(rig.camera.cull_mask & int(names.roads) == 0, "the switch turns the road layer off")
 	Settings.switches.reset()
 	Settings.switches_changed()
-	_check(rig.camera.cull_mask & int(names.roads) != 0, "tudo ligado devolve a camada")
+	_check(rig.camera.cull_mask & int(names.roads) != 0, "all on gives the layer back")
 	Settings.optimizations = {"shadowMapSize": 1024}
-	_check(int(Settings.current().shadow_px) == 1024, "otimização vale sobre o nível")
+	_check(int(Settings.current().shadow_px) == 1024, "an optimisation stands over the tier")
 	Settings.optimizations = {}
 
 
 func _levels() -> void:
 	CityStore.set_levels(2.0, 0.5, 1.55)
 	var s := CityStore.snapshot
-	_check(is_equal_approx(s.traffic_level, 2.0) and is_equal_approx(s.people_level, 0.5) and is_equal_approx(s.demand, 1.55), "painel chega ao núcleo")
+	_check(is_equal_approx(s.traffic_level, 2.0) and is_equal_approx(s.people_level, 0.5) and is_equal_approx(s.demand, 1.55), "the panel reaches the core")
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	var m: Dictionary = CityStore.query(&"traffic_metrics")
-	_check(m.has("mean_speed_ms") and m.has("queued"), "métricas de trânsito")
+	_check(m.has("mean_speed_ms") and m.has("queued"), "traffic metrics")
 
 
 ## A city comes back with its levels and its view; a save that does not read goes aside, not deleted.
@@ -136,11 +136,11 @@ func _session(rig: CityCamera) -> void:
 	var slot := CityStore.saves.city_slot()
 	CityStore.set_levels(1.0, 1.0, 1.0)
 	rig.jump(Vector3.ZERO, 0.0, 50.0, 400.0)
-	_check(CityStore.saves.load_game(slot).get("ok", false), "abriu a cidade salva")
-	_check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "os níveis voltaram com a cidade")
-	_check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "a vista voltou com a cidade (%s)" % rig.focus)
+	_check(CityStore.saves.load_game(slot).get("ok", false), "opened the saved city")
+	_check(is_equal_approx(CityStore.snapshot.traffic_level, 2.0), "the levels came back with the city")
+	_check(Vector2(rig.focus.x, rig.focus.z).distance_to(Vector2(100, 50)) < 1.0, "the view came back with the city (%s)" % rig.focus)
 	CityStore.set_levels(1.0, 1.0, 1.0)
-	_check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "save ilegível vai para a quarentena")
+	_check(SaveSlots.quarantine(slot) == OK and not SaveSlots.exists(slot), "an unreadable save goes to quarantine")
 	var aside := "%s/%s" % [SaveSlots.dir(), SaveSlots.QUARANTINE_DIR]
 	var kept := Array(DirAccess.get_files_at(aside)).filter(func(f: String) -> bool: return f.begins_with(slot))
 	_check(kept.size() == 1, "guardado, nunca apagado")
@@ -151,22 +151,22 @@ func _session(rig: CityCamera) -> void:
 
 ## The title screen's form: left alone it asks for nothing, a new seed asks for that city.
 func _new_city(hud: RoadcraftHud) -> void:
-	_check(HudActions.map_index("town") == 0, "a cidade pequena é o mapa 0")
-	_check(HudActions.map_index("nao_existe") == -1, "mapa que a tabela não tem")
+	_check(HudActions.map_index("town") == 0, "the small city is map 0")
+	_check(HudActions.map_index("nao_existe") == -1, "a map the table does not have")
 	var asked := []
 	var keep := StartScreen.new()
 	keep.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
 	hud.root.add_child(keep)
 	keep._pick("play")
-	_check(asked.is_empty(), "sem mexer no formulário não abre cidade nova")
+	_check(asked.is_empty(), "with the form untouched no new city opens")
 	var form := StartScreen.new()
 	form.city_chosen.connect(func(map: int, seed: int) -> void: asked.append([map, seed]))
 	hud.root.add_child(form)
 	form.seed_box.value = CHOSEN_SEED
 	form._pick("play")
-	_check(asked == [[0, CHOSEN_SEED]], "a semente do formulário vai para a cidade nova: %s" % [asked])
+	_check(asked == [[0, CHOSEN_SEED]], "the form's seed goes to the new city: %s" % [asked])
 	hud.actions.new_city_at(0, CHOSEN_SEED)
-	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "o núcleo abre a cidade dessa semente")
+	_check(int(CityStore.snapshot.seed) == CHOSEN_SEED, "the core opens that seed's city")
 
 
 ## The Landscape drawer: the brush's sliders on the left, inside its width; the Models shelf scrolls inside the window.
@@ -174,16 +174,16 @@ func _drawers(hud: RoadcraftHud) -> void:
 	hud.open_category("landscape")
 	await _wait(DRAWER_FRAMES)
 	var options: Control = hud.drawer.options
-	_check(options.find_children("*", "HSlider", true, false).size() == RELIEF_SLIDERS, "sliders do Relevo no painel de opções")
-	_check(hud.drawer.strip.find_children("*", "HSlider", true, false).is_empty(), "nenhum slider na gaveta")
-	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "painel na largura do 4.0 (%.0f)" % hud.drawer.options_panel.size.x)
+	_check(options.find_children("*", "HSlider", true, false).size() == RELIEF_SLIDERS, "the Relief sliders in the options panel")
+	_check(hud.drawer.strip.find_children("*", "HSlider", true, false).is_empty(), "no slider in the drawer")
+	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "a panel at the 4.0's width (%.0f)" % hud.drawer.options_panel.size.x)
 	hud.drawer.select_tab(hud.drawer.category.tabs[1])
 	await _wait(DRAWER_FRAMES)
-	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "biomas cabem no painel (%.0f)" % hud.drawer.options_panel.size.x)
+	_check(hud.drawer.options_panel.size.x <= HudWidgets.px("opts_w"), "biomes fit in the panel (%.0f)" % hud.drawer.options_panel.size.x)
 	hud.open_category("build")
 	await _wait(DRAWER_FRAMES)
 	var right := hud.drawer.get_global_rect().end.x
-	_check(right <= hud.drawer.get_viewport_rect().size.x, "a prateleira de modelos fica dentro da janela (%.0f)" % right)
+	_check(right <= hud.drawer.get_viewport_rect().size.x, "the model shelf stays inside the window (%.0f)" % right)
 	hud.drawer.close()
 
 
@@ -194,18 +194,18 @@ func _wait(frames: int) -> void:
 
 func _panels(hud: RoadcraftHud) -> void:
 	hud.open_popover("menu")
-	_check(hud.popover.visible, "menu abre")
-	_check(hud.escape() and not hud.popover.visible, "Esc fecha o menu antes da ferramenta")
+	_check(hud.popover.visible, "the menu opens")
+	_check(hud.escape() and not hud.popover.visible, "Esc closes the menu before the tool")
 	hud.open_category("roads")
 	var road: ToolBase = hud.tools.active
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	road.click(Vector3(b.max.x + FIELD_M, 0, (b.min.z + b.max.z) * 0.5))
-	_check(road.in_progress(), "via começada")
-	_check(hud.escape() and not road.in_progress() and not hud.drawer.category.is_empty(), "Esc larga a via em desenho, não a ferramenta")
-	_check(hud.escape() and hud.drawer.category.is_empty(), "Esc larga a ferramenta")
-	_check(not hud.escape(), "Esc sem nada na mão passa adiante")
+	_check(road.in_progress(), "road started")
+	_check(hud.escape() and not road.in_progress() and not hud.drawer.category.is_empty(), "Esc drops the road being drawn, not the tool")
+	_check(hud.escape() and hud.drawer.category.is_empty(), "Esc drops the tool")
+	_check(not hud.escape(), "Esc with nothing in hand passes on")
 	hud.health.toggle()
 	Health.record("error", "broken", "teste", "detalhe")
 	Health.record("error", "broken", "teste", "detalhe")
-	_check(Health.entries[0].count == 2 and Health.status() == "broken", "saúde conta repetição e fica vermelha")
+	_check(Health.entries[0].count == 2 and Health.status() == "broken", "health counts repeats and turns red")
 	hud.health.close()

@@ -90,7 +90,7 @@ func _ready() -> void:
 func _run() -> void:
 	var a := _footway()
 	var b := _run_end(a)
-	_check(a != Vector3.INF and b != Vector3.INF, "calçada e trecho")
+	_check(a != Vector3.INF and b != Vector3.INF, "pavement and stretch")
 	if b == Vector3.INF:
 		get_tree().quit(1)
 		return
@@ -107,7 +107,7 @@ func _run() -> void:
 	await CaptureStreetGestures.run(self, dir)
 	await CaptureStreetViews.views(self, a, b)
 	print("contagens: ", CityStore.query(&"street_counts"))
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -151,7 +151,7 @@ func _card(key: String, under: Node = null) -> Button:
 
 func _pick(key: String) -> void:
 	var b := _card(key)
-	_check(b != null, "cartão " + key)
+	_check(b != null, "card " + key)
 	if b:
 		await ui.press(b)
 
@@ -169,7 +169,7 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	await ui.button(rig.camera.unproject_position(ui.ground(first.x, first.z)), false)
 	await ui.drawn()
 	var after: Dictionary = CityStore.query(&"street_counts")
-	_check(after.poles > before.poles and after.spans > before.spans, "linha pelo mouse %s" % after)
+	_check(after.poles > before.poles and after.spans > before.spans, "line by mouse %s" % after)
 	await ui.click(b) # the next stretch starts where this one ended
 	await ui.drawn()
 	var chained: Dictionary = CityStore.query(&"street_counts")
@@ -203,7 +203,7 @@ func _items(a: Vector3, dir: Vector3) -> void:
 	for key: String in list:
 		await _pick(key)
 		if not tools.params.has("kind"):
-			_check(false, "peça %s na mão: %s %s" % [key, ToolController.Tool.find_key(tools.tool), tools.params])
+			_check(false, "piece %s in hand: %s %s" % [key, ToolController.Tool.find_key(tools.tool), tools.params])
 			continue
 		var kind: int = tools.params.kind
 		var at: Dictionary = {}
@@ -216,14 +216,14 @@ func _items(a: Vector3, dir: Vector3) -> void:
 			placed += CityStore.query(&"street_counts").items - had
 			spots[key] = at.position
 			walked += ITEM_GAP_M
-		print("peça ", key, ": ", at.get("ok"), " ", at.get("error"), " ", at.get("position"))
+		print("piece ", key, ": ", at.get("ok"), " ", at.get("error"), " ", at.get("position"))
 	await ui.drawn()
 	await ui.shot("rua_05_pecas")
 	var after: Dictionary = CityStore.query(&"street_counts")
-	_check(after.items == before.items + placed and placed >= list.size() - 2, "peças pelo mouse %d" % placed)
+	_check(after.items == before.items + placed and placed >= list.size() - 2, "pieces by mouse %d" % placed)
 	await CaptureStreetViews.signs(self, a, dir)
 
 
 func _check(ok: bool, what: String) -> void:
-	print("ok: " if ok else "FALHOU: ", what)
+	print("ok: " if ok else "FAIL: ", what)
 	failures += 0 if ok else 1

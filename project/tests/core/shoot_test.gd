@@ -54,7 +54,7 @@ func _ready() -> void:
 	_vehicles()
 	_demolish()
 	await _save_marks()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -85,22 +85,22 @@ func _alone(all: Array) -> Array:
 func _walkers() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [LIMIT])
 	var walkers := _alone(found.walkers)
-	_check(walkers.size() >= 3, "há pedestres sozinhos para o tiro (%d de %d)" % [walkers.size(), found.walkers.size()])
+	_check(walkers.size() >= 3, "there are lone pedestrians for the shot (%d of %d)" % [walkers.size(), found.walkers.size()])
 	if walkers.size() < 3:
 		return
 	var hp_full: float = walkers[0].hp
-	_check(hp_full > 0.0, "o pedestre nasce com vida (%.0f)" % hp_full)
+	_check(hp_full > 0.0, "the pedestrian starts alive (%.0f)" % hp_full)
 	var trunk: Dictionary = walkers[0]
 	var r := _shoot(trunk.position + Vector3(0, TRUNK_AIM_M * trunk.scale, 0))
-	_check(r.get("hit", 0) == 1 and not r.killed, "tiro no tronco acerta e não mata %s" % [r])
+	_check(r.get("hit", 0) == 1 and not r.killed, "a shot in the trunk hits and does not kill %s" % [r])
 	var after := _walker_of(trunk.id)
-	_check(not after.is_empty() and after.hp < hp_full, "a vida caiu (%.0f -> %.0f)" % [hp_full, after.get("hp", -1.0)])
+	_check(not after.is_empty() and after.hp < hp_full, "the life fell (%.0f -> %.0f)" % [hp_full, after.get("hp", -1.0)])
 	var head: Dictionary = walkers[1]
 	var kill := _shoot(head.position + Vector3(0, HEAD_AIM_M * head.scale, 0))
-	_check(kill.get("hit", 0) == 1 and kill.killed, "tiro na cabeça mata %s" % [kill])
-	_check(_walker_of(head.id).is_empty(), "quem morreu saiu da calçada")
+	_check(kill.get("hit", 0) == 1 and kill.killed, "a shot in the head kills %s" % [kill])
+	_check(_walker_of(head.id).is_empty(), "who died left the pavement")
 	var sky: Dictionary = CityStore.dispatch(&"shoot", [SKY_ORIGIN, SKY])
-	_check(sky.get("hit", 1) == 0, "tiro para o céu não acerta nada")
+	_check(sky.get("hit", 1) == 0, "a shot at the sky hits nothing")
 	var hurt: Dictionary = walkers[2]
 	var rounds := []
 	for k in 2:
@@ -108,14 +108,14 @@ func _walkers() -> void:
 		if not w.is_empty():
 			rounds.append([w.hp, w.fallen, _shoot_level(w.position + Vector3(0, (LIE_AIM_M if w.fallen else TRUNK_AIM_M * w.scale), 0))])
 	var wounded := _walker_of(hurt.id)
-	_check(wounded.is_empty() or wounded.hp < hp_full * 0.5, "dois tiros no tronco ferem de gravidade %s -> %s" % [rounds, wounded])
+	_check(wounded.is_empty() or wounded.hp < hp_full * 0.5, "two shots in the trunk wound gravely %s -> %s" % [rounds, wounded])
 	if not wounded.is_empty() and wounded.hp > 0.0 and wounded.bleed > 0.0:
 		CityStore.step_ticks(BLEED_SOON_TICKS)
 		var soon := _walker_of(hurt.id)
-		_check(not soon.is_empty() and soon.hp < wounded.hp, "o ferido sangra (%.0f -> %.0f)" % [wounded.hp, soon.get("hp", 0.0)])
+		_check(not soon.is_empty() and soon.hp < wounded.hp, "the wounded bleeds (%.0f -> %.0f)" % [wounded.hp, soon.get("hp", 0.0)])
 		CityStore.step_ticks(BLEED_TICKS)
 		var later := _walker_of(hurt.id)
-		_check(later.is_empty() or later.position.distance_to(wounded.position) > SAME_SPOT_M, "e morre do sangramento (a vaga foi para outro)")
+		_check(later.is_empty() or later.position.distance_to(wounded.position) > SAME_SPOT_M, "and dies of the bleeding (the slot went to another)")
 
 
 ## Somebody shot lies down as a body of their own, which comes to rest.
@@ -123,19 +123,19 @@ func _fallen() -> void:
 	for f in BODY_SETTLE_FRAMES: # the blows above come and go first: their undo starts the effects over
 		await get_tree().process_frame
 	var walkers := _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
-	_check(not walkers.is_empty(), "alguém para o tiro do corpo")
+	_check(not walkers.is_empty(), "someone for the body shot")
 	var kill := _shoot(walkers[0].position + Vector3(0, HEAD_AIM_M * walkers[0].scale, 0))
-	print("tiro do corpo: ", kill)
+	print("body shot: ", kill)
 	for f in BODY_FRAMES:
 		if CityStore.query(&"effects_bodies") > 0:
 			break
 		await get_tree().process_frame
-	_check(CityStore.query(&"effects_bodies") > 0, "quem caiu é um corpo")
+	_check(CityStore.query(&"effects_bodies") > 0, "who fell is a body")
 	for f in BODY_FRAMES:
 		if CityStore.query(&"effects_bodies_moving") == 0:
 			break
 		await get_tree().process_frame
-	_check(CityStore.query(&"effects_bodies_moving") == 0, "o corpo pousa")
+	_check(CityStore.query(&"effects_bodies_moving") == 0, "the body lands")
 	await _rises()
 
 
@@ -159,8 +159,8 @@ func _rises() -> void:
 		CityStore.dispatch(&"undo")
 		if risen > 0:
 			break
-	print("de pé de novo: ", risen)
-	_check(risen > 0, "quem caiu levanta")
+	print("on their feet again: ", risen)
+	_check(risen > 0, "who fell gets up")
 
 
 func _vehicles() -> void:
@@ -170,7 +170,7 @@ func _vehicles() -> void:
 		if v.type != MOTO and v.type < FIRST_HEAVY:
 			car = v
 			break
-	_check(not car.is_empty(), "há um carro para o tiro")
+	_check(not car.is_empty(), "there is a car for the shot")
 	if car.is_empty():
 		return
 	var before: int = CityStore.query(&"damage_probe").vehicles
@@ -187,26 +187,26 @@ func _vehicles() -> void:
 		burst = r.get("burst", false)
 		shots += 1
 		if shots == 1:
-			_check(r.get("hit", 0) == 2, "o tiro acerta o carro %s" % [r])
-	_check(burst or CityStore.query(&"damage_probe").vehicles < before, "rajadas fazem o carro explodir (%d tiros)" % shots)
+			_check(r.get("hit", 0) == 2, "the shot hits the car %s" % [r])
+	_check(burst or CityStore.query(&"damage_probe").vehicles < before, "bursts make the car explode (%d shots)" % shots)
 
 
 ## A blow leaves rubble; a drag over it clears the rubble, the buildings and the roads in the box in one step, and Undo
 ## brings every one of them back.
 func _demolish() -> void:
 	var spot := _house()
-	_check(spot != Vector3.INF, "um prédio para demolir")
+	_check(spot != Vector3.INF, "a building to demolish")
 	CityStore.dispatch(&"strike", [spot + Vector3(0, ROOF_M, 0), BIG_FORCE])
 	var before: Dictionary = CityStore.query(&"damage_probe")
-	_check(before.ruins > 0, "o golpe deixou entulho (%d)" % before.ruins)
+	_check(before.ruins > 0, "the strike left rubble (%d)" % before.ruins)
 	var corner := Vector3(BOX_HALF_M, 0, BOX_HALF_M)
 	var r: Dictionary = CityStore.dispatch(&"demolish_box", [spot - corner, spot + corner])
 	var after: Dictionary = CityStore.query(&"damage_probe")
-	_check(r.get("ok", false) and after.buildings < before.buildings, "a caixa demoliu prédios (%d -> %d)" % [before.buildings, after.buildings])
-	_check(after.ruins == 0 and after.segments < before.segments, "e o entulho e as vias dentro dela (%d ruínas, %d trechos)" % [after.ruins, after.segments])
+	_check(r.get("ok", false) and after.buildings < before.buildings, "the box demolished buildings (%d -> %d)" % [before.buildings, after.buildings])
+	_check(after.ruins == 0 and after.segments < before.segments, "and the rubble and the roads inside it (%d ruins, %d stretches)" % [after.ruins, after.segments])
 	_check(CityStore.dispatch(&"undo", []), "desfez")
 	var undone: Dictionary = CityStore.query(&"damage_probe")
-	_check(undone.buildings == before.buildings and undone.ruins == before.ruins and undone.segments == before.segments, "Desfazer devolveu tudo da caixa")
+	_check(undone.buildings == before.buildings and undone.ruins == before.ruins and undone.segments == before.segments, "Undo gave back all of the box")
 
 
 func _house() -> Vector3:
@@ -219,19 +219,19 @@ func _house() -> Vector3:
 
 func _save_marks() -> void:
 	var spot := _house()
-	_check(spot != Vector3.INF, "um prédio para a bomba")
+	_check(spot != Vector3.INF, "a building for the bomb")
 	CityStore.dispatch(&"strike", [spot, BIG_FORCE])
 	var marks: Dictionary = CityStore.query(&"damage_probe")
-	_check(marks.craters > 0 and marks.ruins > 0, "a bomba deixou cratera e ruína %s" % [marks])
+	_check(marks.craters > 0 and marks.ruins > 0, "the bomb left a crater and a ruin %s" % [marks])
 	var w := await _save()
 	_check(w.get("ok", false), "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
-	_check(CityStore.query(&"damage_probe").craters == 0, "mapa novo não herda as marcas")
+	_check(CityStore.query(&"damage_probe").craters == 0, "a new map does not inherit the marks")
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(r.ok, "abriu %s" % r)
 	var got: Dictionary = CityStore.query(&"damage_probe")
 	for key in ["craters", "ruins", "gone", "hurt", "strikes"]:
-		_check(got[key] == marks[key], "%s volta igual (%d)" % [key, marks[key]])
+		_check(got[key] == marks[key], "%s comes back the same (%d)" % [key, marks[key]])
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 

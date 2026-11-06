@@ -46,7 +46,7 @@ func _ready() -> void:
 	_options(world)
 	_entry()
 	_presets()
-	_check(FileAccess.get_file_as_bytes(Settings.PATH) == kept, "um teste não muda o settings.cfg do jogador")
+	_check(FileAccess.get_file_as_bytes(Settings.PATH) == kept, "a test does not change the player's settings.cfg")
 	print("quality_test: %d falhas" % failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -82,22 +82,22 @@ func _tiers(rig: CityCamera) -> void:
 		await _frames(SETTLE_FRAMES)
 		var q := Settings.current()
 		seen[level] = QualityTier.cabin_reach(q, get_viewport().get_visible_rect().size.y)
-		print("  %s: alcance da cabine %.0f m, %s" % [level, seen[level], _cost()])
-	_check(seen.low < seen.ultra, "o nível baixo tem cabine mais perto que o ultra")
+		print("  %s: cabin reach %.0f m, %s" % [level, seen[level], _cost()])
+	_check(seen.low < seen.ultra, "the low tier has its cabin nearer than ultra")
 	Settings.set_preset("ultra")
 	rig.jump(rig.focus, 0.0, 60.0, NEAR_DISTANCE)
 	await _frames(2)
 	var names: Dictionary = CityStore.constants.render_layers
-	_check(rig.camera.cull_mask & int(names.people) != 0, "de perto as pessoas estão na máscara")
+	_check(rig.camera.cull_mask & int(names.people) != 0, "close up the people are in the mask")
 	await _counts(rig)
 	rig.jump(rig.focus, 0.0, 60.0, FAR_DISTANCE)
 	await _frames(2)
-	_check(rig.camera.cull_mask & int(names.people) == 0, "passou do corte de detalhe: pessoas fora")
-	_check(rig.camera.cull_mask & int(names.vehicles) == 0, "passou do corte de detalhe: veículos fora")
-	_check(Settings.switches.globals[&"road_paint"] == 0.0, "passou do corte: pintura fora")
+	_check(rig.camera.cull_mask & int(names.people) == 0, "past the detail cut: people out")
+	_check(rig.camera.cull_mask & int(names.vehicles) == 0, "past the detail cut: vehicles out")
+	_check(Settings.switches.globals[&"road_paint"] == 0.0, "past the cut: paint out")
 	rig.jump(rig.focus, 0.0, 60.0, NEAR_DISTANCE)
 	await _frames(2)
-	_check(Settings.switches.globals[&"road_paint"] == 1.0, "voltou: pintura de novo")
+	_check(Settings.switches.globals[&"road_paint"] == 1.0, "back: paint again")
 
 
 ## Instances per level, close to the street: what the tiers change is what is drawn.
@@ -111,20 +111,20 @@ func _counts(rig: CityCamera) -> void:
 		c = _cost()
 	var cabins: int = c.cabins
 	var people := await _people_close(rig)
-	print("  ultra de perto: %d cabines, %d pessoas no nível perto, %d árvores perto" % [cabins, people, c.trees_near])
-	_check(cabins > 0, "ultra de perto desenha cabines")
-	_check(people > 0, "ultra de perto desenha pessoas no nível perto")
+	print("  ultra close up: %d cabins, %d people at the near level, %d trees near" % [cabins, people, c.trees_near])
+	_check(cabins > 0, "ultra close up draws cabins")
+	_check(people > 0, "ultra close up draws people at the near level")
 	rig.jump(rig.focus, 0.0, 60.0, NEAR_DISTANCE)
-	_check(c.trees_near > 0, "ultra de perto desenha árvores")
+	_check(c.trees_near > 0, "ultra close up draws trees")
 	Settings.optimizations["vehicleWhole"] = 1
 	Settings.optimizations["pedestrianDetail"] = 0
 	Settings.switches_changed()
 	await _settled()
 	c = _cost()
 	people = await _people_close(rig)
-	print("  com as opções: %d cabines, %d pessoas perto, %d árvores perto" % [c.cabins, people, c.trees_near])
-	_check(c.cabins <= 2, "teto de veículos com cabine (um quadro atrás, na conta do renderizador)")
-	_check(people == 0, "detalhe 0: pessoas só no nível distante")
+	print("  with the options: %d cabins, %d people near, %d trees near" % [c.cabins, people, c.trees_near])
+	_check(c.cabins <= 2, "the cap of vehicles with a cabin (a frame behind, in the renderer's count)")
+	_check(people == 0, "detail 0: people at the far level only")
 	Settings.optimizations.clear()
 	Settings.switches_changed()
 	await _settled()
@@ -147,8 +147,8 @@ func _wild_trees(rig: CityCamera) -> void:
 	Settings.switches_changed()
 	await _settled()
 	var none: int = _cost().trees_near
-	print("  mata fora da cidade: %d árvores, %d com metade, %d sem" % [all, half, none])
-	_check(all > 0 and half < all and none < half, "a parte da vegetação tira árvores soltas")
+	print("  woods outside the city: %d trees, %d with half, %d with none" % [all, half, none])
+	_check(all > 0 and half < all and none < half, "the vegetation's share takes loose trees away")
 	Settings.optimizations.clear()
 	Settings.switches_changed()
 	rig.jump(back, 0.0, 60.0, NEAR_DISTANCE)
@@ -159,60 +159,60 @@ func _switches(world: CityWorld, rig: CityCamera) -> void:
 	for key: String in ["bGlass", "bNightWindows"]:
 		Settings.switches.set_on(key, false)
 	Settings.switches_changed()
-	_check(Settings.switches.globals[&"building_glass"] == 0.0, "chave do vidro chega ao shader")
-	_check(Settings.switches.globals[&"building_night_windows"] == 0.0, "chave das janelas chega ao shader")
+	_check(Settings.switches.globals[&"building_glass"] == 0.0, "the glass switch reaches the shader")
+	_check(Settings.switches.globals[&"building_night_windows"] == 0.0, "the windows switch reaches the shader")
 	Settings.switches.reset()
 	Settings.switches_changed()
-	_check(Settings.switches.globals[&"building_glass"] == 1.0, "vidro de volta")
+	_check(Settings.switches.globals[&"building_glass"] == 1.0, "glass back")
 	Settings.set_layer("grid", true)
 	_check(Settings.switches.globals[&"map_grid"] == 1.0, "camada Grade liga")
 	Settings.set_layer("grid", false)
-	_check(world.sun.shadow_caster_mask != 0 and rig != null, "sol com máscara de sombra")
+	_check(world.sun.shadow_caster_mask != 0 and rig != null, "a sun with a shadow mask")
 
 
 func _options(world: CityWorld) -> void:
 	var names: Dictionary = CityStore.constants.render_layers
 	Settings.optimizations["agentShadows"] = false
 	Settings.switches_changed()
-	_check(world.sun.shadow_caster_mask & int(names.people) == 0, "pessoas fora da sombra pela opção")
+	_check(world.sun.shadow_caster_mask & int(names.people) == 0, "people out of the shadow by the option")
 	Settings.optimizations["agentShadows"] = true
 	Settings.optimizations["waterMaterial"] = true
 	Settings.switches_changed()
-	_check(world.water.own.shader.resource_path == CityWater.PLAIN_SHADER, "água plana pela opção")
+	_check(world.water.own.shader.resource_path == CityWater.PLAIN_SHADER, "flat water by the option")
 	Settings.optimizations.clear()
 	Settings.switches_changed()
-	_check(world.water.own.shader.resource_path == CityWater.WATER_SHADER, "água própria de volta")
+	_check(world.water.own.shader.resource_path == CityWater.WATER_SHADER, "its own water back")
 	Settings.optimizations["terrainLod"] = 2
 	Settings.switches_changed()
 	var half_size: int = world.terrain.get("mesh_size")
 	Settings.optimizations.clear()
 	Settings.switches_changed()
-	_check(half_size * 2 <= int(world.terrain.get("mesh_size")), "malha do terreno pela opção (%d)" % half_size)
+	_check(half_size * 2 <= int(world.terrain.get("mesh_size")), "the terrain's mesh by the option (%d)" % half_size)
 
 
 ## A run driven by tests starts on the tables, whatever the file says: the same picture on every machine and every clone.
 func _player_file_read() -> void:
 	var t: Dictionary = DataTables.game("settings")
-	_check(Settings.preset == t.tests_preset and Settings.kept.is_empty(), "teste começa no preset dos dados, não no do arquivo")
-	_check(t.tests_preset != "auto" and t.tiers.has(t.tests_preset), "o preset dos testes é um nível, nunca auto")
+	_check(Settings.preset == t.tests_preset and Settings.kept.is_empty(), "a test starts on the data's preset, not the file's")
+	_check(t.tests_preset != "auto" and t.tiers.has(t.tests_preset), "the tests' preset is a tier, never auto")
 	for gpu: String in OTHER_GPUS:
 		var hardware := QualityTier.tier_for_gpu(t, gpu)
-		_check(QualityTier.level_of(Settings.preset, hardware) == t.tests_preset, "o nível dos testes não depende da placa: %s" % gpu)
-	_check(Settings.level == t.tests_preset, "o teste roda no nível dos dados")
-	_check(Settings.layers == t.layers, "teste começa nas camadas dos dados")
+		_check(QualityTier.level_of(Settings.preset, hardware) == t.tests_preset, "the tests' tier does not depend on the card: %s" % gpu)
+	_check(Settings.level == t.tests_preset, "the test runs on the data's tier")
+	_check(Settings.layers == t.layers, "a test starts on the data's layers")
 
 
 ## A settings file from another version, or with no sense in it, never reaches the tier table: it opens at the default.
 func _presets() -> void:
 	var t: Dictionary = DataTables.game("settings")
 	for wrong: Variant in ["nivel_antigo", "", 7, null]:
-		_check(Settings.known_preset(wrong) == t.default, "preset desconhecido cai no padrão: %s" % [wrong])
+		_check(Settings.known_preset(wrong) == t.default, "an unknown preset falls to the default: %s" % [wrong])
 	for p: String in t.presets:
-		_check(Settings.known_preset(p) == p and (p == "auto" or t.tiers.has(p)), "preset da tabela existe: %s" % p)
+		_check(Settings.known_preset(p) == p and (p == "auto" or t.tiers.has(p)), "the table's preset exists: %s" % p)
 	var before: String = Settings.preset
 	Settings.set_preset("nivel_antigo")
-	_check(Settings.preset == t.default and not Settings.current().is_empty(), "o diálogo não grava preset desconhecido")
-	_check(Settings.level == QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name()), "auto pedido por nome segue a placa")
+	_check(Settings.preset == t.default and not Settings.current().is_empty(), "the dialog does not save an unknown preset")
+	_check(Settings.level == QualityTier.tier_for_gpu(t, RenderingServer.get_video_adapter_name()), "auto asked by name follows the card")
 	Settings.set_preset(before)
 
 
@@ -225,16 +225,16 @@ func _occlusion(rig: CityCamera) -> void:
 	Settings.switches_changed()
 	await _frames(SETTLE_MIN)
 	var off := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)
-	print("  oclusão: %d objetos ligada, %d desligada" % [on, off])
-	_check(get_viewport().use_occlusion_culling == false, "chave desliga a oclusão")
+	print("  occlusion: %d objects on, %d off" % [on, off])
+	_check(get_viewport().use_occlusion_culling == false, "the switch turns occlusion off")
 	Settings.switches.set_on("occlusion", true)
 	Settings.switches_changed()
-	_check(get_viewport().use_occlusion_culling == true, "chave liga a oclusão")
+	_check(get_viewport().use_occlusion_culling == true, "the switch turns occlusion on")
 
 
 ## Sky fields: what the sky's owner reads on `changed`.
 func _entry() -> void:
 	Settings.set_preset("low")
-	_check(Settings.current().sky_clouds == false, "baixa sem nuvens para quem desenha o céu")
+	_check(Settings.current().sky_clouds == false, "low has no clouds for who draws the sky")
 	Settings.set_preset("ultra")
-	_check(Settings.current().cloud_shadows == true, "ultra com sombra de nuvem para quem desenha o céu")
+	_check(Settings.current().cloud_shadows == true, "ultra has cloud shadow for who draws the sky")

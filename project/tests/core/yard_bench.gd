@@ -24,7 +24,7 @@ func _ready() -> void:
 	var world := CityWorld.new()
 	add_child(world)
 	if not CityStore.boot(world.terrain, world.materials()).is_empty():
-		_quit("FALHOU: boot")
+		_quit("FAIL: boot")
 		return
 	var slot := _arg("--slot=", SLOT)
 	if OS.get_cmdline_user_args().has("--make"):
@@ -32,7 +32,7 @@ func _ready() -> void:
 	CityStore.new_map(TOWN_MAP, SEED, false) # nothing of the city made survives the load
 	var opened: Dictionary = CityStore.saves.load_game(slot)
 	if not opened.get("ok", false):
-		_quit("FALHOU: abrir %s %s" % [slot, opened])
+		_quit("FAIL: opening %s %s" % [slot, opened])
 		return
 	var yards: Array = CityStore.query(&"plan_all_yards")
 	var docks := 0
@@ -40,13 +40,13 @@ func _ready() -> void:
 	var poses := 0
 	var ms := 0.0
 	for y: Dictionary in yards:
-		print("pátio ", y)
+		print("yard ", y)
 		docks += int(y.docks)
 		ways += int(y.with_way)
 		ms += float(y.total_ms)
 		for k: Array in y.searches:
 			poses += int(k[4])
-	print("bancada: %d pátios, %d docas, %d com caminho, %d poses, %.0f ms" % [yards.size(), docks, ways, poses, ms])
+	print("bench: %d yards, %d docks, %d with a way, %d poses, %.0f ms" % [yards.size(), docks, ways, poses, ms])
 	_quit("")
 
 
@@ -68,7 +68,7 @@ func _make(slot: String) -> void:
 	CityStore.saves.save_game(slot)
 	while CityStore.saves.save_busy():
 		await get_tree().process_frame
-	print("bancada salva em ", slot, " ", outcome, " docas ", CityStore.query(&"dock_count", []))
+	print("bench saved at ", slot, " ", outcome, " docas ", CityStore.query(&"dock_count", []))
 
 
 ## The vehicle farthest out inside a slice of the compass (yard_test).

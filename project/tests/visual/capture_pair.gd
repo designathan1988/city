@@ -96,8 +96,8 @@ func _lay_buildings(named: Dictionary) -> void:
 			placed += 1
 			laid[int(doc.id)] = int(done.placed)
 		else:
-			print("prédio %d recusado: %s" % [doc.id, done.get("error", "")])
-	print("prédios postos: %d de %d" % [placed, rows.size()])
+			print("building %d refused: %s" % [doc.id, done.get("error", "")])
+	print("buildings put: %d of %d" % [placed, rows.size()])
 
 
 ## The camera exactly where the other game's stood: position, look, up and lens read from it.
@@ -109,19 +109,19 @@ func _stand(v: Dictionary) -> void:
 	var up := Vector3(v.up[0], v.up[1], v.up[2])
 	rig.camera.fov = v.fov
 	rig.camera.global_transform = Transform3D(Basis.looking_at(look, up), pos)
-	print("%s: câmera %s para %s, lente %.2f" % [v.name, pos, look, v.fov])
+	print("%s: camera %s to %s, lens %.2f" % [v.name, pos, look, v.fov])
 
 
 ## Cuts open the building the view names, at its floor, for the way the camera looks.
 func _open_inside(inside: Dictionary) -> void:
 	var id: int = laid.get(int(inside.id), -1)
 	var open: Dictionary = CityStore.dispatch(&"set_interior", [id >= 0, id, int(inside.level), InteriorController.direction_of(rig.camera)])
-	print("por dentro: prédio %d do 4.0 = %d aqui, andar %d: %s" % [int(inside.id), id, int(inside.level), open.get("ok", false)])
+	print("inside: building %d of the 4.0 = %d here, floor %d: %s" % [int(inside.id), id, int(inside.level), open.get("ok", false)])
 	lights.set_lamps(CityStore.query(&"interior").lamps if id >= 0 else PackedVector3Array()) # what the controller does when the core's revision moves
 	if id >= 0:
 		var info: Dictionary = CityStore.query(&"probe_building", [id])
 		var cost: Dictionary = CityStore.query(&"interior_cost", [id, int(inside.level), InteriorController.direction_of(rig.camera)])
-		print("  prédio %d: posição %s, %.1f x %.1f m, %d andares, foco %s; corte: casca %d triângulos, dentro %d triângulos e %d caixas" % [id, info.position,
+		print("  building %d: place %s, %.1f x %.1f m, %d storeys, focus %s; cut: shell %d triangles, inside %d triangles and %d boxes" % [id, info.position,
 				info.w, info.d, info.floors, info.focus, cost.shell_triangles, cost.inside_triangles, cost.inside_boxes])
 
 
@@ -133,5 +133,5 @@ func _report_chunk(inside: Dictionary) -> void:
 	var at: Vector3 = CityStore.query(&"probe_building", [id]).position
 	var flags: int = CityStore.query(&"building_chunk", [at.x, at.z])
 	var cost: Dictionary = CityStore.query(&"render_cost")
-	print("  chunk do prédio %d: bandeiras %d (1 perto, 2 médio, 4 mostrado, 8 detalhe, 16 conhecido, 32 longe); pendente %d, pedidos %d, prontos %d, sem_vez %d" % [id, flags,
+	print("  chunk of building %d: flags %d (1 near, 2 mid, 4 shown, 8 detail, 16 known, 32 far); pending %d, asked %d, ready %d, no_turn %d" % [id, flags,
 			CityStore.query(&"render_pending"), cost.b_requested, cost.b_done, cost.b_unmet])

@@ -105,7 +105,7 @@ static func blades(on: Node3D, at: Vector3) -> void:
 		var depth: float = (splits[j] + splits[j + 1]) * 0.5 * end
 		var spot := _ground_at_depth(cam, at.y, depth)
 		if spot == Vector3.INF:
-			print("escada ", j, " fora da foto, profundidade ", depth)
+			print("escada ", j, " out of the photo, depth ", depth)
 			continue
 		var texel: float = _texel(cam, splits[j] * end, splits[j + 1] * end, on.world.daylight.shadow_side_px)
 		var side: float = texel * PLATE_TEXELS

@@ -34,25 +34,25 @@ func run() -> void:
 	var from := a.lerp(mid, 0.3) + Vector3(0, 0, FOOTWAY_OFF_M)
 	var to := mid.lerp(e, 0.7) + Vector3(0, 0, FOOTWAY_OFF_M)
 	var plan: Dictionary = CityStore.query(&"preview_pole_run", [from, to, REACH, LAMPS_ALL, URBAN])
-	_check.call(plan.get("ok", false), "linha nas calçadas das duas vias novas: %s" % plan.get("error", ""))
+	_check.call(plan.get("ok", false), "a line on the pavements of both new roads: %s" % plan.get("error", ""))
 	if not plan.get("ok", false):
 		return
 	var run: Dictionary = CityStore.dispatch(&"build_pole_run", [from, to, REACH, LAMPS_ALL, URBAN])
 	var strung: Dictionary = CityStore.query(&"street_counts")
-	_check.call(run.get("ok", false) and strung.spans > 0, "linha ao longo das duas: %s" % run)
+	_check.call(run.get("ok", false) and strung.spans > 0, "a line along both: %s" % run)
 	var off := _off_axis()
 	var node: int = CityStore.query(&"node_at", [mid, PX]).node
 	var moved: Dictionary = CityStore.dispatch(&"move_node", [node, mid + Vector3(0, 0, MOVE_BY_M)])
 	var now: Dictionary = CityStore.query(&"street_counts")
 	_check.call(moved.get("ok", false) and now.poles == strung.poles and now.spans == strung.spans,
-		"mover o nó leva os postes e os fios: %s -> %s %s" % [strung, now, moved.get("error", "")])
+		"moving the node takes the poles and wires: %s -> %s %s" % [strung, now, moved.get("error", "")])
 	var after := _off_axis()
 	var kept := after.size() == off.size()
 	for i in mini(after.size(), off.size()):
 		kept = kept and absf(after[i] - off[i]) < KERB_KEPT_M
-	_check.call(kept, "cada poste à mesma distância do eixo da via movida: %s -> %s" % [off, after])
+	_check.call(kept, "each pole the same distance from the moved road's axis: %s -> %s" % [off, after])
 	CityStore.dispatch(&"undo")
-	_check.call(CityStore.query(&"street_counts").poles == strung.poles and CityStore.query(&"street_counts").spans == strung.spans, "desfazer o movimento")
+	_check.call(CityStore.query(&"street_counts").poles == strung.poles and CityStore.query(&"street_counts").spans == strung.spans, "undoing the move")
 
 
 ## How far each pole stands from the axis of the road under it, sorted.

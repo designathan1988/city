@@ -48,7 +48,7 @@ static func shots(cap: Node) -> void:
 	for t in TRIES:
 		CityStore.query(&"set_city_hour", [HOUR])
 		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, NEAR_M])
-		print("censo às 16 h: ", census)
+		print("census at 16 h: ", census)
 		for key in left.keys():
 			if not census.spots.has(key):
 				continue
@@ -64,7 +64,7 @@ static func shots(cap: Node) -> void:
 		if left.is_empty():
 			break
 		CityStore.step_ticks(WAIT_TICKS)
-	print("sem foto: ", left.keys())
+	print("no photo: ", left.keys())
 	CityStore.query(&"set_city_hour", [HOUR])
 	var ground: Vector3 = cap._ground(FAR_AT.x, FAR_AT.z)
 	await cap._shot("37_multidao", ground + FAR_FROM - Vector3(FAR_AT.x, 0, FAR_AT.z), ground + FAR_AT - Vector3(FAR_AT.x, 0, FAR_AT.z))
@@ -81,7 +81,7 @@ static func bang(cap: Node) -> void:
 		if found.is_empty():
 			break
 		var at: Vector3 = found[(t * BANG_STRIDE) % found.size()].position
-		print("tiro em ", at, ": ", CityStore.dispatch(&"shoot", [at + BANG_FROM, Vector3.DOWN]))
+		print("shot at ", at, ": ", CityStore.dispatch(&"shoot", [at + BANG_FROM, Vector3.DOWN]))
 		for k in BANG_LOOKS:
 			CityStore.step_ticks(BANG_TICKS)
 			var census: Dictionary = CityStore.query(&"people_census", [at, BANG_NEAR_M])
@@ -99,7 +99,7 @@ static func bang(cap: Node) -> void:
 		if left.is_empty():
 			break
 		CityStore.step_ticks(BANG_CALM_TICKS)
-	print("sem foto: ", left.keys())
+	print("no photo: ", left.keys())
 
 
 ## The clips of people in vehicles, on who waits at a kerb: --only=clipes. They are drawn with no vehicle round them, as the
@@ -118,7 +118,7 @@ static func clips(cap: Node) -> void:
 			CityStore.query(&"show_people_clip", ["idle"])
 			return
 		CityStore.step_ticks(WAIT_TICKS)
-	print("sem foto: ninguém à espera")
+	print("no photo: nobody waiting")
 
 
 static func _from(at: Vector3, way: Vector3, road: Vector3) -> Vector3:

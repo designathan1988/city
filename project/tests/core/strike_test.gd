@@ -40,7 +40,7 @@ func _ready() -> void:
 	_effects()
 	_roads()
 	await _fall()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -48,14 +48,14 @@ func _model() -> void:
 	var one: Dictionary = CityStore.query(&"blast_probe", [float(SMALL_FORCE), 1.0])
 	var kg: float = one.kg
 	var at: Dictionary = CityStore.query(&"blast_probe", [float(SMALL_FORCE), SCALED_Z * pow(kg, 1.0 / 3.0)])
-	print("sopro força ", SMALL_FORCE, ": ", at)
-	_check(absf(at.pressure_kpa / KB_AT_Z10_KPA - 1.0) < KB_TOLERANCE, "K-B em Z=10: %.2f kPa (esperado %.1f)" % [at.pressure_kpa, KB_AT_Z10_KPA])
+	print("blast strength ", SMALL_FORCE, ": ", at)
+	_check(absf(at.pressure_kpa / KB_AT_Z10_KPA - 1.0) < KB_TOLERANCE, "K-B at Z=10: %.2f kPa (expected %.1f)" % [at.pressure_kpa, KB_AT_Z10_KPA])
 	var far: Dictionary = CityStore.query(&"blast_probe", [float(SMALL_FORCE), 2.0 * at.light_range_m])
-	_check(far.pressure_kpa < at.pressure_kpa, "a sobrepressão cai com a distância")
+	_check(far.pressure_kpa < at.pressure_kpa, "the overpressure falls with distance")
 	var big: Dictionary = CityStore.query(&"blast_probe", [float(BIG_FORCE), 1.0])
 	_curves(kg)
-	_check(big.collapse_range_m > one.collapse_range_m * 2.0, "mais força, mais alcance: %.1f m -> %.1f m" % [one.collapse_range_m, big.collapse_range_m])
-	_check(big.crater_radius_m > one.crater_radius_m, "cratera cresce com a carga")
+	_check(big.collapse_range_m > one.collapse_range_m * 2.0, "more strength, more reach: %.1f m -> %.1f m" % [one.collapse_range_m, big.collapse_range_m])
+	_check(big.crater_radius_m > one.crater_radius_m, "the crater grows with the charge")
 
 
 ## The three curves at scaled distances from the first row to far past the last: finite everywhere, the pressure falling and the
@@ -75,7 +75,7 @@ func _curves(kg: float) -> void:
 		ok = ok and (z <= CURVE_LAST_Z or s.duration_ms <= at_40 * (1.0 + DURATION_HOLD_TOL)) # held, not carried on
 		last_p = s.pressure_kpa
 		last_d = s.duration_ms
-	_check(ok, "pressão cai, duração não cai e tudo é finito de Z=%s a %s" % [CURVE_Z[0], CURVE_Z[-1]])
+	_check(ok, "pressure falls, duration does not and all is finite from Z=%s to %s" % [CURVE_Z[0], CURVE_Z[-1]])
 
 
 func _effects() -> void:
@@ -86,7 +86,7 @@ func _effects() -> void:
 		if info.floors > 0:
 			civic = info
 			break
-	_check(not civic.is_empty(), "há um prédio para atingir")
+	_check(not civic.is_empty(), "there is a building to hit")
 	var p0: Dictionary = CityStore.query(&"damage_probe")
 	var spot: Vector3 = civic.position
 	var roof := Vector3(spot.x, spot.y + 6.0, spot.z)
@@ -94,29 +94,29 @@ func _effects() -> void:
 	var p1: Dictionary = CityStore.query(&"damage_probe")
 	print("1º golpe: ", r, " ", p1)
 	_check(r.ok, "golpe aceito")
-	_check(p1.hurt > p0.hurt or p1.buildings < p0.buildings, "o prédio sentiu o golpe (dano ou queda)")
+	_check(p1.hurt > p0.hurt or p1.buildings < p0.buildings, "the building felt the strike (damage or fall)")
 	_check(p1.strikes == p0.strikes + 1, "golpe contado")
 	var n := 0
 	while n < HITS_TO_FALL and CityStore.query(&"damage_probe").buildings >= p0.buildings:
 		CityStore.dispatch(&"strike", [roof, SMALL_FORCE])
 		n += 1
 	var p2: Dictionary = CityStore.query(&"damage_probe")
-	print("após ", n + 1, " golpes: ", p2)
-	_check(p2.buildings < p0.buildings, "golpes repetidos derrubam o prédio (%d -> %d)" % [p0.buildings, p2.buildings])
-	_check(p2.ruins >= 1, "a ruína ficou")
+	print("after ", n + 1, " golpes: ", p2)
+	_check(p2.buildings < p0.buildings, "repeated strikes bring the building down (%d -> %d)" % [p0.buildings, p2.buildings])
+	_check(p2.ruins >= 1, "the ruin stayed")
 	var ground := Vector3(spot.x, spot.y, spot.z)
 	var before_big: Dictionary = CityStore.query(&"damage_probe")
 	var big: Dictionary = CityStore.dispatch(&"strike", [ground, BIG_FORCE])
 	var after_big: Dictionary = CityStore.query(&"damage_probe")
 	print("golpe grande: ", big, " ", after_big)
 	_check(after_big.craters >= before_big.craters, "cratera registrada")
-	_check(after_big.buildings < before_big.buildings, "a bomba grande derrubou os prédios em volta")
+	_check(after_big.buildings < before_big.buildings, "the big bomb brought the buildings round it down")
 	_check(CityStore.dispatch(&"undo", []), "desfez")
 	var undone: Dictionary = CityStore.query(&"damage_probe")
-	_check(undone.buildings == before_big.buildings, "desfazer devolveu os prédios (%d)" % undone.buildings)
-	_check(undone.ruins == before_big.ruins and undone.craters == before_big.craters, "e as ruínas e crateras")
+	_check(undone.buildings == before_big.buildings, "undo gave the buildings back (%d)" % undone.buildings)
+	_check(undone.ruins == before_big.ruins and undone.craters == before_big.craters, "and the ruins and craters")
 	_check(CityStore.dispatch(&"redo", []), "refez")
-	_check(CityStore.query(&"damage_probe").buildings == after_big.buildings, "refazer repete o golpe")
+	_check(CityStore.query(&"damage_probe").buildings == after_big.buildings, "redo repeats the strike")
 
 
 func _roads() -> void:
@@ -131,17 +131,17 @@ func _roads() -> void:
 				spot = anchor.at
 			z += SCAN_STEP_M
 		x += SCAN_STEP_M
-	_check(spot != Vector3.INF, "achou um ponto de via")
+	_check(spot != Vector3.INF, "found a point on a road")
 	var before: Dictionary = CityStore.query(&"damage_probe")
 	var r: Dictionary = CityStore.dispatch(&"strike", [spot, BIG_FORCE])
 	var after: Dictionary = CityStore.query(&"damage_probe")
-	print("golpe na via: ", r, " ", after)
-	_check(after.craters == before.craters + 1, "cratera na via")
-	_check(after.segments != before.segments or r.segments > 0, "a cratera cortou a via (%d -> %d trechos)" % [before.segments, after.segments])
-	_check(after.gone > before.gone, "mobiliário derrubado (%d)" % (after.gone - before.gone))
-	_check(CityStore.dispatch(&"undo", []), "desfez o golpe na via")
+	print("strike on the road: ", r, " ", after)
+	_check(after.craters == before.craters + 1, "a crater on the road")
+	_check(after.segments != before.segments or r.segments > 0, "the crater cut the road (%d -> %d stretches)" % [before.segments, after.segments])
+	_check(after.gone > before.gone, "furniture knocked down (%d)" % (after.gone - before.gone))
+	_check(CityStore.dispatch(&"undo", []), "undid the strike on the road")
 	var undone: Dictionary = CityStore.query(&"damage_probe")
-	_check(undone.segments == before.segments and undone.gone == before.gone and undone.craters == before.craters, "a via, o mobiliário e a cratera voltaram")
+	_check(undone.segments == before.segments and undone.gone == before.gone and undone.craters == before.craters, "the road, the furniture and the crater came back")
 
 
 ## A building brought down comes down in pieces of its own walls: they appear in a job's time, some fly, all come to rest, and undoing the blow takes them away.
@@ -154,26 +154,26 @@ func _fall() -> void:
 	var ruins: int = CityStore.query(&"damage_probe").ruins
 	var before: int = CityStore.query(&"effects_ruin_pieces")
 	var r: Dictionary = CityStore.dispatch(&"strike", [spot, FALL_FORCE])
-	_check(r.ok and CityStore.query(&"damage_probe").ruins > ruins, "um prédio caiu para a fratura")
+	_check(r.ok and CityStore.query(&"damage_probe").ruins > ruins, "a building fell for the fracture")
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_pieces") > before)
 	var pieces: int = CityStore.query(&"effects_ruin_pieces")
-	print("peças do prédio caído: ", pieces - before)
-	_check(pieces - before >= PIECES_LEAST, "o prédio virou peças (%d)" % (pieces - before))
+	print("pieces of the fallen building: ", pieces - before)
+	_check(pieces - before >= PIECES_LEAST, "the building became pieces (%d)" % (pieces - before))
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") > 0)
-	_check(CityStore.query(&"effects_ruin_flying") > 0, "as peças voam")
+	_check(CityStore.query(&"effects_ruin_flying") > 0, "the pieces fly")
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") == 0)
-	_check(CityStore.query(&"effects_ruin_flying") == 0, "as peças pousam")
+	_check(CityStore.query(&"effects_ruin_flying") == 0, "the pieces land")
 	var seed: int = _a_ruin()
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_digest", [seed]) != 0)
 	var lying: int = CityStore.query(&"effects_ruin_digest", [seed])
-	_check(lying != 0, "a pilha assentou")
-	_check(CityStore.dispatch(&"undo", []), "desfez a queda")
+	_check(lying != 0, "the heap settled")
+	_check(CityStore.dispatch(&"undo", []), "undid the fall")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_check(CityStore.query(&"effects_ruin_pieces") <= before, "desfazer leva as peças embora")
-	_check(CityStore.dispatch(&"redo", []), "refez a queda")
+	_check(CityStore.query(&"effects_ruin_pieces") <= before, "undo takes the pieces away")
+	_check(CityStore.dispatch(&"redo", []), "redid the fall")
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_digest", [seed]) != 0)
-	_check(CityStore.query(&"effects_ruin_digest", [seed]) == lying, "refazer deita as peças como caíram (%d, %d)" % [lying, CityStore.query(&"effects_ruin_digest", [seed])])
+	_check(CityStore.query(&"effects_ruin_digest", [seed]) == lying, "redo lays the pieces as they fell (%d, %d)" % [lying, CityStore.query(&"effects_ruin_digest", [seed])])
 
 
 ## The seed of the ruin the last strike left.

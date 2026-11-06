@@ -22,11 +22,11 @@ func run() -> void:
 	var c = t._screen() * 0.5
 	await t._click(MOUSE_BUTTON_LEFT, c)
 	var road: Variant = t.tools.active
-	t._check(road.chain != Vector3.INF, "esquerdo chega à ferramenta (via começada)")
+	t._check(road.chain != Vector3.INF, "left reaches the tool (road started)")
 	await t._drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(80, 0), false, true)
-	t._check(road.chain != Vector3.INF, "arrastar com o direito não cancela a via")
+	t._check(road.chain != Vector3.INF, "dragging with the right does not cancel the road")
 	await t._click(MOUSE_BUTTON_RIGHT, c)
-	t._check(road.chain == Vector3.INF, "clique direito cancela a via")
+	t._check(road.chain == Vector3.INF, "a right click cancels the road")
 	await _height_keys()
 	_blocks()
 	_zone_brush()
@@ -40,7 +40,7 @@ func _blocks() -> void:
 	RoadBlocks.show(t.tools, at)
 	RoadBlocks.lay(t.tools.active, at)
 	CityStore.dispatch(&"undo")
-	t._check(CityStore.query(&"inspect", [at]).size() == had, "quarteirões pela ferramenta: desfeitos em um passo")
+	t._check(CityStore.query(&"inspect", [at]).size() == had, "blocks by the tool: undone in one step")
 
 
 ## A fast drag reports two points far apart: the whole way between them is zoned, and with Shift held the same stroke takes the zone away.
@@ -49,14 +49,14 @@ func _zone_brush() -> void:
 	var b := a + Vector3(ZONE_ROAD_M, 0, 0)
 	var mid := a.lerp(b, 0.5)
 	var built: Dictionary = CityStore.dispatch(&"build_road", [a, b, false, Vector3.ZERO, 0, 0.25])
-	t._check(built.get("ok", false), "via para o pincel de zona: %s" % [built])
+	t._check(built.get("ok", false), "a road for the zone brush: %s" % [built])
 	t.tools.set_tool(ToolController.Tool.ZONE, {"zone": ZONE_KIND, "radius": ZONE_BRUSH_M})
 	var brush: Variant = t.tools.active
 	brush.click(a)
 	brush.drag(b)
 	brush.release(b)
 	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, ZONE_KIND])
-	t._check(again.get("error", "") == "tools.toast.zoneSame", "o arrasto rápido zoneia o meio do caminho: %s" % [again])
+	t._check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones the middle of the way: %s" % [again])
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
@@ -70,7 +70,7 @@ func _zone_brush() -> void:
 	Input.parse_input_event(shift)
 	Input.flush_buffered_events()
 	var none: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, 0])
-	t._check(none.get("error", "") == "tools.toast.zoneSame", "com Shift o traço tira a zona: %s" % [none])
+	t._check(none.get("error", "") == "tools.toast.zoneSame", "with Shift the stroke takes the zone off: %s" % [none])
 
 
 ## With the road tool in hand Page Up and Down are the road's height, landing on whole metres, and the camera does not tilt.
@@ -79,12 +79,12 @@ func _height_keys() -> void:
 	await t._hold_key(KEY_PAGEUP, false, 0.05)
 	await t._hold_key(KEY_PAGEUP, false, 0.05)
 	await t._glide_settled()
-	t._check(is_equal_approx(CityStore.query(&"road_height"), 2.0), "Page Up sobe a via (%.1f m)" % CityStore.query(&"road_height"))
-	t._check(is_equal_approx(t.rig.pitch, pitch0), "a câmera não inclina com a via na mão")
+	t._check(is_equal_approx(CityStore.query(&"road_height"), 2.0), "Page Up raises the road (%.1f m)" % CityStore.query(&"road_height"))
+	t._check(is_equal_approx(t.rig.pitch, pitch0), "the camera does not tilt with a road in hand")
 	CityStore.dispatch(&"set_road_height", [1.5])
 	t.tools.active.height = 1.5
 	await t._hold_key(KEY_PAGEDOWN, false, 0.05)
-	t._check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "Page Down pousa no metro inteiro (%.1f m)" % CityStore.query(&"road_height"))
+	t._check(is_equal_approx(CityStore.query(&"road_height"), 1.0), "Page Down lands on the whole metre (%.1f m)" % CityStore.query(&"road_height"))
 	CityStore.dispatch(&"set_road_height", [0.0])
 	t.tools.active.height = 0.0
 	await _rebound_keys()

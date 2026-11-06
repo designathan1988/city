@@ -49,11 +49,11 @@ func _blocks(b: Dictionary) -> void:
 	var at := _field(b)
 	var r: Dictionary = CityStore.dispatch(&"build_blocks", [at, 2, 2, LEN_M, 0.0, PROFILE])
 	CityStore.refresh()
-	_check.call(r.get("ok", false), "quarteirões: a grade é construída (%s)" % r.get("error", ""))
-	_check.call(CityStore.snapshot.segments >= before + BLOCK_STREETS, "quarteirões: as ruas todas (%d)" % (CityStore.snapshot.segments - before))
+	_check.call(r.get("ok", false), "blocks: the grid is built (%s)" % r.get("error", ""))
+	_check.call(CityStore.snapshot.segments >= before + BLOCK_STREETS, "blocks: all the streets (%d)" % (CityStore.snapshot.segments - before))
 	CityStore.dispatch(&"undo")
 	CityStore.refresh()
-	_check.call(CityStore.snapshot.segments == before, "quarteirões: um desfazer leva a grade toda")
+	_check.call(CityStore.snapshot.segments == before, "blocks: one undo takes the whole grid")
 
 
 func run(b: Dictionary) -> void:
@@ -85,7 +85,7 @@ func _paying(b: Dictionary) -> void:
 	var m0 := _money()
 	var pv: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
 	var r: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
-	_check.call(r.ok and r.money == pv.price and m0 - _money() == pv.price, "pagou a prévia: %s" % [m0 - _money()])
+	_check.call(r.ok and r.money == pv.price and m0 - _money() == pv.price, "paid the preview: %s" % [m0 - _money()])
 	var m1 := _money()
 	var pieces := 0
 	for i in int(FIELD_ROAD_M / WALK_M) + 1:
@@ -93,12 +93,12 @@ func _paying(b: Dictionary) -> void:
 			pieces += 1
 	var back := _money() - m1
 	var share: float = DataTables.tuning("economy_refund_share")
-	_check.call(pieces > 0 and absf(back - pv.price * share) <= pieces, "devolveu %s de %s em %d pedaços" % [back, pv.price, pieces])
+	_check.call(pieces > 0 and absf(back - pv.price * share) <= pieces, "gave back %s of %s in %d pieces" % [back, pv.price, pieces])
 	for i in pieces:
 		CityStore.dispatch(&"undo")
-	_check.call(_money() == m1, "desfazer repôs o dinheiro: %s" % _money())
+	_check.call(_money() == m1, "undo put the money back: %s" % _money())
 	CityStore.dispatch(&"undo")
-	_check.call(_money() == m0, "desfazer a via devolveu tudo: %s" % _money())
+	_check.call(_money() == m0, "undoing the road gave it all back: %s" % _money())
 
 
 ## A road laid in pieces is one road, and Split makes it two: a click on one half leaves the other.
@@ -107,15 +107,15 @@ func _split_road(b: Dictionary) -> void:
 	var e := a + Vector3(FIELD_ROAD_M, 0, 0)
 	var mid := a + Vector3(FIELD_ROAD_M * 0.3, 0, 0)
 	var r: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
-	_check.call(r.ok and r.segments > 1, "a via longa tem %d pedaços" % r.get("segments", 0))
-	_check.call(CityStore.dispatch(&"split_road", [mid]).get("ok", false), "dividiu a via")
+	_check.call(r.ok and r.segments > 1, "the long road has %d pieces" % r.get("segments", 0))
+	_check.call(CityStore.dispatch(&"split_road", [mid]).get("ok", false), "divided the road")
 	var d: Dictionary = CityStore.dispatch(&"demolish", [a + Vector3(WALK_M * 2.0, 0, 0)])
-	_check.call(d.ok, "demoliu um lado")
+	_check.call(d.ok, "demolished one side")
 	var near: Dictionary = CityStore.query(&"segment_at", [a + Vector3(WALK_M * 2.0, 0, 0)])
 	var far: Dictionary = CityStore.query(&"segment_at", [e - Vector3(WALK_M * 2.0, 0, 0)])
-	_check.call(near.get("seg", -1) < 0 and far.get("seg", -1) >= 0, "o outro lado do Dividir ficou (%s, %s)" % [near.get("seg", -1), far.get("seg", -1)])
+	_check.call(near.get("seg", -1) < 0 and far.get("seg", -1) >= 0, "the other side of the Split stayed (%s, %s)" % [near.get("seg", -1), far.get("seg", -1)])
 	var all: Dictionary = CityStore.dispatch(&"demolish", [e - Vector3(WALK_M * 2.0, 0, 0)])
-	_check.call(all.ok and all.segments > 1, "o que sobrou caiu de uma vez: %d pedaços" % all.get("segments", 0))
+	_check.call(all.ok and all.segments > 1, "what was left fell at once: %d pieces" % all.get("segments", 0))
 	for i in 4:
 		CityStore.dispatch(&"undo")
 
@@ -136,16 +136,16 @@ func _generated_roads(b: Dictionary) -> void:
 	var p := _town_road(b)
 	var m0 := _money()
 	var d: Dictionary = CityStore.dispatch(&"demolish", [p])
-	_check.call(d.ok and d.money < 0 and _money() == m0 - d.money, "via gerada devolveu %s: %s em %s" % [_money() - m0, d, p])
+	_check.call(d.ok and d.money < 0 and _money() == m0 - d.money, "a generated road gave back %s: %s in %s" % [_money() - m0, d, p])
 	CityStore.dispatch(&"undo")
-	_check.call(_money() == m0, "desfazer tirou a devolução")
+	_check.call(_money() == m0, "undo took the refund away")
 	var cheaper: Dictionary = CityStore.dispatch(&"upgrade_road", [p, NARROW_PROFILE, false])
 	_check.call(cheaper.ok and cheaper.money < 0 and _money() == m0 - cheaper.money, "perfil mais barato devolveu %s" % [_money() - m0])
 	CityStore.dispatch(&"undo")
 	var dearer: Dictionary = CityStore.dispatch(&"upgrade_road", [p, WIDE_PROFILE, false])
 	_check.call(dearer.ok and dearer.money > 0 and _money() == m0 - dearer.money, "perfil mais caro cobrou %s" % [m0 - _money()])
 	CityStore.dispatch(&"undo")
-	_check.call(_money() == m0, "desfazer Melhorar repôs o dinheiro")
+	_check.call(_money() == m0, "undoing Upgrade put the money back")
 
 
 ## Without the money no edit goes through and nothing moves.
@@ -157,18 +157,18 @@ func _refusals(b: Dictionary) -> void:
 	_set_money(LOW_FUNDS)
 	var s0: int = CityStore.snapshot.segments
 	var pv: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX])
-	_check.call(pv.ok and not pv.affordable, "prévia sem dinheiro")
+	_check.call(pv.ok and not pv.affordable, "a preview with no money")
 	var edits := {
-		"via": CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX]),
+		"road": CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, PX]),
 		"melhorar": CityStore.dispatch(&"upgrade_road", [p, WIDE_PROFILE, false]),
-		"rotatória": CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]),
+		"roundabout": CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]),
 	}
 	for what in edits:
 		_check.call(not edits[what].ok and edits[what].error == "hint.rule.funds", "%s recusada: %s" % [what, edits[what].error])
-	_check.call(_money() == LOW_FUNDS and CityStore.snapshot.segments == s0, "nada mudou: %s %d" % [_money(), CityStore.snapshot.segments])
+	_check.call(_money() == LOW_FUNDS and CityStore.snapshot.segments == s0, "nothing changed: %s %d" % [_money(), CityStore.snapshot.segments])
 	_set_money(START_FUNDS)
 	var built: Dictionary = CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false])
-	_check.call(built.ok and built.money > 0 and _money() == START_FUNDS - built.money, "rotatória cobrou %s" % built.money)
+	_check.call(built.ok and built.money > 0 and _money() == START_FUNDS - built.money, "the roundabout charged %s" % built.money)
 	CityStore.dispatch(&"undo")
 
 

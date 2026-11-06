@@ -57,15 +57,15 @@ func _ready() -> void:
 		await _frames(wear_frames)
 		CityStore.dispatch(&"set_speed", [0])
 		var wear: Dictionary = CityStore.query(&"wear_probe")
-		print("desgaste: ", wear.worn_cells, " células, ", wear.wear_publications, " publicações")
-	print("tráfego: ", CityStore.snapshot.get("vehicles"), " veículos, ", CityStore.snapshot.get("people"), " pessoas")
-	_memory("tráfego aquecido")
+		print("desgaste: ", wear.worn_cells, " cells, ", wear.wear_publications, " published")
+	print("traffic: ", CityStore.snapshot.get("vehicles"), " vehicles, ", CityStore.snapshot.get("people"), " pessoas")
+	_memory("traffic warmed up")
 	var ground := _ground(0, 0)
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
-	print("sonda: ", probe.vehicles, " veículos, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " em conectores, ", probe.signals, " semáforos, parados por ", probe.held_by)
+	print("sonda: ", probe.vehicles, " vehicles, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " on connectors, ", probe.signals, " signals, stopped by ", probe.held_by)
 	if measure:
-		print("rua: ", CityStore.query(&"street_counts"))
-		print("peças: ", CityStore.query(&"furniture_census"))
+		print("street: ", CityStore.query(&"street_counts"))
+		print("pieces: ", CityStore.query(&"furniture_census"))
 		_memory("medido")
 		get_tree().quit(0)
 		return
@@ -98,8 +98,8 @@ func _boot_world() -> bool:
 	add_child(RoadcraftHud.new())
 	Settings.apply(world, get_viewport()) # the shots show what the player's preset shows: its antialiasing and shadows
 	var report: Dictionary = CityStore.new_map(map, seed, true, true)
-	print("cidade: ", report)
-	_memory("cidade gerada")
+	print("city: ", report)
+	_memory("city generated")
 	camera.global_position = Vector3(0, 300, 300)
 	camera.look_at(Vector3.ZERO)
 	return true
@@ -107,8 +107,8 @@ func _boot_world() -> bool:
 
 func _wait_render() -> void:
 	var waited: int = await CaptureWait.until_drawn(self, 2, "cidade")
-	print("quadros até desenhar tudo: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
-	_memory("cidade desenhada")
+	print("frames until all is drawn: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+	_memory("city drawn")
 
 
 func _capture_all(probe: Dictionary, ground: Vector3) -> void:
@@ -127,7 +127,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 			await CaptureSignals.at_hour(self, h)
 		var base := _ground(v[2].x, v[2].z) # each view stands on the ground under its target (hilly maps)
 		await _shot(v[0], base + v[1] - Vector3(v[2].x, 0, v[2].z), base + v[2] - Vector3(v[2].x, 0, v[2].z))
-		print("custo dos veículos em ", v[0], ": ", CityStore.query(&"agent_cost"))
+		print("cost of the vehicles at ", v[0], ": ", CityStore.query(&"agent_cost"))
 	await CaptureVehicles.car_shots(self, probe, ground)
 	await CaptureVehicles.shots(self, probe, ground)
 	await _person_shot(probe, ground)
@@ -139,7 +139,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 		await CaptureCrossing.paint(self, cross)
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
-		print("retido em ", j, " ", probe.jam_info[i])
+		print("held at ", j, " ", probe.jam_info[i])
 		await _shot("09_retido_%d" % i, j + Vector3(0, 40, 25), j)
 	await _civic_tour()
 
@@ -212,9 +212,9 @@ func _civic_tour() -> void:
 		var from := at + out * size * CIVIC_VIEW.z + along * size * CIVIC_VIEW.x + Vector3.UP * size * CIVIC_VIEW.y
 		await _shot("12_%s" % CIVIC_SHOTS[fn], from, at + Vector3.UP * CIVIC_LOOK_UP_M)
 		var chunk: int = CityStore.query(&"building_chunk", [at.x, at.z])
-		print("chunk de 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
+		print("chunk of 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
 		if chunk & CHUNK_NEAR_BUILT == 0:
-			push_warning("FOTO INCOMPLETA: 12_%s saiu sem o nível perto do prédio" % CIVIC_SHOTS[fn])
+			push_warning("INCOMPLETE PHOTO: 12_%s came out without the building's near level" % CIVIC_SHOTS[fn])
 
 
 ## Index of the point nearest to `to` (0 when the list is empty).

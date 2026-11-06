@@ -18,13 +18,13 @@ func _ready() -> void:
 		CityStore.new_map(MAP, SEED, true, true)
 		var t0 := Time.get_ticks_msec()
 		runs.append(CityStore.query(&"traffic_hashes", [TICKS]))
-		print("rodada %d: %d passos em %d ms, último %s" % [run, TICKS, Time.get_ticks_msec() - t0, runs[run][TICKS - 1]])
+		print("round %d: %d steps in %d ms, last %s" % [run, TICKS, Time.get_ticks_msec() - t0, runs[run][TICKS - 1]])
 	var first := -1
 	for k in TICKS:
 		if runs[0][k] != runs[1][k]:
 			first = k
 			break
 	if first >= 0:
-		print("FAIL o tráfego divergiu no passo ", first)
-	print("FALHAS: ", 0 if first < 0 else 1)
+		print("FAIL the traffic diverged at step ", first)
+	print("FAILURES: ", 0 if first < 0 else 1)
 	get_tree().quit(0 if first < 0 else 1)

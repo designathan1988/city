@@ -29,7 +29,7 @@ static func run(id: int, made: int, check: Callable) -> void:
 	_edit(id, made, "deslizar", &"body_slide_block", [id, vol, a, a + (box[1] - a).normalized() * SLIDE_M, false], check)
 	_points(id, vol, made, check)
 	_handles(id, vol, made, check)
-	check.call(_info(id).volumes.size() == blocks, "os blocos voltaram")
+	check.call(_info(id).volumes.size() == blocks, "the blocks came back")
 
 
 ## A point moved; a corner added on a side and taken away again is the plan it was.
@@ -37,7 +37,7 @@ static func _points(id: int, vol: int, made: int, check: Callable) -> void:
 	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
 	var shaped: int = _info(id).digest
 	var r: Dictionary = CityStore.dispatch(&"body_change_point", [id, vol, 0, false])
-	check.call(r.get("ok", false) and _info(id).volumes[vol].bays.size() == CHAMFERED_SIDES + 1, "canto a mais: %s" % r)
+	check.call(r.get("ok", false) and _info(id).volumes[vol].bays.size() == CHAMFERED_SIDES + 1, "one corner more: %s" % r)
 	r = CityStore.dispatch(&"body_change_point", [id, vol, 1, true])
 	check.call(r.get("ok", false) and _info(id).volumes[vol].bays.size() == CHAMFERED_SIDES, "canto tirado: %s" % r)
 	var box: PackedVector3Array = CityStore.query(&"body_outline", [id, vol])
@@ -54,19 +54,19 @@ static func _handles(id: int, vol: int, made: int, check: Callable) -> void:
 	for h: Dictionary in list:
 		kinds[h.kind] = true
 	for kind: String in ["storeys", "side", "vertex", "move", "rotate", "scale"]:
-		check.call(kinds.has(kind), "há alça de %s" % kind)
+		check.call(kinds.has(kind), "there is a %s handle" % kind)
 	var storeys: int = _info(id).volumes[vol].storeys
 	var spec := {"op": "storeys", "vol": vol, "count": storeys + 1}
 	var d: Dictionary = CityStore.query(&"body_draft", [id, spec])
-	check.call(not d.bytes.is_empty() and _info(id).digest == made, "o rascunho não muda o corpo")
-	_edit(id, made, "alça de andares", &"body_apply", [id, spec], check)
-	_edit(id, made, "alça da face", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": OUT_M}], check)
-	_edit(id, made, "alça de ala", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": BRICK_M, "wing": true}], check)
-	_edit(id, made, "alça de escala", &"body_apply", [id, {"op": "scale", "factor": SCALE}], check)
-	_edit(id, made, "alça de relevo", &"body_apply", [id, {"op": "relief", "vol": vol, "side": SIDE, "index": 0, "count": 0, "along": OUT_M}], check)
+	check.call(not d.bytes.is_empty() and _info(id).digest == made, "the draft does not change the body")
+	_edit(id, made, "storeys handle", &"body_apply", [id, spec], check)
+	_edit(id, made, "face handle", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": OUT_M}], check)
+	_edit(id, made, "wing handle", &"body_apply", [id, {"op": "side", "vol": vol, "side": SIDE, "along": BRICK_M, "wing": true}], check)
+	_edit(id, made, "scale handle", &"body_apply", [id, {"op": "scale", "factor": SCALE}], check)
+	_edit(id, made, "relief handle", &"body_apply", [id, {"op": "relief", "vol": vol, "side": SIDE, "index": 0, "count": 0, "along": OUT_M}], check)
 	var ground: int = _ground_block(id)
 	var r: Dictionary = CityStore.dispatch(&"body_apply", [id, {"op": "lift", "vol": ground, "along": OUT_M, "snap": false}])
-	check.call(r.get("ok", false) and _info(id).volumes[ground].lift == OUT_M, "cota do bloco: %s" % r)
+	check.call(r.get("ok", false) and _info(id).volumes[ground].lift == OUT_M, "the block's level: %s" % r)
 	_back_to(made, id, check, "cota")
 
 

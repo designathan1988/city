@@ -18,7 +18,7 @@ watch_job() { # <name> <log> <cmd...>
 		local now; now=$(stat -c %s "$log" 2> /dev/null || echo 0)
 		if [ "$now" -ne "$size" ]; then
 			size=$now; still=0
-			local lines; lines=$(grep -nE "FAIL|FALHOU|SCRIPT ERROR|ERROR:.*(Crash|crash)" "$log" 2> /dev/null | tail -n +$((seen + 1)))
+			local lines; lines=$(grep -nE "\bFAIL\b|FALHOU|SCRIPT ERROR|ERROR:.*(Crash|crash)" "$log" 2> /dev/null | tail -n +$((seen + 1)))
 			if [ -n "$lines" ]; then
 				while IFS= read -r l; do say "  $name: ${l#*:}"; seen=$((seen + 1)); done <<< "$lines"
 			fi

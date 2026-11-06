@@ -177,6 +177,7 @@
   "snap_edge": 0.32
  },
  "structure": {
+  "span_from_m": 320, "span_every_m": 220, "cable_step_m": 12, "cable_first_m": 16, "tower_over_m": 46, "tower_leg_m": 2.4,
   "raised_m": 2, "buried_m": 0.5, "wall_thick_m": 0.32, "wall_coping_m": 0.18, "wall_foot_m": 0.24, "wall_step_m": 0.8, "bore_over_m": 0.56, "pier_spacing_elevated_m": 29.6, "pier_spacing_bridge_m": 38.4,
   "pier_radius_elevated_m": 1.04, "pier_radius_bridge_m": 1.28, "bearing_m": 0.08, "pier_slenderness": 8,
   "pier_max_width": 1.8, "min_support_m": 0.36, "bent_spread": 0.55, "cap_depth": 2.2, "cap_height_m": 0.72,

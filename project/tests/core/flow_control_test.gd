@@ -36,7 +36,7 @@ func _ready() -> void:
 	await _driven()
 	_junction()
 	await _stop_sign()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -47,7 +47,7 @@ func _replay() -> void:
 	for key: String in ORACLE:
 		var want: Variant = ORACLE[key]
 		var same: bool = absf(got[key] - want) <= absf(want) * SAME if want is float else got[key] == want
-		_check(same, "%s: %s, o 4.0 dá %s" % [key, got[key], want])
+		_check(same, "%s: %s, the 4.0 gives %s" % [key, got[key], want])
 
 
 ## The city running: vehicles entering junctions reach the count.
@@ -58,8 +58,8 @@ func _driven() -> void:
 	CityStore.dispatch(&"set_speed", [0])
 	var state: Dictionary = CityStore.query(&"flow_state", [-1])
 	print("rodando: ", state)
-	_check(state.measured > 0.0, "o tempo do tráfego chega à medida")
-	_check(state.advised > 0, "veículos contados em cruzamentos")
+	_check(state.measured > 0.0, "the traffic's time reaches the measure")
+	_check(state.advised > 0, "vehicles counted at junctions")
 
 
 ## A Stop on every leg: who goes through has come to a stand at the line.
@@ -67,21 +67,21 @@ func _stop_sign() -> void:
 	var signed := 0
 	for n in STOP_NODES:
 		signed += 1 if CityStore.dispatch(&"set_node_control", [n, CTL_STOP]).get("ok", false) else 0
-	_check(signed > 0, "Pare posto em %d cruzamentos" % signed)
+	_check(signed > 0, "Stop put at %d junctions" % signed)
 	CityStore.dispatch(&"set_speed", [2])
 	for i in STOP_FRAMES:
 		await get_tree().process_frame
 	CityStore.dispatch(&"set_speed", [0])
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
-	_check(probe.stop_entries >= STOP_LEAST, "veículos passaram pelo Pare: %d" % probe.stop_entries)
-	_check(probe.stop_skipped == 0, "todos pararam antes: %d passaram sem parar" % probe.stop_skipped)
+	_check(probe.stop_entries >= STOP_LEAST, "vehicles went through the Stop: %d" % probe.stop_entries)
+	_check(probe.stop_skipped == 0, "all stopped first: %d passed without stopping" % probe.stop_skipped)
 
 
 func _junction() -> void:
 	var node: int = CityStore.query(&"flow_junction")
-	_check(node >= 0, "há um cruzamento de três braços sem semáforo")
+	_check(node >= 0, "there is a three-arm junction with no signal")
 	if node < 0:
 		return
 	var state: Dictionary = CityStore.query(&"flow_push", [node, PUSH_S])
 	print("empurrado: ", state)
-	_check(state.choice == "signal" and state.signal, "o fluxo põe o semáforo no cruzamento")
+	_check(state.choice == "signal" and state.signal, "the flow puts the signal at the junction")

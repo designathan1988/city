@@ -36,7 +36,7 @@ static func shots(cap: Node) -> void:
 	var places := _places()
 	for name: String in TARGETS:
 		if not places.has(name):
-			push_warning("VARREDURA: sem alvo para %s" % name)
+			push_warning("SWEEP: no target for %s" % name)
 			continue
 		await _target(cap, name, places[name])
 	await _pan(cap)

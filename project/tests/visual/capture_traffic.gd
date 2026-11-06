@@ -47,27 +47,27 @@ static func kerb_shot(cap: Node) -> void:
 		var now: Variant = CityStore.query(&"kerb_busy", [])
 		await cap._shot("37_embarque", (now if now != null else at) + KERB_FROM, now if now != null else at)
 		return
-	print("captura: ninguém na guia na espera")
+	print("capture: nobody waiting at the kerb")
 
 
 ## `cap` is the capture scene (its _shot and _frames).
 static func shots(cap: Node) -> void:
 	var sample: Dictionary = CityStore.query(&"park_sample", [])
 	print("park_sample: ", sample)
-	print("docas no mapa: ", CityStore.query(&"dock_count", []))
-	print("folga dos carros nos lotes: ", CityStore.query(&"lot_clearance", []))
+	print("docks on the map: ", CityStore.query(&"dock_count", []))
+	print("cars' clearance in the lots: ", CityStore.query(&"lot_clearance", []))
 	for key in ["kerb", "moving"]:
 		if sample.has(key):
-			print("veículos perto de ", key, ": ", CityStore.query(&"vehicles_near", [sample[key], NEAR_M]))
+			print("vehicles near ", key, ": ", CityStore.query(&"vehicles_near", [sample[key], NEAR_M]))
 	for s in SHOTS:
 		if not sample.has(s[1]):
-			print("captura: nenhum alvo ", s[1], " sem prédio alto por perto")
+			print("capture: no target ", s[1], " with no tall building near")
 			continue
 		await _over(cap, s[0], sample[s[1]])
 	if sample.has("band"):
 		await _band_shot(cap, sample.band)
 	else:
-		print("captura: nenhuma ciclofaixa sem prédio alto por perto")
+		print("capture: no cycle lane with no tall building near")
 
 
 static func _over(cap: Node, name: String, at: Vector3) -> void:
@@ -81,13 +81,13 @@ static func _band_shot(cap: Node, band: Vector3) -> void:
 		await cap._frames(1)
 		var sample: Dictionary = CityStore.query(&"park_sample", [])
 		if sample.has("bike_band"):
-			print("bicicleta na ciclofaixa depois de ", i * BAND_STEP_TICKS, " ticks")
+			print("a bicycle in the cycle lane after ", i * BAND_STEP_TICKS, " ticks")
 			await CaptureSignals.at_hour(cap, cap.DAY) # the wait moved the clock on
 			var at: Vector3 = sample.bike_band
 			var way: Vector3 = sample.bike_band_dir
 			await cap._shot(BAND_SHOT, at - way * BAND_BEHIND + Vector3.UP * BAND_UP, at)
 			return
 		CityStore.step_ticks(BAND_STEP_TICKS)
-	print("captura: nenhuma bicicleta na ciclofaixa em ", BAND_STEPS * BAND_STEP_TICKS, " ticks")
+	print("capture: no bicycle in the cycle lane at ", BAND_STEPS * BAND_STEP_TICKS, " ticks")
 	await CaptureSignals.at_hour(cap, cap.DAY)
 	await _over(cap, BAND_SHOT, band)

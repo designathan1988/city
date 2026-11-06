@@ -42,13 +42,13 @@ func _ready() -> void:
 	cam.make_current()
 	await _wall_by_day()
 	await _lamps_by_night()
-	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FALHAS: ", failures)
+	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _wall_by_day() -> void:
 	var cases := [["parede perto", "building", WALL_ROUGHNESS, false], ["parede longe", "building_far", FAR_ROUGHNESS, false],
-			["peça sem acabamento", "building_parts", WALL_ROUGHNESS, true]]
+			["a piece with no finish", "building_parts", WALL_ROUGHNESS, true]]
 	var made: Array[Node3D] = []
 	var spots := []
 	for k in cases.size():
@@ -68,7 +68,7 @@ func _wall_by_day() -> void:
 	var img := get_viewport().get_texture().get_image()
 	for sp in spots:
 		var want := _pixel(img, sp[1])
-		_compare(img, sp[0], want, "%s de dia (referência %s)" % [sp[2], want.to_html(false)], true)
+		_compare(img, sp[0], want, "%s by day (reference %s)" % [sp[2], want.to_html(false)], true)
 	for n in made:
 		n.queue_free()
 
@@ -105,8 +105,8 @@ func _lamps_by_night() -> void:
 	var night: float = world.daylight.night
 	var img := get_viewport().get_texture().get_image()
 	var lit: Color = Color(near.get_shader_parameter("lamp_light")).srgb_to_linear() # what a lit lamp gives, whatever its body is
-	_compare(img, a.position, _shown_rgb(Vector3(lit.r, lit.g, lit.b) * night * _param(near, "lamp_glow")), "lâmpada perto (night %.2f)" % night)
-	_compare(img, b.position, _shown(_decode(GREY) * _param(far, "wall_gain") * night), "lâmpada longe (night %.2f)" % night)
+	_compare(img, a.position, _shown_rgb(Vector3(lit.r, lit.g, lit.b) * night * _param(near, "lamp_glow")), "lamp near (night %.2f)" % night)
+	_compare(img, b.position, _shown(_decode(GREY) * _param(far, "wall_gain") * night), "lamp far (night %.2f)" % night)
 
 
 ## The colour a linear grey radiance shows on screen, through the Environment's tone mapping (render/tone_map.gd).
@@ -165,7 +165,7 @@ func _compare(img: Image, at: Vector3, wanted: Color, what: String, on_screen :=
 	var want: Color = wanted if on_screen else CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := _pixel(img, at)
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	_check(off <= TOLERANCE, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
+	_check(off <= TOLERANCE, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false), want.to_html(false), off])
 
 
 func _step(a: float, b: float) -> int:

@@ -16,14 +16,14 @@ static func run(id: int, check: Callable) -> void:
 	var height: float = info.ground_h + info.storey_h * (v.storeys - 1)
 	var middle := _on_lot(p, v.x + v.w * 0.5, v.y + v.d * 0.5)
 	var down: Dictionary = CityStore.query(&"body_pick", [middle + Vector3.UP * (height + HEIGHT_M), Vector3.DOWN])
-	check.call(not down.is_empty() and down.id == id and down.side == -1, "raio para baixo acerta o telhado de %d: %s" % [id, down])
+	check.call(not down.is_empty() and down.id == id and down.side == -1, "a ray down hits the roof of %d: %s" % [id, down])
 	var away: Dictionary = CityStore.query(&"body_pick", [Vector3(0, SKY_M, 0), Vector3.UP])
-	check.call(away.is_empty(), "raio para o céu não acerta nada")
+	check.call(away.is_empty(), "a ray to the sky hits nothing")
 	var out := _on_lot(p, v.x + v.w * 0.5, v.y - OFF_M) + Vector3.UP * WALL_M
 	var wall: Dictionary = CityStore.query(&"body_pick", [out, middle + Vector3.UP * WALL_M - out])
-	check.call(not wall.is_empty() and wall.id == id and wall.side == 0, "raio de frente acerta a fachada de %d: %s" % [id, wall])
+	check.call(not wall.is_empty() and wall.id == id and wall.side == 0, "a ray from the front hits the facade of %d: %s" % [id, wall])
 	var bay: int = wall.get("bay", -1)
-	check.call(bay == v.bays[0] / 2, "o meio da fachada é o vão do meio: %d de %d" % [bay, v.bays[0]])
+	check.call(bay == v.bays[0] / 2, "the middle of the facade is the middle bay: %d of %d" % [bay, v.bays[0]])
 	_pitched(id, middle + Vector3.UP * (height + HEIGHT_M), check)
 
 
@@ -34,7 +34,7 @@ static func _pitched(id: int, over: Vector3, check: Callable) -> void:
 	CityStore.dispatch(&"body_set_roof", [id, 0, ROOF_GABLE])
 	var slope: Dictionary = CityStore.query(&"body_pick", [over, Vector3.DOWN])
 	var rise: float = slope.point.y - flat.point.y
-	check.call(slope.id == id and rise > 1.0, "raio acerta a água do telhado, %.2f m sobre o beiral" % rise)
+	check.call(slope.id == id and rise > 1.0, "a ray hits the roof slope, %.2f m above the eave" % rise)
 	CityStore.dispatch(&"undo")
 	CityStore.dispatch(&"undo")
 

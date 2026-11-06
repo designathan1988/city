@@ -6,7 +6,8 @@
 shader_type spatial;
 render_mode unshaded, fog_disabled, depth_test_disabled, depth_draw_never, cull_disabled, shadows_disabled, blend_mul;
 
-uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
+#include "res://render/shaders/screen_depth.gdshaderinc"
+
 uniform float reach_m = 0.75; // how far a slice looks
 uniform float reach_curve = 1.6; // its steps crowd by the pixel, where a corner's shade is
 uniform float thickness_m = 0.8; // what stands further than this from the pixel, along the view, passes behind nothing
@@ -21,23 +22,6 @@ const float LEAST_SQUARED = 1e-8;
 
 void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
-}
-
-// A perspective's inverse has six terms that count, not sixteen: this runs 37 times a pixel, so only they are worked.
-vec3 view_at(vec2 uv, mat4 inv_projection) {
-	float depth = textureLod(depth_texture, uv, 0.0).x;
-	vec2 xy = (uv * 2.0 - 1.0) * vec2(inv_projection[0][0], inv_projection[1][1]) + inv_projection[3].xy;
-	return vec3(xy, inv_projection[2][2] * depth + inv_projection[3][2]) / (inv_projection[2][3] * depth + inv_projection[3][3]);
-}
-
-// The surface's normal from the depth, each axis from the side that lies on the same surface as the pixel.
-vec3 view_normal(vec3 p, vec2 uv, vec2 texel, mat4 inv_projection) {
-	vec3 l = view_at(uv - vec2(texel.x, 0.0), inv_projection), r = view_at(uv + vec2(texel.x, 0.0), inv_projection);
-	vec3 b = view_at(uv - vec2(0.0, texel.y), inv_projection), t = view_at(uv + vec2(0.0, texel.y), inv_projection);
-	vec3 dx = abs(l.z - p.z) < abs(r.z - p.z) ? p - l : r - p;
-	vec3 dy = abs(b.z - p.z) < abs(t.z - p.z) ? p - b : t - p;
-	vec3 n = normalize(cross(dx, dy));
-	return dot(n, p) > 0.0 ? -n : n;
 }
 
 // Raises a horizon to what the point at `offset` from the pixel stands to, the further away the less.

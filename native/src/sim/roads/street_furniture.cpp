@@ -214,6 +214,7 @@ void trees(Placer &c) {
 	const StreetFurnitureDef &d = defs(c.net);
 	const TreeDef &t = d.trees;
 	if ((c.g.flags & SEG_GENERATED) && t.in_generated_city == 0.f) return; // a style whose generated streets have none
+	if (is_raised(structure_of(c.g.flags))) return; // a tree wants soil: a deck has none, though the 4.0 plants them there
 	const LampRow row = lamp_row(c.net, c.sid);
 	const double clear = std::max(t.corner_clear_m, d.crossing.zebra_to_m + t.crossing_clear_m);
 	for (int side = 0; side < 2; side++) {

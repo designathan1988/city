@@ -27,13 +27,13 @@ func run() -> void:
 	while CityStore.saves.save_busy():
 		await _host.get_tree().process_frame
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, true)
-	_check.call(CityStore.query(&"street_counts").poles == 0, "cidade nova sem postes")
+	_check.call(CityStore.query(&"street_counts").poles == 0, "a new city with no poles")
 	var loaded: Dictionary = CityStore.saves.load_game(SLOT)
 	_check.call(loaded.get("ok", false), "abrir")
 	var after: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
 		_check.call(after[key] == before[key], "save guarda " + key)
-	_check.call(after.poles > 0 and after.rural_poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "algo foi salvo e aberto")
+	_check.call(after.poles > 0 and after.rural_poles > 0 and after.spans > 0 and after.items > 0 and after.barriers > 0, "something was saved and opened")
 	await _old_save(before)
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 	DirAccess.remove_absolute(Session.path(SLOT)) # and the session the save wrote beside it
@@ -48,7 +48,7 @@ func _old_save(with_street: Dictionary) -> void:
 	var o := bytes.size() - TAG_BYTES.size()
 	while o >= 0 and not (bytes[o] == TAG_BYTES[0] and bytes[o + 1] == TAG_BYTES[1] and bytes[o + 2] == TAG_BYTES[2] and bytes[o + 3] == TAG_BYTES[3]):
 		o -= 1
-	_check.call(o > 0 and with_street.poles > 0, "bloco da rua achado no save")
+	_check.call(o > 0 and with_street.poles > 0, "the street block found in the save")
 	var size := bytes.decode_u32(o + TAG_BYTES.size())
 	var old := bytes.slice(0, o)
 	old.append_array(bytes.slice(o + TAG_BYTES.size() + SIZE_BYTES + size))
@@ -57,8 +57,8 @@ func _old_save(with_street: Dictionary) -> void:
 	w.close()
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
-	_check.call(r.get("ok", false), "save sem o bloco abre %s" % r)
+	_check.call(r.get("ok", false), "a save with no block opens %s" % r)
 	var now: Dictionary = CityStore.query(&"street_counts")
 	for key in KEYS:
-		_check.call(now[key] == 0, "sem o bloco, nada de " + key)
-	_check.call(CityStore.query(&"city_bounds").max == bounds.max, "as vias do save antigo voltam")
+		_check.call(now[key] == 0, "with no block, no " + key)
+	_check.call(CityStore.query(&"city_bounds").max == bounds.max, "the old save's roads come back")

@@ -58,7 +58,7 @@ func _ready() -> void:
 	var other := _another_building(id)
 	var other_digest: int = _info(other).digest
 	var made: int = _info(id).digest
-	_check(not _info(id).edited, "prédio gerado não é editado")
+	_check(not _info(id).edited, "a generated building is not edited")
 	_mass_edits(id, made)
 	_facade_edits(id, made)
 	_finish_edits(id, made)
@@ -69,9 +69,9 @@ func _ready() -> void:
 	InsideCases.run(id, made, _check)
 	ModelCases.run(id, made, _check)
 	_refusals(_one_block_on_the_ground())
-	_check(_info(other).digest == other_digest and not _info(other).edited, "o vizinho não mudou")
+	_check(_info(other).digest == other_digest and not _info(other).edited, "the neighbour did not change")
 	await _save_round_trip(id)
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -86,8 +86,8 @@ func _every_body_stands() -> void:
 		if not why.is_empty():
 			bad[why] = bad.get(why, 0) + 1
 			if bad[why] <= SHOWN_CASES:
-				print("corpo %d: %s térreo %.2f andar %.2f %s" % [id, why, i.ground_h, i.storey_h, i.volumes])
-	_check(total > 0 and bad.is_empty(), "os %d corpos gerados passam nas regras: %s" % [total, bad])
+				print("body %d: %s ground %.2f storey %.2f %s" % [id, why, i.ground_h, i.storey_h, i.volumes])
+	_check(total > 0 and bad.is_empty(), "the %d generated bodies pass the rules: %s" % [total, bad])
 
 
 func _a_tall_building() -> int:
@@ -95,7 +95,7 @@ func _a_tall_building() -> int:
 		var volumes: Array = _info(id).volumes
 		if not volumes.is_empty() and volumes[0].base == 0 and volumes[0].storeys >= MIN_FLOORS:
 			return id
-	_check(false, "achou um prédio alto")
+	_check(false, "found a tall building")
 	return -1
 
 
@@ -115,7 +115,7 @@ func _mass_edits(id: int, made: int) -> void:
 	var blocks: int = _info(id).volumes.size()
 	_round(id, made, "andares", &"body_storeys", [id, 0, v.storeys + ADD_FLOORS], func(i: Dictionary) -> bool:
 		return i.volumes[0].storeys == v.storeys + ADD_FLOORS)
-	_round(id, made, "andar inserido", &"body_insert_storey", [id, 0, 1, true], func(i: Dictionary) -> bool:
+	_round(id, made, "storey inserted", &"body_insert_storey", [id, 0, 1, true], func(i: Dictionary) -> bool:
 		return i.volumes[0].storeys == v.storeys + 1)
 	_round(id, made, "lado", &"body_resize", [id, 0, RESIZE_SIDE, RESIZE_M, true], func(i: Dictionary) -> bool:
 		return is_equal_approx(i.volumes[0].w, v.w + RESIZE_M))
@@ -131,7 +131,7 @@ func _mass_edits(id: int, made: int) -> void:
 
 func _facade_edits(id: int, made: int) -> void:
 	var at := func(storey: int, bay: int) -> int: return CityStore.query(&"body_bay", [id, 0, storey, FACE, bay])
-	_round(id, made, "vão", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_BAY], func(_i: Dictionary) -> bool:
+	_round(id, made, "bay", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_BAY], func(_i: Dictionary) -> bool:
 		return at.call(1, 0) == BAY_BALCONY)
 	_round(id, made, "linha", &"body_set_bay", [id, 0, 1, FACE, 0, BAY_BALCONY, SCOPE_ROW], func(_i: Dictionary) -> bool:
 		return at.call(1, 0) == BAY_BALCONY and at.call(1, 1) == BAY_BALCONY)
@@ -139,7 +139,7 @@ func _facade_edits(id: int, made: int) -> void:
 		return at.call(0, 0) == BAY_BALCONY and at.call(2, 0) == BAY_BALCONY)
 	_round(id, made, "zona", &"body_set_zone", [id, 0, FACE, 1, 2, 0, 1, BAY_BALCONY], func(_i: Dictionary) -> bool:
 		return at.call(2, 1) == BAY_BALCONY)
-	_round(id, made, "padrão", &"body_set_pattern", [id, 0, -1, -1, PATTERN_OFFICE], func(_i: Dictionary) -> bool:
+	_round(id, made, "pattern", &"body_set_pattern", [id, 0, -1, -1, PATTERN_OFFICE], func(_i: Dictionary) -> bool:
 		return at.call(1, 0) == BAY_WIDE)
 	_round(id, made, "relevo", &"body_set_relief", [id, 0, {"side": FACE, "bay1": 1, "storey1": 1, "depth": RELIEF_M}, true], func(i: Dictionary) -> bool:
 		return i.edited)
@@ -167,16 +167,16 @@ func _bays_stay_put(id: int, made: int) -> void:
 	CityStore.dispatch(&"body_add_wing", [id, 0, wing_side, WING_DEPTH, WING_LENGTH])
 	var wing: int = _info(id).volumes.size() - 1
 	var count: int = _info(id).volumes[wing].bays[back]
-	_check(count == int(round(WING_DEPTH / BAY_WIDTH_M)), "a ala conta os próprios vãos: %d em %.0f m, a parede de origem tem %s" % [count, WING_DEPTH, parent.bays])
+	_check(count == int(round(WING_DEPTH / BAY_WIDTH_M)), "the wing counts its own bays: %d in %.0f m, the wall it came from has %s" % [count, WING_DEPTH, parent.bays])
 	CityStore.dispatch(&"body_set_bay", [id, wing, 1, back, 0, BAY_BALCONY, SCOPE_BAY])
 	CityStore.dispatch(&"body_resize", [id, wing, pulled, BAY_WIDTH_M * 2.0, true])
 	var grown: int = _info(id).volumes[wing].bays[back] - count
-	_check(grown == 2, "a ala ganhou dois vãos: %d" % grown)
-	_check(CityStore.query(&"body_bay", [id, wing, 1, back, grown]) == BAY_BALCONY, "a varanda seguiu a parede")
-	_check(CityStore.query(&"body_bay", [id, wing, 1, back, 0]) != BAY_BALCONY, "o vão novo não é varanda")
+	_check(grown == 2, "the wing gained two bays: %d" % grown)
+	_check(CityStore.query(&"body_bay", [id, wing, 1, back, grown]) == BAY_BALCONY, "the balcony followed the wall")
+	_check(CityStore.query(&"body_bay", [id, wing, 1, back, 0]) != BAY_BALCONY, "the new bay is no balcony")
 	for i in 3:
 		CityStore.dispatch(&"undo")
-	_check(_info(id).digest == made, "três desfazer voltam ao corpo gerado")
+	_check(_info(id).digest == made, "three undos return to the generated body")
 
 
 ## One edit: it does what it says, undo gives back the body from the seed, redo gives back the same bytes, and undo again
@@ -185,7 +185,7 @@ func _round(id: int, made: int, what: String, command: StringName, args: Array, 
 	var r: Dictionary = CityStore.dispatch(command, args)
 	var after := _info(id)
 	_check(r.get("ok", false) and did.call(after) and after.edited, "%s: %s" % [what, r])
-	_check(after.digest != made, "%s mudou o corpo" % what)
+	_check(after.digest != made, "%s changed the body" % what)
 	_check(CityStore.dispatch(&"undo") and _info(id).digest == made and not _info(id).edited, "%s desfeito" % what)
 	_check(CityStore.dispatch(&"redo") and _info(id).digest == after.digest, "%s refeito" % what)
 	CityStore.dispatch(&"undo")
@@ -194,10 +194,10 @@ func _round(id: int, made: int, what: String, command: StringName, args: Array, 
 func _refusals(id: int) -> void:
 	var before: int = _info(id).digest
 	var r: Dictionary = CityStore.dispatch(&"body_remove_volume", [id, _ground_block(id)])
-	_check(not r.get("ok", true) and r.get("error", "") == "building.problem.lastVolume", "o último volume no chão fica: %s" % r)
-	_check(_info(id).digest == before, "recusa não mexe no corpo")
+	_check(not r.get("ok", true) and r.get("error", "") == "building.problem.lastVolume", "the last block on the ground stays: %s" % r)
+	_check(_info(id).digest == before, "a refusal leaves the body alone")
 	var bad: Dictionary = CityStore.dispatch(&"body_storeys", [id, FAR_TOO_MANY, 1])
-	_check(not bad.get("ok", true), "volume que não existe é recusado")
+	_check(not bad.get("ok", true), "a block that does not exist is refused")
 
 
 func _one_block_on_the_ground() -> int:
@@ -205,7 +205,7 @@ func _one_block_on_the_ground() -> int:
 		var ground: Array = _info(id).volumes.filter(func(v: Dictionary) -> bool: return v.base == 0)
 		if ground.size() == 1:
 			return id
-	_check(false, "achou um prédio com um só volume no chão")
+	_check(false, "found a building with one block on the ground")
 	return -1
 
 
@@ -231,7 +231,7 @@ func _save_round_trip(id: int) -> void:
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(r.ok, "abriu %s" % r)
-	_check(_info(id).edited and _info(id).digest == edited, "o corpo editado voltou igual")
+	_check(_info(id).edited and _info(id).digest == edited, "the edited body came back the same")
 	DirAccess.remove_absolute(CityStore.saves.save_path(SLOT))
 
 

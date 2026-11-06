@@ -43,7 +43,7 @@ func _ready() -> void:
 	for i in sites:
 		await _site(camera, _far_in(sample, TAU * i / sites, TAU / sites))
 	await _round()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -71,7 +71,7 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 			break
 	var at := from + out * STREET_M * 0.5
 	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [at, ZONE_RADIUS_M, ZONE_INDUSTRIAL])
-	print("lugar ", at, " via ", built.ok, " ", built.error, " zona ", zoned.zoned_sides)
+	print("lugar ", at, " road ", built.ok, " ", built.error, " zona ", zoned.zoned_sides)
 	camera.global_position = at + Vector3.UP * CAMERA_UP_M
 	for i in GROW_STEPS:
 		await get_tree().process_frame
@@ -87,13 +87,13 @@ func _site(camera: Camera3D, far: Vector3) -> void:
 		await get_tree().process_frame
 		CityStore.step_ticks(STEP_TICKS)
 		s = CityStore.query(&"park_sample", [])
-	_check(s.docks_planned > 0, "nenhuma doca planejada em %s" % at)
-	_check(s.docks_reached[NO_STOP] == 0, "%d docas sem lugar para o caminhão na própria faixa em %s" % [s.docks_reached[NO_STOP], at])
-	_check(s.docks_with_way >= s.docks_planned * WAY_SHARE, "%d de %d docas com caminho em %s" % [s.docks_with_way, s.docks_planned, at])
+	_check(s.docks_planned > 0, "no dock planned at %s" % at)
+	_check(s.docks_reached[NO_STOP] == 0, "%d docks with no room for the lorry in its own lane at %s" % [s.docks_reached[NO_STOP], at])
+	_check(s.docks_with_way >= s.docks_planned * WAY_SHARE, "%d of %d docks with a way at %s" % [s.docks_with_way, s.docks_planned, at])
 	_mark("planejado")
 	for y: Dictionary in s.get("yard_costs", []):
-		print("  custo do pátio ", y)
-	print("  pátios ", s.yards, " portões ", s.yard_gates, " planejadas ", s.docks_planned, " com caminho ", s.docks_with_way, " parou em ", s.docks_reached, " chamadas ", s.lorry_calls, " pior plano ", s.yard_slowest_ms, " ms, pior tick ", s.yard_tick_ms, " ms")
+		print("  cost of yard ", y)
+	print("  yards ", s.yards, " gates ", s.yard_gates, " planejadas ", s.docks_planned, " with a way ", s.docks_with_way, " stopped at ", s.docks_reached, " chamadas ", s.lorry_calls, " pior plano ", s.yard_slowest_ms, " ms, pior tick ", s.yard_tick_ms, " ms")
 
 
 ## A lorry called, backed onto its dock, unloaded and gone: the camera stays over the last works.
@@ -106,14 +106,14 @@ func _round() -> void:
 		CityStore.step_ticks(STEP_TICKS)
 		s = CityStore.query(&"park_sample", [])
 	_mark("fim")
-	print("caminhões (chamados, encostados, saíram) ", s.lorries_sent, " ", s.lorries_docked, " ", s.lorries_left)
-	_check(s.lorries_left > 0, "nenhum caminhão fez o ciclo")
+	print("lorries (called, docked, left) ", s.lorries_sent, " ", s.lorries_docked, " ", s.lorries_left)
+	_check(s.lorries_left > 0, "no lorry made the cycle")
 
 
 ## Where the traffic stands, as one number: two runs of the same map and seed print the same ones.
 func _mark(what: String) -> void:
 	var p: Dictionary = CityStore.query(&"traffic_probe", [SAMPLE])
-	print("marca ", what, " ", str(p.sample).hash(), " veículos ", p.vehicles, " prédios ", CityStore.snapshot.get("buildings"))
+	print("marca ", what, " ", str(p.sample).hash(), " vehicles ", p.vehicles, " buildings ", CityStore.snapshot.get("buildings"))
 
 
 func _arg(prefix: String, fallback: int) -> int:
@@ -127,4 +127,4 @@ func _check(ok: bool, what: String) -> void:
 	if ok:
 		return
 	failures += 1
-	printerr("FALHOU: ", what)
+	printerr("FAIL: ", what)

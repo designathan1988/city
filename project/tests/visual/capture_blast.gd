@@ -93,7 +93,7 @@ func _report_scale(at: Vector3, crater_m: float) -> void:
 	var c := cam.unproject_position(at)
 	var along_x := cam.unproject_position(at + Vector3(1, 0, 0)).distance_to(c)
 	var along_z := cam.unproject_position(at + Vector3(0, 0, 1)).distance_to(c)
-	print("escala: centro ", c, ", pixels por metro ", snappedf(along_x, 0.01), " em x e ", snappedf(along_z, 0.01), " em z; viewport ",
+	print("escala: centro ", c, ", pixels por metro ", snappedf(along_x, 0.01), " in x and ", snappedf(along_z, 0.01), " in z; viewport ",
 			get_viewport_size(), "; raio fisico ", snappedf(crater_m, 0.01), " m = ", snappedf(crater_m * along_x, 0.1), " px em x e ",
 			snappedf(crater_m * along_z, 0.1), " px em z")
 
@@ -111,7 +111,7 @@ func _report_relief(at: Vector3, half_m: float) -> void:
 			var h: float = CityStore.query(&"height_at", [at.x + half_m * i / RELIEF_STEPS, at.z + half_m * j / RELIEF_STEPS])
 			lo = minf(lo, h - at.y)
 			hi = maxf(hi, h - at.y)
-	print("relevo sob o decalque (meia largura ", snappedf(half_m, 0.1), " m): de ", snappedf(lo, 0.01), " a ", snappedf(hi, 0.01), " m em torno do ponto")
+	print("relief under the decal (half width ", snappedf(half_m, 0.1), " m): from ", snappedf(lo, 0.01), " a ", snappedf(hi, 0.01), " m round the point")
 
 
 ## The camera where the reference game's stood for the same photograph (the rig is off, so nothing moves it).

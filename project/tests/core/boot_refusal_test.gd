@@ -34,7 +34,7 @@ func _ready() -> void:
 	_check(CityStore.query(&"grade_probe", [scene]).is_empty(), "the grade probe has no road to lay")
 	for i in FRAMES:
 		await get_tree().process_frame
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 

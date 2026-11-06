@@ -27,7 +27,7 @@ func _ready() -> void:
 	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
 	var map := _arg("--map=", TOWN_MAP)
 	var made: Dictionary = CityStore.new_map(map, _arg("--seed=", SEED), true)
-	print("mapa: %d nós, %d ruas, %d lotes, %d prédios, %d praças em %.2f s" % [made.nodes, made.segments, made.lots, made.buildings, made.squares, made.seconds])
+	print("map: %d nodes, %d streets, %d lots, %d buildings, %d squares in %.2f s" % [made.nodes, made.segments, made.lots, made.buildings, made.squares, made.seconds])
 	CityStore.dispatch(&"set_speed", [0])
 	var rows: Array = []
 	var middle := Vector2.ZERO
@@ -36,7 +36,7 @@ func _ready() -> void:
 		var b: Dictionary = CityStore.query(&"probe_building", [id])
 		var area: float = b.w * b.d
 		var top := _top(id)
-		_check(b.floors == top, "prédio %d: a sonda diz %d andares e o corpo tem %d" % [id, b.floors, top])
+		_check(b.floors == top, "building %d: the probe says %d storeys and the body has %d" % [id, b.floors, top])
 		rows.append([b.position.x, b.position.z, top, b.zone, b.fn, b.w, b.d])
 		middle += Vector2(b.position.x, b.position.z) * area
 		weight += area
@@ -50,29 +50,29 @@ func _ready() -> void:
 		if map != TOWN_MAP:
 			continue
 		if i < CORE_BANDS:
-			_check(towers > CORE_TOWERS, "miolo: %.2f das torres na faixa %d" % [towers, i])
+			_check(towers > CORE_TOWERS, "core: %.2f of the towers in band %d" % [towers, i])
 		elif i >= RIM_BAND:
-			_check(towers < RIM_TOWERS, "borda: %.2f de torres na faixa %d" % [towers, i])
+			_check(towers < RIM_TOWERS, "edge: %.2f towers in band %d" % [towers, i])
 	var look: Dictionary = CityStore.query(&"look_twins", [TWIN_REACH_M, TWIN_ALIKE])
-	print("vizinhos parecidos: %d de %d pares" % [look.twins, look.pairs])
+	print("neighbours alike: %d of %d pairs" % [look.twins, look.pairs])
 	if map == TOWN_MAP:
-		_check(float(look.twins) / look.pairs < TWINS_MOST, "vizinhos não se repetem: %d de %d pares parecidos" % [look.twins, look.pairs])
+		_check(float(look.twins) / look.pairs < TWINS_MOST, "neighbours do not repeat: %d of %d pairs alike" % [look.twins, look.pairs])
 	var f := FileAccess.open(OUT_FILE, FileAccess.WRITE)
 	f.store_string(JSON.stringify(rows))
 	if map == TOWN_MAP:
 		_large_city()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
 ## The large city, on its own radius: every record still says what its body has.
 func _large_city() -> void:
 	var made: Dictionary = CityStore.new_map(LARGE_MAP, SEED, true)
-	print("cidade grande: %d nós, %d ruas, %d prédios, %d praças" % [made.nodes, made.segments, made.buildings, made.squares])
+	print("big city: %d nodes, %d streets, %d buildings, %d squares" % [made.nodes, made.segments, made.buildings, made.squares])
 	for id: int in CityStore.query(&"list_buildings"):
 		var floors: int = CityStore.query(&"probe_building", [id]).floors
 		var top := _top(id)
-		_check(floors == top, "cidade grande, prédio %d: a sonda diz %d andares e o corpo tem %d" % [id, floors, top])
+		_check(floors == top, "big city, building %d: the probe says %d storeys and the body has %d" % [id, floors, top])
 
 
 func _arg(prefix: String, fallback: int) -> int:
@@ -110,4 +110,4 @@ func _check(ok: bool, what: String) -> void:
 	if ok:
 		return
 	failures += 1
-	printerr("FALHOU: ", what)
+	printerr("FAIL: ", what)

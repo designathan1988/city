@@ -74,10 +74,10 @@ func _run() -> void:
 	_lay()
 	for probe: Vector3 in [at(-60, 60), at(-60, 140), at(-150, 100), at(150, 100)]:
 		_spots(probe)
-	print("erro do ponteiro: %.2f px" % await ui.pointer_error(at(0, -120), TOP, POINTER_VIEWS_M, POINTER_AIMS))
+	print("pointer error: %.2f px" % await ui.pointer_error(at(0, -120), TOP, POINTER_VIEWS_M, POINTER_AIMS))
 	if "--tool-only" in OS.get_cmdline_user_args():
 		await CaptureRoadTools.new(self).run()
-		print("FALHAS: ", failures)
+		print("FAILURES: ", failures)
 		get_tree().quit(1 if failures > 0 else 0)
 		return
 	await _photo("cross_urban_top", at(0, -120), TOP, CLOSE_M)
@@ -109,7 +109,7 @@ func _run() -> void:
 	await _night()
 	if only.is_empty():
 		await CaptureRoadTools.new(self).run()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -132,7 +132,7 @@ func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> 
 	if StoreApi.COMMANDS.has(&"build_road_path"):
 		args.push_back(PX)
 	var r: Dictionary = CityStore.dispatch(&"build_road", args)
-	_check(r.get("ok", false), "via %s: %s" % [profile, r])
+	_check(r.get("ok", false), "road %s: %s" % [profile, r])
 
 
 ## The poles of the street under `p` (lamps and columns), as the log reads them beside the photos: where the furniture
@@ -140,12 +140,12 @@ func _road(a: Vector3, e: Vector3, profile: String, control: Variant = null) -> 
 func _spots(p: Vector3) -> void:
 	var seg: Dictionary = CityStore.query(&"segment_at", [p])
 	if seg.get("seg", -1) < 0:
-		print("postes em %s: sem via" % p)
+		print("poles at %s: no road" % p)
 		return
-	print("postes da via %d (perfil %d) em %s:" % [seg.seg, seg.profile, p])
+	print("poles of road %d (profile %d) at %s:" % [seg.seg, seg.profile, p])
 	for s: Dictionary in CityStore.query(&"furniture_spots", [seg.seg]):
 		if s.kind == FURNITURE_LAMP or s.kind == FURNITURE_COLUMN:
-			print("  tipo %d fileira %d lado %d estação %d v %.1f u %.2f em %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
+			print("  kind %d row %d side %d station %d v %.1f u %.2f at %s" % [s.kind, s.row, s.side, s.station, s.v, s.u, s.position])
 
 
 func _lay() -> void:
@@ -184,7 +184,7 @@ func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -
 
 
 func _worn(p: Vector3) -> void:
-	print("altura da via no cruzamento do canteiro: %.3f m" % p.y)
+	print("the road's height at the median's junction: %.3f m" % p.y)
 	if not only.is_empty() and not only.has("worn_low"):
 		return
 	await PairCamera.stand(rig, ui, p, 30.0, 30.0, 30.0) # the field's window follows the view: it must be here before the wear is

@@ -90,6 +90,7 @@ func apply(world: CityWorld, viewport: Viewport, tier: Dictionary) -> void:
 	world.sun.shadow_caster_mask = _shadow_casters(tier)
 	world.sun.shadow_enabled = tier.shadows and is_on("shadows")
 	world.occlusion.turn(tier.ssao and tier.post and is_on("ambientOcclusion"))
+	world.contact.turn(world.sun.shadow_enabled and tier.post and is_on("canyonLight"))
 	if not is_on("smaa") or not tier.post:
 		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 	world.daylight.glow_on = is_on("bloom") and tier.post

@@ -33,7 +33,7 @@ func _ready() -> void:
 	var hud := RoadcraftHud.new()
 	add_child(hud)
 	await _frames(SETTLE_FRAMES)
-	_check(hud.get_child_count() > 0, "HUD montou %d nós" % hud.get_child_count())
+	_check(hud.get_child_count() > 0, "the HUD built %d nodes" % hud.get_child_count())
 	var report: Dictionary = CityStore.new_map(TOWN_MAP, SEED, true)
 	_check(report.get("ok", false), "mapa gerado %s" % [report])
 	CityStore.dispatch(&"set_speed", [0])
@@ -41,41 +41,41 @@ func _ready() -> void:
 	CityStore.step_ticks(WARMUP_TICKS)
 	await _frames(5) # let the core consume the published poses and refill the instance buffers
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
-	print("tráfego: ", probe.vehicles, " veículos, ", probe.people, " pessoas, desenhados ", probe.drawn_vehicles,
+	print("traffic: ", probe.vehicles, " vehicles, ", probe.people, " pessoas, desenhados ", probe.drawn_vehicles,
 			"/", probe.drawn_people)
-	_check(int(probe.drawn_vehicles) >= MIN_DRAWN_VEHICLES, "veículos no buffer de instâncias")
-	_check(int(probe.drawn_people) >= MIN_DRAWN_PEOPLE, "pessoas no buffer de instâncias")
-	_check(int(CityStore.query(&"building_cost").props) > 0, "mobiliário das sacadas no buffer de instâncias")
-	_check(int(CityStore.query(&"agent_cost").plants_near) > 0, "plantas dos jardins dos lotes no buffer de instâncias")
-	_check(int(CityStore.query(&"agent_cost").rows_lost) == 0, "todo veículo visto tem sua linha no buffer de instâncias")
-	_check(int(probe.vehicles) > 0 and int(probe.people) > 0, "frota e pedestres vivos")
-	_check(int(probe.moving) > 0, "veículos andando")
+	_check(int(probe.drawn_vehicles) >= MIN_DRAWN_VEHICLES, "vehicles in the instance buffer")
+	_check(int(probe.drawn_people) >= MIN_DRAWN_PEOPLE, "people in the instance buffer")
+	_check(int(CityStore.query(&"building_cost").props) > 0, "balcony furniture in the instance buffer")
+	_check(int(CityStore.query(&"agent_cost").plants_near) > 0, "lot garden plants in the instance buffer")
+	_check(int(CityStore.query(&"agent_cost").rows_lost) == 0, "every vehicle seen has its row in the instance buffer")
+	_check(int(probe.vehicles) > 0 and int(probe.people) > 0, "fleet and pedestrians alive")
+	_check(int(probe.moving) > 0, "vehicles moving")
 	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published
-	print("semáforos: ", probe.signals, ", lentes acesas ", probe.drawn_signal_lenses)
-	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "lentes dos semáforos acesas")
-	_check(int(probe.red_entries) == 0, "ninguém entrou no vermelho (%d)" % probe.red_entries)
+	print("signals: ", probe.signals, ", lentes acesas ", probe.drawn_signal_lenses)
+	_check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "signal lenses lit")
+	_check(int(probe.red_entries) == 0, "nobody went in on red (%d)" % probe.red_entries)
 	_check_amber_rule()
 	# from high up the eye stands past the city's edge: the walkers stay where the camera looks
 	cam.look_at_from_position(HIGH_EYE, Vector3.ZERO)
 	await _frames(5)
 	CityStore.step_ticks(HIGH_TICKS)
 	var far: Dictionary = CityStore.query(&"traffic_probe", [0])
-	_check(int(far.people) > 0, "do alto, os pedestres ficam onde a câmera olha (%d)" % far.people)
-	print("FALHAS: ", failures)
+	_check(int(far.people) > 0, "from above, the pedestrians stay where the camera looks (%d)" % far.people)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
 ## The amber's decision (light_rule.cpp) in numbers: speed, metres to where it stops, speed at the line, amber left.
 func _check_amber_rule() -> void:
-	_check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, SUV]), "amarelo: quem pode parar como o entreverdes supõe para")
-	_check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, SUV]), "amarelo: quem não para e chega à linha segue")
+	_check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, SUV]), "amber: who can stop as the intergreen supposes stops")
+	_check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, SUV]), "amber: who does not stop and reaches the line goes on")
 	# just out of the far model near the line, as the soak saw it: slow enough to stop, the amber nearly over
-	_check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, SUV]), "amarelo: quem não chega à linha a tempo para")
-	_check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, SUV]), "amarelo: em frente chega a tempo")
-	_check(CityStore.query(&"amber_stops", [14.0, 40.0, TURN_MS, 3.5, SUV]), "amarelo: freando para a conversão não chega e para")
-	_check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, SUV]), "amarelo: quem nem a emergência para segue")
-	_check(absf(CityStore.query(&"amber_wanted", [60.0]) - 4.0) < AMBER_EPS_S, "amarelo de 4 s a 60 km/h (MBST vol. V 5.7.1)")
-	_check(absf(CityStore.query(&"amber_wanted", [70.0]) - 5.0) < AMBER_EPS_S, "amarelo de 5 s a 70 km/h")
+	_check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, SUV]), "amber: who does not reach the line in time stops")
+	_check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, SUV]), "amber: straight on arrives in time")
+	_check(CityStore.query(&"amber_stops", [14.0, 40.0, TURN_MS, 3.5, SUV]), "amber: braking for the turn it does not arrive and stops")
+	_check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, SUV]), "amber: who not even an emergency stops goes on")
+	_check(absf(CityStore.query(&"amber_wanted", [60.0]) - 4.0) < AMBER_EPS_S, "4 s of amber at 60 km/h (MBST vol. V 5.7.1)")
+	_check(absf(CityStore.query(&"amber_wanted", [70.0]) - 5.0) < AMBER_EPS_S, "5 s of amber at 70 km/h")
 
 
 func _wait_render() -> void:
@@ -84,7 +84,7 @@ func _wait_render() -> void:
 	while CityStore.query(&"render_pending") > 0 and waited < BUILD_FRAMES:
 		await _frames(1)
 		waited += 1
-	print("quadros de construção: ", waited, " pendentes ao fim: ", CityStore.query(&"render_pending"))
+	print("build frames: ", waited, " pending at the end: ", CityStore.query(&"render_pending"))
 
 
 func _frames(n: int) -> void:

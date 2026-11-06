@@ -16,7 +16,7 @@ run_one() { # <test> <rendering method>
 	local code=$?
 	if [ "$code" -ne 0 ] || grep -qE "SCRIPT ERROR|Program crashed" "$log"; then
 		echo "FALHOU $1 em $2 (saída $code): $log"
-		grep -E "FAIL|SCRIPT ERROR|Program crashed" "$log" | head -5
+		grep -E "\bFAIL\b|SCRIPT ERROR|Program crashed" "$log" | head -5
 		failed=1
 	else
 		echo "ok $1 ($2)"

@@ -57,7 +57,7 @@ func _ready() -> void:
 	cam.make_current()
 	await _lenses(material)
 	await _night(material, world.materials()["road"])
-	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FALHAS: ", failures)
+	print("renderizador: ", RenderingServer.get_current_rendering_method(), " FAILURES: ", failures)
 	_check_grade()
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -124,7 +124,7 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
 	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
 	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit, world.environment.tonemap_exposure, world.environment.tonemap_white)
-	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "luz da via (placa de cruzamento)")
+	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)")
 
 
 ## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.
@@ -134,14 +134,14 @@ func _check_grade() -> void:
 		var got: Color = CityStore.query(&"film_graded", [grade, Color(level / BYTE_TOP, level / BYTE_TOP, level / BYTE_TOP)])
 		var want: Array = GRADE_TABLE[level]
 		var off := maxf(maxf(absf(got.r * BYTE_TOP - want[0]), absf(got.g * BYTE_TOP - want[1])), absf(got.b * BYTE_TOP - want[2]))
-		_check(off <= GRADE_LEVELS_OFF, "gradação de %d: %s, o 4.0 dá %s" % [int(level), got.to_html(false), want])
+		_check(off <= GRADE_LEVELS_OFF, "grade of %d: %s, the 4.0 gives %s" % [int(level), got.to_html(false), want])
 
 
 func _compare(img: Image, at: Vector3, wanted: Color, what: String, steps := TOLERANCE) -> void:
 	var want: Color = CityStore.query(&"film_graded", [DataTables.game("daylight").grade, wanted])
 	var got := img.get_pixelv(Vector2i(cam.unproject_position(at).round()))
 	var off := maxi(maxi(_step(got.r, want.r), _step(got.g, want.g)), _step(got.b, want.b))
-	_check(off <= steps, "%s: tela %s, desejada %s (%d passos de 8 bits)" % [what, got.to_html(false),
+	_check(off <= steps, "%s: screen %s, wanted %s (%d steps of 8 bits)" % [what, got.to_html(false),
 			want.to_html(false), off])
 
 

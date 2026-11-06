@@ -60,7 +60,7 @@ func _run() -> void:
 	await CaptureFlag.shot(self, a)
 	await _layers(a, e)
 	await _save_open()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -74,15 +74,15 @@ func _undo_redo(a: Vector3, e: Vector3) -> void:
 	tools.set_tool(ToolController.Tool.NONE)
 	hud.drawer.close()
 	await ui.drawn()
-	_check(CityStore.snapshot.segments > s0 and CityStore.snapshot.can_undo, "via construída, desfazer ativo")
+	_check(CityStore.snapshot.segments > s0 and CityStore.snapshot.can_undo, "road built, undo active")
 	await ui.shot("feat_undo_1_via")
 	await ui.key(KEY_Z, true)
 	await ui.drawn()
-	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.can_redo, "Ctrl+Z desfez a via")
+	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.can_redo, "Ctrl+Z undid the road")
 	await ui.shot("feat_undo_2_desfeita")
 	await ui.press(hud.top_bar._history_buttons.redo)
 	await ui.drawn()
-	_check(CityStore.snapshot.segments > s0, "Refazer pelo botão")
+	_check(CityStore.snapshot.segments > s0, "Redo by the button")
 	await ui.shot("feat_undo_3_refeita")
 
 
@@ -98,13 +98,13 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	var m0: float = CityStore.snapshot.money
 	await ui.click(mid)
 	await ui.drawn()
-	_check(CityStore.snapshot.money < m0, "Melhorar cobrou a diferença")
+	_check(CityStore.snapshot.money < m0, "Upgrade charged the difference")
 	await ui.shot("feat_upgrade_2_avenida")
 	await ui.press(hud.drawer._tabs.split)
 	var s0: int = CityStore.snapshot.segments
 	await ui.hover(a.lerp(e, 0.3))
 	await ui.click(a.lerp(e, 0.3))
-	_check(CityStore.snapshot.segments == s0 + 1, "Dividir criou um nó")
+	_check(CityStore.snapshot.segments == s0 + 1, "Split made a node")
 	await ui.shot("feat_split")
 	await ui.press(hud.drawer._tabs.roundabout)
 	var ring := e + Vector3(0, 0, -VIEW_AHEAD_M * 1.5)
@@ -114,7 +114,7 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	await ui.click(ring)
 	await ui.hover(ring + Vector3(0, 0, 80))
 	await ui.drawn()
-	_check(CityStore.snapshot.segments > s0, "Rotatória construída (%d -> %d)" % [s0, CityStore.snapshot.segments])
+	_check(CityStore.snapshot.segments > s0, "Roundabout built (%d -> %d)" % [s0, CityStore.snapshot.segments])
 	tools.preview.clear()
 	rig.jump(ring, 20.0, 50.0, 260.0)
 	await ui.drawn()
@@ -151,8 +151,8 @@ func _relief(e: Vector3) -> void:
 	await ui.drawn()
 	var back := ui.ground(hill.x, hill.z).y
 	var drawn: float = hud.world.terrain.data.get_height(Vector3(hill.x, 0.0, hill.z))
-	_check(absf(back - h0) < 0.1, "relevo desfeito no núcleo: %.1f m (era %.1f)" % [back, h0])
-	_check(absf(drawn - h0) < 0.5, "relevo desfeito no Terrain3D: %.1f m (era %.1f)" % [drawn, h0])
+	_check(absf(back - h0) < 0.1, "relief undone in the core: %.1f m (was %.1f)" % [back, h0])
+	_check(absf(drawn - h0) < 0.5, "relief undone in Terrain3D: %.1f m (was %.1f)" % [drawn, h0])
 	await ui.shot("feat_terrain_2_desfeito")
 	await ui.key(KEY_Z, true, true)
 	await ui.key(KEY_Z, true, true)
@@ -174,14 +174,14 @@ func _build(a: Vector3, e: Vector3) -> void:
 	await ui.press(cards[2]) # escola
 	await ui.drag(mid + Vector3(-30, 0, -16), mid + Vector3(20, 0, -50))
 	await ui.drawn()
-	_check(CityStore.snapshot.buildings >= b0 + 2, "parque e escola desenhados (%d -> %d)" % [b0, CityStore.snapshot.buildings])
+	_check(CityStore.snapshot.buildings >= b0 + 2, "park and school drawn (%d -> %d)" % [b0, CityStore.snapshot.buildings])
 	await ui.shot("feat_build_parque_escola")
 	hud.drawer.close()
 
 
 func _layers(a: Vector3, e: Vector3) -> void:
 	var zoned: Dictionary = CityStore.dispatch(&"paint_zone", [a.lerp(e, 0.5), 80.0, 2])
-	_check(zoned.ok, "zoneou a via: %s" % zoned)
+	_check(zoned.ok, "zoned the road: %s" % zoned)
 	CityStore.dispatch(&"set_speed", [1])
 	for i in 120:
 		await get_tree().process_frame
@@ -196,7 +196,7 @@ func _layers(a: Vector3, e: Vector3) -> void:
 		await ui.press(r)
 	await ui.frames(70)
 	var on: Dictionary = CityStore.query(&"overlays")
-	_check(on.zones and on.congestion, "camadas ligadas %s, lados do jogador %d" % [on, CityStore.snapshot.player_zones])
+	_check(on.zones and on.congestion, "layers on %s, the player's sides %d" % [on, CityStore.snapshot.player_zones])
 	await ui.shot("feat_layers")
 	for r in rows:
 		await ui.press(r)
@@ -213,10 +213,10 @@ func _save_open() -> void:
 		await ui.frames(1)
 	var slot := CityStore.saves.city_slot() # the city's own slot (SaveSlots), given by this first save
 	_check(not slot.is_empty() and FileAccess.file_exists(CityStore.saves.save_path(slot)) and not CityStore.snapshot.unsaved,
-		"Salvar gravou a cidade em %s" % slot)
+		"Save wrote the city to %s" % slot)
 	var segs: int = CityStore.snapshot.segments
 	CityStore.new_map(TOWN_MAP, SEED + 1, false)
-	_check(CityStore.saves.city_slot().is_empty(), "o mapa novo não herdou o slot da cidade salva")
+	_check(CityStore.saves.city_slot().is_empty(), "the new map did not inherit the saved city's slot")
 	await ui.drawn()
 	hud.open_popover("menu")
 	await ui.frames(3)
@@ -225,7 +225,7 @@ func _save_open() -> void:
 	await ui.shot("feat_save_1_abrir")
 	await ui.press(_row_with(slot + "  ·")) # the row of exactly that slot (hud_popover: "<slot>  ·  <date>")
 	await ui.drawn()
-	_check(CityStore.snapshot.segments == segs and CityStore.saves.city_slot() == slot, "abriu a cidade salva (%d vias)" % segs)
+	_check(CityStore.snapshot.segments == segs and CityStore.saves.city_slot() == slot, "opened the saved city (%d roads)" % segs)
 	await ui.shot("feat_save_2_aberto")
 	DirAccess.remove_absolute(CityStore.saves.save_path(slot)) # the next run saves to the same name again
 

@@ -50,7 +50,7 @@ static func _pair(cap: Node, pair: Dictionary) -> void:
 		await cap._shot(pair.name, eye, eye + look * pair.reach)
 		print("paridade: ", pair.name, " tentativa ", attempt + 1, " em ", eye)
 		return
-	print("captura: nenhum veículo para ", pair.name)
+	print("capture: no vehicle for ", pair.name)
 
 
 static func _eye(probe: Dictionary, k: int, pair: Dictionary) -> Vector3:

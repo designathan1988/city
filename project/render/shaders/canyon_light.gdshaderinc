@@ -18,21 +18,11 @@ vec2 canyon_at(vec2 p) {
 	return textureLod(canyon_map, uv, 0.0).rg;
 }
 
-// In view space, by the terms a perspective has: five of these a pixel, so no whole matrix and no way back to the world for each.
-vec3 canyon_view(vec2 uv, mat4 inv_projection) {
-	float depth = textureLod(depth_texture, uv, 0.0).x;
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	depth = depth * 2.0 - 1.0;
-#endif
-	vec2 xy = (uv * 2.0 - 1.0) * vec2(inv_projection[0][0], inv_projection[1][1]) + inv_projection[3].xy;
-	return vec3(xy, inv_projection[2][2] * depth + inv_projection[3][2]) / (inv_projection[2][3] * depth + inv_projection[3][3]);
-}
-
 // The surface's normal from the depth, each axis from the side that lies on the same surface as the pixel.
 vec3 canyon_normal(vec3 p, vec3 eye, vec2 uv, vec2 texel, mat4 inv_projection, mat4 inv_view) {
-	vec3 c = canyon_view(uv, inv_projection);
-	vec3 l = canyon_view(uv - vec2(texel.x, 0.0), inv_projection), r = canyon_view(uv + vec2(texel.x, 0.0), inv_projection);
-	vec3 b = canyon_view(uv - vec2(0.0, texel.y), inv_projection), t = canyon_view(uv + vec2(0.0, texel.y), inv_projection);
+	vec3 c = view_at(uv, inv_projection);
+	vec3 l = view_at(uv - vec2(texel.x, 0.0), inv_projection), r = view_at(uv + vec2(texel.x, 0.0), inv_projection);
+	vec3 b = view_at(uv - vec2(0.0, texel.y), inv_projection), t = view_at(uv + vec2(0.0, texel.y), inv_projection);
 	vec3 dx = distance(l, c) < distance(r, c) ? c - l : r - c;
 	vec3 dy = distance(b, c) < distance(t, c) ? c - b : t - c;
 	vec3 n = mat3(inv_view) * normalize(cross(dx, dy));

@@ -39,7 +39,7 @@ func _ready() -> void:
 	await _key_tests()
 	await CameraWalkCases.new(self).run()
 	await CameraRoadKeyCases.new(self).run()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -57,7 +57,7 @@ func _screen() -> Vector2:
 
 
 func _pan_tests() -> void:
-	print("vista %s, tolerância %.2f px" % [_screen(), _tol()])
+	print("view %s, tolerance %.2f px" % [_screen(), _tol()])
 	for shift in [false, true]:
 		_home()
 		await _frames(1)
@@ -76,8 +76,8 @@ func _pan_tests() -> void:
 		await _button(button, p1, false, shift)
 		var err := rig.camera.unproject_position(g0).distance_to(p1)
 		var what := "Shift+direito" if shift else "meio"
-		_check(worst < _tol(), "%s: o chão agarrado segue o cursor a cada passo (pior %.2f px)" % [what, worst])
-		_check(err < _tol(), "%s: e fica sob o cursor ao soltar (erro %.2f px)" % [what, err])
+		_check(worst < _tol(), "%s: the ground held follows the cursor each step (worst %.2f px)" % [what, worst])
+		_check(err < _tol(), "%s: and stays under the cursor on release (error %.2f px)" % [what, err])
 
 
 ## On open ground: among the buildings the eye is pulled up its line of sight (CameraPull), which moves the picture on purpose.
@@ -95,8 +95,8 @@ func _zoom_test() -> void:
 	await _pull_settled()
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
-	_check(rig.pull.shown() < EPS, "roda: longe dos prédios o olho não é puxado (%.3f)" % rig.pull.shown())
-	_check(err < _tol(), "roda: o ponto sob o cursor fica sob o cursor (erro %.2f px)" % err)
+	_check(rig.pull.shown() < EPS, "wheel: far from buildings the eye is not pulled (%.3f)" % rig.pull.shown())
+	_check(err < _tol(), "wheel: the point under the cursor stays under it (error %.2f px)" % err)
 	_check(absf(rig.half - want) < want * 0.01, "roda: 3 entalhes aproximam (meia altura %.1f -> %.1f)" % [half0, rig.half])
 
 
@@ -113,11 +113,11 @@ func _orbit_tests() -> void:
 	await _frames(30) # the spring that spends a turn, well run out
 	var turned := angle_difference(yaw0, rig.yaw)
 	_check(absf(turned + dx * rig.gestures.rad_per_px) < EPS, "direito: gira %.3f rad (esperado %.3f)" % [turned, -dx * rig.gestures.rad_per_px])
-	_check(rig.camera.unproject_position(g_pivot).distance_to(c) < _tol(), "direito: gira em torno do chão sob o clique")
-	_check(rig.camera.unproject_position(g_near).x > near.x, "direito: o lado perto acompanha a mão")
+	_check(rig.camera.unproject_position(g_pivot).distance_to(c) < _tol(), "right: turns round the ground under the click")
+	_check(rig.camera.unproject_position(g_near).x > near.x, "right: the near side follows the hand")
 	var pitch0 := rig.pitch
 	await _drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(0, 60), false, true)
-	_check(rig.pitch > pitch0, "direito para baixo: inclina para a vista de cima (%.1f -> %.1f graus)" % [rad_to_deg(pitch0), rad_to_deg(rig.pitch)])
+	_check(rig.pitch > pitch0, "right down: tilts to the view from above (%.1f -> %.1f degrees)" % [rad_to_deg(pitch0), rad_to_deg(rig.pitch)])
 
 
 func _limit_tests() -> void:
@@ -125,23 +125,23 @@ func _limit_tests() -> void:
 	await _frames(1)
 	var c := _screen() * 0.5
 	await _drag(MOUSE_BUTTON_RIGHT, c, c + Vector2(0, 2000), false, true)
-	_check(absf(rig.pitch - deg_to_rad(cfg.max_tilt_deg)) < EPS, "inclinação máxima %.1f graus" % rad_to_deg(rig.pitch))
+	_check(absf(rig.pitch - deg_to_rad(cfg.max_tilt_deg)) < EPS, "greatest tilt %.1f degrees" % rad_to_deg(rig.pitch))
 	await _drag(MOUSE_BUTTON_RIGHT, c, c - Vector2(0, 2000), false, true)
 	var lo := CameraProfile.min_tilt(cfg, rig.half)
-	_check(absf(rig.pitch - lo) < EPS, "inclinação mínima de longe %.1f graus (limite %.1f)" % [rad_to_deg(rig.pitch), rad_to_deg(lo)])
+	_check(absf(rig.pitch - lo) < EPS, "least tilt from afar %.1f degrees (limit %.1f)" % [rad_to_deg(rig.pitch), rad_to_deg(lo)])
 	for i in 80:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, c)
 	await _glide_settled()
-	_check(rig.half >= cfg.view_half_min - EPS and rig.half < cfg.view_half_min * 2.0, "zoom mínimo: meia altura %.2f m" % rig.half)
+	_check(rig.half >= cfg.view_half_min - EPS and rig.half < cfg.view_half_min * 2.0, "least zoom: half height %.2f m" % rig.half)
 	await _drag(MOUSE_BUTTON_RIGHT, c, c - Vector2(0, 2000), false, true)
 	lo = CameraProfile.min_tilt(cfg, rig.half)
-	_check(rig.pitch < 0.0 and absf(rig.pitch - lo) < EPS, "na rua olha para cima até %.1f graus" % rad_to_deg(rig.pitch))
+	_check(rig.pitch < 0.0 and absf(rig.pitch - lo) < EPS, "in the street it looks up to %.1f degrees" % rad_to_deg(rig.pitch))
 	var under: Variant = CityStore.query(&"raycast", [rig.camera.global_position + Vector3.UP * cfg.ray_top, Vector3.DOWN]).get("position")
-	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "olho acima do chão (olho %.3f, chão %s)" % [rig.camera.global_position.y, under])
+	_check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "eye above the ground (eye %.3f, ground %s)" % [rig.camera.global_position.y, under])
 	for i in 120:
 		await _wheel(MOUSE_BUTTON_WHEEL_DOWN, c)
 	await _glide_settled()
-	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "zoom máximo: meia altura %.0f m" % rig.half)
+	_check(rig.half <= cfg.view_half_max + EPS and rig.half > cfg.view_half_max * 0.5, "greatest zoom: half height %.0f m" % rig.half)
 
 
 func _key_tests() -> void:
@@ -150,7 +150,7 @@ func _key_tests() -> void:
 	var f0 := rig.focus
 	var fwd := Vector3(-sin(rig.yaw), 0, -cos(rig.yaw))
 	await _hold_key(KEY_W, false, 0.5)
-	_check((rig.focus - f0).dot(fwd) > 0.0, "W anda para a frente (%.1f m)" % (rig.focus - f0).dot(fwd))
+	_check((rig.focus - f0).dot(fwd) > 0.0, "W walks forward (%.1f m)" % (rig.focus - f0).dot(fwd))
 	var yaw0 := rig.yaw
 	await _hold_key(KEY_Q, false, 0.3)
 	_check(angle_difference(yaw0, rig.yaw) > 0.0, "Q gira")
@@ -159,7 +159,7 @@ func _key_tests() -> void:
 	await _hold_key(KEY_E, true, 0.05)
 	await _glide_settled()
 	var quarter := angle_difference(yaw0, rig.yaw)
-	_check(absf(quarter + deg_to_rad(cfg.quarter_turn_deg)) < EPS, "Shift+E: um quarto de volta (%.1f graus)" % rad_to_deg(quarter))
+	_check(absf(quarter + deg_to_rad(cfg.quarter_turn_deg)) < EPS, "Shift+E: a quarter turn (%.1f degrees)" % rad_to_deg(quarter))
 
 
 func _drag(button: MouseButton, from: Vector2, to: Vector2, shift: bool, still: bool) -> void:

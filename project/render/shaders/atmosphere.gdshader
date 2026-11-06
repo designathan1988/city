@@ -9,7 +9,6 @@ render_mode unshaded, fog_disabled, depth_test_disabled, depth_draw_never, cull_
 #define MAX_CLOUDS 24
 #define PUFFS 7
 
-uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 uniform sampler3D noise_volume : repeat_enable, filter_linear;
 uniform sampler2D start_noise : repeat_enable, filter_nearest; // blue noise, one texel a pixel: each ray its own start
 uniform sampler2D fog_map : repeat_enable, filter_linear;
@@ -35,6 +34,7 @@ uniform vec3 fog_window = vec3(0.0, 0.0, 1.0); // low corner x, z and side
 uniform float fog_extinction;
 uniform vec2 wind_dir = vec2(0.93, 0.35);
 
+#include "res://render/shaders/screen_depth.gdshaderinc"
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/cloud_field.gdshaderinc"
 #include "res://render/shaders/canyon_light.gdshaderinc"

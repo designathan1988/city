@@ -71,9 +71,9 @@ func _ready() -> void:
 	print("rides over the limit: ", _failed, " of ", _worst.size())
 	print("eye in a building: %d of %d frames, deepest %.3f of the view" % [_inside, _frames, _deepest])
 	if float(_inside) / _frames > INSIDE_SHARE:
-		print("FAIL o olho fica dentro de prédio")
+		print("FAIL the eye stays inside a building")
 		_failed += 1
-	print("FALHAS: ", _failed)
+	print("FAILURES: ", _failed)
 	get_tree().quit(1 if _failed > 0 else 0)
 
 

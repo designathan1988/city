@@ -51,14 +51,14 @@ func _buses() -> void:
 	var ids := PackedInt32Array()
 	for s: Dictionary in plan.stops:
 		ids.append(s.id)
-	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "linha de ônibus")
+	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
 	CityStore.step_ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
-	print("ônibus: ", run)
-	_check(int(run.buses) > 0, "ônibus na linha")
-	_check(int(run.stops_called) > 0, "ônibus atendeu parada")
-	_check(int(run.alighted) > 0, "gente desce do ônibus: %s" % run.alighted)
-	_check(int(run.boarded) > 0, "gente sobe no ônibus: %s" % run.boarded)
+	print("buses: ", run)
+	_check(int(run.buses) > 0, "buses on the line")
+	_check(int(run.stops_called) > 0, "a bus served a stop")
+	_check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)
+	_check(int(run.boarded) > 0, "people get on the bus: %s" % run.boarded)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are
 	CityStore.step_ticks(1)
@@ -74,7 +74,7 @@ func _level_crossing() -> void:
 		for k in range(-CROSSING_GRID, CROSSING_GRID + 1):
 			if not laid:
 				laid = _lay_across(ground + Vector3(i, 0, k) * CROSSING_STEP_M)
-	_check(laid, "linha pela passagem de nível")
+	_check(laid, "a line through the level crossing")
 	var most := 0
 	var seen := 0
 	for i in CROSSING_SAMPLES:
@@ -82,9 +82,9 @@ func _level_crossing() -> void:
 		var run: Dictionary = CityStore.query(&"transit_run")
 		most = maxi(most, int(run.held_at_crossing))
 		seen = int(run.crossings)
-	print("passagem: faixas cruzadas ", seen, ", veículos parados no máximo ", most)
-	_check(seen > 0, "faixas cruzadas")
-	_check(most > 0, "veículo espera a passagem")
+	print("crossing: lanes crossed ", seen, ", vehicles stopped at most ", most)
+	_check(seen > 0, "lanes crossed")
+	_check(most > 0, "a vehicle waits at the crossing")
 
 
 ## A track across the street nearest a point, if the core lets it through (a wide avenue it does not), two stations and a line.
@@ -113,34 +113,34 @@ func _trains() -> void:
 	var a := Vector3(b.max.x + TRACK_OUT_M, 0, b.min.z)
 	var e := a + Vector3(0, 0, TRACK_LONG_M)
 	_check(CityStore.dispatch(&"transit_track", [PackedVector3Array([a, e]), TRAIN]).get("ok", false), "trilho")
-	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), TRAIN]).get("ok", false), "estação 1")
-	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), TRAIN]).get("ok", false), "estação 2")
+	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.1), TRAIN]).get("ok", false), "station 1")
+	_check(CityStore.dispatch(&"transit_station", [a.lerp(e, 0.9), TRAIN]).get("ok", false), "station 2")
 	var ids := PackedInt32Array()
 	for s: Dictionary in CityStore.query(&"transit_plan").stops:
 		if int(s.mode) == TRAIN:
 			ids.append(s.id)
-	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "linha de trem")
+	_check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "train line")
 	CityStore.step_ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
 	print("trens: ", run)
-	_check(int(run.trains) > 0, "trens na linha")
-	_check(int(run.trains_at_stations) > 0, "trem parou em estação")
+	_check(int(run.trains) > 0, "trains on the line")
+	_check(int(run.trains_at_stations) > 0, "a train stopped at a station")
 
 
 func _undo_and_save() -> void:
 	var before: Dictionary = CityStore.query(&"transit_plan")
 	CityStore.dispatch(&"undo", [])
-	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size() - 1, "desfazer tira a linha")
+	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size() - 1, "undo takes the line away")
 	CityStore.dispatch(&"redo", [])
-	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size(), "refazer devolve a linha")
+	_check(CityStore.query(&"transit_plan").lines.size() == before.lines.size(), "redo gives the line back")
 	CityStore.saves.save_game(SLOT)
 	await CityStore.saved
 	CityStore.new_map(TOWN_MAP, SEED, true)
-	_check(CityStore.query(&"transit_plan").lines.is_empty(), "mapa novo sem linhas")
+	_check(CityStore.query(&"transit_plan").lines.is_empty(), "a new map with no lines")
 	CityStore.saves.load_game(SLOT)
 	await CityStore.loaded
 	var after: Dictionary = CityStore.query(&"transit_plan")
-	_check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "plano volta do arquivo")
+	_check(after.stops.size() == before.stops.size() and after.lines.size() == before.lines.size() and after.tracks == before.tracks, "the plan comes back from the file")
 
 
 func _check(ok: bool, what: String) -> void:

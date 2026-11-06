@@ -31,8 +31,8 @@ func _ready() -> void:
 	var id := _tall_building()
 	var aim := _roof_ray(id)
 	tool.pick(aim[0], aim[1])
-	_check(tool.picked.get("id", -1) == id, "o raio escolhe o prédio %d: %s" % [id, tool.picked])
-	_check(_outline(tool).size() >= 8, "o bloco escolhido tem contorno")
+	_check(tool.picked.get("id", -1) == id, "the ray picks building %d: %s" % [id, tool.picked])
+	_check(_outline(tool).size() >= 8, "the picked block has an outline")
 	_inside(tool, id)
 	_every_tool(tool, id)
 	_arm_and_click(tool, id)
@@ -40,8 +40,8 @@ func _ready() -> void:
 	_moved_by_its_corner(tool, id)
 	tool.cancel()
 	tool.cancel()
-	_check(tool.picked.is_empty(), "Esc solta a seleção")
-	print("FALHAS: ", failures)
+	_check(tool.picked.is_empty(), "Esc lets the selection go")
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -50,13 +50,13 @@ func _inside(tool: BuildingTool, id: int) -> void:
 	var cards: Array = DataTables.ui("builder").tabs.interior.sections[0].tools
 	tool.act(cards[0])
 	var open: Dictionary = CityStore.query(&"interior")
-	_check(open.on and open.target == id, "Cortar e ver abre o prédio escolhido: %s" % open)
+	_check(open.on and open.target == id, "Cut and see opens the picked building: %s" % open)
 	tool.act(cards[2])
-	_check(int(CityStore.query(&"interior").level) == 1, "Andar acima sobe um andar")
+	_check(int(CityStore.query(&"interior").level) == 1, "Floor up goes up a floor")
 	tool.act(cards[1])
-	_check(int(CityStore.query(&"interior").level) == 0, "Andar abaixo desce")
+	_check(int(CityStore.query(&"interior").level) == 0, "Floor down goes down")
 	tool.act(cards[0])
-	_check(not CityStore.query(&"interior").on, "Cortar e ver de novo fecha")
+	_check(not CityStore.query(&"interior").on, "Cut and see again closes")
 
 
 func _tall_building() -> int:
@@ -64,7 +64,7 @@ func _tall_building() -> int:
 		var v: Array = CityStore.query(&"body_info", [id]).volumes
 		if v.size() == 1 and v[0].storeys >= 3:
 			return id
-	_check(false, "achou um prédio de um bloco só")
+	_check(false, "found a building of one block")
 	return -1
 
 
@@ -98,7 +98,7 @@ func _every_tool(tool: BuildingTool, id: int) -> void:
 					continue
 				count += 1
 				_one_tool(tool, id, tab, spec)
-	_check(count > 0, "%d ferramentas de edição exercidas" % count)
+	_check(count > 0, "%d editing tools exercised" % count)
 
 
 func _one_tool(tool: BuildingTool, id: int, tab: String, spec: Dictionary) -> void:
@@ -124,14 +124,14 @@ func _drag_a_wing(tool: BuildingTool, id: int) -> void:
 	var along: Vector3 = (outline[1] - corner).normalized()
 	var out: Vector3 = (corner - outline[3]).normalized()
 	tool.act(card)
-	_check(tool.in_progress(), "o cartão arma o arrasto")
+	_check(tool.in_progress(), "the card arms the drag")
 	tool.click(corner)
 	tool.drag(corner + along * WING_M + out * WING_M)
 	tool.release(corner + along * WING_M + out * WING_M)
-	_check(CityStore.query(&"body_info", [id]).volumes.size() == before + 1, "o arrasto fez uma ala")
+	_check(CityStore.query(&"body_info", [id]).volumes.size() == before + 1, "the drag made a wing")
 	CityStore.dispatch(&"undo")
 	tool.act(card)
-	_check(not tool.in_progress(), "o cartão de novo desarma")
+	_check(not tool.in_progress(), "the card again disarms")
 
 
 ## The Move handle's edit: the building goes, one step of undo brings it back.
@@ -154,9 +154,9 @@ func _arm_and_click(tool: BuildingTool, id: int) -> void:
 	tool.act({"do": "scope", "value": SCOPE_ROW})
 	tool.act({"do": "arm", "value": BAY_BALCONY})
 	tool.pick(front + out + Vector3.UP * CityStore.query(&"body_info", [id]).ground_h, -out)
-	_check(tool.picked.get("id", -1) == id and tool.picked.side >= 0, "o clique acerta a parede: %s" % tool.picked)
+	_check(tool.picked.get("id", -1) == id and tool.picked.side >= 0, "the click hits the wall: %s" % tool.picked)
 	var h: Dictionary = tool.picked
-	_check(CityStore.query(&"body_bay", [id, h.volume, h.storey, h.side, h.bay]) == BAY_BALCONY, "o vão clicado virou varanda")
+	_check(CityStore.query(&"body_bay", [id, h.volume, h.storey, h.side, h.bay]) == BAY_BALCONY, "the clicked bay became a balcony")
 	CityStore.dispatch(&"undo")
 
 

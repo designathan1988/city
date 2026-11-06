@@ -20,7 +20,7 @@ func run() -> void:
 	CityStore.step_ticks(SIGNAL_TICKS)
 	var at: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 	var was: Dictionary = CityStore.query(&"inspect", [at])
-	_check.call(was.get("kind", "") == "node" and was.has("greens"), "semáforo inspecionado %s" % [was])
+	_check.call(was.get("kind", "") == "node" and was.has("greens"), "signal inspected %s" % [was])
 	if not was.has("greens"):
 		return
 	var r: Dictionary = CityStore.dispatch(&"set_signal", [was.id, true, was.greens, SIGNAL_OFFSET])
@@ -30,13 +30,13 @@ func run() -> void:
 	_check.call(CityStore.dispatch(&"undo") and not CityStore.query(&"inspect", [at]).fixed, "tempo fixo desfeito")
 	_check.call(CityStore.dispatch(&"redo") and CityStore.query(&"inspect", [at]).fixed, "tempo fixo refeito")
 	CityStore.step_ticks(SIGNAL_TICKS)
-	_check.call(CityStore.dispatch(&"undo"), "volta ao adaptativo")
+	_check.call(CityStore.dispatch(&"undo"), "back to adaptive")
 	CityStore.step_ticks(SIGNAL_TICKS)
 	_panel(at, was)
 	var wave: Dictionary = CityStore.dispatch(&"green_wave", [was.id])
 	var after: Dictionary = CityStore.query(&"inspect", [at])
 	print("onda verde: ", wave, " ", after)
-	_check.call(wave.ok == after.fixed, "onda verde deixa o semáforo em tempo fixo, ou diz que não há outro %s" % [wave])
+	_check.call(wave.ok == after.fixed, "a green wave leaves the signal on fixed time, or says there is no other %s" % [wave])
 	if wave.ok:
 		_check.call(CityStore.dispatch(&"undo") and not CityStore.query(&"inspect", [at]).fixed, "onda verde desfeita num passo")
 		CityStore.step_ticks(SIGNAL_TICKS)
@@ -49,9 +49,9 @@ func _panel(at: Vector3, info: Dictionary) -> void:
 	var redrawn := []
 	JunctionPanel.fill(col, info, func() -> void: redrawn.append(true))
 	var buttons := col.find_children("*", "Button", true, false)
-	_check.call(buttons.size() >= PANEL_BUTTONS, "painel do semáforo com %d botões" % buttons.size())
+	_check.call(buttons.size() >= PANEL_BUTTONS, "signal panel with %d buttons" % buttons.size())
 	(buttons[0] as Button).pressed.emit()
-	_check.call(not redrawn.is_empty() and CityStore.query(&"inspect", [at]).fixed, "botão do painel passa a tempo fixo")
+	_check.call(not redrawn.is_empty() and CityStore.query(&"inspect", [at]).fixed, "the panel's button goes to fixed time")
 	_check.call(CityStore.dispatch(&"undo"), "painel desfeito")
 	CityStore.step_ticks(SIGNAL_TICKS)
 	col.queue_free()

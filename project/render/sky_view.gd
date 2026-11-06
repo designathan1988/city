@@ -108,6 +108,8 @@ func _process(dt: float) -> void:
 	_light(way)
 	_weather_view.step(dt, weather, way)
 	_world.daylight.set_weather(_overcast(), _weather_view.flash)
+	var sun: Vector3 = _world.sun.global_basis.z
+	_world.contact.follow(sun, _d.contact_most * _world.daylight.direct_share * clampf(sun.y * _d.contact_sun_gain, 0.0, 1.0))
 	var fog_rev: int = CityStore.query(&"fog_revision") # the render takes new windows in; read and bound only then
 	if fog_rev != _fog_seen:
 		_fog_seen = fog_rev

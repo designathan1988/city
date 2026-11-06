@@ -82,7 +82,7 @@ func _run() -> void:
 		await _people()
 	if "car" in phases:
 		await _car()
-	print("FALHAS: ", failures + blast.failures)
+	print("FAILURES: ", failures + blast.failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
@@ -90,7 +90,7 @@ func _run() -> void:
 func _paired() -> void:
 	var lows := _houses(1, FLOORS_LOW)
 	if lows.size() < 3:
-		_check(false, "casas baixas para a pareada")
+		_check(false, "low houses for the pair")
 		return
 	await blast.blow("bomba_f%d" % CaptureBlast.SMALL, lows[lows.size() / 2], CaptureBlast.SMALL, LOW_DIST, PAIRED_MOMENTS)
 	await blast.blow("bomba_f%d_grande" % CaptureBlast.BIG, lows[lows.size() / 3], CaptureBlast.BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
@@ -110,7 +110,7 @@ func _people() -> void:
 	var found: Dictionary = CityStore.query(&"shot_targets", [TARGETS])
 	var walkers: Array = found.walkers
 	if walkers.size() < 3:
-		_check(false, "pedestres para as fotos")
+		_check(false, "pedestrians for the photos")
 		return
 	await _shoot_walker("ped_tronco", walkers[0], CHEST_M, [0.1, 1.0])
 	await _shoot_walker("ped_perna", walkers[1], LEG_M, [0.1, 1.0, 3.0])
@@ -125,7 +125,7 @@ func _car() -> void:
 			tall.append(info.position)
 	var cars: Array = CityStore.query(&"shot_targets", [TARGETS * 8]).vehicles.filter(func(v): return v.type != MOTO and v.type < FIRST_HEAVY and _clear_of(v.position, tall))
 	if cars.is_empty():
-		_check(false, "um carro para as fotos")
+		_check(false, "a car for the photos")
 		return
 	var car: Dictionary = cars[0]
 	CityStore.dispatch(&"set_speed", [0])
@@ -194,7 +194,7 @@ func _shoot_walker(label: String, first: Dictionary, aim_m: float, moments: Arra
 		elapsed = t
 		await ui.drawn()
 		await ui.shot("%s_t%d" % [label, int(t * 10)])
-		print(label, " sangue no chão: ", CityStore.query(&"damage_probe").blood_marks)
+		print(label, " blood on the ground: ", CityStore.query(&"damage_probe").blood_marks)
 
 
 ## The houses with between `lo` and `hi` floors, as the point on their roof the blow lands on.

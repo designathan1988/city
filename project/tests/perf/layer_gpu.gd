@@ -29,7 +29,7 @@ func _ready() -> void:
 			await get_tree().process_frame
 			waited += 1
 		await frame.take()
-		print("%s | %.2f ms | %.2f Mprim, %.2f de sombra" % [v[0], frame.whole.gpu_ms, frame.whole.primitives / MILLION, frame.whole.shadow_primitives / MILLION])
+		print("%s | %.2f ms | %.2f Mprim, %.2f of shadow" % [v[0], frame.whole.gpu_ms, frame.whole.primitives / MILLION, frame.whole.shadow_primitives / MILLION])
 		var by_time := frame.rows.duplicate()
 		by_time.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.gpu_ms > b.gpu_ms)
 		for r: Dictionary in by_time:
@@ -53,4 +53,4 @@ func _switches() -> void:
 	for key: String in doctor.all_switches():
 		await doctor.compare(key)
 		var c: Dictionary = doctor.results[key]
-		print("chave %s: gpu %s -> %s (ruído %s)" % [key, c.gpu_before, c.gpu_after, c.noise_gpu])
+		print("switch %s: gpu %s -> %s (noise %s)" % [key, c.gpu_before, c.gpu_after, c.noise_gpu])

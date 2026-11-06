@@ -24,7 +24,7 @@ func _ready() -> void:
 	CityStore.boot(world.terrain, world.materials())
 	CityStore.new_map(TOWN_MAP, SEED, true)
 	Settings.attach(world, get_viewport())
-	print("nível vista | gpu p50 p90 max (ms) | objetos chamadas Mtri | %s" % RenderingServer.get_video_adapter_name())
+	print("tier view | gpu p50 p90 max (ms) | objects calls Mtri | %s" % RenderingServer.get_video_adapter_name())
 	for level: String in LEVELS:
 		Settings.set_preset(level)
 		for v: Array in VIEWS:
@@ -32,7 +32,7 @@ func _ready() -> void:
 	Settings.switches.set_on("occlusion", false)
 	Settings.switches_changed()
 	for v: Array in VIEWS:
-		await _measure("ultra-sem-oclusão", v)
+		await _measure("ultra-no-occlusion", v)
 	get_tree().quit(0)
 
 

@@ -35,25 +35,25 @@ static func report(minutes: int) -> void:
 			for k in now.size():
 				box[k] += int(now[k])
 		var share: float = 100.0 * p.waiting / maxf(1.0, p.vehicles)
-		print("soak min %d: %d veículos, %d andando, %d retidos (%.1f %%), parados por %s, chegadas %d, perdidas %d, pessoas %d" % [
+		print("soak min %d: %d vehicles, %d moving, %d held (%.1f %%), stopped by %s, arrivals %d, lost %d, people %d" % [
 			m + 1, p.vehicles, p.moving, p.waiting, share, p.held_by, p.trips_arrived, p.trips_lost, p.people])
-		print("  desvios %d, liberados %d, governador %.2f, perdidas por travamento %d, pessoas chegadas %d, esperando na guia %d" % [
+		print("  detours %d, freed %d, governor %.2f, lost to gridlock %d, people arrived %d, waiting at the kerb %d" % [
 			p.get("reroutes", 0), p.get("released", 0), p.get("governor", 1.0), p.get("lost_stuck", 0), p.get("people_arrived", 0),
 			p.get("people_waiting", 0)])
-		print("  retidos em média no minuto: %.1f" % (float(held_seconds) / SECONDS_PER_MINUTE))
-		print("  lotes: %d carros (%d a caminho, %d manobrando), chamados %d, estacionaram %d, saíram %d; parados de cenário %d, vagas %d" % [
+		print("  held on average in the minute: %.1f" % (float(held_seconds) / SECONDS_PER_MINUTE))
+		print("  lots: %d cars (%d on the way, %d manoeuvring), called %d, parked %d, left %d; scenery parked %d, bays %d" % [
 			p.get("lot_cars", 0), p.get("lot_coming", 0), p.get("lot_moving", 0), p.get("lot_called", 0), p.get("lot_parked_in", 0),
 			p.get("lot_left_by", 0), p.get("parked_rows", 0), p.get("bays", 0)])
-		print("  passo, ms somados (vagas, frota, lotes, pedestres, olhada: saídas, chamadas, publicação): ", p.get("step_ms", []), "; última entrada no vermelho (tipo, m/s, ds, tempo): ", p.get("red_last", []))
+		print("  step, ms summed (bays, fleet, lots, pedestrians, glance: exits, calls, publishing): ", p.get("step_ms", []), "; last entry on red (kind, m/s, ds, time): ", p.get("red_last", []))
 		var ticks := TICKS_PER_SECOND * SECONDS_PER_MINUTE
-		print("  na fila atrás de: ", p.get("queued_behind", []), ", núcleo %.0f ms no minuto (%.3f ms/passo)" % [spent, spent / ticks])
-		print("  pedestres sobrepostos a outro (andando, esperando): ", p.get("people_overlaps", []), ", em média no minuto: %.1f, %.1f" % [
+		print("  queued behind: ", p.get("queued_behind", []), ", core %.0f ms in the minute (%.3f ms/step)" % [spent, spent / ticks])
+		print("  pedestrians overlapping another (walking, waiting): ", p.get("people_overlaps", []), ", on average in the minute: %.1f, %.1f" % [
 			float(overlap_seconds[0]) / SECONDS_PER_MINUTE, float(overlap_seconds[1]) / SECONDS_PER_MINUTE],
-			"; dentro do mobiliário da calçada: %d, pedestre-segundos no minuto: %d" % [p.get("people_in_furniture", 0),
+			"; inside the pavement's furniture: %d, pedestrian-seconds in the minute: %d" % [p.get("people_in_furniture", 0),
 			furniture_seconds])
-		print("  parados no cruzamento, veículo-segundos no minuto (atrás de outro, por pedestres, por semáforo à frente, partindo): ", box,
+		print("  stopped at the junction, vehicle-seconds in the minute (behind another, for pedestrians, for a signal ahead, starting): ", box,
 			", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
 	var last: Dictionary = CityStore.query(&"traffic_probe", [SOAK_JAMS])
-	print("  mobiliário da rua (semáforos, postes, hidrantes, lixeiras, bancos, árvores): ", last.get("street_furniture", []))
+	print("  street furniture (signals, poles, hydrants, bins, benches, trees): ", last.get("street_furniture", []))
 	for line in last.jam_info:
 		print("  retido: ", line)

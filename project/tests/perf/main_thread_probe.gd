@@ -36,7 +36,7 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		GameFlow.quit_now()
 		return
-	print("cidade: ", CityStore.new_map(map, SEED, true))
+	print("city: ", CityStore.new_map(map, SEED, true))
 	add_child(RoadcraftHud.new())
 	var bounds: Dictionary = CityStore.query(&"city_bounds")
 	rig.look_at_ground((bounds.min + bounds.max) * 0.5)
@@ -50,7 +50,7 @@ func _ready() -> void:
 	await _snapshot_wait()
 	_reads()
 	var keys: int = await _idle_keys()
-	print("pool de jobs: chaves guardadas com a fila vazia: %d" % keys)
+	print("job pool: keys kept with the queue empty: %d" % keys)
 	GameFlow.quit_now()
 
 
@@ -77,11 +77,11 @@ func _snapshot_wait() -> void:
 		t += float(now - last) / US_PER_MS / US_PER_MS
 		last = now
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
-	print("tráfego: %d veículos, %d pessoas; passo do tráfego somado %.0f ms em %.1f s" % [
+	print("traffic: %d vehicles, %d people; traffic step summed %.0f ms in %.1f s" % [
 		probe.get("vehicles", 0), probe.get("people", 0), _step_ms_total() - ticks_before, t])
-	print("snapshot (CityStore.refresh, espera da thread principal): %s" % _stats(times))
+	print("snapshot (CityStore.refresh, the main thread's wait): %s" % _stats(times))
 	print("quadros: %s" % _stats(frames))
-	print("  núcleo (seu _process, render_cost): %s" % _stats(core_ms))
+	print("  core (its _process, render_cost): %s" % _stats(core_ms))
 	print("  gpu: %s" % _stats(gpu))
 	await _locks()
 
@@ -104,8 +104,8 @@ func _locks() -> void:
 		var now := Time.get_ticks_usec()
 		t += float(now - last) / US_PER_MS / US_PER_MS
 		last = now
-	print("diagnóstico das travas: só map_mutex (height_at): %s" % _stats(map_only))
-	print("  só traffic_mutex (transit_run): %s" % _stats(traffic_only))
+	print("lock diagnosis: map_mutex alone (height_at): %s" % _stats(map_only))
+	print("  traffic_mutex alone (transit_run): %s" % _stats(traffic_only))
 
 
 ## Each read a view makes every frame, timed READS times in a row: as the core answers it, and as the store keeps it.
@@ -119,8 +119,8 @@ func _reads() -> void:
 			print("leitura %s: %s" % [name, _timed(func() -> void: CityStore.query(name, args))])
 	if CityStore.has_method(&"cached"): # called by name: an older store has neither the method nor its table
 		for name in CityStore.get(&"CACHED_BY"):
-			print("leitura %s pelo cache do CityStore: %s" % [name, _timed(func() -> void: CityStore.call(&"cached", name))])
-	print("junções na lista: %d" % CityStore.query(&"junctions").size())
+			print("read %s through the CityStore cache: %s" % [name, _timed(func() -> void: CityStore.call(&"cached", name))])
+	print("junctions on the list: %d" % CityStore.query(&"junctions").size())
 
 
 func _timed(read: Callable) -> String:
@@ -159,4 +159,4 @@ func _stats(values: Array[float]) -> String:
 	var sum := 0.0
 	for v in s:
 		sum += v
-	return "n %d, média %.3f ms, %s, máx %.3f ms" % [s.size(), sum / s.size(), ", ".join(parts), s[-1]]
+	return "n %d, mean %.3f ms, %s, max %.3f ms" % [s.size(), sum / s.size(), ", ".join(parts), s[-1]]

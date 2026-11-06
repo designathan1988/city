@@ -86,7 +86,7 @@ func _run() -> void:
 	await ui.click(e)
 	await ui.key(KEY_ESCAPE, false)
 	await ui.drawn()
-	_state("via paga")
+	_state("road paid")
 	await ui.shot("via_paga")
 	hud.open_category("demolish")
 	await ui.frames(4)
@@ -95,7 +95,7 @@ func _run() -> void:
 	await ui.shot("demolir_mira")
 	await ui.click(mid)
 	await ui.drawn()
-	_state("via demolida")
+	_state("road demolished")
 	await ui.shot("via_demolida")
 	await ui.key(KEY_Z, true)
 	await ui.drawn()
@@ -121,7 +121,7 @@ func _street_card() -> Control:
 	for c in hud.drawer.catalog._cards_row.get_children():
 		if c.get_meta(&"index") == index:
 			return c
-	push_error("sem o cartão de %s" % STREET)
+	push_error("no card for %s" % STREET)
 	return hud.drawer.catalog._cards_row.get_child(0)
 
 
@@ -153,6 +153,6 @@ func _generated_road(from: Vector3) -> Vector3:
 	for i in SEARCH_STEPS:
 		var seg: Dictionary = CityStore.query(&"segment_at", [ui.ground(from.x + i * SEARCH_STEP_M, from.z)])
 		if seg.get("seg", -1) >= 0:
-			print("via gerada ", seg.seg, " perfil ", seg.profile)
+			print("generated road ", seg.seg, " perfil ", seg.profile)
 			return seg.at
 	return from

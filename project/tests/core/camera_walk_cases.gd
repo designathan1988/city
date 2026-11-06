@@ -30,8 +30,8 @@ func run() -> void:
 		t.rig.slide(RIGHT_M, AHEAD_M)
 		await t._frames(1)
 		worst = maxf(worst, absf(t.rig.camera.global_position.distance_to(t.rig.focus) - from))
-	t._check(t.rig.pull.shown() < t.EPS, "andar sobre a cidade: o olho não é puxado (%.3f)" % t.rig.pull.shown())
-	t._check(worst < HOLD_M, "andar sobre a cidade: o zoom fica (variou %.2f m de %.0f m)" % [worst, from])
+	t._check(t.rig.pull.shown() < t.EPS, "walking over the city: the eye is not pulled (%.3f)" % t.rig.pull.shown())
+	t._check(worst < HOLD_M, "walking over the city: the zoom stays (moved %.2f m of %.0f m)" % [worst, from])
 	await _no_jolt(STREET_M)
 	await _no_jolt(ROOFS_M)
 
@@ -53,5 +53,5 @@ func _no_jolt(view_m: float) -> void:
 			worst = maxf(worst, (now - last - move).length())
 		move = now - last
 		last = now
-	print("solavanco a %.0f m: %.3f m" % [view_m, worst])
-	t._check(worst < JOLT_MAX_M, "andar a %.0f m: sem solavanco (%.3f m num quadro)" % [view_m, worst])
+	print("a jolt at %.0f m: %.3f m" % [view_m, worst])
+	t._check(worst < JOLT_MAX_M, "walking at %.0f m: no jolt (%.3f m in a frame)" % [view_m, worst])

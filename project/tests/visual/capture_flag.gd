@@ -25,14 +25,14 @@ const HOLD_FRAMES := 90
 static func shot(cap: Node, near: Vector3) -> void:
 	cap.world.set_sky_mode("day")
 	var pose := _clear_pose(cap.rig, near)
-	cap._check(not pose.is_empty(), "um prédio alto com o farol à vista, sem prédio na frente")
+	cap._check(not pose.is_empty(), "a tall building with the lantern in sight, no building in front")
 	if pose.is_empty():
 		return
 	PartCases.fly_flag(pose.id, cap._check)
 	cap.rig.jump(pose.focus, pose.yaw, VIEW[1], pose.distance)
 	await cap.ui.drawn()
 	await cap.ui.frames(HOLD_FRAMES)
-	cap._check(_in_frame(cap.rig.camera, pose.top), "a bandeira dentro da foto")
+	cap._check(_in_frame(cap.rig.camera, pose.top), "the flag inside the photo")
 	await cap.ui.shot("feat_build_bandeira")
 
 

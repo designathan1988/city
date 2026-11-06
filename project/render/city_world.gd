@@ -29,6 +29,7 @@ var environment: Environment
 var daylight: Daylight
 var sky: SkyView
 var occlusion: MeshInstance3D = preload("res://render/occlusion_pass.gd").new() # the corners of the town: the one owner of the screen-space occlusion
+var contact: MeshInstance3D = preload("res://render/contact_pass.gd").new() # the sun's shade where things touch
 var _materials := {} # kept alive here: the core draws with their RIDs
 var _dither := 0.0
 var _terrain_material: Resource
@@ -177,6 +178,8 @@ func _build_environment(_palette: Dictionary) -> void:
 	add_child(we)
 	occlusion.setup(day.occlusion)
 	add_child(occlusion)
+	contact.setup()
+	add_child(contact)
 	FilmLook.vignette(self, day.vignette)
 	daylight = Daylight.new(day, sun, fill, sky_top, under, environment, sky_mat)
 	add_child(ElementEffects.new())

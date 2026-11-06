@@ -50,17 +50,17 @@ func _ready() -> void:
 	SignalCases.new(self, _check).run()
 	await _save_round_trip(a, e)
 	await _refuses_bad_balance()
-	print("FALHAS: ", failures)
+	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
 
 func _undo_cases(a: Vector3, e: Vector3) -> void:
 	var mid := (a + e) * 0.5
-	_round("via", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, 0.25]))
+	_round("road", func() -> Dictionary: return CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, PROFILE, 0.25]))
 	var four: int = CityStore.dispatch(&"road_variant", [CityStore.first_road(), 4, 0.0, 0])
-	_round("via com variante", func() -> Dictionary:
+	_round("road with a variant", func() -> Dictionary:
 		return CityStore.dispatch(&"build_road", [a + VARIANT_OFF, e + VARIANT_OFF, false, Vector3.ZERO, four, 0.25]))
-	_round("zona (traço)", func() -> Dictionary:
+	_round("zone (stroke)", func() -> Dictionary:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 		var r: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_RADIUS, ZONE_RES])
 		CityStore.dispatch(&"paint_zone", [mid + Vector3(ZONE_RADIUS, 0, 0), ZONE_RADIUS, ZONE_RES])
@@ -70,9 +70,9 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	_round("dividir", func() -> Dictionary: return CityStore.dispatch(&"split_road", [mid]))
 	_round("demolir", func() -> Dictionary: return CityStore.dispatch(&"demolish", [mid]))
 	var ring := e + Vector3(RING_OUT_M, 0, 0)
-	_round("rotatória", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
+	_round("roundabout", func() -> Dictionary: return CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]))
 	var lot := mid + Vector3(0, 0, LOT_M)
-	_round("prédio desenhado", func() -> Dictionary:
+	_round("drawn building", func() -> Dictionary:
 		return CityStore.dispatch(&"draw_building", [lot, lot + Vector3(LOT_M, 0, LOT_M), PARK_FN, ZONE_RES, 0]))
 	var hill := _hill(e)
 	var h0 := _height(hill)
@@ -83,9 +83,9 @@ func _undo_cases(a: Vector3, e: Vector3) -> void:
 	var h1 := _height(hill)
 	_check(h1 > h0 + 1.0, "relevo subiu %.2f -> %.2f" % [h0, h1])
 	CityStore.dispatch(&"undo")
-	_check(is_equal_approx(_height(hill), h0), "desfazer relevo volta a %.2f (%.2f)" % [h0, _height(hill)])
+	_check(is_equal_approx(_height(hill), h0), "undoing relief returns to %.2f (%.2f)" % [h0, _height(hill)])
 	CityStore.dispatch(&"redo")
-	_check(is_equal_approx(_height(hill), h1), "refazer relevo volta a %.2f" % h1)
+	_check(is_equal_approx(_height(hill), h1), "redoing relief returns to %.2f" % h1)
 	_nature_cases(hill + Vector3(NATURE_OUT_M, 0, 0))
 
 
@@ -94,7 +94,7 @@ func _nature_cases(p: Vector3) -> void:
 	_nature_round("nuvem", func() -> void: CityStore.dispatch(&"add_cloud", [_cloud(p)]))
 	_stroke("neblina", "cmd.fog", &"fog_brush", [p, BRUSH_RADIUS, 0.5, 18.0, 4.0, false])
 	_stroke("solo pintado", "cmd.place.paintGround", &"paint_brush", [p, BRUSH_RADIUS, 1.0, 0.0, PAINT_KIND])
-	_stroke("árvores", "cmd.place.tree", &"tree_brush", [p, BRUSH_RADIUS, 0, 0, TREES])
+	_stroke("trees", "cmd.place.tree", &"tree_brush", [p, BRUSH_RADIUS, 0, 0, TREES])
 
 
 func _cloud(p: Vector3) -> Dictionary:
@@ -144,14 +144,14 @@ func _round(what: String, edit: Callable) -> void:
 func _refuses_bad_balance() -> void:
 	CityStore.query(&"probe_set_money", [INF])
 	var w := await _save(SLOT)
-	_check(w.get("ok", false), "salvou saldo infinito para o teste")
+	_check(w.get("ok", false), "saved an infinite balance for the test")
 	CityStore.query(&"probe_set_money", [KEPT_MONEY])
 	CityStore.dispatch(&"set_marking_style", [(int(CityStore.snapshot.marking_style) + 1) % MARKING_STYLES, true])
 	var before := _counts()
 	var could_undo: bool = CityStore.snapshot.can_undo
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	_check(not r.get("ok", false) and r.get("error", "") == "save.file.damaged", "recusou saldo infinito: %s" % r)
-	_check(could_undo and CityStore.snapshot.can_undo and _counts() == before, "a cidade aberta ficou como estava, com o que desfazer: %s == %s" % [_counts(), before])
+	_check(could_undo and CityStore.snapshot.can_undo and _counts() == before, "the open city stayed as it was, with what to undo: %s == %s" % [_counts(), before])
 	_drop(SLOT)
 
 
@@ -176,11 +176,11 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 		CityStore.dispatch(&"set_signal", [plan.id, true, plan.greens, SignalCases.SIGNAL_OFFSET])
 		plan = CityStore.query(&"inspect", [signal_at])
 	var landscape := _landscape()
-	_check(landscape.planted > 0 and landscape.tiles > 0, "há paisagem a salvar %s" % landscape)
+	_check(landscape.planted > 0 and landscape.tiles > 0, "there is landscape to save %s" % landscape)
 	var w := await _save(SLOT)
 	_check(w.get("ok", false) and not CityStore.snapshot.unsaved, "salvou %s" % w)
 	CityStore.new_map(TOWN_MAP, OTHER_SEED, false)
-	_check(_counts() != saved, "mapa novo é outro")
+	_check(_counts() != saved, "a new map is another")
 	var t0 := Time.get_ticks_usec()
 	var r: Dictionary = CityStore.saves.load_game(SLOT)
 	print("abrir: %d ms" % ((Time.get_ticks_usec() - t0) / 1000))
@@ -188,15 +188,15 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	got.grown = CityStore.snapshot.grown
 	got.minutes = CityStore.snapshot.minutes
 	_check(r.ok, "abriu %s" % r)
-	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "aberto sem trabalho a salvar nem histórico (a salvar: %s, desfazer: %s)" % [CityStore.snapshot.unsaved, CityStore.snapshot.can_undo])
+	_check(not CityStore.snapshot.unsaved and not CityStore.snapshot.can_undo, "opened with no work to save and no history (to save: %s, undo: %s)" % [CityStore.snapshot.unsaved, CityStore.snapshot.can_undo])
 	CityStore.dispatch(&"set_marking_style", [CityStore.snapshot.marking_style, false])
-	_check(not CityStore.snapshot.unsaved, "a mesma pintura, posta de novo como a sessão faz ao abrir, não muda a cidade")
-	_check(got == saved, "mesmos números %s == %s" % [got, saved])
+	_check(not CityStore.snapshot.unsaved, "the same paint, put again as the session does on opening, does not change the city")
+	_check(got == saved, "the same numbers %s == %s" % [got, saved])
 	_check([_height(sculpted), _height(a), _height((a + e) * 0.5)] == heights, "mesmas alturas %s" % [heights])
-	_check(_probes() == probes, "mesmos prédios (%d sondados)" % probes.size())
+	_check(_probes() == probes, "the same buildings (%d probed)" % probes.size())
 	CityStore.step_ticks(SignalCases.SIGNAL_TICKS)
-	_check(CityStore.query(&"inspect", [signal_at]) == plan, "mesmo semáforo %s" % [plan])
-	_check(_landscape() == landscape, "mesma paisagem %s == %s" % [_landscape(), landscape])
+	_check(CityStore.query(&"inspect", [signal_at]) == plan, "the same signal %s" % [plan])
+	_check(_landscape() == landscape, "the same landscape %s == %s" % [_landscape(), landscape])
 	_drop(SLOT)
 
 

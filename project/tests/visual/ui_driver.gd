@@ -76,7 +76,7 @@ func click(p: Vector3) -> void:
 ## the end of the frame (Godot 4.7 scene/gui/container.cpp: add_child_notify -> queue_sort -> call_deferred): a frame first,
 ## or the click lands where the control is not yet.
 func press(b: Control) -> void:
-	step("botão %s \"%s\"" % [b.name, b.get("text") if b.get("text") != null else ""])
+	step("button %s \"%s\"" % [b.name, b.get("text") if b.get("text") != null else ""])
 	await frames(1)
 	var at := b.get_global_rect().get_center()
 	await move(at)
