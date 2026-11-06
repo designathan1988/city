@@ -11,6 +11,7 @@ const SETTLE_FRAMES := 60
 const SETTLE_LIMIT := 600
 const WITH_LIGHTS := "high"
 const WITHOUT_LIGHTS := "low"
+const TRAFFIC_SPEED := 2
 
 var failures := 0
 var _world: CityWorld
@@ -43,6 +44,16 @@ func _ready() -> void:
 	else:
 		_check(_lit() == 0, "Compatibility has no lamp lights: %d" % _lit())
 		_check(lit.y == 0.0, "so the road draws every pool: %s" % lit)
+	CityStore.dispatch(&"set_speed", [TRAFFIC_SPEED])
+	await _settled()
+	var heads: int = CityStore.query(&"render_cost").lit_head_lamps
+	var most: int = Settings.current().head_lights
+	CityStore.dispatch(&"set_speed", [0])
+	if _world.contact.available():
+		print("  headlamps lit %d of %d" % [heads, most])
+		_check(heads > 0 and heads <= most, "the vehicles near the eye throw their light: %d of %d" % [heads, most])
+	else:
+		_check(heads == 0, "Compatibility has no headlamp lights: %d" % heads)
 	Settings.set_preset(WITHOUT_LIGHTS)
 	await _settled()
 	lit = _handed_over()

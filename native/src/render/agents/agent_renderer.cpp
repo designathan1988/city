@@ -40,6 +40,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	reset();
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("agent", errors);
+	heads_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(material_, "head_glow"));
 	glass_ = ctx.material("agent_glass", errors);
 	shadow_ = ctx.material("shadow_caster", errors);
 	Dictionary t = ctx.table("agents", errors);
@@ -169,6 +170,7 @@ Dictionary AgentRenderer::cost() const {
 }
 
 void AgentRenderer::reset() {
+	heads_.reset();
 	fleet_shadow_.free();
 	for (auto &levels : shadow_draws_)
 		for (MultiMeshDraw &m : levels) m.free();
@@ -240,6 +242,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	};
 	near_d2_.clear();
 	drawn_vehicles_ = 0;
+	heads_.begin();
 	int placed = 0; // what the camera sees has a row each
 	// Sent to the level's lists: the sun's every time, the camera's only in the view, with room for the frame the camera turned since.
 	auto seen = [&](int model, const Pose &p, float d2) { return view.sees(Vector3(p.x, p.y, p.z), reach_m_[model] + std::sqrt(d2) * view_slack_); };
@@ -261,6 +264,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if ((rec.look & (1u << LOOK_EMPTY_SHIFT)) != 0) passengers = NOBODY_ABOARD;
 		const float d2 = flat2 + dy * dy;
 		const int model = model_of(type, paint);
+		heads_.add(rec.id, p, reach_m_[model], cam, view);
 		const bool shown = seen(model, p, d2);
 		const uint64_t key = rec.id * ROW_KINDS;
 		const int level = level_of(key, d2);

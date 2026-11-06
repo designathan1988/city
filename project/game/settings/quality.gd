@@ -117,7 +117,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
 	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility
-	CityStore.dispatch(&"set_lamp_lights", [int(q.lamp_lights) if lamps else 0, int(q.lamp_shadows) if lamps else 0])
+	CityStore.dispatch(&"set_lamp_lights", [int(q.lamp_lights) if lamps else 0, int(q.lamp_shadows) if lamps else 0, int(q.head_lights) if lamps else 0])
 	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
 	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),
 			0 if q.pedestrian_detail > 0 else PEOPLE_FAR])

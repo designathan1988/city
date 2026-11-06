@@ -677,3 +677,7 @@ Ressalvas abertas:
 ## 2026-11-06: torres pretas
 - Par com o 4.0: num zoom médio, prédios inteiros sem janela (pretos onde o acabamento é vidro). Varrendo o zoom vindo de longe, só em z4 e z5. Hipóteses caídas: AABB diferente (`fit_reach` já iguala), `flat` faltando (registro temporário: todo subchunk com baias tem `flat`).
 - Causa: `MultiMeshDraw::range` passa margem de histerese (3%) e o `range(MeshDraw)` do `flat` passava 0. Com `Fade Mode: Disabled` a margem desloca a borda pelo sentido da câmera: vindo de longe o `flat` saía em 350 m e as baias só voltavam em 339,5, e nessa faixa ficava a parede lisa de trás. Depende da direção, por isso nenhum teste via. O `flat` agora tem a mesma margem no `begin`, e a troca é complementar nos dois sentidos. Perto para médio não tem o problema: 44 m de sobreposição contra 5,4 m de margem.
+
+## 2026-11-06: faróis
+- Da auditoria: o quintal "vazio" foi erro meu pela miniatura; de perto há canteiros, piscina, varal, arbustos e árvore. Sem mudança.
+- Faróis acesos não iluminavam nada. O miolo de `LampLights` virou `LightPool` (render/), e `LampLights` e `HeadLights` são duas fontes finas sobre ele: o mesmo fade, a mesma troca estável, sem duplicar. Cor do `head_glow` do material `agent`.

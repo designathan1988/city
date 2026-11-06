@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/head_lights.h"
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
 #include "render/agents/people_renderer.h"
@@ -43,8 +44,13 @@ public:
 		people_.set_floor(people_floor);
 	}
 	int cabins_drawn() const;
+	void set_head_lights(int count) { heads_.set_budget(count); }
+	void set_night(float night) { heads_.set_night(night); }
+	void shine_heads(float frame_s) { heads_.shine(frame_s); }
+	int lit_heads() const { return heads_.lit(); }
 
 private:
+	HeadLights heads_;
 	std::array<AgentWreck, AGENT_MODELS> wrecks_;
 	float level_hold_ = 0; // of a level's edge: how far past it a vehicle or a walker changes level
 	static constexpr int CABIN_LEVEL = AGENT_CABIN_LEVEL, BODY_LEVEL = AGENT_BODY_LEVEL, FAR_LEVEL = AGENT_FAR_LEVEL, LEVELS = AGENT_LEVELS;

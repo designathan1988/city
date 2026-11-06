@@ -31,6 +31,7 @@ Dictionary CityCore::render_cost() const {
 	const RenderWorld::Cost &c = render_.cost();
 	Dictionary d;
 	d["lit_street_lamps"] = render_.lit_lamps();
+	d["lit_head_lamps"] = render_.lit_heads();
 	d["lamps_hand_over"] = render_.lamps_hand_over();
 	d["process"] = process_ms_; // constant time: the game reads it on every long frame (health log), so it must not make one
 	d["agents"] = agents_ms_;

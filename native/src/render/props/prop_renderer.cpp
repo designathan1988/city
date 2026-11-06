@@ -48,7 +48,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	light_mesh_ = kit_.light().bake();
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
-	lights_.init(scenario_, LampLightLook::of(ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color")));
+	lights_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color"));
 	return true;
 }
 
