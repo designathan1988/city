@@ -163,10 +163,22 @@ func _fall() -> void:
 	_check(CityStore.query(&"effects_ruin_flying") > 0, "as peças voam")
 	await _until(func() -> bool: return CityStore.query(&"effects_ruin_flying") == 0)
 	_check(CityStore.query(&"effects_ruin_flying") == 0, "as peças pousam")
+	var seed: int = _a_ruin()
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_digest", [seed]) != 0)
+	var lying: int = CityStore.query(&"effects_ruin_digest", [seed])
+	_check(lying != 0, "a pilha assentou")
 	_check(CityStore.dispatch(&"undo", []), "desfez a queda")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_check(CityStore.query(&"effects_ruin_pieces") <= before, "desfazer leva as peças embora")
+	_check(CityStore.dispatch(&"redo", []), "refez a queda")
+	await _until(func() -> bool: return CityStore.query(&"effects_ruin_digest", [seed]) != 0)
+	_check(CityStore.query(&"effects_ruin_digest", [seed]) == lying, "refazer deita as peças como caíram (%d, %d)" % [lying, CityStore.query(&"effects_ruin_digest", [seed])])
+
+
+## The seed of the ruin the last strike left.
+func _a_ruin() -> int:
+	return CityStore.query(&"ruin_seeds")[-1]
 
 
 func _until(met: Callable) -> void:

@@ -20,6 +20,7 @@ constexpr float SKULL_CENTRE_M = 1.62f, TRUNK_CENTRE_M = 1.2f, ARM_CENTRE_M = 1.
 constexpr float SKULL_W = 0.18f, SKULL_H = 0.23f, SKULL_D = 0.2f;
 constexpr float SLEEVE_W = 0.09f, SLEEVE_H = 0.6f, LEG_W = 0.13f, LEG_H = 0.9f, LEG_D = 0.14f;
 const Vector3 HEAD_BOX(SKULL_W, SKULL_H, SKULL_D), ARM_BOX(SLEEVE_W, SLEEVE_H, SLEEVE_W), LEG_BOX(LEG_W, LEG_H, LEG_D);
+constexpr float WALLS_REACH_M = 12.f; // farther than a body is thrown
 constexpr float TOPPLE_MS = 2.2f; // the head of somebody going down, over their feet
 constexpr float LIMB_SCATTER_MS = 1.5f; // each part leaves a little differently from its neighbour
 constexpr float TORN_PUSH = 1.5f; // a body blown apart flies faster
@@ -112,6 +113,8 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.life_s = life;
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
+		b.rises = kind == CAS_KNOCKED;
+		b.walls = walls_.near(s, e.x, e.z, WALLS_REACH_M);
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
 		people_->bodies().add(b);

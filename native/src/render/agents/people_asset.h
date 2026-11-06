@@ -59,8 +59,8 @@ struct PeopleAsset {
 	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's
 	std::vector<uint8_t> bone_part, joint_bone; // the ragdoll: which part each bone follows, which bone each joint sits on
 	godot::PackedByteArray palette_bytes; // the palette as the file has it
-	// A body's bones in the first frame of the idle, bind -> pose rows, twelve floats a bone.
-	void standing_rows(int variation, float *rows) const;
+	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone.
+	void clip_rows(int variation, int clip_index, int frame, float *rows) const;
 	void read_card(ByteReader &r);
 	void read_ragdoll(ByteReader &r, uint32_t bones);
 	// The clip of that name, as its index in `clips`; -1 when the file has none.

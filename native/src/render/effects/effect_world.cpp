@@ -164,9 +164,9 @@ void EffectWorld::sync(CityState &s) {
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
 	ruins_.update(dt, puffs_);
 	if (people_) people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); });
-	for (const Ruin &r : ruins_.take_uncut()) {
-		ground_here_ = s.terrain.height_at(r.x, r.z);
-		pile(r, true, false, true);
+	for (const RuinPieces::Uncut &u : ruins_.take_uncut()) {
+		ground_here_ = s.terrain.height_at(u.ruin.x, u.ruin.z);
+		pile(u.ruin, u.falling, false, true);
 	}
 	shake_ *= std::exp(-params_.shake_decay * dt);
 	if (shake_ < SHAKE_FLOOR) shake_ = 0;

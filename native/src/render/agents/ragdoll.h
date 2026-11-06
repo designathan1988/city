@@ -6,14 +6,22 @@
 #include "core/random.h"
 
 #include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 #include <functional>
+#include <vector>
 
 namespace city {
 
 constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
 constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
+
+// A wall of a building a body can strike: a box of the lot's frame, up to `top`.
+struct BodyWall {
+	godot::Vector2 at, along, deep; // the lot's corner and its axes
+	float x0 = 0, y0 = 0, x1 = 0, y1 = 0, top = 0;
+};
 
 class Ragdoll {
 public:
@@ -22,6 +30,7 @@ public:
 	// so a body topples rather than dropping on its own feet.
 	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
 	void step(float dt, const Ground &ground);
+	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
@@ -37,6 +46,8 @@ private:
 	void link(int a, int b, float share = 1.f, bool least_only = false);
 	void relax();
 	void hinge(int top, int middle, int end, float way);
+	void off_walls(int particle);
+	std::vector<BodyWall> walls_;
 	godot::Vector3 now_[PARTICLES], was_[PARTICLES];
 	godot::Vector3 last_side_[RAGDOLL_PARTS];
 	static constexpr int MOST_STICKS = 48;

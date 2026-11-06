@@ -23,6 +23,7 @@ struct Ruin {
 	float x = 0, z = 0, w = 0, d = 0, rot = 0;
 	uint32_t seed = 0;
 	Building record;
+	float blow_x = 0, blow_y = 0, blow_z = 0, blow_force = 0; // the blow that brought it down: how it fell, so how it lies
 };
 
 // A pole, signal post, hydrant, bench, bin or tree a blow took out: placed by kind and place, so the street furniture

@@ -176,8 +176,8 @@ void PeopleAsset::read_ragdoll(ByteReader &r, uint32_t bones) {
 		for (float &f : pv.joints) f = r.get<float>();
 }
 
-void PeopleAsset::standing_rows(int variation, float *rows) const {
-	const size_t row = size_t(variation) * size_t(block_rows) + size_t(clips[size_t(clip("idle"))].row);
+void PeopleAsset::clip_rows(int variation, int clip_index, int frame, float *rows) const {
+	const size_t row = size_t(variation) * size_t(block_rows) + size_t(clips[size_t(clip_index)].row + frame);
 	const size_t values = bone_part.size() * BONE_TEXELS, line = values * TEXELS_PER_VALUE * RGBA;
 	const uint8_t *from = palette_bytes.ptr() + row * line;
 	for (size_t t = 0; t < values; t++)

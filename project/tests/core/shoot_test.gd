@@ -30,6 +30,10 @@ const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
 const BODY_FRAMES := 1200
 const BODY_SETTLE_FRAMES := 30
+const RISE_FORCE := 3
+const RISE_KPA := 130.0
+const RISE_TRIES := 8
+const RISE_LOOK_FRAMES := 20
 const SLOT := "shoot_test_slot"
 var failures := 0
 
@@ -132,6 +136,31 @@ func _fallen() -> void:
 			break
 		await get_tree().process_frame
 	_check(CityStore.query(&"effects_bodies_moving") == 0, "o corpo pousa")
+	await _rises()
+
+
+## Somebody knocked over by a small blast gets up: their body goes and they are walking again. Far enough off that nobody dies, and a drum goes one time in two: several tries.
+func _rises() -> void:
+	var off := 1.0
+	while CityStore.query(&"blast_probe", [float(RISE_FORCE), off]).pressure_kpa > RISE_KPA:
+		off += 0.5
+	var risen := 0
+	var found: Array = _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
+	for who: Dictionary in found.slice(0, RISE_TRIES):
+		var before: int = CityStore.query(&"effects_bodies")
+		CityStore.dispatch(&"strike", [who.position + Vector3(off, 0, 0), RISE_FORCE])
+		var most := before
+		for f in BODY_FRAMES:
+			most = maxi(most, CityStore.query(&"effects_bodies"))
+			if f > RISE_LOOK_FRAMES and most == before or most > before and CityStore.query(&"effects_bodies") <= before:
+				break
+			await get_tree().process_frame
+		risen += most - CityStore.query(&"effects_bodies")
+		CityStore.dispatch(&"undo")
+		if risen > 0:
+			break
+	print("de pé de novo: ", risen)
+	_check(risen > 0, "quem caiu levanta")
 
 
 func _vehicles() -> void:

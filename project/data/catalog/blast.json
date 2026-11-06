@@ -25,8 +25,8 @@
  "lethality": { "threshold_kpa": 275.8, "half_kpa": 427.5, "threshold_probability": 0.01 },
  "eardrum": { "threshold_kpa": 34.5, "half_kpa": 120.7, "threshold_probability": 0.01 },
  "noise": { "startle_pa": 200, "reference_pa": 0.00002, "startle_cap_m": 400 },
- "people": { "knock_min_s": 1.2, "knock_span_s": 1.6, "panic_s": 26, "panic_gain": 2.0, "torn_kpa": 634.3, "sever_chance": 0.75, "maim_chance": 0.75 },
+ "people": { "knock_min_s": 3.2, "knock_span_s": 1.8, "panic_s": 26, "panic_gain": 2.0, "torn_kpa": 634.3, "sever_chance": 0.75, "maim_chance": 0.75 },
  "strike": { "hold_growth_s": 90, "fire_max": 3, "fire_min_s": 50, "fire_span_s": 40, "wear_gain": 0.35 },
- "shot": { "drips_per_s": 1.4, "walker_hp": 100, "damage_head": 100, "damage_torso": 34, "damage_limb": 20, "sever_hits_hp": 40, "sever_hp_cost": 15, "body_reach_m": 0.42, "body_height_m": 1.85, "head_above_m": 1.5, "torso_above_m": 0.9, "arm_aside_m": 0.17, "grave_hp": 50, "bleed_limb": 1.6, "bleed_leg": 3.0, "bleed_hurt": 0.9, "knock_min_s": 1.2, "knock_span_s": 1.6, "open_hits": 3, "vehicle_shots_to_burst": 12, "glass_above": 0.55, "burst_force": 3, "two_wheeler_rider_m": 1.75, "flinch_s": 1.6, "startle_m": 45, "pace_light": 0.55, "pace_leg": 0.45, "pace_grave": 0.4, "max_range_m": 2000, "vehicle_box_m": [1.455, 1.47, 1.632, 2.303, 1.815, 1.75, 2.99, 3.4, 1.89] },
+ "shot": { "drips_per_s": 1.4, "walker_hp": 100, "damage_head": 100, "damage_torso": 34, "damage_limb": 20, "sever_hits_hp": 40, "sever_hp_cost": 15, "body_reach_m": 0.42, "body_height_m": 1.85, "head_above_m": 1.5, "torso_above_m": 0.9, "arm_aside_m": 0.17, "grave_hp": 50, "bleed_limb": 1.6, "bleed_leg": 3.0, "bleed_hurt": 0.9, "knock_min_s": 3.2, "knock_span_s": 1.8, "open_hits": 3, "vehicle_shots_to_burst": 12, "glass_above": 0.55, "burst_force": 3, "two_wheeler_rider_m": 1.75, "flinch_s": 1.6, "startle_m": 45, "pace_light": 0.55, "pace_leg": 0.45, "pace_grave": 0.4, "max_range_m": 2000, "vehicle_box_m": [1.455, 1.47, 1.632, 2.303, 1.815, 1.75, 2.99, 3.4, 1.89] },
  "crater": { "k_earth": 1.0, "k_hard": 0.6, "diameter_to_depth": 7, "pass_width_m": 2.6, "min_radius_m": 0.4 }
 }

@@ -38,6 +38,8 @@ void put_block(ByteWriter &w, const DamageState &d) {
 		w.put<uint32_t>(h.seed);
 		for (float v : { h.x, h.z, h.amount }) w.put<float>(v);
 	}
+	for (const Ruin &r : d.ruins)
+		for (float v : { r.blow_x, r.blow_y, r.blow_z, r.blow_force }) w.put<float>(v);
 }
 
 bool get_block(ByteReader &r, DamageState &d) {
@@ -75,6 +77,14 @@ bool get_block(ByteReader &r, DamageState &d) {
 	for (Hurt &h : d.hurt) {
 		h.seed = r.get<uint32_t>();
 		h.x = r.get<float>(); h.z = r.get<float>(); h.amount = r.get<float>();
+	}
+	for (Ruin &u : d.ruins) { // a save from before this has none: the block ends here, and each ruin falls from its middle
+		if (r.o >= r.n) {
+			u.blow_x = u.x;
+			u.blow_z = u.z;
+			continue;
+		}
+		u.blow_x = r.get<float>(); u.blow_y = r.get<float>(); u.blow_z = r.get<float>(); u.blow_force = r.get<float>();
 	}
 	return r.ok;
 }

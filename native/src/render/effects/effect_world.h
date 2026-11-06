@@ -4,6 +4,7 @@
 // city, never writes it (render is read only).
 #pragma once
 
+#include "render/agents/body_walls.h"
 #include "render/agents/people_renderer.h"
 #include "render/effects/debris.h"
 #include "render/effects/effect_params.h"
@@ -38,6 +39,7 @@ public:
 	int bodies() const { return people_ ? people_->bodies().count() : 0; }
 	int bodies_moving() const { return people_ ? people_->bodies().moving() : 0; }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
+	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }
 	int blood_marks() const { return marks_.blood(); }
 	size_t events_played() const { return played_; }
 
@@ -79,7 +81,7 @@ private:
 	Debris debris_;
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
-	godot::Vector3 blast_point_; // the last blow's: where a building that comes down is thrown from
+	BodyWalls walls_;
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame

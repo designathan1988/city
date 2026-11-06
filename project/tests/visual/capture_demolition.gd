@@ -30,10 +30,6 @@ const MOTO := 5
 const FIRST_HEAVY := 6
 const FLOORS_LOW := 2
 const STILL_WALKERS := 3
-const TOWER_FLOORS := 8
-const TOWER_FLOORS_MOST := 40
-const TOWER_FORCE := 16
-const TOWER_DIST := 320.0
 
 var out_dir := "user://captures"
 var phases := ["pareada"]
@@ -73,7 +69,9 @@ func _run() -> void:
 	if "pareada" in phases:
 		await _paired()
 	if "torre" in phases:
-		await _tower()
+		await CaptureFalls.tower(blast, _houses(CaptureFalls.TOWER_FLOORS, CaptureFalls.TOWER_FLOORS_MOST))
+	if "derrubados" in phases:
+		await CaptureFalls.knocked(rig, ui, self)
 	if "earth" in phases:
 		await blast.earth()
 	if "topo" in phases:
@@ -96,15 +94,6 @@ func _paired() -> void:
 		return
 	await blast.blow("bomba_f%d" % CaptureBlast.SMALL, lows[lows.size() / 2], CaptureBlast.SMALL, LOW_DIST, PAIRED_MOMENTS)
 	await blast.blow("bomba_f%d_grande" % CaptureBlast.BIG, lows[lows.size() / 3], CaptureBlast.BIG, LOW_DIST, [0.1, 0.5, 1.0, 2.0, 5.0, 17.0])
-
-
-## A tall building brought down: how its walls break and how the break runs up it, seen from a street away.
-func _tower() -> void:
-	var tall := _houses(TOWER_FLOORS, TOWER_FLOORS_MOST)
-	if tall.is_empty():
-		_check(false, "um prédio alto para a torre")
-		return
-	await blast.blow("torre", tall[tall.size() - 1], TOWER_FORCE, TOWER_DIST, [0.2, 0.6, 1.2, 2.0, 3.5, 9.0])
 
 
 ## The first walkers as the warm-up left them, the simulation stopped and no shot fired: the same frame on every run, so a

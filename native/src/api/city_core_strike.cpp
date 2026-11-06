@@ -28,6 +28,13 @@ Dictionary CityCore::shoot(const Vector3 &origin, const Vector3 &direction) {
 	return d;
 }
 
+PackedInt64Array CityCore::ruin_seeds() const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	PackedInt64Array out;
+	for (const Ruin &r : state_->damage.ruins) out.push_back(int64_t(r.seed));
+	return out;
+}
+
 Dictionary CityCore::damage_probe() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;

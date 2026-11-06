@@ -91,6 +91,25 @@ void Ragdoll::relax() {
 	hinge(RS, RE, RW, -1.f);
 }
 
+// Out of a wall by the nearest side: the static collision of Position Based Dynamics, the point projected to the closest of the surface, and the speed along it damped.
+void Ragdoll::off_walls(int i) {
+	Vector3 &p = now_[i];
+	for (const BodyWall &w : walls_) {
+		if (p.y >= w.top) continue;
+		const Vector2 rel = Vector2(p.x, p.z) - w.at;
+		const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
+		if (lx <= w.x0 || lx >= w.x1 || ly <= w.y0 || ly >= w.y1) continue;
+		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
+		const float least = std::min({ west, east, south, north });
+		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
+		const Vector2 move = out * (least + LIMB_HALF_M);
+		p.x += move.x;
+		p.z += move.y;
+		was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
+		was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
+	}
+}
+
 void Ragdoll::step(float dt, const Ground &ground) {
 	float floor_y[PARTICLES];
 	float fastest = 0;
@@ -104,6 +123,7 @@ void Ragdoll::step(float dt, const Ground &ground) {
 	for (int k = 0; k < ITERATIONS; k++) {
 		relax();
 		for (int i = 0; i < PARTICLES; i++) {
+			off_walls(i);
 			if (now_[i].y >= floor_y[i]) continue;
 			now_[i].y = floor_y[i];
 			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;

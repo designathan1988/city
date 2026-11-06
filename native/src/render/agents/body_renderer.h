@@ -17,6 +17,8 @@ namespace city {
 struct BodySpec {
 	godot::Vector3 at, velocity, tip; // at: the feet; tip: Ragdoll::begin
 	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays
+	bool rises = false; // gets up at the end of them, to where it stood: the walker goes on from there
+	std::vector<BodyWall> walls; // of the buildings around it
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
@@ -38,12 +40,17 @@ private:
 		std::vector<godot::Transform3D> base; // each bone, bind to the world as it stood
 		godot::Transform3D stood[RAGDOLL_PARTS]; // the parts' frames, inverted, as it stood
 		float left = 0, floor = 0; // the pavement it stood on: the ground under a street lies lower
+		float rise_s = 0; // how long it takes to get up, 0 when it does not
+		godot::Transform3D stands; // where it gets up to
+		std::vector<godot::Transform3D> lying; // each bone when it began to
 		int variation = 0, slot = 0;
 		uint32_t lost = 0;
 		bool charred = false;
 	};
 	void make_ready();
 	void pose(Body &b);
+	void rise(Body &b);
+	void write_bones(const Body &b, const godot::Transform3D *bones);
 	void lay_out();
 	const PeopleAsset *asset_ = nullptr;
 	godot::RID scenario_, texture_;
@@ -54,7 +61,7 @@ private:
 	godot::PackedByteArray rows_;
 	Rng rng_{ 0xb0d1e5ULL };
 	float clock_ = 0;
-	int bones_ = 0;
+	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;
 };
 

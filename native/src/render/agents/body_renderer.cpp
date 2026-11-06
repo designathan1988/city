@@ -17,7 +17,9 @@ constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BO
 constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
 constexpr float CHARRED_MARK = 1.f;
+constexpr float GET_UP_S = 1.7f, RISE_SHARE_MOST = 0.7f, RISE_TO_CROUCH = 0.45f; // how long getting up takes, at most of the time down; and the blend's part of it
 const Vector3 AXIS_X(1, 0, 0), AXIS_Y(0, 1, 0), AXIS_Z(0, 0, 1);
+constexpr int PART_JOINT[RAGDOLL_PARTS] = { 0, 2, 3, 4, 5, 7, 8, 10, 11, 12, 14, 15, 16 }; // the joint each part starts at: ragdoll.cpp PART_FRAMES
 
 Transform3D rows_to_transform(const float *r) {
 	constexpr int Y = FLOATS_A_TEXEL, Z = 2 * FLOATS_A_TEXEL, O = 3; // a row of four: the basis, then the origin
@@ -34,6 +36,9 @@ bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, Pack
 		return false;
 	}
 	bones_ = int(asset.bone_part.size());
+	idle_clip_ = asset.clip("idle");
+	crouch_clip_ = asset.clip("crouchIdle");
+	up_clip_ = asset.clip("crouchUp");
 	return true;
 }
 
@@ -93,17 +98,34 @@ void BodyRenderer::add(const BodySpec &spec) {
 	stands_b.set_columns(AXIS_Y.cross(front), AXIS_Y, front);
 	const Transform3D stands(stands_b, spec.at);
 	std::vector<float> rows(size_t(bones_) * FLOATS_A_BONE);
-	asset_->standing_rows(spec.variation, rows.data());
+	asset_->clip_rows(spec.variation, idle_clip_, 0, rows.data());
 	b.base.resize(size_t(bones_));
 	for (int i = 0; i < bones_; i++) b.base[size_t(i)] = stands * rows_to_transform(rows.data() + size_t(i) * FLOATS_A_BONE);
 	Vector3 joints[RAGDOLL_JOINTS];
 	const float *rest = asset_->variations[size_t(spec.variation)].joints;
 	for (int j = 0; j < RAGDOLL_JOINTS; j++) joints[j] = b.base[size_t(asset_->joint_bone[size_t(j)])].xform(Vector3(rest[j * 3], rest[j * 3 + 1], rest[j * 3 + 2]));
 	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, rng_);
+	b.doll.set_walls(spec.walls);
+	b.stands = stands;
+	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
 	b.doll.frames(b.stood);
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	pose(b);
 	layers_dirty_ = true;
+}
+
+void BodyRenderer::write_bones(const Body &b, const Transform3D *bones) {
+	float *out = reinterpret_cast<float *>(rows_.ptrw()) + size_t(b.slot) * size_t(bones_) * FLOATS_A_BONE;
+	for (int i = 0; i < bones_; i++, out += FLOATS_A_BONE) {
+		const Transform3D &t = bones[i];
+		for (int r = 0; r < TEXELS_A_BONE; r++) {
+			out[r * FLOATS_A_TEXEL] = t.basis.rows[r].x;
+			out[r * FLOATS_A_TEXEL + 1] = t.basis.rows[r].y;
+			out[r * FLOATS_A_TEXEL + 2] = t.basis.rows[r].z;
+			out[r * FLOATS_A_TEXEL + 3] = t.origin[r];
+		}
+	}
+	rows_dirty_ = true;
 }
 
 // Every bone follows its part from how the body stood; a part gone closes on its joint.
@@ -111,20 +133,38 @@ void BodyRenderer::pose(Body &b) {
 	Transform3D now[RAGDOLL_PARTS], moved[RAGDOLL_PARTS];
 	b.doll.frames(now);
 	for (int p = 0; p < RAGDOLL_PARTS; p++) moved[p] = now[p] * b.stood[p];
-	float *out = reinterpret_cast<float *>(rows_.ptrw()) + size_t(b.slot) * size_t(bones_) * FLOATS_A_BONE;
-	for (int i = 0; i < bones_; i++, out += FLOATS_A_BONE) {
+	b.lying.resize(size_t(bones_));
+	for (int i = 0; i < bones_; i++) {
 		const int part = asset_->bone_part[size_t(i)];
 		const bool gone = (b.lost >> part & 1u) != 0;
-		const Transform3D t = moved[part] * b.base[size_t(i)];
-		for (int r = 0; r < TEXELS_A_BONE; r++) {
-			const Vector3 row = gone ? Vector3() : t.basis.rows[r];
-			out[r * FLOATS_A_TEXEL] = row.x;
-			out[r * FLOATS_A_TEXEL + 1] = row.y;
-			out[r * FLOATS_A_TEXEL + 2] = row.z;
-			out[r * FLOATS_A_TEXEL + 3] = gone ? now[part].origin[r] : t.origin[r];
-		}
+		b.lying[size_t(i)] = gone ? Transform3D(Basis(Vector3(), Vector3(), Vector3()), now[part].origin) : moved[part] * b.base[size_t(i)];
 	}
-	rows_dirty_ = true;
+	write_bones(b, b.lying.data());
+}
+
+// Getting up (the 4.0's getUp: to a crouch, then the crouch's own rise), from however it lies, to where it stood: the first part of the time blends every bone to the crouch,
+// the rest plays the clip, and at its last frame the walker stands there.
+void BodyRenderer::rise(Body &b) {
+	const float t = 1.f - b.left / b.rise_s, reach = std::min(t / RISE_TO_CROUCH, 1.f);
+	const float blend = reach * reach * (3.f - 2.f * reach), played = std::max(t - RISE_TO_CROUCH, 0.f) / (1.f - RISE_TO_CROUCH);
+	std::vector<float> rows(size_t(bones_) * FLOATS_A_BONE);
+	const bool up = t >= RISE_TO_CROUCH;
+	const PersonClip &clip = asset_->clips[size_t(up ? up_clip_ : crouch_clip_)];
+	asset_->clip_rows(b.variation, up ? up_clip_ : crouch_clip_, up ? std::min(int(played * float(clip.frames)), clip.frames - 1) : 0, rows.data());
+	std::vector<Transform3D> bones(static_cast<size_t>(bones_));
+	for (int i = 0; i < bones_; i++) {
+		const int part = asset_->bone_part[size_t(i)];
+		if ((b.lost >> part & 1u) != 0) { // closed on its joint, where that joint stands in this pose
+			const int joint = PART_JOINT[part], bone = asset_->joint_bone[size_t(joint)];
+			const float *rest = asset_->variations[size_t(b.variation)].joints + joint * 3;
+			const Vector3 at = (b.stands * rows_to_transform(rows.data() + size_t(bone) * FLOATS_A_BONE)).xform(Vector3(rest[0], rest[1], rest[2]));
+			bones[size_t(i)] = Transform3D(Basis(Vector3(), Vector3(), Vector3()), at);
+			continue;
+		}
+		const Transform3D aim = b.stands * rows_to_transform(rows.data() + size_t(i) * FLOATS_A_BONE);
+		bones[size_t(i)] = up ? aim : b.lying[size_t(i)].interpolate_with(aim, blend);
+	}
+	write_bones(b, bones.data());
 }
 
 void BodyRenderer::lay_out() {
@@ -147,6 +187,10 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	clock_ -= float(steps) * STEP_S;
 	for (Body &b : bodies_) {
 		b.left -= dt;
+		if (b.left <= b.rise_s && b.rise_s > 0.f) {
+			rise(b);
+			continue;
+		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;
 		for (int k = 0; k < steps; k++) b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); });

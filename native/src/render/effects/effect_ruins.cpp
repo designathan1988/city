@@ -1,8 +1,8 @@
 // What a building brought down leaves (DamageState::ruins): a heap of broken pieces over its lot. When it falls the
 // pieces start inside its volume and drop (the rigid step of debris.h settles them where they land, some roll off); a
 // heap read from the state (open, undo, redo) is laid directly, the same pieces every time (they come from the
-// record's seed). Pieces are boxes of the wall's tints, the roof's and glass; a building falling in view comes down as its own walls instead
-// (ruin_pieces.h), and only the mound is laid here.
+// record's seed). Pieces are boxes of the wall's tints, the roof's and glass, for what cannot be cut: a building comes down as its own walls, and lies as
+// they came to rest (ruin_pieces.h), with only the mound laid here.
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
@@ -75,7 +75,7 @@ void EffectWorld::rebuild_ruins(const CityState &s) {
 	ruins_.keep_only(s.damage.ruins);
 	for (const Ruin &r : s.damage.ruins) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
-		pile(r, false, true, !ruins_.holds(r.seed));
+		pile(r, false, true, !ruins_.holds(r.seed) && !ruins_.add(s, r, heap_of(r), false));
 	}
 }
 

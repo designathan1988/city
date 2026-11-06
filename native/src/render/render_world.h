@@ -76,6 +76,7 @@ public:
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int ruin_pieces() const { return effects_.ruin_pieces(); }
 	int ruin_pieces_flying() const { return effects_.ruin_pieces_flying(); }
+	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
 	int effect_pieces() const { return effects_.pieces(); }

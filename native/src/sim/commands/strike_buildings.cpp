@@ -27,6 +27,10 @@ void bring_down(Blow &b, int id) {
 	Ruin ruin;
 	ruin.x = rec.x; ruin.z = rec.z; ruin.w = rec.w; ruin.d = rec.d; ruin.rot = rec.rot; ruin.seed = rec.seed;
 	ruin.record = rec;
+	ruin.blow_x = b.x;
+	ruin.blow_y = b.ground;
+	ruin.blow_z = b.z;
+	ruin.blow_force = float(b.strength);
 	j_add_ruin(b.s, ruin);
 	j_remove_building(b.s, id);
 	j_set_hurt(b.s, rec.seed, rec.x, rec.z, 0.f);

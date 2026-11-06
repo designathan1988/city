@@ -85,8 +85,10 @@ public:
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground
 	float effects_shake() const { return render_.shake(); } // metres the blasts move the camera now
 	float effects_since_blast() const { return render_.since_blast(); } // effect seconds since the last blast (-1 none)
+	godot::PackedInt64Array ruin_seeds() const;
 	int effects_ruin_pieces() const { return render_.ruin_pieces(); } // of the buildings drawn in pieces, and of those in the air
 	int effects_ruin_flying() const { return render_.ruin_pieces_flying(); }
+	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
 	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
 	int effects_bodies_moving() const { return render_.bodies_moving(); }
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
