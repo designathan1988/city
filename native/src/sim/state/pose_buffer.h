@@ -54,6 +54,7 @@ struct AgentRecord {
 	float act_since = 0, act_left = 0; // pedestrians: seconds since `act` began, and until a fright lets go of it
 	uint8_t age = 0; // pedestrians: PedAge
 	uint8_t act = 0; // pedestrians: PedAct
+	bool frightened = false; // pedestrians: running from a bang
 };
 
 // A car standing in a bay (no trail: it does not move). look as AgentRecord's; ids are their own, counted from 0 as the fleet's: the same number names

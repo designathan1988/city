@@ -8,6 +8,7 @@ render_mode cull_disabled; // the hair's cards and the clothes' open edges are s
 
 #include "res://render/shaders/people_skin.gdshaderinc"
 #include "res://render/shaders/people_pose.gdshaderinc"
+#include "res://render/shaders/people_face.gdshaderinc"
 
 uniform sampler2DArray atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float alpha_test; // the texels of the hair's cards that are drawn
@@ -52,11 +53,13 @@ float ggx_specular(vec3 n, vec3 v, vec3 l, vec3 h, float rough) {
 
 void vertex() {
 	vec3 pos, nor;
-	person_pose(INSTANCE_CUSTOM, COLOR.a, skin_bones(BONE_INDICES), BONE_WEIGHTS, VERTEX, NORMAL, pos, nor);
+	int row = face_row(UV2.x);
+	vec3 rest = row > 0 ? VERTEX + face_move(row, INSTANCE_CUSTOM, COLOR.a) : VERTEX;
+	person_pose(INSTANCE_CUSTOM, COLOR.a, skin_bones(BONE_INDICES), BONE_WEIGHTS, rest, NORMAL, pos, nor);
 	VERTEX = pos;
 	NORMAL = normalize(nor);
 	v_layer = INSTANCE_CUSTOM.r;
-	v_region = UV2.x;
+	v_region = UV2.x - float(row) * FACE_ROW_STEP;
 	v_rough = UV2.y;
 }
 

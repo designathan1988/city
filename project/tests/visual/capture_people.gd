@@ -20,6 +20,9 @@ const HANDS := ["phone", "bag"] # looked at again from where the hand reads
 const HANDS_M := 2.2
 const HANDS_Y := 1.1
 const BANG := {"crouch": "45_agachado", "photo": "46_filmando"}
+const BANG_HEAD := {"crouch": 0.85, "photo": 1.55}
+const FACE_M := 0.8
+const TALK_HEAD := 1.55
 const BANG_FROM := Vector3(2, 40, 2) # straight down, this far beside somebody
 const BANG_NEAR_M := 60.0
 const BANG_TRIES := 12
@@ -51,6 +54,10 @@ static func shots(cap: Node) -> void:
 				continue
 			var spot: Array = census.spots[key]
 			await cap._shot(left[key], _from(spot[0], spot[1], spot[2]), spot[0] + Vector3.UP * LOOK_Y)
+			if key == "talk":
+				var head: Vector3 = spot[0] + Vector3.UP * TALK_HEAD
+				var facing: Vector3 = spot[1]
+				await cap._shot(left[key] + "_rosto", head + facing * FACE_M, head)
 			if key in HANDS:
 				await cap._shot(left[key] + "_perto", spot[0] + (_from(spot[0], spot[1], spot[2]) - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
 			left.erase(key)
@@ -85,6 +92,9 @@ static func bang(cap: Node) -> void:
 				var seen := _from(spot[0], spot[1], spot[2])
 				await cap._shot(left[key], seen, spot[0] + Vector3.UP * LOOK_Y)
 				await cap._shot(left[key] + "_perto", spot[0] + (seen - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
+				var head: Vector3 = spot[0] + Vector3.UP * BANG_HEAD[key]
+				var facing: Vector3 = spot[1]
+				await cap._shot(left[key] + "_rosto", head + facing * FACE_M, head)
 				left.erase(key)
 		if left.is_empty():
 			break

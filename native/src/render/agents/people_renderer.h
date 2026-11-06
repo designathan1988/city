@@ -85,6 +85,7 @@ private:
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
+	void set_faces(const godot::RID &material) const;
 	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
 	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
 	struct Played {
@@ -97,7 +98,7 @@ private:
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;
 	// The instance of a body at `p`.
-	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code);
+	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false);
 	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
 };

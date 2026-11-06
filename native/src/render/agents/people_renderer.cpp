@@ -19,6 +19,13 @@ namespace city {
 
 namespace {
 constexpr uint32_t VARIATION_SHIFT = 24, SEED_MASK = 1023;
+constexpr float FRIGHT_MARK = 0.25f; // people_face.gdshaderinc: a seed below zero is a frightened person's, this short of its number
+// What the face does at each clip: people_face.gdshaderinc ACT_*
+struct FaceAct {
+	const char *clip;
+	int act;
+};
+constexpr FaceAct FACE_ACTS[] = { { "talk", 1 }, { "listen", 2 }, { "phone", 3 }, { "crouchDown", 4 }, { "crouchIdle", 4 }, { "crouchUp", 4 } };
 constexpr int BODY_TABLE = 32; // people_pose.gdshaderinc walk_frames, body_female; people_held.gdshader palm_rows
 constexpr int BLOB_SIDES = 10;
 constexpr int CLIP_TABLE = 24; // people_pose.gdshaderinc clip_row, clip_frames, clip_seconds
@@ -49,6 +56,21 @@ void disc_mesh(MeshBuilder &b) {
 }
 
 } // namespace
+
+void PeopleRenderer::set_faces(const RID &material) const {
+	PackedInt32Array acts;
+	PackedFloat32Array moods;
+	acts.resize(CLIP_TABLE);
+	acts.fill(0);
+	for (const FaceAct &f : FACE_ACTS) acts.set(asset_.clip(f.clip), f.act);
+	moods.resize(BODY_TABLE);
+	moods.fill(0);
+	for (size_t v = 0; v < asset_.variations.size(); v++) moods.set(int64_t(v), asset_.variations[v].mood);
+	RenderingServer *rs = RenderingServer::get_singleton();
+	rs->material_set_param(material, "face_table", asset_.faces->get_rid());
+	rs->material_set_param(material, "act_face", acts);
+	rs->material_set_param(material, "body_mood", moods);
+}
 
 void PeopleRenderer::set_tables(const RID &material) const {
 	PackedInt32Array clip_rows, clip_frames, walk_frames, female;
@@ -130,6 +152,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
+	set_faces(material_);
 	set_tables(held_.material());
 	rs->material_set_param(held_.material(), "hand_bone", asset_.hand_bone);
 	rs->material_set_param(held_.material(), "palm_rows", palms);
@@ -212,10 +235,10 @@ int PeopleRenderer::held_level(uint64_t key, float dist) {
 	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
 }
 
-void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code) {
+void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
 	const size_t k = slot(size_t(v), level);
-	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == asset_.lods ? pv.height : doing, float(h & SEED_MASK), phase, pose_code);
+	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == asset_.lods ? pv.height : doing, frightened ? -(float(h & SEED_MASK) + FRIGHT_MARK) : float(h & SEED_MASK), phase, pose_code);
 }
 
 void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped) {
@@ -267,7 +290,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			doing = -(float(at_it.clip) + rec.act_share * ACT_SPAN);
 			walk = at_it.phase;
 		}
-		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest);
+		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest, rec.frightened);
 		if (level == 0 && doing > 0) {
 			if (float *row = held_.row(rec.id, act)) agent_row(row, p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
 		}

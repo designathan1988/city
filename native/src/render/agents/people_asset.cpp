@@ -24,7 +24,9 @@ namespace city {
 
 namespace {
 constexpr uint32_t MAGIC = 0x50504352u; // "RCPP"
-constexpr uint32_t VERSION = 5, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
+constexpr uint32_t FACE_TEXELS = 8 * 13, FACE_TEXEL_BYTES = 8, MAX_FACE_LINES = 16384; // people_face.gdshaderinc FACE_SPAN, FACE_CHANNELS; half floats
+constexpr float FACE_ROW_STEP = 4.f; // the same: UV2.x is the region plus this many a row
+constexpr uint32_t VERSION = 6, REGION_SHIFT = 6, ROUGHNESS_MASK = 63, FLAG_FEMALE = 1, FLAG_SENIOR = 2, FLAG_CHILD = 4;
 constexpr uint32_t MAX_VARIATIONS = 256, MAX_LODS = 4, MAX_CLIPS = 64, CLIP_NAME_BYTES = 16, MAX_VERTICES = 65535, BONE_TEXELS = 3, RGBA = 4;
 constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 constexpr float SRGB_GAMMA = 2.2f;
@@ -61,6 +63,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 		r.get_bytes(b8, CHANNELS);
 		r.get_bytes(w8, CHANNELS);
 		for (float &v : t) v = r.get<float>();
+		const uint32_t face = r.get<uint32_t>();
 		pos.set(i, Vector3(p[0], p[1], p[2]));
 		nor.set(i, Vector3(n[0], n[1], n[2]));
 		col.set(i, Color(linear(c, 0), linear(c, BYTE_BITS), linear(c, 2 * BYTE_BITS), 1));
@@ -74,7 +77,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz) {
 		}
 		const uint32_t look = c >> (3 * BYTE_BITS);
 		uv.set(i, Vector2(t[0], t[1]));
-		uv2.set(i, Vector2(float(look >> REGION_SHIFT), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
+		uv2.set(i, Vector2(float(look >> REGION_SHIFT) + FACE_ROW_STEP * float(face), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
 	}
 	idx.resize(sz.indices);
 	for (uint32_t i = 0; i < sz.indices; i++) idx.set(i, int32_t(r.get<uint16_t>()));
@@ -189,6 +192,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		pv.child = flags & FLAG_CHILD;
 		pv.alpha_test = r.get<float>();
 		for (int k = 0; k < 3; k++) r.get<float>(); // where a helmet sits on this body, for the cook's own use
+		pv.mood = r.get<float>();
 		for (float &f : pv.palm) f = r.get<float>();
 		for (uint32_t l = 0; l < lod_count; l++) sizes[v * lod_count + l] = { r.get<uint32_t>(), r.get<uint32_t>() };
 		pv.fits.resize(clips.size());
@@ -211,11 +215,19 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	PackedByteArray texels;
 	texels.resize(int64_t(pal_w) * pal_h * RGBA * TEXELS_PER_VALUE);
 	if (r.ok) r.get_bytes(texels.ptrw(), size_t(texels.size()));
+	const uint32_t face_lines = r.get<uint32_t>();
+	if (face_lines == 0 || face_lines > MAX_FACE_LINES) r.ok = false;
+	PackedByteArray face_bytes;
+	if (r.ok) {
+		face_bytes.resize(int64_t(face_lines) * FACE_TEXELS * FACE_TEXEL_BYTES);
+		r.get_bytes(face_bytes.ptrw(), size_t(face_bytes.size()));
+	}
 	if (!r.ok || r.o != r.n) {
 		errors.push_back("pessoas: arquivo truncado ou com sobra: " + path);
 		return false;
 	}
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8, texels));
+	faces = ImageTexture::create_from_image(Image::create_from_data(int(FACE_TEXELS), int(face_lines), false, Image::FORMAT_RGBAH, face_bytes));
 	card = card_mesh();
 	atlas = read_atlas(atlas_path, count);
 	if (atlas.is_null()) {

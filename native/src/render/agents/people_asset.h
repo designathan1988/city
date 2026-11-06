@@ -34,7 +34,7 @@ constexpr int PALM_FLOATS = 12;
 
 struct PersonVariation {
 	int walk_frames = 1;
-	float walk_advance = 1, height = 1, alpha_test = 0;
+	float walk_advance = 1, height = 1, alpha_test = 0, mood = 0; // mood: -1 low .. 1 bright
 	bool female = false, senior = false, child = false;
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
@@ -44,6 +44,7 @@ struct PersonVariation {
 struct PeopleAsset {
 	std::vector<PersonVariation> variations;
 	godot::Ref<godot::ImageTexture> palette;
+	godot::Ref<godot::ImageTexture> faces; // where each face vertex moves, by channel (people_face.gdshaderinc)
 	godot::Ref<godot::Texture2DArray> atlas; // a layer a body
 	godot::Ref<godot::ArrayMesh> card; // the quad of the far off
 	int card_frames = 1;

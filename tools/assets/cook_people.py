@@ -11,13 +11,14 @@ Output layout (little-endian):
   per clip: 16-byte name, u32 row, u32 frames (rows within a block; a walk's own frames are the variation's)
   impostor: u32 frames, f32 x, y, width, height (the strip of yaw views in the atlas, uv with v down)
   per variation: u32 walk_frames, f32 idle_seconds, f32 walk_advance, f32 height, u32 flags (1 female, 2 senior, 4 child),
-                 f32 alpha_test, f32 head x y z of the moto clip (where a helmet goes), per lod: u32 vertex_count, u32 index_count,
+                 f32 alpha_test, f32 head x y z of the moto clip (where a helmet goes), f32 mood, the palm's three rows, per lod: u32 vertex_count, u32 index_count,
                  per clip, at its first frame: f32 pelvis x y z (root space, metres), f32 above, below, ahead, side (the body's
                  extent from the pelvis)
-  per variation, per lod: vertices (f32 x y z, f32 nx ny nz, u8 r g b look, u8 bones[4], u8 weights[4], f32 u v),
+  per variation, per lod: vertices (f32 x y z, f32 nx ny nz, u8 r g b look, u8 bones[4], u8 weights[4], f32 u v, u32 face row),
                  then u16 indices; look: bits 6-7 region (0 cloth, 1 skin, 2 hair, 3 eye), bits 0-5 roughness
   palette : palette_w * variations * block_rows * 4 f32 (bone b, frame f of a clip: texels 3b..3b+2 of row
             variation * block_rows + the clip's row + f = the rows of the 3x4 bind -> pose matrix)
+  face    : u32 lines, then lines * FACE_SPAN rows of the channels' moves at rest, one half-float RGBA texel a channel (row 0 moves nothing)
 """
 import json
 import os
@@ -28,7 +29,7 @@ import sys
 import numpy as np
 
 MAGIC = b"RCPP"
-VERSION = 5
+VERSION = 6
 FEMALE, SENIOR, CHILD = 1, 2, 4
 BONE_TEXELS = 3
 IDLE_FRAMES = 60  # an idle of 12 to 15 s moves slowly
@@ -41,10 +42,33 @@ STAND_FRAMES = {"talk": 120, "listen": 90, "look": 32, "phone": 110, "headphones
 HAND = "Bip01_R_Hand"
 FINGERS = ("Bip01_R_Finger1", "Bip01_R_Finger2", "Bip01_R_Finger3", "Bip01_R_Finger4")  # index to little finger
 # name in the file, name of the baked clip for an adult and for a senior
+FACE_CHANNELS = ["faceBlink", "faceJoy", "faceSadness", "faceAnger", "faceSurprise", "faceBrowRaise", "mouthOpen", "mouthRound", "mouthPuckered", "mouthSpread",
+                 "mouthShut", "lookLeft", "lookRight"]  # people_face.gdshaderinc, in that order
+FACE_SPAN = 8  # rows side by side in the texture: the rows of the sixteen bodies pass the tallest texture
 CLIPS = [("walk", "walk", "walkElder"), ("idle", "idle", "idle"), ("carDrive",) * 3, ("carRide",) * 3, ("carRearRide",) * 3, ("cabDrive",) * 3,
          ("cabRide",) * 3, ("chairSit",) * 3, ("motoRide",) * 3, ("motoStop",) * 3, ("bikePedal",) * 3, ("bikeStop",) * 3,
          ("talk",) * 3, ("listen",) * 3, ("look",) * 3, ("phone",) * 3, ("headphones",) * 3, ("bag",) * 3,
          ("crouchDown",) * 3, ("crouchIdle",) * 3, ("crouchUp",) * 3, ("photo",) * 3]
+
+
+def face_rows(b, first):
+    """A body's face: what each vertex that has one moves by, channel by channel, and each vertex's row, counted from `first` (0: no face)."""
+    touched = np.unique(np.concatenate([v for v, _ in b["face"]]))
+    row_of = np.zeros(len(b["rest"]), dtype="<u4")
+    row_of[touched] = first + np.arange(len(touched))
+    table = np.zeros((len(touched), len(FACE_CHANNELS), 3), dtype=np.float64)
+    for c, (verts, moves) in enumerate(b["face"]):
+        table[row_of[verts] - first, c] = moves
+    return row_of, table
+
+
+def face_texels(tables):
+    """The rows FACE_SPAN to a line of the texture, a channel a half-float texel."""
+    rows = np.concatenate([np.zeros((1, len(FACE_CHANNELS), 3))] + tables)
+    lines = -(-len(rows) // FACE_SPAN)
+    tex = np.zeros((lines * FACE_SPAN, len(FACE_CHANNELS), 4), dtype="<f2")
+    tex[:len(rows), :, :3] = rows
+    return lines, tex.reshape(lines, FACE_SPAN * len(FACE_CHANNELS), 4).tobytes()
 
 
 def buffer(raw, base, ref):
@@ -66,7 +90,10 @@ def body(path):
     normals = nor.reshape(count, 4)[:, :3].astype(np.float64) / 127.0
     normals = (bind[:3, :3] @ normals.T).T
     normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-6)
+    morphs = {k["name"]: (buffer(raw, base, k["vertices"]), buffer(raw, base, k["deltas"]).reshape(-1, 3).astype(np.float64) / 32767.0) for k in m["morphs"]}
+    face = [(morphs[name][0], (bind[:3, :3] @ morphs[name][1].T).T) for name in FACE_CHANNELS]
     return {
+        "face": face,
         "head": head, "rest": rest, "normals": normals, "col": col.reshape(count, 4), "uv": uv.reshape(count, 2).astype(np.float64) / 65535.0,
         "bones": bones.reshape(count, 4), "weights": weights.reshape(count, 4).astype(np.float64) / 255.0, "index": buffer(raw, base, m["index"]),
     }
@@ -145,7 +172,9 @@ def licenses(root, out):
 def cook(root, clips_dir, out, png):
     index = json.load(open(f"{clips_dir}/index.json"))
     os.makedirs(png, exist_ok=True)
-    bodies, blobs = [], []
+    moods = {c["id"]: c["mood"] for c in json.load(open(f"{root}/src/people/cast.json", encoding="utf8"))}
+    bodies, blobs, face_tables = [], [], []
+    next_face = 1
     for e in index:
         bodies.append(body(f"{root}/public/models/citizens/people/{e['id']}.bin"))
         blobs.append(open(f"{clips_dir}/{e['id']}.clips", "rb").read())
@@ -191,14 +220,18 @@ def cook(root, clips_dir, out, png):
         hx, hy, hz = (moto["head"][12], moto["head"][13], moto["head"][14]) if moto.get("head") else (0.0, 0.0, 0.0)
         flags = (FEMALE if e["gender"] == "f" else 0) | (SENIOR if senior else 0) | (CHILD if e["ageBand"] == "child" else 0)
         hand, rows_of_palm = palm(b["head"])
-        head = struct.pack("<IffIffff", walk_frames, walk["stride"], e["height"], flags, alpha, hx, hy, hz) + rows_of_palm.astype("<f4").tobytes()
-        for level in m["levels"]:
+        head = struct.pack("<IffIfffff", walk_frames, walk["stride"], e["height"], flags, alpha, hx, hy, hz, moods[e["id"]]) + rows_of_palm.astype("<f4").tobytes()
+        face_row, face_table = face_rows(b, next_face)
+        face_tables.append(face_table)
+        next_face += len(face_table)
+        for near, level in zip([True] + [False] * len(m["levels"]), m["levels"]):
             tri = b["index"][level["start"]:level["start"] + level["count"]].reshape(-1, 3)[:, [0, 2, 1]].reshape(-1)  # three's front is Godot's back
             used, local = np.unique(tri, return_inverse=True)
             head += struct.pack("<II", len(used), len(tri))
-            vert = np.zeros(len(used), dtype=[("p", "<f4", 3), ("n", "<f4", 3), ("c", "u1", 4), ("b", "u1", 4), ("w", "u1", 4), ("t", "<f4", 2)])
+            vert = np.zeros(len(used), dtype=[("p", "<f4", 3), ("n", "<f4", 3), ("c", "u1", 4), ("b", "u1", 4), ("w", "u1", 4), ("t", "<f4", 2), ("f", "<u4")])
             vert["p"], vert["n"], vert["c"], vert["b"] = b["rest"][used], b["normals"][used], b["col"][used], b["bones"][used]
             vert["w"], vert["t"] = np.round(b["weights"][used] * 255).astype("u1"), b["uv"][used]
+            vert["f"] = face_row[used] if near else 0
             meshes.append(vert.tobytes() + local.astype("<u2").tobytes())
         heads.append(head + b"".join(fits))
         subprocess.run(["node", os.path.join(os.path.dirname(__file__), "ktx2_to_png.mjs"), f"{root}/public/models/citizens/people/{e['id']}.ktx2",
@@ -212,11 +245,13 @@ def cook(root, clips_dir, out, png):
     blob += b"".join(struct.pack(f"<{CLIP_NAME_BYTES}sIIff", n.encode(), r, f, *seconds[n]) for n, r, f in table)
     # v over the atlas's rows as the mesh's uv reads them: a frame's y counts from the other end (cookedPerson.ts CookedImpostor)
     blob += struct.pack("<Iffff", imp["frames"], imp["x"] / side, 1 - (imp["y"] + imp["height"]) / side, imp["width"] / side, imp["height"] / side)
-    blob += b"".join(heads) + b"".join(meshes) + fixed_point(tex).tobytes()
+    face_lines, face_bytes = face_texels(face_tables)
+    blob += b"".join(heads) + b"".join(meshes) + fixed_point(tex).tobytes() + struct.pack("<I", face_lines) + face_bytes
     open(f"{out}/people.bin", "wb").write(blob)
     licenses(root, out)
     print(f"palette values within {float(np.abs(pal).max()):.3f}")
     print(f"{len(index)} bodies, palette {nb * BONE_TEXELS}x{pal.shape[0]}, {len(blob) / 1e6:.2f} MB; rest height {bodies[0]['rest'][:, 1].min():.3f}..{bodies[0]['rest'][:, 1].max():.3f}")
+    print(f"face: {next_face} rows, {face_lines} lines, {len(face_bytes) / 1e6:.2f} MB")
     print("frames", {n: f for n, _, f in table}, "alpha", alpha)
 
 

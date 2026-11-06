@@ -167,6 +167,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.act_share = w.act_share;
 		rec.act_since = float(s.traffic.time - w.act_from);
 		rec.act_left = w.held_until - float(s.traffic.time);
+		rec.frightened = s.traffic.time < w.panic_until;
 		rec.age = uint8_t(w.age);
 		f.people.push_back(rec);
 	}

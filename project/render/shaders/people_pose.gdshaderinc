@@ -56,7 +56,7 @@ void add_standing(int clip, int block, int female, float seed, float share, ivec
 }
 
 void person_pose(vec4 custom, float code, ivec4 bones, vec4 weights, vec3 vertex, vec3 normal, out vec3 pos, out vec3 nor) {
-	float seed = floor(custom.b + 0.5);
+	float seed = floor(abs(custom.b) + 0.5); // below zero: frightened, people_face.gdshaderinc
 	int variation = int(custom.r + 0.5);
 	int block = variation * block_rows;
 	pos = vec3(0.0);
