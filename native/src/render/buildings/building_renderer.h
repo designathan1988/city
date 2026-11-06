@@ -119,6 +119,8 @@ private:
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
 		bool detail = false; // within the detail switch (hysteresis)
 		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
+		std::array<int8_t, SUB_COUNT> wall_at{}, glass_at{}; // the near level's surfaces that carry a discarding twin; -1 none
+		std::array<bool, SUB_COUNT> fading{}, parts_fading{}; // wearing the twin: in the band of the hand-over
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
 		ChunkOccluder occluder; // the near level's walls (occluders.h)
@@ -215,6 +217,12 @@ private:
 	b40::BuildingLook look_;
 	BuildingBodies bodies_;
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
+	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
+	void fade_near(Chunk &ch, size_t sub, bool on, float keep);
+	void fade_parts(Chunk &ch, size_t sub, bool on, float keep);
+	void warm_fades(const Chunk &ch);
+	godot::RID material_fade_, material_glass_fade_, material_parts_fade_;
+	std::array<godot::RID, 3> fade_warmers_; // never drawn: they ask the renderer for the twins' pipelines before the first band needs them
 	godot::RID scenario_, material_, material_glass_, material_sheer_, material_card_, material_props_, material_far_, material_lawn_, material_wash_, material_parts_;
 	ViewNeed need_;
 	std::array<godot::Ref<godot::ArrayMesh>, b40::BAY_PROPS> prop_mesh_; // made once, as the box

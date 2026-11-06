@@ -17,6 +17,11 @@ namespace {
 constexpr float NEVER_M = 1e9f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
 constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
+const char *const KEEP_PARAM = "level_keep", *const BACK_PARAM = "level_back"; // building_level.gdshaderinc
+
+void put_param(const RID &inst, const char *name, float value) {
+	if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(inst, name, value);
+}
 
 void range(const MeshDraw &d, float begin, float end) {
 	if (d.inst.is_valid())
@@ -51,7 +56,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	for (int i = 0; i < SUB_COUNT; i++) {
 		range(ch.near[size_t(i)], 0, ch.cut ? 0 : near_end_ * detail_scale_);
 		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
-		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
+		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ - look_.level_fade_m : 0, 0);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		// a box throws its shadow as long as it stands; the balcony pieces, fine as they are, to lod.cast_props_m
@@ -59,17 +64,85 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
 		for (size_t b = 0; b < BAND_DRAWS; b++) ch.bands[i][b].range(0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
 	}
-	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0;
+	// the mid level stands up a band before the near one ends: the near one dissolves over it (fade_levels)
+	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ - look_.level_fade_m : 0;
 	for (auto &sub : ch.mid_draws) {
 		sub[MID_BAYS].range(mid_from, bay_end_);
 		sub[MID_BOXES].range(mid_from, 0);
 		sub[MID_SOLIDS].range(mid_from, 0);
+		for (const MultiMeshDraw &d : sub) put_param(d.inst, BACK_PARAM, look_.level_back_m);
 	}
+	for (const MeshDraw &d : ch.mid) put_param(d.inst, BACK_PARAM, look_.level_back_m);
 	for (const ShadowTwin &d : ch.mid_casts)
 		if (d.inst.is_valid())
 			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
+}
+
+// The renderer compiles the pipelines of a surface when an instance takes it on, whether or not it is ever seen: the three twins are worn once here, on
+// instances out of every range, so the first sub-chunk to enter a band finds them ready.
+void BuildingRenderer::warm_fades(const Chunk &ch) {
+	if (fade_warmers_[0].is_valid()) return;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		if (!ch.near[i].mesh.is_valid() || ch.wall_at[i] < 0 || ch.glass_at[i] < 0) continue;
+		const RID walls = rs->instance_create2(ch.near[i].mesh, scenario_);
+		rs->instance_set_surface_override_material(walls, ch.wall_at[i], material_fade_);
+		rs->instance_set_surface_override_material(walls, ch.glass_at[i], material_glass_fade_);
+		fade_warmers_[0] = walls;
+		for (const MultiMeshDraw &d : ch.bands[i])
+			if (d.mm.is_valid() && !fade_warmers_[1].is_valid()) {
+				fade_warmers_[1] = rs->instance_create2(d.mm, scenario_);
+				rs->instance_geometry_set_material_override(fade_warmers_[1], material_parts_fade_);
+			}
+		if (ch.parts[i].mesh.is_valid()) {
+			fade_warmers_[2] = rs->instance_create2(ch.parts[i].mesh, scenario_);
+			rs->instance_geometry_set_material_override(fade_warmers_[2], material_fade_);
+		}
+		for (const RID &w : fade_warmers_)
+			if (w.is_valid()) rs->instance_geometry_set_visibility_range(w, NEVER_M, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+		return;
+	}
+}
+
+void BuildingRenderer::fade_near(Chunk &ch, size_t sub, bool on, float keep) {
+	RenderingServer *rs = RenderingServer::get_singleton();
+	const RID inst = ch.near[sub].inst;
+	const float end = near_end_ * detail_scale_;
+	if (on != ch.fading[sub]) {
+		ch.fading[sub] = on;
+		if (inst.is_valid() && ch.wall_at[sub] >= 0) rs->instance_set_surface_override_material(inst, ch.wall_at[sub], on ? material_fade_ : RID());
+		if (inst.is_valid() && ch.glass_at[sub] >= 0) rs->instance_set_surface_override_material(inst, ch.glass_at[sub], on ? material_glass_fade_ : RID());
+		for (size_t b = 0; b < BAND_COUNT; b++)
+			if (ch.bands[sub][b].inst.is_valid() && band_end_[b] * detail_scale_ >= end)
+				rs->instance_geometry_set_material_override(ch.bands[sub][b].inst, on ? material_parts_fade_ : material_parts_);
+	}
+	put_param(inst, KEEP_PARAM, keep);
+	for (size_t b = 0; b < BAND_COUNT; b++)
+		if (band_end_[b] * detail_scale_ >= end) put_param(ch.bands[sub][b].inst, KEEP_PARAM, keep);
+}
+
+void BuildingRenderer::fade_parts(Chunk &ch, size_t sub, bool on, float keep) {
+	const RID inst = ch.parts[sub].inst;
+	if (on != ch.parts_fading[sub]) {
+		ch.parts_fading[sub] = on;
+		if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_material_override(inst, on ? material_fade_ : material_);
+	}
+	put_param(inst, KEEP_PARAM, keep);
+}
+
+// Each sub-chunk by the distance its visibility range measures, to the middle of its box: inside a band it wears the twin that dissolves, and only
+// then (a shader that discards loses the depth prepass). Nothing is sent for a sub-chunk that stays out of the bands.
+void BuildingRenderer::fade_levels(Chunk &ch, const Vector3 &cam) {
+	const float band = std::max(look_.level_fade_m, MIN_SCREEN_PX);
+	for (size_t i = 0; i < SUB_COUNT; i++) {
+		const float d = cam.distance_to(ch.reach_box[i].get_center());
+		const float keep = std::clamp((near_end_ * detail_scale_ - d) / band, 0.f, 1.f), parts = std::clamp((parts_end_ * detail_scale_ - d) / band, 0.f, 1.f);
+		const bool in_band = keep > 0 && keep < 1, parts_in = parts > 0 && parts < 1;
+		if (in_band || ch.fading[i]) fade_near(ch, i, in_band, in_band ? keep : 1.f);
+		if (parts_in || ch.parts_fading[i]) fade_parts(ch, i, parts_in, parts_in ? parts : 1.f);
+	}
 }
 
 float BuildingRenderer::near_reach() const { return near_end_ * detail_scale_ + CHUNK * REACH_PAD; }

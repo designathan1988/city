@@ -18,6 +18,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/verge.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
+	"res://render/shaders/building_fade.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 
@@ -72,6 +73,10 @@ func materials() -> Dictionary:
 			elif key == "agent":
 				LampRadiance.vehicles(m, environment)
 			_materials[key] = m
+			if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
+				var fade: ShaderMaterial = m.duplicate()
+				fade.shader = load(table[key].fade_shader)
+				_materials[key + "_fade"] = fade
 			for layer in int(table[key].get("layers", 0)): # the same material drawn in this order (render_priority)
 				var over: ShaderMaterial = m.duplicate()
 				over.render_priority = layer

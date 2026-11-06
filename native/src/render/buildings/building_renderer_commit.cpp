@@ -152,8 +152,13 @@ void BuildingRenderer::commit_one(Built &b) {
 	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
 	if (b.has_near) {
 		for (int i = 0; i < SUB_COUNT; i++) {
+			fade_near(ch, size_t(i), false, 1.f); // what it wore goes with the old mesh: the surfaces may not be the same
+			fade_parts(ch, size_t(i), false, 1.f);
 			put_level(ch.near[size_t(i)], b.near[size_t(i)], material_glass_, ch.shown, LAYER_BUILDING_SHELLS);
 			put(ch.parts[size_t(i)], b.parts[size_t(i)], scenario_, material_, false, ch.shown, LAYER_BUILDING_PARTS);
+			const Surface &sf = b.near[size_t(i)];
+			ch.glass_at[size_t(i)] = int8_t(sf.glass_at);
+			ch.wall_at[size_t(i)] = sf.glass_at != 0 && sf.sheer_at != 0 && sf.card_at != 0 && sf.lawn_at != 0 && sf.wash_at != 0 ? 0 : -1;
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
 			for (size_t band = 0; band < BAND_DRAWS; band++) {
@@ -192,6 +197,7 @@ void BuildingRenderer::commit_one(Built &b) {
 	}
 	fit_reach(ch, b);
 	ranges(ch);
+	if (b.has_near) warm_fades(ch);
 	show(ch, ch.shown); // the bands' MultiMeshes come up visible: the chunk's state decides
 }
 
