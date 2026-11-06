@@ -6,7 +6,7 @@ extends PanelContainer
 
 const MIB := 1048576.0
 const MS_PER_S := 1000.0
-const LIVE_TABS := ["consumers", "inspector", "gpu", "checks"]
+const LIVE_TABS := ["consumers", "cpu", "inspector", "gpu", "checks"]
 
 @onready var _body: VBoxContainer
 @onready var _stats: GridContainer
@@ -15,6 +15,7 @@ const LIVE_TABS := ["consumers", "inspector", "gpu", "checks"]
 @onready var doctor: DoctorRun
 @onready var recorder: LabRecorder
 @onready var _watch := ResourceWatch.new()
+@onready var cpu := CpuWatch.new(LabViews.core_zones(), DataTables.game("lab").cpu.window_frames)
 @onready var _since := 0.0
 
 
@@ -84,7 +85,7 @@ func _render() -> void:
 	_body.add_child(_stats)
 	_read_stats()
 	HudWidgets.choices(_body, [["switches", tr("fx.tab.switches")], ["optimizations", tr("fx.tab.optimizations")], ["doctor", tr("fx.tab.doctor")],
-		["consumers", tr("fx.tab.consumers")], ["inspector", tr("fx.tab.inspector")], ["gpu", tr("fx.tab.gpu")], ["checks", tr("fx.tab.checks")],
+		["consumers", tr("fx.tab.consumers")], ["cpu", tr("fx.tab.cpu")], ["inspector", tr("fx.tab.inspector")], ["gpu", tr("fx.tab.gpu")], ["checks", tr("fx.tab.checks")],
 		["recorder", tr("fx.tab.recorder")], ["tests", tr("fx.tab.tests")]], _tab,
 		func(t: String) -> void:
 			_tab = t
@@ -111,6 +112,8 @@ func _read_live() -> void:
 	HudWidgets.clear(_live)
 	if _tab == "consumers":
 		LabViews.consumers(_live)
+	elif _tab == "cpu":
+		LabTools.cpu(_live, cpu)
 	elif _tab == "inspector":
 		LabViews.inspector(_live)
 	elif _tab == "gpu":
@@ -207,6 +210,8 @@ func _read_stats() -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	if _tab == "cpu":
+		cpu.sample(get_viewport().get_viewport_rid())
 	_since += delta
 	if _since >= DataTables.game("render_switches").stats_every_s:
 		_since = 0.0

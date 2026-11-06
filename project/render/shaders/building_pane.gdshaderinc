@@ -190,8 +190,10 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	return mix(room, hung * 0.8, cover);
 }
 
-// The lamp of a room at night, multiplied by what the room shows.
-vec3 pane_lamp(uint slot, float lot, float office, vec3 seen) {
+// The lamp of a room at night, multiplied by what the room shows: the room's own draw, so all its panes are lit alike (the 4.0's vRoomLot, shared by what stands
+// within 2.7 m).
+vec3 pane_lamp(uint slot, float office, vec3 seen) {
+	float lot = h01(slot * 31u + 1u);
 	float awake = step(1.0 - rooms_awake, h01(slot * 2654435761u + 977u));
 	float level = 0.3 + 0.85 * fract(lot * 7.13) * fract(lot * 2.17 + 0.4);
 	float lit = step(fract(lot * 5.31), 0.64) * awake * level * building_night_windows;
@@ -244,7 +246,7 @@ void pane(vec2 uv, vec2 size, uint slot, uint bay, bool dark, float deep, vec3 n
 	vec3 refl = glass_reflection(V, n, F, dark ? GLASS_ENV_DARK : GLASS_ENV);
 	vec3 trim = to_linear(v_trim.rgb);
 	albedo = mix(mix(vec3(0.0075, 0.0096, 0.0115) * glass_k, trim, frame), trim * REVEAL_ALBEDO * side_shade, solid);
-	emit = (seen * room_daylight * glass_k + pane_lamp(slot, lot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
+	emit = (seen * room_daylight * glass_k + pane_lamp(slot, office, seen) * night * window_glow * glass_k + refl * open) * (1.0 - max(frame, solid));
 	nn = normalize(mix(n, normalize(t * face.x + vec3(0.0, face.y, 0.0) + n * face.z), step(0.5, frame)));
 	nn = normalize(mix(nn, normalize(t * side.x + vec3(0.0, side.y, 0.0) - n * side.z), step(0.5, solid)));
 	rough = mix(mix(mix(0.12, 0.55, tiny), 0.55, frame), 0.9, solid);

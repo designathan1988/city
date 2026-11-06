@@ -57,6 +57,14 @@ static func views(body: Control, redraw: Callable) -> void:
 		redraw.call_deferred())
 
 
+## Where the CPU's frame goes over the window: heaviest first.
+static func cpu(body: Control, watch: CpuWatch) -> void:
+	HudWidgets.label(body, &"TitleLabel", (body.tr("lab.cpu.title") % watch.frames()).to_upper())
+	for r: Dictionary in watch.rows(DataTables.game("lab").cpu.tail):
+		_line(body, body.tr("lab.core." + String(r.key)), body.tr("lab.cpu.row") % [r.mean, r.tail, r.worst, roundi(r.share)])
+	HudWidgets.label(body, &"MutedLabel", body.tr("lab.cpu.note")).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
 static func checks(body: Control, watch: ResourceWatch) -> void:
 	for c: Dictionary in watch.checks():
 		_line(body, body.tr("lab.check." + c.id), "%s · %s" % [c.value, body.tr("lab.verdict." + c.verdict + ".word")])

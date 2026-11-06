@@ -44,6 +44,12 @@ static func consumers(body: Control) -> void:
 		_row(body, body.tr("lab.core." + key), "%.2f ms" % float(frame.get(key, 0.0)), float(frame.get(key, 0.0)) / longest)
 
 
+static func core_zones() -> Array[String]:
+	var out: Array[String] = []
+	out.assign(CORE_SECTIONS)
+	return out
+
+
 ## What stands under the pointer and the heights of that point.
 static func inspector(body: Control) -> void:
 	var tools: ToolController = body.get_tree().get_first_node_in_group(&"tools")

@@ -3,6 +3,8 @@
 ## switching the shadows off shows in the A/B; the switch comes back as it was.
 extends Node3D
 
+const CPU_FRAMES := 30
+const CPU_TAIL := 0.95
 const TOWN_MAP := 0
 const SEED := 1
 const GPU_ROWS := [[20.0, 5.0, 18.0, "gpu"], [20.0, 18.0, 5.0, "cpu"], [10.0, 5.0, 4.0, "headroom"], [20.0, 18.0, 18.0, "gpu"],
@@ -36,6 +38,7 @@ func _ready() -> void:
 	_verdicts()
 	_comparison()
 	await _measure(hud)
+	await _cpu(hud)
 	await _tools()
 	print("FALHAS: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
@@ -117,6 +120,17 @@ func _stages_fit(run: DoctorRun) -> bool:
 
 
 ## As the player: F7, the tab, the button.
+## The CPU tab reads a window of frames, the heaviest zone first.
+func _cpu(hud: RoadcraftHud) -> void:
+	hud.effects.open_tab("cpu")
+	for i in CPU_FRAMES:
+		await get_tree().process_frame
+	var rows: Array[Dictionary] = hud.effects.cpu.rows(CPU_TAIL)
+	print("cpu: ", rows.slice(0, 3))
+	_check(hud.effects.cpu.frames() >= CPU_FRAMES - 1, "a aba de CPU juntou os quadros (%d)" % hud.effects.cpu.frames())
+	_check(not rows.is_empty() and rows[0].mean >= rows[-1].mean and rows[0].tail >= 0.0, "as zonas vêm da mais pesada à mais leve")
+
+
 func _measure(hud: RoadcraftHud) -> void:
 	hud.effects.toggle()
 	hud.effects.open_tab("doctor")

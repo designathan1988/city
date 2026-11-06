@@ -219,3 +219,9 @@ lab.rec.stretch,Trecho %d (%.0f s),Stretch %d (%.0f s)
 lab.rec.row,"%.1f ms, p99 %.1f, %d engasgos, %d perdidos","%.1f ms, p99 %.1f, %d hitches, %d dropped"
 lab.rec.saved,Salvo em %s,Saved to %s
 lab.sweep,Medir todas as chaves,Measure every switch
+fx.tab.cpu,CPU,CPU
+lab.cpu.title,Últimos %d quadros,Last %d frames
+lab.cpu.row,"%.2f ms, p95 %.2f, pior %.2f, %d%%","%.2f ms, p95 %.2f, worst %.2f, %d%%"
+lab.cpu.note,Por zona do quadro. Por função: tools/analysis/sampler.py.,By zone of the frame. By function: tools/analysis/sampler.py.
+lab.core.draw,Desenho do motor,The engine's drawing
+lab.core.setup,Preparo do quadro,Frame setup
