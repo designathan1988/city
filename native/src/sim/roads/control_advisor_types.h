@@ -7,7 +7,6 @@
 #include "sim/catalog/catalog.h"
 #include "sim/roads/road_grade.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <memory>

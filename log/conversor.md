@@ -361,4 +361,8 @@ Resultado de 359 módulos, os que têm função ou classe:
 - 144 sem nada a chamar (só constantes, ou parâmetros de callback e instância);
 - 60 cujo harness não compila, 46 em que a fonte não roda com argumento sorteado, 18 não traduzidos: **sem prova**.
 
-Diferença real que fica: `Math.max` do JavaScript propaga `NaN`, `std::max` não. `number` é `float`, por decisão do jogo.
+`Math.max` e `Math.min` de reais agora são `js::math_max` e `js::math_min` (ECMA-262: `NaN` passa, +0 acima de -0), conferidos contra o Node no `js-runtime.test.ts`; `std::max` fica para inteiros. `number` é `float`, por decisão do jogo.
+
+`suite.py` guarda o log da falha sob carga em `<cena>_<renderizador>.loaded`: a repetição sozinha escrevia por cima e a prova sumia. Dois instáveis de uma rodada com outra sessão na máquina (`lab_test` forward_plus, `camera_input_test` gl_compatibility) ficaram sem causa provada por isso.
+
+`tools/converter-slice/out` (91 GB de fotos de replay, ignorado pelo git) saiu de `tools/` para `city-worktrees/converter-slice-out`, sem apagar nada: o gate completo o percorria.

@@ -13,7 +13,7 @@ const RUNTIME = path.join(import.meta.dirname, '..', 'cpp', 'js');
 /** One built-in checked on many inputs: each input a list of argument literals, written the same in both languages. */
 interface Case {
   readonly name: string;
-  /** What it answers: a number (compared by bits), a string (by bytes), a flag. */
+  /** What it answers: a number (compared by bits; NaN is one value, its sign bit does not exist in JavaScript), a string (by bytes), a flag. */
   readonly kind: 'number' | 'string' | 'bool';
   /** The JavaScript expression, $0, $1 the arguments. */
   readonly js: string;
@@ -51,6 +51,8 @@ const CASES: Case[] = [
     inputs: NUMBERS.filter((x) => Number.isFinite(x) || Number.isNaN(x)).flatMap((x) => [0, 1, 2, 3, 6, 20].map((f) => [lit(x), String(f)])) },
   { name: 'Math.round', kind: 'number', js: 'Math.round($0)', cpp: 'js::round($0)', inputs: NUMBERS.map((x) => [lit(x)]) },
   { name: 'Math.sign', kind: 'number', js: 'Math.sign($0)', cpp: 'js::sign($0)', inputs: NUMBERS.map((x) => [lit(x)]) },
+  { name: 'Math.max', kind: 'number', js: 'Math.max($0, $1)', cpp: 'js::math_max<double>($0, $1)', inputs: EDGE.flatMap((x) => EDGE.map((y) => [lit(x), lit(y)])) },
+  { name: 'Math.min', kind: 'number', js: 'Math.min($0, $1)', cpp: 'js::math_min<double>($0, $1)', inputs: EDGE.flatMap((x) => EDGE.map((y) => [lit(x), lit(y)])) },
   { name: 'Math.fround', kind: 'number', js: 'Math.fround($0)', cpp: 'js::fround($0)', inputs: NUMBERS.map((x) => [lit(x)]) },
   { name: 'ToInt32 (x | 0)', kind: 'number', js: '($0 | 0)', cpp: 'double(js::to_int32($0))', inputs: [...NUMBERS, ...randoms(100).map((x) => x * 1e12)].map((x) => [lit(x)]) },
   { name: 'Math.imul', kind: 'number', js: 'Math.imul($0, $1)', cpp: 'double(js::imul($0, $1))', inputs: NUMBERS.slice(0, 80).map((x, i) => [lit(x * 1e9), lit(NUMBERS[(i * 7) % NUMBERS.length]! * 1e9)]) },
@@ -108,11 +110,11 @@ describe('the C++ runtime of the ECMAScript built-ins', () => {
     if (!cxx) return t.skip('set CONVERTER_CXX to compile the runtime');
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-js-runtime-'));
     try {
-      const jsLines: string[] = ['const out = [];', 'const bits = (x) => { const b = new DataView(new ArrayBuffer(8)); b.setFloat64(0, x); return b.getBigUint64(0).toString(16); };',
+      const jsLines: string[] = ['const out = [];', 'const bits = (x) => { if (Number.isNaN(x)) return "nan"; const b = new DataView(new ArrayBuffer(8)); b.setFloat64(0, x); return b.getBigUint64(0).toString(16); };',
         'const hex = (s) => Buffer.from(s, "utf8").toString("hex");'];
       const cppLines: string[] = ['#include "js_runtime.h"', '#include <cstdio>', '#include <cstring>', '#include <limits>',
         'static const double NAN_ = std::numeric_limits<double>::quiet_NaN();', 'static const double INF_ = std::numeric_limits<double>::infinity();',
-        'static void number(double x) { uint64_t b; std::memcpy(&b, &x, 8); std::printf("%llx\\n", (unsigned long long)b); }',
+        'static void number(double x) { if (x != x) { std::puts(\"nan\"); return; } uint64_t b; std::memcpy(&b, &x, 8); std::printf("%llx\\n", (unsigned long long)b); }',
         'static void text(const std::string &s) { for (unsigned char c : s) std::printf("%02x", c); std::printf("\\n"); }',
         'static void flag(bool b) { std::printf("%s\\n", b ? "true" : "false"); }', 'int main() {'];
       const labels: string[] = [];

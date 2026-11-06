@@ -17,7 +17,7 @@ int rank(AutoControl c) {
 // Vehicles an hour into a junction below which `warrantedControl` is 'priority' whatever it has now (the least
 // major flow of a step up, with the hysteresis).
 float quiet_flow(const Tuning &tn) {
-	return (std::min(std::min(tn.flow_stop_major, tn.flow_signal_major), tn.flow_signal_major_b) * std::min(1.f, tn.flow_step_down));
+	return (js::math_min(js::math_min(tn.flow_stop_major, tn.flow_signal_major), tn.flow_signal_major_b) * js::math_min(1.f, tn.flow_step_down));
 }
 
 // The control a junction's flows warrant, given what it has now (hysteresis).

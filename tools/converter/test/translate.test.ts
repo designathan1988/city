@@ -36,7 +36,7 @@ describe('translate', () => {
 
   it('names a literal the target forbids bare from what receives it, in its module', () => {
     assert.match(file('yard_types.h'), /constexpr int MAX_SPEED = 30;/);
-    assert.match(file('yard_query.cpp'), /const float speed = std::min\(float\(MAX_SPEED\), n\);/);
+    assert.match(file('yard_query.cpp'), /const float speed = js::math_min\(float\(MAX_SPEED\), n\);/);
   });
 
   it('finds the target types by shape, within what the layers may include', () => {

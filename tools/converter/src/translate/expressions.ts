@@ -850,7 +850,9 @@ export abstract class ExpressionEmitter {
         if (/^\d+$/.test(a.code) && type.k === 'real') return realLiteral(a.code, type.name);
         return `${render(type)}(${a.code})`;
       });
-      return { code: code.reduce((acc, x) => `std::${method}(${acc}, ${x})`), type };
+      // reals keep ECMAScript's answer: NaN carries through, and +0 is above -0 (std::max drops a NaN on one side)
+      const fold = type.k === 'real' ? `js::math_${method}` : `std::${method}`;
+      return { code: code.reduce((acc, x) => `${fold}(${acc}, ${x})`), type };
     }
     return this.builtin(e, null);
   }
