@@ -10,5 +10,7 @@ namespace city {
 // `in` with its triangles reduced part by part (a part: one tag, colour and pivot), so a wheel still turns round its hub, a seat
 // still goes with its seat and paint never crosses into trim. The simplifier only removes vertices: those left keep every attribute.
 MeshBuilder simplify_parts(const MeshBuilder &in, float error_m);
+// `in` as one shape, colours and parts ignored: for what only casts. The vertices left keep what a shader moves them by (a tree's wind).
+MeshBuilder simplify_whole(const MeshBuilder &in, float error_m);
 
 } // namespace city

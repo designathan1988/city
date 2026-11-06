@@ -16,7 +16,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
 	"res://render/shaders/verge.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
-	"res://render/shaders/building_props.gdshader",
+	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 

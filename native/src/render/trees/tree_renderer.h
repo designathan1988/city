@@ -36,7 +36,7 @@ public:
 
 private:
 	struct Near {
-		std::vector<MultiMeshDraw> body, cards;
+		std::vector<MultiMeshDraw> body, cast, cards;
 		int trees = 0, plants = 0; // every instance, and those of the gardens' bushes and hedges
 	};
 	struct Built {

@@ -69,6 +69,7 @@ void TreeRenderer::reset() {
 	}
 	for (auto &kv : near_) {
 		for (MultiMeshDraw &d : kv.second.body) d.free();
+		for (MultiMeshDraw &d : kv.second.cast) d.free();
 		for (MultiMeshDraw &d : kv.second.cards) d.free();
 	}
 	for (auto &kv : far_) kv.second.free();
@@ -131,6 +132,7 @@ void TreeRenderer::commit_near(Built &b) {
 	Near &ch = near_[b.key];
 	int n = kit_.count();
 	ch.body.resize(size_t(n));
+	ch.cast.resize(size_t(n));
 	ch.cards.resize(size_t(n));
 	ch.trees = 0;
 	for (const PackedFloat32Array &buf : b.bufs) ch.trees += int(buf.size() / MM_STRIDE);
@@ -143,8 +145,13 @@ void TreeRenderer::commit_near(Built &b) {
 		const TreeSpecies &sp = kit_.species(i);
 		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
-		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, casts, LAYER_VEGETATION);
+		ch.body[size_t(i)].set(scenario_, sp.body->get_rid(), body_material_, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
 		ch.body[size_t(i)].range(0, end);
+		if (casts) {
+			ch.cast[size_t(i)].shadow_only = true;
+			ch.cast[size_t(i)].set(scenario_, sp.caster->get_rid(), body_material_, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
+			ch.cast[size_t(i)].range(0, end);
+		}
 		if (sp.cards.is_null()) continue;
 		ch.cards[size_t(i)].set(scenario_, sp.cards->get_rid(), card_material_, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(0, end);
@@ -242,6 +249,7 @@ void TreeRenderer::stream(const CityState &s, const Vector3 &cam, BuildBudget &b
 			if (distance_to(it->first, size, cam) <= reach + EVICT_CHUNKS * size) { ++it; continue; }
 			evict(it->first);
 			for (MultiMeshDraw &d : it->second.body) d.free();
+			for (MultiMeshDraw &d : it->second.cast) d.free();
 			for (MultiMeshDraw &d : it->second.cards) d.free();
 			it = near_.erase(it);
 		}
