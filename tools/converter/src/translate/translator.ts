@@ -7,7 +7,7 @@
 // state's vectors, which an edit may reallocate, so no edit may read an index: that is checked, not assumed.
 import type * as TS from 'typescript';
 import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './context.ts';
-import { holdsTypeParameter, paramType, render, type CppType } from './cpptype.ts';
+import { holdsTypeParameter, paramType, render, type CppType, target } from './cpptype.ts';
 import { pascal, snake, upper } from './names.ts';
 import { Emitter } from './statements.ts';
 
@@ -302,10 +302,10 @@ export class Translator extends Emitter {
     const ts = this.c.ts;
     const source = node.name!.text;
     this.unit = source;
-    if (node.heritageClauses?.some((h) => h.token === ts.SyntaxKind.ExtendsKeyword)) { this.fail(node, 'a class that extends another'); return; }
     const type = this.c.types.ofType(this.c.checker.getTypeAtLocation(node), 'local', null);
     if (type.k !== 'ref') { this.fail(node, 'a class with no C++ form'); return; }
     const struct = type.to.k === 'struct' ? type.to.name : render(type.to);
+    this.#inherit(node, struct);
     const owner = (kind: MemberOwner['kind'], m: TS.ClassElement): MemberOwner => ({
       struct, source, kind, node, isStatic: (ts.getCombinedModifierFlags(m) & ts.ModifierFlags.Static) !== 0 });
     let made = false;
@@ -316,6 +316,9 @@ export class Translator extends Emitter {
       write();
       const plan = [...this.c.functions.values()].at(-1);
       if (plan?.owner?.node === node) this.#fell(plan, errors, flowErrors);
+      if (plan?.owner?.kind === 'setter' && plan.owner.node === node) {
+        this.c.setters.set(plan.decl, plan);
+      }
     };
     const module = this.c.relative(node.getSourceFile());
     const left = new Set(this.c.spec.left ?? []);
@@ -327,7 +330,7 @@ export class Translator extends Emitter {
         this.#planFunction(m, 'constructor', at, m, owner('constructor', m));
       } else if (ts.isMethodDeclaration(m) && m.body) planned(() => this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('method', m)));
       else if (ts.isGetAccessorDeclaration(m)) planned(() => this.#planFunction(m, m.name.getText().replace(/^#/, ''), at, m, owner('getter', m)));
-      else if (ts.isSetAccessorDeclaration(m)) this.fail(m, 'a setter');
+      else if (ts.isSetAccessorDeclaration(m)) planned(() => this.#planFunction(m, `set_${m.name.getText().replace(/^#/, '')}`, at, m, owner('setter', m)));
       else if (ts.isClassStaticBlockDeclaration(m)) this.fail(m, 'a static block');
       else if (ts.isPropertyDeclaration(m) && owner('method', m).isStatic) this.#statics.push({ field: m, struct });
     }
@@ -340,6 +343,23 @@ export class Translator extends Emitter {
     const plan: FunctionPlan = { source: `${source}.constructor`, cpp: struct, decl: empty, params: [], ret: { k: 'void' }, typeParams: [], edit: null, exported: true, implicit: true,
       owner: { struct, source, kind: 'constructor', isStatic: false, node }, module: this.c.relative(node.getSourceFile()), line, doc: null };
     this.c.functions.set(this.symbolOf(node.name!)!, plan);
+  }
+
+  /** `class D extends B`: D's struct on B's, their members virtual. A class of a library's (Error, Map) gives nothing to inherit but its name. */
+  #inherit(node: TS.ClassDeclaration, struct: string): void {
+    const ts = this.c.ts;
+    const clause = node.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword)?.types[0];
+    if (!clause) return;
+    const baseType = this.c.checker.getTypeAtLocation(clause);
+    if (/^(Map|Set|Array)$/.test(baseType.getSymbol()?.name ?? '')) { this.fail(node, 'a class that extends a container'); return; }
+    if (!this.c.types.isClass(baseType)) return;
+    const base = target(this.c.types.ofType(baseType, 'local', null));
+    if (base.k !== 'struct') return;
+    const own = this.c.types.structs.get(struct)!;
+    own.base = render(base);
+    own.polymorphic = true;
+    this.c.types.structs.get(base.name)!.polymorphic = true;
+    (own.methodTypes ??= []).push(base);
   }
 
   #planFunction(fn: TS.SignatureDeclaration & { body?: TS.ConciseBody }, name: string, line: number, holder: TS.Node, owner?: MemberOwner): void {
@@ -371,7 +391,7 @@ export class Translator extends Emitter {
       return { name: pname, type: this.c.types.slot(flow.symbolSlot(symbol), 'param'), byValue, mutable: !byValue && this.#contentsChanged(fn, symbol) };
     });
     const ret = edit ? edit.result ?? { k: 'void' as const } : this.c.types.slot(flow.returnSlot(fn), 'return');
-    const key = owner?.kind === 'constructor' ? (fn as unknown as { symbol: TS.Symbol }).symbol : this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!;
+    const key = owner?.kind === 'constructor' ? (fn as unknown as { symbol: TS.Symbol }).symbol : owner?.kind === 'setter' ? ({} as TS.Symbol) : this.symbolOf((holder as TS.VariableDeclaration).name ?? (fn as TS.FunctionDeclaration).name!)!;
     this.c.functions.set(key, {
       source: owner ? `${owner.source}.${name}` : name, cpp: owner?.kind === 'constructor' ? owner.struct : snake(name), ...(owner ? { owner } : {}), decl: fn, params, ret, typeParams: (fn.typeParameters ?? []).map((t) => t.name.text), edit, exported: owner !== undefined || this.#exported(holder), module: this.c.relative(fn.getSourceFile()), line,
       doc: this.#doc(this.c.ts.isVariableDeclaration(holder) ? holder.parent.parent : holder),
@@ -422,6 +442,21 @@ export class Translator extends Emitter {
     this.c.types.indexStructs.add(plan.struct);
   }
 
+  /** A constant's C++ name: two modules may use one name, and one namespace holds them. */
+  readonly #constantNames = new Map<string, string>();
+  #constantName(name: string, module: string): string {
+    const cpp = upper(name);
+    const id = `${module}#${name}`;
+    const owner = this.#constantNames.get(cpp);
+    if (owner === undefined || owner === id) {
+      this.#constantNames.set(cpp, id);
+      return cpp;
+    }
+    // barrierKinds and BARRIER_KINDS in one module: named apart by the spelling
+    if (owner.startsWith(`${module}#`)) return `${cpp}_OF_${snake(name).toUpperCase().replace(/_/g, '')}`;
+    return `${cpp}_${upper(module.replace(/^src\//, '').replace(/\.tsx?$/, '').replace(/[^A-Za-z0-9]+/g, '_'))}`;
+  }
+
   #planConstant(d: TS.VariableDeclaration, name: string, line: number): void {
     this.unit = name;
     this.module = this.c.relative(d.getSourceFile());
@@ -430,7 +465,9 @@ export class Translator extends Emitter {
     // `declare const brand: unique symbol`: a type's mark, no value of the program
     if (!d.initializer) return;
     const symbol = this.symbolOf(d.name)!;
-    const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
+    // a constant owns what it holds: the object itself, never a pointer to a temporary
+    const held = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
+    const type = held.k === 'ptr' ? held.to : held;
     // a constant whose value is a context pattern (RAMP_GRADE = ROAD_TUNING.grade.ramp, the game's tuning): no C++
     // constant; each reference reads the target expression through the context parameter
     const contextual = d.initializer ? this.c.patterns.match(d.initializer) : null;
@@ -453,7 +490,7 @@ export class Translator extends Emitter {
       return;
     }
     // its value is written when every name exists: a constant may read one of a module planned later, or call a function
-    this.c.constants.set(symbol, { source: name, cpp: upper(name), type, value: '{}', module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: false });
+    this.c.constants.set(symbol, { source: name, cpp: this.#constantName(name, this.c.relative(d.getSourceFile())), type, value: '{}', module: this.c.relative(d.getSourceFile()), line, doc: this.#doc(d.parent.parent), constexpr: false });
     this.#valued.push({ symbol, d, name });
   }
 
@@ -721,7 +758,11 @@ export class Translator extends Emitter {
     if (this.state) this.collectInlined(plan.decl);
     else this.inlined.clear();
     const fields = plan.owner?.kind === 'constructor' ? this.#fieldLines(plan.owner, plan) : [];
-    const body = [...fields, ...this.functionBody(plan.decl as TS.FunctionDeclaration, plan.ret)];
+    const whole = this.functionBody(plan.decl as TS.FunctionDeclaration, plan.ret);
+    // super(...): the base is built before the body, as C++ asks and the source's order allows
+    const raised = plan.owner?.kind === 'constructor' ? this.#baseCall(plan) : null;
+    const body = [...fields, ...(raised ? whole.filter((l) => !l.includes('/*super*/')) : whole)];
+    if (raised !== null) this.#raised.set(plan, raised);
     this.scopes.pop();
     this.state = null;
     this.fn = null;
@@ -762,16 +803,32 @@ export class Translator extends Emitter {
     return lines;
   }
 
+  /** What a constructor gives its base. */
+  readonly #raised = new Map<FunctionPlan, string>();
+  #baseCall(plan: FunctionPlan): string | null {
+    const ts = this.c.ts;
+    const body = plan.decl.body;
+    if (!body || !ts.isBlock(body)) return null;
+    for (const st of body.statements) {
+      if (ts.isExpressionStatement(st) && ts.isCallExpression(st.expression) && st.expression.expression.kind === ts.SyntaxKind.SuperKeyword) {
+        return st.expression.arguments.map((a) => this.expr(a)).join(', ');
+      }
+    }
+    return null;
+  }
+
   /** A member: declared in its struct, defined by its qualified name. */
   #emitMember(plan: FunctionPlan, owner: MemberOwner, body: string[]): void {
     const struct = this.c.types.structs.get(owner.struct)!;
-    (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : ''}${this.#signature(plan, plan.cpp)};`);
+    const virtual = struct.polymorphic && !owner.isStatic && owner.kind !== 'constructor' ? 'virtual ' : '';
+    (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : virtual}${this.#signature(plan, plan.cpp)};`);
     (struct.methodTypes ??= []).push(...plan.params.map((p) => p.type), plan.ret);
     // a generic class's members are templates: their bodies go where the callers see them
     const params = struct.typeParams ?? [];
     const head = params.length > 0 ? `template <${params.map((t) => `class ${t}`).join(', ')}> ` : '';
     const qualified = params.length > 0 ? `${owner.struct}<${params.join(', ')}>` : owner.struct;
-    this.emitted.push({ plan, signature: `${head}${this.#signature(plan, `${qualified}::${plan.cpp}`)}`, lines: body, exported: false, role: 'query', uses: new Set(), member: true, inHeader: params.length > 0 });
+    const raised = this.#raised.get(plan);
+    this.emitted.push({ plan, signature: `${head}${this.#signature(plan, `${qualified}::${plan.cpp}`)}${raised ? ` : ${struct.base}(${raised})` : ''}`, lines: body, exported: false, role: 'query', uses: new Set(), member: true, inHeader: params.length > 0 });
   }
 
   #emitMemo(plan: MemoPlan): void {

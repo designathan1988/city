@@ -97,7 +97,7 @@ BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool w
 	}
 	if (any_sheer) {
 		sf.sheer_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0);
-		sheer->commit_to(sf.mesh.rid, with_uv2);
+		sheer->commit_to(sf.mesh.rid, with_uv2, true);
 	}
 	if (any_cards) {
 		sf.card_at = (shell.triangles() > 0 ? 1 : 0) + (any_glass ? 1 : 0) + (any_sheer ? 1 : 0);

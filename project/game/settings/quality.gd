@@ -90,7 +90,7 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	RenderingServer.directional_shadow_atlas_set_size(int(q.shadow_px) * ATLAS_PER_CASCADE, true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	world.daylight.shadow_side_px = float(q.shadow_px)
-	world.daylight.shadow_filter_radius = DataTables.game("settings").filter_radius[int(q.shadow_filter)]
+	world.daylight.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
 	var smaa: bool = q.smaa and has_smaa()
 	viewport.msaa_3d = MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not smaa else 0)]
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED

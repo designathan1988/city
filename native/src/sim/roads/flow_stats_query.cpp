@@ -18,7 +18,7 @@ float aged_to(const Rate &r, int32_t second, const Tuning &tn) {
 
 void FlowStats::record(int64_t node, int64_t from) {
 	auto &legs = this->counts[node];
-	legs[from] = ([&] { const auto found_3 = [&]() -> const int * { auto it = legs.find(from); return it == legs.end() ? nullptr : &it->second; }(); return found_3 ? *found_3 : int(0); }()) + 1;
+	legs[from] = ([&] { const auto found_3 = [&]() -> const float * { auto it = legs.find(from); return it == legs.end() ? nullptr : &it->second; }(); return found_3 ? *found_3 : float(0); }()) + 1;
 	this->counted.insert(node);
 }
 
@@ -37,11 +37,11 @@ void FlowStats::step(float dt, const Tuning &tn) {
 		this->second++;
 		for (const auto &item_4 : this->counts) {
 			int64_t node = item_4.first;
-			const js::Map<int64_t, int> &counted = item_4.second;
+			const js::Map<int64_t, float> &counted = item_4.second;
 			auto &legs = this->rates[node];
 			for (const auto &item_5 : counted) {
 				int64_t seg = item_5.first;
-				int n = item_5.second;
+				float n = item_5.second;
 				Rate *known = const_cast<Rate *>([&]() -> const Rate * { auto it = legs.find(seg); return it == legs.end() ? nullptr : &it->second; }());
 				if (!known) {
 					legs[seg] = Rate{(n * RATE) / (tn.flow_trend_window / 3), this->second};
@@ -106,7 +106,7 @@ void FlowStats::drop(const js::Set<int64_t> &nodes) {
 }
 
 FlowStats::FlowStats() {
-	this->counts = js::Map<int64_t, js::Map<int64_t, int>>{};
+	this->counts = js::Map<int64_t, js::Map<int64_t, float>>{};
 	this->rates = js::Map<int64_t, js::Map<int64_t, Rate>>{};
 	this->carry = 0;
 	this->second = 0;

@@ -320,7 +320,7 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
         stopOf: (id: string) => ledger.stopOf(id) }, (text) => console.log(`  ${text}`));
       const broken = new Set(whole.failing);
       for (const [file, text] of whole.result.files) if (!broken.has(file)) accepted.set(file, text);
-      outcomes.push({ module: 'whole', accepted: true, files: [...accepted.keys()], emitted: whole.result.units.map((u) => u.source), declared: whole.result.declared,
+      outcomes.push({ module: 'whole', accepted: true, files: [...accepted.keys()], emitted: [...whole.written], declared: whole.result.declared.filter((id) => whole.written.includes(id) || !whole.result.units.some((u) => u.source === id)),
         refusals: [...whole.left].map(([id, why]) => `${id}: ${why}`) });
       totals = report();
       console.log(`convert ${feature}: ${ledger.units.length} units; translated ${totals.done}; open ${totals.open}; ${whole.left.size} left out; ${whole.failing.length} files unplaced; ${accepted.size} files -> ${out}`);

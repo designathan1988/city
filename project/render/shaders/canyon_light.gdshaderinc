@@ -18,30 +18,32 @@ vec2 canyon_at(vec2 p) {
 	return textureLod(canyon_map, uv, 0.0).rg;
 }
 
-vec3 canyon_world(vec2 uv, mat4 inv_projection, mat4 inv_view) {
+// In view space, by the terms a perspective has: five of these a pixel, so no whole matrix and no way back to the world for each.
+vec3 canyon_view(vec2 uv, mat4 inv_projection) {
 	float depth = textureLod(depth_texture, uv, 0.0).x;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	vec3 ndc = vec3(uv, depth) * 2.0 - 1.0;
-#else
-	vec3 ndc = vec3(uv * 2.0 - 1.0, depth);
+	depth = depth * 2.0 - 1.0;
 #endif
-	vec4 view = inv_projection * vec4(ndc, 1.0);
-	return (inv_view * vec4(view.xyz / view.w, 1.0)).xyz;
+	vec2 xy = (uv * 2.0 - 1.0) * vec2(inv_projection[0][0], inv_projection[1][1]) + inv_projection[3].xy;
+	return vec3(xy, inv_projection[2][2] * depth + inv_projection[3][2]) / (inv_projection[2][3] * depth + inv_projection[3][3]);
 }
 
 // The surface's normal from the depth, each axis from the side that lies on the same surface as the pixel.
 vec3 canyon_normal(vec3 p, vec3 eye, vec2 uv, vec2 texel, mat4 inv_projection, mat4 inv_view) {
-	vec3 l = canyon_world(uv - vec2(texel.x, 0.0), inv_projection, inv_view), r = canyon_world(uv + vec2(texel.x, 0.0), inv_projection, inv_view);
-	vec3 b = canyon_world(uv - vec2(0.0, texel.y), inv_projection, inv_view), t = canyon_world(uv + vec2(0.0, texel.y), inv_projection, inv_view);
-	vec3 dx = distance(l, p) < distance(r, p) ? p - l : r - p;
-	vec3 dy = distance(b, p) < distance(t, p) ? p - b : t - p;
-	vec3 n = normalize(cross(dx, dy));
+	vec3 c = canyon_view(uv, inv_projection);
+	vec3 l = canyon_view(uv - vec2(texel.x, 0.0), inv_projection), r = canyon_view(uv + vec2(texel.x, 0.0), inv_projection);
+	vec3 b = canyon_view(uv - vec2(0.0, texel.y), inv_projection), t = canyon_view(uv + vec2(0.0, texel.y), inv_projection);
+	vec3 dx = distance(l, c) < distance(r, c) ? c - l : r - c;
+	vec3 dy = distance(b, c) < distance(t, c) ? c - b : t - c;
+	vec3 n = mat3(inv_view) * normalize(cross(dx, dy));
 	return dot(n, eye - p) < 0.0 ? -n : n;
 }
 
 // What is left of the pixel's light at world point `p`.
 float canyon_keep(vec3 p, vec3 eye, vec2 uv, vec2 texel, mat4 inv_projection, mat4 inv_view) {
-	if (canyon_at(p.xz).y < p.y) return 1.0; // nothing stands over it within reach
+	vec2 here = canyon_at(p.xz);
+	if (here.y < p.y) return 1.0; // nothing stands over it within reach
+	float tallest = here.y - p.y;
 	vec3 n = canyon_normal(p, eye, uv, texel, inv_projection, inv_view);
 	bool wall = abs(n.y) < 0.6;
 	vec2 facing = wall ? normalize(n.xz) : n.xz;
@@ -53,13 +55,14 @@ float canyon_keep(vec3 p, vec3 eye, vec2 uv, vec2 texel, mat4 inv_projection, ma
 		float rise = 0.0;
 		for (int s = 0; s < 3; s++) {
 			float reach = CANYON_CELL_M * (0.9 + float(s * s) * 2.4);
+			if (tallest <= rise * reach) break; // the tallest thing in reach would not raise it, here or further on
 			rise = max(rise, (canyon_at(p.xz + d * reach).x - p.y) / reach);
 		}
 		sum += 1.0 / (1.0 + rise * rise);
 		count += 1.0;
 	}
 	float vis = count > 0.0 ? sum / count : 1.0;
-	if (!wall) vis *= mix(1.0, CANYON_UNDER, smoothstep(CANYON_LIFT_FROM_M, CANYON_LIFT_TO_M, canyon_at(p.xz).x - p.y));
+	if (!wall) vis *= mix(1.0, CANYON_UNDER, smoothstep(CANYON_LIFT_FROM_M, CANYON_LIFT_TO_M, here.x - p.y));
 	// Light bounced between the walls gives some back (Jimenez et al. 2016, albedo 0.5).
 	vis = max(vis, ((vis * 0.6878 - 1.7559) * vis + 2.0679) * vis);
 	return mix(1.0, vis, canyon_sky);

@@ -23,9 +23,11 @@ void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
 }
 
+// A perspective's inverse has six terms that count, not sixteen: this runs 37 times a pixel, so only they are worked.
 vec3 view_at(vec2 uv, mat4 inv_projection) {
-	vec4 v = inv_projection * vec4(uv * 2.0 - 1.0, textureLod(depth_texture, uv, 0.0).x, 1.0);
-	return v.xyz / v.w;
+	float depth = textureLod(depth_texture, uv, 0.0).x;
+	vec2 xy = (uv * 2.0 - 1.0) * vec2(inv_projection[0][0], inv_projection[1][1]) + inv_projection[3].xy;
+	return vec3(xy, inv_projection[2][2] * depth + inv_projection[3][2]) / (inv_projection[2][3] * depth + inv_projection[3][3]);
 }
 
 // The surface's normal from the depth, each axis from the side that lies on the same surface as the pixel.
@@ -40,8 +42,9 @@ vec3 view_normal(vec3 p, vec2 uv, vec2 texel, mat4 inv_projection) {
 
 // Raises a horizon to what the point at `offset` from the pixel stands to, the further away the less.
 float raised(float horizon, vec3 p, vec3 eye, vec3 offset, float weight, mat4 projection, mat4 inv_projection) {
-	vec4 clip = projection * vec4(p + offset, 1.0);
-	vec3 delta = view_at(clip.xy / clip.w * 0.5 + 0.5, inv_projection) - p;
+	vec3 q = p + offset; // the screen's place of q: of the projection, only what x, y and w take
+	vec2 clip = vec2(projection[0][0], projection[1][1]) * q.xy + projection[2].xy * q.z;
+	vec3 delta = view_at(clip / (projection[2][3] * q.z + projection[3][3]) * 0.5 + 0.5, inv_projection) - p;
 	float size = dot(delta, delta);
 	if (size < LEAST_SQUARED || abs(delta.z) >= thickness_m) return horizon;
 	return horizon + max(0.0, (dot(eye, delta) * inversesqrt(size) - horizon) * weight);
@@ -50,6 +53,8 @@ float raised(float horizon, vec3 p, vec3 eye, vec3 offset, float weight, mat4 pr
 float visible(vec3 p, vec3 n, float reach, mat4 projection, mat4 inv_projection) {
 	vec3 eye = normalize(-p);
 	float sum = 0.0;
+	float ring[STEPS]; // how far each step goes: the same in every slice
+	for (int j = 0; j < STEPS; j++) ring[j] = reach * pow(float(j + 1) / float(STEPS), reach_curve);
 	for (int i = 0; i < SLICES; i++) {
 		float a = (float(i) + 0.5) / float(SLICES) * PI;
 		vec3 way = vec3(cos(a), sin(a), 0.0);
@@ -59,7 +64,7 @@ float visible(vec3 p, vec3 n, float reach, mat4 projection, mat4 inv_projection)
 		vec3 along = cross(ns, side);
 		vec2 h = vec2(dot(eye, along), -dot(eye, along));
 		for (int j = 0; j < STEPS; j++) {
-			vec3 offset = way * reach * pow(float(j + 1) / float(STEPS), reach_curve);
+			vec3 offset = way * ring[j];
 			float weight = 2.0 / float(j + 2);
 			h.x = raised(h.x, p, eye, offset, weight, projection, inv_projection);
 			h.y = raised(h.y, p, eye, -offset, weight, projection, inv_projection);

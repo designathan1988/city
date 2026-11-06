@@ -18,16 +18,10 @@ namespace city {
 constexpr int RATE = 3600;
 
 struct FlowStats;
-// A leg's rate as it stood at the end of second `at`.
-// (Roadcraft 4.0 src/sim/roads/flowStats.ts:10)
-struct Rate {
-	float rate = 0;
-	int32_t at = 0;
-};
-
+struct Rate;
 // (Roadcraft 4.0 src/sim/roads/flowStats.ts:12)
 struct FlowStats : std::enable_shared_from_this<FlowStats> {
-	js::Map<int64_t, js::Map<int64_t, int>> counts;
+	js::Map<int64_t, js::Map<int64_t, float>> counts;
 	js::Map<int64_t, js::Map<int64_t, Rate>> rates;
 	float carry = 0;
 	int32_t second = 0; // Seconds aged so far: the clock the rates are kept against.
@@ -43,6 +37,13 @@ struct FlowStats : std::enable_shared_from_this<FlowStats> {
 	void keep_only(const js::Set<int64_t> &nodes);
 	void drop(const js::Set<int64_t> &nodes);
 	FlowStats();
+};
+
+// A leg's rate as it stood at the end of second `at`.
+// (Roadcraft 4.0 src/sim/roads/flowStats.ts:10)
+struct Rate {
+	float rate = 0;
+	int32_t at = 0;
 };
 
 } // namespace city

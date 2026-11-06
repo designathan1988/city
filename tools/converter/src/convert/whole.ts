@@ -5,11 +5,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { removeTree, writeTree } from '../common/files.ts';
-import { compileFiles, scanUnits } from './quarantine.ts';
+import { compileFiles, compileHeaders, scanUnits } from './quarantine.ts';
 import { translate, type PreparedProgram, type TranslationResult } from '../translate/run.ts';
 import type { TranslationSpec } from '../translate/spec.ts';
 
-const MOST_ROUNDS = 40;
+const MOST_ROUNDS = 200;
+/** Errors taken from one header in a round: the later ones are often what the first one broke. */
+const FIRST_IN_A_HEADER = 3;
 
 export interface WholeInput {
   readonly sourceRoot: string;
@@ -28,6 +30,8 @@ export interface WholeResult {
   readonly left: ReadonlyMap<string, string>;
   /** What still does not compile, by file: its units are not counted as written. */
   readonly failing: readonly string[];
+  /** The units in files that compile. */
+  readonly written: readonly string[];
 }
 
 type Unit = TranslationResult['units'][number];
@@ -44,6 +48,8 @@ function placeOf(text: string, line: number): { name: string; struct: string | n
       const declared = /(\w+)\(/.exec(at) ?? /(\w+)(?:\{\}| = [^;]*)?;/.exec(at);
       return { name: struct[1]!, struct: struct[1]!, member: declared?.[1] ?? null };
     }
+    const enumerated = /^enum class (\w+)/.exec(l);
+    if (enumerated) return { name: enumerated[1]!, struct: null, member: null };
     const constant = /^(?:constexpr|inline const) .*?(\w+)(?:\(\) \{| = )/.exec(l);
     if (constant) return { name: constant[1]!, struct: null, member: null };
     if (/^};?$/.test(l) && i < line - 1) return null;
@@ -89,18 +95,40 @@ function attribute(findings: readonly { file: string; detail: string }[], result
       const units = unitsOfFile(file, result.units, prepared);
       const module = moduleOfFile(file, result, prepared);
       const why = `does not compile: ${f.detail.slice(0, 200)}`;
-      if (place.struct && place.member && module) {
-        left.set(`${module}#${place.struct}.${place.member}`, why);
-        const member = units.get(place.member);
+      const home = place.struct ? result.structs.find((s) => s.name === place.struct)?.module ?? module : module;
+      if (place.struct && place.member && home) {
+        left.set(`${home}#${place.struct}.${place.member}`, why);
+        const member = [...result.units].find((u) => u.source === `${home}#${place.struct}.${place.member}`) ?? units.get(place.member);
         if (member) left.set(member.source, why);
         placed++;
         continue;
       }
-      const unit = units.get(place.name);
+      const unit = units.get(place.name) ?? result.units.find((u) => u.cpp === place.name);
       if (unit) {
         left.set(unit.source, why);
         placed++;
+        continue;
       }
+      // a type the compiler refuses: a running value in its place
+      if (place.struct || /^enum class/.test(text.split('\n')[Number(m[2]) - 1] ?? '')) {
+        left.set(`type#${place.struct ?? place.name}`, why);
+        placed++;
+      }
+    }
+    // a name that clashes with one of the game's own headers: the error is there, the unit is ours
+    for (const m of f.detail.matchAll(/redefinition of '(\w+)'/g)) {
+      const unit = result.units.find((u) => u.cpp === m[1]);
+      if (unit) {
+        left.set(unit.source, `its name is the game's: ${m[1]}`);
+        placed++;
+      } else if (result.structs.some((s) => s.name === m[1])) {
+        left.set(`type#${m[1]}`, `its name is the game's: ${m[1]}`);
+        placed++;
+      }
+    }
+    for (const m of f.detail.matchAll(/use of '(\w+)' with tag type/g)) {
+      left.set(`type#${m[1]}`, `two kinds of type of one name: ${m[1]}`);
+      placed++;
     }
     if (placed === 0) lost.push(f.file);
   }
@@ -135,13 +163,48 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
     }
     removeTree(overlay);
     writeTree(overlay, result.files);
+    // the headers first, in one compile: a broken one fails everything that includes it
+    const headerErrors = await compileHeaders(input.cxx, overlay, input.targetRoot, result.files);
+    if (headerErrors.length > 0) {
+      const byFile = new Map<string, string[]>();
+      for (const l of headerErrors) {
+        const file = (/native[\\/]src[\\/][^\s:]+/.exec(l)?.[0] ?? l).replace(/\\/g, '/');
+        const rows = byFile.get(file) ?? [];
+        if (rows.length < FIRST_IN_A_HEADER) rows.push(l);
+        byFile.set(file, rows);
+      }
+      const placed = attribute([...byFile].map(([file, rows]) => ({ file, detail: rows.join(' | ') })), result, input.prepared);
+      for (const [id, why] of placed.left) left.set(id, why);
+      // an error no unit owns: the units of its module leave, never the whole translation
+      if (left.size === before) {
+        for (const file of placed.lost) {
+          const module = moduleOfFile(file, result, input.prepared);
+          for (const u of result.units) if (module && u.source.startsWith(`${module}#`)) left.set(u.source, `its header does not compile: ${(byFile.get(file) ?? [])[0]?.slice(0, 200)}`);
+        }
+      }
+      log(`round ${round}: ${headerErrors.length} header errors in ${byFile.size} files, ${left.size} left out (${translated - started} + ${Date.now() - translated} ms)`);
+      if (left.size > before) continue;
+      failing = [...byFile.keys()];
+      break;
+    }
     const findings = await compileFiles(input.cxx, overlay, input.targetRoot, result.files);
     const placed = attribute(findings, result, input.prepared);
     for (const [id, why] of placed.left) left.set(id, why);
-    failing = placed.lost;
+    // what the compiler refuses and no unit owns, or a unit left out already: the units of that file's module leave
+    if (left.size === before) {
+      for (const f of findings) {
+        const module = moduleOfFile(f.file, result, input.prepared);
+        for (const u of result.units) if (module && u.source.startsWith(`${module}#`)) left.set(u.source, `its file does not compile: ${f.detail.slice(0, 200)}`);
+      }
+    }
+    failing = findings.map((f) => f.file);
     log(`round ${round}: ${findings.length} files do not compile, ${left.size} left out, ${placed.lost.length} files unplaced (${translated - started} + ${Date.now() - translated} ms)`);
     if (findings.length === 0 || left.size === before) break;
   }
   fs.mkdirSync(input.candidate, { recursive: true });
-  return { result: last!, left, failing };
+  const broken = (id: string): boolean => {
+    const placed = input.prepared.placement.of(id.slice(0, id.indexOf('#')));
+    return !('error' in placed) && failing.some((f) => f.replace(/\\/g, '/').includes(`${placed.owner}/${placed.stem}`));
+  };
+  return { result: last!, left, failing, written: last!.units.map((u) => u.source).filter((id) => !broken(id)) };
 }

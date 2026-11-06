@@ -214,7 +214,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/core/color.h` — "#RRGGBB"/"#RRGGBBAA" → RGBA8 empacotado (único parser de cor)
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
-- `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` — o que o código traduzido do 4.0 chama: os built-ins com a semântica da ECMAScript (runtime de `tools/converter/cpp/js`; não se edita aqui)
+- `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — o que o código traduzido do 4.0 chama: os built-ins com a semântica da ECMAScript (runtime de `tools/converter/cpp/js`; não se edita aqui)
 - `native/src/core/math.h` — vetores 2D no plano XZ
 - `native/src/core/random.h` — hash, RNG e ruído determinísticos
 - `native/src/core/seeded.h` — geradores com os números do Roadcraft bit a bit
@@ -435,6 +435,7 @@ thread principal) e o commit só troca malhas, em `render.commit_budget_ms`. Pos
 - `native/src/render/roads/road_section.cpp` · `native/src/render/roads/road_section.h` — a seção da via em peças: superfícies, rampa do rebaixo e ilha entre as pistas
 - `native/src/render/roads/road_segment.cpp` — superfície do segmento: as peças da seção entre as bocas, com a ponta da ilha antes da travessia
 - `native/src/render/wear/wear_field.cpp` · `native/src/render/wear/wear_field.h` — desgaste das ruas e calçadas: campo em janela que dá a volta, em camadas de uma textura em array, só as alteradas enviadas
+- `native/src/render/mesh_order.cpp` · `native/src/render/mesh_order.h` — a ordem dos triângulos de uma superfície para o cache de vértices da GPU, no job que assa a malha
 - `native/src/render/rs_util.h` — instâncias RenderingServer sem nós de cena
 - `native/src/render/cover/cover_kit.cpp` · `native/src/render/cover/cover_kit.h` · `native/src/render/cover/cover_renderer.cpp` · `native/src/render/cover/cover_renderer.h` · `native/src/render/cover/element_models.cpp` · `native/src/render/cover/element_models.h` · `native/src/render/cover/shore_stones.cpp` · `native/src/render/cover/shore_stones.h` — o que fica no chão aberto (pedras, arbustos, cactos, tufos e flores), as pedras da margem e do leito e os elementos do pincel: malhas de cover.json; colocação pela tinta e pela ecologia, modelos glTF e MultiMesh por chunk
 - `native/src/render/water/shore_field.cpp` · `native/src/render/water/shore_field.h` · `native/src/render/water/water_renderer.cpp` · `native/src/render/water/water_renderer.h` — o nível da água ao lado de cada terra, para a praia; superfície dos lagos e rios acima do mar, por chunk

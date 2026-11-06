@@ -20,6 +20,8 @@ export type CppType =
   | { readonly k: 'set'; readonly of: CppType }
   | { readonly k: 'optional'; readonly of: CppType }
   | { readonly k: 'ptr'; readonly to: CppType }
+  /** A value whose type only the running program knows (js::Value): `unknown`, `any`, what no static form can hold. */
+  | { readonly k: 'dynamic' }
   /** An instance of a class of the program: shared, as a reference is in the source. */
   | { readonly k: 'ref'; readonly to: CppType }
   | { readonly k: 'function'; readonly params: readonly CppType[]; readonly ret: CppType }
@@ -35,6 +37,7 @@ export const INT64: CppType = { k: 'int', name: 'int64_t' };
 export const BOOL: CppType = { k: 'bool' };
 export const STRING: CppType = { k: 'string' };
 export const VOID: CppType = { k: 'void' };
+export const DYNAMIC: CppType = { k: 'dynamic' };
 export const NULL: CppType = { k: 'null' };
 export const LITERAL: CppType = { k: 'literal' };
 
@@ -82,6 +85,8 @@ export function render(t: CppType): string {
       return `const ${render(t.to)} *`;
     case 'ref':
       return `std::shared_ptr<${render(t.to)}>`;
+    case 'dynamic':
+      return 'js::Value';
     case 'function':
       return `std::function<${render(t.ret)}(${t.params.map((p) => paramType(p)).join(', ')})>`;
     case 'lambda':
@@ -169,6 +174,7 @@ export function target(t: CppType): CppType {
 /** What a container holds (a map: its values); null for anything else. */
 export function elementOf(t: CppType): CppType | null {
   const c = target(t);
+  if (c.k === 'dynamic') return c;
   return c.k === 'vector' || c.k === 'deque' || c.k === 'list' || c.k === 'map' || c.k === 'set' ? c.of : null;
 }
 

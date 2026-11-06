@@ -35,6 +35,8 @@ export function join<T extends number>(...facts: T[]): T {
 export type SlotRole = 'field' | 'param' | 'local' | 'return' | 'element' | 'key' | 'literal';
 
 export class Slot {
+  /** Values of shapes no one struct holds meet here: a value only the running program knows. */
+  mixed = false;
   parent: Slot = this;
   num: Num = Num.None;
   own: Own = Own.None;
@@ -68,6 +70,7 @@ export class Slot {
 
 const INT_MATH = new Set(['floor', 'ceil', 'round', 'trunc', 'sign', 'imul']);
 const JOIN_MATH = new Set(['max', 'min', 'abs']);
+const WHOLE_MATH = new Set(['floor', 'ceil', 'round', 'trunc']);
 const CALLBACK_METHODS = new Set(['forEach', 'map', 'filter', 'some', 'every', 'find', 'findIndex']);
 const SAME_ELEMENTS = new Set(['filter', 'slice', 'sort', 'reverse', 'concat', 'values']);
 
@@ -183,6 +186,8 @@ export class FlowGraph {
   #declare(s: Slot, type: TS.Type): void {
     const ts = this.#ts;
     if (this.isId(this.#checker.getNonNullableType(type))) s.num = Num.Int64;
+    // a number read out of a running value is JavaScript's number: nothing proves it whole
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) s.num = Num.Float;
     if (type.isUnion() && type.types.some((t) => t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))) s.nullable = true;
     const t = this.underlying(this.#checker.getNonNullableType(type));
     if (this.isObject(t)) s.shapes.set(this.#shapeKey(t), t);
@@ -399,10 +404,14 @@ export class FlowGraph {
     if (ts.isIdentifier(e) && e.text === 'Infinity') return Num.Float;
     if (ts.isBinaryExpression(e)) {
       const k = e.operatorToken.kind;
+      // >>> gives an unsigned 32-bit value, past an int's range
+      if (k === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken || k === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken) return Num.Int64;
       if ([ts.SyntaxKind.AmpersandToken, ts.SyntaxKind.BarToken, ts.SyntaxKind.CaretToken, ts.SyntaxKind.LessThanLessThanToken,
-        ts.SyntaxKind.GreaterThanGreaterThanToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken].includes(k)) return Num.Int;
+        ts.SyntaxKind.GreaterThanGreaterThanToken].includes(k)) return Num.Int;
       if (k === ts.SyntaxKind.SlashToken || k === ts.SyntaxKind.SlashEqualsToken) return Num.Float;
       if (k === ts.SyntaxKind.EqualsToken) return this.numOf(e.right);
+      // a product of integers does not wrap in JavaScript (a key made of two ids): held in 64 bits
+      if ((k === ts.SyntaxKind.AsteriskToken || k === ts.SyntaxKind.AsteriskEqualsToken || k === ts.SyntaxKind.AsteriskAsteriskToken) && join(this.numOf(e.left), this.numOf(e.right)) === Num.Int) return Num.Int64;
       return join(this.numOf(e.left), this.numOf(e.right));
     }
     if (ts.isPropertyAccessExpression(e) && (e.name.text === 'length' || e.name.text === 'size')) {
@@ -413,6 +422,8 @@ export class FlowGraph {
     if (ts.isCallExpression(e)) {
       const callee = e.expression;
       if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'Math') {
+        // a real rounded is a whole number of any size in JavaScript, past an int's range (Math.round(x * 1e6)): 64 bits
+        if (WHOLE_MATH.has(callee.name.text)) return e.arguments[0] && this.numOf(e.arguments[0]) === Num.Int ? Num.Int : Num.Int64;
         if (INT_MATH.has(callee.name.text)) return Num.Int;
         if (JOIN_MATH.has(callee.name.text)) return join<Num>(Num.None, ...e.arguments.map((a) => this.numOf(a)));
         return Num.Float;
@@ -952,6 +963,12 @@ export class FlowGraph {
 
   // ---- reading the solution
 
+  /** Whether values of shapes no one struct holds meet in this slot. */
+  isMixed(s: Slot): boolean {
+    this.shapeOf(s);
+    return this.find(s).mixed;
+  }
+
   /** The struct type a slot holds: the widest shape that reached it; every other must be a subset of it. */
   shapeOf(s: Slot): TS.Type | null {
     const r = this.find(s);
@@ -972,8 +989,8 @@ export class FlowGraph {
       if (this.#checker.isTupleType(t) && this.#checker.isTupleType(widest)) continue; // a tuple's type is its positions (readonly or not)
       const extra = this.#checker.getPropertiesOfType(t).map((p) => p.name).filter((n) => !fields.has(n));
       if (extra.length > 0) {
-        const msg = `${r.name}: values of different shapes meet (${this.#checker.typeToString(widest)} and ${this.#checker.typeToString(t)})${this.unit ? ` [unit ${this.unit}]` : ''}`;
-        if (!this.errors.includes(msg)) this.errors.push(msg);
+        r.mixed = true;
+        return null;
       }
     }
     return widest;

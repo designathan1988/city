@@ -363,8 +363,8 @@ class Mixed {
     return this.n * 2;
   }
 
-  kind(v: unknown): string {
-    return typeof v;
+  kind(v: number): string {
+    return new Intl.Collator().resolvedOptions().locale + v;
   }
 
   named(): string {
@@ -419,4 +419,59 @@ export function legsOf(n: number): number {
   legs.raise(big);
   legs.dropAll(big);
   return legs.counts.size * 100 + (legs.counts.get(big)?.get(next) ?? 0) * 10 + (legs.rates.get(big)?.get(next)?.r ?? 0) + (n > 0 ? 1 : 0);
+}
+
+/** What only the running program knows: read by what it turns out to be. */
+function readRaw(raw: unknown): number {
+  if (typeof raw !== 'object' || raw === null) return typeof raw === 'string' ? raw.length : -1;
+  const o = raw as { x?: unknown; tag?: unknown };
+  const x = typeof o.x === 'number' ? o.x : 0;
+  const tag = typeof o.tag === 'string' ? o.tag.length : 0;
+  return x + tag;
+}
+
+export function rawRead(n: number): number {
+  const made: unknown = n > 0 ? { x: n, tag: 'ab' } : n < 0 ? 'text' : null;
+  return readRaw(made);
+}
+
+class Base {
+  v = 1;
+  read(): number { return this.v; }
+  twice(): number { return this.read() * 2; }
+}
+
+class Child extends Base {
+  constructor() {
+    super();
+    this.v = 5;
+  }
+  override read(): number { return this.v + 1; }
+}
+
+/** The base's method calls what the subclass wrote. */
+export function inherited(n: number): number {
+  const b: Base = new Child();
+  return b.twice() + n;
+}
+
+class Sized {
+  #w = 0;
+  get width(): number { return this.#w; }
+  set width(n: number) { this.#w = n * 2; }
+}
+
+export function sized(n: number): number {
+  const s = new Sized();
+  s.width = n;
+  return s.width;
+}
+
+interface Filled { a: number; b?: number; c: number }
+
+/** Filled in the order written, what is optional only sometimes. */
+export function filled(n: number): number {
+  const base: Filled = { a: 1, c: 2 };
+  const made: Filled = { ...base, c: n, ...(n > 0 ? { b: 7 } : {}) };
+  return made.a + made.c + (made.b ?? 0);
 }

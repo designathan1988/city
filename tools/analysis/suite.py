@@ -64,6 +64,8 @@ def main():
     unstable, failures = [], 0
     for i, (scene, method, failed, code, took, why) in enumerate(results):
         if failed:
+            log = os.path.join(ROOT, "dist", "tests", f"{os.path.basename(scene)}_{method}")
+            shutil.copyfile(log + ".log", log + ".loaded")  # what failed under load: the run alone writes over the log
             again = run(a.godot, scene, method, a.timeout)  # alone: the log left in dist/tests is this run's
             if not again[2]:
                 unstable.append(f"{scene} ({method}): {why}")

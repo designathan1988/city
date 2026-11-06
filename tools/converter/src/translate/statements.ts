@@ -178,6 +178,14 @@ export class Emitter extends ExpressionEmitter {
     const type = this.c.types.slot(slot, 'local');
     this.bind(symbol, { cpp: name, type });
     if (!init) return [`${at}${declare(type, name)}${this.#zero(type)};`];
+    // `const o = raw as T`: what the running value turns out to be is still in question; o stays one
+    if (ts.isAsExpression(init) && !this.#reassigned(symbol)) {
+      const held = this.value(init.expression);
+      if (held.type.k === 'dynamic') {
+        this.bind(symbol, { cpp: name, type: held.type });
+        return [`${at}const js::Value ${name} = ${held.code};`];
+      }
+    }
     const v = this.value(init, type);
     const reassigned = this.#reassigned(symbol);
     // Another owner's object or container, never pointed elsewhere and never absent: a reference to it.
@@ -508,9 +516,18 @@ export class Emitter extends ExpressionEmitter {
           }
         }
       }
-      return [this.fail(iterable, 'a loop over `?? []` of something other than a map entry').code];
+      // for (x of a ?? []) of anything else: over a when it is there
+      const list = this.value(left);
+      const pre = this.#flush();
+      if (list.type.k === 'dynamic') return [...pre, ...this.#loop(s, decl, { code: `${list.code}.items()`, type: { k: 'vector', of: list.type } }, null)];
+      if (list.type.k === 'optional' || list.type.k === 'ptr') {
+        const held = this.temp('list');
+        return [...pre, ...this.#loop(s, decl, { code: `(*${held})`, type: target(list.type) }, `if (const auto &${held} = ${list.code}; ${held})`)];
+      }
+      return [...pre, ...this.#loop(s, decl, list, null)];
     }
     let source = this.value(iterable);
+    if (source.type.k === 'dynamic') source = { code: `${source.code}.items()`, type: { k: 'vector', of: source.type } };
     // The state walked while the body edits it: walk what it was when the loop began.
     if (this.state && this.#readsState(iterable) && this.#editsState(s.statement)) {
       const snapshot = this.temp('snapshot');

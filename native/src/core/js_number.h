@@ -211,6 +211,19 @@ inline double round(double x) {
 	const double down = std::floor(x);
 	return x - down >= 0.5 ? down + 1 : down;
 }
+/** ECMA-262 21.3.2.24 and 25 Math.max, Math.min of two reals: a NaN gives NaN, and +0 counts as above -0. */
+template <class T> T math_max(T a, T b) {
+	if (a != a) return a;
+	if (b != b) return b;
+	if (a == b) return std::signbit(a) ? b : a;
+	return a < b ? b : a;
+}
+template <class T> T math_min(T a, T b) {
+	if (a != a) return a;
+	if (b != b) return b;
+	if (a == b) return std::signbit(a) ? a : b;
+	return b < a ? b : a;
+}
 inline double sign(double x) { return std::isnan(x) ? x : x > 0 ? 1 : x < 0 ? -1 : x; }
 inline double fround(double x) { return double(float(x)); }
 /** ECMA-262 7.1.6 ToInt32: truncated, modulo 2^32, as a signed 32-bit integer. */
