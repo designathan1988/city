@@ -1,10 +1,13 @@
 // Every translated module against the 4.0, with no game: `node scripts/check-all.ts <ledger.json> <plan.json> <out> <shard> <shards>`.
 // Each module of the ledger's written units is translated alone (the program opened once per shard), its classes and exported functions
 // called at random in the source and in C++, each answer compared. One line of JSON per module in <out>/shard-<n>.jsonl. A translation
-// that compiles but answers differently is found here, which no compiler sees.
+// that compiles but answers differently is found here, which no compiler sees. Paths come from the machine file (the plan's
+// `${game}/...` too); the game's C++ graph is derived from the game's code.
 import fs from 'node:fs';
 import path from 'node:path';
+import { targetGraph } from '../src/common/derived.ts';
 import { removeTree } from '../src/common/files.ts';
+import { machine as machineFile } from '../src/common/machine.ts';
 import { readLibrary } from '../src/convert/autospec.ts';
 import { loadTypeScript } from '../src/graph/typescript.ts';
 import { runObjectDifferential } from '../src/translate/differential.ts';
@@ -14,11 +17,13 @@ import type { TranslationSpec } from '../src/translate/spec.ts';
 const [ledgerFile, planFile, out, shardText, shardsText] = process.argv.slice(2);
 if (!ledgerFile || !planFile || !out || !shardText || !shardsText) throw new Error('usage: node scripts/check-all.ts <ledger.json> <plan.json> <out> <shard> <shards>');
 const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const machine = JSON.parse(fs.readFileSync(path.join(here, '..', 'configs', 'roadcraft-machine.json'), 'utf8')) as { source: string };
-const plan = JSON.parse(fs.readFileSync(planFile, 'utf8')) as { library: string; targetRoot: string; targetGraph: string };
+const m = machineFile();
+const machine = { source: m.get('source') };
+const written = JSON.parse(fs.readFileSync(planFile, 'utf8')) as { library: string; targetRoot: string };
+const plan = { library: m.expand(written.library), targetRoot: m.expand(written.targetRoot) };
 const ledger = JSON.parse(fs.readFileSync(ledgerFile, 'utf8')) as { done: string[]; units: { id: string; kind: string; file: string }[] };
 const library = readLibrary(plan.library);
-const cxx = process.env['CXX']!;
+const cxx = m.get('cxx');
 const shard = Number(shardText);
 const shards = Number(shardsText);
 const done = new Set(ledger.done);
@@ -34,7 +39,7 @@ const specOf = (source: string, units: readonly string[]): TranslationSpec => ({
   feature: 'check', subsystem: 'native/src/sim/check', namespace: library.namespace, source, summary: source,
   state: { source: '', target: '', member: '', root: library.stateRoot }, units, pending: [], number: library.number, types: { ...(library.types ?? {}) }, functions: library.functions,
   classes: library.classes, memoizers: library.memoizers, patterns: library.patterns, typeNames: {}, layer: { rules: library.rules, includes: ['core/'] } } as unknown as TranslationSpec);
-const base = { sourceRoot: machine.source, tsconfig: path.join(machine.source, 'tsconfig.json'), typescriptDir: path.join(machine.source, 'node_modules', 'typescript'), targetRoot: plan.targetRoot, targetGraph: plan.targetGraph };
+const base = { sourceRoot: machine.source, tsconfig: path.join(machine.source, 'tsconfig.json'), typescriptDir: m.get('typescript'), targetRoot: plan.targetRoot, targetGraph: targetGraph({ targetRoot: plan.targetRoot }) };
 const prepared = prepareTranslation({ ...base, spec: specOf(modules[0]!, roots.get(modules[0]!)!) });
 const tuning = JSON.parse(fs.readFileSync(path.join(plan.targetRoot, 'project/data/catalog/tuning.json'), 'utf8')) as Record<string, Record<string, number>>;
 const context = Object.fromEntries(Object.entries(tuning).flatMap(([section, rows]) => Object.entries(rows).filter(([, v]) => typeof v === 'number').map(([k, v]) => [`${section}_${k}`, v])));

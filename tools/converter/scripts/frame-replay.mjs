@@ -3,15 +3,23 @@
 // draw's GL state gives, the mesh built the way the translation places its attributes, the camera from three's
 // matrices, the textures three's GPU held, every uniform three set), then compared pixel by pixel.
 // Stages, each skipped when its output is newer than its input (fast reruns): select → translate (worker pool,
-// cached) → webgl → godot (watched live, one item per draw) → compare.
+// cached) → webgl → godot (a hidden task with a deadline per draw replayed; tools/tasks) → compare.
 // `node scripts/frame-replay.mjs <capture dir> <out dir> <playwright dir> <glsl dir> [--per-program <n>] [--size <px>]`
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { judge } from './replay-judge.mjs';
+import { machine } from '../src/common/machine.ts';
+import { filesKey, folderKey, keyOf, logOf, mustRun, passed, runTasksSync, toolKey } from '../src/common/tasks.ts';
+
+/** The translation of a frame's programs (scripts/shaders.ts, a worker pool; 14.5 s cold for 277 programs); past this it is stopped. */
+const TRANSLATE_TIMEOUT_S = 1800;
+/** Godot's replay of one draw (its viewport drawn and read back): the replay's deadline is this times the draws it replays. */
+const REPLAY_DRAW_TIMEOUT_S = 60;
+/** Godot starting, importing the replay project and freeing it at the end. */
+const REPLAY_START_TIMEOUT_S = 300;
 
 const [capDir, outDir, pwDir, glslDir] = process.argv.slice(2);
 const flag = (n, d) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : d; };
@@ -158,7 +166,11 @@ for (const d of draws) {
 }
 fs.writeFileSync(path.join(outDir, 'programs.json'), JSON.stringify(jobs));
 say(`translating ${jobs.length} program variants (cached where already done)`);
-execFileSync(process.execPath, [path.join(here, 'scripts', 'shaders.ts'), path.join(outDir, 'programs.json'), tDir, '--glsl', glslDir], { stdio: ['ignore', 'ignore', 'inherit'] });
+const shadersScript = path.join(here, 'scripts', 'shaders.ts');
+const translated = mustRun('the translation of the programs', runTasksSync([{ name: 'converter-replay-translate', cwd: here, timeoutS: TRANSLATE_TIMEOUT_S, outputs: [path.join(tDir, 'translation.json')],
+  extra: [filesKey([path.join(outDir, 'programs.json'), shadersScript, path.join(here, 'src', 'render', 'godot-shader.ts')]), toolKey(glslDir)],
+  argv: [process.execPath, shadersScript, path.join(outDir, 'programs.json'), tDir, '--glsl', glslDir] }])[0]);
+if (!passed(translated)) throw new Error(`the translation of the programs failed (exit ${translated.exit}): ${logOf(translated).slice(-2000)}`);
 const translation = new Map(JSON.parse(fs.readFileSync(path.join(tDir, 'translation.json'), 'utf8')).map((e, i) => [jobs[i].name, e]));
 say('translated');
 
@@ -513,11 +525,19 @@ fs.copyFileSync(path.join(here, 'scripts', 'replay.gd'), path.join(gDir, 'replay
 // the captured textures linked, not copied (hundreds of MB)
 for (const c of cases) for (const t of c.textures) if (t.capture) for (const l of t.levels) for (const f of l.files) { const to = path.join(gDir, 'data', f); if (!fs.existsSync(to)) { try { fs.linkSync(path.join(capDir, 'blobs', f), to); } catch { fs.copyFileSync(path.join(capDir, 'blobs', f), to); } } }
 const win = path.resolve(gDir);
-fs.writeFileSync(path.join(gDir, 'godot.log'), '');
-execFileSync(process.execPath, [path.join(here, 'scripts', 'live-run.mjs'), '--name', 'godot-replay', '--status', path.join(outDir, 'godot-replay.jsonl'), '--log', path.join(gDir, 'godot.log'),
-  '--begin', '^REPLAY BEGIN (\\S+)', '--end', '^REPLAY END (\\S+)', '--fail', 'SHADER ERROR|^ERROR', '--pid', '^LIVE PID (\\d+)', '--skip-file', path.join(gDir, 'live-skip.txt'), '--min-idle', '20', '--factor', '10', '--',
-  'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Users\\Jonathan\\Desktop\\city\\tools\\build\\hidden_run.ps1',
-  '-Command', `"C:\\Users\\Jonathan\\AppData\\Local\\Microsoft\\WinGet\\Links\\godot_console.exe" --path "${win}" --script res://replay.gd --rendering-driver vulkan >> "${win}\\godot.log" 2>&1`, '-WorkDir', win, '-TimeoutS', '86400'], { stdio: 'inherit' });
+// Godot replays every case in one hidden task (tools/tasks: no window on the user's desktop, the whole tree stopped at its
+// deadline), keyed by what it reads: the cases, the shaders, the replay script and the captured textures' names (by content).
+const godot = machine().get('godot');
+// every case is replayed: a skip list an earlier watched run left would hide draws from this one
+fs.rmSync(path.join(gDir, 'live-skip.txt'), { force: true });
+const replayCases = JSON.parse(fs.readFileSync(path.join(gDir, 'cases.json'), 'utf8'));
+const [replayed] = runTasksSync([{ name: 'converter-replay-godot', cwd: win, hidden: true, outputs: [path.join(gDir, 'out')],
+  timeoutS: REPLAY_START_TIMEOUT_S + REPLAY_DRAW_TIMEOUT_S * replayCases.length,
+  extra: [keyOf(filesKey([path.join(gDir, 'cases.json'), path.join(gDir, 'replay.gd'), path.join(gDir, 'project.godot')]), folderKey(path.join(gDir, 'shaders')),
+    ...fs.readdirSync(path.join(gDir, 'data')).sort()), toolKey(godot)],
+  argv: [godot, '--path', win, '--script', 'res://replay.gd', '--rendering-driver', 'vulkan'] }]);
+mustRun('Godot\'s replay', replayed);
+fs.writeFileSync(path.join(gDir, 'godot.log'), logOf(replayed));
 
 // ---- compare (scripts/replay-judge.mjs: orientation, alpha, float targets, depth-only draws)
 const report = judge(cases, path.join(outDir, 'webgl'), path.join(gDir, 'out'), { depthOnly, programOf: (i) => index.draws[i].program })

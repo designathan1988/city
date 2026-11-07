@@ -1,5 +1,4 @@
-// Tests of the C++ graph on a fixture subsystem, through a real clangd. Needs CONVERTER_CLANGD (clangd executable) and
-// CONVERTER_CXX (the C++ compiler driver the compile commands name).
+// Tests of the C++ graph on a fixture subsystem, through a real clangd (the machine file's clangd and compiler driver).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -9,10 +8,10 @@ import { runAudit } from '../src/audit/run.ts';
 import { removeTree } from '../src/common/files.ts';
 import { buildCppGraph } from '../src/cppgraph/build.ts';
 import type { EdgeKind, GraphIR } from '../src/graph/ir.ts';
+import { clangdPath, cxxPath } from './support.ts';
 
-const clangd = process.env['CONVERTER_CLANGD'];
-const cxx = process.env['CONVERTER_CXX'];
-if (!clangd || !cxx) throw new Error('set CONVERTER_CLANGD (clangd) and CONVERTER_CXX (compiler driver) to run these tests');
+const clangd = clangdPath();
+const cxx = cxxPath();
 const root = path.join(import.meta.dirname, 'fixtures', 'cpp');
 
 function listing(dir: string): string[] {

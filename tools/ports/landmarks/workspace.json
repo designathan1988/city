@@ -1,8 +1,8 @@
 {
   "version": 1,
   "feature": "landmarks",
-  "game": "C:/Projects/Roadcraft-windows/fonte",
+  "game": "${game}",
   "base": "a11384aa2303e1913636063f5ffff7e6d12b98ed",
   "branch": "convert/landmarks",
-  "workspace": "C:/Projects/Roadcraft-windows/ports/landmarks/workspace"
+  "workspace": "${ports}/landmarks/workspace"
 }

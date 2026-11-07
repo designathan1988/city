@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """Gera coverage.md: uma linha por arquivo e por declaracao propria de feature.md.
 O que a declaracao faz vem do comentario dela no rastreamento; estado, dono e motivo vem de coverage_rules.json."""
-import json, re, os, collections
-ROOT = 'C:/Projects/Roadcraft-windows/converter/out/features/roads'
+import collections
+import json
+import os
+import re
+import sys
+
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, '..', '..', 'converter', 'scripts'))
+from machine_config import machine  # noqa: E402
+
+# the feature's extraction, in the converter's out/ (the converter's folder from the machine file)
+ROOT = f"{machine()['converter']}/out/features/roads"
 b = json.load(open(f'{ROOT}/boundary.json', encoding='utf8'))
 regras = json.load(open(f'{HERE}/coverage_rules.json', encoding='utf8'))
 feat = open(f'{ROOT}/feature.md', encoding='utf8').read()

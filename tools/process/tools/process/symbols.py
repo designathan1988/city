@@ -7,7 +7,7 @@ import json
 import os
 import re
 
-import estado as E
+import state as E
 
 L = E.L
 EXTS = {".gd", ".cpp", ".h", ".gdshader", ".gdshaderinc", ".py", ".cjs", ".mjs"}

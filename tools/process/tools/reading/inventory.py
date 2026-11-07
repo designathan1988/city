@@ -19,7 +19,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import leitura_lib as L  # noqa: E402
+import reading_lib as L  # noqa: E402
 
 
 def _entrada_hook():

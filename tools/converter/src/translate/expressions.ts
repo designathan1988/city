@@ -15,6 +15,19 @@ import { snake, staticName, upper } from './names.ts';
 /** The header of the runtime of the ECMAScript built-ins, as the target includes it (files.ts writes it there). */
 export const RUNTIME_INCLUDE = 'core/js_runtime.h';
 
+/**
+ * Math.random's generator: a parameter every function that draws takes (and every caller passes on: the translator's
+ * context), of the runtime's interface (cpp/js/js_random.h) the caller implements with a generator it seeds. A translated
+ * simulation then draws only what it is given: it is a function of its inputs and its seed.
+ */
+export const RANDOM_CONTEXT = { type: 'js::Random &', name: 'rng' } as const;
+
+/** Whether an expression is a call of the global Math.random. */
+export function isMathRandom(ts: typeof TS, e: TS.Node): boolean {
+  return ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && ts.isIdentifier(e.expression.expression)
+    && e.expression.expression.text === 'Math' && e.expression.name.text === 'random';
+}
+
 /** Whether a number becomes another kind landing where braces refuse it: real and integer, or a wider integer in a narrower one. */
 function narrows(from: CppType, to: CppType): boolean {
   if (!isNumber(from) || !isNumber(to) || render(from) === render(to)) return false;
@@ -839,6 +852,11 @@ export abstract class ExpressionEmitter {
     if (method === 'imul') {
       const u = (v: Value): string => (isInt(v.type) ? `uint32_t(${v.code})` : `uint32_t(int64_t(${v.code}))`);
       return { code: `int32_t(${u(args[0]!)} * ${u(args[1]!)})`, type: { k: 'int', name: 'int32_t' } };
+    }
+    // drawn from the generator the caller passes (RANDOM_CONTEXT), never from one the runtime would seed itself
+    if (method === 'random') {
+      this.c.includes.add(RUNTIME_INCLUDE);
+      return { code: `${render(real)}(${RANDOM_CONTEXT.name}.next_unit())`, type: real };
     }
     if (method === 'abs') return isInt(args[0]!.type) ? { code: `std::abs(${args[0]!.code})`, type: INT } : { code: `std::fabs(${args[0]!.code})`, type: real };
     if (REAL_MATH.has(method)) return { code: `std::${method}(${args.map((a) => a.code).join(', ')})`, type: real };

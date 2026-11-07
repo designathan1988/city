@@ -7,9 +7,14 @@ import collections
 import json
 import os
 import re
+import sys
 
-ROOT = 'C:/Projects/Roadcraft-windows/converter/out/features/road-elevation'
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, '..', '..', 'converter', 'scripts'))
+from machine_config import machine  # noqa: E402
+
+# the feature's extraction, in the converter's out/ (the converter's folder from the machine file)
+ROOT = f"{machine()['converter']}/out/features/road-elevation"
 b = json.load(open(f'{ROOT}/boundary.json', encoding='utf8'))
 regras = json.load(open(f'{HERE}/coverage_rules.json', encoding='utf8'))
 feat = open(f'{ROOT}/feature.md', encoding='utf8').read()

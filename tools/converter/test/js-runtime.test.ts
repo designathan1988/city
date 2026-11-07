@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { cxxPath } from './support.ts';
 
 const RUNTIME = path.join(import.meta.dirname, '..', 'cpp', 'js');
 
@@ -106,8 +107,7 @@ const fill = (template: string, args: readonly string[], js: boolean): string =>
 
 describe('the C++ runtime of the ECMAScript built-ins', () => {
   it('answers as JavaScript does, bit for bit and byte for byte, on every case', (t) => {
-    const cxx = process.env['CONVERTER_CXX'];
-    if (!cxx) return t.skip('set CONVERTER_CXX to compile the runtime');
+    const cxx = cxxPath();
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-js-runtime-'));
     try {
       const jsLines: string[] = ['const out = [];', 'const bits = (x) => { if (Number.isNaN(x)) return "nan"; const b = new DataView(new ArrayBuffer(8)); b.setFloat64(0, x); return b.getBigUint64(0).toString(16); };',

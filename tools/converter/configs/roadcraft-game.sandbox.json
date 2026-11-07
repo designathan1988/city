@@ -1,58 +1,65 @@
 {
-  "_doc": "The game's own setup and verification (tools/build/build.sh core-windows, ferramentas/verificar_integracao.py), run in the sandbox clone. Needs GODOT (Godot 4.7 console binary), MINGW (llvm-mingw root), BASH (Git bash) and PYTHON in the environment.",
+  "_doc": "The game's own setup and verification (cmake configure and build, tools/gates/run_gates.py, the Godot import, the test suite of tools/tasks (exit 0 only when every test scene passed), the capture), run in the sandbox clone, each step a task of tools/tasks with its deadline, its products (outputs) and the steps it needs (after). ${machine:key} is a key of configs/roadcraft-machine.json.",
   "copy": ["native/godot-cpp"],
-  "hiddenRunner": "tools/build/hidden_run.ps1",
   "setup": [
     {
       "name": "configure-release",
       "run": ["cmake", "-S", "native", "-B", "native/build-win", "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
-        "-DGODOTCPP_TARGET=template_release", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${env:MINGW}"],
-      "timeoutSeconds": 600
+        "-DGODOTCPP_TARGET=template_release", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${machine:mingw}"],
+      "timeoutSeconds": 600,
+      "outputs": ["${sandbox}/native/build-win"]
     },
     {
       "name": "configure-debug",
       "run": ["cmake", "-S", "native", "-B", "native/build-win-debug", "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
-        "-DGODOTCPP_TARGET=template_debug", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${env:MINGW}",
+        "-DGODOTCPP_TARGET=template_debug", "-DCMAKE_TOOLCHAIN_FILE=${sandbox}/native/toolchain-mingw.cmake", "-DLLVM_MINGW=${machine:mingw}",
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"],
-      "timeoutSeconds": 600
+      "timeoutSeconds": 600,
+      "outputs": ["${sandbox}/native/build-win-debug"]
     }
   ],
   "verify": [
     {
       "name": "gates",
-      "run": ["${env:PYTHON}", "tools/gates/run_gates.py", "--summary"],
+      "run": ["${machine:python}", "tools/gates/run_gates.py", "--summary"],
+      "timeoutSeconds": 900,
       "expect": { "includes": ["OK"] }
     },
     {
       "name": "build-release",
       "run": ["cmake", "--build", "native/build-win", "-j", "4"],
-      "timeoutSeconds": 3600
+      "timeoutSeconds": 3600,
+      "outputs": ["${sandbox}/project/bin/libcitycore.windows.template_release.x86_64.dll"]
     },
     {
       "name": "build-debug",
       "run": ["cmake", "--build", "native/build-win-debug", "-j", "4"],
-      "timeoutSeconds": 3600
+      "timeoutSeconds": 3600,
+      "outputs": ["${sandbox}/project/bin/libcitycore.windows.template_debug.x86_64.dll"]
     },
     {
       "name": "import",
-      "run": ["${env:GODOT}", "--path", "project", "--headless", "--import"],
+      "run": ["${machine:godot}", "--path", "project", "--headless", "--import"],
+      "after": ["build-release", "build-debug"],
       "timeoutSeconds": 900,
+      "outputs": ["${sandbox}/project/.godot"],
       "expect": { "excludes": ["SCRIPT ERROR"] }
     },
     {
       "name": "tests",
-      "hidden": true,
-      "run": ["\"${env:BASH}\"", "tools/build/run_tests.sh", "\"${env:GODOT}\"", "project", "\"${evidence}/logs\"", ">", "\"${evidence}/tests.txt\"", "2>&1"],
-      "timeoutSeconds": 3600,
-      "expect": { "file": "${evidence}/tests.txt", "excludes": ["FALHOU"], "atLeast": { "text": "ok ", "count": 4 } }
+      "run": ["${machine:python}", "tools/tasks/cli.py", "run", "tests"],
+      "after": ["import"],
+      "timeoutSeconds": 3600
     },
     {
       "name": "capture",
       "hidden": true,
-      "run": ["\"${env:GODOT}\"", "--path", "project", "--resolution", "1600x900", "res://tests/visual/capture.tscn", "--", "--map=0",
-        "--capture-dir=\"${evidence}/photos\"", ">", "\"${evidence}/capture.txt\"", "2>&1"],
+      "run": ["${machine:godot}", "--path", "project", "--resolution", "1600x900", "res://tests/visual/capture.tscn", "--", "--map=0",
+        "--capture-dir=${evidence}/photos"],
+      "after": ["import"],
       "timeoutSeconds": 1800,
-      "expect": { "file": "${evidence}/capture.txt", "excludes": ["SCRIPT ERROR"], "files": { "dir": "${evidence}/photos", "count": 20 } }
+      "outputs": ["${evidence}/photos"],
+      "expect": { "excludes": ["SCRIPT ERROR"], "files": { "dir": "${evidence}/photos", "count": 20 } }
     }
   ]
 }

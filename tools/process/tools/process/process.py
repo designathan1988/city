@@ -15,10 +15,10 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import comandos as C  # noqa: E402
-import estado as E  # noqa: E402
-import passos as P  # noqa: E402
-import simbolos as S  # noqa: E402
+import commands as C  # noqa: E402
+import state as E  # noqa: E402
+import steps as P  # noqa: E402
+import symbols as S  # noqa: E402
 
 L = E.L
 FORMA = "gate"

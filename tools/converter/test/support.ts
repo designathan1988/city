@@ -1,29 +1,40 @@
-// What every test shares, owned once: the TypeScript package the graph analyses with (given by
-// CONVERTER_TYPESCRIPT, never a fixed path) and the graph of the fixture project.
+// What every test shares, owned once: the tools the tests run (the machine file's, src/common/machine.ts: TypeScript,
+// Jelly, PostCSS, clangd, the C++ compiler; an environment variable only overrides one) and the graph of the fixture project.
 import path from 'node:path';
+import { machine } from '../src/common/machine.ts';
 import { buildGraph } from '../src/graph/build.ts';
 import type { GraphIR } from '../src/graph/ir.ts';
 
 export const FIXTURE = path.join(import.meta.dirname, 'fixtures', 'basic');
 
+/** The TypeScript package the graph analyses with (5.8 or newer). */
 export function typescriptDir(): string {
-  const dir = process.env['CONVERTER_TYPESCRIPT'];
-  if (!dir) throw new Error('set CONVERTER_TYPESCRIPT to a typescript package directory (5.8 or newer) to run these tests');
-  return dir;
+  return machine().get('typescript');
 }
 
-/** The Jelly package whose call graph says what each call runs (CONVERTER_JELLY, never a fixed path). */
+/** The Jelly package whose call graph says what each call runs. */
 export function jellyDir(): string {
-  const dir = process.env['CONVERTER_JELLY'];
-  if (!dir) throw new Error('set CONVERTER_JELLY to the @cs-au-dk/jelly package directory to run these tests');
-  return dir;
+  return machine().get('jelly');
 }
 
-/** The PostCSS package style sheets are read with (CONVERTER_POSTCSS, never a fixed path). */
+/** The PostCSS package style sheets are read with (8 or newer). */
 export function postcssDir(): string {
-  const dir = process.env['CONVERTER_POSTCSS'];
-  if (!dir) throw new Error('set CONVERTER_POSTCSS to a postcss package directory (8 or newer) to run these tests');
-  return dir;
+  return machine().get('postcss');
+}
+
+/** The folder holding @shaderfrog/glsl-parser (its node_modules), the shader translation's parser. */
+export function glslDir(): string {
+  return machine().get('glsl');
+}
+
+/** The clangd the C++ graph is read through. */
+export function clangdPath(): string {
+  return machine().get('clangd');
+}
+
+/** The C++ compiler driver the translations, the runtime and the compile commands use. */
+export function cxxPath(): string {
+  return machine().get('cxx');
 }
 
 /** The fixture's graph from `entries`, or of its whole scope when there are none. */

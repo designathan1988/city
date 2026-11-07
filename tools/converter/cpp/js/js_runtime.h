@@ -6,6 +6,7 @@
 #include "js_array.h"
 #include "js_map.h"
 #include "js_number.h"
+#include "js_random.h"
 #include "js_string.h"
 #include "js_value.h"
 

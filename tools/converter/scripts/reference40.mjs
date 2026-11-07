@@ -9,11 +9,11 @@ import fs from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { machine } from '../src/common/machine.ts';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const CONVERTER = path.join(HERE, '..');
-const machine = JSON.parse(fs.readFileSync(path.join(CONVERTER, 'configs', 'roadcraft-machine.json'), 'utf8'));
-const source = machine.source;
+const source = machine().get('source');
 const args = process.argv.slice(2);
 const [planFile, outDir] = args.filter((a) => !a.startsWith('--'));
 if (!planFile || !outDir) {

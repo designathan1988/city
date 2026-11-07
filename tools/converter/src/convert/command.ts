@@ -2,13 +2,15 @@
 // what is clean, the quarantine judges every output, and the report lists what stays open with its correct method.
 // Nothing is written to the target: accepted files go to --out/files. Exit 0 only when nothing is open.
 import { convertWhole } from './whole.ts';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
 import { runAudit } from '../audit/run.ts';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
+import { programGraph, targetGraph as derivedTargetGraph } from '../common/derived.ts';
 import { removeTree, writeTree } from '../common/files.ts';
+import { machine } from '../common/machine.ts';
+import { textsKey } from '../common/tasks.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram } from '../graph/typescript.ts';
 import { prepareTranslation, translate, type PreparedProgram } from '../translate/run.ts';
@@ -23,20 +25,22 @@ export const CONVERT_FLAGS: readonly FlagSpec[] = [
   { name: 'feature', required: true, help: 'the feature\'s name' },
   { name: 'source-root', required: true, help: 'root of the TypeScript source project' },
   { name: 'typescript', help: 'TypeScript package directory (default: the source project\'s own)' },
-  { name: 'graph', required: true, help: 'the whole program\'s graph (converter graph)' },
   { name: 'boundary', required: true, help: 'the feature\'s boundary.json (converter feature)' },
   { name: 'target-root', required: true, help: 'root of the target game (read only)' },
-  { name: 'target-graph', required: true, help: 'the target\'s C++ graph (converter cppgraph)' },
   { name: 'library', required: true, help: 'what the game already owns (configs/conversion-library.json)' },
-  { name: 'ports', required: true, help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has' },
+  { name: 'ports', help: 'the port folders: each coverage.md (or the older cobertura.md) says what the game has (default: the machine file\'s "ports")' },
   { name: 'coverage-proof', help: 'how a coverage claim is taken: "believed" (default) or "shown" (the owner files exist in the game and cite the unit; a claim not shown is decided again)' },
-  { name: 'cxx', required: true, help: 'the C++ compiler that checks each output' },
+  { name: 'cxx', help: 'the C++ compiler that checks each output (default: the machine file\'s "cxx")' },
   { name: 'mode', help: '"modules" (default: each module judged alone) or "whole" (the program in one translation, what fails leaving alone)' },
   { name: 'constants', help: 'JSON: constant name -> its measurement or primary source' },
   { name: 'out', required: true, help: 'output folder: files/, ledger.json, registration.json, conversao.md' },
 ];
 
 const AUDIT_EXTENSION = '.cpp';
+/** The folder of the judged outputs (one overlay per content) inside --out. */
+const CANDIDATE = 'candidate';
+/** Characters of the content key that name an overlay. */
+const OVERLAY_NAME_CHARS = 16;
 /** Modules judged ahead of the one being taken: their compiles overlap the next translations. */
 const JUDGED_AHEAD = 16;
 /** How often a long run writes down what it has decided (a run stopped halfway keeps it). */
@@ -252,10 +256,9 @@ async function judge(spec: TranslationSpec, input: JudgeInput): Promise<Judged> 
     return refused([`the translator stopped: ${(error as Error).message.split('\n')[0]}`]);
   }
   if (result.errors.length > 0) return { ...refused(result.errors), attempt: { errors: result.errors, findings: [], files: result.files, units: result.units } };
-  // one overlay per judgment (its units in the name): judgments of one module may run together
-  const overlay = path.join(input.candidate, module.replace(/[^\w.-]+/g, '_'), createHash('sha256').update(spec.units.join('\0')).digest('hex').slice(0, 12));
-  removeTree(overlay);
-  writeTree(overlay, result.files);
+  // one overlay per content (what it holds names it): judgments that wrote the same files share it, and nothing is wiped
+  const overlay = path.join(input.candidate, module.replace(/[^\w.-]+/g, '_'), textsKey(result.files).slice(0, OVERLAY_NAME_CHARS));
+  if (!fs.existsSync(overlay)) writeTree(overlay, result.files);
   const findings: QuarantineFinding[] = [...scanUnits(input.stopOf, result.units), ...scanFiles(result.files, targetLimits(input.rules)),
     ...(await compileFiles(input.cxx, overlay, input.targetRoot, result.files))];
   if (findings.length > 0) return { ...refused(findings.map((f) => `${f.rule} ${f.file}: ${f.detail}`)), attempt: { errors: [], findings, files: result.files, units: result.units } };
@@ -272,20 +275,22 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
   const out = path.resolve(flags.require('out'));
   const library = readLibrary(flags.require('library'));
   const rules = path.join(targetRoot, library.rules);
-  const graph = JSON.parse(fs.readFileSync(flags.require('graph'), 'utf8')) as GraphIR;
+  const typescript = flags.one('typescript');
+  // the graphs this run reads, each derived from its inputs' content (made when no run has made it)
+  const graph = JSON.parse(fs.readFileSync(programGraph({ sourceRoot, typescriptDir: typescript }), 'utf8')) as GraphIR;
   const boundary = JSON.parse(fs.readFileSync(flags.require('boundary'), 'utf8')) as { own: string[]; sliced: string[] };
   const proof = flags.one('coverage-proof') ?? 'believed';
   if (proof !== 'believed' && proof !== 'shown') throw new ArgsError(`--coverage-proof is believed or shown, not ${proof}`);
   const owners = new Map<string, string | null>();
-  const ledger = new Ledger({ graph, audit: auditOf(graph, rules), own: boundary.own, sliced: boundary.sliced, coverage: readCoverage(flags.require('ports')),
+  const ledger = new Ledger({ graph, audit: auditOf(graph, rules), own: boundary.own, sliced: boundary.sliced, coverage: readCoverage(flags.one('ports') ?? machine().get('ports')),
     ownedFiles: library.ownedFiles, ownedNames: ownedNames(library),
     ...(proof === 'shown' ? { unproven: (id: string, delivered: Delivered) => unproven(targetRoot, { id, delivered }, owners) } : {}) });
-  const typescript = flags.one('typescript');
   const ts = loadTypeScript(sourceRoot, typescript);
   const sp = openProgram(ts, sourceRoot, path.join(sourceRoot, 'tsconfig.json'));
   const specs = moduleSpecs(ts, sp, sourceRoot, feature, ledger.units, library, graph.files.map((f) => f.path));
-  removeTree(out);
+  // what this run writes is written fresh; the candidate overlays are named by their content and stay
   fs.mkdirSync(out, { recursive: true });
+  for (const entry of fs.readdirSync(out)) if (entry !== CANDIDATE) removeTree(path.join(out, entry));
   const accepted = new Map<string, string>();
   const outcomes: ModuleOutcome[] = [];
   const registrations: Registration[] = [];
@@ -311,12 +316,13 @@ export async function runConvertCommand(argv: readonly string[]): Promise<void> 
   let totals = report();
   const first = specs[0];
   if (first) {
-    const targetGraph = path.resolve(flags.require('target-graph'));
+    const targetGraph = derivedTargetGraph({ targetRoot });
+    const cxx = flags.one('cxx') ?? machine().get('cxx');
     const prepared = prepareTranslation({ sourceRoot, tsconfig: path.join(sourceRoot, 'tsconfig.json'), typescriptDir: typescript, spec: first, targetRoot, targetGraph });
-    const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), rules, candidate: path.join(out, 'candidate'),
+    const judgeInput = { sourceRoot, typescript, targetRoot, targetGraph, cxx: cxx, rules, candidate: path.join(out, CANDIDATE),
       stopOf: (id: string) => ledger.stopOf(id), prepared };
     if (flags.one('mode') === 'whole') {
-      const whole = await convertWhole(specs, { sourceRoot, typescript, targetRoot, targetGraph, cxx: flags.require('cxx'), candidate: path.join(out, 'candidate'), prepared,
+      const whole = await convertWhole(specs, { sourceRoot, typescript, targetRoot, targetGraph, cxx: cxx, candidate: path.join(out, CANDIDATE), prepared,
         stopOf: (id: string) => ledger.stopOf(id) }, (text) => console.log(`  ${text}`));
       const broken = new Set(whole.failing);
       for (const [file, text] of whole.result.files) if (!broken.has(file)) accepted.set(file, text);

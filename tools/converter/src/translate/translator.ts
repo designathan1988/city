@@ -10,6 +10,7 @@ import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './co
 import { holdsTypeParameter, paramType, render, type CppType, target } from './cpptype.ts';
 import { pascal, snake, staticName, upper } from './names.ts';
 import { Emitter } from './statements.ts';
+import { isMathRandom, RANDOM_CONTEXT } from './expressions.ts';
 
 export interface EmittedFunction {
   /** A class's member: its declaration is in the struct. */
@@ -157,7 +158,7 @@ export class Translator extends Emitter {
 
   /**
    * The context parameters each function takes: a context pattern it uses (in its body, or through a module constant
-   * mapped to one), or a function it calls that takes one, to the fixed point. They follow its own parameters, by
+   * mapped to one), Math.random (the generator the caller supplies), or a function it calls that takes one, to the fixed point. They follow its own parameters, by
    * name, and every call passes them on (the caller has them as its own).
    */
   #propagateContext(): void {
@@ -177,6 +178,7 @@ export class Translator extends Emitter {
         if (ts.isExpression(n)) {
           const m = this.c.patterns.match(n);
           if (m?.pattern.context) own.set(m.pattern.context.name, m.pattern.context);
+          if (isMathRandom(ts, n)) own.set(RANDOM_CONTEXT.name, RANDOM_CONTEXT);
         }
         if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
           const s = this.symbolOf(n.expression);

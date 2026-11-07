@@ -7,7 +7,6 @@
 ],
 "owner": "native/src/api/lab",
 "summary": "the lab's consumers: the samples of one thing that costs, read over a window",
-"library": "C:/Users/Jonathan/Desktop/city-worktrees/lab/tools/ports/road-elevation/conversion-library.json",
-"targetRoot": "C:/Users/Jonathan/Desktop/city-worktrees/lab",
-"targetGraph": "C:/Users/Jonathan/AppData/Local/Temp/claude/26c8cd2f84403c71/6266e3d7-e77a-4554-af1a-13c6b872f74c/scratchpad/conv-elev/cppgraph.json"
+"library": "${game}/tools/ports/road-elevation/conversion-library.json",
+"targetRoot": "${game}"
 }

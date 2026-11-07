@@ -1,8 +1,8 @@
 {
   "version": 1,
   "feature": "interior",
-  "game": "C:/Projects/Roadcraft-windows/fonte",
+  "game": "${game}",
   "base": "a11384aa2303e1913636063f5ffff7e6d12b98ed",
   "branch": "convert/interior",
-  "workspace": "C:/Projects/Roadcraft-windows/ports/interior/workspace"
+  "workspace": "${ports}/interior/workspace"
 }

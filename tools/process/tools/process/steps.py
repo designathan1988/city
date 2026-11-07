@@ -8,8 +8,8 @@ import os
 import re
 import time
 
-import comandos as C
-import estado as E
+import commands as C
+import state as E
 
 L = E.L
 MIN_TEXTO = 40  # um campo de análise mais curto que isto não diz nada

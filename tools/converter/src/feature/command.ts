@@ -4,16 +4,17 @@
 // interface/ (the shared code it uses, as declarations: interface.ts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
+import { parseFlags, type FlagSpec } from '../common/args.ts';
+import { programGraph } from '../common/derived.ts';
 import { removeTree } from '../common/files.ts';
-import { buildGraph } from '../graph/build.ts';
+import { machine } from '../common/machine.ts';
 import { IR_VERSION, type GraphIR } from '../graph/ir.ts';
 import { loadTypeScript, openProgram, type SourceProgram, type TypeScriptApi } from '../graph/typescript.ts';
 import { featureBoundary, type FeatureBoundary, type FeatureUse } from './boundary.ts';
 import { holdsFeature } from './holders.ts';
 import { htmlRoots } from './html.ts';
 import { writeInterface, type InterfaceOut } from './interface.ts';
-import { CallTargets, readJelly, runJelly } from './callgraph.ts';
+import { CallTargets, runJelly } from './callgraph.ts';
 import { castExternals, platformHooks, type CastExternal, type PlatformHook } from './platform.ts';
 import { PointsTo } from './pointsto.ts';
 import { featureResources, type FeatureResource } from './resources.ts';
@@ -29,9 +30,7 @@ export const FEATURE_FLAGS: readonly FlagSpec[] = [
   { name: 'entry', required: true, repeatable: true, help: 'a file of the feature, relative to the source root' },
   { name: 'root', repeatable: true, help: 'a script the program starts from (default: the module scripts of the root\'s HTML pages)' },
   { name: 'include', repeatable: true, help: 'directory holding the project\'s own code, relative to the source root (default: src)' },
-  { name: 'graph', help: 'the whole program\'s graph (`converter graph` with no entry), to reuse instead of building it' },
-  { name: 'jelly', help: 'the @cs-au-dk/jelly package directory, whose call graph says what each call runs (default: $CONVERTER_JELLY)' },
-  { name: 'analysis', help: 'a directory where Jelly left its call graph and points-to sets of the program (run in the code directory), to reuse' },
+  { name: 'jelly', help: 'the @cs-au-dk/jelly package directory, whose call graph says what each call runs (default: the machine file\'s "jelly")' },
   { name: 'out', required: true, help: 'output folder' },
 ];
 
@@ -40,12 +39,11 @@ export function runFeatureCommand(argv: readonly string[]): void {
   const sourceRoot = path.resolve(flags.require('source-root'));
   const tsconfig = flags.one('tsconfig') ?? path.join(sourceRoot, 'tsconfig.json');
   const out = path.resolve(flags.require('out'));
-  const given = flags.one('graph');
-  // The whole program's graph: whether a declaration is shared depends on everything that uses it.
-  const ir: GraphIR = given ? JSON.parse(fs.readFileSync(given, 'utf8')) as GraphIR
-    : buildGraph({ sourceRoot, tsconfig, typescriptDir: flags.one('typescript'), entries: [], include: flags.all('include'), exclude: [] });
-  if (ir.version !== IR_VERSION) throw new ArgsError(`--graph ${given} is a graph of version ${ir.version}; this converter reads version ${IR_VERSION}: build it again`);
-  if (ir.entries.length > 0) throw new ArgsError(`--graph ${given} is the graph of ${ir.entries.join(', ')}, not of the whole program`);
+  // The whole program's graph: whether a declaration is shared depends on everything that uses it. Derived from the
+  // source's content (made once per state of the source and of the converter code that makes it).
+  const graphFile = programGraph({ sourceRoot, tsconfig, typescriptDir: flags.one('typescript'), include: flags.all('include') });
+  const ir = JSON.parse(fs.readFileSync(graphFile, 'utf8')) as GraphIR;
+  if (ir.version !== IR_VERSION) throw new Error(`${graphFile} is a graph of version ${ir.version}; this converter reads version ${IR_VERSION}`);
   const ts = loadTypeScript(sourceRoot, flags.one('typescript'));
   const sp = openProgram(ts, sourceRoot, tsconfig);
   const index = new UnitIndex(sp, ir);
@@ -56,10 +54,7 @@ export function runFeatureCommand(argv: readonly string[]): void {
   fs.mkdirSync(out, { recursive: true });
   // What each call runs: Jelly's call graph of the program's roots (its paths are relative to the project's own code).
   const base = path.join(sourceRoot, flags.all('include')[0] ?? 'src');
-  const reuse = flags.one('analysis');
-  const jelly = flags.one('jelly') ?? process.env['CONVERTER_JELLY'];
-  if (!reuse && !jelly) throw new ArgsError('give --jelly (or set CONVERTER_JELLY) or --analysis: Jelly says what each call runs and what each value is');
-  const analysis = reuse ? readJelly(reuse, base) : runJelly(jelly!, base, roots.map((r) => path.join(sourceRoot, r)), path.join(out, 'jelly'));
+  const analysis = runJelly(flags.one('jelly') ?? machine().get('jelly'), base, roots.map((r) => path.join(sourceRoot, r)));
   const calls = new CallTargets(ts, analysis.callGraph, base, (file) => sp.sourceFile(file));
   const pts = new PointsTo(ts, analysis.tokens, base);
   const resources = featureResources(ts, sp.checker, index, sourceRoot, boundary, slices, calls, pts, flags.one('postcss'));

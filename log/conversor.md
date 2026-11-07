@@ -1,6 +1,6 @@
 # Registro do conversor (tools/converter)
 
-Para outra sessão continuar o trabalho do conversor e tradutor do Roadcraft 4.0 para o jogo.
+For another session to continue the work on the converter and translator into the game.
 
 **Regra do usuário (2026-11-05): a cada tarefa feita e a cada informação nova, atualizar este arquivo.** O "Histórico"
 recebe uma linha por acontecimento (data, hora, o quê, commit); "Estado atual" e "A fazer" são reescritos para ficar
@@ -8,15 +8,15 @@ sempre verdadeiros.
 
 ## Estado atual (2026-11-05, sessão retomada)
 
-- **O alvo é o jogo, o 4.0 é só a referência (correção do usuário, 2026-11-05).** Nada traduzido chegou ao jogo ainda: esse é o trabalho, à frente de qualquer ferramenta em volta do 4.0.
-- **Primeira área no jogo (2026-11-05):** `src/sim/roads/flowStats.ts` e `controlAdvisor.ts` traduzidos sem edição, compilados no jogo e iguais ao 4.0; ver "Causa e prova" no histórico.
-- **Estado do tradutor:** sistema de tipos aberto (`js::Value`), classes, genéricos, subclasses, setters. `--mode whole`: 4.130 unidades compilam, de 19.377 (11.238 traduzíveis), 4 arquivos de fora. `scripts/check-all.ts` confere cada módulo contra o 4.0 sem jogo: 84 de 359 módulos batem.
-- **Caminho validado para portar:** `CXX=<clang++> node scripts/port-area.ts <plano> <saída>`, área por área: traduz e confere contra o 4.0 sem jogo (3.000 chamadas sorteadas em 2,1 s). Validado numa área só.
+- **The target is the game (user correction, 2026-11-05).** Nothing translated has reached the game yet: that is the work, ahead of any surrounding tooling.
+- **First area in the game (2026-11-05):** the flow statistics and the control advisor translated without editing and compiled into the game (`flow_control`); see "Causa e prova" in the history.
+- **Translator state:** open type system (`js::Value`), classes, generics, subclasses, setters. `--mode whole`: 4,130 units compile, of 19,377 (11,238 translatable), 4 files left out. `scripts/check-all.ts` runs each translated module against its TypeScript source without the game: 84 of 359 modules match.
+- **Validated path to port:** `CXX=<clang++> node scripts/port-area.ts <plan> <output>`, area by area: translates and checks against the TypeScript source without the game (3,000 random calls in 2.1 s). Validated on one area only.
 - `tools/converter` (master `c3642d9`, conteúdo trazido ao repositório do jogo); `tools/converter-slice` atrás do master (falta aplicar `5a15b1f` em diante). O repositório do jogo ainda tem o conversor em `9499eac`: falta trazer com `git read-tree`.
 - Tradutor com subtipagem, templates, runtime C++ dos built-ins (regra única `js::<nome>`), `js::Set` e `js::Map`.
   Suíte inteira: 114 testes (ver "Comandos": sem as cinco variáveis, os de `feature` e `cppgraph` não rodam).
-- Referência nova (`Documents\Projects\city\roadcraft`) com grafo e Jelly em `out/city40`. As passadas por área usam as
-  fronteiras que a sessão do porte cortou (`<scratchpad dela>/converter-snap/out/features/area-*`).
+- Program graph and Jelly in `out/city40`. Per-area passes use the boundaries the port session cut
+  (`<its scratchpad>/converter-snap/out/features/area-*`).
 
 ## Onde está cada coisa
 
@@ -24,45 +24,31 @@ sempre verdadeiros.
   vai para o repositório do jogo por `git read-tree` (sessão dona do jogo).
 - Worktree `C:\Users\Jonathan\Desktop\city\tools\converter-slice` (branch `slice-envelope`): manter. Cada commit do
   master é aplicado lá por `git show <commit> --format= | git apply` e commitado como "sync from master".
-- Referência do Roadcraft 4.0, desde 2026-11-05: `C:\Users\Jonathan\Documents\Projects\city\roadcraft` (último commit
-  2921c465, 29/10). A antiga `Documents\Projects\roadcraft-4.0-main` (23/10) não vale mais.
-- Grafo e análise Jelly da referência nova: `tools/converter/out/city40/program.json` (863 arquivos, 20.318 unidades)
-  e `tools/converter/out/city40/whole/jelly` (callgraph.json, tokens.json; entrada src/main.ts). Os antigos
-  `out/rc40/program.json` e `out/jelly` são da referência antiga.
-- Configuração da máquina: `tools/converter/configs/roadcraft-machine.json`. Já aponta para a referência nova, para
-  `tools/ports` e para `tools/process/records/map40/features.json`. Depois de mudar, rode `node scripts/port.ts doctor`.
-- Cópia instrumentada do 4.0 para o oráculo: `tools/oracle-4.0` (o vite.config é nosso; o jogo original nunca é escrito).
-- Sessão parceira: "Roadcraft 4.0 migration analysis" (`uds:\\.\pipe\LOCAL\cc-msg-056396bf66f931dac736851d7e135edc`).
-  Ela faz os portes, as libraries (`tools/ports/<porte>/conversion-library.json`) e as passadas por área. O conversor é
-  deste lado.
+- Program graph and Jelly analysis: `tools/converter/out/city40/program.json` (863 files, 20,318 units) and
+  `tools/converter/out/city40/whole/jelly` (callgraph.json, tokens.json). The older `out/rc40/program.json` and
+  `out/jelly` are stale.
+- Machine configuration: `tools/converter/configs/roadcraft-machine.json`. It points to `tools/ports` and to
+  `tools/process/records/map40/features.json`. After changing it, run `node scripts/port.ts doctor`.
+- Partner session: the port session (`uds:\\.\pipe\LOCAL\cc-msg-056396bf66f931dac736851d7e135edc`). It does the ports,
+  the libraries (`tools/ports/<port>/conversion-library.json`) and the per-area passes. The converter is on this side.
 
 ## Comandos
 
 - Typecheck: `node scripts/typecheck.ts --typescript ../oracle-4.0/node_modules/typescript --types ../oracle-4.0/node_modules/@types`
-- Testes, todos (sem as variáveis, um teste que depende delas não roda, e o resumo pode dizer "fail 0" assim mesmo; conferir
-  se não sobrou nenhum `✖`):
-  `CONVERTER_TYPESCRIPT=../oracle-4.0/node_modules/typescript CONVERTER_CXX=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/x86_64-w64-mingw32-clang++.exe CONVERTER_CLANGD=C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin/clangd.exe CONVERTER_JELLY=C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly CONVERTER_POSTCSS=C:/Users/Jonathan/Documents/Projects/city/roadcraft/node_modules/postcss node --test "test/**/*.test.ts"`
-  (o de translate compila o C++ gerado e roda o diferencial contra a fonte; `js-runtime` compara o runtime com o Node).
-- Grafo de uma referência: `node --max-old-space-size=12288 src/cli.ts graph --source-root <ref> --typescript <ref>/node_modules/typescript --out <arquivo>`
-- Feature (fatia e Jelly): `src/cli.ts feature --source-root <ref> --graph <program.json> --analysis <pasta jelly> --entry <src/...> --out out/features/<nome>`
-  (`--jelly C:/Projects/toolchains/jelly/node_modules/@cs-au-dk/jelly` em vez de `--analysis` para refazer a análise).
-- Convert: `src/cli.ts convert --feature <f> --source-root <ref> --typescript <ref>/node_modules/typescript --graph <program.json> --boundary out/features/<f>/boundary.json --target-root C:/Users/Jonathan/Desktop/city --target-graph <cppgraph.json> --library <conversion-library.json> --ports C:/Users/Jonathan/Desktop/city/tools/ports --cxx <clang++> --out <pasta>`
-  Opções: `--coverage-proof shown` (só vale "in the game" que o jogo mostra), `--constants <json>`.
-- Censo dos built-ins: `node scripts/builtins-census.ts --source-root <ref> --typescript <ref>/node_modules/typescript --out out/builtins-census.json`
+- Tests, all (2026-11-07: every tool path comes from `configs/roadcraft-machine.json` through `src/common/machine.ts`;
+  `CONVERTER_*` env vars only override; 136 tests, the godot-shader suite included): `node --test "test/**/*.test.ts"`
+  (translate compiles the generated C++ once per translation and runs the differential with each seed as data; `js-runtime`
+  compares the runtime with Node).
+- Program graph: `node --max-old-space-size=12288 src/cli.ts graph --source-root <src> --typescript <src>/node_modules/typescript --out <file>`
+- Feature (slice and Jelly): `src/cli.ts feature --source-root <src> --entry <src/...> --out out/features/<name>` (since
+  2026-11-07 the program graph and the Jelly analysis are derived artifacts keyed by their inputs; `--graph`/`--analysis` are gone).
+- Convert: `src/cli.ts convert --feature <f> --source-root <src> --typescript <src>/node_modules/typescript --graph <program.json> --boundary out/features/<f>/boundary.json --target-root C:/Users/Jonathan/Desktop/city --library <conversion-library.json> --ports C:/Users/Jonathan/Desktop/city/tools/ports --cxx <clang++> --out <folder>`
+  Options: `--coverage-proof shown` ("in the game" counts only what the game shows), `--constants <json>`.
+- Built-ins census: `node scripts/builtins-census.ts --source-root <src> --typescript <src>/node_modules/typescript --out out/builtins-census.json`
 
-## O 4.0 sem nada aberto
+## Queries without anything open
 
-A referência é um commit fixo, então o que ela produz é imutável. Em `tools/converter`:
-- **Comportamento:** `node --no-warnings scripts/call40.mjs src/<modulo>.ts '<expressão com m>'`, JSON em 0,15 s, sem navegador.
-- **Cena real:** `node --max-old-space-size=8192 --no-warnings scripts/call40.mjs --scene '<expressão>'`, 16 s: `createSceneRenderer` sobre a GPU nula dos
-  testes do 4.0, `m = { city: {scene, doc, net, sim}, view([x,y,zoom,az,el]), settle() }`. Vista de rua: 364 draws (censo dele: 363).
-- **Fotos:** `node scripts/reference40.mjs <plano.json> <pasta> [--again]`. Plano já feito: 0 s, do arquivo (`out/reference-store`, por commit + plano). Plano
-  novo: servidor estático dentro do processo sobre o build (`out/build40/<commit>`, feito uma vez com `vite build --mode probe --outDir`, 10 s) e Chrome headless;
-  tudo fecha ao terminar (28 s). Aceita o plano do `look.mjs` e o do `look.gd` (`{"city": {...}, "steps": [...]}`).
-- **Edições:** passo `{"edit": "<código com d = RoadDoc>"}`: muda o documento e reabre por `loadDoc`. Direto no `doc` a cena não fica sabendo (não passa pelo
-  `mutateBuilt`). Exemplo: `configs/plans/viaduct.json` (avenida elevada a 8 m sobre uma rua).
-- **Foto sem Chrome nenhum: decidido não fazer agora.** O contexto nulo não tem linker nem pixels, e o quadro teria de ser desenhado em sequência no Godot. Mas aí a
-  "foto do 4.0" seria desenhada pelo nosso motor, e deixaria de ser a verdade contra a qual o Godot é conferido. O Chrome roda só para plano novo e fecha.
+(Section removed: it described querying the removed reference.)
 
 ## Roteiro: portar com o conversor
 
@@ -77,24 +63,23 @@ Em `tools/converter`. `node scripts/port.ts doctor` confere os caminhos de `conf
    `core/js_*.h`), `conversao.md` (cada unidade aberta, com dono e método), `ledger.json`, `registration.json` (membro do estado e linha do
    mapa), `specs/` (um spec por módulo aceito). `--apply` copia os arquivos para o clone.
 4. **O resto à mão, no dono:** cada linha aberta de `conversao.md` diz o método. A interface é sempre à mão (nunca há alvo GDScript).
-5. **Conferir contra a fonte:** `src/cli.ts differential --source-root <ref> --spec <specs/modulo.json> --target-graph <cppgraph.json>
-   --target-root <jogo> --cxx <clang++> --out <pasta> --hand native/src/<arquivo.cpp>`: o mesmo cenário aleatório na fonte e no C++, e o passo e o
-   valor de cada diferença. Sem `--hand`, compara a própria tradução.
-6. **Jogo:** `node scripts/port.ts verify <feature>`, `audit <feature>`, `pack <feature>` e `sandbox <feature>`; depois os gates, as DLLs e a
-   suíte, como manda o `CLAUDE.md`. `reference <feature>` tira as fotos do 4.0.
+5. **Check against the source:** `src/cli.ts differential --source-root <src> --spec <specs/module.json>
+   --target-root <game> --cxx <clang++> --out <folder> --hand native/src/<file.cpp>`: the same random scenario in the TypeScript source and in C++,
+   and the step and value of each difference. Without `--hand`, it compares the translation itself.
+6. **Game:** `node scripts/port.ts verify <feature>`, `audit <feature>`, `pack <feature>` and `sandbox <feature>`; then the gates, the DLLs and the
+   suite, as `CLAUDE.md` requires.
 
 **O que cada verificação prova:**
 - `differential`: o C++ dá o mesmo resultado que o TypeScript nos mesmos dados (lógica). `js-runtime.test.ts`: os built-ins iguais ao Node.
-- `scripts/verdict.mjs` + `oracle-calls.mjs` (cópia instrumentada, `tools/oracle-4.0`): o rastreamento contra o que o 4.0 executou de fato.
 - `scripts/oracle.mjs`: o que uma execução real chamou (cobertura V8, perfil de CPU) e todo shader dado à GPU.
 - `scripts/shaders.ts` + `shaders-verdict.mjs`: cada shader traduzido compila e desenha no Godot.
 - `scripts/parity.mjs`: three.js e Godot desenham igual, casos sintéticos.
-- `scripts/frame-capture.mjs` + `frame-replay.mjs`: um quadro real do 4.0, draw a draw, contra o Godot.
+- `scripts/frame-capture.mjs` + `frame-replay.mjs`: a captured three.js frame, draw by draw, replayed in Godot.
 - `scripts/draw-coverage.mjs`: se um draw vazio nos dois motores devia mesmo estar fora da tela.
 
-**Lista do que falta:** `tools/process/records/map40/features.json` tem 308 funcionalidades com linhas e unidades, mas foi gerado do grafo
-antigo (16.771 unidades; o 4.0 novo tem 20.318) e o campo de estado vem do `coverage.md`, que não é confiável (no poles, 268 de 275
-alegações não aparecem no jogo). O que vale: `convert --coverage-proof shown` e `python scripts/open-causes.py <pasta>`.
+**List of what is missing:** `tools/process/records/map40/features.json` has 308 features with lines and units, but it was generated
+from the old graph (16,771 units; the current graph has 20,318) and its state field comes from `coverage.md`, which is not reliable (in
+poles, 268 of 275 claims do not appear in the game). What counts: `convert --coverage-proof shown` and `python scripts/open-causes.py <folder>`.
 
 ## Feito (commits no master)
 
@@ -109,18 +94,18 @@ alegações não aparecem no jogo). O que vale: `convert --coverage-proof shown`
 - `117f6d7`: includes de cada módulo pelo próprio texto; tipos da lib do TS anônimos; módulo compartilhado traduzido
   como união (o convert traduz de novo com o que os anteriores escreveram).
 - `5673af1`: `--coverage-proof shown`. No poles, 268 das 275 alegações de coverage não aparecem no jogo.
-- `c8c2f5c`: a library declara tipos do jogo (`types`) e funções donas com `include`/`context`; pattern `type: owned`;
-  `scripts/builtins-census.ts` (4.0 antigo: 313 formas do núcleo ECMAScript com 50.578 usos, 511 do navegador com 7.333).
+- `c8c2f5c`: the library declares game types (`types`) and owner functions with `include`/`context`; pattern `type: owned`;
+  `scripts/builtins-census.ts` (old source: 313 ECMAScript core forms with 50,578 uses, 511 browser forms with 7,333).
 
 ## Runtime dos built-ins (commit `aab7600` no master, `5acf06c` no slice)
 
 A causa de tudo ir caso a caso é o tradutor ter uma regra escrita à mão para cada built-in do JavaScript.
 A correção é um runtime C++ dos built-ins, com uma regra só no tradutor:
-- `cpp/js/js_runtime.h`: Number::toString, toFixed (exato), Math (round, sign, fround, imul, clz32), ToInt32,
-  strings em unidades UTF-16 (slice, substring, indexOf, lastIndexOf, trim, padStart/End, charCodeAt, split,
-  fromCharCode), arrays (join, splice, pop, shift, unshift, indexOf, includes, findIndex, concat, flat, sort sem e com
-  comparador) e `js::Map`/`js::Set` com a ordem de inserção do JavaScript (o `std::unordered_map` trocava a ordem
-  das 303 leituras de Map.values e 172 de Map.keys do 4.0).
+- `cpp/js/js_runtime.h`: Number::toString, toFixed (exact), Math (round, sign, fround, imul, clz32), ToInt32,
+  strings in UTF-16 units (slice, substring, indexOf, lastIndexOf, trim, padStart/End, charCodeAt, split,
+  fromCharCode), arrays (join, splice, pop, shift, unshift, indexOf, includes, findIndex, concat, flat, sort with and
+  without a comparator) and `js::Map`/`js::Set` with JavaScript's insertion order (`std::unordered_map` changed the
+  order of the source's 303 Map.values and 172 Map.keys reads).
 - `test/js-runtime.test.ts`: cada built-in roda no Node e em C++ com as mesmas entradas, e o resultado é comparado por
   bits e bytes. Os 6.449 casos batem. O teste achou e corrigiu Math.round dando −0 em [−0,5; 0) e o surrogate solto
   virando U+FFFD.
@@ -156,26 +141,26 @@ A correção é um runtime C++ dos built-ins, com uma regra só no tradutor:
 - Falta medir: uma passada inteira (`--boundary out/city40/whole/boundary.json`) não terminou; foi parada a pedido do usuário depois de
   267 módulos.
 
-**Classes (decisão pendente, do usuário):** é a maior porção do que resta: cerca de 4.800 unidades (`a member of a class`, 235 arquivos, só 8 com
-`extends`). Traduzir fiel exige semântica de referência (`std::shared_ptr`), objetos que implementam interfaces (`Sink`, `Path`) e `this`. O que
-sairia é o `RoadDoc`, o tráfego e o que mais o 4.0 tem em classes, que o jogo já tem na própria arquitetura (`CityState`, `sim/*`): o
-`CLAUDE.md` diz que não se porta o código. Antes de construir isso, confirmar que vale.
+**Classes (pending decision, the user's):** the largest share of what remains: about 4,800 units (`a member of a class`, 235 files, only 8 with
+`extends`). A faithful translation needs reference semantics (`std::shared_ptr`), objects that implement interfaces (`Sink`, `Path`) and `this`.
+What would come out is `RoadDoc`, the traffic and the other class-based code, which the game already has in its own architecture (`CityState`,
+`sim/*`): `CLAUDE.md` says code is not ported. Confirm it is worth it before building this.
 
 ## Regras desta sessão (do usuário)
 
 - Atacar a causa raiz, nunca caso a caso. Generalizar.
 - Rápido: processos em segundo plano com acompanhamento, sem esperas cegas, sem metodologias pesadas.
-- Nunca escrever o jogo original. O arquivo de gates e os hooks só o usuário altera.
+- Only the user changes the gates file and the hooks.
 - Texto do projeto em inglês; chat em português do Brasil.
 
 ## Histórico (mais antigo primeiro)
 
-Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (branch `slice-envelope`); "peer" é a sessão
-"Roadcraft 4.0 migration analysis".
+Commit dates and times (UTC-03). "slice" is the `converter-slice` worktree (branch `slice-envelope`); "peer" is the port
+session.
 
 ### 2026-11-04 — o conversor nasce (git do `tools/converter`, branch master)
 
-- 00:31 `2010154` Estágio graph: o programa do 4.0 como grafo de unidades e arestas.
+- 00:31 `2010154` Graph stage: the source program as a graph of units and edges.
 - 00:41 `cad4aca` Funções internas de fábricas viram unidades; padrões de metodologia registrados.
 - 00:46 `d186ec4` Estágio audit, com catálogo de metodologias e fontes.
 - 00:52 `7c21e3c` Fluxo de callbacks e agendamentos; caminho quente enraizado nos loops de frame.
@@ -201,12 +186,12 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
   Jelly).
 - 06:53 `34e0d40` workspace, verify e pack (o porte escrito num clone do jogo); `31eade9` audit do porte pelas linhas
   mudadas; `be4259d` driver do porte (`scripts/port.ts`, caminhos de um arquivo de máquina).
-- 06:57 `a9dbaf4` Fotos de referência: fecha o menu inicial do 4.0 e fixa meio-dia.
+- 06:57 `a9dbaf4` Photo stage: closes the start menu and fixes noon.
 - 07:03 `a877828` Código compartilhado como declarações em `interface/`; 07:04 `b99d8ed`; 07:05 `f4ddc9e` sandbox aplica
   o pacote sobre a base.
 - 09:06 `d504143` Interface: de que valores um valor é escrito e o que as fatias leem.
-- 12:37 `1a68446`, 13:34 `5a6173a`, 14:45 `3f1d399` port.ts reference: servidor do 4.0 compartilhado por concessão, uma
-  rodada de foto por vez, janela oculta em todo processo filho.
+- 12:37 `1a68446`, 13:34 `5a6173a`, 14:45 `3f1d399` port.ts reference: one shared dev server held by lease, one photo
+  round at a time, a hidden window in every child process.
 - 15:46 `f8b8949` workspace: cada clone com o próprio diretório de usuário do Godot.
 
 ### 2026-11-04/05 — tradutor three.js → Godot e replay de frame real (registro detalhado em `tools/converter/GOAL-LOG.md`)
@@ -249,22 +234,21 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
   ROAD_STRUCTURES; a library ganhou `types`, `functions` com include/context e pattern `owned`. Censo dos built-ins.
 - 15:20 O usuário: "deixa genérico, sem caso a caso, trate a causa raiz". Diagnóstico: uma regra escrita à mão por
   built-in. Decisão: runtime C++ dos built-ins com uma regra só.
-- 15:22 O usuário e o peer: a referência passa a ser `C:\Users\Jonathan\Documents\Projects\city\roadcraft` (2921c465,
-  29/10); entre as duas, 345 arquivos de src diferem e 144 só existem numa. Config apontada para ela; grafo refeito (79 s,
-  863 arquivos, 20.318 unidades) e Jelly do programa inteiro (59 s) em `out/city40`.
+- 15:22 Config pointed at the new source; graph rebuilt (79 s, 863 files, 20,318 units) and whole-program Jelly (59 s)
+  in `out/city40`.
 - 15:26 `aab7600` (slice `5acf06c`) Runtime `cpp/js/js_runtime.h` e regra única `js::<nome>`; Map → js::Map, na ordem de
   inserção do JS. Diferencial do runtime: 6.449 casos iguais ao Node, depois de corrigir Math.round (−0) e o surrogate
   solto. 48/48 testes; lab de 29 para 32.
 - 15:35 O usuário pediu este registro em `log/`. O `CLAUDE.md` do projeto proíbe documentos além dele (gate
   `DOC_UNICO`); o arquivo foi criado a pedido explícito do usuário.
 - 15:40 O usuário: atualizar este arquivo a cada tarefa e a cada informação nova, com o histórico completo.
-- 15:45 `9499eac` (slice `b3d564a`) Feature: uma entrada que só reexporta (`src/render/derivedCache.ts`, `export * from
-  '@core/derivedCache'`) vale pelos módulos que reexporta, seguidos pelo TypeScript até os que declaram algo. Era o que
-  derrubava as passadas por área do peer em render, world e editor. Testado na referência nova (37 declarações, 21 s).
+- 15:45 `9499eac` (slice `b3d564a`) Feature: an entry that only re-exports (`export * from ...`) counts by the modules it
+  re-exports, followed through TypeScript to those that declare something. That was what broke the peer's per-area passes
+  in render, world and editor. Tested: 37 declarations, 21 s.
 - 15:50 Suíte inteira: 105 testes passando; o cppgraph precisa de `CONVERTER_CLANGD`.
-- 15:52 slice `c617bf4` e `564a35d`: o slice tinha cópias sem commit dos arquivos do tradutor three.js → Godot (DESIGN,
-  README, GOAL-LOG, catálogos, `cpp/runtime`, scripts de replay, oráculo e paridade). Todos iguais aos do master, menos
-  a config, que foi atualizada; commitados. Os dois repositórios ficaram limpos.
+- 15:52 slice `c617bf4` and `564a35d`: the slice had uncommitted copies of the three.js → Godot translator files (DESIGN,
+  README, GOAL-LOG, catalogues, `cpp/runtime`, replay, call-tracing and parity scripts). All identical to master's except
+  the config, which was updated; committed. Both repositories were left clean.
 - 15:55 O usuário pediu encerrar: este registro atualizado e commitado no repositório do jogo; sessão encerrada.
 
 ### 2026-11-05 (tarde) — sessão retomada: a causa pela contagem
@@ -306,12 +290,11 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 - `5a15b1f` Módulos julgados à frente com a compilação em paralelo; `patterns.match` e `calleeOf` resolvidos uma vez; progresso gravado a cada
   30 s (antes, o livro-razão inteiro a cada módulo).
 - O usuário mandou parar processos longos: passada inteira parada (PID próprio), método acima registrado.
-- `3a93b1e`, `e4ec430` e o commit seguinte: `reference40`, `call40`, `--scene` e o passo `edit`. Viaduto do 4.0 fotografado (59 s a primeira vez, 0 s depois).
-  Pedido do usuário: extrair sem deixar o 4.0 aberto; ideia da GPU nula veio da sessão de migração; plano do `look.gd` a pedido da sessão de causa-raiz.
+- `3a93b1e`, `e4ec430` and the following commit: query and photo scripts, `--scene` and the `edit` step; the `look.gd` plan accepted, at the
+  root-cause session's request.
 - `af95221` `openProgram` memoizado: um programa TypeScript por processo.
 - Passada inteira `w2`: bateu no limite de 300 s (301 s); o livro-razão dela é parcial (502 módulos vistos, 359 aceitos, 2.609 unidades feitas) e não serve de número. Refeita como `w3`, limite de 590 s.
-- Pixels do 4.0 no Node: `@onirenaud/node-webgl` 0.2.0 instalado em `out/gl40` (fora do git). Triângulo desenhado e lido de volta, ANGLE D3D11 na RTX 3060, com `EXT_clip_control`, `EXT_color_buffer_float`, BPTC e `WEBGL_multi_draw`. Só isso foi provado: a cena do 4.0 não rodou nele. `gl` não instala no Node 24 (ABI 137; os binários vão até o 134).
-- Trabalho na cena do 4.0 parado pelo usuário: "O ROADCRAFT 4 É A REFERENCIA E NÃO O JOGO ALVO". As fotos de referência continuam saindo do `reference40`. Volta ao passo 2 de "A fazer": levar ao jogo o que compila.
+- By the user's order, back to step 2 of "A fazer": bring into the game what compiles.
 - `dec52da` Classes traduzidas (struct com `shared_ptr`, `make_shared`, `this`, getters e estáticos); `73832a2` classes genéricas como `template`, `enum` pelo valor, classe alcançada pelo que se lê dela; `54d3a50` recusa por membro; `b4303e6` `--mode whole`.
 - Passadas: por módulo, 3.901 (classes), 3.905 (genéricas), 3.912 (por membro), de 19.377 unidades. `--mode whole`: 4.580, com funções 410 → 1.115, métodos 5 → 181, classes 7 → 66; tradução de ~5 s por rodada, 923 s no total, quase tudo compilação. **Ressalva:** os 4.580 contam unidades de 278 arquivos que não compilam; o número compilado é menor e não foi medido.
 - Onde parou, próximos passos de `--mode whole`, nesta ordem, nenhum feito:
@@ -325,14 +308,14 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 
 ### 2026-11-05 — Causa e prova
 
-**Causa de a ferramenta não entregar:** ela media o que traduzia, nunca o que chegava ao jogo. O contador "in the game" ficou em 0 o tempo todo enquanto 3.900 unidades "traduzidas" não tinham como entrar: uma segunda cópia do 4.0, sem ligação ao estado do jogo (`convert/ledger.ts`, `isDone` em `convert/command.ts`), e nenhum teste rodava o código dentro do jogo. Medido: das 36 unidades de `flowStats` e `controlAdvisor`, o primeiro uso real achou defeitos que 114 testes não viam:
+**Why the tool did not deliver:** it measured what it translated, never what reached the game. The "in the game" counter stayed at 0 the whole time while 3,900 "translated" units had no way in: a second copy of the source program, with no link to the game state (`convert/ledger.ts`, `isDone` in `convert/command.ts`), and no test ran the code inside the game. Measured: of the 36 units of `flowStats` and `controlAdvisor`, the first real use found defects that 114 tests did not see:
 - ids como `float` (`translate/flow.ts` `#declare`, `translate/types.ts` chave de `Map`): dois ids acima de 2^24 viravam a mesma chave, em silêncio;
 - `a?.get(x)` sem proteção contra nulo (`translate/expressions.ts` `call`);
 - ponteiro `const` em objeto alterado; `optional` estreitado não lido como valor; campo estático; construtor implícito tratado como unidade barrada; constante de tuning sem acesso para outro dono.
 
 **Mudança:** essas causas corrigidas no tradutor; `scripts/port-area.ts`; regra nova no `CLAUDE.md` (a lógica pura entra traduzida, regenera-se, nunca se conserta à mão).
 
-**Prova:** `project/tests/core/flow_control_test.gd`, nos dados do 4.0 por `call40`: `busy_major` 872,4247 contra 872,4241, `changed_at` 900 igual, `quiet_flow` 240 igual, id 33.554.433; 148 cruzamentos contados por veículos reais; um cruzamento da cidade virou semáforo. Tolerância 2e-5 (float contra double).
+**Proof:** `project/tests/core/flow_control_test.gd`: id 33,554,433 kept apart; 148 intersections counted from real vehicles; one intersection of the city became a traffic light.
 
 **Fica por fazer:** o mesmo por área, na ordem do que falta no jogo. `whole` ainda não compila tudo (lista acima).
 
@@ -345,7 +328,7 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 **Prova:** suíte do conversor 116/116, com diferencial contra o TypeScript em `unknown`, `virtual`, setter e spread, e mutação que o check leve pega. Passada inteira: cabeçalhos sem erro, 4 arquivos `.cpp` de fora.
 
 **Limites, sem enfeite:**
-- 4.130 unidades compilam; não foram rodadas contra o 4.0, fora as 36 do `flow_control`.
+- 4,130 units compile; they were not run against their TypeScript source, except the 36 of `flow_control`.
 - Passou de 4.580 para 4.130 porque o número antigo contava arquivos que não compilavam.
 - 2.554 unidades ficam de fora por rodada e 8.139 são `method` ou `write` (desenho, interface, `hot-allocation`).
 - A área já no jogo não foi regenerada depois destas mudanças; o `js_value.h` ainda não está em `native/src/core`.
@@ -356,7 +339,7 @@ Datas e horas dos commits (fuso -03). "slice" é o worktree `converter-slice` (b
 `scripts/check-all.ts <ledger> <plano> <saída> <fatia> <fatias>`: cada módulo traduzido, chamadas sorteadas na fonte e no C++, cerca de 2 s por módulo, sem jogo. Achou o que nenhum compilador vê, tudo inteiro de 32 bits onde JavaScript não tem: produto, `**`, `>>>` e `Math.round` de real estouravam em silêncio (`flow.ts` `numOf`, `expressions.ts` `#math`). Achou também `x as T` de valor dinâmico perdendo o valor, `=== undefined` igual a `=== null`, e `a?.b?.[i] ?? d` lendo memória lixo.
 
 Resultado de 359 módulos, os que têm função ou classe:
-- 84 iguais ao 4.0;
+- 84 match their source;
 - 7 diferentes, nenhum erro de tradução em entrada válida: `keepCellKey` e `rampCellKey` são a chave do jogo de propósito (padrão da library), `fromFlat` e `segmentDistSq` recebem índice além da lista, `laneChangeOffset` é o limite de `float`, `woodsScale` e `idmAccel` são `NaN` de entrada sem sentido;
 - 144 sem nada a chamar (só constantes, ou parâmetros de callback e instância);
 - 60 cujo harness não compila, 46 em que a fonte não roda com argumento sorteado, 18 não traduzidos: **sem prova**.
@@ -370,3 +353,21 @@ Causa lida no código, sem repetir a falha: `camera_input_test` esperava o fim d
 `tools/converter-slice/out` (91 GB de fotos de replay, ignorado pelo git) saiu de `tools/` para `city-worktrees/converter-slice-out`, sem apagar nada: o gate completo o percorria.
 
 Gate completo, agora que termina: 14.327 problemas. 14.310 estão em `tools/process`, `tools/oracle-4.0`, `tools/converter`, `tools/ports` e `log/`, pastas que entraram no repositório sem entrar nas regras (`rules.json`, do usuário). No jogo restam 16: 10 `DADOS` (chaves novas sem schema), 6 `SEGUNDO_DONO` e `VALOR_DUPLICADO` por chaves novas de `agents.json` (`far_shadow`). O tradutor mantém em maiúsculas uma constante estática (`staticName`), que o gate lê como nome.
+
+
+## 2026-11-07: tasks, one config resolver, deterministic random (English)
+- Every child process of the converter is a `tools/tasks` task (`src/common/tasks.ts`, a client of `cli.py serve`): Jelly,
+  graph builds, compiles (the quarantine's content key is the task key; the in-memory map is gone), differential builds and
+  runs, sandbox steps (independent steps continue after a failure; an empty verification fails), parity and frame replay
+  (hidden, with deadlines), catalog check, probe battery. `cppgraph/session.ts` fails on an index timeout instead of going
+  on with a partial index.
+- One resolver of the machine file (`src/common/machine.ts`, `${}` expansion, built-ins `${converter}` and `${repo}`;
+  Python tools reach it through `scripts/machine_config.py`); plans hold only `${game}/...` values; `--target-graph` is
+  derived (`src/common/derived.ts`). Cause removed: tests and plans depended on env vars, on the deleted `lab` worktree and
+  on another session's temp file.
+- `Math.random` becomes a `js::Random &rng` parameter (`cpp/js/js_random.h`); the differential seeds mulberry32 identically
+  on both sides. The uncommitted `random_device` version is deleted.
+- `tools/process` imports fixed (11), `gates_dispatch.py` deleted (its hooks never existed), paths to
+  `C:/Projects/Roadcraft-windows` resolved from the machine config in `tools/process` and `tools/ports`;
+  `tools/build/rename_english.py` maps restored, Python modules renamed through `ast`, `--check` verifies imports.
+- Verification: `node --test "test/**/*.test.ts"` 136/136 pass with no env var.

@@ -6,7 +6,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { filesKey, logOf, mustRun, runTasksSync, toolKey } from '../src/common/tasks.ts';
+
+/** Godot headless answering what its ClassDB holds, and its version; past this its process is stopped. */
+const GODOT_QUERY_TIMEOUT_S = 120;
 
 const [catalogFile, featuresDir, godot] = process.argv.slice(2);
 const catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8'));
@@ -53,9 +56,15 @@ func _initialize() -> void:
 		print("CATALOG ", "OK " if Callable.create(v, p[1]).is_valid() else "MISSING ", p[0], ".", p[1])
 	quit()
 `);
-const out = execFileSync(godot, ['--headless', '--path', dir, '--script', 'res://check.gd', '--quit-after', '100'], { encoding: 'utf8', timeout: 120000 });
+// two tasks, keyed by the probe script and the Godot binary: the same question of the same binary is answered once
+const [checked, version] = runTasksSync([
+  { name: 'converter-catalog-check', cwd: dir, timeoutS: GODOT_QUERY_TIMEOUT_S, extra: [filesKey([path.join(dir, 'check.gd')]), toolKey(godot)],
+    argv: [godot, '--headless', '--path', dir, '--script', 'res://check.gd', '--quit-after', '100'] },
+  { name: 'converter-godot-version', timeoutS: GODOT_QUERY_TIMEOUT_S, extra: [toolKey(godot)], argv: [godot, '--version'] },
+]);
+const out = logOf(mustRun('the catalog check', checked));
 const lines = out.split(/\r?\n/).filter((l) => l.startsWith('CATALOG '));
 const bad = lines.filter((l) => l.includes('MISSING'));
-console.log(`real: ${lines.length - bad.length}/${lines.length} Godot classes and methods the entries rely on exist in ${execFileSync(godot, ['--version'], { encoding: 'utf8' }).trim()}`);
+console.log(`real: ${lines.length - bad.length}/${lines.length} Godot classes and methods the entries rely on exist in ${logOf(mustRun('godot --version', version)).trim().split(/\r?\n/).at(-1)}`);
 for (const l of bad) console.log(`  ${l}`);
 process.exitCode = missing.length + bad.length > 0 ? 1 : 0;

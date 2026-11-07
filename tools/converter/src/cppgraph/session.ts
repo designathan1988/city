@@ -49,7 +49,7 @@ export class ClangdSession {
 
   /**
    * Copies the compile commands of the files inside `keep` into `cacheDir` and starts clangd on that copy; waits for
-   * its background index (cross-file definitions come from it) up to `indexTimeoutSeconds`.
+   * its background index (cross-file definitions come from it); an index not finished in `indexTimeoutSeconds` fails the start.
    */
   static async start(clangd: string, compileCommands: string, cacheDir: string, keep: (file: string) => boolean,
     rootDir: string, extraArgs: readonly string[], indexTimeoutSeconds: number): Promise<ClangdSession> {
@@ -60,9 +60,11 @@ export class ClangdSession {
     fs.writeFileSync(path.join(cacheDir, 'compile_commands.json'), JSON.stringify(kept));
     const lsp = new LspClient(clangd, [`--compile-commands-dir=${cacheDir}`, '--background-index', '--log=error', '--header-insertion=never', ...extraArgs]);
     const session = new ClangdSession(lsp);
-    const indexed = new Promise<void>((resolve) => {
+    // An index that does not finish in time leaves cross-file definitions out: the graph would be partial, so the run fails.
+    const indexed = new Promise<void>((resolve, reject) => {
       let started = false;
-      const timeout = setTimeout(resolve, indexTimeoutSeconds * MS_PER_SECOND);
+      const timeout = setTimeout(() => reject(new Error(`clangd's background index did not finish in ${indexTimeoutSeconds} s: ` +
+        'a graph read from a partial index misses cross-file definitions (give --index-timeout the time the project needs)')), indexTimeoutSeconds * MS_PER_SECOND);
       lsp.on('$/progress', (params) => {
         if (!/backgroundIndex/i.test(String(params['token']))) return;
         const kind = (params['value'] as { kind?: string }).kind;
@@ -71,6 +73,8 @@ export class ClangdSession {
       });
       setTimeout(() => { if (!started) { clearTimeout(timeout); resolve(); } }, INDEX_START_GRACE_MS); // already indexed in the cache
     });
+    // awaited below, after initialize: a rejection that comes first is held until then, not reported as unhandled
+    indexed.catch(() => undefined);
     const init = await lsp.request<{ capabilities: { semanticTokensProvider?: { legend: { tokenTypes: string[]; tokenModifiers: string[] } } }; serverInfo?: { version?: string } }>('initialize', {
       processId: process.pid, rootUri: uriOf(rootDir),
       capabilities: {
@@ -87,7 +91,12 @@ export class ClangdSession {
     session.#legend = legend;
     session.version = init.serverInfo?.version ?? 'unknown';
     lsp.notify('initialized', {});
-    await indexed;
+    try {
+      await indexed;
+    } catch (error) {
+      await lsp.shutdown();
+      throw error;
+    }
     return session;
   }
 

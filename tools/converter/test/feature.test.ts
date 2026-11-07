@@ -34,11 +34,9 @@ describe('feature cut', () => {
   const holds = holdsFeature(ts, sp.checker, index, ir);
   const b = featureBoundary(ir, ['src/feature/ferry.ts'], roots, holds);
   const slices = sliceShared(ts, sp.checker, index, b);
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-jelly-'));
-  const jelly = runJelly(jellyDir(), path.join(root, 'src'), roots.map((r) => path.join(root, r)), work);
+  const jelly = runJelly(jellyDir(), path.join(root, 'src'), roots.map((r) => path.join(root, r)));
   const calls = new CallTargets(ts, jelly.callGraph, jelly.base, (file) => sp.sourceFile(file));
   const pts = new PointsTo(ts, jelly.tokens, jelly.base);
-  removeTree(work);
   const resources = featureResources(ts, sp.checker, index, root, b, slices, calls, pts, postcssDir());
 
   it('starts the program from the scripts its pages load', () => {

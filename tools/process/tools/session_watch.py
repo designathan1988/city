@@ -5,6 +5,7 @@ A primeira leitura vai do início de cada histórico, então também audita o qu
 Uso: python -u session_watch.py [--uma-vez]
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -12,9 +13,15 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-RAIZ = Path(r'C:\Projects\Roadcraft-windows')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'converter', 'scripts'))
+from machine_config import machine  # noqa: E402
+
+# The game (this repository), the converter and the port folders, from the converter's machine file.
+GAME_ROOT = Path(machine()['game'])
+CONVERTER = Path(machine()['converter'])
+PORTS = Path(machine()['ports'])
 PROJETOS = Path.home() / '.claude' / 'projects'
-LOG = RAIZ / 'tools' / 'estado' / 'vigia_sessoes.log'
+LOG = GAME_ROOT / 'dist' / 'process' / 'session_watch.log'
 INTERVALO_S = 120
 PARADA_S = 600
 MEMORIA_LIMITE = 92
@@ -35,11 +42,27 @@ REGRAS_COMANDO = [
     (re.compile(r'\bgit\s+push\b'), 'push (filha não dá push)'),
     (re.compile(r'(?:\s-j\s*|JOBS=)([5-9]|\d\d)\b'), 'compilação acima de -j 4'),
 ]
-# Só o que executa: quem lê um script ou cita o jogo num texto não abre janela nenhuma.
+# Only what runs counts: reading a script or naming the game in a text opens no window. The game runs hidden only
+# through the repository's orchestration owner (tools/tasks/cli.py run|serve), which puts every task on its private desktop.
 JOGO = re.compile(r'(godot(_console)?(\.exe)?|\$\{?GODOT\}?)["\']?\s+(--path|--rendering|res://|-e\b)'
-                  r'|\b(bash|sh)\s+\S*run_tests\.sh|build\.sh["\']?\s+(e2e|capture)\b', re.I)
-OCULTO = re.compile(r'hidden_run\.ps1["\']?[^\n|;]*-Command', re.I)
-FORA_DO_CLONE = re.compile(r'Roadcraft-windows[\\/](fonte|converter)[\\/]', re.I)
+                  r'|build\.sh["\']?\s+(e2e|capture)\b', re.I)
+OCULTO = re.compile(r'tools[\\/]tasks[\\/]cli\.py["\']?\s+(run|serve)\b', re.I)
+
+
+def _key(path):
+    """A path as one comparable text: absolute, forward slashes, lower case (Windows paths ignore case)."""
+    return os.path.abspath(str(path)).replace('\\', '/').lower().rstrip('/') + '/'
+
+
+def outside_clone(path):
+    """An edit of the game or the converter themselves, not of a port's clone (<ports>/<feature>/workspace)."""
+    if not path:
+        return False
+    key = _key(path)
+    in_clone = re.match(re.escape(_key(PORTS)) + r'[^/]+/workspace/', key) is not None
+    return not in_clone and (key.startswith(_key(GAME_ROOT)) or key.startswith(_key(CONVERTER)))
+
+
 SUBAGENTES = {'Agent', 'Task', 'Workflow'}
 
 
@@ -49,7 +72,8 @@ def rodar(args, cwd=None):
 
 
 def historico(clone):
-    pasta = PROJETOS / f'C--Projects-Roadcraft-windows-ports-{clone}-workspace'
+    # Claude Code names a project's history folder after its path, every ':', backslash and slash a '-'
+    pasta = PROJETOS / re.sub(r'[:\\/]', '-', str(PORTS / clone / 'workspace'))
     arquivos = list(pasta.glob('*.jsonl')) if pasta.is_dir() else []
     return max(arquivos, key=lambda p: p.stat().st_mtime) if arquivos else None
 
@@ -70,15 +94,13 @@ def violacoes(nome, entrada):
         achadas.append(f'subagente ({nome})')
     if nome == 'AskUserQuestion':
         achadas.append('perguntou ao usuário')
-    if nome in ('Edit', 'Write') and FORA_DO_CLONE.search(entrada.get('file_path', '')):
+    if nome in ('Edit', 'Write') and outside_clone(entrada.get('file_path', '')):
         achadas.append(f'editou fora do clone: {entrada["file_path"]}')
     if nome in ('Bash', 'PowerShell'):
         comando = entrada.get('command', '')
         achadas += [texto for regra, texto in REGRAS_COMANDO if regra.search(comando)]
         if JOGO.search(comando) and not OCULTO.search(comando) and not re.search(r'--headless|--version|--help', comando):
-            achadas.append('jogo fora do hidden_run')
-        if OCULTO.search(comando) and '-WorkDir' not in comando:
-            achadas.append('hidden_run sem -WorkDir')
+            achadas.append('game run outside tools/tasks')
     return achadas
 
 
@@ -134,7 +156,7 @@ class Sessao:
 
 
 def estado_clone(funcionalidade):
-    porta = RAIZ / 'ports' / funcionalidade
+    porta = PORTS / funcionalidade
     clone = porta / 'workspace'
     if not (clone / '.git').exists():
         return f'{funcionalidade} sem clone', []
@@ -177,10 +199,10 @@ def ciclo(sessoes):
     memoria, cpu, jogos = maquina()
     if memoria >= MEMORIA_LIMITE:
         alertas.append(f'ALERTA memória em {memoria} %')
-    fonte = [l for l in rodar(['git', 'status', '--short'], RAIZ / 'fonte').splitlines() if not l.endswith('.uid')]
+    fonte = [l for l in rodar(['git', 'status', '--short'], GAME_ROOT).splitlines() if not l.endswith('.uid')]
     if fonte:
         alertas.append(f'ALERTA fonte sujo: {len(fonte)} arquivos')
-    if rodar(['git', 'status', '--short'], RAIZ / 'converter'):
+    if rodar(['git', 'status', '--short'], CONVERTER):
         alertas.append('ALERTA converter sujo')
     topo = f'[{datetime.now():%H:%M}] memória {memoria} %, CPU {cpu} %, jogos abertos {jogos}'
     return '\n'.join([topo, *linhas, *alertas])

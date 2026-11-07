@@ -1,8 +1,8 @@
 {
   "version": 1,
   "feature": "demolition",
-  "game": "C:/Projects/Roadcraft-windows/fonte",
+  "game": "${game}",
   "base": "a11384aa2303e1913636063f5ffff7e6d12b98ed",
   "branch": "convert/demolition",
-  "workspace": "C:/Projects/Roadcraft-windows/ports/demolition/workspace"
+  "workspace": "${ports}/demolition/workspace"
 }

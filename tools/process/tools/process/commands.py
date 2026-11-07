@@ -8,23 +8,38 @@ import hashlib
 import os
 import re
 
-import estado as E
+import state as E
 
 L = E.L
 EXT_CODIGO = {".cpp", ".h", ".hpp", ".c", ".gd", ".gdshader", ".gdshaderinc", ".glsl", ".py", ".cjs", ".mjs", ".js", ".ts", ".ps1",
               ".sh", ".cmake", ".tscn", ".json", ".csv"}
 RAIZES_CODIGO = re.compile(r"^(?:fonte/|ports/[^/]+/workspace/)(?:native|project|tools)/|^tools/|^converter/(?:scripts|src|test|configs)/")
 FORA = re.compile(r"(?:^|/)(?:node_modules|out|\.godot|build-[\w-]+|godot-cpp|__pycache__)/")
-# Só o que é deste projeto e o settings do usuário: o `.claude/` de outro projeto não é da conta do portão.
-ABSOLUTOS = re.compile(r"(?:Roadcraft-windows[/\\](?:ferramentas[/\\]processo|registro[/\\]processo|\.claude[/\\])|Jonathan[/\\]\.claude[/\\](?:settings|skills[/\\]roadcraft)|Jonathan[/\\]bin[/\\]portao|~[/\\]\.claude[/\\]settings)", re.I)
-PROTEGIDOS = re.compile(ABSOLUTOS.pattern + r"|ferramentas[/\\]processo|registro[/\\]processo|\.claude[/\\]settings", re.I)
+# Where the gate lives, found from this file: its code and its state under its own root (tools/process, L.RAIZ) and the
+# repository's `.claude/`; only this project's and the user's settings are the gate's concern.
+REPO = os.path.abspath(os.path.join(L.RAIZ, "..", ".."))
+
+
+def _path_pattern(root, *parts):
+    """A path as a regex: its segments escaped, either slash between them, a drive written `C:` or `/c`."""
+    segments = [p for p in os.path.abspath(root).replace("\\", "/").split("/") if p] + list(parts)
+    drive = segments[0]
+    start = rf"(?:{re.escape(drive)}|/{re.escape(drive[0])})" if re.fullmatch(r"[A-Za-z]:", drive) else re.escape(drive)
+    return start + "".join(r"[/\\]" + re.escape(s) for s in segments[1:])
+
+
+ABSOLUTOS = re.compile("(?:" + "|".join([_path_pattern(L.RAIZ, "tools", "process"), _path_pattern(L.RAIZ, "records", "process"),
+                                         _path_pattern(REPO, ".claude") + r"[/\\]"])
+                       + r"|Jonathan[/\\]\.claude[/\\](?:settings|skills[/\\]roadcraft)|Jonathan[/\\]bin[/\\]portao|~[/\\]\.claude[/\\]settings)", re.I)
+PROTEGIDOS = re.compile(ABSOLUTOS.pattern + r"|tools[/\\]process[/\\]tools[/\\]process|tools[/\\]process[/\\]records[/\\]process|\.claude[/\\]settings", re.I)
 SEGMENTO = re.compile(r"\|\||&&|\||;|\n")
 # Proteger é negar escrita, não listar o que pode ler: uma lista de leitura negou grep, cd e Get-Content, e nem os juízes conseguiam ler.
 ALTERA = re.compile(r"(?:^|[\s;&|(])(?:rm|rmdir|mv|cp|tee|truncate|chmod|sed\s+-i\S*|Remove-Item|Move-Item|Copy-Item|Rename-Item|Set-Content|Add-Content|Out-File|Clear-Content|git\s+(?:checkout|restore|rm|mv|reset|clean))(?:\s|$)", re.I)
 LEITOR = re.compile(r"^\s*(?:cd\s+\S+\s*$|cat|head|tail|less|more|wc|grep|rg|egrep|fgrep|findstr|diff|cmp|file|stat|ls|dir|sha\w*sum|echo|printf|"
                     r"Get-Content|gc|Select-String|sls|Test-Path|sed\s+-n|awk|cut|sort|uniq|"
                     r"git(?:\s+-C\s+\S+)?\s+(?:diff|log|show|status|blame|ls-files|grep|add|commit|check-ignore|rev-parse))\b")
-JOGO = re.compile(r"(?:^|[\s/\\\"'])godot(?:_console)?(?:\.exe)?\s+-|hidden_run|run_tests\.sh|build\.sh\s+(?:e2e|capture|export|package)|\.tscn\b|testar\.py|pytest|node\s+--test")
+# The game or the tests run: Godot itself, the orchestration owner's runs (tools/tasks/cli.py run|serve), the build's game stages.
+JOGO = re.compile(r"(?:^|[\s/\\\"'])godot(?:_console)?(?:\.exe)?\s+-|tools[/\\]tasks[/\\]cli\.py[\"']?\s+(?:run|serve)\b|build\.sh\s+(?:e2e|capture|export|package)|\.tscn\b|testar\.py|pytest|node\s+--test")
 COMPILA = re.compile(r"build\.sh\s+(?:core|core-windows)\b|run_gates\.py|(?:^|\s)cmake\s|(?:^|\s)ninja\b")
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 ASPAS = re.compile(r"\"(?:\\.|[^\"\\])*\"|'[^']*'")

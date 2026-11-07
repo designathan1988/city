@@ -5,11 +5,16 @@ O histórico grava a mensagem dada no meio de um turno como `queue-operation` e 
 Uso: python -u message_watch.py <session id da conversa> [--do-inicio]
 """
 import json
+import os
+import re
 import sys
 import time
 from pathlib import Path
 
-HISTORICO = Path.home() / '.claude' / 'projects' / 'C--Projects-Roadcraft-windows-fonte'
+# The repository this file is in: Claude Code keeps a project's history in a folder named after the project's path, every
+# ':', backslash and slash a '-' (C:\Users\x\city is C--Users-x-city).
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
+HISTORICO = Path.home() / '.claude' / 'projects' / re.sub(r'[:\\/]', '-', REPO)
 INTERVALO_S = 3
 TAMANHO = 400
 # Avisos automáticos do sistema, que não são mensagens de ninguém.

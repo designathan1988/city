@@ -14,6 +14,9 @@ import time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.abspath(os.path.join(AQUI, "..", ".."))
+# the gate's code and its state, under the gate's own root (tools/process), as the hook sees them
+GATE = RAIZ.replace("\\", "/") + "/tools/process"
+GATE_STATE = RAIZ.replace("\\", "/") + "/records/process"
 CLONE = os.path.join(RAIZ, "ports", "_portao_teste", "workspace").replace("\\", "/")
 FORMA = "gate"
 AJUSTE = "C:/Users/Jonathan/.claude/settings.json"
@@ -106,13 +109,13 @@ def ordem_e_bloqueio(p):
     caso("sed -i em código é negado", negado(shell(p, f"sed -i s/a/b/ {a}")))
     caso("texto entre aspas citando > não é escrita", not negado(shell(p, 'echo "a > native/src/a.cpp"')))
     caso("editar documento passa", not negado(edita(p, CLONE + "/notas.md", "y")))
-    caso("editar o portão é negado", negado(edita(p, "C:/Projects/Roadcraft-windows/tools/process/process.py", "y")))
+    caso("editar o portão é negado", negado(edita(p, f"{GATE}/process.py", "y")))
     caso("settings do usuário é negado", negado(edita(p, "C:/Users/Jonathan/.claude/settings.json", "y")))
-    caso("apagar o estado por shell é negado", negado(shell(p, "rm C:/Projects/Roadcraft-windows/records/process/t.json")))
-    caso("ler o portão passa", not negado(shell(p, "cat C:/Projects/Roadcraft-windows/tools/process/process.py")))
+    caso("apagar o estado por shell é negado", negado(shell(p, f"rm {GATE_STATE}/t.json")))
+    caso("ler o portão passa", not negado(shell(p, f"cat {GATE}/process.py")))
     caso("grep com barra em aspas no portão passa", not negado(shell(p, 'grep -n "def cobre\\|faltam" tools/process/state.py')))
-    caso("cd para a pasta do portão passa", not negado(shell(p, 'cd "C:/Projects/Roadcraft-windows/tools/process" && ls')))
-    caso("Get-Content do portão passa", not negado(shell(p, '(Get-Content "C:/Projects/Roadcraft-windows/tools/process/commands.py")')))
+    caso("cd para a pasta do portão passa", not negado(shell(p, f'cd "{GATE}" && ls')))
+    caso("Get-Content do portão passa", not negado(shell(p, f'(Get-Content "{GATE}/commands.py")')))
     caso("redirecionar para o portão é negado", negado(shell(p, "echo x > tools/process/process.py")))
     caso("passo fora de ordem é negado", "fora de ordem" in motivo(passo(p, 3, "x.json")[0]))
     ruim = registro("r1.json", {"pedido": ["algo que ninguém pediu aqui"], "problema": "p" * 50, "causa": "c" * 50, "evidencias": [{"arquivo": a}]})
@@ -154,8 +157,8 @@ def estudo_e_codigo(p, url):
     caso("passo 3 aceito", not negado(passo(p, 3, r3)[0]))
     caso("arquivo fora do plano é negado", negado(edita(p, a, "y")))
     caso("portão no plano muda na fase 4", not negado(edita(p, AJUSTE, "y")))
-    caso("portão fora do plano segue negado", negado(edita(p, "C:/Projects/Roadcraft-windows/tools/process/steps.py", "y")))
-    caso("estado do portão nunca", negado(edita(p, "C:/Projects/Roadcraft-windows/records/process/t.json", "y")))
+    caso("portão fora do plano segue negado", negado(edita(p, f"{GATE}/steps.py", "y")))
+    caso("estado do portão nunca", negado(edita(p, f"{GATE_STATE}/t.json", "y")))
     depois(p, "Edit", {"file_path": AJUSTE}, {})
     m = motivo(edita(p, gd, "func nova():\n\thelper_distante(1)\n"))
     caso("chamar função de arquivo não lido é negado", "helper_distante" in m, m)
@@ -260,8 +263,8 @@ def fora_do_projeto():
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     if sys.argv[1:] == ["conversas"]:
-        import conversas
-        return conversas.main()
+        import conversations
+        return conversations.main()
     preparar()
     pasta = tempfile.mkdtemp()
     try:

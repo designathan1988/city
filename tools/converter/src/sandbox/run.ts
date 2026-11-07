@@ -4,12 +4,11 @@
 // the photos go to the package's evidence folder. The game is only read (cloned, copied from); its state is
 // fingerprinted before and after, and a difference, which can only come from another process working on the game
 // meanwhile, is recorded so that the result says which base the evidence was taken against.
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
 import { cloneIsolated, fingerprint, git } from '../common/git.ts';
 import { normalizePath } from '../common/paths.ts';
+import { folderKey, keyOf, logOf, ran, runTasksSync, treeKey, type TaskResult, type TaskSpec } from '../common/tasks.ts';
 import { EVIDENCE, PATCHES, readManifest } from '../package/manifest.ts';
 import { expand, type Expectation, type SandboxConfig, type Step, type Variables } from './config.ts';
 
@@ -34,26 +33,27 @@ export interface SandboxResult {
   readonly gameChanged: boolean;
 }
 
-/** A step's time limit when its configuration gives none. */
-const DEFAULT_STEP_TIMEOUT_S = 900;
-const LAUNCHER_GRACE_MS = 60_000;
-const MS_PER_SECOND = 1000;
-
-function runStep(step: Step, config: SandboxConfig, vars: Variables, logFile: string): { code: number | null; output: string } {
+/**
+ * A step as a task: run in the clone, keyed by the clone's content (its tracked files, as committed and as changed, and
+ * the copies made into it), the copies' content and the step's own command, so the same tree and step give the same
+ * result; what it makes for later steps is restored with it.
+ */
+function taskOf(step: Step, vars: Variables, cloneKey: string): TaskSpec {
   const argv = step.run.map((part) => expand(part, vars));
-  const seconds = step.timeoutSeconds ?? DEFAULT_STEP_TIMEOUT_S;
-  const timeout = seconds * MS_PER_SECOND;
-  const command = step.hidden
-    ? ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(vars.sandbox, config.hiddenRunner),
-      '-TimeoutS', String(seconds), '-WorkDir', vars.sandbox, '-Command', argv.join(' ')]
-    : argv;
-  // The hidden launcher enforces the step's own timeout; this outer one only stops a launcher that hangs.
-  const result = spawnSync(command[0]!, command.slice(1), {
-    cwd: vars.sandbox, encoding: 'utf8', timeout: timeout + LAUNCHER_GRACE_MS, maxBuffer: MAX_CHILD_OUTPUT_BYTES,
-  });
-  const output = `${result.stdout ?? ''}${result.stderr ?? ''}${result.error ? `\n${result.error.message}` : ''}`;
-  fs.writeFileSync(logFile, `$ ${command.join(' ')}\n\n${output}`, 'utf8');
-  return { code: result.status, output };
+  return { name: `converter-sandbox-${step.name}`, argv, cwd: vars.sandbox, extra: [cloneKey], timeoutS: step.timeoutSeconds, hidden: step.hidden ?? false,
+    outputs: (step.outputs ?? []).map((o) => expand(o, vars)) };
+}
+
+/** What a step's run says: its log kept in the evidence, its exit code. */
+function record(step: Step, task: TaskSpec, result: TaskResult, logFile: string): { code: number | null; output: string } {
+  let output: string;
+  try {
+    output = logOf(result);
+  } catch (error) {
+    output = (error as Error).message;
+  }
+  fs.writeFileSync(logFile, `$ ${task.argv.join(' ')}\n(${result.status} in ${result.seconds} s)\n\n${output}`, 'utf8');
+  return { code: ran(result) ? result.exit : null, output: ran(result) ? output : `${step.name}: ${result.status}\n${output}` };
 }
 
 /** The first expectation the run fails, or null. */
@@ -81,17 +81,50 @@ function check(expect: Expectation | undefined, code: number | null, output: str
   return null;
 }
 
-export function runPhase(phase: string, steps: readonly Step[], config: SandboxConfig, vars: Variables, results: StepResult[]): boolean {
+/**
+ * A phase's steps: each runs as soon as the steps it comes after have passed, beside the others; a failing step leaves
+ * only the steps that need it undone (recorded as skipped), every independent step still runs. A verification with no
+ * step proves nothing and fails; a setup may have none. A step it comes after that this run does not hold (a workspace
+ * verified step by step) is taken as done: its products are the clone's.
+ */
+export function runPhase(phase: string, steps: readonly Step[], config: SandboxConfig, vars: Variables, results: StepResult[], verification = true): boolean {
   fs.mkdirSync(vars.evidence, { recursive: true });
-  for (const step of steps) {
-    const started = Date.now();
-    const log = path.join(vars.evidence, `${step.name}.log`);
-    const { code, output } = runStep(step, config, vars, log);
-    const problem = check(step.expect, code, output, vars);
-    results.push({ phase, name: step.name, ok: problem === null, seconds: Math.round((Date.now() - started) / MS_PER_SECOND), problem, log });
-    if (problem) return false;
+  if (steps.length === 0) {
+    if (!verification) return true;
+    results.push({ phase, name: '(none)', ok: false, seconds: 0, problem: 'no verification step was run: an empty verification proves nothing', log: '' });
+    return false;
   }
-  return true;
+  const inRun = new Set(steps.map((s) => s.name));
+  const outcome = new Map<string, boolean>();
+  // the copies made into the clone are outside version control: their content keys the steps with the tracked tree
+  const cloneKey = keyOf(treeKey(vars.sandbox), ...config.copy.map((c) => folderKey(path.join(vars.sandbox, c))));
+  let left = [...steps];
+  while (left.length > 0) {
+    const needs = (s: Step): string[] => (s.after ?? []).filter((n) => inRun.has(n));
+    const blocked = left.filter((s) => needs(s).some((n) => outcome.get(n) === false));
+    for (const s of blocked) {
+      const missing = needs(s).filter((n) => outcome.get(n) === false);
+      results.push({ phase, name: s.name, ok: false, seconds: 0, problem: `skipped: it comes after ${missing.join(', ')}, which failed`, log: '' });
+      outcome.set(s.name, false);
+    }
+    left = left.filter((s) => !blocked.includes(s));
+    const ready = left.filter((s) => needs(s).every((n) => outcome.get(n) === true));
+    if (ready.length === 0) {
+      if (left.length > 0) throw new Error(`steps ${left.map((s) => s.name).join(', ')} wait on each other`);
+      break;
+    }
+    const tasks = ready.map((s) => taskOf(s, vars, cloneKey));
+    const done = runTasksSync(tasks);
+    ready.forEach((step, i) => {
+      const log = path.join(vars.evidence, `${step.name}.log`);
+      const { code, output } = record(step, tasks[i]!, done[i]!, log);
+      const problem = check(step.expect, code, output, vars);
+      results.push({ phase, name: step.name, ok: problem === null, seconds: Math.round(done[i]!.seconds), problem, log });
+      outcome.set(step.name, problem === null);
+    });
+    left = left.filter((s) => !ready.includes(s));
+  }
+  return steps.every((s) => outcome.get(s.name) === true);
 }
 
 export interface SandboxInput {
@@ -130,7 +163,7 @@ export function runBaseline(input: BaselineInput): { readonly ok: boolean; reado
   const results: StepResult[] = [];
   prepare(game, base, sandbox, input.config);
   const evidence = (phase: string): Variables => ({ sandbox, evidence: path.join(path.resolve(input.evidenceDir), phase), game });
-  const ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results) &&
+  const ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results, false) &&
     runPhase('before', input.config.verify, input.config, evidence('before'), results);
   return { ok, base, steps: results, gameChanged: fingerprint(game) !== before };
 }
@@ -145,7 +178,7 @@ export function runSandbox(input: SandboxInput): SandboxResult {
   const branch = `convert/${manifest.feature}`;
   const evidence = (phase: string): Variables => ({ sandbox, evidence: path.join(packageDir, EVIDENCE, phase), game });
   prepare(game, manifest.game.base, sandbox, input.config);
-  let ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results) &&
+  let ok = runPhase('setup', input.config.setup, input.config, evidence('setup'), results, false) &&
     runPhase('before', input.config.verify, input.config, evidence('before'), results);
   if (ok) {
     // The base's verification leaves outputs of its own in the clone (a Godot import writes a .uid the game may
@@ -157,10 +190,17 @@ export function runSandbox(input: SandboxInput): SandboxResult {
     git(sandbox, ['checkout', '--quiet', '-b', branch]);
     const patches = manifest.patches.map((p) => path.join(packageDir, PATCHES, p));
     const identity = ['-c', `user.name=${manifest.author.name}`, '-c', `user.email=${manifest.author.email}`];
-    const applied = spawnSync('git', ['-C', sandbox, ...identity, 'am', '--quiet', ...patches], { encoding: 'utf8' });
     fs.mkdirSync(path.join(packageDir, EVIDENCE, 'after'), { recursive: true });
-    fs.writeFileSync(path.join(packageDir, EVIDENCE, 'after', 'apply.log'), `${applied.stdout}${applied.stderr}`, 'utf8');
-    if (applied.status !== 0) {
+    let applied = '';
+    let appliedOk = true;
+    try {
+      applied = git(sandbox, [...identity, 'am', '--quiet', ...patches]);
+    } catch (error) {
+      applied = (error as Error).message;
+      appliedOk = false;
+    }
+    fs.writeFileSync(path.join(packageDir, EVIDENCE, 'after', 'apply.log'), applied, 'utf8');
+    if (!appliedOk) {
       results.push({ phase: 'after', name: 'apply', ok: false, seconds: 0, problem: 'the patch series does not apply to the base', log: path.join(packageDir, EVIDENCE, 'after', 'apply.log') });
       ok = false;
     } else {

@@ -1,10 +1,12 @@
 // A workspace: an isolated clone of the game on a branch of its own (`convert/<feature>`), where a feature is ported
 // and committed topic by topic, verified with the game's own steps (the sandbox configuration), and packaged from its
 // branch (`converter pack`). The clone is `<port>/workspace`; its record and every verification's evidence sit beside
-// it in `<port>`, outside the clone, so the game's gates see only the game. The game itself is only read.
+// it in `<port>`, outside the clone, so the game's gates see only the game. The game itself is only read. The record
+// writes the game and the port folders as `${game}` and `${ports}` (the machine file's keys), so it holds on any machine.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fingerprint, git } from '../common/git.ts';
+import { machine } from '../common/machine.ts';
 import { normalizePath } from '../common/paths.ts';
 import type { SandboxConfig, Step, Variables } from './config.ts';
 import { prepare, runPhase, type StepResult } from './run.ts';
@@ -16,13 +18,15 @@ export const WORKSPACE_EVIDENCE = 'evidence';
 /** A feature names a branch and a folder: lower case, digits and dashes. */
 const FEATURE_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const SHORT_SHA = 12;
+/** The machine file's roots a record's paths are written from, the most specific first. */
+const RECORD_ROOTS = ['ports', 'game'];
 /** Godot's `override.cfg` (project root, same format as project.godot) overrides any project setting; it stays out of git. */
 const OVERRIDE_CFG = 'project/override.cfg';
 
 export interface WorkspaceRecord {
   readonly version: number;
   readonly feature: string;
-  /** The game repository the workspace was cloned from (read only). */
+  /** The game repository the workspace was cloned from (read only); `${game}` in the file. */
   readonly game: string;
   /** The game commit the workspace starts from: the base of the package. */
   readonly base: string;
@@ -84,18 +88,22 @@ export function createWorkspace(input: CreateWorkspaceInput): WorkspaceRun & { r
   git(workspace, ['checkout', '--quiet', '-b', branch]);
   isolateUserData(workspace, input.feature);
   const record: WorkspaceRecord = { version: WORKSPACE_VERSION, feature: input.feature, game, base, branch, workspace: normalizePath(workspace) };
-  fs.writeFileSync(path.join(portDir, WORKSPACE_RECORD), JSON.stringify(record, null, 2) + '\n', 'utf8');
+  const m = machine();
+  const written = { ...record, game: m.contract(record.game, RECORD_ROOTS), workspace: m.contract(record.workspace, RECORD_ROOTS) };
+  fs.writeFileSync(path.join(portDir, WORKSPACE_RECORD), JSON.stringify(written, null, 2) + '\n', 'utf8');
   const steps: StepResult[] = [];
   const evidence = path.join(portDir, WORKSPACE_EVIDENCE, 'setup');
-  const ok = runPhase('setup', input.config.setup, input.config, { sandbox: workspace, evidence, game }, steps);
+  const ok = runPhase('setup', input.config.setup, input.config, { sandbox: workspace, evidence, game }, steps, false);
   return { record, steps, ok, evidence, gameChanged: fingerprint(game) !== before };
 }
 
 export function readWorkspace(portDir: string): WorkspaceRecord {
   const file = path.join(path.resolve(portDir), WORKSPACE_RECORD);
   if (!fs.existsSync(file)) throw new Error(`no ${WORKSPACE_RECORD} in ${portDir}: create the workspace first (converter workspace)`);
-  const record = JSON.parse(fs.readFileSync(file, 'utf8')) as WorkspaceRecord;
-  if (record.version !== WORKSPACE_VERSION) throw new Error(`${file} is workspace version ${record.version}; this converter reads ${WORKSPACE_VERSION}`);
+  const written = JSON.parse(fs.readFileSync(file, 'utf8')) as WorkspaceRecord;
+  if (written.version !== WORKSPACE_VERSION) throw new Error(`${file} is workspace version ${written.version}; this converter reads ${WORKSPACE_VERSION}`);
+  const m = machine();
+  const record: WorkspaceRecord = { ...written, game: normalizePath(m.expand(written.game)), workspace: normalizePath(m.expand(written.workspace)) };
   if (!fs.existsSync(record.workspace)) throw new Error(`${file} names ${record.workspace}, which is gone`);
   return record;
 }

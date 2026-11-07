@@ -1,13 +1,13 @@
 // Which functions a call runs, from Jelly's call graph (cs-au-dk/jelly: a points-to analysis of the whole program, so
 // a call through an interface, a callback or a function kept in an object reaches the function the value really is).
-// Jelly is run on the program's roots, or its call graph given; its locations are matched to the TypeScript program's
+// Jelly is run on the program's roots (a task keyed by the code it reads); its locations are matched to the TypeScript program's
 // nodes. Jelly parses with Babel: a call has the same range in both; a function ends where it ends in both, but its
 // start differs where TypeScript counts modifiers (`export function f` starts at `export` for TypeScript, at
 // `function` for Babel), so a function is matched by its end and the nearest start before Babel's.
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import type * as TS from 'typescript';
+import { keyedDir, keyOf, logOf, mustRun, passed, runTasksSync, toolKey, treeKey } from '../common/tasks.ts';
 
 /** Jelly's call graph JSON (its `typings/callgraph.d.ts`): locations are `file:line:column:line:column`, 1-based. */
 export interface JellyCallGraph {
@@ -27,21 +27,30 @@ export interface JellyAnalysis {
 export const CALL_GRAPH_FILE = 'callgraph.json';
 export const TOKENS_FILE = 'tokens.json';
 
+/** Jelly on a whole program (measured: 59 s on the 4.0's 863 files): past this its process tree is stopped. */
+const JELLY_TIMEOUT_S = 1800;
+/** Jelly's heap: the whole 4.0 needs more than Node's default. */
+const JELLY_HEAP_MB = 12288;
+
 /**
- * Runs Jelly (the package directory given) on the program's roots, in `base` (its paths are then relative to it), into
- * `dir`. Only calls the program writes are edges: a callback the platform or a package calls is not given that call's
- * arguments, so its parameters are what comes from outside.
+ * Jelly (the package directory given) on the program's roots, run in `base` (its paths are then relative to it). The
+ * analysis is a task keyed by what it reads (the code under `base`, the roots, Jelly itself): it lives in the folder
+ * that key names and is made only when no run made it. Only calls the program writes are edges: a callback the platform
+ * or a package calls is not given that call's arguments, so its parameters are what comes from outside.
  */
-export function runJelly(jellyDir: string, base: string, roots: readonly string[], dir: string): JellyAnalysis {
+export function runJelly(jellyDir: string, base: string, roots: readonly string[]): JellyAnalysis {
   const main = path.join(path.resolve(jellyDir), 'lib', 'main.js');
   if (!fs.existsSync(main)) throw new Error(`no Jelly at ${jellyDir} (expected lib/main.js of the @cs-au-dk/jelly package)`);
+  const relativeRoots = roots.map((r) => path.relative(base, r).split(path.sep).join('/')).sort();
+  const flags = ['--no-tty', '--no-print-progress', '--no-callgraph-native', '--no-callgraph-external'];
+  const key = keyOf('jelly', treeKey(base), toolKey(jellyDir), process.version, ...flags, ...relativeRoots);
+  const dir = keyedDir('jelly', key);
   fs.mkdirSync(dir, { recursive: true });
-  const cg = path.resolve(dir, CALL_GRAPH_FILE);
-  const tokens = path.resolve(dir, TOKENS_FILE);
-  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', main, '-b', '.', '-j', cg, '--tokens-json', tokens, '--no-tty',
-    '--no-print-progress', '--no-callgraph-native', '--no-callgraph-external', ...roots.map((r) => path.relative(base, r))],
-  { cwd: base, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  if (run.status !== 0 || !fs.existsSync(cg) || !fs.existsSync(tokens)) throw new Error(`Jelly failed (exit ${run.status}):\n${(run.stderr || run.stdout).slice(-4000)}`);
+  const cg = path.join(dir, CALL_GRAPH_FILE);
+  const tokens = path.join(dir, TOKENS_FILE);
+  const [run] = runTasksSync([{ name: 'converter-jelly', argv: [process.execPath, `--max-old-space-size=${JELLY_HEAP_MB}`, main, '-b', '.', '-j', cg, '--tokens-json', tokens,
+    ...flags, ...relativeRoots], cwd: base, extra: [key], outputs: [cg, tokens], timeoutS: JELLY_TIMEOUT_S }]);
+  if (!passed(mustRun('Jelly', run!)) || !fs.existsSync(cg) || !fs.existsSync(tokens)) throw new Error(`Jelly failed (${run!.status}, exit ${run!.exit}):\n${logOf(run!).slice(-4000)}`);
   return readJelly(dir, base);
 }
 
