@@ -73,17 +73,17 @@ func {mask}_sheets() -> void:
 	{engine_call(api, "layer", "mask")}
 
 func {feature}_start() -> void:
-	var a = "{feature}_speed"
+	var a = get_meta("table").get("{feature}_speed", 0)
 	{feature}_step()
 
 func {feature}_step() -> void:
-	var b = "{feature}_limit"
+	var b = get_meta("table").get("{feature}_limit", 0)
 	var m := ShaderMaterial.new()
 	m.set_shader_parameter(&"{feature}_tint", 1.0)
 	{feature}_finish()
 
 func {feature}_finish() -> void:
-	var c = "{feature}_speed"
+	var c = get_meta("table").get("{feature}_speed", 0)
 	var d := load("res://{feature}_rules.json")
 	{feature}_start()
 '''

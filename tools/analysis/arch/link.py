@@ -72,7 +72,7 @@ def _resolve_refs(graph, names, facts, report):
             real = next((ROLE_SPACE[w] for w in words_of(word) if w in ROLE_SPACE), None)
         kind = "name_call" if real in ("method",) else "name_ref"
         # A word in plain text that happens to spell a name links the two, and that is all: only what is written as a name, or says what it names, can be followed.
-        named = {"named": True} if real is not None or space == "name" or role == "xmacro" else {}
+        named = {"named": True} if real is not None or space == "name" or role == "xmacro" or (space or "").startswith("role:") else {}
         if real == "group":
             # A group has no declaration: whoever writes its name meets the others there.
             graph.add_unit((f"group:{text}", "group", text, file, line, line, None, "", {}))

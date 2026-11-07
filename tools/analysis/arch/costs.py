@@ -128,7 +128,7 @@ def query_per_frame(k):
     costly = {c[0] for c in k.by_kind["lock"]} | {c[0] for c in k.by_kind["loop"]}
     out = []
     for e in k.graph.edges.values():
-        if e.kind in ("name_ref", "route", "name_call") and e.conf == 1.0 and (e.attrs.get("named") or e.kind != "name_ref") and e.src in k.when.reach["frame"] and e.src not in k.when.tests and not k.gated(e.src) and k.graph.units[e.src]["kind"] != "entry":
+        if e.kind in ("name_ref", "route", "name_call") and e.conf == 1.0 and (e.attrs.get("named") or e.kind != "name_ref") and not e.attrs.get("handed") and e.src in k.when.reach["frame"] and e.src not in k.when.tests and not k.gated(e.src) and k.graph.units[e.src]["kind"] != "entry":
             target = e.dst
             hop = [x.dst for x in k.graph.out.get(target, ()) if x.kind in ("route", "name_ref")]
             for t in [target, *hop]:

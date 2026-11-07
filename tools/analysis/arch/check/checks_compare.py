@@ -95,9 +95,8 @@ def failures(ctx):
     text = {"a.gd": 'var x = t.get("used")\nvar y = 1\n', "b.json": "{}\n"}
     code = oracle.Code(text)
     finding = {"file": "b.json", "line": 1, "category": "no_reader", "unit": "k", "detail": {"key": "used"}, "path": [{"file": "a.gd", "line": 1, "kind": "x"}], "places": []}
-    tests["contamination refuses a group that moved with nothing touched beside it"] = apart.moved_groups({("a", "b")}, {("a", "c")}, set()) == [("a", "b"), ("a", "c")]
-    tests["contamination allows only the partner of what was touched"] = apart.moved_groups({("a", "b")}, {("a", "c")}, {"a"}) == []
-    tests["contamination refuses a cause whose score moved"] = len(apart.moved_causes({("x", 1, 2, 3)}, {("x", 1, 2, 4)}, {"x": ["u"]}, {"t"})) == 2
+    tests["contamination sees a group that moved"] = apart.groups_apart([("a", "b")], set()) != apart.groups_apart([("a", "c")], set())
+    tests["contamination sees a cause whose score moved"] = apart.marks_apart([("x", 1, 2, 3, ["u"], [])], set()) != apart.marks_apart([("x", 1, 2, 4, ["u"], [])], set())
     tests["precision refutes a key the code reads"] = oracle.no_reader(code, finding) is False
     tests["precision confirms a key nobody names"] = oracle.no_reader(code, {**finding, "detail": {"key": "gone"}}) is True
     tests["precision sees no loop where there is none"] = oracle.has_loop(code, {**finding, "file": "a.gd"}) is False

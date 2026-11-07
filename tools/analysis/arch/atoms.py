@@ -91,7 +91,8 @@ class Atoms:
         node_set = set(self.nodes)
         self.weights = collections.Counter()
         for e in graph.edges.values():
-            if e.kind not in WEIGHTED or e.generic or e.conf < 1.0:
+            # A word in plain text is certain only while no other table has it: what it weighs would hang on files that have nothing to do with it.
+            if e.kind not in WEIGHTED or e.generic or e.conf < 1.0 or (e.kind == "name_ref" and not e.attrs.get("named")):
                 continue
             a = self.shims.get(e.src, e.src)
             b = self.shims.get(e.dst, e.dst)

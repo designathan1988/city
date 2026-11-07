@@ -9,6 +9,9 @@ from .core import natural_break, words_of
 
 RULE_LINES = 3  # a set-and-call of two lines has the shape of half the code: it takes a body for a shape to be a rule
 
+VALUE_FIELDS = 4
+NUMBERS = {"float", "double", "int", "real"}
+
 
 OWNER_KINDS = ("implicit_role", "repeated_rule", "repeated_decision")
 
@@ -27,12 +30,18 @@ def tail_cut(values):
     return natural_break(upper)
 
 
+def _a_number_of_a_value(graph, field):
+    """The x of a point, the r of a colour: a type of a few numbers is a value, and two functions that use one have nothing else in common."""
+    fields = [graph.units[c] for c in graph.children.get(graph.units[field]["parent"], ()) if graph.units[c]["kind"] == "field"]
+    return 0 < len(fields) <= VALUE_FIELDS and all(set(words_of(f["attrs"].get("type") or "")) & NUMBERS for f in fields)
+
+
 def _rare_targets(graph, nodes):
     """What each function reaches, without the far tail: what nearly everyone touches says nothing about responsibility."""
     reach = {n: {e.dst for e in graph.out.get(n, ()) if e.kind in ("call", "read", "write", "virtual") and not e.generic} for n in nodes}
     df = collections.Counter(t for ts in reach.values() for t in ts)
     # State only: two callers of one helper have an owner already, the opposite of scattered. And what nearly all state users touch, the x of a point, says nothing.
-    state = {t for t in df if t in graph.units and graph.units[t]["kind"] in ("field", "global")}
+    state = {t for t in df if t in graph.units and graph.units[t]["kind"] in ("field", "global") and not _a_number_of_a_value(graph, t)}
     common = [df[t] for t in state if df[t] > 1]
     cut = natural_break(common) if len(set(common)) > 1 else math.inf
     # What is done to it counts too: the loader that writes a setting and the code that reads it do two things to it.

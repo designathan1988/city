@@ -35,23 +35,3 @@ def marks_apart(causes, near):
             lost = sum(1 for _, units in children if near & set(units))
             out.add((i, commits, reach - lost, score - lost * (score // reach)))
     return out
-
-
-def beside(touched, groups):
-    """Units that shared a group with a touched unit: when it leaves, the next best partner of each changes, and that is its doing."""
-    out = set()
-    for g in groups:
-        if touched.intersection(g):
-            out.update(g)
-    return out - touched
-
-
-def moved_groups(left, right, mates):
-    """Every difference of the two maps that no touched unit explains."""
-    return sorted(g for g in left ^ right if not mates.intersection(g))
-
-
-def moved_causes(first, second, places, touched):
-    """Every difference of the marks, but for the same cause seen again without the place that was touched."""
-    near = {u for ps in places.values() if touched.intersection(ps) for u in ps}
-    return sorted((m for m in first ^ second if not near.intersection(places.get(m[0], ()))), key=str)

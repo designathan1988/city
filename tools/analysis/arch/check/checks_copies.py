@@ -12,7 +12,7 @@ from ..scan import ADAPTERS
 from . import inject, inject_extra, rearrange
 from .checks_compare import _ablation_judge, chained, nmi, notes, same, snapshot
 from .rename import Renamer, outside_vocabulary
-from .apart import beside, groups_apart, marks_apart, moved_causes, moved_groups, touched_by
+from .apart import groups_apart, marks_apart, touched_by
 from .supervisor import Job
 
 BEST_OF_THE_PROTOTYPE = 0.88
@@ -231,16 +231,12 @@ def contamination(ctx, out):
     gone = ctx.state["gone"]
     got = out("graph_clean")
     touched = touched_by(plain_run, plain, gone | set(got["applied"]), got["cut"])
-    every = [g["members"] for g in plain["groups"]] + got["groups"]
     left, right = groups_apart((g["members"] for g in plain["groups"]), touched), groups_apart(got["groups"], touched)
     mine = [(q["id"], q["commits"], q["reach"], q["score"], [p["unit"] for p in q["places"]], q["children"]) for q in plain["queue"]]
     causes_a, causes_b = marks_apart(mine, touched), marks_apart(got["causes"], touched)
-    places = {c[0]: c[4] for c in (*mine, *got["causes"])}
-    groups_moved = moved_groups(left, right, beside(touched, every))
-    causes_moved = moved_causes(causes_a, causes_b, places, touched)
-    equal = bool(left) and bool(causes_a) and not groups_moved and not causes_moved and not got["roles_back"]
+    equal = bool(left) and bool(causes_a) and left == right and causes_a == causes_b and not got["roles_back"]
     return {"pass": equal, "detail": {"dropped": len(gone), "applied": len(got["applied"]), "units": len(plain_run.graph.units), "units_touching_them": len(touched), "groups": (len(left), len(right)), "causes": (len(causes_a), len(causes_b)),
-                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "groups_moved": groups_moved[:3], "causes_moved": causes_moved[:3], "roles_back": got["roles_back"][:5]}}
+                                      "groups_differ": len(left ^ right), "causes_differ": len(causes_a ^ causes_b), "sample": sorted(left ^ right)[:3], "causes_sample": sorted(causes_a ^ causes_b, key=str)[:3], "roles_back": got["roles_back"][:5]}}
 
 
 def stability_jobs(ctx):
